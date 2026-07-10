@@ -167,6 +167,176 @@ def build_trace_summary(events: list[RunTraceEvent]) -> dict[str, Any]:
         "trace_sources": sorted(sources_seen),
         "source_limitations": (
             ["Events reconstructed from persisted run data, not captured live."]
-            if "reconstructed" in sources_seen else []
+            if any(str(s).startswith("reconstructed") for s in sources_seen) else []
         ),
     }
+
+
+# ---------------------------------------------------------------------------
+# F004 — normalized raw stream as a trace source
+# ---------------------------------------------------------------------------
+
+#: Explicit trace-source labels. A reader can always tell where events came from.
+TRACE_SOURCE_STREAM = "normalized_raw_stream"
+TRACE_SOURCE_LEGACY = "reconstructed_legacy_evidence"
+
+#: Stream event types that become trace events, and their trace event_kind.
+_STREAM_EVENT_KINDS = {
+    "tool_use": "tool_use",
+    "tool_result": "tool_result",
+    "api_retry": "api_retry",
+    "result": "provider_result",
+    "provider_error": "provider_error",
+    "stream_cap_reached": "stream_cap_reached",
+}
+
+#: Reconstruction must not duplicate these once normalized events exist.
+STREAM_OWNED_EVENT_KINDS = frozenset(_STREAM_EVENT_KINDS.values())
+
+
+def has_normalized_stream(task_dir: Path | str) -> bool:
+    """True when a task has normalized F004 stream events available."""
+    from packages.orchestration.stream_evidence import RUN_EVENTS_FILENAME
+    return (Path(task_dir) / RUN_EVENTS_FILENAME).is_file()
+
+
+def trace_events_from_run_events(
+    task_dir: Path | str,
+    *,
+    job_id: str = "",
+    task_id: str = "",
+    run_id: str = "",
+    provider: str = "",
+) -> list[RunTraceEvent]:
+    """Build trace events from a task's normalized ``run_events.jsonl``.
+
+    Each trace event keeps the raw byte offset backreference in
+    ``source_artifact_refs`` so a reader can jump to the exact raw stream bytes.
+    API retries stay visible. No model text is copied.
+    """
+    from packages.orchestration.stream_evidence import (
+        RAW_STREAM_FILENAME,
+        RUN_EVENTS_FILENAME,
+        read_run_events,
+    )
+
+    base = Path(task_dir)
+    events: list[RunTraceEvent] = []
+    for ev in read_run_events(base / RUN_EVENTS_FILENAME):
+        kind = _STREAM_EVENT_KINDS.get(str(ev.get("event_type", "")))
+        if not kind:
+            continue
+        parts: list[str] = []
+        if ev.get("event_type") == "tool_use" and ev.get("tool_name"):
+            parts.append(f"tool={ev['tool_name']}")
+        if ev.get("event_type") == "api_retry":
+            parts.append(f"attempt={ev.get('attempt', '')} reason={ev.get('reason', '')}")
+        if ev.get("event_type") == "provider_error":
+            parts.append(str(ev.get("error", ""))[:200])
+        offset = ev.get("raw_byte_offset")
+        length = ev.get("raw_byte_length")
+        refs = [
+            f"{RUN_EVENTS_FILENAME}#seq={ev.get('seq', '')}",
+            f"{RAW_STREAM_FILENAME}#line={ev.get('raw_line_number', '')}"
+            f",offset={offset},length={length}",
+        ]
+        events.append(create_trace_event(
+            event_kind=kind,
+            job_id=job_id,
+            task_id=task_id,
+            run_id=run_id,
+            provider=provider,
+            safe_summary=" ".join(parts)[:200],
+            trace_source=TRACE_SOURCE_STREAM,
+            source_artifact_refs=refs,
+        ))
+    return events
+
+
+def resolve_trace_source(task_dir: Path | str) -> str:
+    """Return the trace source that will be used for a task.
+
+    Normalized raw stream events win when present; otherwise the existing
+    reconstruction from persisted run data remains the fallback.
+    """
+    return TRACE_SOURCE_STREAM if has_normalized_stream(task_dir) else TRACE_SOURCE_LEGACY
+
+
+#: Where per-call stream artifacts live under a task's evidence directory.
+STREAMS_DIRNAME = "streams"
+
+
+def iter_task_stream_calls(task_dir: Path | str):
+    """Yield ``(stream_call_id, call_dir)`` for every per-call stream directory.
+
+    Deterministic order: role, then round, then attempt. Absent streams yield
+    nothing, so a task without F004 evidence simply falls back to reconstruction.
+    """
+    from packages.orchestration.stream_evidence import RUN_EVENTS_FILENAME
+
+    root = Path(task_dir) / STREAMS_DIRNAME
+    if not root.is_dir():
+        return
+    for events_file in sorted(root.rglob(RUN_EVENTS_FILENAME)):
+        call_dir = events_file.parent
+        rel = call_dir.relative_to(Path(task_dir)).as_posix()
+        yield rel, call_dir
+
+
+def task_has_stream_evidence(task_dir: Path | str) -> bool:
+    return any(True for _ in iter_task_stream_calls(task_dir))
+
+
+def trace_events_from_task_streams(
+    task_dir: Path | str,
+    *,
+    job_id: str = "",
+    task_id: str = "",
+    run_id: str = "",
+) -> list[RunTraceEvent]:
+    """Build normalized provider/tool trace events for every call of a task.
+
+    Each event keeps a relative reference to the exact raw artifact line, byte
+    offset and length. Returns [] when the task has no stream artifacts, so the
+    caller keeps its existing reconstruction.
+    """
+    from packages.orchestration.stream_evidence import (
+        RAW_STREAM_FILENAME,
+        RUN_EVENTS_FILENAME,
+        read_run_events,
+    )
+
+    events: list[RunTraceEvent] = []
+    for rel, call_dir in iter_task_stream_calls(task_dir):
+        role = "builder" if "/builder/" in f"/{rel}/" else (
+            "reviewer" if "/reviewer/" in f"/{rel}/" else ""
+        )
+        for ev in read_run_events(call_dir / RUN_EVENTS_FILENAME):
+            kind = _STREAM_EVENT_KINDS.get(str(ev.get("event_type", "")))
+            if not kind:
+                continue
+            parts: list[str] = [f"call={rel}"]
+            if ev.get("tool_name"):
+                parts.append(f"tool={ev['tool_name']}")
+            if ev.get("event_type") == "api_retry":
+                parts.append(f"attempt={ev.get('attempt', '')} reason={ev.get('reason', '')}")
+            if ev.get("event_type") == "provider_error":
+                parts.append(str(ev.get("error", ""))[:150])
+            if ev.get("event_type") == "stream_cap_reached":
+                parts.append("provider terminated at stream cap")
+            refs = [
+                f"{rel}/{RUN_EVENTS_FILENAME}#seq={ev.get('seq', '')}",
+                f"{rel}/{RAW_STREAM_FILENAME}#line={ev.get('raw_line_number', '')}"
+                f",offset={ev.get('raw_byte_offset')},length={ev.get('raw_byte_length')}",
+            ]
+            events.append(create_trace_event(
+                event_kind=kind,
+                job_id=job_id,
+                task_id=task_id,
+                run_id=run_id,
+                role=role,
+                safe_summary=" ".join(parts)[:200],
+                trace_source=TRACE_SOURCE_STREAM,
+                source_artifact_refs=refs,
+            ))
+    return events

@@ -181,6 +181,7 @@ def _cmd_do(
     scope_file: str = "",
     approve_scope: bool = False,
     repair_rounds: int | None = None,
+    stream_evidence: bool = False,
 ) -> None:
     # --- Task input loading ---
     task_input = None
@@ -266,6 +267,7 @@ def _cmd_do(
             scope_validation=scope_validation,
             repair_rounds=repair_rounds,
             repair_rounds_source=repair_rounds_source,
+            stream_evidence=stream_evidence,
         )
         return
 
@@ -367,6 +369,7 @@ def _cmd_do_pingpong(
     scope_validation: Any = None,
     repair_rounds: int = 0,
     repair_rounds_source: str = "",
+    stream_evidence: bool = False,
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -425,6 +428,7 @@ def _cmd_do_pingpong(
         scope_validation=scope_validation,
         repair_rounds=repair_rounds,
         repair_rounds_source=repair_rounds_source,
+        stream_evidence=stream_evidence,
     )
 
     data = export_pingpong_json(result)
@@ -886,6 +890,7 @@ def _cmd_do_job_run(
     repair_rounds: int | None = None,
     test_command: str | None = None,
     claude_cli_write_mode: str | None = None,
+    stream_evidence: bool = False,
     max_tasks: int = 0,
     json_output: bool = False,
     builder_provider: str | None = None,
@@ -963,6 +968,7 @@ def _cmd_do_job_run(
         test_command=test_command,
         timeout_profile=timeout_profile,
         claude_cli_write_mode=claude_cli_write_mode,
+        stream_evidence=stream_evidence,
         max_tasks=max_tasks,
     )
 
@@ -981,14 +987,19 @@ def _cmd_do_job_evidence(
     json_output: bool = False,
 ) -> None:
     """Export a self-contained evidence bundle for an entire job."""
+    from packages.orchestration.data_paths import job_evidence_export_dir
     from packages.orchestration.job_evidence import export_job_evidence
 
     if not out:
-        out = f"remedy-job-evidence-{job_id}"
+        # Default to the hidden data-dir location; never litter the repo root.
+        out = str(job_evidence_export_dir(job_id))
 
     result = export_job_evidence(
         job_id, out, verification_commands=verification_command or None,
     )
+
+    if not result.get("error"):
+        _index_job_evidence(job_id, result.get("out_dir", out), "do.job-evidence")
 
     if result.get("error"):
         print(f"Error: {result['error']}", file=sys.stderr)
@@ -1478,27 +1489,47 @@ def _sanitize_shareable_paths(obj: Any) -> Any:
     return obj
 
 
-def _persist_evidence_index(job_id: str, evidence_out: str, trace_summary: dict) -> None:
-    """Write evidence location index under Remedy data dir for cockpit bridge."""
-    from datetime import datetime, timezone
-    from pathlib import Path
+def _index_job_evidence(job_id: str, evidence_out: str, source_command: str) -> None:
+    """Record this export in the existing job evidence index (best effort).
 
+    Captures the resolved repository, branch, commit, export path, timestamp,
+    job status and the changed source/test file set so review-zip selection can
+    match evidence to the current working tree instead of guessing by mtime.
+    """
     try:
-        from packages.orchestration.data_paths import resolve_data_root
-        idx_dir = resolve_data_root() / "job_evidence_index"
-        idx_dir.mkdir(parents=True, exist_ok=True)
-        ev_path = Path(evidence_out).resolve()
-        record = {
-            "job_id": job_id,
-            "evidence_dir_local": str(ev_path),
-            "has_agent_run_trace": (ev_path / "agent_run_trace.jsonl").exists(),
-            "has_job_flow_json": (ev_path / "job_flow.json").exists(),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "source_command": "do.job-flow",
-        }
-        (idx_dir / f"{job_id}.json").write_text(
-            json.dumps(record, indent=2) + "\n"
+        from packages.orchestration.evidence_index import (
+            dirty_source_test_files,
+            write_index_record,
         )
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        job = load_job_plan(job_id)
+        repo = getattr(job, "repo_path", "") or "."
+        status = getattr(job, "status", "") or ""
+        changed: list[str] = []
+        try:
+            from packages.orchestration.job_evidence import _read_changed_files_for_index
+            changed = _read_changed_files_for_index(evidence_out)
+        except Exception:
+            changed = []
+        if not changed:
+            changed = dirty_source_test_files(repo)
+        write_index_record(
+            job_id, evidence_out, repo_path=repo, job_status=status,
+            changed_files=changed, source_command=source_command,
+        )
+    except Exception:
+        pass
+
+
+def _persist_evidence_index(job_id: str, evidence_out: str, trace_summary: dict) -> None:
+    """Write evidence location index under Remedy data dir for cockpit bridge.
+
+    Delegates to the shared index writer so job-flow and job-evidence produce one
+    record format (no second index).
+    """
+    try:
+        _index_job_evidence(job_id, evidence_out, "do.job-flow")
     except (ImportError, OSError):
         pass
 
@@ -1736,13 +1767,21 @@ def _build_agent_run_trace(
 ) -> list:
     """Build agent run trace events from completed job state.
 
-    All events are marked trace_source="reconstructed" because they are
-    derived post-hoc from persisted run data, not captured live.
+    Job/task lifecycle events are reconstructed from persisted run data. When a
+    task captured F004 raw stream evidence, its provider/tool events (tool use,
+    tool result, API retry, provider result, provider error, stream cap) come
+    from the normalized ``run_events.jsonl`` instead and are marked
+    ``normalized_raw_stream`` — never duplicated by reconstruction.
     """
-    from packages.orchestration.agent_run_trace import create_trace_event
+    from packages.orchestration.agent_run_trace import (
+        create_trace_event,
+        task_has_stream_evidence,
+        trace_events_from_task_streams,
+    )
+    from packages.orchestration.data_paths import jobs_dir
     from packages.orchestration.pingpong_loop import _provider_kind, load_run
 
-    _SRC = "reconstructed"
+    _SRC = "reconstructed_legacy_evidence"
     events = []
     job_id = job.job_id
     b_kind = _provider_kind(builder_name or "fake")
@@ -1780,6 +1819,14 @@ def _build_agent_run_trace(
         run_data = load_run(task.run_id)
         if not run_data:
             continue
+
+        # F004: normalized provider/tool events replace reconstruction for this
+        # task when its per-call stream artifacts exist.
+        _task_ev_dir = jobs_dir() / job_id / "evidence" / "task_runs" / task.task_id
+        if task_has_stream_evidence(_task_ev_dir):
+            events.extend(trace_events_from_task_streams(
+                _task_ev_dir, job_id=job_id, task_id=task.task_id, run_id=task.run_id,
+            ))
 
         pt_index = _load_prompt_trace_index(task.run_id)
         pt_refs = [f"prompt_trace.jsonl:{task.run_id}"] if pt_index else []
@@ -2038,7 +2085,8 @@ def _cmd_do_job_flow(
 
     # --- 4. job-evidence ---
     from packages.orchestration.job_evidence import export_job_evidence
-    evidence_out = out or f"remedy-job-evidence-{job_id}"
+    from packages.orchestration.data_paths import job_evidence_export_dir as _jeed
+    evidence_out = out or str(_jeed(job_id))
     evidence_result = export_job_evidence(job_id, evidence_out)
 
     # --- 5. job-promote --dry-run (stops before approved promote) ---
@@ -2102,7 +2150,7 @@ def _cmd_do_job_flow(
         job_id=job_id,
         status=final_audit["status"],
         safe_summary=final_audit["recommended_next_action"],
-        trace_source="reconstructed",
+        trace_source="reconstructed_legacy_evidence",
     ))
     # Re-persist trace and summary with final event
     write_run_trace_jsonl(run_trace_events, ev_path / "agent_run_trace.jsonl")
@@ -2261,6 +2309,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         scope_file=getattr(args, "scope_file", None) or "",
         approve_scope=getattr(args, "approve_scope", False),
         repair_rounds=getattr(args, "repair_rounds", None),
+        stream_evidence=getattr(args, "stream_evidence", False),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",
@@ -2314,6 +2363,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
         test_command=getattr(args, "test_command", None),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
+        stream_evidence=getattr(args, "stream_evidence", False),
         max_tasks=int(getattr(args, "max_tasks", None) or 0),
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),
