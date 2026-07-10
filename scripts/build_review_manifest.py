@@ -50,10 +50,38 @@ def _check(path: str) -> str:
     return "present" if os.path.isfile(path) else "absent"
 
 
+SOURCE_ROOT_TOKEN = "[source_root]"
+EXTERNAL_EVIDENCE_TOKEN = "[external_evidence]"
+
+
+def _shareable_path(path: str, source_root: str) -> str:
+    """Render a filesystem path so it carries no machine-specific root.
+
+    The review manifest is shared with external reviewers, so it must never
+    disclose ``/home/<user>``, ``/Users/<user>``, ``/tmp/...`` or any other
+    private absolute prefix. Paths inside the repository become
+    ``[source_root]/<relative>``; anything outside collapses to its basename
+    under ``[external_evidence]``.
+    """
+    if not path:
+        return ""
+    root = os.path.realpath(source_root) if source_root else ""
+    resolved = os.path.realpath(path)
+    if root and (resolved == root):
+        return SOURCE_ROOT_TOKEN
+    if root and resolved.startswith(root + os.sep):
+        rel = os.path.relpath(resolved, root).replace(os.sep, "/")
+        return f"{SOURCE_ROOT_TOKEN}/{rel}"
+    return f"{EXTERNAL_EVIDENCE_TOKEN}/{os.path.basename(resolved.rstrip(os.sep))}"
+
+
 def _dirty_files() -> list[str]:
+    # ``-u`` lists untracked files individually. Without it git collapses an
+    # untracked directory to ``dir/``, which can never match a covered file and
+    # would wrongly report the whole directory as uncovered.
     try:
         r = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "-u"],
             capture_output=True, text=True, timeout=10,
         )
         if r.returncode != 0:
@@ -219,28 +247,61 @@ def _scan_task_runs(evidence_dir: str) -> list[dict]:
     return result
 
 
-def _read_job_id(evidence_dir: str) -> str:
-    jf = os.path.join(evidence_dir, "job_flow.json")
-    if not os.path.isfile(jf):
-        return ""
+def _load_json(path: str) -> dict:
+    if not os.path.isfile(path):
+        return {}
     try:
-        with open(jf) as f:
+        with open(path) as f:
             data = json.load(f)
-        return data.get("job_id", "")
     except (json.JSONDecodeError, OSError):
-        return ""
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _read_job_id(evidence_dir: str) -> str:
+    """Job ID from provider-flow evidence, else from the bundle manifest.
+
+    ``job_flow.json`` is intentionally absent for an operator-attested manual
+    completion, so falling back to ``manifest.json`` is what keeps the shared
+    manifest from reporting an empty Job ID for a perfectly valid bundle.
+    """
+    jf = _load_json(os.path.join(evidence_dir, "job_flow.json"))
+    job_id = str(jf.get("job_id") or "")
+    if job_id:
+        return job_id
+    mf = _load_json(os.path.join(evidence_dir, "manifest.json"))
+    job_id = str(mf.get("job_id") or "")
+    if job_id:
+        return job_id
+    fjr = _load_json(os.path.join(evidence_dir, "final_job_review.json"))
+    return str(fjr.get("job_id") or "")
 
 
 def _read_final_audit(evidence_dir: str) -> dict:
-    jf = os.path.join(evidence_dir, "job_flow.json")
-    if not os.path.isfile(jf):
+    """Final audit from provider-flow evidence, else the manual-completion verdict.
+
+    No provider observability artifact is fabricated: for a manual completion the
+    status comes from the verifier/review artifacts that actually exist.
+    """
+    jf = _load_json(os.path.join(evidence_dir, "job_flow.json"))
+    audit = jf.get("final_audit")
+    if isinstance(audit, dict) and audit:
+        return audit
+
+    fv = _load_json(os.path.join(evidence_dir, "final_verifier_report.json"))
+    status = str(fv.get("verdict") or "")
+    source = "final_verifier_report.json"
+    if not status:
+        fjr = _load_json(os.path.join(evidence_dir, "final_job_review.json"))
+        status = str(fjr.get("verdict") or "")
+        source = "final_job_review.json"
+    if not status:
         return {}
-    try:
-        with open(jf) as f:
-            data = json.load(f)
-        return data.get("final_audit", {})
-    except (json.JSONDecodeError, OSError):
-        return {}
+    return {
+        "status": status,
+        "source": source,
+        "missing_observability_artifacts": [],
+    }
 
 
 def _read_trace_sources(evidence_dir: str) -> list[str]:
@@ -1029,17 +1090,18 @@ def build_manifest(
 
     if not cwd_resolved.startswith(root_resolved):
         containment_blockers.append(
-            f"packaging cwd {cwd} is outside source_root {source_root}"
+            f"packaging cwd {_shareable_path(cwd, source_root)} is outside source_root"
         )
-        external_paths.append(cwd)
+        external_paths.append(_shareable_path(cwd, source_root))
 
     if evidence_dir:
         ev_resolved = os.path.realpath(evidence_dir)
         if not ev_resolved.startswith(root_resolved):
             containment_blockers.append(
-                f"evidence_dir {evidence_dir} is outside source_root"
+                f"evidence_dir {_shareable_path(ev_resolved, source_root)} "
+                "is outside source_root"
             )
-            external_paths.append(ev_resolved)
+            external_paths.append(_shareable_path(ev_resolved, source_root))
 
     containment_ok = len(containment_blockers) == 0
     containment_verdict = "PASS" if containment_ok else "BLOCKED"
@@ -1118,16 +1180,18 @@ def build_manifest(
         "review_state": review_state,
         "review_subject_evidence_alignment": alignment,
         "packaged_evidence_dir": (
-            os.path.abspath(evidence_dir) if evidence_dir else ""
+            _shareable_path(evidence_dir, source_root) if evidence_dir else ""
         ),
         "packaged_evidence_job_id": ev_manifest_job_id,
         "packaged_evidence_manifest_task_count": ev_manifest_task_count,
         "packaged_evidence_manifest_task_ids": ev_manifest_task_ids,
         "packaged_evidence_modified_at": ev_manifest_mtime,
-        "source_root": source_root,
+        "source_root": SOURCE_ROOT_TOKEN,
         "packaging_command_context": {
-            "cwd": os.getcwd(),
-            "evidence_dir_arg": evidence_dir or "",
+            "cwd": _shareable_path(cwd, source_root),
+            "evidence_dir_arg": (
+                _shareable_path(evidence_dir, source_root) if evidence_dir else ""
+            ),
         },
         "source_root_containment": {
             "verdict": containment_verdict,
