@@ -8,7 +8,7 @@
 - [x] F001 — Adaptive provider timeouts + retry (PR #123 · commit 4856006 · external transition PASS)
 - [x] F002 — Operator repair as a valid evidence path (PR #123 · evidence: remedy-review-20260706-143206-READY_FOR_REVIEW.zip · external PASS_WITH_RISKS)
 - [x] F003 — Real token/cost measurement (PR #123 · implementation evidence: remedy-review-20260708-211448-READY_FOR_REVIEW.zip · runtime actuals: job 231d28005af344a1 / run 2ece61689cc046c3 · external PASS_WITH_RISKS)
-- [ ] F004 — Raw stream evidence
+- [x] F004 — Raw stream evidence (PR #124 · implementation evidence: remedy-review-20260709-225052-READY_FOR_REVIEW.zip · manual job 621369b56e834cd4 · runtime smoke job f22d69ed4c1f491b / run 54d4adc45d964812 · external PASS_WITH_RISKS)
 - [ ] F005 — Enforced structured outputs
 - [ ] F006 — Worktree isolation per run
 - [ ] F007 — Runtime harness

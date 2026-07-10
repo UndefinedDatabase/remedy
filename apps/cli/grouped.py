@@ -230,6 +230,8 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
                 parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
+            elif arg.name == "--stream-evidence":
+                parser.add_argument("--stream-evidence", action="store_true", dest="stream_evidence", help=arg.help)
             elif arg.name == "--task-file":
                 parser.add_argument("--task-file", default="", dest="task_file", help=arg.help)
             elif arg.name == "--task-stdin":

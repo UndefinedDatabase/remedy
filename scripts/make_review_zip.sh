@@ -10,12 +10,24 @@ OUT="remedy-review-${STAMP}.zip"
 # Parse arguments
 EVIDENCE_DIR=""
 SELECTION_MODE=""
+REQUESTED_JOB_ID=""
+INCLUDE_RECENT=0
+HISTORY_ENTRIES=""
+SELECTED_JOB_ID=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --evidence-dir)
       EVIDENCE_DIR="$2"
       SELECTION_MODE="explicit"
+      shift 2
+      ;;
+    --job-id)
+      REQUESTED_JOB_ID="$2"
+      shift 2
+      ;;
+    --include-recent)
+      INCLUDE_RECENT="$2"
       shift 2
       ;;
     --allow-incomplete-evidence|--allow-blocked-alignment)
@@ -103,7 +115,47 @@ SELECTION_REASON=""
 REJECTED_COUNT=0
 
 if [[ -z "$EVIDENCE_DIR" ]]; then
-  # Discover candidates
+  # --- Index-driven selection (never by filesystem mtime) ---
+  SELECT_OUT="$(python3 scripts/select_review_evidence.py --repo "$ROOT" --job-id "$REQUESTED_JOB_ID" --include-recent "$INCLUDE_RECENT" 2>/dev/null || true)"
+  SEL_STATUS="$(echo "$SELECT_OUT" | sed -n 's/^STATUS=//p')"
+  SEL_JOB_ID="$(echo "$SELECT_OUT" | sed -n 's/^JOB_ID=//p')"
+  SEL_DIR="$(echo "$SELECT_OUT" | sed -n 's/^EVIDENCE_DIR=//p')"
+  SEL_REASON="$(echo "$SELECT_OUT" | sed -n 's/^REASON=//p')"
+  HISTORY_ENTRIES="$(echo "$SELECT_OUT" | sed -n 's/^HISTORY=//p')"
+
+  if [[ "$SEL_STATUS" == "selected" && -n "$SEL_DIR" && -d "$SEL_DIR" ]]; then
+    EVIDENCE_DIR="$SEL_DIR"
+    SELECTED_JOB_ID="$SEL_JOB_ID"
+    SELECTION_MODE="indexed"
+    SELECTION_REASON="$SEL_REASON"
+    echo "Selected evidence job: $SEL_JOB_ID"
+    echo "  evidence dir: $SEL_DIR"
+    echo "  reason:       $SEL_REASON"
+  elif [[ -n "$REQUESTED_JOB_ID" ]]; then
+    # An explicit job id must never be silently substituted. Try to export it.
+    echo "No indexed evidence for job $REQUESTED_JOB_ID ($SEL_REASON) — exporting it now."
+    if python3 -m apps.cli.grouped do job-evidence "$REQUESTED_JOB_ID" --json >/dev/null 2>&1; then
+      SELECT_OUT="$(python3 scripts/select_review_evidence.py --repo "$ROOT" --job-id "$REQUESTED_JOB_ID" --include-recent "$INCLUDE_RECENT" 2>/dev/null || true)"
+      SEL_STATUS="$(echo "$SELECT_OUT" | sed -n 's/^STATUS=//p')"
+      SEL_DIR="$(echo "$SELECT_OUT" | sed -n 's/^EVIDENCE_DIR=//p')"
+      HISTORY_ENTRIES="$(echo "$SELECT_OUT" | sed -n 's/^HISTORY=//p')"
+    fi
+    if [[ "$SEL_STATUS" == "selected" && -n "$SEL_DIR" && -d "$SEL_DIR" ]]; then
+      EVIDENCE_DIR="$SEL_DIR"
+      SELECTED_JOB_ID="$REQUESTED_JOB_ID"
+      SELECTION_MODE="indexed_exported"
+      SELECTION_REASON="explicit_job_id_exported"
+      echo "Exported and selected evidence for job $REQUESTED_JOB_ID"
+    else
+      echo "Requested job $REQUESTED_JOB_ID has no usable evidence; refusing to substitute another job." >&2
+      SELECTION_MODE="none"
+      SELECTION_REASON="requested_job_unavailable"
+    fi
+  fi
+fi
+
+if [[ -z "$EVIDENCE_DIR" && -z "$REQUESTED_JOB_ID" ]]; then
+  # --- Deprecated fallback: legacy root-style evidence directories ---
   CANDIDATES=()
   while IFS= read -r -d '' dir; do
     CANDIDATES+=("$dir")
@@ -112,10 +164,13 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
   CANDIDATE_COUNT=${#CANDIDATES[@]}
 
   if [[ $CANDIDATE_COUNT -eq 0 ]]; then
-    echo "No evidence dirs found — building review zip without evidence."
+    echo "No matching review evidence exists for the current branch/worktree."
+    echo "This is a code snapshot, not a final review package."
     SELECTION_MODE="none"
-    SELECTION_REASON="no_evidence_available"
+    SELECTION_REASON="${SELECTION_REASON:-no_matching_evidence}"
   else
+    echo "WARNING: falling back to deprecated repository-root evidence directories."
+    echo "         Export evidence with 'do job-evidence' (hidden .data/evidence_exports) instead."
     ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
 
     # Validate and rank all candidates
@@ -210,11 +265,11 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
       SELECTION_REASON="no_valid_candidates"
     else
       EVIDENCE_DIR="$BEST_DIR"
-      SELECTION_MODE="auto_latest"
-      SELECTION_REASON="${BEST_REASON:-latest_modified_time}"
+      SELECTION_MODE="deprecated_root_fallback"
+      SELECTION_REASON="${BEST_REASON:-deprecated_root_evidence_dir}"
       SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
 
-      echo "Auto-selected latest evidence dir: $EVIDENCE_DIR"
+      echo "Auto-selected deprecated root evidence dir: $EVIDENCE_DIR"
       if [[ -n "$TIE_WARNING" ]]; then
         echo "$TIE_WARNING"
       fi
@@ -401,6 +456,28 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
     echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
   fi
 
+  # --- Supplemental history (context only; never affects package status) ---
+  if [[ -n "$HISTORY_ENTRIES" ]]; then
+    IFS=',' read -r -a _HIST <<< "$HISTORY_ENTRIES"
+    for entry in "${_HIST[@]}"; do
+      [[ -z "$entry" ]] && continue
+      h_job="${entry%%:*}"
+      h_dir="${entry#*:}"
+      [[ -z "$h_job" || -z "$h_dir" || ! -d "$h_dir" ]] && continue
+      [[ "$h_job" == "$SELECTED_JOB_ID" ]] && continue   # never duplicate current
+      h_prefix="evidence/history/$h_job"
+      mkdir -p "$EVIDENCE_STAGING/$h_prefix"
+      find "$h_dir" -type f ! -name '*.pyc' ! -name '*.pyo' -print0 \
+      | while IFS= read -r -d '' src; do
+          rel="${src#$h_dir/}"
+          dest="$EVIDENCE_STAGING/$h_prefix/$rel"
+          mkdir -p "$(dirname "$dest")"
+          cp "$src" "$dest"
+        done
+      echo "Included supplemental history: $h_prefix (context only)"
+    done
+  fi
+
   find "$EVIDENCE_STAGING" -type f -print \
     | sed "s#^${EVIDENCE_STAGING}/##" \
     | sort -u >> "$TMP"
@@ -412,14 +489,14 @@ sort -u "$TMP" -o "$TMP"
 rm -f "$OUT"
 
 cd "$ROOT"
-REPO_FILES="$(grep -v '^evidence/current/' "$TMP" || true)"
+REPO_FILES="$(grep -v '^evidence/' "$TMP" || true)"
 if [[ -n "$REPO_FILES" ]]; then
   echo "$REPO_FILES" | zip -q -@ "$OUT"
 fi
 
 if [[ -n "$EVIDENCE_DIR" ]]; then
   cd "$EVIDENCE_STAGING"
-  EV_FILES="$(find evidence/current -type f 2>/dev/null || true)"
+  EV_FILES="$(find evidence -type f 2>/dev/null || true)"
   if [[ -n "$EV_FILES" ]]; then
     echo "$EV_FILES" | zip -q -@ "$ROOT/$OUT" -g
   fi

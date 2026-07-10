@@ -77,3 +77,22 @@ def viewers_dir(root: Path | None = None) -> Path:
 def proposed_tasks_dir(root: Path | None = None) -> Path:
     """Return the proposed tasks storage directory (<root>/proposed_tasks)."""
     return (root if root is not None else resolve_data_root()) / "proposed_tasks"
+
+
+def evidence_exports_dir(root: Path | None = None) -> Path:
+    """Return the hidden evidence-export base directory (<root>/evidence_exports).
+
+    Evidence bundles default here instead of the repository root, so a working
+    tree is never littered with ``remedy-job-evidence-*`` directories.
+    """
+    return (root if root is not None else resolve_data_root()) / "evidence_exports"
+
+
+def job_evidence_export_dir(job_id: str, root: Path | None = None) -> Path:
+    """Return the default export directory for one job's evidence bundle."""
+    return evidence_exports_dir(root) / job_id
+
+
+def job_evidence_index_dir(root: Path | None = None) -> Path:
+    """Return the existing job evidence index directory (<root>/job_evidence_index)."""
+    return (root if root is not None else resolve_data_root()) / "job_evidence_index"

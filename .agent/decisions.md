@@ -896,3 +896,42 @@ totals (provider_evidence and token_truth carry valid actuals; totals reconcile 
 
 Both are evidence-surface metadata defects, not measurement defects. Deferred as hardening
 candidates for the later evidence/replay work — preferably F140 or F163. Do not reopen F003.
+
+## 2026-07-09: F004 stream redaction composes, not replaces, the prompt corpus
+While building `stream_evidence.py` the existing `prompt_trace.redact_prompt_text`
+was found to MISS several real secret shapes, because its patterns disallow the
+hyphens/underscores that appear inside modern provider keys:
+
+- `sk-ant-api03-…` (real Anthropic key format) — unredacted
+- `AWS_SECRET_ACCESS_KEY=…` (the `SECRET` token is not immediately followed by `=`)
+- `-----BEGIN … PRIVATE KEY-----` blocks, JWTs, `xox*-` Slack tokens
+
+F004's binding rule is "no secrets in raw streams, ever", so `redact_stream_line`
+COMPOSES the existing helper with a stream-specific corpus (sensitive JSON keys,
+provider key shapes, env assignments, private-key headers) rather than trusting
+it alone. Redaction stays textual so a stream line remains valid JSON.
+
+The prompt path is deliberately NOT changed here: that is F003-accepted behaviour
+and altering it is out of F004 scope. Hardening `redact_prompt_text` with the same
+corpus is a follow-up candidate and should be raised as its own item — the gap is
+security-relevant and affects prompt traces today.
+
+## 2026-07-10: F004 accepted (PASS_WITH_RISKS) — three deferred hardening notes
+F004 (raw stream evidence) received external acceptance `PASS_WITH_RISKS`. Manual
+completion job `621369b56e834cd4`; accepted ZIP
+`remedy-review-20260709-225052-READY_FOR_REVIEW.zip`. The following non-blocking
+notes are recorded as later hardening items and MUST NOT reopen F004:
+
+1. `missing_tests_gate` treats `.jsonl` fixtures as test files requiring direct
+   coverage. A fixture is data, not an executable test; the gate should not demand
+   a verification run keyed on it.
+2. A changed task with no task-local test files may receive `NEEDS_TESTS` even
+   when verification is genuinely supplied through another explicit scope. The
+   gate's `covered = bool(related_tests) and not uncovered_tests` is vacuously
+   false for a code-only task and should recognize cross-scope verification.
+3. `job_evidence.py` reads each exported stream artifact fully into memory while
+   copying/hashing it. Bounded at 50 MB/task, so acceptable for F004; stream the
+   copy+hash later for very large artifacts.
+
+Preferred home for (1) and (2): the evidence/replay hardening work (F140/F163).
+(3) is a local streaming optimization in `job_evidence.py`.

@@ -135,6 +135,29 @@ def export_job_evidence(
 
     for task in job.tasks:
         _write_task_run_evidence(task, str(out_path), written)
+        # F004: bring the per-attempt stream artifacts into the shareable bundle.
+        try:
+            _stream_listing = _copy_task_stream_artifacts(
+                job.job_id, task.task_id, str(out_path), written,
+            )
+            if _stream_listing:
+                _sl_rel = f"task_runs/{task.task_id}/stream_artifacts.json"
+                _sl_path = _validate_output_path(str(out_path), _sl_rel)
+                _sl_path.write_text(
+                    json.dumps({
+                        "schema_version": "1.0.0",
+                        "task_id": task.task_id,
+                        "artifacts": _stream_listing,
+                    }, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                written[_sl_rel] = str(_sl_path)
+        except Exception as exc:
+            _rel = f"task_runs/{task.task_id}/stream_artifacts.error.txt"
+            _p = _validate_output_path(str(out_path), _rel)
+            _p.parent.mkdir(parents=True, exist_ok=True)
+            _p.write_text(f"stream artifact export failed: {type(exc).__name__}: {exc}\n")
+            written[_rel] = str(_p)
         try:
             from packages.orchestration.review_scope import write_review_scope_packet
             write_review_scope_packet(task, job.job_workspace_path, str(out_path), written)
@@ -1740,3 +1763,77 @@ def _write_job_prompt_trace_summary(
     target = _validate_output_path(str(out_path), "prompt_trace_summary.json")
     target.write_text(json.dumps(_redact_json_value(aggregate), indent=2) + "\n")
     written["prompt_trace_summary.json"] = str(target)
+
+
+def _read_changed_files_for_index(evidence_dir: str) -> list[str]:
+    """Return the changed source/test files an exported bundle proves.
+
+    Reads the bundle's own content proof so the evidence index records exactly
+    the file set the bundle covers. Returns [] when unavailable.
+    """
+    proof = Path(evidence_dir) / "current_change_content_proof.json"
+    if not proof.is_file():
+        return []
+    try:
+        data = json.loads(proof.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    hashes = data.get("file_hashes") if isinstance(data, dict) else None
+    if not isinstance(hashes, dict):
+        return []
+    return sorted(str(k) for k in hashes)
+
+
+def _copy_task_stream_artifacts(
+    job_id: str, task_id: str, out_base: str, written: dict[str, str],
+) -> dict[str, Any]:
+    """Copy a task's per-attempt F004 stream artifacts into the exported bundle.
+
+    Reads the hidden internal job state and reproduces the exact relative attempt
+    layout under ``task_runs/<task>/streams/...``. Bytes are copied verbatim —
+    they were already redacted at capture time and must never be re-processed.
+    Symlinks and paths escaping the evidence root are refused.
+
+    Returns a listing ``{relative_path: {sha256, size_bytes}}`` (empty when the
+    task captured no streams).
+    """
+    import hashlib as _hl
+
+    from packages.orchestration.data_paths import jobs_dir
+    from packages.orchestration.stream_evidence import (
+        RAW_STREAM_FILENAME,
+        RUN_EVENTS_FILENAME,
+    )
+
+    listing: dict[str, Any] = {}
+    src_task = jobs_dir() / job_id / "evidence" / "task_runs" / task_id / "streams"
+    if not src_task.is_dir():
+        return listing
+
+    dst_root = _validate_output_path(out_base, f"task_runs/{task_id}/streams")
+    src_root = src_task.resolve()
+
+    for src in sorted(src_task.rglob("*")):
+        if src.is_dir():
+            continue
+        if src.is_symlink():
+            continue  # never follow or copy symlinks out of the job store
+        if src.name not in (RAW_STREAM_FILENAME, RUN_EVENTS_FILENAME):
+            continue
+        try:
+            resolved = src.resolve()
+            resolved.relative_to(src_root)
+        except (OSError, ValueError):
+            continue  # path escapes the stream root
+        rel = src.relative_to(src_task).as_posix()
+        dst = _validate_output_path(str(dst_root), rel)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        data = src.read_bytes()
+        dst.write_bytes(data)  # verbatim: already-redacted bytes are not mutated
+        rel_full = f"task_runs/{task_id}/streams/{rel}"
+        written[rel_full] = str(dst)
+        listing[rel_full] = {
+            "sha256": _hl.sha256(data).hexdigest(),
+            "size_bytes": len(data),
+        }
+    return listing
