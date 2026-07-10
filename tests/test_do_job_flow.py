@@ -716,16 +716,18 @@ class TestJobFlowEndToEnd:
         trace = evidence_dir / "agent_run_trace.jsonl"
         events = [json.loads(l) for l in trace.read_text().splitlines() if l.strip()]
         for ev in events:
-            assert ev.get("trace_source") == "reconstructed", \
-                f"R-4305: event {ev['event_kind']} must have trace_source=reconstructed"
+            # F004 renamed the legacy label; normalized stream events use their own.
+            assert ev.get("trace_source") in (
+                "reconstructed_legacy_evidence", "normalized_raw_stream",
+            ), f"R-4305: event {ev['event_kind']} has trace_source={ev.get('trace_source')!r}"
 
     def test_agent_run_trace_summary_has_source_limitations(self, capsys, isolate_data, demo_repo, job_file, tmp_path):
         out = self._run(capsys, repo=demo_repo, job_file=job_file,
                         evidence_out=tmp_path / "evidence", extra=["--json"])
         data = json.loads(out)
         summary = data["agent_run_trace_summary"]
-        assert "reconstructed" in summary["trace_sources"], \
-            "R-4305: summary must report 'reconstructed' trace source"
+        assert any(str(src).startswith("reconstructed") for src in summary["trace_sources"]), \
+            "R-4305: summary must report a reconstructed trace source"
         assert len(summary["source_limitations"]) > 0, \
             "R-4305: summary must include source_limitations for reconstructed traces"
 
@@ -1582,9 +1584,11 @@ class TestReviewZipPackageStatus:
         assert m["packaged_evidence_job_id"] == "test-pkg-123"
         assert m["packaged_evidence_manifest_task_count"] == 2
         assert m["packaged_evidence_manifest_task_ids"] == ["T001", "T002"]
-        assert m["packaged_evidence_dir"] == str(ev.resolve())
-        assert m["packaging_command_context"]["cwd"] == str(tmp_path)
-        assert m["packaging_command_context"]["evidence_dir_arg"] == str(ev)
+        # Shareable manifest: no machine-specific absolute prefixes.
+        assert m["packaged_evidence_dir"] == f"[source_root]/{ev.name}"
+        assert m["source_root"] == "[source_root]"
+        assert m["packaging_command_context"]["cwd"] == "[source_root]"
+        assert m["packaging_command_context"]["evidence_dir_arg"] == f"[source_root]/{ev.name}"
 
     def test_manual_repair_missing_provenance_blocks_authority(self, tmp_path):
         from scripts.build_review_manifest import validate_evidence_candidate
@@ -1814,7 +1818,8 @@ class TestSourceRootContainment:
         monkeypatch.chdir(tmp_path)
         self._init_clean_git(tmp_path)
         m = build_manifest(str(ev), selection_mode="explicit")
-        assert m["source_root"] == str(tmp_path)
+        # The shareable manifest carries a token, never the private absolute root.
+        assert m["source_root"] == "[source_root]"
 
     def test_zip_still_created_when_containment_fails(self, tmp_path, monkeypatch):
         """Containment failure must not prevent zip creation."""

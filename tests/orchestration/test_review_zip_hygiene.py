@@ -13,9 +13,13 @@ never commit, push, reset, or checkout.
 """
 from __future__ import annotations
 
+import json
+import os
+import re
 import shutil
 import stat
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -114,19 +118,9 @@ class TestRootDetritusHygiene:
 
 class TestMakeReviewZipRejectsDetritus:
     def _stage_script_repo(self, tmp_path: Path) -> Path:
-        """Create an isolated git repo containing a copy of the review script."""
-        repo = tmp_path / "ziprepo"
-        (repo / "scripts").mkdir(parents=True)
-        shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
-        manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
-        if manifest_src.exists():
-            shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
-        (repo / "README.md").write_text("# tmp\n")
+        """Isolated git repo with every packaging dependency and one evidence dir."""
+        repo = _make_git_repo_with_scripts(tmp_path)
         _make_valid_evidence(repo / "remedy-job-evidence-test", "detritus-test")
-        subprocess.run(
-            ["git", "init", "-q"], cwd=repo, check=True,
-            capture_output=True, text=True,
-        )
         return repo
 
     def _run_script(self, repo: Path) -> subprocess.CompletedProcess:
@@ -355,37 +349,15 @@ class TestZipManifestContentVerification:
         reason="git, bash, zip required",
     )
     def test_zip_contains_evidence_from_manifest(self, tmp_path: Path):
-        repo = tmp_path / "repo"
-        (repo / "scripts").mkdir(parents=True)
-        shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
-        manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
-        if manifest_src.exists():
-            shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
-        (repo / "README.md").write_text("# test\n")
-        subprocess.run(
-            ["git", "init", "-q"], cwd=repo, check=True,
-            capture_output=True, text=True,
-        )
-        subprocess.run(
-            ["git", "add", "."], cwd=repo, check=True,
-            capture_output=True, text=True,
-        )
-        subprocess.run(
-            ["git", "commit", "-m", "init"],
-            cwd=repo, capture_output=True, text=True, timeout=5,
-            env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test",
-                 "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "test",
-                 "GIT_COMMITTER_EMAIL": "t@t"},
-        )
+        repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-test123"
         _make_valid_evidence(ev, "test")
 
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
-            cwd=repo, capture_output=True, text=True, timeout=30,
+            cwd=repo, capture_output=True, text=True, timeout=60,
         )
-        if proc.returncode != 0:
-            pytest.skip(f"Script failed: {proc.stdout} {proc.stderr}")
+        assert proc.returncode == 0, f"Script failed: {proc.stdout}\n{proc.stderr}"
 
         from zipfile import ZipFile
         zips = list(repo.glob("*.zip"))
@@ -399,30 +371,44 @@ class TestZipManifestContentVerification:
                 "Raw evidence dir must not be in zip"
 
 
+#: Everything the packaging scripts import at runtime. A missing dependency here
+#: makes the script fail post-build verification, which used to look like a
+#: product bug rather than a test-harness gap.
+_REQUIRED_SCRIPTS = (
+    "make_review_zip.sh",
+    "build_review_manifest.py",
+    "build_observability_index.py",
+    "select_review_evidence.py",
+)
+_REQUIRED_PACKAGE_MODULES = (
+    "packages/orchestration/__init__.py",
+    "packages/orchestration/data_paths.py",
+    "packages/orchestration/evidence_index.py",
+)
+
+
 def _make_git_repo_with_scripts(tmp_path: Path) -> Path:
-    """Helper: create isolated git repo with review zip scripts."""
+    """Isolated git repo containing every current packaging dependency."""
     repo = tmp_path / "repo"
     (repo / "scripts").mkdir(parents=True)
-    shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
-    manifest_src = MAKE_REVIEW_ZIP.parent / "build_review_manifest.py"
-    if manifest_src.exists():
-        shutil.copy2(manifest_src, repo / "scripts" / "build_review_manifest.py")
+    for name in _REQUIRED_SCRIPTS:
+        src = REPO_ROOT / "scripts" / name
+        assert src.exists(), f"missing packaging dependency in source tree: {src}"
+        shutil.copy2(src, repo / "scripts" / name)
+    for rel in _REQUIRED_PACKAGE_MODULES:
+        src = REPO_ROOT / rel
+        assert src.exists(), f"missing package module: {src}"
+        dst = repo / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
     (repo / "README.md").write_text("# test\n")
-    subprocess.run(
-        ["git", "init", "-q"], cwd=repo, check=True,
-        capture_output=True, text=True,
-    )
-    subprocess.run(
-        ["git", "add", "."], cwd=repo, check=True,
-        capture_output=True, text=True,
-    )
-    subprocess.run(
-        ["git", "commit", "-m", "init"],
-        cwd=repo, capture_output=True, text=True, timeout=5,
-        env={**__import__("os").environ, "GIT_AUTHOR_NAME": "test",
-             "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "test",
-             "GIT_COMMITTER_EMAIL": "t@t"},
-    )
+    env = {**os.environ, "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "t@t",
+           "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "t@t"}
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True, text=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=repo, capture_output=True,
+                   text=True, timeout=15, env=env)
     return repo
 
 
@@ -474,48 +460,6 @@ class TestAutoSelectLatestEvidence:
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
         assert "Auto-selected" in proc.stdout
-
-    def test_multiple_valid_dirs_selects_newest_by_mtime(self, tmp_path: Path):
-        import os
-        repo = _make_git_repo_with_scripts(tmp_path)
-
-        old = repo / "remedy-job-evidence-old111"
-        _make_valid_evidence(old, "old")
-        os.utime(old / "job_flow.json", (1000000, 1000000))
-
-        new = repo / "remedy-job-evidence-new222"
-        _make_valid_evidence(new, "new")
-        os.utime(new / "job_flow.json", (2000000, 2000000))
-
-        proc = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh"],
-            cwd=repo, capture_output=True, text=True, timeout=30,
-        )
-        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "Auto-selected latest evidence dir:" in proc.stdout
-        assert "new222" in proc.stdout
-
-    def test_newest_invalid_selects_newest_with_warning(self, tmp_path: Path):
-        """Newest candidate selected by mtime even if incomplete; warning printed."""
-        import os
-        repo = _make_git_repo_with_scripts(tmp_path)
-
-        valid = repo / "remedy-job-evidence-valid1"
-        _make_valid_evidence(valid, "valid1")
-        os.utime(valid / "job_flow.json", (1000000, 1000000))
-
-        invalid = repo / "remedy-job-evidence-invalid2"
-        invalid.mkdir()
-        (invalid / "job_flow.json").write_text('{"job_id":"invalid2"}')
-        os.utime(invalid / "job_flow.json", (2000000, 2000000))
-
-        proc = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh"],
-            cwd=repo, capture_output=True, text=True, timeout=30,
-        )
-        assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "invalid2" in proc.stdout
-        assert "incomplete" in proc.stdout
 
     def test_all_candidates_invalid_still_creates_zip(self, tmp_path: Path):
         """All incomplete → newest selected, zip created with warning."""
@@ -669,14 +613,14 @@ class TestAutoSelectLatestEvidence:
         with ZipFile(zips[0]) as zf:
             manifest = json.loads(zf.read(".review_zip_manifest.json"))
         ce = manifest["current_evidence"]
-        assert ce["selection_mode"] == "auto_latest"
+        assert ce["selection_mode"] == "deprecated_root_fallback"
         assert ce["selected_from_candidate_count"] == 2
         assert ce["zip_prefix"] == "evidence/current"
         val = ce["validation"]
         assert val["is_valid_current_run"] is True
         assert val["validation_errors"] == []
         assert val["selected_candidate_status"] == "valid"
-        assert val["selection_mode"] == "auto_latest"
+        assert val["selection_mode"] == "deprecated_root_fallback"
 
     def test_manifest_records_explicit_mode(self, tmp_path: Path):
         repo = _make_git_repo_with_scripts(tmp_path)
@@ -858,13 +802,14 @@ class TestFilenamePattern:
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
-        if proc.returncode != 0:
-            pytest.skip(f"Script failed: {proc.stdout}\n{proc.stderr}")
+        assert proc.returncode == 0, f"Script failed: {proc.stdout}\n{proc.stderr}"
 
         zips = list(repo.glob("*.zip"))
         assert zips, "ZIP must be created"
         filename = zips[0].name
-        pattern = r"^remedy-review-\d{8}-\d{6}\.zip$"
+        # The package status is part of the name so a reviewer cannot mistake a
+        # blocked snapshot for an authoritative package.
+        pattern = r"^remedy-review-\d{8}-\d{6}-[A-Z_]+\.zip$"
         assert re.match(pattern, filename), \
             f"Filename '{filename}' does not match expected pattern '{pattern}'"
 
@@ -943,3 +888,212 @@ class TestPathSanitizerHardening:
                            "/mnt/"]:
                 assert prefix not in result["ref"], \
                     f"Path {p} leaked prefix {prefix}: {result['ref']}"
+
+
+# ---------------------------------------------------------------------------
+# F004 Finding 2 — the current indexed evidence-selection contract
+#
+# Evidence is chosen from the job evidence index, never by filesystem
+# modification time. These replace the superseded mtime/auto_latest tests.
+# ---------------------------------------------------------------------------
+
+_MIXED_FILES = (
+    "packages/orchestration/stream_evidence.py",
+    "tests/orchestration/fixtures/stream/basic_session.jsonl",
+    "docs/roadmap/STATUS.md",
+)
+
+
+def _dirty(repo: Path, rels) -> None:
+    for rel in rels:
+        p = repo / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("changed\n")
+
+
+def _index_job(repo: Path, job_id: str, changed_files, *, repo_for_record: Path | None = None) -> Path:
+    """Export-style evidence under <repo>/.data plus its index record."""
+    env_repo = repo_for_record or repo
+    ev = repo / ".data" / "evidence_exports" / job_id
+    ev.parent.mkdir(parents=True, exist_ok=True)
+    _make_valid_evidence(ev, job_id)
+
+    script = (
+        "import sys;"
+        f"sys.path.insert(0, {str(repo)!r});"
+        "from packages.orchestration.evidence_index import write_index_record;"
+        f"write_index_record({job_id!r}, {str(ev)!r}, repo_path={str(env_repo)!r},"
+        f" changed_files={list(changed_files)!r})"
+    )
+    subprocess.run(
+        [sys.executable, "-c", script], cwd=repo, check=True,
+        capture_output=True, text=True,
+        env={**os.environ, "REMEDY_DATA_DIR": str(repo / ".data")},
+    )
+    return ev
+
+
+def _run_zip(repo: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["bash", "scripts/make_review_zip.sh", *args],
+        cwd=repo, capture_output=True, text=True, timeout=120,
+        env={**os.environ, "REMEDY_DATA_DIR": str(repo / ".data")},
+    )
+
+
+def _newest_zip(repo: Path) -> Path:
+    zips = sorted(repo.glob("remedy-review-*.zip"), key=lambda p: p.stat().st_mtime)
+    assert zips, "no review zip produced"
+    return zips[-1]
+
+
+def _zip_manifest(repo: Path) -> dict:
+    from zipfile import ZipFile
+    with ZipFile(_newest_zip(repo)) as zf:
+        return json.loads(zf.read(".review_zip_manifest.json"))
+
+
+@pytest.mark.skipif(
+    shutil.which("git") is None
+    or shutil.which("bash") is None
+    or shutil.which("zip") is None,
+    reason="git, bash, zip required",
+)
+class TestIndexedEvidenceSelection:
+    def test_no_args_select_newest_aligned_job_on_current_branch(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "aligned01", _MIXED_FILES)
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "aligned01" in proc.stdout
+
+    def test_newer_unrelated_scratch_repository_job_is_rejected(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "aligned01", _MIXED_FILES)
+
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=scratch, check=True, capture_output=True)
+        # Newer record, different repository: recency must not win.
+        _index_job(repo, "scratch99", ["hello.py"], repo_for_record=scratch)
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "aligned01" in proc.stdout
+        assert "scratch99" not in proc.stdout
+
+    def test_stale_same_repo_job_with_unaligned_file_set_is_rejected(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "aligned01", _MIXED_FILES)
+        _index_job(repo, "stale002", ["packages/orchestration/deleted_module.py"])
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "aligned01" in proc.stdout
+        assert "stale002" not in proc.stdout
+
+    def test_explicit_job_id_selects_exactly_that_job(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "aligned01", _MIXED_FILES)
+        _index_job(repo, "older003", [_MIXED_FILES[0]])
+
+        proc = _run_zip(repo, "--job-id", "older003")
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "older003" in proc.stdout
+
+    def test_missing_job_id_never_substitutes_another_job(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "aligned01", _MIXED_FILES)
+
+        proc = _run_zip(repo, "--job-id", "doesnotexist")
+        combined = proc.stdout + proc.stderr
+        assert "aligned01" not in combined, "a different job was silently substituted"
+
+    def test_no_matching_evidence_produces_honest_no_evidence_zip(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)  # dirty, but nothing indexed
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        name = _newest_zip(repo).name
+        assert "NO_EVIDENCE" in name, name
+        assert "READY_FOR_REVIEW" not in name
+
+    def test_include_recent_adds_only_overlapping_same_repo_history(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "related01", [_MIXED_FILES[0]])
+        _index_job(repo, "unrelated9", ["docs/other_feature.md"])
+        _index_job(repo, "current001", _MIXED_FILES)
+
+        proc = _run_zip(repo, "--job-id", "current001", "--include-recent", "2")
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+
+        from zipfile import ZipFile
+        with ZipFile(_newest_zip(repo)) as zf:
+            names = zf.namelist()
+        hist = {n.split("/")[2] for n in names if n.startswith("evidence/history/")}
+        assert "related01" in hist
+        assert "unrelated9" not in hist, "unrelated feature included merely by recency"
+
+    def test_history_does_not_change_the_current_package_verdict(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "current001", _MIXED_FILES)
+        broken = _index_job(repo, "related01", [_MIXED_FILES[0]])
+        # Corrupt the history bundle: it must not taint the current verdict.
+        (broken / "job_flow.json").write_text("{ not json")
+
+        proc = _run_zip(repo, "--job-id", "current001", "--include-recent", "2")
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        m = _zip_manifest(repo)
+        assert m["current_evidence"]["job_id"] == "current001"
+
+    def test_legacy_root_evidence_only_via_deprecated_fallback_with_warning(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _make_valid_evidence(repo / "remedy-job-evidence-legacy1", "legacy1")
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        combined = proc.stdout + proc.stderr
+        assert "deprecated" in combined.lower(), combined
+        assert _zip_manifest(repo)["current_evidence"]["selection_mode"] == "deprecated_root_fallback"
+
+    def test_jsonl_and_status_md_participate_in_alignment(self, tmp_path: Path):
+        """A bundle covering only .py could never align if .jsonl/.md were ignored."""
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        # Recorded set includes the fixture and the roadmap file.
+        _index_job(repo, "mixed0001", _MIXED_FILES)
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "mixed0001" in proc.stdout
+
+        # Remove the .jsonl fixture from the worktree: the record no longer aligns.
+        (repo / _MIXED_FILES[1]).unlink()
+        proc2 = _run_zip(repo)
+        assert proc2.returncode == 0, proc2.stdout + proc2.stderr
+        assert "NO_EVIDENCE" in _newest_zip(repo).name
+
+    def test_zip_manifest_contains_no_private_absolute_paths(self, tmp_path: Path):
+        repo = _make_git_repo_with_scripts(tmp_path)
+        _dirty(repo, _MIXED_FILES)
+        _index_job(repo, "aligned01", _MIXED_FILES)
+
+        proc = _run_zip(repo)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+
+        from zipfile import ZipFile
+        with ZipFile(_newest_zip(repo)) as zf:
+            blob = zf.read(".review_zip_manifest.json").decode("utf-8")
+        forbidden = ("/home/", "/Users/", "/private/", "/tmp/", "/mnt/", "/var/folders/")
+        hits = sorted({m for pref in forbidden
+                       for m in re.findall(re.escape(pref) + r"[^\"\\ ,]*", blob)})
+        assert not hits, f"review manifest leaks absolute paths: {hits}"
