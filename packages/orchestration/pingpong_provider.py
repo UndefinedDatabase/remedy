@@ -17,8 +17,22 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from packages.orchestration.token_actuals import parse_cli_result, parse_cli_result_detailed
+from packages.orchestration.token_actuals import (
+    parse_cli_result,
+    parse_cli_result_detailed,
+    parse_cli_envelope as _parse_cli_envelope,
+)
 from packages.orchestration.stream_evidence import StreamCapReached as _StreamCapReached
+from packages.orchestration.schemas import (
+    ReviewVerdict as _ReviewVerdictSchema,
+    schema_v_of as _schema_v_of,
+    to_json_schema_str as _to_json_schema_str,
+    validate_response as _validate_response,
+)
+from packages.orchestration.structured_outputs import (
+    build_schema_prompt as _build_schema_prompt,
+    reviewer_structured_enabled as _reviewer_structured_enabled,
+)
 
 # ---------------------------------------------------------------------------
 # Provider output contracts
@@ -73,6 +87,15 @@ class ReviewerOutput:
     parse_retry_recovered: bool = False
     original_verdict: str = ""  # set when verdict was normalized
     verdict_normalized: bool = False
+    # F005 structured outputs: the schema version this verdict was validated
+    # against ("" for the legacy free-text path), and the concise validation
+    # hint carried into the single parse retry when validation failed.
+    schema_v: str = ""
+    parse_hint: str = ""
+    # Stable machine error class ("" | "parse" | "config" | "provider_error").
+    # A validation failure is "parse" so evidence classifies it without parsing
+    # the human-readable ``error`` text.
+    error_class: str = ""
     # Measured provider usage (see BuilderOutput.usage_actuals); None when
     # only character-heuristic estimates are available.
     usage_actuals: dict[str, Any] | None = None
@@ -370,12 +393,19 @@ class ClaudeProvider:
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
     ) -> ReviewerOutput:
-        full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        structured = _reviewer_structured_enabled()
+        full_prompt = (
+            _build_schema_prompt(_ReviewVerdictSchema, prompt)
+            if structured else prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        )
         try:
             text, dur, tokens = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
-            out = _parse_reviewer_json(text, dur, tokens)
+            out = (
+                _parse_reviewer_structured(text, dur, tokens)
+                if structured else _parse_reviewer_json(text, dur, tokens)
+            )
             out.actual_missing_reason = "provider_actuals_unavailable"
             return out
         except Exception as exc:
@@ -436,6 +466,49 @@ def normalize_reviewer_verdict(out: ReviewerOutput) -> ReviewerOutput:
         )
         out.summary = f"{out.summary} [{note}]" if out.summary else note
     return out
+
+
+def _parse_reviewer_structured(
+    text: str, duration_ms: int, tokens_used: int, *, provider: str = "claude",
+) -> ReviewerOutput:
+    """Validate a reviewer response against the F005 ReviewVerdict schema.
+
+    On success the validated model is mapped to a ReviewerOutput carrying its
+    ``schema_v``. On failure the result is a classified parse error
+    (``malformed_output:`` + concise hint) so the loop's single parse retry
+    fires; the hint is carried in ``parse_hint`` for the retry prompt. Schema
+    mode never falls back to the free-text parser.
+    """
+    res = _validate_response(_ReviewVerdictSchema, text)
+    if not res.ok:
+        return ReviewerOutput(
+            verdict="blocked",
+            error=f"malformed_output: {res.hint}",
+            error_class=res.error_class,  # "parse"
+            parse_hint=res.hint,
+            schema_v=_schema_v_of(_ReviewVerdictSchema),
+            raw_text=text[:500],
+            provider=provider,
+            duration_ms=duration_ms,
+            tokens_used=tokens_used,
+        )
+    v = res.value
+    return normalize_reviewer_verdict(ReviewerOutput(
+        verdict=v.verdict,
+        findings=[
+            ReviewFinding(
+                id=f.id, severity=f.severity, file=f.file,
+                summary=f.summary, details="", required_fix=f.required_fix,
+            )
+            for f in v.findings
+        ],
+        confidence=v.confidence,
+        summary=v.summary,
+        provider=provider,
+        duration_ms=duration_ms,
+        tokens_used=tokens_used,
+        schema_v=v.schema_v,
+    ))
 
 
 def _parse_reviewer_json(
@@ -546,6 +619,81 @@ def _extract_cli_result_text(raw: str) -> str:
     return raw
 
 
+def _looks_like_unknown_json_schema_option(stderr: str) -> bool:
+    """Heuristic: did the CLI reject ``--json-schema`` as unknown, pre-execution?
+
+    Matches the usual argument-parser phrasings without over-matching a normal
+    provider error that merely mentions the flag.
+    """
+    s = (stderr or "").lower()
+    if "--json-schema" not in s and "json-schema" not in s and "json_schema" not in s:
+        return False
+    markers = ("unknown option", "unrecognized option", "unrecognised option",
+               "unknown argument", "unexpected argument", "invalid option",
+               "no such option", "unknown flag")
+    return any(m in s for m in markers)
+
+
+def _usage_actuals_dict(actuals: Any, cli_ver: str | None) -> dict[str, Any]:
+    """Shape a UsageActuals into the provider's usage_actuals dict."""
+    return {
+        "input_tokens": actuals.input_tokens,
+        "output_tokens": actuals.output_tokens,
+        "cache_read": actuals.cache_read,
+        "cache_creation": actuals.cache_creation,
+        "total_cost_usd": actuals.total_cost_usd,
+        "num_turns": actuals.num_turns,
+        "duration_ms": actuals.duration_ms,
+        "session_id": actuals.session_id,
+        "cli_version": actuals.cli_version or cli_ver,
+        "parse_source": "claude_cli_json",
+    }
+
+
+class _StreamNonZeroExit(RuntimeError):
+    """The streamed CLI exited nonzero, carrying what it still produced.
+
+    Claude can emit a valid final result envelope (e.g. a native structured-output
+    failure, with Usage/cost) and THEN exit nonzero. The envelope is authoritative
+    for classification, so it travels with the error instead of being discarded.
+    Subclasses RuntimeError, so every non-structured caller behaves exactly as
+    before (provider error).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        returncode: int,
+        stderr_tail: str = "",
+        final: Any = None,
+        usage_actuals: dict[str, Any] | None = None,
+        tokens: int = 0,
+        duration_ms: int = 0,
+    ) -> None:
+        super().__init__(message)
+        self.returncode = returncode
+        self.stderr_tail = stderr_tail
+        self.final = final
+        self.usage_actuals = usage_actuals
+        self.tokens = tokens
+        self.duration_ms = duration_ms
+
+
+@dataclass
+class StructuredCliOutcome:
+    """Result of one native structured Claude CLI reviewer call.
+
+    Parsed once from the envelope so the caller never re-parses the JSON.
+    """
+    value_text: str = ""          # compact JSON of structured_output ("" if none)
+    duration_ms: int = 0
+    tokens: int = 0
+    usage_actuals: dict[str, Any] | None = None
+    error_class: str = ""         # "" | "parse" | "config"
+    error_detail: str = ""
+
+
 def build_claude_cli_args(
     claude_path: str,
     prompt: str,
@@ -553,6 +701,7 @@ def build_claude_cli_args(
     write_mode: str = "none",
     model: str = "",
     stream_evidence: bool = False,
+    json_schema: str = "",
 ) -> list[str]:
     """Build safe CLI argv for claude invocation.
 
@@ -564,6 +713,9 @@ def build_claude_cli_args(
     stream_evidence: opt-in F004 mode. Uses ``--output-format stream-json``
       (which the CLI requires ``--verbose`` for in print mode). The DEFAULT
       remains ``--output-format json`` — the accepted F003 behaviour.
+    json_schema: F005 native structured output. When non-empty, passed as
+      ``--json-schema <schema>`` so the provider enforces the schema itself
+      instead of relying on prompt prose. Kept compact by the caller.
     """
     if stream_evidence:
         argv = [claude_path, "-p", prompt, "--output-format", "stream-json", "--verbose"]
@@ -571,11 +723,19 @@ def build_claude_cli_args(
         argv = [claude_path, "-p", prompt, "--output-format", "json"]
     if model:
         argv.extend(["--model", model])
+    if json_schema:
+        argv.extend(["--json-schema", json_schema])
     if write_mode == "allowed-tools":
         argv.extend(_ALLOWED_TOOLS_ARGS)
     elif write_mode == "dangerous-skip":
         argv.extend(_DANGEROUS_SKIP_ARGS)
     return argv
+
+# F005 Finding 6: there is deliberately NO ``claude --help`` preflight. Claude
+# Code's help does not list every supported flag, so its absence is not proof
+# ``--json-schema`` is unsupported. Support is proven by the actual invocation;
+# an unknown-option error from that invocation is classified ``config`` (see
+# ``_looks_like_unknown_json_schema_option`` / ``_call_reviewer_structured``).
 
 
 class ClaudeCliProvider:
@@ -731,6 +891,7 @@ class ClaudeCliProvider:
 
     def _call_streamed(
         self, claude: str, prompt: str, *, timeout_sec: int, max_output_chars: int,
+        json_schema: str = "",
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """F004 opt-in path: run the CLI in stream-json and capture evidence.
 
@@ -741,7 +902,7 @@ class ClaudeCliProvider:
         """
         from packages.orchestration.stream_evidence import (
             DEFAULT_MAX_BYTES,
-            final_result_text,
+            final_result_envelope,
             run_streamed_command,
             usage_actuals_from_events,
         )
@@ -751,7 +912,7 @@ class ClaudeCliProvider:
 
         argv = build_claude_cli_args(
             claude, prompt, write_mode=self._write_mode, model=self._model,
-            stream_evidence=True,
+            stream_evidence=True, json_schema=json_schema,
         )
         call_dir = self._allocate_stream_call_dir()
         run = run_streamed_command(
@@ -776,27 +937,45 @@ class ClaudeCliProvider:
                 capture=run,
             )
 
-        if run.returncode != 0:
-            raise RuntimeError(f"claude CLI exited {run.returncode}: {run.stderr_tail[:500]}")
-
+        # F005 Finding 1: the final result envelope is parsed BEFORE the exit code
+        # is interpreted. Claude can emit a valid structured-failure result and
+        # then exit nonzero; that envelope is authoritative for classification and
+        # its Usage/cost must not be thrown away with the return code.
         events = run.events
+        usage_actuals, missing_reason = usage_actuals_from_events(
+            events, cli_version=self._resolve_version(),
+        )
+        final_env = final_result_envelope(events, run.capture.raw_path)
+        self._last_stream_final = final_env
+        tokens = 0
+        if usage_actuals is not None:
+            tokens = usage_actuals["input_tokens"] + usage_actuals["output_tokens"]
+
+        if run.returncode != 0:
+            # Typed so the structured Reviewer can classify from the envelope it
+            # carries; every other caller still sees a plain RuntimeError.
+            raise _StreamNonZeroExit(
+                f"claude CLI exited {run.returncode}: {run.stderr_tail[:500]}",
+                returncode=run.returncode,
+                stderr_tail=run.stderr_tail,
+                final=final_env,
+                usage_actuals=usage_actuals,
+                tokens=tokens,
+                duration_ms=run.duration_ms,
+            )
+
         if any(e.get("event_type") == "provider_error" for e in events):
             err = next(e for e in events if e.get("event_type") == "provider_error")
             raise RuntimeError(f"claude CLI stream reported an error: {err.get('error', '')[:300]}")
 
-        usage_actuals, missing_reason = usage_actuals_from_events(
-            events, cli_version=self._resolve_version(),
-        )
-        text = final_result_text(events, run.capture.raw_path)
-        tokens = 0
-        if usage_actuals is not None:
-            tokens = usage_actuals["input_tokens"] + usage_actuals["output_tokens"]
+        text = final_env.value_text
         if len(text) > max_output_chars:
             text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
         return text, run.duration_ms, tokens, usage_actuals, missing_reason
 
     def _call(
         self, prompt: str, *, timeout_sec: int, max_output_chars: int,
+        json_schema: str = "",
     ) -> tuple[str, int, int, dict[str, Any] | None, str]:
         """Call claude CLI. Returns (text, duration_ms, tokens_used, usage_actuals, actual_missing_reason).
 
@@ -809,9 +988,13 @@ class ClaudeCliProvider:
         claude = self._get_claude_path()
         if self._stream_evidence:
             return self._call_streamed(
-                claude, prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                claude, prompt, timeout_sec=timeout_sec,
+                max_output_chars=max_output_chars, json_schema=json_schema,
             )
-        argv = build_claude_cli_args(claude, prompt, write_mode=self._write_mode, model=self._model)
+        argv = build_claude_cli_args(
+            claude, prompt, write_mode=self._write_mode, model=self._model,
+            json_schema=json_schema,
+        )
         start = time.monotonic()
         try:
             proc = subprocess.run(
@@ -867,6 +1050,141 @@ class ClaudeCliProvider:
         if len(text) > max_output_chars:
             text = text[:max_output_chars] + "\n[OUTPUT TRUNCATED]"
         return text, elapsed_ms, tokens, usage_actuals, actual_missing_reason
+
+    def _call_reviewer_structured(
+        self, prompt: str, json_schema: str, *, timeout_sec: int, max_output_chars: int,
+    ) -> StructuredCliOutcome:
+        """One native structured reviewer call, classified from the envelope.
+
+        Sends ``--json-schema`` and reads ``structured_output`` as the
+        authoritative value. Native structured-output retry exhaustion and a
+        success envelope missing ``structured_output`` are class ``parse``
+        (usage/cost retained); an unknown ``--json-schema`` option is class
+        ``config``. Provider transport failures raise as before.
+        """
+        claude = self._get_claude_path()
+        cli_ver = self._resolve_version()
+
+        # Stream mode: reuse the F004 capture (raw/redaction/accounting unchanged)
+        # and classify from the COMPLETE final-result envelope, exactly like the
+        # JSON path — never from an empty result string.
+        if self._stream_evidence:
+            try:
+                text, dur, tokens, usage, _amr = self._call_streamed(
+                    claude, prompt, timeout_sec=timeout_sec,
+                    max_output_chars=max_output_chars, json_schema=json_schema,
+                )
+            except _StreamNonZeroExit as exc:
+                # A native structured-output failure stays a parse failure even
+                # when the process exits nonzero, and keeps its Usage/cost.
+                if exc.final is not None and exc.final.found \
+                        and exc.final.structured_retry_exhausted:
+                    return StructuredCliOutcome(
+                        duration_ms=exc.duration_ms, tokens=exc.tokens,
+                        usage_actuals=exc.usage_actuals,
+                        error_class="parse",
+                        error_detail="native structured-output retries exhausted: "
+                        + "; ".join(str(e) for e in exc.final.errors)[:180],
+                    )
+                # Anything else (ordinary error result, a "successful" structured
+                # result contradicted by a nonzero exit, or no final result at
+                # all) is an honest provider error.
+                raise
+            final = getattr(self, "_last_stream_final", None)
+
+            if final is None or not final.found:
+                return StructuredCliOutcome(
+                    duration_ms=dur, tokens=tokens, usage_actuals=usage,
+                    error_class="parse",
+                    error_detail="streamed structured mode produced no final result line",
+                )
+            # Native schema exhaustion -> parse (usage/cost retained, one retry).
+            if final.structured_retry_exhausted:
+                return StructuredCliOutcome(
+                    duration_ms=dur, tokens=tokens, usage_actuals=usage,
+                    error_class="parse",
+                    error_detail="native structured-output retries exhausted: "
+                    + "; ".join(str(e) for e in final.errors)[:180],
+                )
+            # Any other error result is a genuine provider error, NOT a parse
+            # failure: it must not consume the single Remedy parse retry.
+            if final.is_error:
+                detail = "; ".join(str(e) for e in final.errors)[:180] or final.subtype
+                raise RuntimeError(
+                    f"claude CLI stream reported an error ({final.subtype}): {detail}"
+                )
+            # Success result with no structured_output -> parse.
+            if not final.has_structured_output:
+                return StructuredCliOutcome(
+                    duration_ms=dur, tokens=tokens, usage_actuals=usage,
+                    error_class="parse",
+                    error_detail="streamed structured mode success result had no structured_output",
+                )
+            return StructuredCliOutcome(
+                value_text=text, duration_ms=dur, tokens=tokens, usage_actuals=usage,
+            )
+
+        argv = build_claude_cli_args(
+            claude, prompt, write_mode=self._write_mode, model=self._model,
+            json_schema=json_schema,
+        )
+        start = time.monotonic()
+        try:
+            proc = subprocess.run(
+                argv, capture_output=True, text=True, timeout=timeout_sec, cwd=self._cwd,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"claude CLI timed out after {timeout_sec}s")
+        dur = int((time.monotonic() - start) * 1000)
+        raw = proc.stdout or ""
+        env = _parse_cli_envelope(raw)
+        usage = _usage_actuals_dict(env.usage_actuals, cli_ver) if env.usage_actuals else None
+        tokens = (env.usage_actuals.input_tokens + env.usage_actuals.output_tokens
+                  if env.usage_actuals else 0)
+
+        if proc.returncode != 0:
+            stderr = proc.stderr or ""
+            # Finding 6: an unknown --json-schema option is a config error, proven
+            # by the actual invocation, not by a --help preflight.
+            if _looks_like_unknown_json_schema_option(stderr):
+                return StructuredCliOutcome(
+                    duration_ms=dur, tokens=tokens, usage_actuals=usage,
+                    error_class="config",
+                    error_detail="installed claude CLI rejected --json-schema as an unknown option",
+                )
+            # Native structured exhaustion can also surface on a nonzero exit.
+            if env.structured_retry_exhausted:
+                return StructuredCliOutcome(
+                    duration_ms=dur, tokens=tokens, usage_actuals=usage,
+                    error_class="parse",
+                    error_detail="native structured-output retries exhausted: "
+                    + "; ".join(str(e) for e in env.errors)[:180],
+                )
+            raise RuntimeError(f"claude CLI exited {proc.returncode}: {stderr[:500]}")
+
+        # Finding 3: structured retry exhaustion → parse (usage/cost retained).
+        if env.structured_retry_exhausted:
+            return StructuredCliOutcome(
+                duration_ms=dur, tokens=tokens, usage_actuals=usage,
+                error_class="parse",
+                error_detail="native structured-output retries exhausted: "
+                + "; ".join(str(e) for e in env.errors)[:180],
+            )
+        if env.is_error:
+            raise RuntimeError("claude CLI reported is_error=true")
+
+        # Finding 1: prefer structured_output; a success envelope without it is a
+        # parse failure — never fabricate a value.
+        if env.has_structured_output:
+            value_text = json.dumps(env.structured_output, separators=(",", ":"))
+            return StructuredCliOutcome(
+                value_text=value_text, duration_ms=dur, tokens=tokens, usage_actuals=usage,
+            )
+        return StructuredCliOutcome(
+            duration_ms=dur, tokens=tokens, usage_actuals=usage,
+            error_class="parse",
+            error_detail="structured mode success envelope had no structured_output",
+        )
 
     def build(
         self,
@@ -924,8 +1242,62 @@ class ClaudeCliProvider:
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
     ) -> ReviewerOutput:
-        full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
+        structured = _reviewer_structured_enabled()
+        schema_v = _schema_v_of(_ReviewVerdictSchema)
         try:
+            if structured:
+                # Finding 5: the caller (loop) has already built the exact effective
+                # prompt; the provider sends it verbatim and enforces the schema
+                # NATIVELY through --json-schema (the full schema is out-of-band,
+                # not duplicated into the prompt).
+                json_schema = _to_json_schema_str(_ReviewVerdictSchema)
+                oc = self._call_reviewer_structured(
+                    prompt, json_schema,
+                    timeout_sec=timeout_sec, max_output_chars=max_output_chars,
+                )
+                if oc.error_class == "config":
+                    return ReviewerOutput(
+                        verdict="blocked",
+                        error=(
+                            "structured_mode_unavailable: " + oc.error_detail
+                            + "; set REMEDY_REVIEWER_FREETEXT=1 for the legacy reviewer"
+                        ),
+                        error_class="config",
+                        schema_v=schema_v,
+                        provider="claude-cli",
+                        actual_missing_reason="structured_mode_unavailable",
+                        usage_actuals=oc.usage_actuals,
+                        stream_artifact_refs=self.last_stream_artifact_refs,
+                        stream_call_id=self._last_stream_call_id,
+                    )
+                if oc.error_class == "parse":
+                    # Finding 3/4: parse-classed, usage/cost retained so the failed
+                    # attempt still counts toward totals; the malformed_output:
+                    # prefix triggers the loop's one parse retry.
+                    return ReviewerOutput(
+                        verdict="blocked",
+                        error=f"malformed_output: {oc.error_detail}",
+                        error_class="parse",
+                        parse_hint=oc.error_detail,
+                        schema_v=schema_v,
+                        provider="claude-cli",
+                        duration_ms=oc.duration_ms,
+                        tokens_used=oc.tokens,
+                        usage_actuals=oc.usage_actuals,
+                        actual_missing_reason="" if oc.usage_actuals else "usage_missing",
+                        stream_artifact_refs=self.last_stream_artifact_refs,
+                        stream_call_id=self._last_stream_call_id,
+                    )
+                out = _parse_reviewer_structured(
+                    oc.value_text, oc.duration_ms, oc.tokens, provider="claude-cli",
+                )
+                out.usage_actuals = oc.usage_actuals
+                out.actual_missing_reason = "" if oc.usage_actuals else "usage_missing"
+                out.stream_artifact_refs = self.last_stream_artifact_refs
+                out.stream_call_id = self._last_stream_call_id
+                return out
+
+            full_prompt = prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
             text, dur, tokens, usage, amr = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
             )
