@@ -695,6 +695,11 @@ class TestBuilderNoChanges:
     def test_claude_cli_no_changes(self, monkeypatch, tmp_path, demo_repo):
         """Claude CLI builder producing no file changes: tests pass, reviewer passes,
         final_status is staged_review_passed with builder_no_changes flag set."""
+        # This fake CLI reviewer predates F005 native schema (it routes by the
+        # legacy prompt and emits no schema_v), so it exercises the legacy
+        # free-text reviewer path explicitly. F005 schema enforcement is covered
+        # by the dedicated structured-output tests.
+        monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
         bin_dir = tmp_path / "noop_bin"
         bin_dir.mkdir()
         claude_script = bin_dir / "claude"

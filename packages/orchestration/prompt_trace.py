@@ -76,6 +76,15 @@ class PromptTraceEntry:
     prompt_text_truncated: bool = False
     prompt_text_unavailable_reason: str = ""
     configured_model: str = ""
+    #: F005: the enforced-output schema version for this structured call
+    #: ("" when the call used the legacy free-text path).
+    schema_v: str = ""
+    #: F005: the logical phase of the call ("review" | "parse-retry" | ...).
+    phase: str = ""
+    #: F005: 1-based transport attempt of this logical call; >1 means the F001
+    #: transport retry fired. One trace exists per ACTUAL provider invocation.
+    transport_attempt: int = 0
+    is_transport_retry: bool = False
     created_at: str = ""
 
 
@@ -97,6 +106,10 @@ def build_trace_entry(
     safe_diff_files: list[str] | None = None,
     task_excerpt_sha256: str = "",
     configured_model: str = "",
+    schema_v: str = "",
+    phase: str = "",
+    transport_attempt: int = 0,
+    is_transport_retry: bool = False,
 ) -> PromptTraceEntry:
     """Build a redacted, capped prompt trace entry."""
     raw_sha = hashlib.sha256(prompt_text.encode()).hexdigest()
@@ -124,6 +137,10 @@ def build_trace_entry(
         prompt_text_redacted=capped,
         prompt_text_truncated=truncated,
         configured_model=configured_model,
+        schema_v=schema_v,
+        phase=phase,
+        transport_attempt=transport_attempt,
+        is_transport_retry=is_transport_retry,
         created_at=datetime.now(timezone.utc).isoformat(),
     )
 

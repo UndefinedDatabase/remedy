@@ -1,0 +1,3 @@
+{"type":"system","subtype":"init","session_id":"sess-so"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Read","input":{"path":"app.py"}}]}}
+{"type":"result","subtype":"success","is_error":false,"structured_output":{"schema_v":"rv1","verdict":"pass","findings":[],"confidence":"high","summary":"All good"},"session_id":"sess-so","total_cost_usd":0.0021,"usage":{"input_tokens":150,"output_tokens":12}}

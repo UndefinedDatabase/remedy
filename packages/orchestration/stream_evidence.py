@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 from packages.orchestration.prompt_trace import redact_prompt_text
+from packages.orchestration.token_actuals import STRUCTURED_RETRY_EXHAUSTED_SUBTYPE
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -712,11 +713,53 @@ def usage_actuals_from_events(
     return actuals, ""
 
 
-def final_result_text(events: list[dict[str, Any]], raw_path: str | Path) -> str:
-    """Recover the provider's final result text from the redacted raw stream.
+@dataclass
+class FinalStreamResult:
+    """The complete classification of a stream's final ``result`` line.
 
-    The normalized events deliberately never carry model text, so the text is
-    read back from the (already redacted) raw line the final result came from.
+    Read back from the persisted, redacted raw stream (the normalized events
+    deliberately never carry model text). Carries everything the structured
+    Reviewer needs to classify the call exactly like the non-stream JSON path —
+    not just the extracted value.
+    """
+
+    found: bool = False
+    #: Native structured output object (``structured_output``), or None.
+    structured_output: Any = None
+    has_structured_output: bool = False
+    #: Legacy string ``result`` ("" when absent / non-string).
+    result_text: str = ""
+    is_error: bool = False
+    subtype: str = ""
+    errors: list = field(default_factory=list)
+    total_cost_usd: float | None = None
+    usage: dict[str, Any] = field(default_factory=dict)
+    #: Backreference into the redacted raw stream.
+    raw_line_number: int = 0
+    raw_byte_offset: int = 0
+    raw_byte_length: int = 0
+
+    @property
+    def structured_retry_exhausted(self) -> bool:
+        return self.subtype == STRUCTURED_RETRY_EXHAUSTED_SUBTYPE
+
+    @property
+    def value_text(self) -> str:
+        """Compact JSON of ``structured_output``, else the legacy result string."""
+        if self.has_structured_output:
+            try:
+                return json.dumps(self.structured_output, separators=(",", ":"))
+            except (TypeError, ValueError):
+                return ""
+        return self.result_text
+
+
+def final_result_envelope(
+    events: list[dict[str, Any]], raw_path: str | Path,
+) -> FinalStreamResult:
+    """Read the final result line from the redacted raw stream and classify it.
+
+    Never raises. ``found=False`` when the stream carried no result line.
     """
     final = None
     for ev in reversed(events):
@@ -724,19 +767,51 @@ def final_result_text(events: list[dict[str, Any]], raw_path: str | Path) -> str
             final = ev
             break
     if final is None:
-        return ""
+        return FinalStreamResult()
+
     off, length = final.get("raw_byte_offset"), final.get("raw_byte_length")
     if not isinstance(off, int) or not isinstance(length, int) or length <= 0:
-        return ""
+        return FinalStreamResult()
     try:
         with open(raw_path, "rb") as fh:
             fh.seek(off)
             chunk = fh.read(length).decode("utf-8", errors="replace")
         obj = json.loads(chunk)
     except (OSError, ValueError):
-        return ""
-    result = obj.get("result") if isinstance(obj, dict) else None
-    return result if isinstance(result, str) else ""
+        return FinalStreamResult()
+    if not isinstance(obj, dict):
+        return FinalStreamResult()
+
+    so = obj.get("structured_output")
+    has_so = "structured_output" in obj and so is not None
+    result_field = obj.get("result")
+    errs = obj.get("errors")
+    cost = obj.get("total_cost_usd")
+    return FinalStreamResult(
+        found=True,
+        structured_output=so if has_so else None,
+        has_structured_output=has_so,
+        result_text=result_field if isinstance(result_field, str) else "",
+        is_error=bool(obj.get("is_error", False)),
+        subtype=str(obj.get("subtype", "") or ""),
+        errors=list(errs) if isinstance(errs, list) else [],
+        total_cost_usd=float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) else None,
+        usage=obj["usage"] if isinstance(obj.get("usage"), dict) else {},
+        raw_line_number=int(final.get("raw_line_number", 0) or 0),
+        raw_byte_offset=off,
+        raw_byte_length=length,
+    )
+
+
+def final_result_text(events: list[dict[str, Any]], raw_path: str | Path) -> str:
+    """Recover the provider's final result value from the redacted raw stream.
+
+    A native structured result carries the validated object in
+    ``structured_output``; it is compact-serialized so the streamed path yields
+    the same value as the non-stream JSON path. Legacy string ``result``
+    otherwise. Kept as the thin value-only view over ``final_result_envelope``.
+    """
+    return final_result_envelope(events, raw_path).value_text
 
 
 def read_run_events(path: str | Path) -> list[dict[str, Any]]:

@@ -736,3 +736,306 @@ class TestFailedAttemptStillReferencesItsArtifacts:
         for name in on_disk:
             assert any(r.endswith(name) for r in res.stream_artifact_refs), \
                 f"{name} was written but not referenced by the failed attempt"
+
+
+# ---------------------------------------------------------------------------
+# F005 Finding 2 — streamed structured_output yields the same validated value
+# ---------------------------------------------------------------------------
+
+class TestStreamStructuredOutput:
+    def _capture(self, tmp_path):
+        from packages.orchestration.stream_evidence import (
+            capture_stream_evidence, read_run_events, final_result_text,
+        )
+        fixture = Path(__file__).parent / "fixtures" / "stream" / "structured_output.jsonl"
+        lines = [l for l in fixture.read_text().splitlines() if l.strip()]
+        res = capture_stream_evidence(lines, tmp_path)
+        events = read_run_events(res.events_path)
+        return res, events, final_result_text(events, res.raw_path)
+
+    def test_final_result_text_extracts_structured_output(self, tmp_path):
+        import json as _json
+        _res, _events, text = self._capture(tmp_path)
+        obj = _json.loads(text)
+        assert obj["verdict"] == "pass" and obj["schema_v"] == "rv1"
+
+    def test_streamed_value_validates_against_review_schema(self, tmp_path):
+        from packages.orchestration.schemas import ReviewVerdict, validate_response
+        _res, _events, text = self._capture(tmp_path)
+        result = validate_response(ReviewVerdict, text)
+        assert result.ok and result.value.verdict == "pass"
+
+    def test_run_events_do_not_copy_the_model_response(self, tmp_path):
+        # Normalized events carry no findings/summary/structured_output text.
+        _res, events, _text = self._capture(tmp_path)
+        blob = _json_dump(events)
+        assert "All good" not in blob
+        assert "structured_output" not in blob
+
+    def test_legacy_result_string_still_extracted(self, tmp_path):
+        from packages.orchestration.stream_evidence import (
+            capture_stream_evidence, read_run_events, final_result_text,
+        )
+        lines = [
+            '{"type":"system","subtype":"init"}',
+            '{"type":"result","subtype":"success","is_error":false,'
+            '"result":"plain legacy text","usage":{"input_tokens":5,"output_tokens":1}}',
+        ]
+        res = capture_stream_evidence(lines, tmp_path)
+        events = read_run_events(res.events_path)
+        assert final_result_text(events, res.raw_path) == "plain legacy text"
+
+
+def _json_dump(obj):
+    import json as _j
+    return _j.dumps(obj)
+
+
+# ---------------------------------------------------------------------------
+# F005 Finding 1 — the streamed structured Reviewer classifies the FINAL RESULT
+# envelope exactly like the JSON path (never from an empty result string).
+# ---------------------------------------------------------------------------
+
+_SO_REVIEW = {"schema_v": "rv1", "verdict": "pass", "findings": [],
+              "confidence": "high", "summary": "ok"}
+
+
+def _final_line(**kw) -> str:
+    base = {"type": "result", "subtype": "success", "is_error": False,
+            "session_id": "s1", "total_cost_usd": 0.001,
+            "usage": {"input_tokens": 10, "output_tokens": 2}}
+    base.update(kw)
+    return json.dumps(base)
+
+
+def _stream_review(tmp_path, monkeypatch, final_line: str):
+    """Run a structured streamed reviewer against a fake CLI emitting final_line."""
+    import os
+    from packages.orchestration.pingpong_provider import ClaudeCliProvider
+    monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+    lines = [json.dumps({"type": "system", "subtype": "init"}), final_line]
+    bin_dir = _fake_stream_bin(tmp_path / "b", lines)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    prov = ClaudeCliProvider(
+        stream_evidence=True,
+        stream_evidence_dir=str(tmp_path / "streams" / "reviewer"),
+        stream_rel_prefix="streams/reviewer",
+    )
+    prov.begin_stream_call(1, "attempt")
+    return prov, prov.review("REVIEW BASE", timeout_sec=20)
+
+
+class TestStreamStructuredClassification:
+    def test_1_valid_structured_success(self, tmp_path, monkeypatch):
+        _p, out = _stream_review(tmp_path, monkeypatch,
+                                 _final_line(structured_output=_SO_REVIEW))
+        assert out.verdict == "pass"
+        assert out.error_class == "" and not out.error
+
+    def test_2_native_exhaustion_is_parse(self, tmp_path, monkeypatch):
+        _p, out = _stream_review(tmp_path, monkeypatch, _final_line(
+            subtype="error_max_structured_output_retries", is_error=True,
+            errors=["schema validation failed"]))
+        assert out.error_class == "parse"
+        assert out.error.startswith("malformed_output:")  # triggers one Remedy retry
+
+    def test_3_unrelated_provider_error_is_provider_error(self, tmp_path, monkeypatch):
+        _p, out = _stream_review(tmp_path, monkeypatch, _final_line(
+            subtype="error_during_execution", is_error=True, errors=["auth failed"]))
+        assert out.error_class != "parse"
+        assert "provider_error" in out.error
+
+    def test_4_success_without_structured_output_is_parse(self, tmp_path, monkeypatch):
+        _p, out = _stream_review(tmp_path, monkeypatch, _final_line())
+        assert out.error_class == "parse"
+
+    def test_5_usage_and_cost_retained_for_exhaustion(self, tmp_path, monkeypatch):
+        _p, out = _stream_review(tmp_path, monkeypatch, _final_line(
+            subtype="error_max_structured_output_retries", is_error=True,
+            errors=["nope"]))
+        assert out.usage_actuals is not None
+        assert out.usage_actuals["input_tokens"] == 10
+        assert out.usage_actuals["total_cost_usd"] == 0.001
+
+    def test_6_provider_error_does_not_consume_the_parse_retry(self, tmp_path, monkeypatch):
+        # The loop's parse retry keys on the malformed_output: prefix; a provider
+        # error must not carry it.
+        _p, out = _stream_review(tmp_path, monkeypatch, _final_line(
+            subtype="error_during_execution", is_error=True, errors=["boom"]))
+        assert not out.error.startswith("malformed_output:")
+
+    def test_7_raw_offsets_remain_valid(self, tmp_path, monkeypatch):
+        from packages.orchestration.stream_evidence import (
+            final_result_envelope, read_run_events,
+        )
+        prov, _out = _stream_review(tmp_path, monkeypatch,
+                                    _final_line(structured_output=_SO_REVIEW))
+        call_dir = tmp_path / "streams" / "reviewer" / "round-01" / "attempt-01"
+        events = read_run_events(call_dir / "run_events.jsonl")
+        env = final_result_envelope(events, call_dir / "raw_stream.jsonl")
+        assert env.found and env.has_structured_output
+        raw = (call_dir / "raw_stream.jsonl").read_bytes()
+        slab = raw[env.raw_byte_offset:env.raw_byte_offset + env.raw_byte_length]
+        assert json.loads(slab.decode())["structured_output"]["verdict"] == "pass"
+
+
+# ---------------------------------------------------------------------------
+# F005 Finding 1 — the final result envelope is authoritative even when the
+# streamed CLI exits NONZERO. Fake executables only; no provider call.
+# ---------------------------------------------------------------------------
+
+def _fake_stream_bin_seq(tmp_path: Path, calls) -> Path:
+    """Fake `claude` emitting a different recorded stream per invocation.
+
+    ``calls`` is a list of ``(lines, exit_code)``. Bash builtins only.
+    """
+    bin_dir = tmp_path / "seq_bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    script = bin_dir / "claude"
+    body = [
+        "#!/bin/bash",
+        # The version probe must not consume a scripted invocation.
+        'if [ "$1" = "--version" ]; then printf "%s\\n" "1.0.0 (test)"; exit 0; fi',
+        'CNT="$0.count"',
+        "n=0",
+        '[ -f "$CNT" ] && read n < "$CNT"',
+        "n=$((n+1))",
+        'printf "%s" "$n" > "$CNT"',
+    ]
+    for i, (lines, rc) in enumerate(calls, start=1):
+        body.append(("if" if i == 1 else "elif") + f' [ "$n" -eq {i} ]; then')
+        for line in lines:
+            body.append("  printf '%s\\n' " + "'" + line.replace("'", "'\\''") + "'")
+        body.append(f"  exit {rc}")
+    body.append("else")
+    last_lines, last_rc = calls[-1]
+    for line in last_lines:
+        body.append("  printf '%s\\n' " + "'" + line.replace("'", "'\\''") + "'")
+    body.append(f"  exit {last_rc}")
+    body.append("fi")
+    script.write_text("\n".join(body) + "\n")
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return bin_dir
+
+
+_EXHAUSTED = _final_line(subtype="error_max_structured_output_retries",
+                         is_error=True, errors=["schema failed"])
+_ORDINARY_ERR = _final_line(subtype="error_during_execution",
+                            is_error=True, errors=["auth failed"])
+_SUCCESS = _final_line(structured_output=_SO_REVIEW)
+
+
+def _review_exit(tmp_path, monkeypatch, final_line, exit_code):
+    """One structured streamed reviewer call against a fake CLI with an exit code."""
+    import os
+    from packages.orchestration.pingpong_provider import ClaudeCliProvider
+    monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+    lines = [json.dumps({"type": "system", "subtype": "init"}), final_line]
+    bin_dir = _fake_stream_bin_seq(tmp_path / "b", [(lines, exit_code)])
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    prov = ClaudeCliProvider(
+        stream_evidence=True,
+        stream_evidence_dir=str(tmp_path / "streams" / "reviewer"),
+        stream_rel_prefix="streams/reviewer",
+    )
+    prov.begin_stream_call(1, "attempt")
+    return prov.review("REVIEW BASE", timeout_sec=20)
+
+
+class TestStreamExitCodeClassification:
+    def test_1_exhaustion_exit0_is_parse_with_usage(self, tmp_path, monkeypatch):
+        out = _review_exit(tmp_path, monkeypatch, _EXHAUSTED, 0)
+        assert out.error_class == "parse"
+        assert out.usage_actuals["input_tokens"] == 10
+        assert out.usage_actuals["output_tokens"] == 2
+        assert out.usage_actuals["total_cost_usd"] == 0.001
+
+    def test_2_exhaustion_exit1_is_parse_with_usage(self, tmp_path, monkeypatch):
+        out = _review_exit(tmp_path, monkeypatch, _EXHAUSTED, 1)
+        assert out.error_class == "parse"
+        assert out.error.startswith("malformed_output:")  # triggers one Remedy retry
+        assert out.usage_actuals is not None
+        assert out.usage_actuals["input_tokens"] == 10
+        assert out.usage_actuals["output_tokens"] == 2
+        assert out.usage_actuals["total_cost_usd"] == 0.001
+
+    def test_3_ordinary_error_exit0_is_provider_error(self, tmp_path, monkeypatch):
+        out = _review_exit(tmp_path, monkeypatch, _ORDINARY_ERR, 0)
+        assert out.error_class != "parse"
+        assert "provider_error" in out.error
+        assert not out.error.startswith("malformed_output:")
+
+    def test_4_ordinary_error_exit1_is_provider_error(self, tmp_path, monkeypatch):
+        out = _review_exit(tmp_path, monkeypatch, _ORDINARY_ERR, 1)
+        assert out.error_class != "parse"
+        assert "provider_error" in out.error
+        assert not out.error.startswith("malformed_output:")
+
+    def test_5_success_exit0_passes(self, tmp_path, monkeypatch):
+        out = _review_exit(tmp_path, monkeypatch, _SUCCESS, 0)
+        assert out.verdict == "pass" and out.error_class == ""
+
+    def test_6_success_exit1_is_provider_error(self, tmp_path, monkeypatch):
+        # A "successful" structured result contradicted by a nonzero exit is NOT
+        # accepted as a passing reviewer result.
+        out = _review_exit(tmp_path, monkeypatch, _SUCCESS, 1)
+        assert out.verdict != "pass"
+        assert "provider_error" in out.error
+        assert out.error_class != "parse"
+
+    def test_7_nonzero_exit_with_no_final_result_is_provider_error(self, tmp_path, monkeypatch):
+        import os
+        from packages.orchestration.pingpong_provider import ClaudeCliProvider
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        lines = [json.dumps({"type": "system", "subtype": "init"})]  # no result line
+        bin_dir = _fake_stream_bin_seq(tmp_path / "b", [(lines, 1)])
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+        prov = ClaudeCliProvider(
+            stream_evidence=True,
+            stream_evidence_dir=str(tmp_path / "streams" / "reviewer"),
+            stream_rel_prefix="streams/reviewer",
+        )
+        prov.begin_stream_call(1, "attempt")
+        out = prov.review("REVIEW BASE", timeout_sec=20)
+        assert "provider_error" in out.error
+        assert out.error_class != "parse"
+
+
+class TestStreamExhaustionThenValidRetryReconciles:
+    def test_8_exhaustion_exit1_then_valid_retry(self, tmp_path, monkeypatch):
+        import os
+        from packages.orchestration.pingpong_loop import run_pingpong
+        from packages.orchestration.pingpong_provider import ClaudeCliProvider
+
+        monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
+        init = json.dumps({"type": "system", "subtype": "init"})
+        second = _final_line(structured_output=_SO_REVIEW,
+                             usage={"input_tokens": 20, "output_tokens": 4},
+                             total_cost_usd=0.002)
+        bin_dir = _fake_stream_bin_seq(tmp_path / "b", [
+            ([init, _EXHAUSTED], 1),   # attempt 1: structured exhaustion, exit 1
+            ([init, second], 0),       # parse retry: valid structured output
+        ])
+        monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+
+        reviewer = ClaudeCliProvider(
+            stream_evidence=True,
+            stream_evidence_dir=str(tmp_path / "streams" / "reviewer"),
+            stream_rel_prefix="streams/reviewer",
+        )
+        result = run_pingpong("goal", str(tmp_path / "repo"), builder_name="fake",
+                              reviewer_name="claude-cli", reviewer_provider=reviewer,
+                              max_rounds=1)
+
+        rev = [a for a in result.provider_attempts if a.role == "reviewer"]
+        assert len(rev) == 2, "provider calls = 2"
+        assert result.reviewer_parse_retry_count == 1, "exactly one logical parse retry"
+        # actual calls = 2: BOTH the failed and the successful call carry Usage.
+        with_usage = [a for a in rev if a.usage_actuals is not None]
+        assert len(with_usage) == 2
+        costs = [a.usage_actuals["total_cost_usd"] for a in with_usage]
+        assert costs == [0.001, 0.002]                      # cost calls = 2
+        ins = [a.usage_actuals["input_tokens"] for a in with_usage]
+        outs = [a.usage_actuals["output_tokens"] for a in with_usage]
+        assert sum(ins) == 30 and sum(outs) == 6            # totals reconcile
+        assert result.rounds[-1].reviewer_output.verdict == "pass"

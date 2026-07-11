@@ -161,3 +161,38 @@ class OllamaPlanner:
         )
 
         return PlannerOutput.model_validate_json(response.message.content)
+
+    def plan_raw(self, prompt: str, *, schema: dict) -> str:
+        """F005 native structured call: return the raw Ollama response text.
+
+        The caller supplies the JSON schema (the F005 ``PlannerPlan`` schema) which
+        is enforced NATIVELY through Ollama's ``format=<schema>``; the raw text is
+        returned unvalidated so the F005 structured-call engine performs the
+        schema validation and its single parse retry. The legacy ``plan()`` method
+        is preserved for compatibility mode.
+        """
+        try:
+            import ollama
+        except ImportError as exc:
+            raise ImportError(
+                "The 'ollama' package is required for plan-job-local. "
+                "Install with: pip install ollama  or  pip install 'remedy[ollama]'"
+            ) from exc
+
+        client = ollama.Client(host=self.host)
+        options: dict = {}
+        if self.temperature is not None:
+            options["temperature"] = self.temperature
+        if self.num_predict is not None:
+            options["num_predict"] = self.num_predict
+
+        response = client.chat(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": f"Plan this job:\n\n{prompt}"},
+            ],
+            format=schema,
+            **({"options": options} if options else {}),
+        )
+        return response.message.content

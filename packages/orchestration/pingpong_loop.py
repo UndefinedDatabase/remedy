@@ -1607,6 +1607,34 @@ def _apply_fake_builder_changes(
 # F001: Retry wrapper for provider calls
 # ---------------------------------------------------------------------------
 
+def _reviewer_schema_v() -> str:
+    """The enforced reviewer schema version, or "" when in legacy free-text mode.
+
+    Recorded in the reviewer prompt trace so evidence shows schema_v per call.
+    """
+    from packages.orchestration.schemas import ReviewVerdict, schema_v_of
+    from packages.orchestration.structured_outputs import reviewer_structured_enabled
+    return schema_v_of(ReviewVerdict) if reviewer_structured_enabled() else ""
+
+
+def _reviewer_effective_prompt(base: str, hint: str = "") -> str:
+    """The exact prompt string sent to the reviewer via ``claude -p``.
+
+    F005 Finding 5: built ONCE here so the recorded prompt trace and the string
+    the provider sends are identical. In structured mode this is the base plus a
+    short native-schema instruction (the full schema is out-of-band via
+    ``--json-schema``); in legacy mode the provider appends its own schema, so the
+    effective prompt recorded here is just the base.
+    """
+    from packages.orchestration.structured_outputs import (
+        native_schema_prompt,
+        reviewer_structured_enabled,
+    )
+    if reviewer_structured_enabled():
+        return native_schema_prompt(base, hint)
+    return base
+
+
 def _begin_stream_call(provider: Any, round_no: int, kind: str = "attempt") -> None:
     """Tell a stream-capable provider which round/kind its next call belongs to.
 
@@ -1649,17 +1677,29 @@ def _call_with_retry(
     result: PingPongResult,
     role: str,
     provider: str = "",
+    on_call: Any = None,
+    is_parse_retry: bool = False,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
     Only retries on timeout or nonzero exit (detected via error string).
     Never retries review rejects. Records retry evidence on result.
     Every call (initial + retries) is recorded as a ProviderAttempt.
+
+    ``on_call(transport_attempt, is_transport_retry)`` — when given — runs
+    IMMEDIATELY BEFORE every real ``call_fn()`` invocation, so a caller can
+    record exactly one prompt-trace entry per actual provider call (F005). This
+    is the same retry mechanism, not a second one.
     """
     from packages.orchestration.provider_timeouts import MAX_RETRIES
 
+    if on_call is not None:
+        on_call(1, False)
     out = call_fn()
-    _record_attempt(result, out, role, provider)
+    # The parse-retry call is itself a retry of the logical review; its transport
+    # retries stay part of that ONE logical parse retry.
+    _record_attempt(result, out, role, provider,
+                    is_retry=is_parse_retry, is_parse_retry=is_parse_retry)
     for attempt in range(MAX_RETRIES):
         if not out.error:
             return out
@@ -1690,8 +1730,11 @@ def _call_with_retry(
             f"{role}:attempt{attempt + 1}:{out.error[:120]}"
         )
         _time.sleep(backoff)
+        if on_call is not None:
+            on_call(attempt + 2, True)
         out = call_fn()
-        _record_attempt(result, out, role, provider, is_retry=True)
+        _record_attempt(result, out, role, provider,
+                        is_retry=True, is_parse_retry=is_parse_retry)
 
     return out
 
@@ -2077,25 +2120,38 @@ def run_pingpong(
             # Track reviewer prompt size
             result.reviewer_prompt_chars += len(reviewer_prompt)
 
-            # Capture reviewer prompt trace
-            result.prompt_traces.append(build_trace_entry(
-                prompt_text=reviewer_prompt,
-                role="reviewer",
-                run_id=result.run_id,
-                job_id=result.job_id,
-                task_id=result.task_id,
-                round_num=round_num,
-                provider=reviewer_name or "",
-                provider_kind=_provider_kind(reviewer_name or ""),
-                cwd=str(staging),
-                write_mode="none",
-                prompt_kind="re-review" if is_repair else "review",
-                context_categories=categories,
-                changed_files=list(result.staged_files),
-                safe_diff_files=list(result.safe_diff_files),
-                task_excerpt_sha256=task_input.sha256 if task_input else "",
-                configured_model=reviewer_model,
-            ))
+            # F005 Finding 5: build the exact effective prompt once, record it,
+            # and send that same string — trace prompt hash == sent prompt hash.
+            reviewer_effective = _reviewer_effective_prompt(reviewer_prompt)
+
+            # F005 Finding 2: ONE prompt trace per ACTUAL provider call. The
+            # callback fires immediately before every real invocation, including
+            # each F001 transport retry, so reviewer traces == reviewer attempts.
+            def _rev_trace(prompt_text: str, phase: str, prompt_kind: str):
+                def _on_call(transport_attempt: int, is_transport_retry: bool) -> None:
+                    result.prompt_traces.append(build_trace_entry(
+                        prompt_text=prompt_text,
+                        role="reviewer",
+                        run_id=result.run_id,
+                        job_id=result.job_id,
+                        task_id=result.task_id,
+                        round_num=round_num,
+                        provider=reviewer_name or "",
+                        provider_kind=_provider_kind(reviewer_name or ""),
+                        cwd=str(staging),
+                        write_mode="none",
+                        prompt_kind=prompt_kind,
+                        context_categories=categories,
+                        changed_files=list(result.staged_files),
+                        safe_diff_files=list(result.safe_diff_files),
+                        task_excerpt_sha256=task_input.sha256 if task_input else "",
+                        configured_model=reviewer_model,
+                        schema_v=_reviewer_schema_v(),
+                        phase=phase,
+                        transport_attempt=transport_attempt,
+                        is_transport_retry=is_transport_retry,
+                    ))
+                return _on_call
 
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _find_staging_changes(staging, original)
@@ -2103,13 +2159,18 @@ def run_pingpong(
             _begin_stream_call(reviewer_provider, round_num, "attempt")
             reviewer_out = _call_with_retry(
                 lambda ts=reviewer_timeout: reviewer_provider.review(
-                    reviewer_prompt,
+                    reviewer_effective,
                     timeout_sec=ts,
                     max_output_chars=max_output_chars,
                 ),
                 result=result,
                 role="reviewer",
                 provider=reviewer_name,
+                on_call=_rev_trace(
+                    reviewer_effective,
+                    "review",
+                    "re-review" if is_repair else "review",
+                ),
             )
 
             # --- Bounded parse retry (one attempt) ---
@@ -2117,17 +2178,34 @@ def run_pingpong(
                 result.reviewer_parse_retry_count += 1
                 result.reviewer_parse_error = reviewer_out.error
                 result.reviewer_malformed_excerpt = reviewer_out.raw_text[:300]
-                retry_prompt = _REVIEWER_RETRY_PROMPT.format(
-                    excerpt=reviewer_out.raw_text[:500],
-                )
+                # F005 schema mode: review() re-appends the JSON schema itself, so
+                # the retry prompt only needs the concise validation hint. Legacy
+                # free-text mode keeps the excerpt-based retry.
+                _parse_hint = getattr(reviewer_out, "parse_hint", "")
+                if _parse_hint:
+                    # Effective retry prompt built once (schema stays out-of-band),
+                    # recorded and sent identically.
+                    retry_prompt = _reviewer_effective_prompt(reviewer_prompt, _parse_hint)
+                else:
+                    retry_prompt = _REVIEWER_RETRY_PROMPT.format(
+                        excerpt=reviewer_out.raw_text[:500],
+                    )
+                # F005: the single logical parse retry is its own provider call
+                # and gets its own trace; its F001 transport retries each get a
+                # trace too, but they do NOT count as another parse retry.
                 _begin_stream_call(reviewer_provider, round_num, "parse-retry")
-                retry_out = reviewer_provider.review(
-                    retry_prompt,
-                    timeout_sec=reviewer_timeout,
-                    max_output_chars=max_output_chars,
+                retry_out = _call_with_retry(
+                    lambda ts=reviewer_timeout: reviewer_provider.review(
+                        retry_prompt,
+                        timeout_sec=ts,
+                        max_output_chars=max_output_chars,
+                    ),
+                    result=result,
+                    role="reviewer",
+                    provider=reviewer_name,
+                    is_parse_retry=True,
+                    on_call=_rev_trace(retry_prompt, "parse-retry", "review-parse-retry"),
                 )
-                _record_attempt(result, retry_out, "reviewer", reviewer_name,
-                                is_retry=True, is_parse_retry=True)
                 retry_out.parse_retried = True
                 if not retry_out.error:
                     retry_out.parse_retry_recovered = True
