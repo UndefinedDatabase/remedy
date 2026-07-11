@@ -130,20 +130,96 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
     planner = OllamaPlanner()
     log.log("planning_started", provider="ollama", role="planner", model=planner.model)
 
+    # F005: enforce the PlannerPlan schema natively (Ollama format=), with a
+    # compact schema_v, one parse retry, and a prompt-trace entry per actual call.
+    # Structured mode is the DEFAULT; the legacy planner.plan path is used ONLY
+    # when REMEDY_PLANNER_FREETEXT=1. There is no silent fallback: if the planner
+    # lacks the structured (plan_raw) capability, structured mode fails clearly.
+    from packages.orchestration.prompt_trace import build_trace_entry, write_trace_jsonl
+    from packages.orchestration.schemas import PlannerPlan, to_json_schema
+    from packages.orchestration.structured_planner import (
+        StructuredParseError,
+        make_structured_planner,
+        planner_structured_enabled,
+    )
+
+    _plan_traces: list = []
+
+    def _record_plan_call(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        # F005 Finding 2: fires IMMEDIATELY BEFORE every real plan_raw() call, so
+        # the trace exists even when the provider raises (network down) or returns
+        # invalid JSON. Every real structured Planner call logs its schema_v.
+        _plan_traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="planner",
+            job_id=str(job.id),
+            provider="ollama",
+            provider_kind="ollama",
+            prompt_kind="plan-retry" if is_parse_retry else "plan",
+            configured_model=planner.model,
+            schema_v=schema_v,
+            phase="plan-retry" if is_parse_retry else "plan",
+            transport_attempt=attempt,
+            is_transport_retry=False,
+        ))
+
+    _structured_planner = planner_structured_enabled()
+    if _structured_planner:
+        _raw_plan = getattr(planner, "plan_raw", None)
+        if not callable(_raw_plan):
+            log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                    outcome="error", message="structured planner capability missing",
+                    error_category="config")
+            print(
+                "Error: structured planner requires a plan_raw capability the "
+                "installed planner does not provide; set REMEDY_PLANNER_FREETEXT=1 "
+                "to use the legacy planner.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        _pp_schema = to_json_schema(PlannerPlan)
+        call_planner = make_structured_planner(
+            lambda p, _a, _r=_raw_plan, _s=_pp_schema: _r(p, schema=_s),
+            on_call=_record_plan_call,
+            native_schema=True,
+        )
+    else:
+        call_planner = planner.plan
+
+    def _persist_plan_traces() -> None:
+        if _plan_traces:
+            try:
+                write_trace_jsonl(_plan_traces, log.path.parent / "prompt_trace.jsonl")
+            except OSError:
+                pass
+
     start = time.monotonic()
     try:
-        result: PlanJobResult = plan_job_with_llm(job, planner.plan)
+        result: PlanJobResult = plan_job_with_llm(job, call_planner)
+    except StructuredParseError as exc:
+        _persist_plan_traces()
+        # F005/F010: parse exhaustion is the stable class ``parse``, not the
+        # exception's class name.
+        log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
+                outcome="error", message=str(exc), error_category="parse")
+        print(f"Error: planner structured output invalid after one retry: {exc}", file=sys.stderr)
+        sys.exit(1)
     except ImportError as exc:
+        _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     except Exception as exc:
+        _persist_plan_traces()
         log.log("planning_failed", provider="ollama", role="planner", model=planner.model,
                 outcome="error", message="planning failed", error_category=type(exc).__name__)
         print(f"Error: Ollama planning failed: {exc}", file=sys.stderr)
         sys.exit(1)
     elapsed_ms = (time.monotonic() - start) * 1000
+    _persist_plan_traces()
 
     annotate_planning_result(result, provider="ollama", role="planner", model=planner.model, elapsed_ms=elapsed_ms)
     save_job(result.job)
