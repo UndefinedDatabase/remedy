@@ -115,6 +115,15 @@ class TestClaudeCliUsageParsing:
         assert out.usage_actuals is None
 
 
+@pytest.fixture(autouse=True)
+def _legacy_cli_reviewer(monkeypatch):
+    """This file exercises CLI provider transport/usage/parse with pre-F005
+    reviewer fixtures (legacy JSON, fake bins without --json-schema). F005
+    native reviewer schema enforcement has its own dedicated tests, so here we
+    pin the legacy free-text reviewer path explicitly."""
+    monkeypatch.setenv("REMEDY_REVIEWER_FREETEXT", "1")
+
+
 class TestResultIndependentOfUsage:
     """F002/F003 finding: a valid JSON ``result`` is authoritative text even when
     the Usage block is missing/incomplete. Missing Usage only downgrades token
