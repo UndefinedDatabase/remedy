@@ -1,8 +1,8 @@
-# Context
+# Context — Steps 5961-6020
 
 ## Active Branch
-`feature/f001-adaptive-provider-timeouts` (PR #123 → `main`), closing F001–F003.
-Next: `feature/f004-raw-stream-evidence` after #123 merges.
+`feature/f005-structured-outputs` (F005 — enforced structured outputs).
+F001–F004 accepted and merged (F004 = PR #124, merge commit `cb55909`).
 
 ## Scope
 F003 — Real token/cost measurement — externally accepted (PASS_WITH_RISKS).
@@ -46,3 +46,16 @@ Product code must NOT depend on `.agent/live_review.md`.
 - All pytest tests run within per-test resource limits
 - No subprocess spawning, no network calls, no filesystem mutations outside tmp_path
   (the single tiny live smoke is an explicit, separately-evidenced exception)
+
+## F005 constraints (current)
+- Schemas live in `packages/orchestration/schemas/`; small Pydantic models with a
+  compact `schema_v`; `to_json_schema()` export; no mega-schemas, no new taxonomy.
+- Every structured provider call: send JSON schema, validate response, invalid =
+  error class `parse`, at most ONE parse retry carrying only a concise validation
+  hint, never an unbounded repair loop.
+- Old free-text parsers stay behind an explicit temporary compatibility flag;
+  schema mode never silently falls back to free-text parsing.
+- Prompt trace records `schema_v` per structured call; provider-call and token
+  accounting stay correct across the one retry.
+- Planner compatibility fallback is not removed until >= 5 deterministic green
+  planner runs are recorded (feature-document rule).

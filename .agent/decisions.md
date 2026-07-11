@@ -935,3 +935,107 @@ notes are recorded as later hardening items and MUST NOT reopen F004:
 
 Preferred home for (1) and (2): the evidence/replay hardening work (F140/F163).
 (3) is a local streaming optimization in `job_evidence.py`.
+
+## 2026-07-10: F005 reuses the existing PlannerOutput shape, adds schema_v (Steps 5961-6020)
+`planner_models.PlannerOutput` is already a Pydantic model consumed by
+`llm_planner.plan_job_with_llm`. F005 adds a `schema_v`-bearing schema model in the
+new `schemas/` package rather than inventing a second planner taxonomy; the schema
+model round-trips to/from the existing `PlannerOutput` so the planner path keeps its
+current downstream contract. Same principle for the reviewer verdict: the schema
+model mirrors the accepted verdict/findings/confidence/summary shape already parsed
+by `_parse_reviewer_json`, not a new one (anti-goal A6: no new taxonomies).
+
+## 2026-07-10: F005 FINDINGS correction — mandatory schema_v, hard retry cap, native schemas (Steps 5961-6020)
+External review returned FINDINGS on the first F005 package. Six corrections, no
+new taxonomy or gate:
+1. `schema_v` is a REQUIRED response field (bare `Literal`, no default); the
+   model's version is a `SCHEMA_V` ClassVar so the field never needs a default.
+   Missing schema_v is now a `parse` failure (was silently defaulted).
+2. The single-retry maximum is a hard safety rule: `run_structured_call` takes a
+   boolean `allow_parse_retry` (no integer knob); three+ calls are impossible.
+3. Provider-native schema enforcement: Claude CLI `--json-schema` (via
+   `build_claude_cli_args(json_schema=)`) and Ollama `format=` (via
+   `OllamaPlanner.plan_raw`). The reviewer sends a SHORT instruction, not a
+   duplicated schema, and fails clearly if the CLI lacks the option — no
+   prompt-only pretense. The capability probe (`claude --help`) is cwd-pinned
+   like every other CLI call.
+4. `plan-job-local` uses the structured planner by default; legacy `planner.plan`
+   only under `REMEDY_PLANNER_FREETEXT=1`; missing structured capability fails
+   (error_category=config), never a silent legacy fallback.
+5. Prompt trace records one entry per actual provider call (reviewer initial +
+   parse-retry; planner initial + retry), each carrying `schema_v`.
+6. Parse exhaustion is classified `parse` in run-log/result evidence
+   (`error_category=parse`, `ReviewerOutput.error_class`), not the exception
+   class name. `parse` already exists in F005 / is required by F010.
+
+Pre-F005 CLI-reviewer unit tests (fake bins without --json-schema / schema_v)
+were pinned to the legacy free-text reviewer via `REMEDY_REVIEWER_FREETEXT=1`;
+they validate transport/usage/safety, not F005 schema enforcement, which has its
+own dedicated fake-provider tests.
+
+## 2026-07-10: F005 runtime FINDINGS correction — native structured_output envelope (Steps 5961-6020)
+External review returned FINDINGS on ZIP remedy-review-20260710-231042 (reviewed
+job 2f1ca41f52564511). Seven runtime corrections, no new taxonomy or gate:
+- Claude Code's structured result carries the object in `structured_output`, not a
+  string `result`. `token_actuals.parse_cli_envelope` parses the envelope ONCE
+  (value, usage, subtype). The CLI reviewer prefers `structured_output` in
+  structured mode; a success envelope without it, or a malformed one, is `parse`.
+- The F004 stream path (`final_result_text`) compact-serializes `structured_output`
+  so streamed and non-stream yield the same validated value; normalized events
+  still never copy the model response.
+- `subtype=error_max_structured_output_retries` is a structured parse/validation
+  failure → error_class `parse` (JSON + stream), not `provider_error`; it triggers
+  Remedy's one parse retry and its Usage/cost are retained so the failed attempt
+  counts toward 2/2/2 totals.
+- Finding 5: the reviewer effective `-p` prompt is built once in the loop
+  (`_reviewer_effective_prompt`) and recorded; provider sends it verbatim, so
+  `prompt_sha256 == sha256(sent)` for initial and retry. Schema is out-of-band via
+  `--json-schema`, never duplicated into the prompt.
+- Finding 6: removed the `claude --help` preflight (help omits flags; absence is
+  not proof). `--json-schema` support is proven by the real invocation; an
+  unknown-option stderr → `config`; ordinary provider errors stay provider errors.
+All proven with recorded envelopes / mocked subprocess; zero provider calls.
+
+## 2026-07-11: F005 runtime FINDINGS #2 — stream classification + per-call traces (Steps 5961-6020)
+External review returned FINDINGS on ZIP remedy-review-20260710-235823 (reviewed
+job 997bcc036c12415e). Two corrections, no new taxonomy or gate:
+1. The stream path previously reduced the final result to text + usage, losing
+   is_error/subtype/errors, so an ordinary streamed provider error (e.g.
+   subtype=error_during_execution) was misclassified as `parse` merely because the
+   extracted text was empty. `stream_evidence.final_result_envelope()` now returns
+   the COMPLETE final-result record (structured_output, legacy text, is_error,
+   subtype, errors, usage/cost, raw line/byte refs) read back from the persisted
+   redacted raw line, and the streamed structured Reviewer classifies exactly like
+   the JSON path. Class is never inferred from an empty result string. Normalized
+   events still copy no model response text.
+2. `_call_with_retry()` may invoke the provider more than once (F001 transport
+   retry), but only one reviewer trace was recorded up front. It now takes a narrow
+   `on_call(transport_attempt, is_transport_retry)` callback fired immediately
+   before every real call, and the single logical parse retry runs through the same
+   helper with `is_parse_retry=True`. Result: one trace per ACTUAL provider call,
+   reviewer traces == reviewer ProviderAttempts, transport retries of the parse
+   retry stay ONE logical parse retry, and every trace prompt hash equals the sent
+   string. This reuses the existing retry mechanism — no second retry system.
+All proven with recorded stream envelopes, fake CLI executables and fake providers;
+zero provider calls.
+
+## 2026-07-11: F005 FINDINGS #3 — envelope-before-exit-code, planner pre-call traces (Steps 5961-6020)
+External review returned FINDINGS on ZIP remedy-review-20260711-115512 (reviewed
+job c4def4a3074d4a7c). Two corrections, no new taxonomy or gate:
+1. The streamed CLI can emit a valid final result envelope (e.g. a native
+   structured-output failure carrying Usage/cost) and THEN exit nonzero. Reading
+   the return code first threw that envelope away, so exhaustion+exit1 became a
+   provider_error with null usage. `_call_streamed()` now parses events, Usage and
+   the FinalStreamResult BEFORE interpreting the exit code, and raises a typed
+   `_StreamNonZeroExit` carrying the envelope/usage/returncode/stderr. The
+   structured Reviewer classifies from the envelope: exhaustion -> parse (+usage)
+   on exit 0 or 1; any other is_error -> provider_error; a "successful" structured
+   result contradicted by a nonzero exit is rejected as provider_error (we do not
+   trust an inconsistent process). The raw stream is parsed in exactly one place.
+2. Planner traces were written by `call_recorder` AFTER `plan_raw()` returned, so a
+   provider/network exception produced a real call with NO trace — violating "every
+   call logs its schema_v". The split on_call/call_recorder API is replaced by ONE
+   pre-call callback `on_call(attempt, schema_v, is_parse_retry, effective_prompt)`
+   fired immediately before every real call. Traces now persist for success,
+   invalid JSON and raised exceptions alike; no provider call still means no trace.
+Both proven with fake executables and fake planners; zero provider calls.
