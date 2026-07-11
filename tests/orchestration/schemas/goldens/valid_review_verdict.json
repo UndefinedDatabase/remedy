@@ -1,0 +1,10 @@
+{
+  "schema_v": "rv1",
+  "verdict": "needs_repair",
+  "findings": [
+    {"id": "F1", "severity": "high", "file": "app.py", "summary": "off-by-one in loop bound", "required_fix": "use <= not <"},
+    {"id": "F2", "severity": "low", "file": "app.py", "summary": "unused import", "required_fix": "remove import os"}
+  ],
+  "confidence": "high",
+  "summary": "One real bug and one nit."
+}

@@ -1,0 +1,10 @@
+{
+  "schema_v": "pp1",
+  "summary": "Add a CLI that summarises files.",
+  "proposed_tasks": [
+    {"task_type": "implement", "description": "Add summarise command"},
+    {"task_type": "test", "description": "Cover the summarise command"}
+  ],
+  "acceptance_checks": ["summarise prints a bounded summary"],
+  "notes": ["assumes UTF-8 input"]
+}
