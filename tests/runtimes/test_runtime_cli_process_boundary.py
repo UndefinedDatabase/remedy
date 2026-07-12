@@ -143,11 +143,18 @@ def _http(url: str) -> int:
     return status
 
 
-def _cleanup(data_root: Path, project: Path) -> None:
+def _cleanup(data_root: Path, project: Path, *pids: int) -> None:
+    """Kill whatever this test started.
+
+    The pids are passed in explicitly as well as read from the state, because a test
+    that CORRUPTS runtime.json can no longer learn them from it — and a leaked
+    supervisor would then outlive the test.
+    """
+    known = set(pids)
     state = _state(data_root, project)
-    if state is None:
-        return
-    for pid in (state.pid, state.supervisor_pid):
+    if state is not None:
+        known |= {state.pid, state.supervisor_pid}
+    for pid in known:
         if pid and _alive(pid):
             DS.stop_process_tree(pid)
 
@@ -332,9 +339,15 @@ class TestSupervisorFailures:
 
             assert state is not None and state.status == DS.STATUS_EXITED
             assert state.app_exit_code is not None
+
+            # The supervisor writes the record and THEN leaves; give it that moment.
+            deadline = time.time() + 10
+            while time.time() < deadline and _alive(served["supervisor_pid"]):
+                time.sleep(0.1)
             assert not _alive(served["supervisor_pid"]), "supervisor should exit too"
         finally:
-            _cleanup(data_root, project)
+            _cleanup(data_root, project,
+                     served["pid"], served["supervisor_pid"])
             _cli(project, data_root, "stop")
 
     def test_a_dead_supervisor_leaves_an_interrupted_start_that_blocks_serve(
@@ -379,7 +392,8 @@ class TestSupervisorFailures:
             assert _alive(served["pid"]), "the live runtime must not be duplicated"
             assert path.is_file(), "a corrupt state file is never deleted"
         finally:
-            _cleanup(data_root, project)
+            _cleanup(data_root, project,
+                     served["pid"], served["supervisor_pid"])
 
     def test_a_stale_supervisor_pid_never_kills_an_unrelated_process(
         self, project, data_root,
