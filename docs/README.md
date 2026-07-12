@@ -160,9 +160,8 @@ routing policy seeds F110.
 
 ## Roadmap (`docs/roadmap/`)
 
-The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 150-feature
-plan, [00_INDEX.md](roadmap/00_INDEX.md) for the feature file index, and
-[CONVENTIONS.md](roadmap/CONVENTIONS.md) for the shared naming register.
+The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 250-feature
+plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
 Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038).
