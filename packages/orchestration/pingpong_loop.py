@@ -110,6 +110,23 @@ class PingPongResult:
     safe_diff_files: list[str] = field(default_factory=list)
     safe_diff_truncated: bool = False
     staging_path: str = ""
+    # F006 worktree isolation: how this run was isolated, and the hand-off.
+    isolation_mode: str = "copy"          # "worktree" | "copy"
+    workspace_owner: str = "run"          # "run" | "job" (job-owned worktree)
+    workspace_start_tree: str = ""        # tree the task-local diff is taken from
+    worktree_branch: str = ""
+    worktree_path: str = ""               # repository-relative, shareable
+    worktree_base_commit: str = ""
+    worktree_head: str = ""
+    worktree_lock_id: str = ""
+    #: "active" while the run owns the worktree, then "clean" | "retained" | "failed".
+    #: Never "clean" before cleanup actually succeeded.
+    worktree_cleanup_status: str = ""
+    worktree_cleanup_error: str = ""
+    result_diff_path: str = ""
+    result_diff_sha256: str = ""
+    result_diff_size_bytes: int = 0
+    result_diff_error: str = ""
     context_categories: list[str] = field(default_factory=list)
     reviewer_parse_retry_count: int = 0
     reviewer_parse_error: str = ""
@@ -1205,14 +1222,49 @@ def _build_reviewer_prompt(
 
 @dataclass
 class StagingResult:
-    """Result of creating a staging workspace."""
+    """Result of creating a run workspace.
+
+    F006: for a git repository the workspace IS a dedicated worktree (no full
+    copy of the target). ``worktree`` is None only for the non-git fallback.
+    """
     staging_path: Path = field(default_factory=lambda: Path("."))
     skipped_unsafe: list[str] = field(default_factory=list)
     files_copied: int = 0
+    worktree: Any = None
+    isolation_mode: str = "copy"   # "worktree" | "copy"
 
 
 def _create_staging(repo_path: str, run_id: str) -> StagingResult:
-    """Create a minimal staging workspace as a filtered copy.
+    """Create the isolated workspace for a run.
+
+    F006: when the target is a git repository the run gets its OWN worktree at
+    ``<repo>/.remedy-wt/<run-id>`` on branch ``remedy/<run-id>``. Nothing is
+    copied, and the main checkout is never mutated. The result is handed back as
+    a branch plus a deterministic ``result.diff`` — never an automatic merge.
+
+    The filtered-copy path below remains only as the fallback for a target that
+    is not a git repository.
+    """
+    from packages.orchestration import worktrees as _wt
+
+    if _wt.is_git_repo(repo_path):
+        try:
+            handle = _wt.create(run_id, repo_path)
+            return StagingResult(
+                staging_path=Path(handle.path),
+                worktree=handle,
+                isolation_mode="worktree",
+            )
+        except _wt.WorktreeError:
+            # An unusable worktree must not silently become a full copy of the
+            # target: that is exactly the isolation this feature exists to give.
+            raise
+
+    return _create_staging_copy(repo_path, run_id)
+
+
+def _create_staging_copy(repo_path: str, run_id: str) -> StagingResult:
+    """Fallback for a non-git target: a minimal filtered copy.
 
     Skips symlinks, parent symlink paths, non-regular files, and
     paths that escape the target repo. Uses read_bytes/write_bytes
@@ -1297,7 +1349,13 @@ def _is_safe_staged_path(root: Path, root_resolved: Path, rel: str) -> str:
 
 _STAGING_NOISE_DIRS = frozenset({
     ".pytest_cache", "__pycache__", ".mypy_cache", ".ruff_cache",
+    # F006: a worktree carries git metadata; it is never a run's change.
+    ".git", ".remedy-wt",
 })
+
+#: Files that are workspace plumbing, never a run's change. In a git worktree
+#: ``.git`` is a FILE (a gitdir pointer), so the directory filter cannot catch it.
+_STAGING_NOISE_FILES = frozenset({".git"})
 
 
 def _find_staging_changes(staging: Path, original: Path) -> list[str]:
@@ -1317,6 +1375,8 @@ def _find_staging_changes(staging: Path, original: Path) -> list[str]:
         ]
         rel_dir = os.path.relpath(dirpath, staging)
         for fn in filenames:
+            if fn in _STAGING_NOISE_FILES:
+                continue
             rel = os.path.join(rel_dir, fn) if rel_dir != "." else fn
             staged_reason = _is_safe_staged_path(staging, staging_resolved, rel)
             if staged_reason:
@@ -1334,10 +1394,111 @@ def _find_staging_changes(staging: Path, original: Path) -> list[str]:
     return sorted(changed)
 
 
+def _wt_mod():
+    from packages.orchestration import worktrees as _wt
+    return _wt
+
+
 def _discard_staging(staging: Path) -> None:
-    """Remove staging workspace."""
+    """Remove staging workspace. COPY MODE ONLY.
+
+    A git worktree must never be discarded this way: ``rmtree`` would leave git
+    with a deleted-but-registered (prunable) worktree and would not release the
+    run's lock. Every exit path that owns a worktree goes through
+    :func:`_finalize_workspace` instead.
+    """
     if staging.exists():
         shutil.rmtree(staging, ignore_errors=True)
+
+
+def _finalize_workspace(
+    result: PingPongResult,
+    staging: Path,
+    worktree: Any,
+    *,
+    keep_staging: bool,
+    job_owned: bool = False,
+    start_tree: str = "",
+) -> None:
+    """The ONE cleanup path for every exit after the workspace was created.
+
+    Copy mode keeps the previous behaviour. Worktree mode persists the run's
+    deterministic ``result.diff``, then releases the physical worktree while
+    KEEPING the result branch — there is never an automatic merge. Cleanup and
+    diff failures are recorded on the result, never swallowed silently.
+    """
+    if worktree is None:                      # copy fallback
+        if keep_staging:
+            result.staging_path = str(staging)
+        else:
+            _discard_staging(staging)
+        return
+
+    from packages.orchestration import worktrees as _wt
+
+    run_dir = _pingpong_runs_dir() / result.run_id
+
+    if job_owned:
+        # The JOB owns this worktree and its lock: never remove it, never release
+        # the lock, never claim a cleanup here. Persist only the TASK-LOCAL diff
+        # (tree-to-tree, no commit) as this task's hand-off.
+        result.staging_path = str(staging)
+        result.worktree_cleanup_status = "job_owned"
+        try:
+            _wt.snapshot(worktree)
+            result.worktree_head = worktree.head_commit
+            end_tree = _wt.write_tree(worktree)
+            info = _wt.write_tree_diff(
+                worktree, start_tree, end_tree, run_dir / "result.diff")
+            result.result_diff_path = "result.diff"
+            result.result_diff_sha256 = info["sha256"]
+            result.result_diff_size_bytes = info["size_bytes"]
+            result.result_diff_error = ""
+        except Exception as exc:
+            result.result_diff_error = f"{type(exc).__name__}: {exc}"
+        return
+    try:
+        _wt.snapshot(worktree)
+        result.worktree_head = worktree.head_commit
+        info = _wt.write_result_diff(worktree, run_dir / "result.diff")
+        result.result_diff_path = "result.diff"
+        result.result_diff_sha256 = info["sha256"]
+        result.result_diff_size_bytes = info["size_bytes"]
+        result.result_diff_error = ""
+    except Exception as exc:
+        # The run's changes are UNCOMMITTED: the branch alone does not contain
+        # them, so the worktree is the only copy. Without a persisted diff there
+        # is no hand-off — keep the worktree (and the work) for recovery instead
+        # of destroying it. The lock is released so a later resume can claim it.
+        result.result_diff_error = f"{type(exc).__name__}: {exc}"
+        result.staging_path = str(staging)
+        res = _wt.retain_for_recovery(
+            worktree, f"result.diff not persisted: {result.result_diff_error}",
+        )
+        result.worktree_cleanup_status = res["cleanup_status"]   # failed_recoverable
+        result.worktree_cleanup_error = res["cleanup_error"]
+        return
+
+    if keep_staging:
+        # Deliberate retention for inspection/recovery. The worktree stays
+        # registered, but the LOCK IS RELEASED: run_pingpong has returned, so this
+        # handle is unreachable, and a held fcntl lock in a long-lived CLI/server
+        # process would make the run id permanently unclaimable by recovery.
+        result.staging_path = str(staging)
+        res = _wt.retain_for_recovery(worktree)
+        result.worktree_cleanup_status = res["cleanup_status"]     # "retained"
+        result.worktree_cleanup_error = res["cleanup_error"]
+        return
+
+    try:
+        res = _wt.remove(worktree, keep_branch=True)
+        result.worktree_cleanup_status = res["cleanup_status"]
+        result.worktree_cleanup_error = res.get("cleanup_error", "")
+    except Exception as exc:
+        # The worktree may still be registered and the lock may still be held:
+        # say so, so recovery can find it, instead of claiming a clean run.
+        result.worktree_cleanup_status = "failed"
+        result.worktree_cleanup_error = f"{type(exc).__name__}: {exc}"
 
 
 # ---------------------------------------------------------------------------
@@ -1770,6 +1931,10 @@ def run_pingpong(
     repair_rounds_source: str = "",
     job_id: str = "",
     task_id: str = "",
+    workspace_root: str | Path | None = None,
+    workspace_handle: Any = None,
+    workspace_owner: str = "run",
+    workspace_start_tree: str = "",
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -1842,8 +2007,17 @@ def run_pingpong(
 
     original = Path(repo_path).resolve()
 
+    # F006: a job-owned workspace is supplied by the sequential job runner. This
+    # run then executes INSIDE the job's worktree: it creates no second worktree,
+    # takes no second lock, and never removes the workspace it does not own. The
+    # workspace is the thing the task is supposed to change, so the copy-mode
+    # target guard (which forbids mutating repo_path) does not apply to it — the
+    # real target checkout is guarded by the job runner instead.
+    _job_owned = workspace_owner == "job" and workspace_handle is not None
+    result.workspace_owner = "job" if _job_owned else "run"
+
     # --- Target snapshot BEFORE anything runs ---
-    target_snap = _snapshot_target(original)
+    target_snap = {} if _job_owned else _snapshot_target(original)
 
     # Stream evidence must land somewhere. A caller that opts in without naming a
     # directory (``do run``) gets this run's own directory, so the flag can never
@@ -1852,8 +2026,80 @@ def run_pingpong(
         stream_evidence_dir = str(_pingpong_runs_dir() / result.run_id)
 
     # Create staging BEFORE providers (so Builder cwd can be set)
-    staging_result = _create_staging(repo_path, result.run_id)
+    if _job_owned:
+        staging_result = StagingResult(
+            staging_path=Path(workspace_root or workspace_handle.path),
+            worktree=workspace_handle,
+            isolation_mode="worktree",
+        )
+    else:
+        staging_result = _create_staging(repo_path, result.run_id)
     staging = staging_result.staging_path
+    result.isolation_mode = staging_result.isolation_mode
+    _worktree = staging_result.worktree
+    _task_start_tree = ""
+    if _job_owned:
+        # Task-local diff without committing: a tree snapshot of the whole
+        # workspace (including untracked files) before the task runs. On a resumed
+        # task the caller supplies the ORIGINAL start tree it persisted before the
+        # crash, so partial work written before the crash stays inside this task's
+        # diff and review scope rather than leaking into the job hand-off unseen.
+        _task_start_tree = workspace_start_tree or _wt_mod().write_tree(workspace_handle)
+    result.workspace_start_tree = _task_start_tree
+    if _worktree is not None:
+        _ev = _worktree.to_evidence()
+        result.worktree_branch = _ev["worktree_branch"]
+        result.worktree_path = _ev["worktree_path"]
+        result.worktree_base_commit = _ev["base_commit"]
+        result.worktree_head = _ev["worktree_head"]
+        result.worktree_lock_id = _ev["lock_id"]
+        # Durable claim BEFORE any provider runs: a run killed mid-flight leaves a
+        # persisted record saying a worktree is still active, which is what lets
+        # `remedy job resume` rediscover and finish it. A job-owned workspace is
+        # recovered through its JOB record instead, so the task run never claims it.
+        result.worktree_cleanup_status = "job_owned" if _job_owned else "active"
+        _persist_run(result)
+
+    def _staged_now() -> list[str]:
+        """Files this task changed. In a job-owned worktree the workspace IS the
+        thing being changed, so the task-local change set comes from a tree-to-tree
+        comparison (no commit, no timestamps), not from staging-vs-original."""
+        if _job_owned:
+            end = _wt_mod().write_tree(workspace_handle)
+            return _wt_mod().changed_files_between(
+                workspace_handle, _task_start_tree, end)
+        return _find_staging_changes(staging, original)
+
+    def _mutation_check() -> tuple[list[str], list[str]]:
+        """The copy-mode guard forbids ANY change to repo_path. A job-owned
+        worktree is the workspace the task must change, and the real target
+        checkout is guarded by the job runner, so there is nothing to check here."""
+        if _job_owned:
+            return [], []
+        return _check_target_mutation(original, target_snap)
+
+    def _safe_diff_of(files: list[str]) -> tuple[str, list[str], bool]:
+        if _job_owned:
+            end = _wt_mod().write_tree(workspace_handle)
+            text = _wt_mod().diff_trees(workspace_handle, _task_start_tree, end)
+            truncated = len(text) > _SAFE_DIFF_CAP
+            return text[:_SAFE_DIFF_CAP], list(files), truncated
+        return _compute_safe_diff(staging, original, files)
+
+    def _finalize(*, keep: bool) -> None:
+        _finalize_workspace(
+            result, staging, _worktree, keep_staging=keep,
+            job_owned=_job_owned, start_tree=_task_start_tree,
+        )
+
+    def _fail_early(exc: Exception) -> PingPongResult:
+        """Single early-exit path: finalize the workspace, then persist."""
+        result.final_status = "provider_unavailable"
+        result.error = str(exc)
+        result.finished_at = datetime.now(timezone.utc).isoformat()
+        _finalize(keep=keep_staging)
+        _persist_run(result)
+        return result
 
     # Create providers — ClaudeCliProvider Builder gets cwd=staging
     if builder_provider is None:
@@ -1865,11 +2111,7 @@ def run_pingpong(
                 stream_evidence_dir=stream_evidence_dir,
             )
         except RuntimeError as exc:
-            result.final_status = "provider_unavailable"
-            result.error = str(exc)
-            result.finished_at = datetime.now(timezone.utc).isoformat()
-            _discard_staging(staging)
-            return result
+            return _fail_early(exc)
 
     # Reviewer: read-only (prompt-only), but cwd is still pinned to the
     # disposable staging dir so any stray cwd writes from the reviewer
@@ -1883,22 +2125,28 @@ def run_pingpong(
                 stream_evidence_dir=stream_evidence_dir,
             )
         except RuntimeError as exc:
-            result.final_status = "provider_unavailable"
-            result.error = str(exc)
-            result.finished_at = datetime.now(timezone.utc).isoformat()
-            _discard_staging(staging)
-            return result
+            return _fail_early(exc)
 
     # Build context
-    context, categories = build_repo_context(
-        repo_path, goal, mentioned_files=mentioned_files,
-    )
+    try:
+        context, categories = build_repo_context(
+            repo_path, goal, mentioned_files=mentioned_files,
+        )
+    except Exception as exc:
+        # Context construction owns no result, but it DOES own a live worktree.
+        result.final_status = "context_error"
+        result.error = f"{type(exc).__name__}: {exc}"
+        result.finished_at = datetime.now(timezone.utc).isoformat()
+        _finalize(keep=keep_staging)
+        _persist_run(result)
+        raise
     result.context_categories = categories
     result.context_chars = len(context)
 
     is_fake = isinstance(builder_provider, FakeProvider)
     has_test_command = bool(test_command)
 
+    _loop_exc: Exception | None = None
     try:
         findings: list[ReviewFinding] = []
         reviewer_out: ReviewerOutput | None = None
@@ -1923,9 +2171,7 @@ def run_pingpong(
             # Compute repair diff for builder (from previous round)
             repair_diff = ""
             if round_num > 1 and result.staged_files and staging.exists():
-                rd_repair, _, _ = _compute_safe_diff(
-                    staging, original, result.staged_files,
-                )
+                rd_repair, _, _ = _safe_diff_of(result.staged_files)
                 repair_diff = rd_repair
             # Build scope contract text if scope is active
             scope_contract_text = ""
@@ -2001,13 +2247,13 @@ def run_pingpong(
                 _apply_fake_builder_changes(staging, builder_out, goal)
 
             # --- Target snapshot check after Builder ---
-            meaningful, noise = _check_target_mutation(original, target_snap)
+            meaningful, noise = _mutation_check()
             if noise:
                 result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
                 result.target_noise_detected = True
             if meaningful:
                 # Compute staged evidence before blocking
-                result.staged_files = _find_staging_changes(staging, original)
+                result.staged_files = _staged_now()
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "target_mutation_blocked"
@@ -2017,7 +2263,7 @@ def run_pingpong(
                 break
 
             # Track staged files
-            result.staged_files = _find_staging_changes(staging, original)
+            result.staged_files = _staged_now()
 
             # --- Builder no-changes flag ---
             builder_no_changes = (
@@ -2049,7 +2295,7 @@ def run_pingpong(
                 # repair_rounds > 0: continue to reviewer with test failure evidence
 
             # --- Target snapshot check after tests ---
-            meaningful, noise = _check_target_mutation(original, target_snap)
+            meaningful, noise = _mutation_check()
             if noise:
                 result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
                 result.target_noise_detected = True
@@ -2070,9 +2316,7 @@ def run_pingpong(
             # Compute safe diff for reviewer (before reviewer runs)
             reviewer_safe_diff = ""
             if result.staged_files and staging.exists():
-                rd_diff, _, _ = _compute_safe_diff(
-                    staging, original, result.staged_files,
-                )
+                rd_diff, _, _ = _safe_diff_of(result.staged_files)
                 reviewer_safe_diff = rd_diff
             # Build reviewer scope contract if scope is active
             reviewer_scope_text = ""
@@ -2154,7 +2398,7 @@ def run_pingpong(
                 return _on_call
 
             # Snapshot staging before reviewer (to detect reviewer mutation)
-            staging_snap_before = _find_staging_changes(staging, original)
+            staging_snap_before = _staged_now()
 
             _begin_stream_call(reviewer_provider, round_num, "attempt")
             reviewer_out = _call_with_retry(
@@ -2215,7 +2459,7 @@ def run_pingpong(
             rd.reviewer_output = reviewer_out
 
             # --- Target snapshot check after Reviewer ---
-            meaningful, noise = _check_target_mutation(original, target_snap)
+            meaningful, noise = _mutation_check()
             if noise:
                 result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
                 result.target_noise_detected = True
@@ -2229,7 +2473,7 @@ def run_pingpong(
                 break
 
             # Detect reviewer staging mutation
-            staging_snap_after = _find_staging_changes(staging, original)
+            staging_snap_after = _staged_now()
             reviewer_staging_changes = set(staging_snap_after) - set(staging_snap_before)
             if reviewer_staging_changes:
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
@@ -2334,10 +2578,15 @@ def run_pingpong(
             )
             result.final_adjudication = adj.to_dict()
 
+    except Exception as exc:
+        # Builder, Reviewer or test-command blew up: the workspace is still ours.
+        # The finally block below finalizes it and persists an honest record.
+        _loop_exc = exc
+        raise
     finally:
         # --- Final target snapshot check ---
         if not result.target_mutated:
-            meaningful, noise = _check_target_mutation(original, target_snap)
+            meaningful, noise = _mutation_check()
             if noise:
                 result.ignored_target_noise_files = sorted(set(result.ignored_target_noise_files) | set(noise))
                 result.target_noise_detected = True
@@ -2349,11 +2598,9 @@ def run_pingpong(
 
         # --- Staged evidence (always compute before discard, even on block) ---
         if not result.staged_files:
-            result.staged_files = _find_staging_changes(staging, original)
+            result.staged_files = _staged_now()
         if result.staged_files and staging.exists():
-            diff_text, diff_files, diff_trunc = _compute_safe_diff(
-                staging, original, result.staged_files,
-            )
+            diff_text, diff_files, diff_trunc = _safe_diff_of(result.staged_files)
             result.safe_diff_summary = diff_text
             result.safe_diff_files = diff_files
             result.safe_diff_truncated = diff_trunc
@@ -2377,11 +2624,20 @@ def run_pingpong(
             run_dir.mkdir(parents=True, exist_ok=True)
             persist_artifacts(run_dir, staging, original, result.staged_files)
 
-        # Record staging path if retained
-        if keep_staging:
-            result.staging_path = str(staging)
-        else:
-            _discard_staging(staging)
+        # F006 hand-off: persist the run's deterministic result.diff, then release
+        # the physical worktree while KEEPING the result branch. Never a merge.
+        # Same path for success, block, and any exception that reaches here.
+        _finalize(keep=keep_staging)
+
+        if _loop_exc is not None:
+            # The exception still propagates; the run record must not stay stuck
+            # on "active", which would send resume looking for a live worktree.
+            if not result.final_status:
+                result.final_status = "run_error"
+            if not result.error:
+                result.error = f"{type(_loop_exc).__name__}: {_loop_exc}"
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+            _persist_run(result)
 
     if not result.target_mutated:
         result.changed_target_files = []
@@ -3219,6 +3475,47 @@ def _build_repair_loop_info(result: PingPongResult) -> dict[str, Any]:
     }
 
 
+def _build_worktree_json(result: PingPongResult) -> dict[str, Any]:
+    """The durable F006 hand-off: branch, base, head, cleanup state, result.diff.
+
+    Repository-relative paths only — no private absolute worktree path is ever
+    persisted. In copy mode every worktree-only field is empty and ``result_diff``
+    is null, so a copy run can never look like it owes a diff.
+    """
+    if result.isolation_mode != "worktree":
+        return {
+            "isolation_mode": result.isolation_mode or "copy",
+            "branch": "",
+            "path": "",
+            "base_commit": "",
+            "head": "",
+            "lock_id": "",
+            "cleanup_status": "",
+            "cleanup_error": "",
+            "result_diff": None,
+            "result_diff_error": "",
+        }
+    result_diff = None
+    if result.result_diff_path:
+        result_diff = {
+            "path": result.result_diff_path,
+            "sha256": result.result_diff_sha256,
+            "size_bytes": result.result_diff_size_bytes,
+        }
+    return {
+        "isolation_mode": "worktree",
+        "branch": result.worktree_branch,
+        "path": result.worktree_path,
+        "base_commit": result.worktree_base_commit,
+        "head": result.worktree_head,
+        "lock_id": result.worktree_lock_id,
+        "cleanup_status": result.worktree_cleanup_status,
+        "cleanup_error": result.worktree_cleanup_error,
+        "result_diff": result_diff,
+        "result_diff_error": result.result_diff_error,
+    }
+
+
 def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
     """Export result as safe JSON (no raw prompts, no secrets)."""
     rounds = []
@@ -3300,6 +3597,8 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "safe_diff_summary": result.safe_diff_summary,
         "staging_retained": bool(result.staging_path),
         "staging_path": result.staging_path,
+        "isolation_mode": result.isolation_mode,
+        "worktree": _build_worktree_json(result),
         "report_command": f"remedy do report {result.run_id}",
         "report_json_command": f"remedy do report {result.run_id} --json",
         "report_path": report_path,

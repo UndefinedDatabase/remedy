@@ -767,15 +767,130 @@ def _cmd_resume(
         print(f"Error: checkpoint not safe to resume: {cp.blocked_reason}", file=sys.stderr)
         sys.exit(1)
 
-    # Resume from_apply: run tests via Remedy's test_runner
+    # F006 phase 1 (prepare): lock and verify the exact recorded worktree of the
+    # interrupted run. Nothing is removed yet — the continuation has to run INSIDE
+    # the recovered worktree, so it must still be there.
+    #
+    # A job owns exactly ONE worktree, so exactly one recoverable worktree may be
+    # resumed by one continuation. A legacy record with several recoverable runs is
+    # ambiguous: it is blocked honestly (and every worktree retained and unlocked)
+    # rather than silently resuming the first one and destroying the rest.
+    from packages.orchestration import worktree_resume as _wtr
+    prepared = _wtr.prepare_job_worktrees(job_id_str)
+    sessions = [s for s, _o in prepared if s is not None]
+    wt_outcomes = [o for _s, o in prepared if o.applicable]
+    wt_json = [o.to_json() for o in wt_outcomes]
+
+    def _retain_all(reason: str) -> None:
+        for s in sessions:
+            try:
+                _wtr.retain_worktree_resume(s, reason)
+            except Exception:                     # one failure must not leak the rest
+                _wtr.W.release_lock(s.handle)
+
+    if len(sessions) > 1:
+        _retain_all("ambiguous_recoverable_worktrees")
+        append_run_event(data_dir, job_id, event="resume_blocked", metadata={
+            "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
+            "blocked_reason": "ambiguous_recoverable_worktrees",
+            "run_ids": [s.run_id for s in sessions],
+        })
+        if json_output:
+            print(_json.dumps({
+                "resumed": False,
+                "blocked_reason": "ambiguous_recoverable_worktrees",
+                "worktrees": [o.to_json() for o in wt_outcomes],
+            }, indent=2))
+        else:
+            print("Resume blocked: ambiguous_recoverable_worktrees "
+                  f"({', '.join(s.run_id for s in sessions)})", file=sys.stderr)
+        sys.exit(1)
+
+    wt_blocked = [o for o in wt_outcomes if o.blocked and not o.recovered]
+    if wt_blocked:
+        _retain_all("resume blocked before continuation")
+        append_run_event(data_dir, job_id, event="resume_blocked", metadata={
+            "checkpoint_id": checkpoint_id, "checkpoint_kind": cp.kind,
+            "blocked_reason": "worktree_recovery_blocked",
+            "worktrees": wt_json,
+        })
+        if json_output:
+            print(_json.dumps({
+                "resumed": False,
+                "blocked_reason": "worktree_recovery_blocked",
+                "worktrees": wt_json,
+            }, indent=2))
+        else:
+            for o in wt_blocked:
+                print(f"Resume blocked: worktree {o.run_id}: {o.blocked_reason}",
+                      file=sys.stderr)
+        sys.exit(1)
+    for o in wt_outcomes:
+        append_run_event(data_dir, job_id, event="worktree_prepared", metadata={
+            "run_id": o.run_id, "branch": o.branch,
+            "worktree_path": o.worktree_path,
+            "result_diff_sha256": o.result_diff_sha256,
+        })
+        if not json_output:
+            print(f"Recovered worktree {o.run_id} on branch {o.branch}; "
+                  f"continuing inside it.")
+
+    def _finish_worktrees(ok: bool, reason: str) -> None:
+        """Phase 3: finalize ONLY the worktree the continuation actually used, and
+        only on success. A failure while finalizing one session must never leave
+        another session's lock held."""
+        for idx, s in enumerate(sessions):
+            try:
+                if ok:
+                    out = _wtr.finalize_worktree_resume(s)
+                    event = "worktree_recovered"
+                else:
+                    out = _wtr.retain_worktree_resume(s, reason)
+                    event = "worktree_retained"
+            except Exception as exc:
+                _wtr.W.release_lock(s.handle)      # never strand the lock
+                append_run_event(data_dir, job_id, event="worktree_retained", metadata={
+                    "run_id": s.run_id,
+                    "cleanup_status": "failed_recoverable",
+                    "cleanup_error": f"{type(exc).__name__}: {exc}",
+                })
+                continue
+            wt_json[idx] = out.to_json()
+            append_run_event(data_dir, job_id, event=event, metadata={
+                "run_id": out.run_id, "branch": out.branch,
+                "cleanup_status": out.cleanup_status,
+                "branch_kept": out.branch_kept,
+                "result_diff_sha256": out.result_diff_sha256,
+            })
+
+    # Resume from_apply: run tests via Remedy's test_runner, inside the recovered
+    # worktree when there is one.
     if cp.resume_mode == "from_apply":
         from packages.orchestration.event_replay import (
             execute_resume_from_apply,
             export_resume_result_json,
         )
-        result = execute_resume_from_apply(job, checkpoint_id, data_dir)
+        workspace_root = str(sessions[0].workspace_root) if sessions else None
+        try:
+            result = execute_resume_from_apply(
+                job, checkpoint_id, data_dir, workspace_root=workspace_root,
+            )
+        except Exception as exc:
+            # The continuation blew up: keep the worktree and its uncommitted
+            # changes so a later resume can pick the SAME one up again.
+            _finish_worktrees(False, f"continuation raised: {type(exc).__name__}: {exc}")
+            raise
+
+        continued_ok = bool(result.resumed) and result.tests_passed is not False
+        _finish_worktrees(
+            continued_ok,
+            result.blocked_reason or "continuation did not complete successfully",
+        )
+
         if json_output:
-            print(_json.dumps(export_resume_result_json(result), indent=2))
+            _payload = export_resume_result_json(result)
+            _payload["worktrees"] = wt_json
+            print(_json.dumps(_payload, indent=2))
         else:
             if result.resumed:
                 status_str = "passed" if result.tests_passed else "failed"
@@ -785,6 +900,7 @@ def _cmd_resume(
             else:
                 print(f"Resume blocked: {result.blocked_reason}")
         return
+    _finish_worktrees(False, f"resume mode {cp.resume_mode!r} not implemented")
 
     # Unimplemented resume mode — do not fake success
     from packages.orchestration.timeline import append_run_event as _emit
@@ -798,6 +914,7 @@ def _cmd_resume(
             "blocked_reason": "resume_mode_not_implemented",
             "checkpoint_kind": cp.kind,
             "resume_mode": cp.resume_mode,
+            "worktrees": wt_json,
         }))
     else:
         print(f"Resume blocked: mode '{cp.resume_mode}' not implemented yet.")

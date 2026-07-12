@@ -71,6 +71,10 @@ class AppliedFileProof:
     final_workspace_sha256: str = ""
     task_id: str = ""
     run_id: str = ""
+    # F006: the reviewed git file mode. Promotion must reproduce the whole
+    # reviewed change, executable bit included — never just the bytes.
+    baseline_mode: str = ""      # "" when the file did not exist before the job
+    final_mode: str = ""         # "100644" | "100755"
 
 
 @dataclass
@@ -121,6 +125,13 @@ class TaskEntry:
     error: str = ""
     apply_manifest: ApplyManifest | None = None
     proof_summary: TaskProofSummary | None = None
+    # F006 durable task checkpoint: the workspace tree BEFORE this task's first
+    # provider call. Persisted so a crash cannot hide partial work: the resumed
+    # attempt keeps reviewing and diffing against the ORIGINAL start tree.
+    task_start_tree: str = ""
+    task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
+    task_start_recorded_at: str = ""
+    task_attempt_state: str = ""      # "" | "active" | "complete"
 
 
 @dataclass
@@ -191,6 +202,26 @@ class JobPlan:
     repair_rounds_allowed: int = 0
     repair_rounds_source: str = ""
     execution_config: ExecutionConfig | None = None
+    # F006: how the job workspace is isolated, and the job-level hand-off.
+    isolation_mode: str = "copy"          # "worktree" | "copy"
+    worktree_branch: str = ""
+    worktree_path: str = ""               # repository-relative, shareable
+    worktree_base_commit: str = ""
+    worktree_head: str = ""
+    worktree_cleanup_status: str = ""     # "active"|"clean"|"retained"|"failed_recoverable"
+    worktree_cleanup_error: str = ""
+    result_diff_path: str = ""
+    result_diff_sha256: str = ""
+    result_diff_size_bytes: int = 0
+    result_diff_error: str = ""
+    job_initial_tree: str = ""            # tree of the workspace before task 1
+    job_initial_tree_ref: str = ""        # checkpoint ref keeping that tree alive
+    # F006 hand-off coverage: the root diff must be EXACTLY the reviewed task work.
+    root_changed_files: list[str] = field(default_factory=list)
+    reviewed_task_files: list[str] = field(default_factory=list)
+    unexpected_root_files: list[str] = field(default_factory=list)
+    missing_root_files: list[str] = field(default_factory=list)
+    handoff_coverage_verdict: str = ""    # "PASS" | "FAIL" | ""
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +260,8 @@ def _export_file_proof(p: AppliedFileProof) -> dict[str, Any]:
         "final_workspace_sha256": p.final_workspace_sha256,
         "task_id": p.task_id,
         "run_id": p.run_id,
+        "baseline_mode": p.baseline_mode,
+        "final_mode": p.final_mode,
     }
 
 
@@ -240,6 +273,8 @@ def _import_file_proof(d: dict[str, Any]) -> AppliedFileProof:
         final_workspace_sha256=d.get("final_workspace_sha256", ""),
         task_id=d.get("task_id", ""),
         run_id=d.get("run_id", ""),
+        baseline_mode=d.get("baseline_mode", ""),
+        final_mode=d.get("final_mode", ""),
     )
 
 
@@ -427,6 +462,34 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "repair_rounds_allowed": job.repair_rounds_allowed,
         "repair_rounds_source": job.repair_rounds_source,
         "execution_config": _export_execution_config(job.execution_config),
+        "isolation_mode": job.isolation_mode,
+        "worktree": {
+            "isolation_mode": job.isolation_mode,
+            "branch": job.worktree_branch,
+            "path": job.worktree_path,
+            "base_commit": job.worktree_base_commit,
+            "head": job.worktree_head,
+            "cleanup_status": job.worktree_cleanup_status,
+            "cleanup_error": job.worktree_cleanup_error,
+            "result_diff": (
+                {
+                    "path": job.result_diff_path,
+                    "sha256": job.result_diff_sha256,
+                    "size_bytes": job.result_diff_size_bytes,
+                }
+                if job.result_diff_path else None
+            ),
+            "result_diff_error": job.result_diff_error,
+        },
+        "job_initial_tree": job.job_initial_tree,
+        "job_initial_tree_ref": job.job_initial_tree_ref,
+        "handoff_coverage": {
+            "verdict": job.handoff_coverage_verdict,
+            "root_changed_files": job.root_changed_files,
+            "reviewed_task_files": job.reviewed_task_files,
+            "unexpected_root_files": job.unexpected_root_files,
+            "missing_root_files": job.missing_root_files,
+        },
         "tasks": [
             {
                 "task_id": t.task_id,
@@ -445,6 +508,10 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "error": t.error,
                 "apply_manifest": _export_apply_manifest(t.apply_manifest),
                 "proof_summary": _export_proof_summary(t.proof_summary),
+                "task_start_tree": t.task_start_tree,
+                "task_start_tree_ref": t.task_start_tree_ref,
+                "task_start_recorded_at": t.task_start_recorded_at,
+                "task_attempt_state": t.task_attempt_state,
             }
             for t in job.tasks
         ],
@@ -463,6 +530,24 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         finished_at=data.get("finished_at", ""),
         error=data.get("error", ""),
         target_guard=_import_target_guard(data.get("target_guard")),
+        isolation_mode=data.get("isolation_mode", "copy"),
+        worktree_branch=(data.get("worktree") or {}).get("branch", ""),
+        worktree_path=(data.get("worktree") or {}).get("path", ""),
+        worktree_base_commit=(data.get("worktree") or {}).get("base_commit", ""),
+        worktree_head=(data.get("worktree") or {}).get("head", ""),
+        worktree_cleanup_status=(data.get("worktree") or {}).get("cleanup_status", ""),
+        worktree_cleanup_error=(data.get("worktree") or {}).get("cleanup_error", ""),
+        result_diff_path=((data.get("worktree") or {}).get("result_diff") or {}).get("path", ""),
+        result_diff_sha256=((data.get("worktree") or {}).get("result_diff") or {}).get("sha256", ""),
+        result_diff_size_bytes=((data.get("worktree") or {}).get("result_diff") or {}).get("size_bytes", 0),
+        result_diff_error=(data.get("worktree") or {}).get("result_diff_error", ""),
+        job_initial_tree=data.get("job_initial_tree", ""),
+        job_initial_tree_ref=data.get("job_initial_tree_ref", ""),
+        handoff_coverage_verdict=(data.get("handoff_coverage") or {}).get("verdict", ""),
+        root_changed_files=(data.get("handoff_coverage") or {}).get("root_changed_files", []),
+        reviewed_task_files=(data.get("handoff_coverage") or {}).get("reviewed_task_files", []),
+        unexpected_root_files=(data.get("handoff_coverage") or {}).get("unexpected_root_files", []),
+        missing_root_files=(data.get("handoff_coverage") or {}).get("missing_root_files", []),
         repair_rounds_allowed=data.get("repair_rounds_allowed", 0),
         repair_rounds_source=data.get("repair_rounds_source", ""),
         execution_config=_import_execution_config(data.get("execution_config")),
@@ -485,6 +570,10 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
             error=t.get("error", ""),
             apply_manifest=_import_apply_manifest(t.get("apply_manifest")),
             proof_summary=_import_proof_summary(t.get("proof_summary")),
+            task_start_tree=t.get("task_start_tree", ""),
+            task_start_tree_ref=t.get("task_start_tree_ref", ""),
+            task_start_recorded_at=t.get("task_start_recorded_at", ""),
+            task_attempt_state=t.get("task_attempt_state", ""),
         ))
     return job
 
@@ -609,12 +698,13 @@ def plan_job_from_file(job_file_path: str, repo_path: str = ".") -> JobPlan:
 # Job workspace creation (filtered copy of target repo)
 # ---------------------------------------------------------------------------
 
-def _create_job_workspace(job: JobPlan) -> str:
-    """Create an isolated job workspace as a filtered copy of the target repo.
+#: The job-owned worktree's safe id: one worktree, one branch, per job.
+def job_worktree_id(job_id: str) -> str:
+    return f"job-{job_id}"
 
-    Reuses staging_workspace filtering logic to exclude .git, .env, etc.
-    Returns the workspace path string.
-    """
+
+def _create_job_workspace_copy(job: JobPlan) -> str:
+    """Non-git fallback: a filtered copy of the target (isolation_mode=copy)."""
     from packages.orchestration.staging_workspace import create_staging_workspace
 
     data_root = _jobs_dir().parent
@@ -624,6 +714,274 @@ def _create_job_workspace(job: JobPlan) -> str:
     target = Path(job.repo_path)
     ws = create_staging_workspace(target, ws_parent, job.job_id)
     return str(ws.staging_dir)
+
+
+def _create_job_workspace(job: JobPlan) -> tuple[str, Any]:
+    """The job's workspace. For a GIT target this is a job-owned WORKTREE.
+
+    One worktree per job at ``<target>/.remedy-wt/job-<job-id>`` on branch
+    ``remedy/job-<job-id>``, owned by the job runner for the whole execution: the
+    tasks run sequentially inside it, so task 2 sees task 1's accepted changes,
+    and NO complete copy of the repository is ever made. The normal checkout is
+    untouched and nothing is ever merged.
+
+    Returns ``(workspace_path, handle)``; ``handle`` is None only for the non-git
+    copy fallback.
+    """
+    from packages.orchestration import worktrees as W
+
+    if not W.is_git_repo(job.repo_path):
+        job.isolation_mode = "copy"
+        return _create_job_workspace_copy(job), None
+
+    wt_id = job_worktree_id(job.job_id)
+    handle = W.create(wt_id, job.repo_path)
+    job.isolation_mode = "worktree"
+    job.worktree_branch = handle.branch
+    job.worktree_path = handle.relative_path
+    job.worktree_base_commit = handle.base_commit
+    job.worktree_head = handle.head_commit
+    job.worktree_cleanup_status = "active"
+    job.job_initial_tree = W.write_tree(handle)
+    job.job_initial_tree_ref = W.checkpoint_ref(
+        job_worktree_id(job.job_id), "job-initial")
+    W.set_checkpoint_ref(job.repo_path, job.job_initial_tree_ref, job.job_initial_tree)
+    return handle.path, handle
+
+
+def _acquire_job_workspace(job: JobPlan) -> tuple[str, Any]:
+    """Re-claim an existing job workspace, or create it on first run."""
+    from packages.orchestration import worktrees as W
+
+    if not job.job_workspace_path:
+        path, handle = _create_job_workspace(job)
+        job.job_workspace_path = path
+        return path, handle
+
+    if job.isolation_mode != "worktree":
+        return job.job_workspace_path, None
+
+    handle = W.recover(job_worktree_id(job.job_id), job.repo_path)
+    if handle is None or not Path(handle.path).is_dir():
+        raise RuntimeError(
+            f"job worktree {job.worktree_path!r} is gone; refusing to silently "
+            f"fall back to a copied workspace"
+        )
+    if handle.branch != job.worktree_branch:
+        from packages.orchestration import worktrees as _W
+        _W.release_lock(handle)
+        raise RuntimeError(
+            f"job worktree is on branch {handle.branch!r}, not the recorded "
+            f"{job.worktree_branch!r}"
+        )
+    err = _verify_checkpoints(job)
+    if err:
+        # NEVER re-snapshot a lost checkpoint: a fresh baseline would silently
+        # swallow whatever the interrupted attempt had already written.
+        W.retain_for_recovery(handle, err)
+        job.worktree_cleanup_status = "retained"
+        job.worktree_cleanup_error = err
+        raise RuntimeError(err)
+
+    job.worktree_cleanup_status = "active"
+    return handle.path, handle
+
+
+def _verify_checkpoints(job: JobPlan) -> str:
+    """Every ACTIVE checkpoint ref must still resolve to its recorded tree."""
+    from packages.orchestration import worktrees as W
+
+    def _check(ref: str, sha: str, what: str) -> str:
+        if not sha:
+            return ""
+        if not ref:
+            return f"checkpoint_ref_missing: {what} has no protecting ref"
+        actual = W.resolve_checkpoint_ref(job.repo_path, ref)
+        if not actual:
+            return f"checkpoint_ref_missing: {what} ref {ref} does not exist"
+        if actual != sha:
+            return (
+                f"checkpoint_ref_mismatch: {what} ref {ref} points at {actual[:12]}, "
+                f"not the recorded {sha[:12]}"
+            )
+        if not W.object_exists(job.repo_path, sha):
+            return f"checkpoint_object_missing: {what} tree {sha[:12]} is gone"
+        return ""
+
+    err = _check(job.job_initial_tree_ref, job.job_initial_tree, "job_initial_tree")
+    if err:
+        return err
+    for t in job.tasks:
+        if t.task_attempt_state == "active" and t.task_start_tree:
+            err = _check(t.task_start_tree_ref, t.task_start_tree,
+                         f"{t.task_id} task_start_tree")
+            if err:
+                return err
+    return ""
+
+
+def _reviewed_task_files(job: JobPlan) -> list[str]:
+    """Union of every successfully applied task manifest — the reviewed work."""
+    files: set[str] = set()
+    for t in job.tasks:
+        if t.apply_manifest and t.apply_manifest.status == "applied":
+            files.update(t.apply_manifest.applied_files)
+    return sorted(files)
+
+
+def _latest_task_proofs(job: JobPlan) -> dict[str, AppliedFileProof]:
+    """The LAST accepted proof per path — that is the reviewed final state."""
+    latest: dict[str, AppliedFileProof] = {}
+    for t in job.tasks:
+        if t.apply_manifest and t.apply_manifest.status == "applied":
+            for proof in t.apply_manifest.applied_file_proofs:
+                latest[proof.path] = proof
+    return latest
+
+
+def _check_handoff_coverage(job: JobPlan, handle: Any) -> str:
+    """The root hand-off must be EXACTLY the reviewed task work — nothing else.
+
+    Byte-integrity of ``result.diff`` proves nobody edited the file; it does NOT
+    prove the diff only contains reviewed changes. A finalization hook writing
+    ``rogue.txt`` into the worktree would sail through a hash check. So the final
+    tree's changed-path set must equal the union of the applied task manifests, and
+    every reviewed path must still hold the content and mode its task proved.
+    """
+    from packages.orchestration import worktrees as W
+
+    final_tree = W.write_tree(handle)
+    root_files = W.changed_files_between(handle, job.job_initial_tree, final_tree)
+    reviewed = _reviewed_task_files(job)
+
+    job.root_changed_files = list(root_files)
+    job.reviewed_task_files = reviewed
+    job.unexpected_root_files = sorted(set(root_files) - set(reviewed))
+    job.missing_root_files = sorted(set(reviewed) - set(root_files))
+
+    drift: list[str] = []
+    proofs = _latest_task_proofs(job)
+    ws = Path(job.job_workspace_path)
+    for rel, proof in proofs.items():
+        f = ws / rel
+        if not f.is_file():
+            drift.append(f"{rel}: reviewed file is gone from the workspace")
+            continue
+        if _sha256_of(f) != proof.final_workspace_sha256:
+            drift.append(f"{rel}: content differs from the reviewed proof")
+        elif proof.final_mode and W.file_mode(f) != proof.final_mode:
+            drift.append(f"{rel}: file mode differs from the reviewed proof")
+
+    if job.unexpected_root_files or job.missing_root_files or drift:
+        job.handoff_coverage_verdict = "FAIL"
+        parts = []
+        if job.unexpected_root_files:
+            parts.append(f"unexpected={job.unexpected_root_files}")
+        if job.missing_root_files:
+            parts.append(f"missing={job.missing_root_files}")
+        if drift:
+            parts.append(f"drift={drift}")
+        return "job_handoff_coverage_failed: " + "; ".join(parts)
+
+    job.handoff_coverage_verdict = "PASS"
+    return ""
+
+
+def _drop_checkpoint_refs(job: JobPlan) -> str:
+    """Remove obsolete checkpoint refs after a verified final hand-off."""
+    from packages.orchestration import worktrees as W
+
+    errors: list[str] = []
+    refs = [job.job_initial_tree_ref] + [
+        t.task_start_tree_ref for t in job.tasks if t.task_start_tree_ref
+    ]
+    for ref in [r for r in refs if r]:
+        err = W.delete_checkpoint_ref(job.repo_path, ref)
+        if err:
+            errors.append(f"{ref}: {err}")
+    return "; ".join(errors)
+
+
+def _finalize_job_workspace(job: JobPlan, handle: Any) -> None:
+    """The ONE cleanup path for a job-owned worktree.
+
+    Completed job: persist the job-level ``result.diff`` (tree-to-tree — no commit,
+    no merge), remove the physical worktree, keep the result branch, release the
+    lock, mark ``clean``. Any other end state (paused, blocked, failed, raised):
+    persist what we can, KEEP the worktree and its uncommitted changes, release the
+    lock, and stay recoverable. A clean cleanup is never claimed before it happened.
+    """
+    if handle is None:
+        return
+    from packages.orchestration import worktrees as W
+
+    job_dir = _jobs_dir() / job.job_id
+
+    # --- Completion gate: the root hand-off must be exactly the reviewed work ---
+    coverage_error = ""
+    if job.status == JOB_COMPLETED:
+        try:
+            coverage_error = _check_handoff_coverage(job, handle)
+        except Exception as exc:
+            coverage_error = f"job_handoff_coverage_failed: {type(exc).__name__}: {exc}"
+        if coverage_error:
+            # Block BEFORE the worktree may be removed and before any root hand-off
+            # is presented as authoritative.
+            job.status = JOB_BLOCKED
+            job.error = coverage_error
+            job.finished_at = ""
+            job.result_diff_path = ""
+            job.result_diff_sha256 = ""
+            job.result_diff_size_bytes = 0
+            try:
+                (job_dir / "result.diff").unlink()
+            except OSError:
+                pass
+
+    try:
+        W.snapshot(handle)
+        job.worktree_head = handle.head_commit
+        if not coverage_error:
+            info = W.write_tree_diff(
+                handle, job.job_initial_tree, W.write_tree(handle),
+                job_dir / "result.diff",
+            )
+            job.result_diff_path = "result.diff"
+            job.result_diff_sha256 = info["sha256"]
+            job.result_diff_size_bytes = info["size_bytes"]
+            job.result_diff_error = ""
+    except Exception as exc:
+        job.result_diff_error = f"{type(exc).__name__}: {exc}"
+
+    if job.status == JOB_COMPLETED and not job.result_diff_error:
+        try:
+            res = W.remove(handle, keep_branch=True)      # never a merge
+            job.worktree_cleanup_status = res["cleanup_status"]
+            job.worktree_cleanup_error = res.get("cleanup_error", "")
+        except Exception as exc:
+            job.worktree_cleanup_status = "failed_recoverable"
+            job.worktree_cleanup_error = f"{type(exc).__name__}: {exc}"
+        if job.worktree_cleanup_status == "clean":
+            # The hand-off is complete and verified: the checkpoints are obsolete.
+            ref_err = _drop_checkpoint_refs(job)
+            if ref_err:
+                job.worktree_cleanup_error = (
+                    f"checkpoint_ref_cleanup_failed: {ref_err}"
+                )
+    else:
+        # Not finished, blocked by the coverage gate, or the hand-off could not be
+        # persisted: the accepted changes are uncommitted and live ONLY in this
+        # worktree. Keep it. A coverage block is an honest RETAIN (the diff was
+        # writable, it just was not the reviewed work), not a storage failure.
+        res = W.retain_for_recovery(
+            handle, job.result_diff_error if job.result_diff_error else "")
+        job.worktree_cleanup_status = (
+            "failed_recoverable" if job.result_diff_error else "retained"
+        )
+        job.worktree_cleanup_error = (
+            coverage_error or res.get("cleanup_error", "")
+        )
+    _persist_job(job)
 
 
 # ---------------------------------------------------------------------------
@@ -701,6 +1059,103 @@ def _sha256_of(path: Path) -> str:
     except OSError:
         return ""
     return h.hexdigest()
+
+
+def _verify_in_place_apply(
+    task: TaskEntry,
+    result: Any,
+    workspace_path: str,
+    handle: Any,
+    initial_tree: str,
+    *,
+    job_baselines: dict[str, tuple[bool, str]] | None = None,
+) -> ApplyManifest:
+    """Manifest for a task that ran INSIDE the job-owned worktree.
+
+    Nothing is copied: the accepted changes are already in the workspace, which is
+    exactly what lets the next task see them. Every changed path is still validated
+    (no traversal, no symlink, regular file, contained in the workspace) and still
+    gets a baseline proof — the baseline comes from the job's INITIAL tree, so it
+    is the state before the job started, not the state after this task ran.
+    """
+    from packages.orchestration import worktrees as W
+
+    manifest = ApplyManifest(task_id=task.task_id, run_id=result.run_id)
+    if job_baselines is None:
+        job_baselines = {}
+
+    workspace = Path(workspace_path)
+    if not workspace.exists():
+        manifest.status = "blocked"
+        manifest.missing_files = ["(workspace directory missing)"]
+        return manifest
+    workspace_resolved = workspace.resolve()
+
+    staged_files = list(result.staged_files)
+    seen: set[str] = set()
+    for rel in staged_files:
+        if rel in seen:
+            manifest.duplicate_files.append(rel)
+        seen.add(rel)
+    if manifest.duplicate_files:
+        manifest.status = "blocked"
+        return manifest
+
+    for rel_path in staged_files:
+        unsafe_reason = _is_unsafe_path(rel_path)
+        if unsafe_reason:
+            manifest.unsupported_files.append(f"{rel_path} ({unsafe_reason})")
+            continue
+
+        dst = workspace / rel_path
+        if dst.is_symlink():
+            manifest.unsupported_files.append(f"{rel_path} (workspace_dest_is_symlink)")
+            continue
+        if not dst.exists():
+            manifest.missing_files.append(rel_path)
+            continue
+        if not dst.is_file():
+            manifest.unsupported_files.append(
+                f"{rel_path} (workspace_dest_not_regular_file)")
+            continue
+        try:
+            resolved = dst.resolve()
+        except OSError:
+            manifest.unsupported_files.append(f"{rel_path} (workspace_dest_resolve_failed)")
+            continue
+        if not str(resolved).startswith(str(workspace_resolved) + os.sep):
+            manifest.unsupported_files.append(
+                f"{rel_path} (workspace_dest_escapes_workspace)")
+            continue
+
+        if rel_path not in job_baselines:
+            blob = W.blob_at(handle, initial_tree, rel_path) if initial_tree else None
+            existed = blob is not None
+            baseline_hash = hashlib.sha256(blob).hexdigest() if existed else ""
+            job_baselines[rel_path] = (existed, baseline_hash)
+
+        manifest.applied_files.append(rel_path)
+        existed_before, baseline_hash = job_baselines[rel_path]
+        # The reviewed change includes the git file mode. A promotion that copies
+        # only the bytes would silently drop a chmod, so the mode is proven here.
+        baseline_mode = (
+            W.mode_at(handle, initial_tree, rel_path) if initial_tree else ""
+        )
+        manifest.applied_file_proofs.append(AppliedFileProof(
+            path=rel_path,
+            existed_before_job=existed_before,
+            baseline_sha256=baseline_hash,
+            final_workspace_sha256=_sha256_of(dst),
+            task_id=task.task_id,
+            run_id=result.run_id,
+            baseline_mode=baseline_mode,
+            final_mode=W.file_mode(dst),
+        ))
+
+    blocked = (manifest.missing_files or manifest.unsupported_files
+               or manifest.unexpected_files or manifest.duplicate_files)
+    manifest.status = "blocked" if blocked else "applied"
+    return manifest
 
 
 def _strict_apply_to_workspace(
@@ -1077,238 +1532,313 @@ def run_job(
     job.repair_rounds_allowed = repair_rounds
     job.repair_rounds_source = rr_src
 
-    # Create job workspace if not yet created
-    if not job.job_workspace_path:
-        try:
-            job.job_workspace_path = _create_job_workspace(job)
-        except Exception as exc:
-            job.status = JOB_BLOCKED
-            job.error = f"workspace_creation_failed: {exc}"
-            _persist_job(job)
-            return job
+    # F006: the job workspace IS a job-owned git worktree for a git target.
+    # The runner owns the handle (and its lock) for the whole execution.
+    job_handle = None
+    try:
+        job.job_workspace_path, job_handle = _acquire_job_workspace(job)
+    except Exception as exc:
+        job.status = JOB_BLOCKED
+        job.error = f"workspace_creation_failed: {exc}"
+        _persist_job(job)
+        return job
 
-    # Step 4837: Snapshot real target repo before any task runs
-    target_snap = _snapshot_target_repo(job.repo_path)
 
-    job.status = JOB_RUNNING
-    _persist_job(job)
+    try:
+        # Step 4837: Snapshot real target repo before any task runs
+        target_snap = _snapshot_target_repo(job.repo_path)
 
-    tasks_run = 0
-    previous_summaries: list[TaskProofSummary] = []
-    job_baselines: dict[str, tuple[bool, str]] = {}
-
-    # Collect existing proof summaries and baselines from already-done tasks
-    for t in job.tasks:
-        if t.proof_summary and t.status in (TASK_APPLIED, TASK_PASSED):
-            previous_summaries.append(t.proof_summary)
-        if t.apply_manifest:
-            for proof in t.apply_manifest.applied_file_proofs:
-                if proof.path not in job_baselines:
-                    job_baselines[proof.path] = (
-                        proof.existed_before_job, proof.baseline_sha256,
-                    )
-
-    for idx, task in enumerate(job.tasks):
-        if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
-            continue
-
-        if task.status in (TASK_BLOCKED, TASK_FAILED):
-            break
-
-        if max_tasks > 0 and tasks_run >= max_tasks:
-            break
-
-        # Build bounded task prompt
-        task_prompt = _build_task_prompt(job, task, previous_summaries)
-
-        task.status = TASK_RUNNING
+        job.status = JOB_RUNNING
         _persist_job(job)
 
-        # Create TaskInput for ping-pong
-        task_input = TaskInput(
-            kind="job_task",
-            path="",
-            title=task.title,
-            body=task_prompt,
-            sha256=hashlib.sha256(task_prompt.encode()).hexdigest(),
-            byte_count=len(task_prompt.encode()),
-            char_count=len(task_prompt),
-            tokens_estimated=len(task_prompt) // 4,
-            excerpt=task_prompt[:200],
-        )
+        tasks_run = 0
+        previous_summaries: list[TaskProofSummary] = []
+        job_baselines: dict[str, tuple[bool, str]] = {}
 
-        try:
-            result = run_pingpong(
-                task.title,
-                job.job_workspace_path,
-                builder_provider=builder_provider,
-                reviewer_provider=reviewer_provider,
-                builder_name=builder_name,
-                reviewer_name=reviewer_name,
-                builder_model=builder_model,
-                reviewer_model=reviewer_model,
-                max_rounds=max_rounds,
-                timeout_sec=timeout_sec,
-                timeout_profile=timeout_profile,
-                max_output_chars=max_output_chars,
-                test_command=test_command,
-                claude_cli_write_mode=claude_cli_write_mode,
-                stream_evidence=stream_evidence,
-                stream_evidence_dir=(
-                    str(_task_stream_dir(job.job_id, task.task_id))
-                    if stream_evidence else None
-                ),
-                task_input=task_input,
-                repair_rounds=repair_rounds,
-                repair_rounds_source=rr_src,
-                keep_staging=True,
-                job_id=job.job_id,
+        # Collect existing proof summaries and baselines from already-done tasks
+        for t in job.tasks:
+            if t.proof_summary and t.status in (TASK_APPLIED, TASK_PASSED):
+                previous_summaries.append(t.proof_summary)
+            if t.apply_manifest:
+                for proof in t.apply_manifest.applied_file_proofs:
+                    if proof.path not in job_baselines:
+                        job_baselines[proof.path] = (
+                            proof.existed_before_job, proof.baseline_sha256,
+                        )
+
+        for idx, task in enumerate(job.tasks):
+            if task.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+                continue
+
+            if task.status in (TASK_BLOCKED, TASK_FAILED):
+                break
+
+            if max_tasks > 0 and tasks_run >= max_tasks:
+                break
+
+            # Build bounded task prompt
+            task_prompt = _build_task_prompt(job, task, previous_summaries)
+
+            task.status = TASK_RUNNING
+
+            # F006 durable task checkpoint. The tree is captured BEFORE the first
+            # provider call and persisted; a task that resumes after a crash keeps
+            # its ORIGINAL start tree, so partial work written before the crash
+            # stays inside this task's diff, review scope and apply manifest
+            # instead of silently leaking into the final job hand-off unreviewed.
+            if job_handle is not None:
+                from packages.orchestration import worktrees as _W
+                if not (task.task_start_tree and task.task_attempt_state == "active"):
+                    task.task_start_tree = _W.write_tree(job_handle)
+                    task.task_start_tree_ref = _W.checkpoint_ref(
+                        job_worktree_id(job.job_id), "start", task.task_id)
+                    _W.set_checkpoint_ref(
+                        job.repo_path, task.task_start_tree_ref, task.task_start_tree)
+                    task.task_start_recorded_at = datetime.now(timezone.utc).isoformat()
+                task.task_attempt_state = "active"
+            _persist_job(job)
+
+            # Create TaskInput for ping-pong
+            task_input = TaskInput(
+                kind="job_task",
+                path="",
+                title=task.title,
+                body=task_prompt,
+                sha256=hashlib.sha256(task_prompt.encode()).hexdigest(),
+                byte_count=len(task_prompt.encode()),
+                char_count=len(task_prompt),
+                tokens_estimated=len(task_prompt) // 4,
+                excerpt=task_prompt[:200],
+            )
+
+            try:
+                result = run_pingpong(
+                    task.title,
+                    job.job_workspace_path,
+                    builder_provider=builder_provider,
+                    reviewer_provider=reviewer_provider,
+                    builder_name=builder_name,
+                    reviewer_name=reviewer_name,
+                    builder_model=builder_model,
+                    reviewer_model=reviewer_model,
+                    max_rounds=max_rounds,
+                    timeout_sec=timeout_sec,
+                    timeout_profile=timeout_profile,
+                    max_output_chars=max_output_chars,
+                    test_command=test_command,
+                    claude_cli_write_mode=claude_cli_write_mode,
+                    stream_evidence=stream_evidence,
+                    stream_evidence_dir=(
+                        str(_task_stream_dir(job.job_id, task.task_id))
+                        if stream_evidence else None
+                    ),
+                    task_input=task_input,
+                    repair_rounds=repair_rounds,
+                    repair_rounds_source=rr_src,
+                    keep_staging=True,
+                    job_id=job.job_id,
+                    task_id=task.task_id,
+                    workspace_root=job.job_workspace_path,
+                    workspace_handle=job_handle,
+                    workspace_owner="job" if job_handle is not None else "run",
+                    workspace_start_tree=task.task_start_tree,
+                )
+            except Exception as exc:
+                task.status = TASK_FAILED
+                task.error = f"pingpong_exception: {exc}"
+                job.status = JOB_BLOCKED
+                job.error = f"task_{task.task_id}_failed: {exc}"
+                _persist_job(job)
+                return job
+
+            # Record task result
+            task.run_id = result.run_id
+            task.final_status = result.final_status
+            task.safe_diff_files = list(result.safe_diff_files)
+            task.repair_rounds_used = result.repair_rounds_used
+            task.repair_rounds_allowed = result.repair_rounds_allowed
+
+            # Extract test/reviewer info from rounds
+            if result.rounds:
+                last_round = result.rounds[-1]
+                task.test_passed = last_round.test_passed
+                if last_round.reviewer_output:
+                    task.reviewer_verdict = last_round.reviewer_output.verdict
+
+            # Step 4857: Deterministic task completion gate
+            gate_ok, gate_reasons = validate_job_task_result(result)
+            if not gate_ok:
+                task.status = TASK_BLOCKED
+                task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
+                _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
+                return job
+
+            task.status = TASK_PASSED
+
+            # Step 4887: Pre-apply target repo guard — blocks before workspace apply
+            pre_guard = _check_target_repo_guard(job.repo_path, target_snap)
+            job.target_guard = pre_guard
+            if pre_guard.target_mutated:
+                task.status = TASK_BLOCKED
+                task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
+                _block_job(job, idx, "target_repo_mutated_during_job")
+                return job
+
+            # Step 4835: Strict workspace apply (Step 4976: baseline capture).
+            # In a job-owned worktree the task already wrote INTO the workspace,
+            # so there is nothing to copy: the manifest is verified in place.
+            if job_handle is not None:
+                manifest = _verify_in_place_apply(
+                    task, result, job.job_workspace_path, job_handle,
+                    job.job_initial_tree, job_baselines=job_baselines,
+                )
+            else:
+                manifest = _strict_apply_to_workspace(
+                    task, result, job.job_workspace_path,
+                    job_baselines=job_baselines,
+                )
+            task.apply_manifest = manifest
+
+            if manifest.status != "applied":
+                task.status = TASK_BLOCKED
+                task.error = f"workspace_apply_blocked: {_manifest_block_reason(manifest)}"
+                _block_job(job, idx, f"task_{task.task_id}_workspace_apply_blocked")
+                return job
+
+            task.status = TASK_APPLIED
+            task.task_attempt_state = "complete"   # the tree id is kept for audit
+
+            # Step 4889: Post-apply target guard — defense-in-depth sanity check
+            post_guard = _check_target_repo_guard(job.repo_path, target_snap)
+            job.target_guard = post_guard
+            if post_guard.target_mutated:
+                task.status = TASK_BLOCKED
+                task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
+                _block_job(job, idx, "target_repo_mutated_after_apply")
+                return job
+
+            # Step 4839: Build proof summary
+            task.proof_summary = TaskProofSummary(
                 task_id=task.task_id,
+                title=task.title,
+                run_id=task.run_id,
+                final_status=task.final_status,
+                applied_files=manifest.applied_files,
+                test_passed=task.test_passed,
+                reviewer_verdict=task.reviewer_verdict,
+                repair_rounds_used=task.repair_rounds_used,
+                repair_rounds_allowed=task.repair_rounds_allowed,
+                tokens_estimated=len(task_prompt) // 4,
             )
-        except Exception as exc:
-            task.status = TASK_FAILED
-            task.error = f"pingpong_exception: {exc}"
-            job.status = JOB_BLOCKED
-            job.error = f"task_{task.task_id}_failed: {exc}"
+            previous_summaries.append(task.proof_summary)
+
+            tasks_run += 1
             _persist_job(job)
-            return job
 
-        # Record task result
-        task.run_id = result.run_id
-        task.final_status = result.final_status
-        task.safe_diff_files = list(result.safe_diff_files)
-        task.repair_rounds_used = result.repair_rounds_used
-        task.repair_rounds_allowed = result.repair_rounds_allowed
-
-        # Extract test/reviewer info from rounds
-        if result.rounds:
-            last_round = result.rounds[-1]
-            task.test_passed = last_round.test_passed
-            if last_round.reviewer_output:
-                task.reviewer_verdict = last_round.reviewer_output.verdict
-
-        # Step 4857: Deterministic task completion gate
-        gate_ok, gate_reasons = validate_job_task_result(result)
-        if not gate_ok:
-            task.status = TASK_BLOCKED
-            task.error = f"completion_gate_failed: {'; '.join(gate_reasons)}"
-            _block_job(job, idx, f"task_{task.task_id}_gate_failed: {'; '.join(gate_reasons)}")
-            return job
-
-        task.status = TASK_PASSED
-
-        # Step 4887: Pre-apply target repo guard — blocks before workspace apply
-        pre_guard = _check_target_repo_guard(job.repo_path, target_snap)
-        job.target_guard = pre_guard
-        if pre_guard.target_mutated:
-            task.status = TASK_BLOCKED
-            task.error = f"target_repo_mutated: {pre_guard.changed_target_files}"
-            _block_job(job, idx, "target_repo_mutated_during_job")
-            return job
-
-        # Step 4835: Strict workspace apply (Step 4976: baseline capture)
-        manifest = _strict_apply_to_workspace(
-            task, result, job.job_workspace_path,
-            job_baselines=job_baselines,
+        # Determine final job status
+        all_done = all(
+            t.status in (TASK_APPLIED, TASK_SKIPPED)
+            for t in job.tasks
         )
-        task.apply_manifest = manifest
+        has_pending = any(t.status == TASK_PENDING for t in job.tasks)
 
-        if manifest.status != "applied":
-            task.status = TASK_BLOCKED
-            task.error = f"workspace_apply_blocked: {_manifest_block_reason(manifest)}"
-            _block_job(job, idx, f"task_{task.task_id}_workspace_apply_blocked")
-            return job
+        if all_done:
+            job.status = JOB_COMPLETED
+            job.finished_at = datetime.now(timezone.utc).isoformat()
 
-        task.status = TASK_APPLIED
+            # Final job review — job-level review after all per-task reviewers pass
+            try:
+                from packages.orchestration.final_job_review import build_final_job_review
 
-        # Step 4889: Post-apply target guard — defense-in-depth sanity check
-        post_guard = _check_target_repo_guard(job.repo_path, target_snap)
-        job.target_guard = post_guard
-        if post_guard.target_mutated:
-            task.status = TASK_BLOCKED
-            task.error = f"target_repo_mutated_after_apply: {post_guard.changed_target_files}"
-            _block_job(job, idx, "target_repo_mutated_after_apply")
-            return job
+                _task_verdicts_fjr = [
+                    {"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
+                    for t in job.tasks
+                ]
+                _task_summaries_fjr = [t.title or "" for t in job.tasks]
+                _task_diffs_fjr = [
+                    (getattr(t, "safe_diff_summary", "") or "")[:2000]
+                    for t in job.tasks
+                ]
+                _fjr = build_final_job_review(
+                    job_goal=job.job_title,
+                    task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
+                    task_summaries=_task_summaries_fjr,
+                    task_diffs=_task_diffs_fjr,
+                    task_verdicts=_task_verdicts_fjr,
+                    test_evidence={},
+                    gate_verdicts=[],
+                    job_id=job.job_id,
+                )
+                _fjr_dir = _jobs_dir() / job.job_id
+                _fjr_dir.mkdir(parents=True, exist_ok=True)
+                (_fjr_dir / "final_job_review.json").write_text(
+                    _json.dumps(_fjr, indent=2) + "\n"
+                )
 
-        # Step 4839: Build proof summary
-        task.proof_summary = TaskProofSummary(
-            task_id=task.task_id,
-            title=task.title,
-            run_id=task.run_id,
-            final_status=task.final_status,
-            applied_files=manifest.applied_files,
-            test_passed=task.test_passed,
-            reviewer_verdict=task.reviewer_verdict,
-            repair_rounds_used=task.repair_rounds_used,
-            repair_rounds_allowed=task.repair_rounds_allowed,
-            tokens_estimated=len(task_prompt) // 4,
-        )
-        previous_summaries.append(task.proof_summary)
+                # If findings exist, persist final_job_repair_loop.json
+                if _fjr.get("findings"):
+                    from packages.orchestration.final_job_review import build_final_job_repair_loop
+                    _repair_loop = build_final_job_repair_loop(
+                        findings=_fjr["findings"],
+                        repair_tasks=[],
+                        re_review_verdict=_fjr["verdict"],
+                        rounds=0,
+                        budget=0,
+                    )
+                    (_fjr_dir / "final_job_repair_loop.json").write_text(
+                        _json.dumps(_repair_loop, indent=2) + "\n"
+                    )
+            except Exception:
+                pass  # Best-effort; do not block job completion
 
-        tasks_run += 1
+        elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
+            job.status = JOB_PAUSED
+
         _persist_job(job)
+        return job
 
-    # Determine final job status
-    all_done = all(
-        t.status in (TASK_APPLIED, TASK_SKIPPED)
-        for t in job.tasks
-    )
-    has_pending = any(t.status == TASK_PENDING for t in job.tasks)
+    finally:
+        # The job runner — not the task loop — owns the worktree's cleanup.
+        _finalize_job_workspace(job, job_handle)
 
-    if all_done:
-        job.status = JOB_COMPLETED
-        job.finished_at = datetime.now(timezone.utc).isoformat()
+#: JobPlan worktree states that a resume may pick up.
+JOB_RECOVERABLE_STATES = frozenset({"active", "retained", "failed_recoverable"})
 
-        # Final job review — job-level review after all per-task reviewers pass
-        try:
-            from packages.orchestration.final_job_review import build_final_job_review
 
-            _task_verdicts_fjr = [
-                {"task_id": t.task_id, "verdict": t.reviewer_verdict or t.final_status or ""}
-                for t in job.tasks
-            ]
-            _task_summaries_fjr = [t.title or "" for t in job.tasks]
-            _task_diffs_fjr = [
-                (getattr(t, "safe_diff_summary", "") or "")[:2000]
-                for t in job.tasks
-            ]
-            _fjr = build_final_job_review(
-                job_goal=job.job_title,
-                task_plan=[{"task_id": t.task_id, "title": t.title} for t in job.tasks],
-                task_summaries=_task_summaries_fjr,
-                task_diffs=_task_diffs_fjr,
-                task_verdicts=_task_verdicts_fjr,
-                test_evidence={},
-                gate_verdicts=[],
-                job_id=job.job_id,
+def resume_job_plan(job_id: str, **run_kwargs: Any) -> JobPlan:
+    """Resume an interrupted JobPlan in its OWN job-owned worktree.
+
+    This is the JobPlan-level recovery record: it reads ``task_jobs/<job-id>/
+    job.json``, NOT a Core Job event log and not per-task ping-pong run records
+    (those correctly say ``cleanup_status=job_owned``; the job owns the worktree).
+
+    The same worktree (``job-<job-id>``), the same branch and the same base commit
+    are reused — never a replacement branch, never a copied workspace — and the
+    task loop continues from the correct task boundary, keeping each interrupted
+    task's ORIGINAL start tree so pre-crash work stays inside that task's diff and
+    review scope. A completed, cleanly cleaned job is NOT re-materialized.
+    """
+    job = load_job_plan(job_id)
+    if job is None:
+        raise ValueError(f"job_not_found: {job_id}")
+
+    if job.status == JOB_COMPLETED and job.worktree_cleanup_status == "clean":
+        return job                      # nothing to resume; do not recreate anything
+
+    if job.isolation_mode == "worktree":
+        if job.worktree_cleanup_status not in JOB_RECOVERABLE_STATES:
+            raise ValueError(
+                f"job_not_resumable: worktree cleanup_status="
+                f"{job.worktree_cleanup_status!r}"
             )
-            _fjr_dir = _jobs_dir() / job.job_id
-            _fjr_dir.mkdir(parents=True, exist_ok=True)
-            (_fjr_dir / "final_job_review.json").write_text(
-                _json.dumps(_fjr, indent=2) + "\n"
+        from packages.orchestration import worktrees as W
+        if not W._branch_exists(job.repo_path, job.worktree_branch):
+            raise ValueError(
+                f"job_branch_missing: {job.worktree_branch!r}; refusing to create "
+                f"a replacement branch or fall back to a copy"
             )
 
-            # If findings exist, persist final_job_repair_loop.json
-            if _fjr.get("findings"):
-                from packages.orchestration.final_job_review import build_final_job_repair_loop
-                _repair_loop = build_final_job_repair_loop(
-                    findings=_fjr["findings"],
-                    repair_tasks=[],
-                    re_review_verdict=_fjr["verdict"],
-                    rounds=0,
-                    budget=0,
-                )
-                (_fjr_dir / "final_job_repair_loop.json").write_text(
-                    _json.dumps(_repair_loop, indent=2) + "\n"
-                )
-        except Exception:
-            pass  # Best-effort; do not block job completion
-
-    elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
-        job.status = JOB_PAUSED
-
-    _persist_job(job)
-    return job
+    return run_job(job_id, **run_kwargs)
 
 
 def _block_job(job: JobPlan, failed_idx: int, error: str) -> None:
@@ -1402,13 +1932,28 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
             "proof_summary": _export_proof_summary(t.proof_summary),
         })
 
+    # F006: a completed worktree job's execution workspace is deliberately gone.
+    # Availability of the hand-off is decided by the worktree cleanup status plus a
+    # verified job-level result.diff — never by "is that directory still there?".
+    # The recorded relative worktree path is kept as audit data.
     has_workspace_changes = False
-    if job.job_workspace_path:
+    handoff_available = False
+    if job.isolation_mode == "worktree":
+        handoff_available = bool(
+            job.result_diff_path
+            and job.result_diff_sha256
+            and (_jobs_dir() / job.job_id / job.result_diff_path).is_file()
+        )
+        has_workspace_changes = handoff_available and any(
+            t.status == TASK_APPLIED for t in job.tasks
+        )
+    elif job.job_workspace_path:
         ws = Path(job.job_workspace_path)
         if ws.exists():
             has_workspace_changes = any(
                 t.status == TASK_APPLIED for t in job.tasks
             )
+            handoff_available = has_workspace_changes
 
     next_cmd = _suggest_next_command(job)
 
@@ -1424,6 +1969,27 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         "finished_at": job.finished_at,
         "tasks": task_reports,
         "has_workspace_changes": has_workspace_changes,
+        "isolation_mode": job.isolation_mode,
+        "worktree": {
+            "branch": job.worktree_branch,
+            "path": job.worktree_path,          # repo-relative audit path
+            "base_commit": job.worktree_base_commit,
+            "head": job.worktree_head,
+            "cleanup_status": job.worktree_cleanup_status,
+            "workspace_expected_present": (
+                job.isolation_mode == "worktree"
+                and job.worktree_cleanup_status != "clean"
+            ),
+        },
+        "handoff_available": handoff_available,
+        "result_diff": (
+            {
+                "path": job.result_diff_path,
+                "sha256": job.result_diff_sha256,
+                "size_bytes": job.result_diff_size_bytes,
+            }
+            if job.result_diff_path else None
+        ),
         "next_command": next_cmd,
         "target_guard": _export_target_guard(job.target_guard),
         "repair_rounds_allowed": job.repair_rounds_allowed,

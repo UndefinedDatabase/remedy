@@ -182,11 +182,17 @@ def _consolidate_file_proofs(
                     "existed_before_job": proof.existed_before_job,
                     "baseline_sha256": proof.baseline_sha256,
                     "final_workspace_sha256": proof.final_workspace_sha256,
+                    # The reviewed change includes the file mode, so drift detection
+                    # must see it: an external chmod on an otherwise untouched
+                    # target file would silently be reverted by promotion.
+                    "baseline_mode": proof.baseline_mode,
+                    "final_mode": proof.final_mode,
                 }
             else:
                 consolidated[proof.path]["final_workspace_sha256"] = (
                     proof.final_workspace_sha256
                 )
+                consolidated[proof.path]["final_mode"] = proof.final_mode
     return consolidated
 
 
@@ -254,11 +260,18 @@ def _check_baseline_readiness(
                 ))
                 continue
             current_target_hash = _hash_file(target_file)
-            if current_target_hash == baseline_hash:
-                b_status = "target_matches_baseline"
-            else:
+            baseline_mode = proof.get("baseline_mode", "")
+            current_mode = _mode_of(target_file)
+            if current_target_hash != baseline_hash:
                 blocks.append(f"target_changed_since_job: {rel_path}")
                 b_status = "target_changed_since_job"
+            elif baseline_mode and current_mode != baseline_mode:
+                # Content still matches the baseline, but somebody chmod'ed the
+                # target after the job ran. Promoting would silently revert that.
+                blocks.append(f"target_mode_changed_since_job: {rel_path}")
+                b_status = "target_mode_changed_since_job"
+            else:
+                b_status = "target_matches_baseline"
         else:
             kind = "created"
             if target_file.exists():
@@ -323,6 +336,16 @@ class JobPromotionResult:
     post_test_summary: str = ""
     started_at: str = ""
     finished_at: str = ""
+    # F006 fidelity + honest temp cleanup
+    source_changed_files: list[str] = field(default_factory=list)
+    reviewed_task_files: list[str] = field(default_factory=list)
+    unexpected_source_files: list[str] = field(default_factory=list)
+    missing_source_files: list[str] = field(default_factory=list)
+    modes_applied: dict[str, str] = field(default_factory=dict)
+    temporary_worktree_removed: bool = False
+    temporary_registration_removed: bool = False
+    cleanup_status: str = ""          # "" | "clean" | "failed"
+    cleanup_error: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +355,8 @@ class JobPromotionResult:
 def _block(
     result: JobPromotionResult,
     reason: str,
+    *,
+    persist: bool = True,
 ) -> JobPromotionResult:
     result.status = "blocked"
     result.blocked_reason = reason
@@ -344,11 +369,27 @@ def _safe_persist(
     job_id: str,
     result: JobPromotionResult,
     applied: list[str],
+    *,
+    final: bool = False,
 ) -> None:
-    """Persist promotion record, structuring any failure after target mutation."""
+    """Persist promotion record, structuring any failure after target mutation.
+
+    ``final=True`` is the one post-cleanup write: a failure there is reported
+    honestly rather than pretending a durable record (or a durable preview) exists.
+    """
     try:
         _persist_job_promotion(job_id, result)
     except OSError as exc:
+        if final and not applied:
+            original_status = result.status
+            result.status = "record_update_failed"
+            result.blocked_reason = (
+                f"promotion_record_update_failed: {exc} — "
+                f"original_status={original_status}; no durable record exists"
+            )
+            result.blocked_reasons.append(result.blocked_reason)
+            result.finished_at = datetime.now(timezone.utc).isoformat()
+            return
         if applied:
             original_status = result.status
             original_reason = result.blocked_reason
@@ -394,6 +435,205 @@ def _run_post_test(
         last_lines = output.strip().splitlines()[-5:]
         summary += " | " + " ".join(last_lines)
     return passed, summary
+
+
+# ---------------------------------------------------------------------------
+# F006: materialize a promotion source from the verified JobPlan hand-off
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PromotionSource:
+    """A temporary, read-only materialization of a completed job's hand-off."""
+
+    path: Path
+    repo: Path
+    temp_root: Path
+    materialized: bool = False
+
+
+def _materialize_promotion_source(job: Any) -> tuple[PromotionSource | None, str]:
+    """Deprecated shim kept for callers/tests that only want (source, error).
+
+    The lifecycle owner is :func:`_materialize_promotion_source_owned`, which never
+    cleans up behind the caller's back: a temporary worktree that could not be
+    removed must reach the caller, not vanish into a discarded return value.
+    """
+    source, err = _materialize_promotion_source_owned(job)
+    if source is not None and err:
+        # A partially materialized source with an error: the OWNER cleans it up.
+        return None, err
+    return source, err
+
+
+def _materialize_promotion_source_owned(job: Any) -> tuple[PromotionSource | None, str]:
+    """Rebuild the completed job's result from base commit + verified result.diff.
+
+    The execution worktree is deliberately disposable: after a clean cleanup the
+    authoritative hand-off is the recorded base commit plus the job directory's
+    ``result.diff`` (hash- and size-verified). This creates a TEMPORARY DETACHED
+    git worktree at the recorded base commit, ``git apply --check``s the diff and
+    then applies it. The original execution worktree is never recreated at its
+    recorded path, no branch is merged, nothing is committed and nothing is pushed.
+    """
+    import subprocess
+    import tempfile
+
+    from packages.orchestration.job_evidence import job_result_diff_source
+
+    src, err = job_result_diff_source(job)
+    if src is None:
+        return None, f"job_result_diff_invalid: {err}"
+
+    repo = Path(job.repo_path)
+    base = getattr(job, "worktree_base_commit", "")
+    if not base:
+        return None, "job_result_diff_invalid: no recorded base commit"
+
+    from packages.orchestration import worktrees as W
+    if not W.is_git_repo(repo):
+        return None, f"target_not_git_repository: {repo}"
+    if not W.commit_exists(repo, base):
+        return None, f"base_commit_missing: {base[:12]}"
+
+    temp_root = Path(tempfile.mkdtemp(prefix="remedy-promo-"))
+    ws = temp_root / "source"
+    source = PromotionSource(path=ws, repo=repo, temp_root=temp_root)
+
+    # From here on a temporary directory (and possibly a registered worktree) may
+    # exist, so the SOURCE is always returned — even on failure — and the caller
+    # owns the checked cleanup. Nothing is cleaned up and discarded here.
+    try:
+        proc = subprocess.run(
+            ["git", "worktree", "add", "--detach", str(ws), base],
+            cwd=str(repo), capture_output=True, text=True, timeout=120,
+        )
+        if proc.returncode != 0:
+            return source, f"promotion_worktree_failed: {proc.stderr.strip()[:200]}"
+        source.materialized = True
+
+        diff_arg = str(src)
+        check = subprocess.run(
+            ["git", "apply", "--check", diff_arg], cwd=str(ws),
+            capture_output=True, text=True, timeout=120,
+        )
+        if check.returncode != 0:
+            return source, f"job_diff_not_applicable: {check.stderr.strip()[:200]}"
+
+        applied = subprocess.run(
+            ["git", "apply", diff_arg], cwd=str(ws),
+            capture_output=True, text=True, timeout=120,
+        )
+        if applied.returncode != 0:
+            return source, f"job_diff_apply_failed: {applied.stderr.strip()[:200]}"
+    except Exception as exc:
+        return source, f"promotion_materialization_error: {type(exc).__name__}: {exc}"
+
+    return source, ""
+
+
+def _run_cleanup_git(argv: list[str], *, cwd: str, timeout: int) -> tuple[bool, str]:
+    """Run one cleanup git command. NEVER raises: returns (ok, error_text).
+
+    A cleanup step that explodes (timeout, missing git, any OS error) must not
+    abort the rest of the cleanup or replace the promotion outcome — it must be
+    recorded and the remaining steps must still run.
+    """
+    try:
+        proc = subprocess.run(
+            argv, cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"{' '.join(argv[:3])} timed out after {timeout}s"
+    except FileNotFoundError as exc:
+        return False, f"{' '.join(argv[:3])} could not run: FileNotFoundError: {exc}"
+    except OSError as exc:
+        return False, f"{' '.join(argv[:3])} failed: {type(exc).__name__}: {exc}"
+    except Exception as exc:                      # last resort: still no raise
+        return False, f"{' '.join(argv[:3])} failed: {type(exc).__name__}: {exc}"
+    if proc.returncode != 0:
+        return False, f"{' '.join(argv[:3])} failed: {proc.stderr.strip()[:150]}"
+    return True, ""
+
+
+def _failed_cleanup(error: str) -> dict[str, Any]:
+    """A cleanup result for the case where cleanup itself could not be completed."""
+    return {
+        "temporary_worktree_removed": False,
+        "temporary_registration_removed": False,
+        "cleanup_status": "failed",
+        "cleanup_error": error,
+    }
+
+
+def _cleanup_promotion_source(source: PromotionSource | None) -> dict[str, Any]:
+    """Remove the temporary promotion worktree — and SAY what actually happened.
+
+    TOTAL function: it never raises. Every step (remove, prune, physical delete,
+    inventory, path check) is guarded independently, each failure is recorded, and
+    the remaining steps still run — a cleanup exception must never escape and take
+    the promotion result, the applied-file list and the durable record with it.
+    """
+    out: dict[str, Any] = {
+        "temporary_worktree_removed": False,
+        "temporary_registration_removed": False,
+        "cleanup_status": "clean",
+        "cleanup_error": "",
+    }
+    if source is None:
+        return out
+
+    import shutil
+
+    errors: list[str] = []
+    try:
+        if source.materialized:
+            ok, err = _run_cleanup_git(
+                ["git", "worktree", "remove", "--force", str(source.path)],
+                cwd=str(source.repo), timeout=120,
+            )
+            if not ok:
+                errors.append(err)
+            ok, err = _run_cleanup_git(
+                ["git", "worktree", "prune"],
+                cwd=str(source.repo), timeout=60,
+            )
+            if not ok:
+                errors.append(err)
+
+        # Best-effort secondary cleanup — a failure is still recorded.
+        try:
+            if source.temp_root.exists():
+                shutil.rmtree(source.temp_root)
+        except Exception as exc:
+            errors.append(
+                f"temporary directory not deleted: {type(exc).__name__}: {exc}")
+
+        try:
+            from packages.orchestration import worktrees as W
+            registered = W._worktree_registered(source.repo, source.path)
+        except Exception as exc:
+            registered = True
+            errors.append(f"worktree inventory failed: {type(exc).__name__}: {exc}")
+        out["temporary_registration_removed"] = not registered
+        if registered:
+            errors.append(f"temporary worktree {source.path.name} is still registered")
+
+        try:
+            still_there = source.path.exists()
+        except Exception as exc:
+            still_there = True
+            errors.append(f"path check failed: {type(exc).__name__}: {exc}")
+        out["temporary_worktree_removed"] = not still_there
+        if still_there:
+            errors.append(
+                f"temporary worktree directory {source.path.name} still exists")
+    except Exception as exc:                      # belt and braces: never raise
+        errors.append(f"cleanup aborted: {type(exc).__name__}: {exc}")
+
+    if errors:
+        out["cleanup_status"] = "failed"
+        out["cleanup_error"] = "; ".join(errors)
+    return out
 
 
 def promote_job(
@@ -488,19 +728,153 @@ def promote_job(
         if t.apply_manifest.status != "applied":
             return _block(result, f"apply_manifest_not_applied: {t.task_id} status={t.apply_manifest.status}")
 
-    # --- Workspace exists ---
-    ws_path = job.job_workspace_path
-    if not ws_path:
-        return _block(result, "no_job_workspace_path")
+    # --- Promotion source ---
+    # F006: a completed worktree job has NO live workspace by design (a clean
+    # cleanup removed it). Its hand-off is the recorded base commit plus the
+    # verified result.diff, materialized into a TEMPORARY detached worktree here.
+    # This function is the single lifecycle owner: from the moment a temporary
+    # directory may exist, every exit path runs the checked cleanup, records its
+    # result on the returned object, and persists that final record exactly once.
+    promo_source: PromotionSource | None = None
+    out = result
+    try:
+        if getattr(job, "isolation_mode", "copy") == "worktree":
+            promo_source, perr = _materialize_promotion_source_owned(job)
+            if perr:
+                out = _block(result, perr, persist=False)
+            else:
+                out = _promote_from_workspace(
+                    job, result, promo_source.path, target_repo,
+                    approve=approve, dry_run=dry_run, test_command=test_command,
+                    persist_final=False,
+                )
+        else:
+            ws_path = job.job_workspace_path
+            if not ws_path:
+                return _block(result, "no_job_workspace_path")
+            workspace = Path(ws_path)
+            if not workspace.is_dir():
+                return _block(result, f"workspace_missing: {ws_path}")
+            return _promote_from_workspace(
+                job, result, workspace, target_repo,
+                approve=approve, dry_run=dry_run, test_command=test_command,
+            )
+    finally:
+        if promo_source is not None:
+            try:
+                cleanup = _cleanup_promotion_source(promo_source)
+            except Exception as exc:
+                # _cleanup_promotion_source is total, but a cleanup bug must still
+                # never destroy the promotion outcome or the durable record.
+                cleanup = _failed_cleanup(
+                    f"cleanup raised unexpectedly: {type(exc).__name__}: {exc}")
+            out.temporary_worktree_removed = cleanup["temporary_worktree_removed"]
+            out.temporary_registration_removed = cleanup["temporary_registration_removed"]
+            out.cleanup_status = cleanup["cleanup_status"]
+            out.cleanup_error = cleanup["cleanup_error"]
 
-    workspace = Path(ws_path)
-    if not workspace.is_dir():
-        return _block(result, f"workspace_missing: {ws_path}")
+    if promo_source is not None and out.cleanup_status == "failed":
+        # Never claim a clean run. The promotion outcome and the applied-file list
+        # are preserved: the target WAS touched if the status says so. A cleanup
+        # failure during a materialization failure reports BOTH.
+        if out.status == "promoted":
+            out.status = "promoted_cleanup_failed"
+        elif out.status == "dry_run":
+            out.status = "dry_run_cleanup_failed"
+        elif out.status == "blocked" and not out.files_applied:
+            out.status = "materialization_failed_cleanup_failed"
+        out.blocked_reasons = list(out.blocked_reasons) + [
+            f"temporary_promotion_cleanup_failed: {out.cleanup_error}"
+        ]
+
+    # ONE final persistence, after cleanup, for every materialized outcome — so the
+    # persisted record's cleanup fields and status match the object the CLI got.
+    if promo_source is not None:
+        _safe_persist(job_id, out, out.files_applied, final=True)
+    return out
+
+
+def _reviewed_files_and_proofs(job: Any) -> tuple[list[str], dict[str, Any]]:
+    from packages.orchestration.pingpong_job import (
+        _latest_task_proofs,
+        _reviewed_task_files,
+    )
+    return _reviewed_task_files(job), _latest_task_proofs(job)
+
+
+def _check_source_coverage(job: Any, result: JobPromotionResult, workspace: Path) -> str:
+    """The materialized source's changed paths must equal the reviewed file set.
+
+    An extra file in the root diff (a finalization hook writing ``rogue.txt``) would
+    otherwise be materialized into the promotion source and quietly ignored, so the
+    hand-off, the task evidence and the promotion would all disagree. Any extra or
+    missing path blocks.
+    """
+    import subprocess
+
+    proc = subprocess.run(
+        ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+        cwd=str(workspace), capture_output=True, text=True, timeout=120,
+    )
+    if proc.returncode != 0:
+        return f"promotion_source_inspect_failed: {proc.stderr.strip()[:150]}"
+    changed = sorted({
+        entry[3:] for entry in proc.stdout.split("\0") if len(entry) > 3
+    })
+    reviewed, _proofs = _reviewed_files_and_proofs(job)
+
+    result.source_changed_files = changed
+    result.reviewed_task_files = reviewed
+    result.unexpected_source_files = sorted(set(changed) - set(reviewed))
+    result.missing_source_files = sorted(set(reviewed) - set(changed))
+
+    if result.unexpected_source_files or result.missing_source_files:
+        return (
+            "promotion_coverage_failed: "
+            f"unexpected={result.unexpected_source_files} "
+            f"missing={result.missing_source_files}"
+        )
+    return ""
+
+
+def _mode_of(path: Path) -> str:
+    from packages.orchestration import worktrees as W
+    return W.file_mode(path)
+
+
+def _promote_from_workspace(
+    job: Any,
+    result: JobPromotionResult,
+    workspace: Path,
+    target_repo: str,
+    *,
+    approve: bool,
+    dry_run: bool,
+    test_command: str,
+    persist_final: bool = True,
+) -> JobPromotionResult:
+    """The existing baseline-aware promotion, against a resolved source.
+
+    ``persist_final=False`` means an outer owner (the temporary-worktree lifecycle)
+    will write the ONE final record after cleanup, so this function must not write
+    a record that would later disagree with the returned object.
+    """
+    job_id = job.job_id
+
+    def _persist_outcome(applied_files: list[str]) -> None:
+        if persist_final:
+            _safe_persist(job_id, result, applied_files, final=True)
 
     # --- Target repo exists ---
     target = Path(target_repo).resolve()
     if not target.is_dir():
         return _block(result, f"target_not_directory: {target_repo}")
+
+    # --- Fidelity: the materialized source must be EXACTLY the reviewed work ---
+    if getattr(job, "isolation_mode", "copy") == "worktree":
+        cov_err = _check_source_coverage(job, result, workspace)
+        if cov_err:
+            return _block(result, cov_err)
 
     # --- Collect files from apply manifests only ---
     all_applied: list[str] = []
@@ -573,11 +947,27 @@ def promote_job(
     if not clean:
         return _block(result, f"baseline_check_failed: {block_reasons}")
 
+    # --- Mode fidelity: the source must still carry the reviewed file mode ---
+    _reviewed, mode_proofs = _reviewed_files_and_proofs(job)
+    mode_blocks: list[str] = []
+    for rel_path in planned:
+        proof = mode_proofs.get(rel_path)
+        expected = getattr(proof, "final_mode", "") if proof else ""
+        if not expected:
+            continue
+        actual = _mode_of(workspace / rel_path)
+        if actual != expected:
+            mode_blocks.append(
+                f"{rel_path}: source mode {actual} != reviewed {expected}"
+            )
+    if mode_blocks:
+        return _block(result, f"mode_check_failed: {mode_blocks}")
+
     # --- Dry-run or unapproved: preview only ---
     if dry_run or not approve:
         result.status = "dry_run"
         result.finished_at = datetime.now(timezone.utc).isoformat()
-        _persist_job_promotion(job_id, result)
+        _persist_outcome([])
         return result
 
     # --- Preflight promotion record writability ---
@@ -616,7 +1006,7 @@ def promote_job(
             result.blocked_reason = f"source_unsafe_at_apply: {rel_path}: {src_reason}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _safe_persist(job_id, result, applied)
+            _persist_outcome(applied)
             return result
 
         dest_reason = _validate_dest_containment(target, rel_path)
@@ -625,7 +1015,7 @@ def promote_job(
             result.blocked_reason = f"dest_unsafe_at_apply: {rel_path}: {dest_reason}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _safe_persist(job_id, result, applied)
+            _persist_outcome(applied)
             return result
 
         dest = target / rel_path
@@ -633,13 +1023,19 @@ def promote_job(
         try:
             content = ws_file.read_bytes()
             dest.write_bytes(content)
+            reviewed_mode = _mode_of(ws_file)
+            if reviewed_mode == "100755":
+                dest.chmod(dest.stat().st_mode | 0o111)
+            else:
+                dest.chmod(dest.stat().st_mode & ~0o111)
+            result.modes_applied[rel_path] = reviewed_mode
             applied.append(rel_path)
         except OSError as exc:
             result.status = "blocked"
             result.blocked_reason = f"write_failed: {rel_path}: {exc}"
             result.files_applied = applied
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _safe_persist(job_id, result, applied)
+            _persist_outcome(applied)
             return result
 
     result.files_applied = applied
@@ -653,13 +1049,25 @@ def promote_job(
                 result.status = "blocked"
                 result.blocked_reason = f"post_apply_mismatch: {rel_path}"
                 result.finished_at = datetime.now(timezone.utc).isoformat()
-                _safe_persist(job_id, result, applied)
+                _persist_outcome(applied)
+                return result
+            src_mode, dst_mode = _mode_of(ws_file), _mode_of(dest)
+            if src_mode != dst_mode:
+                # A filesystem that cannot represent the reviewed mode must block,
+                # not claim a faithful promotion.
+                result.status = "blocked"
+                result.blocked_reason = (
+                    f"post_apply_mode_mismatch: {rel_path}: "
+                    f"target {dst_mode} != reviewed {src_mode}"
+                )
+                result.finished_at = datetime.now(timezone.utc).isoformat()
+                _persist_outcome(applied)
                 return result
         except OSError as exc:
             result.status = "blocked"
             result.blocked_reason = f"post_apply_verify_failed: {rel_path}: {exc}"
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _safe_persist(job_id, result, applied)
+            _persist_outcome(applied)
             return result
 
     # --- Post-promotion tests ---
@@ -670,12 +1078,12 @@ def promote_job(
         if not passed:
             result.status = "promoted_test_failed"
             result.finished_at = datetime.now(timezone.utc).isoformat()
-            _safe_persist(job_id, result, applied)
+            _persist_outcome(applied)
             return result
 
     result.status = "promoted"
     result.finished_at = datetime.now(timezone.utc).isoformat()
-    _safe_persist(job_id, result, applied)
+    _persist_outcome(applied)
     return result
 
 
@@ -725,6 +1133,17 @@ def export_job_promotion_json(result: JobPromotionResult) -> dict[str, Any]:
         "job_status": result.job_status,
         "job_title": result.job_title,
         "job_workspace_path": _sanitize_path(result.job_workspace_path),
+        "source_changed_files": result.source_changed_files,
+        "reviewed_task_files": result.reviewed_task_files,
+        "unexpected_source_files": result.unexpected_source_files,
+        "missing_source_files": result.missing_source_files,
+        "modes_applied": result.modes_applied,
+        "temporary_worktree_cleanup": {
+            "temporary_worktree_removed": result.temporary_worktree_removed,
+            "temporary_registration_removed": result.temporary_registration_removed,
+            "cleanup_status": result.cleanup_status,
+            "cleanup_error": result.cleanup_error,
+        },
         "task_summaries": [
             {
                 "task_id": ts.task_id,
@@ -776,6 +1195,32 @@ def summarize_job_promotion(result: JobPromotionResult) -> str:
         f"Approved: {result.approved}",
         f"Target: {_sanitize_path(result.target_repo)}",
     ]
+    if result.cleanup_status:
+        lines.append(f"Temp worktree cleanup: {result.cleanup_status}")
+        if result.cleanup_error:
+            lines.append(f"  Cleanup error: {result.cleanup_error}")
+
+    if result.cleanup_status == "failed":
+        # Never let a reader infer the damage from a status string alone: say
+        # plainly whether the target was touched, which files, and what is left over.
+        lines.append("")
+        if result.files_applied:
+            lines.append("The target was changed.")
+            lines.append(f"Files applied: {result.files_applied}")
+        else:
+            lines.append("The target was NOT changed"
+                         + (" (dry-run only)." if result.dry_run or not result.approved
+                            else "."))
+        lines.append("Temporary promotion cleanup failed.")
+        lines.append(f"Cleanup error: {result.cleanup_error}")
+        if not result.temporary_registration_removed:
+            lines.append(
+                "A temporary git worktree registration may remain "
+                "(check `git worktree list`)."
+            )
+        if not result.temporary_worktree_removed:
+            lines.append("A temporary promotion directory may remain on disk.")
+        lines.append("Manual cleanup is required.")
 
     if result.task_summaries:
         lines.append("")

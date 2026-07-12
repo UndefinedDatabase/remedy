@@ -212,6 +212,187 @@ def check_stream_artifacts(evidence_dir: str) -> dict[str, Any]:
     }
 
 
+def parse_diff_paths(text: str) -> list[str]:
+    """Changed paths as GIT writes them, read back from the diff itself.
+
+    Deliberately not "trust the metadata someone wrote next to the file": the paths
+    come from the actual ``diff --git a/<p> b/<p>`` headers, so a root diff that
+    carries an extra file cannot hide behind a coverage list.
+    """
+    paths: set[str] = set()
+    for line in text.splitlines():
+        if not line.startswith("diff --git "):
+            continue
+        rest = line[len("diff --git "):]
+        parts = rest.split(" b/")
+        if len(parts) < 2:
+            continue
+        paths.add(parts[-1].strip())
+    return sorted(paths)
+
+
+def check_worktree_artifacts(evidence_dir: str) -> dict[str, Any]:
+    """Verify the F006 ``result.diff`` each worktree run's evidence references.
+
+    A run that executed in a worktree hands its result back as a branch plus a
+    deterministic ``result.diff``. Existence is not integrity: the referenced diff
+    is re-hashed and re-measured against the sha256/size the run recorded, so a
+    tampered or swapped diff can never be presented as verified evidence. A
+    ``result.diff`` sitting in a task directory that no ``worktree.json``
+    references is rejected as an unreferenced replacement.
+
+    Manual-only completion jobs never ran a worktree, so there is nothing to
+    require: the check is NOT_APPLICABLE and never blocks.
+    """
+    base = Path(evidence_dir) if evidence_dir else Path(".")
+    worktree_tasks: list[str] = []
+    missing: list[str] = []
+    missing_reference: list[str] = []
+    hash_mismatches: list[dict[str, str]] = []
+    size_mismatches: list[dict[str, Any]] = []
+    unreferenced: list[str] = []
+    unsafe: list[str] = []
+    verified_count = 0
+    job_level = False
+
+    def _check_one(doc: dict[str, Any], run_dir: Path, key_prefix: str) -> None:
+        """Verify one worktree record's referenced diff, bytes and all."""
+        nonlocal verified_count
+        rd = doc.get("result_diff")
+        diff_file = run_dir / "result.diff"
+        if not isinstance(rd, dict) or not rd.get("path"):
+            missing_reference.append(f"{key_prefix}worktree.json")
+            if diff_file.is_file():
+                unreferenced.append(f"{key_prefix}result.diff")
+            return
+        ref = str(rd.get("path") or "")
+        key = f"{key_prefix}{ref}"
+        if not _is_safe_relative(ref) or ref != "result.diff":
+            unsafe.append(key)
+            return
+        target = run_dir / ref
+        if target.is_symlink():
+            unsafe.append(key)
+            return
+        if not target.is_file():
+            missing.append(key)
+            return
+        actual_hash, actual_size = _sha256_and_size(target)
+        ok = True
+        if actual_hash != str(rd.get("sha256") or ""):
+            hash_mismatches.append({
+                "path": key, "recorded": str(rd.get("sha256") or ""),
+                "actual": actual_hash,
+            })
+            ok = False
+        if actual_size != rd.get("size_bytes"):
+            size_mismatches.append({
+                "path": key, "recorded": rd.get("size_bytes"), "actual": actual_size,
+            })
+            ok = False
+        if ok:
+            verified_count += 1
+
+    # --- root (JobPlan-level) hand-off ---------------------------------------
+    coverage_issues: list[str] = []
+    coverage_verdict = ""
+    root_doc = _read_json(base / "worktree.json")
+    if root_doc is not None and root_doc.get("isolation_mode") == "worktree":
+        job_level = True
+        worktree_tasks.append("(job)")
+        _check_one(root_doc, base, "")
+
+        cov = root_doc.get("handoff_coverage") or {}
+        coverage_verdict = str(cov.get("verdict") or "")
+        reviewed = sorted(cov.get("reviewed_task_files") or [])
+        recorded_root = sorted(cov.get("root_changed_files") or [])
+        if coverage_verdict != "PASS":
+            coverage_issues.append(
+                f"handoff_coverage_verdict is {coverage_verdict or 'absent'!r}, not PASS"
+            )
+        if recorded_root != reviewed:
+            coverage_issues.append(
+                f"root_changed_files {recorded_root} != reviewed_task_files {reviewed}"
+            )
+        diff_file = base / "result.diff"
+        if diff_file.is_file() and not diff_file.is_symlink():
+            actual = parse_diff_paths(
+                diff_file.read_text(encoding="utf-8", errors="replace"))
+            extra = sorted(set(actual) - set(reviewed))
+            absent = sorted(set(reviewed) - set(actual))
+            if extra:
+                coverage_issues.append(
+                    f"root result.diff changes unreviewed files {extra}")
+            if absent:
+                coverage_issues.append(
+                    f"root result.diff omits reviewed files {absent}")
+    elif (base / "result.diff").is_file():
+        unreferenced.append("result.diff")
+
+    task_runs = base / "task_runs"
+    if task_runs.is_dir():
+        for run_dir in sorted(p for p in task_runs.iterdir() if p.is_dir()):
+            task = run_dir.name
+            doc = _read_json(run_dir / "worktree.json")
+            diff_file = run_dir / "result.diff"
+
+            if doc is None or doc.get("isolation_mode") != "worktree":
+                # No worktree run here: a stray result.diff is an unreferenced file.
+                if diff_file.is_file():
+                    unreferenced.append(f"task_runs/{task}/result.diff")
+                continue
+
+            worktree_tasks.append(task)
+            _check_one(doc, run_dir, f"task_runs/{task}/")
+
+    if not worktree_tasks and not unreferenced:
+        # Manual-only completion job: no runtime worktree, nothing to require.
+        return {
+            "applicable": False,
+            "verdict": "NOT_APPLICABLE",
+            "job_level_handoff": False,
+            "handoff_coverage_verdict": "",
+            "handoff_coverage_issues": [],
+            "missing_job_handoff": [],
+            "worktree_tasks": [],
+            "diffs_verified": 0,
+            "missing_result_diffs": [],
+            "missing_result_diff_references": [],
+            "result_diff_hash_mismatches": [],
+            "result_diff_size_mismatches": [],
+            "unreferenced_result_diffs": [],
+            "unsafe_result_diff_refs": [],
+        }
+
+    missing_root: list[str] = []
+    if not job_level and [t for t in worktree_tasks if t != "(job)"]:
+        # Worktree task runs but no verified JobPlan hand-off: the root diff is the
+        # authoritative deliverable, so its absence blocks even when every task
+        # diff is present and valid.
+        missing_root.append("worktree.json")
+
+    blocked = (
+        missing or missing_reference or hash_mismatches or size_mismatches
+        or unreferenced or unsafe or missing_root or coverage_issues
+    )
+    return {
+        "applicable": True,
+        "verdict": "BLOCKED" if blocked else "PASS",
+        "job_level_handoff": job_level,
+        "handoff_coverage_verdict": coverage_verdict,
+        "handoff_coverage_issues": coverage_issues,
+        "missing_job_handoff": missing_root,
+        "worktree_tasks": worktree_tasks,
+        "diffs_verified": verified_count,
+        "missing_result_diffs": missing,
+        "missing_result_diff_references": missing_reference,
+        "result_diff_hash_mismatches": hash_mismatches,
+        "result_diff_size_mismatches": size_mismatches,
+        "unreferenced_result_diffs": unreferenced,
+        "unsafe_result_diff_refs": unsafe,
+    }
+
+
 def build_artifact_contract_gate(
     evidence_dir: str,
     required_artifacts: list[str] | None = None,
@@ -256,6 +437,7 @@ def build_artifact_contract_gate(
     job_id_fresh = (not current_job_id) or (not evidence_job_id) or (evidence_job_id == current_job_id)
 
     streams = check_stream_artifacts(str(base))
+    worktrees = check_worktree_artifacts(str(base))
 
     issues: list[str] = []
     for name in missing_required:
@@ -290,10 +472,36 @@ def build_artifact_contract_gate(
     for ref in streams["unsafe_stream_artifact_refs"]:
         issues.append(f"stream artifact ref {ref!r} is not a safe relative path")
 
+    for issue in worktrees.get("handoff_coverage_issues", []):
+        issues.append(f"worktree hand-off coverage failed: {issue}")
+    for ref in worktrees.get("missing_job_handoff", []):
+        issues.append(
+            f"worktree job exports no verified job-level hand-off ({ref!r})"
+        )
+    for ref in worktrees["missing_result_diffs"]:
+        issues.append(f"referenced worktree diff {ref!r} is missing from the bundle")
+    for ref in worktrees["missing_result_diff_references"]:
+        issues.append(f"worktree run {ref!r} references no result.diff")
+    for m in worktrees["result_diff_hash_mismatches"]:
+        issues.append(
+            f"worktree diff {m['path']!r} sha256 mismatch: "
+            f"recorded {m['recorded']!r}, actual {m['actual']!r}"
+        )
+    for m in worktrees["result_diff_size_mismatches"]:
+        issues.append(
+            f"worktree diff {m['path']!r} size mismatch: "
+            f"recorded {m['recorded']!r}, actual {m['actual']!r}"
+        )
+    for ref in worktrees["unreferenced_result_diffs"]:
+        issues.append(f"result diff {ref!r} is not referenced by any worktree record")
+    for ref in worktrees["unsafe_result_diff_refs"]:
+        issues.append(f"worktree diff ref {ref!r} is not a safe relative path")
+
     verdict = (
         "BLOCKED"
         if (missing_required or critical_fv_missing or stale_job_id
-            or streams["verdict"] == "BLOCKED")
+            or streams["verdict"] == "BLOCKED"
+            or worktrees["verdict"] == "BLOCKED")
         else "PASS"
     )
 
@@ -308,6 +516,7 @@ def build_artifact_contract_gate(
         "evidence_job_id": evidence_job_id,
         "job_id_fresh": job_id_fresh,
         "stream_artifacts": streams,
+        "worktree_artifacts": worktrees,
         "issues": issues,
     }
 

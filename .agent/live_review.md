@@ -1,48 +1,47 @@
-# Live Review — Steps 5961-6020 — F005 — Enforced structured outputs
+# Live Review — Steps 6021-6080 — F006 — Worktree isolation per run
 
 Reviewer: external final reviewer (independent; owns verdict).
 
 ## Verdict
 
-**`PASS_WITH_RISKS — ACCEPTED`.** F005 is externally accepted and ready for
-commit, push, PR and merge. F001–F004 are accepted and merged (F004 = PR #124,
-merge commit `cb55909`).
+**PASS_WITH_RISKS — ACCEPTED** (external, final).
+Accepted job `7fa740042a7e4561`; ZIP
+`remedy-review-20260712-000713-READY_FOR_REVIEW.zip`
+sha256 `76dbd7f042ea2bda0b6c2511e8dac57440025f7a361f78ac470f0855e0374aed`;
+24 content-proof files; 1558 evidence tests; 0 completion provider calls.
+F006 is ready to commit, push, PR and merge. F007 starts only after the merge.
+F008 read, explicitly NOT started (Tier-5 SSE; depends on the missing F146).
 
 ## Branch / Base
 
-- Branch: `feature/f005-structured-outputs`
-- Base/HEAD before commit: `cb55909`
+- Branch: `feature/f006-worktree-isolation`
+- Base: `367a26b` (main after the F005 merge)
 
 ## Scope
 
-F005 — Enforced structured outputs. Small enforced JSON schemas replace fragile
-free-text Reviewer and Planner parsing: mandatory top-level `schema_v`
-(ReviewVerdict `rv1`, PlannerPlan `pp1`, DesignSpec `ds1` placeholder), native
-Claude `--json-schema` (JSON + stream `structured_output`) and native Ollama
-`format=<schema>`, a hard maximum of one logical parse retry, honest `parse`
-classification of native structured-output exhaustion with Usage/cost retained,
-one prompt trace per actual provider call with exact sent-prompt hashes, and
-legacy free-text paths only behind explicit compatibility flags.
+Every run gets its own git worktree `.remedy-wt/<job-id>` on branch
+`remedy/<job-id>`. The main checkout is never mutated. The hand-off is a branch
+plus a deterministic, repository-relative `result.diff` (hashed and sized) — never
+an automatic merge. fcntl locks prevent double claims. An interrupted run leaves a
+recoverable worktree; recovery never creates a different branch, and physical
+cleanup keeps the result branch.
 
-## Accepted package
+## Task scopes (manual completion, non-overlapping)
 
-- Job `e943e67937ef4124`; hidden evidence `.data/evidence_exports/e943e67937ef4124`.
-- ZIP `remedy-review-20260711-132104-READY_FOR_REVIEW.zip`
-  sha256 `62565a9806e16a95440cf7d70fc7422976b7a8b0ae7b9c5187ae419f78d2c2d6`.
-- 24 content-proof files; 0 materialization provider calls.
-- Evidence verification tests: 700 passed, 0 failed.
-- All gates green; commit_execution_gate = NEEDS_HUMAN_APPROVAL; human final
-  reviewer required.
+- T001 worktree manager + tests + ignore rule (3 files).
+- T002 loop integration: worktree replaces the copy-based primary run path (1).
+- T003 parallel isolation / interrupted-run recovery tests + roadmap note (2).
 
-## Verification (accepted)
+## Verification
 
-- Focused F005 group — 127 passed.
-- Stream / reviewer / retry group — 242 passed.
-- Provider / planner / CLI group — 312 passed.
+- F006 — 224 passed (11 files; the accepted ten still total 190).
+- Affected production suites, file by file — 1001 passed.
+- F001–F005 regression, file by file — 648 passed.
 - compileall, `bash -n scripts/make_review_zip.sh`, `git diff --check` clean.
-- Independent external validation confirmed 24/24 current content hashes.
+- Zero provider calls; temporary git repositories, fake providers and
+  monkeypatching only.
+- Pre-existing, unrelated doc-existence failures, identical on the untouched tree.
 
 ## Status
 
-F005 accepted and ready for commit/push/PR/merge. F006 begins only after the
-F005 merge. F007 untouched.
+Accepted. Closing out: commit → push → PR → merge. Nothing else in scope.
