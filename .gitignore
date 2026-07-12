@@ -230,3 +230,5 @@ run_transcript.txt
 
 # Coverage reports
 .coverage_reports/
+# F006 run worktrees (never committed)
+.remedy-wt/

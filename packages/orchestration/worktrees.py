@@ -362,3 +362,320 @@ def snapshot(handle: WorktreeHandle) -> str:
     sha = _git(handle.path, "rev-parse", "HEAD").strip()
     handle.head_commit = sha
     return sha
+
+
+def diff(handle: WorktreeHandle) -> str:
+    """Deterministic, repository-relative diff of everything the run changed.
+
+    Covers tracked edits AND new files (``--intent-to-add`` staging of untracked
+    paths), so a run that only adds files still produces a real diff. Paths are
+    repository-relative because git emits them that way.
+    """
+    # Register untracked files so they appear in the diff, without committing.
+    _git(handle.path, "add", "--intent-to-add", "--all", check=False)
+    text = _git(
+        handle.path, "diff", "--no-color", "--no-ext-diff", "--src-prefix=a/",
+        "--dst-prefix=b/", "HEAD",
+    )
+    return text
+
+
+def write_result_diff(handle: WorktreeHandle, out_path: str | Path) -> dict[str, Any]:
+    """Persist ``result.diff`` and return its sha256/size for evidence."""
+    text = diff(handle)
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    data = text.encode("utf-8")
+    out.write_bytes(data)
+    return {
+        "path": out.name,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size_bytes": len(data),
+        "empty": not text.strip(),
+    }
+
+
+def retain_for_recovery(handle: WorktreeHandle, reason: str = "") -> dict[str, Any]:
+    """Keep the worktree — and its uncommitted changes — for a later recovery.
+
+    The git worktree stays registered and the branch stays put; only the
+    in-process fcntl lock is released, so a later ``recover()`` (from
+    ``remedy job resume``) can claim it. Nothing is committed and nothing is
+    merged: this is the safe end state whenever the branch-plus-diff hand-off
+    could NOT be persisted, because the run's changes are uncommitted and the
+    worktree is the only place they exist.
+    """
+    release_lock(handle)
+    return {
+        "worktree_removed": False,
+        "branch": handle.branch,
+        "branch_kept": True,
+        "worktree_retained": True,
+        "cleanup_status": "failed_recoverable" if reason else "retained",
+        "cleanup_error": reason,
+    }
+
+
+def write_tree(handle: WorktreeHandle) -> str:
+    """Deterministic tree object for the worktree's COMPLETE current state.
+
+    Includes untracked files. Uses a private temporary index (``GIT_INDEX_FILE``),
+    so the worktree's real index is never touched, nothing is committed, no branch
+    moves and nothing is ever merged. Two such trees, taken before and after a
+    task, give an exact task-local diff without a commit — and without ever
+    comparing filesystem timestamps.
+    """
+    import tempfile
+
+    fd, tmp = tempfile.mkstemp(prefix="remedy-index-")
+    os.close(fd)
+    os.unlink(tmp)                       # git wants to create it itself
+    env = {**os.environ, "GIT_INDEX_FILE": tmp}
+    try:
+        proc = subprocess.run(
+            ["git", "add", "-A", "."], cwd=handle.path, env=env,
+            capture_output=True, text=True, timeout=120,
+        )
+        if proc.returncode != 0:
+            raise WorktreeError(f"git add for tree snapshot failed: {proc.stderr[:200]}")
+        proc = subprocess.run(
+            ["git", "write-tree"], cwd=handle.path, env=env,
+            capture_output=True, text=True, timeout=60,
+        )
+        if proc.returncode != 0:
+            raise WorktreeError(f"git write-tree failed: {proc.stderr[:200]}")
+        return proc.stdout.strip()
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def diff_trees(handle: WorktreeHandle, before: str, after: str) -> str:
+    """Deterministic, repository-relative diff between two tree objects."""
+    return _git(
+        handle.path, "diff", "--no-color", "--no-ext-diff", "--src-prefix=a/",
+        "--dst-prefix=b/", before, after,
+    )
+
+
+def changed_files_between(handle: WorktreeHandle, before: str, after: str) -> list[str]:
+    out = _git(handle.path, "diff", "--name-only", before, after)
+    return sorted(line.strip() for line in out.splitlines() if line.strip())
+
+
+def blob_at(handle: WorktreeHandle, tree: str, rel_path: str) -> bytes | None:
+    """Contents of ``rel_path`` in ``tree``, or None when it did not exist."""
+    proc = subprocess.run(
+        ["git", "show", f"{tree}:{rel_path}"], cwd=handle.path,
+        capture_output=True, timeout=60,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def write_tree_diff(
+    handle: WorktreeHandle, before: str, after: str, out_path: str | Path,
+) -> dict[str, Any]:
+    """Persist a tree-to-tree diff and return its sha256/size for evidence."""
+    text = diff_trees(handle, before, after)
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    data = text.encode("utf-8")
+    out.write_bytes(data)
+    return {
+        "path": out.name,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size_bytes": len(data),
+        "empty": not text.strip(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint refs — keep an active tree object alive across git gc/prune
+# ---------------------------------------------------------------------------
+
+#: Private Remedy ref namespace. These are CHECKPOINTS, never result branches:
+#: nothing is ever committed to them, merged from them or pushed.
+CHECKPOINT_REF_PREFIX = "refs/remedy/checkpoints"
+
+_SAFE_REF_COMPONENT_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+
+
+def validate_ref_component(part: str) -> str:
+    if not _SAFE_REF_COMPONENT_RE.match(str(part or "")):
+        raise WorktreeError(f"unsafe ref component {part!r}")
+    return part
+
+
+def checkpoint_ref(job_id: str, name: str, task_id: str = "") -> str:
+    """``refs/remedy/checkpoints/job-<id>/job-initial`` or ``/tasks/<T>-start``."""
+    validate_ref_component(job_id)
+    validate_ref_component(name)
+    if task_id:
+        validate_ref_component(task_id)
+        return f"{CHECKPOINT_REF_PREFIX}/{job_id}/tasks/{task_id}-{name}"
+    return f"{CHECKPOINT_REF_PREFIX}/{job_id}/{name}"
+
+
+def set_checkpoint_ref(repo: str | Path, ref: str, sha: str) -> None:
+    """Point a checkpoint ref at a tree object, atomically (``git update-ref``).
+
+    A raw tree SHA in job.json is NOT a durable checkpoint: an uncommitted job
+    state is unreachable from any branch, so ``git gc``/``git prune`` will collect
+    it. The ref makes the object reachable — without moving a branch, committing
+    or merging anything.
+    """
+    if not ref.startswith(CHECKPOINT_REF_PREFIX + "/"):
+        raise WorktreeError(f"refusing to write non-checkpoint ref {ref!r}")
+    _git(repo, "update-ref", ref, sha)
+
+
+def resolve_checkpoint_ref(repo: str | Path, ref: str) -> str:
+    """The object the ref points at, or "" when the ref does not exist."""
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=str(repo), capture_output=True, text=True,
+    )
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def delete_checkpoint_ref(repo: str | Path, ref: str) -> str:
+    """Drop an obsolete checkpoint ref. Returns "" or an error string."""
+    if not ref.startswith(CHECKPOINT_REF_PREFIX + "/"):
+        return f"refusing to delete non-checkpoint ref {ref!r}"
+    proc = subprocess.run(
+        ["git", "update-ref", "-d", ref], cwd=str(repo),
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return proc.stderr.strip()[:200]
+    return ""
+
+
+def object_exists(repo: str | Path, sha: str) -> bool:
+    if not sha:
+        return False
+    proc = subprocess.run(
+        ["git", "cat-file", "-e", sha], cwd=str(repo),
+        capture_output=True, text=True,
+    )
+    return proc.returncode == 0
+
+
+def mode_at(handle: WorktreeHandle, tree: str, rel_path: str) -> str:
+    """The git file mode of ``rel_path`` in ``tree`` ("100644"/"100755"), or ""."""
+    if not (tree and rel_path):
+        return ""
+    out = _git(handle.path, "ls-tree", tree, "--", rel_path, check=False)
+    if not out.strip():
+        return ""
+    return out.split()[0]
+
+
+def file_mode(path: str | Path) -> str:
+    """Normalized git mode of a real file: executable bit only."""
+    p = Path(path)
+    if p.is_symlink():
+        return "120000"
+    return "100755" if os.access(p, os.X_OK) else "100644"
+
+
+def remove(handle: WorktreeHandle, *, keep_branch: bool = True) -> dict[str, Any]:
+    """Remove the physical worktree. The result branch is KEPT by default.
+
+    There is never an automatic merge: the branch is the hand-off.
+
+    The handle's lock is released on EVERY exit (``try/finally``): a git command
+    that blows up half way through must not leave the run id permanently
+    unclaimable, or recovery could never reach the worktree it left behind.
+    Cleanup is only ever reported ``clean`` when the directory is gone AND git no
+    longer has it registered.
+    """
+    root = Path(handle.repo_path)
+    path = Path(handle.path)
+    removed = False
+    branch_kept = True
+    error = ""
+
+    try:
+        if _worktree_registered(root, path):
+            _git(root, "worktree", "remove", "--force", str(path), check=False)
+            removed = True
+        _git(root, "worktree", "prune", check=False)
+        if path.exists():
+            import shutil
+            shutil.rmtree(path)          # raises: a failed delete is not a clean run
+        if not keep_branch:
+            _git(root, "branch", "-D", handle.branch, check=False)
+            branch_kept = False
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+    finally:
+        release_lock(handle)             # always claimable again
+
+    still_there = True
+    still_registered = True
+    if not error:
+        try:
+            still_there = path.exists()
+            still_registered = _worktree_registered(root, path)
+        except Exception as exc:
+            error = f"cleanup verification failed: {type(exc).__name__}: {exc}"
+    if not error:
+        if still_there:
+            error = f"worktree directory {path} still exists after removal"
+        elif still_registered:
+            error = f"worktree {path} is still registered with git after removal"
+
+    return {
+        "worktree_removed": removed and not error,
+        "branch": handle.branch,
+        "branch_kept": branch_kept,
+        "cleanup_status": "failed" if error else "clean",
+        "cleanup_error": error,
+    }
+
+
+def recover(job_id: str, repo: str | Path) -> WorktreeHandle | None:
+    """Rediscover an interrupted run's worktree so it can be resumed or cleaned.
+
+    Returns a handle when a worktree or its branch still exists, else None. Never
+    creates a DIFFERENT branch: recovery is only ever for this job's own branch.
+    """
+    jid = validate_job_id(job_id)
+    root = repo_root(repo)
+    branch = branch_for(jid)
+    path = worktree_path_for(root, jid)
+
+    registered = _worktree_registered(root, path)
+    exists = path.exists()
+    has_branch = _branch_exists(root, branch)
+    if not (registered or exists or has_branch):
+        return None
+
+    if exists and not registered:
+        # Stale directory from a crash: let git re-adopt or drop it.
+        _git(root, "worktree", "prune", check=False)
+        registered = _worktree_registered(root, path)
+
+    fd, lock = _acquire_lock(root, jid)
+    handle = WorktreeHandle(
+        job_id=jid, repo_path=str(root), path=str(path), branch=branch,
+        base_commit=_git(root, "rev-parse", "HEAD").strip(),
+        lock_path=str(lock), created=False, _lock_fd=fd,
+    )
+    if registered:
+        try:
+            actual = _git(path, "rev-parse", "--abbrev-ref", "HEAD").strip()
+            if actual != branch:
+                raise WorktreeConflictError(
+                    f"recovered worktree {path} is on {actual!r}, not {branch!r}"
+                )
+            handle.head_commit = snapshot(handle)
+        except Exception:
+            release_lock(handle)      # never strand the lock on a failed recovery
+            raise
+    return handle
