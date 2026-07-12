@@ -1,3 +1,9 @@
+## Current feature
+
+F007 — Runtime harness (branch `feature/f007-runtime-harness`, base `d969688`).
+`remedy runtime serve|probe|stop` over `packages/runtimes/dev_server.py` and
+`runtime_config.py`. F006 is merged (PR #126). F008 is NOT in scope.
+
 # Context — Steps 5961-6020
 
 ## Active Branch
