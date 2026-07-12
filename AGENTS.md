@@ -498,8 +498,11 @@ Use four layers:
 
 AGENTS.md → rules  
 docs/ → long-term knowledge about the BUILT system (index: `docs/README.md`)  
-docs/roadmap/ → the TARGET plan (ROADMAP.md + 150 feature detail files)  
-.agent/ → current task state (incl. `.agent/ROADMAP_LEDGER.md` for roadmap progress)  
+docs/roadmap/ → the TARGET plan (ROADMAP.md + 250 feature detail files)  
+.agent/ → current task state (plan, live review, context, decisions)  
+
+`docs/roadmap/STATUS.md` IS the roadmap execution ledger. There is no separate
+`.agent/ROADMAP_LEDGER.md`: a second ledger would only be a second source of truth.
 
 Do NOT mix them.
 
