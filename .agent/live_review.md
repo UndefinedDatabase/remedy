@@ -14,8 +14,8 @@ an external round, so F007 stays `[~]`.
 
 ## Branch / Base
 
-- Branch: `feature/f007-runtime-harness`
-- Base: `d969688` (main after the F006 merge)
+- F007 was merged through PR #127 (`7733a1d`); the branch `feature/f007-runtime-harness`
+  is deleted. No F007 branch is active.
 
 ## Scope
 
