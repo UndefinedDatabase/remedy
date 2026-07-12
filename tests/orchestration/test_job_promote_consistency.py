@@ -361,3 +361,344 @@ def _break_diff(job) -> None:
     reloaded.result_diff_sha256 = hashlib.sha256(data).hexdigest()
     reloaded.result_diff_size_bytes = len(data)
     _persist_job(reloaded)
+
+
+class TestMaterializationFailuresReportCleanup:
+    def _job(self, repo, monkeypatch):
+        return _run_job(repo, monkeypatch,
+                        lambda ws: [(ws / "one.txt").write_text("hello\n")] and ["one.txt"])
+
+    def test_apply_check_failure_with_a_clean_cleanup(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        _break_diff(job)
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert res.status == "blocked"
+        assert "job_diff_not_applicable" in res.blocked_reason
+        assert res.cleanup_status == "clean"
+        assert res.temporary_worktree_removed and res.temporary_registration_removed
+        assert len(W.list_worktrees(repo)) == 1          # nothing left behind
+        _assert_record_matches(res)
+
+    def test_apply_check_failure_with_a_cleanup_failure_reports_both(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        _break_diff(job)
+        _fail_worktree_remove(monkeypatch)
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert res.status == "materialization_failed_cleanup_failed"
+        assert "job_diff_not_applicable" in res.blocked_reason   # original reason kept
+        assert res.cleanup_status == "failed"
+        assert any("cleanup_failed" in r for r in res.blocked_reasons)
+        assert res.temporary_registration_removed is False       # honestly reported
+        _assert_record_matches(res)
+
+    def test_worktree_add_failure_with_a_cleanup_failure(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        real_run = subprocess.run
+
+        def fake_run(argv, *a, **kw):
+            if isinstance(argv, list) and argv[:3] == ["git", "worktree", "add"]:
+                return subprocess.CompletedProcess(argv, 1, "", "add exploded")
+            if isinstance(argv, list) and argv[:3] == ["git", "worktree", "remove"]:
+                return subprocess.CompletedProcess(argv, 1, "", "remove exploded")
+            return real_run(argv, *a, **kw)
+
+        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert "promotion_worktree_failed" in res.blocked_reason
+        assert res.cleanup_status in ("clean", "failed")
+        # Whatever happened, it is REPORTED — never silently dropped.
+        assert res.cleanup_status == "clean" or res.cleanup_error
+        _assert_record_matches(res)
+
+    def test_git_apply_failure_with_a_cleanup_failure(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        real_run = subprocess.run
+        seen = {"check": 0}
+
+        def fake_run(argv, *a, **kw):
+            if isinstance(argv, list) and argv[:2] == ["git", "apply"]:
+                if "--check" in argv:
+                    seen["check"] += 1
+                    return real_run(argv, *a, **kw)
+                return subprocess.CompletedProcess(argv, 1, "", "apply exploded")
+            if isinstance(argv, list) and argv[:3] == ["git", "worktree", "remove"]:
+                return subprocess.CompletedProcess(argv, 1, "", "remove exploded")
+            return real_run(argv, *a, **kw)
+
+        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert "job_diff_apply_failed" in res.blocked_reason
+        assert res.status == "materialization_failed_cleanup_failed"
+        assert res.cleanup_status == "failed" and res.cleanup_error
+        _assert_record_matches(res)
+
+    def test_an_unexpected_exception_after_creation_is_still_cleaned_up(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        real_run = subprocess.run
+
+        def fake_run(argv, *a, **kw):
+            if isinstance(argv, list) and argv[:2] == ["git", "apply"]:
+                raise OSError("git vanished")
+            return real_run(argv, *a, **kw)
+
+        monkeypatch.setattr(JP.subprocess, "run", fake_run)
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert "promotion_materialization_error" in res.blocked_reason
+        assert res.cleanup_status == "clean"
+        assert len(W.list_worktrees(repo)) == 1
+        assert "remedy-promo" not in _git(repo, "worktree", "list", "--porcelain")
+
+
+# ---------------------------------------------------------------------------
+# Finding 4 — the human summary spells out a partial success
+# ---------------------------------------------------------------------------
+
+class TestCleanupFailureSummaries:
+    def _job(self, repo, monkeypatch):
+        return _run_job(repo, monkeypatch,
+                        lambda ws: [(ws / "one.txt").write_text("hello\n")] and ["one.txt"])
+
+    def test_a_promoted_cleanup_failure_says_the_target_changed(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        _fail_worktree_remove(monkeypatch)
+        res = promote_job(job.job_id, str(repo), approve=True)
+
+        text = summarize_job_promotion(res)
+        assert "The target was changed." in text
+        assert "Files applied: ['one.txt']" in text
+        assert "Temporary promotion cleanup failed." in text
+        assert "Manual cleanup is required." in text
+        assert "git worktree list" in text          # the stale registration is named
+
+    def test_a_dry_run_cleanup_failure_says_the_target_was_not_changed(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        _fail_worktree_remove(monkeypatch)
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        text = summarize_job_promotion(res)
+        assert "The target was NOT changed (dry-run only)." in text
+        assert "Temporary promotion cleanup failed." in text
+        assert "Manual cleanup is required." in text
+        assert not (repo / "one.txt").exists()
+
+    def test_a_clean_run_summary_makes_no_cleanup_noise(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+        text = summarize_job_promotion(res)
+        assert "Temp worktree cleanup: clean" in text
+        assert "Manual cleanup is required." not in text
+
+
+# ---------------------------------------------------------------------------
+# Cleanup exception safety — a throwing cleanup must never escape promote_job()
+# ---------------------------------------------------------------------------
+
+_REAL_RUN = subprocess.run
+
+
+def _raise_on_git(monkeypatch, subcommand: str, exc: Exception):
+    """Make one cleanup git command RAISE (not just fail).
+
+    Patching ``JP.subprocess.run`` patches the module attribute globally, so the
+    injected failure is undone with ``_restore_git`` before the test does its own
+    housekeeping git calls.
+    """
+    previous = subprocess.run
+
+    def fake_run(argv, *a, **kw):
+        if isinstance(argv, list) and argv[:3] == ["git", "worktree", subcommand]:
+            raise exc
+        return previous(argv, *a, **kw)
+
+    monkeypatch.setattr(JP.subprocess, "run", fake_run)
+
+
+def _restore_git(monkeypatch):
+    monkeypatch.setattr(JP.subprocess, "run", _REAL_RUN)
+
+
+class TestCleanupExceptionSafety:
+    def _job(self, repo, monkeypatch):
+        return _run_job(repo, monkeypatch,
+                        lambda ws: [(ws / "one.txt").write_text("hello\n")] and ["one.txt"])
+
+    def test_remove_timeout_becomes_a_structured_failed_cleanup(self, repo, monkeypatch):
+        # The exact independently observed scenario.
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
+            ["git", "worktree", "remove", "--force", "..."], 120))
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)   # must NOT raise
+
+        assert res.status == "dry_run_cleanup_failed"
+        assert res.cleanup_status == "failed"
+        assert "timed out" in res.cleanup_error
+        _assert_record_matches(res)
+        assert not (repo / "one.txt").exists()      # dry-run changed nothing
+
+    @pytest.mark.parametrize("exc", [
+        FileNotFoundError("git not found"),
+        OSError("disk on fire"),
+        RuntimeError("something odd"),
+    ])
+    def test_remove_raising_any_exception_is_contained(self, repo, monkeypatch, exc):
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "remove", exc)
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert res.status == "dry_run_cleanup_failed"
+        assert res.cleanup_status == "failed" and res.cleanup_error
+        assert type(exc).__name__ in res.cleanup_error or "timed out" in res.cleanup_error
+        _assert_record_matches(res)
+
+    @pytest.mark.parametrize("exc", [
+        subprocess.TimeoutExpired(["git", "worktree", "prune"], 60),
+        OSError("prune exploded"),
+    ])
+    def test_prune_raising_is_contained_and_remove_still_ran(
+        self, repo, monkeypatch, exc,
+    ):
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "prune", exc)
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert res.status == "dry_run_cleanup_failed"
+        assert res.cleanup_status == "failed"
+        assert "prune" in res.cleanup_error
+        # The remove step still ran, so the physical worktree really is gone.
+        assert res.temporary_worktree_removed is True
+        assert res.temporary_registration_removed is True
+        _assert_record_matches(res)
+
+    def test_remove_throws_but_the_secondary_filesystem_cleanup_succeeds(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
+            ["git", "worktree", "remove"], 120))
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        # rmtree still removed the directory; the STALE REGISTRATION is reported.
+        assert res.temporary_worktree_removed is True
+        assert res.temporary_registration_removed is False
+        assert "still registered" in res.cleanup_error
+        assert res.cleanup_status == "failed"
+
+    def test_a_remaining_registration_is_reported(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
+            ["git", "worktree", "remove"], 120))
+        _raise_on_git(monkeypatch, "prune", subprocess.TimeoutExpired(
+            ["git", "worktree", "prune"], 60))
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+        assert res.temporary_registration_removed is False
+        text = summarize_job_promotion(res)
+        assert "A temporary git worktree registration may remain" in text
+        assert "Manual cleanup is required." in text
+
+        # Clean the leftover registration so the fixture repo ends tidy.
+        _restore_git(monkeypatch)
+        _git(repo, "worktree", "prune")
+
+    def test_inventory_throwing_after_the_git_commands_is_contained(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        monkeypatch.setattr(W, "_worktree_registered",
+                            lambda *a, **k: (_ for _ in ()).throw(
+                                RuntimeError("inventory broken")))
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert res.status == "dry_run_cleanup_failed"
+        assert "worktree inventory failed" in res.cleanup_error
+        assert res.temporary_registration_removed is False
+        _assert_record_matches(res)
+
+    def test_an_approved_promotion_survives_a_cleanup_timeout(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
+            ["git", "worktree", "remove", "--force", "..."], 120))
+
+        res = promote_job(job.job_id, str(repo), approve=True)   # must NOT raise
+
+        assert res.status == "promoted_cleanup_failed"
+        assert res.files_applied == ["one.txt"]
+        assert (repo / "one.txt").read_text() == "hello\n"      # the target DID change
+        assert res.cleanup_status == "failed"
+        record = _assert_record_matches(res)
+        assert record["files_applied"] == ["one.txt"]
+
+        text = summarize_job_promotion(res)
+        assert "The target was changed." in text
+        assert "Files applied: ['one.txt']" in text
+        assert "Manual cleanup is required." in text
+        _restore_git(monkeypatch)
+        _git(repo, "worktree", "prune")
+
+    def test_a_materialization_failure_plus_a_cleanup_timeout_reports_both(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        _break_diff(job)
+        _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
+            ["git", "worktree", "remove"], 120))
+
+        res = promote_job(job.job_id, str(repo), dry_run=True)
+
+        assert res.status == "materialization_failed_cleanup_failed"
+        assert "job_diff_not_applicable" in res.blocked_reason   # original reason kept
+        assert res.cleanup_status == "failed" and "timed out" in res.cleanup_error
+        _assert_record_matches(res)
+        _restore_git(monkeypatch)
+        _git(repo, "worktree", "prune")
+
+    def test_the_cleanup_helper_itself_never_raises(self, repo, monkeypatch):
+        job = self._job(repo, monkeypatch)
+        _raise_on_git(monkeypatch, "remove", subprocess.TimeoutExpired(
+            ["git", "worktree", "remove"], 120))
+        source, err = JP._materialize_promotion_source_owned(
+            __import__("packages.orchestration.pingpong_job", fromlist=["x"])
+            .load_job_plan(job.job_id))
+        assert source is not None and not err
+
+        out = JP._cleanup_promotion_source(source)      # total: returns, never raises
+
+        assert out["cleanup_status"] == "failed"
+        assert "timed out" in out["cleanup_error"]
+        assert isinstance(out["temporary_worktree_removed"], bool)
+        _restore_git(monkeypatch)
+        _git(repo, "worktree", "prune")
+
+    def test_an_unexpectedly_raising_cleanup_helper_is_still_contained(
+        self, repo, monkeypatch,
+    ):
+        job = self._job(repo, monkeypatch)
+        monkeypatch.setattr(JP, "_cleanup_promotion_source",
+                            lambda src: (_ for _ in ()).throw(
+                                RuntimeError("cleanup helper exploded")))
+
+        res = promote_job(job.job_id, str(repo), approve=True)   # must NOT raise
+
+        assert res.status == "promoted_cleanup_failed"
+        assert res.files_applied == ["one.txt"]
+        assert "cleanup raised unexpectedly" in res.cleanup_error
+        _assert_record_matches(res)
+        _git(repo, "worktree", "prune")   # the helper was patched, not subprocess
