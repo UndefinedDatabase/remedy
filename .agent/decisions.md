@@ -1056,3 +1056,21 @@ Both proven with fake executables and fake planners; zero provider calls.
 - `remove()` keeps the result branch by default and there is no merge path at
   all: the branch plus `result.diff` is the entire hand-off, and merging stays a
   deliberate human action.
+
+## F007 — Runtime harness
+
+- Runtime state identity is PID **plus** process creation time **plus** a command
+  fingerprint. A PID alone is not identity: the OS recycles PIDs, and `runtime stop`
+  must never kill an innocent process that inherited one. A mismatch clears the
+  stale state and reports it, killing nothing.
+- A busy port is never fought over. The harness picks a free port and reports the
+  EFFECTIVE port; killing whatever owns the requested port would be a footgun.
+- Detection reads checked-in files only (package.json, pyproject.toml, requirements)
+  and never imports project code. Two candidate runtimes is ambiguity, and ambiguity
+  blocks with "configuration required" rather than guessing.
+- `.remedy/config.toml [runtime]` is the canonical binding for F007. The general
+  `remedy.toml` config system is deliberately NOT migrated or replaced.
+- The project digest is F006's resolved-path digest. F146 (the project registry) is
+  not implemented here.
+- F008 (SSE stream, hook, polling fallback) is Tier 5 and depends on F146: no
+  endpoint, EventSource, hook or UI work belongs on this branch.
