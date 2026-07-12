@@ -1016,6 +1016,57 @@ def _cmd_do_job_evidence(
         print(f"Tasks: {manifest.get('task_count', 0)}")
 
 
+def _cmd_do_job_resume(
+    job_id: str,
+    *,
+    builder: str | None = None,
+    reviewer: str | None = None,
+    max_rounds: int | None = None,
+    repair_rounds: int | None = None,
+    test_command: str | None = None,
+    max_tasks: int = 0,
+    json_output: bool = False,
+) -> None:
+    """Resume an interrupted JobPlan in its own job-owned worktree.
+
+    JobPlan IDs are 16-character hex values (``ee71656400f646e0``) — a different
+    storage model from the UUID Core Jobs that ``remedy job resume`` handles. The
+    two are deliberately kept apart rather than pretending to be the same object.
+    """
+    import json as _json
+
+    from packages.orchestration.pingpong_job import export_job_report, resume_job_plan
+
+    def _as_int(v, default=None):
+        return default if v in (None, "") else int(v)
+
+    try:
+        job = resume_job_plan(
+            job_id,
+            builder_name=builder,
+            reviewer_name=reviewer,
+            max_rounds=_as_int(max_rounds),
+            repair_rounds=_as_int(repair_rounds),
+            test_command=test_command,
+            max_tasks=_as_int(max_tasks, 0) or 0,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    report = export_job_report(job)
+    if json_output:
+        print(_json.dumps(report, indent=2))
+        return
+    print(f"Job {job.job_id}: {job.status}")
+    print(f"  Isolation:  {job.isolation_mode}")
+    if job.isolation_mode == "worktree":
+        print(f"  Branch:     {job.worktree_branch}")
+        print(f"  Worktree:   {job.worktree_path} ({job.worktree_cleanup_status})")
+    for t in job.tasks:
+        print(f"  {t.task_id}: {t.status}")
+
+
 def _cmd_do_job_promote(
     job_id: str,
     *,
@@ -2376,6 +2427,16 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_model=getattr(args, "repair_model", None),
         repair_effort=getattr(args, "repair_effort", None),
         timeout_profile=getattr(args, "timeout_profile", None) or "normal",
+    ),
+    "do.job-resume": lambda args: _cmd_do_job_resume(
+        args.job_id,
+        builder=getattr(args, "builder", None),
+        reviewer=getattr(args, "reviewer", None),
+        max_rounds=getattr(args, "max_rounds", None),
+        repair_rounds=getattr(args, "repair_rounds", None),
+        test_command=getattr(args, "test_command", None),
+        max_tasks=getattr(args, "max_tasks", 0) or 0,
+        json_output=getattr(args, "json", False),
     ),
     "do.job-report": lambda args: _cmd_do_job_report(
         args.job_id,
