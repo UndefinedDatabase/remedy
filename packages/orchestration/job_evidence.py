@@ -11,7 +11,9 @@ Public API:
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -128,8 +130,16 @@ def export_job_evidence(
     wa = _build_workspace_apply_json(job)
     _write_json("workspace_apply.json", wa)
 
-    ws_diff = _build_workspace_diff(job)
-    _write("workspace.diff", _redact_secrets(ws_diff))
+    # F006: for a worktree JobPlan the canonical hand-off is the job directory's
+    # verified result.diff — NOT the (deliberately removed) execution workspace.
+    _job_diff_text, _job_diff_err = _write_job_worktree_evidence(
+        job, out_path, written,
+    )
+    if _job_diff_text is not None:
+        _write("workspace.diff", _redact_secrets(_job_diff_text))
+    else:
+        ws_diff = _build_workspace_diff(job)
+        _write("workspace.diff", _redact_secrets(ws_diff))
 
     attest_snap = _snapshot_attestation_artifacts(job)
 
@@ -873,6 +883,95 @@ def _build_workspace_apply_json(job: Any) -> list[dict[str, Any]]:
             "apply_manifest": m,
         })
     return manifests
+
+
+def job_result_diff_source(job: Any) -> tuple[Path | None, str]:
+    """Contain and verify the JobPlan's root ``result.diff`` before it is used.
+
+    The source lives in the canonical job directory, never in the removed
+    execution workspace. It must be the canonical relative ``result.diff``, a
+    regular file (never a symlink), resolving inside that job directory, and match
+    the sha256 and size recorded in job.json.
+    """
+    from packages.orchestration.pingpong_job import _jobs_dir
+
+    if getattr(job, "isolation_mode", "copy") != "worktree":
+        return None, "not_a_worktree_job"
+    recorded = {
+        "path": getattr(job, "result_diff_path", ""),
+        "sha256": getattr(job, "result_diff_sha256", ""),
+        "size_bytes": getattr(job, "result_diff_size_bytes", 0),
+    }
+    if not recorded["path"]:
+        return None, "job records no result.diff"
+    return _resolve_result_diff_source(_jobs_dir() / job.job_id, recorded)
+
+
+def _write_job_worktree_evidence(
+    job: Any,
+    out_path: Path,
+    written: dict[str, str],
+) -> tuple[str | None, str]:
+    """Export the JobPlan's ``worktree.json`` + ``result.diff`` at evidence root.
+
+    Returns ``(workspace_diff_text, error)``. ``workspace_diff_text`` is None for a
+    copy-mode job, so the legacy workspace diff is used instead.
+    """
+    if getattr(job, "isolation_mode", "copy") != "worktree":
+        return None, ""
+
+    src, err = job_result_diff_source(job)
+    doc: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "job_id": job.job_id,
+        "isolation_mode": "worktree",
+        "branch": getattr(job, "worktree_branch", ""),
+        "path": getattr(job, "worktree_path", ""),      # repo-relative audit path
+        "base_commit": getattr(job, "worktree_base_commit", ""),
+        "head": getattr(job, "worktree_head", ""),
+        "cleanup_status": getattr(job, "worktree_cleanup_status", ""),
+        "cleanup_error": getattr(job, "worktree_cleanup_error", ""),
+        "result_diff": None,
+        "result_diff_error": err or getattr(job, "result_diff_error", ""),
+        "auto_merged": False,               # there is never an automatic merge
+        # Semantic coverage: the root diff must be EXACTLY the reviewed task work.
+        "handoff_coverage": {
+            "verdict": getattr(job, "handoff_coverage_verdict", ""),
+            "root_changed_files": list(getattr(job, "root_changed_files", [])),
+            "reviewed_task_files": list(getattr(job, "reviewed_task_files", [])),
+            "unexpected_root_files": list(getattr(job, "unexpected_root_files", [])),
+            "missing_root_files": list(getattr(job, "missing_root_files", [])),
+        },
+    }
+
+    text: str | None = None
+    if src is not None:
+        data = src.read_bytes()
+        (out_path / "result.diff").write_bytes(data)
+        written["result.diff"] = str(out_path / "result.diff")
+        doc["result_diff"] = {
+            "path": "result.diff",
+            "sha256": job.result_diff_sha256,
+            "size_bytes": job.result_diff_size_bytes,
+        }
+        header = (
+            "# Job hand-off diff (verified job result.diff; the execution worktree "
+            "was removed after a clean cleanup and is not expected to exist)\n"
+            f"# Branch: {doc['branch']}\n"
+            f"# Base:   {doc['base_commit']}\n"
+            f"# sha256: {job.result_diff_sha256}\n\n"
+        )
+        text = header + data.decode("utf-8", errors="replace")
+    else:
+        text = (
+            "# Job hand-off diff unavailable: "
+            f"{doc['result_diff_error'] or 'no verified result.diff'}\n"
+        )
+
+    wt_path = out_path / "worktree.json"
+    wt_path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    written["worktree.json"] = str(wt_path)
+    return text, doc["result_diff_error"]
 
 
 def _build_workspace_diff(job: Any) -> str:
@@ -1650,6 +1749,132 @@ def _write_task_run_evidence(
 
     for filename, path in task_written.items():
         written[f"{task_rel}/{filename}"] = path
+
+    _write_task_worktree_evidence(task, run_data, task_out, task_rel, written)
+
+
+#: The only filename a runtime diff may be exported from.
+RESULT_DIFF_NAME = "result.diff"
+
+
+def _resolve_result_diff_source(
+    run_dir: Path,
+    recorded: dict[str, Any],
+) -> tuple[Path | None, str]:
+    """Contain the runtime ``result.diff`` source before ANY bytes are copied.
+
+    The recorded path comes from a run record, so it is input, not truth. It must
+    be the canonical ``result.diff``, relative, traversal-free, a real regular
+    file (never a symlink — not even one named ``result.diff``), resolve to a path
+    that is still inside this exact run directory, and hash and size exactly as the
+    run recorded. Anything else is an export validation error: the file is not
+    copied and the persisted metadata is left untouched.
+
+    The artifact-contract gate re-verifies the exported diff afterwards; that is a
+    SECOND layer, not this containment check.
+    """
+    rel = str(recorded.get("path") or "")
+    if not rel:
+        return None, "result.diff reference is empty"
+    if os.path.isabs(rel) or rel.startswith("~"):
+        return None, f"result.diff source {rel!r} is not a relative path"
+    parts = rel.replace("\\", "/").split("/")
+    if ".." in parts:
+        return None, f"result.diff source {rel!r} escapes the run directory"
+    if rel != RESULT_DIFF_NAME:
+        return None, (
+            f"result.diff source {rel!r} is not the canonical {RESULT_DIFF_NAME!r}"
+        )
+
+    src = run_dir / rel
+    if src.is_symlink():
+        return None, f"result.diff source {rel!r} is a symlink"
+    if not src.is_file():
+        return None, f"recorded result.diff not found at {rel!r}"
+
+    try:
+        base = run_dir.resolve(strict=True)
+        resolved = src.resolve(strict=True)
+    except OSError as exc:
+        return None, f"result.diff source {rel!r} could not be resolved: {exc}"
+    if resolved.parent != base:
+        return None, (
+            f"result.diff source {rel!r} resolves outside its run directory"
+        )
+
+    data = src.read_bytes()
+    actual_sha = hashlib.sha256(data).hexdigest()
+    if actual_sha != str(recorded.get("sha256") or ""):
+        return None, (
+            f"result.diff source sha256 {actual_sha} does not match the recorded "
+            f"{recorded.get('sha256')!r}"
+        )
+    if len(data) != recorded.get("size_bytes"):
+        return None, (
+            f"result.diff source size {len(data)} does not match the recorded "
+            f"{recorded.get('size_bytes')!r}"
+        )
+    return src, ""
+
+
+def _write_task_worktree_evidence(
+    task: Any,
+    run_data: dict[str, Any],
+    task_out: Path,
+    task_rel: str,
+    written: dict[str, str],
+) -> None:
+    """F006: export the run's worktree hand-off and its ``result.diff``.
+
+    Only for runs that actually executed in a worktree. The exported diff carries
+    the sha256/size the run recorded, so the artifact contract can re-verify the
+    bytes in the bundle rather than trusting that a file with the right name exists.
+    """
+    wt = run_data.get("worktree") or {}
+    if wt.get("isolation_mode") != "worktree":
+        return
+
+    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+
+    doc: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "task_id": task.task_id,
+        "run_id": task.run_id,
+        "isolation_mode": "worktree",
+        "branch": wt.get("branch", ""),
+        "worktree_path": wt.get("path", ""),
+        "base_commit": wt.get("base_commit", ""),
+        "worktree_head": wt.get("head", ""),
+        "cleanup_status": wt.get("cleanup_status", ""),
+        "cleanup_error": wt.get("cleanup_error", ""),
+        "result_diff": None,
+        "result_diff_error": wt.get("result_diff_error", ""),
+        "auto_merged": False,          # there is never an automatic merge
+    }
+
+    rd = wt.get("result_diff") or {}
+    if rd:
+        run_dir = _pingpong_runs_dir() / str(task.run_id)
+        src, err = _resolve_result_diff_source(run_dir, rd)
+        if err:
+            # Report the validation failure; NEVER rewrite the persisted metadata
+            # to make an unsafe source look safe, and never copy the bytes.
+            doc["result_diff"] = None
+            doc["result_diff_error"] = err
+        else:
+            dst = task_out / "result.diff"
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(src.read_bytes())
+            written[f"{task_rel}/result.diff"] = str(dst)
+            doc["result_diff"] = {
+                "path": "result.diff",
+                "sha256": rd.get("sha256", ""),
+                "size_bytes": rd.get("size_bytes", 0),
+            }
+
+    wt_path = task_out / "worktree.json"
+    wt_path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    written[f"{task_rel}/worktree.json"] = str(wt_path)
 
 
 def _write_unavailable(
