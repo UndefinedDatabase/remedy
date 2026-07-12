@@ -426,8 +426,13 @@ predictive stop produces a decision with the evidence triple.
 
 **F105 Cache-optimal prompt ordering** — Stable prefixes first (system,
 conventions, dossier, cards) then volatile parts; a segment registry with
-stability ranks; cache_read share measured per role. → Cache quota measurably
-rises vs. the recorded baseline; golden prompts guard semantics.
+stability ranks; cache_read share measured per role. Canonical conventions
+content per role: `docs/agents/worker_conventions.md` and
+`docs/agents/reviewer_conventions.md` (each ≤800 tokens, lint-enforced);
+the orchestrator keeps the generated Part A block (F070). → Cache quota
+measurably rises vs. the recorded baseline; golden prompts guard semantics;
+worker/reviewer prompts provably carry their conventions segment at a stable
+prefix position.
 
 **F107 Context compiler v2** — Relevance instead of everything: allowed paths
 + direct import neighbors + signatures of distant dependencies;
@@ -494,8 +499,11 @@ guaranteed. → Marker replacement inside resume sessions, never in fresh ones.
 
 **F110 Model routing by task class** — format/extract → cheap, standard
 build/review → mid, architecture/mission/vision → top; per-project overrides;
-routed_model + reason in evidence. → Benchmark: costs drop at equal PASS rate;
-no silent downgrade of security-relevant roles.
+routed_model + reason in evidence. Seed map, promotion thresholds
+(F082-gated) and hard rules in `docs/agents/model_routing_policy.md`;
+reviewer never routed weaker than the paired worker. → Benchmark: costs drop
+at equal PASS rate; no silent downgrade of security-relevant roles; a
+below-threshold promotion is rejected with benchmark evidence.
 
 **F112 Prompt budget per task class** — Class input caps with a documented
 drop cascade (distant signatures first) and omitted-context disclosure; if
@@ -811,10 +819,21 @@ stops with paths, why, how to run); overlay in the UI, `--tour` in the CLI. →
 Every stop path exists; an outsider finds the entry point.
 
 
-**F038 Node chat (grounded, read-only)** — "Why solved this way?" answered
-ONLY from that node's evidence with citation chips that anchor into artifacts;
-uncited claims render marked "unsupported"; canary test answers "not in
-evidence". → All citation anchors resolve.
+**F038 Grounded chat & intent dispatch** — Chat as one input inside the
+cockpit (PART J stands); target design: `docs/roadmap/design/grounded-chat-spec.md`.
+Read path: node scope answered ONLY from that node's evidence; project scope
+ONLY from the defined evidence set (project brain aggregate, progress ledger,
+decision queue, STATUS.md position, latest reports; F071/F103 join when
+built); citation chips anchor into artifacts; uncited claims render
+"unsupported"; canary answers "not in evidence". Write path: free text parses
+(F005 schema) into exactly one existing verb (F013 do, F030 steer, decision
+answer, pause/resume) as a confirmable action card; nothing executes
+unconfirmed; dispatch runs through the normal audited write channel (F009).
+CLI-first delivery (`remedy chat`, Part B), cockpit surface second; chat
+classes route cheap/mid per F110 (local-capable, F113). → All anchors
+resolve; canary honest in both scopes; intent fixtures map to correct
+verb+args or honest rejection; an unconfirmed card executes nothing; a
+chat-dispatched action is audit-identical to the same action via UI/CLI.
 
 **F039 Story/replay mode** — Chapters from phases + key events; autoplay scrub
 with narration cards; export as a self-contained HTML file. → Opens standalone
@@ -1157,7 +1176,8 @@ No own foundation model or hosting · no mandatory SaaS (local-first is law;
 any cloud bridge would be a separate future decision) · no auto-merge to main
 at any autonomy level · no time-of-day mechanics anywhere · no vendor-locked
 feature (capability matrix + honest degradation instead) · no chat assistant
-as the product surface (the cockpit is a control stand) · no push-button
+as the product surface (the cockpit is a control stand; grounded chat is one
+input inside it and dispatches only existing verbs — F038) · no push-button
 legal compliance claims (we ship proofs, not verdicts) · no engagement
 gamification (streaks, usage badges) — gamification stays information ·
 no number without a raw-data link.

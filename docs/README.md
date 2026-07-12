@@ -7,10 +7,12 @@
 
 | Keyword | File | Category |
 |---------|------|----------|
+| agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md) | agents |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
 | brain | [project-brain.md](system/project-brain.md) | system |
+| chat | [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) | roadmap |
 | candidate eval | [candidate-quality-evaluation-v1.md](system/candidate-quality-evaluation-v1.md) | system |
 | candidate gen | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | system |
 | cockpit | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | system |
@@ -33,6 +35,7 @@
 | resume | [resume.md](guides/resume.md) | guide |
 | review bundle | [review-bundle-v1.md](system/review-bundle-v1.md) | system |
 | routing | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | system |
+| routing policy | [model_routing_policy.md](agents/model_routing_policy.md) | agents |
 | routing | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | system |
 | self-dogfood | [self-dogfood-v0.md](system/self-dogfood-v0.md) | system |
 | self-dogfood | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | system |
@@ -143,6 +146,18 @@ Deprecated or future-only design documents kept for historical context.
 | [self-dogfood-overnight-future.md](archive/self-dogfood-overnight-future.md) | Self-dogfood overnight future direction | DEPRECATED |
 | [ui-target.md](archive/ui-target.md) | UI target direction | DEPRECATED |
 
+## Agent Conventions (`docs/agents/`)
+
+Canonical, model-agnostic role conventions and routing policy. The worker and
+reviewer files are the F105 conventions prompt segments (token-capped); the
+routing policy seeds F110.
+
+| File | Description |
+|------|-------------|
+| [worker_conventions.md](agents/worker_conventions.md) | Worker/builder role rules (F105 conventions segment) |
+| [reviewer_conventions.md](agents/reviewer_conventions.md) | Reviewer role rules + block conditions (F105 conventions segment) |
+| [model_routing_policy.md](agents/model_routing_policy.md) | Class→tier seed map, promotion rule, hard rules (seeds F110) |
+
 ## Roadmap (`docs/roadmap/`)
 
 The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 150-feature
@@ -150,6 +165,7 @@ plan, [00_INDEX.md](roadmap/00_INDEX.md) for the feature file index, and
 [CONVENTIONS.md](roadmap/CONVENTIONS.md) for the shared naming register.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
+Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038).
 
 ## UI Reference (`docs/ui/`)
 

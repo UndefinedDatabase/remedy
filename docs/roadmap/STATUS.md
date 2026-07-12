@@ -11,7 +11,7 @@
 - [x] F004 — Raw stream evidence (PR #124 · implementation evidence: remedy-review-20260709-225052-READY_FOR_REVIEW.zip · manual job 621369b56e834cd4 · runtime smoke job f22d69ed4c1f491b / run 54d4adc45d964812 · external PASS_WITH_RISKS)
 - [x] F005 — Enforced structured outputs (PR #125 · evidence: remedy-review-20260711-132104-READY_FOR_REVIEW.zip · manual job e943e67937ef4124 · external PASS_WITH_RISKS)
 - [x] F006 — Worktree isolation per run (PR #126 · evidence: remedy-review-20260712-000713-READY_FOR_REVIEW.zip · manual job 7fa740042a7e4561 · external PASS_WITH_RISKS)
-- [~] F007 — Runtime harness (PR #127 · persistent supervisor merged as an honest checkpoint · external acceptance of the supervisor round still pending)
+- [~] F007 — Runtime harness (branch feature/f007-runtime-harness · in progress)
 - [ ] F010 — Automatic failure post-mortems
 - [ ] F011 — Kill switch
 - [ ] F012 — Deterministic runs
@@ -132,7 +132,7 @@
 - [ ] F033 — Hunk-level diff approval
 - [ ] F035 — Ownership ledger
 - [ ] F036 — Guided result tour
-- [ ] F038 — Node chat (grounded, read-only)
+- [ ] F038 — Grounded chat & intent dispatch
 - [ ] F039 — Story/replay mode
 - [ ] F040 — Completion/return digest
 - [ ] F041 — Artifact preview
