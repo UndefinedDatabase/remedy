@@ -1039,3 +1039,20 @@ job c4def4a3074d4a7c). Two corrections, no new taxonomy or gate:
    fired immediately before every real call. Traces now persist for success,
    invalid JSON and raised exceptions alike; no provider call still means no trace.
 Both proven with fake executables and fake planners; zero provider calls.
+
+## 2026-07-11: F006 — worktree isolation replaces copy staging (Steps 6021-6080)
+- The run workspace IS a git worktree for a git target; nothing is copied. The
+  filtered-copy staging path survives ONLY as the non-git fallback, so the
+  historic "self-run dirties the main checkout" risk is structurally impossible.
+- `.remedy-wt/` is excluded via `.git/info/exclude`, not `.gitignore`: the rule
+  that protects the checkout must not itself dirty that checkout. (The repo's own
+  `.gitignore` also lists it, for humans.)
+- In a worktree `.git` is a FILE, not a directory, so the staged-change scanner
+  needed an explicit file-level skip — otherwise the gitdir pointer would have
+  been reported as a run change.
+- Locks live under `<data>/projects/<sha256(repo path)[:16]>/locks/`. A short
+  digest of the resolved repository path is a sufficient stable project id; F146
+  is deliberately not implemented here.
+- `remove()` keeps the result branch by default and there is no merge path at
+  all: the branch plus `result.diff` is the entire hand-off, and merging stays a
+  deliberate human action.
