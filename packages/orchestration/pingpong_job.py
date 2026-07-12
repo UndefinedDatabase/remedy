@@ -71,6 +71,10 @@ class AppliedFileProof:
     final_workspace_sha256: str = ""
     task_id: str = ""
     run_id: str = ""
+    # F006: the reviewed git file mode. Promotion must reproduce the whole
+    # reviewed change, executable bit included — never just the bytes.
+    baseline_mode: str = ""      # "" when the file did not exist before the job
+    final_mode: str = ""         # "100644" | "100755"
 
 
 @dataclass
@@ -121,6 +125,13 @@ class TaskEntry:
     error: str = ""
     apply_manifest: ApplyManifest | None = None
     proof_summary: TaskProofSummary | None = None
+    # F006 durable task checkpoint: the workspace tree BEFORE this task's first
+    # provider call. Persisted so a crash cannot hide partial work: the resumed
+    # attempt keeps reviewing and diffing against the ORIGINAL start tree.
+    task_start_tree: str = ""
+    task_start_tree_ref: str = ""     # checkpoint ref protecting that tree object
+    task_start_recorded_at: str = ""
+    task_attempt_state: str = ""      # "" | "active" | "complete"
 
 
 @dataclass
@@ -191,6 +202,26 @@ class JobPlan:
     repair_rounds_allowed: int = 0
     repair_rounds_source: str = ""
     execution_config: ExecutionConfig | None = None
+    # F006: how the job workspace is isolated, and the job-level hand-off.
+    isolation_mode: str = "copy"          # "worktree" | "copy"
+    worktree_branch: str = ""
+    worktree_path: str = ""               # repository-relative, shareable
+    worktree_base_commit: str = ""
+    worktree_head: str = ""
+    worktree_cleanup_status: str = ""     # "active"|"clean"|"retained"|"failed_recoverable"
+    worktree_cleanup_error: str = ""
+    result_diff_path: str = ""
+    result_diff_sha256: str = ""
+    result_diff_size_bytes: int = 0
+    result_diff_error: str = ""
+    job_initial_tree: str = ""            # tree of the workspace before task 1
+    job_initial_tree_ref: str = ""        # checkpoint ref keeping that tree alive
+    # F006 hand-off coverage: the root diff must be EXACTLY the reviewed task work.
+    root_changed_files: list[str] = field(default_factory=list)
+    reviewed_task_files: list[str] = field(default_factory=list)
+    unexpected_root_files: list[str] = field(default_factory=list)
+    missing_root_files: list[str] = field(default_factory=list)
+    handoff_coverage_verdict: str = ""    # "PASS" | "FAIL" | ""
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +260,8 @@ def _export_file_proof(p: AppliedFileProof) -> dict[str, Any]:
         "final_workspace_sha256": p.final_workspace_sha256,
         "task_id": p.task_id,
         "run_id": p.run_id,
+        "baseline_mode": p.baseline_mode,
+        "final_mode": p.final_mode,
     }
 
 
@@ -240,6 +273,8 @@ def _import_file_proof(d: dict[str, Any]) -> AppliedFileProof:
         final_workspace_sha256=d.get("final_workspace_sha256", ""),
         task_id=d.get("task_id", ""),
         run_id=d.get("run_id", ""),
+        baseline_mode=d.get("baseline_mode", ""),
+        final_mode=d.get("final_mode", ""),
     )
 
 
@@ -427,6 +462,34 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "repair_rounds_allowed": job.repair_rounds_allowed,
         "repair_rounds_source": job.repair_rounds_source,
         "execution_config": _export_execution_config(job.execution_config),
+        "isolation_mode": job.isolation_mode,
+        "worktree": {
+            "isolation_mode": job.isolation_mode,
+            "branch": job.worktree_branch,
+            "path": job.worktree_path,
+            "base_commit": job.worktree_base_commit,
+            "head": job.worktree_head,
+            "cleanup_status": job.worktree_cleanup_status,
+            "cleanup_error": job.worktree_cleanup_error,
+            "result_diff": (
+                {
+                    "path": job.result_diff_path,
+                    "sha256": job.result_diff_sha256,
+                    "size_bytes": job.result_diff_size_bytes,
+                }
+                if job.result_diff_path else None
+            ),
+            "result_diff_error": job.result_diff_error,
+        },
+        "job_initial_tree": job.job_initial_tree,
+        "job_initial_tree_ref": job.job_initial_tree_ref,
+        "handoff_coverage": {
+            "verdict": job.handoff_coverage_verdict,
+            "root_changed_files": job.root_changed_files,
+            "reviewed_task_files": job.reviewed_task_files,
+            "unexpected_root_files": job.unexpected_root_files,
+            "missing_root_files": job.missing_root_files,
+        },
         "tasks": [
             {
                 "task_id": t.task_id,
@@ -445,6 +508,10 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
                 "error": t.error,
                 "apply_manifest": _export_apply_manifest(t.apply_manifest),
                 "proof_summary": _export_proof_summary(t.proof_summary),
+                "task_start_tree": t.task_start_tree,
+                "task_start_tree_ref": t.task_start_tree_ref,
+                "task_start_recorded_at": t.task_start_recorded_at,
+                "task_attempt_state": t.task_attempt_state,
             }
             for t in job.tasks
         ],
