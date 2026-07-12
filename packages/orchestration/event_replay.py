@@ -413,8 +413,14 @@ def execute_resume_from_apply(
     job: Any,
     checkpoint_id: str,
     data_dir: str | Path,
+    workspace_root: str | Path | None = None,
 ) -> ResumeResult:
-    """Execute from_apply resume using Remedy's test_runner. Returns safe result."""
+    """Execute from_apply resume using Remedy's test_runner. Returns safe result.
+
+    ``workspace_root`` names the workspace the continuation must run in. F006
+    passes the RECOVERED worktree here, so the continuation actually sees the
+    interrupted run's changes instead of an empty job workspace.
+    """
     from packages.orchestration.test_runner import run_tests_local
     from packages.orchestration.timeline import append_run_event
 
@@ -430,13 +436,18 @@ def execute_resume_from_apply(
         })
         return result
 
-    # Prepare workspace
-    workspace_root = Path(data_dir) / "workspaces" / str(jid)
+    # Prepare workspace — an explicit root (a recovered F006 worktree) wins over
+    # the default job workspace, which would not contain the run's changes.
+    if workspace_root:
+        workspace_root = Path(workspace_root)
+    else:
+        workspace_root = Path(data_dir) / "workspaces" / str(jid)
     workspace_root.mkdir(parents=True, exist_ok=True)
 
     append_run_event(data_dir, jid, event="resume_started", metadata={
         "checkpoint_id": checkpoint_id, "checkpoint_kind": "source_apply_proven",
         "resume_mode": "from_apply",
+        "workspace_root": workspace_root.name,
     })
 
     append_run_event(data_dir, jid, event="resume_test_started", metadata={
