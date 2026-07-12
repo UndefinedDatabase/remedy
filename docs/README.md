@@ -35,6 +35,7 @@
 | resume | [resume.md](guides/resume.md) | guide |
 | review bundle | [review-bundle-v1.md](system/review-bundle-v1.md) | system |
 | routing | [expensive-builder-routing-v0.md](system/expensive-builder-routing-v0.md) | system |
+| runtime harness | [runtime-harness-v1.md](system/runtime-harness-v1.md) | system |
 | routing policy | [model_routing_policy.md](agents/model_routing_policy.md) | agents |
 | routing | [worker-registry-route-policy-v0.md](system/worker-registry-route-policy-v0.md) | system |
 | self-dogfood | [self-dogfood-v0.md](system/self-dogfood-v0.md) | system |
