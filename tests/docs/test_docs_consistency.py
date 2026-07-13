@@ -127,14 +127,22 @@ class TestPrimaryDocsAreHonest:
                       "verification/ # (future)"):
             assert claim not in readme, f"README still claims: {claim!r}"
 
-    def test_the_readme_does_not_claim_f007_is_accepted_or_f010_exists(self):
+    def test_the_readme_reports_the_accepted_foundation_and_no_later_feature(self):
         readme = (REPO / "README.md").read_text(encoding="utf-8")
-        assert "acceptance still pending" in readme or "not accepted yet" in readme
+        # F007 is accepted; nothing may still call it pending...
+        assert "acceptance still pending" not in readme
+        assert "not accepted yet" not in readme
+        assert "accepted foundation" in readme
+        # ...and nothing after it may be claimed as existing.
         assert "F010" not in readme or "not implemented" in readme
 
-    def test_status_keeps_f007_in_progress_and_f010_untouched(self):
+    def test_status_marks_f007_accepted_and_leaves_f010_untouched(self):
         text = STATUS.read_text(encoding="utf-8")
-        assert re.search(r"^- \[~\] F007 — Runtime harness", text, re.M)
+        f007 = re.search(r"^- \[x\] F007 — Runtime harness.*$", text, re.M)
+        assert f007, "F007 is externally accepted and must be checked off"
+        assert "2e820a4dbf9842cf" in f007.group(0), "the accepted Evidence job is missing"
+        assert "ACCEPTED" in f007.group(0)
+        # F010 is the next feature and was NOT started.
         assert re.search(r"^- \[ \] F010 —", text, re.M)
 
 

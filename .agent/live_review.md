@@ -1,48 +1,56 @@
-# Live Review — Steps 6081-6140 — F007 — Runtime harness
+# Live Review — Steps 6621-6660 — F007 external acceptance closure
 
-Reviewer: external final reviewer (independent; owns the verdict).
+## Verdict (reviewer-owned)
+**PASS_WITH_RISKS** — ACCEPTED (F007, external review, 2026-07-13; 0 open findings)
 
-## Verdict
+The verdict stays `PASS_WITH_RISKS`, not `PASS`: final human review is still required
+before this branch is committed. `review_ready` is therefore `false` in the review
+manifest, and that is the honest state — it is not something to be tuned away.
 
-**MERGED AS AN HONEST CHECKPOINT** — the persistent-supervisor round has NOT been
-externally accepted. The last external review
-(`remedy-review-20260712-134354-READY_FOR_REVIEW.zip`, job `959213bbdabe432f`,
-13 content proofs, 339 evidence tests) returned FINDINGS, the binding one being that
-`runtime serve` was not persistent across the CLI process boundary. That is now fixed
-and proved with real separate-process tests, but the fix itself has not been through
-an external round, so F007 stays `[~]`.
+## Builder Handoff
 
-## Branch / Base
+This closure was performed by the **operator by hand**. No Builder ran, no Reviewer ran,
+no provider was called (0 provider calls), and neither `job-flow` nor `job-run` was used.
 
-- F007 was merged through PR #127 (`7733a1d`); the branch `feature/f007-runtime-harness`
-  is deleted. No F007 branch is active.
+- **Frozen:** the accepted F007 runtime implementation and its tests were not touched —
+  `apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py`,
+  `packages/runtimes/runtime_supervisor.py`, `tests/cli/test_runtime_cmd.py`,
+  `tests/runtimes/runtime_cleanup.py`,
+  `tests/runtimes/test_runtime_cli_process_boundary.py` and
+  `tests/runtimes/test_supervisor_portability.py` are byte-identical to the accepted
+  package (7/7 sha256 verified before and after every run).
+- **Changed:** acceptance documentation and operator state only, plus one focused
+  regression test for the review-manifest parser contract.
+- **Not started:** F010 (next feature), F008, F009, F146.
+- **Branch:** uncommitted, unpushed, unmerged — awaiting the human commit decision.
 
-## Scope
+## Accepted package
 
-`remedy runtime serve|probe|stop`; RuntimeSpec bound to `.remedy/config.toml
-[runtime]` with vite/next/uvicorn detection; free-port fallback with the effective
-port reported; HTTP readiness with a bounded log tail; psutil process-tree shutdown
-with no zombies; durable runtime state whose identity is PID + creation time +
-command fingerprint, so a recycled PID can never be killed.
+`remedy-review-20260713-115439-READY_FOR_REVIEW.zip`
+(sha256 `4df642850249b8e1d2763400311aced43a712fd0523e79e4c6c169d5c0b263a9`),
+Evidence job `2e820a4dbf9842cf`, history jobs `eb2b76fd1aba4668`, `809b9b5743694abf`,
+7/7 content proofs matched the packaged files.
 
-## Task scopes (manual completion, non-overlapping)
+Independent external verification:
+- ZIP sha256 matched exactly; bundle integrity, subject/Evidence alignment, fresh
+  Evidence, change provenance, artifact contract and runtime integration all PASS.
+- `tests/runtimes/test_supervisor_portability.py` — 99 passed, normal final summary.
+- `tests/runtimes/test_runtime_cli_process_boundary.py` — 15 passed, normal final summary.
+- Both files in ONE pytest invocation — **114 passed in 525.44s**, normal final summary.
+- **No `/tmp/pytest-*` runtime supervisor or application survived any complete run.**
+- A deliberately failing pytest probe confirmed the registered subprocess cleanup still
+  runs after an assertion failure and leaves no child alive.
+- `compileall` and `bash -n scripts/make_review_zip.sh` passed.
+- Disclosed environment limitation (not an F007 blocker): the extracted review ZIP excludes
+  `apps/ui/node_modules`, so the external host ran 2 apps/ui tests and skipped 5 with an
+  explicit missing-Vite-dependency blocker. All 7 pass on the operator environment, where
+  the dependencies are already installed; production code is byte-identical.
 
-- T001 process manager + process-tree/dummy-server tests.
-- T002 config, detection, CLI group, catalog and handler tests.
-- T003 real apps/ui Vite probe + roadmap/state.
+## Closure state
 
-## Verification
-
-- F007 — 167 passed (dev_server 28, runtime_config 19, runtime CLI 16, lifecycle
-  safety 51, state machine 32, CLI process boundary 14, real apps/ui 7), each file
-  run separately. No failing tests.
-- Affected: command catalog 23, CLI UX 57, config CLI 14, config 55, stream
-  evidence 38.
-- compileall, `bash -n scripts/make_review_zip.sh`, `git diff --check` clean.
-- Zero provider calls; local HTTP servers, real subprocess trees and the already
-  installed apps/ui dependencies only.
-
-## Status
-
-Implementation merged into main. F007 remains `[~]` pending external acceptance of
-the supervisor architecture. F008 and F146 untouched.
+- F007 is `[x]` in `docs/roadmap/STATUS.md` with the accepted ZIP, Evidence job
+  `2e820a4dbf9842cf`, the verdict and the acceptance date; `T0_F007.md` and `README.md`
+  record the same truth; the docs-consistency test pins it.
+- The long 114-test subprocess proof was not rerun: none of its files changed, and the
+  external result is referenced instead.
+- **Zero open findings.** Zero provider calls.

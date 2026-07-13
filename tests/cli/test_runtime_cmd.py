@@ -129,14 +129,24 @@ class TestServe:
             capsys.readouterr()
 
     def test_a_readiness_timeout_exits_4_and_leaves_no_state(self, tmp_path, capsys):
+        """The FAST contract of a readiness timeout: the exit code, the error class, no
+        state, nothing left running.
+
+        It deliberately does NOT assert on the log tail. With a 1.5 s deadline the child
+        interpreter may not have printed its first line yet — the tail was empty in four
+        of five external runs — and a test that asserts a line that need not exist yet is
+        testing the machine's speed, not the runtime. The log tail is proven separately,
+        against an observable marker the child writes AFTER its line
+        (`tests/runtimes/test_runtime_cli_process_boundary.py`).
+        """
         root = _project(tmp_path, "never.py", NEVER, timeout=1.5)
         with pytest.raises(SystemExit) as exc:
             runtime_cmd._cmd_runtime_serve(str(root), json_output=True)
         assert exc.value.code == runtime_cmd.EXIT_READY
         out = json.loads(capsys.readouterr().out)
         assert out["ok"] is False and out["error_class"] == "ready"
-        assert "never ready" in out["log_tail"]
         assert load_state(root) is None
+        assert not out.get("survivors")
 
     def test_a_missing_runtime_exits_2(self, tmp_path, capsys):
         empty = tmp_path / "empty"
