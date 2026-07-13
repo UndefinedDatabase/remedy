@@ -20,6 +20,10 @@ import psutil
 import pytest
 
 from packages.runtimes import dev_server as DS
+from tests.runtimes.runtime_cleanup import (
+    RuntimeRegistry,
+    basetemp_survivors,
+)
 from packages.runtimes.dev_server import (
     STATUS_RUNNING,
     STATUS_STARTING,
@@ -77,6 +81,54 @@ def data_root(tmp_path) -> Path:
     return root
 
 
+#: What the test currently running has started. Teardown stops exactly this — it never
+#: goes hunting through the process table for something that might be ours.
+REGISTRY: RuntimeRegistry | None = None
+
+
+@pytest.fixture(autouse=True)
+def runtime_janitor(tmp_path, request):
+    """Per-test cleanup by registry, and a fast failure instead of a hanging file.
+
+    This file had no automatic cleanup at all: every test was expected to remember its own
+    `finally`, and a test that failed early simply leaked its supervisor. On the review
+    host — six times slower than ours — the leaks accumulated and the complete file never
+    reached a final summary.
+    """
+    global REGISTRY
+    REGISTRY = RuntimeRegistry(tmp_path)
+    try:
+        yield REGISTRY
+    finally:
+        registry, REGISTRY = REGISTRY, None
+        registry.stop_everything()
+        for entry in registry.survivors_in_tmp():
+            registry.track(int(entry.split()[0]))
+        leftovers = registry.stop_everything()
+        registry.remove_control_files()
+        remaining = registry.survivors_in_tmp()
+        if leftovers or remaining:
+            raise AssertionError(
+                f"{request.node.name} left runtime processes behind: "
+                f"survivors={leftovers} still_running={remaining}")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def no_runtime_survives_this_file(tmp_path_factory):
+    """After the WHOLE file: nothing from this run's pytest temporary directory lives."""
+    yield
+    leftovers = basetemp_survivors(tmp_path_factory.getbasetemp())
+    assert leftovers == [], f"runtime processes survived the file: {leftovers}"
+
+
+def _register(payload=None, *, project=None, data_root=None, proc=None) -> None:
+    if REGISTRY is None:
+        return
+    if proc is not None:
+        REGISTRY.track_proc(proc)
+    REGISTRY.observe(payload, project=project, data_root=data_root)
+
+
 @pytest.fixture
 def project(tmp_path) -> Path:
     root = tmp_path / "proj"
@@ -115,6 +167,7 @@ def _cli(project: Path, data_root: Path, *args: str, timeout: float = 120.0):
     if proc.stdout.strip():
         with __import__("contextlib").suppress(ValueError):
             payload = json.loads(proc.stdout)
+    _register(payload, project=project, data_root=data_root)
     return proc.returncode, payload, proc.stderr
 
 
@@ -211,6 +264,7 @@ class TestServeSurvivesTheCli:
             cwd=str(REPO), env=env, capture_output=True, text=True, timeout=120,
         )
         out = json.loads(proc.stdout)
+        _register(out, project=project, data_root=data_root)
         try:
             assert proc.returncode == 0, proc.stderr
             time.sleep(2.5)                       # the app writes ~40 MiB
@@ -422,3 +476,60 @@ class TestSupervisorFailures:
         finally:
             victim.kill()
             victim.wait()
+
+
+# ---------------------------------------------------------------------------
+# The readiness log tail — proven by an observed marker, never by elapsed time
+# ---------------------------------------------------------------------------
+
+#: Prints its line, flushes it, and only THEN writes a marker file. The marker is the
+#: proof that the line exists: a test that instead assumed the child had printed within
+#: N seconds was measuring the machine, not the runtime (the tail was empty in four of
+#: five external runs).
+NEVER_WITH_MARKER = """
+import os, sys, time
+print("never ready", flush=True)
+sys.stdout.flush()
+open(os.environ["REMEDY_TEST_MARKER"], "w").write("printed\\n")
+while True:
+    time.sleep(0.2)
+"""
+
+
+class TestReadinessLogTail:
+    def test_the_readiness_failure_returns_the_line_the_child_really_printed(
+        self, project, data_root, tmp_path,
+    ):
+        marker = tmp_path / "child-printed.marker"
+        (project / "never_marker.py").write_text(NEVER_WITH_MARKER)
+        _config(project, "never_marker.py", timeout=12.0)
+
+        env = dict(os.environ)
+        env["REMEDY_DATA_DIR"] = str(data_root)
+        env["REMEDY_TEST_MARKER"] = str(marker)
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "apps.cli.main", "runtime", "serve",
+             "--repo", str(project), "--json"],
+            cwd=str(REPO), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True,
+        )
+        _register(project=project, data_root=data_root, proc=proc)
+        try:
+            # 1. the child really printed its line — observed, not assumed.
+            deadline = time.time() + 60
+            while time.time() < deadline and not marker.exists():
+                assert proc.poll() is None, "the CLI gave up before the child printed"
+                time.sleep(0.05)
+            assert marker.is_file(), "the child never printed its line"
+
+            # 2. only now does the readiness deadline run out.
+            stdout, stderr = proc.communicate(timeout=120)
+            assert proc.returncode == 4, (stdout, stderr)
+            out = json.loads(stdout)
+            assert out["error_class"] == "ready"
+            assert "never ready" in out["log_tail"], out["log_tail"]
+            assert _state(data_root, project) is None
+        finally:
+            with __import__("contextlib").suppress(Exception):
+                proc.kill()
+            _cleanup(data_root, project)

@@ -352,6 +352,39 @@ class TestReviewStateExtraction:
         assert rs["review_ready"] is False
         assert "R-9001" in rs["open_findings"]
 
+    def test_an_accepted_with_risks_closure_is_machine_readable(
+        self, tmp_path, monkeypatch,
+    ):
+        """The exact shape of an accepted closure live review.
+
+        The F007 closure package shipped a live review headed `## Verdict` with the
+        verdict on the next line. `remedy integrity check` accepted that (it reads the
+        line after any `## Verdict` heading), so the operator believed the verdict was
+        machine-readable — but the review MANIFEST requires the reviewer-owned heading and
+        a bold token, found neither, and packaged `latest_live_review_verdict: "absent"`.
+        This pins the contract the manifest actually parses.
+        """
+        monkeypatch.chdir(tmp_path)
+        agent_dir = tmp_path / ".agent"
+        agent_dir.mkdir()
+        (agent_dir / "live_review.md").write_text(
+            "# Live Review — Steps 6621-6660 — F007 closure\n\n"
+            "## Verdict (reviewer-owned)\n"
+            "**PASS_WITH_RISKS** — ACCEPTED (F007, external review, 2026-07-13; "
+            "0 open findings)\n\n"
+            "## Builder Handoff\n\n"
+            "Operator closure by hand: no Builder, no provider call.\n"
+        )
+        from scripts.build_review_manifest import _extract_review_state
+        rs = _extract_review_state()
+
+        assert rs["latest_live_review_verdict"] == "PASS_WITH_RISKS"
+        assert rs["open_findings"] == []
+        assert rs["builder_handoff_present"] is True
+        # ...and PASS_WITH_RISKS is honestly NOT review-ready: a human still has to sign
+        # this off. The fix for that is a human, not a softer verdict.
+        assert rs["review_ready"] is False
+
     def test_missing_handoff_not_ready(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         agent_dir = tmp_path / ".agent"

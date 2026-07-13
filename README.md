@@ -24,10 +24,10 @@ reaches your repository or your remote without you saying so.
 | F004 | ✅ | Streaming provider evidence (`raw_stream.jsonl`, run events) |
 | F005 | ✅ | Enforced structured outputs (versioned schemas, one parse retry) |
 | F006 | ✅ | Worktree isolation per run: one job-owned worktree, deterministic `result.diff`, promotion only from a verified base + diff |
-| F007 | 🟡 | Runtime harness: `remedy runtime serve/probe/stop` with a persistent dev-server supervisor — **merged, external acceptance still pending** |
+| F007 | ✅ | Runtime harness: `remedy runtime serve/probe/stop` with a persistent dev-server supervisor (externally accepted 2026-07-13) |
 
-F007 is **not accepted yet**; treat it as a working checkpoint. Everything after F007 in
-the roadmap (including F008 and F010) is **not implemented**.
+F001–F007 are the accepted foundation. Everything after F007 in the roadmap (including
+F008 and F010) is **not implemented**.
 
 ## Install
 
@@ -76,8 +76,10 @@ The full suite is large; run the files that cover what you touched.
 
 ## Honest limitations
 
-- **F007 is unaccepted.** Its persistent supervisor has no watchdog: if the supervisor
-  is killed while the app lives, `probe`/`stop` clean up, but nothing restarts it.
+- **The runtime supervisor is not a watchdog.** It owns one dev server and its bounded
+  log; if the supervisor is killed while the app lives, `probe`/`stop` report the
+  situation honestly and clean up what they can prove is theirs, but nothing restarts it.
+  Multi-service (Compose-style) runtimes are out of scope for F007.
 - Project identity is still a resolved-path digest (F146 is not implemented), so moving
   a project directory orphans its runtime state.
 - Provider work needs the corresponding local tooling (Claude CLI / Ollama) installed;

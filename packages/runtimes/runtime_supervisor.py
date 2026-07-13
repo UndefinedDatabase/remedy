@@ -46,22 +46,29 @@ from packages.runtimes.dev_server import (
     READY_STATUS_MAX,
     READY_STATUS_MIN,
     STATUS_EXITED,
+    STATUS_LOG_CLEANUP_FAILED,
+    STATUS_LOG_FAILED,
     STATUS_RUNNING,
+    STATUS_START_CLEANUP_FAILED,
     STATUS_STARTING,
     STATUS_STOP_FAILED,
     LogPump,
     RuntimeSpec,
     RuntimeState,
     _process_create_time,
+    atomic_write_text,
     clear_state,
+    ensure_runtime_dir,
     handshake_path,
     http_probe,
     load_state,
+    log_failure_note_path,
     log_path,
     project_digest,
     read_log_tail,
     resolved_fingerprint,
     save_state,
+    spec_file_path,
     stop_process_tree,
     stop_request_path,
     validate_spec,
@@ -75,16 +82,9 @@ HANDSHAKE_TIMEOUT_S = 90.0
 
 
 def write_handshake(path: Path, payload: dict[str, Any]) -> None:
-    """Atomic handshake write: the reader never sees a half-written result."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        os.replace(tmp, path)
-    except Exception:
-        with contextlib.suppress(OSError):
-            tmp.unlink()
-        raise
+    """Atomic PRIVATE handshake write: the reader never sees a half-written result,
+    and no other user ever sees the result at all."""
+    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
 
 
 def read_handshake(path: Path) -> dict[str, Any] | None:
@@ -105,6 +105,7 @@ class Supervisor:
     spec: RuntimeSpec
     project_root: str
     handshake: Path
+    instance_id: str = ""
 
     proc: Any = None
     pump: LogPump | None = None
@@ -117,19 +118,63 @@ class Supervisor:
     def url(self) -> str:
         return f"http://{self.spec.host}:{self.port}{self.spec.health_path}"
 
-    def _fail(self, error: str, error_class: str, cleanup: dict[str, Any]) -> int:
+    def _report_failure(self, error: str, error_class: str,
+                        survivors: list[int]) -> None:
+        with contextlib.suppress(Exception):
+            write_handshake(self.handshake, {
+                "ok": False, "error": error, "error_class": error_class,
+                "survivors": survivors, "instance_id": self.instance_id,
+                "supervisor_pid": os.getpid(),
+                "log_tail": read_log_tail(log_path(self.project_root),
+                                          LOG_TAIL_BYTES),
+            })
+
+    def _finalize_failure(self, error: str, error_class: str) -> int:
+        """The ONE way this supervisor fails, whatever went wrong.
+
+        Every failure after the application was launched — pump start, `starting`
+        persistence, readiness, `running` persistence, the success handshake, or an
+        unexpected exception — ends here: stop the app family, join the pump, look at
+        who survived, and only THEN decide what the state says. No path may delete the
+        state unconditionally while a managed process is still alive.
+        """
+        cleanup = self._stop_app()
+        survivors = list(cleanup.get("survivors") or [])
+
+        if survivors:
+            self._persist_start_cleanup_failed(cleanup, error)
+        else:
+            with contextlib.suppress(Exception):
+                clear_state(self.project_root)
+
         payload = {
             "ok": False,
             "error": error,
             "error_class": error_class,
             "log_tail": read_log_tail(log_path(self.project_root), LOG_TAIL_BYTES),
             "cleanup": cleanup,
-            "survivors": cleanup.get("survivors", []),
+            "survivors": survivors,
             "supervisor_pid": os.getpid(),
+            "instance_id": self.instance_id,
         }
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(Exception):        # best effort: never mask the error
             write_handshake(self.handshake, payload)
-        return 3 if error_class == "start" else (5 if cleanup.get("survivors") else 4)
+
+        if survivors:
+            return 5
+        return 3 if error_class == "start" else (5 if error_class == "state" else 4)
+
+    def _persist_start_cleanup_failed(self, cleanup: dict[str, Any],
+                                      error: str) -> None:
+        state = self.state or load_state(self.project_root)
+        if state is None:
+            return
+        state.status = STATUS_START_CLEANUP_FAILED
+        state.survivors = list(cleanup.get("survivors") or [])
+        state.stop_error = (
+            f"{error}; processes survived the supervisor cleanup: {state.survivors}")
+        with contextlib.suppress(Exception):
+            save_state(state)
 
     def _stop_app(self) -> dict[str, Any]:
         """Stop the application tree we own, and reap it."""
@@ -141,6 +186,25 @@ class Supervisor:
         if self.pump is not None:
             self.pump.join(timeout=GRACE_SECONDS)
         return result
+
+    def _remove_control_files(self, *, keep_handshake: bool = False) -> None:
+        """A stopped runtime leaves no stop request, handshake or spec behind.
+
+        ``keep_handshake``: the SUCCESS handshake belongs to the serve CLI that is still
+        waiting for it. A pump that fails microseconds after the handshake was written
+        must not delete it underneath that CLI — the start really did succeed, and serve
+        must be able to say so; the failure that follows is then reported by the durable
+        state, which is exactly what a later probe reads.
+        """
+        stop_file = stop_request_path(self.project_root)
+        targets = [stop_file,
+                   stop_file.with_name(stop_file.name + ".invalid"),
+                   spec_file_path(self.project_root)]
+        if not keep_handshake:
+            targets.append(self.handshake)
+        for path in targets:
+            with contextlib.suppress(OSError):
+                Path(path).unlink()
 
     def _app_pgid(self) -> int:
         if self.proc is None:
@@ -163,8 +227,9 @@ class Supervisor:
         try:
             handle = LogPump.open_log(log_file)
         except OSError as exc:
-            return self._fail(f"runtime log could not be opened: {exc}",
-                              "start", {"survivors": []})
+            # Nothing has been launched yet, so there is nothing to finalize.
+            self._report_failure(f"runtime log could not be opened: {exc}", "start", [])
+            return 3
 
         # 2. the application, as OUR child
         try:
@@ -172,12 +237,17 @@ class Supervisor:
                 argv, cwd=self.spec.cwd, env=env,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 stdin=subprocess.DEVNULL,
+                # The application gets its OWN session, so its group can be killed
+                # whole WITHOUT the supervisor signalling itself — the supervisor has
+                # to stay alive long enough to record what the cleanup actually did.
+                start_new_session=True,
             )
         except (OSError, ValueError) as exc:
             with contextlib.suppress(Exception):
                 handle.close()
-            return self._fail(f"could not start the application: {exc}",
-                              "start", {"survivors": []})
+            self._report_failure(f"could not start the application: {exc}",
+                                 "start", [])
+            return 3
 
         # 3. the pump, whose thread lives as long as WE do
         try:
@@ -191,7 +261,7 @@ class Supervisor:
             self.pump.start()
         except Exception as exc:
             cleanup = self._stop_app()
-            return self._fail(f"log pump failed to start: {exc}", "start", cleanup)
+            return self._finalize_failure(f"log pump failed to start: {exc}", "start")
 
         # 4. identities, then the `starting` record
         try:
@@ -227,22 +297,17 @@ class Supervisor:
                     + sup_cmd[1:], sup_cwd, digest),
                 supervisor_pgid=os.getpgrp(),
                 supervisor_sid=os.getsid(0),
+                instance_id=self.instance_id,
             )
             save_state(self.state)
         except Exception as exc:
-            cleanup = self._stop_app()
-            return self._fail(f"starting state could not be persisted: {exc}",
-                              "state", cleanup)
+            return self._finalize_failure(
+                f"starting state could not be persisted: {exc}", "state")
 
         # 5. readiness
         ready = self._wait_ready()
         if not ready["ok"]:
-            cleanup = self._stop_app()
-            if not cleanup.get("survivors"):
-                clear_state(self.project_root)
-            else:
-                self._persist_stop_failed(cleanup)
-            return self._fail(ready["error"], ready["error_class"], cleanup)
+            return self._finalize_failure(ready["error"], ready["error_class"])
 
         # 6. `running` — transactional: if it cannot be persisted, the app must NOT
         #    be left alive behind an abandoned record.
@@ -251,13 +316,8 @@ class Supervisor:
             self.state.log_error = self.pump.error if self.pump else ""
             save_state(self.state)
         except Exception as exc:
-            cleanup = self._stop_app()
-            if cleanup.get("survivors"):
-                self._persist_stop_failed(cleanup)
-            else:
-                clear_state(self.project_root)
-            return self._fail(
-                f"running state could not be persisted: {exc}", "state", cleanup)
+            return self._finalize_failure(
+                f"running state could not be persisted: {exc}", "state")
 
         # 7. tell the CLI, then STAY ALIVE
         try:
@@ -268,12 +328,11 @@ class Supervisor:
                 "port": self.port,
                 "url": self.state.url,
                 "status_code": ready["status_code"],
+                "instance_id": self.instance_id,
             })
         except Exception as exc:
-            cleanup = self._stop_app()
-            clear_state(self.project_root)
-            return self._fail(f"handshake could not be written: {exc}",
-                              "state", cleanup)
+            return self._finalize_failure(
+                f"handshake could not be written: {exc}", "state")
 
         return self._supervise()
 
@@ -303,14 +362,137 @@ class Supervisor:
         return {"ok": False, "error_class": "ready",
                 "error": f"not ready after {self.spec.ready_timeout_s}s: {last}"}
 
+    def _stop_request_is_ours(self, stop_file: Path) -> bool:
+        """A stop request is obeyed ONLY when it carries this runtime's exact id.
+
+        Anything else — an empty or whitespace-only file, a truncated id, an id with
+        extra text after it, a foreign id, an unreadable or undecodable file — is not a
+        stop request for this runtime. The reviewed build treated an EMPTY file as a
+        valid stop, so a zero-byte `runtime.stop` shut a live runtime down. Now the id
+        must match exactly; an invalid request is quarantined and supervision
+        continues, with the running state untouched.
+        """
+        try:
+            requested = stop_file.read_text(encoding="utf-8").strip()
+        except (OSError, ValueError, UnicodeDecodeError) as exc:
+            self._quarantine(stop_file, f"unreadable stop request: {exc}")
+            return False
+
+        if self.instance_id and requested == self.instance_id:
+            return True
+
+        self._quarantine(
+            stop_file,
+            "stop request does not carry this runtime's instance id "
+            f"({len(requested)} characters); the runtime keeps running")
+        return False
+
+    def _quarantine(self, stop_file: Path, reason: str) -> None:
+        """Set an invalid stop request aside; never act on it, never loop on it."""
+        with contextlib.suppress(OSError):
+            atomic_write_text(stop_file.with_name(stop_file.name + ".invalid"),
+                              f"{reason}\n")
+        with contextlib.suppress(OSError):
+            stop_file.unlink()
+
+    def _log_failure(self) -> str:
+        """Why the bounded log is no longer being drained — or "" while it is.
+
+        The pump is checked for the WHOLE life of the runtime, not only at startup. A
+        pump that raised, and a pump whose thread simply ended while the application is
+        still running, are the same fact: nothing is draining the child's stdout any
+        more. The pipe fills, the application blocks on its own output, and no line of it
+        is being captured. That is a runtime failure even when no exception was recorded.
+        """
+        if self.pump is None:
+            return "the log pump is gone"
+        if self.pump.error:
+            return self.pump.error
+        if not self.pump.alive:
+            return "log pump exited unexpectedly while the application was running"
+        return ""
+
+    def _finalize_log_failure(self, error: str) -> int:
+        """A post-start pump failure ends the runtime — honestly, and with no orphan.
+
+        The application family is stopped through the identity this supervisor OWNS (its
+        own child and the group it observed at launch), the pump is joined, survivors are
+        inspected, and only then is the durable record written. The state never stays
+        ``running``, and the diagnostic is never cleared here: a later `runtime probe`
+        must still be able to say what went wrong, and `runtime stop` clears it once the
+        processes are proven gone.
+
+        The write itself can fail. What happens then depends entirely on whether anything
+        SURVIVED: runtime.json is the only record of a survivor's pid, creation time,
+        process group, session and instance id, and without it no later command can ever
+        prove ownership of that process again. So a survivor's record is never deleted
+        because a nicer diagnostic could not be written — the previous record stays as
+        the minimum safe fallback. Only when nothing survived is clearing a now-false
+        `running` record the safe thing to do.
+        """
+        cleanup = self._stop_app()
+        survivors = list(cleanup.get("survivors") or [])
+        self._remove_control_files(keep_handshake=True)
+
+        state = load_state(self.project_root) or self.state
+        if state is None or state.supervisor_pid not in (0, os.getpid()):
+            return 5
+
+        status = STATUS_LOG_CLEANUP_FAILED if survivors else STATUS_LOG_FAILED
+        detail = (f"the runtime log pump failed: {error}"
+                  + (f"; processes survived the cleanup: {survivors}" if survivors
+                     else "; the application family was stopped"))
+        updated = RuntimeState.from_json(state.to_json())
+        updated.status = status
+        updated.log_error = error
+        updated.survivors = survivors
+        updated.stop_error = detail
+        try:
+            save_state(updated)
+        except Exception as exc:
+            if survivors:
+                # NEVER clear here. The pre-existing record — pid, creation time, pgid,
+                # sid, instance id — is the only thing that lets a later probe or stop
+                # identify these live processes at all. Keep it, and leave the write
+                # failure where an operator will find it.
+                self._emergency_note(status, detail, survivors, exc)
+            else:
+                # Nothing survived: a record still claiming `running` would be a lie
+                # about processes that no longer exist.
+                with contextlib.suppress(Exception):
+                    clear_state(self.project_root)
+        return 5
+
+    def _emergency_note(self, status: str, detail: str, survivors: list[int],
+                        exc: Exception) -> None:
+        """A private owner-only sidecar describing a diagnostic that could not be saved.
+
+        It is a NOTE, never authorization: nothing reads it to decide what to signal. The
+        durable runtime.json — untouched — remains the only identity a command may act on.
+        """
+        with contextlib.suppress(Exception):
+            atomic_write_text(
+                log_failure_note_path(self.project_root),
+                json.dumps({
+                    "status": status,
+                    "detail": detail,
+                    "survivors": survivors,
+                    "state_write_error": f"{type(exc).__name__}: {exc}",
+                    "supervisor_pid": os.getpid(),
+                    "instance_id": self.instance_id,
+                }, indent=2) + "\n",
+            )
+
     def _supervise(self) -> int:
-        """Stay alive: pump logs, watch the app, poll for a stop request."""
+        """Stay alive: pump logs, watch the app, watch the PUMP, poll for a stop."""
         stop_file = stop_request_path(self.project_root)
         while True:
             if stop_file.exists():
+                if not self._stop_request_is_ours(stop_file):
+                    time.sleep(POLL_SECONDS)
+                    continue
                 cleanup = self._stop_app()
-                with contextlib.suppress(OSError):
-                    stop_file.unlink()
+                self._remove_control_files()
                 if cleanup.get("survivors"):
                     self._persist_stop_failed(cleanup)
                     return 5
@@ -319,7 +501,9 @@ class Supervisor:
 
             code = self.proc.poll()
             if code is not None:
-                # The application died on its own: say so, honestly, and leave.
+                # The application died on its own: say so, honestly, and leave. Checked
+                # BEFORE the pump, because a pump reaching EOF is the normal consequence
+                # of the application closing its stdout on the way out.
                 if self.pump is not None:
                     self.pump.join(timeout=GRACE_SECONDS)
                 current = load_state(self.project_root)
@@ -332,6 +516,10 @@ class Supervisor:
                         save_state(current)
                 return 0
 
+            failure = self._log_failure()
+            if failure:
+                return self._finalize_log_failure(failure)
+
             time.sleep(POLL_SECONDS)
 
 
@@ -340,10 +528,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", required=True)
     parser.add_argument("--spec", required=True, help="path to a spec JSON file")
     parser.add_argument("--handshake", required=True)
+    parser.add_argument("--instance", required=True,
+                        help="the runtime instance id (also written to runtime.json)")
     args = parser.parse_args(argv)
 
     project_root = str(Path(args.repo).resolve())
-    data = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+    ensure_runtime_dir(project_root)     # 0700, and repair any file from an old build
+
+    # The spec file carries the configured runtime ENVIRONMENT — it may contain
+    # secrets. It is ingested exactly once and then deleted, whether or not it turns
+    # out to be usable: nothing that failed to start is worth leaving an environment
+    # on disk for.
+    spec_file = Path(args.spec)
+    try:
+        raw = spec_file.read_text(encoding="utf-8")
+    finally:
+        with contextlib.suppress(OSError):
+            spec_file.unlink()
+    data = json.loads(raw)
     spec = validate_spec(
         RuntimeSpec(
             cmd=list(data["cmd"]), cwd=data["cwd"], port=int(data["port"]),
@@ -361,13 +563,12 @@ def main(argv: list[str] | None = None) -> int:
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     sup = Supervisor(spec=spec, project_root=project_root,
-                     handshake=Path(args.handshake))
+                     handshake=Path(args.handshake), instance_id=args.instance)
     try:
         return sup.run()
     except Exception as exc:                      # never a raw traceback on disk
-        cleanup = sup._stop_app()
-        return sup._fail(f"supervisor failed: {type(exc).__name__}: {exc}",
-                         "start", cleanup)
+        return sup._finalize_failure(
+            f"supervisor failed: {type(exc).__name__}: {exc}", "state")
 
 
 if __name__ == "__main__":

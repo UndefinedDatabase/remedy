@@ -1,152 +1,109 @@
-# Plan — Steps 6081-6140 — F007 — Runtime harness
+# Plan — Steps 6621-6660 — F007 external acceptance closure
 
 ## Goal
-A local runtime harness that can start, wait for, inspect and stop the target
-project's dev server safely: `remedy runtime serve|probe|stop`, bound to
-`.remedy/config.toml [runtime]`, with a free-port fallback, HTTP readiness, bounded
-logs and a process-TREE shutdown that leaves no zombies and can never kill an
-unrelated process that inherited a recycled PID.
+Record the external acceptance of F007 in the execution-order truth, the feature document,
+the top-level README and the operator state. Documentation and operator state only — the
+accepted implementation and tests are frozen.
 
 ## Current Step
-**Final F007 round: persistent runtime supervisor implemented; merging as the
-honest checkpoint. F008 and F146 untouched.**
+**Branch `feature/f007-supervisor-portability` (uncommitted, from main `dbd27e5`).
+Closure documented; packaging the closure Evidence. NOT committed, pushed or merged.**
 
-## Final round — persistent supervisor
+## External verdict — PASS_WITH_RISKS — ACCEPTED (2026-07-13)
+- Accepted package `remedy-review-20260713-115439-READY_FOR_REVIEW.zip`
+  (sha256 `4df642850249b8e1d2763400311aced43a712fd0523e79e4c6c169d5c0b263a9`),
+  Evidence job `2e820a4dbf9842cf`, history jobs `eb2b76fd1aba4668`, `809b9b5743694abf`.
+- 7/7 content proofs matched; bundle integrity, subject/Evidence alignment, fresh Evidence,
+  change provenance, artifact contract and runtime integration all PASS.
+- Portability 99 passed; CLI process boundary 15 passed; **both files in one pytest
+  invocation: 114 passed in 525.44s**, all with normal final summaries.
+- No `/tmp/pytest-*` runtime supervisor or application survived any complete run; a
+  deliberately failing probe proved the registered cleanup still runs after an assertion
+  failure.
+- Disclosed environment limitation only: the review ZIP excludes `apps/ui/node_modules`, so
+  the external host ran 2 apps/ui tests and skipped 5 with the explicit missing-Vite
+  blocker. All 7 pass on the operator environment; production code is byte-identical.
+- **Zero open findings. Zero remaining product or test blockers.**
 
-The reviewed implementation let the SHORT-LIVED `runtime serve` CLI own the dev
-server and the log pump, so the server died ~300 ms after the CLI exited. `serve`
-now starts a persistent supervisor (`packages/runtimes/runtime_supervisor.py`, run as
-`python -m packages.runtimes.runtime_supervisor`) in its own session:
+## Closure performed
+1. `docs/roadmap/STATUS.md` — F007 `[~]` → **`[x]`**, keeping PR #127 / merge `7733a1d` /
+   follow-up `d0a08a1` and adding the accepted ZIP, Evidence job `2e820a4dbf9842cf`, the
+   verdict and the acceptance date. F010 remains the first unchecked feature after F007.
+2. `docs/roadmap/features/T0_F007.md` — status accepted/done; the binding Done criterion and
+   every honest boundary preserved (single runtime, no watchdog, no F008, no F146, no
+   multi-service Compose).
+3. `README.md` — F001–F007 shown as the accepted foundation; the "not accepted yet" and
+   "unaccepted" claims removed; the real remaining limitations (no watchdog, no multi-service
+   runtimes, resolved-path project identity) kept.
+4. `tests/docs/test_docs_consistency.py` — pins the new truth (F007 `[x]` with its Evidence
+   job and verdict, F010 still `[ ]`, README no longer calling F007 pending).
+5. Operator state (`.agent/context.md`, `.agent/plan.md`, `.agent/live_review.md`) records the
+   acceptance. The live review now uses the format the review manifest really parses —
+   `## Verdict (reviewer-owned)` with a bold `**PASS_WITH_RISKS**` token, plus a
+   `## Builder Handoff` section (see the parser audit below).
 
-    serve CLI (short-lived)
-      └── supervisor (survives the CLI)
-            ├── bounded LogPump (owns the app's stdout for its whole life)
-            └── application (child of the supervisor)
+## Frozen
+`apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py`,
+`packages/runtimes/runtime_supervisor.py`, `tests/cli/test_runtime_cmd.py`,
+`tests/runtimes/runtime_cleanup.py`, `tests/runtimes/test_runtime_cli_process_boundary.py`,
+`tests/runtimes/test_supervisor_portability.py` — sha256 verified unchanged before and after
+this run. Every accepted protection stands untouched; the 114-test subprocess proof was not
+rerun because none of its files changed.
 
-The supervisor opens the log, launches the app, records BOTH identities
-(supervisor_pid/create_time/cmd/cwd/fingerprint/pgid/sid and the app's), persists
-`starting`, waits for readiness, persists `running` transactionally, reports through a
-private atomic filesystem handshake, and then stays alive: pumping logs, watching the
-app and polling a local stop-request file. `serve` returns success only after it sees
-a durable `running` record whose supervisor and app identities both verify.
+## Boundaries
+F010 is next and was **not started**. F008, F009 and F146 untouched. No provider calls.
 
-`probe` reaches a served runtime and leaves it running; `stop` asks the supervisor to
-shut down, waits, verifies the whole family is gone, and keeps a retryable
-`stop_failed` state on survivors. A bare `starting` state is never `already_running`:
-with a live supervisor it is `runtime_start_in_progress`, without one it is
-`interrupted_start`. A `probing` runtime is never adopted by a permanent serve.
+## Live-review parser audit (why integrity passed while the ZIP said `absent`)
 
-## External review 2 — FINDINGS
+Two consumers read `.agent/live_review.md`, with different strictness:
 
-1. `session_id` was persisted but never verified: a state with the right PID and a
-   FOREIGN group id made `killpg` fall on an unrelated process group.
-2. Lifecycle transitions were incoherent: probe verified state outside the lock, and
-   serve released the lock (and wrote `running`) before readiness.
-3. `RuntimeSpec.fingerprint()` hashed only cmd+cwd, so a changed port, host, health
-   path, timeout or env still reported `already_running`.
-4. `LogPump` opened runtime.log inside its thread, so a log failure left a live
-   server with only an in-memory error string.
-5. `_abort_start` ignored the rollback result and always cleared state, so a
-   surviving process was reported as an atomic failure.
-6. `load_state()` collapsed absent/corrupt/unreadable into None (a corrupt file let a
-   second server start), and AccessDenied silently deleted the state.
+- `packages/orchestration/integrity_gate.py::_check_live_review_verdict` is LENIENT: it
+  takes the first non-empty line after ANY `## Verdict` heading. The closure file used
+  `## Verdict` + the verdict on the next line, so `remedy integrity check` reported the
+  verdict as present and passing.
+- `scripts/build_review_manifest.py::_extract_review_state` is STRICT: it requires the
+  reviewer-owned heading and a bold token —
+  `##\s+Verdict\s+\(reviewer-owned\)\s*\n\s*\*?\*?([A-Z_]+)` — plus a
+  `## Builder Handoff` section. Neither was present, so the packaged manifest honestly
+  recorded `latest_live_review_verdict: "absent"` and `builder_handoff_present: false`.
 
-## Corrections
+Both parsers were behaving as written; the LIVE REVIEW was in the wrong format. The repair
+is therefore the file, not the parsers — no parser was weakened, and `PASS_WITH_RISKS` was
+not redefined as `PASS`. `review_ready` stays `false` because a human sign-off is still
+required. `tests/orchestration/test_final_audit_evidence.py` now pins the manifest contract
+so this cannot regress silently. Unifying the two parsers is a real (small) inconsistency,
+but it is out of scope for a closure repair and no defect in either parser was found.
 
-- **F1** `pgid` and `sid` are recorded from `os.getpgid`/`os.getsid` after Popen and
-  verified live before any signal; a mismatch, an uninspectable group, or a group
-  equal to Remedy's own blocks. The killpg target is the LIVE observed group, never
-  the stored number.
-- **F2** explicit statuses (`starting`, `running`, `probing`, `stop_failed`,
-  `start_cleanup_failed`, `identity_unproven`, `identity_mismatch`). Serve holds the
-  lifecycle lock from state read through readiness and only then commits `running`;
-  a probe that creates a server owns its whole bounded lifecycle under the lock.
-- **F3** versioned `rspec1` fingerprint over argv, resolved cwd, port, host,
-  health_path, ready_timeout_s and sorted env; the resolved-launch fingerprint stays
-  a separate process identity.
-- **F4** the log file is opened synchronously BEFORE Popen and handed to the pump,
-  whose `start()` waits for a real pumping handshake; a later pump failure is
-  surfaced in probe/wait_ready results and in the persisted state (`log_error`).
-- **F5** `_abort_start()` returns `{stopped, survivors, stop_error, pump_status,
-  partial_state_removed}`; a survivor is carried on the `RuntimeStartError`, kept as
-  a retryable `start_cleanup_failed` state, and exits 5. A failed atomic write
-  deletes its temp file.
-- **F6** typed `load_state_result()` (absent/valid/corrupt/unreadable) and
-  `classify_state()` (verified/definitely_gone/pid_reused/identity_mismatch/
-  identity_unproven). Corrupt or unreadable state blocks start and stop (exit 5) and
-  is never deleted; unproven/mismatched identities keep their record and kill
-  nothing; only a gone process or a proven reuse is auto-cleared.
+## Evidence package — closure-metadata repair
+- Manual repair job `386faa53c8444451`, each scope attested with
+  `--linked-prior-job-id 74c3ccfc36974aff` (the previous closure job, which itself links the
+  accepted implementation job `2e820a4dbf9842cf`). 0 provider calls.
+- Verification: `pytest -q tests/orchestration/test_final_audit_evidence.py
+  tests/docs/test_docs_consistency.py tests/cli/test_command_catalog.py
+  tests/cli/test_cli_ux.py` → **132 passed**.
+- Review state before packaging: `latest_live_review_verdict = PASS_WITH_RISKS`,
+  `open_findings = []`, `builder_handoff_present = true`, `review_ready = false`.
+- Export: `.data/evidence_exports/386faa53c8444451` — fresh_evidence PASS,
+  artifact_contract PASS, change_provenance PASS, runtime_integration PASS,
+  final_verifier PASS_WITH_RISKS, final_job_review PASS,
+  commit_execution NEEDS_HUMAN_APPROVAL, 12 content proofs.
+- ZIP: `remedy-review-20260713-203151-READY_FOR_REVIEW.zip`
+  (sha256 `56cb61e19496d26d6cc71106fd46a2c04db341c5133c5e4dedb2c19f5f9119ec`); its manifest
+  reports `latest_live_review_verdict: "PASS_WITH_RISKS"`, not `absent`.
 
-## External review — FINDINGS
+## Evidence package — previous closure (superseded metadata)
+- Manual closure job `74c3ccfc36974aff`, each scope attested with
+  `--linked-prior-job-id 2e820a4dbf9842cf` (the accepted F007 job), 0 provider calls,
+  11 content proofs.
+- Export: `.data/evidence_exports/74c3ccfc36974aff` — fresh_evidence PASS,
+  artifact_contract PASS, change_provenance PASS, runtime_integration PASS,
+  final_verifier PASS_WITH_RISKS, final_job_review PASS,
+  commit_execution NEEDS_HUMAN_APPROVAL.
+- ZIP: `remedy-review-20260713-123434-READY_FOR_REVIEW.zip`
+  (sha256 `f8ecbecfa2bea090a03929353b67b1cb1effc1cb741b4392ce73d81771d9bf7a`).
+- Verification: `pytest -q tests/docs/test_docs_consistency.py tests/cli/test_command_catalog.py
+  tests/cli/test_cli_ux.py` → **95 passed**.
 
-1. `verify_state()` checked only PID/create_time/liveness: an unrelated process with
-   the right PID and creation time but a wrong command was "verified" and killed.
-2. Startup was not transactional: a `save_state` failure after `Popen` left a live,
-   unmanaged process.
-3. No lifecycle lock: two concurrent `runtime serve` calls started two servers and
-   the second state write orphaned the first.
-4. A failed stop deleted the state and still reported `ok=true`.
-5. `MAX_LOG_BYTES` bounded reads only — runtime.log grew without limit.
-6. Malformed TOML types raised raw `ValueError` instead of exit code 2.
-
-## Corrections
-
-- **F1** identity is now the whole record: project root and digest, PID, tight
-  creation time, live `cmdline()` (with exactly two documented launcher forms:
-  script shim and npm's process-title rewrite), live cwd, and a fingerprint
-  recomputed from resolved argv + cwd + project. An uninspectable process is
-  UNPROVEN, so the destructive stop is blocked. `serve` compares the running
-  runtime's spec fingerprint with the resolved spec and blocks a different one with
-  `runtime_spec_mismatch` instead of starting a second or killing the first.
-- **F2** start is all-or-nothing: any failure after `Popen` (log open, create-time
-  inspection, serialization, atomic write) stops the tree, joins the pump, removes
-  partial state and raises `RuntimeStartError`. `save_state()` writes temp + fsync +
-  `os.replace`, and refuses to persist a running state with no creation time.
-- **F3** an fcntl `runtime.lock` per project digest serializes read → verify →
-  start/stop → commit (transitions only, never the server's lifetime), released in a
-  `finally`, with an honest timeout error. Different projects never block each other.
-- **F4** a survivor keeps a retryable `stop_failed` state (survivors + stop_error),
-  `stopped=false`, `ok=false` and exit code **5**; a later stop retries. Readiness
-  failure obeys the same rule.
-- **F5** a daemon log pump drains the pipe continuously and trims runtime.log to the
-  newest half whenever it passes the cap, so the child never blocks and the file
-  stays bounded (cap + one chunk). Stop joins the pump; it can only outlive a stop
-  in the same pathological survivor case the stop already reports.
-- **F6** every runtime TOML value is type-checked (int/float/bool/str/table) and
-  every malformed value becomes a `RuntimeConfigError` → CLI exit 2, never a
-  traceback.
-
-## Delivered
-- T001 `packages/runtimes/dev_server.py` — RuntimeSpec / RuntimeState /
-  RuntimeProbeResult / DevServer. argv only (never `shell=True`), own session,
-  psutil recursive process-tree stop with grace → kill → process-group last resort
-  and a reaped parent. Durable state at `<data>/projects/<digest>/runtime.json`
-  (PID + creation time + command fingerprint, so a reused PID is never killed) and
-  logs at `runtime.log`, always read back bounded. A requested port that is busy is
-  never fought over: a free port is chosen and the EFFECTIVE port reported.
-  A readiness failure stops the tree and leaves no state claiming to be active.
-- T002 `packages/runtimes/runtime_config.py` + `apps/cli/commands/runtime_cmd.py` —
-  `.remedy/config.toml [runtime]` is canonical (the general remedy.toml system is
-  untouched); detection from checked-in files only (vite / next / fastapi-uvicorn),
-  never importing project code; ambiguity BLOCKS with configuration-required;
-  explicit config always wins. CLI group + catalog entries; exit codes 0/2/3/4.
-- T003 real `apps/ui` Vite probe (subprocess marker), using the already-installed
-  local dependencies — no npm install, no network.
-
-## Tests
-dev_server 28, runtime_config 19, runtime CLI 16, lifecycle safety 51, state machine
-32, **CLI process boundary 14**, real apps/ui 7 (incl. the serve-CLI-exit Vite proof)
-— **167 passed**, each file separately.
-Affected: command catalog 23, CLI UX 57, config CLI 14, config 55, stream evidence 38.
-compileall / `bash -n` / `git diff --check` clean. Zero provider calls.
-
-## Boundaries (binding)
-No SSE endpoint, EventSource, React hook, polling badge or UI work (that is F008,
-Tier 5, and it depends on F146 which does not exist). No F146 project registry: the
-project digest is F006's resolved-path digest. No provider call. No Docker. No
-`shell=True`. No kill-by-port. No PID-only identity.
-
-## Status
-Merged as an honest checkpoint (see the PR body). F007 stays `[~]` until an external
-acceptance round covers the supervisor architecture; the last reviewed package
-(`959213bbdabe432f`) predates it.
+## Next
+**Awaiting the human commit decision.** The branch stays uncommitted, unpushed and
+unmerged.

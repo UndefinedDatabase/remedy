@@ -25,6 +25,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import shlex
 import signal
 import socket
@@ -74,12 +75,26 @@ STATUS_IDENTITY_MISMATCH = "identity_mismatch"
 STATUS_STOPPING = "stopping"
 STATUS_INTERRUPTED_START = "interrupted_start"
 STATUS_EXITED = "exited"
+STATUS_SUPERVISOR_MISSING = "supervisor_missing"
+#: The bounded log pump died while the application was still running. A runtime whose
+#: logs are no longer being drained is not a healthy runtime, however happily its port
+#: still answers: the pipe backs up, the application eventually blocks on its own stdout,
+#: and nothing is being captured in the meantime.
+STATUS_LOG_FAILED = "log_failed"
+#: ...and the application family could not be cleaned up after that failure.
+STATUS_LOG_CLEANUP_FAILED = "log_cleanup_failed"
+
+#: Durable diagnostics: the runtime is not usable, and the record explains why. They are
+#: never silently overwritten by a new serve or probe; `runtime stop` clears them once it
+#: has confirmed that supervisor, application and descendants are really gone.
+LOG_FAILURE_STATUSES = frozenset({STATUS_LOG_FAILED, STATUS_LOG_CLEANUP_FAILED})
 
 #: A record in one of these statuses owns (or may own) a live process.
 LIVE_STATUSES = frozenset({
     STATUS_STARTING, STATUS_RUNNING, STATUS_PROBING, STATUS_STOPPING,
     STATUS_STOP_FAILED, STATUS_START_CLEANUP_FAILED, STATUS_INTERRUPTED_START,
     STATUS_IDENTITY_UNPROVEN, STATUS_IDENTITY_MISMATCH,
+    STATUS_SUPERVISOR_MISSING, STATUS_LOG_FAILED, STATUS_LOG_CLEANUP_FAILED,
 })
 
 #: Identity classifications returned by classify_state().
@@ -256,8 +271,95 @@ def stop_request_path(project_root: str | Path) -> Path:
     return runtime_dir(project_root) / "runtime.stop"
 
 
+def spec_file_path(project_root: str | Path) -> Path:
+    """The effective spec handed to the supervisor. It carries the runtime ENV, so it
+    may contain secrets: it is private, and the supervisor deletes it once ingested."""
+    return runtime_dir(project_root) / "runtime.spec.json"
+
+
+# --- privacy ---------------------------------------------------------------
+#
+# Every runtime artifact is local control data about this user's processes, and
+# runtime.spec.json carries the configured environment — which may hold secrets. None
+# of it is other users' business, so the directory is 0700 and every file 0600. The
+# helpers below also REPAIR files created by an older, laxer build.
+
+RUNTIME_DIR_MODE = 0o700
+RUNTIME_FILE_MODE = 0o600
+
+#: The files this harness manages inside the runtime directory.
+RUNTIME_ARTIFACTS = (
+    "runtime.json", "runtime.spec.json", "runtime.log", "runtime.lock",
+    "runtime.handshake.json", "runtime.stop", "runtime.stop.invalid",
+    "runtime.log_failure.json",
+)
+
+
+def harden_path(path: str | Path) -> None:
+    """Make one existing runtime artifact owner-only. Never raises."""
+    with contextlib.suppress(OSError):
+        p = Path(path)
+        if p.is_file() and (p.stat().st_mode & 0o777) != RUNTIME_FILE_MODE:
+            os.chmod(p, RUNTIME_FILE_MODE)
+
+
+def ensure_runtime_dir(project_root: str | Path) -> Path:
+    """The private runtime directory, created and repaired: 0700 dir, 0600 files."""
+    rdir = runtime_dir(project_root)
+    rdir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        if (rdir.stat().st_mode & 0o777) != RUNTIME_DIR_MODE:
+            os.chmod(rdir, RUNTIME_DIR_MODE)
+    for name in RUNTIME_ARTIFACTS:
+        harden_path(rdir / name)
+    return rdir
+
+
+def atomic_write_bytes(path: str | Path, data: bytes) -> None:
+    """Write a PRIVATE file atomically: 0600 temp file, fsync, os.replace.
+
+    The temp file is created with the final mode, so the replaced file is never even
+    briefly world-readable, and a failed write never leaves its temp file behind.
+    """
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+    try:
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                     RUNTIME_FILE_MODE)
+        try:
+            os.write(fd, data)
+            with contextlib.suppress(OSError):
+                os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp, target)
+    except Exception:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+
+
+def atomic_write_text(path: str | Path, text: str) -> None:
+    atomic_write_bytes(path, text.encode("utf-8"))
+
+
+def open_private_file(path: str | Path):
+    """Open a runtime file for writing with owner-only permissions."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(p), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, RUNTIME_FILE_MODE)
+    harden_path(p)                       # repair a pre-existing 0644 file
+    return os.fdopen(fd, "wb", buffering=0)
+
+
 #: How long a lifecycle transition waits for the project lock before giving up.
 LOCK_TIMEOUT_S = 10.0
+
+#: How long `runtime stop` gives a verified supervisor to shut its own runtime down
+#: before it considers a hard signal. Named (not inlined) so a test can shorten it
+#: without waiting out the real thing.
+STOP_REQUEST_TIMEOUT_S = 15.0
 
 
 @contextmanager
@@ -270,9 +372,10 @@ def lifecycle_lock(project_root: str | Path,
     running", start their own server, and the second one's state write orphans the
     first process. Per project: two different projects never block each other.
     """
+    ensure_runtime_dir(project_root)
     path = lock_path(project_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o644)
+    fd = os.open(str(path), os.O_RDWR | os.O_CREAT, RUNTIME_FILE_MODE)
+    harden_path(path)                    # repair a lock file from an older build
     deadline = time.monotonic() + max(0.0, timeout_s)
     try:
         while True:
@@ -303,6 +406,19 @@ def lifecycle_lock(project_root: str | Path,
 # State
 # ---------------------------------------------------------------------------
 
+def new_instance_id() -> str:
+    """A random id for one served runtime. Not a capability — an identity BINDING.
+
+    It is generated before the supervisor exists, put into the supervisor's argv (so it
+    is verifiable from the LIVE process table, not just from a file), and written into
+    runtime.json, the handshake and the stop request. It never replaces the pid,
+    creation time, command line, project digest or process-group checks; it is one more
+    thing that must agree.
+    """
+    import secrets
+    return secrets.token_hex(16)
+
+
 def resolved_fingerprint(argv: list[str], cwd: str | Path, project_id: str) -> str:
     """Identity of a RESOLVED launch: the real argv, the real cwd, this project.
 
@@ -316,6 +432,120 @@ def resolved_fingerprint(argv: list[str], cwd: str | Path, project_id: str) -> s
         sort_keys=True,
     )
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
+
+
+#: Every normal absolute-path form, ANYWHERE inside a string — after `--flag=`, after
+#: `key=`, inside a quote, in the middle of a diagnostic sentence:
+#:
+#:     /home/user/file            POSIX
+#:     C:\Users\Alice\file        Windows, backslashes
+#:     C:/Users/Alice/file        Windows, forward slashes
+#:     \\server\share\file        UNC
+#:     //server/share/file        UNC, forward slashes
+#:
+#: The look-behind keeps ordinary URLs intact: in ``http://127.0.0.1:5173/health`` the
+#: `//` follows a colon and the path slash follows a word character, so neither starts a
+#: match. A bare ``C:`` that is not followed by a separator is ordinary text, not a path,
+#: and is left alone.
+_PATH_TAIL = r"""[^\s'"`,;)\]}]"""
+_ABS_PATH_RE = re.compile(
+    rf"""(?<![\w:/\\])(?:
+            \\\\{_PATH_TAIL}+                 # \\server\share\...
+          | //{_PATH_TAIL}+                   # //server/share/...
+          | [A-Za-z]:[\\/]{_PATH_TAIL}*       # C:\... or C:/...
+          | /{_PATH_TAIL}*                    # /posix/path
+        )""",
+    re.VERBOSE,
+)
+
+#: What makes a command element an absolute path worth redacting by value.
+_ABS_PREFIX_RE = re.compile(r"\A(?:/|\\\\|//|[A-Za-z]:[\\/])")
+
+
+def _basename(token: str) -> str:
+    """The bare file name of a POSIX, Windows or UNC path, on whatever host runs this."""
+    from pathlib import PureWindowsPath
+    text = str(token)
+    if "\\" in text or re.match(r"\A[A-Za-z]:", text) or text.startswith("//"):
+        return PureWindowsPath(text).name or "[path]"
+    return Path(text).name or "[path]"
+
+
+#: A QUOTED absolute path — the only form in which a path may legitimately contain
+#: spaces, e.g. ``working directory "C:/Users/Alice/private dir" cannot be inspected``.
+#: Unquoted, a space ends the path, and only its prefix (the private part) is removed.
+_QUOTED_PATH_RE = re.compile(
+    r"""(['"])((?:\\\\|//|[A-Za-z]:[\\/]|/)[^'"]*)\1""")
+
+#: A `file:` URI. It LOOKS like a URL, which is exactly why the generic path scrub —
+#: which deliberately leaves URLs alone — used to walk straight past
+#: ``file:///home/alice/private/secret.txt``. A file URI is not a network address: it is
+#: a local path wearing a scheme, and it is redacted like one.
+#: The look-behind is the scheme BOUNDARY: a URI scheme may only be preceded by a
+#: non-scheme character. Without it, `profile:///home/alice/x.txt` matched from its
+#: `file:` onwards and came back as `protest.txt` — a string that is not a file URI at all
+#: being quietly rewritten. `profile:`, `myfile:`, `notafile:` and `some.file:` are left
+#: exactly as they are; `file:`, `FILE:`, `prefix=file:` and `(file:…)` are redacted.
+_FILE_URI_RE = re.compile(
+    r"""(?<![A-Za-z0-9+.\-])file:(?://)?[^\s'"`,;)\]}]*""", re.IGNORECASE)
+
+
+def _file_uri_basename(uri: str) -> str:
+    """The bare file name behind a `file:` URI, in every normal form.
+
+    ``file:///home/alice/secret.txt``            → secret.txt
+    ``file://localhost/home/alice/secret.txt``   → secret.txt
+    ``file:///C:/Users/Alice/secret.txt``        → secret.txt
+    ``file://server/share/secret.txt``           → secret.txt   (host is private too)
+    ``file:///home/alice/private%20dir/x.txt``   → x.txt        (percent-decoded)
+
+    Never a path operation on an arbitrary string: the URI is split first, and anything
+    that does not yield a name becomes ``[path]``.
+    """
+    from urllib.parse import unquote, urlsplit
+
+    try:
+        parts = urlsplit(uri)
+        path = unquote(parts.path or "")
+    except ValueError:
+        return "[path]"
+    if not path:
+        return "[path]"
+    path = path.lstrip("/")              # /C:/Users/... and /home/... alike
+    return _basename(path) or "[path]"
+
+
+def _scrub_paths(value: str) -> str:
+    """Reduce every absolute path — and every local file URI — to its bare file name."""
+    text = _FILE_URI_RE.sub(lambda m: _file_uri_basename(m.group(0)), value)
+    text = _QUOTED_PATH_RE.sub(
+        lambda m: f"{m.group(1)}{_basename(m.group(2))}{m.group(1)}", text)
+    return _ABS_PATH_RE.sub(lambda m: _basename(m.group(0)), text)
+
+
+def _redact(value: Any, rules: list[tuple[str, str]] | None = None) -> Any:
+    """Recursively strip private values and absolute paths out of a structure.
+
+    Two passes, because either alone leaks. First the EXACT sensitive values of this
+    runtime (project root, working directories, control paths, absolute command
+    elements, the instance id) are replaced wherever they occur — in the middle of a
+    ``--flag=…``, inside quotes, inside a diagnostic sentence, at any nesting depth.
+    Then whatever still looks like an absolute path is reduced to its file name, so a
+    path nobody thought of cannot ride along in a new field.
+    """
+    if isinstance(value, str):
+        text = value
+        for private, placeholder in (rules or ()):
+            if private in text:
+                text = text.replace(private, placeholder)
+        return _scrub_paths(text)
+    if isinstance(value, list):
+        return [_redact(item, rules) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact(item, rules) for item in value)
+    if isinstance(value, dict):
+        return {key: _redact(item, rules) for key, item in value.items()}
+    return value
 
 
 @dataclass
@@ -358,6 +588,10 @@ class RuntimeState:
     supervisor_pgid: int = 0
     supervisor_sid: int = 0
     app_exit_code: int | None = None
+    #: Random per-runtime id, generated before the supervisor starts and carried in
+    #: the supervisor's argv, the handshake and the stop request. It binds those
+    #: private files to THIS runtime; it is never authorization on its own.
+    instance_id: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -389,15 +623,56 @@ class RuntimeState:
             "supervisor_pgid": self.supervisor_pgid,
             "supervisor_sid": self.supervisor_sid,
             "app_exit_code": self.app_exit_code,
+            "instance_id": self.instance_id,
         }
 
+    def redaction_rules(self) -> list[tuple[str, str]]:
+        """The exact private values of THIS runtime, longest first.
+
+        Longest first matters: ``/home/u/proj`` has to be replaced before ``/home/u``,
+        or the shorter rule would leave ``[home]/proj`` behind.
+        """
+        rules: list[tuple[str, str]] = []
+
+        def add(value: Any, placeholder: str) -> None:
+            text = str(value or "")
+            if len(text) > 1:
+                rules.append((text, placeholder))
+
+        add(self.instance_id, "[redacted]")
+        add(self.project_root, "[project_root]")
+        add(self.cwd, "[project_root]")
+        add(self.supervisor_cwd, "[supervisor_cwd]")
+        if self.log_path:
+            add(self.log_path, "[runtime_log]")
+            add(str(Path(self.log_path).parent), "[runtime_dir]")
+        for arg in [*self.cmd, *self.supervisor_cmd]:
+            token = str(arg)
+            if _ABS_PREFIX_RE.match(token):
+                add(token, _basename(token))
+        rules.sort(key=lambda rule: len(rule[0]), reverse=True)
+        return rules
+
     def shareable(self) -> dict[str, Any]:
-        """Evidence-safe view: no absolute private paths."""
-        data = self.to_json()
+        """Evidence-safe view: no private value, anywhere, at any depth.
+
+        Shared Evidence leaves this machine. It must not carry the operator's home
+        directory, the project path, the interpreter the supervisor was launched with,
+        the local control-file paths, or the runtime instance id (an identity binding
+        for LOCAL process safety, with no business in a shared artifact) — and not only
+        where those appear as a whole field. They also hide inside ``--repo=/home/…``,
+        inside a quoted path with spaces, and inside diagnostic sentences such as
+        "working directory '/home/…' cannot be inspected". So the redaction works on
+        VALUES, not on token positions, and then scrubs whatever still looks like a
+        path. The local runtime.json keeps all of it — that is what makes a stop safe.
+        """
+        rules = self.redaction_rules()
+        data = _redact(self.to_json(), rules)
         data["project_root"] = "[project_root]"
         data["cwd"] = "[project_root]"
-        data["cmd"] = [Path(a).name if a.startswith("/") else a for a in self.cmd]
-        data["log_path"] = Path(self.log_path).name if self.log_path else ""
+        data["supervisor_cwd"] = "[supervisor_cwd]" if self.supervisor_cwd else ""
+        data["log_path"] = _basename(self.log_path) if self.log_path else ""
+        data["instance_id"] = "[redacted]" if self.instance_id else ""
         return data
 
     @classmethod
@@ -432,6 +707,7 @@ class RuntimeState:
             supervisor_sid=int(data.get("supervisor_sid") or 0),
             app_exit_code=(None if data.get("app_exit_code") is None
                            else int(data["app_exit_code"])),
+            instance_id=str(data.get("instance_id") or ""),
         )
 
 
@@ -444,22 +720,9 @@ def save_state(state: RuntimeState) -> Path:
     if state.status in (STATUS_RUNNING, STATUS_STARTING) and not state.create_time:
         raise RuntimeStartError(
             "refusing to persist a live state without a process creation time")
+    ensure_runtime_dir(state.project_root)
     path = state_path(state.project_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    data = json.dumps(state.to_json(), indent=2) + "\n"
-    try:
-        with tmp.open("w", encoding="utf-8") as fh:
-            fh.write(data)
-            fh.flush()
-            with contextlib.suppress(OSError):
-                os.fsync(fh.fileno())
-        os.replace(tmp, path)
-    except Exception:
-        # A failed atomic write must not leave its temporary file behind.
-        with contextlib.suppress(OSError):
-            tmp.unlink()
-        raise
+    atomic_write_text(path, json.dumps(state.to_json(), indent=2) + "\n")
     return path
 
 
@@ -517,9 +780,28 @@ def load_state(project_root: str | Path) -> RuntimeState | None:
     return load_state_result(project_root).state
 
 
+def log_failure_note_path(project_root: str | Path) -> Path:
+    """The supervisor's private note about a diagnostic it could not persist.
+
+    Written only when a log-failure cleanup left a SURVIVOR and runtime.json could not be
+    updated. It is a note for a human, never signal authority — nothing reads it to decide
+    what to kill — and its life is tied to the state it describes.
+    """
+    return runtime_dir(project_root) / "runtime.log_failure.json"
+
+
 def clear_state(project_root: str | Path) -> None:
+    """Remove the durable record — and the note that only described it.
+
+    The note exists to explain a state that could not be written properly. Once that state
+    is definitively gone (a stop that confirmed every process is gone), the note describes
+    nothing and must not outlive it. While a survivor still depends on the state, the state
+    is not cleared, so this never runs and the note stays.
+    """
     with contextlib.suppress(OSError):
         state_path(project_root).unlink()
+    with contextlib.suppress(OSError):
+        log_failure_note_path(project_root).unlink()
 
 
 def _normalize_argv(argv: list[str]) -> list[str]:
@@ -604,7 +886,8 @@ class IdentityCheck:
 
 
 def classify_state(state: RuntimeState | None,
-                   project_root: str | Path | None = None) -> IdentityCheck:
+                   project_root: str | Path | None = None,
+                   *, require_cwd: bool = True) -> IdentityCheck:
     """Classify a recorded runtime against the live process table.
 
     Every identity component must hold before anything destructive may happen:
@@ -614,6 +897,15 @@ def classify_state(state: RuntimeState | None,
     we neither kill nor forget. A component that is inspectable and WRONG gives
     ``identity_mismatch``. Only a vanished process or a proven PID reuse is
     automatically clearable.
+
+    ``require_cwd``: on many Linux systems a NEW process cannot read
+    ``/proc/<pid>/cwd`` of a detached, reparented process — the kernel denies it even
+    to the same user. Demanding it there would make a separate `runtime probe`/`stop`
+    impossible. So callers that have ALREADY verified the supervisor (which owns this
+    app, carries the runtime instance id in its live argv, and is itself fully checked)
+    may set ``require_cwd=False``: the cwd is still compared when it is readable, and
+    only an UNREADABLE cwd is tolerated. A wrong cwd is always a mismatch, and the
+    stricter in-process path keeps ``require_cwd=True``.
     """
     import psutil
 
@@ -670,21 +962,25 @@ def classify_state(state: RuntimeState | None,
             IDENTITY_MISMATCH,
             f"pid {state.pid} runs a different command than the recorded runtime")
 
+    actual_cwd = ""
     try:
         actual_cwd = str(Path(proc.cwd()).resolve())
     except psutil.NoSuchProcess:
         return IdentityCheck(DEFINITELY_GONE, f"pid {state.pid} is gone")
     except (psutil.AccessDenied, psutil.Error) as exc:
-        return IdentityCheck(
-            IDENTITY_UNPROVEN,
-            f"pid {state.pid} working directory cannot be inspected ({exc})")
-    if state.cwd and actual_cwd != str(Path(state.cwd).resolve()):
+        if require_cwd:
+            return IdentityCheck(
+                IDENTITY_UNPROVEN,
+                f"pid {state.pid} working directory cannot be inspected ({exc})")
+        # Tolerated only because the caller has already verified the supervisor that
+        # owns this process. Everything else still has to agree.
+    if actual_cwd and state.cwd and actual_cwd != str(Path(state.cwd).resolve()):
         return IdentityCheck(
             IDENTITY_MISMATCH,
             f"pid {state.pid} runs in {actual_cwd!r}, not the recorded "
             f"{state.cwd!r}")
 
-    expected = resolved_fingerprint(state.cmd, state.cwd or actual_cwd,
+    expected = resolved_fingerprint(state.cmd, state.cwd or actual_cwd or ".",
                                     state.project_id)
     if not state.cmd_fingerprint or expected != state.cmd_fingerprint:
         return IdentityCheck(
@@ -765,6 +1061,18 @@ def classify_supervisor(state: RuntimeState | None,
             IDENTITY_MISMATCH,
             f"supervisor pid {state.supervisor_pid} runs a different command")
 
+    # The runtime instance id must be present in the supervisor's LIVE argv, not just
+    # in the file: a stale or forged runtime.json cannot conjure it into a process.
+    if state.instance_id and state.instance_id not in actual_cmd:
+        return IdentityCheck(
+            IDENTITY_MISMATCH,
+            f"supervisor pid {state.supervisor_pid} does not carry this runtime's "
+            f"instance id")
+    if state.supervisor_pid and not state.instance_id:
+        return IdentityCheck(
+            IDENTITY_UNPROVEN,
+            "recorded supervisor has no runtime instance id to bind it to this state")
+
     expected = resolved_fingerprint(
         state.supervisor_cmd, state.supervisor_cwd or ".", state.project_id)
     if state.supervisor_fingerprint and expected != state.supervisor_fingerprint:
@@ -795,6 +1103,200 @@ def classify_supervisor(state: RuntimeState | None,
             "recorded supervisor shares Remedy's own process group/session")
 
     return IdentityCheck(VERIFIED, "", live_pgid=live_pgid, live_sid=live_sid)
+
+
+# ---------------------------------------------------------------------------
+# ONE identity contract for serve, probe and stop
+# ---------------------------------------------------------------------------
+
+#: Who owns the recorded runtime right now.
+OWNER_SUPERVISED = "supervised"                  # verified supervisor OWNS a verified app
+OWNER_UNSUPERVISED = "unsupervised"              # no supervisor recorded (one-shot probe)
+OWNER_SUPERVISOR_MISSING = "supervisor_missing"  # supervisor gone: ownership unprovable
+OWNER_GONE = "gone"                              # nothing left to own
+OWNER_UNTRUSTED = "untrusted"                    # do not touch, do not delete
+
+#: How far up the process tree the supervisor is looked for. The application is the
+#: supervisor's direct child, so 1 would do; a few generations are allowed for a
+#: launcher shim without ever walking to init.
+MAX_ANCESTRY_DEPTH = 8
+
+
+def supervisor_owns_app(state: RuntimeState,
+                        supervisor: IdentityCheck) -> IdentityCheck:
+    """Prove a LIVE ownership relationship between the app and its supervisor.
+
+    Two records that each match on their own prove nothing about each other. A
+    manipulated runtime.json could name a verified supervisor and, beside it, an
+    unrelated process that happens to run the same argv in the same directory — and a
+    stop would then fall on that stranger. So while the supervisor is alive, the
+    recorded application must really BE its child: its live ancestor chain has to reach
+    the verified supervisor pid (whose creation time is checked again on the way), and
+    the recorded pid must be the leader of the app's own process group — the group a
+    ``killpg`` would take.
+    """
+    import psutil
+
+    if not supervisor.verified:
+        return IdentityCheck(IDENTITY_UNPROVEN,
+                             "the supervisor is not verified; ownership cannot be shown")
+
+    try:
+        app = psutil.Process(state.pid)
+    except psutil.NoSuchProcess:
+        return IdentityCheck(DEFINITELY_GONE, f"pid {state.pid} is gone")
+    except psutil.Error as exc:
+        return IdentityCheck(IDENTITY_UNPROVEN,
+                             f"pid {state.pid} not inspectable: {exc}")
+
+    # The signalled process must be the leader of its own group: a non-leader would
+    # mean the group we would kill is somebody else's.
+    try:
+        if os.getpgid(state.pid) != state.pid:
+            return IdentityCheck(
+                IDENTITY_MISMATCH,
+                f"pid {state.pid} does not lead its own process group; the recorded "
+                f"runtime is not the process this supervisor launched")
+    except (OSError, ProcessLookupError) as exc:
+        return IdentityCheck(IDENTITY_UNPROVEN,
+                             f"pid {state.pid} process group cannot be read ({exc})")
+
+    node = app
+    for _ in range(MAX_ANCESTRY_DEPTH):
+        try:
+            parent = node.parent()
+        except psutil.NoSuchProcess:
+            return IdentityCheck(DEFINITELY_GONE, f"pid {state.pid} is gone")
+        except psutil.Error as exc:
+            return IdentityCheck(
+                IDENTITY_UNPROVEN,
+                f"the ancestry of pid {state.pid} cannot be inspected ({exc})")
+        if parent is None:
+            break
+        if parent.pid == state.supervisor_pid:
+            try:
+                if (state.supervisor_create_time
+                        and abs(parent.create_time()
+                                - state.supervisor_create_time) > 1.0):
+                    return IdentityCheck(
+                        PID_REUSED,
+                        f"the parent of pid {state.pid} is not the recorded supervisor "
+                        f"(pid {state.supervisor_pid} was reused)")
+            except psutil.Error as exc:
+                return IdentityCheck(
+                    IDENTITY_UNPROVEN,
+                    f"the parent of pid {state.pid} cannot be inspected ({exc})")
+            return IdentityCheck(VERIFIED, "")
+        if parent.pid <= 1:
+            break
+        node = parent
+
+    return IdentityCheck(
+        IDENTITY_MISMATCH,
+        f"pid {state.pid} is not a descendant of the recorded supervisor "
+        f"(pid {state.supervisor_pid}); the recorded application does not belong to it")
+
+
+@dataclass
+class RuntimeIdentity:
+    """The single verdict `serve`, `probe` and `stop` all act on.
+
+    Before this existed, each command decided for itself whether the application's
+    live cwd was required — and `serve` still asked for it first, which is why a
+    second `serve` failed on systems that deny ``/proc/<pid>/cwd`` for a detached
+    process. The rule is one rule now: **classify the supervisor first**. A verified
+    supervisor is the authoritative owner of the application, so the app's cwd is only
+    compared when it can be READ. A wrong cwd is always a mismatch, and nothing is ever
+    signalled on an unproven identity.
+    """
+
+    supervisor: IdentityCheck
+    app: IdentityCheck
+    ownership: str
+    reason: str = ""
+
+    @property
+    def usable(self) -> bool:
+        """A live, fully owned runtime a command may report and use."""
+        return self.ownership in (OWNER_SUPERVISED, OWNER_UNSUPERVISED)
+
+    @property
+    def may_auto_clear(self) -> bool:
+        return self.ownership == OWNER_GONE
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "ownership": self.ownership,
+            "reason": self.reason,
+            "supervisor": self.supervisor.to_json(),
+            "app": self.app.to_json(),
+        }
+
+
+def classify_runtime(state: RuntimeState | None,
+                     project_root: str | Path | None = None) -> RuntimeIdentity:
+    """Supervisor first, then the application — and then the LINK between them.
+
+    * supervisor verified → the app may be verified without reading its live cwd, but
+      it must also be a live descendant of that supervisor and the leader of its own
+      process group (:func:`supervisor_owns_app`). Two records that merely match on
+      their own are not ownership: an unrelated process running the same argv in the
+      same directory would satisfy them, and a stop would then kill a stranger;
+    * supervisor conclusively gone → ownership can no longer be shown at all: a
+      reparented process has no parent left to prove anything with, and every field in
+      runtime.json is mutable. The runtime is `supervisor_missing`, and NOTHING is
+      killed automatically — safety before automatic orphan cleanup;
+    * supervisor unprovable or mismatched → nothing is relaxed and nothing is touched.
+    """
+    sup = classify_supervisor(state, project_root)
+
+    if state is None or not state.pid:
+        return RuntimeIdentity(sup, IdentityCheck(DEFINITELY_GONE,
+                                                  "no live runtime recorded"),
+                               OWNER_GONE, "no runtime recorded")
+
+    recorded_supervisor = bool(state.supervisor_pid)
+    supervisor_gone = sup.classification in (DEFINITELY_GONE, PID_REUSED)
+
+    # The cwd may be skipped only for an owner we have already proved (a verified
+    # supervisor). An unproven, mismatched or dead supervisor relaxes nothing.
+    app = classify_state(state, project_root, require_cwd=not sup.verified)
+
+    if not recorded_supervisor:
+        if app.verified:
+            return RuntimeIdentity(sup, app, OWNER_UNSUPERVISED, "")
+        if app.may_auto_clear:
+            return RuntimeIdentity(sup, app, OWNER_GONE, app.reason)
+        return RuntimeIdentity(sup, app, OWNER_UNTRUSTED, app.reason)
+
+    if sup.verified:
+        if app.may_auto_clear:
+            # The supervisor is alive but its app is gone; the supervisor itself is
+            # still a managed process, so this is not "nothing to do".
+            return RuntimeIdentity(sup, app, OWNER_UNTRUSTED, app.reason)
+        if not app.verified:
+            return RuntimeIdentity(sup, app, OWNER_UNTRUSTED, app.reason)
+
+        owned = supervisor_owns_app(state, sup)
+        if not owned.verified:
+            return RuntimeIdentity(sup, owned, OWNER_UNTRUSTED, owned.reason)
+        # The ownership check confirms the group; keep the live group/session numbers
+        # the application check observed.
+        return RuntimeIdentity(sup, app, OWNER_SUPERVISED, "")
+
+    if supervisor_gone:
+        if app.may_auto_clear:
+            return RuntimeIdentity(sup, app, OWNER_GONE,
+                                   f"supervisor and application are gone ({sup.reason})")
+        return RuntimeIdentity(
+            sup, app, OWNER_SUPERVISOR_MISSING,
+            f"the supervisor is gone ({sup.reason}); the recorded application "
+            f"({state.pid}) can no longer be proven to belong to this runtime, so it "
+            f"is neither trusted nor signalled")
+
+    # Supervisor unproven or mismatched: the record is the only reference to whatever
+    # is running. Keep it, kill nothing.
+    return RuntimeIdentity(sup, app, OWNER_UNTRUSTED, sup.reason)
 
 
 def verify_state(state: RuntimeState | None,
@@ -916,9 +1418,9 @@ class LogPump:
 
     @classmethod
     def open_log(cls, path: Path):
-        """Open runtime.log up front. Raises OSError — before any process exists."""
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path.open("wb", buffering=0)
+        """Open runtime.log up front, owner-only. Raises OSError — before any process
+        exists, so a log that cannot be opened is a startup failure."""
+        return open_private_file(path)
 
     def start(self, timeout: float = 5.0) -> None:
         """Start the pump and WAIT until it is really pumping (or has failed)."""
@@ -1439,57 +1941,78 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
             }
 
         state = load.state
-        check = classify_state(state, project_root)
 
-        if check.classification in (DEFINITELY_GONE, PID_REUSED):
+        # --- ONE identity contract: supervisor first, application second ---------
+        ident = classify_runtime(state, project_root)
+        sup, check = ident.supervisor, ident.app
+        supervisor_verified = sup.verified
+
+        if ident.ownership == OWNER_GONE:
             clear_state(project_root)
             return {
                 "ok": True, "stopped": False, "identity": check.classification,
-                "identity_ok": False,
-                "reason": check.reason, "pid": state.pid, "survivors": [],
-                "state_kind": load.kind,
+                "identity_ok": False, "ownership": ident.ownership,
+                "reason": ident.reason or check.reason, "pid": state.pid,
+                "survivors": [], "state_kind": load.kind,
                 "note": "recorded process is not the managed runtime; nothing killed",
             }
 
-        if not check.verified:
-            # unproven or mismatched: keep the record, kill nothing, say why.
+        if ident.ownership == OWNER_UNTRUSTED:
+            # No provable owner: keep the record, kill nothing, say why. The record is
+            # the only reference to whatever may still be running.
+            decisive = (sup if (state.supervisor_pid and not sup.verified) else check)
             state.status = (STATUS_IDENTITY_UNPROVEN
-                            if check.classification == IDENTITY_UNPROVEN
+                            if decisive.classification == IDENTITY_UNPROVEN
                             else STATUS_IDENTITY_MISMATCH)
-            state.identity_reason = check.reason
+            state.identity_reason = decisive.reason
             with contextlib.suppress(Exception):
                 save_state(state)
             return {
-                "ok": False, "stopped": False, "identity": check.classification,
-                "identity_ok": False,
-                "reason": check.reason, "pid": state.pid, "survivors": [],
+                "ok": False, "stopped": False, "identity": decisive.classification,
+                "identity_ok": False, "ownership": ident.ownership,
+                "reason": decisive.reason, "pid": state.pid, "survivors": [],
                 "state_kind": load.kind,
                 "note": ("nothing was killed and the state was kept; resolve the "
                          "identity problem or clean up manually"),
             }
 
-        # --- verified application. Prefer a CONTROLLED supervisor shutdown -----
-        sup = classify_supervisor(state, project_root)
-        if sup.classification == IDENTITY_UNPROVEN:
-            state.status = STATUS_IDENTITY_UNPROVEN
-            state.identity_reason = sup.reason
+        if ident.ownership == OWNER_SUPERVISOR_MISSING:
+            # The supervisor is gone, so no live relationship can prove that the
+            # recorded pid is still OUR application — a reparented process has no
+            # parent left to vouch for it, and every field in runtime.json is mutable.
+            # Never guess: retain an explicit supervisor_missing record with the
+            # survivor and identity data, and ask for manual cleanup.
+            state.status = STATUS_SUPERVISOR_MISSING
+            state.identity_reason = ident.reason
+            state.survivors = [state.pid] if _pid_alive(state.pid) else []
+            state.stop_error = ident.reason
             with contextlib.suppress(Exception):
                 save_state(state)
             return {
-                "ok": False, "stopped": False, "identity": IDENTITY_UNPROVEN,
-                "identity_ok": False, "reason": sup.reason, "pid": state.pid,
-                "survivors": [], "state_kind": load.kind,
-                "note": "the supervisor could not be inspected; nothing was killed",
+                "ok": False, "stopped": False, "identity": check.classification,
+                "identity_ok": False, "ownership": ident.ownership,
+                "runtime_status": STATUS_SUPERVISOR_MISSING,
+                "reason": ident.reason, "pid": state.pid,
+                "survivors": list(state.survivors), "state_kind": load.kind,
+                "note": ("the supervisor is gone and the application could not be "
+                         f"identified; nothing was killed. Inspect pid {state.pid} "
+                         f"and clean it up manually, then delete {load.path}."),
             }
 
-        supervisor_stopped = False
-        if sup.verified:
+        # --- controlled shutdown -------------------------------------------------
+        # OWNER_SUPERVISED (a verified supervisor that really owns this app) or
+        # OWNER_UNSUPERVISED (a one-shot probe runtime with no supervisor). Nothing
+        # else ever reaches a signal.
+        supervisor_stopped = not state.supervisor_pid
+        if supervisor_verified:
             # Ask the supervisor to shut its runtime down, then wait for it to go.
+            # The request carries this runtime's instance id, so a stale file from an
+            # older runtime can never stop a newer one.
             req = stop_request_path(project_root)
             with contextlib.suppress(OSError):
                 req.parent.mkdir(parents=True, exist_ok=True)
-                req.write_text("stop\n", encoding="utf-8")
-            deadline = time.monotonic() + 15.0
+                _atomic_write(req, f"{state.instance_id}\n")
+            deadline = time.monotonic() + STOP_REQUEST_TIMEOUT_S
             while time.monotonic() < deadline:
                 if not _pid_alive(state.supervisor_pid):
                     supervisor_stopped = True
@@ -1498,16 +2021,59 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
             with contextlib.suppress(OSError):
                 req.unlink()
             if not supervisor_stopped:
-                # It would not go quietly: take its whole verified group.
-                stop_process_tree(state.supervisor_pid, session_id=sup.live_pgid)
+                # It would not go quietly. Before ANY hard signal the supervisor is
+                # classified AGAIN, from scratch: fifteen seconds passed while we waited,
+                # and the identity we verified before that wait is a statement about the
+                # past. If the original supervisor exited and its pid — or its process
+                # group — was handed to somebody else, the old numbers would now point at
+                # a stranger. Only a freshly verified supervisor is signalled, and only
+                # through the group observed by THAT check.
+                fresh = classify_supervisor(state, project_root)
+                if not fresh.verified:
+                    state.status = (STATUS_IDENTITY_UNPROVEN
+                                    if fresh.classification == IDENTITY_UNPROVEN
+                                    else STATUS_STOP_FAILED)
+                    state.survivors = sorted(
+                        {p for p in (state.supervisor_pid, state.pid) if _pid_alive(p)})
+                    state.stop_error = (
+                        f"the supervisor could not be re-verified before the hard stop "
+                        f"({fresh.classification}: {fresh.reason}); nothing was "
+                        f"signalled")
+                    state.identity_reason = fresh.reason
+                    with contextlib.suppress(Exception):
+                        save_state(state)
+                    return {
+                        "ok": False, "stopped": False,
+                        "identity": fresh.classification, "identity_ok": False,
+                        "ownership": ident.ownership,
+                        "reason": state.stop_error, "pid": state.pid,
+                        "supervisor_stopped": False,
+                        "survivors": list(state.survivors),
+                        "manual_cleanup": list(state.survivors),
+                        "state_kind": load.kind,
+                        "note": ("the recorded supervisor identity changed while the "
+                                 "stop request was pending; nothing was killed. Inspect "
+                                 "the survivors and clean them up manually."),
+                    }
+                stop_process_tree(state.supervisor_pid, session_id=fresh.live_pgid)
                 supervisor_stopped = not _pid_alive(state.supervisor_pid)
 
         # The application itself: signal the LIVE group we observed, never a stored
-        # number, and only if it is still there.
+        # number, and only if it is still there. The identity is checked AGAIN here —
+        # the supervisor has just exited, and this is the last moment before something
+        # destructive happens.
         result = {"pid": state.pid, "session_id": check.live_pgid,
                   "terminated": [], "killed": [], "survivors": [], "error": ""}
         if _pid_alive(state.pid):
-            result = stop_process_tree(state.pid, session_id=check.live_pgid)
+            recheck = classify_state(state, project_root, require_cwd=False)
+            if recheck.verified:
+                result = stop_process_tree(state.pid, session_id=recheck.live_pgid)
+            else:
+                result["survivors"] = [state.pid]
+                result["error"] = (
+                    f"the recorded application could no longer be verified before the "
+                    f"stop ({recheck.classification}: {recheck.reason}); it was NOT "
+                    f"signalled")
 
         survivors = list(result.get("survivors") or [])
         if _pid_alive(state.supervisor_pid):
@@ -1523,7 +2089,7 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
                 save_state(state)
             return {
                 "ok": False, "stopped": False, "identity": VERIFIED,
-                "identity_ok": True,
+                "identity_ok": True, "ownership": ident.ownership,
                 "pid": state.pid, "port": state.port,
                 "status": STATUS_STOP_FAILED, "stop_error": state.stop_error,
                 "state_kind": load.kind, "supervisor_stopped": supervisor_stopped,
@@ -1533,10 +2099,16 @@ def stop_recorded_runtime(project_root: str | Path) -> dict[str, Any]:
         clear_state(project_root)
         return {
             "ok": True, "stopped": True, "identity": VERIFIED, "identity_ok": True,
+            "ownership": ident.ownership,
             "pid": state.pid, "port": state.port, "state_kind": load.kind,
             "supervisor_stopped": supervisor_stopped or not state.supervisor_pid,
             **result,
         }
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Create a private control file atomically (owner-only). Kept for callers."""
+    atomic_write_text(path, text)
 
 
 def _pid_alive(pid: int) -> bool:
