@@ -1869,6 +1869,45 @@ def _write_job_postmortem(
             "scope": "job", "job_id": job.job_id, "error": safe_text(job_error)[:500],
         })
 
+    _write_stop_postmortems(job, out_base, written, failures)
+
+
+def _write_stop_postmortems(
+    job: Any, out_base: str, written: dict[str, str], failures: list[dict[str, Any]],
+) -> None:
+    """F011: every stop EPISODE this job has, keyed by its request id.
+
+    A job may be stopped, resumed and stopped again. Each consumed request has its own
+    record under ``stop_postmortems/<request_id>/``, so a second stop never overwrites the
+    first and the bundle shows the whole history. A stop that could not be recorded is a
+    blocking integrity failure, exactly like a failure that could not be recorded.
+    """
+    from packages.orchestration.failure_postmortem import POSTMORTEM_FILENAME, safe_text
+    from packages.orchestration.pingpong_job import (
+        STOP_POSTMORTEM_SUBDIR,
+        job_evidence_dir,
+    )
+
+    src_root = job_evidence_dir(job.job_id) / STOP_POSTMORTEM_SUBDIR
+    if src_root.is_dir() and not src_root.is_symlink():
+        for episode in sorted(p for p in src_root.iterdir() if p.is_dir()):
+            src = episode / POSTMORTEM_FILENAME
+            if not src.is_file() or src.is_symlink():
+                continue
+            rel = f"{STOP_POSTMORTEM_SUBDIR}/{episode.name}/{POSTMORTEM_FILENAME}"
+            dest = _validate_output_path(out_base, rel)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            written[rel] = str(dest)
+
+    for field_name in ("stop_error", "stop_event_error"):
+        err = str(getattr(job, field_name, "") or "")
+        if err:
+            failures.append({
+                "scope": "job", "job_id": job.job_id,
+                "error": safe_text(err)[:500],
+            })
+
 
 def _write_task_run_evidence(
     task: Any,

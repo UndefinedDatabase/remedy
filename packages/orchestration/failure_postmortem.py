@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePath
 from typing import Any
 
+from packages.common import secure_fs as _fs
 from packages.orchestration.provider_timeouts import (
     is_nonzero_exit_error,
     is_timeout_error,
@@ -487,177 +488,42 @@ def _require_platform() -> None:
 
 
 def _lexical_parts(directory: Path, root: Path) -> list[str]:
-    """The requested destination's components below the root — LEXICALLY.
-
-    Lexically, because ``resolve()`` is the wrong tool for the question "did the caller ask
-    me to go through a symlink?": it silently answers with where the symlink POINTS.
-    """
-    requested = Path(os.path.normpath(str(directory)))
-    root_norm = Path(os.path.normpath(str(root)))
-    try:
-        rel = requested.relative_to(root_norm)
-    except ValueError:
-        raise PostmortemError(
-            f"post-mortem directory escapes its evidence root: {requested} !< {root_norm}"
-        ) from None
-    parts = [p for p in rel.parts if p != "."]
-    if any(p == ".." for p in parts):
-        raise PostmortemError(f"post-mortem directory traverses upwards: {directory}")
-    return parts
+    """The requested destination's components below the root — LEXICALLY (see secure_fs)."""
+    return _fs.lexical_parts(directory, root, error_cls=PostmortemError, noun="post-mortem")
 
 
-class _MissingComponent(Exception):
-    """The component is not there yet — the caller may create it."""
+#: The "component is not there yet" signal, shared with the anchored primitives.
+_MissingComponent = _fs.MissingComponent
 
 
 def _open_verified_dir(name: str, dir_fd: int | None = None) -> int:
-    """Open ONE directory component and PROVE it is the thing we inspected.
-
-    The algorithm, and why each step is there:
-
-    1. ``os.stat(name, dir_fd=…, follow_symlinks=False)`` — look at the entry itself, never
-       at what it points to. If it is a symlink, we refuse right here, in our own code,
-       rather than hoping the kernel will;
-    2. it must be a directory;
-    3. open it with ``O_RDONLY|O_DIRECTORY|O_NOFOLLOW`` (defence in depth — on a host where
-       the flag works, this alone would already refuse);
-    4. ``os.fstat`` the descriptor we actually got;
-    5. require ``(st_dev, st_ino)`` to match the entry we inspected, and require the opened
-       object to be a directory.
-
-    Step 5 is the semantic guarantee. On the reviewer's Linux 4.4 host ``O_NOFOLLOW`` was
-    accepted and ignored, so the open returned the SYMLINK TARGET — a different inode than
-    the one we lstat'ed. That is exactly what this comparison catches, and it also catches
-    the far nastier case where the component is swapped between the check and the open.
-    """
-    try:
-        pre = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
-    except FileNotFoundError as exc:
-        raise _MissingComponent(name) from exc
-    except OSError as exc:
-        raise PostmortemError(
-            f"post-mortem path {name!r} could not be inspected: "
-            f"{type(exc).__name__}: {exc}") from exc
-
-    if stat.S_ISLNK(pre.st_mode):
-        raise PostmortemError(
-            f"refusing to write through a symlinked path component: {name}")
-    if not stat.S_ISDIR(pre.st_mode):
-        raise PostmortemError(f"post-mortem path is not a directory: {name}")
-
-    try:
-        fd = os.open(name, _OPEN_DIR_FLAGS, dir_fd=dir_fd)
-    except FileNotFoundError as exc:
-        raise _MissingComponent(name) from exc
-    except OSError as exc:
-        raise PostmortemError(
-            f"refusing to open post-mortem path {name!r}: {type(exc).__name__}: {exc}"
-        ) from exc
-
-    try:
-        post = os.fstat(fd)
-    except OSError as exc:
-        os.close(fd)
-        raise PostmortemError(
-            f"post-mortem path {name!r} could not be verified after opening: "
-            f"{type(exc).__name__}: {exc}") from exc
-
-    if (not stat.S_ISDIR(post.st_mode)
-            or (post.st_dev, post.st_ino) != (pre.st_dev, pre.st_ino)):
-        os.close(fd)
-        raise PostmortemError(
-            f"post-mortem path {name!r} is not the directory it claimed to be "
-            f"(a symlink was followed, or the entry changed between the check and the "
-            f"open); refusing to write")
-    return fd
+    """Open ONE directory component and PROVE it is the thing we inspected (see secure_fs)."""
+    return _fs.open_verified_dir(name, dir_fd, error_cls=PostmortemError,
+                                 noun="post-mortem")
 
 
 def _anchor_root(root: Path) -> int:
-    """Open the trusted root and verify ITS identity too.
-
-    The root is inspected without following symlinks, required to be a directory, opened,
-    and the opened descriptor's identity compared with what was inspected. The parent
-    directories above the root are trusted spelling — the root itself is not allowed to be
-    replaced or redirected between the look and the open. After this, the root is never
-    reopened by name.
-    """
+    """Open the trusted root and verify ITS identity too."""
     _require_platform()
-    root_norm = Path(os.path.normpath(str(root)))
-    parent = str(root_norm.parent)
-    name = root_norm.name or str(root_norm)
-    try:
-        if not root_norm.parent or name == str(root_norm):
-            # A filesystem root ("/"): nothing above it to anchor against.
-            return _open_verified_dir(str(root_norm))
-        parent_fd = os.open(parent, _OPEN_DIR_FLAGS)
-    except OSError as exc:
-        raise PostmortemError(
-            f"the evidence root's parent is not usable: {type(exc).__name__}: {exc}"
-        ) from exc
-    try:
-        try:
-            return _open_verified_dir(name, dir_fd=parent_fd)
-        except _MissingComponent as exc:
-            raise PostmortemError(
-                f"the evidence root does not exist: {root_norm}") from exc
-    finally:
-        os.close(parent_fd)
+    return _fs.anchor_root(root, error_cls=PostmortemError, noun="post-mortem")
 
 
 def _anchor_destination(directory: Path, root: Path) -> int:
     """Walk from the trusted root to the destination on VERIFIED directory handles.
 
-    Names are resolved once each, against a descriptor we already hold, and every component
-    is identity-verified (see :func:`_open_verified_dir`). A missing component is created
-    through the held parent fd and then verified the same way, so a symlink slipped in
-    between the ``mkdir`` and the open is caught by the identity comparison rather than
-    followed. The parent fd is closed only once the child fd is held.
-
-    The returned fd IS the destination. Everything afterwards happens through it.
+    The primitives live in ``packages/common/secure_fs.py`` — ONE implementation of the
+    containment rules, shared with F011's stop-control area, so a hardening fix cannot land
+    in one of them and miss the other.
     """
     _require_platform()
-
-    root_norm = Path(os.path.normpath(str(root)))
-    parts = _lexical_parts(Path(directory), root_norm)
-
-    current = _anchor_root(root_norm)
-    try:
-        for part in parts:
-            try:
-                child = _open_verified_dir(part, dir_fd=current)
-            except _MissingComponent:
-                try:
-                    os.mkdir(part, 0o700, dir_fd=current)
-                except FileExistsError:
-                    pass                        # someone else won the race; verify below
-                except OSError as exc:
-                    raise PostmortemError(
-                        f"post-mortem directory could not be created: "
-                        f"{type(exc).__name__}: {exc}") from exc
-                try:
-                    child = _open_verified_dir(part, dir_fd=current)
-                except _MissingComponent as exc:
-                    raise PostmortemError(
-                        f"post-mortem directory vanished after creation: {part}") from exc
-            os.close(current)
-            current = child
-    except BaseException:
-        os.close(current)
-        raise
-    return current
+    return _fs.anchor_destination(directory, root, error_cls=PostmortemError,
+                                  noun="post-mortem", dir_mode=0o700)
 
 
 def _writable_by_mode_fd(dir_fd: int) -> bool:
-    """Does the destination DECLARE itself writable to its owner?
-
-    ``os.access`` lies to root — it reports a 0o500 directory as writable. The declared mode
-    bits do not lie, and they are read from the fd we already hold, not from a name that
-    could have been swapped since.
-    """
-    try:
-        return bool(os.fstat(dir_fd).st_mode & stat.S_IWUSR)
-    except OSError:
-        return False
+    """Does the destination DECLARE itself writable to its owner? (``os.access`` lies to
+    root; the declared mode bits do not.)"""
+    return _fs.writable_by_mode_fd(dir_fd)
 
 
 def _read_record_fd(dir_fd: int) -> dict[str, Any] | None:

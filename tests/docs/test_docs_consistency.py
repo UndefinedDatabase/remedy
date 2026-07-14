@@ -133,11 +133,20 @@ class TestPrimaryDocsAreHonest:
         assert "acceptance still pending" not in readme
         assert "not accepted yet" not in readme
         assert "accepted foundation" in readme
-        # F010 is accepted; nothing may still call it pending...
-        assert "not yet externally accepted" not in readme
+        # F010 is accepted, and its own line must say so...
+        f010_line = next((ln for ln in readme.splitlines()
+                          if ln.startswith("| F010")), "")
+        assert f010_line and "externally accepted" in f010_line
+        assert "F010 (automatic failure post-mortems) is" not in readme
         # ...and nothing after it may be claimed as existing.
         assert "F008" not in readme or "not implemented" in readme
-        assert "F011" not in readme or "not implemented" in readme
+        # F011 is accepted; its own line must say so, and nothing may still call it pending.
+        assert "not yet externally accepted" not in readme
+        f011_line = next((ln for ln in readme.splitlines()
+                          if ln.startswith("| F011")), "")
+        assert f011_line and "externally accepted" in f011_line
+        # ...and nothing after it may be claimed as existing.
+        assert "F012" not in readme or "not implemented" in readme
 
     def test_the_f010_documents_describe_all_three_scopes(self):
         status = STATUS.read_text(encoding="utf-8")
@@ -152,6 +161,33 @@ class TestPrimaryDocsAreHonest:
         assert "The three scopes — `call`, `task` and `job`" in feature, (
             "the stats section must describe every scope")
 
+    def test_the_f011_document_describes_the_accepted_kill_switch(self):
+        feature = (REPO / "docs" / "roadmap" / "features" / "T0_F011.md").read_text(
+            encoding="utf-8")
+        for claim in ("Safe points", "STOPPED state and resume", "job_stopped",
+                      "stop_postmortems/<request_id>/postmortem.json",
+                      "No signal handler, no thread, no daemon",
+                      # a consumed request is archived, never deleted
+                      "archived, not deleted",
+                      # and the two boundaries v1 does NOT cross, said out loud
+                      "SIGKILL", "Deep checkpoints"):
+            assert claim in feature, f"the F011 document must state: {claim!r}"
+        assert "accepted as v1" in feature
+        assert "49955e41c49f41bc" in feature, "the accepted Evidence job is missing"
+
+    def test_status_marks_f011_accepted_and_f012_untouched(self):
+        text = STATUS.read_text(encoding="utf-8")
+        f011 = re.search(r"^- \[x\] F011 — Kill switch.*$", text, re.M)
+        assert f011, "F011 is externally accepted and must be checked off"
+        assert not re.search(r"^- \[~\] F011 —", text, re.M)
+        assert "49955e41c49f41bc" in f011.group(0), "the accepted Evidence job is missing"
+        assert "PASS_WITH_RISKS — ACCEPTED" in f011.group(0)
+        assert "2026-07-14" in f011.group(0), "the acceptance date is missing"
+        assert "remedy job stop" in f011.group(0)
+        assert "STOPPED state" in f011.group(0)
+        # F012 is the next unchecked feature and has not been started.
+        assert re.search(r"^- \[ \] F012 —", text, re.M)
+
     def test_status_marks_f007_and_f010_accepted_and_nothing_after_them(self):
         text = STATUS.read_text(encoding="utf-8")
         f007 = re.search(r"^- \[x\] F007 — Runtime harness.*$", text, re.M)
@@ -165,9 +201,9 @@ class TestPrimaryDocsAreHonest:
         assert "01363c70e13046e2" in f010.group(0), "the accepted Evidence job is missing"
         assert "PASS_WITH_RISKS — ACCEPTED" in f010.group(0)
         assert "2026-07-14" in f010.group(0), "the acceptance date is missing"
-        # ...and nothing after it has been started.
+        # ...and nothing after them has been started.
         assert re.search(r"^- \[ \] F008 —", text, re.M)
-        assert re.search(r"^- \[ \] F011 —", text, re.M)
+        assert re.search(r"^- \[ \] F012 —", text, re.M)
 
 
 class TestPrimaryDocLinksResolve:

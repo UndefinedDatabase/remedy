@@ -53,7 +53,13 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
     """Add arguments from catalog entry to argparse parser."""
     for arg in cmd.args:
         if arg.is_option:
-            if arg.name == "--json":
+            # A declared boolean flag wins over every name-based rule below: the catalog
+            # entry, not the spelling of the option, decides whether it takes a value.
+            if arg.is_flag:
+                parser.add_argument(arg.name, action="store_true",
+                                    dest=arg.name.lstrip("-").replace("-", "_"),
+                                    help=arg.help)
+            elif arg.name == "--json":
                 parser.add_argument("--json", action="store_true", dest="json", help=arg.help)
             elif arg.name == "--reason":
                 parser.add_argument("--reason", default=None, help=arg.help)
@@ -253,6 +259,9 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
             elif arg.name == "--require-human-approval-for-expensive":
                 parser.add_argument("--require-human-approval-for-expensive", action="store_true",
                                     dest="require_human_approval_for_expensive", help=arg.help)
+            # F011 kill switch
+            elif arg.name == "--source":
+                parser.add_argument("--source", default=arg.default, help=arg.help)
             else:
                 parser.add_argument(arg.name, default=arg.default, help=arg.help)
         else:

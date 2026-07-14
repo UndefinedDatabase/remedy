@@ -891,3 +891,37 @@ class TestATrustedRootIsMandatory:
                 if "write_postmortem(" in line and "def " not in line and "import" not in line:
                     following = src[src.index(line):src.index(line) + 300]
                     assert "root=" in following, f"{module.__name__}: {line.strip()}"
+
+
+class TestTheParentOfTheEvidenceRootIsVerifiedToo:
+    """F010 shares the anchored primitives with F011, so F011's parent-of-root hole was
+    F010's too: with `real/link -> outside`, `write_postmortem(root=real/link/root)` wrote
+    the record into `outside`."""
+
+    def _rec(self):
+        return PostmortemV1(failure_class=FailureClass.PROVIDER_TIMEOUT,
+                            signal_source="error_text", job_id="j1")
+
+    def test_a_symlinked_parent_of_the_root_is_refused(self, tmp_path):
+        outside = tmp_path / "outside"
+        (outside / "root").mkdir(parents=True)
+        (tmp_path / "real").mkdir()
+        (tmp_path / "real" / "link").symlink_to(outside)
+        root = tmp_path / "real" / "link" / "root"
+
+        with pytest.raises(PostmortemError, match="symlink"):
+            write_postmortem(root / "dir", self._rec(), root=root)
+
+        assert list((outside / "root").iterdir()) == []
+
+    def test_a_safe_absolute_root_still_writes(self, tmp_path):
+        root = tmp_path / "evidence"
+        root.mkdir()
+        path = write_postmortem(root / "call", self._rec(), root=root)
+        assert Path(path).is_file()
+
+    def test_a_relative_root_still_writes(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        Path("evidence").mkdir()
+        path = write_postmortem(Path("evidence/call"), self._rec(), root=Path("evidence"))
+        assert Path(path).is_file()
