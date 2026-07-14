@@ -797,6 +797,26 @@ class ClaudeCliProvider:
     def last_stream_artifact_refs(self) -> list[str]:
         return list(self._last_stream_refs)
 
+    @property
+    def last_stream_call_dir(self) -> str:
+        """The ABSOLUTE directory of the most recent streamed call, or "".
+
+        F010 writes a failed call's post-mortem next to that call's own stream artifacts
+        instead of inventing a second evidence tree. Empty when this provider never
+        streamed (stream evidence off, or a fake/manual provider) — the caller then falls
+        back to the run's per-call directory.
+        """
+        from pathlib import Path as _P
+
+        if not self._stream_evidence or not self._stream_evidence_dir:
+            return ""
+        call_id = self._last_stream_call_id
+        if not call_id:
+            return ""
+        prefix = self._stream_rel_prefix or ""
+        rel = call_id[len(prefix) + 1:] if prefix and call_id.startswith(prefix) else call_id
+        return str(_P(self._stream_evidence_dir) / rel)
+
     def begin_stream_call(self, round_no: int, kind: str = "attempt") -> None:
         """Declare the round and call kind for the next streamed provider call.
 

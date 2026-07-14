@@ -13,6 +13,7 @@ Target snapshot guard enforces this invariant.
 """
 from __future__ import annotations
 
+import contextlib
 import difflib
 import hashlib
 import json as _json
@@ -41,6 +42,8 @@ from packages.orchestration.pingpong_provider import (
 from packages.orchestration.provider_timeouts import (
     PROFILES as TIMEOUT_PROFILES,
     compute_timeout,
+    is_nonzero_exit_error,
+    is_timeout_error,
     next_backoff,
     should_retry,
 )
@@ -172,6 +175,11 @@ class PingPongResult:
     timeout_s_effective_reviewer: int = 0
     retries_used: int = 0
     retry_reasons: list[str] = field(default_factory=list)
+    # F010: where the post-mortems of finally-failed provider calls were written
+    # (run-relative on disk; the evidence export copies them into the bundle), and the
+    # reason a post-mortem could NOT be written, if that ever happens.
+    postmortem_paths: list[str] = field(default_factory=list)
+    postmortem_error: str = ""
     # F002: builder produced no file changes but reviewer/tests still ran
     builder_no_changes: bool = False
     # F003: per-call provider usage accounting
@@ -1659,6 +1667,98 @@ def _is_operational_artifact(rel_path: str) -> bool:
     return False
 
 
+def _safe_data_root(repo_path: Path) -> Path | None:
+    """The configured Remedy data root, IF it is safely contained in this repository.
+
+    Four path concepts, kept apart on purpose:
+
+    * the lexical repository path (as addressed — possibly through a symlink);
+    * the resolved repository identity;
+    * the lexical configured data root — and ``REMEDY_DATA_DIR=remedy_data`` is a perfectly
+      ordinary configuration, so a RELATIVE value is made absolute against the working
+      directory, exactly as every filesystem call in this process already interprets it. The
+      reviewed build compared a relative string against an absolute repo path, decided it
+      was "not inside", and then blamed the builder for Remedy writing its own evidence;
+    * the resolved data-root identity.
+
+    A candidate is exempt only when the configured root is a strict descendant of the
+    repository *both lexically and after resolution*, every component from the repository
+    down to it is symlink-free, and the two relative layouts agree. So ``repo/.data``
+    (however it is spelled) exempts what is under it, while ``repo/.data -> repo/src``, an
+    intermediate ``repo/var -> repo/src``, a root equal to the repo, an ancestor, a sibling
+    or an outside path exempt nothing. The rule is about containment, not about the name
+    ``.data``.
+    """
+    import os as _os
+
+    from packages.orchestration.data_paths import resolve_data_root
+
+    try:
+        configured = Path(_os.path.normpath(_os.path.abspath(str(resolve_data_root()))))
+        repo_lexical = Path(_os.path.normpath(_os.path.abspath(str(repo_path))))
+        repo_real = repo_lexical.resolve()
+    except (OSError, ValueError):
+        return None
+
+    # The repository may be addressed through a symlink (`repo-link -> realrepo`) by the
+    # configuration, by the caller, or by neither. So the base is found by IDENTITY: the
+    # longest ancestor of the configured root whose resolved path IS this repository —
+    # whatever spelling it uses. Only the components BELOW that ancestor are then walked,
+    # which is where a redirect into the source tree would have to hide.
+    base: Path | None = None
+    for ancestor in configured.parents:
+        try:
+            if ancestor.resolve() == repo_real:
+                base = ancestor
+                break
+        except OSError:
+            continue
+    if base is None or base == configured:
+        return None                                   # equal to, above, beside or outside
+
+    rel = configured.relative_to(base)
+    if not rel.parts:
+        return None
+    walk = base
+    for part in rel.parts:
+        walk = walk / part
+        if walk.is_symlink():
+            return None                               # a link on the way in exempts nothing
+
+    try:
+        data_real = walk.resolve()
+    except OSError:
+        return None
+    try:
+        rel_real = data_real.relative_to(repo_real)
+    except ValueError:
+        return None                                   # resolves out of the repository
+    if not rel_real.parts or rel_real != rel:
+        return None                                   # lexical and resolved layouts disagree
+    return walk
+
+
+def _is_remedy_data_path(repo_path: Path, rel_path: str) -> bool:
+    """Is this path inside Remedy's OWN data root, which happens to sit in the repo?
+
+    A test (and an operator with ``REMEDY_DATA_DIR=./.data``) can put the data root inside
+    the very repository a run is guarding. Remedy's own run records, stream artifacts and
+    F010 post-mortems then live under the target path — but they are Remedy's bookkeeping,
+    not the user's source, and calling them a "target mutation" would blame the builder for
+    Remedy writing its own evidence. Only that directory is exempt (see
+    :func:`_safe_data_root`); everything else stays as strict as before.
+    """
+    data_root = _safe_data_root(Path(repo_path))
+    if data_root is None:
+        return False
+    try:
+        candidate = (Path(repo_path) / rel_path).resolve()
+    except (OSError, ValueError):
+        return False
+    real_root = data_root.resolve()
+    return real_root == candidate or real_root in candidate.parents
+
+
 def _classify_target_changes(
     repo_path: Path, before: dict[str, bytes],
 ) -> tuple[list[str], list[str], list[str]]:
@@ -1692,7 +1792,7 @@ def _classify_target_changes(
     operational: list[str] = []
     noise: list[str] = []
     for rel in sorted(all_changes):
-        if _is_operational_artifact(rel):
+        if _is_operational_artifact(rel) or _is_remedy_data_path(repo_path, rel):
             operational.append(rel)
         elif _is_target_noise(rel):
             noise.append(rel)
@@ -1840,6 +1940,7 @@ def _call_with_retry(
     provider: str = "",
     on_call: Any = None,
     is_parse_retry: bool = False,
+    call_reasons: list[str] | None = None,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
@@ -1871,8 +1972,10 @@ def _call_with_retry(
         if getattr(out, "stream_cap_reached", False):
             return out
 
-        is_timeout = "timeout" in out.error.lower() or "TimeoutExpired" in out.error
-        is_nonzero = "exited" in out.error.lower() or "nonzero" in out.error.lower()
+        # THE predicates — the same functions F010's classifier uses. A second copy of
+        # "what counts as a timeout" is a second definition, and definitions drift.
+        is_timeout = is_timeout_error(out.error)
+        is_nonzero = is_nonzero_exit_error(out.error)
         is_reject = (
             hasattr(out, "verdict")
             and out.verdict in ("needs_repair", "fail", "blocked")
@@ -1887,9 +1990,13 @@ def _call_with_retry(
             return out
 
         result.retries_used += 1
-        result.retry_reasons.append(
-            f"{role}:attempt{attempt + 1}:{out.error[:120]}"
-        )
+        _reason = f"{role}:attempt{attempt + 1}:{out.error[:120]}"
+        result.retry_reasons.append(_reason)          # the run-global summary, unchanged
+        if call_reasons is not None:
+            # ...and the evidence of THIS logical call, which is what a post-mortem may
+            # honestly cite. A builder timeout in round 1 is not evidence about a reviewer
+            # failure in round 3.
+            call_reasons.append(_reason)
         _time.sleep(backoff)
         if on_call is not None:
             on_call(attempt + 2, True)
@@ -1898,6 +2005,126 @@ def _call_with_retry(
                         is_retry=True, is_parse_retry=is_parse_retry)
 
     return out
+
+
+def _record_call_failure(
+    result: PingPongResult,
+    out: Any,
+    *,
+    role: str,
+    provider: str,
+    provider_obj: Any = None,
+    round_no: int = 1,
+    kind: str = "attempt",
+    call_reasons: list[str] | None = None,
+) -> str:
+    """F010: one post-mortem for ONE logical provider call that finally failed.
+
+    Called at the loop's REAL terminal exits, never inside the retry helper — because a
+    transport retry that recovers, and a reviewer parse retry that recovers, are not
+    failures at all and must leave nothing behind. Only a call the loop actually abandons
+    gets a record, and it gets exactly one.
+
+    Never raises into the loop: an evidence directory that cannot be written is reported
+    on the result (``result.error`` already carries the real failure) rather than turning a
+    provider failure into a crash.
+    """
+    from packages.orchestration.failure_postmortem import (
+        CallRetryEvidence,
+        FailureSignals,
+        PostmortemV1,
+        call_evidence_dir,
+        classify,
+        existing_evidence_refs,
+        safe_text,
+        write_postmortem,
+    )
+
+    error_text = getattr(out, "error", "") or ""
+    if not error_text:
+        return ""
+
+    provider_call_dir = ""
+    getter = getattr(provider_obj, "last_stream_call_dir", "")
+    if isinstance(getter, str):
+        provider_call_dir = getter
+
+    run_dir = _pingpong_runs_dir() / result.run_id
+    directory = call_evidence_dir(
+        run_dir, role, round_no, kind, provider_call_dir=provider_call_dir)
+    # The trusted containment root for this write: the streamed call directory belongs to
+    # the task's stream tree, everything else to the run directory. The writer refuses to
+    # leave it, through a symlink or otherwise.
+    root = (_stream_containment_root(Path(provider_call_dir))
+            if provider_call_dir else run_dir)
+    # The trusted root must already exist: the writer creates nothing until the destination
+    # is proved contained, and it will not conjure its own root. The run directory is ours.
+    with contextlib.suppress(OSError):
+        root.mkdir(parents=True, exist_ok=True)
+
+    # ONLY this logical call's retries. The run-global summary stays on the result for
+    # compatibility, but it is not evidence about this call.
+    evidence = CallRetryEvidence.of(list(call_reasons or []))
+
+    verdict = classify(FailureSignals(
+        error_class=getattr(out, "error_class", "") or "",
+        error_text=error_text,
+        retry_reasons=evidence.retry_reasons,
+        reviewer_verdict=getattr(out, "verdict", "") or "",
+    ))
+
+    call_id = getattr(out, "stream_call_id", "") or (
+        f"calls/{role}/round-{max(1, round_no):02d}/{kind}")
+
+    record = PostmortemV1(
+        failure_class=verdict.failure_class,
+        signal_source=verdict.signal_source,
+        scope="call",
+        job_id=result.job_id,
+        task_id=result.task_id,
+        run_id=result.run_id,
+        call_id=call_id,
+        role=role,
+        provider=provider,
+        raw_reason=error_text,
+        retry_reasons=evidence.retry_reasons,
+        retries_used=evidence.retries_used,
+        evidence_refs=existing_evidence_refs(directory),
+    )
+    try:
+        written = write_postmortem(directory, record, root=root)
+    except Exception as exc:
+        # NEVER replace the provider failure with a new one: `result.error` keeps saying
+        # what really went wrong. But a post-mortem that could not be written is itself a
+        # fact, and it is now durable — it travels in the exported run JSON, and the job
+        # export turns it into a gate-blocking artifact rather than a text file nobody
+        # reads.
+        result.postmortem_error = safe_text(f"{type(exc).__name__}: {exc}")[:500]
+        return ""
+    # A stable, unique, portable reference — never the ambiguous bare "postmortem.json",
+    # and never somebody's laptop. A streamed record keeps its stream namespace
+    # (`streams/<role>/round-NN/<kind>-II/…`), a fallback record its call namespace.
+    rel = ""
+    for anchor in ((root.parent if provider_call_dir else run_dir),):
+        with contextlib.suppress(ValueError):
+            rel = written.relative_to(anchor).as_posix()
+    if not rel:
+        rel = f"calls/{role}/round-{max(1, round_no):02d}/{kind}/{written.name}"
+    result.postmortem_paths.append(rel)
+    return str(directory)
+
+
+def _stream_containment_root(call_dir: Path) -> Path:
+    """The task's stream tree — the trusted root a streamed call's record may not leave.
+
+    A streamed call directory is ``…/streams/<role>/round-NN/<kind>-II``; the root is the
+    ``streams`` directory above it. Falls back to the call directory's parent when the
+    layout is anything else, which still contains the write.
+    """
+    for parent in call_dir.parents:
+        if parent.name == "streams":
+            return parent
+    return call_dir.parent
 
 
 # ---------------------------------------------------------------------------
@@ -2223,6 +2450,7 @@ def run_pingpong(
             ))
 
             _begin_stream_call(builder_provider, round_num, "attempt")
+            builder_call_reasons: list[str] = []
             builder_out = _call_with_retry(
                 lambda ts=builder_timeout: builder_provider.build(
                     builder_prompt,
@@ -2232,10 +2460,18 @@ def run_pingpong(
                 result=result,
                 role="builder",
                 provider=builder_name,
+                call_reasons=builder_call_reasons,
             )
             rd.builder_output = builder_out
 
             if builder_out.error:
+                # The logical builder call is over: F001 retried what was retryable and
+                # this is what is left. Exactly one post-mortem (F010).
+                _record_call_failure(
+                    result, builder_out, role="builder", provider=builder_name,
+                    provider_obj=builder_provider, round_no=round_num, kind="attempt",
+                    call_reasons=builder_call_reasons,
+                )
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "provider_unavailable"
@@ -2401,6 +2637,9 @@ def run_pingpong(
             staging_snap_before = _staged_now()
 
             _begin_stream_call(reviewer_provider, round_num, "attempt")
+            # ONE logical reviewer call: its attempt AND its single parse retry share this
+            # sink, and nothing from the builder or an earlier round is in it.
+            reviewer_call_reasons: list[str] = []
             reviewer_out = _call_with_retry(
                 lambda ts=reviewer_timeout: reviewer_provider.review(
                     reviewer_effective,
@@ -2415,6 +2654,7 @@ def run_pingpong(
                     "review",
                     "re-review" if is_repair else "review",
                 ),
+                call_reasons=reviewer_call_reasons,
             )
 
             # --- Bounded parse retry (one attempt) ---
@@ -2449,6 +2689,7 @@ def run_pingpong(
                     provider=reviewer_name,
                     is_parse_retry=True,
                     on_call=_rev_trace(retry_prompt, "parse-retry", "review-parse-retry"),
+                    call_reasons=reviewer_call_reasons,
                 )
                 retry_out.parse_retried = True
                 if not retry_out.error:
@@ -2483,6 +2724,16 @@ def run_pingpong(
                 break
 
             if reviewer_out.error:
+                # The logical reviewer call is over — including its ONE parse retry, which
+                # is why this is the only reviewer post-mortem site: a parse retry that
+                # recovered left no error and writes nothing (F010).
+                _record_call_failure(
+                    result, reviewer_out, role="reviewer", provider=reviewer_name,
+                    provider_obj=reviewer_provider, round_no=round_num,
+                    kind=("parse-retry" if getattr(reviewer_out, "parse_retried", False)
+                          else "attempt"),
+                    call_reasons=reviewer_call_reasons,
+                )
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
                 result.final_status = "review_failed"
@@ -3615,6 +3866,11 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         "timeout_s_effective_reviewer": result.timeout_s_effective_reviewer,
         "retries_used": result.retries_used,
         "retry_reasons": result.retry_reasons,
+        # F010: where this run's call-level post-mortems went (RUN-RELATIVE — never a
+        # workstation path), and, if one could not be written, why. A recording failure
+        # that only lived in memory was a recording failure nobody would ever see.
+        "postmortem_paths": list(result.postmortem_paths)[:50],
+        "postmortem_error": result.postmortem_error,
     }
 
 

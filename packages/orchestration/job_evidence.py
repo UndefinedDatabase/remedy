@@ -143,8 +143,32 @@ def export_job_evidence(
 
     attest_snap = _snapshot_attestation_artifacts(job)
 
+    # F010: everything the post-mortem contract could not deliver lands here, and a
+    # non-empty list blocks the package. A warning file nobody reads is not a gate.
+    postmortem_failures: list[dict[str, Any]] = []
+
+    try:
+        _write_job_postmortem(job, str(out_path), written, postmortem_failures)
+    except Exception as exc:
+        from packages.orchestration.failure_postmortem import safe_text as _safe
+        postmortem_failures.append({
+            "scope": "job", "job_id": job.job_id,
+            "error": _safe(f"job post-mortem export failed: {type(exc).__name__}: {exc}")[:500],
+        })
+
     for task in job.tasks:
         _write_task_run_evidence(task, str(out_path), written)
+        # F010: a terminally failed task leaves ONE rollup, and the call-level
+        # post-mortems it points at travel with it into the bundle.
+        try:
+            _write_task_postmortems(
+                job.job_id, task, str(out_path), written, postmortem_failures)
+        except Exception as exc:
+            from packages.orchestration.failure_postmortem import safe_text as _safe
+            postmortem_failures.append({
+                "scope": "task", "task_id": task.task_id,
+                "error": _safe(f"{type(exc).__name__}: {exc}")[:500],
+            })
         # F004: bring the per-attempt stream artifacts into the shareable bundle.
         try:
             _stream_listing = _copy_task_stream_artifacts(
@@ -472,6 +496,17 @@ def export_job_evidence(
         except (OSError, ValueError):
             return ""
         return str(data.get("verdict", "") or "") if isinstance(data, dict) else ""
+
+    # F010 post-mortem integrity — written BEFORE the gates read it. Empty means the
+    # contract held; anything in it is a required record that could not be written, and the
+    # final verifier turns that into BLOCKED. A package must never look clean while a
+    # failure went unrecorded.
+    _pm_integrity = {
+        "schema_version": "1.0.0",
+        "ok": not postmortem_failures,
+        "failures": postmortem_failures,
+    }
+    _write_json(POSTMORTEM_INTEGRITY_FILE, _pm_integrity)
 
     # Fresh evidence gate — verify this evidence belongs to the current job run.
     # Step range is derived from the project's .agent/plan.md title.
@@ -1711,6 +1746,128 @@ def _finalize_manual_completion(
     fjr_path = out_path / "final_job_review.json"
     fjr_path.write_text(json.dumps(fjr, indent=2) + "\n", encoding="utf-8")
     written["final_job_review.json"] = str(fjr_path)
+
+
+TERMINAL_TASK_STATUSES = frozenset({"failed", "blocked"})
+
+#: Where the export records what F010 could NOT do. An empty list is the normal case; a
+#: non-empty one BLOCKS the package — a bundle that quietly lost a required post-mortem
+#: must not be able to present clean gates.
+POSTMORTEM_INTEGRITY_FILE = "postmortem_integrity.json"
+
+
+def _write_task_postmortems(
+    job_id: str,
+    task: Any,
+    out_base: str,
+    written: dict[str, str],
+    failures: list[dict[str, Any]],
+) -> None:
+    """F010: copy this task's call post-mortems into the bundle and write its rollup.
+
+    Only for a task that ended terminally failed or blocked. A passed task has nothing to
+    explain, and inventing an empty record for it would make the failure histogram lie.
+
+    Call-level records are collected from BOTH real source layouts — the run's fallback
+    call directories and the task's streamed call directories — and copied ONCE each into
+    the canonical exported location ``task_runs/<task>/call_postmortems/<layout>/``. The
+    rollup then references exactly those exported files, which is what the reviewed build
+    could not do: a streamed failure's record never left the job store, so the rollup
+    pointed at nothing and the stats saw nothing.
+    """
+    from packages.orchestration.failure_postmortem import (
+        CALL_POSTMORTEM_SUBDIR,
+        POSTMORTEM_FILENAME,
+        build_task_rollup,
+        collect_task_call_postmortems,
+        write_postmortem,
+    )
+    from packages.orchestration.pingpong_job import _task_stream_dir
+    from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+
+    if str(getattr(task, "status", "")) not in TERMINAL_TASK_STATUSES:
+        return
+
+    task_rel = f"task_runs/{task.task_id}"
+    task_out = _task_evidence_dir(out_base, task.task_id)
+
+    run_id = str(getattr(task, "run_id", "") or "")
+    run_dir = (_pingpong_runs_dir() / run_id) if run_id else None
+    # The provider streams into ``…/task_runs/<task>/streams/<role>/round-NN/<kind>-II``;
+    # that ``streams`` directory is the root of the streamed call layout.
+    stream_dir = _task_stream_dir(job_id, task.task_id) / "streams"
+
+    call_refs: list[str] = []
+    for layout, src in collect_task_call_postmortems(
+        run_dir=run_dir, task_stream_dir=stream_dir,
+    ):
+        rel = f"{CALL_POSTMORTEM_SUBDIR}/{layout}/{POSTMORTEM_FILENAME}"
+        dest = _validate_output_path(out_base, f"{task_rel}/{rel}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        written[f"{task_rel}/{rel}"] = str(dest)
+        call_refs.append(rel)
+
+    rollup = build_task_rollup(task, job_id=job_id, call_refs=tuple(sorted(call_refs)))
+    # Idempotent by construction: a second export of the same terminal task publishes the
+    # identical record, and the writer accepts that without duplicating it.
+    write_postmortem(task_out, rollup, root=Path(out_base).resolve())
+    written[f"{task_rel}/{POSTMORTEM_FILENAME}"] = str(task_out / POSTMORTEM_FILENAME)
+
+    # A run that could not record a call-level post-mortem says so in its durable JSON.
+    # That is a broken F010 contract, and it blocks the package.
+    run_json = _read_run_json(run_id)
+    pm_error = str(run_json.get("postmortem_error") or "")
+    if pm_error:
+        from packages.orchestration.failure_postmortem import safe_text
+        failures.append({
+            "scope": "call",
+            "task_id": task.task_id,
+            "run_id": run_id,
+            "error": safe_text(pm_error)[:500],
+        })
+
+
+def _read_run_json(run_id: str) -> dict[str, Any]:
+    """The persisted run result, or {} — never an exception into the export."""
+    if not run_id:
+        return {}
+    try:
+        from packages.orchestration.pingpong_loop import _pingpong_runs_dir
+        path = _pingpong_runs_dir() / run_id / "result.json"
+        if not path.is_file():
+            return {}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _write_job_postmortem(
+    job: Any, out_base: str, written: dict[str, str], failures: list[dict[str, Any]],
+) -> None:
+    """F010: the JOB-level record — a job that failed before any task could own it.
+
+    A worktree lock that stops `_acquire_job_workspace()` blocks the job while every task
+    is still `pending`. The reviewed build produced no post-mortem at all for it: the
+    failure simply disappeared. The runner now writes a job-scope record into the job's own
+    evidence directory, and the export preserves it at the root of the bundle.
+    """
+    from packages.orchestration.failure_postmortem import POSTMORTEM_FILENAME
+    from packages.orchestration.pingpong_job import job_postmortem_path
+
+    src = job_postmortem_path(job.job_id)
+    if src.is_file() and not src.is_symlink():
+        dest = _validate_output_path(out_base, POSTMORTEM_FILENAME)
+        dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        written[POSTMORTEM_FILENAME] = str(dest)
+
+    job_error = str(getattr(job, "postmortem_error", "") or "")
+    if job_error:
+        from packages.orchestration.failure_postmortem import safe_text
+        failures.append({
+            "scope": "job", "job_id": job.job_id, "error": safe_text(job_error)[:500],
+        })
 
 
 def _write_task_run_evidence(

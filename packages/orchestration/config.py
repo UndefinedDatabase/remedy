@@ -78,6 +78,17 @@ class ConfigKeySpec:
 
 _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
     ConfigKeySpec(
+        key="postmortem.llm_summary",
+        env_var="REMEDY_POSTMORTEM_LLM_SUMMARY",
+        description=(
+            "Generate an LLM summary for failure post-mortems (F010). "
+            "Disabled by default: v1 post-mortems are fully deterministic and make "
+            "zero provider calls; no generated prose is ever passed off as analysis."
+        ),
+        value_type=bool,
+        default=False,
+    ),
+    ConfigKeySpec(
         key="data_dir",
         env_var="REMEDY_DATA_DIR",
         description="Root directory for Remedy data storage",

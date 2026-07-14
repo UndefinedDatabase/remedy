@@ -1,56 +1,48 @@
-# Live Review — Steps 6621-6660 — F007 external acceptance closure
+# Live Review — Steps 7161-7260 — F010 closure — automatic failure post-mortems
 
 ## Verdict (reviewer-owned)
-**PASS_WITH_RISKS** — ACCEPTED (F007, external review, 2026-07-13; 0 open findings)
-
-The verdict stays `PASS_WITH_RISKS`, not `PASS`: final human review is still required
-before this branch is committed. `review_ready` is therefore `false` in the review
-manifest, and that is the honest state — it is not something to be tuned away.
+**PASS_WITH_RISKS** — ACCEPTED (F010, external review, 2026-07-14; 0 open findings)
 
 ## Builder Handoff
 
-This closure was performed by the **operator by hand**. No Builder ran, no Reviewer ran,
-no provider was called (0 provider calls), and neither `job-flow` nor `job-run` was used.
+F010 is externally accepted. The reviewed package was
+`remedy-review-20260714-135557-READY_FOR_REVIEW.zip`
+(sha256 `02b36b4de139c966f6173a2090a023f35721414fe4eb053e00f1297df95ed53e`,
+Evidence job `01363c70e13046e2`, linked prior `953ec09d1b4b4403`). The SHA matched, 23/23
+content proofs matched, no Source/Test file was missing or uncovered, and the seven
+`O_NOFOLLOW` failures from the previous Linux 4.4 round are gone.
 
-- **Frozen:** the accepted F007 runtime implementation and its tests were not touched —
-  `apps/cli/commands/runtime_cmd.py`, `packages/runtimes/dev_server.py`,
-  `packages/runtimes/runtime_supervisor.py`, `tests/cli/test_runtime_cmd.py`,
-  `tests/runtimes/runtime_cleanup.py`,
-  `tests/runtimes/test_runtime_cli_process_boundary.py` and
-  `tests/runtimes/test_supervisor_portability.py` are byte-identical to the accepted
-  package (7/7 sha256 verified before and after every run).
-- **Changed:** acceptance documentation and operator state only, plus one focused
-  regression test for the review-manifest parser contract.
-- **Not started:** F010 (next feature), F008, F009, F146.
-- **Branch:** uncommitted, unpushed, unmerged — awaiting the human commit decision.
+External results: F010 core **194 passed**, writer suite **109 passed**, focused F007
+redaction **26 passed**. One supporting invocation reported `518 passed, 1 failed`; the
+single failure was the unchanged F007 test
+`tests/runtimes/test_dev_server.py::TestReadiness::test_readiness_timeout_stops_the_tree_and_leaves_no_state`,
+which assumed a new Python process reaches its first `print()` within 1.5s. That is a test
+assumption, not a runtime defect: the runtime timed out and stopped the tree correctly.
 
-## Accepted package
+This run applied one narrow correction: the test now polls `runtime.log` for the
+`"booting but never listening"` marker under a finite 30s setup deadline (failing loudly if
+it never appears), asserts the process is still alive, and only then calls `wait_ready()`.
+The short readiness timeout, the `ready` error class, the bounded log tail, the process-tree
+stop and the no-leftover-state assertions are all unchanged. No F007 production code was
+touched.
 
-`remedy-review-20260713-115439-READY_FOR_REVIEW.zip`
-(sha256 `4df642850249b8e1d2763400311aced43a712fd0523e79e4c6c169d5c0b263a9`),
-Evidence job `2e820a4dbf9842cf`, history jobs `eb2b76fd1aba4668`, `809b9b5743694abf`,
-7/7 content proofs matched the packaged files.
+## Disclosed risks (both accepted)
 
-Independent external verification:
-- ZIP sha256 matched exactly; bundle integrity, subject/Evidence alignment, fresh
-  Evidence, change provenance, artifact contract and runtime integration all PASS.
-- `tests/runtimes/test_supervisor_portability.py` — 99 passed, normal final summary.
-- `tests/runtimes/test_runtime_cli_process_boundary.py` — 15 passed, normal final summary.
-- Both files in ONE pytest invocation — **114 passed in 525.44s**, normal final summary.
-- **No `/tmp/pytest-*` runtime supervisor or application survived any complete run.**
-- A deliberately failing pytest probe confirmed the registered subprocess cleanup still
-  runs after an assertion failure and leaves no child alive.
-- `compileall` and `bash -n scripts/make_review_zip.sh` passed.
-- Disclosed environment limitation (not an F007 blocker): the extracted review ZIP excludes
-  `apps/ui/node_modules`, so the external host ran 2 apps/ui tests and skipped 5 with an
-  explicit missing-Vite-dependency blocker. All 7 pass on the operator environment, where
-  the dependencies are already installed; production code is byte-identical.
+1. **Same-UID directory relocation is outside the v1 threat model.** The writer refuses path
+   traversal, pre-existing symlinks, different-inode substitution, an ineffective
+   `O_NOFOLLOW` and the ordinary check/open race. It does not resist a process running as
+   the same OS user that renames an already-opened private evidence directory — that
+   adversary can modify Remedy's evidence directly anyway. Defending against it needs
+   `openat2`/mount constraints or a separate service account. Documented in
+   `docs/roadmap/features/T0_F010.md`.
+2. **The slow-host F007 test was hardened test-side only.** The readiness proof is now
+   deterministic on a host where interpreter startup exceeds 1.5s; `packages/runtimes/dev_server.py`
+   is unchanged.
 
-## Closure state
+## Open findings
 
-- F007 is `[x]` in `docs/roadmap/STATUS.md` with the accepted ZIP, Evidence job
-  `2e820a4dbf9842cf`, the verdict and the acceptance date; `T0_F007.md` and `README.md`
-  record the same truth; the docs-consistency test pins it.
-- The long 114-test subprocess proof was not rerun: none of its files changed, and the
-  external result is referenced instead.
-- **Zero open findings.** Zero provider calls.
+0.
+
+## Status
+
+F010 `[x]` — accepted 2026-07-14. F011 not started.
