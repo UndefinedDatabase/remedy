@@ -57,6 +57,11 @@ class ArgDef:
     required: bool = True
     is_option: bool = False
     default: str | None = None
+    #: A boolean flag takes NO value (`--status`), a valued option does (`--status pending`).
+    #: Declared per ARGUMENT, because the same option name means different things to
+    #: different commands: `job stop --status` is a flag, `propose list --status pending`
+    #: is not. F011 briefly special-cased the NAME in the parser and broke `propose list`.
+    is_flag: bool = False
 
 
 @dataclass(frozen=True)
@@ -219,6 +224,24 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="read_only",
         args=(_JOB_ID,),
         related=("job.permit",),
+    ),
+    CommandEntry(
+        command_id="job.stop",
+        group_id="job",
+        subcommand="stop",
+        description="Request a safe stop of a running job (F011 kill switch).",
+        action_class="write_metadata",
+        supports_json=True,
+        args=(
+            ArgDef("job_id", "Job ID (from do job-plan) to stop"),
+            ArgDef("--reason", "Why the job is being stopped (recorded in the evidence)", required=False, is_option=True, default=""),
+            ArgDef("--source", "Who requested the stop (default: cli)", required=False, is_option=True, default="cli"),
+            ArgDef("--status", "Show pending and consumed stop requests instead of requesting one", required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("do.job-run", "do.job-report"),
     ),
     CommandEntry(
         command_id="job.run-next",

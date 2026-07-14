@@ -96,3 +96,13 @@ def job_evidence_export_dir(job_id: str, root: Path | None = None) -> Path:
 def job_evidence_index_dir(root: Path | None = None) -> Path:
     """Return the existing job evidence index directory (<root>/job_evidence_index)."""
     return (root if root is not None else resolve_data_root()) / "job_evidence_index"
+
+
+def control_dir(root: Path | None = None) -> Path:
+    """Return the control area (<root>/control).
+
+    F011: operator control data — a stop request and its archive — lives here, kept apart
+    from the evidence a job produces about itself. It is private (0700/0600); see
+    ``packages/orchestration/safe_points.py``.
+    """
+    return (root if root is not None else resolve_data_root()) / "control"

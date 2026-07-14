@@ -26,7 +26,7 @@ import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from packages.orchestration.pingpong_provider import (
@@ -180,6 +180,13 @@ class PingPongResult:
     # reason a post-mortem could NOT be written, if that ever happens.
     postmortem_paths: list[str] = field(default_factory=list)
     postmortem_error: str = ""
+    # F011: the stop that ended this run, if one did. `final_status == "stopped"` is a
+    # deliberate terminal outcome — not a provider failure, not a review failure, not a
+    # retry reason and never `unknown`.
+    stop_request_id: str = ""
+    stop_reason: str = ""
+    stop_source: str = ""
+    stop_requested_at: str = ""
     # F002: builder produced no file changes but reviewer/tests still ran
     builder_no_changes: bool = False
     # F003: per-call provider usage accounting
@@ -2162,8 +2169,15 @@ def run_pingpong(
     workspace_handle: Any = None,
     workspace_owner: str = "run",
     workspace_start_tree: str = "",
+    stop_check: Callable[[], Any] | None = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
+
+    ``stop_check`` (F011) is the safe-point probe: a cheap zero-argument callable returning
+    a StopSignal or None. It is consulted ONLY where no work is in flight — before a round,
+    before the Builder call, before the Reviewer call, before the bounded parse retry — so
+    an operator's stop never interrupts a provider call, a write, or an apply. The call
+    already running always finishes and its evidence is kept.
 
     All mutation happens in staging. Target repo is never modified.
     Target snapshot guard enforces this.
@@ -2374,12 +2388,37 @@ def run_pingpong(
     has_test_command = bool(test_command)
 
     _loop_exc: Exception | None = None
+
+    def _stopped() -> Any:
+        """The safe-point probe. Cheap by construction: the caller binds the control root
+        once, so this is a stat and (at most) a small read — no config load, no scan."""
+        if stop_check is None:
+            return None
+        return stop_check()
+
+    def _record_stop(signal: Any) -> None:
+        """A stop is a first-class terminal outcome, carrying the exact signal that caused
+        it. It is never a provider failure and never a retry reason."""
+        result.final_status = "stopped"
+        result.stop_request_id = getattr(signal, "request_id", "") or ""
+        result.stop_reason = getattr(signal, "reason", "") or ""
+        result.stop_source = getattr(signal, "source", "") or ""
+        result.stop_requested_at = getattr(signal, "requested_at", "") or ""
+        result.error = ""
+
     try:
         findings: list[ReviewFinding] = []
         reviewer_out: ReviewerOutput | None = None
         repair_triggered = False  # set when repair decision = "repair"
 
         for round_num in range(1, max_rounds + 1):
+            # SAFE POINT 1 — a new round (initial or repair) is new work. Nothing is in
+            # flight here: the previous round is fully recorded.
+            _stop = _stopped()
+            if _stop is not None:
+                _record_stop(_stop)
+                break
+
             is_repair = round_num > 1 and (bool(findings) or repair_triggered)
             rd = PingPongRound(
                 round_number=round_num,
@@ -2388,11 +2427,6 @@ def run_pingpong(
                 input_finding_ids=[f.id for f in findings] if is_repair else [],
                 started_at=datetime.now(timezone.utc).isoformat(),
             )
-
-            # Count repair round at Builder start
-            if is_repair:
-                result.repair_rounds_used += 1
-                repair_triggered = False  # consumed
 
             # --- Builder phase ---
             # Compute repair diff for builder (from previous round)
@@ -2423,7 +2457,21 @@ def run_pingpong(
                 scope_contract=scope_contract_text,
                 test_result=prev_test_result,
             )
-            # Track prompt sizes for token accounting
+            # SAFE POINT 2 — immediately before the Builder provider call. A stop observed
+            # here means the call NEVER STARTS: no ProviderAttempt, no prompt trace of a
+            # call that did not happen, no repair round counted, no retry budget spent. The
+            # prompt above was only built, and building a prompt is not doing work.
+            _stop = _stopped()
+            if _stop is not None:
+                _record_stop(_stop)
+                break
+
+            # Count the repair round at Builder start — the round is now really happening.
+            if is_repair:
+                result.repair_rounds_used += 1
+                repair_triggered = False  # consumed
+
+            # Track prompt sizes for token accounting (a prompt that is actually sent)
             if round_num == 1:
                 result.builder_prompt_chars = len(builder_prompt)
             else:
@@ -2636,6 +2684,15 @@ def run_pingpong(
             # Snapshot staging before reviewer (to detect reviewer mutation)
             staging_snap_before = _staged_now()
 
+            # SAFE POINT 3 — the Builder call has returned and its evidence is recorded;
+            # the Reviewer call is the NEXT provider call, so it does not begin.
+            _stop = _stopped()
+            if _stop is not None:
+                _record_stop(_stop)
+                rd.finished_at = datetime.now(timezone.utc).isoformat()
+                result.rounds.append(rd)
+                break
+
             _begin_stream_call(reviewer_provider, round_num, "attempt")
             # ONE logical reviewer call: its attempt AND its single parse retry share this
             # sink, and nothing from the builder or an earlier round is in it.
@@ -2658,7 +2715,17 @@ def run_pingpong(
             )
 
             # --- Bounded parse retry (one attempt) ---
+            # SAFE POINT 4 — the parse retry is another provider call. A stop observed here
+            # leaves the malformed first response exactly as it was recorded and starts
+            # nothing: the retry is new work.
             if reviewer_out.error and reviewer_out.error.startswith("malformed_output:"):
+                _stop = _stopped()
+                if _stop is not None:
+                    _record_stop(_stop)
+                    rd.reviewer_output = reviewer_out
+                    rd.finished_at = datetime.now(timezone.utc).isoformat()
+                    result.rounds.append(rd)
+                    break
                 result.reviewer_parse_retry_count += 1
                 result.reviewer_parse_error = reviewer_out.error
                 result.reviewer_malformed_excerpt = reviewer_out.raw_text[:300]
@@ -3871,6 +3938,28 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         # that only lived in memory was a recording failure nobody would ever see.
         "postmortem_paths": list(result.postmortem_paths)[:50],
         "postmortem_error": result.postmortem_error,
+        # F011: the stop that ended this run, when one did. Present ONLY for a stopped run,
+        # so an ordinary run's JSON is byte-for-byte what it always was. Bounded, redacted,
+        # versioned: no absolute path and no secret ever reaches a run record.
+        **({"stop": _build_stop_info(result)} if result.final_status == "stopped" else {}),
+    }
+
+
+def _build_stop_info(result: PingPongResult) -> dict[str, Any]:
+    """The safe, versioned stop block. The run record carried the signal in memory and threw
+    it away on export, so the one artifact a reader opens first said only `stopped`."""
+    from packages.orchestration.safe_points import (
+        STOP_SIGNAL_VERSION,
+        normalize_timestamp,
+    )
+    from packages.orchestration.failure_postmortem import safe_text
+
+    return {
+        "stop_signal_v": STOP_SIGNAL_VERSION,
+        "request_id": (result.stop_request_id or "")[:64],
+        "reason": safe_text(result.stop_reason or "")[:500],
+        "source": safe_text(result.stop_source or "")[:120],
+        "requested_at": normalize_timestamp(result.stop_requested_at),
     }
 
 

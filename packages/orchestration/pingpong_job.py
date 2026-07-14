@@ -21,7 +21,7 @@ import json as _json
 import os
 import re
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -44,6 +44,10 @@ JOB_RUNNING = "running"
 JOB_BLOCKED = "blocked"
 JOB_COMPLETED = "completed"
 JOB_PAUSED = "paused"
+#: F011. Additive and distinct: a STOPPED job was stopped ON PURPOSE at a safe point. It is
+#: not `blocked` (nothing failed), not `paused` (nothing hit a task cap) and not a cancelled
+#: queue item. It keeps its pending work and resumes at the first pending task.
+JOB_STOPPED = "stopped"
 
 # Token context policy constants
 _PREVIOUS_SUMMARY_LIMIT = 5
@@ -226,6 +230,15 @@ class JobPlan:
     unexpected_root_files: list[str] = field(default_factory=list)
     missing_root_files: list[str] = field(default_factory=list)
     handoff_coverage_verdict: str = ""    # "PASS" | "FAIL" | ""
+    # F011: the LAST stop episode. Older job files have none of this and load unchanged.
+    stop_request_id: str = ""
+    stop_reason: str = ""
+    stop_source: str = ""
+    stopped_at: str = ""
+    stop_archive_ref: str = ""            # control-relative, never absolute
+    stop_postmortem_path: str = ""        # evidence-relative, never absolute
+    stop_error: str = ""                  # a recording failure, kept durable (blocking)
+    stop_event_error: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -494,6 +507,18 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         },
         "job_initial_tree": job.job_initial_tree,
         "job_initial_tree_ref": job.job_initial_tree_ref,
+        # F011: the last stop episode. Absent from every job file written before F011, and
+        # absent from a job that was never stopped — both load as "no stop", not as an error.
+        "stop": {
+            "request_id": job.stop_request_id,
+            "reason": job.stop_reason,
+            "source": job.stop_source,
+            "stopped_at": job.stopped_at,
+            "archive_ref": job.stop_archive_ref,
+            "postmortem_path": job.stop_postmortem_path,
+            "error": job.stop_error,
+            "event_error": job.stop_event_error,
+        },
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -566,6 +591,14 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         repair_rounds_allowed=data.get("repair_rounds_allowed", 0),
         repair_rounds_source=data.get("repair_rounds_source", ""),
         execution_config=_import_execution_config(data.get("execution_config")),
+        stop_request_id=str((data.get("stop") or {}).get("request_id", "") or ""),
+        stop_reason=str((data.get("stop") or {}).get("reason", "") or ""),
+        stop_source=str((data.get("stop") or {}).get("source", "") or ""),
+        stopped_at=str((data.get("stop") or {}).get("stopped_at", "") or ""),
+        stop_archive_ref=str((data.get("stop") or {}).get("archive_ref", "") or ""),
+        stop_postmortem_path=str((data.get("stop") or {}).get("postmortem_path", "") or ""),
+        stop_error=str((data.get("stop") or {}).get("error", "") or ""),
+        stop_event_error=str((data.get("stop") or {}).get("event_error", "") or ""),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -1547,6 +1580,30 @@ def run_job(
     job.repair_rounds_allowed = repair_rounds
     job.repair_rounds_source = rr_src
 
+    # F011 SAFE POINT ZERO — before ANY work. The job is loaded and its config resolved;
+    # nothing has been acquired, locked, snapshotted or mutated. A stop that was already
+    # pending is honoured HERE, so it can never be overtaken by a worktree lock failure
+    # (which is what happened in the reviewed build: the job came out `blocked` with the
+    # stop still sitting on disk).
+    #
+    # Binding the control root resolves a path. It creates nothing, and it touches neither
+    # the repository nor the workspace.
+    from packages.orchestration.safe_points import control_root as _control_root
+    from packages.orchestration.safe_points import stop_requested as _stop_requested
+    _control = _control_root()
+
+    def _stop_check():
+        return _stop_requested(job.job_id, control_root_path=_control)
+
+    _pre_stop = _stop_check()
+    if _pre_stop is not None:
+        try:
+            return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
+        except StopFinalizationError:
+            # The stop could not be made durable. The request is still pending and no work
+            # has begun — which is the safe outcome, and the job records why.
+            return job
+
     # F006: the job workspace IS a job-owned git worktree for a git target.
     # The runner owns the handle (and its lock) for the whole execution.
     job_handle = None
@@ -1594,6 +1651,16 @@ def run_job(
 
             if max_tasks > 0 and tasks_run >= max_tasks:
                 break
+
+            # SAFE POINT — before dispatching a task. A stop that was requested while the
+            # job was not running is consumed HERE, before any work begins: zero provider
+            # calls, every task still pending.
+            _stop = _stop_check()
+            if _stop is not None:
+                try:
+                    return _stop_job(job, _stop, task=None, control_root_path=_control)
+                except StopFinalizationError:
+                    return job          # request still pending; no task work begins
 
             # Build bounded task prompt
             task_prompt = _build_task_prompt(job, task, previous_summaries)
@@ -1661,6 +1728,7 @@ def run_job(
                     workspace_handle=job_handle,
                     workspace_owner="job" if job_handle is not None else "run",
                     workspace_start_tree=task.task_start_tree,
+                    stop_check=_stop_check,
                 )
             except Exception as exc:
                 task.status = TASK_FAILED
@@ -1683,6 +1751,27 @@ def run_job(
                 task.test_passed = last_round.test_passed
                 if last_round.reviewer_output:
                     task.reviewer_verdict = last_round.reviewer_output.verdict
+
+            # F011: the loop stopped on purpose. The in-flight provider call finished and
+            # its evidence is in the run record; the task never reached its completion/apply
+            # boundary, so it goes back to `pending` and the job is stopped — NOT blocked,
+            # NOT failed, and never dressed up as a provider or review failure.
+            if result.final_status == "stopped":
+                from packages.orchestration.safe_points import StopSignal as _StopSignal
+                signal = _StopSignal(
+                    job_id=job.job_id,
+                    request_id=result.stop_request_id,
+                    reason=result.stop_reason or "unknown",
+                    source=result.stop_source or "unknown",
+                    requested_at=result.stop_requested_at,
+                )
+                try:
+                    return _stop_job(job, signal, task=task, control_root_path=_control)
+                except StopFinalizationError:
+                    # The task is already back to pending; the request stays pending too.
+                    task.status = TASK_PENDING
+                    _persist_job(job)
+                    return job
 
             # Step 4857: Deterministic task completion gate
             gate_ok, gate_reasons = validate_job_task_result(result)
@@ -1753,6 +1842,15 @@ def run_job(
 
             tasks_run += 1
             _persist_job(job)
+
+            # SAFE POINT — the task is durably APPLIED and stays that way. A stop observed
+            # now takes effect before the NEXT task is dispatched.
+            _stop = _stop_check()
+            if _stop is not None:
+                try:
+                    return _stop_job(job, _stop, task=None, control_root_path=_control)
+                except StopFinalizationError:
+                    return job          # no further task is dispatched
 
         # Determine final job status
         all_done = all(
@@ -2179,6 +2277,233 @@ def _write_job_postmortem_record(job: JobPlan, exc: BaseException) -> None:
         from packages.orchestration.failure_postmortem import safe_text
         job.postmortem_error = safe_text(
             f"{type(write_exc).__name__}: {write_exc}")[:500]
+
+
+# ---------------------------------------------------------------------------
+# F011 — the stop episode
+# ---------------------------------------------------------------------------
+
+#: Where a stop episode's post-mortem lives. Keyed by REQUEST id, because a job may be
+#: stopped, resumed and stopped again, and the second stop must not overwrite the first.
+STOP_POSTMORTEM_SUBDIR = "stop_postmortems"
+
+
+def stop_postmortem_dir(job_id: str, request_id: str):
+    """``jobs/<job_id>/evidence/stop_postmortems/<request_id>/`` — one per episode."""
+    from packages.orchestration.safe_points import validate_job_id
+
+    return job_evidence_dir(job_id) / STOP_POSTMORTEM_SUBDIR / validate_job_id(request_id)
+
+
+def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
+    """The F010 record for a deliberate stop: class ``stopped``, scope ``job``.
+
+    Never raises into the runner. A record that could not be written becomes
+    ``job.stop_error``, which the evidence export turns into a BLOCKING integrity failure —
+    the same rule F010 already applies to a failure it could not explain.
+    """
+    from packages.orchestration.failure_postmortem import (
+        POSTMORTEM_FILENAME,
+        FailureSignals,
+        build_job_rollup,
+        write_postmortem,
+    )
+
+    try:
+        record = build_job_rollup(
+            job_id=job.job_id,
+            signals=FailureSignals(
+                terminal_status="stopped",
+                error_text=f"stop requested: {signal.reason}",
+            ),
+        )
+        record = replace(
+            record,
+            task_id=task_id or "",
+            raw_reason=f"stop requested: {signal.reason} (source: {signal.source})",
+        )
+        directory = stop_postmortem_dir(job.job_id, signal.request_id)
+        directory.mkdir(parents=True, exist_ok=True)
+        write_postmortem(directory, record, root=job_evidence_dir(job.job_id))
+        job.stop_postmortem_path = (
+            f"{STOP_POSTMORTEM_SUBDIR}/{signal.request_id}/{POSTMORTEM_FILENAME}")
+    except Exception as write_exc:
+        from packages.orchestration.failure_postmortem import safe_text
+        job.stop_error = safe_text(
+            f"stop_postmortem_write_failed: {type(write_exc).__name__}: {write_exc}")[:500]
+
+
+def _append_job_stopped_event(job: JobPlan, signal: Any, task_id: str) -> None:
+    """Exactly one ``job_stopped`` ledger event per CONSUMED request.
+
+    Written through the existing run-log ledger (``<data_root>/runs/<job_id>/<run>.jsonl``),
+    which is what `remedy event list` and the replay tooling already read. Nothing in the
+    payload is a path or a secret. A ledger failure is durable on the job, never silent.
+    """
+    from packages.orchestration.failure_postmortem import safe_text
+
+    try:
+        from packages.orchestration.data_paths import runs_dir
+        from packages.orchestration.run_log import RunLogWriter
+
+        completed = sum(
+            1 for t in job.tasks if t.status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED))
+        pending = sum(1 for t in job.tasks if t.status == TASK_PENDING)
+        writer = RunLogWriter(job.job_id, runs_root=runs_dir())
+        writer.log(
+            "job_stopped",
+            task_id=task_id or None,
+            outcome="stopped",
+            request_id=signal.request_id,
+            reason=signal.reason,
+            source=signal.source,
+            requested_at=signal.requested_at,
+            consumed_at=job.stopped_at,
+            completed_task_count=completed,
+            pending_task_count=pending,
+            postmortem_ref=job.stop_postmortem_path,
+        )
+    except Exception as exc:
+        job.stop_event_error = safe_text(
+            f"job_stopped_event_failed: {type(exc).__name__}: {exc}")[:500]
+
+
+class StopFinalizationError(RuntimeError):
+    """The stop could not be made durable. The request stays pending; nothing is faked."""
+
+
+def _job_stopped_event_exists(job_id: str, request_id: str) -> bool | None:
+    """Has this exact request already produced a ``job_stopped`` event?
+
+    Returns True/False, or None when the ledger could not be read at all (which must not be
+    mistaken for "no event": appending a second one would break exactly-once).
+
+    This scan happens ONLY during stop finalization — never at an ordinary safe point, which
+    stays a single stat plus a small read.
+    """
+    try:
+        from packages.orchestration.data_paths import runs_dir
+
+        job_runs = runs_dir() / job_id
+        if not job_runs.is_dir():
+            return False
+        for jsonl in sorted(job_runs.glob("*.jsonl")):
+            for line in jsonl.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    raw = _json.loads(line)
+                except ValueError:
+                    continue                      # a torn line is not our event
+                if (raw.get("event") == "job_stopped"
+                        and str(raw.get("job_id")) == job_id
+                        and str((raw.get("metadata") or {}).get("request_id")) == request_id):
+                    return True
+        return False
+    except OSError:
+        return None
+
+
+def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
+              control_root_path: Any = None) -> JobPlan:
+    """Turn an observed stop signal into a durable, resumable STOPPED job.
+
+    **The order is the feature.** The reviewed build archived the request, deleted the
+    pending file, and only then tried to persist the job — so a failing `_persist_job` left
+    a job that still said `planned` and a stop request that no longer existed anywhere. The
+    stop was simply lost.
+
+    The pending request is now the transaction's commit record, and it is removed LAST:
+
+    1. archive the request (idempotent; a different record under the same id conflicts);
+    2. write the stopped post-mortem (idempotent — F010's writer settles an identical record
+       and refuses a conflicting one);
+    3. append the ``job_stopped`` event, but only if this request has not already produced
+       one (exactly-once by request id);
+    4. set the STOPPED state and every stop field;
+    5. persist the job — the durable checkpoint;
+    6. only now remove the pending request.
+
+    A failure anywhere in 1-5 leaves the request PENDING and raises: the runner starts no
+    new work, and the next run sees the same request, recognises the parts already done, and
+    completes the SAME episode — one archive, one post-mortem, one event. A failure at 6
+    leaves a stopped job with a pending request; the next run acknowledges it without a
+    second event or post-mortem.
+    """
+    from packages.orchestration.failure_postmortem import safe_text
+    from packages.orchestration.safe_points import (
+        acknowledge_stop,
+        archive_stop,
+    )
+
+    task_id = task.task_id if task is not None else ""
+
+    # The incomplete task goes back to pending, exactly like the provider-failure path. A
+    # task that already reached TASK_APPLIED is durable and is NOT rolled back.
+    if task is not None and task.status not in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+        task.status = TASK_PENDING
+        task.task_attempt_state = "active"     # its start tree stays valid for the resume
+
+    # --- 1. archive (no removal yet) --------------------------------------------------
+    try:
+        archive_ref = archive_stop(job.job_id, signal,
+                                   control_root_path=control_root_path)
+    except Exception as exc:
+        # An unarchived request is NOT a consumed episode: no event, no post-mortem, no
+        # stopped job claiming a history that does not exist. The request stays pending and
+        # the job stops doing work — fail-safe, and durably recorded as incomplete.
+        job.stop_error = safe_text(
+            f"stop_archive_failed: {type(exc).__name__}: {exc}")[:500]
+        job.stop_request_id = getattr(signal, "request_id", "")
+        _persist_job(job)
+        raise StopFinalizationError(job.stop_error) from exc
+
+    # --- 2. post-mortem (idempotent) --------------------------------------------------
+    # The request id goes on the job as soon as the archive exists: whatever happens next,
+    # the job names the episode it is trying to finalize, so a retry can recognise it.
+    job.stop_error = ""
+    job.stop_event_error = ""
+    job.stop_archive_ref = archive_ref
+    job.stop_request_id = signal.request_id
+    _write_stop_postmortem(job, signal, task_id)
+    if job.stop_error:
+        _persist_job(job)
+        raise StopFinalizationError(job.stop_error)
+
+    # --- 3. event, exactly once per request id ----------------------------------------
+    job.stop_reason = signal.reason
+    job.stop_source = signal.source
+    job.stopped_at = datetime.now(timezone.utc).isoformat()
+
+    already = _job_stopped_event_exists(job.job_id, signal.request_id)
+    if already is None:
+        job.stop_event_error = safe_text(
+            "job_stopped_event_unverifiable: the run ledger could not be read, so a second "
+            "event cannot be ruled out")[:500]
+        _persist_job(job)
+        raise StopFinalizationError(job.stop_event_error)
+    if not already:
+        _append_job_stopped_event(job, signal, task_id)
+        if job.stop_event_error:
+            _persist_job(job)
+            raise StopFinalizationError(job.stop_event_error)
+
+    # --- 4/5. the durable STOPPED checkpoint ------------------------------------------
+    job.status = JOB_STOPPED
+    job.error = ""
+    _persist_job(job)                 # if THIS throws, the request is still pending: good
+
+    # --- 6. the request has done its job ----------------------------------------------
+    try:
+        acknowledge_stop(job.job_id, signal, control_root_path=control_root_path)
+    except Exception as exc:
+        # The job IS stopped and durable; only the tidying failed. Say so, and let the next
+        # finalization remove the request — it will find the archive, the post-mortem and
+        # the event already there and add none of them twice.
+        job.stop_error = safe_text(
+            f"stop_acknowledge_failed: {type(exc).__name__}: {exc}")[:500]
+        _persist_job(job)
+    return job
 
 
 def _task_stream_dir(job_id: str, task_id: str):

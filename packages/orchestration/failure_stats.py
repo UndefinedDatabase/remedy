@@ -35,6 +35,10 @@ from packages.orchestration.failure_postmortem import (
     POSTMORTEM_VERSION,
 )
 
+#: F011: the exported layout of one stop episode's record. Imported by name (not from
+#: pingpong_job) so a read-only stats scan never drags the job runner into the process.
+STOP_POSTMORTEM_SUBDIR = "stop_postmortems"
+
 #: Result schema version. Consumers may pin it.
 STATS_VERSION = 1
 
@@ -163,6 +167,17 @@ def collect_failures(
             if record is not None and (
                 not since or str(record.get("created_at", "")) >= since):
                 _count(record)
+
+        # F011: each stop EPISODE is its own job-scope record, under its request id. One
+        # per consumed request — a job stopped twice is two records, and a duplicated stop
+        # command (one request) is still one.
+        stop_root = job_dir / STOP_POSTMORTEM_SUBDIR
+        if stop_root.is_dir():
+            for stop_path in sorted(stop_root.rglob(POSTMORTEM_FILENAME)):
+                record = _load(stop_path, counters, base)
+                if record is not None and (
+                    not since or str(record.get("created_at", "")) >= since):
+                    _count(record)
 
         task_runs = job_dir / "task_runs"
         if not task_runs.is_dir():
