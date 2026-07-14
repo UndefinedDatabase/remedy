@@ -14,7 +14,7 @@ reaches your repository or your remote without you saying so.
 - **Evidence, not claims.** Every completion carries hashes, gates and reproducible
   verification commands. If something is unproven, Remedy says so instead of guessing.
 
-## What exists today (foundation F001–F007)
+## What exists today (foundation F001–F007, F010)
 
 | Feature | State | What it gives you |
 |---|---|---|
@@ -25,9 +25,12 @@ reaches your repository or your remote without you saying so.
 | F005 | ✅ | Enforced structured outputs (versioned schemas, one parse retry) |
 | F006 | ✅ | Worktree isolation per run: one job-owned worktree, deterministic `result.diff`, promotion only from a verified base + diff |
 | F007 | ✅ | Runtime harness: `remedy runtime serve/probe/stop` with a persistent dev-server supervisor (externally accepted 2026-07-13) |
+| F010 | ✅ | Automatic failure post-mortems: one `postmortem.json` per finally-failed call, task or job, plus `remedy stats failures` (externally accepted 2026-07-14) |
 
-F001–F007 are the accepted foundation. Everything after F007 in the roadmap (including
-F008 and F010) is **not implemented**.
+F001–F007 and F010 are the accepted foundation. Every finally-failed provider call, task
+or job leaves one machine-readable `postmortem.json`, and `remedy stats failures` aggregates
+them from the evidence on disk — deterministically, with zero LLM calls and no database.
+Everything else after F007 in the roadmap (including F008 and F011) is **not implemented**.
 
 ## Install
 

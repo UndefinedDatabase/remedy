@@ -209,6 +209,10 @@ class JobPlan:
     worktree_base_commit: str = ""
     worktree_head: str = ""
     worktree_cleanup_status: str = ""     # "active"|"clean"|"retained"|"failed_recoverable"
+    # F010: the job-level post-mortem this job left (evidence-relative), and the reason one
+    # could not be written. A job that failed before any task ran must not vanish.
+    postmortem_path: str = ""
+    postmortem_error: str = ""
     worktree_cleanup_error: str = ""
     result_diff_path: str = ""
     result_diff_sha256: str = ""
@@ -459,6 +463,13 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "finished_at": job.finished_at,
         "error": job.error,
         "target_guard": _export_target_guard(job.target_guard),
+        # F010: the job-level post-mortem, and the reason one could not be written. A
+        # recording failure that did not survive `_persist_job` was a recording failure the
+        # evidence export could never see.
+        "postmortem": {
+            "path": job.postmortem_path,      # evidence-relative, never absolute
+            "error": job.postmortem_error,
+        },
         "repair_rounds_allowed": job.repair_rounds_allowed,
         "repair_rounds_source": job.repair_rounds_source,
         "execution_config": _export_execution_config(job.execution_config),
@@ -530,6 +541,10 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         finished_at=data.get("finished_at", ""),
         error=data.get("error", ""),
         target_guard=_import_target_guard(data.get("target_guard")),
+        # Older job files have no `postmortem` block at all; they load as empty, not as an
+        # error.
+        postmortem_path=str((data.get("postmortem") or {}).get("path", "") or ""),
+        postmortem_error=str((data.get("postmortem") or {}).get("error", "") or ""),
         isolation_mode=data.get("isolation_mode", "copy"),
         worktree_branch=(data.get("worktree") or {}).get("branch", ""),
         worktree_path=(data.get("worktree") or {}).get("path", ""),
@@ -1538,8 +1553,12 @@ def run_job(
     try:
         job.job_workspace_path, job_handle = _acquire_job_workspace(job)
     except Exception as exc:
+        # F010: the job died before ANY task could own the failure. A worktree lock is not
+        # a pending task's fault, so it gets a JOB-scope post-mortem — with the typed
+        # exception reaching the classifier intact, not stringified into anonymity.
         job.status = JOB_BLOCKED
         job.error = f"workspace_creation_failed: {exc}"
+        _write_job_postmortem_record(job, exc)
         _persist_job(job)
         return job
 
@@ -1992,6 +2011,13 @@ def export_job_report(job: JobPlan) -> dict[str, Any]:
         ),
         "next_command": next_cmd,
         "target_guard": _export_target_guard(job.target_guard),
+        # F010: the job-level post-mortem, and the reason one could not be written. A
+        # recording failure that did not survive `_persist_job` was a recording failure the
+        # evidence export could never see.
+        "postmortem": {
+            "path": job.postmortem_path,      # evidence-relative, never absolute
+            "error": job.postmortem_error,
+        },
         "repair_rounds_allowed": job.repair_rounds_allowed,
         "repair_rounds_source": job.repair_rounds_source,
         "pending_tasks": pending_count,
@@ -2111,6 +2137,48 @@ def _suggest_next_command(job: JobPlan) -> str:
     if pending:
         return f"remedy do job-run {job.job_id}"
     return ""
+
+
+def job_evidence_dir(job_id: str):
+    """The job's own (hidden) evidence directory — where a job-level record lives."""
+    from packages.orchestration.data_paths import jobs_dir
+    return jobs_dir() / job_id / "evidence"
+
+
+def job_postmortem_path(job_id: str):
+    """The job-level post-mortem, before the export copies it into the bundle."""
+    from packages.orchestration.failure_postmortem import POSTMORTEM_FILENAME
+    return job_evidence_dir(job_id) / POSTMORTEM_FILENAME
+
+
+def _write_job_postmortem_record(job: JobPlan, exc: BaseException) -> None:
+    """Record a job-level failure that happened before any task ran.
+
+    Never raises into the runner: the job failure itself is already recorded on the job,
+    and a post-mortem that could not be written is captured as ``job.postmortem_error``,
+    which the evidence export turns into a BLOCKING integrity failure rather than a
+    silently pretty package.
+    """
+    from packages.orchestration.failure_postmortem import (
+        POSTMORTEM_FILENAME,
+        FailureSignals,
+        build_job_rollup,
+        write_postmortem,
+    )
+
+    try:
+        record = build_job_rollup(
+            job_id=job.job_id,
+            signals=FailureSignals(exception=exc, error_text=f"{type(exc).__name__}: {exc}"),
+        )
+        directory = job_evidence_dir(job.job_id)
+        directory.mkdir(parents=True, exist_ok=True)
+        write_postmortem(directory, record, root=directory)
+        job.postmortem_path = POSTMORTEM_FILENAME
+    except Exception as write_exc:                # never mask the original failure
+        from packages.orchestration.failure_postmortem import safe_text
+        job.postmortem_error = safe_text(
+            f"{type(write_exc).__name__}: {write_exc}")[:500]
 
 
 def _task_stream_dir(job_id: str, task_id: str):

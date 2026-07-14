@@ -475,3 +475,27 @@ class TestRedactionClosure:
         assert d["error_type"] == "ValueError"
         assert d["is_bug"] is True
         assert "occurred_at" in d
+
+
+class TestPostmortemConfig:
+    """F010: generated summaries are OFF, and the key says so."""
+
+    def test_the_llm_summary_key_exists_and_defaults_to_false(self):
+        from packages.orchestration.config import get_config, get_key_spec
+
+        spec = get_key_spec("postmortem.llm_summary")
+        assert spec is not None
+        assert spec.env_var == "REMEDY_POSTMORTEM_LLM_SUMMARY"
+        assert spec.value_type is bool
+        assert spec.default is False
+        assert "zero provider calls" in spec.description
+        assert get_config().get("postmortem.llm_summary") is False
+
+    def test_the_env_var_can_set_it_but_v1_generates_nothing(self, monkeypatch):
+        from packages.orchestration.config import load_config
+
+        monkeypatch.setenv("REMEDY_POSTMORTEM_LLM_SUMMARY", "true")
+        assert load_config().get("postmortem.llm_summary") is True
+        # ...and no summarizer exists to act on it: F010 v1 is deterministic by design.
+        import packages.orchestration.failure_postmortem as FP
+        assert not any("summar" in name.lower() for name in dir(FP))

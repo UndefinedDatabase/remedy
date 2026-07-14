@@ -133,17 +133,41 @@ class TestPrimaryDocsAreHonest:
         assert "acceptance still pending" not in readme
         assert "not accepted yet" not in readme
         assert "accepted foundation" in readme
+        # F010 is accepted; nothing may still call it pending...
+        assert "not yet externally accepted" not in readme
         # ...and nothing after it may be claimed as existing.
-        assert "F010" not in readme or "not implemented" in readme
+        assert "F008" not in readme or "not implemented" in readme
+        assert "F011" not in readme or "not implemented" in readme
 
-    def test_status_marks_f007_accepted_and_leaves_f010_untouched(self):
+    def test_the_f010_documents_describe_all_three_scopes(self):
+        status = STATUS.read_text(encoding="utf-8")
+        f010 = re.search(r"^- \[x\] F010 —.*$", status, re.M)
+        assert f010 and "call/task/job post-mortems" in f010.group(0), (
+            "STATUS must name all three post-mortem scopes")
+
+        feature = (REPO / "docs" / "roadmap" / "features" / "T0_F010.md").read_text(
+            encoding="utf-8")
+        assert "`call` | `task` | `job`" in feature, (
+            "the record section must list every scope")
+        assert "The three scopes — `call`, `task` and `job`" in feature, (
+            "the stats section must describe every scope")
+
+    def test_status_marks_f007_and_f010_accepted_and_nothing_after_them(self):
         text = STATUS.read_text(encoding="utf-8")
         f007 = re.search(r"^- \[x\] F007 — Runtime harness.*$", text, re.M)
         assert f007, "F007 is externally accepted and must be checked off"
         assert "2e820a4dbf9842cf" in f007.group(0), "the accepted Evidence job is missing"
         assert "ACCEPTED" in f007.group(0)
-        # F010 is the next feature and was NOT started.
-        assert re.search(r"^- \[ \] F010 —", text, re.M)
+        # F010 is externally accepted: `[x]`, with the Evidence job that was accepted.
+        f010 = re.search(r"^- \[x\] F010 — Automatic failure post-mortems.*$", text, re.M)
+        assert f010, "F010 is externally accepted and must be checked off"
+        assert not re.search(r"^- \[~\] F010 —", text, re.M)
+        assert "01363c70e13046e2" in f010.group(0), "the accepted Evidence job is missing"
+        assert "PASS_WITH_RISKS — ACCEPTED" in f010.group(0)
+        assert "2026-07-14" in f010.group(0), "the acceptance date is missing"
+        # ...and nothing after it has been started.
+        assert re.search(r"^- \[ \] F008 —", text, re.M)
+        assert re.search(r"^- \[ \] F011 —", text, re.M)
 
 
 class TestPrimaryDocLinksResolve:

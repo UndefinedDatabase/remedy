@@ -434,93 +434,30 @@ def resolved_fingerprint(argv: list[str], cwd: str | Path, project_id: str) -> s
     return hashlib.sha256(payload.encode()).hexdigest()[:32]
 
 
-#: Every normal absolute-path form, ANYWHERE inside a string — after `--flag=`, after
-#: `key=`, inside a quote, in the middle of a diagnostic sentence:
-#:
-#:     /home/user/file            POSIX
-#:     C:\Users\Alice\file        Windows, backslashes
-#:     C:/Users/Alice/file        Windows, forward slashes
-#:     \\server\share\file        UNC
-#:     //server/share/file        UNC, forward slashes
-#:
-#: The look-behind keeps ordinary URLs intact: in ``http://127.0.0.1:5173/health`` the
-#: `//` follows a colon and the path slash follows a word character, so neither starts a
-#: match. A bare ``C:`` that is not followed by a separator is ordinary text, not a path,
-#: and is left alone.
-_PATH_TAIL = r"""[^\s'"`,;)\]}]"""
-_ABS_PATH_RE = re.compile(
-    rf"""(?<![\w:/\\])(?:
-            \\\\{_PATH_TAIL}+                 # \\server\share\...
-          | //{_PATH_TAIL}+                   # //server/share/...
-          | [A-Za-z]:[\\/]{_PATH_TAIL}*       # C:\... or C:/...
-          | /{_PATH_TAIL}*                    # /posix/path
-        )""",
-    re.VERBOSE,
+# F007's path/file-URI sanitization now lives in one place, so F010's post-mortems and
+# this module's shareable runtime state cannot drift apart. The behaviour is unchanged —
+# these names are the same objects the accepted tests already exercise.
+from packages.common.path_redaction import (  # noqa: E402
+    ABS_PATH_RE as _ABS_PATH_RE,
 )
-
-#: What makes a command element an absolute path worth redacting by value.
-_ABS_PREFIX_RE = re.compile(r"\A(?:/|\\\\|//|[A-Za-z]:[\\/])")
-
-
-def _basename(token: str) -> str:
-    """The bare file name of a POSIX, Windows or UNC path, on whatever host runs this."""
-    from pathlib import PureWindowsPath
-    text = str(token)
-    if "\\" in text or re.match(r"\A[A-Za-z]:", text) or text.startswith("//"):
-        return PureWindowsPath(text).name or "[path]"
-    return Path(text).name or "[path]"
-
-
-#: A QUOTED absolute path — the only form in which a path may legitimately contain
-#: spaces, e.g. ``working directory "C:/Users/Alice/private dir" cannot be inspected``.
-#: Unquoted, a space ends the path, and only its prefix (the private part) is removed.
-_QUOTED_PATH_RE = re.compile(
-    r"""(['"])((?:\\\\|//|[A-Za-z]:[\\/]|/)[^'"]*)\1""")
-
-#: A `file:` URI. It LOOKS like a URL, which is exactly why the generic path scrub —
-#: which deliberately leaves URLs alone — used to walk straight past
-#: ``file:///home/alice/private/secret.txt``. A file URI is not a network address: it is
-#: a local path wearing a scheme, and it is redacted like one.
-#: The look-behind is the scheme BOUNDARY: a URI scheme may only be preceded by a
-#: non-scheme character. Without it, `profile:///home/alice/x.txt` matched from its
-#: `file:` onwards and came back as `protest.txt` — a string that is not a file URI at all
-#: being quietly rewritten. `profile:`, `myfile:`, `notafile:` and `some.file:` are left
-#: exactly as they are; `file:`, `FILE:`, `prefix=file:` and `(file:…)` are redacted.
-_FILE_URI_RE = re.compile(
-    r"""(?<![A-Za-z0-9+.\-])file:(?://)?[^\s'"`,;)\]}]*""", re.IGNORECASE)
-
-
-def _file_uri_basename(uri: str) -> str:
-    """The bare file name behind a `file:` URI, in every normal form.
-
-    ``file:///home/alice/secret.txt``            → secret.txt
-    ``file://localhost/home/alice/secret.txt``   → secret.txt
-    ``file:///C:/Users/Alice/secret.txt``        → secret.txt
-    ``file://server/share/secret.txt``           → secret.txt   (host is private too)
-    ``file:///home/alice/private%20dir/x.txt``   → x.txt        (percent-decoded)
-
-    Never a path operation on an arbitrary string: the URI is split first, and anything
-    that does not yield a name becomes ``[path]``.
-    """
-    from urllib.parse import unquote, urlsplit
-
-    try:
-        parts = urlsplit(uri)
-        path = unquote(parts.path or "")
-    except ValueError:
-        return "[path]"
-    if not path:
-        return "[path]"
-    path = path.lstrip("/")              # /C:/Users/... and /home/... alike
-    return _basename(path) or "[path]"
-
-
-def _scrub_paths(value: str) -> str:
-    """Reduce every absolute path — and every local file URI — to its bare file name."""
-    text = _FILE_URI_RE.sub(lambda m: _file_uri_basename(m.group(0)), value)
-    text = _QUOTED_PATH_RE.sub(
-        lambda m: f"{m.group(1)}{_basename(m.group(2))}{m.group(1)}", text)
-    return _ABS_PATH_RE.sub(lambda m: _basename(m.group(0)), text)
+from packages.common.path_redaction import (  # noqa: E402
+    ABS_PREFIX_RE as _ABS_PREFIX_RE,
+)
+from packages.common.path_redaction import (  # noqa: E402
+    FILE_URI_RE as _FILE_URI_RE,
+)
+from packages.common.path_redaction import (  # noqa: E402
+    QUOTED_PATH_RE as _QUOTED_PATH_RE,
+)
+from packages.common.path_redaction import (  # noqa: E402
+    basename as _basename,
+)
+from packages.common.path_redaction import (  # noqa: E402
+    file_uri_basename as _file_uri_basename,
+)
+from packages.common.path_redaction import (  # noqa: E402
+    scrub_paths as _scrub_paths,
+)
 
 
 def _redact(value: Any, rules: list[tuple[str, str]] | None = None) -> Any:

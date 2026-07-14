@@ -867,6 +867,16 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
 
     verification_tests = _read_json(base / "verification_tests.json")
 
+    # F010: a required post-mortem that could not be written is a broken evidence contract.
+    # It BLOCKS — a bundle that lost the only account of a failure is not "clean with a
+    # warning".
+    _pm_integrity = _read_json(base / "postmortem_integrity.json")
+    postmortem_failures = (
+        list(_pm_integrity.get("failures") or [])
+        if isinstance(_pm_integrity, dict) else []
+    )
+    postmortem_integrity_blocked = bool(postmortem_failures)
+
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
 
     _vt_runs = verification_tests.get("runs") if isinstance(verification_tests, dict) else None
@@ -962,7 +972,8 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
 
     gates_blocked = (
-        scratch_file_guard == "BLOCKED"
+        postmortem_integrity_blocked
+        or scratch_file_guard == "BLOCKED"
         or spec_compliance == "BLOCKED"
         or any_core_gate_blocked
         or file_alignment_blocked
@@ -1055,6 +1066,9 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         "test_status": test_status,
         "missing_tests_gate": missing_tests_gate,
         "scratch_file_guard": scratch_file_guard,
+        # F010: required post-mortems that could not be written. Non-empty ⇒ BLOCKED.
+        "postmortem_failures": postmortem_failures,
+        "postmortem_integrity_blocked": postmortem_integrity_blocked,
         "change_provenance": change_provenance,
         "change_provenance_gate": change_provenance,
         "fresh_evidence_gate": fresh_evidence_gate,

@@ -91,6 +91,7 @@ GROUPS: dict[str, GroupDef] = {
     "worker": GroupDef("worker", "Worker", "Manage worker connections."),
     "memory": GroupDef("memory", "Memory", "Project memory."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
+    "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
@@ -2427,6 +2428,22 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         may_mutate_repo=False,
         may_execute_commands=True,
+    ),
+    # ── stats (F010) ─────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="stats.failures",
+        group_id="stats",
+        subcommand="failures",
+        description="Failure histogram from the recorded post-mortems (read-only).",
+        action_class="read_only",
+        supports_json=True,
+        args=(
+            ArgDef("--job", "Only this job's evidence export", required=False, is_option=True),
+            ArgDef("--since", "Only post-mortems at or after this ISO-8601 timestamp", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
     ),
     CommandEntry(
         command_id="runtime.serve",

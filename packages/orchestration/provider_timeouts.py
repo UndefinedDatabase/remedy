@@ -95,6 +95,37 @@ def compute_timeout(
     return min(raw, profile.cap_s)
 
 
+def is_timeout_error(error: str | None) -> bool:
+    """Does this provider error string mean "the call timed out"?
+
+    THE timeout predicate — the retry path and F010's classifier both call this one
+    function, because two definitions of "timed out" drift apart.
+
+    It recognises the wording the provider ACTUALLY emits. ``ClaudeCliProvider`` raises
+    ``claude CLI timed out after 600s``, which contains neither ``timeout`` nor
+    ``TimeoutExpired``: the reviewed build therefore neither retried a real Claude timeout
+    nor classified one, and reported it as ``unknown``. ``timed out`` is now matched too.
+    Timeout profiles, values, retry count and backoff are untouched — only the RECOGNITION
+    of a timeout was wrong, and it was wrong in both places at once.
+    """
+    if not error:
+        return False
+    lowered = error.lower()
+    return "timeout" in lowered or "timed out" in lowered or "TimeoutExpired" in error
+
+
+def is_nonzero_exit_error(error: str | None) -> bool:
+    """Does this provider error string mean "the process exited non-zero"?
+
+    Same story as :func:`is_timeout_error`: extracted verbatim from the retry path, not
+    re-derived. Matches the messages the retry policy already treated as a non-zero exit.
+    """
+    if not error:
+        return False
+    lowered = error.lower()
+    return "exited" in lowered or "nonzero" in lowered
+
+
 def should_retry(
     *,
     is_timeout: bool = False,
