@@ -14,7 +14,7 @@ reaches your repository or your remote without you saying so.
 - **Evidence, not claims.** Every completion carries hashes, gates and reproducible
   verification commands. If something is unproven, Remedy says so instead of guessing.
 
-## What exists today (foundation F001–F007, F010)
+## What exists today (foundation F001–F007, F010, F011)
 
 | Feature | State | What it gives you |
 |---|---|---|
@@ -26,11 +26,17 @@ reaches your repository or your remote without you saying so.
 | F006 | ✅ | Worktree isolation per run: one job-owned worktree, deterministic `result.diff`, promotion only from a verified base + diff |
 | F007 | ✅ | Runtime harness: `remedy runtime serve/probe/stop` with a persistent dev-server supervisor (externally accepted 2026-07-13) |
 | F010 | ✅ | Automatic failure post-mortems: one `postmortem.json` per finally-failed call, task or job, plus `remedy stats failures` (externally accepted 2026-07-14) |
+| F011 | ✅ | Kill switch: `remedy job stop <id>` stops a running job at its next safe point — the call in flight finishes, nothing new starts, the job persists as `stopped` and resumes where it left off (externally accepted 2026-07-14) |
 
 F001–F007 and F010 are the accepted foundation. Every finally-failed provider call, task
 or job leaves one machine-readable `postmortem.json`, and `remedy stats failures` aggregates
 them from the evidence on disk — deterministically, with zero LLM calls and no database.
-Everything else after F007 in the roadmap (including F008 and F011) is **not implemented**.
+F001–F007, F010 and F011 are the accepted foundation. A stop is a fact on disk, not a
+signal: `remedy job stop <id>` writes one private control file, and the runner honours it at
+its next safe point. There is **no daemon**, no background thread and no signal handler; the
+runner is not SIGKILL-recoverable (stale-RUNNING recovery is a later feature), checkpoint v1
+is the persisted job itself (no deep checkpoints), and there is still **no database**.
+Everything else after F007 in the roadmap (including F008 and F012) is **not implemented**.
 
 ## Install
 
@@ -46,6 +52,7 @@ pip install -e ".[dev]"          # add ,ollama for the local planner provider
 remedy job    ...   # create, inspect and resume jobs
 remedy do     ...   # plan / run / report / evidence / promote a job
 remedy runtime ...  # serve, probe and stop the project's dev server (F007)
+remedy job stop ... # ask a running job to stop at its next safe point (F011)
 remedy config ...   # view and change settings (remedy.toml)
 remedy doctor       # check local health
 ```

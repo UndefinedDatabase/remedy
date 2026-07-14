@@ -25,9 +25,25 @@
 
 ## Boundaries
 
-- `stopped` (F011) and `budget_exhausted` (F018) are reserved classes: classifiable, wired
-  to nothing.
-- F008, F009, F011, F012, F017, F018 and F146 are NOT started.
+- `budget_exhausted` (F018) is still a reserved class: classifiable, wired to nothing.
+- **F011 (Kill switch) is ACCEPTED and `[x]`** — external verdict `PASS_WITH_RISKS —
+  ACCEPTED` (2026-07-14), Evidence job `49955e41c49f41bc`, package
+  `remedy-review-20260714-223538-READY_FOR_REVIEW.zip`, 0 open findings.
+  `packages/orchestration/safe_points.py` is the control protocol
+  (`control/jobs/<id>/stop.json`, archived on consume); the safe points live in `run_job`
+  (before ANY work, including workspace acquisition) and `run_pingpong`; the job gains the
+  additive `stopped` state; each consumed request leaves one `job_stopped` event and one
+  `stopped` post-mortem under `evidence/stop_postmortems/<request_id>/`.
+  `remedy job stop <id> [--status]`.
+- **`packages/common/secure_fs.py` is the ONE implementation of the containment rules**
+  (directory-FD anchoring, no-follow stat + open/fstat identity comparison, mode-bit
+  writability, fail-closed). F010's post-mortem writer and F011's control area both call it —
+  a hardening fix cannot land in one and miss the other.
+- F011's stop finalization is a durable transaction: archive → post-mortem → event →
+  STOPPED → persist → and only then remove the pending request, which is the commit record.
+- F008, F009, F012, F017, F018 and F146 are NOT started. F012 is the next unchecked feature.
+- F011's accepted v1 boundaries: no SIGKILL/stale-RUNNING recovery, no deep checkpoints, no
+  OS-signal stop path, no signal handler/thread/daemon, no database.
 - No database, no new dependency, no provider call, no Docker anywhere in F010.
 - F010's accepted residual risk: the post-mortem writer does not resist a **same-UID**
   process that renames an already-opened private evidence directory (that adversary can
