@@ -141,6 +141,23 @@ class TestReadiness:
         state = server.start()
         pid = state.pid
 
+        # The readiness timeout is short on purpose — that is what this test proves.
+        # But on a slow host the interpreter itself can take longer than that just to
+        # reach its first print(), so wait for the process to actually say something
+        # before starting the clock. This is setup, not the assertion.
+        deadline = time.monotonic() + 30.0
+        while "booting but never listening" not in read_log_tail(server.log_file):
+            assert time.monotonic() < deadline, (
+                "the never-ready server never logged its startup marker within 30s; "
+                f"log tail was {read_log_tail(server.log_file)!r}"
+            )
+            assert server.proc.poll() is None, (
+                f"the never-ready server exited early with {server.proc.returncode}"
+            )
+            time.sleep(0.05)
+
+        assert server.proc.poll() is None                 # still alive, still not ready
+
         res = server.wait_ready()
 
         assert res.ok is False and res.error_class == "ready"
