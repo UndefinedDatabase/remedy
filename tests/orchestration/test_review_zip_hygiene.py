@@ -380,6 +380,7 @@ _REQUIRED_SCRIPTS = (
     "build_review_zip.py",                 # F8 (round 17): the NUL-safe archive builder
     "build_observability_index.py",
     "select_review_evidence.py",
+    "stage_review_evidence.py",            # F8 (round 19): typed no-follow evidence staging
 )
 _REQUIRED_PACKAGE_MODULES = (
     "packages/orchestration/__init__.py",
@@ -392,6 +393,8 @@ _REQUIRED_PACKAGE_MODULES = (
     # builder and defaulted when absent, so the minimal fixture need not carry the full stack.
     "packages/orchestration/archive_plan.py",
     "packages/orchestration/review_subject.py",
+    # F8 (round 19): the typed no-follow evidence inventory the staging CLI drives.
+    "packages/orchestration/evidence_inventory.py",
     "packages/common/__init__.py",
     "packages/common/secure_fs.py",
 )

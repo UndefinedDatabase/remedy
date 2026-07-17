@@ -440,15 +440,13 @@ OBS_INDEX_STAGED=""
 if [[ -n "$EVIDENCE_DIR" ]]; then
   mkdir -p "$EVIDENCE_STAGING/$CURRENT_PREFIX"
 
-  find "$EVIDENCE_DIR" -type f \
-    ! -name '*.pyc' ! -name '*.pyo' \
-    -print0 \
-  | while IFS= read -r -d '' src; do
-      rel="${src#$EVIDENCE_DIR/}"
-      dest="$EVIDENCE_STAGING/$CURRENT_PREFIX/$rel"
-      mkdir -p "$(dirname "$dest")"
-      cp "$src" "$dest"
-    done
+  # F8 (round 19): typed no-follow staging. `find -type f | cp` skipped symlinks and followed
+  # them into outside bytes; this anchored copy BLOCKS a symlink/FIFO/device member (fails closed).
+  if ! python3 scripts/stage_review_evidence.py stage \
+       --src "$EVIDENCE_DIR" --dest "$EVIDENCE_STAGING/$CURRENT_PREFIX" >/dev/null; then
+    echo "Evidence staging refused an unsafe member in $EVIDENCE_DIR." >&2
+    exit 2
+  fi
 
   # --- Ensure the observability index ships in the zip ---
   OBS_INDEX_STAGED="$EVIDENCE_STAGING/$CURRENT_PREFIX/$OBS_INDEX_NAME"
@@ -475,24 +473,25 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
       [[ "$h_job" == "$SELECTED_JOB_ID" ]] && continue   # never duplicate current
       h_prefix="evidence/history/$h_job"
       mkdir -p "$EVIDENCE_STAGING/$h_prefix"
-      find "$h_dir" -type f ! -name '*.pyc' ! -name '*.pyo' -print0 \
-      | while IFS= read -r -d '' src; do
-          rel="${src#$h_dir/}"
-          dest="$EVIDENCE_STAGING/$h_prefix/$rel"
-          mkdir -p "$(dirname "$dest")"
-          cp "$src" "$dest"
-        done
+      if ! python3 scripts/stage_review_evidence.py stage \
+           --src "$h_dir" --dest "$EVIDENCE_STAGING/$h_prefix" >/dev/null; then
+        echo "History staging refused an unsafe member in $h_dir." >&2
+        exit 2
+      fi
       echo "Included supplemental history: $h_prefix (context only)"
     done
   fi
 
-  find "$EVIDENCE_STAGING" -type f -print \
-    | sed "s#^${EVIDENCE_STAGING}/##" \
-    | sort -u >> "$TMP"
-  # F8 (round 17): the NUL-safe evidence list the archive builder consumes.
-  find "$EVIDENCE_STAGING" -type f -print0 \
-    | sed -z "s#^${EVIDENCE_STAGING}/##" \
-    | sort -z -u > "$TMP_EV0"
+  # F8 (round 19): the evidence file list is now a TYPED no-follow walk of the staging tree, not
+  # `find -type f`. Any non-regular entry blocks; the NUL list feeds the archive builder and the
+  # newline list feeds the manifest/alignment steps. Both come from one inventory, so they agree.
+  if ! python3 scripts/stage_review_evidence.py list \
+       --root "$EVIDENCE_STAGING" --nul-out "$TMP_EV0" --text-out "$TMP_EV0.txt"; then
+    echo "Evidence staging tree contains an unsafe member." >&2
+    exit 2
+  fi
+  cat "$TMP_EV0.txt" >> "$TMP"
+  rm -f "$TMP_EV0.txt"
 fi
 
 sort -u "$TMP" -o "$TMP"
