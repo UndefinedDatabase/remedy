@@ -862,6 +862,9 @@ def validate_content_proof_schema(d: Any) -> list[str]:
     """Strict schema for the authority proof (F2, round 20). Exact fields, safe normalized paths,
     lowercase sha256 values, counts that match the contents, no path in both maps, no operator-state
     or non-attestable path, no duplicate normalized path."""
+    from packages.orchestration.archive_plan import (
+        DISP_BLOCK_SENSITIVE, classify_bundle_path,
+    )
     from packages.orchestration.repair_attest import is_attestable_source
     problems: list[str] = []
     if not isinstance(d, dict):
@@ -897,7 +900,10 @@ def validate_content_proof_schema(d: Any) -> list[str]:
                 problems.append(f"content proof {name}[{path!r}] is not a lowercase sha256")
             if not is_attestable_source(path):
                 problems.append(f"content proof {name} names a non-authoritative path {path!r} "
-                                f"(operator state, secret, or non-source)")
+                                f"(operator state or non-source)")
+            elif classify_bundle_path(path, changed=True) == DISP_BLOCK_SENSITIVE:
+                problems.append(f"content proof {name} names a non-authoritative path {path!r} "
+                                f"(sensitive secret/key/log/archive/binary)")
         return norm
 
     fh_paths = _check_map("file_hashes")
