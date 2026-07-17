@@ -382,7 +382,8 @@ class VerifiedFile:
 
 
 def read_verified_file_at(parent_fd: int, name: str, *, expected_kind: str,
-                          max_bytes: int = 0, error_cls: ErrorCls = SecureFsError,
+                          max_bytes: int = 0, expected_mode: int | None = None,
+                          error_cls: ErrorCls = SecureFsError,
                           noun: str = "file") -> "VerifiedFile":
     """Read ONE component ``name`` relative to a HELD, anchored ``parent_fd`` — atomically typed.
 
@@ -434,11 +435,25 @@ def read_verified_file_at(parent_fd: int, name: str, *, expected_kind: str,
         raise error_cls(f"the {noun} {name!r} could not be opened safely (a symlink was swapped "
                         f"in?): {type(exc).__name__}: {exc}") from exc
     try:
-        post = os.fstat(fd)
-        if (not stat.S_ISREG(post.st_mode)
-                or (post.st_dev, post.st_ino) != (pre.st_dev, pre.st_ino)):
+        initial = os.fstat(fd)
+        if (not stat.S_ISREG(initial.st_mode)
+                or (initial.st_dev, initial.st_ino) != (pre.st_dev, pre.st_ino)):
             raise error_cls(f"the {noun} {name!r} is not the file it claimed to be (a symlink "
                             f"was followed, or it changed between the check and the open)")
+        # F4 (round 19): the OPENED file's EXECUTABILITY must match what the caller planned. A plan
+        # for 0755 whose source is now non-executable (or a 0644 plan whose source is executable)
+        # is refused — the mode is bound to the bytes, not merely written into ZIP metadata. Only
+        # the executable bit is canonical for a review member: the exact group/other bits (0664,
+        # 0640, …) are working-tree noise the ZIP normalizes to 0644/0755.
+        if expected_mode is not None:
+            src_exec = bool(initial.st_mode & 0o111)
+            want_exec = bool(expected_mode & 0o111)
+            if src_exec != want_exec:
+                raise error_cls(
+                    f"the {noun} {name!r} is {'executable' if src_exec else 'not executable'}, "
+                    f"but the plan expected {'executable' if want_exec else 'a plain file'}")
+        if max_bytes and initial.st_size > max_bytes:
+            raise error_cls(f"the {noun} {name!r} is implausibly large ({initial.st_size} bytes)")
         chunks: list[bytes] = []
         total = 0
         while True:
@@ -449,7 +464,23 @@ def read_verified_file_at(parent_fd: int, name: str, *, expected_kind: str,
             if max_bytes and total > max_bytes:
                 raise error_cls(f"the {noun} {name!r} is implausibly large")
             chunks.append(chunk)
-        return VerifiedFile("regular", b"".join(chunks), post.st_mode, post.st_dev, post.st_ino)
+        # F5 (round 19): STABLE same-inode read. A file modified in place during a multi-chunk read
+        # returns mixed old/new bytes with no error. Re-fstat the SAME open descriptor and require
+        # its identity, type, mode, size and mtime/ctime nanoseconds unchanged across the read; any
+        # drift means the bytes are a torn mixture and must be discarded, never hashed or archived.
+        final = os.fstat(fd)
+        if ((final.st_dev, final.st_ino) != (initial.st_dev, initial.st_ino)
+                or not stat.S_ISREG(final.st_mode)
+                or (final.st_mode & 0o7777) != (initial.st_mode & 0o7777)
+                or final.st_size != initial.st_size
+                or final.st_size != total
+                or final.st_mtime_ns != initial.st_mtime_ns
+                or final.st_ctime_ns != initial.st_ctime_ns):
+            raise error_cls(
+                f"the {noun} {name!r} changed while it was being read (a torn read); "
+                f"refusing the mixed bytes")
+        return VerifiedFile("regular", b"".join(chunks), final.st_mode, final.st_dev,
+                            final.st_ino)
     finally:
         os.close(fd)
 
@@ -484,13 +515,15 @@ def open_anchored_parent(root: Path | str, rel: str, *, error_cls: ErrorCls = Se
 
 
 def read_verified_relative(root: Path | str, rel: str, *, expected_kind: str,
-                           max_bytes: int = 0, error_cls: ErrorCls = SecureFsError,
+                           max_bytes: int = 0, expected_mode: int | None = None,
+                           error_cls: ErrorCls = SecureFsError,
                            noun: str = "file") -> "VerifiedFile":
     """The whole anchored no-follow read of a repo-relative path — traverse, read, close."""
     parent_fd, base = open_anchored_parent(root, rel, error_cls=error_cls, noun=noun)
     try:
         return read_verified_file_at(parent_fd, base, expected_kind=expected_kind,
-                                     max_bytes=max_bytes, error_cls=error_cls, noun=noun)
+                                     max_bytes=max_bytes, expected_mode=expected_mode,
+                                     error_cls=error_cls, noun=noun)
     finally:
         os.close(parent_fd)
 

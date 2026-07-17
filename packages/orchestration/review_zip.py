@@ -121,6 +121,7 @@ def _require_utf8_archive_name(name: str) -> None:
 
 def _write_regular(zf: zipfile.ZipFile, arcname: str, data: bytes, mode: int) -> None:
     info = zipfile.ZipInfo(filename=arcname, date_time=_FIXED_TS)
+    info.create_system = 3                                       # Unix — where type/perm bits live
     info.external_attr = (_S_IFREG | (mode & 0o7777)) << 16      # F2: real file-type + perm bits
     info.compress_type = zipfile.ZIP_DEFLATED
     zf.writestr(info, data)
@@ -128,6 +129,7 @@ def _write_regular(zf: zipfile.ZipFile, arcname: str, data: bytes, mode: int) ->
 
 def _write_symlink(zf: zipfile.ZipFile, arcname: str, target: bytes) -> None:
     info = zipfile.ZipInfo(filename=arcname, date_time=_FIXED_TS)
+    info.create_system = 3
     info.external_attr = (_S_IFLNK | 0o777) << 16                # canonical symlink member
     info.compress_type = zipfile.ZIP_DEFLATED
     zf.writestr(info, target)
@@ -150,7 +152,7 @@ def build_review_zip(*, out_path: str | Path, repo_root: str | Path,
     plan = build_archive_plan(
         repo_root=repo_root, subject=ReviewSubjectV1(), repo_context_rel=repo_files,
         evidence_root=evidence_root, evidence_rel=evidence_files,
-        is_authoritative_source=lambda _p: False)
+        authoritative_paths=set())
     return build_review_zip_from_plan(out_path=out_path, plan=plan, manifest_rel=manifest_rel,
                                       manifest_disk=manifest_disk)
 
@@ -167,6 +169,10 @@ def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
     A BLOCKED plan is refused before a single byte is written.
     """
     from packages.common import secure_fs as _fs
+    from packages.orchestration.archive_plan import (
+        MAX_MEMBER_BYTES, MAX_SYMLINK_TARGET_BYTES, MAX_TOTAL_UNCOMPRESSED_BYTES,
+    )
+    from packages.orchestration.review_subject import symlink_escapes_repository
 
     if plan.blocked:
         reasons = "; ".join(f"{b.path}: {b.reason}" for b in plan.blocked_records[:4])
@@ -174,10 +180,13 @@ def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
 
     seen: set[str] = set()
     model: dict[str, dict] = {}       # arcname -> {kind, mode, sha256|link_target, authoritative}
+    total_bytes = 0
 
     def _claim(arcname: str) -> None:
         validate_archive_name(arcname)
         _require_utf8_archive_name(arcname)
+        if len(arcname.encode("utf-8")) > 4096:      # MAX_ARCHIVE_NAME_BYTES
+            raise ReviewZipError(f"archive name is too long: {arcname[:40]!r}...")
         if arcname in seen:
             raise ReviewZipError(f"duplicate archive member: {arcname!r}")
         seen.add(arcname)
@@ -193,12 +202,26 @@ def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
             if not contained(member.source_root, str(Path(member.source_root)
                                                      / member.source_rel)):
                 raise ReviewZipError(f"planned member escapes its root: {arcname!r}")
+            # F4: bind the planned regular mode to the OPENED source; F12: per-member byte cap.
             vf = _fs.read_verified_relative(
                 member.source_root, member.source_rel,
                 expected_kind=("symlink" if member.kind == "symlink" else "regular"),
+                max_bytes=MAX_MEMBER_BYTES,
+                expected_mode=(None if member.kind == "symlink" else member.mode),
                 error_cls=ReviewZipError, noun="archive member")
+            total_bytes += len(vf.data)
+            if total_bytes > MAX_TOTAL_UNCOMPRESSED_BYTES:
+                raise ReviewZipError("archive exceeds the total uncompressed byte limit")
             if member.kind == "symlink":
                 target = vf.data.decode("utf-8", errors="surrogateescape")
+                # F6: the target/containment is ONE atomic fact — validate the EXACT bytes just
+                # read (through the stability-checked reader), never a separate earlier realpath.
+                if len(vf.data) > MAX_SYMLINK_TARGET_BYTES:
+                    raise ReviewZipError(f"symlink {arcname!r} target is too long")
+                if symlink_escapes_repository(member.source_root, arcname, target):
+                    raise ReviewZipError(
+                        f"symlink {arcname!r} target {target[:60]!r} points outside the "
+                        f"repository (absolute, ~, or escaping)")
                 if member.authoritative and member.expected_link_target is not None \
                         and target != member.expected_link_target:
                     raise ReviewZipError(
@@ -265,6 +288,16 @@ def verify_review_zip(out_path: str | Path, expected: dict) -> list[str]:
             if info.date_time != _FIXED_TS:
                 problems.append(f"member {name!r} has a non-deterministic timestamp "
                                 f"{info.date_time}")
+            # F11 (round 19): the ZIP-level metadata policy — one create_system, an allowed
+            # compression method, no encryption, no unsupported general-purpose flags.
+            if info.create_system != 3:              # 3 = Unix; the type/perm bits live there
+                problems.append(f"member {name!r} has create_system {info.create_system}, not "
+                                f"Unix(3)")
+            if info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+                problems.append(f"member {name!r} uses an unexpected compression method "
+                                f"{info.compress_type}")
+            if info.flag_bits & 0x1:                 # bit 0 = encrypted
+                problems.append(f"member {name!r} is encrypted")
             file_type = (info.external_attr >> 16) & 0o170000
             perm = (info.external_attr >> 16) & 0o7777
             data = zf.read(name)
@@ -273,6 +306,11 @@ def verify_review_zip(out_path: str | Path, expected: dict) -> list[str]:
                     problems.append(f"member {name!r} is not a symlink type (a regular member "
                                     f"cannot satisfy a symlink record)")
                     continue
+                # F11: a symlink member's permission bits are verified too — an S_IFLNK|0644
+                # must not pass a planned 0777 symlink.
+                if perm != (want["mode"] & 0o7777):
+                    problems.append(f"symlink member {name!r} mode {perm:o} != expected "
+                                    f"{want['mode'] & 0o7777:o}")
                 if data.decode("utf-8", errors="surrogateescape") != want["link_target"]:
                     problems.append(f"symlink member {name!r} target changed after build")
             else:
