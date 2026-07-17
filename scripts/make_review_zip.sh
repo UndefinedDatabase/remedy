@@ -516,8 +516,17 @@ fi
 # authoritative paths. `$EVIDENCE_DIR/review_subject.json` is the typed subject (absent for a
 # code-snapshot build, in which case the plan has only bundle context).
 SUBJECT_JSON_ARG=""
+CONTENT_PROOF_ARG=""
+PLAN_OUT_ARG=""
 if [[ -n "$EVIDENCE_DIR" && -f "$EVIDENCE_DIR/review_subject.json" ]]; then
   SUBJECT_JSON_ARG="$EVIDENCE_DIR/review_subject.json"
+fi
+# F1 (round 19): THE authority set is the Content Proof's file set; F2: package the ArchivePlan.
+if [[ -n "$EVIDENCE_DIR" && -f "$EVIDENCE_DIR/current_change_content_proof.json" ]]; then
+  CONTENT_PROOF_ARG="$EVIDENCE_DIR/current_change_content_proof.json"
+fi
+if [[ -n "$EV_ROOT_ARG" ]]; then
+  PLAN_OUT_ARG="$EV_ROOT_ARG/$CURRENT_PREFIX/review_archive_plan.json"
 fi
 
 python3 scripts/build_review_zip.py \
@@ -527,6 +536,8 @@ python3 scripts/build_review_zip.py \
   --evidence-root "$EV_ROOT_ARG" \
   --evidence-files0 "$EV_FILES_ARG" \
   --subject-json "$SUBJECT_JSON_ARG" \
+  --content-proof-json "$CONTENT_PROOF_ARG" \
+  --plan-out "$PLAN_OUT_ARG" \
   --manifest-rel "$MANIFEST" \
   --manifest-disk "$MANIFEST"
 

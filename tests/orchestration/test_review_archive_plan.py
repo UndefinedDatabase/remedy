@@ -32,10 +32,14 @@ def _rev(r, ref="HEAD"):
                           text=True).stdout.strip()
 
 
-def _plan(repo, subject, context, *, is_auth=lambda p: False):
+def _plan(repo, subject, context, *, authority=None):
+    # Round 19: authority is passed EXPLICITLY. Default to every subject path (the pre-round-19
+    # disposition tests only care about member/tombstone/block, not the authoritative flag).
+    if authority is None:
+        authority = {f.path for f in subject.files}
     return build_archive_plan(
         repo_root=repo, subject=subject, repo_context_rel=context,
-        evidence_root=None, evidence_rel=[], is_authoritative_source=is_auth)
+        evidence_root=None, evidence_rel=[], authoritative_paths=authority)
 
 
 @pytest.fixture
@@ -113,17 +117,14 @@ class TestEveryFileGetsOneDisposition:
         assert _m(plan, "base.txt") is None
 
     def test_a_policy_excluded_changed_path_blocks(self, repo):
-        """A changed `.env` the bundle policy drops must BLOCK, not silently disappear."""
+        """A changed `.env` is BLOCK_SENSITIVE by the bundle policy (round 19), never packaged."""
         r, base = repo
         (r / ".env").write_text("SECRET=1")
+        _sh(r, "git add -A && git commit -qm env")
         subject = resolve_review_subject(r, base)
-        # the bundle policy excludes .env, so it is not in context; `is_authoritative_source`
-        # says it IS a changed source path -> block.
-        def is_auth(p):
-            return p == ".env"
-        plan = _plan(r, subject, [], is_auth=is_auth)
+        plan = _plan(r, subject, [])
         assert plan.blocked
-        assert any(b.path == ".env" for b in plan.blocked_records)
+        assert any(b.path == ".env" and "sensitive" in b.reason for b in plan.blocked_records)
 
     def test_no_subject_path_is_absent_from_the_plan(self, repo):
         r, base = repo
