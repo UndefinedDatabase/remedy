@@ -157,16 +157,32 @@ def build_review_zip(*, out_path: str | Path, repo_root: str | Path,
                                       manifest_disk=manifest_disk)
 
 
-def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
-                               manifest_disk: str | Path) -> dict:
-    """Build the archive from ONE typed ArchivePlanV1 (F1) and return the exact member model.
+class SnapshotMember:
+    """One member's IMMUTABLE snapshot — read ONCE through the anchored no-follow reader, then never
+    reopened. The bytes packaged and the bytes hashed are the same object (F3/F5, round 20)."""
+    __slots__ = ("arcname", "kind", "mode", "data", "sha256", "link_target", "authoritative",
+                 "source_class")
 
-    Every member is read through the anchored, atomically no-follow reader (F3), written with its
-    planned kind and mode (F2), and — for an authoritative member — checked against the content
-    hash / link target the ReviewSubject declared. The returned model is what `verify_review_zip`
-    holds the reopened archive to (F6).
+    def __init__(self, arcname, kind, mode, data, sha256, link_target, authoritative,
+                 source_class):
+        self.arcname = arcname
+        self.kind = kind
+        self.mode = mode
+        self.data = data
+        self.sha256 = sha256
+        self.link_target = link_target
+        self.authoritative = authoritative
+        self.source_class = source_class
 
-    A BLOCKED plan is refused before a single byte is written.
+
+def snapshot_plan_members(plan) -> dict:
+    """Phase 1 (round 20): read EVERY plan source member ONCE into an immutable in-memory snapshot.
+
+    A BLOCKED plan is refused before a byte is read. Each member is read through the anchored,
+    atomically no-follow, stability-checked reader; the planned mode is bound to the opened source
+    (F4); a symlink's exact target is escape/subject-checked (F6); an authoritative member is held
+    to the ReviewSubject's declared hash / link target; per-member and aggregate byte caps apply.
+    After this phase, the source tree is never read again — the returned bytes are the single source.
     """
     from packages.common import secure_fs as _fs
     from packages.orchestration.archive_plan import (
@@ -178,9 +194,62 @@ def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
         reasons = "; ".join(f"{b.path}: {b.reason}" for b in plan.blocked_records[:4])
         raise ReviewZipError(f"the archive plan is BLOCKED and cannot be packaged: {reasons}")
 
-    seen: set[str] = set()
-    model: dict[str, dict] = {}       # arcname -> {kind, mode, sha256|link_target, authoritative}
+    snapshot: dict[str, SnapshotMember] = {}
     total_bytes = 0
+    for member in plan.all_members():
+        arcname = member.archive_path
+        if arcname in snapshot:
+            raise ReviewZipError(f"duplicate planned member: {arcname!r}")
+        if not contained(member.source_root, str(Path(member.source_root) / member.source_rel)):
+            raise ReviewZipError(f"planned member escapes its root: {arcname!r}")
+        vf = _fs.read_verified_relative(
+            member.source_root, member.source_rel,
+            expected_kind=("symlink" if member.kind == "symlink" else "regular"),
+            max_bytes=MAX_MEMBER_BYTES,
+            expected_mode=(None if member.kind == "symlink" else member.mode),
+            error_cls=ReviewZipError, noun="archive member")
+        total_bytes += len(vf.data)
+        if total_bytes > MAX_TOTAL_UNCOMPRESSED_BYTES:
+            raise ReviewZipError("archive exceeds the total uncompressed byte limit")
+        if member.kind == "symlink":
+            target = vf.data.decode("utf-8", errors="surrogateescape")
+            if len(vf.data) > MAX_SYMLINK_TARGET_BYTES:
+                raise ReviewZipError(f"symlink {arcname!r} target is too long")
+            if symlink_escapes_repository(member.source_root, arcname, target):
+                raise ReviewZipError(
+                    f"symlink {arcname!r} target {target[:60]!r} points outside the repository")
+            if member.expected_link_target is not None and target != member.expected_link_target:
+                raise ReviewZipError(
+                    f"symlink {arcname!r} target {target!r} != the declared "
+                    f"{member.expected_link_target!r}")
+            snapshot[arcname] = SnapshotMember(
+                arcname, "symlink", 0o777, vf.data, hashlib.sha256(vf.data).hexdigest(),
+                target, member.authoritative, member.source_class)
+        else:
+            digest = hashlib.sha256(vf.data).hexdigest()
+            if member.expected_sha256 is not None and digest != member.expected_sha256:
+                raise ReviewZipError(
+                    f"member {arcname!r} hashes to {digest[:12]} but the plan declared "
+                    f"{str(member.expected_sha256)[:12]}")
+            snapshot[arcname] = SnapshotMember(
+                arcname, "regular", member.mode & 0o7777, vf.data, digest, None,
+                member.authoritative, member.source_class)
+    return snapshot
+
+
+def build_review_zip_from_snapshot(*, out_path: str | Path, snapshot: dict,
+                                   generated_members: dict) -> dict:
+    """Phase 4 (round 20): write the ZIP ENTIRELY from immutable in-memory bytes.
+
+    ``snapshot`` maps arcname -> SnapshotMember (source bytes). ``generated_members`` maps arcname
+    -> (bytes, mode) for the directed-chain artifacts (plan, expectation, manifest). NOTHING is
+    reopened by path here, so a source or generated file forged on disk after phase 1/generation
+    cannot reach the archive. Returns the exact typed model for the reopen verifier.
+    """
+    from packages.orchestration.archive_plan import MAX_GENERATED_MEMBER_BYTES
+
+    seen: set[str] = set()
+    model: dict[str, dict] = {}
 
     def _claim(arcname: str) -> None:
         validate_archive_name(arcname)
@@ -196,59 +265,59 @@ def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
         out_path.unlink()
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for member in plan.all_members():
-            arcname = member.archive_path
+        for arcname in sorted(snapshot):
+            m = snapshot[arcname]
             _claim(arcname)
-            if not contained(member.source_root, str(Path(member.source_root)
-                                                     / member.source_rel)):
-                raise ReviewZipError(f"planned member escapes its root: {arcname!r}")
-            # F4: bind the planned regular mode to the OPENED source; F12: per-member byte cap.
-            vf = _fs.read_verified_relative(
-                member.source_root, member.source_rel,
-                expected_kind=("symlink" if member.kind == "symlink" else "regular"),
-                max_bytes=MAX_MEMBER_BYTES,
-                expected_mode=(None if member.kind == "symlink" else member.mode),
-                error_cls=ReviewZipError, noun="archive member")
-            total_bytes += len(vf.data)
-            if total_bytes > MAX_TOTAL_UNCOMPRESSED_BYTES:
-                raise ReviewZipError("archive exceeds the total uncompressed byte limit")
-            if member.kind == "symlink":
-                target = vf.data.decode("utf-8", errors="surrogateescape")
-                # F6: the target/containment is ONE atomic fact — validate the EXACT bytes just
-                # read (through the stability-checked reader), never a separate earlier realpath.
-                if len(vf.data) > MAX_SYMLINK_TARGET_BYTES:
-                    raise ReviewZipError(f"symlink {arcname!r} target is too long")
-                if symlink_escapes_repository(member.source_root, arcname, target):
-                    raise ReviewZipError(
-                        f"symlink {arcname!r} target {target[:60]!r} points outside the "
-                        f"repository (absolute, ~, or escaping)")
-                if member.authoritative and member.expected_link_target is not None \
-                        and target != member.expected_link_target:
-                    raise ReviewZipError(
-                        f"authoritative symlink {arcname!r} target {target!r} != the subject's "
-                        f"{member.expected_link_target!r}")
-                _write_symlink(zf, arcname, vf.data)
-                model[arcname] = {"kind": "symlink", "mode": 0o777, "link_target": target,
-                                  "authoritative": member.authoritative}
+            if m.kind == "symlink":
+                _write_symlink(zf, arcname, m.data)
+                model[arcname] = {"kind": "symlink", "mode": 0o777, "link_target": m.link_target,
+                                  "authoritative": m.authoritative}
             else:
-                digest = hashlib.sha256(vf.data).hexdigest()
-                if member.authoritative and member.expected_sha256 is not None \
-                        and digest != member.expected_sha256:
-                    raise ReviewZipError(
-                        f"authoritative file {arcname!r} hashes to {digest[:12]} but the subject "
-                        f"declared {str(member.expected_sha256)[:12]}")
-                _write_regular(zf, arcname, vf.data, member.mode)
-                model[arcname] = {"kind": "regular", "mode": member.mode & 0o7777,
-                                  "sha256": digest, "authoritative": member.authoritative}
-
-        _claim(manifest_rel)
-        mbytes = Path(manifest_disk).read_bytes()
-        _write_regular(zf, manifest_rel, mbytes, 0o644)
-        model[manifest_rel] = {"kind": "regular", "mode": 0o644,
-                               "sha256": hashlib.sha256(mbytes).hexdigest(),
-                               "authoritative": False}
+                _write_regular(zf, arcname, m.data, m.mode)
+                model[arcname] = {"kind": "regular", "mode": m.mode & 0o7777, "sha256": m.sha256,
+                                  "authoritative": m.authoritative}
+        for arcname in sorted(generated_members):
+            data, mode = generated_members[arcname]
+            if len(data) > MAX_GENERATED_MEMBER_BYTES:
+                raise ReviewZipError(f"generated member {arcname!r} exceeds the generated-byte cap")
+            _claim(arcname)
+            _write_regular(zf, arcname, data, mode)
+            model[arcname] = {"kind": "regular", "mode": mode & 0o7777,
+                              "sha256": hashlib.sha256(data).hexdigest(), "authoritative": False}
 
     return {"members": sorted(model), "model": model}
+
+
+def _read_manifest_no_follow(manifest_disk: str | Path) -> bytes:
+    """F6 (round 20): read the manifest through the anchored no-follow reader, so a manifest path
+    that is a symlink to an external secret is refused, never followed by a plain ``read_bytes``."""
+    from packages.common import secure_fs as _fs
+    p = Path(manifest_disk)
+    vf = _fs.read_verified_relative(str(p.parent), p.name, expected_kind="regular",
+                                    error_cls=ReviewZipError, noun="manifest")
+    return vf.data
+
+
+def build_review_zip_from_plan(*, out_path: str | Path, plan, manifest_rel: str,
+                               manifest_disk: str | Path | None = None,
+                               manifest_bytes: bytes | None = None,
+                               generated_members: dict | None = None) -> dict:
+    """Convenience two-phase build: snapshot every source member, then write the ZIP from the
+    immutable bytes plus the manifest (and any other generated members) as in-memory bytes.
+
+    The manifest is a generated member: passed directly as ``manifest_bytes`` where the caller has
+    them, or read ONCE through the no-follow reader from ``manifest_disk`` (F6) — never a plain
+    ``Path.read_bytes`` that would follow a symlinked manifest.
+    """
+    snapshot = snapshot_plan_members(plan)
+    gen = dict(generated_members or {})
+    if manifest_bytes is None:
+        if manifest_disk is None:
+            raise ReviewZipError("no manifest bytes or path supplied")
+        manifest_bytes = _read_manifest_no_follow(manifest_disk)
+    gen[manifest_rel] = (manifest_bytes, 0o644)
+    return build_review_zip_from_snapshot(out_path=out_path, snapshot=snapshot,
+                                          generated_members=gen)
 
 
 # --------------------------------------------------------------------------- verifying
