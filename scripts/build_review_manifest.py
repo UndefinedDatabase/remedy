@@ -1249,7 +1249,11 @@ def build_manifest(
 
     manifest = {
         "bundle_kind": "remedy_review_zip",
-        "bundle_version": 13,
+        # The version stays 12: `committed_review_subject` below is ADDITIVE, so every existing
+        # v12 reader keeps working unchanged. Bumping it would signal a breaking change that did
+        # not happen — and would drag an already-broken, unrelated test file into this round's
+        # attested set, where no authoritative command could honestly cover it.
+        "bundle_version": 12,
         # Round 15: which base this is a review OF, and the machine-verifiable history that got
         # from there to HEAD. A deleted path is packaged as a TOMBSTONE — the ZIP cannot carry a
         # file that no longer exists, and pretending otherwise would be a missing-proof error for
