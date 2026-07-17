@@ -410,6 +410,71 @@ def _is_manual_completion(evidence_dir: str) -> bool:
     return _all_task_runs_manual(evidence_dir)
 
 
+def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
+    """Round 15 (F7): the packaged commit history is recomputed, not narrated.
+
+    The operator's handoff used to say "there were six commits" in prose. A reader could not check
+    that, could not tell whether an unrelated commit had been swept in, and could not tell whether
+    the packaged history actually ends at the reviewed HEAD. So the chain is an artifact, and this
+    recomputes it from the repository and holds the artifact to it.
+    """
+    errors: list = []
+    chain = _mc_read_json(evidence_dir, "review_commit_chain.json")
+    subject = _mc_read_json(evidence_dir, "review_subject.json")
+    if not chain and not subject:
+        return errors                     # no declared base: the legacy dirty-tree subject
+    base = str(chain.get("base_commit") or "")
+    head = str(chain.get("head_commit") or "")
+    if not base:
+        return errors                     # nothing was declared; nothing to verify
+
+    if subject:
+        if str(subject.get("base_commit") or "") != base:
+            errors.append("review_commit_chain base_commit disagrees with review_subject")
+        if str(subject.get("head_commit") or "") != head:
+            errors.append("review_commit_chain head_commit disagrees with review_subject")
+        if subject.get("base_is_ancestor") is not True:
+            errors.append("review_subject does not record the base as an ancestor of HEAD")
+
+    try:
+        from packages.orchestration.review_subject import resolve_commit_chain
+        actual = resolve_commit_chain(".", base, head)
+    except Exception as exc:                       # unreadable repo/base: say so, never assume
+        errors.append(f"cannot recompute the commit chain: {str(exc)[:160]}")
+        return errors
+
+    recorded = chain.get("commits") or []
+    if len(recorded) != len(actual):
+        errors.append(
+            f"review_commit_chain records {len(recorded)} commit(s); the repository's "
+            f"{base[:12]}..{head[:12]} ancestry path has {len(actual)}")
+        return errors
+    for rec, act in zip(recorded, actual):
+        for field in ("commit", "tree", "patch_sha256"):
+            if str(rec.get(field) or "") != getattr(act, field):
+                errors.append(
+                    f"review_commit_chain commit {str(rec.get('commit'))[:12]} {field} does not "
+                    f"match the repository")
+        if [str(x) for x in (rec.get("parents") or [])] != list(act.parents):
+            errors.append(
+                f"review_commit_chain commit {act.commit[:12]} parents do not match")
+    if actual and actual[-1].commit != head:
+        errors.append("the packaged commit chain does not end at the review head")
+    if actual and base not in actual[0].parents:
+        errors.append("the packaged commit chain does not start after the declared base")
+
+    # Every file the commits touched must be part of the reviewed subject — no commit may carry
+    # work the review does not account for.
+    union_committed = {_mc_norm(f) for c in actual for f in c.changed_files}
+    from packages.orchestration.final_verifier import _is_source_for_alignment
+    stray = sorted({f for f in union_committed
+                    if _is_source_for_alignment(f)} - {_mc_norm(f) for f in per_task_union})
+    if stray:
+        errors.append(
+            f"the packaged commits change source files the review does not account for: {stray}")
+    return errors
+
+
 def _verify_task_provenance_integrity(
     evidence_dir: str, tid: str, mrp: dict, proof: dict, fjr: dict,
 ) -> list[str]:
@@ -631,7 +696,11 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
     # 7: union must exactly equal every authoritative changed-file view.
     fjr_actual = {_mc_norm(f) for f in (fjr.get("actual_changed_files") or [])}
     fjr_expected = {_mc_norm(f) for f in (fjr.get("expected_changed_files") or [])}
+    # Round 15 (F4): a DELETED path is proven by its tombstone (its base_sha256), not by a
+    # current hash it cannot have. Counting only file_hashes would report a real, proven
+    # part of the change as an uncovered file.
     proof_files = {_mc_norm(f) for f in (proof.get("file_hashes") or {})}
+    proof_files |= {_mc_norm(f) for f in (proof.get("tombstones") or {})}
     fv_auth = {_mc_norm(f) for f in (fv.get("authoritative_changed_files") or [])}
     cp_covered = {_mc_norm(f) for f in (cp.get("covered_files") or [])}
     for label, s in (
@@ -646,6 +715,9 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
                 f"changed-file union mismatch vs {label}: "
                 f"only_in_union={sorted(per_task_union - s)} only_in_{label.split('.')[0]}={sorted(s - per_task_union)}"
             )
+
+    # 7b: the packaged commit chain is recomputed and verified against the review subject.
+    errors.extend(_verify_commit_chain(evidence_dir, per_task_union))
 
     # 8: root verification must exist, exit 0, >=1 passed, 0 failed.
     if not vt:
@@ -1170,9 +1242,30 @@ def build_manifest(
             "content hash verification was not performed; integrity unconfirmed"
         )
 
+    _subject = _mc_read_json(evidence_dir, "review_subject.json") if evidence_dir else {}
+    _chain = _mc_read_json(evidence_dir, "review_commit_chain.json") if evidence_dir else {}
+    _proof_doc = _mc_read_json(evidence_dir, "current_change_content_proof.json") \
+        if evidence_dir else {}
+
     manifest = {
         "bundle_kind": "remedy_review_zip",
-        "bundle_version": 12,
+        "bundle_version": 13,
+        # Round 15: which base this is a review OF, and the machine-verifiable history that got
+        # from there to HEAD. A deleted path is packaged as a TOMBSTONE — the ZIP cannot carry a
+        # file that no longer exists, and pretending otherwise would be a missing-proof error for
+        # a real, proven part of the change.
+        #
+        # Deliberately NOT named `review_subject`: that key already exists below with an older,
+        # different meaning (branch/kind/dirty summary), and silently redefining it would break
+        # every existing reader of that field.
+        "committed_review_subject": {
+            "base_commit": str(_subject.get("base_commit") or ""),
+            "head_commit": str(_subject.get("head_commit") or ""),
+            "base_is_ancestor": bool(_subject.get("base_is_ancestor") or False),
+            "commit_count": len(_chain.get("commits") or []),
+            "file_count": len(_subject.get("files") or []),
+            "tombstones": sorted(_proof_doc.get("tombstones") or {}),
+        },
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "review_package_created": True,
         "package_status": package_status,

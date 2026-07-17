@@ -1065,9 +1065,14 @@ class TestDogfoodCommandShape:
         proof_file = out / "current_change_content_proof.json"
         assert proof_file.exists(), "current_change_content_proof.json must exist after export"
         data = json.loads(proof_file.read_text())
-        assert data["schema_version"] == "1.0.0"
+        # Round 15: the proof gained typed deletion tombstones and the resolved review
+        # base/head, so a removed file is recorded rather than silently absent.
+        assert data["schema_version"] == "1.1.0"
         assert "file_hashes" in data
         assert "file_count" in data
+        assert "tombstones" in data
+        assert "tombstone_count" in data
+        assert "base_commit" in data and "head_commit" in data
 
     def test_change_provenance_exists_after_export(self, isolate_data_root, demo_repo, tmp_path):
         """Change provenance gate must exist after export with stale_apply_proofs field."""

@@ -554,69 +554,71 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("runtime_integration_gate.error.txt", exc)
 
-    # Content-hash proof — SHA256 every source file in the REVIEW SUBJECT for provenance.
+    # The REVIEW SUBJECT — resolved ONCE, by the one production helper, and recorded as a fact.
+    #
+    # Round 14 inlined three git commands here. That silently swallowed an invalid base (exit 128
+    # -> "just the dirty files", a smaller review than the operator asked for, with no error),
+    # accepted a NON-ANCESTOR base (dragging unrelated branches' files into the review), could
+    # never prove a committed DELETION (the proof only hashed files that still exist), and
+    # recorded nothing about the base, so no reader could tell what the package was a review OF.
+    # `resolve_review_subject` verifies all of it and raises instead of downgrading.
     _repo = getattr(job, "repo_path", None) or "."
     dirty_files: list[str] = []
+    _subject = None
     try:
-        import hashlib as _hl  # noqa: I001
-        import subprocess as _sp  # noqa: I001
-
-        _git_result = _sp.run(
-            ["git", "status", "--porcelain", "-u"],
-            cwd=_repo, capture_output=True, text=True, timeout=30,
-        )
-        for line in _git_result.stdout.splitlines():
-            if not line.strip():
-                continue
-            path = line[3:]
-            if " -> " in path:
-                path = path.split(" -> ", 1)[1]
-            path = path.strip().strip('"')
-            if path:
-                dirty_files.append(path)
-
-        # The review subject is not always the dirty tree.
-        #
-        # This layer equated "the change under review" with `git status` — fine while an
-        # operator-attested round left its whole change uncommitted, but a change that has been
-        # COMMITTED is still the change under review, and a clean tree made the content proof and
-        # the provenance coverage collapse to zero while the attested Evidence still described 85
-        # files. The final verifier then blocked on the mismatch it was right to notice.
-        #
-        # So the base is DECLARED, never guessed: `REMEDY_REVIEW_BASE=<commit-ish>` means "the
-        # subject is my delta from there, plus anything still dirty". Guessing it (say, the
-        # merge-base with the default branch) would be wrong for an ordinary job whose branch
-        # already carries unrelated commits — their files are not this job's change, and
-        # reporting them as uncovered would be a false block. Unset, this is exactly the previous
-        # behaviour.
-        _base = (os.environ.get("REMEDY_REVIEW_BASE") or "").strip()
-        if _base:
-            _committed = _sp.run(
-                ["git", "diff", "--name-only", f"{_base}..HEAD"],
-                cwd=_repo, capture_output=True, text=True, timeout=30,
-            )
-            if _committed.returncode == 0:
-                for path in _committed.stdout.splitlines():
-                    path = path.strip().strip('"')
-                    if path and path not in dirty_files:
-                        dirty_files.append(path)
-
         from packages.orchestration.change_provenance_gate import _is_source_file, _normalize
-        _source_dirty = [_normalize(p) for p in dirty_files if _is_source_file(p)]
+        from packages.orchestration.review_subject import (
+            STATUS_DELETED, resolve_review_subject,
+        )
+
+        _subject = resolve_review_subject(_repo)
+        dirty_files = [f.path for f in _subject.files]
+
+        # `review_subject.json` — the durable, typed account: which base, which head, which
+        # commits, and every file with the proof its status allows.
+        _subject_path = _validate_output_path(str(out_path), "review_subject.json")
+        _subject_path.write_text(json.dumps(_subject.to_json(), indent=2) + "\n",
+                                 encoding="utf-8")
+        written["review_subject.json"] = str(_subject_path)
+
+        # The content proof carries a TOMBSTONE for a deleted path rather than omitting it: a
+        # file that was removed is part of the change, and "no entry" is indistinguishable from
+        # "never looked".
         _file_hashes: dict[str, str] = {}
-        _repo_path = Path(_repo)
-        for _sf in _source_dirty:
-            _fp = _repo_path / _sf
-            if _fp.exists():
-                _file_hashes[_sf] = _hl.sha256(_fp.read_bytes()).hexdigest()
+        _tombstones: dict[str, dict[str, Any]] = {}
+        for _f in _subject.files:
+            _sf = _normalize(_f.path)
+            if not _is_source_file(_sf):
+                continue
+            if _f.status == STATUS_DELETED:
+                _tombstones[_sf] = {"status": _f.status, "base_sha256": _f.base_sha256,
+                                    "current_sha256": None}
+            elif _f.current_sha256:
+                _file_hashes[_sf] = _f.current_sha256
         _proof = {
-            "schema_version": "1.0.0",
+            "schema_version": "1.1.0",
+            "base_commit": _subject.base_commit,
+            "head_commit": _subject.head_commit,
             "file_hashes": _file_hashes,
             "file_count": len(_file_hashes),
+            "tombstones": _tombstones,
+            "tombstone_count": len(_tombstones),
         }
         _proof_path = _validate_output_path(str(out_path), "current_change_content_proof.json")
         _proof_path.write_text(json.dumps(_proof, indent=2) + "\n", encoding="utf-8")
         written["current_change_content_proof.json"] = str(_proof_path)
+
+        # The machine-verifiable commit chain (round 15): the ordered, base-exclusive ancestry
+        # path a reader can recompute, so "there were six commits" stops being prose.
+        _chain = {
+            "chain_v": 1,
+            "base_commit": _subject.base_commit,
+            "head_commit": _subject.head_commit,
+            "commits": [c.to_json() for c in _subject.commits],
+        }
+        _chain_path = _validate_output_path(str(out_path), "review_commit_chain.json")
+        _chain_path.write_text(json.dumps(_chain, indent=2) + "\n", encoding="utf-8")
+        written["review_commit_chain.json"] = str(_chain_path)
     except Exception as exc:
         _write_gate_error("current_change_content_proof.error.txt", exc)
 
