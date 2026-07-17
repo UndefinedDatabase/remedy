@@ -512,12 +512,21 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   EV_FILES_ARG="$TMP_EV0"
 fi
 
+# F1 (round 18): the authoritative ReviewSubject drives the plan; the shell never rediscovers
+# authoritative paths. `$EVIDENCE_DIR/review_subject.json` is the typed subject (absent for a
+# code-snapshot build, in which case the plan has only bundle context).
+SUBJECT_JSON_ARG=""
+if [[ -n "$EVIDENCE_DIR" && -f "$EVIDENCE_DIR/review_subject.json" ]]; then
+  SUBJECT_JSON_ARG="$EVIDENCE_DIR/review_subject.json"
+fi
+
 python3 scripts/build_review_zip.py \
   --out "$OUT" \
   --repo-root "$ROOT" \
   --repo-files0 "$TMP0" \
   --evidence-root "$EV_ROOT_ARG" \
   --evidence-files0 "$EV_FILES_ARG" \
+  --subject-json "$SUBJECT_JSON_ARG" \
   --manifest-rel "$MANIFEST" \
   --manifest-disk "$MANIFEST"
 
