@@ -92,26 +92,32 @@ MAX_TOTAL_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024   # 2 GiB across the whole
 MAX_SYMLINK_TARGET_BYTES = 4096        # PATH_MAX
 MAX_ARCHIVE_NAME_BYTES = 4096
 MAX_COMPRESSION_RATIO = 200            # a member expanding >200x on read is a bomb
+#: F9/F10 (round 20): the Evidence tree is bounded DURING the no-follow inventory walk, before the
+#: whole tree is copied, and the directed-chain generated artifacts are bounded as members too.
+MAX_EVIDENCE_AGGREGATE_BYTES = 2 * 1024 * 1024 * 1024   # 2 GiB across staged Evidence
+MAX_GENERATED_MEMBER_BYTES = 16 * 1024 * 1024          # plan / expectation / manifest each ≤ 16 MiB
 
 
-def classify_bundle_path(rel: str, *, changed: bool, is_authoritative_source) -> str:
-    """The bundle-safety disposition of one repository path (F7).
+def classify_bundle_path(rel: str, *, changed: bool, kind: str | None = None,
+                         source_class: str | None = None, is_authoritative_source=None) -> str:
+    """The ONE bundle-safety disposition of one repository path (F7, r19; F6/F7, r20).
 
-    `changed` is True when the path is part of the reviewed change (in the ReviewSubject).
-    Sensitivity only BLOCKS a CHANGED path — an unchanged context blob is simply not in the
-    bundle. Operator state is always context. The decision is made from the path alone, before
-    any read.
+    The decision is made from the path alone, BEFORE any read, and it is the SAME policy for a
+    changed member and for unchanged bundle context (round 20 F7): a sensitive path — a `.env`, a
+    key, a certificate, a log, an old archive, a binary — never enters the package whether or not it
+    is part of the reviewed change. Operator state is always context. ``kind``/``source_class`` are
+    accepted so every caller invokes one signature; ``is_authoritative_source`` is ignored
+    (disposition is independent of authority).
     """
     norm = rel.replace("\\", "/")
     if norm.startswith(_OPERATOR_STATE_PREFIX):
         return DISP_OPERATOR_CONTEXT
     base = norm.rsplit("/", 1)[-1]
     low = base.lower()
-    if changed:
-        if base in _SENSITIVE_NAMES or low in _SENSITIVE_NAMES:
-            return DISP_BLOCK_SENSITIVE
-        if any(low.endswith(sfx) for sfx in _SENSITIVE_SUFFIXES):
-            return DISP_BLOCK_SENSITIVE
+    if base in _SENSITIVE_NAMES or low in _SENSITIVE_NAMES:
+        return DISP_BLOCK_SENSITIVE
+    if any(low.endswith(sfx) for sfx in _SENSITIVE_SUFFIXES):
+        return DISP_BLOCK_SENSITIVE
     return DISP_INCLUDE
 
 
@@ -245,18 +251,22 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
     tombstones: list[TombstoneRecordV1] = []
     blocked: list[BlockedRecordV1] = []
 
+    def _is_operator_state(p: str) -> bool:
+        return p.replace("\\", "/").startswith(_OPERATOR_STATE_PREFIX)
+
     def _is_auth(p: str) -> bool:
-        return p in authoritative_paths
+        # F2 (round 20): `.agent` operator state is FORCIBLY non-authoritative even if a forged
+        # Content Proof names it. Authority is the proof set MINUS operator state, always.
+        return p in authoritative_paths and not _is_operator_state(p)
 
     def _source_class(p: str, auth: bool) -> str:
-        if p.replace("\\", "/").startswith(_OPERATOR_STATE_PREFIX):
+        if _is_operator_state(p):
             return SOURCE_OPERATOR_CONTEXT
         return SOURCE_REPOSITORY
 
     # 1. The reviewed change — every ReviewSubject file, one disposition each.
     for f in subject.files:
-        disp = classify_bundle_path(f.path, changed=True,
-                                    is_authoritative_source=_is_auth)
+        disp = classify_bundle_path(f.path, changed=True, kind=f.kind)
         if f.status == "deleted" or f.kind == KIND_DELETED:
             tombstones.append(TombstoneRecordV1(path=f.path, base_sha256=f.base_sha256))
             continue
@@ -297,10 +307,14 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
             blocked.append(BlockedRecordV1(
                 path=rel, reason="repository bundle path is not a safe relative path"))
             continue
+        # F6/F7 (round 20): unchanged context passes the SAME bundle policy. A `.env`, key, log or
+        # old archive handed in as context BLOCKS — it never enters the package, changed or not.
+        if classify_bundle_path(rel, changed=False) == DISP_BLOCK_SENSITIVE:
+            blocked.append(BlockedRecordV1(
+                path=rel, reason="context path is sensitive (secret/key/log/archive/binary); "
+                                 "its bytes must never enter the package"))
+            continue
         auth = _is_auth(rel)
-        # A CHANGED sensitive path already blocked above (it is in the subject). An UNCHANGED
-        # context blob is not sensitive-blocked — it is not part of the review — but operator
-        # state is still classed as context.
         sclass = _source_class(rel, auth)
         disk = repo_root / rel
         try:
