@@ -123,7 +123,14 @@ verified members so a ZIP-only reviewer can check the model the archive was buil
 inventoried the same no-follow way as the repository (a symlink or FIFO in the evidence tree blocks
 rather than being skipped or followed into outside bytes), and the archive is bounded — per-member,
 aggregate, member-count and expansion-ratio caps refuse a decompression bomb before it is read into
-memory. Task truth is read in the
+memory. The whole package is one root of trust over a single **staged byte source**: the Evidence is
+snapshotted to an immutable private staging directory first — anchored, no-follow, hashed and
+bounded — and nothing reads the original evidence again, so validation, the Subject, the strict
+Content-Proof authority (which must equal the final-verifier and change-provenance sets) and the ZIP
+all read the same bytes. Those bytes flow through a **directed hash chain** — the plan hashes every
+source member, the expectation carries the plan's hash, and the manifest carries the plan,
+expectation, subject, proof, commit-chain and patch-set hashes — so a ZIP-only reviewer can
+recompute the whole chain and no artifact ever hashes itself. Task truth is read in the
 episode's own context: a completed episode's task must be applied or passed, and the status a task
 completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:

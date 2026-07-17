@@ -1158,3 +1158,67 @@ class TestF012Round19IsPinned:
         r = self._readme()
         assert "Content-Proof file set is passed into" in r
         assert "decompression bomb" in r
+
+
+class TestF012Round20IsPinned:
+    """Round 20: the root-of-trust closure — a single staged byte source, one strict authority
+    proof, exact authority equality, an expected hash on every member, and a directed hash chain
+    over generated artifacts that never hash themselves."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 20" in self._f012()
+
+    def test_the_single_sources_are_documented(self):
+        doc = self._f012()
+        assert "immutable private staging snapshot" in doc
+        assert "after staging nothing reads `EVIDENCE_DIR` again" in doc
+
+    def test_strict_content_proof_is_documented(self):
+        doc = self._f012()
+        assert "ContentProofV1" in doc
+        assert "no fail-open empty authority" in doc
+        assert "forced non-authoritative even if a forged Proof names it" in doc
+
+    def test_the_directed_hash_chain_is_documented(self):
+        doc = self._f012()
+        assert "review_zip_expectation.json" in doc
+        assert "No artifact hashes itself" in doc
+        assert "review_archive_plan_sha256" in doc
+
+    def test_every_member_identity_is_documented(self):
+        doc = self._f012()
+        assert "snapshot_plan_members" in doc
+        assert "expected content identity" in doc
+
+    def test_one_bundle_policy_and_no_follow_manifest_are_documented(self):
+        doc = self._f012()
+        assert "governs EVERY repository member including unchanged context" in doc
+        assert "a symlinked manifest is refused" in doc
+
+    def test_complete_matrix_and_limits_are_documented(self):
+        doc = self._f012()
+        assert "Complete ReviewFile state matrix" in doc
+        assert "enforced DURING the snapshot walk" in doc
+        assert "review_zip_expectation.json" in doc
+
+    def test_the_round_19_overclaim_is_corrected(self):
+        assert "Superseded by round 20" in self._f012()
+
+    def test_readme_states_the_root_of_trust(self):
+        r = self._readme()
+        assert "staged byte source" in r
+        assert "directed hash chain" in r
+
+    def test_f012_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status
