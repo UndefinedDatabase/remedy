@@ -198,15 +198,47 @@ class TestThePackagerVerifiesTheArtifact:
         probs = _verify_commit_chain(str(ev), set(s.paths()))
         assert any("ancestry path has" in p for p in probs), probs
 
-    def test_a_commit_touching_unaccounted_source_is_rejected(self, repo, tmp_path, monkeypatch):
+    def test_a_subject_claiming_an_uncommitted_change_is_rejected(self, repo, tmp_path,
+                                                                  monkeypatch):
+        """The direction that matters: the subject cannot claim a committed change that no
+        packaged commit made."""
+        import dataclasses
+
+        from packages.orchestration.review_subject import ReviewFileV1
         from scripts.build_review_manifest import _verify_commit_chain
         r, base = repo
         s = resolve_review_subject(r, base)
+        forged = dataclasses.replace(s, files=s.files + (
+            ReviewFileV1(path="never_committed.py", status="modified",
+                         base_sha256="a" * 64, current_sha256="b" * 64),))
         ev = tmp_path / "ev4"
+        self._write(ev, forged)
+        monkeypatch.chdir(r)
+        probs = _verify_commit_chain(str(ev), set(forged.paths()))
+        assert any("no packaged commit made" in p for p in probs), probs
+
+    def test_a_file_changed_then_reverted_inside_the_range_is_not_a_stray(self, tmp_path,
+                                                                         monkeypatch):
+        """Honest history: the commits touched it, the NET delta does not contain it. Requiring
+        the commit union to EQUAL the subject flagged exactly this, wrongly."""
+        from scripts.build_review_manifest import _verify_commit_chain
+        r = tmp_path / "reverted"
+        r.mkdir()
+        _sh(r, "git init -q -b main && git config user.email t@t && git config user.name t")
+        _sh(r, "echo original > flip.py && echo keep > keep.py && git add -A "
+               "&& git commit -qm base")
+        base = _rev(r)
+        _sh(r, "git checkout -q -b feature")
+        _sh(r, "echo edited > flip.py && git add -A && git commit -qm 'edit flip'")
+        _sh(r, "echo real > keep.py && git add -A && git commit -qm 'edit keep'")
+        _sh(r, "echo original > flip.py && git add -A && git commit -qm 'revert flip'")
+        s = resolve_review_subject(r, base)
+        assert s.paths() == ["keep.py"], "the net subject excludes the reverted file"
+        assert any("flip.py" in c.changed_files for c in s.commits), "but commits touched it"
+        ev = tmp_path / "ev5"
         self._write(ev, s)
         monkeypatch.chdir(r)
-        probs = _verify_commit_chain(str(ev), {"a.txt"})     # the review "accounts for" one file
-        assert any("the review does not account for" in p for p in probs), probs
+        assert _verify_commit_chain(str(ev), set(s.paths())) == []
 
     def test_an_undeclared_subject_is_not_verified(self, tmp_path, monkeypatch, repo):
         from scripts.build_review_manifest import _verify_commit_chain

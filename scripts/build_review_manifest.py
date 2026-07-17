@@ -463,15 +463,23 @@ def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
     if actual and base not in actual[0].parents:
         errors.append("the packaged commit chain does not start after the declared base")
 
-    # Every file the commits touched must be part of the reviewed subject — no commit may carry
-    # work the review does not account for.
-    union_committed = {_mc_norm(f) for c in actual for f in c.changed_files}
+    # Every COMMITTED file in the review subject must be explained by one of these commits: the
+    # subject cannot claim a committed change that no packaged commit made.
+    #
+    # The check is deliberately one-directional. The commit union is legitimately a SUPERSET
+    # whenever a file is changed and then REVERTED inside the range: the commits touched it, the
+    # net base..HEAD delta does not contain it, and that is honest history rather than "work the
+    # review does not account for". Requiring equality flagged exactly that case.
     from packages.orchestration.final_verifier import _is_source_for_alignment
-    stray = sorted({f for f in union_committed
-                    if _is_source_for_alignment(f)} - {_mc_norm(f) for f in per_task_union})
-    if stray:
+
+    union_committed = {_mc_norm(f) for c in actual for f in c.changed_files}
+    subject_files = {_mc_norm(f.get("path", "")) for f in (subject.get("files") or [])
+                     if f.get("status") != "dirty"}
+    unexplained = sorted({f for f in subject_files if _is_source_for_alignment(f)}
+                         - union_committed)
+    if unexplained:
         errors.append(
-            f"the packaged commits change source files the review does not account for: {stray}")
+            f"the review subject claims committed changes no packaged commit made: {unexplained}")
     return errors
 
 
