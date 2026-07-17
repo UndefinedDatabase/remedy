@@ -1402,6 +1402,36 @@ _TASK_EXPECTATION_ALLOWED_STATUSES = {
     EXPECT_DISPATCHED_NO_CALLS: frozenset({"failed", "blocked", "pending", "running"}),
 }
 
+#: F1 (round 17): the CONTEXT-TIGHTENED status sets. The table above is the STOPPED/worked
+#: baseline — the widest an expectation is ever allowed, because a stop can legitimately leave a
+#: run pending (F011's mid-flight call finishes) or blocked/failed (a post-run gate). A COMPLETED
+#: episode is narrower: `run_job` sets `completed` only when EVERY task is applied or skipped
+#: (`all(t.status in (TASK_APPLIED, TASK_SKIPPED))`), so an `executed` or `prior_episode` task in
+#: one CANNOT be pending/running/failed/blocked — that would contradict the status it is published
+#: under. The shared validator took `episode_status`/`episode_phase` since round 16 and never read
+#: them, so a completed reference accepted `executed` + pending/running/failed/blocked.
+_COMPLETED_WORKED_STATUSES = {
+    EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace"}),
+    EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace"}),
+    EXPECT_SKIPPED: frozenset({"skipped"}),
+}
+
+
+def _allowed_statuses_for(expectation: str, episode_status: str,
+                          episode_phase: str) -> frozenset:
+    """The statuses an expectation may carry IN THIS episode context.
+
+    A completed/worked episode uses the tight set (its tasks are all applied or skipped); every
+    other context uses the permissive baseline, which the per-context `_LIFECYCLE_MATRIX` already
+    restricts to the expectations that context permits at all.
+    """
+    if episode_status == "completed" and episode_phase == PHASE_WORKED:
+        tight = _COMPLETED_WORKED_STATUSES.get(expectation)
+        if tight is not None:
+            return tight
+    return _TASK_EXPECTATION_ALLOWED_STATUSES[expectation]
+
+
 #: Every task status the JobPlan can persist. A status outside this set is a forged record.
 VALID_TASK_STATUSES = frozenset({"pending", "running", "passed", "applied_to_job_workspace",
                                  "blocked", "failed", "skipped"})
@@ -1438,11 +1468,15 @@ def validate_task_expectation_truth(te: "TaskCallExpectationV1", *, episode_stat
         problems.append(f"task {te.task_id!r} records an unsupported task status {status!r}")
         return problems
 
-    allowed = _TASK_EXPECTATION_ALLOWED_STATUSES[exp]
+    # F1 (round 17): the allowed set depends on the EPISODE this record lives in. A completed
+    # episode's tasks are all applied or skipped, so an executed task in one cannot be
+    # pending/running/failed/blocked; a stopped episode legitimately can be.
+    allowed = _allowed_statuses_for(exp, episode_status, episode_phase)
     if status not in allowed:
+        ctx = (f"a {episode_status}/{episode_phase} episode's " if episode_status else "a ")
         problems.append(
             f"impossible task record: task {te.task_id!r} is {exp!r} but the JobPlan recorded it "
-            f"as {status!r} at finalization (a {exp!r} task can only be "
+            f"as {status!r} at finalization ({ctx}{exp!r} task can only be "
             f"{'/'.join(sorted(allowed))})")
 
     # The dispatch state and the run must agree with the expectation's own meaning.
@@ -4439,6 +4473,19 @@ def validate_task_lifecycle_chain(ordered_manifests: list["RunManifestV1"]) -> l
                             f"episode {m.episode_id}: task {te.task_id!r} seals a different "
                             f"ledger hash than episode {owner} did: a completed run's account "
                             f"is frozen")
+                    # F2 (round 17): the terminal STATUS is frozen too. The chain bound the run
+                    # id, ledger ref and ledger hash, but not `task_status_at_finalization`, so a
+                    # later `prior_episode` record could keep the same run and ledger while
+                    # rewriting the status a task finished with — `applied_to_job_workspace` in
+                    # episode 1 becoming `failed` in episode 2. The status a task completed under
+                    # is part of what completed.
+                    if (te.task_status_at_finalization
+                            != was.task_status_at_finalization):
+                        problems.append(
+                            f"episode {m.episode_id}: task {te.task_id!r} records status "
+                            f"{te.task_status_at_finalization!r}, but episode {owner} completed "
+                            f"it as {was.task_status_at_finalization!r}: a completed task's "
+                            f"terminal status is frozen, a later episode cannot rewrite it")
                 continue
 
             if te.task_status_at_finalization in TERMINAL_TASK_STATES:
