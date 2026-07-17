@@ -554,7 +554,7 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("runtime_integration_gate.error.txt", exc)
 
-    # Content-hash proof — SHA256 every dirty source file for provenance.
+    # Content-hash proof — SHA256 every source file in the REVIEW SUBJECT for provenance.
     _repo = getattr(job, "repo_path", None) or "."
     dirty_files: list[str] = []
     try:
@@ -574,6 +574,32 @@ def export_job_evidence(
             path = path.strip().strip('"')
             if path:
                 dirty_files.append(path)
+
+        # The review subject is not always the dirty tree.
+        #
+        # This layer equated "the change under review" with `git status` — fine while an
+        # operator-attested round left its whole change uncommitted, but a change that has been
+        # COMMITTED is still the change under review, and a clean tree made the content proof and
+        # the provenance coverage collapse to zero while the attested Evidence still described 85
+        # files. The final verifier then blocked on the mismatch it was right to notice.
+        #
+        # So the base is DECLARED, never guessed: `REMEDY_REVIEW_BASE=<commit-ish>` means "the
+        # subject is my delta from there, plus anything still dirty". Guessing it (say, the
+        # merge-base with the default branch) would be wrong for an ordinary job whose branch
+        # already carries unrelated commits — their files are not this job's change, and
+        # reporting them as uncovered would be a false block. Unset, this is exactly the previous
+        # behaviour.
+        _base = (os.environ.get("REMEDY_REVIEW_BASE") or "").strip()
+        if _base:
+            _committed = _sp.run(
+                ["git", "diff", "--name-only", f"{_base}..HEAD"],
+                cwd=_repo, capture_output=True, text=True, timeout=30,
+            )
+            if _committed.returncode == 0:
+                for path in _committed.stdout.splitlines():
+                    path = path.strip().strip('"')
+                    if path and path not in dirty_files:
+                        dirty_files.append(path)
 
         from packages.orchestration.change_provenance_gate import _is_source_file, _normalize
         _source_dirty = [_normalize(p) for p in dirty_files if _is_source_file(p)]
