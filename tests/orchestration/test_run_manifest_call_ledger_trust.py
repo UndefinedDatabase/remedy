@@ -188,7 +188,9 @@ class TestTheLedgerIsACanonicalArtifact:
         f = self._ledger_file(ev)
         assert f.exists()
         stored = decode_run_call_ledger_v1(f.read_bytes())
-        assert [e.call_id for e in stored.entries] == ["c1", "c2"]
+        # Round 14: the fixture emits the REAL canonical refs production emits.
+        assert [e.call_id for e in stored.entries] == [
+            "calls/builder/round-01/attempt", "calls/reviewer/round-01/attempt"]
         assert validate_index_and_tree(ev, job_id="j") == []
 
     def test_a_tampered_ledger_artifact_blocks(self, ev):

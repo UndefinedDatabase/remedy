@@ -141,7 +141,7 @@ def _wrap(input_snap=None, *, episode_id="ep", phase="episode_start",
 
 
 def _call(task="T001", seq=1, role="builder", rnd=1, kind="attempt", fp="fp1",
-          episode_id="ep", run=None):
+          episode_id="ep", run=None, call_id=""):
     """F7: the fingerprint is BOUND to the prepared input, so a test call carries a real
     PreparedCallInput. ``fp`` is the prompt seed — a different seed yields a different
     (correctly bound) fingerprint, which is exactly what the drift tests need.
@@ -149,13 +149,20 @@ def _call(task="T001", seq=1, role="builder", rnd=1, kind="attempt", fp="fp1",
     ``run`` names the owning run. Multi-episode chain fixtures pass a PER-EPISODE run id,
     because that is what production does: a resumed episode re-runs its task under a NEW run.
     (When one run legitimately spans episodes — a pre-work stop carrying prior history — its
-    ledger carries the earlier entries too, and F5's continuity rule holds it to that.)
+    terminal ledger is repeated byte-for-byte, and F1's finality rule holds it to that.)
+
+    F4 (round 14): the call_id defaults to the REAL canonical ref production emits
+    (``calls/<role>/round-NN/<kind>`` — verified against a live fake-provider run), not the old
+    synthetic ``c1``. A fixture that uses a shape production never emits cannot prove the
+    grammar. Within a run, (role, round, kind) is unique — the collector already refuses a
+    duplicate logical slot — so the derived ref is unique exactly where production's is.
     """
     from packages.orchestration.call_identity import prepare_call_input
     prepared = prepare_call_input(prompt=fp, model="fake", mode="fake", options={})
     return FinalizedCall(
         identity=CallIdentity(job_id="j", task_id=task, run_id=run or ("r" + task), sequence=seq,
-                              role=role, round=rnd, kind=kind, call_id=f"c{seq}",
+                              role=role, round=rnd, kind=kind,
+                              call_id=call_id or f"calls/{role}/round-{max(1, rnd):02d}/{kind}",
                               episode_id=episode_id),
         fingerprint=prepared.fingerprint, prepared_input=prepared.to_json(),
         fingerprint_source="provider_transport", ok=True)

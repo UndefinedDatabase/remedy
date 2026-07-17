@@ -129,11 +129,14 @@ class TestSecretAndPathCanaries:
         assert _contains_local_path("/home/alice/SUPERSECRET")
         assert _entry_probs(base, call_id="/home/alice/SUPERSECRET")
 
-    def test_a_relative_ref_that_merely_reads_like_a_path_is_not_a_leak(self, base):
-        """Honest about the boundary: `calls/home/alice/attempt` is a relative ref under the
-        call tree, not a local path escaping anywhere, and it is accepted. Claiming otherwise
-        would be a test asserting a rule the code does not have."""
-        assert _entry_probs(base, call_id="calls/home/alice/attempt") == []
+    def test_a_ref_that_merely_reads_like_a_path_is_now_refused_by_the_grammar(self, base):
+        """Round 13 recorded honestly that `calls/home/alice/attempt` was ACCEPTED: it is a
+        relative ref, and "not absolute" was the whole rule. Round 14's closed grammar refuses
+        it for the real reason — `home` is not a role and `alice` is not `round-NN`. The ref
+        must NAME a call, not merely fail to be dangerous."""
+        probs = _entry_probs(base, call_id="calls/home/alice/attempt")
+        assert probs
+        assert any("role" in p for p in probs), probs
 
     def test_the_canary_bytes_never_enter_canonical_output(self, base):
         """The point of the rule: an unsafe value is refused BEFORE it can be published."""

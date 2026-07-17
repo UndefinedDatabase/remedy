@@ -1597,21 +1597,19 @@ def validate_run_call_ledger(ledger: "RunCallLedgerV1", *,
         # F6: identities first — an unsafe id must never be reported only as a "mismatch".
         #
         # The two ids answer DIFFERENT questions, so they get their own established rules: a
-        # call_id is a path-shaped REF (`calls/builder/round-01/attempt` — real, and rejected by
-        # a component rule), an episode_id is a single COMPONENT. Both are then held to the same
-        # secret/path scanners every other stored F012 value is.
-        if not safe_call_ref(str(e.call_id or "")):
-            problems.append(
-                f"call ledger entry call_id {str(e.call_id)[:40]!r} is not a safe bounded "
-                f"reference (no traversal, absolute root, backslash or control characters)")
+        # call_id is a path-shaped REF under the closed canonical grammar (F4, round 14 — the
+        # SAME validator the CallIdentity uses, held to this entry's own role/round/kind, so a
+        # ref can never be legal in one place and not the other, and the grammar carries the
+        # secret/path scanners); an episode_id is a single COMPONENT.
+        problems.extend(validate_call_ref(str(e.call_id or ""), role=e.role, round=e.round,
+                                          kind=e.kind, where="call ledger entry"))
         if not _safe_component(str(e.episode_id or "")):
             problems.append(
                 f"call ledger entry episode_id {str(e.episode_id)[:40]!r} is not a safe bounded "
                 f"component")
-        for field_name, value in (("call_id", e.call_id), ("episode_id", e.episode_id)):
-            if _contains_secret(str(value or "")) or _contains_local_path(str(value or "")):
-                problems.append(
-                    f"call ledger entry {field_name} carries a raw secret or local path")
+        if _contains_secret(str(e.episode_id or "")) or _contains_local_path(
+                str(e.episode_id or "")):
+            problems.append("call ledger entry episode_id carries a raw secret or local path")
         if e.role not in VALID_CALL_ROLES:
             problems.append(f"call ledger entry {e.call_id} has role {e.role!r}")
         if e.kind not in VALID_CALL_KINDS:
@@ -3549,21 +3547,130 @@ def validate_prepared_call_input(raw: Any, *, where: str = "prepared_input") -> 
     return problems
 
 
-def safe_call_ref(cid: str) -> bool:
-    """THE rule for a call reference — one definition, used by the call identity AND the ledger.
+#: F4 (round 14): THE closed canonical call-ref grammar.
+#:
+#: A call ref is the identity F010's post-mortems, F012's manifests and F140's replay all use to
+#: name the same call, so "not absolute" was never enough — `calls//builder`, `calls/./builder`,
+#: `calls/builder/` and `home/alice` all passed, and none of them names a call. Production emits
+#: exactly two shapes, verified by running it (`shared_call_id`, `_allocate_stream_call_dir`, and
+#: F010's committed layouts):
+#:
+#:     calls/<role>/round-NN/<kind>              — fallback / fake provider calls
+#:     streams/<role>/round-NN/<kind>-II         — streamed CLI provider calls (F004/F010)
+#:
+#: Both encode role, round and kind, so the ref is not merely well-formed: it must AGREE with the
+#: CallIdentity it belongs to. `rel_prefix = f"streams/{role}"` is set whenever streaming is on,
+#: so the namespace is never empty in production.
+CALL_REF_NAMESPACES = frozenset({"calls", "streams"})
+CALL_REF_SEGMENTS = 4
+MAX_CALL_REF_SEGMENT_LEN = 64
+_ROUND_SEGMENT_RE = None
+_STREAM_INDEX_RE = None
 
-    A `call_id` is a path-SHAPED reference to the call's evidence directory
-    (``calls/<role>/round-NN/<kind>``), a shape F010 shares. It is deliberately NOT a single
-    component: it never builds a filename, so it is bounded, traversal-free, relative-only,
-    backslash-free and control-character-free instead.
 
-    F6/F8 (round 13): the ledger validator must ask exactly this question and no other. A
-    stricter local rule ("no separators") would refuse every real call Remedy makes; a weaker one
-    would let `/home/alice/SUPERSECRET` through, which is what it did.
+def _call_ref_res():
+    global _ROUND_SEGMENT_RE, _STREAM_INDEX_RE
+    if _ROUND_SEGMENT_RE is None:
+        import re
+        # `round-{n:02d}`: at least two digits, and a real round can exceed 99 (`round-100`).
+        _ROUND_SEGMENT_RE = re.compile(r"^round-(\d{2,6})$")
+        _STREAM_INDEX_RE = re.compile(r"^(\d{2,6})$")
+    return _ROUND_SEGMENT_RE, _STREAM_INDEX_RE
+
+
+def parse_call_ref(cid: str) -> tuple[dict | None, list[str]]:
+    """Decompose a call ref under the closed grammar. Returns (fields, problems).
+
+    `fields` carries the role/round/kind the ref ENCODES, so the caller can hold the ref and its
+    CallIdentity to each other rather than trusting either alone.
     """
+    problems: list[str] = []
     cid = cid or ""
-    return not (not cid or len(cid) > _S.MAX_ID_LEN or ".." in cid or cid.startswith("/")
-                or "\\" in cid or _S.has_control_chars(cid))
+    if not cid:
+        return None, ["call ref is empty"]
+    if len(cid) > _S.MAX_ID_LEN:
+        return None, [f"call ref is longer than {_S.MAX_ID_LEN} bytes"]
+    if _S.has_control_chars(cid):
+        return None, ["call ref carries a control character"]
+    if "\\" in cid:
+        return None, ["call ref carries a backslash (POSIX relative form only)"]
+    if cid.startswith("/") or cid.startswith("~"):
+        return None, ["call ref is absolute or home-relative (relative POSIX form only)"]
+    if _contains_secret(cid) or _contains_local_path(cid):
+        return None, ["call ref carries a raw secret or local path"]
+
+    segments = cid.split("/")
+    if len(segments) != CALL_REF_SEGMENTS:
+        return None, [f"call ref has {len(segments)} segment(s); the canonical form has "
+                      f"{CALL_REF_SEGMENTS}: <namespace>/<role>/round-NN/<kind>"]
+    for seg in segments:
+        if not seg:
+            return None, ["call ref has an empty segment (no repeated or trailing slash)"]
+        if seg in (os.curdir, os.pardir):
+            return None, [f"call ref has a {seg!r} segment"]
+        if len(seg) > MAX_CALL_REF_SEGMENT_LEN:
+            return None, [f"call ref segment {seg[:20]!r} exceeds "
+                          f"{MAX_CALL_REF_SEGMENT_LEN} bytes"]
+
+    namespace, role, round_seg, last = segments
+    if namespace not in CALL_REF_NAMESPACES:
+        problems.append(f"call ref namespace {namespace!r} is not one of "
+                        f"{sorted(CALL_REF_NAMESPACES)}")
+    if role not in VALID_CALL_ROLES:
+        problems.append(f"call ref role {role!r} is not a supported role")
+    round_re, index_re = _call_ref_res()
+    m = round_re.match(round_seg)
+    if not m:
+        problems.append(f"call ref round segment {round_seg!r} is not `round-NN`")
+    round_no = int(m.group(1)) if m else 0
+    if m and round_no < 1:
+        problems.append("call ref round is not a positive round")
+
+    kind, index = last, None
+    if namespace == "streams":
+        # `parse-retry-03` — the kind itself contains a dash, so split on the LAST one.
+        head, sep, tail = last.rpartition("-")
+        if not sep or not index_re.match(tail):
+            problems.append(f"streamed call ref {last!r} does not end in the attempt index "
+                            f"`<kind>-II` the streaming layout assigns")
+        else:
+            kind, index = head, int(tail)
+    if kind not in VALID_CALL_KINDS:
+        problems.append(f"call ref kind {kind!r} is not a supported kind")
+    if problems:
+        return None, problems
+    return {"namespace": namespace, "role": role, "round": round_no,
+            "kind": kind, "index": index}, []
+
+
+def safe_call_ref(cid: str) -> bool:
+    """True when the ref satisfies the closed canonical grammar (shape only)."""
+    fields, problems = parse_call_ref(cid)
+    return fields is not None and not problems
+
+
+def validate_call_ref(cid: str, *, role: str, round: int, kind: str,
+                      where: str = "call") -> list[str]:
+    """THE call-ref rule — one definition, used by the CallIdentity validator AND the ledger.
+
+    Beyond the grammar: the ref ENCODES role, round and kind, so it must agree with the identity
+    it is attached to. A ref that says `builder/round-01/attempt` on a call recorded as the
+    reviewer's round-2 parse retry is two accounts of one call disagreeing, which is the same
+    class of defect F3 (round 13) closed for `ok`.
+    """
+    fields, problems = parse_call_ref(cid)
+    if fields is None:
+        return [f"{where}.call_id {str(cid)[:60]!r}: {p}" for p in problems]
+    if fields["role"] != role:
+        problems.append(f"{where}.call_id names role {fields['role']!r} but the call is "
+                        f"{role!r}'s")
+    if fields["round"] != round:
+        problems.append(f"{where}.call_id names round {fields['round']} but the call is round "
+                        f"{round}")
+    if fields["kind"] != kind:
+        problems.append(f"{where}.call_id names kind {fields['kind']!r} but the call is "
+                        f"{kind!r}")
+    return problems
 
 
 def validate_call_identity(ident: CallIdentity, *, where: str = "call") -> list[str]:
@@ -3574,11 +3681,11 @@ def validate_call_identity(ident: CallIdentity, *, where: str = "call") -> list[
         v = getattr(ident, f, "")
         if not _safe_component(v):
             problems.append(f"{where}.{f} {v!r} is not a safe bounded component")
-    # The call_id is a path-SHAPED reference — validated by THE shared rule (F8, round 13), the
-    # same one the ledger uses, so the two can never drift apart.
-    if not safe_call_ref(ident.call_id or ""):
-        problems.append(f"{where}.call_id {(ident.call_id or '')!r} is not a safe bounded "
-                        f"reference")
+    # The call_id is a path-SHAPED reference — validated by THE shared rule (F8, round 13; the
+    # closed grammar of F4, round 14), the same one the ledger uses, so the two can never drift
+    # apart, and held to the role/round/kind it encodes.
+    problems.extend(validate_call_ref(ident.call_id or "", role=ident.role, round=ident.round,
+                                      kind=ident.kind, where=where))
     if ident.episode_id and not _safe_component(ident.episode_id):
         problems.append(f"{where}.episode_id {ident.episode_id!r} is not safe")
     if ident.role not in VALID_CALL_ROLES:
