@@ -643,13 +643,60 @@ def validate_review_file_schema(d: Any, *, where: str = "review file") -> list[s
     for meta_field in ("base_kind", "base_mode", "current_mode"):
         if not _metadata_is_safe(d.get(meta_field)):
             problems.append(f"{where} {meta_field} carries a secret, local path or control text")
-    # F4: status/kind coherence.
-    if d.get("status") == STATUS_ADDED and d.get("base_sha256") is not None:
-        problems.append(f"{where} is added but carries a base_sha256")
-    if d.get("status") == STATUS_DELETED and d.get("current_sha256") is not None:
-        problems.append(f"{where} is deleted but carries a current_sha256")
-    if d.get("status") == STATUS_RENAMED and not d.get("old_path"):
-        problems.append(f"{where} is renamed but names no old_path")
+    problems.extend(_review_file_coherence(d, where=where))
+    return problems
+
+
+def _review_file_coherence(d: dict, *, where: str) -> list[str]:
+    """F9 (round 19): the record must be internally COHERENT, not merely field-typed.
+
+    Round 18 closed each field in isolation, so a record could still be self-contradictory: a
+    `modified`/`added` regular file with `current_sha256: null` (nothing to package as its content),
+    a `deleted` path with no `base_sha256` (no tombstone naming what was removed), a base
+    `symlink` whose `base_mode` is `100644` (a regular-file mode), a `copied` file with no
+    `old_path`, or a `type_changed` record whose base and current kinds are the same. Each is now
+    rejected so an incoherent subject can never drive a package.
+    """
+    problems: list[str] = []
+    status = d.get("status")
+    kind = d.get("kind")
+    base_kind = d.get("base_kind")
+    base_sha = d.get("base_sha256")
+    current_sha = d.get("current_sha256")
+    base_mode = d.get("base_mode", "") or ""
+    current_mode = d.get("current_mode", "") or ""
+
+    # A present content-bearing side must carry its hash; an absent side must not.
+    if kind in (KIND_REGULAR, KIND_SYMLINK) and current_sha is None:
+        problems.append(f"{where} is a {kind} but carries no current_sha256")
+    if kind in (KIND_DELETED, KIND_DIRECTORY, KIND_SPECIAL) and current_sha is not None:
+        problems.append(f"{where} is {kind} but carries a current_sha256")
+
+    # base/current git mode must name the same kind as the side it describes.
+    if current_mode and _GIT_MODE_TO_KIND.get(current_mode) != kind:
+        problems.append(f"{where} current_mode {current_mode!r} does not match kind {kind!r}")
+    if base_mode and base_kind is not None and _GIT_MODE_TO_KIND.get(base_mode) != base_kind:
+        problems.append(f"{where} base_mode {base_mode!r} does not match base_kind {base_kind!r}")
+
+    # status ↔ base/current presence matrix.
+    if status == STATUS_ADDED:
+        if base_sha is not None:
+            problems.append(f"{where} is added but carries a base_sha256")
+        if base_kind is not None or base_mode:
+            problems.append(f"{where} is added but carries a base side")
+    if status in (STATUS_MODIFIED, STATUS_TYPE_CHANGED) and base_sha is None:
+        problems.append(f"{where} is {status} but carries no base_sha256")
+    if status == STATUS_DELETED:
+        if base_sha is None:
+            problems.append(f"{where} is deleted but carries no base_sha256 tombstone")
+        if current_sha is not None:
+            problems.append(f"{where} is deleted but carries a current_sha256")
+        if kind != KIND_DELETED:
+            problems.append(f"{where} is deleted but kind is {kind!r}")
+    if status in (STATUS_RENAMED, STATUS_COPIED) and not d.get("old_path"):
+        problems.append(f"{where} is {status} but names no old_path")
+    if status == STATUS_TYPE_CHANGED and base_kind is not None and base_kind == kind:
+        problems.append(f"{where} is type_changed but base and current kind are both {kind!r}")
     return problems
 
 

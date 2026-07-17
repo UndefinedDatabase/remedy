@@ -1313,6 +1313,14 @@ def build_manifest(
                 "evidence_authoritative": freshness_ok and validity_ok,
             },
             "zip_prefix": "evidence/current",
+            # F2 (round 19): the typed ArchivePlan and its verification report are packaged under
+            # evidence/current/ by build_review_zip.py, so a ZIP-only reviewer can independently
+            # verify the model the members were built from. Reference them here by their
+            # deterministic in-archive paths so the manifest names what the reviewer must open.
+            "review_archive": {
+                "plan": "evidence/current/review_archive_plan.json",
+                "verification": "evidence/current/review_zip_verification.json",
+            },
             "validation": {
                 "is_valid_current_run": validation["is_valid_current_run"],
                 "validation_errors": validation["validation_errors"],

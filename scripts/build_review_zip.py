@@ -23,6 +23,7 @@ from packages.orchestration.archive_plan import (  # noqa: E402
     ArchiveMemberV1,
     ArchivePlanError,
     MEMBER_REGULAR,
+    MEMBER_SYMLINK,
     MODE_REGULAR,
     SOURCE_GENERATED_MANIFEST,
     build_archive_plan,
@@ -91,35 +92,40 @@ def main() -> int:
             evidence_root=evidence_root, evidence_rel=evidence_files,
             authoritative_paths=authority)
 
-        # F2: package the plan as an evidence artifact so a ZIP-only reviewer can independently
-        # verify the model the 1,359 members were built from.
-        plan_member = None
+        # F2: package BOTH the typed plan and its verification report as evidence artifacts, so a
+        # ZIP-only reviewer can independently verify the model the members were built from. Both are
+        # generated members (no self-hash in the plan), so they are added to the plan BEFORE the
+        # build and are themselves verified members — neither can be silently dropped or swapped.
         if args.plan_out and evidence_root:
-            plan_bytes = (json.dumps(plan.to_json(), indent=2, sort_keys=True) + "\n").encode()
+            import dataclasses
+            plan_rel = os.path.relpath(args.plan_out, evidence_root)
+            report_disk = os.path.join(os.path.dirname(args.plan_out),
+                                       "review_zip_verification.json")
+            report_rel = os.path.relpath(report_disk, evidence_root)
+
+            def _gen_member(rel):
+                return ArchiveMemberV1(
+                    archive_path=rel, kind=MEMBER_REGULAR, mode=MODE_REGULAR,
+                    authoritative=False, source_root=str(evidence_root), source_rel=rel,
+                    source_class=SOURCE_GENERATED_MANIFEST)
+
+            plan = dataclasses.replace(
+                plan, evidence_members=plan.evidence_members
+                + (_gen_member(plan_rel), _gen_member(report_rel)))
+
+            # The plan now lists every member INCLUDING itself and the report (by path, no hash),
+            # so it serializes deterministically and the report's counts include both.
             os.makedirs(os.path.dirname(args.plan_out), exist_ok=True)
             with open(args.plan_out, "wb") as fh:
-                fh.write(plan_bytes)
-            plan_rel = os.path.relpath(args.plan_out, evidence_root)
-            plan_member = ArchiveMemberV1(
-                archive_path=plan_rel, kind=MEMBER_REGULAR, mode=MODE_REGULAR,
-                authoritative=False, source_root=str(evidence_root), source_rel=plan_rel,
-                source_class=SOURCE_GENERATED_MANIFEST)
-            import dataclasses
-            plan = dataclasses.replace(
-                plan, evidence_members=plan.evidence_members + (plan_member,))
+                fh.write((json.dumps(plan.to_json(), indent=2, sort_keys=True) + "\n").encode())
+            with open(report_disk, "wb") as fh:
+                fh.write((json.dumps(_verification_report(plan), indent=2, sort_keys=True)
+                          + "\n").encode())
 
         result = build_review_zip_from_plan(
             out_path=args.out, plan=plan, manifest_rel=args.manifest_rel,
             manifest_disk=args.manifest_disk)
         problems = verify_review_zip(args.out, result)
-
-        # F2: the verification report — actual, typed, packaged next to the ZIP for the reviewer.
-        if args.plan_out and evidence_root:
-            report = _verification_report(plan, result, problems)
-            vpath = os.path.join(os.path.dirname(args.plan_out),
-                                 "review_zip_verification.json")
-            with open(vpath, "wb") as fh:
-                fh.write((json.dumps(report, indent=2, sort_keys=True) + "\n").encode())
     except (ReviewZipError, ArchivePlanError) as exc:
         print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
         return 2
@@ -142,19 +148,25 @@ def main() -> int:
     return 0
 
 
-def _verification_report(plan, result, problems) -> dict:
-    model = result["model"]
+def _verification_report(plan) -> dict:
+    """F2: the reviewer-facing expectation, derived from the PLAN alone (deterministic, pre-build).
+
+    build_review_zip.py ABORTS (exit 3) unless the reopened archive matches the plan exactly, so a
+    packaged report always describes a verified archive. The report carries the subject/authority
+    identities and the exact expected member/authoritative/symlink/tombstone counts a ZIP-only
+    reviewer can recompute against the packaged plan and the members themselves.
+    """
+    members = plan.all_members()
     return {
         "verification_v": 1,
         "review_subject_sha256": plan.review_subject_sha256,
         "authority_set_sha256": plan.authority_set_sha256,
         "expected_member_count": plan.expected_member_count() + 1,   # + the manifest member
-        "actual_member_count": len(model),
-        "authoritative_member_count": sum(1 for m in model.values() if m.get("authoritative")),
-        "symlink_member_count": sum(1 for m in model.values() if m.get("kind") == "symlink"),
-        "duplicate_count": 0,
-        "problems": list(problems),
-        "verdict": "PASS" if not problems else "BLOCKED",
+        "authoritative_member_count": len(plan.authoritative_members()),
+        "symlink_member_count": sum(1 for m in members if m.kind == MEMBER_SYMLINK),
+        "tombstone_count": len(plan.tombstones),
+        "blocked_count": len(plan.blocked_records),
+        "verdict": "PLAN_ENFORCED",
     }
 
 
