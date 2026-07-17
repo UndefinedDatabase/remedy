@@ -1369,6 +1369,111 @@ VALID_TASK_EXPECTATIONS = frozenset({
     EXPECT_EXECUTED, EXPECT_PRIOR_EPISODE, EXPECT_DISPATCHED_NO_CALLS, EXPECT_SKIPPED,
     EXPECT_NOT_DISPATCHED, EXPECT_FAILED_PRE_DISPATCH})
 
+#: F2 (round 16): THE closed task-status/expectation truth table.
+#:
+#: The expectation says what this episode owed the task; `task_status_at_finalization` says what
+#: the JobPlan recorded about it. Round 12 stored both — deliberately, so a contradiction stays
+#: VISIBLE instead of being normalized away — but nothing ever compared them, so a published
+#: reference could say "this task was skipped" while recording that it was applied to the job
+#: workspace. Reproduced: all four of `skipped` + {pending, applied_to_job_workspace, passed,
+#: failed} validated and round-tripped through the writer.
+#:
+#: Derived from `_collect_calls`'s real behaviour, not from taste:
+#:
+#: * `skipped` is decided BEFORE dispatch, so it is the one expectation pinned to a single
+#:   status. A skipped task owns no run and no ledger (F012's own table: "a skipped task owning
+#:   a run is an integrity problem").
+#: * `not_dispatched` means the task was never reached — pending, with no run.
+#: * `failed_pre_dispatch` means it died before owning a run: failed or blocked only.
+#: * `executed`/`prior_episode` need a run. `pending` is legitimate there — F011's mid-flight
+#:   stop lets the in-flight call finish while the task returns to pending for the resume — and
+#:   so are `failed`/`blocked`, which production reaches AFTER a successful run when the
+#:   completion gate, the target guard or the workspace apply refuses the work.
+#: * `dispatched_no_calls` means a run exists that finalized nothing, so the task cannot be
+#:   `passed`/`applied`: those two are only reachable through a finalized call.
+_TASK_EXPECTATION_ALLOWED_STATUSES = {
+    EXPECT_SKIPPED: frozenset({"skipped"}),
+    EXPECT_NOT_DISPATCHED: frozenset({"pending"}),
+    EXPECT_FAILED_PRE_DISPATCH: frozenset({"failed", "blocked"}),
+    EXPECT_EXECUTED: frozenset({"passed", "applied_to_job_workspace", "running", "pending",
+                                "failed", "blocked"}),
+    EXPECT_PRIOR_EPISODE: frozenset({"passed", "applied_to_job_workspace", "running", "pending",
+                                     "failed", "blocked"}),
+    EXPECT_DISPATCHED_NO_CALLS: frozenset({"failed", "blocked", "pending", "running"}),
+}
+
+#: Every task status the JobPlan can persist. A status outside this set is a forged record.
+VALID_TASK_STATUSES = frozenset({"pending", "running", "passed", "applied_to_job_workspace",
+                                 "blocked", "failed", "skipped"})
+
+#: The expectations that mean "no run was ever dispatched for this task".
+_EXPECTATIONS_WITHOUT_RUN = frozenset({EXPECT_SKIPPED, EXPECT_NOT_DISPATCHED,
+                                       EXPECT_FAILED_PRE_DISPATCH})
+
+
+def validate_task_expectation_truth(te: "TaskCallExpectationV1", *, episode_status: str = "",
+                                    episode_phase: str = "") -> list[str]:
+    """ONE closed truth table binding a task's expectation, its persisted status and its dispatch.
+
+    Used by typed manifest validation, the strict decoder, CallExpectation validation, the task
+    history chain, the writer's preflight and postcondition, the canonical loader, recovery and
+    the Evidence export — so no boundary can be reached by a record another boundary would refuse.
+
+    No status is ever normalized into a different expectation: a disagreement is REPORTED, with
+    both persisted facts intact, exactly as round 12 intended when it started storing both.
+    """
+    problems: list[str] = []
+    exp = te.expectation
+    status = te.task_status_at_finalization
+
+    if exp not in VALID_TASK_EXPECTATIONS:
+        problems.append(f"task {te.task_id!r} has an unsupported expectation {exp!r}")
+        return problems
+    if not status:
+        problems.append(
+            f"task {te.task_id!r} records no task_status_at_finalization, so its expectation "
+            f"{exp!r} cannot be checked against what the JobPlan actually said")
+        return problems
+    if status not in VALID_TASK_STATUSES:
+        problems.append(f"task {te.task_id!r} records an unsupported task status {status!r}")
+        return problems
+
+    allowed = _TASK_EXPECTATION_ALLOWED_STATUSES[exp]
+    if status not in allowed:
+        problems.append(
+            f"impossible task record: task {te.task_id!r} is {exp!r} but the JobPlan recorded it "
+            f"as {status!r} at finalization (a {exp!r} task can only be "
+            f"{'/'.join(sorted(allowed))})")
+
+    # The dispatch state and the run must agree with the expectation's own meaning.
+    if exp in _EXPECTATIONS_WITHOUT_RUN:
+        if te.run_id:
+            problems.append(
+                f"impossible task record: task {te.task_id!r} is {exp!r}, which is decided before "
+                f"dispatch, but it names run {te.run_id!r}")
+        if te.ledger_ref or te.finalized_calls_sha256:
+            problems.append(
+                f"impossible task record: task {te.task_id!r} is {exp!r} but seals a call ledger")
+        if te.dispatch_state != DISPATCH_NEVER:
+            problems.append(
+                f"impossible task record: task {te.task_id!r} is {exp!r} but its dispatch state "
+                f"is {te.dispatch_state!r}")
+    else:
+        if te.dispatch_state == DISPATCH_NEVER:
+            problems.append(
+                f"impossible task record: task {te.task_id!r} is {exp!r}, which requires a run, "
+                f"but its dispatch state says it was never dispatched")
+
+    if exp == EXPECT_PRIOR_EPISODE and te.dispatch_state == DISPATCH_THIS_EPISODE:
+        problems.append(
+            f"impossible task record: task {te.task_id!r} is {EXPECT_PRIOR_EPISODE!r} but its "
+            f"dispatch state says this episode dispatched it")
+    if exp == EXPECT_EXECUTED and te.dispatch_state == DISPATCH_PRIOR_EPISODE:
+        problems.append(
+            f"impossible task record: task {te.task_id!r} is {EXPECT_EXECUTED!r} but its "
+            f"dispatch state says a prior episode dispatched it")
+    return problems
+
 #: The episode-level phase that explains a zero-call episode WITHOUT consulting the JobPlan.
 PHASE_WORKED = "worked"
 PHASE_PRE_WORK_STOP = "pre_work_stop"
@@ -2702,6 +2807,11 @@ def validate_call_expectation(exp: "CallExpectationV1", *, status: str, capture_
             problems.append(f"call_expectation for {te.task_id!r} has an unsupported "
                             f"expectation {te.expectation!r}")
             continue
+        # F2 (round 16): THE closed truth table — the expectation must agree with the task status
+        # the JobPlan actually recorded. Both facts were stored since round 12; nothing compared
+        # them, so `skipped` + `applied_to_job_workspace` published cleanly.
+        problems.extend(validate_task_expectation_truth(
+            te, episode_status=status, episode_phase=exp.episode_phase))
         seen = observed.get(te.task_id, 0)
         # F9: EXACT counts, not a floor.
         if te.observed_call_count != seen:

@@ -248,10 +248,14 @@ def _zero_call_proof(job_input=None):
         EXPECT_SKIPPED, PHASE_WORKED, CallExpectationV1, TaskCallExpectationV1,
     )
     ji = job_input if job_input is not None else _job_input()
+    # F2 (round 16): a skipped expectation must carry the status the JobPlan actually recorded —
+    # `skipped`. The fixture omitted it, which is exactly the gap that let a published reference
+    # claim `skipped` while recording `applied_to_job_workspace`.
     return CallExpectationV1(
         episode_phase=PHASE_WORKED,
         tasks=tuple(TaskCallExpectationV1(task_id=str(tk["task_id"]),
-                                          expectation=EXPECT_SKIPPED)
+                                          expectation=EXPECT_SKIPPED,
+                                          task_status_at_finalization="skipped")
                     for tk in ji["tasks"]))
 
 

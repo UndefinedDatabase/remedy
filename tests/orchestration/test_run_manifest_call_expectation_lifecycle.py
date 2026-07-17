@@ -60,8 +60,23 @@ def _bind(m):
 _WITH_RUN = {"executed", "prior_episode", "dispatched_no_calls"}
 
 
+#: F2 (round 16): the task status each expectation actually comes with, as `_collect_calls`
+#: produces it. The fixture used to hardcode `applied_to_job_workspace` for EVERY expectation, so
+#: it asserted that `skipped`+applied and `not_dispatched`+applied were valid published records —
+#: the precise contradiction the round-16 truth table refuses. The fixture encoded the bug.
+_STATUS_FOR_EXPECTATION = {
+    "skipped": "skipped",
+    "not_dispatched": "pending",
+    "failed_pre_dispatch": "failed",
+    "dispatched_no_calls": "failed",
+    "executed": "applied_to_job_workspace",
+    "prior_episode": "applied_to_job_workspace",
+}
+
+
 def _manifest(*, status, capture, phase, task_expectation, calls=(), stop="",
-              run_id="", seal="", expected=0, observed=0, dispatch=None, ledger_ref=None):
+              run_id="", seal="", expected=0, observed=0, dispatch=None, ledger_ref=None,
+              task_status=None):
     from packages.orchestration.run_manifest import (
         DISPATCH_NEVER, DISPATCH_PRIOR_EPISODE, DISPATCH_THIS_EPISODE,
     )
@@ -85,7 +100,10 @@ def _manifest(*, status, capture, phase, task_expectation, calls=(), stop="",
                 task_id="T001", expectation=task_expectation, run_id=run_id,
                 expected_call_count=expected, observed_call_count=observed,
                 finalized_calls_sha256=seal, ledger_ref=ledger_ref,
-                task_status_at_finalization="applied_to_job_workspace",
+                task_status_at_finalization=(
+                    task_status if task_status is not None
+                    else _STATUS_FOR_EXPECTATION.get(task_expectation,
+                                                     "applied_to_job_workspace")),
                 dispatch_state=dispatch),)))
 
 
