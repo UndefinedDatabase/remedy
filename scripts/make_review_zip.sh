@@ -388,7 +388,11 @@ tr '\0' '\n' < "$TMP0" > "$TMP"
 # private immutable snapshot FIRST — anchored, no-follow, hashed, bounded — and then validate,
 # build the manifest, derive Subject/Proof/Gates and package ONLY the staged bytes. Nothing reads
 # the original EVIDENCE_DIR again after this point.
-EVIDENCE_STAGING="$(mktemp -d)"
+# The private staging snapshot lives under the repo's gitignored .data/ so it stays CONTAINED
+# within source_root (the manifest refuses evidence from outside the trusted root). It is still a
+# fresh, private, immutable per-build directory, removed on exit.
+mkdir -p "$ROOT/.data"
+EVIDENCE_STAGING="$(mktemp -d "$ROOT/.data/review_staging.XXXXXX")"
 trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$TMP0" "$TMP_EV0" "$MANIFEST"' EXIT
 
 CURRENT_PREFIX="evidence/current"
