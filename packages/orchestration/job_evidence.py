@@ -1657,7 +1657,9 @@ def _finalize_manual_completion(
         return
 
     from packages.orchestration.review_scope import write_review_scope_packet
-    from packages.orchestration.missing_tests_gate import write_missing_tests_gate
+    from packages.orchestration.missing_tests_gate import (
+        _relevant_suites_for_source, write_missing_tests_gate,
+    )
 
     out_path = Path(out_base)
     rv = _root_verification_summary(out_base)
