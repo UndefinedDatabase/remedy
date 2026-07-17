@@ -8,6 +8,8 @@ BEFORE decode, exact schema, no unknown fields.
 """
 from __future__ import annotations
 
+import dataclasses
+
 import json
 
 import pytest
@@ -32,7 +34,9 @@ from packages.orchestration.run_manifest import (
 def ev(tmp_path):
     d = tmp_path / "ev"
     d.mkdir()
-    write_run_manifest(d, T._mk(episode_id="ep1"), root=tmp_path)
+    write_run_manifest(d, dataclasses.replace(
+        T._mk(episode_id="ep1", status="stopped"), stop_request_id="stop-ep1"),
+        root=tmp_path)
     return d
 
 
@@ -55,8 +59,8 @@ class TestWriterEmitsCanonicalIndex:
     def test_a_second_episode_keeps_the_index_canonical(self, ev, tmp_path):
         import dataclasses
         write_run_manifest(ev, dataclasses.replace(
-            T._mk(episode_id="ep2", calls=(T._call(run="r-ep2"),)),
-            episode_ordinal=2, previous_episode_id="ep1",
+            T._mk(episode_id="ep2", status="stopped", calls=(T._call(run="r-ep2"),)),
+            stop_request_id="stop-ep2", episode_ordinal=2, previous_episode_id="ep1",
             prior_episode_ids=("ep1",), created_at="2026-07-15T00:02:00+00:00"), root=tmp_path)
         raw = _stored(ev)
         assert raw == canonical_index_bytes(decode_index_v1(raw))

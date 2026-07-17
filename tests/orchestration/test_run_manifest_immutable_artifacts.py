@@ -43,8 +43,13 @@ def _ep(episode_id, ordinal, *, prev="", prior=(), variant=""):
     # a job resumes, so two episodes never share a run while each ledger lists only its own
     # call. (One run that legitimately spans episodes carries the earlier entries forward;
     # `validate_ledger_chain` holds it to that.)
-    m = T._mk(episode_id=episode_id, job_input_variant=variant,
+    # Round 15 (F1): each work-doing episode is F011's stop-then-resume — the stopped
+    # episode's task waits at `pending` and the resume starts a NEW run. A chain of
+    # COMPLETED episodes each executing the same task cannot occur: a completed job is
+    # done, and the resume loop `continue`s past an applied task.
+    m = T._mk(episode_id=episode_id, job_input_variant=variant, status="stopped",
               calls=(T._call(run=f"r-{episode_id}"),))
+    m = dataclasses.replace(m, stop_request_id=f"stop-{episode_id}")
     bound = []
     for c in m.calls:
         c = dataclasses.replace(c, artifact=canonical_artifact_ref(c.identity))

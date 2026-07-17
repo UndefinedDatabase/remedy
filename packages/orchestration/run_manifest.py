@@ -4194,6 +4194,108 @@ class VerifiedCanonicalChain:
         return sorted(self.episodes.values(), key=lambda m: m.episode_ordinal)
 
 
+#: F1 (round 15): the TERMINAL task states, taken from the committed JobPlan contract rather than
+#: invented here. F011: "A task that already reached `applied_to_job_workspace` is durable and is
+#: **never** rolled back. Nothing is converted to `skipped`." And `run_job` proves it: the resume
+#: loop `continue`s past `applied`/`passed`/`skipped` (it "continues at the first pending task,
+#: rerunning no completed work"), and the stop path refuses to roll those three back.
+#:
+#: Everything else — `pending`, `running`, `failed`, `blocked` — is NOT terminal here: a stopped
+#: task legitimately returns to `pending` and its resume starts a NEW run. Binding those would
+#: refuse real records, which is why this set is exactly three.
+TERMINAL_TASK_STATES = frozenset({"applied_to_job_workspace", "passed", "skipped"})
+
+
+def validate_task_lifecycle_chain(ordered_manifests: list["RunManifestV1"]) -> list[str]:
+    """F1 (round 15): a task's history is MONOTONIC across the episode chain.
+
+    Round 14 froze a run's ledger, so a later episode could no longer rewrite work it admitted to.
+    It could still deny the work ever happened. Reproduced against the full writer: episode 1
+    recorded T001 as `executed` / `applied_to_job_workspace` / run `rT001` with a terminal ledger
+    and a call artifact; episode 2 — same immutable JobInput task — recorded it as `skipped`, with
+    no run, no ledger and no calls. Every check passed: both manifests validated, both writes
+    succeeded, the canonical loader and the verified tree accepted the chain. The finality rule
+    never fired because there was no second ledger to compare; the omission WAS the erasure.
+
+    So the chain is asked the question no single episode can answer: does each task's history only
+    ever move forward?
+
+    * **Terminal with a run** (`applied_to_job_workspace` / `passed`): every later episode must
+      represent it as `prior_episode`, naming the SAME run id and the SAME frozen ledger
+      ref/hash. It may not become skipped, not-dispatched, failed-pre-dispatch or runless.
+    * **Skipped** (a terminal job decision — `_block_job` skips the remaining pending tasks):
+      later episodes keep that meaning. The committed contract does NOT allow reactivation — the
+      resume loop `continue`s past it — so a skipped task gaining a run is refused rather than
+      modelled.
+    * **Non-terminal** (a stop returns the task to `pending`): it MAY start a new run later. The
+      earlier run and its ledger stay in their earlier immutable episode; nothing here forbids the
+      new work, because forbidding it would break F011's resume.
+    * **Identity**: every episode carries the same immutable JobInput task ids, in the same order.
+      An addition, a removal or a reordering is refused, so two tasks can never trade places.
+    """
+    problems: list[str] = []
+    ordered = sorted(ordered_manifests, key=lambda m: m.episode_ordinal)
+    if not ordered:
+        return problems
+
+    # The immutable task list, as the FIRST episode's embedded definition declares it.
+    baseline_ids = declared_job_input_task_ids(ordered[0])
+    for m in ordered[1:]:
+        ids = declared_job_input_task_ids(m)
+        if ids != baseline_ids:
+            problems.append(
+                f"episode {m.episode_id}: its embedded job input declares tasks {ids}, but "
+                f"episode {ordered[0].episode_id} declared {baseline_ids}: the task list is "
+                f"immutable across a job's episodes — no addition, removal or reordering")
+
+    # history[task_id] = (episode_id, the expectation that established the terminal state)
+    settled: dict[str, tuple[str, TaskCallExpectationV1]] = {}
+    for m in ordered:
+        for te in m.call_expectation.tasks:
+            prior = settled.get(te.task_id)
+            if prior is not None:
+                owner, was = prior
+                if was.task_status_at_finalization == "skipped":
+                    # Terminal job decision. The resume loop never revisits it.
+                    if te.expectation != EXPECT_SKIPPED or te.run_id:
+                        problems.append(
+                            f"episode {m.episode_id}: task {te.task_id!r} was recorded as "
+                            f"skipped by episode {owner}, but this episode says "
+                            f"{te.expectation!r}"
+                            + (f" and names run {te.run_id!r}" if te.run_id else "")
+                            + ": a skipped task is a terminal job decision and the committed "
+                              "resume contract never reactivates it")
+                else:
+                    # Terminal WITH a run: applied/passed. It happened; it keeps having happened.
+                    if te.expectation != EXPECT_PRIOR_EPISODE:
+                        problems.append(
+                            f"episode {m.episode_id}: task {te.task_id!r} completed in episode "
+                            f"{owner} (status {was.task_status_at_finalization!r}, run "
+                            f"{was.run_id!r}), so this episode must carry it as "
+                            f"{EXPECT_PRIOR_EPISODE!r} — it says {te.expectation!r}. A later "
+                            f"episode cannot un-happen earlier work")
+                    if te.run_id != was.run_id:
+                        problems.append(
+                            f"episode {m.episode_id}: task {te.task_id!r} names run "
+                            f"{te.run_id!r}, but episode {owner} completed it under run "
+                            f"{was.run_id!r}")
+                    if te.ledger_ref != was.ledger_ref:
+                        problems.append(
+                            f"episode {m.episode_id}: task {te.task_id!r} names ledger "
+                            f"{te.ledger_ref!r}, but episode {owner} sealed "
+                            f"{was.ledger_ref!r}")
+                    if te.finalized_calls_sha256 != was.finalized_calls_sha256:
+                        problems.append(
+                            f"episode {m.episode_id}: task {te.task_id!r} seals a different "
+                            f"ledger hash than episode {owner} did: a completed run's account "
+                            f"is frozen")
+                continue
+
+            if te.task_status_at_finalization in TERMINAL_TASK_STATES:
+                settled[te.task_id] = (m.episode_id, te)
+    return problems
+
+
 def validate_ledger_chain(ordered_manifests: list["RunManifestV1"]) -> list[str]:
     """F5 (round 13): a run's ledger history is CONTINUOUS across the episodes that carry it.
 
@@ -5224,6 +5326,10 @@ def _validate_episode_graph(by_id: dict[str, "RunManifestV1"]) -> list[str]:
     this function, so the rule lands at all of them at once instead of six times over."""
     problems: list[str] = []
     problems.extend(validate_ledger_chain(list(by_id.values())))
+    # F1 (round 15): a task's history is monotonic. Round 14 stopped a later episode rewriting a
+    # run it admitted to; this stops it DENYING the run ever happened by omitting the ledger
+    # entirely — an erasure no per-episode check and no ledger comparison could see.
+    problems.extend(validate_task_lifecycle_chain(list(by_id.values())))
     ord_of = {eid: m.episode_ordinal for eid, m in by_id.items()}
     by_ordinal = {m.episode_ordinal: eid for eid, m in by_id.items()}
     for eid, m in by_id.items():

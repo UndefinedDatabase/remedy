@@ -40,12 +40,23 @@ from packages.orchestration.run_manifest import (
 def _chain():
     """Production's shape: ep1 finishes a run; ep2 REPEATS that terminal ledger byte-for-byte as
     prior history (and would carry any new work under a new run id)."""
+    from packages.orchestration.run_manifest import (
+        DISPATCH_PRIOR_EPISODE, EXPECT_PRIOR_EPISODE, CallExpectationV1, TaskCallExpectationV1,
+    )
     ep1 = _bind_artifact_refs(T._mk(episode_id="ep1", calls=(T._call(seq=1),)))
+    lg = ep1.call_ledgers[0]
     ep2 = _bind_artifact_refs(T._mk(episode_id="ep2", calls=()))
+    # Round 15 (F1): ep1 APPLIED T001, so ep2 must carry it as `prior_episode` naming the same
+    # run and the same frozen ledger. Repeating ep1's `executed` expectation would claim the task
+    # ran twice — which the resume loop makes impossible.
     ep2 = dataclasses.replace(
         ep2, prior_episode_ids=("ep1",), previous_episode_id="ep1", episode_ordinal=2,
         call_ledgers=ep1.call_ledgers,          # the exact frozen object
-        call_expectation=ep1.call_expectation)
+        call_expectation=CallExpectationV1(tasks=(TaskCallExpectationV1(
+            task_id=lg.task_id, expectation=EXPECT_PRIOR_EPISODE, run_id=lg.run_id,
+            finalized_calls_sha256=lg.sha256(), ledger_ref=lg.ref(),
+            task_status_at_finalization="applied_to_job_workspace",
+            dispatch_state=DISPATCH_PRIOR_EPISODE),)))
     return ep1, ep2
 
 

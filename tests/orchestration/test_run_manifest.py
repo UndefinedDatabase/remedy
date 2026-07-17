@@ -213,11 +213,19 @@ def _expectation(calls, *, job_input, phase=None, override=None, status="complet
         n = counts.get(tid, 0)
         lg = by_task.get(tid)
         if n and lg is not None:
+            # F1 (round 15): the task's status follows the EPISODE's status, as production's does.
+            # A `completed` episode has every task applied — that is what completed means, and it
+            # is TERMINAL: the resume loop `continue`s past it and never runs it again. A
+            # `stopped` episode's worked task is F011's mid-flight stop: the call in flight
+            # finished, so the run holds work while the task waits at `pending` for a resume that
+            # will start a NEW run. Hardcoding "applied" for both made every multi-episode fixture
+            # claim a shape production cannot produce (one task applied twice).
             tasks.append(TaskCallExpectationV1(
                 task_id=tid, expectation=EXPECT_EXECUTED, run_id=runs[tid],
                 expected_call_count=n, observed_call_count=n,
                 finalized_calls_sha256=lg.sha256(), ledger_ref=lg.ref(),
-                task_status_at_finalization="applied_to_job_workspace",
+                task_status_at_finalization=("applied_to_job_workspace"
+                                             if status == "completed" else "pending"),
                 dispatch_state=DISPATCH_THIS_EPISODE))
         else:
             # F7 (round 11): a COMPLETED episode has every task applied or skipped, so a task

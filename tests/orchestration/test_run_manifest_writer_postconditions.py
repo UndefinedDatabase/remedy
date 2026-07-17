@@ -164,11 +164,17 @@ def _ep(episode_id, ordinal, *, prev="", prior=(), status="completed", calls=Non
 
 
 def _with_calls(episode_id, ordinal, **kw):
+    """Round 15 (F1): an episode that DOES WORK is F011's stop-then-resume — the task waits at
+    `pending` under a per-episode run, and the resume starts a new one. Two COMPLETED episodes
+    executing the same task is a shape production cannot produce."""
     import hashlib
 
     from packages.orchestration.run_manifest import canonical_artifact_ref
 
-    m = _ep(episode_id, ordinal, calls=(T._call(),), **kw)
+    kw.setdefault("status", "stopped")
+    m = _ep(episode_id, ordinal, calls=(T._call(run=f"r-{episode_id}"),), **kw)
+    if m.status == "stopped":
+        m = dataclasses.replace(m, stop_request_id=f"stop-{episode_id}")
     bound = []
     for c in m.calls:
         c = dataclasses.replace(c, artifact=canonical_artifact_ref(c.identity))
