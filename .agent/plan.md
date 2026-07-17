@@ -1,3 +1,97 @@
+# Plan — Steps 10361-10560 — F012 hardening round 14 (external FINDINGS)
+
+## Round 14 binding feature discovery (files READ COMPLETELY, authoritative)
+
+Read in full: `docs/roadmap/STATUS.md`, `T0_F004.md`, `T0_F005.md`, `T0_F010.md`, `T0_F011.md`,
+`T0_F012.md`, `T0_F017.md`, `T0_F018.md`, `T0_F147.md`, `T3_F084.md`, `T7_F140.md`.
+Keyword sweep over the committed feature tree for: complete ledger, terminal, run id, call ledger,
+call id, stream N, artifact ref, immutable, idempotent, prior episode, replay, F012, F140.
+
+### Binding clauses selected (and the production seam each binds)
+
+1. **F010** — "a call the loop abandons writes exactly one `postmortem.json` — in the provider's
+   existing per-call stream directory when it has one, otherwise in
+   `runs/<run_id>/calls/<role>/round-NN/<kind>/`." → BINDS F4: there are TWO real call-ref
+   namespaces, not one. Seam: `parse_call_ref` / `CALL_REF_NAMESPACES`.
+2. **F010** — "`postmortem_paths` are unique relative references —
+   `streams/<role>/round-NN/<kind>-II/postmortem.json` for streamed calls,
+   `calls/<role>/round-NN/<kind>/postmortem.json` for fallback calls. Never the ambiguous bare
+   basename." → BINDS F4's exact grammar, INCLUDING the streamed `-II` attempt index.
+3. **F140** — "The replay provider: serves stream N for call N after verifying the outgoing
+   prompt's hash matches the recorded one." → BINDS F1/F6: replay operates WITHIN one frozen Run
+   Ledger; a ledger that can still grow after it says it finished has no stable N.
+4. **F140 / "Do not touch"** — "Stream formats, manifest semantics, certificate members." →
+   round 14 adds no manifest field and changes no stream byte; the ledger REF changes shape, and
+   F012 is unmerged so no accepted record uses the old one.
+5. **F012 (own Built State)** — "Prior-Episode calls stay IN the ledger — the run made them." →
+   preserved: a later episode still carries the prior run's ledger, now byte-for-byte.
+6. **F012 (own Built State)** — "published Evidence is immutable; a missing or altered member is
+   corruption" → BINDS F1: a published terminal ledger cannot later change.
+7. **F011** — the mid-flight stop leaves the task pending with a finished run → BINDS F1: the
+   resume must NOT extend that run's ledger. Verified: production gives the new work a new run id.
+8. **F084** — "the demo REPLAYS it through the normal storage/evidence writers" → the frozen-
+   ledger rule must hold for recorded fixtures too; nothing added is execution-time-only.
+9. **F017/F018/F147** — read and NOT implemented.
+
+## Persisted sources of truth consulted
+
+- `packages/orchestration/pingpong_loop.py` — `PingPongResult.run_id = uuid4().hex[:16]` (a FRESH
+  run per execution: this is why terminal finality is safe), `shared_call_id` (the ONE identity
+  F010's post-mortem writer and F012's manifest both use), `_allocate_stream_call_dir`
+  (`rel_prefix = f"streams/{role}"`, `f"round-{n:02d}/{kind}-{idx:02d}"`).
+- `packages/orchestration/pingpong_job.py` — `task.run_id = result.run_id` per execution.
+- `packages/orchestration/manifest_schema.py` — `MAX_ID_LEN = 128` (the ref bound argument).
+
+## Reproduced against production BEFORE fixing (all 4 findings)
+
+| # | Reproduction | Result before |
+|---|---|---|
+| F1 | ep1 `completed/complete/[c1]`; ep2 same run `failed/complete/[c1,c2]` | chain ACCEPTED |
+| F2 | `task_id=GHOST, run_id=ghostrun, complete=true, entries=[]` | manifest ACCEPTED |
+| F3 | `("a-b","c")` and `("a","b-c")` | BOTH → `call_ledgers/a-b-c.json` |
+| F4 | `calls//builder`, `calls/./builder`, `calls/builder/`, `home/alice`, `c1` | ALL accepted |
+
+## Production behaviour proven (the rules are the product's, not inventions)
+
+Real stop-then-resume, fake providers, zero network:
+
+```
+ep1  T001 run=f5962555  completed complete=True  2 entries
+ep2  T001 run=f5962555  completed complete=True  2 entries   <- byte-identical (sha256 equal)
+ep2  T002 run=9ae434c5  completed complete=True  2 entries   <- new work, NEW run id
+```
+
+Real call ids emitted by a live run: `calls/builder/round-01/attempt`,
+`calls/reviewer/round-01/attempt`. Streamed form: `streams/<role>/round-NN/<kind>-II`.
+
+## Judgement calls recorded
+
+1. **The task-status→ledger-state rule stays narrow** (carried from round 13). Only
+   `passed`/`applied` pin `completed`; production reaches `blocked`/`failed` with a SUCCESSFUL run
+   via post-run gates.
+2. **`_call` fixture call ids changed to the real canonical refs.** The finding required it
+   ("Do not preserve synthetic test-only `c1` values"): a fixture using a shape production never
+   emits cannot prove a grammar.
+3. **Two round-13 tests rewritten, not deleted**: one hard-coded `c1`; one recorded honestly that
+   `calls/home/alice/attempt` was accepted under the old weak rule. The closed grammar now refuses
+   it (`home` is not a role), so the note is superseded rather than wrong.
+4. **Pre-existing baseline debt unchanged.** `tests/cli/test_do_cmd_summary.py` and
+   `tests/cli/test_product_spine.py` fail 18 tests at base `b0ba27a` itself (they require
+   `docs/core-product-spine-v0.md`, removed by an earlier docs restructure). Out of scope;
+   excluded from the recorded CLI command rather than hidden by a green number.
+
+## Local commit discipline (new this round, user-authorized)
+
+The reviewed round-13 state was verified byte-identical to the packaged content proof (81/81) and
+committed as `8d186b4` BEFORE any round-14 edit, then one commit per logical block. `remedy
+integrity check` now passes `relevant_untracked` for the first time in the F012 rounds, because
+the work is in history instead of an 84-file dirty tree. Local history is NOT an acceptance
+signal: push/PR/merge still wait for external acceptance, and F012 stays `[~]`.
+
+---
+
+## Superseded round-13 plan (retained for provenance)
+
 # Plan — Steps 10161-10360 — F012 hardening round 13 (external BLOCKED_EVIDENCE + FINDINGS)
 
 ## Round 13 binding feature discovery (files READ COMPLETELY, authoritative)

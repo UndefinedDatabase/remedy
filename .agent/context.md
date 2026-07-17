@@ -1,4 +1,4 @@
-# Context — current state (Steps 10161-10360)
+# Context — current state (Steps 10361-10560)
 
 ## Where the product is
 
@@ -42,7 +42,27 @@
 - F011's stop finalization is a durable transaction: archive → post-mortem → event →
   STOPPED → persist → and only then remove the pending request, which is the commit record.
 - **F012 (Deterministic runs) is BUILT and `[~]`** on `feature/f012-deterministic-runs`,
-  hardened **thirteen times**. Round 13 made the Run Call Ledger MEAN something: a published
+  hardened **fourteen times**. Round 14 closed the last ledger trust-chain gaps. A COMPLETE
+  TERMINAL ledger is now FINAL: round 13 compared only the entry prefix, so a later episode could
+  extend a run that had already published itself finished (`completed`, `complete=true`, one call)
+  and republish it as `failed` with two — the contradiction lived in the header a prefix rule
+  cannot see. The whole ledger object is frozen; a later episode repeats it byte-for-byte or not
+  at all, and later work uses a NEW run id, which is what production already does
+  (`PingPongResult.run_id` is a fresh `uuid4` per execution — proven on a real stop/resume where
+  the finished run's ledger repeats with an identical sha256 while the resumed work gets a new
+  run). The ledger SET is now exactly the expectation set: a fabricated `GHOST` ledger belonging
+  to no JobInput task, no expectation and no call was accepted by typed validation, the writer,
+  the loader AND the verified tree, because every check walked from the ledgers outward instead of
+  asking whether the ledgers were the ones the record explains. Ledger refs are collision-free
+  (`{task}-{run}.json` was ambiguous — `("a-b","c")` and `("a","b-c")` both produced
+  `a-b-c.json`, and the anchored reader silently dropped one declaration; the ref is now the
+  sha256 of an unambiguous identity encoding). And a call ref must now match a CLOSED canonical
+  grammar — `calls//builder`, `calls/./builder`, `calls/builder/` and `home/alice` all passed the
+  old "not dangerous" rule, and none of them names a call. **This round also introduced local
+  checkpoint commits**: the reviewed state is committed before the next round starts and each
+  block lands as it goes green, so `remedy integrity check` passes `relevant_untracked` for the
+  first time. Local history is not acceptance — push/PR/merge still wait for the external verdict.
+  Previously hardened thirteen times. Round 13 made the Run Call Ledger MEAN something: a published
   reference's ledger must be COMPLETE (it was written and never read); its `terminal_state` is
   strictly decoded from the RUN's own `final_status` through a CLOSED map instead of being
   inferred from the surrounding task (a run can pass while its task ends blocked on a post-run
