@@ -1,4 +1,4 @@
-# Context — current state (Steps 10761-10960)
+# Context — current state (Steps 10961-11160)
 
 ## Where the product is
 
@@ -54,6 +54,20 @@
   `lstat` and never followed (a symlink used to put an OUTSIDE file's bytes in the proof while the
   ZIP omitted the link), and the review base travels explicitly — the process CWD was an
   authorization token that silently discarded intentional declarations.
+- **F012 round 17** made the last ten trust-chain checks exact — task truth by episode, and
+  every file record typed end to end into the archive. A completed published manifest accepted an
+  `executed` task recorded as pending/running/failed/blocked (the shared validator took the
+  episode status and phase and never read them); a completed run's terminal STATUS could be
+  rewritten by a later prior-episode record; the committed+dirty file union dropped `kind` and
+  `link_target`, turning a dirty symlink back into a regular file; the content-proof check
+  followed symlinks and hashed an outside target's bytes; committed symlinks were typed as regular
+  files; dirty deletions carried no tombstone and dirty renames lost their old path; `do job-flow`
+  never forwarded the review base, so a committed branch exported empty; `review_subject.json` was
+  not a strict schema; the ZIP was built with `find | zip -@` and dropped a newline filename; and
+  containment used a raw string prefix, so `/root/repo-evil` passed for `/root/repo`. All closed:
+  `_allowed_statuses_for` and the frozen prior status, `merge_review_file_state`, git-mode kinds,
+  a no-follow `lstat` content check, git-blob tombstones, base forwarding, a strict schema, a
+  NUL-safe `review_zip.py` builder with exact post-build membership, and component containment.
 - **F012 (Deterministic runs) is BUILT and `[~]`** on `feature/f012-deterministic-runs`,
   hardened **fifteen times**. Round 15 closed the last way earlier work could be denied. Round 14
   froze a run's ledger, so a later episode could no longer REWRITE work it admitted to — but it

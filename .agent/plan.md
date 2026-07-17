@@ -1,3 +1,77 @@
+# Plan — Steps 10961-11160 — F012 hardening round 17 (external FINDINGS)
+
+## Round 17 binding feature discovery (files READ COMPLETELY, authoritative)
+
+Read in full: `docs/roadmap/STATUS.md`, `T0_F004.md`, `T0_F005.md`, `T0_F010.md`, `T0_F011.md`,
+`T0_F012.md`, `T0_F017.md`, `T0_F018.md`, `T0_F147.md`, `T3_F084.md`, `T7_F140.md`.
+Keyword sweep over the committed feature tree for: completed, task status, prior_episode, review
+subject, dirty, deletion, rename, symlink, file kind, content proof, job-flow, review base, zip,
+NUL, containment, F012, F140.
+
+### Binding clauses selected (and the production seam each binds)
+
+1. **F012 own Built State** — `run_job` sets `completed` only when EVERY task is applied or
+   skipped (`all(t.status in (TASK_APPLIED, TASK_SKIPPED))`, pingpong_job:2019). BINDS F1: a
+   completed episode's executed task must be applied/passed. Seam: `_allowed_statuses_for`.
+2. **F011** — the mid-flight stop leaves `pending` + a finished run; post-run gates leave
+   `blocked`/`failed`. BINDS F1's permissive STOPPED rows — they must stay legal.
+3. **F012 round-15 lifecycle chain** — a completed run's id/ledger/hash are frozen. BINDS F2:
+   the STATUS is frozen too. Seam: `validate_task_lifecycle_chain`.
+4. **F010** — "the requested path is checked LEXICALLY ... resolve() answers where it points".
+   BINDS F3/F4/F9: a symlink is proven by its target text (git blob or readlink), never
+   followed; containment is decided on components/lexically.
+5. **F004** — "redaction filters run BEFORE the tee ... No secrets in raw streams, ever". BINDS
+   F7: an injected secret/path field must block, not ride along.
+6. **F016 (round 16)** — the export reads NO ambient environment; the base travels explicitly.
+   BINDS F6: `do job-flow` must forward the base like `do job-evidence` does.
+7. **F140** — "serves stream N for call N", certificate hash manifest covers members. BINDS
+   F8/F10: the ZIP must represent EXACTLY the typed model, member for member.
+8. **F017** — the builtin deny list "stays a reviewable constant". The precedent for the
+   git-mode→kind and archive-name rules being explicit closed tables.
+9. **F017/F018** — read and NOT implemented.
+
+## Persisted sources of truth consulted
+
+- `packages/orchestration/pingpong_job.py` — the completed gate and the TASK_* vocabulary; the
+  narrow completed-status set is derived from it.
+- `packages/orchestration/review_subject.py` — the committed/dirty record model, extended with
+  base_kind/base_mode/current_mode and the strict schema.
+- `scripts/make_review_zip.sh` / `scripts/build_review_manifest.py` — the packaging pipeline the
+  NUL-safe builder and component containment replace.
+
+## Reproduced against production BEFORE fixing
+
+| # | Reproduction | Result before |
+|---|---|---|
+| F1 | completed episode, expectation=executed + pending/running/failed/blocked | ALL FOUR accepted |
+| F2 | prior_episode rewrites applied -> pending/running/failed/blocked | ALL accepted |
+| F2f | dirty symlink over committed regular file | came back kind=regular (merge dropped kind) |
+| F3 | committed symlink | recorded kind=regular |
+| F4 | contained symlink hashed via open() | hashed the TARGET's bytes |
+| F5 | dirty deletion / staged rename | base_sha256 null / old_path null |
+| F6 | `do job-flow` on a committed branch | empty legacy subject (base not forwarded) |
+| F8 | filename with a newline | dropped by find|zip -@ |
+| F9 | `/root/repo-evil` vs root `/root/repo` | contained via startswith |
+
+## Recorded decisions
+
+1. **F5 rename+edit.** Git only reports a rename while similarity stays above threshold; a
+   heavily-edited rename becomes delete+add, which is honest git behaviour. The fixture uses a
+   substantial file and a one-line edit so the rename survives; the test states this.
+2. **Blocks 2+3 combined.** F2(merge)/F3(committed kinds) and F5(dirty tombstones) all share
+   ReviewFileV1 and _dirty_records; they cannot compile or test independently, so they landed as
+   two commits over one file.
+3. **New module in the hygiene fixture.** `review_zip.py`/`build_review_zip.py` had to be added
+   to the test's `_REQUIRED_PACKAGE_MODULES`/`_REQUIRED_SCRIPTS` — the packager now imports the
+   containment helper unconditionally, so the temp-repo build needs it present.
+4. **Pre-existing baseline debt (carried forward).** `tests/cli/test_do_cmd_summary.py` and
+   `tests/cli/test_product_spine.py` fail 18 tests at base; excluded from the recorded CLI
+   command and reported, not fixed.
+
+---
+
+## Superseded round-16 plan (retained for provenance)
+
 # Plan — Steps 10761-10960 — F012 hardening round 16 (external FINDINGS)
 
 ## Round 16 binding feature discovery (files READ COMPLETELY, authoritative)
