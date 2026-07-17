@@ -95,7 +95,16 @@ call artifacts and ledgers are immutable: a missing or altered member is reporte
 and never silently recreated, and an exact retry of any episode — latest or not — is a no-op.
 An impossible lifecycle (a completed episode claiming a task was never dispatched, say) can never
 be published, and a contradictory persisted state is reported with both facts intact rather than
-tidied away. `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
+tidied away — and an expectation must agree with the task status the JobPlan actually recorded, so
+a manifest can no longer claim a task was skipped while recording that its work landed. What a
+package is a review OF is equally exact: the base is DECLARED and passed explicitly (never
+inferred from the process directory, which is not a credential), the packager RECOMPUTES the whole
+review subject and commit chain rather than reading the Evidence job's account of itself, every
+commit ships the canonical patch bytes its hash refers to so a ZIP-only reviewer can recompute
+them without the repository, and a path is typed by `lstat` and never followed — a symlink is
+proven by its target text, and one escaping the repository blocks the package instead of being
+followed into it or silently dropped from it.
+`--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
 containment is decided lexically before anything is opened (so `root/sub/../../outside` is refused
 rather than walked, one level per `..`), it holds a verified directory handle open so a renamed or
 symlinked workspace cannot redirect it mid-check, neutralizes every configured git helper (a

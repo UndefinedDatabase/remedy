@@ -846,3 +846,93 @@ class TestF012Round15IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round16IsPinned:
+    """Round 16: the task-status/expectation truth table, the restored do job-flow behaviour,
+    explicit review-base transport, full ReviewSubject/CommitChain re-verification, the
+    symlink/special-file policy, packaged commit patches, and relevant-regression coverage."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 16" in self._f012()
+
+    def test_the_job_flow_repair_is_documented(self):
+        doc = self._f012()
+        assert "`do job-flow` works again" in doc
+        assert "NameError: timeout_sec is not defined" in doc
+        assert "RESOLVED and recorded" in doc
+
+    def test_the_truth_table_is_documented(self):
+        doc = self._f012()
+        assert "The task-status / expectation truth table" in doc
+        assert "validate_task_expectation_truth()" in doc
+        for expectation in ("`skipped`", "`not_dispatched`", "`failed_pre_dispatch`",
+                            "`executed`", "`prior_episode`", "`dispatched_no_calls`"):
+            assert expectation in doc, expectation
+
+    def test_the_permissive_rows_are_justified_not_assumed(self):
+        """They are load-bearing: forbidding them would refuse real production records."""
+        doc = self._f012()
+        assert "F011's mid-flight\nstop" in doc
+        assert "AFTER a successful run" in doc
+        assert "would refuse real records" in doc
+
+    def test_the_commit_chain_fields_are_documented(self):
+        doc = self._f012()
+        assert "Every commit-chain field is recomputed" in doc
+        assert "FORGED SUBJECT" in doc
+        assert "`chain_v`" in doc
+
+    def test_the_subject_recomputation_is_documented(self):
+        doc = self._f012()
+        assert "The packager recomputes the whole review subject" in doc
+        assert "own account of its own work" in doc
+
+    def test_the_path_kind_policy_is_documented(self):
+        doc = self._f012()
+        assert "Typed path kinds: inspect, never follow" in doc
+        assert "lstat" in doc
+        for kind in ("`regular`", "`symlink`", "`deleted`", "`directory`", "`special`"):
+            assert kind in doc, kind
+        assert "LEXICAL" in doc
+
+    def test_the_honest_fifo_boundary_is_documented(self):
+        """A rule that never runs must not be documented as protection."""
+        doc = self._f012()
+        assert "does not report a bare FIFO" in doc
+
+    def test_the_explicit_base_transport_is_documented(self):
+        doc = self._f012()
+        assert "the CWD is not a credential" in doc
+        assert "read_declared_base()" in doc
+        assert "child_env_without_declaration()" in doc
+
+    def test_the_commit_patch_artifacts_are_documented(self):
+        doc = self._f012()
+        assert "review_commit_patches/<full-sha>.patch" in doc
+        assert "not self-contained evidence" in doc
+
+    def test_the_relevant_regression_coverage_is_documented(self):
+        doc = self._f012()
+        assert "Relevant regressions are part of authoritative verification" in doc
+        assert "_RELEVANT_SUITES_FOR_SOURCE" in doc
+        assert "cannot notice the one you broke" in doc
+
+    def test_the_readme_states_the_review_subject_contract(self):
+        r = self._readme()
+        assert "is not a credential" in r
+        assert "RECOMPUTES the whole" in r
+
+    def test_f012_is_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status
