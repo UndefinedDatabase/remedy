@@ -33,6 +33,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.common import secure_fs as _fs
+
 #: The environment variable through which an operator SUPPLIES the declared base.
 #:
 #: F6 (round 16): it is read at the TOP LEVEL only — never inside the resolver. The resolver used
@@ -377,8 +379,19 @@ def _dirty_current_record(repo_root: str | Path, path: str,
         return ReviewFileV1(status=STATUS_DELETED, current_sha256=None, kind=KIND_DELETED,
                             **common)
     if kind == KIND_REGULAR:
-        return ReviewFileV1(status=status, current_sha256=_sha256_file(full), kind=KIND_REGULAR,
-                            **common)
+        # F3 (round 18): hash through the anchored, atomically no-follow reader. `_sha256_file`
+        # reopened the path by name, so a regular file swapped to an external symlink between the
+        # lstat above and the read would have hashed OUTSIDE bytes. If the swap happens, the
+        # reader refuses and the record carries no current hash — unproven, which blocks at
+        # packaging — rather than laundering outside content into the proof.
+        try:
+            vf = _fs.read_verified_relative(repo_root, path, expected_kind="regular",
+                                            error_cls=ReviewSubjectError, noun="dirty file")
+            return ReviewFileV1(status=status,
+                                current_sha256=hashlib.sha256(vf.data).hexdigest(),
+                                kind=KIND_REGULAR, **common)
+        except ReviewSubjectError:
+            return ReviewFileV1(status=status, current_sha256=None, kind=KIND_REGULAR, **common)
     if kind == KIND_SYMLINK:
         # The LINK's own content is its target text. Hashing what it points at would read outside
         # the repository and describe bytes the package does not carry.
@@ -531,11 +544,45 @@ _REVIEW_SUBJECT_FIELDS = frozenset({"subject_v", "base_commit", "head_commit", "
 _VALID_STATUSES = frozenset({STATUS_ADDED, STATUS_MODIFIED, STATUS_DELETED, STATUS_RENAMED,
                              STATUS_COPIED, STATUS_TYPE_CHANGED, STATUS_DIRTY})
 
+#: F4 (round 18): the closed git-mode vocabulary a ReviewFile may carry, plus the empty string
+#: for a side that does not exist (an added file has no base mode, a deleted one no current mode).
+_VALID_GIT_MODES = frozenset({"", "100644", "100755", "120000", "160000", "040000"})
+#: The kinds a base side (or a committed current side read from a git mode) may name. `deleted` is
+#: a status, never a `base_kind`; `directory`/`special` come from real git modes (040000/160000).
+_VALID_BASE_KINDS = frozenset({KIND_REGULAR, KIND_SYMLINK, KIND_DIRECTORY, KIND_SPECIAL})
+
+
+def _is_hex40(v: Any) -> bool:
+    return isinstance(v, str) and len(v) == 40 and all(c in "0123456789abcdef" for c in v)
+
+
+def _is_hex64(v: Any) -> bool:
+    return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v)
+
 
 def _is_hex64_or_none(v: Any) -> bool:
     if v is None:
         return True
-    return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v)
+    return _is_hex64(v)
+
+
+def _metadata_is_safe(v: Any) -> bool:
+    """A metadata STRING value carries no local path, secret or control character.
+
+    F4: a known field with an arbitrary string is still a leak — `base_kind: "SECRET-/home/alice"`
+    has an allowed KEY. Reuse the established F012 scanners rather than a new weaker regex.
+    """
+    if not isinstance(v, str):
+        return True
+    try:
+        from packages.orchestration.run_manifest import (
+            _contains_local_path, _contains_secret,
+        )
+        if _contains_secret(v) or _contains_local_path(v):
+            return False
+    except Exception:
+        pass
+    return not any(ord(c) < 32 and c not in "\t\n" for c in v)
 
 
 def _safe_rel_path(p: Any) -> bool:
@@ -576,11 +623,67 @@ def validate_review_file_schema(d: Any, *, where: str = "review file") -> list[s
         problems.append(f"{where} is {kind!r} but carries a link_target")
     if "old_path" in d and d["old_path"] is not None and not _safe_rel_path(d["old_path"]):
         problems.append(f"{where} old_path {d.get('old_path')!r} is not a safe relative path")
+
+    # F4 (round 18): the round-17 typed fields must be CLOSED too. A known key with an arbitrary
+    # string (`base_kind: "SECRET-/home/alice"`, `base_mode: "999999"`, `current_mode: "evil"`)
+    # was accepted because only the KEY was checked.
+    bk = d.get("base_kind")
+    if bk is not None and bk not in _VALID_BASE_KINDS:
+        problems.append(f"{where} base_kind {bk!r} is not a supported kind")
+    for mf in ("base_mode", "current_mode"):
+        mv = d.get(mf, "")
+        if not isinstance(mv, str) or mv not in _VALID_GIT_MODES:
+            problems.append(f"{where} {mf} {mv!r} is not a supported git mode")
+    # A current symlink must carry the symlink git mode; a current regular must not.
+    if kind == KIND_SYMLINK and d.get("current_mode", "") not in ("", "120000"):
+        problems.append(f"{where} is a symlink but current_mode {d.get('current_mode')!r} "
+                        f"is not the symlink mode")
+    if kind == KIND_REGULAR and d.get("current_mode", "") == "120000":
+        problems.append(f"{where} is regular but carries the symlink current_mode")
+    for meta_field in ("base_kind", "base_mode", "current_mode"):
+        if not _metadata_is_safe(d.get(meta_field)):
+            problems.append(f"{where} {meta_field} carries a secret, local path or control text")
+    # F4: status/kind coherence.
+    if d.get("status") == STATUS_ADDED and d.get("base_sha256") is not None:
+        problems.append(f"{where} is added but carries a base_sha256")
+    if d.get("status") == STATUS_DELETED and d.get("current_sha256") is not None:
+        problems.append(f"{where} is deleted but carries a current_sha256")
+    if d.get("status") == STATUS_RENAMED and not d.get("old_path"):
+        problems.append(f"{where} is renamed but names no old_path")
+    return problems
+
+
+def validate_review_commit_schema(d: Any, *, where: str = "review commit") -> list[str]:
+    """F4 (round 18): strict schema for one ReviewCommitV1 record. Round 17 never validated the
+    embedded commit list, so `commits: [{"EXTRA_SECRET": "/home/alice/..."}]` was accepted."""
+    problems: list[str] = []
+    if not isinstance(d, dict):
+        return [f"{where} is not an object"]
+    extra = set(d) - _REVIEW_COMMIT_FIELDS
+    if extra:
+        problems.append(f"{where} has unknown field(s) {sorted(extra)}")
+    for sf in ("commit", "tree"):
+        if not _is_hex40(d.get(sf)):
+            problems.append(f"{where} {sf} is not a full lowercase sha")
+    parents = d.get("parents")
+    if not isinstance(parents, list) or not all(_is_hex40(p) for p in parents):
+        problems.append(f"{where} parents is not a list of full lowercase shas")
+    subj = d.get("subject")
+    if not isinstance(subj, str) or len(subj) > 4096 or not _metadata_is_safe(subj):
+        problems.append(f"{where} subject is missing, too long, or carries a secret/path/control")
+    cf = d.get("changed_files")
+    if not isinstance(cf, list) or not all(_safe_rel_path(p) for p in cf):
+        problems.append(f"{where} changed_files is not a list of safe relative paths")
+    elif cf != sorted(cf) or len(set(cf)) != len(cf):
+        problems.append(f"{where} changed_files is not sorted-unique")
+    if not _is_hex64(d.get("patch_sha256")):
+        problems.append(f"{where} patch_sha256 is not a lowercase sha256")
     return problems
 
 
 def validate_review_subject_schema(d: Any) -> list[str]:
-    """Strict schema for `review_subject.json` — exact fields, closed enums, safe paths."""
+    """Strict RECURSIVE schema for `review_subject.json` — exact fields, closed enums, safe paths,
+    validated commit and file subobjects, no duplicate paths (F4, round 18)."""
     problems: list[str] = []
     if not isinstance(d, dict):
         return ["review_subject.json is not an object"]
@@ -592,12 +695,54 @@ def validate_review_subject_schema(d: Any) -> list[str]:
                         f"{SUBJECT_VERSION}")
     if not isinstance(d.get("base_is_ancestor"), bool):
         problems.append("review_subject.json base_is_ancestor is not a boolean")
-    for cf in ("base_commit", "head_commit"):
-        if not isinstance(d.get(cf), str):
-            problems.append(f"review_subject.json {cf} is not a string")
+    # F4: base/HEAD are FULL lowercase shas, or the exact legacy-empty form (no declared base).
+    base, head = d.get("base_commit"), d.get("head_commit")
+    declared = bool(base) or bool(head)
+    if declared:
+        for cf, cv in (("base_commit", base), ("head_commit", head)):
+            if not _is_hex40(cv):
+                problems.append(f"review_subject.json {cf} is not a full lowercase sha")
+        if not d.get("base_is_ancestor"):
+            problems.append("review_subject.json declares a base but base_is_ancestor is false")
+    else:
+        if base != "" or head != "" or d.get("base_is_ancestor") is not False:
+            problems.append("review_subject.json legacy form must have empty base/head and "
+                            "base_is_ancestor false")
+    for i, c in enumerate(d.get("commits") or []):
+        problems.extend(validate_review_commit_schema(c, where=f"review_subject commit[{i}]"))
+    paths: list[str] = []
     for i, f in enumerate(d.get("files") or []):
         problems.extend(validate_review_file_schema(f, where=f"review_subject file[{i}]"))
+        if isinstance(f, dict):
+            paths.append(str(f.get("path")))
+    if len(set(paths)) != len(paths):
+        problems.append("review_subject.json lists a path more than once")
     return problems
+
+
+def decode_review_subject_from_json(d: Any) -> "ReviewSubjectV1":
+    """Strict-decode a serialized `review_subject.json` into a typed ReviewSubjectV1.
+
+    The strict schema is the ONLY untrusted entry (F4): a record that fails it never becomes a
+    typed object. Used by the packager to drive the ArchivePlan from the same object the review
+    subject records, so the archive and the subject cannot disagree.
+    """
+    problems = validate_review_subject_schema(d)
+    if problems:
+        raise ReviewSubjectError("; ".join(problems)[:400])
+    files = tuple(ReviewFileV1(
+        path=f["path"], status=f["status"], base_sha256=f.get("base_sha256"),
+        current_sha256=f.get("current_sha256"), old_path=f.get("old_path"),
+        kind=f.get("kind", KIND_REGULAR), link_target=f.get("link_target"),
+        base_kind=f.get("base_kind"), base_mode=f.get("base_mode", ""),
+        current_mode=f.get("current_mode", "")) for f in (d.get("files") or []))
+    commits = tuple(ReviewCommitV1(
+        commit=c["commit"], parents=tuple(c["parents"]), tree=c["tree"], subject=c["subject"],
+        changed_files=tuple(c["changed_files"]), patch_sha256=c["patch_sha256"])
+        for c in (d.get("commits") or []))
+    return ReviewSubjectV1(
+        base_commit=d.get("base_commit", ""), head_commit=d.get("head_commit", ""),
+        base_is_ancestor=bool(d.get("base_is_ancestor")), commits=commits, files=files)
 
 
 def merge_review_file_state(committed: ReviewFileV1 | None,

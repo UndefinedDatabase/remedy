@@ -364,6 +364,132 @@ def read_verified_file(name: str, dir_fd: int, *, max_bytes: int = 0,
         os.close(fd)
 
 
+class VerifiedFile:
+    """The typed, no-follow result of reading one path: what it IS, and its bytes.
+
+    F3 (round 18): for a regular file, ``data`` is its own bytes; for a symlink, ``data`` is its
+    literal target text (never the bytes it points at). ``kind`` and ``mode`` come from the fd/
+    lstat that produced ``data``, not from a separate earlier check that a swap could invalidate.
+    """
+    __slots__ = ("kind", "data", "mode", "st_dev", "st_ino")
+
+    def __init__(self, kind: str, data: bytes, mode: int, st_dev: int, st_ino: int) -> None:
+        self.kind = kind
+        self.data = data
+        self.mode = mode
+        self.st_dev = st_dev
+        self.st_ino = st_ino
+
+
+def read_verified_file_at(parent_fd: int, name: str, *, expected_kind: str,
+                          max_bytes: int = 0, error_cls: ErrorCls = SecureFsError,
+                          noun: str = "file") -> "VerifiedFile":
+    """Read ONE component ``name`` relative to a HELD, anchored ``parent_fd`` — atomically typed.
+
+    F3 (round 18): the vulnerable shape was ``lstat(path)`` then ``open(path)``/``read_bytes(path)``
+    by NAME — an attacker swaps ``path`` to an external symlink in the window and the second call
+    follows it, so outside bytes are hashed or archived. Here every step operates on ``name``
+    RELATIVE TO the same held directory descriptor, and the regular path opens with ``O_NOFOLLOW``
+    then re-``fstat``s the OPEN descriptor's ``(st_dev, st_ino)`` against the pre-open lstat: an
+    ignored ``O_NOFOLLOW`` or a between-check swap changes the inode and is refused, never read.
+
+    ``expected_kind`` is ``"regular"`` or ``"symlink"``. A path that is not the expected kind is
+    refused — a regular file swapped to a symlink cannot satisfy a regular read, and vice versa.
+    """
+    if expected_kind not in ("regular", "symlink"):
+        raise error_cls(f"unsupported expected kind {expected_kind!r} for {noun}")
+    try:
+        pre = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise error_cls(f"the {noun} {name!r} is absent") from None
+    except OSError as exc:
+        raise error_cls(f"the {noun} {name!r} could not be inspected: "
+                        f"{type(exc).__name__}: {exc}") from exc
+
+    if expected_kind == "symlink":
+        if not stat.S_ISLNK(pre.st_mode):
+            raise error_cls(f"the {noun} {name!r} was expected to be a symlink but is not")
+        try:
+            target = os.readlink(name, dir_fd=parent_fd)   # never follows
+            post = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except OSError as exc:
+            raise error_cls(f"the symlink {noun} {name!r} could not be read safely: "
+                            f"{type(exc).__name__}: {exc}") from exc
+        if (not stat.S_ISLNK(post.st_mode)
+                or (post.st_dev, post.st_ino) != (pre.st_dev, pre.st_ino)):
+            raise error_cls(f"the symlink {noun} {name!r} changed during the read")
+        return VerifiedFile("symlink", target.encode("utf-8", errors="surrogateescape"),
+                            post.st_mode, post.st_dev, post.st_ino)
+
+    # regular
+    if stat.S_ISLNK(pre.st_mode):
+        raise error_cls(f"refusing to read a symlinked {noun} {name!r} as a regular file")
+    if not stat.S_ISREG(pre.st_mode):
+        raise error_cls(f"the {noun} {name!r} is not a regular file")
+    if max_bytes and pre.st_size > max_bytes:
+        raise error_cls(f"the {noun} {name!r} is implausibly large ({pre.st_size} bytes)")
+    try:
+        fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent_fd)
+    except OSError as exc:
+        raise error_cls(f"the {noun} {name!r} could not be opened safely (a symlink was swapped "
+                        f"in?): {type(exc).__name__}: {exc}") from exc
+    try:
+        post = os.fstat(fd)
+        if (not stat.S_ISREG(post.st_mode)
+                or (post.st_dev, post.st_ino) != (pre.st_dev, pre.st_ino)):
+            raise error_cls(f"the {noun} {name!r} is not the file it claimed to be (a symlink "
+                            f"was followed, or it changed between the check and the open)")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if max_bytes and total > max_bytes:
+                raise error_cls(f"the {noun} {name!r} is implausibly large")
+            chunks.append(chunk)
+        return VerifiedFile("regular", b"".join(chunks), post.st_mode, post.st_dev, post.st_ino)
+    finally:
+        os.close(fd)
+
+
+def open_anchored_parent(root: Path | str, rel: str, *, error_cls: ErrorCls = SecureFsError,
+                         noun: str = "file") -> tuple[int, str]:
+    """Traverse a relative path's DIRECTORY components under an anchored root, no-follow.
+
+    Returns ``(parent_fd, basename)`` — the caller reads ``basename`` with
+    ``read_verified_file_at`` and then closes ``parent_fd``. Every component is opened relative to
+    the descriptor above it with ``O_NOFOLLOW`` identity checks, so a symlinked directory
+    component cannot redirect the walk.
+    """
+    parts = lexical_parts(str(Path(root) / rel), root, error_cls=error_cls, noun=noun)
+    if not parts:
+        raise error_cls(f"{noun} names no path under the root: {rel!r}")
+    fd = anchor_root(root, error_cls=error_cls, noun=noun, create=False)
+    try:
+        for comp in parts[:-1]:
+            nxt = open_verified_dir(comp, dir_fd=fd, error_cls=error_cls, noun=noun)
+            os.close(fd)
+            fd = nxt
+    except Exception:
+        os.close(fd)
+        raise
+    return fd, parts[-1]
+
+
+def read_verified_relative(root: Path | str, rel: str, *, expected_kind: str,
+                           max_bytes: int = 0, error_cls: ErrorCls = SecureFsError,
+                           noun: str = "file") -> "VerifiedFile":
+    """The whole anchored no-follow read of a repo-relative path — traverse, read, close."""
+    parent_fd, base = open_anchored_parent(root, rel, error_cls=error_cls, noun=noun)
+    try:
+        return read_verified_file_at(parent_fd, base, expected_kind=expected_kind,
+                                     max_bytes=max_bytes, error_cls=error_cls, noun=noun)
+    finally:
+        os.close(parent_fd)
+
+
 def write_file_atomically(dir_fd: int, name: str, data: bytes, *, create_only: bool,
                           file_mode: int = 0o600, error_cls: ErrorCls = SecureFsError,
                           noun: str = "file") -> bool:

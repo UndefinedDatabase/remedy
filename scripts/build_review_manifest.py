@@ -455,6 +455,10 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
     errors.extend(validate_subject_path_kinds(recomputed, "."))
 
     def _key(rec: dict) -> tuple:
+        # F5 (round 18): the COMPLETE ReviewFileV1 record — every field, so a forged link_target,
+        # base_kind, base_mode or current_mode cannot survive recomputation. The round-17 key
+        # omitted exactly those four, so a symlink retyped as a regular file (with matching
+        # path/status/hash) passed.
         return (
             _mc_norm(str(rec.get("path") or "")),
             str(rec.get("status") or ""),
@@ -462,6 +466,10 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
             "" if rec.get("base_sha256") in (None, "") else str(rec.get("base_sha256")),
             "" if rec.get("current_sha256") in (None, "") else str(rec.get("current_sha256")),
             str(rec.get("kind") or "regular"),
+            "" if rec.get("link_target") is None else str(rec.get("link_target")),
+            "" if rec.get("base_kind") is None else str(rec.get("base_kind")),
+            str(rec.get("base_mode") or ""),
+            str(rec.get("current_mode") or ""),
         )
 
     recorded = sorted(_key(f) for f in (subject.get("files") or []))
@@ -1204,37 +1212,36 @@ def _check_bundle_integrity(
     missing_proofs: list = []
     packaged_hashes: dict = {}
 
+    # F3 (round 18): read every proof path through the ANCHORED, atomically no-follow reader. The
+    # old shape lstat'd `abs_path` then `open(abs_path)` by name — a regular file swapped to an
+    # external symlink in that window would have been followed and the OUTSIDE hash reported PASS.
+    # `read_verified_relative` re-lstats and opens with O_NOFOLLOW relative to a held root fd, so a
+    # swap changes the inode and is refused, never read.
+    from packages.common.secure_fs import SecureFsError, read_verified_relative
+
     for rel_path, expected_hash in file_hashes.items():
-        abs_path = os.path.join(source_root, rel_path)
         declared_kind = kinds.get(_mc_norm(rel_path), "regular")
         try:
-            st = os.lstat(abs_path)               # NEVER follow
-        except OSError:
+            vf = read_verified_relative(
+                source_root, rel_path,
+                expected_kind=("symlink" if declared_kind == "symlink" else "regular"),
+                error_cls=SecureFsError, noun="proof file")
+        except SecureFsError:
+            # Absent, wrong kind, or swapped mid-read — either a missing proof or a refused race.
+            declared_target = link_targets.get(_mc_norm(rel_path))
             missing_proofs.append(rel_path)
             continue
 
         if declared_kind == "symlink":
-            if not _stat.S_ISLNK(st.st_mode):
-                mismatches.append({"file": rel_path, "expected": "symlink",
-                                   "actual": "not-a-symlink"})
-                continue
-            target = os.readlink(abs_path)         # never read what it points at
-            actual_hash = _hashlib.sha256(
-                target.encode("utf-8", errors="surrogateescape")).hexdigest()
+            target = vf.data.decode("utf-8", errors="surrogateescape")
+            actual_hash = _hashlib.sha256(vf.data).hexdigest()
             declared_target = link_targets.get(_mc_norm(rel_path))
             if declared_target is not None and target != declared_target:
                 mismatches.append({"file": rel_path, "expected": "link_target",
                                    "actual": "changed"})
                 continue
         else:
-            if not _stat.S_ISREG(st.st_mode):
-                # A regular-declared path that is now a symlink/special was swapped after the
-                # proof — refuse it rather than following it.
-                mismatches.append({"file": rel_path, "expected": "regular",
-                                   "actual": "not-a-regular-file"})
-                continue
-            with open(abs_path, "rb") as fh:
-                actual_hash = _hashlib.sha256(fh.read()).hexdigest()
+            actual_hash = _hashlib.sha256(vf.data).hexdigest()
 
         packaged_hashes[rel_path] = actual_hash
         if actual_hash != expected_hash:
