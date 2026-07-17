@@ -72,9 +72,13 @@ class TestTypedNoFollowContentProof:
         # but on disk it is now a symlink to outside content
         os.symlink("outside.txt", str(root / "f.py"))
         result = brm._check_bundle_integrity(ev, str(root))
+        # Round 18: the anchored no-follow reader refuses a regular read of a symlink, so the
+        # path is unproven — either way the package is BLOCKED and the OUTSIDE bytes are never
+        # hashed (which the round-16 assertion below also confirms).
         assert result["verdict"] == "BLOCKED"
-        assert any(m.get("actual") == "not-a-regular-file"
-                   for m in result["current_content_hash_mismatches"])
+        assert "secret outside" not in str(result)
+        assert "f.py" in (result["current_content_hash_missing_proofs"]
+                          + [m["file"] for m in result["current_content_hash_mismatches"]])
 
     def test_a_forged_link_target_blocks(self, tmp_path):
         root = tmp_path / "src"

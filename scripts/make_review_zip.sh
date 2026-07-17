@@ -344,7 +344,7 @@ find . \
     "${EVIDENCE_EXCLUDE_ARGS[@]}" \
     -false \
   \) -prune -o \
-  -type f \
+  \( -type f -o -type l \) \
   ! -name '.coverage' \
   ! -name '.coverage.*' \
   ! -name 'coverage.xml' \

@@ -77,24 +77,36 @@ class TestTheBuilderPreservesHostileNames:
             names = zf.namelist()
             assert 'q"uote.py' in names and "ünïcode.py" in names
 
-    def test_a_duplicate_normalized_archive_path_blocks(self, tmp_path):
+    def test_a_duplicate_archive_member_blocks(self, tmp_path):
+        """Round 18: the plan dedups identical context paths, so a duplicate is forced at the
+        member level — the builder\'s claim must still refuse two members with one name."""
+        from packages.orchestration.archive_plan import (
+            ArchiveMemberV1, ArchivePlanV1,
+        )
+        from packages.orchestration.review_zip import build_review_zip_from_plan
+
         root = tmp_path / "root"
         root.mkdir()
         (root / "a.py").write_text("x")
         manifest = tmp_path / ".review_zip_manifest.json"
         manifest.write_text("{}")
+        m = ArchiveMemberV1(archive_path="a.py", kind="regular", mode=0o644,
+                            authoritative=False, source_root=str(root), source_rel="a.py")
+        plan = ArchivePlanV1(repository_members=(m, m))
         with pytest.raises(ReviewZipError):
-            build_review_zip(
-                out_path=tmp_path / "o.zip", repo_root=root,
-                repo_files=["a.py", "a.py"], evidence_root=None, evidence_files=[],
+            build_review_zip_from_plan(
+                out_path=tmp_path / "o.zip", plan=plan,
                 manifest_rel=".review_zip_manifest.json", manifest_disk=manifest)
 
     def test_a_hostile_traversal_archive_name_blocks(self, tmp_path):
+        """A `..` context path is a hostile archive name; the plan blocks it (round 18)."""
+        from packages.orchestration.review_zip import ReviewZipError as _RZE
+
         root = tmp_path / "root"
         root.mkdir()
         manifest = tmp_path / ".review_zip_manifest.json"
         manifest.write_text("{}")
-        with pytest.raises(ReviewZipError):
+        with pytest.raises(_RZE):
             build_review_zip(
                 out_path=tmp_path / "o.zip", repo_root=root,
                 repo_files=["../escape.py"], evidence_root=None, evidence_files=[],
@@ -119,7 +131,8 @@ class TestSymlinkMembersAreMetadata:
             out_path=out, repo_root=root, repo_files=["real.py", "link.py"],
             evidence_root=None, evidence_files=[],
             manifest_rel=".review_zip_manifest.json", manifest_disk=manifest)
-        assert result["symlinks"]["link.py"] == "real.py"
+        assert result["model"]["link.py"]["kind"] == "symlink"
+        assert result["model"]["link.py"]["link_target"] == "real.py"
         with zipfile.ZipFile(out) as zf:
             assert zf.read("link.py").decode() == "real.py"     # target text, not followed
 
@@ -174,7 +187,8 @@ class TestPostBuildVerification:
             for n, data in buf.items():
                 zf.writestr(n, data)
         probs = verify_review_zip(out, result)
-        assert any("hash changed" in p for p in probs), probs
+        assert any("hash changed" in p or "not a regular-file type" in p
+                   for p in probs), probs
 
 
 # --------------------------------------------------------------------------- NUL lists

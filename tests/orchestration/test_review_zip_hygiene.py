@@ -387,6 +387,13 @@ _REQUIRED_PACKAGE_MODULES = (
     "packages/orchestration/evidence_index.py",
     # F9/F8 (round 17): the containment helper and the archive builder the packager now imports.
     "packages/orchestration/review_zip.py",
+    # F1/F3 (round 18): the typed ArchivePlan, the strict review-subject decoder, and secure_fs's
+    # anchored reader the plan-driven builder uses. The attest predicate is imported lazily by the
+    # builder and defaulted when absent, so the minimal fixture need not carry the full stack.
+    "packages/orchestration/archive_plan.py",
+    "packages/orchestration/review_subject.py",
+    "packages/common/__init__.py",
+    "packages/common/secure_fs.py",
 )
 
 
