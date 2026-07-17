@@ -1,3 +1,99 @@
+# Plan — Steps 10561-10760 — F012 hardening round 15 (external FINDINGS)
+
+## Round 15 binding feature discovery (files READ COMPLETELY, authoritative)
+
+Read in full: `docs/roadmap/STATUS.md`, `T0_F004.md`, `T0_F005.md`, `T0_F010.md`, `T0_F011.md`,
+`T0_F012.md`, `T0_F017.md`, `T0_F018.md`, `T0_F147.md`, `T3_F084.md`, `T7_F140.md`.
+Keyword sweep over the committed feature tree: prior episode, task lifecycle, skipped, applied,
+terminal ledger, call ref, stream N, review subject, base commit, deletion, rename, change
+provenance, commit, F012, F140.
+
+### Binding clauses selected (and the production seam each binds)
+
+1. **F011 (decisive for F1)** — "A task that already reached `applied_to_job_workspace` is durable
+   and is **never** rolled back. Nothing is converted to `skipped`." → the terminal set is the
+   contract's, not an invention. Seam: `TERMINAL_TASK_STATES` / `validate_task_lifecycle_chain`.
+2. **F011** — "Checkpoint v1 is the persisted job itself: a resume simply runs the job again and
+   continues at the first pending task, rerunning no completed work." → a completed task is never
+   re-run, so a later episode must carry it as `prior_episode`.
+3. **F011** — "The incomplete task returns to `pending`" → the NON-terminal case that must stay
+   unbound: its resume starts a new run. Binding it would break the product.
+4. **`run_job` (production, verified by reading)** — line 1807 `continue`s past
+   applied/passed/skipped; line 2611 refuses to roll those three back; `_block_job` (2135) sets
+   remaining PENDING tasks to `skipped`. → skipped is terminal and never reactivated.
+5. **F010** — "`postmortem_paths` are unique relative references —
+   `streams/<role>/round-NN/<kind>-II/postmortem.json` … `calls/<role>/round-NN/<kind>/…`. Never
+   the ambiguous bare basename." → BINDS F2: the ref's numbers are part of a shared identity, so
+   one round must have one spelling. Seam: `canonical_call_number` in `call_identity.py`.
+6. **F140** — "serves stream N for call N after verifying the outgoing prompt's hash" → an alias
+   set breaks the key replay indexes by.
+7. **F140 / "Do not touch"** — "Stream formats, manifest semantics, certificate members." → round
+   15 adds no manifest field; the call-ref TEXT is unchanged for every ref production emits
+   (`f"{n:02d}"` was already canonical) and the content-proof schema is additive.
+8. **F084** — "the demo REPLAYS it through the normal storage/evidence writers" → the
+   monotonicity rule must hold for recorded fixtures too.
+9. **F017/F018/F147** — read and NOT implemented.
+
+## Persisted sources of truth consulted
+
+- `packages/orchestration/pingpong_job.py` — the resume/stop/skip lifecycle (1807, 2019, 2135,
+  2611): the whole basis of F1's terminal set.
+- `packages/orchestration/pingpong_loop.py` — `shared_call_id`, the post-mortem ref, and
+  `PingPongResult.run_id = uuid4().hex[:16]`.
+- `packages/orchestration/pingpong_provider.py` — `_allocate_stream_call_dir`
+  (`f"round-{n:02d}/{kind}-{idx:02d}"`).
+- `scripts/build_review_manifest.py` — the existing `review_subject` manifest key (which is why
+  the new one is `committed_review_subject`).
+
+## Reproduced against production BEFORE fixing (all 5 findings)
+
+| # | Reproduction | Result before |
+|---|---|---|
+| F1 | ep1 T001 executed/applied+ledger; ep2 same task skipped, no run, no ledger | chain ACCEPTED |
+| F2 | `round-001`, `round-000001`, `attempt-001`, `attempt-00` | ALL accepted |
+| F3 | `git diff NO_SUCH_BASE..HEAD` → exit 128 | silently ignored |
+| F3 | non-ancestor base | `other.txt` entered the subject |
+| F4 | committed deletion of `base.txt` | in the subject, in NO proof |
+| F5 | `test_round13_evidence_alignment._subject()` | re-implemented production |
+| F6 | round-14 package | `missing_tests_gate=NEEDS_TESTS` for T003 |
+
+## Judgement calls recorded
+
+1. **The terminal set is exactly three** (`applied_to_job_workspace`, `passed`, `skipped`).
+   `pending`/`failed`/`blocked` are deliberately unbound: F011 returns a stopped task to
+   `pending` and its resume starts a NEW run. Binding those would refuse real records — the
+   round-12 lesson.
+2. **The review base is DECLARED, never guessed** (carried from round 14, now VERIFIED). Inferring
+   it from `merge-base HEAD main` would resolve correctly here and still be wrong: an ordinary
+   job's branch may carry unrelated commits, and calling them uncovered is a false block.
+3. **The new manifest key is `committed_review_subject`.** `review_subject` already exists in the
+   ZIP manifest with an older meaning (branch/kind/dirty summary); redefining it would break every
+   existing reader. Caught before committing.
+4. **The multi-episode fixtures were unrealistic.** `_expectation` hardcoded
+   `applied_to_job_workspace` regardless of episode status, so every chain fixture applied one
+   task in two completed episodes — impossible in production. They now model F011's
+   stop-then-resume, which is the only real multi-episode chain that does work.
+
+## Pre-existing baseline debt (NOT introduced, NOT fixed — out of scope)
+
+1. `tests/cli/test_do_cmd_summary.py` + `tests/cli/test_product_spine.py`: 18 failures at base
+   `b0ba27a` (they require `docs/core-product-spine-v0.md`, removed by an earlier docs
+   restructure). Excluded from the recorded CLI command.
+2. **`tests/test_do_job_flow.py`: 69 failures at the reviewed round-14 HEAD `bddff63` itself**,
+   verified with round-15 changes stashed. `NameError: name 'timeout_sec' is not defined` at
+   `apps/cli/commands/do_cmd.py:2209` — a REAL product bug in `remedy do job-flow`, present at
+   base `b0ba27a` and introduced by commit `50e40d0`, long before this branch. Not in any
+   authoritative command. Reported, not fixed: it is outside this round's findings.
+
+## Local commit discipline
+
+Round 14's state was already committed, so no new checkpoint was made. One commit per logical
+block, each preceded by targeted tests and `git diff --check`.
+
+---
+
+## Superseded round-14 plan (retained for provenance)
+
 # Plan — Steps 10361-10560 — F012 hardening round 14 (external FINDINGS)
 
 ## Round 14 binding feature discovery (files READ COMPLETELY, authoritative)

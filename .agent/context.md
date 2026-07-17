@@ -1,4 +1,4 @@
-# Context — current state (Steps 10361-10560)
+# Context — current state (Steps 10561-10760)
 
 ## Where the product is
 
@@ -42,7 +42,24 @@
 - F011's stop finalization is a durable transaction: archive → post-mortem → event →
   STOPPED → persist → and only then remove the pending request, which is the commit record.
 - **F012 (Deterministic runs) is BUILT and `[~]`** on `feature/f012-deterministic-runs`,
-  hardened **fourteen times**. Round 14 closed the last ledger trust-chain gaps. A COMPLETE
+  hardened **fifteen times**. Round 15 closed the last way earlier work could be denied. Round 14
+  froze a run's ledger, so a later episode could no longer REWRITE work it admitted to — but it
+  could still OMIT the ledger entirely and record an applied task as `skipped`, and the whole
+  chain accepted it, because the finality rule had no second ledger to compare. The omission WAS
+  the erasure. A task's history is now monotonic across the chain: a task that reached
+  applied/passed is bound to `prior_episode` with the same run and the same frozen ledger forever;
+  a skipped task stays skipped (`_block_job` decides it and the resume loop never revisits it);
+  and a task stopped before completion is DELIBERATELY left free to start a new run, because that
+  is exactly F011's resume. The terminal set is the committed contract's, not an invention — F011
+  says an applied task is "never rolled back" and `run_job` proves it. Call-ref numbers now have
+  exactly ONE text form (`int()` had made `round-01`, `round-001` and `round-000001` three names
+  for one call, and `attempt-00` an index-0 call that cannot exist), with one shared formatter and
+  canonicality decided by reconstruction. The review subject is a typed, VERIFIED object: an
+  invalid base used to be silently ignored (producing a smaller review than asked for, with no
+  error) and a non-ancestor base pulled another branch's files in — both now raise, base/head are
+  full SHAs recorded in `review_subject.json`, deletions carry tombstones, renames carry both
+  paths, and the commit chain is a machine-verifiable artifact rather than prose in a handoff.
+  Previously hardened fourteen times. Round 14 closed the last ledger trust-chain gaps. A COMPLETE
   TERMINAL ledger is now FINAL: round 13 compared only the entry prefix, so a later episode could
   extend a run that had already published itself finished (`completed`, `complete=true`, one call)
   and republish it as `failed` with two — the contradiction lived in the header a prefix rule
