@@ -2179,8 +2179,15 @@ def _cmd_do_job_flow(
     # --- 4. job-evidence ---
     from packages.orchestration.job_evidence import export_job_evidence
     from packages.orchestration.data_paths import job_evidence_export_dir as _jeed
+    from packages.orchestration.review_subject import read_declared_base
     evidence_out = out or str(_jeed(job_id))
-    evidence_result = export_job_evidence(job_id, evidence_out)
+    # F6 (round 17): forward the operator's declared review base, read ONCE here at the top level.
+    # `do job-evidence` already did this; `do job-flow` did not, so a clean committed feature
+    # branch exported through the full workflow lost its committed ReviewSubject entirely —
+    # `export_job_evidence` correctly reads no ambient environment (F6, round 16), so a base that
+    # is not passed is a base that does not exist.
+    evidence_result = export_job_evidence(
+        job_id, evidence_out, declared_base=read_declared_base())
 
     # --- 5. job-promote --dry-run (stops before approved promote) ---
     from packages.orchestration.job_promote import (
