@@ -1,6 +1,19 @@
-# Context — current state (Steps 11361-11560)
+# Context — current state (Steps 11561-11760)
 
-## Round 19 (current) — F012 closure block
+## Round 20 (current) — F012 root-of-trust closure
+
+Review of `remedy-review-20260717-234531-READY_FOR_REVIEW.zip` (Evidence job `0706eae436294f93`)
+returned 10 root-of-trust findings; F012 stays `[~]`. Fixed as one bounded block: the review package
+is now a directed hash chain over a SINGLE staged byte source. Evidence is snapshotted to an
+immutable private staging dir first (anchored, no-follow, hashed, bounded) and nothing reads the
+original again; a strict `ContentProofV1` is the one authority and must equal the final-verifier,
+change-provenance and attestable-subject sets (`.agent` forced non-authoritative); every archive
+member carries an expected hash; the chain `plan → expectation → manifest` never self-hashes and is
+built from immutable bytes; one bundle policy covers unchanged context; the ReviewFile matrix is
+complete; and limits apply during the snapshot walk. Nine new suites (52 tests) prove it. See
+`.agent/plan.md` for the finding table and `.agent/live_review.md` for the verification summary.
+
+## Round 19 — F012 closure block
 
 Review of `remedy-review-20260717-210512-READY_FOR_REVIEW.zip` (Evidence job `384f2db9a1bc430e`)
 returned 12 findings in the file-to-archive boundary; F012 stays `[~]`. All fixed as one coherent
