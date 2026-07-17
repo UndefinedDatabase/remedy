@@ -1,4 +1,16 @@
-# Context — current state (Steps 11161-11360)
+# Context — current state (Steps 11361-11560)
+
+## Round 19 (current) — F012 closure block
+
+Review of `remedy-review-20260717-210512-READY_FOR_REVIEW.zip` (Evidence job `384f2db9a1bc430e`)
+returned 12 findings in the file-to-archive boundary; F012 stays `[~]`. All fixed as one coherent
+block: authority is now ONE explicit Content-Proof set (18 files; `.agent/` state is
+operator-context, non-authoritative), bundle safety is ONE pre-read policy, the typed plan and its
+verification report are packaged as verified members, file modes are captured and bound to bytes,
+reads are stable/no-follow (repository AND evidence), the ReviewSubject schema is coherent, the
+loader fails closed, and the archive is bounded. Nine new suites (60 tests) prove it; the base
+`980ec10` has 26 pre-existing failures, unchanged by this block. See `.agent/plan.md` for the
+reproduction table and `.agent/live_review.md` for the verification summary.
 
 ## Where the product is
 

@@ -1,3 +1,41 @@
+# Plan — Steps 11361-11560 — F012 hardening round 19 (external FINDINGS, closure block)
+
+## Round 19 — the closure block (12 findings)
+
+Review of `remedy-review-20260717-210512-READY_FOR_REVIEW.zip` (SHA `17e1f70e…b877b`, Evidence job
+`384f2db9a1bc430e`, linked prior `d2eede99f2224088`) returned FINDINGS; F012 stays `[~]`. The
+reviewer's factual correction is accepted: the content proof is 18 authoritative files; the
+ReviewSubject is 21 (the three extra are `.agent/context.md`, `.agent/live_review.md`,
+`.agent/plan.md` — intentional non-authoritative Operator State). This round removes the remaining
+parallel truths: ONE explicit authority set and ONE bundle-safety policy, no second independent
+list.
+
+### Reproduction table (each finding reproduced against production BEFORE the fix)
+
+| # | Production seam reproduced | Fix (one coherent block) |
+|---|---|---|
+| F1 | plan marked all 21 subject files authoritative (`.agent` re-authorized) | authority passed explicitly = Content-Proof set; member auth iff in it; `source_class` distinct |
+| F2 | plan + verification report absent from the ZIP | both packaged as verified members under `evidence/current/`, named by the manifest |
+| F3 | dirty chmod 0644→0755 left `current_mode=""`, planned 0644 | dirty resolver records current git mode from the read's own fstat |
+| F4 | a 0755 plan over a 0644 source succeeded | `read_verified_file_at` binds `expected_mode` to the opened descriptor |
+| F5 | multi-chunk read returned mixed old/new bytes | stable same-inode re-fstat; torn read discarded |
+| F6 | symlink passed containment then changed target before the secure read | escape/subject check runs on the exact stability-checked bytes |
+| F7 | policy-excluded `.log`/`.zip` not blocked (authority ≠ safety) | `classify_bundle_path` is the one pre-read bundle-safety policy |
+| F8 | evidence used `find -type f` + `cp` (skips/follows symlinks) | typed no-follow `evidence_inventory.py`; symlink/FIFO blocks |
+| F9 | schema accepted incoherent records | coherence matrix (missing hash, base-symlink+regular-mode, copy w/o old_path, no-op type change) |
+| F10 | build swallowed subject-decode errors → empty subject | loader fails closed; only absent `--subject-json` is legacy-empty |
+| F11 | symlink permission bits unchecked post-build | verify checks S_IFLNK perm, create_system, compression, encryption |
+| F12 | no per-member/aggregate/count/ratio limits; read into RAM | bounded build + reopen (64 MiB / 2 GiB / count / 200x) |
+
+### Commits (never amended/squashed)
+
+`align archive authority and persist plans` · `bind modes and stable file reads` · `secure symlink
+and evidence inventories` · `close subject schemas and package loading` · `enforce bounded archive
+metadata` · `capture the dirty working-tree file mode` · `test(f012): prove the closed archive
+boundary` · `docs(f012): document the final package contract`.
+
+---
+
 # Plan — Steps 11161-11360 — F012 hardening round 18 (external FINDINGS)
 
 ## Round 18 binding feature discovery (files READ COMPLETELY, authoritative)
