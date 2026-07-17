@@ -263,8 +263,12 @@ def verify_review_zip(out_path: str | Path, expected: dict) -> list[str]:
     then the body (hash for a regular, target text for a symlink) — so a member's declared kind and
     mode must match what was actually written.
     """
+    from packages.orchestration.archive_plan import (
+        MAX_COMPRESSION_RATIO, MAX_MEMBER_BYTES, MAX_TOTAL_UNCOMPRESSED_BYTES,
+    )
     problems: list[str] = []
     model: dict[str, dict] = expected["model"]
+    total_uncompressed = 0
 
     with zipfile.ZipFile(out_path, "r") as zf:
         infos = zf.infolist()
@@ -298,6 +302,24 @@ def verify_review_zip(out_path: str | Path, expected: dict) -> list[str]:
                                 f"{info.compress_type}")
             if info.flag_bits & 0x1:                 # bit 0 = encrypted
                 problems.append(f"member {name!r} is encrypted")
+            # F12 (round 19): bound the READ before decompressing — a hostile archive whose header
+            # claims a small compressed size can still expand into gigabytes of RAM. Reject a member
+            # whose uncompressed size exceeds the per-member cap, whose expansion ratio is bomb-like,
+            # or that would push the aggregate past the total cap.
+            if info.file_size > MAX_MEMBER_BYTES:
+                problems.append(f"member {name!r} uncompressed size {info.file_size} exceeds the "
+                                f"per-member cap")
+                continue
+            if (info.compress_size > 0 and info.file_size > (1 << 20)
+                    and info.file_size / info.compress_size > MAX_COMPRESSION_RATIO):
+                problems.append(f"member {name!r} expands "
+                                f"{info.file_size // max(info.compress_size, 1)}x — a decompression "
+                                f"bomb")
+                continue
+            total_uncompressed += info.file_size
+            if total_uncompressed > MAX_TOTAL_UNCOMPRESSED_BYTES:
+                problems.append("archive total uncompressed size exceeds the aggregate cap")
+                break
             file_type = (info.external_attr >> 16) & 0o170000
             perm = (info.external_attr >> 16) & 0o7777
             data = zf.read(name)
