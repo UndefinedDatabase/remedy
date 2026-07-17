@@ -652,14 +652,15 @@ def validate_review_file_schema(d: Any, *, where: str = "review file") -> list[s
 
 
 def _review_file_coherence(d: dict, *, where: str) -> list[str]:
-    """F9 (round 19): the record must be internally COHERENT, not merely field-typed.
+    """F9 (round 19) / F8 (round 20): the record must be internally COHERENT and COMPLETE per its
+    status — not merely field-typed.
 
-    Round 18 closed each field in isolation, so a record could still be self-contradictory: a
-    `modified`/`added` regular file with `current_sha256: null` (nothing to package as its content),
-    a `deleted` path with no `base_sha256` (no tombstone naming what was removed), a base
-    `symlink` whose `base_mode` is `100644` (a regular-file mode), a `copied` file with no
-    `old_path`, or a `type_changed` record whose base and current kinds are the same. Each is now
-    rejected so an incoherent subject can never drive a package.
+    Round 18 closed each field in isolation, so a record could still be self-contradictory. Round 19
+    caught the obvious cases; round 20 closes the WHOLE state matrix so every impossible shape fails
+    strict decode: an `added` with no current mode, a `modified`/`dirty` existing file missing its
+    base kind/mode, a `dirty` deletion left as `dirty + kind=deleted` instead of normalized to
+    `deleted`, a `deleted` missing base kind/mode, a `renamed`/`copied` with a base side absent or
+    an old path equal to the new path, and a `type_changed` that changes neither kind nor mode.
     """
     problems: list[str] = []
     status = d.get("status")
@@ -669,6 +670,8 @@ def _review_file_coherence(d: dict, *, where: str) -> list[str]:
     current_sha = d.get("current_sha256")
     base_mode = d.get("base_mode", "") or ""
     current_mode = d.get("current_mode", "") or ""
+    path = d.get("path")
+    old_path = d.get("old_path")
 
     # A present content-bearing side must carry its hash; an absent side must not.
     if kind in (KIND_REGULAR, KIND_SYMLINK) and current_sha is None:
@@ -682,25 +685,53 @@ def _review_file_coherence(d: dict, *, where: str) -> list[str]:
     if base_mode and base_kind is not None and _GIT_MODE_TO_KIND.get(base_mode) != base_kind:
         problems.append(f"{where} base_mode {base_mode!r} does not match base_kind {base_kind!r}")
 
+    # A CURRENT (non-deleted, content-bearing) side must carry its mode; the ZIP member mode and the
+    # authoritative git-mode change both depend on it.
+    _nondeleted = kind in (KIND_REGULAR, KIND_SYMLINK)
+    if status in (STATUS_ADDED, STATUS_MODIFIED, STATUS_RENAMED, STATUS_COPIED,
+                  STATUS_TYPE_CHANGED, STATUS_DIRTY) and _nondeleted and not current_mode:
+        problems.append(f"{where} is {status} but carries no current_mode")
+
+    # A record that existed at the review base must carry its complete base side.
+    _existed_at_base = status in (STATUS_MODIFIED, STATUS_DELETED, STATUS_RENAMED, STATUS_COPIED,
+                                  STATUS_TYPE_CHANGED)
+    if _existed_at_base:
+        if base_sha is None:
+            problems.append(
+                f"{where} is {status} but carries no base_sha256"
+                + (" tombstone" if status == STATUS_DELETED else ""))
+        if base_kind is None:
+            problems.append(f"{where} is {status} but carries no base_kind")
+        if not base_mode:
+            problems.append(f"{where} is {status} but carries no base_mode")
+
     # status ↔ base/current presence matrix.
     if status == STATUS_ADDED:
         if base_sha is not None:
             problems.append(f"{where} is added but carries a base_sha256")
         if base_kind is not None or base_mode:
             problems.append(f"{where} is added but carries a base side")
-    if status in (STATUS_MODIFIED, STATUS_TYPE_CHANGED) and base_sha is None:
-        problems.append(f"{where} is {status} but carries no base_sha256")
+        if old_path:
+            problems.append(f"{where} is added but names an old_path")
     if status == STATUS_DELETED:
-        if base_sha is None:
-            problems.append(f"{where} is deleted but carries no base_sha256 tombstone")
         if current_sha is not None:
             problems.append(f"{where} is deleted but carries a current_sha256")
         if kind != KIND_DELETED:
             problems.append(f"{where} is deleted but kind is {kind!r}")
-    if status in (STATUS_RENAMED, STATUS_COPIED) and not d.get("old_path"):
-        problems.append(f"{where} is {status} but names no old_path")
-    if status == STATUS_TYPE_CHANGED and base_kind is not None and base_kind == kind:
-        problems.append(f"{where} is type_changed but base and current kind are both {kind!r}")
+    # A dirty deletion must be NORMALIZED to `deleted`, never left as `dirty + kind=deleted`.
+    if status == STATUS_DIRTY and kind == KIND_DELETED:
+        problems.append(f"{where} is a dirty deletion but was not normalized to status 'deleted'")
+    if status in (STATUS_RENAMED, STATUS_COPIED):
+        if not old_path:
+            problems.append(f"{where} is {status} but names no old_path")
+        elif old_path == path:
+            problems.append(f"{where} is {status} but old_path equals the current path")
+    elif status not in (STATUS_RENAMED, STATUS_COPIED) and old_path:
+        problems.append(f"{where} is {status} but names an old_path")
+    if status == STATUS_TYPE_CHANGED and base_kind is not None:
+        if base_kind == kind and (not base_mode or not current_mode or base_mode == current_mode):
+            problems.append(f"{where} is type_changed but base and current kind are both "
+                            f"{kind!r} with no mode change")
     return problems
 
 
@@ -794,6 +825,105 @@ def decode_review_subject_from_json(d: Any) -> "ReviewSubjectV1":
     return ReviewSubjectV1(
         base_commit=d.get("base_commit", ""), head_commit=d.get("head_commit", ""),
         base_is_ancestor=bool(d.get("base_is_ancestor")), commits=commits, files=files)
+
+
+class ContentProofError(Exception):
+    """A `current_change_content_proof.json` that fails strict decode. Never fail-open."""
+
+
+#: F2 (round 20): the exact field set of the authority proof.
+_CONTENT_PROOF_FIELDS = frozenset({"schema_version", "base_commit", "head_commit", "file_hashes",
+                                   "file_count", "tombstones", "tombstone_count"})
+
+
+@dataclass(frozen=True)
+class ContentProofV1:
+    """The typed, strict-decoded authority proof — the ONE authority source.
+
+    ``authority_paths`` is exactly ``file_hashes`` keys plus ``tombstones`` keys; a member is
+    authoritative iff its path is in it (and never an operator-state path). Base/HEAD must equal the
+    ReviewSubject's, checked by the packager where both are in scope.
+    """
+    schema_version: str
+    base_commit: str
+    head_commit: str
+    file_hashes: dict          # path -> lowercase sha256
+    tombstones: dict           # path -> lowercase sha256 (the removed blob)
+
+    def authority_paths(self) -> set[str]:
+        return set(self.file_hashes) | set(self.tombstones)
+
+
+def _normalize_rel(p: str) -> str:
+    return p.replace("\\", "/")
+
+
+def validate_content_proof_schema(d: Any) -> list[str]:
+    """Strict schema for the authority proof (F2, round 20). Exact fields, safe normalized paths,
+    lowercase sha256 values, counts that match the contents, no path in both maps, no operator-state
+    or non-attestable path, no duplicate normalized path."""
+    from packages.orchestration.repair_attest import is_attestable_source
+    problems: list[str] = []
+    if not isinstance(d, dict):
+        return ["content proof is not an object"]
+    extra = set(d) - _CONTENT_PROOF_FIELDS
+    if extra:
+        problems.append(f"content proof has unknown field(s) {sorted(extra)}")
+    for req in _CONTENT_PROOF_FIELDS:
+        if req not in d:
+            problems.append(f"content proof is missing required field {req!r}")
+    sv = d.get("schema_version")
+    if not isinstance(sv, str) or not sv.startswith("1."):
+        problems.append(f"content proof schema_version {sv!r} is not a supported version 1.x")
+    for cf in ("base_commit", "head_commit"):
+        if not _is_hex40(d.get(cf)):
+            problems.append(f"content proof {cf} is not a full lowercase sha")
+
+    def _check_map(name: str) -> set[str]:
+        m = d.get(name)
+        norm: set[str] = set()
+        if not isinstance(m, dict):
+            problems.append(f"content proof {name} is not an object")
+            return norm
+        for path, h in m.items():
+            if not _safe_rel_path(path):
+                problems.append(f"content proof {name} path {path!r} is not a safe relative path")
+                continue
+            n = _normalize_rel(path)
+            if n in norm:
+                problems.append(f"content proof {name} names {n!r} more than once")
+            norm.add(n)
+            if not _is_hex64(h):
+                problems.append(f"content proof {name}[{path!r}] is not a lowercase sha256")
+            if not is_attestable_source(path):
+                problems.append(f"content proof {name} names a non-authoritative path {path!r} "
+                                f"(operator state, secret, or non-source)")
+        return norm
+
+    fh_paths = _check_map("file_hashes")
+    tomb_paths = _check_map("tombstones")
+    both = fh_paths & tomb_paths
+    if both:
+        problems.append(f"content proof lists {sorted(both)} in both file_hashes and tombstones")
+    fc, tc = d.get("file_count"), d.get("tombstone_count")
+    if fc != len(d.get("file_hashes") or {}):
+        problems.append(f"content proof file_count {fc!r} != {len(d.get('file_hashes') or {})}")
+    if tc != len(d.get("tombstones") or {}):
+        problems.append(f"content proof tombstone_count {tc!r} != "
+                        f"{len(d.get('tombstones') or {})}")
+    return problems
+
+
+def decode_content_proof_v1(d: Any) -> "ContentProofV1":
+    """Strict-decode the authority proof. Raises ContentProofError on any schema failure — the
+    authority set is never derived from an un-validated or partially-valid proof."""
+    problems = validate_content_proof_schema(d)
+    if problems:
+        raise ContentProofError("; ".join(problems)[:400])
+    return ContentProofV1(
+        schema_version=d["schema_version"], base_commit=d["base_commit"],
+        head_commit=d["head_commit"], file_hashes=dict(d["file_hashes"]),
+        tombstones=dict(d["tombstones"]))
 
 
 def merge_review_file_state(committed: ReviewFileV1 | None,
