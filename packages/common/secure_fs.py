@@ -472,6 +472,11 @@ def open_anchored_parent(root: Path | str, rel: str, *, error_cls: ErrorCls = Se
             nxt = open_verified_dir(comp, dir_fd=fd, error_cls=error_cls, noun=noun)
             os.close(fd)
             fd = nxt
+    except MissingComponent as exc:
+        # A missing PARENT directory is an absent file, reported in the caller's own error type
+        # rather than leaking a bare FileNotFoundError/MissingComponent past its `except`.
+        os.close(fd)
+        raise error_cls(f"{noun} {rel!r} is absent (missing parent {exc})") from None
     except Exception:
         os.close(fd)
         raise
