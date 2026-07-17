@@ -17,7 +17,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from packages.orchestration.call_identity import prepare_call_input
+from packages.orchestration.call_identity import (
+    canonical_call_number,
+    prepare_call_input,
+)
 
 from packages.orchestration.token_actuals import (
     parse_cli_result,
@@ -889,7 +892,10 @@ class ClaudeCliProvider:
         key = (self._stream_round, self._stream_kind)
         idx = self._stream_counters.get(key, 0) + 1
         self._stream_counters[key] = idx
-        rel = f"round-{self._stream_round:02d}/{self._stream_kind}-{idx:02d}"
+        # F2 (round 15): the shared canonical formatter -- the stream directory name IS
+        # the call ref F010 and F012 both record, so it uses the one spelling rule.
+        rel = (f"round-{canonical_call_number(max(1, self._stream_round))}/"
+               f"{self._stream_kind}-{canonical_call_number(idx)}")
         prefix = self._stream_rel_prefix or ""
         self._last_stream_call_id = f"{prefix}/{rel}" if prefix else rel
         self._last_stream_refs = [

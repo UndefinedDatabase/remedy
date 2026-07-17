@@ -2030,7 +2030,11 @@ def shared_call_id(out: Any, role: str, round_no: int, kind: str) -> str:
     stream_id = getattr(out, "stream_call_id", "") or ""
     if stream_id:
         return stream_id
-    return f"calls/{role}/round-{max(1, round_no):02d}/{kind}"
+    # F2 (round 15): ONE canonical spelling, from the shared formatter -- so what the
+    # generator writes and what the validators accept cannot drift apart.
+    from packages.orchestration.call_identity import canonical_call_number
+
+    return f"calls/{role}/round-{canonical_call_number(max(1, round_no))}/{kind}"
 
 
 def finalized_call_context(result: Any, out: Any, *, role: str, round_num: int, kind: str,
@@ -2179,7 +2183,10 @@ def _record_call_failure(
         with contextlib.suppress(ValueError):
             rel = written.relative_to(anchor).as_posix()
     if not rel:
-        rel = f"calls/{role}/round-{max(1, round_no):02d}/{kind}/{written.name}"
+        from packages.orchestration.call_identity import canonical_call_number
+
+        rel = (f"calls/{role}/round-{canonical_call_number(max(1, round_no))}/{kind}/"
+               f"{written.name}")
     result.postmortem_paths.append(rel)
     return str(directory)
 

@@ -169,3 +169,45 @@ class CallIdentity:
             call_id=str(d.get("call_id", "")),
             episode_id=str(d.get("episode_id", "")),
         )
+
+
+# ---------------------------------------------------------------------------
+# The canonical call-reference number format (F2, round 15)
+# ---------------------------------------------------------------------------
+#
+# A call ref encodes two numbers — the round and, for streamed calls, the attempt index — and
+# round 14 parsed them with `int()`. `int()` is happy to read the same number many ways, so
+# `round-01`, `round-001` and `round-000001` all meant round 1, and `attempt-00` meant index 0.
+# Three spellings of one call are three identities for one thing: the ref is supposed to be THE
+# name F010's post-mortems, F012's manifests and F140's replay agree on, and an alias set breaks
+# that the moment two of them spell it differently.
+#
+# So the text is canonical: exactly one spelling per number, and a ref that does not equal its own
+# reconstruction is refused. Production already emitted this form (`f"{n:02d}"` at every
+# generator); it was only ever the reader that accepted more.
+
+#: Below 10 the number is zero-padded to two digits; from 10 up it is written plainly. This is
+#: exactly `f"{n:02d}"`, which is what every production generator already uses — named here so the
+#: generators and the validators cannot drift apart.
+def canonical_call_number(value: int) -> str:
+    """The ONE textual form of a call ref's round or attempt index: 1 -> "01", 100 -> "100"."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"a call ref number must be a positive integer, not {value!r}")
+    return f"{value:02d}"
+
+
+def parse_canonical_call_number(text: str) -> int | None:
+    """The inverse, refusing every alias. ``None`` when the text is not the canonical spelling.
+
+    Positive only: `00` is not a call. `001` is not a spelling of `01` — it is a different string
+    claiming to be the same call.
+    """
+    if not text or not text.isdigit():
+        return None
+    try:
+        value = int(text)
+    except ValueError:                                   # pragma: no cover - isdigit() guards it
+        return None
+    if value < 1 or canonical_call_number(value) != text:
+        return None
+    return value

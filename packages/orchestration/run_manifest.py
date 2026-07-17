@@ -46,7 +46,11 @@ from typing import Any
 
 from packages.common import secure_fs as _fs
 from packages.orchestration import manifest_schema as _S
-from packages.orchestration.call_identity import CallIdentity
+from packages.orchestration.call_identity import (
+    CallIdentity,
+    canonical_call_number,
+    parse_canonical_call_number,
+)
 
 MANIFEST_VERSION = 1
 
@@ -3572,10 +3576,23 @@ def _call_ref_res():
     global _ROUND_SEGMENT_RE, _STREAM_INDEX_RE
     if _ROUND_SEGMENT_RE is None:
         import re
-        # `round-{n:02d}`: at least two digits, and a real round can exceed 99 (`round-100`).
-        _ROUND_SEGMENT_RE = re.compile(r"^round-(\d{2,6})$")
-        _STREAM_INDEX_RE = re.compile(r"^(\d{2,6})$")
+        # The digits are extracted here and CANONICALITY is decided by
+        # `parse_canonical_call_number` — one rule, shared with the generators.
+        _ROUND_SEGMENT_RE = re.compile(r"^round-(\d{1,6})$")
+        _STREAM_INDEX_RE = re.compile(r"^(\d{1,6})$")
     return _ROUND_SEGMENT_RE, _STREAM_INDEX_RE
+
+
+def canonical_call_ref(*, namespace: str, role: str, round: int, kind: str,
+                       index: int | None = None) -> str:
+    """Build a call ref from its parts, in the one canonical spelling.
+
+    F2 (round 15): the reconstruction `parse_call_ref` compares against, and the same function the
+    generators' format is pinned to — so "what production writes" and "what the validator accepts"
+    are one definition rather than two that happen to agree today.
+    """
+    last = kind if index is None else f"{kind}-{canonical_call_number(index)}"
+    return f"{namespace}/{role}/round-{canonical_call_number(round)}/{last}"
 
 
 def parse_call_ref(cid: str) -> tuple[dict | None, list[str]]:
@@ -3620,11 +3637,19 @@ def parse_call_ref(cid: str) -> tuple[dict | None, list[str]]:
         problems.append(f"call ref role {role!r} is not a supported role")
     round_re, index_re = _call_ref_res()
     m = round_re.match(round_seg)
+    round_no = 0
     if not m:
         problems.append(f"call ref round segment {round_seg!r} is not `round-NN`")
-    round_no = int(m.group(1)) if m else 0
-    if m and round_no < 1:
-        problems.append("call ref round is not a positive round")
+    else:
+        # F2 (round 15): CANONICAL text, not merely a readable number. `int()` reads `01`, `001`
+        # and `000001` as the same round, which handed one call three names.
+        parsed = parse_canonical_call_number(m.group(1))
+        if parsed is None:
+            problems.append(
+                f"call ref round segment {round_seg!r} is not the canonical spelling of its "
+                f"round (one round has exactly one text form: 1 -> 01, 10 -> 10, 100 -> 100)")
+        else:
+            round_no = parsed
 
     kind, index = last, None
     if namespace == "streams":
@@ -3634,11 +3659,26 @@ def parse_call_ref(cid: str) -> tuple[dict | None, list[str]]:
             problems.append(f"streamed call ref {last!r} does not end in the attempt index "
                             f"`<kind>-II` the streaming layout assigns")
         else:
-            kind, index = head, int(tail)
+            parsed_idx = parse_canonical_call_number(tail)
+            if parsed_idx is None:
+                problems.append(
+                    f"streamed call ref {last!r} does not carry the canonical spelling of its "
+                    f"attempt index (index 0 is not a call, and 001 is not a spelling of 01)")
+            else:
+                kind, index = head, parsed_idx
     if kind not in VALID_CALL_KINDS:
         problems.append(f"call ref kind {kind!r} is not a supported kind")
     if problems:
         return None, problems
+    if round_no > MAX_LEDGER_ROUND or (index is not None and index > MAX_LEDGER_SEQUENCE):
+        return None, [f"call ref round/index is outside the configured bounds"]
+    # THE canonicality test: the ref must be exactly what its own parts rebuild. Anything that
+    # merely parses to the same numbers — a different padding, a stray form — is a different
+    # string claiming to be this call, and is refused here rather than somewhere downstream.
+    rebuilt = canonical_call_ref(namespace=namespace, role=role, round=round_no, kind=kind,
+                                 index=index)
+    if rebuilt != cid:
+        return None, [f"call ref {cid!r} is not canonical; its canonical form is {rebuilt!r}"]
     return {"namespace": namespace, "role": role, "round": round_no,
             "kind": kind, "index": index}, []
 
