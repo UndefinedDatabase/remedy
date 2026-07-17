@@ -103,7 +103,15 @@ review subject and commit chain rather than reading the Evidence job's account o
 commit ships the canonical patch bytes its hash refers to so a ZIP-only reviewer can recompute
 them without the repository, and a path is typed by `lstat` and never followed — a symlink is
 proven by its target text, and one escaping the repository blocks the package instead of being
-followed into it or silently dropped from it.
+followed into it or silently dropped from it. Every file record is typed on BOTH sides (its kind
+and git mode at the base and at the current tree, so a committed symlink or a mode-only change is
+provable), a dirty deletion carries the tombstone of what it removed and a dirty rename its old
+path, and the archive itself is assembled from that exact model by a NUL-safe builder — a filename
+containing a newline survives verbatim, containment is decided by path components rather than a
+string prefix (so a sibling `repo-evil` is never mistaken for being inside `repo`), and the
+finished ZIP is reopened and its every member checked against the model. Task truth is read in the
+episode's own context: a completed episode's task must be applied or passed, and the status a task
+completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
 containment is decided lexically before anything is opened (so `root/sub/../../outside` is refused
 rather than walked, one level per `..`), it holds a verified directory handle open so a renamed or

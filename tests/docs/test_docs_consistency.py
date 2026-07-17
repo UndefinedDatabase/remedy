@@ -936,3 +936,85 @@ class TestF012Round16IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round17IsPinned:
+    """Round 17: episode-context task truth, lossless typed committed/dirty merge, git file
+    modes, no-follow symlink proofs, dirty tombstones/renames, job-flow review-base forwarding,
+    strict ReviewSubject schema, NUL-safe ZIP building, component-aware containment, exact
+    post-build membership."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 17" in self._f012()
+
+    def test_episode_context_task_truth_is_documented(self):
+        doc = self._f012()
+        assert "Task truth depends on the episode's status and phase" in doc
+        assert "_allowed_statuses_for" in doc
+
+    def test_the_frozen_prior_status_is_documented(self):
+        doc = self._f012()
+        assert "A prior task's terminal status is frozen" in doc
+
+    def test_the_lossless_merge_is_documented(self):
+        doc = self._f012()
+        assert "One lossless typed merge of committed and dirty records" in doc
+        assert "merge_review_file_state" in doc
+
+    def test_committed_kinds_and_modes_are_documented(self):
+        doc = self._f012()
+        assert "Committed file kinds and modes come from git" in doc
+        assert "git diff --raw" in doc
+
+    def test_the_no_follow_content_proof_is_documented(self):
+        doc = self._f012()
+        assert "The content-proof check is typed and no-follow" in doc
+        assert "lstat" in doc
+
+    def test_dirty_tombstones_and_renames_are_documented(self):
+        doc = self._f012()
+        assert "Dirty deletions and renames carry full base proofs" in doc
+
+    def test_job_flow_base_forwarding_is_documented(self):
+        doc = self._f012()
+        assert "`do job-flow` forwards the review base" in doc
+
+    def test_the_strict_schema_is_documented(self):
+        doc = self._f012()
+        assert "Strict external ReviewSubject schema" in doc
+        assert "validate_review_subject_schema" in doc
+
+    def test_the_nul_safe_zip_is_documented(self):
+        doc = self._f012()
+        assert "The ZIP is built from an exact path-safe model" in doc
+        assert "review_zip.py" in doc
+        assert "newline" in doc
+
+    def test_component_containment_is_documented(self):
+        doc = self._f012()
+        assert "Containment by path components" in doc
+        assert "commonpath" in doc
+        assert "repo-evil" in doc
+
+    def test_post_build_membership_is_documented(self):
+        doc = self._f012()
+        assert "Post-build membership verification" in doc
+
+    def test_the_readme_states_the_round17_contracts(self):
+        r = self._readme()
+        assert "NUL-safe builder" in r
+        assert "a sibling `repo-evil`" in r
+
+    def test_f012_is_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status
