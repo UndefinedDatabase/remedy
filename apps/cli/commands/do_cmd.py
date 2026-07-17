@@ -1000,8 +1000,14 @@ def _cmd_do_job_evidence(
         # Default to the hidden data-dir location; never litter the repo root.
         out = str(job_evidence_export_dir(job_id))
 
+    # F6 (round 16): the TOP LEVEL reads the operator's base declaration exactly once and passes
+    # it explicitly. Nothing downstream consults the environment or the process CWD to decide
+    # what this package is a review of.
+    from packages.orchestration.review_subject import read_declared_base
+
     result = export_job_evidence(
         job_id, out, verification_commands=verification_command or None,
+        declared_base=read_declared_base(),
     )
 
     if not result.get("error"):

@@ -170,17 +170,18 @@ class TestTheUndeclaredBaseKeepsTheLegacyBehaviour:
         r, _base, _foreign = repo
         assert resolve_review_subject(r, "").files == ()
 
-    def test_the_environment_supplies_the_base_when_none_is_passed(self, repo, monkeypatch):
-        """An AMBIENT base applies to the repository the operator is standing in — hence the
-        chdir. (An env var reaches every child process; see
-        TestAnAmbientDeclarationBelongsToOneRepository for why that scope matters.)"""
+    def test_the_top_level_supplies_the_base_explicitly(self, repo, monkeypatch):
+        """F6 (round 16): the resolver takes the base as an ARGUMENT and reads no environment.
+
+        It used to read `REMEDY_REVIEW_BASE` itself and then decide, from the process CWD,
+        whether the declaration was about the repository it had been handed — which made the CWD
+        an authorization token and silently dropped an intentional declaration made from
+        elsewhere. The top level reads the operator's declaration exactly once and passes it.
+        """
         r, base, _foreign = repo
-        monkeypatch.chdir(r)
         monkeypatch.setenv(REVIEW_BASE_ENV, base)
-        s = resolve_review_subject(r)
-        assert s.base_commit == base
-        monkeypatch.delenv(REVIEW_BASE_ENV)
-        assert resolve_review_subject(r).declared is False
+        assert resolve_review_subject(r).declared is False, "the env must not reach the resolver"
+        assert resolve_review_subject(r, base).base_commit == base
 
     def test_a_non_git_directory_with_no_base_is_empty_not_an_error(self, tmp_path):
         d = tmp_path / "plain"
@@ -229,9 +230,15 @@ class TestAnAmbientDeclarationBelongsToOneRepository:
     `b0ba27a`. The export lost its content proof entirely — an unrelated declaration breaking an
     unrelated job.
 
-    So an AMBIENT base applies only to the repository the operator is standing in. A base passed
-    EXPLICITLY is always honoured and always verified, which is what keeps a typo'd or
-    non-ancestral base a blocking error rather than a silently smaller review.
+    Round 15 fixed that by asking whether the process CWD's repository was the one being
+    exported. Round 16 (F6) removes the question: the CWD is not a credential, and using it as one
+    ALSO discarded an intentional declaration whenever the operator ran from elsewhere — the
+    export silently produced an empty legacy subject.
+
+    The resolver now reads no environment at all. A base is passed EXPLICITLY by the top level or
+    it is not declared; there is no ambient third state whose applicability must be guessed. An
+    unrelated job simply is not handed a base, and children never inherit one
+    (`child_env_without_declaration`).
     """
 
     @pytest.fixture
@@ -244,25 +251,46 @@ class TestAnAmbientDeclarationBelongsToOneRepository:
         return r
 
     def test_the_reproduced_case(self, foreign, monkeypatch):
-        """A base from another repository must not break this one's evidence."""
+        """A base exported for another repository must not reach this one's evidence at all."""
         monkeypatch.setenv(REVIEW_BASE_ENV, "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5")
-        s = resolve_review_subject(foreign)          # must not raise
+        s = resolve_review_subject(foreign)          # no base passed -> none used
         assert s.declared is False
         assert s.paths() == ["dirty.txt"], "the legacy path must still describe the dirty tree"
 
-    def test_an_ambient_base_that_is_not_this_repositorys_is_not_this_repositorys_problem(
-            self, foreign, monkeypatch):
+    def test_the_resolver_never_reads_the_environment(self, foreign, monkeypatch):
+        """F6: the environment cannot reach the resolver, from any directory."""
         monkeypatch.setenv(REVIEW_BASE_ENV, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+        monkeypatch.chdir(foreign)
         assert resolve_review_subject(foreign).declared is False
+
+    def test_children_do_not_inherit_the_declaration(self, monkeypatch):
+        """The round-15 breakage at its root: a verification subprocess inherited the base."""
+        from packages.orchestration.review_subject import child_env_without_declaration
+
+        monkeypatch.setenv(REVIEW_BASE_ENV, "b0ba27a")
+        assert REVIEW_BASE_ENV not in child_env_without_declaration()
+
+    def test_the_top_level_reads_the_declaration_exactly_once(self, monkeypatch):
+        from packages.orchestration.review_subject import read_declared_base
+
+        monkeypatch.setenv(REVIEW_BASE_ENV, "  b0ba27a  ")
+        assert read_declared_base() == "b0ba27a"
+        monkeypatch.setenv(REVIEW_BASE_ENV, "   ")
+        assert read_declared_base() is None
+        monkeypatch.delenv(REVIEW_BASE_ENV)
+        assert read_declared_base() is None
 
     def test_an_explicit_base_is_still_strictly_verified(self, foreign):
         """The finding stays closed: an operator naming a base for THIS repo gets it checked."""
         with pytest.raises(ReviewSubjectError):
             resolve_review_subject(foreign, "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5")
 
-    def test_an_ambient_base_still_applies_to_its_own_repository(self, repo, monkeypatch):
+    def test_an_explicit_base_works_from_any_process_cwd(self, repo, monkeypatch, tmp_path):
+        """F6's other half: round 15 DISCARDED an intentional declaration when the CWD moved.
+        An explicitly passed base is about the repository it is passed with — full stop."""
         r, base, _foreign = repo
-        monkeypatch.setenv(REVIEW_BASE_ENV, base)
-        monkeypatch.chdir(r)
-        s = resolve_review_subject(r)
+        elsewhere = tmp_path / "somewhere-else"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+        s = resolve_review_subject(r, base)
         assert s.declared is True and s.base_commit == base

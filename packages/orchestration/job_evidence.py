@@ -65,6 +65,7 @@ def export_job_evidence(
     *,
     verification_commands: list[str] | None = None,
     verification_runner: Any = None,
+    declared_base: str | None = None,
 ) -> dict[str, Any]:
     """Load a persisted job and export a job-level evidence bundle.
 
@@ -568,11 +569,23 @@ def export_job_evidence(
     try:
         from packages.orchestration.change_provenance_gate import _is_source_file, _normalize
         from packages.orchestration.review_subject import (
-            STATUS_DELETED, resolve_review_subject,
+            STATUS_DELETED, ReviewSubjectError, resolve_review_subject,
+            validate_subject_path_kinds,
         )
 
-        _subject = resolve_review_subject(_repo)
+        # F6 (round 16): the base arrives EXPLICITLY from the top level, with the repository it
+        # belongs to. This module reads no environment: an ambient declaration used to be picked
+        # up here and then accepted or discarded based on the process CWD, so an export running
+        # for a DIFFERENT repository (a test's temporary repo) could inherit a base that was
+        # never about it, and an intentional declaration was silently dropped when the CWD moved.
+        _subject = resolve_review_subject(_repo, declared_base=declared_base)
         dirty_files = [f.path for f in _subject.files]
+
+        # F5: a subject carrying a path we cannot honestly prove or package never becomes
+        # authoritative Evidence.
+        _kind_problems = validate_subject_path_kinds(_subject, _repo)
+        if _kind_problems:
+            raise ReviewSubjectError("; ".join(_kind_problems)[:400])
 
         # `review_subject.json` — the durable, typed account: which base, which head, which
         # commits, and every file with the proof its status allows.
@@ -619,6 +632,31 @@ def export_job_evidence(
         _chain_path = _validate_output_path(str(out_path), "review_commit_chain.json")
         _chain_path.write_text(json.dumps(_chain, indent=2) + "\n", encoding="utf-8")
         written["review_commit_chain.json"] = str(_chain_path)
+
+        # F7 (round 16): the CANONICAL PATCH BYTES, one file per commit.
+        #
+        # The chain recorded `patch_sha256` but shipped nothing to hash, so a ZIP-only reviewer —
+        # the only kind an external review has — could verify every field EXCEPT the one that
+        # says what the commit actually did. They had to trust it or clone the repository, and a
+        # package that requires the repository is not self-contained evidence.
+        if _subject.commits:
+            from packages.orchestration.review_subject import (
+                COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+            )
+            _pdir = _validate_output_path(str(out_path), COMMIT_PATCH_DIRNAME)
+            _pdir.mkdir(parents=True, exist_ok=True)
+            _patches: list[str] = []
+            for _c in _subject.commits:
+                _raw = commit_patch_bytes(_repo, _c.commit)
+                _actual = hashlib.sha256(_raw).hexdigest()
+                if _actual != _c.patch_sha256:
+                    raise ReviewSubjectError(
+                        f"commit {_c.commit[:12]} patch bytes hash to {_actual[:12]} but the "
+                        f"chain records {_c.patch_sha256[:12]}")
+                _name = commit_patch_filename(_c.commit)
+                (_pdir / _name).write_bytes(_raw)
+                _patches.append(f"{COMMIT_PATCH_DIRNAME}/{_name}")
+            written[COMMIT_PATCH_DIRNAME] = str(_pdir)
     except Exception as exc:
         _write_gate_error("current_change_content_proof.error.txt", exc)
 
@@ -1478,11 +1516,19 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     """Execute a verification command via subprocess and parse pytest counts."""
     import shlex
     import subprocess as _sp
+    from packages.orchestration.review_subject import child_env_without_declaration
+
     try:
         argv = shlex.split(command)
     except ValueError:
         argv = command.split()
-    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600)
+    # F6 (round 16): a verification child NEVER inherits the operator's base declaration. It is
+    # exported for the repository under review, but this child runs whatever it likes — a pytest
+    # suite against its own temporary repositories, which have never heard of that commit. In
+    # round 15 exactly that reached a subprocess and cost an unrelated job its content proof.
+    # A child that needs a base is given one explicitly.
+    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600,
+                     env=child_env_without_declaration())
     passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", result.stdout or ""))
     failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", result.stdout or ""))
     return {
