@@ -384,9 +384,72 @@ find . \
 # ordinary source paths.
 tr '\0' '\n' < "$TMP0" > "$TMP"
 
-# --- Build manifest using Python (always-valid JSON) ---
+# F1 (round 20): SAFE EVIDENCE SNAPSHOT PRECEDES EVERY EVIDENCE READ. Stage the Evidence to a
+# private immutable snapshot FIRST — anchored, no-follow, hashed, bounded — and then validate,
+# build the manifest, derive Subject/Proof/Gates and package ONLY the staged bytes. Nothing reads
+# the original EVIDENCE_DIR again after this point.
+EVIDENCE_STAGING="$(mktemp -d)"
+trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$TMP0" "$TMP_EV0" "$MANIFEST"' EXIT
+
+CURRENT_PREFIX="evidence/current"
+OBS_INDEX_NAME="self_run_observability_index.json"
+OBS_INDEX_STAGED=""
+STAGED_CURRENT="$EVIDENCE_STAGING/$CURRENT_PREFIX"
+
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  mkdir -p "$STAGED_CURRENT"
+
+  # F1/F3/F9/F10 (round 20): typed no-follow snapshot. Copies once, hashes each staged member into
+  # evidence_snapshot_inventory.json, and enforces count/aggregate limits DURING the walk. A
+  # symlink/FIFO/device or an over-limit tree BLOCKS before the rest is copied.
+  if ! python3 scripts/stage_review_evidence.py stage \
+       --src "$EVIDENCE_DIR" --dest "$STAGED_CURRENT" --inventory-out "$STAGED_CURRENT" >/dev/null; then
+    echo "Evidence staging refused an unsafe or over-limit member in $EVIDENCE_DIR." >&2
+    exit 2
+  fi
+
+  # --- Observability index generated from the STAGED bytes (F1, round 20) ---
+  OBS_INDEX_STAGED="$STAGED_CURRENT/$OBS_INDEX_NAME"
+  if [[ -f "scripts/build_observability_index.py" ]]; then
+    if python3 scripts/build_observability_index.py \
+         --evidence-dir "$STAGED_CURRENT" \
+         --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
+      echo "Observability index generated from staged bytes: $CURRENT_PREFIX/$OBS_INDEX_NAME"
+    else
+      echo "Warning: observability index generation failed for staged evidence" >&2
+    fi
+  else
+    echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
+  fi
+
+  # --- Supplemental history (context only; never affects package status) — also staged safely ---
+  if [[ -n "$HISTORY_ENTRIES" ]]; then
+    IFS=',' read -r -a _HIST <<< "$HISTORY_ENTRIES"
+    for entry in "${_HIST[@]}"; do
+      [[ -z "$entry" ]] && continue
+      h_job="${entry%%:*}"
+      h_dir="${entry#*:}"
+      [[ -z "$h_job" || -z "$h_dir" || ! -d "$h_dir" ]] && continue
+      [[ "$h_job" == "$SELECTED_JOB_ID" ]] && continue   # never duplicate current
+      h_prefix="evidence/history/$h_job"
+      mkdir -p "$EVIDENCE_STAGING/$h_prefix"
+      if ! python3 scripts/stage_review_evidence.py stage \
+           --src "$h_dir" --dest "$EVIDENCE_STAGING/$h_prefix" >/dev/null; then
+        echo "History staging refused an unsafe member in $h_dir." >&2
+        exit 2
+      fi
+      echo "Included supplemental history: $h_prefix (context only)"
+    done
+  fi
+fi
+
+# --- Build manifest from the STAGED snapshot (F1/F8, round 20) — never the original EVIDENCE_DIR ---
+MANIFEST_EVIDENCE_ARG=""
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  MANIFEST_EVIDENCE_ARG="$STAGED_CURRENT"
+fi
 python3 scripts/build_review_manifest.py \
-  --evidence-dir "${EVIDENCE_DIR:-}" \
+  --evidence-dir "${MANIFEST_EVIDENCE_ARG}" \
   --selection-mode "${SELECTION_MODE:-none}" \
   --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
   --candidate-count "$CANDIDATE_COUNT" \
@@ -429,62 +492,10 @@ if [[ "$EVIDENCE_VALID" == "false" && -n "$EVIDENCE_DIR" ]]; then
   echo "Zip will be built anyway — reviewer will see validation status in manifest."
 fi
 
-# --- Include current evidence under evidence/current/ prefix (if evidence exists) ---
-EVIDENCE_STAGING="$(mktemp -d)"
-trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$TMP0" "$TMP_EV0" "$MANIFEST"' EXIT
-
-CURRENT_PREFIX="evidence/current"
-OBS_INDEX_NAME="self_run_observability_index.json"
-OBS_INDEX_STAGED=""
-
+# --- The staged evidence file list (typed no-follow walk of the snapshot; includes the manifest
+#     is NOT here — the manifest is a repo-root member). Built AFTER the manifest so the list is
+#     complete for the archive builder. ---
 if [[ -n "$EVIDENCE_DIR" ]]; then
-  mkdir -p "$EVIDENCE_STAGING/$CURRENT_PREFIX"
-
-  # F8 (round 19): typed no-follow staging. `find -type f | cp` skipped symlinks and followed
-  # them into outside bytes; this anchored copy BLOCKS a symlink/FIFO/device member (fails closed).
-  if ! python3 scripts/stage_review_evidence.py stage \
-       --src "$EVIDENCE_DIR" --dest "$EVIDENCE_STAGING/$CURRENT_PREFIX" >/dev/null; then
-    echo "Evidence staging refused an unsafe member in $EVIDENCE_DIR." >&2
-    exit 2
-  fi
-
-  # --- Ensure the observability index ships in the zip ---
-  OBS_INDEX_STAGED="$EVIDENCE_STAGING/$CURRENT_PREFIX/$OBS_INDEX_NAME"
-  if [[ -f "scripts/build_observability_index.py" ]]; then
-    if python3 scripts/build_observability_index.py \
-         --evidence-dir "$EVIDENCE_DIR" \
-         --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
-      echo "Observability index generated: $CURRENT_PREFIX/$OBS_INDEX_NAME"
-    else
-      echo "Warning: observability index generation failed for $EVIDENCE_DIR" >&2
-    fi
-  else
-    echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
-  fi
-
-  # --- Supplemental history (context only; never affects package status) ---
-  if [[ -n "$HISTORY_ENTRIES" ]]; then
-    IFS=',' read -r -a _HIST <<< "$HISTORY_ENTRIES"
-    for entry in "${_HIST[@]}"; do
-      [[ -z "$entry" ]] && continue
-      h_job="${entry%%:*}"
-      h_dir="${entry#*:}"
-      [[ -z "$h_job" || -z "$h_dir" || ! -d "$h_dir" ]] && continue
-      [[ "$h_job" == "$SELECTED_JOB_ID" ]] && continue   # never duplicate current
-      h_prefix="evidence/history/$h_job"
-      mkdir -p "$EVIDENCE_STAGING/$h_prefix"
-      if ! python3 scripts/stage_review_evidence.py stage \
-           --src "$h_dir" --dest "$EVIDENCE_STAGING/$h_prefix" >/dev/null; then
-        echo "History staging refused an unsafe member in $h_dir." >&2
-        exit 2
-      fi
-      echo "Included supplemental history: $h_prefix (context only)"
-    done
-  fi
-
-  # F8 (round 19): the evidence file list is now a TYPED no-follow walk of the staging tree, not
-  # `find -type f`. Any non-regular entry blocks; the NUL list feeds the archive builder and the
-  # newline list feeds the manifest/alignment steps. Both come from one inventory, so they agree.
   if ! python3 scripts/stage_review_evidence.py list \
        --root "$EVIDENCE_STAGING" --nul-out "$TMP_EV0" --text-out "$TMP_EV0.txt"; then
     echo "Evidence staging tree contains an unsafe member." >&2
@@ -496,11 +507,10 @@ fi
 
 sort -u "$TMP" -o "$TMP"
 
-# --- Create zip (F8/F9/F10, round 17) ---
-# The archive is built by a NUL-safe `zipfile` builder driven by the exact typed file model, not
-# by `find | zip -@` (which is newline-delimited and silently drops a filename containing a
-# newline). The builder validates every archive name, refuses a containment escape, refuses a
-# duplicate, then REOPENS the archive and verifies its exact member set and hashes.
+# --- Create zip (round 20 two-phase, directed hash chain) ---
+# Phase 1 snapshots every source member; phases 2-3 emit the directed chain
+# (plan -> expectation -> manifest) as in-memory bytes; phase 4 builds the deterministic ZIP from
+# the immutable bytes; phase 5 reopens and verifies. Subject/Proof are STAGED bytes.
 rm -f "$OUT"
 cd "$ROOT"
 
@@ -511,21 +521,19 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   EV_FILES_ARG="$TMP_EV0"
 fi
 
-# F1 (round 18): the authoritative ReviewSubject drives the plan; the shell never rediscovers
-# authoritative paths. `$EVIDENCE_DIR/review_subject.json` is the typed subject (absent for a
-# code-snapshot build, in which case the plan has only bundle context).
+# Round 20: Subject, Content-Proof and the generated plan all live in the STAGED snapshot, never
+# the original EVIDENCE_DIR.
 SUBJECT_JSON_ARG=""
 CONTENT_PROOF_ARG=""
 PLAN_OUT_ARG=""
-if [[ -n "$EVIDENCE_DIR" && -f "$EVIDENCE_DIR/review_subject.json" ]]; then
-  SUBJECT_JSON_ARG="$EVIDENCE_DIR/review_subject.json"
+if [[ -n "$EVIDENCE_DIR" && -f "$STAGED_CURRENT/review_subject.json" ]]; then
+  SUBJECT_JSON_ARG="$STAGED_CURRENT/review_subject.json"
 fi
-# F1 (round 19): THE authority set is the Content Proof's file set; F2: package the ArchivePlan.
-if [[ -n "$EVIDENCE_DIR" && -f "$EVIDENCE_DIR/current_change_content_proof.json" ]]; then
-  CONTENT_PROOF_ARG="$EVIDENCE_DIR/current_change_content_proof.json"
+if [[ -n "$EVIDENCE_DIR" && -f "$STAGED_CURRENT/current_change_content_proof.json" ]]; then
+  CONTENT_PROOF_ARG="$STAGED_CURRENT/current_change_content_proof.json"
 fi
 if [[ -n "$EV_ROOT_ARG" ]]; then
-  PLAN_OUT_ARG="$EV_ROOT_ARG/$CURRENT_PREFIX/review_archive_plan.json"
+  PLAN_OUT_ARG="$STAGED_CURRENT/review_archive_plan.json"
 fi
 
 python3 scripts/build_review_zip.py \
@@ -536,6 +544,7 @@ python3 scripts/build_review_zip.py \
   --evidence-files0 "$EV_FILES_ARG" \
   --subject-json "$SUBJECT_JSON_ARG" \
   --content-proof-json "$CONTENT_PROOF_ARG" \
+  --current-prefix "$CURRENT_PREFIX" \
   --plan-out "$PLAN_OUT_ARG" \
   --manifest-rel "$MANIFEST" \
   --manifest-disk "$MANIFEST"

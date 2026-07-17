@@ -20,7 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from packages.orchestration.evidence_inventory import (  # noqa: E402
     EvidenceInventoryError,
     list_regular_tree,
-    stage_evidence_tree,
+    stage_evidence_snapshot,
+    write_snapshot_inventory,
 )
 
 
@@ -31,6 +32,8 @@ def main() -> int:
     ps = sub.add_parser("stage")
     ps.add_argument("--src", required=True)
     ps.add_argument("--dest", required=True)
+    ps.add_argument("--inventory-out", default="",
+                    help="dir to write evidence_snapshot_inventory.json into")
 
     pl = sub.add_parser("list")
     pl.add_argument("--root", required=True)
@@ -40,8 +43,10 @@ def main() -> int:
     args = ap.parse_args()
     try:
         if args.cmd == "stage":
-            staged = stage_evidence_tree(args.src, args.dest)
-            print(len(staged))
+            members = stage_evidence_snapshot(args.src, args.dest)
+            if args.inventory_out:
+                write_snapshot_inventory(args.inventory_out, members)
+            print(len(members))
         else:
             rels = list_regular_tree(args.root)
             with open(args.nul_out, "wb") as fh:
