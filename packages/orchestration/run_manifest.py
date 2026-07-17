@@ -1486,8 +1486,34 @@ class RunCallLedgerV1:
         return canonical_ledger_ref(self.task_id, self.run_id)
 
 
+def ledger_identity_bytes(task_id: str, run_id: str) -> bytes:
+    """The UNAMBIGUOUS canonical encoding of a ledger's identity.
+
+    Unambiguous is the whole point: the identity is two independent strings, and any encoding
+    that merely concatenates them with a separator is ambiguous whenever the separator can occur
+    inside either one. Canonical JSON is length-delimited by construction (the quotes and the key
+    names bound each field), so exactly one (task_id, run_id) pair can produce these bytes.
+    """
+    return _fs.json_bytes({"task_id": str(task_id), "run_id": str(run_id)}, sort_keys=True)
+
+
 def canonical_ledger_ref(task_id: str, run_id: str) -> str:
-    return f"{LEDGERS_SUBDIR}/{task_id}-{run_id}.json"
+    """THE ledger artifact ref — one helper, used by the writer, the readers and the validators.
+
+    F3 (round 14): this used to be `call_ledgers/{task_id}-{run_id}.json`, which is ambiguous
+    because `-` is legal inside both ids. Reproduced: `("a-b", "c")` and `("a", "b-c")` — both
+    passing the safe-component schema — mapped to the SAME `call_ledgers/a-b-c.json`, and a
+    crafted tree with two declared ledgers backed by ONE physical file was accepted, because the
+    anchored reader built a dict keyed by filename and silently overwrote one declaration.
+
+    The ref is now the sha256 of the unambiguous identity encoding: deterministic, recomputable
+    from the ledger's own identity, collision-free, and 69 bytes — far below NAME_MAX (255)
+    whatever the ids are, so the maximum legal task/run ids still produce a legal filename.
+
+    No compatibility layer: F012 is unmerged, so no accepted record uses the old shape.
+    """
+    digest = hashlib.sha256(ledger_identity_bytes(task_id, run_id)).hexdigest()
+    return f"{LEDGERS_SUBDIR}/{digest}.json"
 
 
 def decode_run_call_ledger_v1(raw: Any) -> "RunCallLedgerV1":
@@ -2363,6 +2389,82 @@ LEDGER_CALL_BIJECTION_FIELDS = ("call_id", "episode_id", "role", "round", "kind"
                                 "prepared_input_fingerprint", "ok")
 
 
+def declared_job_input_task_ids(manifest: "RunManifestV1") -> list[str]:
+    """The task ids the EMBEDDED, immutable JobInputDefinition declares."""
+    out: list[str] = []
+    ji = getattr(getattr(manifest.episode_snapshot, "input", None), "job_input", None)
+    if isinstance(ji, dict) and isinstance(ji.get("tasks"), list):
+        for t in ji["tasks"]:
+            if isinstance(t, dict):
+                out.append(str(t.get("task_id", "")))
+    return out
+
+
+def validate_ledger_set(manifest: "RunManifestV1") -> list[str]:
+    """F2/F5 (round 14): the ledger SET is exactly the set the expectation accounts for.
+
+    Every individual ledger could be perfectly formed while the SET carried a passenger. A
+    fabricated ledger — `task_id=GHOST, run_id=ghostrun, complete=true, entries=[]` — belonged to
+    no embedded JobInputDefinition task, no CallExpectation entry and no Manifest Call, and it was
+    accepted by typed validation, the writer, the canonical loader and the verified tree. Nothing
+    asked what it was doing there, because every check walked FROM the ledgers OUTWARD instead of
+    asking whether the ledgers were exactly what the record accounts for.
+
+    The contract is set equality, in both directions:
+
+        expected_ledger_keys = {(task_id, run_id) for each CallExpectation task owning a run}
+        actual_ledger_keys   == expected_ledger_keys
+
+    plus: every ledger's task is declared exactly once in the embedded JobInputDefinition, no
+    duplicate key, no duplicate canonical ref, and every ref is the one recomputed from the
+    ledger's own identity (F3 — so a ref can never be an alias for another ledger's artifact).
+    """
+    problems: list[str] = []
+    expected: set[tuple] = {(t.task_id, t.run_id)
+                            for t in manifest.call_expectation.tasks if t.run_id}
+    actual: list[tuple] = [(lg.task_id, lg.run_id) for lg in manifest.call_ledgers]
+
+    seen: set[tuple] = set()
+    for key in actual:
+        if key in seen:
+            problems.append(f"two call ledgers for {key[0]}/{key[1]}")
+        seen.add(key)
+
+    for key in sorted(seen - expected):
+        problems.append(
+            f"call ledger {key[0]}/{key[1]} is accounted for by no call_expectation task that "
+            f"owns that run: a published manifest carries the ledgers its own record explains, "
+            f"and nothing else")
+    for key in sorted(expected - seen):
+        problems.append(
+            f"call_expectation says task {key[0]!r} owns run {key[1]!r}, but the manifest "
+            f"carries no ledger for it")
+
+    declared = declared_job_input_task_ids(manifest)
+    for lg in manifest.call_ledgers:
+        n = declared.count(lg.task_id)
+        if n != 1:
+            problems.append(
+                f"call ledger {lg.task_id}/{lg.run_id} names a task declared {n} time(s) in the "
+                f"embedded job input definition (must be exactly once)")
+
+    # F3: refs are collision-free AND recomputable, checked BEFORE anything keys a dict by them.
+    by_ref: dict[str, tuple] = {}
+    for lg in manifest.call_ledgers:
+        ref = canonical_ledger_ref(lg.task_id, lg.run_id)
+        if lg.ref() != ref:
+            problems.append(
+                f"call ledger {lg.task_id}/{lg.run_id} does not sit at the ref recomputed from "
+                f"its own identity")
+        prior = by_ref.get(ref)
+        if prior is not None and prior != (lg.task_id, lg.run_id):
+            problems.append(
+                f"call ledgers {prior[0]}/{prior[1]} and {lg.task_id}/{lg.run_id} claim the same "
+                f"artifact ref {ref!r}: two different runs cannot be backed by one file")
+        by_ref[ref] = (lg.task_id, lg.run_id)
+    return problems
+
+
 def _ledger_state_for_run(run: dict, *, where: str) -> tuple[str, list[str]]:
     """F2 (round 13): the ledger's terminal state, STRICTLY DECODED from the run's own record.
 
@@ -2402,6 +2504,7 @@ def validate_call_ledgers(manifest: "RunManifestV1", *,
     """
     problems: list[str] = []
     ledgers = list(manifest.call_ledgers)
+    problems.extend(validate_ledger_set(manifest))
     by_key: dict[tuple, RunCallLedgerV1] = {}
     for lg in ledgers:
         problems.extend(validate_run_call_ledger(lg, mode=mode))
@@ -3994,9 +4097,13 @@ def validate_ledger_chain(ordered_manifests: list["RunManifestV1"]) -> list[str]
 
     The rule, applied per (task, run) across the chain in ordinal order:
 
-    * the first ledger to mention a run ESTABLISHES its sequence;
-    * every later ledger is that ledger exactly, or an exact EXTENSION of it — the earlier
-      ledger's complete entry list is a PREFIX, field for field, in order;
+    * the first COMPLETE ledger for a run FREEZES that run's whole account (F1, round 14): a
+      later episode may repeat that exact object and nothing else — no extension, no shrink, no
+      reorder, no terminal-state change, no `complete` change, no header change. Later work
+      belongs to a NEW run id, which is what production already does (`PingPongResult.run_id` is
+      a fresh `uuid4().hex[:16]` per execution);
+    * an incomplete ledger (never publishable — F1, round 13) may still grow, but only as an
+      exact EXTENSION: the earlier entry list is a PREFIX, field for field, in order;
     * no prior entry may be removed, reordered, invented or altered;
     * every entry attributed to an earlier episode resolves to exactly one canonical call
       published by THAT episode (and therefore to its verified call artifact);
@@ -4041,21 +4148,54 @@ def validate_ledger_chain(ordered_manifests: list["RunManifestV1"]) -> list[str]
                         f"by {owner!r}")
             prev = seen.get(key)
             if prev is None:
-                seen[key] = entries
+                seen[key] = (lg, entries)
                 continue
-            if len(entries) < len(prev):
+            prev_lg, prev_entries = prev
+
+            # F1 (round 14): A COMPLETE TERMINAL LEDGER IS FINAL.
+            #
+            # The round-13 rule compared the entry PREFIX, which permitted exactly the thing the
+            # three facts forbid: episode 1 could publish `complete=true, terminal_state=completed,
+            # [Call 1]` and episode 2 could republish the SAME run as `terminal_state=failed,
+            # [Call 1, Call 2]` — an extension of a run that had already declared itself finished,
+            # inside Evidence that is supposed to be immutable. Reproduced: both manifests
+            # validated and the whole chain was accepted.
+            #
+            # `complete=true` means "this is the entire account of that run", and every state in
+            # LEDGER_TERMINAL_STATES means "the run ended". So the ledger object is frozen whole —
+            # header included — not merely its entry prefix. Later episodes may repeat it, and
+            # only byte-for-byte.
+            #
+            # This is what production already does: `PingPongResult.run_id` is a fresh
+            # `uuid4().hex[:16]` per execution, so later work is a NEW run. Verified against a
+            # real stop-then-resume: T001's terminal ledger appears in both episodes with an
+            # identical sha256, while the resumed task's new work arrives under a new run id.
+            if prev_lg.complete:
+                if lg.sha256() != prev_lg.sha256():
+                    problems.append(
+                        f"episode {m.episode_id}: ledger {lg.task_id}/{lg.run_id} differs from "
+                        f"the COMPLETE {prev_lg.terminal_state!r} ledger an earlier episode "
+                        f"already published for that run. A finished run's account is frozen: a "
+                        f"later episode may repeat it byte-for-byte and nothing else, and later "
+                        f"work belongs to a new run id")
+                continue
+
+            # An INCOMPLETE ledger has not claimed to be the whole account yet, so it may still
+            # grow — but only as an exact extension of what is already recorded. (A published
+            # reference can never contain one: F1, round 13.)
+            if len(entries) < len(prev_entries):
                 problems.append(
                     f"episode {m.episode_id}: ledger {lg.task_id}/{lg.run_id} has "
-                    f"{len(entries)} entries, fewer than the {len(prev)} an earlier episode "
-                    f"already established: a run's history cannot shrink")
+                    f"{len(entries)} entries, fewer than the {len(prev_entries)} an earlier "
+                    f"episode already established: a run's history cannot shrink")
             else:
-                head = entries[:len(prev)]
-                if head != prev:
+                head = entries[:len(prev_entries)]
+                if head != prev_entries:
                     problems.append(
                         f"episode {m.episode_id}: ledger {lg.task_id}/{lg.run_id} does not "
                         f"extend the ledger an earlier episode established — its first "
-                        f"{len(prev)} entries are not that ledger, entry for entry")
-                seen[key] = entries
+                        f"{len(prev_entries)} entries are not that ledger, entry for entry")
+                seen[key] = (lg, entries)
     return problems
 
 
@@ -5100,7 +5240,20 @@ def validate_episode_artifacts_anchored(root_fd: int, episode_id: str,
 def _validate_episode_ledgers_anchored(ep_fd: int, episode_id: str,
                                        manifest: "RunManifestV1") -> list[str]:
     problems: list[str] = []
-    declared = {lg.ref().split("/", 1)[1]: lg for lg in manifest.call_ledgers}
+    # F3 (round 14): duplicate refs are detected BEFORE any dict is keyed by them. The old
+    # comprehension silently dropped a declaration when two ledgers mapped to one filename, so a
+    # crafted tree with one physical file backing two ledgers read as complete and consistent.
+    declared: dict[str, RunCallLedgerV1] = {}
+    for lg in manifest.call_ledgers:
+        name = lg.ref().split("/", 1)[1]
+        prior = declared.get(name)
+        if prior is not None:
+            problems.append(
+                f"episode {episode_id}: call ledgers {prior.task_id}/{prior.run_id} and "
+                f"{lg.task_id}/{lg.run_id} both claim artifact {name!r}; refusing to read one "
+                f"file as two ledgers")
+            continue
+        declared[name] = lg
     try:
         led_fd = _fs.open_verified_dir(LEDGERS_SUBDIR, dir_fd=ep_fd, error_cls=ManifestError,
                                        noun="run-manifest")
