@@ -24,6 +24,7 @@ non-ancestral base is a blocking Evidence error, never a silent downgrade.
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import stat
 import os
@@ -102,12 +103,24 @@ class ReviewFileV1:
     base_sha256: str | None = None
     current_sha256: str | None = None
     old_path: str | None = None
-    #: F5 (round 16): WHAT this path is. `regular` for a committed record whose content git
-    #: already proved; the working-tree kinds are inspected with `lstat` and never followed.
+    #: F5 (round 16): WHAT this path is NOW (the CURRENT side). `regular` for a committed record
+    #: whose content git already proved; the working-tree kinds are inspected with `lstat` and
+    #: never followed. Kept as `kind` for back-compat; `current_kind` is its explicit synonym.
     kind: str = KIND_REGULAR
     #: For a symlink: the literal target text, exactly as stored. Never resolved, never read
     #: through. `None` for every other kind.
     link_target: str | None = None
+    #: F3 (round 17): the kind and git mode at the BASE side of the change. A modify from a
+    #: symlink to a regular file, or a mode-only 100644->100755 change, is provable only when
+    #: BOTH sides are recorded. `None`/`""` when there is no base side (an added file).
+    base_kind: str | None = None
+    base_mode: str = ""
+    current_mode: str = ""
+
+    @property
+    def current_kind(self) -> str:
+        """The explicit name for `kind` — WHAT this path is on the current side."""
+        return self.kind
 
     def to_json(self) -> dict[str, Any]:
         out: dict[str, Any] = {"path": self.path, "status": self.status,
@@ -118,6 +131,12 @@ class ReviewFileV1:
             out["old_path"] = self.old_path
         if self.link_target is not None:
             out["link_target"] = self.link_target
+        if self.base_kind is not None:
+            out["base_kind"] = self.base_kind
+        if self.base_mode:
+            out["base_mode"] = self.base_mode
+        if self.current_mode:
+            out["current_mode"] = self.current_mode
         return out
 
 
@@ -239,13 +258,45 @@ def _toplevel(path: str | Path | None) -> str:
 
 
 
-def _committed_records(repo_root: str | Path, base: str, head: str) -> list[ReviewFileV1]:
-    """The committed delta, from ONE canonical git command.
+#: F3 (round 17): git tree modes → the typed file kind. A committed symlink is stored as a
+#: 120000 blob whose CONTENT is its target text — git already holds it, so it is never read
+#: through the filesystem. A submodule (160000) is a gitlink, not a file we can hash.
+_GIT_MODE_TO_KIND = {
+    "100644": KIND_REGULAR,
+    "100755": KIND_REGULAR,          # executable — a mode difference, still a regular file
+    "120000": KIND_SYMLINK,
+    "160000": KIND_SPECIAL,          # submodule gitlink
+    "040000": KIND_DIRECTORY,
+}
 
-    `--name-status -z` is NUL-delimited, so a path containing a space, a newline or a quote comes
-    back intact; parsing git's human-formatted output would corrupt exactly those paths.
+
+def _git_mode_to_kind(mode: str) -> str:
+    """The typed kind for a git tree mode. An unknown mode is `special`, never assumed regular."""
+    return _GIT_MODE_TO_KIND.get((mode or "").zfill(6), KIND_SPECIAL)
+
+
+def _committed_symlink_target(repo_root: str | Path, rev: str, path: str) -> str | None:
+    """A committed symlink's target text — its BLOB content, read from git, never followed."""
+    r = _git(repo_root, ["show", f"{rev}:{path}"], binary=True)
+    if r.returncode != 0:
+        return None
+    return r.stdout.decode("utf-8", errors="replace")
+
+
+def _committed_records(repo_root: str | Path, base: str, head: str) -> list[ReviewFileV1]:
+    """The committed delta, from ONE canonical git command that also carries MODES.
+
+    `--raw -z` is NUL-delimited (a path with a space, newline or quote survives) AND reports the
+    source/destination modes, so a committed symlink or a mode-only change is provable. Each raw
+    record is `:<srcmode> <dstmode> <srcsha> <dstsha> <status>` then the path(s), NUL-separated.
+
+    F3 (round 17): kinds come from those modes, never from `kind=regular` defaults. A committed
+    symlink's target is read from its git BLOB (`git show <rev>:<path>`), never through the
+    working tree — and an absolute or escaping committed symlink is recorded truthfully so
+    `validate_subject_path_kinds` can block it.
     """
-    r = _git(repo_root, ["diff", "--name-status", "-z", "--find-renames", f"{base}..{head}"])
+    r = _git(repo_root, ["diff", "--raw", "-z", "--find-renames", "--abbrev=40",
+                         f"{base}..{head}"])
     if r.returncode != 0:
         raise ReviewSubjectError(
             f"cannot read the committed delta {base}..{head}: {r.stderr.strip()[:200]}")
@@ -253,36 +304,100 @@ def _committed_records(repo_root: str | Path, base: str, head: str) -> list[Revi
     out: list[ReviewFileV1] = []
     i = 0
     while i < len(fields):
-        code = fields[i]
+        meta = fields[i]
+        if not meta.startswith(":"):
+            raise ReviewSubjectError(f"malformed raw diff record near {meta!r}")
+        # ":100644 100755 <src40> <dst40> M" — status letter may carry a rename score (R100).
+        parts = meta[1:].split()
+        if len(parts) < 5:
+            raise ReviewSubjectError(f"malformed raw diff meta {meta!r}")
+        src_mode, dst_mode, _src_sha, _dst_sha, code = parts[0], parts[1], parts[2], parts[3], \
+            parts[4]
         letter = code[0]
         status = _GIT_STATUS_MAP.get(letter)
         if status is None:
             raise ReviewSubjectError(f"unsupported git status {code!r} in the committed delta")
+        base_kind = _git_mode_to_kind(src_mode)
+        cur_kind = _git_mode_to_kind(dst_mode)
+
         if letter in ("R", "C"):
-            # Rename/copy carry BOTH paths: <code>\0<old>\0<new>
             if i + 2 >= len(fields):
-                raise ReviewSubjectError(f"malformed rename record near {code!r}")
+                raise ReviewSubjectError(f"malformed rename record near {meta!r}")
             old_path, new_path = fields[i + 1], fields[i + 2]
             i += 3
             out.append(ReviewFileV1(
                 path=new_path, status=status, old_path=old_path,
                 base_sha256=_sha256_blob(repo_root, base, old_path),
-                current_sha256=_sha256_blob(repo_root, head, new_path)))
+                current_sha256=_sha256_blob(repo_root, head, new_path),
+                kind=cur_kind, base_kind=base_kind,
+                base_mode=src_mode, current_mode=dst_mode,
+                link_target=(_committed_symlink_target(repo_root, head, new_path)
+                             if cur_kind == KIND_SYMLINK else None)))
             continue
+
         if i + 1 >= len(fields):
-            raise ReviewSubjectError(f"malformed status record near {code!r}")
+            raise ReviewSubjectError(f"malformed status record near {meta!r}")
         path = fields[i + 1]
         i += 2
+        added, deleted = letter == "A", letter == "D"
         out.append(ReviewFileV1(
             path=path, status=status,
-            base_sha256=(None if letter == "A" else _sha256_blob(repo_root, base, path)),
-            current_sha256=(None if letter == "D"
-                            else _sha256_blob(repo_root, head, path))))
+            base_sha256=(None if added else _sha256_blob(repo_root, base, path)),
+            current_sha256=(None if deleted else _sha256_blob(repo_root, head, path)),
+            kind=(KIND_DELETED if deleted else cur_kind),
+            base_kind=(None if added else base_kind),
+            base_mode=("" if added else src_mode),
+            current_mode=("" if deleted else dst_mode),
+            link_target=(_committed_symlink_target(repo_root, head, path)
+                         if (not deleted and cur_kind == KIND_SYMLINK) else None)))
     return out
 
 
-def _dirty_records(repo_root: str | Path) -> list[ReviewFileV1]:
-    """Uncommitted changes, NUL-safe, hashed from the working tree."""
+def _head_kind_and_mode(repo_root: str | Path, head: str, path: str) -> tuple[str | None, str]:
+    """The kind and git mode of a path AS OF `head`, from `git ls-tree` — never the filesystem."""
+    r = _git(repo_root, ["ls-tree", "-z", head, "--", path])
+    if r.returncode != 0 or not r.stdout.strip():
+        return None, ""
+    # "<mode> <type> <sha>\t<path>" — mode is the first field.
+    mode = r.stdout.split()[0] if r.stdout.split() else ""
+    return _git_mode_to_kind(mode), mode
+
+
+def _dirty_current_record(repo_root: str | Path, path: str,
+                          base_sha: str | None, base_kind: str | None,
+                          base_mode: str, *, status: str,
+                          old_path: str | None = None) -> ReviewFileV1:
+    """One dirty record, inspecting the WORKING-TREE side without ever following it (F5, r16),
+    while carrying its BASE side forward (F5, r17)."""
+    full = Path(repo_root) / path
+    kind, target = inspect_path_kind(full)
+    common = dict(path=path, old_path=old_path, base_sha256=base_sha,
+                  base_kind=base_kind, base_mode=base_mode)
+    if kind == KIND_DELETED:
+        return ReviewFileV1(status=STATUS_DELETED, current_sha256=None, kind=KIND_DELETED,
+                            **common)
+    if kind == KIND_REGULAR:
+        return ReviewFileV1(status=status, current_sha256=_sha256_file(full), kind=KIND_REGULAR,
+                            **common)
+    if kind == KIND_SYMLINK:
+        # The LINK's own content is its target text. Hashing what it points at would read outside
+        # the repository and describe bytes the package does not carry.
+        return ReviewFileV1(
+            status=status,
+            current_sha256=hashlib.sha256((target or "").encode("utf-8")).hexdigest(),
+            kind=KIND_SYMLINK, link_target=target, **common)
+    # A directory or special file has no honest content proof; recorded, blocked at packaging.
+    return ReviewFileV1(status=status, current_sha256=None, kind=kind, **common)
+
+
+def _dirty_records(repo_root: str | Path, head: str = "HEAD") -> list[ReviewFileV1]:
+    """Uncommitted changes, NUL-safe, with FULL base-side proofs (F5, round 17).
+
+    A dirty deletion used to carry `base_sha256: null` — no tombstone at all, so nothing said what
+    was removed. A dirty rename lost its old path and base hash. Both are resolved here against
+    the declared HEAD with git blob reads (never the working tree): a deletion records the HEAD
+    blob it removed, a rename records old path + both hashes + both kinds.
+    """
     r = _git(repo_root, ["status", "--porcelain", "-z", "-u"])
     if r.returncode != 0:
         return []
@@ -295,35 +410,30 @@ def _dirty_records(repo_root: str | Path) -> list[ReviewFileV1]:
         if not entry.strip():
             continue
         code, path = entry[:2], entry[3:]
-        if code[0] in ("R", "C"):
-            # porcelain -z puts the ORIGIN path in the next field for a rename.
+        old_path = None
+        if code[0] in ("R", "C") or code[1] in ("R", "C"):
+            # porcelain -z: a rename/copy is `XY NEW\0OLD\0` — NEW in `entry`, OLD next.
             if i < len(fields):
+                old_path = fields[i]
                 i += 1
         if not path:
             continue
-        full = Path(repo_root) / path
-        # F5 (round 16): inspect, never follow. Each kind gets the one proof it can honestly
-        # carry — and a kind we cannot prove is recorded as itself rather than hashed as
-        # something it is not.
-        kind, target = inspect_path_kind(full)
-        if kind == KIND_DELETED:
-            out.append(ReviewFileV1(path=path, status=STATUS_DELETED, base_sha256=None,
-                                    current_sha256=None, kind=KIND_DELETED))
-        elif kind == KIND_REGULAR:
-            out.append(ReviewFileV1(path=path, status=STATUS_DIRTY, base_sha256=None,
-                                    current_sha256=_sha256_file(full), kind=KIND_REGULAR))
-        elif kind == KIND_SYMLINK:
-            # The LINK's own content is its target text. Hashing what it points at would read
-            # outside the repository and describe bytes the package does not carry.
-            out.append(ReviewFileV1(
-                path=path, status=STATUS_DIRTY, base_sha256=None,
-                current_sha256=hashlib.sha256((target or "").encode("utf-8")).hexdigest(),
-                kind=KIND_SYMLINK, link_target=target))
+
+        if old_path is not None:
+            # A (staged) rename: prove both ends against HEAD.
+            base_kind, base_mode = _head_kind_and_mode(repo_root, head, old_path)
+            rec = _dirty_current_record(
+                repo_root, path, base_sha=_sha256_blob(repo_root, head, old_path),
+                base_kind=base_kind, base_mode=base_mode,
+                status=STATUS_RENAMED, old_path=old_path)
         else:
-            # A directory or a special file (FIFO, socket, device) has no content proof at all.
-            # It is recorded truthfully; `validate_subject_path_kinds` blocks READY packaging.
-            out.append(ReviewFileV1(path=path, status=STATUS_DIRTY, base_sha256=None,
-                                    current_sha256=None, kind=kind))
+            # A modification or deletion of a path that (usually) exists at HEAD.
+            base_kind, base_mode = _head_kind_and_mode(repo_root, head, path)
+            base_sha = _sha256_blob(repo_root, head, path) if base_kind is not None else None
+            rec = _dirty_current_record(
+                repo_root, path, base_sha=base_sha, base_kind=base_kind, base_mode=base_mode,
+                status=STATUS_DIRTY)
+        out.append(rec)
     return out
 
 
@@ -407,6 +517,49 @@ def child_env_without_declaration(env: dict[str, str] | None = None) -> dict[str
     return out
 
 
+def merge_review_file_state(committed: ReviewFileV1 | None,
+                            dirty: ReviewFileV1) -> ReviewFileV1:
+    """F2 (round 17): the ONE lossless, typed merge of a committed and a dirty record.
+
+    A path can be both committed (base..HEAD) and dirty (HEAD..working-tree). The working tree is
+    the later truth, so its CURRENT side wins — but its base side is empty (dirty records now
+    resolve their own HEAD base, so this mostly agrees), and the committed record may carry the
+    ORIGINAL base (base..HEAD) that predates HEAD. The previous inline reconstruction rebuilt a
+    bare `ReviewFileV1(path, status, base_sha256, current_sha256, old_path)` and silently dropped
+    `kind`, `link_target`, `base_kind` and the modes — so a dirty symlink over a committed regular
+    file came back a regular file, and the package then hashed it as one.
+
+    The rule, field by field:
+
+    * current side (kind, mode, hash, link_target, status) — the DIRTY record's, it is what the
+      file is now;
+    * base side (base_sha256, base_kind, base_mode) — the COMMITTED record's when it has one
+      (the change under review started at the review base, not at HEAD), else the dirty record's
+      HEAD-resolved base;
+    * old_path — whichever side renamed;
+    * a committed DELETION is never silently resurrected: if HEAD/base deleted the file and the
+      working tree also has it absent, it stays deleted.
+    """
+    if committed is None:
+        return dirty
+
+    # Prefer the committed base side (base..HEAD) — the review's actual starting point — but never
+    # lose a base the dirty side resolved when the committed side had none.
+    base_sha = committed.base_sha256 if committed.base_sha256 is not None else dirty.base_sha256
+    base_kind = committed.base_kind if committed.base_kind is not None else dirty.base_kind
+    base_mode = committed.base_mode or dirty.base_mode
+    old_path = dirty.old_path or committed.old_path
+
+    # A committed deletion that the working tree also shows absent stays a deletion.
+    if committed.status == STATUS_DELETED and dirty.kind == KIND_DELETED:
+        return dataclasses.replace(dirty, status=STATUS_DELETED, base_sha256=base_sha,
+                                   base_kind=base_kind, base_mode=base_mode, old_path=old_path)
+
+    return dataclasses.replace(
+        dirty, base_sha256=base_sha, base_kind=base_kind, base_mode=base_mode,
+        old_path=old_path)
+
+
 def resolve_review_subject(repo_root: str | Path,
                            declared_base: str | None = None) -> ReviewSubjectV1:
     """THE review-subject resolver. Every consumer calls this; nobody re-implements it.
@@ -441,7 +594,7 @@ def resolve_review_subject(repo_root: str | Path,
                 f"a review base ({base_in!r}) was declared but {root} is not a git work tree")
         return ReviewSubjectV1()
 
-    dirty = _dirty_records(root)
+    dirty = _dirty_records(root, "HEAD")
     if not base_in:
         # The documented legacy path: no declared base, no committed delta, no base/head facts.
         return ReviewSubjectV1(files=tuple(dirty))
@@ -466,16 +619,12 @@ def resolve_review_subject(repo_root: str | Path,
     committed = _committed_records(root, base, head)
     commits = resolve_commit_chain(root, base, head)
 
-    # A path may be both committed and dirty; the working tree is the later truth, so it wins,
-    # but the committed record's base_sha256 is kept — the file's history does not vanish.
+    # A path may be both committed and dirty; the working tree is the later truth. The merge is
+    # LOSSLESS and TYPED (F2, round 17) — the previous inline reconstruction dropped `kind` and
+    # `link_target`, so a dirty symlink over a committed regular file came out as a regular file.
     by_path: dict[str, ReviewFileV1] = {f.path: f for f in committed}
     for d in dirty:
-        prior = by_path.get(d.path)
-        by_path[d.path] = ReviewFileV1(
-            path=d.path, status=d.status,
-            base_sha256=prior.base_sha256 if prior else None,
-            current_sha256=d.current_sha256,
-            old_path=prior.old_path if prior else None)
+        by_path[d.path] = merge_review_file_state(by_path.get(d.path), d)
     files = tuple(sorted(by_path.values(), key=lambda f: f.path))
     return ReviewSubjectV1(base_commit=base, head_commit=head, base_is_ancestor=True,
                            commits=tuple(commits), files=files)
