@@ -410,6 +410,115 @@ def _is_manual_completion(evidence_dir: str) -> bool:
     return _all_task_runs_manual(evidence_dir)
 
 
+def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) -> list:
+    """F4 (round 16): the packager RECOMPUTES the whole review subject and holds the artifact to it.
+
+    The final package trusted `review_subject.json` — the Evidence job's own account of what it
+    was a review of. A forged tombstone hash, a rewritten rename origin, or a status flipped from
+    `added` to `modified` therefore travelled straight into a READY package: the one artifact that
+    says WHAT is under review was the one artifact nobody recomputed.
+
+    So the subject is resolved again here, from the recorded base, and compared record by record:
+    path, old_path, status, base_sha256, current_sha256 and file kind.
+    """
+    errors: list = []
+    try:
+        from packages.orchestration.review_subject import (
+            resolve_review_subject, validate_subject_path_kinds,
+        )
+    except Exception as exc:
+        return [f"cannot recompute the review subject: {str(exc)[:120]}"]
+
+    try:
+        # The base is the one the package DECLARES; passing it explicitly is the whole point of
+        # F6 — the packager may run from anywhere.
+        recomputed = resolve_review_subject(".", base)
+    except Exception as exc:
+        return [f"cannot recompute the review subject: {str(exc)[:160]}"]
+
+    errors.extend(validate_subject_path_kinds(recomputed, "."))
+
+    def _key(rec: dict) -> tuple:
+        return (
+            _mc_norm(str(rec.get("path") or "")),
+            str(rec.get("status") or ""),
+            "" if rec.get("old_path") in (None, "") else _mc_norm(str(rec.get("old_path"))),
+            "" if rec.get("base_sha256") in (None, "") else str(rec.get("base_sha256")),
+            "" if rec.get("current_sha256") in (None, "") else str(rec.get("current_sha256")),
+            str(rec.get("kind") or "regular"),
+        )
+
+    recorded = sorted(_key(f) for f in (subject.get("files") or []))
+    fresh = sorted(_key(f.to_json()) for f in recomputed.files)
+    if recorded != fresh:
+        only_rec = [r for r in recorded if r not in fresh]
+        only_new = [r for r in fresh if r not in recorded]
+        if only_rec:
+            errors.append(
+                f"review_subject.json records file facts the repository does not confirm: "
+                f"{only_rec[:3]}")
+        if only_new:
+            errors.append(
+                f"the repository shows file facts review_subject.json does not record: "
+                f"{only_new[:3]}")
+    return errors
+
+
+def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
+    """F7 (round 16): exactly one canonical patch artifact per commit, recomputed here.
+
+    The chain recorded `patch_sha256` and shipped nothing to hash it against, so the one field
+    that says what a commit DID was the one field a ZIP-only reviewer could not check. The
+    packager now recomputes the bytes from the repository, holds the packaged file to them, and
+    refuses a missing, extra or tampered patch.
+    """
+    import hashlib as _h
+
+    errors: list = []
+    try:
+        from packages.orchestration.review_subject import (
+            COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+        )
+    except Exception as exc:
+        return [f"cannot verify commit patches: {str(exc)[:120]}"]
+
+    pdir = os.path.join(evidence_dir, COMMIT_PATCH_DIRNAME)
+    if not actual:
+        return errors
+    if not os.path.isdir(pdir):
+        return [f"the packaged evidence carries no {COMMIT_PATCH_DIRNAME}/ for its "
+                f"{len(actual)} commit(s)"]
+
+    expected_names = set()
+    for c in actual:
+        name = commit_patch_filename(c.commit)
+        expected_names.add(name)
+        p = os.path.join(pdir, name)
+        if not os.path.isfile(p):
+            errors.append(f"commit {c.commit[:12]} has no packaged patch artifact")
+            continue
+        with open(p, "rb") as fh:
+            packaged = fh.read()
+        want = commit_patch_bytes(".", c.commit)
+        if packaged != want:
+            errors.append(
+                f"packaged patch for commit {c.commit[:12]} is not the repository's patch bytes")
+        got = _h.sha256(packaged).hexdigest()
+        if got != c.patch_sha256:
+            errors.append(
+                f"packaged patch for commit {c.commit[:12]} hashes to {got[:12]}, but the chain "
+                f"records {c.patch_sha256[:12]}")
+
+    present = {n for n in os.listdir(pdir) if n.endswith(".patch")}
+    for extra in sorted(present - expected_names):
+        errors.append(f"{COMMIT_PATCH_DIRNAME}/ carries {extra!r}, which no chain commit names")
+    if len(present) != len(actual):
+        errors.append(
+            f"{COMMIT_PATCH_DIRNAME}/ holds {len(present)} patch file(s) for {len(actual)} "
+            f"commit(s)")
+    return errors
+
+
 def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
     """Round 15 (F7): the packaged commit history is recomputed, not narrated.
 
@@ -449,8 +558,17 @@ def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
             f"review_commit_chain records {len(recorded)} commit(s); the repository's "
             f"{base[:12]}..{head[:12]} ancestry path has {len(actual)}")
         return errors
+    # F3 (round 16): EVERY recorded field is recomputed. The chain used to compare only
+    # commit/tree/patch_sha256/parents, so `subject` and `changed_files` — the two fields a human
+    # reader actually reads — were narrative that nothing checked. Reproduced: subject rewritten
+    # to "FORGED SUBJECT" and changed_files replaced with ["fake.py"], and verification returned
+    # no problems at all.
+    if int(chain.get("chain_v") or 0) != 1:
+        errors.append(
+            f"review_commit_chain declares an unsupported chain_v {chain.get('chain_v')!r} "
+            f"(this build reads 1)")
     for rec, act in zip(recorded, actual):
-        for field in ("commit", "tree", "patch_sha256"):
+        for field in ("commit", "tree", "patch_sha256", "subject"):
             if str(rec.get(field) or "") != getattr(act, field):
                 errors.append(
                     f"review_commit_chain commit {str(rec.get('commit'))[:12]} {field} does not "
@@ -458,10 +576,25 @@ def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
         if [str(x) for x in (rec.get("parents") or [])] != list(act.parents):
             errors.append(
                 f"review_commit_chain commit {act.commit[:12]} parents do not match")
+        rec_files = [str(x) for x in (rec.get("changed_files") or [])]
+        if rec_files != sorted(rec_files):
+            errors.append(
+                f"review_commit_chain commit {act.commit[:12]} changed_files is not canonically "
+                f"sorted")
+        if len(set(rec_files)) != len(rec_files):
+            errors.append(
+                f"review_commit_chain commit {act.commit[:12]} changed_files repeats a path")
+        if rec_files != list(act.changed_files):
+            errors.append(
+                f"review_commit_chain commit {act.commit[:12]} changed_files does not match the "
+                f"repository")
     if actual and actual[-1].commit != head:
         errors.append("the packaged commit chain does not end at the review head")
     if actual and base not in actual[0].parents:
         errors.append("the packaged commit chain does not start after the declared base")
+
+    errors.extend(_verify_commit_patches(evidence_dir, actual))
+    errors.extend(_verify_review_subject_records(evidence_dir, subject, base))
 
     # Every COMMITTED file in the review subject must be explained by one of these commits: the
     # subject cannot claim a committed change that no packaged commit made.

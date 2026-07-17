@@ -153,21 +153,33 @@ class TestTheChainValidates:
 
 
 class TestThePackagerVerifiesTheArtifact:
-    def _write(self, ev, subject):
+    def _write(self, ev, subject, repo=None, *, patches=True):
+        """The artifacts an honest export writes — including, since round 16 (F7), the canonical
+        patch bytes the chain's `patch_sha256` refers to."""
         import json
+
+        from packages.orchestration.review_subject import (
+            COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+        )
         ev.mkdir(parents=True, exist_ok=True)
         (ev / "review_subject.json").write_text(json.dumps(subject.to_json()))
         (ev / "review_commit_chain.json").write_text(json.dumps({
             "chain_v": 1, "base_commit": subject.base_commit,
             "head_commit": subject.head_commit,
             "commits": [c.to_json() for c in subject.commits]}))
+        if patches and subject.commits:
+            pdir = ev / COMMIT_PATCH_DIRNAME
+            pdir.mkdir(exist_ok=True)
+            for c in subject.commits:
+                (pdir / commit_patch_filename(c.commit)).write_bytes(
+                    commit_patch_bytes(repo or ".", c.commit))
 
     def test_a_faithful_artifact_verifies(self, repo, tmp_path, monkeypatch):
         from scripts.build_review_manifest import _verify_commit_chain
         r, base = repo
         s = resolve_review_subject(r, base)
         ev = tmp_path / "ev"
-        self._write(ev, s)
+        self._write(ev, s, r)
         monkeypatch.chdir(r)
         assert _verify_commit_chain(str(ev), set(s.paths())) == []
 
@@ -181,7 +193,7 @@ class TestThePackagerVerifiesTheArtifact:
         forged = dataclasses.replace(s, commits=(
             dataclasses.replace(s.commits[0], patch_sha256="0" * 64),) + s.commits[1:])
         ev = tmp_path / "ev2"
-        self._write(ev, forged)
+        self._write(ev, forged, r)
         monkeypatch.chdir(r)
         probs = _verify_commit_chain(str(ev), set(s.paths()))
         assert any("patch_sha256 does not match" in p for p in probs), probs
@@ -193,7 +205,7 @@ class TestThePackagerVerifiesTheArtifact:
         r, base = repo
         s = resolve_review_subject(r, base)
         ev = tmp_path / "ev3"
-        self._write(ev, dataclasses.replace(s, commits=s.commits[:2]))
+        self._write(ev, dataclasses.replace(s, commits=s.commits[:2]), r)
         monkeypatch.chdir(r)
         probs = _verify_commit_chain(str(ev), set(s.paths()))
         assert any("ancestry path has" in p for p in probs), probs
@@ -212,7 +224,7 @@ class TestThePackagerVerifiesTheArtifact:
             ReviewFileV1(path="never_committed.py", status="modified",
                          base_sha256="a" * 64, current_sha256="b" * 64),))
         ev = tmp_path / "ev4"
-        self._write(ev, forged)
+        self._write(ev, forged, r)
         monkeypatch.chdir(r)
         probs = _verify_commit_chain(str(ev), set(forged.paths()))
         assert any("no packaged commit made" in p for p in probs), probs
@@ -236,7 +248,7 @@ class TestThePackagerVerifiesTheArtifact:
         assert s.paths() == ["keep.py"], "the net subject excludes the reverted file"
         assert any("flip.py" in c.changed_files for c in s.commits), "but commits touched it"
         ev = tmp_path / "ev5"
-        self._write(ev, s)
+        self._write(ev, s, r)
         monkeypatch.chdir(r)
         assert _verify_commit_chain(str(ev), set(s.paths())) == []
 
