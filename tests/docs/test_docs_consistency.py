@@ -1018,3 +1018,71 @@ class TestF012Round17IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round18IsPinned:
+    """Round 18: the typed file-to-archive transaction — ArchivePlan, type/mode preservation,
+    atomic no-follow reads, recursive ReviewSubject schema, full-record recompute, typed
+    post-build verification, and full packaging integration."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 18" in self._f012()
+
+    def test_the_archive_plan_is_documented(self):
+        doc = self._f012()
+        assert "One typed ArchivePlanV1 drives the package" in doc
+        assert "archive_plan.py" in doc
+        assert "-type f -o -type l" in doc
+
+    def test_type_and_mode_preservation_is_documented(self):
+        doc = self._f012()
+        assert "File type and mode are preserved" in doc
+        assert "100755" in doc and "S_IFLNK" in doc
+
+    def test_atomic_no_follow_reads_are_documented(self):
+        doc = self._f012()
+        assert "File reads are atomically no-follow" in doc
+        assert "read_verified_file_at" in doc
+        assert "O_NOFOLLOW" in doc
+
+    def test_the_recursive_schema_is_documented(self):
+        doc = self._f012()
+        assert "The ReviewSubject schema is exact recursively" in doc
+        assert "validate_review_commit_schema" in doc
+        assert "decode_review_subject_from_json" in doc
+
+    def test_full_record_recompute_is_documented(self):
+        doc = self._f012()
+        assert "Every file field is recomputed" in doc
+
+    def test_typed_post_build_verification_is_documented(self):
+        doc = self._f012()
+        assert "Post-build verification validates typed metadata" in doc
+
+    def test_full_integration_is_documented(self):
+        doc = self._f012()
+        assert "Full make_review_zip integration is tested" in doc
+
+    def test_the_filename_byte_policy_is_documented(self):
+        doc = self._f012()
+        assert "Filename-byte policy" in doc
+        assert "surrogateescape" in doc
+
+    def test_the_readme_states_the_typed_transaction(self):
+        r = self._readme()
+        assert "one typed transaction" in r
+        assert "ArchivePlan" in r
+
+    def test_f012_is_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status

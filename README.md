@@ -109,7 +109,14 @@ provable), a dirty deletion carries the tombstone of what it removed and a dirty
 path, and the archive itself is assembled from that exact model by a NUL-safe builder — a filename
 containing a newline survives verbatim, containment is decided by path components rather than a
 string prefix (so a sibling `repo-evil` is never mistaken for being inside `repo`), and the
-finished ZIP is reopened and its every member checked against the model. Task truth is read in the
+finished ZIP is reopened and its every member checked against the model — its exact type and unix
+mode included, so an executable stays executable and a regular file cannot pass as a symlink. That
+whole file-to-archive boundary is one typed transaction: a single ArchivePlan gives every review
+file exactly one disposition (a member, a tombstone, or a block — a policy-excluded change blocks
+rather than vanishing), every content read goes through an anchored, atomically no-follow
+descriptor (a file swapped to an external symlink mid-read is refused, never followed), and the
+review-subject schema is exact down to each commit and each file's kind and mode, so an injected
+field cannot ride along. Task truth is read in the
 episode's own context: a completed episode's task must be applied or passed, and the status a task
 completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
