@@ -738,3 +738,111 @@ class TestF012Round14IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round15IsPinned:
+    """Round 15: chain-wide task-lifecycle monotonicity, the canonical call-ref number text, the
+    typed/verified review subject, deletion+rename proofs and the machine-verifiable commit chain.
+    F140 replays within one frozen run ledger and F084 replays recorded evidence, so the binding
+    Built State must keep documenting these."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 15" in self._f012()
+
+    def test_task_lifecycle_monotonicity_is_documented(self):
+        doc = self._f012()
+        assert "Task lifecycle is MONOTONIC across the chain" in doc
+        assert "The omission WAS the erasure" in doc
+        assert "validate_task_lifecycle_chain()" in doc
+
+    def test_the_terminal_versus_resumable_task_is_documented(self):
+        """The distinction that keeps F011's resume working."""
+        doc = self._f012()
+        assert "Terminal with a run" in doc
+        assert "Non-terminal" in doc
+        assert "deliberately unbound" in doc
+        assert "never** rolled back" in doc
+
+    def test_the_skipped_contract_is_documented(self):
+        doc = self._f012()
+        assert "_block_job" in doc
+        assert "NO reactivation" in doc
+
+    def test_the_immutable_task_list_is_documented(self):
+        assert "cannot gain, lose or reorder a task" in self._f012()
+
+    def test_the_canonical_number_text_is_documented(self):
+        doc = self._f012()
+        assert "Call-ref numbers have exactly one text form" in doc
+        assert "1 -> 01" in doc and "100 -> 100" in doc
+        assert "canonical_call_number()" in doc
+
+    def test_the_number_aliases_are_named(self):
+        doc = self._f012()
+        assert "round-000001" in doc
+        assert "attempt-00" in doc
+
+    def test_reconstruction_decides_canonicality(self):
+        assert "decided by RECONSTRUCTION" in self._f012()
+
+    def test_the_typed_review_subject_is_documented(self):
+        doc = self._f012()
+        assert "The review subject is typed, verified and resolved by ONE helper" in doc
+        assert "ReviewSubjectV1" in doc
+        assert "rev-parse --verify" in doc
+
+    def test_the_ancestor_requirement_is_documented(self):
+        doc = self._f012()
+        assert "merge-base --is-ancestor" in doc
+        assert "non-ancestral RAISES" in doc
+
+    def test_the_base_and_head_facts_are_documented(self):
+        doc = self._f012()
+        assert "full 40-char SHA becomes the durable fact" in doc
+        assert "review_subject.json" in doc
+        assert "read in exactly one module" in doc
+
+    def test_the_legacy_unset_base_is_documented(self):
+        assert "Unset base remains the documented legacy path" in self._f012()
+
+    def test_deletion_and_rename_proofs_are_documented(self):
+        doc = self._f012()
+        assert "Deletions and renames are provable" in doc
+        assert "TOMBSTONE" in doc
+        assert "old_path" in doc
+        assert "NUL-delimited" in doc
+
+    def test_the_coverage_mapping_is_documented(self):
+        doc = self._f012()
+        assert "Authoritative coverage understands directory arguments" in doc
+        assert "cries wolf" in doc
+
+    def test_the_commit_chain_artifact_is_documented(self):
+        doc = self._f012()
+        assert "The commit chain is an artifact, not prose" in doc
+        assert "review_commit_chain.json" in doc
+        assert "--ancestry-path" in doc
+
+    def test_the_checkpoint_commit_policy_is_documented(self):
+        doc = self._f012()
+        assert "Local checkpoint commit policy" in doc
+        assert "Local history is not an acceptance signal" in doc
+
+    def test_the_readme_states_the_task_history_rule(self):
+        r = self._readme()
+        assert "A task's history is\nmonotonic too" in r
+        assert "one round has exactly one text" in r
+
+    def test_f012_is_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status

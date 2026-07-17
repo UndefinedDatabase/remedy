@@ -78,13 +78,19 @@ whether the call succeeded; the recorded ORDER must be the manifest's order, bec
 the claim and F140's replay is keyed by it; and a FINISHED run's ledger is frozen whole — a later
 episode may repeat it byte-for-byte and nothing else, so no prior call can be invented, altered,
 reordered or dropped, and no finished run can quietly gain a call or change its outcome. Later
-work belongs to a new run id, which is what the product already does. A manifest also carries
+work belongs to a new run id, which is what the product already does. A task's history is
+monotonic too: once an episode records a task as completed, every later episode must carry it as
+prior work naming the same run and the same frozen ledger — a later episode cannot quietly drop
+the ledger and call the task skipped, which is how earlier work could still be denied even after
+the ledger itself was frozen. Only a task that was stopped before it finished may start a new
+run, because that is exactly what resuming a stopped job does. A manifest also carries
 exactly the ledgers its own record accounts for: the ledger set must equal the expectation's
 run-owning tasks exactly, so a fabricated ledger for a task nobody planned has nowhere to hide.
 Each ledger names its artifact by the hash of its identity, so two different runs can never be
 backed by one file. And a call reference — the identity the post-mortems, the manifest and the
 future replay all use to name the same call — must match a closed canonical grammar rather than
-merely fail to be dangerous. Once an episode is published, its manifest,
+merely fail to be dangerous, down to the spelling of its numbers: one round has exactly one text
+form, so `round-01`, `round-001` and `round-000001` cannot be three names for one call. Once an episode is published, its manifest,
 call artifacts and ledgers are immutable: a missing or altered member is reported as corruption
 and never silently recreated, and an exact retry of any episode — latest or not — is a no-op.
 An impossible lifecycle (a completed episode claiming a task was never dispatched, say) can never
