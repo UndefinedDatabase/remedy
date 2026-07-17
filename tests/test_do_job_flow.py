@@ -160,22 +160,54 @@ class TestJobFlowHandlerWiring:
         assert COMMAND_ID in table
         assert callable(table[COMMAND_ID])
 
+    #: F15: `--stream-evidence` / `--no-stream-evidence` are ONE mutually-exclusive store_const
+    #: pair (omitted None / True / False), so no valid argv carries both, and neither takes a
+    #: value. Supplying both is a usage error BY DESIGN — see
+    #: `TestJobFlowStreamFlagsStayExclusive` below, which pins that.
+    _BARE_FLAGS = {"--json", "--stream-evidence", "--no-stream-evidence"}
+    _EXCLUSIVE_PARTNERS = {"--no-stream-evidence"}
+
     def test_every_catalog_arg_name_is_parseable(self) -> None:
-        """The catalog options for the command must all be accepted by the parser."""
+        """The catalog options for the command must all be accepted by the parser.
+
+        F1 (round 16): this test used to append `--stream-evidence v --no-stream-evidence v`,
+        which is not a command anyone can type — both halves of an exclusive pair, each given a
+        value neither accepts. It asserted the parser would swallow an invalid argv, so the only
+        honest repairs were to weaken the parser or to fix the test. The parser is right: the
+        test now builds a VALID argv and the exclusivity is proven separately.
+        """
         cmd = get_command(COMMAND_ID)
-        # Build an argv that supplies a value for every option.
         argv = ["do", "job-flow"]
         for a in cmd.args:
-            if not a.is_option:
+            if not a.is_option or a.name in self._EXCLUSIVE_PARTNERS:
                 continue
-            if a.name == "--json":
-                argv.append("--json")
+            if a.name in self._BARE_FLAGS:
+                argv.append(a.name)
             elif a.name == "--repair-rounds":
                 argv.extend([a.name, "2"])
             else:
                 argv.extend([a.name, "v"])
         ns = build_parser().parse_args(argv)
         assert ns._command_id == COMMAND_ID
+        assert ns.stream_evidence is True
+
+    def test_the_exclusive_partner_is_parseable_on_its_own(self) -> None:
+        """The name skipped above is a real option — proven here, not left unchecked."""
+        ns = build_parser().parse_args(
+            ["do", "job-flow", "--job-file", "j.md", "--no-stream-evidence"])
+        assert ns._command_id == COMMAND_ID
+        assert ns.stream_evidence is False
+
+    def test_every_catalog_option_name_is_individually_accepted(self) -> None:
+        """Each catalog option name, one at a time — so no name can hide behind another."""
+        parser = build_parser()
+        for a in get_command(COMMAND_ID).args:
+            if not a.is_option:
+                continue
+            base = ["do", "job-flow", "--job-file", "j.md"]
+            argv = base + ([a.name] if a.name in self._BARE_FLAGS
+                           else [a.name, "2" if a.name == "--repair-rounds" else "v"])
+            assert parser.parse_args(argv)._command_id == COMMAND_ID, a.name
 
 
 # ---------------------------------------------------------------------------
@@ -2361,3 +2393,87 @@ class TestCliRoleFlags:
             "--repair-provider", "--repair-model", "--repair-effort",
         ):
             assert flag in arg_names, f"do.job-flow missing {flag}"
+
+
+# ---------------------------------------------------------------------------
+# Round 16 — F1: the restored timeout hint and the exclusivity it must not weaken
+# ---------------------------------------------------------------------------
+
+
+class TestJobFlowStreamFlagsStayExclusive:
+    """F15 is not collateral damage of F1's repair: supplying both halves is still exit 2."""
+
+    def test_both_stream_flags_is_a_usage_error(self) -> None:
+        import pytest as _pytest
+        from apps.cli.grouped import _UsageError
+
+        with _pytest.raises((_UsageError, SystemExit)):
+            build_parser().parse_args(
+                ["do", "job-flow", "--job-file", "j.md",
+                 "--stream-evidence", "--no-stream-evidence"])
+
+    def test_omitting_both_stays_the_omission_sentinel(self) -> None:
+        ns = build_parser().parse_args(["do", "job-flow", "--job-file", "j.md"])
+        assert ns.stream_evidence is None
+
+
+class TestTheTimeoutHintReportsResolvedTruth:
+    """F1 (round 16): the hint reports what `run_job` RESOLVED and recorded.
+
+    It must never re-resolve a default at the call site — that is what the shared
+    `RunInvocation` exists to prevent, and re-introducing `timeout_sec or 120` here would
+    silently defeat the omission sentinel the whole tri-state contract rests on.
+    """
+
+    def _job(self, timeout_sec):
+        from packages.orchestration.pingpong_job import ExecutionConfig, JobPlan
+
+        job = JobPlan(job_id="j" * 16, job_title="t", repo_path="/tmp/x")
+        if timeout_sec is not None:
+            job.execution_config = ExecutionConfig(timeout_sec=timeout_sec)
+        return job
+
+    def test_an_omitted_timeout_reports_the_resolved_product_default(self) -> None:
+        """Omission is preserved into `run_job`; the hint then reports what it settled on."""
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(120)                       # what run_job resolved and persisted
+        assert _effective_timeout_sec(job) == 120
+        hint = _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job))
+        assert "120s" in hint and "--timeout-sec 900" in hint
+
+    def test_an_explicit_timeout_reports_that_timeout(self) -> None:
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(300)
+        assert _effective_timeout_sec(job) == 300
+        assert "300s" in _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job))
+
+    def test_an_explicit_profile_reports_its_effective_timeout(self) -> None:
+        """A profile resolves to a number inside `run_job`; the hint reports the EFFECT."""
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(900)                       # e.g. a long profile
+        assert _effective_timeout_sec(job) == 900
+        assert _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job)) == ""
+
+    def test_no_execution_config_says_nothing_rather_than_guessing(self) -> None:
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(None)
+        assert _effective_timeout_sec(job) is None
+        assert _build_timeout_hint("claude-cli", "fake", None) == ""
+
+    def test_non_cli_providers_never_get_the_hint(self) -> None:
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+
+        assert _build_timeout_hint("fake", "fake", 10) == ""
+
+    def test_the_hint_never_changes_execution(self) -> None:
+        """Informational only: it reads the persisted config and returns a string."""
+        import inspect
+
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+
+        src = inspect.getsource(_build_timeout_hint)
+        assert "run_job" not in src and "=" not in src.split("return")[-1]

@@ -1232,12 +1232,35 @@ def _build_job_token_summary(job: Any) -> dict[str, Any]:
     }
 
 
+def _effective_timeout_sec(job: Any) -> int | None:
+    """The timeout that ACTUALLY ran, read from the JobPlan's resolved execution config.
+
+    F1 (round 16): the timeout hint used to read a local `timeout_sec` that the shared
+    `RunInvocation` removed — `do job-flow` died with `NameError: timeout_sec is not defined`
+    before printing anything. The tempting repair is to resolve a default back at the call site,
+    but that is exactly what `RunInvocation` exists to prevent: an omitted control must stay
+    `None` all the way into `run_job` so its explicit > persisted > product-default precedence
+    decides. So the hint asks the JobPlan what `run_job` RESOLVED and recorded, after the fact.
+
+    `None` when no execution config was persisted — the hint says nothing rather than inventing a
+    number it cannot know.
+    """
+    ec = getattr(job, "execution_config", None)
+    if ec is None:
+        return None
+    v = getattr(ec, "timeout_sec", None)
+    return int(v) if isinstance(v, int) and not isinstance(v, bool) else None
+
+
 def _build_timeout_hint(
-    builder: str | None, reviewer: str | None, timeout_sec: int,
+    builder: str | None, reviewer: str | None, timeout_sec: int | None,
 ) -> str:
-    """Warn when claude-cli providers run under recommended timeout."""
+    """Warn when claude-cli providers run under recommended timeout.
+
+    Informational only — it never changes execution. An unknown timeout produces no hint.
+    """
     uses_cli = (builder == "claude-cli" or reviewer == "claude-cli")
-    if not uses_cli or timeout_sec >= 900:
+    if not uses_cli or timeout_sec is None or timeout_sec >= 900:
         return ""
     return (
         f"Current timeout is {timeout_sec}s. Real claude-cli jobs usually "
@@ -2206,7 +2229,10 @@ def _cmd_do_job_flow(
         token_summary=token_summary,
         job_flow_json_available=True,
     )
-    timeout_warning = _build_timeout_hint(builder, reviewer, timeout_sec)
+    # F1 (round 16): the hint reports what `run_job` RESOLVED and persisted — never a default
+    # re-invented here, which would defeat the invocation's omission sentinel.
+    timeout_warning = _build_timeout_hint(
+        builder, reviewer, _effective_timeout_sec(report_job))
 
     # Add final_audit_completed to trace
     run_trace_events.append(create_trace_event(
