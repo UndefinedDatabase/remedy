@@ -640,3 +640,101 @@ class TestF012Round13IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round14IsPinned:
+    """Round 14: terminal ledger finality, the exact expectation<->ledger set, collision-free
+    ledger refs and the closed canonical call-ref grammar. F140 replays stream N WITHIN one
+    frozen Run Ledger and F084 replays recorded evidence, so the binding Built State must keep
+    documenting these — including the corrected extension-versus-finality contract."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 14" in self._f012()
+
+    def test_terminal_ledger_finality_is_documented(self):
+        doc = self._f012()
+        assert "A complete terminal ledger is FINAL" in doc
+        assert "freezes the run's whole" in doc
+        assert "byte-for-byte and nothing else" in doc
+
+    def test_the_superseded_extension_contract_is_corrected(self):
+        """F6: the docs must not still describe a later ledger as an extension."""
+        doc = self._f012()
+        assert "Terminal run versus new run" in doc
+        assert "superseded" in doc
+
+    def test_new_work_uses_a_new_run_id(self):
+        doc = self._f012()
+        assert "Later work uses a NEW run id" in doc
+        assert "uuid4().hex[:16]` per execution" in doc
+
+    def test_the_finality_rule_is_proven_against_production(self):
+        doc = self._f012()
+        assert "byte-identical repeat" in doc
+        assert "new work, NEW run id" in doc
+
+    def test_the_exact_ledger_set_is_documented(self):
+        doc = self._f012()
+        assert "The ledger set is exactly the expectation set" in doc
+        assert "expected_ledger_keys" in doc
+        assert "GHOST" in doc
+
+    def test_the_shared_set_validator_is_documented(self):
+        doc = self._f012()
+        assert "validate_ledger_set()" in doc
+        assert "one shared set-level contract" in doc
+
+    def test_collision_free_refs_are_documented(self):
+        doc = self._f012()
+        assert "Ledger artifact refs are collision-free" in doc
+        assert "call_ledgers/a-b-c.json" in doc
+        assert "sha256(canonical identity)" in doc
+
+    def test_the_ref_bound_is_documented(self):
+        doc = self._f012()
+        assert "NAME_MAX" in doc
+        assert "no compatibility layer is needed" in doc.lower()
+
+    def test_the_call_ref_grammar_is_documented(self):
+        doc = self._f012()
+        assert "A closed canonical call-ref grammar" in doc
+        assert "calls//builder" in doc
+        assert "streams/<role>/round-NN/<kind>-II" in doc
+
+    def test_the_grammar_covers_both_real_namespaces(self):
+        doc = self._f012()
+        assert "shared_call_id" in doc
+        assert "_allocate_stream_call_dir" in doc
+
+    def test_the_ref_must_agree_with_its_identity(self):
+        doc = self._f012()
+        assert "must also AGREE with the" in doc
+
+    def test_f140_serves_stream_n_within_one_frozen_ledger(self):
+        doc = self._f012()
+        assert "WITHIN one frozen Run Ledger" in doc
+
+    def test_the_checkpoint_commit_policy_is_documented(self):
+        doc = self._f012()
+        assert "Local checkpoint commit policy" in doc
+        assert "Local history is not an acceptance signal" in doc
+
+    def test_the_readme_states_finality_and_the_grammar(self):
+        r = self._readme()
+        assert "frozen whole" in r
+        assert "closed canonical grammar" in r
+        assert "two different runs can never be\nbacked by one file" in r
+
+    def test_f012_is_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status

@@ -75,9 +75,16 @@ caveat); its terminal state is read from the run's own record rather than inferr
 surrounding task, through a CLOSED map where an unknown outcome is a recorded problem instead of
 a plausible default; each entry must agree with its call on every replay-material field including
 whether the call succeeded; the recorded ORDER must be the manifest's order, because the order is
-the claim and F140's replay is keyed by it; and a run's history is continuous across episodes —
-a later ledger must be an exact extension of the one an earlier episode established, so no prior
-call can be invented, altered, reordered or dropped. Once an episode is published, its manifest,
+the claim and F140's replay is keyed by it; and a FINISHED run's ledger is frozen whole — a later
+episode may repeat it byte-for-byte and nothing else, so no prior call can be invented, altered,
+reordered or dropped, and no finished run can quietly gain a call or change its outcome. Later
+work belongs to a new run id, which is what the product already does. A manifest also carries
+exactly the ledgers its own record accounts for: the ledger set must equal the expectation's
+run-owning tasks exactly, so a fabricated ledger for a task nobody planned has nowhere to hide.
+Each ledger names its artifact by the hash of its identity, so two different runs can never be
+backed by one file. And a call reference — the identity the post-mortems, the manifest and the
+future replay all use to name the same call — must match a closed canonical grammar rather than
+merely fail to be dangerous. Once an episode is published, its manifest,
 call artifacts and ledgers are immutable: a missing or altered member is reported as corruption
 and never silently recreated, and an exact retry of any episode — latest or not — is a no-op.
 An impossible lifecycle (a completed episode claiming a task was never dispatched, say) can never
