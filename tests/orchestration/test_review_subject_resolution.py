@@ -171,7 +171,11 @@ class TestTheUndeclaredBaseKeepsTheLegacyBehaviour:
         assert resolve_review_subject(r, "").files == ()
 
     def test_the_environment_supplies_the_base_when_none_is_passed(self, repo, monkeypatch):
+        """An AMBIENT base applies to the repository the operator is standing in — hence the
+        chdir. (An env var reaches every child process; see
+        TestAnAmbientDeclarationBelongsToOneRepository for why that scope matters.)"""
         r, base, _foreign = repo
+        monkeypatch.chdir(r)
         monkeypatch.setenv(REVIEW_BASE_ENV, base)
         s = resolve_review_subject(r)
         assert s.base_commit == base
@@ -214,3 +218,51 @@ class TestProductionIsTheOnlyImplementation:
             if REVIEW_BASE_ENV in p.read_text(encoding="utf-8", errors="replace"):
                 hits.append(p.name)
         assert hits == ["review_subject.py"], hits
+
+
+class TestAnAmbientDeclarationBelongsToOneRepository:
+    """An env var is inherited by every child process; a review base is about ONE repository.
+
+    Observed during round 15: `REMEDY_REVIEW_BASE` was exported for the Remedy repo, a
+    verification command ran pytest as a subprocess, a test in it exported evidence for its own
+    temporary repo, and `resolve_review_subject` raised because that repo has never heard of
+    `b0ba27a`. The export lost its content proof entirely — an unrelated declaration breaking an
+    unrelated job.
+
+    So an AMBIENT base applies only to the repository the operator is standing in. A base passed
+    EXPLICITLY is always honoured and always verified, which is what keeps a typo'd or
+    non-ancestral base a blocking error rather than a silently smaller review.
+    """
+
+    @pytest.fixture
+    def foreign(self, tmp_path):
+        r = tmp_path / "foreign"
+        r.mkdir()
+        _sh(r, "git init -q -b main && git config user.email t@t && git config user.name t")
+        _sh(r, "echo x > a.txt && git add -A && git commit -qm init")
+        (r / "dirty.txt").write_text("d\n")
+        return r
+
+    def test_the_reproduced_case(self, foreign, monkeypatch):
+        """A base from another repository must not break this one's evidence."""
+        monkeypatch.setenv(REVIEW_BASE_ENV, "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5")
+        s = resolve_review_subject(foreign)          # must not raise
+        assert s.declared is False
+        assert s.paths() == ["dirty.txt"], "the legacy path must still describe the dirty tree"
+
+    def test_an_ambient_base_that_is_not_this_repositorys_is_not_this_repositorys_problem(
+            self, foreign, monkeypatch):
+        monkeypatch.setenv(REVIEW_BASE_ENV, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+        assert resolve_review_subject(foreign).declared is False
+
+    def test_an_explicit_base_is_still_strictly_verified(self, foreign):
+        """The finding stays closed: an operator naming a base for THIS repo gets it checked."""
+        with pytest.raises(ReviewSubjectError):
+            resolve_review_subject(foreign, "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5")
+
+    def test_an_ambient_base_still_applies_to_its_own_repository(self, repo, monkeypatch):
+        r, base, _foreign = repo
+        monkeypatch.setenv(REVIEW_BASE_ENV, base)
+        monkeypatch.chdir(r)
+        s = resolve_review_subject(r)
+        assert s.declared is True and s.base_commit == base

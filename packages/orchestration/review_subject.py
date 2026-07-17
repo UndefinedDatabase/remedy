@@ -149,6 +149,20 @@ def _split_nul(raw: str) -> list[str]:
     return [p for p in raw.split("\0") if p != ""]
 
 
+def _toplevel(path: str | Path | None) -> str:
+    r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                       cwd=str(path) if path else None, capture_output=True, text=True,
+                       timeout=_TIMEOUT)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def _same_repository(root: Path) -> bool:
+    """Is `root` the repository the ambient declaration was made in (the process's own)?"""
+    here = _toplevel(None)
+    there = _toplevel(root)
+    return bool(here) and bool(there) and os.path.realpath(here) == os.path.realpath(there)
+
+
 def _committed_records(repo_root: str | Path, base: str, head: str) -> list[ReviewFileV1]:
     """The committed delta, from ONE canonical git command.
 
@@ -238,15 +252,29 @@ def resolve_review_subject(repo_root: str | Path,
       unrelated branches' files into the review.
     """
     root = Path(repo_root)
-    base_in = declared_base if declared_base is not None else os.environ.get(REVIEW_BASE_ENV, "")
-    base_in = (base_in or "").strip()
+    explicit = declared_base is not None
+    base_in = (declared_base if explicit else os.environ.get(REVIEW_BASE_ENV, "") or "").strip()
 
+    # An AMBIENT declaration belongs to the repository the operator is standing in — and to no
+    # other. `REMEDY_REVIEW_BASE` is inherited by every child process, so an export running for a
+    # DIFFERENT repository (a test's temporary repo, a non-git demo directory, another project's
+    # job) would otherwise try to resolve a commit that was never about it and fail the whole
+    # export. Observed exactly that: the variable reached a pytest subprocess and an unrelated
+    # job's evidence lost its content proof entirely.
+    #
+    # A base that is not this repository's is therefore not "a bad base" — it is not this
+    # repository's declaration at all, so the legacy path applies. A base passed EXPLICITLY is
+    # always honoured and always verified, which is what keeps a typo'd or non-ancestral base a
+    # blocking error rather than a silently smaller review.
     inside = _git(root, ["rev-parse", "--is-inside-work-tree"])
     if inside.returncode != 0:
-        if base_in:
+        if base_in and explicit:
             raise ReviewSubjectError(
                 f"a review base ({base_in!r}) was declared but {root} is not a git work tree")
         return ReviewSubjectV1()
+
+    if base_in and not explicit and not _same_repository(root):
+        return ReviewSubjectV1(files=tuple(_dirty_records(root)))
 
     dirty = _dirty_records(root)
     if not base_in:
