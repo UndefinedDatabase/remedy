@@ -166,6 +166,18 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
             blocked.append(BlockedRecordV1(
                 path=f.path, reason="authoritative symlink points outside the repository"))
             continue
+        # A REGULAR authoritative path that the bundle policy excluded (not in the context list,
+        # and a path the shared policy predicate would normally attest) must BLOCK, not be
+        # packaged — packaging a `.env`/key/log would leak it, omitting it would lose the change.
+        # A SYMLINK is exempt: `find -type f` ALWAYS skips symlinks, so its absence from context
+        # is expected, not a policy exclusion — that is exactly the F1 bug this plan closes.
+        if f.kind == KIND_REGULAR and f.path not in context \
+                and is_authoritative_source(f.path):
+            blocked.append(BlockedRecordV1(
+                path=f.path, reason="authoritative changed path is excluded by the bundle "
+                                    "policy; packaging it would leak it and omitting it would "
+                                    "lose the change"))
+            continue
         km = _member_kind_mode_for(f)
         if km is None:
             blocked.append(BlockedRecordV1(
@@ -177,19 +189,6 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
             source_root=str(repo_root), source_rel=f.path,
             expected_sha256=(f.current_sha256 if kind == MEMBER_REGULAR else None),
             expected_link_target=(f.link_target if kind == MEMBER_SYMLINK else None))
-
-    # 2. A CHANGED path the bundle policy excluded must block, not disappear. `is_authoritative_
-    #    source` is the shared predicate; a subject path it accepts but the context list omits
-    #    (and which is not otherwise planned) is a silent drop.
-    for f in subject.files:
-        if f.path in members or any(t.path == f.path for t in tombstones):
-            continue
-        if any(b.path == f.path for b in blocked):
-            continue
-        if is_authoritative_source(f.path):
-            blocked.append(BlockedRecordV1(
-                path=f.path, reason="authoritative changed path is excluded by the bundle "
-                                    "policy and would be silently omitted"))
 
     # 3. The repository context — every bundle file, typed at plan time from its on-disk kind.
     #    An authoritative regular/symlink already planned above wins; context only ADDS.
