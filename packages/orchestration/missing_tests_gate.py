@@ -32,6 +32,25 @@ _RAN_MARKERS = ("passed", "failed", "error", "collected")
 _BLOCKED_MARKERS = ("blocked", "sandbox")
 
 
+#: F8 (round 16): the regression suites a changed SOURCE file is known to be covered by, when
+#: that suite does not live at a path any convention would derive.
+#:
+#: A reviewable constant on purpose (the F017 builtin-deny-list precedent): additions show up in
+#: diffs. It is a floor, not a map of everything — every suite whose path follows the usual
+#: convention is already reached by the changed-set rule.
+_RELEVANT_SUITES_FOR_SOURCE: dict[str, tuple[str, ...]] = {
+    # `do job-flow`'s end-to-end regressions do NOT live under tests/cli/, so a change to the do
+    # command was invisible to the authoritative CLI matrix. That is exactly how round 15 shipped
+    # `NameError: timeout_sec is not defined` in a public command with every gate green.
+    "apps/cli/commands/do_cmd.py": ("tests/test_do_job_flow.py",),
+}
+
+
+def _relevant_suites_for_source(path: str) -> tuple[str, ...]:
+    """The regression suites that must run green for a changed source file."""
+    return _RELEVANT_SUITES_FOR_SOURCE.get(path, ())
+
+
 def _task_attr(task: Any, key: str, default: Any = None) -> Any:
     if isinstance(task, dict):
         return task.get(key, default)

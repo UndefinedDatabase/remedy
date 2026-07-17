@@ -222,7 +222,9 @@ def export_job_evidence(
             )
             written[rel] = str(err_path)
         try:
-            from packages.orchestration.missing_tests_gate import write_missing_tests_gate
+            from packages.orchestration.missing_tests_gate import (
+        _relevant_suites_for_source, write_missing_tests_gate,
+    )
             write_missing_tests_gate(task, str(out_path), written)
         except Exception as exc:
             rel = f"task_runs/{task.task_id}/missing_tests_gate.error.txt"
@@ -1724,7 +1726,19 @@ def _finalize_manual_completion(
         # Finding 2: a task is test-covered only when EVERY related test file in
         # its changed set is exercised by a successful verification run. A task
         # missing direct coverage gets NEEDS_TESTS — never a false "satisfied".
-        related_tests = sorted({_vt_norm(f) for f in changed if _is_test_path(f)})
+        # F8 (round 16): a task's related tests are the test files it CHANGED **plus** the
+        # regression suites its changed SOURCE files are known to be covered by.
+        #
+        # Round 15 changed the do command and shipped `do job-flow` broken with a NameError.
+        # Every Missing-Tests gate still said PASS, because the suite that catches it was in
+        # neither the task's changed set nor the authoritative CLI command (which runs only
+        # `tests/cli`). Nothing was lying; nothing was asked. A gate that only checks the tests
+        # you happened to touch cannot notice the one you broke. The map lives in
+        # `missing_tests_gate` — this module names no test file it does not run.
+        related_tests = sorted(
+            {_vt_norm(f) for f in changed if _is_test_path(f)}
+            | {t for f in changed
+               for t in _relevant_suites_for_source(_vt_norm(f))})
         covering_run_ids = sorted({
             rid for f in related_tests for rid in coverage.get(f, [])
         })
