@@ -508,6 +508,29 @@ def export_job_evidence(
     }
     _write_json(POSTMORTEM_INTEGRITY_FILE, _pm_integrity)
 
+    # F012: the run-input manifest travels into the bundle, and its own integrity artifact
+    # BLOCKS a clean verdict when a mandatory manifest is missing or broken — the same
+    # mechanism as post-mortem integrity, never a text warning. Pre-F012 jobs (no manifest
+    # and no recorded error) are reported as legacy/uncovered, not corrupt.
+    manifest_failures: list[dict[str, Any]] = []
+    manifest_notes: list[str] = []
+    try:
+        _write_run_manifest_export(job, str(out_path), written, manifest_failures,
+                                   manifest_notes)
+    except Exception as exc:
+        from packages.orchestration.failure_postmortem import safe_text as _safe
+        manifest_failures.append({
+            "scope": "job", "job_id": job.job_id,
+            "error": _safe(f"run manifest export failed: {type(exc).__name__}: {exc}")[:500],
+        })
+    _manifest_integrity = {
+        "schema_version": "1.0.0",
+        "ok": not manifest_failures,
+        "failures": manifest_failures,
+        "notes": manifest_notes,
+    }
+    _write_json(MANIFEST_INTEGRITY_FILE, _manifest_integrity)
+
     # Fresh evidence gate — verify this evidence belongs to the current job run.
     # Step range is derived from the project's .agent/plan.md title.
     try:
@@ -1754,6 +1777,291 @@ TERMINAL_TASK_STATUSES = frozenset({"failed", "blocked"})
 #: non-empty one BLOCKS the package — a bundle that quietly lost a required post-mortem
 #: must not be able to present clean gates.
 POSTMORTEM_INTEGRITY_FILE = "postmortem_integrity.json"
+
+#: F012: the run-input manifest and its integrity artifact in the exported bundle.
+from packages.orchestration.run_manifest import (
+    MANIFEST_FILENAME as _RUN_MANIFEST_FILENAME,
+)
+
+MANIFEST_INTEGRITY_FILE = "manifest_integrity.json"
+
+
+def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[str]:
+    """F9/F13: the JobPlan's recorded episode state MUST agree COMPLETELY with the on-disk index.
+
+    Beyond status + ordinal, this checks: no duplicate JobPlan episode ids; the EXACT episode-id
+    set on both sides; per-episode created_at and previous_episode_id; that the job's latest
+    episode equals the index's maximum-ordinal / latest episode; and that a terminal job's active
+    episode is itself a recorded episode. A divergence is a BLOCKING integrity failure — the
+    durable index and the job's view of its own history have drifted apart, and that is never
+    silently reconciled."""
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        JOB_STOPPED,
+    )
+
+    problems: list[str] = []
+    raw_job_eps = [e for e in (getattr(job, "run_manifest_episodes", None) or [])
+                   if e.get("episode_id")]
+    job_eps = {str(e.get("episode_id", "")): e for e in raw_job_eps}
+    if len(raw_job_eps) != len(job_eps):
+        problems.append("duplicate episode ids in JobPlan")
+    idx_eps = {str(e.get("episode_id", "")): e
+               for e in (index.get("episodes") or []) if e.get("episode_id")}
+
+    if set(job_eps) != set(idx_eps):
+        only_job = sorted(set(job_eps) - set(idx_eps))
+        only_idx = sorted(set(idx_eps) - set(job_eps))
+        if only_job:
+            problems.append(f"JobPlan-only episodes not in index: {only_job}")
+        if only_idx:
+            problems.append(f"index-only episodes not in JobPlan: {only_idx}")
+
+    for eid, je in job_eps.items():
+        ie = idx_eps.get(eid)
+        if ie is None:
+            continue
+        if str(je.get("status", "")) != str(ie.get("status", "")):
+            problems.append(f"episode {eid} status differs (job "
+                            f"{je.get('status')!r} vs index {ie.get('status')!r})")
+        j_ord = int(je.get("episode_ordinal", 0) or 0)
+        i_ord = int(ie.get("episode_ordinal", 0) or 0)
+        if j_ord != i_ord:
+            problems.append(f"episode {eid} ordinal differs (job {j_ord} vs index {i_ord})")
+        if str(je.get("created_at", "")) != str(ie.get("created_at", "")):
+            problems.append(f"episode {eid} created_at differs")
+        if str(je.get("previous_episode_id", "") or "") != str(
+                ie.get("previous_episode_id", "") or ""):
+            problems.append(f"episode {eid} previous_episode_id differs")
+
+    # The latest episode (max ordinal) must agree with the index's latest_episode_id.
+    if idx_eps:
+        idx_latest = str(index.get("latest_episode_id", ""))
+        max_ord_id = max(idx_eps.values(),
+                         key=lambda e: int(e.get("episode_ordinal", 0) or 0)
+                         ).get("episode_id", "")
+        if idx_latest != max_ord_id:
+            problems.append(f"index latest_episode_id {idx_latest!r} != max-ordinal episode "
+                            f"{max_ord_id!r}")
+        if job_eps:
+            job_latest = max(job_eps.values(),
+                             key=lambda e: int(e.get("episode_ordinal", 0) or 0)
+                             ).get("episode_id", "")
+            if job_latest != idx_latest:
+                problems.append(f"JobPlan latest episode {job_latest!r} != index latest "
+                                f"{idx_latest!r}")
+
+    # A terminal job's active episode must be one of the recorded episodes.
+    if getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED):
+        active = str(getattr(job, "active_episode_id", "") or "")
+        if active and active not in idx_eps:
+            problems.append(f"terminal job's active episode {active!r} is not in the index")
+    return problems
+
+
+def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str, Any]
+                                          ) -> list[str]:
+    """F8: for a TERMINAL job, the JobPlan, the index's latest and the latest manifest must
+    agree on every field. A mismatch is a BLOCKING integrity failure."""
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
+
+    problems: list[str] = []
+    status = str(getattr(job, "status", "") or "")
+    if status not in (JOB_COMPLETED, JOB_STOPPED):
+        return problems
+
+    active = str(getattr(job, "active_episode_id", "") or "")
+    idx_latest = str(index.get("latest_episode_id", "") or "")
+    # F13: for a MARKED terminal F012 job these fields are REQUIRED, not optional — an empty
+    # value is a blocking integrity failure, never a silently-skipped check.
+    if not active:
+        problems.append("terminal job has no active_episode_id")
+    elif active != idx_latest:
+        problems.append(f"terminal active_episode_id {active!r} != index latest "
+                        f"{idx_latest!r}")
+    if active and not any(str(e.get("episode_id", "")) == active
+                          for e in (getattr(job, "run_manifest_episodes", None) or [])):
+        problems.append(f"terminal active episode {active!r} is absent from the JobPlan "
+                        f"episode summary")
+    if latest.episode_id != idx_latest:
+        problems.append(f"latest manifest episode {latest.episode_id!r} != index latest "
+                        f"{idx_latest!r}")
+    if status != latest.status:
+        problems.append(f"job status {status!r} != latest manifest status "
+                        f"{latest.status!r}")
+    j_created = str(getattr(job, "run_manifest_created_at", "") or "")
+    if not j_created:
+        problems.append("terminal job has no run_manifest_created_at")
+    elif j_created != latest.created_at:
+        problems.append(f"JobPlan run_manifest_created_at {j_created!r} != latest created_at "
+                        f"{latest.created_at!r}")
+    j_path = str(getattr(job, "run_manifest_path", "") or "")
+    if not j_path:
+        problems.append("terminal job has no run_manifest_path")
+    elif j_path != _RUN_MANIFEST_FILENAME:
+        problems.append(f"JobPlan run_manifest_path {j_path!r} is not the canonical latest "
+                        f"mirror {_RUN_MANIFEST_FILENAME!r}")
+    # Stop metadata coherence.
+    if status == JOB_STOPPED:
+        j_req = str(getattr(job, "stop_request_id", "") or "")
+        if not j_req:
+            problems.append("stopped job has no stop_request_id")
+        if j_req != (latest.stop_request_id or ""):
+            problems.append(f"JobPlan stop_request_id {j_req!r} != latest stop_request_id "
+                            f"{latest.stop_request_id!r}")
+    elif latest.stop_request_id:
+        problems.append("a completed job's latest manifest carries stopped-only "
+                        "stop_request_id metadata")
+    # The latest snapshot + calls all belong to the latest episode.
+    if latest.episode_snapshot.episode_id != latest.episode_id:
+        problems.append("latest snapshot episode != latest episode")
+    for c in latest.calls:
+        if c.identity.episode_id and c.identity.episode_id != latest.episode_id:
+            problems.append(f"latest call {c.identity.call_id} does not belong to the latest "
+                            f"episode")
+            break
+    return problems
+
+
+def _write_run_manifest_export(
+    job: Any, out_base: str, written: dict[str, str], failures: list[dict[str, Any]],
+    notes: list[str] | None = None,
+) -> None:
+    """Copy the job's manifest episodes into the bundle and verify their integrity.
+
+    A completed/stopped job MARKED under F012 (``run_manifest_required_v``) MUST have a
+    manifest whose calls have complete coverage and whose call-input artifacts resolve and
+    hash-match. A recording error, a missing marked manifest, incomplete coverage, or a
+    call artifact that is missing / mis-hashed is BLOCKING. A pre-F012 UNMARKED job with no
+    manifest is legacy/uncovered — readable, not corrupt.
+    """
+    from packages.orchestration.failure_postmortem import safe_text
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        JOB_STOPPED,
+        job_evidence_dir,
+    )
+    from packages.orchestration.run_manifest import (
+        COVERAGE_COMPLETE,
+        MANIFEST_INDEX_FILENAME,
+        MANIFESTS_SUBDIR,
+        ManifestError,
+        build_verified_manifest_tree,
+        decode_index_v1,
+        decode_run_manifest_v1,
+        load_latest_manifest_verified,
+        manifest_tree_is_present,
+        validate_index_and_tree,
+    )
+
+    terminal = getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED)
+    marked = int(getattr(job, "run_manifest_required_v", 0) or 0) > 0
+    mandatory = terminal and marked
+
+    err = str(getattr(job, "run_manifest_error", "") or "")
+    if err:
+        failures.append({"scope": "job", "job_id": job.job_id,
+                         "error": safe_text(err)[:500]})
+        return
+
+    ev = job_evidence_dir(job.job_id)
+
+    # F5: VALIDATE FIRST, then copy. Build the verified ALLOWLIST — the exact declared set of
+    # index + episode manifests + declared call artifacts, each anchored-read, hash-verified and
+    # size-bounded. Undeclared episode dirs, undeclared call artifacts, oversized files and
+    # outside/symlinked components never enter this map. Nothing is copied to the bundle until
+    # every invariant holds, so a canary in an extra file can never reach the output.
+    files, tree_problems = build_verified_manifest_tree(ev, job_id=job.job_id)
+
+    # F10: the F012 MARKER changes ABSENCE semantics ONLY. It never decides whether a PRESENT
+    # manifest tree is trusted: any artifact that exists is fully validated, marked or not.
+    if _RUN_MANIFEST_FILENAME not in files:
+        if mandatory:
+            failures.append({
+                "scope": "job", "job_id": job.job_id,
+                "error": f"a {job.status} F012-marked job has no run manifest"})
+            for prob in tree_problems:
+                failures.append({"scope": "job", "job_id": job.job_id,
+                                 "error": safe_text(f"manifest tree: {prob}")[:500]})
+        else:
+            # PRESENCE is decided on the RAW anchored tree, not on the verified allowlist: a
+            # tree so broken that nothing survived verification (e.g. the index is gone, so no
+            # episode is declared) is exactly the case that must not be waved through as
+            # "legacy". Only a genuinely EMPTY tree is legacy/uncovered.
+            # PRESENCE is the raw anchored probe's verdict alone — `tree_problems` includes
+            # "evidence directory does not exist", which IS absence, not a broken tree.
+            present, raw_problems = manifest_tree_is_present(ev)
+            if present:
+                for prob in list(tree_problems) + list(raw_problems):
+                    failures.append({"scope": "job", "job_id": job.job_id,
+                                     "error": safe_text(f"manifest tree: {prob}")[:500]})
+                failures.append({
+                    "scope": "job", "job_id": job.job_id,
+                    "error": "manifest artifacts are present but no verified run manifest "
+                             "could be read; a present manifest tree is always validated"})
+            elif notes is not None:
+                notes.append("legacy pre-F012 job: no run manifest (uncovered, not corrupt)")
+        return
+
+    # The authoritative trust-chain check (F7/F8/F9) over ANCHORED reads. It catches a tampered
+    # index hash, an index/metadata mismatch, an extra/missing episode, a rollback (F5), a broken
+    # prior-episode graph (F6/F8), a mis-hashed call artifact (F7) and symlinked components.
+    chain_problems: list[str] = list(tree_problems)
+    index: dict = {}
+    if MANIFEST_INDEX_FILENAME in files:
+        try:
+            # F11: the index is untrusted manifest bytes — strict-decode it, never _json.loads.
+            index = decode_index_v1(files[MANIFEST_INDEX_FILENAME])
+        except (ValueError, UnicodeDecodeError, ManifestError) as exc:
+            # F10: a present-but-unreadable index is an integrity problem, never a silent {}.
+            index = {}
+            chain_problems.append(f"unreadable run_manifest_index.json: {exc}")
+    else:
+        chain_problems.append("a run manifest is present but there is no "
+                              "run_manifest_index.json")
+    # F10: a PRESENT manifest tree is ALWAYS fully validated — strict chain, canonical bytes,
+    # exact allowlist — whether or not the job carries the F012 marker.
+    chain_problems.extend(validate_index_and_tree(ev, job_id=job.job_id))
+    if mandatory:
+        # These compare the MARKED JobPlan's own F012 state, so they need the marker.
+        chain_problems.extend(_crosscheck_job_episodes_vs_index(job, index))
+        try:
+            latest = load_latest_manifest_verified(ev, job_id=job.job_id)
+            chain_problems.extend(_crosscheck_terminal_jobplan_manifest(job, latest, index))
+        except ManifestError as exc:
+            chain_problems.append(f"latest manifest could not be loaded: {exc}")
+    # F1: a published terminal reference must have COMPLETE coverage (the canonical loader
+    # already enforces this; the export re-states it as a blocking Evidence failure). Marked or
+    # not: a stored manifest that IS present is held to the published-reference rule.
+    for rel, data in files.items():
+        if not (rel.startswith(f"{MANIFESTS_SUBDIR}/")
+                and rel.endswith(f"/{_RUN_MANIFEST_FILENAME}")):
+            continue
+        eid = rel.split("/")[1]
+        try:
+            m = decode_run_manifest_v1(data)      # F13: strict, untrusted bytes
+        except (ValueError, UnicodeDecodeError, ManifestError) as exc:
+            chain_problems.append(f"unreadable episode manifest {eid}: {exc}")
+            continue
+        if m.coverage.status != COVERAGE_COMPLETE:
+            chain_problems.append(
+                f"episode {eid} has incomplete call coverage: "
+                f"{'; '.join(m.coverage.problems)[:300]}")
+
+    # F5: only copy the allowlisted bytes when the tree is CLEAN. If any invariant failed for a
+    # marked job, record the failures and copy NOTHING — the safe integrity-failure artifact is
+    # written by the caller, but no (possibly undeclared) bytes reach the bundle.
+    if chain_problems:
+        for prob in chain_problems:
+            failures.append({"scope": "job", "job_id": job.job_id,
+                             "error": safe_text(f"manifest integrity: {prob}")[:500]})
+        return
+
+    for rel, data in sorted(files.items()):
+        _dest = _validate_output_path(out_base, rel)
+        _dest.parent.mkdir(parents=True, exist_ok=True)
+        _dest.write_bytes(data)
+        written[rel] = str(_dest)
 
 
 def _write_task_postmortems(

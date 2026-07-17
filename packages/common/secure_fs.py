@@ -26,14 +26,21 @@ post-mortem problem and an F011 failure still sounds like a stop-control problem
 from __future__ import annotations
 
 import contextlib
+import errno
+import fcntl
 import os
 import secrets
 import stat
+import time
 from pathlib import Path
 from typing import Any, Callable
 
 __all__ = [
     "SecureFsError",
+    "exclusive_lock_fd",
+    "release_lock_fd",
+    "publish_dir_atomically",
+    "remove_tree_at",
     "MissingComponent",
     "DIR_FD_SUPPORTED",
     "require_platform",
@@ -103,9 +110,30 @@ def lexical_parts(directory: Path | str, root: Path | str, *,
     return parts
 
 
+def require_single_component(name: str, *, error_cls: ErrorCls = SecureFsError,
+                             noun: str = "path") -> None:
+    """One real directory component — never a traversal, never a path.
+
+    ``..`` is not a symlink and IS a directory, so every no-follow identity check below happily
+    opens it and walks the caller straight out of the tree one level per component. Anchored
+    traversal is only a containment guarantee if what it traverses are components; the check
+    therefore belongs HERE, at the single opener every anchored walk goes through, rather than in
+    each caller's loop where one forgotten call reopens the hole.
+
+    ``os.sep`` is the documented exception: an absolute walk bootstraps from the real root.
+    """
+    if name == os.sep:
+        return
+    if not name or name in (os.curdir, os.pardir):
+        raise error_cls(f"refusing to open {noun} component {name!r}: not a real component")
+    if os.sep in name or (os.altsep and os.altsep in name) or "\0" in name:
+        raise error_cls(f"refusing to open {noun} component {name!r}: not a single component")
+
+
 def open_verified_dir(name: str, dir_fd: int | None = None, *,
                       error_cls: ErrorCls = SecureFsError, noun: str = "path") -> int:
     """Open ONE directory component and prove it is the thing we inspected."""
+    require_single_component(name, error_cls=error_cls, noun=noun)
     try:
         pre = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
     except FileNotFoundError as exc:
@@ -397,6 +425,111 @@ def write_file_atomically(dir_fd: int, name: str, data: bytes, *, create_only: b
                 os.unlink(tmp_name, dir_fd=dir_fd)
 
 
+def exclusive_lock_fd(name: str, dir_fd: int, *, timeout_sec: float = 30.0,
+                      poll_sec: float = 0.005, file_mode: int = 0o600,
+                      error_cls: ErrorCls = SecureFsError,
+                      noun: str = "lock") -> int:
+    """Acquire an EXCLUSIVE advisory lock on ``name`` through a held directory fd.
+
+    The lock is `flock`-based, so the kernel releases it when the holder's file description is
+    closed — including on an abrupt process death. Nothing has to be cleaned up afterwards, and
+    a crashed writer can never leave a permanent claim behind.
+
+    Returns the held fd; the caller MUST call ``release_lock_fd``. Blocks up to ``timeout_sec``
+    and then raises rather than waiting forever, so a wedged holder surfaces as a bounded,
+    diagnosable error instead of a hang.
+    """
+    require_platform(error_cls, noun)
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    try:
+        fd = os.open(name, flags, file_mode, dir_fd=dir_fd)
+    except OSError as exc:
+        raise error_cls(f"{noun} could not be opened: {type(exc).__name__}: {exc}") from exc
+    deadline = time.monotonic() + max(0.0, timeout_sec)
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fd
+        except OSError:
+            if time.monotonic() >= deadline:
+                os.close(fd)
+                raise error_cls(
+                    f"{noun} is held by another writer and did not become available within "
+                    f"{timeout_sec:g}s")
+            time.sleep(poll_sec)
+
+
+def release_lock_fd(fd: int) -> None:
+    """Release and close a lock fd. Safe to call once, from a ``finally``."""
+    try:
+        with contextlib.suppress(OSError):
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        with contextlib.suppress(OSError):
+            os.close(fd)
+
+
+def publish_dir_atomically(staging_name: str, final_name: str, dir_fd: int, *,
+                           error_cls: ErrorCls = SecureFsError,
+                           noun: str = "directory") -> bool:
+    """Publish a FULLY-BUILT staging directory under ``final_name`` through a held fd.
+
+    ``rename`` of a directory onto a non-empty directory fails on POSIX, so an existing
+    published directory is never silently replaced and ``False`` is returned — the caller owns
+    the conflict, exactly as ``write_file_atomically(create_only=True)`` does for files. This is
+    what makes an episode publication all-or-nothing: everything is built and verified under an
+    unpredictable private name first, and the single rename is the only moment the canonical
+    name exists at all.
+    """
+    try:
+        os.rename(staging_name, final_name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+        return True
+    except (FileExistsError, NotADirectoryError):
+        return False
+    except OSError as exc:
+        # ENOTEMPTY (and on some systems EEXIST) — the destination is a published directory.
+        if exc.errno in (errno.ENOTEMPTY, errno.EEXIST):
+            return False
+        raise error_cls(
+            f"{noun} could not be published: {type(exc).__name__}: {exc}") from exc
+
+
+def remove_tree_at(name: str, dir_fd: int, *, error_cls: ErrorCls = SecureFsError,
+                   noun: str = "directory") -> None:
+    """Remove a directory subtree through held fds, never following a symlink.
+
+    Used ONLY to clean up a private staging directory this process created under an
+    unpredictable name: it never touches a published name, so a losing writer can never delete a
+    winner's file.
+    """
+    try:
+        sub_fd = os.open(name, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                         | getattr(os, "O_NOFOLLOW", 0), dir_fd=dir_fd)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise error_cls(f"{noun} could not be cleaned: {exc}") from exc
+    try:
+        try:
+            entries = os.listdir(sub_fd)
+        except OSError as exc:
+            raise error_cls(f"{noun} could not be cleaned: {exc}") from exc
+        for entry in entries:
+            try:
+                st = os.stat(entry, dir_fd=sub_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            if stat.S_ISDIR(st.st_mode):
+                remove_tree_at(entry, sub_fd, error_cls=error_cls, noun=noun)
+            else:
+                with contextlib.suppress(OSError):
+                    os.unlink(entry, dir_fd=sub_fd)
+    finally:
+        os.close(sub_fd)
+    with contextlib.suppress(OSError):
+        os.rmdir(name, dir_fd=dir_fd)
+
+
 def unlink_at(name: str, dir_fd: int, *, error_cls: ErrorCls = SecureFsError,
               noun: str = "file") -> bool:
     """Remove a name through a held directory fd. False when it was not there."""
@@ -421,6 +554,13 @@ def list_dir_names(dir_fd: int, *, error_cls: ErrorCls = SecureFsError,
 
 
 def json_bytes(payload: Any, *, indent: int = 2, sort_keys: bool = True) -> bytes:
+    """Canonical JSON bytes — STANDARD JSON only.
+
+    ``allow_nan=False`` refuses ``NaN`` / ``Infinity`` / ``-Infinity``: Python emits those as
+    bare words that are NOT valid JSON, so any other reader would reject the record we just
+    published (and a non-finite float has no place in an input identity or a hash).
+    """
     import json
 
-    return (json.dumps(payload, indent=indent, sort_keys=sort_keys) + "\n").encode("utf-8")
+    return (json.dumps(payload, indent=indent, sort_keys=sort_keys,
+                       allow_nan=False) + "\n").encode("utf-8")

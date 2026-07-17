@@ -877,6 +877,15 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
     postmortem_integrity_blocked = bool(postmortem_failures)
 
+    # F012: a required run-input manifest that could not be written or read is a broken
+    # evidence contract, the same as a lost post-mortem. It BLOCKS.
+    _manifest_integrity = _read_json(base / "manifest_integrity.json")
+    manifest_failures = (
+        list(_manifest_integrity.get("failures") or [])
+        if isinstance(_manifest_integrity, dict) else []
+    )
+    manifest_integrity_blocked = bool(manifest_failures)
+
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
 
     _vt_runs = verification_tests.get("runs") if isinstance(verification_tests, dict) else None
@@ -973,6 +982,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
 
     gates_blocked = (
         postmortem_integrity_blocked
+        or manifest_integrity_blocked
         or scratch_file_guard == "BLOCKED"
         or spec_compliance == "BLOCKED"
         or any_core_gate_blocked
@@ -1069,6 +1079,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         # F010: required post-mortems that could not be written. Non-empty ⇒ BLOCKED.
         "postmortem_failures": postmortem_failures,
         "postmortem_integrity_blocked": postmortem_integrity_blocked,
+        "manifest_integrity_blocked": manifest_integrity_blocked,
         "change_provenance": change_provenance,
         "change_provenance_gate": change_provenance,
         "fresh_evidence_gate": fresh_evidence_gate,

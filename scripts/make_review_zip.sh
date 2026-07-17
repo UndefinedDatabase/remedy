@@ -506,7 +506,12 @@ cd "$ROOT"
 zip -q "$OUT" "$MANIFEST" -g
 
 # --- Post-build verification ---
-# Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail
+# Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail.
+# For the same reason every membership test below uses a HERESTRING rather than
+# `echo "$ZIP_LISTING" | grep -q ...`: `grep -q` exits at its first match, the writer takes
+# SIGPIPE, and `set -o pipefail` reports the whole pipeline as failed — so a file that IS in the
+# zip gets reported missing once the listing grows past the pipe buffer. That made the check
+# size-dependent: it passed at ~1,299 entries and failed at ~1,304.
 ZIP_LISTING="$(unzip -Z1 "$OUT")"
 
 # 1. Verify no unsafe files
@@ -537,7 +542,7 @@ m = json.load(open('$MANIFEST'))
 print(m.get('agent_state', {}).get('$AGENT_FILE', 'absent'))
 " 2>/dev/null || echo "error")"
   if [[ "$MANIFEST_STATUS" == "present" ]]; then
-    if ! echo "$ZIP_LISTING" | grep -qF "$AGENT_FILE"; then
+    if ! grep -qF "$AGENT_FILE" <<< "$ZIP_LISTING"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $AGENT_FILE present but missing from zip\n"
     fi
   fi
@@ -554,7 +559,7 @@ for name, status in ce.get('root_artifacts', {}).items():
 " 2>/dev/null || true)"
   while read -r expected; do
     [[ -z "$expected" ]] && continue
-    if ! echo "$ZIP_LISTING" | grep -qF "$expected"; then
+    if ! grep -qF "$expected" <<< "$ZIP_LISTING"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $expected present but missing from zip\n"
     fi
   done <<< "$EXPECTED_EVIDENCE"
@@ -568,7 +573,7 @@ fi
 # 4. Verify the observability index is bundled under evidence/current/ (only when evidence present).
 if [[ -n "$EVIDENCE_DIR" ]]; then
   if [[ -n "$OBS_INDEX_STAGED" && -f "$OBS_INDEX_STAGED" ]]; then
-    if ! echo "$ZIP_LISTING" | grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME"; then
+    if ! grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME" <<< "$ZIP_LISTING"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Observability index generated but missing from zip: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
     fi
   else

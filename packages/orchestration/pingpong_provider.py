@@ -17,6 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from packages.orchestration.call_identity import prepare_call_input
+
 from packages.orchestration.token_actuals import (
     parse_cli_result,
     parse_cli_result_detailed,
@@ -58,6 +60,7 @@ class BuilderOutput:
     stream_cap_reached: bool = False
     stream_call_id: str = ""
     stream_artifact_refs: list[str] = field(default_factory=list)
+    prepared_input: Any = None  # F012: fingerprint of the EXACT transport request
 
 
 @dataclass
@@ -104,6 +107,7 @@ class ReviewerOutput:
     stream_cap_reached: bool = False
     stream_call_id: str = ""
     stream_artifact_refs: list[str] = field(default_factory=list)
+    prepared_input: Any = None  # F012: fingerprint of the EXACT transport request
 
 
 # ---------------------------------------------------------------------------
@@ -194,9 +198,26 @@ class FakeProvider:
             provider="fake",
             duration_ms=50,
             tokens_used=100,
+            prepared_input=prepare_call_input(
+                prompt=prompt, model="fake", mode="fake",
+                options={"max_output_chars": max_output_chars}),
         )
 
     def review(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+    ) -> ReviewerOutput:
+        out = self._review_impl(prompt, timeout_sec=timeout_sec,
+                                max_output_chars=max_output_chars)
+        out.prepared_input = prepare_call_input(
+            prompt=prompt, model="fake", mode="fake",
+            options={"max_output_chars": max_output_chars})
+        return out
+
+    def _review_impl(
         self,
         prompt: str,
         *,
@@ -358,6 +379,10 @@ class ClaudeProvider:
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
     ) -> BuilderOutput:
+        # F012: the builder prompt is sent verbatim — fingerprint the exact bytes.
+        _pi = prepare_call_input(
+            prompt=prompt, model=self._model, mode="api-legacy",
+            options={"max_tokens": self._max_tokens})
         try:
             text, dur, tokens = self._call(
                 prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
@@ -378,12 +403,14 @@ class ClaudeProvider:
                 duration_ms=dur,
                 tokens_used=tokens,
                 actual_missing_reason="provider_actuals_unavailable",
+                prepared_input=_pi,
             )
         except Exception as exc:
             return BuilderOutput(
                 error=f"provider_error: {type(exc).__name__}",
                 provider="claude",
                 actual_missing_reason="provider_error",
+                prepared_input=_pi,
             )
 
     def review(
@@ -398,6 +425,12 @@ class ClaudeProvider:
             _build_schema_prompt(_ReviewVerdictSchema, prompt)
             if structured else prompt + "\n\n" + _REVIEWER_JSON_SCHEMA
         )
+        # F012: the schema is embedded IN ``full_prompt`` for the API path, so fingerprint the
+        # exact bytes sent (``full_prompt``), NOT the caller's raw ``prompt``.
+        _pi = prepare_call_input(
+            prompt=full_prompt, model=self._model,
+            mode="api-structured" if structured else "api-legacy",
+            options={"max_tokens": self._max_tokens})
         try:
             text, dur, tokens = self._call(
                 full_prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
@@ -407,12 +440,14 @@ class ClaudeProvider:
                 if structured else _parse_reviewer_json(text, dur, tokens)
             )
             out.actual_missing_reason = "provider_actuals_unavailable"
+            out.prepared_input = _pi
             return out
         except Exception as exc:
             return ReviewerOutput(
                 error=f"provider_error: {type(exc).__name__}",
                 provider="claude",
                 actual_missing_reason="provider_error",
+                prepared_input=_pi,
             )
 
 
@@ -1213,6 +1248,22 @@ class ClaudeCliProvider:
         timeout_sec: int = 120,
         max_output_chars: int = 50000,
     ) -> BuilderOutput:
+        # F012: the CLI sends the builder prompt verbatim (no out-of-band schema).
+        _pi = prepare_call_input(
+            prompt=prompt, model=self._model, mode="cli-legacy",
+            options={"write_mode": self._write_mode})
+        out = self._build_impl(prompt, timeout_sec=timeout_sec,
+                               max_output_chars=max_output_chars)
+        out.prepared_input = _pi
+        return out
+
+    def _build_impl(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+    ) -> BuilderOutput:
         try:
             text, dur, tokens, usage, amr = self._call(
                 prompt, timeout_sec=timeout_sec, max_output_chars=max_output_chars,
@@ -1256,6 +1307,30 @@ class ClaudeCliProvider:
             )
 
     def review(
+        self,
+        prompt: str,
+        *,
+        timeout_sec: int = 120,
+        max_output_chars: int = 50000,
+    ) -> ReviewerOutput:
+        structured = _reviewer_structured_enabled()
+        # F012: fingerprint exactly what the transport receives — the prompt bytes plus, in
+        # native structured mode, the out-of-band ``--json-schema`` argument.
+        if structured:
+            _pi = prepare_call_input(
+                prompt=prompt, model=self._model, mode="cli-native",
+                schema=_to_json_schema_str(_ReviewVerdictSchema),
+                options={"write_mode": self._write_mode})
+        else:
+            _pi = prepare_call_input(
+                prompt=prompt + "\n\n" + _REVIEWER_JSON_SCHEMA, model=self._model,
+                mode="cli-legacy", options={"write_mode": self._write_mode})
+        out = self._review_impl(prompt, timeout_sec=timeout_sec,
+                                max_output_chars=max_output_chars)
+        out.prepared_input = _pi
+        return out
+
+    def _review_impl(
         self,
         prompt: str,
         *,

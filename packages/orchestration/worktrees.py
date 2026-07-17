@@ -119,6 +119,15 @@ def repo_root(repo_path: str | Path) -> Path:
     return Path(out).resolve()
 
 
+def worktrees_root_for(repo: str | Path) -> Path:
+    """THE canonical root every job workspace must live under.
+
+    F11 (round 11): the read-only rerun check resolves a workspace through this root and refuses
+    anything outside it, so a persisted path can never become its own trust root.
+    """
+    return (Path(repo).resolve() / WORKTREE_DIRNAME).resolve()
+
+
 def worktree_path_for(repo: str | Path, job_id: str) -> Path:
     """The worktree path for a job, validated to stay inside ``.remedy-wt/``."""
     root = Path(repo).resolve()
@@ -414,6 +423,40 @@ def retain_for_recovery(handle: WorktreeHandle, reason: str = "") -> dict[str, A
         "cleanup_status": "failed_recoverable" if reason else "retained",
         "cleanup_error": reason,
     }
+
+
+def write_tree_for_path(path: str | Path) -> str:
+    """F11: the deterministic write-tree of an existing worktree PATH, without a lock/handle.
+
+    Read-only against the worktree's real state — it stages into a PRIVATE temporary index
+    (``GIT_INDEX_FILE``), so the real index is untouched, nothing is committed and no branch
+    moves. Used by the rerun check to compute a resumable job workspace's CURRENT tree instead
+    of trusting the historical episode-start tree. Raises ``WorktreeError`` on any git failure.
+    """
+    import tempfile
+
+    p = Path(path)
+    if not p.is_dir():
+        raise WorktreeError(f"worktree path does not exist: {p.name}")
+    fd, tmp = tempfile.mkstemp(prefix="remedy-index-")
+    os.close(fd)
+    os.unlink(tmp)
+    env = {**os.environ, "GIT_INDEX_FILE": tmp}
+    try:
+        proc = subprocess.run(["git", "add", "-A", "."], cwd=str(p), env=env,
+                              capture_output=True, text=True, timeout=120)
+        if proc.returncode != 0:
+            raise WorktreeError(f"git add for tree snapshot failed: {proc.stderr[:200]}")
+        proc = subprocess.run(["git", "write-tree"], cwd=str(p), env=env,
+                              capture_output=True, text=True, timeout=60)
+        if proc.returncode != 0:
+            raise WorktreeError(f"git write-tree failed: {proc.stderr[:200]}")
+        return proc.stdout.strip()
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def write_tree(handle: WorktreeHandle) -> str:

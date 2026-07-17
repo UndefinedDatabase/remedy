@@ -52,6 +52,30 @@ def _is_outside_repo(rel: str) -> bool:
     return ".." in parts
 
 
+def is_attestable_source(rel: str) -> bool:
+    """F9 (round 13): is this file part of a task's ATTESTED source change?
+
+    `.agent/context.md`, `.agent/plan.md` and `.agent/live_review.md` are OPERATOR STATE — the
+    notes the operator keeps about the work, not the work. Every authoritative Evidence view
+    already says so and excludes them (`final_verifier._OPERATIONAL_PREFIXES`,
+    `change_provenance_gate._EXCLUDE_DIRS`, the packager's alignment scan). The ATTESTED union
+    was the one view that did not, so a hand-attested diff containing them disagreed with every
+    proof set built from the same change — and the package was correctly refused as
+    non-authoritative:
+
+        changed-file union mismatch vs current_change_content_proof.file_hashes:
+          only_in_union=['.agent/context.md', '.agent/live_review.md', '.agent/plan.md']
+
+    One policy, applied at the one place that dissented. The files still travel in the review ZIP
+    as non-authoritative operator context — excluded from the proofs, not from the reader.
+
+    The predicate is the EXISTING one (A6: no parallel taxonomy) — imported, not re-stated.
+    """
+    from packages.orchestration.final_verifier import _is_source_for_alignment
+
+    return _is_source_for_alignment(rel)
+
+
 # ---------------------------------------------------------------------------
 # Canonical provenance hashing — ONE shared implementation used by both the
 # writer (this module) and the validator (build_review_manifest). Any drift
@@ -195,11 +219,20 @@ def _collect_workspace_diff(repo_path: str) -> _WorkspaceDiff:
             if " -> " in path:
                 path = path.split(" -> ", 1)[1]
             path = path.strip().strip('"')
-            if path:
+            # F9 (round 13): operator-state files are not part of the attested SOURCE change.
+            # Every authoritative Evidence view already excludes them; the attested union was
+            # the lone dissenter, and the mismatch made the whole package non-authoritative.
+            if path and is_attestable_source(path):
                 changed.append(path)
 
+    # F9 (round 13): the diff is scoped to the ATTESTABLE paths, so `safe.diff` and
+    # `changed_files` are the same account BY CONSTRUCTION. The packager requires those two views
+    # to be exactly equal, so filtering only the file list would simply move the mismatch:
+    #   "safe.diff paths != provenance.changed_files (only_in_diff=['.agent/plan.md'])"
+    # `--` ends the option list, so no path can be read as a flag.
     full_tracked_diff = ""
-    diff = _git(["diff", "HEAD"])
+    tracked_targets = [p for p in changed if is_attestable_source(p)]
+    diff = _git(["diff", "HEAD", "--", *tracked_targets]) if tracked_targets else None
     if diff is not None and diff.returncode == 0:
         full_tracked_diff = diff.stdout
     tracked_diff_sha256 = hashlib.sha256(
@@ -218,7 +251,7 @@ def _collect_workspace_diff(repo_path: str) -> _WorkspaceDiff:
     if ls_files is not None and ls_files.returncode == 0:
         for upath in ls_files.stdout.splitlines():
             upath = upath.strip()
-            if not upath:
+            if not upath or not is_attestable_source(upath):   # F9: same one policy
                 continue
             full = repo / upath
             if full.is_file():

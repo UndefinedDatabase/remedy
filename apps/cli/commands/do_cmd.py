@@ -7,6 +7,11 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from apps.cli.commands.run_invocation import (
+    RunInvocation,
+    invocation_from_args as _invocation_from_args,
+)
+
 if TYPE_CHECKING:
     import argparse
 
@@ -890,8 +895,7 @@ def _cmd_do_job_run(
     repair_rounds: int | None = None,
     test_command: str | None = None,
     claude_cli_write_mode: str | None = None,
-    stream_evidence: bool = False,
-    max_tasks: int = 0,
+    invocation: "RunInvocation | None" = None,
     json_output: bool = False,
     builder_provider: str | None = None,
     builder_model: str | None = None,
@@ -902,13 +906,17 @@ def _cmd_do_job_run(
     repair_provider: str | None = None,
     repair_model: str | None = None,
     repair_effort: str | None = None,
-    timeout_profile: str = "",
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
-    None means "omitted by CLI". Resolution in run_job():
-    explicit CLI value > persisted config > product default.
+    ``invocation`` carries the F012 material controls (timeout/profile/output/stream/max-tasks)
+    with omission preserved as ``None`` (F1); resolution happens in ``run_job()``:
+    explicit(non-None) CLI value > persisted config > product default.
     """
+    from apps.cli.commands.run_invocation import RunInvocation
+
+    if invocation is None:
+        invocation = RunInvocation()
     # Per-role model override flags are validated and resolved at the CLI
     # layer (invalid values exit 2) before any run work begins.
     _resolve_cli_role_configs(
@@ -966,10 +974,8 @@ def _cmd_do_job_run(
         repair_rounds=repair_rounds_val,
         repair_rounds_source=repair_source,
         test_command=test_command,
-        timeout_profile=timeout_profile,
         claude_cli_write_mode=claude_cli_write_mode,
-        stream_evidence=stream_evidence,
-        max_tasks=max_tasks,
+        **invocation.as_run_job_kwargs(),
     )
 
     if json_output:
@@ -1024,7 +1030,7 @@ def _cmd_do_job_resume(
     max_rounds: int | None = None,
     repair_rounds: int | None = None,
     test_command: str | None = None,
-    max_tasks: int = 0,
+    invocation: "RunInvocation | None" = None,
     json_output: bool = False,
 ) -> None:
     """Resume an interrupted JobPlan in its own job-owned worktree.
@@ -1032,10 +1038,17 @@ def _cmd_do_job_resume(
     JobPlan IDs are 16-character hex values (``ee71656400f646e0``) — a different
     storage model from the UUID Core Jobs that ``remedy job resume`` handles. The
     two are deliberately kept apart rather than pretending to be the same object.
+
+    F1: the material invocation controls come through the shared ``RunInvocation`` with
+    omission preserved as ``None``, so resume never clears a persisted cap by passing 0.
     """
     import json as _json
 
+    from apps.cli.commands.run_invocation import RunInvocation
     from packages.orchestration.pingpong_job import export_job_report, resume_job_plan
+
+    if invocation is None:
+        invocation = RunInvocation()
 
     def _as_int(v, default=None):
         return default if v in (None, "") else int(v)
@@ -1048,7 +1061,7 @@ def _cmd_do_job_resume(
             max_rounds=_as_int(max_rounds),
             repair_rounds=_as_int(repair_rounds),
             test_command=test_command,
-            max_tasks=_as_int(max_tasks, 0) or 0,
+            **invocation.as_run_job_kwargs(),
         )
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1989,8 +2002,7 @@ def _cmd_do_job_flow(
     repair_rounds: int | None = None,
     test_command: str | None = None,
     claude_cli_write_mode: str | None = None,
-    timeout_sec: int = 120,
-    timeout_profile: str = "",
+    invocation: "RunInvocation | None" = None,
     out: str = "",
     json_output: bool = False,
     builder_provider: str | None = None,
@@ -2011,6 +2023,9 @@ def _cmd_do_job_flow(
     performed. When the dry-run is ready, a clear next approve command is
     printed.
     """
+    from apps.cli.commands.run_invocation import RunInvocation
+    if invocation is None:
+        invocation = RunInvocation()
     if not job_file:
         print("Error: --job-file is required", file=sys.stderr)
         sys.exit(2)
@@ -2124,10 +2139,8 @@ def _cmd_do_job_flow(
         repair_rounds=repair_rounds_val,
         repair_rounds_source=repair_source,
         test_command=test_command,
-        timeout_sec=timeout_sec,
-        timeout_profile=timeout_profile,
         claude_cli_write_mode=claude_cli_write_mode,
-        max_tasks=0,
+        **invocation.as_run_job_kwargs(),
     )
 
     # --- 3. job-report (reload for an authoritative view) ---
@@ -2414,8 +2427,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
         test_command=getattr(args, "test_command", None),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
-        stream_evidence=getattr(args, "stream_evidence", False),
-        max_tasks=int(getattr(args, "max_tasks", None) or 0),
+        invocation=_invocation_from_args(args),
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),
         builder_model=getattr(args, "builder_model", None),
@@ -2426,7 +2438,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_provider=getattr(args, "repair_provider", None),
         repair_model=getattr(args, "repair_model", None),
         repair_effort=getattr(args, "repair_effort", None),
-        timeout_profile=getattr(args, "timeout_profile", None) or "normal",
     ),
     "do.job-resume": lambda args: _cmd_do_job_resume(
         args.job_id,
@@ -2435,7 +2446,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_rounds=getattr(args, "max_rounds", None),
         repair_rounds=getattr(args, "repair_rounds", None),
         test_command=getattr(args, "test_command", None),
-        max_tasks=getattr(args, "max_tasks", 0) or 0,
+        invocation=_invocation_from_args(args),
         json_output=getattr(args, "json", False),
     ),
     "do.job-report": lambda args: _cmd_do_job_report(
@@ -2465,8 +2476,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_rounds=int(getattr(args, "repair_rounds")) if getattr(args, "repair_rounds", None) is not None else None,
         test_command=getattr(args, "test_command", None),
         claude_cli_write_mode=getattr(args, "claude_cli_write_mode", None),
-        timeout_sec=_resolve_timeout_precedence(int(getattr(args, "timeout_sec")) if getattr(args, "timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[0],
-        timeout_profile=_resolve_timeout_precedence(int(getattr(args, "timeout_sec")) if getattr(args, "timeout_sec", None) is not None else None, getattr(args, "timeout_profile", None))[1],
+        invocation=_invocation_from_args(args),
         out=getattr(args, "out", None) or "",
         json_output=getattr(args, "json", False),
         builder_provider=getattr(args, "builder_provider", None),
