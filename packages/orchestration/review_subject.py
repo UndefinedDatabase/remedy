@@ -387,9 +387,13 @@ def _dirty_current_record(repo_root: str | Path, path: str,
         try:
             vf = _fs.read_verified_relative(repo_root, path, expected_kind="regular",
                                             error_cls=ReviewSubjectError, noun="dirty file")
+            # F3 (round 19): capture the WORKING-TREE executable bit as the current git mode. A
+            # dirty chmod 0644->0755 used to leave current_mode="" (planned back to 0644, losing
+            # the mode change under review); the stability-checked read's own mode is the truth.
+            cur_mode = "100755" if (vf.mode & 0o111) else "100644"
             return ReviewFileV1(status=status,
                                 current_sha256=hashlib.sha256(vf.data).hexdigest(),
-                                kind=KIND_REGULAR, **common)
+                                kind=KIND_REGULAR, current_mode=cur_mode, **common)
         except ReviewSubjectError:
             return ReviewFileV1(status=status, current_sha256=None, kind=KIND_REGULAR, **common)
     if kind == KIND_SYMLINK:
@@ -398,7 +402,7 @@ def _dirty_current_record(repo_root: str | Path, path: str,
         return ReviewFileV1(
             status=status,
             current_sha256=hashlib.sha256((target or "").encode("utf-8")).hexdigest(),
-            kind=KIND_SYMLINK, link_target=target, **common)
+            kind=KIND_SYMLINK, link_target=target, current_mode="120000", **common)
     # A directory or special file has no honest content proof; recorded, blocked at packaging.
     return ReviewFileV1(status=status, current_sha256=None, kind=kind, **common)
 
