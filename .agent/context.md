@@ -1,4 +1,4 @@
-# Context — current state (Steps 10961-11160)
+# Context — current state (Steps 11161-11360)
 
 ## Where the product is
 
@@ -68,6 +68,18 @@
   `_allowed_statuses_for` and the frozen prior status, `merge_review_file_state`, git-mode kinds,
   a no-follow `lstat` content check, git-blob tombstones, base forwarding, a strict schema, a
   NUL-safe `review_zip.py` builder with exact post-build membership, and component containment.
+- **F012 round 18** made the whole file-to-archive boundary one typed transaction. The package
+  was built from two disagreeing sources — the typed ReviewSubject and an independent `find -type
+  f` list that skips symlinks — so a safe authoritative symlink was ABSENT from the archive while
+  both proofs said PASS. One `ArchivePlanV1` now gives every review file exactly one disposition
+  (member, tombstone, or block — a policy-excluded change blocks rather than vanishing); the ZIP
+  builder preserves each member's real unix type and mode (an executable was flattened to 0644)
+  and the post-build verifier checks them (a regular entry could pass as a symlink); every content
+  read goes through `secure_fs.read_verified_file_at`, an atomically no-follow anchored reader (a
+  regular file swapped to an external symlink mid-read was followed and outside bytes hashed); the
+  ReviewSubject schema is exact down to each commit and each file's kind and mode (an injected
+  `EXTRA_SECRET` commit field and `base_kind: SECRET-/home/alice` were accepted); the packager
+  recomputes the COMPLETE file record; and the real `make_review_zip.sh` is tested end to end.
 - **F012 (Deterministic runs) is BUILT and `[~]`** on `feature/f012-deterministic-runs`,
   hardened **fifteen times**. Round 15 closed the last way earlier work could be denied. Round 14
   froze a run's ledger, so a later episode could no longer REWRITE work it admitted to — but it

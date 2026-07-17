@@ -1,3 +1,71 @@
+# Plan — Steps 11161-11360 — F012 hardening round 18 (external FINDINGS)
+
+## Round 18 binding feature discovery (files READ COMPLETELY, authoritative)
+
+Read in full: `docs/roadmap/STATUS.md`, `T0_F004.md`, `T0_F005.md`, `T0_F010.md`, `T0_F011.md`,
+`T0_F012.md`, `T0_F017.md`, `T0_F018.md`, `T0_F147.md`, `T3_F084.md`, `T7_F140.md`.
+Keyword sweep over the committed feature tree for: archive, review zip, content proof, symlink,
+mode, executable, no-follow, openat, O_NOFOLLOW, TOCTOU, review subject, file kind, tombstone,
+member set, F012, F140.
+
+### Binding clauses selected (and the transaction boundary / path-to-FD seam each binds)
+
+1. **F010** — the anchored no-follow protocol ("open it relative to a descriptor we already hold,
+   with O_NOFOLLOW as defence in depth; fstat the opened inode against the lstat"). BINDS F3.
+   Seam: `secure_fs.read_verified_file_at` / `read_verified_relative` / `open_anchored_parent`.
+2. **F010** — "the requested path is checked LEXICALLY". BINDS F1/F9: containment and archive
+   names decided lexically/by components, never a prefix.
+3. **F140** — the certificate's "hash manifest covers members". BINDS F1/F6/F10: the archive is
+   EXACTLY the typed member set, verified member for member after the build.
+4. **F004** — "No secrets in raw streams, ever". BINDS F4: an injected metadata field carrying a
+   local path or secret must block, not ride along.
+5. **F012 own Built State (round 17)** — the ReviewSubject already knew about symlinks; the ZIP
+   builder did not. BINDS F1: the subject drives the plan; the shell stops rediscovering paths.
+6. **F017** — "the builtin deny list stays a reviewable constant". The precedent for the closed
+   git-mode / archive-member-kind tables.
+7. **F084/F140** — the demo/replay reuse recorded evidence; the ArchivePlan and its typed member
+   report are packaged so a ZIP-only reader can recompute them.
+8. **F017/F018** — read and NOT implemented.
+
+## Persisted sources of truth consulted
+
+- `packages/common/secure_fs.py` — the existing `read_verified_file` (regular-only, no-follow),
+  extended with the typed `read_verified_file_at` for regular AND symlink.
+- `packages/orchestration/review_subject.py` — the ReviewFileV1 typed fields (round 17) the
+  strict schema now closes and the decoder reconstructs.
+- `scripts/make_review_zip.sh` — the `find -type f` discovery (skips symlinks) the plan replaces.
+
+## Reproduced against production BEFORE fixing
+
+| # | Reproduction | Result before |
+|---|---|---|
+| F1 | `find -type f` on a repo with a symlink | symlink absent from the list |
+| F2 | builder external_attr | hardcoded 0o644, mode lost |
+| F3 | lstat regular then open by name | a swap to an external symlink would be followed |
+| F4 | subject commit EXTRA_SECRET / base_kind SECRET / bad modes | ACCEPTED |
+| F5 | recompute key | omitted link_target/base_kind/base_mode/current_mode |
+| F6 | verify_review_zip | checked body, not type/mode |
+| F7 | round-17 symlink tests | never ran make_review_zip.sh end to end |
+
+## Recorded decisions
+
+1. **Blocks combined.** F1/F2/F6 land in `derive archives from a typed review plan` (they share
+   ArchivePlanV1 and the builder); F3/F4/F5 land in `bind content reads to no-follow descriptors
+   and close schemas` (they share secure_fs and the schema). Seven findings, one interlocking
+   archive-contract boundary — separating them would not compile or test independently.
+2. **A follow-up commit** (`report a missing anchored parent`) fixes a bug the F3 change surfaced:
+   a missing PARENT dir raised a bare MissingComponent past the caller's `except`.
+3. **Bundle discovery includes symlinks** (`-type f -o -type l`) so a context symlink (no
+   subject) is packaged too — the plan alone was not enough for a code-snapshot build.
+4. **`build_review_zip` kept as a compat wrapper** over the plan builder for the direct-call
+   tests; production goes through `build_archive_plan` + `build_review_zip_from_plan`.
+5. **Pre-existing baseline debt (carried forward).** `test_do_cmd_summary.py` /
+   `test_product_spine.py` fail 18 at base; excluded from the recorded CLI command, reported.
+
+---
+
+## Superseded round-17 plan (retained for provenance)
+
 # Plan — Steps 10961-11160 — F012 hardening round 17 (external FINDINGS)
 
 ## Round 17 binding feature discovery (files READ COMPLETELY, authoritative)
