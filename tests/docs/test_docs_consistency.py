@@ -1086,3 +1086,75 @@ class TestF012Round18IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round19IsPinned:
+    """Round 19: the closure block — one explicit authority set and one bundle-safety policy, the
+    plan and its report packaged, modes bound to bytes, stable reads, a typed no-follow evidence
+    inventory, a coherent subject schema, a fail-closed loader, and a bounded archive."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 19" in self._f012()
+
+    def test_explicit_authority_is_documented(self):
+        doc = self._f012()
+        assert "Authority is passed explicitly" in doc
+        assert "authoritative_paths" in doc
+        assert "source_class" in doc and "operator_context" in doc
+
+    def test_packaged_plan_and_report_are_documented(self):
+        doc = self._f012()
+        assert "review_archive_plan.json" in doc
+        assert "review_zip_verification.json" in doc
+        assert "always describes a verified archive" in doc
+
+    def test_mode_binding_and_dirty_capture_are_documented(self):
+        doc = self._f012()
+        assert "dirty chmod" in doc
+        assert "expected_mode" in doc
+        assert "bound to the opened descriptor" in doc
+
+    def test_stable_read_is_documented(self):
+        doc = self._f012()
+        assert "stable same-inode read" in doc
+        assert "torn read" in doc
+
+    def test_atomic_symlink_and_bundle_policy_are_documented(self):
+        doc = self._f012()
+        assert "classify_bundle_path" in doc
+        assert "BLOCK_SENSITIVE" in doc
+        assert "one atomic fact" in doc
+
+    def test_typed_evidence_inventory_is_documented(self):
+        doc = self._f012()
+        assert "evidence_inventory.py" in doc
+        assert "stage_review_evidence.py" in doc
+        assert "never skipped, never followed" in doc
+
+    def test_coherence_matrix_is_documented(self):
+        doc = self._f012()
+        assert "coherence matrix" in doc
+        assert "base symlink whose `base_mode` is `100644`" in doc
+
+    def test_fail_closed_loader_is_documented(self):
+        doc = self._f012()
+        assert "fails closed" in doc
+        assert "ABSENT `--subject-json`" in doc
+
+    def test_bounded_archive_is_documented(self):
+        doc = self._f012()
+        assert "expansion-ratio bomb guard" in doc
+        assert "64 MiB" in doc and "2 GiB" in doc
+
+    def test_readme_states_the_closure(self):
+        r = self._readme()
+        assert "Content-Proof file set is passed into" in r
+        assert "decompression bomb" in r

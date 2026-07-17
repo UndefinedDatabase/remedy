@@ -116,7 +116,14 @@ file exactly one disposition (a member, a tombstone, or a block — a policy-exc
 rather than vanishing), every content read goes through an anchored, atomically no-follow
 descriptor (a file swapped to an external symlink mid-read is refused, never followed), and the
 review-subject schema is exact down to each commit and each file's kind and mode, so an injected
-field cannot ride along. Task truth is read in the
+field cannot ride along. Authority is one explicit set — the Content-Proof file set is passed into
+the plan, never inferred from mere subject membership, so operator `.agent/` state is context and
+never authoritative — and the typed plan and its verification report are themselves packaged as
+verified members so a ZIP-only reviewer can check the model the archive was built from. Evidence is
+inventoried the same no-follow way as the repository (a symlink or FIFO in the evidence tree blocks
+rather than being skipped or followed into outside bytes), and the archive is bounded — per-member,
+aggregate, member-count and expansion-ratio caps refuse a decompression bomb before it is read into
+memory. Task truth is read in the
 episode's own context: a completed episode's task must be applied or passed, and the status a task
 completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
