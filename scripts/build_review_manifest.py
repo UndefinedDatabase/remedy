@@ -424,10 +424,26 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
     errors: list = []
     try:
         from packages.orchestration.review_subject import (
-            resolve_review_subject, validate_subject_path_kinds,
+            resolve_review_subject, validate_review_subject_schema,
+            validate_subject_path_kinds,
         )
     except Exception as exc:
         return [f"cannot recompute the review subject: {str(exc)[:120]}"]
+
+    # F7 (round 17): the artifact must be an EXACT schema before it is trusted — unknown top-level
+    # or file fields, a wrong subject_v, a forged/missing link_target, or an unsafe path all block.
+    # A packager that ignores unknown fields would ship an injected `secret`/`path` field untouched.
+    errors.extend(validate_review_subject_schema(subject))
+    # The embedded commit list must equal the commit chain's — a forged commits[] here cannot
+    # disagree with the recomputed chain.
+    chain = _mc_read_json(evidence_dir, "review_commit_chain.json")
+    subj_commits = [str(c.get("commit") or "") for c in (subject.get("commits") or [])]
+    chain_commits = [str(c.get("commit") or "") for c in (chain.get("commits") or [])]
+    if subj_commits != chain_commits:
+        errors.append("review_subject.commits does not equal review_commit_chain.commits")
+    for cf in ("base_commit", "head_commit"):
+        if str(subject.get(cf) or "") != str(chain.get(cf) or ""):
+            errors.append(f"review_subject.json {cf} disagrees with review_commit_chain.json")
 
     try:
         # The base is the one the package DECLARES; passing it explicitly is the whole point of
@@ -1166,24 +1182,64 @@ def _check_bundle_integrity(
     if not file_hashes:
         return result
 
+    # F4 (round 17): the check is TYPED and NO-FOLLOW, driven by the ReviewSubject's own record of
+    # what each path is. `os.path.isfile` + `open` follow symlinks, so an allowed contained symlink
+    # was hashed as its TARGET's bytes (content from outside the packaged set) and a regular file
+    # swapped for a symlink after the proof was written would still verify. Each path is inspected
+    # with `lstat` and hashed by its declared kind: a regular file its own bytes, a symlink its
+    # literal target text — never the target.
+    import hashlib as _hashlib
+    import stat as _stat
+
+    kinds: dict[str, str] = {}
+    link_targets: dict[str, str] = {}
+    subj = _mc_read_json(evidence_dir, "review_subject.json") if evidence_dir else {}
+    for f in (subj.get("files") or []):
+        kinds[_mc_norm(str(f.get("path", "")))] = str(f.get("kind") or "regular")
+        if f.get("link_target") is not None:
+            link_targets[_mc_norm(str(f.get("path", "")))] = str(f.get("link_target"))
+
     result["current_content_hash_checked"] = True
-    mismatches = []
-    missing_proofs = []
-    packaged_hashes = {}
+    mismatches: list = []
+    missing_proofs: list = []
+    packaged_hashes: dict = {}
 
     for rel_path, expected_hash in file_hashes.items():
         abs_path = os.path.join(source_root, rel_path)
-        if not os.path.isfile(abs_path):
+        declared_kind = kinds.get(_mc_norm(rel_path), "regular")
+        try:
+            st = os.lstat(abs_path)               # NEVER follow
+        except OSError:
             missing_proofs.append(rel_path)
             continue
-        actual_hash = _sha256_file(abs_path)
+
+        if declared_kind == "symlink":
+            if not _stat.S_ISLNK(st.st_mode):
+                mismatches.append({"file": rel_path, "expected": "symlink",
+                                   "actual": "not-a-symlink"})
+                continue
+            target = os.readlink(abs_path)         # never read what it points at
+            actual_hash = _hashlib.sha256(
+                target.encode("utf-8", errors="surrogateescape")).hexdigest()
+            declared_target = link_targets.get(_mc_norm(rel_path))
+            if declared_target is not None and target != declared_target:
+                mismatches.append({"file": rel_path, "expected": "link_target",
+                                   "actual": "changed"})
+                continue
+        else:
+            if not _stat.S_ISREG(st.st_mode):
+                # A regular-declared path that is now a symlink/special was swapped after the
+                # proof — refuse it rather than following it.
+                mismatches.append({"file": rel_path, "expected": "regular",
+                                   "actual": "not-a-regular-file"})
+                continue
+            with open(abs_path, "rb") as fh:
+                actual_hash = _hashlib.sha256(fh.read()).hexdigest()
+
         packaged_hashes[rel_path] = actual_hash
         if actual_hash != expected_hash:
-            mismatches.append({
-                "file": rel_path,
-                "expected": expected_hash,
-                "actual": actual_hash,
-            })
+            mismatches.append({"file": rel_path, "expected": expected_hash,
+                               "actual": actual_hash})
 
     result["current_content_hash_mismatches"] = mismatches
     result["current_content_hash_missing_proofs"] = missing_proofs
@@ -1298,10 +1354,14 @@ def build_manifest(
     containment_blockers: list[str] = []
     external_paths: list[str] = []
 
-    cwd_resolved = os.path.realpath(cwd)
-    root_resolved = os.path.realpath(source_root)
+    # F9 (round 17): containment by PATH COMPONENTS, not a string prefix. A raw
+    # `startswith(root)` accepts a sibling `/root/repo-evil` for root `/root/repo` — a different
+    # directory whose name merely begins with the root's. `contained` uses os.path.commonpath and
+    # resolves symlinks first, so a sibling, a different drive, or a symlinked descendant that
+    # escapes the root is refused.
+    from packages.orchestration.review_zip import contained
 
-    if not cwd_resolved.startswith(root_resolved):
+    if not contained(source_root, cwd):
         containment_blockers.append(
             f"packaging cwd {_shareable_path(cwd, source_root)} is outside source_root"
         )
@@ -1309,7 +1369,7 @@ def build_manifest(
 
     if evidence_dir:
         ev_resolved = os.path.realpath(evidence_dir)
-        if not ev_resolved.startswith(root_resolved):
+        if not contained(source_root, evidence_dir):
             containment_blockers.append(
                 f"evidence_dir {_shareable_path(ev_resolved, source_root)} "
                 "is outside source_root"

@@ -298,6 +298,8 @@ if [[ "$SELECTION_MODE" == "explicit" ]]; then
 fi
 
 TMP="$(mktemp)"
+TMP0="$(mktemp)"        # NUL-delimited repo file list (F8, round 17)
+TMP_EV0="$(mktemp)"     # NUL-delimited evidence file list
 MANIFEST=".review_zip_manifest.json"
 rm -f "$MANIFEST"
 trap 'rm -f "$TMP" "$MANIFEST"' EXIT
@@ -372,9 +374,15 @@ find . \
   ! -name 'id_ecdsa' \
   ! -name 'id_ed25519' \
   ! -name 'run_transcript.txt' \
-  -print \
-  | sed 's#^\./##' \
-  | sort -u > "$TMP"
+  ! -name '.review_zip_manifest.json' \
+  ! -name 'remedy-review-*.zip' \
+  -print0 \
+  | sed -z 's#^\./##' \
+  | sort -z -u > "$TMP0"
+# F8 (round 17): the repo file list is NUL-delimited so a filename containing a newline survives
+# into the archive. `$TMP` (newline) stays for the manifest/alignment steps, which only ever see
+# ordinary source paths.
+tr '\0' '\n' < "$TMP0" > "$TMP"
 
 # --- Build manifest using Python (always-valid JSON) ---
 python3 scripts/build_review_manifest.py \
@@ -423,7 +431,7 @@ fi
 
 # --- Include current evidence under evidence/current/ prefix (if evidence exists) ---
 EVIDENCE_STAGING="$(mktemp -d)"
-trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$MANIFEST"' EXIT
+trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$TMP0" "$TMP_EV0" "$MANIFEST"' EXIT
 
 CURRENT_PREFIX="evidence/current"
 OBS_INDEX_NAME="self_run_observability_index.json"
@@ -481,29 +489,37 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   find "$EVIDENCE_STAGING" -type f -print \
     | sed "s#^${EVIDENCE_STAGING}/##" \
     | sort -u >> "$TMP"
+  # F8 (round 17): the NUL-safe evidence list the archive builder consumes.
+  find "$EVIDENCE_STAGING" -type f -print0 \
+    | sed -z "s#^${EVIDENCE_STAGING}/##" \
+    | sort -z -u > "$TMP_EV0"
 fi
 
 sort -u "$TMP" -o "$TMP"
 
-# --- Create zip ---
+# --- Create zip (F8/F9/F10, round 17) ---
+# The archive is built by a NUL-safe `zipfile` builder driven by the exact typed file model, not
+# by `find | zip -@` (which is newline-delimited and silently drops a filename containing a
+# newline). The builder validates every archive name, refuses a containment escape, refuses a
+# duplicate, then REOPENS the archive and verifies its exact member set and hashes.
 rm -f "$OUT"
-
 cd "$ROOT"
-REPO_FILES="$(grep -v '^evidence/' "$TMP" || true)"
-if [[ -n "$REPO_FILES" ]]; then
-  echo "$REPO_FILES" | zip -q -@ "$OUT"
-fi
 
+EV_ROOT_ARG=""
+EV_FILES_ARG=""
 if [[ -n "$EVIDENCE_DIR" ]]; then
-  cd "$EVIDENCE_STAGING"
-  EV_FILES="$(find evidence -type f 2>/dev/null || true)"
-  if [[ -n "$EV_FILES" ]]; then
-    echo "$EV_FILES" | zip -q -@ "$ROOT/$OUT" -g
-  fi
+  EV_ROOT_ARG="$EVIDENCE_STAGING"
+  EV_FILES_ARG="$TMP_EV0"
 fi
 
-cd "$ROOT"
-zip -q "$OUT" "$MANIFEST" -g
+python3 scripts/build_review_zip.py \
+  --out "$OUT" \
+  --repo-root "$ROOT" \
+  --repo-files0 "$TMP0" \
+  --evidence-root "$EV_ROOT_ARG" \
+  --evidence-files0 "$EV_FILES_ARG" \
+  --manifest-rel "$MANIFEST" \
+  --manifest-disk "$MANIFEST"
 
 # --- Post-build verification ---
 # Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail.

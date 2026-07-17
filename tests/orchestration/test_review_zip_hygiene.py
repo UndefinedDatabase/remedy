@@ -377,6 +377,7 @@ class TestZipManifestContentVerification:
 _REQUIRED_SCRIPTS = (
     "make_review_zip.sh",
     "build_review_manifest.py",
+    "build_review_zip.py",                 # F8 (round 17): the NUL-safe archive builder
     "build_observability_index.py",
     "select_review_evidence.py",
 )
@@ -384,6 +385,8 @@ _REQUIRED_PACKAGE_MODULES = (
     "packages/orchestration/__init__.py",
     "packages/orchestration/data_paths.py",
     "packages/orchestration/evidence_index.py",
+    # F9/F8 (round 17): the containment helper and the archive builder the packager now imports.
+    "packages/orchestration/review_zip.py",
 )
 
 

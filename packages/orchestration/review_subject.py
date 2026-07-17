@@ -517,6 +517,89 @@ def child_env_without_declaration(env: dict[str, str] | None = None) -> dict[str
     return out
 
 
+#: F7 (round 17): the EXACT allowed field sets for the externally-shared artifacts. An unknown
+#: field is a blocking schema error, never ignored — a packager that ignores unknown fields is a
+#: packager that would ship an injected `secret`/`path` field untouched.
+_REVIEW_FILE_FIELDS = frozenset({"path", "status", "base_sha256", "current_sha256", "old_path",
+                                 "kind", "link_target", "base_kind", "base_mode",
+                                 "current_mode"})
+_REVIEW_FILE_REQUIRED = frozenset({"path", "status", "base_sha256", "current_sha256", "kind"})
+_REVIEW_COMMIT_FIELDS = frozenset({"commit", "parents", "tree", "subject", "changed_files",
+                                   "patch_sha256"})
+_REVIEW_SUBJECT_FIELDS = frozenset({"subject_v", "base_commit", "head_commit", "base_is_ancestor",
+                                    "commits", "files"})
+_VALID_STATUSES = frozenset({STATUS_ADDED, STATUS_MODIFIED, STATUS_DELETED, STATUS_RENAMED,
+                             STATUS_COPIED, STATUS_TYPE_CHANGED, STATUS_DIRTY})
+
+
+def _is_hex64_or_none(v: Any) -> bool:
+    if v is None:
+        return True
+    return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v)
+
+
+def _safe_rel_path(p: Any) -> bool:
+    """A relative POSIX path: no absolute, no `..` segment, no NUL. Newlines/tabs are fine."""
+    if not isinstance(p, str) or not p:
+        return False
+    if p.startswith("/") or "\0" in p or "\\" in p:
+        return False
+    return not any(seg in ("", "..", ".") for seg in p.split("/"))
+
+
+def validate_review_file_schema(d: Any, *, where: str = "review file") -> list[str]:
+    """Strict schema for one ReviewFileV1 record as serialized in `review_subject.json`."""
+    problems: list[str] = []
+    if not isinstance(d, dict):
+        return [f"{where} is not an object"]
+    extra = set(d) - _REVIEW_FILE_FIELDS
+    if extra:
+        problems.append(f"{where} has unknown field(s) {sorted(extra)}")
+    for req in _REVIEW_FILE_REQUIRED:
+        if req not in d:
+            problems.append(f"{where} is missing required field {req!r}")
+    if not _safe_rel_path(d.get("path")):
+        problems.append(f"{where} path {d.get('path')!r} is not a safe relative path")
+    if d.get("status") not in _VALID_STATUSES:
+        problems.append(f"{where} status {d.get('status')!r} is not a supported status")
+    kind = d.get("kind")
+    if kind not in VALID_FILE_KINDS:
+        problems.append(f"{where} kind {kind!r} is not a supported kind")
+    for hf in ("base_sha256", "current_sha256"):
+        if not _is_hex64_or_none(d.get(hf)):
+            problems.append(f"{where} {hf} is not a lowercase sha256 or null")
+    lt = d.get("link_target")
+    if kind == KIND_SYMLINK:
+        if not isinstance(lt, str) or not lt:
+            problems.append(f"{where} is a symlink but has no link_target")
+    elif lt is not None:
+        problems.append(f"{where} is {kind!r} but carries a link_target")
+    if "old_path" in d and d["old_path"] is not None and not _safe_rel_path(d["old_path"]):
+        problems.append(f"{where} old_path {d.get('old_path')!r} is not a safe relative path")
+    return problems
+
+
+def validate_review_subject_schema(d: Any) -> list[str]:
+    """Strict schema for `review_subject.json` — exact fields, closed enums, safe paths."""
+    problems: list[str] = []
+    if not isinstance(d, dict):
+        return ["review_subject.json is not an object"]
+    extra = set(d) - _REVIEW_SUBJECT_FIELDS
+    if extra:
+        problems.append(f"review_subject.json has unknown field(s) {sorted(extra)}")
+    if d.get("subject_v") != SUBJECT_VERSION:
+        problems.append(f"review_subject.json subject_v {d.get('subject_v')!r} != "
+                        f"{SUBJECT_VERSION}")
+    if not isinstance(d.get("base_is_ancestor"), bool):
+        problems.append("review_subject.json base_is_ancestor is not a boolean")
+    for cf in ("base_commit", "head_commit"):
+        if not isinstance(d.get(cf), str):
+            problems.append(f"review_subject.json {cf} is not a string")
+    for i, f in enumerate(d.get("files") or []):
+        problems.extend(validate_review_file_schema(f, where=f"review_subject file[{i}]"))
+    return problems
+
+
 def merge_review_file_state(committed: ReviewFileV1 | None,
                             dirty: ReviewFileV1) -> ReviewFileV1:
     """F2 (round 17): the ONE lossless, typed merge of a committed and a dirty record.
