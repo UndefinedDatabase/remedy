@@ -1,4 +1,4 @@
-# Context — current state (Steps 10561-10760)
+# Context — current state (Steps 10761-10960)
 
 ## Where the product is
 
@@ -41,6 +41,19 @@
   a hardening fix cannot land in one and miss the other.
 - F011's stop finalization is a durable transaction: archive → post-mortem → event →
   STOPPED → persist → and only then remove the pending request, which is the commit record.
+- **F012 round 16** closed the last trust gaps the Evidence layer still had — and a public
+  command it had quietly broken. `do job-flow` died with `NameError: timeout_sec is not defined`
+  (69 of its 168 tests red) while every gate reported PASS, because the suite that catches it was
+  in neither the changed set nor the authoritative CLI command; a changed source file now requires
+  its known regression suite to have run GREEN. A published manifest could claim a task was
+  `skipped` while recording that its work was applied — both facts stored since round 12, never
+  compared — so one closed truth table now binds them. The packager stopped trusting the Evidence
+  job's account of itself: the ReviewSubject and every commit-chain field (`subject`,
+  `changed_files`, `chain_v` included) are recomputed, and every commit ships the canonical patch
+  bytes its hash names so a ZIP-only reviewer needs no repository. Dirty paths are typed with
+  `lstat` and never followed (a symlink used to put an OUTSIDE file's bytes in the proof while the
+  ZIP omitted the link), and the review base travels explicitly — the process CWD was an
+  authorization token that silently discarded intentional declarations.
 - **F012 (Deterministic runs) is BUILT and `[~]`** on `feature/f012-deterministic-runs`,
   hardened **fifteen times**. Round 15 closed the last way earlier work could be denied. Round 14
   froze a run's ledger, so a later episode could no longer REWRITE work it admitted to — but it

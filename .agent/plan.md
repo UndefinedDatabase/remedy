@@ -1,3 +1,83 @@
+# Plan — Steps 10761-10960 — F012 hardening round 16 (external FINDINGS)
+
+## Round 16 binding feature discovery (files READ COMPLETELY, authoritative)
+
+Read in full: `docs/roadmap/STATUS.md`, `T0_F004.md`, `T0_F005.md`, `T0_F010.md`, `T0_F011.md`,
+`T0_F012.md`, `T0_F017.md`, `T0_F018.md`, `T0_F147.md`, `T3_F084.md`, `T7_F140.md`.
+Keyword sweep over the committed feature tree for: job-flow, timeout, task status, call
+expectation, skipped, applied_to_job_workspace, review subject, tombstone, rename, symlink,
+commit chain, patch, base commit, F012, F147.
+
+### Binding clauses selected (and the production seam each binds)
+
+1. **F012's own Built State** — "| skipped | `skipped` | none (a skipped task owning a run is an
+   integrity problem)". The committed contract ALREADY said what F2 asks for; only the validator
+   never enforced the status side. Seam: `validate_task_expectation_truth`.
+2. **F012's own Built State** — the round-11 lifecycle matrix (`completed`/`worked` allows
+   `executed`, `prior_episode`, `skipped`). The new per-task table sits UNDER it, never replacing
+   it. Seam: `validate_call_expectation`.
+3. **F011** — the mid-flight stop ("the call in flight finishes, nothing new starts") → BINDS F2:
+   `executed` + `pending` is legitimate and must stay legal.
+4. **F010** — "the requested path is checked LEXICALLY ... `resolve()` answers 'where does it
+   point', not 'did you ask me through a link'" → BINDS F5's symlink escape rule. Seam:
+   `symlink_escapes_repository`.
+5. **F010** — "Writer containment: production callers pass a trusted root" → the same shape F6
+   applies to the review base: the caller NAMES it, nothing is inferred from ambient state.
+6. **F147** — "every output is honest about what is deterministic scaffolding" + "Exit codes: do
+   → 0 planned, 3 unresolved project, 2 bad args" → BINDS F1: the timeout hint is informational
+   and must not change execution or fabricate a value.
+7. **F147** — "extend the existing do command, do not create a parallel one (A6)" → F1 repairs
+   `_cmd_do_job_flow` in place.
+8. **F004** — "redaction filters run BEFORE the tee ... No secrets in raw streams, ever" → BINDS
+   F5/F7: no outside content and no local absolute path may enter a proof or a patch.
+9. **F140** — "Do not touch: Stream formats, manifest semantics, certificate members" → round 16
+   adds no manifest field; `kind`/`link_target` are additive ReviewFile fields only.
+10. **F017** — the builtin deny list "stays a reviewable constant — reviewers must see additions
+    in diffs" → the precedent for `_RELEVANT_SUITES_FOR_SOURCE` being a literal constant.
+11. **F017/F018** — read and NOT implemented.
+
+## Persisted sources of truth consulted
+
+- `apps/cli/commands/run_invocation.py` — the omission sentinel the F1 repair must not defeat.
+- `packages/orchestration/pingpong_job.py` — `ExecutionConfig.timeout_sec` (the RESOLVED value
+  `run_job` records) and the TASK_* status vocabulary; proved a task reaches `blocked` AFTER a
+  successful run via post-run gates, which is why the F2 table's permissive rows are load-bearing.
+- `packages/orchestration/final_verifier.py` — `_is_source_for_alignment`, reused verbatim.
+- `packages/orchestration/missing_tests_gate.py` — the gate whose PASS the F8 map now constrains.
+
+## Reproduced against production BEFORE fixing
+
+| # | Reproduction | Result before |
+|---|---|---|
+| F1 | `python3 -m pytest tests/test_do_job_flow.py` | 69 failed / 99 passed, `NameError` |
+| F2 | `expectation=skipped` + each of pending/applied/passed/failed | ALL FOUR accepted |
+| F3 | subject="FORGED SUBJECT", changed_files=["fake.py"], chain_v=99 | ACCEPTED, no problems |
+| F5 | `repo/link.txt -> /tmp/outside.txt` | the OUTSIDE file's bytes hashed into the proof |
+| F6 | env base + CWD elsewhere | declaration silently discarded, empty legacy subject |
+| F7 | `patch_sha256` recorded | no patch bytes shipped; ZIP-only reviewer cannot recompute |
+| F8 | do_cmd.py changed, job-flow suite red | every Missing-Tests gate PASS |
+
+## Recorded decisions
+
+1. **F5 special files.** `git status -u` does NOT report a bare FIFO, so it cannot enter the
+   subject that way — asserting we block it there would pin a rule that never runs. The reachable
+   case (a TRACKED file replaced by a FIFO) is covered and blocked; the bare-FIFO boundary is
+   recorded in the suite instead of being claimed as protection.
+2. **F8 map location.** `job_evidence` has a guard test forbidding it from naming test files. The
+   guard is right — it bans the old hardcoded smoke list that RAN tests and produced false
+   coverage. The relevance map is the opposite (a requirement, never a runner), so the MAP moved
+   to `missing_tests_gate` rather than the guard being weakened.
+3. **F1 fixture repair.** The catalog test passed both halves of a mutually exclusive pair. The
+   parser is right; the test was fixed and exclusivity pinned separately, per the prompt's
+   "do not weaken parser exclusivity".
+4. **Pre-existing baseline debt (carried forward).** `tests/cli/test_do_cmd_summary.py` and
+   `tests/cli/test_product_spine.py` fail 18 tests at base — they require flat doc paths an
+   earlier restructure removed. Out of scope; excluded from the recorded CLI command and reported.
+
+---
+
+## Superseded round-15 plan (retained for provenance)
+
 # Plan — Steps 10561-10760 — F012 hardening round 15 (external FINDINGS)
 
 ## Round 15 binding feature discovery (files READ COMPLETELY, authoritative)
