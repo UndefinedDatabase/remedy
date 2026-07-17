@@ -1436,18 +1436,42 @@ def _vt_norm(p: str) -> str:
 
 
 def _verification_test_files_from_command(command: str) -> list[str]:
-    """Extract the test-file paths a pytest-style command targets."""
+    """Extract the test-file paths a pytest-style command targets.
+
+    F6 (round 15): a pytest DIRECTORY argument covers the test files beneath it. `pytest
+    tests/docs` runs every test under `tests/docs/`, but this only ever collected tokens ending in
+    `.py`, so a changed `tests/docs/test_docs_consistency.py` was reported as uncovered and its
+    task's missing-tests gate said NEEDS_TESTS — while the file had in fact just been run, green.
+    A gate that cries wolf about a test that ran teaches operators to ignore it.
+
+    `--ignore=<path>` is honoured too: a file explicitly excluded from a run is NOT covered by it.
+    """
     import shlex
     files: list[str] = []
+    dirs: list[str] = []
+    ignored: set[str] = set()
     try:
         toks = shlex.split(command)
     except ValueError:
         toks = command.split()
     for t in toks:
+        if t.startswith("--ignore="):
+            ignored.add(_vt_norm(t.split("=", 1)[1]))
+            continue
+        if t.startswith("-"):
+            continue
         n = _vt_norm(t)
-        if n.endswith(".py") and (n.startswith("tests/") or "/tests/" in n or Path(n).name.startswith("test_")):
+        if not (n.startswith("tests/") or "/tests/" in n or Path(n).name.startswith("test_")):
+            continue
+        if n.endswith(".py"):
             files.append(n)
-    return sorted(set(files))
+        elif Path(n).is_dir():
+            dirs.append(n.rstrip("/"))
+    for d in dirs:
+        for p in sorted(Path(d).rglob("test_*.py")):
+            files.append(_vt_norm(str(p)))
+    return sorted({f for f in files
+                   if not any(f == i or f.startswith(i.rstrip("/") + "/") for i in ignored)})
 
 
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
