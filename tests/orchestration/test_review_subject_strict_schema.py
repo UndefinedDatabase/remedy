@@ -16,8 +16,10 @@ from packages.orchestration.review_subject import (
 
 
 def _file(**kw):
+    # A complete `modified` record per the round-20 state matrix (base + current facts present).
     base = {"path": "a.py", "status": "modified", "base_sha256": "a" * 64,
-            "current_sha256": "b" * 64, "kind": "regular"}
+            "current_sha256": "b" * 64, "kind": "regular",
+            "base_kind": "regular", "base_mode": "100644", "current_mode": "100644"}
     base.update(kw)
     return base
 
@@ -69,7 +71,8 @@ class TestReviewFileSchema:
 
     def test_a_symlink_with_link_target_passes(self):
         assert validate_review_file_schema(
-            _file(kind="symlink", link_target="target.txt")) == []
+            _file(kind="symlink", link_target="target.txt",
+                  base_kind="symlink", base_mode="120000", current_mode="120000")) == []
 
     def test_a_regular_file_with_link_target_blocks(self):
         assert any("carries a link_target" in p

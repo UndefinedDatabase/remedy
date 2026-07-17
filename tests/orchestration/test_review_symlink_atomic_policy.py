@@ -57,10 +57,13 @@ class TestBundleSafetyPolicy:
         assert classify_bundle_path(name, changed=True, is_authoritative_source=lambda p: True) \
             == DISP_BLOCK_SENSITIVE
 
-    def test_an_unchanged_sensitive_context_blob_is_not_blocked(self):
-        # sensitivity only blocks a CHANGED path; an unchanged context blob is simply not reviewed
-        assert classify_bundle_path("app.log", changed=False,
-                                    is_authoritative_source=lambda p: False) == DISP_INCLUDE
+    def test_an_unchanged_sensitive_context_path_also_blocks(self):
+        # Round 20 F7: the SAME policy applies to unchanged context — a `.log` never enters.
+        assert classify_bundle_path("app.log", changed=False) == DISP_BLOCK_SENSITIVE
+        assert classify_bundle_path("keys.pem", changed=False) == DISP_BLOCK_SENSITIVE
+
+    def test_a_plain_context_path_is_included(self):
+        assert classify_bundle_path("src/app.py", changed=False) == DISP_INCLUDE
 
     def test_agent_state_is_operator_context(self):
         assert classify_bundle_path(".agent/plan.md", changed=True,

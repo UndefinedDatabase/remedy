@@ -6,6 +6,7 @@ evidence/current/ as verified members, and the manifest names them.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -45,25 +46,6 @@ _REQUIRED_MODULES = (
 )
 
 
-class TestVerificationReportContent:
-    def test_report_is_derived_from_the_plan(self):
-        plan = ArchivePlanV1(repository_members=(
-            ArchiveMemberV1(archive_path="a.py", kind=MEMBER_REGULAR, mode=MODE_REGULAR,
-                            authoritative=True, source_root="/r", source_rel="a.py",
-                            source_class=SOURCE_REPOSITORY),
-            ArchiveMemberV1(archive_path="l", kind=MEMBER_SYMLINK, mode=MODE_SYMLINK,
-                            authoritative=False, source_root="/r", source_rel="l",
-                            source_class=SOURCE_REPOSITORY),
-        ), review_subject_sha256="a" * 64, authority_set_sha256="b" * 64)
-        report = _bz._verification_report(plan)
-        assert report["review_subject_sha256"] == "a" * 64
-        assert report["authority_set_sha256"] == "b" * 64
-        assert report["authoritative_member_count"] == 1
-        assert report["symlink_member_count"] == 1
-        assert report["expected_member_count"] == 3     # 2 members + manifest
-        assert report["verdict"] == "PLAN_ENFORCED"
-
-
 def _isolated_repo(tmp_path):
     repo = tmp_path / "repo"
     (repo / "scripts").mkdir(parents=True)
@@ -97,7 +79,7 @@ def _synthetic_evidence(repo):
 
 
 class TestArtifactsPackaged:
-    def test_plan_and_report_are_members_and_referenced(self, tmp_path):
+    def test_the_directed_chain_artifacts_are_members_and_referenced(self, tmp_path):
         repo = _isolated_repo(tmp_path)
         ev = _synthetic_evidence(repo)
         proc = subprocess.run(
@@ -108,14 +90,22 @@ class TestArtifactsPackaged:
         assert zips, proc.stdout
         with zipfile.ZipFile(zips[-1]) as zf:
             names = set(zf.namelist())
+            # Round 20: the directed chain — plan + expectation packaged (no self-hashing report).
             assert "evidence/current/review_archive_plan.json" in names
-            assert "evidence/current/review_zip_verification.json" in names
+            assert "evidence/current/review_zip_expectation.json" in names
             manifest = json.loads(zf.read(".review_zip_manifest.json"))
-            ra = manifest["current_evidence"]["review_archive"]
-            assert ra["plan"] == "evidence/current/review_archive_plan.json"
-            assert ra["verification"] == "evidence/current/review_zip_verification.json"
-            # the packaged plan lists itself and the report as members
-            plan = json.loads(zf.read("evidence/current/review_archive_plan.json"))
-            ev_paths = {m["archive_path"] for m in plan["evidence_members"]}
-            assert "evidence/current/review_archive_plan.json" in ev_paths
-            assert "evidence/current/review_zip_verification.json" in ev_paths
+            chain = manifest["package_hash_chain"]
+            plan_bytes = zf.read("evidence/current/review_archive_plan.json")
+            expect_bytes = zf.read("evidence/current/review_zip_expectation.json")
+            assert chain["review_archive_plan_sha256"] == hashlib.sha256(plan_bytes).hexdigest()
+            assert chain["review_zip_expectation_sha256"] == \
+                hashlib.sha256(expect_bytes).hexdigest()
+            # the expectation names the plan by hash (directed chain, no self-hash)
+            expect = json.loads(expect_bytes)
+            assert expect["review_archive_plan_sha256"] == \
+                chain["review_archive_plan_sha256"]
+            # the packaged plan lists every SOURCE member with an expected hash
+            plan = json.loads(plan_bytes)
+            for m in plan["repository_members"] + plan["evidence_members"]:
+                if m["kind"] == "regular":
+                    assert m["content_sha256"], m["archive_path"]

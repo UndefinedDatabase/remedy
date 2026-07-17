@@ -27,8 +27,10 @@ def _commit(**kw):
 
 
 def _file(**kw):
+    # A complete `modified` record per the round-20 state matrix (base + current facts present).
     base = {"path": "f.py", "status": "modified", "base_sha256": "a" * 64,
-            "current_sha256": "b" * 64, "kind": "regular"}
+            "current_sha256": "b" * 64, "kind": "regular",
+            "base_kind": "regular", "base_mode": "100644", "current_mode": "100644"}
     base.update(kw)
     return base
 

@@ -33,8 +33,8 @@ def _valid_subject_json():
 
 class TestLoaderFailsClosed:
     def test_no_path_is_the_legacy_empty_subject(self):
-        subj = _bz._load_subject("")
-        assert subj.files == ()
+        subj, raw = _bz._load_subject("")
+        assert subj.files == () and raw == b""
 
     def test_a_supplied_but_missing_path_blocks(self, tmp_path):
         with pytest.raises(ArchivePlanError):
@@ -56,16 +56,22 @@ class TestLoaderFailsClosed:
     def test_a_valid_subject_decodes(self, tmp_path):
         p = tmp_path / "s.json"
         p.write_text(json.dumps(_valid_subject_json()))
-        subj = _bz._load_subject(str(p))
-        assert [f.path for f in subj.files] == ["a.py"]
+        subj, raw = _bz._load_subject(str(p))
+        assert [f.path for f in subj.files] == ["a.py"] and raw
 
 
-class TestAuthoritySet:
-    def test_authority_is_file_hashes_plus_tombstones(self, tmp_path):
+class TestContentProofMandatory:
+    def test_declared_subject_with_missing_proof_blocks(self):
+        # F2 (round 20): no fail-open empty authority when a Subject is declared.
+        with pytest.raises(ArchivePlanError):
+            _bz._load_content_proof("", subject_declared=True)
+
+    def test_no_subject_no_proof_is_empty(self):
+        cp, raw = _bz._load_content_proof("", subject_declared=False)
+        assert cp is None and raw == b""
+
+    def test_invalid_proof_json_blocks(self, tmp_path):
         p = tmp_path / "cp.json"
-        p.write_text(json.dumps({"file_hashes": {"a.py": "x", "b.py": "y"},
-                                 "tombstones": {"gone.py": "z"}}))
-        assert _bz._authority_set(str(p)) == {"a.py", "b.py", "gone.py"}
-
-    def test_absent_content_proof_is_empty_authority(self, tmp_path):
-        assert _bz._authority_set(str(tmp_path / "missing.json")) == set()
+        p.write_text("{not json")
+        with pytest.raises(ArchivePlanError):
+            _bz._load_content_proof(str(p), subject_declared=True)
