@@ -1516,7 +1516,7 @@ class TestManifestEvidenceValidity:
 class TestReviewZipPackageStatus:
     """Tests for package_status, packaging proof, and always-build semantics."""
 
-    def _seed_valid_evidence(self, ev, job_id="test-pkg-123"):
+    def _seed_valid_evidence(self, ev, job_id="test-pkg-123", file_hashes=None):
         ev.mkdir(parents=True, exist_ok=True)
         (ev / "job_flow.json").write_text(json.dumps({
             "job_id": job_id,
@@ -1542,16 +1542,25 @@ class TestReviewZipPackageStatus:
                 "provider_evidence.json",
             ]:
                 (d / art).write_text("{}")
-        # Round 22/23/24: READY requires the COMPLETE, closed-schema, consistent gate matrix.
+        # Round 22-25: READY requires the COMPLETE, closed-schema, semantically-consistent gate
+        # matrix — recursive schemas, complete gate semantics and an exact derived commit gate.
+        _hashes = dict(file_hashes) if file_hashes else {"src/app.py": "0" * 64}
+        _auth = sorted(_hashes)
+        _core = ("manifest.json", "job_report.json", "token_truth.json", "fresh_evidence_gate.json",
+                 "artifact_contract_gate.json", "runtime_integration_gate.json",
+                 "change_provenance_gate.json", "commit_execution_gate.json",
+                 "final_verifier_report.json")
         (ev / "fresh_evidence_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
             "job_id_match": True, "plan_match": True, "live_review_match": True,
+            "evidence_job_id": job_id, "current_job_id": job_id,
+            "current_step_range": "1-2", "live_review_step_range": "1-2", "plan_step_range": "1-2",
             "evidence_freshness": {"is_fresh": True, "job_id_match": True,
                                    "step_range_match": True},
             "evidence_validity": {"has_job_id": True, "has_manifest": True,
                                   "is_valid_current_run": True}, "issues": []}))
         (ev / "final_verifier_report.json").write_text(json.dumps({
-            "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": [],
+            "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": _auth,
             "also_needs_repair": False, "unresolved_findings": [],
             "test_status": {"ran": True, "passed": 1, "failed": 0}, "missing_tests_gate": "PASS",
             "change_source_mismatches": [], "review_subject_uncovered_files": [],
@@ -1562,15 +1571,33 @@ class TestReviewZipPackageStatus:
             "execution_mode_findings": [], "final_job_review_findings": [],
             "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
             "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
-            "commit_execution_gate": "BLOCKED"}))
+            "commit_execution_gate": "BLOCKED", "spec_compliance": "PASS",
+            "scratch_file_guard": "PASS", "change_provenance": "PASS",
+            "file_set_alignment_status": "PASS", "token_cost_has_critical": False,
+            "token_cost_risk_findings": [],
+            "evidence_completeness": {"review_scope_packet": True, "spec_compliance_check": True,
+                                      "missing_tests_gate": True, "scratch_file_guard": True,
+                                      "token_truth": True, "safe_diff": True, "review_json": True,
+                                      "tests_txt": True}}))
         (ev / "artifact_contract_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
             "fv_referenced_missing": [], "critical_fv_missing": [], "issues": [],
-            "job_id_fresh": True, "required_artifacts": {"manifest.json": True}}))
+            "job_id_fresh": True, "evidence_job_id": job_id,
+            "required_artifacts": {a: True for a in _core},
+            "optional_artifacts": {"scratch_file_guard.json": True},
+            "stream_artifacts": {"applicable": False, "verdict": "NOT_APPLICABLE",
+                                 "tasks_with_stream_evidence": [], "artifacts_verified": 0,
+                                 "artifacts_present": 0, "missing_stream_artifacts": [],
+                                 "unexpected_stream_artifacts": []},
+            "worktree_artifacts": {"applicable": False, "verdict": "NOT_APPLICABLE",
+                                   "job_level_handoff": False, "worktree_tasks": [],
+                                   "diffs_verified": 0, "missing_result_diffs": []}}))
         (ev / "change_provenance_gate.json").write_text(json.dumps({
-            "schema_version": "1.0.0", "verdict": "PASS", "uncovered_files": [],
-            "content_hash_verified": True, "hash_mismatches": [], "stale_apply_proofs": [],
-            "issues": []}))
+            "schema_version": "1.0.0", "verdict": "PASS", "covered_files": _auth,
+            "source_files": _auth, "excluded_files": [], "evidence_covered_files": _auth,
+            "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
+            "stale_apply_proofs": [], "issues": [], "current_hashes": _hashes,
+            "evidence_hashes": _hashes}))
         (ev / "runtime_integration_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS",
             "checks": [{"check_id": "c0", "check_type": "call_exists", "source_file": "src/app.py",
@@ -1938,9 +1965,9 @@ class TestReviewBundleIntegrity:
         import hashlib
         ev = tmp_path / "evidence"
         ev.mkdir(parents=True, exist_ok=True)
-        # Seed valid evidence base
+        # Seed valid evidence base — bind the change-provenance hash maps to the same proof hashes.
         TestReviewZipPackageStatus._seed_valid_evidence(
-            TestReviewZipPackageStatus(), ev
+            TestReviewZipPackageStatus(), ev, file_hashes=proof_hashes
         )
         # Write content proof
         proof = {

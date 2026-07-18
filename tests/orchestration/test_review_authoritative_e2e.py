@@ -30,10 +30,37 @@ _REQUIRED_MODULES = (
 )
 
 
-def _complete_gates(authority=None):
-    """The complete, closed-schema, semantically-consistent READY gate set (round 24) keyed by
-    filename: every field required by the exact recursive validators is present and coherent."""
-    authority = list(authority or [])
+#: The exact CORE_ARTIFACTS required-artifact key set (round 25 artifact-contract completeness).
+_CORE_ARTIFACTS = ("manifest.json", "job_report.json", "token_truth.json",
+                   "fresh_evidence_gate.json", "artifact_contract_gate.json",
+                   "runtime_integration_gate.json", "change_provenance_gate.json",
+                   "commit_execution_gate.json", "final_verifier_report.json")
+
+
+def _na_section(kind):
+    if kind == "stream":
+        return {"applicable": False, "verdict": "NOT_APPLICABLE",
+                "tasks_with_stream_evidence": [], "artifacts_verified": 0, "artifacts_present": 0,
+                "missing_stream_artifact_listing": [], "missing_stream_artifacts": [],
+                "missing_stream_artifact_metadata": [], "stream_artifact_hash_mismatches": [],
+                "stream_artifact_size_mismatches": [], "unexpected_stream_artifacts": [],
+                "duplicate_stream_artifact_refs": [], "unsafe_stream_artifact_refs": []}
+    return {"applicable": False, "verdict": "NOT_APPLICABLE", "job_level_handoff": False,
+            "handoff_coverage_verdict": "", "handoff_coverage_issues": [], "missing_job_handoff": [],
+            "worktree_tasks": [], "diffs_verified": 0, "missing_result_diffs": [],
+            "missing_result_diff_references": [], "result_diff_hash_mismatches": [],
+            "result_diff_size_mismatches": [], "unreferenced_result_diffs": [],
+            "unsafe_result_diff_refs": []}
+
+
+def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step="1-2"):
+    """The complete, closed-schema, semantically-consistent READY gate set (round 25) keyed by
+    filename: every field required by the exact RECURSIVE validators and the COMPLETE semantics is
+    present and coherent. ``file_hashes`` (path->sha) binds change-provenance hash maps to the
+    packaged ContentProof; when omitted a placeholder is used for gate-matrix-only unit tests."""
+    authority = sorted(authority or ["src/app.py", "tests_pkg/test_app.py"])
+    hashes = dict(file_hashes) if file_hashes is not None else {p: "0" * 64 for p in authority}
+    covered = sorted(hashes) if file_hashes is not None else authority
     return {
         "final_verifier_report.json": {
             "schema_version": "1.0.0", "verdict": "PASS_WITH_RISKS",
@@ -43,16 +70,25 @@ def _complete_gates(authority=None):
             "review_subject_uncovered_files": [], "content_hash_mismatches": [],
             "postmortem_failures": [], "postmortem_integrity_blocked": False,
             "manifest_integrity_blocked": False,
-            # round 24: the remaining FV blocking fields + embedded gate verdicts + FV commit view.
             "final_job_review_blocked": False, "execution_mode_blocked": False,
             "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
             "execution_mode_findings": [], "final_job_review_findings": [],
             "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
             "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
-            "commit_execution_gate": "BLOCKED"},
+            "commit_execution_gate": "BLOCKED",
+            # round 25: the remaining READY-incompatible FV fields + complete evidence_completeness.
+            "spec_compliance": "PASS", "scratch_file_guard": "PASS", "change_provenance": "PASS",
+            "file_set_alignment_status": "PASS", "token_cost_has_critical": False,
+            "token_cost_risk_findings": [],
+            "evidence_completeness": {"review_scope_packet": True, "spec_compliance_check": True,
+                                      "missing_tests_gate": True, "scratch_file_guard": True,
+                                      "token_truth": True, "safe_diff": True, "review_json": True,
+                                      "tests_txt": True}},
         "fresh_evidence_gate.json": {
             "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
             "job_id_match": True, "plan_match": True, "live_review_match": True,
+            "evidence_job_id": job_id, "current_job_id": job_id,
+            "current_step_range": step, "live_review_step_range": step, "plan_step_range": step,
             "evidence_freshness": {"is_fresh": True, "job_id_match": True,
                                    "step_range_match": True},
             "evidence_validity": {"has_job_id": True, "has_manifest": True,
@@ -60,12 +96,16 @@ def _complete_gates(authority=None):
         "artifact_contract_gate.json": {
             "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
             "fv_referenced_missing": [], "critical_fv_missing": [], "issues": [],
-            "job_id_fresh": True,
-            "required_artifacts": {"manifest.json": True, "final_verifier_report.json": True}},
+            "job_id_fresh": True, "evidence_job_id": job_id,
+            "required_artifacts": {a: True for a in _CORE_ARTIFACTS},
+            "optional_artifacts": {"scratch_file_guard.json": True},
+            "stream_artifacts": _na_section("stream"), "worktree_artifacts": _na_section("worktree")},
         "change_provenance_gate.json": {
-            "schema_version": "1.0.0", "verdict": "PASS", "covered_files": authority,
-            "source_files": authority, "uncovered_files": [], "content_hash_verified": True,
-            "hash_mismatches": [], "stale_apply_proofs": [], "issues": []},
+            "schema_version": "1.0.0", "verdict": "PASS", "covered_files": covered,
+            "source_files": covered, "excluded_files": [], "evidence_covered_files": covered,
+            "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
+            "stale_apply_proofs": [], "issues": [], "current_hashes": hashes,
+            "evidence_hashes": hashes},
         "runtime_integration_gate.json": {
             "schema_version": "1.0.0", "verdict": "PASS",
             "checks": [{"check_id": f"c{i}", "check_type": "call_exists",
@@ -138,8 +178,9 @@ def _write_evidence(repo, base, head, ev):
         "tombstones": {}, "tombstone_count": 0}, indent=2, sort_keys=True))
     (ev / "review_commit_chain.json").write_text(json.dumps({
         "chain_v": 1, "base_commit": base, "head_commit": head, "commits": []}, sort_keys=True))
-    # F1/F2 (round 23): the complete READY gate matrix, semantically consistent.
-    for name, body in _complete_gates(authority).items():
+    # F1/F2 (round 23-25): the complete READY gate matrix, semantically consistent, with the
+    # change-provenance hash maps bound to the packaged ContentProof file hashes.
+    for name, body in _complete_gates(authority, file_hashes).items():
         (ev / name).write_text(json.dumps(body, indent=2, sort_keys=True))
     # root + task artifacts so the manifest treats the run as valid
     (ev / "job_flow.json").write_text('{"job_id":"e2e","final_audit":{"status":"pass"}}')

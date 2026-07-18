@@ -1343,10 +1343,68 @@ def _gate_closed_schema_problems(name: str, gate: dict) -> list[str]:
     return problems
 
 
-def _gate_semantic_problems(name: str, gate: dict, verdicts: dict) -> list[str]:
-    """F1/F2/F3 (round 24): the gate's PASS label must be consistent with its complete internal
-    body, and (final_verifier) its embedded gate verdicts must equal the separately packaged
-    gates."""
+def _artifact_section_problems(gate: dict, name: str, section: str) -> list[str]:
+    """F2 (round 25): an applicable stream/worktree section needs COMPLETE PASS semantics; a
+    nonapplicable one needs the EXACT NOT_APPLICABLE shape (verdict NOT_APPLICABLE, every list
+    empty, every count 0) — a nested BLOCKED verdict under a top-level PASS blocks."""
+    s = gate.get(section)
+    if not isinstance(s, dict):
+        return [f"{name} {section} is not an object"]
+    problems: list[str] = []
+    applicable = s.get("applicable")
+    if applicable is True:
+        if s.get("verdict") != "PASS":
+            problems.append(f"{name} {section} is applicable but verdict {s.get('verdict')!r} "
+                            f"is not PASS")
+        for k, v in s.items():
+            if isinstance(v, list) and v and (k.startswith("missing") or k.startswith("unexpected")
+                                              or k.startswith("unsafe") or k.startswith("unreferenced")
+                                              or "mismatch" in k or "duplicate" in k or "issues" in k):
+                problems.append(f"{name} {section}.{k} is nonempty ({v!r})")
+    else:
+        if applicable is not False:
+            problems.append(f"{name} {section}.applicable={applicable!r} is not a bool")
+        if s.get("verdict") != "NOT_APPLICABLE":
+            problems.append(f"{name} {section} verdict {s.get('verdict')!r} != NOT_APPLICABLE")
+        for k, v in s.items():
+            if isinstance(v, list) and v:
+                problems.append(f"{name} {section}.{k} is nonempty for a NOT_APPLICABLE section")
+            elif isinstance(v, int) and not isinstance(v, bool) and v != 0:
+                problems.append(f"{name} {section}.{k}={v} is nonzero for a NOT_APPLICABLE section")
+    return problems
+
+
+def _change_provenance_coherence(gate: dict, name: str, ctx: dict) -> list[str]:
+    """F2 (round 25): the change-provenance set and hash maps must be internally coherent and equal
+    the packaged ContentProof authority — the SAME authority the coordinator decodes. A manually
+    emptied covered_files or an injected hash (with hash_mismatches=[]) blocks."""
+    problems: list[str] = []
+    covered = set(gate.get("covered_files") or [])
+    source = set(gate.get("source_files") or [])
+    excluded = set(gate.get("excluded_files") or [])
+    ev_cov = set(gate.get("evidence_covered_files") or [])
+    if not covered:
+        problems.append(f"{name} covered_files is empty")
+    if covered != (source - excluded):
+        problems.append(f"{name} covered_files != source_files - excluded_files")
+    if covered != ev_cov:
+        problems.append(f"{name} covered_files != evidence_covered_files")
+    cur = gate.get("current_hashes") if isinstance(gate.get("current_hashes"), dict) else {}
+    evh = gate.get("evidence_hashes") if isinstance(gate.get("evidence_hashes"), dict) else {}
+    if cur != evh:
+        problems.append(f"{name} current_hashes != evidence_hashes")
+    if ctx.get("proof_authority") is not None and covered != ctx["proof_authority"]:
+        problems.append(f"{name} covered_files != ContentProof authority set")
+    if ctx.get("proof_hashes") is not None and cur != ctx["proof_hashes"]:
+        problems.append(f"{name} current_hashes != ContentProof file hashes")
+    return problems
+
+
+def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) -> list[str]:
+    """F1/F2/F3 (round 24) + F2 (round 25): the gate's PASS label must be consistent with its
+    COMPLETE internal body — every READY-incompatible field is checked — and (final_verifier) its
+    embedded gate verdicts must equal the separately packaged gates. ``ctx`` carries the packaged
+    ContentProof authority/hashes and the recorded verification total for cross-gate coherence."""
     problems = _gate_closed_schema_problems(name, gate)
 
     if name == "final_verifier_report.json":
@@ -1360,7 +1418,27 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict) -> list[str]:
             ("final_job_review_blocked", False), ("execution_mode_blocked", False),
             ("model_mismatch_blocked", False), ("model_needs_repair", False),
             ("missing_evidence", []), ("execution_mode_findings", []),
-            ("final_job_review_findings", [])]))
+            ("final_job_review_findings", []),
+            # F2 (round 25): the remaining READY-incompatible FV fields.
+            ("spec_compliance", "PASS"), ("scratch_file_guard", "PASS"),
+            ("change_provenance", "PASS"), ("file_set_alignment_status", "PASS"),
+            ("token_cost_has_critical", False), ("token_cost_risk_findings", []),
+            ("evidence_completeness.review_scope_packet", True),
+            ("evidence_completeness.spec_compliance_check", True),
+            ("evidence_completeness.missing_tests_gate", True),
+            ("evidence_completeness.scratch_file_guard", True),
+            ("evidence_completeness.token_truth", True),
+            ("evidence_completeness.safe_diff", True),
+            ("evidence_completeness.review_json", True),
+            ("evidence_completeness.tests_txt", True)]))
+        # F2 (round 25): test_status.passed is a nonnegative integer, coherent with the recorded
+        # verification total (so a fabricated PASS count cannot disagree with what actually ran).
+        tp = _gget(gate, "test_status.passed")
+        if not isinstance(tp, int) or isinstance(tp, bool) or tp < 0:
+            problems.append(f"{name} test_status.passed={tp!r} is not a nonnegative integer")
+        elif ctx.get("vt_passed") is not None and tp != ctx["vt_passed"]:
+            problems.append(f"{name} test_status.passed={tp} != recorded verification total "
+                            f"{ctx['vt_passed']}")
         # F2: the FV's embedded gate verdicts must EQUAL the separately packaged gate verdicts.
         for emb, gate_file in (("artifact_contract_gate", "artifact_contract_gate.json"),
                                ("change_provenance_gate", "change_provenance_gate.json"),
@@ -1386,9 +1464,20 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict) -> list[str]:
             ("evidence_validity.is_valid_current_run", True),
             ("evidence_freshness.is_fresh", True), ("evidence_freshness.job_id_match", True),
             ("evidence_freshness.step_range_match", True), ("issues", [])]))
+        # F2 (round 25): the match Booleans cannot be true over UNEQUAL actual values — require the
+        # actual ids/ranges to be equal, so a flipped id with job_id_match=true still blocks.
+        if gate.get("current_job_id") != gate.get("evidence_job_id"):
+            problems.append(f"{name} current_job_id != evidence_job_id "
+                            f"({gate.get('current_job_id')!r} vs {gate.get('evidence_job_id')!r})")
+        csr = gate.get("current_step_range")
+        if csr != gate.get("live_review_step_range") or csr != gate.get("plan_step_range"):
+            problems.append(f"{name} step ranges disagree (current={csr!r} "
+                            f"live={gate.get('live_review_step_range')!r} "
+                            f"plan={gate.get('plan_step_range')!r})")
         return problems
 
     if name == "artifact_contract_gate.json":
+        from packages.orchestration.artifact_contract_gate import CORE_ARTIFACTS
         problems.extend(_check_fields(gate, name, [
             ("missing_required", []), ("fv_referenced_missing", []), ("critical_fv_missing", []),
             ("issues", []), ("job_id_fresh", True)]))
@@ -1396,15 +1485,23 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict) -> list[str]:
         if not isinstance(req, dict):
             problems.append(f"{name} required_artifacts is not an object")
         else:
+            # F2 (round 25): the EXACT required-artifact key set from the producer's contract; an
+            # empty or trimmed map (which trivially satisfies "all true") blocks.
+            if set(req) != set(CORE_ARTIFACTS):
+                problems.append(f"{name} required_artifacts keys {sorted(req)} != the contract "
+                                f"{sorted(CORE_ARTIFACTS)}")
             for k, v in req.items():
                 if v is not True:
                     problems.append(f"{name} required_artifacts[{k!r}]={v!r} is not true")
+        problems.extend(_artifact_section_problems(gate, name, "stream_artifacts"))
+        problems.extend(_artifact_section_problems(gate, name, "worktree_artifacts"))
         return problems
 
     if name == "change_provenance_gate.json":
         problems.extend(_check_fields(gate, name, [
             ("uncovered_files", []), ("content_hash_verified", True), ("hash_mismatches", []),
             ("stale_apply_proofs", []), ("issues", [])]))
+        problems.extend(_change_provenance_coherence(gate, name, ctx))
         return problems
 
     if name == "runtime_integration_gate.json":
@@ -1537,6 +1634,28 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
     verdicts[_COMMIT_GATE] = (cg.get("verdict") if isinstance(cg, dict) else "MISSING") \
         if cg not in (_MISSING, None) else ("INVALID" if cg is _MISSING else "MISSING")
 
+    # F2 (round 25): the shared cross-gate context — the packaged ContentProof authority/hashes and
+    # the recorded verification total — decoded from the SAME loader so no second authority model
+    # exists. A missing/invalid proof leaves the cross-checks off (the coordinator refuses it
+    # separately); a present proof binds change-provenance and the FV test total.
+    ctx: dict = {"proof_authority": None, "proof_hashes": None, "vt_passed": None}
+    try:
+        proof = load_json("current_change_content_proof.json")
+        if isinstance(proof, dict):
+            fh = proof.get("file_hashes") if isinstance(proof.get("file_hashes"), dict) else {}
+            tomb = proof.get("tombstones") if isinstance(proof.get("tombstones"), dict) else {}
+            ctx["proof_authority"] = set(fh) | set(tomb)
+            ctx["proof_hashes"] = dict(fh)
+    except Exception:
+        pass                                           # a corrupt proof blocks in the coordinator
+    try:
+        vt = load_json("verification_tests.json")
+        if isinstance(vt, dict) and isinstance(vt.get("passed"), int) \
+                and not isinstance(vt.get("passed"), bool):
+            ctx["vt_passed"] = vt["passed"]
+    except Exception:
+        pass
+
     # Pass 2 — validate.
     for name, allowed in _VERDICT_GATES.items():
         g = loaded[name]
@@ -1551,7 +1670,7 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         if g.get("verdict") not in allowed:
             reasons.append(f"{name} verdict {g.get('verdict')!r} is not in {sorted(allowed)}")
             continue
-        reasons.extend(_gate_semantic_problems(name, g, verdicts))
+        reasons.extend(_gate_semantic_problems(name, g, verdicts, ctx))
 
     for name in _OK_GATES:
         g = loaded[name]
@@ -1563,7 +1682,7 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         if not (isinstance(g, dict) and g.get("ok") is True):
             reasons.append(f"{name} ok is {g.get('ok') if isinstance(g, dict) else g!r}, not true")
             continue
-        reasons.extend(_gate_semantic_problems(name, g, verdicts))
+        reasons.extend(_gate_semantic_problems(name, g, verdicts, ctx))
 
     if cg is not _MISSING:
         reasons.extend(_validate_commit_gate(cg, verdicts))
