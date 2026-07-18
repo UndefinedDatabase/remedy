@@ -1,49 +1,47 @@
-# Live Review — Steps 12561-12760 — F012 hardening round 25 (recursive gate schema + safe snapshot acquisition)
+# Live Review — Steps 12761-12960 — F012 hardening round 26 (fully typed shapes + fail-closed total + bounded acquisition)
 
 ## Verdict (reviewer-owned)
-**PENDING** — F012 hardened (6 recursive-schema/acquisition findings), awaiting re-review (NOT accepted).
+**PENDING** — F012 hardened (6 typed-shape/verification/acquisition findings), awaiting re-review (NOT accepted).
 
 ## Builder Handoff
 
 Operator-built by hand: no Builder, no Reviewer, no provider GENERATION call (0), no Fable, no
 subagents, no Evidence `job-flow`/`job-run`, no Docker, no new dependency, **no database**, **no
-LLM rerun**, no network. The gate matrix and staged-byte acquisition are additive-hardened; no
-manifest field was removed.
+LLM rerun**, no network. The gate schema, verification decoder and staged acquisition are
+additive-hardened; no manifest field was removed.
 
-External review of `remedy-review-20260718-190112-READY_FOR_REVIEW.zip` (SHA
-`d40e2454dbfe0e576412bdc257ad7da4aede484256f694d1437f33b44afa0cb9`, Evidence job
-`041261b92c134f5b`, linked prior `14f211210d044bfb`, HEAD `3d11fc9`) returned SIX findings. Fixed as
+External review of `remedy-review-20260718-201125-READY_FOR_REVIEW.zip` (SHA
+`2250e8cb8d82cecc3b37721ab81a6a5d61816cba7d55634e0d7f80d778374674`, Evidence job
+`a67d0c3f0513bd11`, linked prior `041261b92c134f5b`, HEAD `78cbb9b`) returned SIX findings. Fixed as
 one bounded closure block.
 
-- **F1** — every gate is validated by an EXACT typed RECURSIVE schema; an unknown NESTED field, a
-  wrong element type, or a dynamic-map key violating its grammar all block.
-- **F2** — complete READY semantics per gate: FV evidence-completeness/spec/scratch/alignment/change
-  PASS + token-critical clear + test_status.passed == recorded total; fresh id/range direct
-  equality; artifact exact required key set + stream/worktree PASS-or-NOT_APPLICABLE; change
-  covered == source-excluded == evidence_covered == ContentProof authority, and current_hashes ==
-  evidence_hashes == ContentProof file hashes (one authority model).
-- **F3** — the metadata scanner walks dictionary KEYS as well as values; secret/local-path/control/
-  over-length/credential-name keys block, and dynamic keys satisfy their typed grammar.
-- **F4** — the commit gate's blocked_gates, non_pass_gates AND issues are all exactly derived from
-  gate_checks by the writer's deterministic rule; an empty/unrelated issues list blocks.
-- **F5** — every trusted gate/subject/proof/chain decode rejects DUPLICATE JSON keys at any depth
-  (a dependency-free object_pairs_hook), so a duplicated verdict no longer resolves to last-wins.
-- **F6** — staged bytes are acquired only through anchored, O_NOFOLLOW secure_fs reads
-  (`_StagedArtifacts.load` and `_view_from_dir`); a symlink/FIFO/socket/device is never followed or
-  read, size limits are enforced during acquisition, and the preliminary manifest pass uses the same
-  secure reader.
+- **F1** — the schema engine has NO accept-anything node; every scalar/list element/nested value is
+  typed, with `_Nullable` unions, `_OneOf`, exact finding/mismatch records, and two distinct
+  token_status/token_measurement shapes.
+- **F2** — `_Obj` requires its full producer shape; a missing required nested field (token block,
+  stream/worktree section, test_status, evidence_freshness, integrity notes) blocks.
+- **F3** — a strict `VerificationTestsV1` (exact version/fields, real-int counts, no int() coercion,
+  exit==0/failed==0/passed>=1, totals==sum of runs, test_files==union) is enforced fail-closed by
+  the gate matrix AND the manual-completion validator; a missing/invalid record blocks and the FV
+  total must equal it.
+- **F4** — one shared `AcquisitionBudget` (per-member/aggregate/count/duplicate) bounds both
+  `_view_from_dir` and `_StagedArtifacts`; exceeding any limit BLOCKS, never a silent absence.
+- **F5** — the dependency-free duplicate-key decoder lives only in `packages/common/strict_json.py`;
+  both packaging scripts import it and keep no private copy.
+- **F6** — the exact generated packaging outputs get a `packaging_generated_outputs` disposition in
+  the review-state; a clean branch stays clean during packaging while a real dirty file stays dirty.
 
 ## Verification
 
 ### Authoritative (each command recorded in the packaged `verification_tests.json`)
-- Round-25 closure suites (recursive_schemas, complete_semantics, key_safety,
-  commit_gate_issue_derivation, duplicate_keys, staged_artifact_no_follow) → **51 passed**.
+- Round-26 closure suites (gate_typed_shapes, verification_tests_strict, acquisition_budget,
+  shared_strict_decoder, packaging_dirty_disposition) → **52 passed**.
 - Complete F012/review block (46 test_run_manifest*.py + persisted schemas + round13 + the full
-  review/archive/snapshot/gate batch incl. all round-24 and round-25 suites) → all pass.
+  review/archive/snapshot/gate batch incl. all round 24-26 suites) → all pass.
 - Complete F010/F011/Evidence block (11 files) → all pass.
 - Authoritative CLI (`tests/test_do_job_flow.py` + `tests/cli`, excluding the two PRE-EXISTING
   doc-path suites) → all pass.
-- Docs consistency (incl. `TestF012Round25IsPinned`) → all pass.
+- Docs consistency (incl. `TestF012Round26IsPinned`) → all pass.
 - compileall exit 0; `bash -n scripts/make_review_zip.sh` clean; `git diff --check` clean;
   integrity check passed (fail_count 0).
 
