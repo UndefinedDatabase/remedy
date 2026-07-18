@@ -1222,3 +1222,68 @@ class TestF012Round20IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round21IsPinned:
+    """Round 21: the final root-identity closure — exact raw-byte identities over one immutable
+    staged byte map, one disposition owner, the verified final-status source, and exact versions."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 21" in self._f012()
+
+    def test_raw_byte_identity_is_documented(self):
+        doc = self._f012()
+        assert "Raw-byte identity" in doc
+        assert 'SHA256(exact bytes packaged at' in doc
+        assert "reserialized projection" in doc
+
+    def test_immutable_staged_byte_map_is_documented(self):
+        doc = self._f012()
+        assert "_StagedArtifacts" in doc
+        assert "refuses if a staged file changed between decode and package" in doc
+
+    def test_one_disposition_owner_is_documented(self):
+        doc = self._f012()
+        assert "EXCLUDE_SAFE_CONTEXT" in doc
+        assert "BLOCK_UNSUPPORTED" in doc
+        assert "nothing silently disappears" in doc
+
+    def test_final_status_source_is_documented(self):
+        doc = self._f012()
+        assert "Final status source" in doc
+        assert "never a post-build disk-manifest reread" in doc
+
+    def test_declared_subject_and_exact_versions_are_documented(self):
+        doc = self._f012()
+        assert "subject.declared" in doc
+        assert 'exact version set `{"1.1.0"}`' in doc
+
+    def test_snapshot_inventory_boundary_is_documented(self):
+        doc = self._f012()
+        assert "source Evidence members at the snapshot" in doc
+
+    def test_no_live_stale_verification_reference(self):
+        # The round-19 claim is explicitly corrected, and the round-21 section labels the retired
+        # path; the only occurrences are historical prose or the "stale ... retired" note.
+        doc = self._f012()
+        assert "Superseded by round 20" in doc
+        assert "the stale `review_zip_verification.json`" in doc
+
+    def test_readme_states_the_raw_byte_identity(self):
+        r = self._readme()
+        assert "raw-byte" in r
+        assert "verified package model" in r
+
+    def test_f012_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status

@@ -130,7 +130,11 @@ Content-Proof authority (which must equal the final-verifier and change-provenan
 all read the same bytes. Those bytes flow through a **directed hash chain** — the plan hashes every
 source member, the expectation carries the plan's hash, and the manifest carries the plan,
 expectation, subject, proof, commit-chain and patch-set hashes — so a ZIP-only reviewer can
-recompute the whole chain and no artifact ever hashes itself. Task truth is read in the
+recompute the whole chain and no artifact ever hashes itself. Every one of those hashes is an
+exact **raw-byte** identity — `SHA256` of the exact bytes packaged at that archive path, decoded
+and packaged from one immutable staged byte map (a source changed between decoding it and packaging
+it is refused) — and the final package status is read from the **verified package model** the
+builder returns, never a post-build reread of the mutable manifest on disk. Task truth is read in the
 episode's own context: a completed episode's task must be applied or passed, and the status a task
 completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
