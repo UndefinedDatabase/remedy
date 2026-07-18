@@ -41,10 +41,6 @@ from packages.orchestration.review_zip import (  # noqa: E402
 )
 
 
-#: F6 (round 25): per-member acquisition size limit for the anchored no-follow staged read.
-_ACQUIRE_MAX_MEMBER_BYTES = 64 * 1024 * 1024
-
-
 def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -67,10 +63,14 @@ class _StagedArtifacts:
     these exact shas, so `snapshot_plan_members` refuses if a staged file changed between decode and
     package — decode-bytes and package-bytes are provably identical."""
 
-    def __init__(self, evidence_root: str | None, current_prefix: str):
+    def __init__(self, evidence_root: str | None, current_prefix: str, budget=None):
+        from packages.common.acquisition_budget import AcquisitionBudget
         self.by_arcname: dict[str, tuple[bytes, str]] = {}     # arcname -> (bytes, sha256)
         self._root = evidence_root
         self._prefix = current_prefix
+        # F4 (round 26): the ONE shared acquisition budget — per-member + aggregate + count. A
+        # cached re-read is served from by_arcname and does NOT recharge.
+        self._budget = budget if budget is not None else AcquisitionBudget()
 
     def load(self, name: str) -> tuple[bytes | None, str]:
         """Read `<prefix>/<name>` once (bytes, sha). Absent OR unsafe -> (None, "").
@@ -78,19 +78,28 @@ class _StagedArtifacts:
         F6 (round 25): the read goes through the shared ANCHORED, O_NOFOLLOW ``secure_fs`` primitive
         — never ``os.path.isfile`` + ``open`` by name, which FOLLOW a symlink. A staged member that
         is a symlink (or a regular file swapped to one mid-read) is refused and reported ABSENT, so
-        NO outside bytes are ever read here even before the ArchivePlan blocks the member."""
+        NO outside bytes are ever read here even before the ArchivePlan blocks the member.
+
+        F4 (round 26): a successfully-read member is CHARGED against the shared acquisition budget;
+        an over-per-member/over-aggregate/over-count/duplicate acquisition raises ArchivePlanError
+        (a BLOCK) — never a silent absence."""
         if not self._root:
             return None, ""
         arc = f"{self._prefix}/{name}"
         if arc in self.by_arcname:
-            return self.by_arcname[arc]
+            return self.by_arcname[arc]                 # cached — do not recharge
         from packages.common import secure_fs
+        from packages.common.acquisition_budget import AcquisitionBudgetError
         try:
             vf = secure_fs.read_verified_relative(
                 self._root, arc, expected_kind="regular",
-                max_bytes=_ACQUIRE_MAX_MEMBER_BYTES, noun="staged evidence artifact")
+                max_bytes=self._budget.max_member_bytes + 1, noun="staged evidence artifact")
         except secure_fs.SecureFsError:
             return None, ""                             # absent, wrong kind, or a refused symlink
+        try:
+            self._budget.charge(arc, len(vf.data))
+        except AcquisitionBudgetError as exc:
+            raise ArchivePlanError(f"staged acquisition budget exceeded: {exc}") from None
         rec = (vf.data, _sha256_hex(vf.data))
         self.by_arcname[arc] = rec
         return rec

@@ -27,7 +27,7 @@ _REQUIRED_MODULES = ("packages/orchestration/__init__.py", "packages/orchestrati
                      "packages/orchestration/archive_plan.py",
                      "packages/orchestration/review_subject.py",
                      "packages/orchestration/evidence_inventory.py",
-                     "packages/common/__init__.py", "packages/common/secure_fs.py", "packages/common/strict_json.py")
+                     "packages/common/__init__.py", "packages/common/secure_fs.py", "packages/common/strict_json.py", "packages/common/acquisition_budget.py")
 
 _S_IFREG = 0o100000
 _S_IFLNK = 0o120000

@@ -396,7 +396,7 @@ _REQUIRED_PACKAGE_MODULES = (
     # F8 (round 19): the typed no-follow evidence inventory the staging CLI drives.
     "packages/orchestration/evidence_inventory.py",
     "packages/common/__init__.py",
-    "packages/common/secure_fs.py", "packages/common/strict_json.py",
+    "packages/common/secure_fs.py", "packages/common/strict_json.py", "packages/common/acquisition_budget.py",
 )
 
 

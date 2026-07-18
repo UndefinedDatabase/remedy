@@ -138,25 +138,21 @@ class _EvidenceView:
         return self.read_json_strict
 
 
-#: F6 (round 25): per-member and aggregate acquisition limits for the anchored no-follow walk.
-_ACQUIRE_MAX_MEMBER_BYTES = 64 * 1024 * 1024
-_ACQUIRE_MAX_TOTAL_BYTES = 512 * 1024 * 1024
-_ACQUIRE_MAX_MEMBERS = 20000
-
-
 def _view_from_dir(evidence_dir: str) -> _EvidenceView:
-    """F6 (round 25): read an evidence directory ONCE into an immutable byte map through the shared
-    ANCHORED, O_NOFOLLOW ``secure_fs`` primitives — never ``os.walk``/``open`` by name. A symlink
-    (dir or file), FIFO, socket or device is NEVER followed or read; every regular member is opened
-    ``O_NOFOLLOW``, identity-checked and stably read. Used by the standalone CLI, by tests, and by
-    make_review_zip.sh's preliminary manifest pass; the coordinator uses ``_view_from_snapshot``."""
+    """F6 (round 25) / F4 (round 26): read an evidence directory ONCE into an immutable byte map
+    through the shared ANCHORED, O_NOFOLLOW ``secure_fs`` primitives — never ``os.walk``/``open`` by
+    name. A symlink (dir or file), FIFO, socket or device is NEVER followed or read; every regular
+    member is opened ``O_NOFOLLOW``, identity-checked and stably read, and CHARGED against the shared
+    acquisition budget so an over-count/over-byte tree BLOCKS (raises) rather than being silently
+    truncated. The coordinator uses ``_view_from_snapshot``."""
     import stat as _stat
 
     from packages.common import secure_fs
+    from packages.common.acquisition_budget import AcquisitionBudget
 
     files: dict[str, bytes] = {}
     mtimes: dict[str, str] = {}
-    counts = {"members": 0, "total": 0}
+    budget = AcquisitionBudget()
     try:
         root_fd = secure_fs.anchor_root(evidence_dir, noun="evidence dir", create=False)
     except Exception:
@@ -181,18 +177,15 @@ def _view_from_dir(evidence_dir: str) -> _EvidenceView:
                 finally:
                     os.close(sub)
             elif _stat.S_ISREG(st.st_mode):
-                if counts["members"] >= _ACQUIRE_MAX_MEMBERS:
-                    continue
+                # Charge FIRST from the no-follow lstat size — an over-limit tree BLOCKS here rather
+                # than being read and then silently skipped.
+                budget.charge(rel, st.st_size)
                 try:
                     vf = secure_fs.read_verified_file_at(
                         dir_fd, name, expected_kind="regular",
-                        max_bytes=_ACQUIRE_MAX_MEMBER_BYTES, noun="evidence file")
+                        max_bytes=st.st_size + 1, noun="evidence file")
                 except Exception:
-                    continue                            # symlink swap / torn / over-limit — refuse
-                if counts["total"] + len(vf.data) > _ACQUIRE_MAX_TOTAL_BYTES:
-                    continue
-                counts["members"] += 1
-                counts["total"] += len(vf.data)
+                    continue                            # symlink swap / torn — refuse, never read
                 files[rel] = vf.data
                 mtimes[rel] = datetime.fromtimestamp(
                     st.st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

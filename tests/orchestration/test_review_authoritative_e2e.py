@@ -26,7 +26,7 @@ _REQUIRED_MODULES = (
     "packages/orchestration/evidence_index.py", "packages/orchestration/review_zip.py",
     "packages/orchestration/archive_plan.py", "packages/orchestration/review_subject.py",
     "packages/orchestration/evidence_inventory.py", "packages/common/__init__.py",
-    "packages/common/secure_fs.py", "packages/common/strict_json.py",
+    "packages/common/secure_fs.py", "packages/common/strict_json.py", "packages/common/acquisition_budget.py",
 )
 
 
