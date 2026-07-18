@@ -941,13 +941,119 @@ _VERDICT_GATES = {
     "runtime_integration_gate.json": {"PASS"},
 }
 _OK_GATES = ("manifest_integrity.json", "postmortem_integrity.json")
-_ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES
+_COMMIT_GATE = "commit_execution_gate.json"
+_ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES + (_COMMIT_GATE,)
+
+#: F1 (round 23): every READY gate's schema is version-closed.
+_SUPPORTED_GATE_VERSIONS = frozenset({"1.0.0"})
+_MISSING = object()
+
+
+def _gget(gate: dict, path: str):
+    """Dotted lookup; returns _MISSING if any segment is absent."""
+    cur = gate
+    for seg in path.split("."):
+        if not isinstance(cur, dict) or seg not in cur:
+            return _MISSING
+        cur = cur[seg]
+    return cur
+
+
+def _check_fields(gate: dict, name: str, spec) -> list[str]:
+    """Each (dotted_path, expected) must be PRESENT and equal — absence or contradiction blocks."""
+    problems: list[str] = []
+    for path, expected in spec:
+        v = _gget(gate, path)
+        if v is _MISSING:
+            problems.append(f"{name} is missing {path}")
+        elif v != expected:
+            problems.append(f"{name} {path}={v!r} contradicts a PASS gate (expected {expected!r})")
+    return problems
+
+
+def _gate_semantic_problems(name: str, gate: dict) -> list[str]:
+    """F1 (round 23): the gate's own INTERNAL truth must be consistent with its PASS/ok label — a
+    document cannot claim PASS while its body records an unresolved blocker, a failed test, a stale
+    or non-authoritative state, a missing artifact, an uncovered file or an integrity failure."""
+    if _gget(gate, "schema_version") not in _SUPPORTED_GATE_VERSIONS:
+        return [f"{name} schema_version {gate.get('schema_version')!r} is not supported "
+                f"{sorted(_SUPPORTED_GATE_VERSIONS)}"]
+    if name == "final_verifier_report.json":
+        p = _check_fields(gate, name, [
+            ("also_needs_repair", False), ("unresolved_findings", []),
+            ("test_status.ran", True), ("test_status.failed", 0), ("missing_tests_gate", "PASS"),
+            ("change_source_mismatches", []), ("review_subject_uncovered_files", []),
+            ("content_hash_mismatches", []), ("postmortem_failures", []),
+            ("postmortem_integrity_blocked", False), ("manifest_integrity_blocked", False)])
+        return p
+    if name == "fresh_evidence_gate.json":
+        return _check_fields(gate, name, [
+            ("evidence_authoritative", True), ("evidence_freshness.is_fresh", True),
+            ("evidence_validity.is_valid_current_run", True), ("issues", [])])
+    if name == "artifact_contract_gate.json":
+        return _check_fields(gate, name, [
+            ("missing_required", []), ("fv_referenced_missing", []),
+            ("critical_fv_missing", []), ("issues", [])])
+    if name == "change_provenance_gate.json":
+        return _check_fields(gate, name, [
+            ("uncovered_files", []), ("content_hash_verified", True),
+            ("hash_mismatches", []), ("issues", [])])
+    if name == "runtime_integration_gate.json":
+        problems = _check_fields(gate, name, [("issues", [])])
+        ct, cp, checks = gate.get("checks_total"), gate.get("checks_passed"), gate.get("checks")
+        if not (isinstance(checks, list) and ct == cp == len(checks)):
+            problems.append(f"{name} checks_total/checks_passed/len(checks) disagree "
+                            f"({ct}/{cp}/{len(checks) if isinstance(checks, list) else '?'})")
+        return problems
+    if name in _OK_GATES:
+        return _check_fields(gate, name, [("failures", [])])
+    return []
+
+
+#: The commit gate's embedded gate_checks keys → the READY-matrix gate file whose verdict must match.
+_COMMIT_CHECK_TO_GATE = {
+    "final_verifier": "final_verifier_report.json",
+    "fresh_evidence_gate": "fresh_evidence_gate.json",
+    "artifact_contract_gate": "artifact_contract_gate.json",
+    "change_provenance_gate": "change_provenance_gate.json",
+    "runtime_integration_gate": "runtime_integration_gate.json",
+}
+
+
+def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
+    """F2 (round 23): the commit_execution gate is CHECKED but nonblocking. Its verdict stays
+    NEEDS_HUMAN_APPROVAL for a pre-acceptance package, but a missing/invalid/contradictory commit
+    gate blocks Evidence integrity, and its embedded gate_checks must equal the packaged verdicts."""
+    if gate is None:
+        return [f"{_COMMIT_GATE} is missing"]
+    if not isinstance(gate, dict):
+        return [f"{_COMMIT_GATE} is not an object"]
+    problems: list[str] = []
+    if gate.get("schema_version") not in _SUPPORTED_GATE_VERSIONS:
+        problems.append(f"{_COMMIT_GATE} schema_version {gate.get('schema_version')!r} unsupported")
+    if gate.get("verdict") != "NEEDS_HUMAN_APPROVAL":
+        problems.append(f"{_COMMIT_GATE} verdict {gate.get('verdict')!r} != NEEDS_HUMAN_APPROVAL")
+    if gate.get("promote_ready") is not False:
+        problems.append(f"{_COMMIT_GATE} promote_ready {gate.get('promote_ready')!r} is not false")
+    if gate.get("blocked_gates") != []:
+        problems.append(f"{_COMMIT_GATE} blocked_gates {gate.get('blocked_gates')!r} is nonempty")
+    checks = gate.get("gate_checks")
+    if not isinstance(checks, dict):
+        problems.append(f"{_COMMIT_GATE} gate_checks is not an object")
+    else:
+        for k, gate_file in _COMMIT_CHECK_TO_GATE.items():
+            if k in checks and gate_file in verdicts and checks[k] != verdicts[gate_file]:
+                problems.append(f"{_COMMIT_GATE} gate_checks[{k!r}]={checks[k]!r} != packaged "
+                                f"{verdicts[gate_file]!r}")
+    return problems
 
 
 def evaluate_ready_gate_matrix(load_json) -> dict:
-    """F1 (round 22): the ONE READY gate evaluation, used by the manifest AND re-run by the archive
-    builder on the staged byte map. ``load_json(name)`` returns the parsed gate dict, ``None`` if
-    absent, and raises on invalid JSON. Returns {ok, gate_verdicts, blocking_reasons}."""
+    """F1 (round 22) / F1+F2 (round 23): the ONE READY gate evaluation, used by the manifest AND
+    re-run by the archive builder on the staged byte map. Each gate's PASS/ok LABEL is checked, then
+    its INTERNAL consistency; the nonblocking commit gate is validated too. ``load_json(name)``
+    returns the parsed gate dict, ``None`` if absent, and raises on invalid JSON. Returns
+    {ok, gate_verdicts, blocking_reasons}."""
     verdicts: dict[str, str] = {}
     reasons: list[str] = []
 
@@ -970,6 +1076,8 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         verdicts[name] = v if isinstance(v, str) else "UNKNOWN"
         if v not in allowed:
             reasons.append(f"{name} verdict {v!r} is not in {sorted(allowed)}")
+            continue
+        reasons.extend(_gate_semantic_problems(name, g))   # F1 (round 23): internal consistency
 
     for name in _OK_GATES:
         try:
@@ -986,6 +1094,20 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         verdicts[name] = "ok=true" if ok is True else f"ok={ok!r}"
         if ok is not True:
             reasons.append(f"{name} ok is {ok!r}, not true")
+            continue
+        reasons.extend(_gate_semantic_problems(name, g))
+
+    # F2 (round 23): the checked, nonblocking commit_execution gate.
+    try:
+        cg = load_json(_COMMIT_GATE)
+    except Exception as exc:
+        reasons.append(f"{_COMMIT_GATE} is not valid JSON: {exc}")
+        verdicts[_COMMIT_GATE] = "INVALID"
+        cg = _MISSING
+    if cg is not _MISSING:
+        verdicts[_COMMIT_GATE] = (cg.get("verdict") if isinstance(cg, dict) else "UNKNOWN") \
+            if cg is not None else "MISSING"
+        reasons.extend(_validate_commit_gate(cg, verdicts))
 
     return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}
 
