@@ -9,16 +9,21 @@ _SPEC = importlib.util.spec_from_file_location("_brm_gate", REPO_ROOT / "scripts
 _brm = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_brm)
 
+_e2e = importlib.util.spec_from_file_location(
+    "_e2e_gm", REPO_ROOT / "tests" / "orchestration" / "test_review_authoritative_e2e.py")
+_E2E = importlib.util.module_from_spec(_e2e)
+_e2e.loader.exec_module(_E2E)
+
 
 def _gates(**over):
-    g = {"final_verifier_report.json": {"verdict": "PASS_WITH_RISKS"},
-         "fresh_evidence_gate.json": {"verdict": "PASS"},
-         "artifact_contract_gate.json": {"verdict": "PASS"},
-         "change_provenance_gate.json": {"verdict": "PASS"},
-         "runtime_integration_gate.json": {"verdict": "PASS"},
-         "manifest_integrity.json": {"ok": True},
-         "postmortem_integrity.json": {"ok": True}}
-    g.update(over)
+    """The complete, semantically-consistent gate set; each override is MERGED into its gate
+    (or set to None to drop the file)."""
+    g = {k: dict(v) for k, v in _E2E._complete_gates().items()}
+    for name, patch in over.items():
+        if patch is None:
+            g[name] = None
+        else:
+            g[name] = {**(g.get(name) or {}), **patch}
     return g
 
 
@@ -31,7 +36,9 @@ def test_all_pass_is_ok():
 
 
 def test_final_verifier_pass_is_ok():
-    assert _eval(_gates(**{"final_verifier_report.json": {"verdict": "PASS"}}))["ok"] is True
+    g = _gates(**{"final_verifier_report.json": {"verdict": "PASS"}})
+    g["commit_execution_gate.json"]["gate_checks"]["final_verifier"] = "PASS"   # keep consistent
+    assert _eval(g)["ok"] is True
 
 
 def test_final_verifier_blocked_blocks():
@@ -68,7 +75,9 @@ def test_postmortem_integrity_false_blocks():
 
 
 def test_unknown_gate_schema_blocks():
-    assert _eval(_gates(**{"final_verifier_report.json": {"nope": 1}}))["ok"] is False
+    g = _gates()
+    g["final_verifier_report.json"] = {"schema_version": "9.9.9", "verdict": "PASS"}
+    assert _eval(g)["ok"] is False
 
 
 def test_invalid_gate_json_blocks():
@@ -79,6 +88,9 @@ def test_invalid_gate_json_blocks():
     assert _brm.evaluate_ready_gate_matrix(loader)["ok"] is False
 
 
-def test_commit_execution_gate_is_not_in_the_matrix():
-    # NEEDS_HUMAN_APPROVAL commit gate is expected and never consulted here
-    assert "commit_execution_gate.json" not in _brm._ALL_READY_GATES
+def test_commit_execution_gate_is_checked_but_nonblocking():
+    # Round 23: the commit gate IS validated (in the matrix), recorded as NEEDS_HUMAN_APPROVAL.
+    assert "commit_execution_gate.json" in _brm._ALL_READY_GATES
+    r = _eval(_gates())
+    assert r["ok"] is True
+    assert r["gate_verdicts"]["commit_execution_gate.json"] == "NEEDS_HUMAN_APPROVAL"

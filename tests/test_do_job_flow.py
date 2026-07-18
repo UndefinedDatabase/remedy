@@ -1542,21 +1542,35 @@ class TestReviewZipPackageStatus:
                 "provider_evidence.json",
             ]:
                 (d / art).write_text("{}")
-        # fresh_evidence_gate for freshness
+        # Round 22/23: READY requires the COMPLETE, semantically-consistent gate matrix.
         (ev / "fresh_evidence_gate.json").write_text(json.dumps({
-            "verdict": "PASS",
-            "evidence_freshness": {"is_fresh": True},
-            "evidence_authoritative": True,
-            "evidence_validity": {"is_valid_current_run": True},
-        }))
-        # Round 22: READY requires the COMPLETE gate verdict matrix to pass.
+            "schema_version": "1.0.0", "verdict": "PASS",
+            "evidence_freshness": {"is_fresh": True}, "evidence_authoritative": True,
+            "evidence_validity": {"is_valid_current_run": True}, "issues": []}))
         (ev / "final_verifier_report.json").write_text(json.dumps({
-            "verdict": "PASS", "authoritative_changed_files": []}))
-        for g in ("artifact_contract_gate.json", "change_provenance_gate.json",
-                  "runtime_integration_gate.json"):
-            (ev / g).write_text(json.dumps({"verdict": "PASS"}))
+            "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": [],
+            "also_needs_repair": False, "unresolved_findings": [],
+            "test_status": {"ran": True, "passed": 1, "failed": 0}, "missing_tests_gate": "PASS",
+            "change_source_mismatches": [], "review_subject_uncovered_files": [],
+            "content_hash_mismatches": [], "postmortem_failures": [],
+            "postmortem_integrity_blocked": False, "manifest_integrity_blocked": False}))
+        (ev / "artifact_contract_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
+            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": []}))
+        (ev / "change_provenance_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "PASS", "uncovered_files": [],
+            "content_hash_verified": True, "hash_mismatches": [], "issues": []}))
+        (ev / "runtime_integration_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "PASS", "checks": ["a"], "checks_total": 1,
+            "checks_passed": 1, "issues": []}))
         for g in ("manifest_integrity.json", "postmortem_integrity.json"):
-            (ev / g).write_text(json.dumps({"ok": True}))
+            (ev / g).write_text(json.dumps({"schema_version": "1.0.0", "ok": True, "failures": []}))
+        (ev / "commit_execution_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
+            "blocked_gates": [], "issues": [], "gate_checks": {
+                "final_verifier": "PASS", "fresh_evidence_gate": "PASS",
+                "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+                "runtime_integration_gate": "PASS"}}))
 
     @staticmethod
     def _init_clean_git(path):

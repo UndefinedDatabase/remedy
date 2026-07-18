@@ -30,6 +30,43 @@ _REQUIRED_MODULES = (
 )
 
 
+def _complete_gates(authority=None):
+    """The complete, semantically-consistent READY gate set (round 23) keyed by filename."""
+    authority = list(authority or [])
+    return {
+        "final_verifier_report.json": {
+            "schema_version": "1.0.0", "verdict": "PASS_WITH_RISKS",
+            "authoritative_changed_files": authority, "also_needs_repair": False,
+            "unresolved_findings": [], "test_status": {"ran": True, "passed": 1, "failed": 0},
+            "missing_tests_gate": "PASS", "change_source_mismatches": [],
+            "review_subject_uncovered_files": [], "content_hash_mismatches": [],
+            "postmortem_failures": [], "postmortem_integrity_blocked": False,
+            "manifest_integrity_blocked": False},
+        "fresh_evidence_gate.json": {
+            "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
+            "evidence_freshness": {"is_fresh": True},
+            "evidence_validity": {"is_valid_current_run": True}, "issues": []},
+        "artifact_contract_gate.json": {
+            "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
+            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": []},
+        "change_provenance_gate.json": {
+            "schema_version": "1.0.0", "verdict": "PASS", "covered_files": authority,
+            "source_files": authority, "uncovered_files": [], "content_hash_verified": True,
+            "hash_mismatches": [], "issues": []},
+        "runtime_integration_gate.json": {
+            "schema_version": "1.0.0", "verdict": "PASS", "checks": ["a", "b", "c"],
+            "checks_total": 3, "checks_passed": 3, "issues": []},
+        "manifest_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": []},
+        "postmortem_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": []},
+        "commit_execution_gate.json": {
+            "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
+            "blocked_gates": [], "non_pass_gates": ["final_verifier"], "issues": [],
+            "gate_checks": {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
+                            "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+                            "runtime_integration_gate": "PASS"}},
+    }
+
+
 def _run(cmd, cwd, env=None):
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=180,
                           env={**os.environ, **(env or {})})
@@ -82,21 +119,11 @@ def _write_evidence(repo, base, head, ev):
         "schema_version": "1.1.0", "base_commit": base, "head_commit": head,
         "file_hashes": file_hashes, "file_count": len(file_hashes),
         "tombstones": {}, "tombstone_count": 0}, indent=2, sort_keys=True))
-    (ev / "final_verifier_report.json").write_text(json.dumps({
-        "verdict": "PASS_WITH_RISKS", "authoritative_changed_files": authority,
-        "review_subject_uncovered_files": []}, indent=2, sort_keys=True))
-    (ev / "change_provenance_gate.json").write_text(json.dumps({
-        "verdict": "PASS", "covered_files": authority, "uncovered_files": [],
-        "source_files": authority}, indent=2, sort_keys=True))
     (ev / "review_commit_chain.json").write_text(json.dumps({
         "chain_v": 1, "base_commit": base, "head_commit": head, "commits": []}, sort_keys=True))
-    (ev / "fresh_evidence_gate.json").write_text(json.dumps({
-        "verdict": "PASS", "evidence_freshness": {"is_fresh": True}}, indent=2, sort_keys=True))
-    # F1 (round 22): the complete READY gate matrix must pass.
-    for g in ("artifact_contract_gate.json", "runtime_integration_gate.json"):
-        (ev / g).write_text(json.dumps({"verdict": "PASS"}, indent=2, sort_keys=True))
-    for g in ("manifest_integrity.json", "postmortem_integrity.json"):
-        (ev / g).write_text(json.dumps({"ok": True}, indent=2, sort_keys=True))
+    # F1/F2 (round 23): the complete READY gate matrix, semantically consistent.
+    for name, body in _complete_gates(authority).items():
+        (ev / name).write_text(json.dumps(body, indent=2, sort_keys=True))
     # root + task artifacts so the manifest treats the run as valid
     (ev / "job_flow.json").write_text('{"job_id":"e2e","final_audit":{"status":"pass"}}')
     for f in ("manifest.json", "agent_run_trace.jsonl", "agent_run_trace_summary.json",
