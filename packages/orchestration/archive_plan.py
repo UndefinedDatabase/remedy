@@ -63,6 +63,7 @@ SOURCE_OPERATOR_CONTEXT = "operator_context"
 #: unrepresentable kind is BLOCK_UNSUPPORTED; everything else INCLUDE.
 DISP_INCLUDE = "include"
 DISP_OPERATOR_CONTEXT = "operator_context"
+DISP_EXCLUDE_SAFE_CONTEXT = "exclude_safe_context"   # F5 (round 21): unchanged sensitive context
 DISP_TOMBSTONE = "tombstone"
 DISP_BLOCK_SENSITIVE = "block_sensitive"
 DISP_BLOCK_UNSUPPORTED = "block_unsupported"
@@ -114,10 +115,13 @@ def classify_bundle_path(rel: str, *, changed: bool, kind: str | None = None,
         return DISP_OPERATOR_CONTEXT
     base = norm.rsplit("/", 1)[-1]
     low = base.lower()
-    if base in _SENSITIVE_NAMES or low in _SENSITIVE_NAMES:
-        return DISP_BLOCK_SENSITIVE
-    if any(low.endswith(sfx) for sfx in _SENSITIVE_SUFFIXES):
-        return DISP_BLOCK_SENSITIVE
+    _sensitive = (base in _SENSITIVE_NAMES or low in _SENSITIVE_NAMES
+                  or any(low.endswith(sfx) for sfx in _SENSITIVE_SUFFIXES))
+    if _sensitive:
+        # F5 (round 21): a CHANGED sensitive path is a hard block (its bytes were part of the review
+        # and must never enter); an UNCHANGED sensitive context path is safely EXCLUDED with an
+        # explicit disposition — never packaged, never silently absent.
+        return DISP_BLOCK_SENSITIVE if changed else DISP_EXCLUDE_SAFE_CONTEXT
     return DISP_INCLUDE
 
 
@@ -169,11 +173,24 @@ class BlockedRecordV1:
 
 
 @dataclass(frozen=True)
+class ExcludedRecordV1:
+    """F5 (round 21): an unchanged sensitive CONTEXT path that is safely EXCLUDED — never packaged,
+    but recorded with an explicit disposition so it never silently disappears."""
+    path: str
+    disposition: str
+    reason: str
+
+    def to_json(self) -> dict:
+        return {"path": self.path, "disposition": self.disposition, "reason": self.reason}
+
+
+@dataclass(frozen=True)
 class ArchivePlanV1:
     repository_members: tuple[ArchiveMemberV1, ...] = ()
     evidence_members: tuple[ArchiveMemberV1, ...] = ()
     tombstones: tuple[TombstoneRecordV1, ...] = ()
     blocked_records: tuple[BlockedRecordV1, ...] = ()
+    excluded_records: tuple[ExcludedRecordV1, ...] = ()
     review_subject_sha256: str = ""
     authority_set_sha256: str = ""
     plan_v: int = PLAN_VERSION
@@ -200,6 +217,7 @@ class ArchivePlanV1:
                 "review_subject_sha256": self.review_subject_sha256,
                 "authority_set_sha256": self.authority_set_sha256,
                 "expected_member_count": self.expected_member_count(),
+                "excluded_records": [e.to_json() for e in self.excluded_records],
                 "repository_members": [m.to_json() for m in self.repository_members],
                 "evidence_members": [m.to_json() for m in self.evidence_members],
                 "tombstones": [t.to_json() for t in self.tombstones],
@@ -230,6 +248,7 @@ def _sha256_hex(data: bytes) -> str:
 def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
                        repo_context_rel: list[str], evidence_root: str | Path | None,
                        evidence_rel: list[str], authoritative_paths: set[str],
+                       review_subject_raw_sha256: str | None = None,
                        is_authoritative_source=None) -> ArchivePlanV1:
     """Assemble the one typed plan from the ONE authority set (F1, round 19).
 
@@ -250,6 +269,7 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
     members: dict[str, ArchiveMemberV1] = {}
     tombstones: list[TombstoneRecordV1] = []
     blocked: list[BlockedRecordV1] = []
+    excluded: list[ExcludedRecordV1] = []
 
     def _is_operator_state(p: str) -> bool:
         return p.replace("\\", "/").startswith(_OPERATOR_STATE_PREFIX)
@@ -307,12 +327,14 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
             blocked.append(BlockedRecordV1(
                 path=rel, reason="repository bundle path is not a safe relative path"))
             continue
-        # F6/F7 (round 20): unchanged context passes the SAME bundle policy. A `.env`, key, log or
-        # old archive handed in as context BLOCKS — it never enters the package, changed or not.
-        if classify_bundle_path(rel, changed=False) == DISP_BLOCK_SENSITIVE:
-            blocked.append(BlockedRecordV1(
-                path=rel, reason="context path is sensitive (secret/key/log/archive/binary); "
-                                 "its bytes must never enter the package"))
+        # F5 (round 21): ONE disposition owner. An unchanged sensitive context path is SAFELY
+        # EXCLUDED with an explicit record (never packaged, never silently absent); a CHANGED
+        # sensitive path is caught in the subject loop above.
+        disp = classify_bundle_path(rel, changed=False)
+        if disp == DISP_EXCLUDE_SAFE_CONTEXT:
+            excluded.append(ExcludedRecordV1(
+                path=rel, disposition=DISP_EXCLUDE_SAFE_CONTEXT,
+                reason="unchanged sensitive context (secret/key/log/archive/binary); excluded"))
             continue
         auth = _is_auth(rel)
         sclass = _source_class(rel, auth)
@@ -331,8 +353,12 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
                 archive_path=rel, kind=MEMBER_REGULAR, mode=mode, authoritative=auth,
                 source_root=str(repo_root), source_rel=rel, source_class=sclass)
         else:
+            # F5 (round 21): a FIFO/socket/device context path gets an EXPLICIT BLOCK_UNSUPPORTED
+            # record — it cannot silently disappear before the ArchivePlan.
             blocked.append(BlockedRecordV1(
-                path=rel, reason="repository bundle path is neither a regular file nor a symlink"))
+                path=rel, reason=f"BLOCK_UNSUPPORTED: context path is a special file "
+                                 f"({stat.filemode(st.st_mode)}), which the package cannot "
+                                 f"represent as a member"))
 
     evidence_members: list[ArchiveMemberV1] = []
     if evidence_root is not None:
@@ -351,11 +377,18 @@ def build_archive_plan(*, repo_root: str | Path, subject: ReviewSubjectV1,
             path="<archive>", reason=f"evidence member count {len(evidence_members)} exceeds "
                                      f"{MAX_EVIDENCE_MEMBERS}"))
 
-    subj_sha = _sha256_hex(_json.dumps(subject.to_json(), sort_keys=True).encode())
+    # F2 (round 21): the subject identity is the RAW packaged bytes' sha256, passed in explicitly —
+    # never a hash of a reserialized `subject.to_json()` (which differs from the packaged member).
+    # A missing raw sha (direct callers / context-only builds) keeps the legacy reserialized value.
+    if review_subject_raw_sha256 is not None:
+        subj_sha = review_subject_raw_sha256
+    else:
+        subj_sha = _sha256_hex(_json.dumps(subject.to_json(), sort_keys=True).encode())
     auth_sha = _sha256_hex(_json.dumps(sorted(authoritative_paths)).encode())
     return ArchivePlanV1(
         repository_members=tuple(sorted(members.values(), key=lambda m: m.archive_path)),
         evidence_members=tuple(evidence_members),
         tombstones=tuple(sorted(tombstones, key=lambda t: t.path)),
         blocked_records=tuple(sorted(blocked, key=lambda b: b.path)),
+        excluded_records=tuple(sorted(excluded, key=lambda e: e.path)),
         review_subject_sha256=subj_sha, authority_set_sha256=auth_sha)
