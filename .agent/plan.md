@@ -1,3 +1,49 @@
+# Plan — Steps 12161-12360 — F012 hardening round 23 (external FINDINGS, SEMANTIC GATE + COMPLETE SNAPSHOT closure)
+
+## Round 23 binding decision
+
+Reviewed `remedy-review-20260718-133146-READY_FOR_REVIEW.zip`
+(SHA `6256a748d4913bd67a778ac5ff617b9b4f28e7cf45eca9871cb46b9706384b89`, Evidence job
+`ff07e91816a146e1`, linked prior `5bd1eb8fa7ed4601`, HEAD `0c3866e`). Verdict FINDINGS; F012 `[~]`.
+
+1. **Semantic gate consistency** — a gate's PASS/ok label is not enough: one semantic validator per
+   READY gate checks the gate's own internal truth. schema_version ∈ {"1.0.0"} (closed).
+   final_verifier PASS/PASS_WITH_RISKS requires also_needs_repair=false, unresolved_findings=[],
+   test_status.ran=true & failed=0, missing_tests_gate=PASS, change_source_mismatches=[],
+   review_subject_uncovered_files=[], content_hash_mismatches=[], postmortem_failures=[],
+   postmortem_integrity_blocked=false, manifest_integrity_blocked=false. fresh_evidence requires
+   evidence_authoritative=true, is_fresh=true, is_valid_current_run=true, issues=[]. artifact_contract
+   requires missing_required/fv_referenced_missing/critical_fv_missing/issues all []. change_provenance
+   requires uncovered_files=[], content_hash_verified=true, hash_mismatches=[], issues=[].
+   runtime_integration requires checks_total==checks_passed==len(checks), issues=[]. manifest/postmortem
+   integrity require failures=[]. ONE dispatcher used by manifest and archive phases.
+2. **Checked nonblocking CommitExecution gate** — validated (exists, strict JSON, schema_version,
+   verdict==NEEDS_HUMAN_APPROVAL, promote_ready=false, blocked_gates=[], gate_checks == packaged gate
+   verdicts). Recorded in ready_gate_matrix.gate_verdicts. A missing/invalid/contradictory commit gate
+   blocks Evidence integrity even though human approval itself is expected.
+3. **One complete staged Evidence byte map** — the map covers EVERY Source-Evidence member inside the
+   inventory boundary, not only the gates. build_review_manifest consumes a JSON loader over the map;
+   ArchivePlan members and ZIP members use the same bytes. A mutation of any staged evidence artifact
+   after map creation blocks. No artifact interpreted from Read A and packaged from Read B.
+4. **Inventory size binding** — inventory.size == snapshot byte length == plan expected size ==
+   packaged ZIP uncompressed size, plus exact kind/mode/source_class/hash. Package-level ZIP-only
+   verification of the size facts.
+5. **No hidden shell bundle policy** — the shell stops removing remedy-review-*.zip / .sha256; they
+   reach ArchivePlan as EXCLUDE_SAFE_CONTEXT. Only truly structural pruning (.git, .data, caches, the
+   exact current output path) stays in the shell.
+
+## Round 23 — the 5 semantic-closure findings
+
+| # | Fix |
+|---|---|
+| 1 | semantic per-gate consistency validators, not just verdict labels |
+| 2 | validate the checked-but-nonblocking commit_execution gate |
+| 3 | one complete staged byte map for the manifest AND the archive |
+| 4 | bind inventory member size exactly (== bytes == plan == ZIP) |
+| 5 | classify prior review packages in the ArchivePlan, not the shell |
+
+---
+
 # Plan — Steps 11961-12160 — F012 hardening round 22 (external FINDINGS, FINAL GATE-AND-SNAPSHOT closure)
 
 ## Round 22 binding decision (the five contracts)

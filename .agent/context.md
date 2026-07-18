@@ -1,6 +1,19 @@
-# Context — current state (Steps 11961-12160)
+# Context — current state (Steps 12161-12360)
 
-## Round 22 (current) — F012 final gate-and-snapshot closure
+## Round 23 (current) — F012 semantic-gate + complete-snapshot closure
+
+Review of `remedy-review-20260718-133146-READY_FOR_REVIEW.zip` (Evidence job `ff07e91816a146e1`)
+returned 5 findings; F012 stays `[~]`. Fixed as one bounded block: each READY gate is now checked for
+SEMANTIC consistency (a PASS document whose body records an unresolved blocker/failed test/stale
+state/missing artifact/uncovered file/integrity failure blocks, schema closed to {"1.0.0"}); the
+commit_execution gate is checked (nonblocking NEEDS_HUMAN_APPROVAL, gate_checks == packaged verdicts);
+build_review_zip rebuilds the Root Manifest from the same staged bytes it packages (one complete byte
+map, evidence facts == packaged evidence); the inventory member size is bound exactly (== bytes ==
+plan == ZIP); and a prior `remedy-review-*` package reaches the ArchivePlan as EXCLUDE_SAFE_CONTEXT.
+Five new suites (36 tests) prove it. See `.agent/plan.md` for the finding table and
+`.agent/live_review.md` for the verification summary.
+
+## Round 22 — F012 final gate-and-snapshot closure
 
 Review of `remedy-review-20260718-103941-READY_FOR_REVIEW.zip` (Evidence job `5bd1eb8fa7ed4601`)
 returned 5 gate-and-snapshot findings; F012 stays `[~]`. Fixed as one bounded block: READY_FOR_REVIEW
