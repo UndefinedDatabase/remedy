@@ -1141,6 +1141,13 @@ _FV_COMMIT_NOT_READY = frozenset({"BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_APPR
 
 _SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
 _MAX_KEY_LEN = 256
+#: F3 (round 25): a KEY whose NAME looks like a credential is refused even without a value — the
+#: shared value scanner only flags `key=value`/PEM payloads, but a map keyed by `aws_secret_access_key`
+#: is itself a leak. Gate map keys are only file paths / task ids / artifact / gate names, so a
+#: credential-shaped key is never legitimate.
+_CREDENTIAL_KEY_RE = re.compile(
+    r"(secret|password|passwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|"
+    r"auth[_-]?token|bearer|aws_secret)", re.IGNORECASE)
 
 
 # ---- F1/F3 (round 25): typed RECURSIVE gate schemas — an unknown NESTED field, a wrong element
@@ -1375,6 +1382,8 @@ def _scan_gate_metadata(gate, name: str) -> list[str]:
                     r = _unsafe_text(k)
                     if r:
                         problems.append(f"{name} key {path}.{k!r} carries {r}")
+                    elif _CREDENTIAL_KEY_RE.search(k):
+                        problems.append(f"{name} key {path}.{k!r} is a credential-like key name")
                     elif len(k) > _MAX_KEY_LEN:
                         problems.append(f"{name} key {path}.{k!r} is implausibly long")
                 _walk(v, f"{path}.{k}")
