@@ -138,7 +138,13 @@ builder returns, never a post-build reread of the mutable manifest on disk. READ
 is bound to the **complete gate verdict matrix** (final verifier, fresh evidence, artifact contract,
 change provenance, runtime integration, manifest and post-mortem integrity) decoded from those same
 staged gate bytes — a blocking gate can never ride inside a READY package — and the staged snapshot
-inventory is validated as an exact bijection with the plan before READY is possible. Task truth is read in the
+inventory is validated as an exact bijection with the plan before READY is possible. Each gate is
+checked for **semantic consistency**, not just its verdict label: a document that claims PASS while
+its own body records an unresolved blocker, a failed test, a stale or non-authoritative state, a
+missing artifact, an uncovered file or an integrity failure blocks the package; the nonblocking
+commit gate is validated too; the Root Manifest is rebuilt from the same staged bytes the archive
+packages (so its evidence facts equal the packaged evidence); and every inventory member's size is
+bound exactly to the packaged ZIP bytes. Task truth is read in the
 episode's own context: a completed episode's task must be applied or passed, and the status a task
 completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:

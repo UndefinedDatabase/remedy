@@ -1339,3 +1339,55 @@ class TestF012Round22IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round23IsPinned:
+    """Round 23: semantic gate consistency, the checked commit gate, one complete staged byte map,
+    inventory size binding, and ArchivePlan-owned prior-package disposition."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 23" in self._f012()
+
+    def test_semantic_gate_consistency_is_documented(self):
+        doc = self._f012()
+        assert "Semantic gate consistency" in doc
+        assert "checks its INTERNAL truth, not just" in doc
+
+    def test_checked_commit_gate_is_documented(self):
+        doc = self._f012()
+        assert "Checked nonblocking commit gate" in doc
+        assert "embedded `gate_checks` equal the packaged verdicts" in doc
+
+    def test_complete_staged_byte_map_is_documented(self):
+        doc = self._f012()
+        assert "One complete staged byte map" in doc
+        assert "no evidence artifact is interpreted from one" in doc
+
+    def test_inventory_size_binding_is_documented(self):
+        doc = self._f012()
+        assert "Inventory size binding" in doc
+        assert "packaged ZIP uncompressed size" in doc
+
+    def test_prior_package_disposition_is_documented(self):
+        doc = self._f012()
+        assert "No hidden shell bundle policy" in doc
+        assert "EXCLUDE_SAFE_CONTEXT" in doc
+
+    def test_readme_states_semantic_consistency(self):
+        r = self._readme()
+        assert "semantic consistency" in r
+        assert "bound exactly to the packaged ZIP bytes" in r
+
+    def test_f012_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status
