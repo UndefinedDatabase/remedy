@@ -1,3 +1,51 @@
+# Plan — Steps 12361-12560 — F012 hardening round 24 (external FINDINGS, CLOSED GATE SCHEMAS + SNAPSHOT-ONLY MANIFEST)
+
+## Round 24 binding decision
+
+Reviewed `remedy-review-20260718-155415-READY_FOR_REVIEW.zip`
+(SHA `40f1fd24679288515a5229c3f950a5fe7d5a81750530e0d1dc3ca53ca5093e16`, Evidence job
+`14f211210d044bfb`, linked prior `ff07e91816a146e1`, HEAD `2f19a66`). Verdict FINDINGS; F012 `[~]`.
+
+1. **Exact recursive gate schemas** — each READY gate has a CLOSED allowed-field set (unknown field
+   blocks), exact supported version {"1.0.0"}, closed enums, safe strings/paths, and full list/count
+   coherence. Every field that can contradict PASS is checked (not a partial checklist).
+2. **Embedded gate-verdict equality** — final_verifier.{artifact_contract_gate, change_provenance_gate,
+   fresh_evidence_gate, runtime_integration_gate} == the packaged gate verdicts; and every FV blocking
+   field (final_job_review_blocked, execution_mode_blocked, model_mismatch_blocked, model_needs_repair
+   all false; missing_evidence / execution_mode_findings / final_job_review_findings all []).
+   FV.commit_execution_gate is the FV's commit-readiness view (must NOT be an auto-promotable value),
+   documented as distinct from the packaged commit gate's verdict.
+3. **Complete fresh/artifact/change/runtime semantics** — fresh needs job_id_match/plan_match/
+   live_review_match true, evidence_validity.has_job_id/has_manifest/is_valid_current_run true,
+   evidence_freshness.is_fresh/job_id_match/step_range_match true, issues=[]. artifact needs every
+   required_artifacts entry true, job_id_fresh=true, all missing/reference/critical lists + issues [].
+   change needs uncovered_files/hash_mismatches/stale_apply_proofs [], content_hash_verified true.
+   runtime needs, per check: unique nonempty check_id, supported check_type, safe source_file,
+   found=true, file_missing=false, no duplicate id; then checks_total==checks_passed==len(checks).
+4. **Exact CommitExecution derivation** — gate_checks keys == exactly the five gate names, values ==
+   packaged verdicts; non_pass_gates == the keys whose verdict != PASS; blocked_gates == []; issues
+   coherent; promote_ready=false; verdict NEEDS_HUMAN_APPROVAL. Empty/missing/extra gate_checks blocks.
+5. **Gate metadata safety** — every textual gate field is scanned with the existing secret/local-path/
+   control-char scanners; a canary (/home/alice/SUPERSECRET, /tmp/private-token, Windows home, PEM
+   marker, credential key, control char) blocks before ZIP creation.
+6. **Snapshot-only manifest** — the Root Manifest's Evidence facts come ONLY from the immutable Source
+   snapshot (SnapshotMember.data), never a staged-path reread. build_manifest consumes an
+   evidence-snapshot loader; no Evidence helper calls open()/os.path.isfile()/getmtime() on the
+   staging tree after the snapshot. Repository/Git facts still come from the repo.
+
+## Round 24 — the 6 findings
+
+| # | Fix |
+|---|---|
+| 1 | closed recursive gate schemas, not a partial field checklist |
+| 2 | FV embedded gate verdicts == packaged gates + all FV blocking fields |
+| 3 | complete fresh/artifact/change/runtime per-field + per-check semantics |
+| 4 | exact CommitExecution derivation from the packaged gates |
+| 5 | scan gate metadata for secrets/local paths/control chars |
+| 6 | build the Root Manifest from the immutable Source snapshot only |
+
+---
+
 # Plan — Steps 12161-12360 — F012 hardening round 23 (external FINDINGS, SEMANTIC GATE + COMPLETE SNAPSHOT closure)
 
 ## Round 23 binding decision
