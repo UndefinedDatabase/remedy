@@ -49,13 +49,30 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _no_dup_pairs(pairs):
+    seen: set = set()
+    out: dict = {}
+    for k, v in pairs:
+        if k in seen:
+            raise ValueError(f"duplicate JSON key {k!r}")
+        seen.add(k)
+        out[k] = v
+    return out
+
+
+def _reject_json_constant(name):
+    raise ValueError(f"non-standard JSON constant {name!r}")
+
+
 def _strict_loads(raw, where: str):
-    """F5 (round 25): decode a staged trust-path artifact with the shared duplicate-key-rejecting
-    decoder. A duplicate key at ANY depth (or NaN/Infinity) raises ArchivePlanError and BLOCKS the
-    package rather than silently collapsing to the stdlib's last-wins value."""
-    from packages.orchestration.run_manifest import strict_json_loads
+    """F5 (round 25): decode a staged trust-path artifact with a duplicate-key-rejecting decoder. A
+    duplicate key at ANY depth (or NaN/Infinity) raises ArchivePlanError and BLOCKS the package
+    rather than silently collapsing to the stdlib's last-wins value. Dependency-free so the archive
+    builder stays importable in minimal environments."""
+    text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
     try:
-        return strict_json_loads(raw, where=where)
+        return json.loads(text, object_pairs_hook=_no_dup_pairs,
+                          parse_constant=_reject_json_constant)
     except ArchivePlanError:
         raise
     except Exception as exc:

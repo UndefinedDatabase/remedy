@@ -50,13 +50,29 @@ def _check(path: str) -> str:
     return "present" if os.path.isfile(path) else "absent"
 
 
+def _no_dup_pairs(pairs):
+    seen: set = set()
+    out: dict = {}
+    for k, v in pairs:
+        if k in seen:
+            raise ValueError(f"duplicate JSON key {k!r}")
+        seen.add(k)
+        out[k] = v
+    return out
+
+
+def _reject_json_constant(name):
+    raise ValueError(f"non-standard JSON constant {name!r}")
+
+
 def _strict_json_loads(raw):
-    """F5 (round 25): the ONE duplicate-key-rejecting decoder for every trusted gate/evidence read —
-    the shared ``strict_json_loads`` (an ``object_pairs_hook`` refuses duplicate keys at ANY depth,
-    and NaN/Infinity are refused). A duplicate key RAISES rather than silently collapsing to the
-    stdlib's last-wins value, so two different byte strings can never decode to the same object."""
-    from packages.orchestration.run_manifest import strict_json_loads
-    return strict_json_loads(raw, where="gate/evidence artifact")
+    """F5 (round 25): the ONE duplicate-key-rejecting decoder for every trusted gate/evidence read.
+    An ``object_pairs_hook`` refuses duplicate keys at ANY depth and NaN/Infinity are refused, so a
+    duplicate key RAISES rather than silently collapsing to the stdlib's last-wins value — two
+    different byte strings can never decode to the same object. Kept dependency-free (no heavy
+    package import) so the standalone manifest builder stays importable in minimal environments."""
+    text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+    return json.loads(text, object_pairs_hook=_no_dup_pairs, parse_constant=_reject_json_constant)
 
 
 class _EvidenceView:
