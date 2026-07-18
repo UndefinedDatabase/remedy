@@ -930,6 +930,78 @@ def _read_fresh_evidence_gate(evidence_dir: str) -> dict:
     return _read_evidence_gate(evidence_dir, "fresh_evidence_gate.json")
 
 
+#: F1 (round 22): the EXACT READY gate matrix. READY_FOR_REVIEW is possible only when EVERY required
+#: gate passes, decoded from exactly the packaged bytes. commit_execution_gate=NEEDS_HUMAN_APPROVAL
+#: is expected and nonblocking. A missing/invalid/unknown/blocking/contradictory gate BLOCKS.
+_VERDICT_GATES = {
+    "final_verifier_report.json": {"PASS", "PASS_WITH_RISKS"},
+    "fresh_evidence_gate.json": {"PASS"},
+    "artifact_contract_gate.json": {"PASS"},
+    "change_provenance_gate.json": {"PASS"},
+    "runtime_integration_gate.json": {"PASS"},
+}
+_OK_GATES = ("manifest_integrity.json", "postmortem_integrity.json")
+_ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES
+
+
+def evaluate_ready_gate_matrix(load_json) -> dict:
+    """F1 (round 22): the ONE READY gate evaluation, used by the manifest AND re-run by the archive
+    builder on the staged byte map. ``load_json(name)`` returns the parsed gate dict, ``None`` if
+    absent, and raises on invalid JSON. Returns {ok, gate_verdicts, blocking_reasons}."""
+    verdicts: dict[str, str] = {}
+    reasons: list[str] = []
+
+    for name, allowed in _VERDICT_GATES.items():
+        try:
+            g = load_json(name)
+        except Exception as exc:                       # invalid JSON / unreadable
+            reasons.append(f"{name} is not valid JSON: {exc}")
+            verdicts[name] = "INVALID"
+            continue
+        if g is None:
+            reasons.append(f"{name} is missing")
+            verdicts[name] = "MISSING"
+            continue
+        if not isinstance(g, dict) or "verdict" not in g:
+            reasons.append(f"{name} has no verdict (unknown schema)")
+            verdicts[name] = "UNKNOWN"
+            continue
+        v = g.get("verdict")
+        verdicts[name] = v if isinstance(v, str) else "UNKNOWN"
+        if v not in allowed:
+            reasons.append(f"{name} verdict {v!r} is not in {sorted(allowed)}")
+
+    for name in _OK_GATES:
+        try:
+            g = load_json(name)
+        except Exception as exc:
+            reasons.append(f"{name} is not valid JSON: {exc}")
+            verdicts[name] = "INVALID"
+            continue
+        if g is None:
+            reasons.append(f"{name} is missing")
+            verdicts[name] = "MISSING"
+            continue
+        ok = g.get("ok")
+        verdicts[name] = "ok=true" if ok is True else f"ok={ok!r}"
+        if ok is not True:
+            reasons.append(f"{name} ok is {ok!r}, not true")
+
+    return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}
+
+
+def _evidence_dir_gate_loader(evidence_dir: str):
+    """A load_json for evaluate_ready_gate_matrix that reads the (staged) evidence dir, raising on
+    invalid JSON so a corrupt gate BLOCKS rather than silently passing."""
+    def _load(name: str):
+        path = os.path.join(evidence_dir, name)
+        if not os.path.isfile(path):
+            return None
+        with open(path, "rb") as fh:
+            return json.loads(fh.read())     # raises json.JSONDecodeError on invalid
+    return _load
+
+
 def _build_alignment(
     dirty_files: list[str], evidence_dir: str,
 ) -> dict:
@@ -1413,7 +1485,16 @@ def build_manifest(
     if not containment_ok:
         packaging_warnings.extend(containment_blockers)
 
-    if evidence_valid and alignment_ok and containment_ok:
+    # F1 (round 22): READY_FOR_REVIEW additionally requires the COMPLETE packaged gate verdict
+    # matrix to pass, decoded from the (staged) gate bytes.
+    gate_matrix = {"ok": True, "gate_verdicts": {}, "blocking_reasons": []}
+    if current_evidence:
+        gate_matrix = evaluate_ready_gate_matrix(_evidence_dir_gate_loader(evidence_dir))
+        if not gate_matrix["ok"]:
+            packaging_warnings.append(
+                "gate matrix not satisfied: " + "; ".join(gate_matrix["blocking_reasons"][:4]))
+
+    if evidence_valid and alignment_ok and containment_ok and gate_matrix["ok"]:
         package_status = "READY_FOR_REVIEW"
     elif not current_evidence:
         package_status = "NO_EVIDENCE"
@@ -1489,6 +1570,7 @@ def build_manifest(
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "review_package_created": True,
         "package_status": package_status,
+        "ready_gate_matrix": gate_matrix,
         "review_subject": review_subject,
         "review_state": review_state,
         "review_subject_evidence_alignment": alignment,
