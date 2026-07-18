@@ -50,6 +50,15 @@ def _check(path: str) -> str:
     return "present" if os.path.isfile(path) else "absent"
 
 
+def _strict_json_loads(raw):
+    """F5 (round 25): the ONE duplicate-key-rejecting decoder for every trusted gate/evidence read —
+    the shared ``strict_json_loads`` (an ``object_pairs_hook`` refuses duplicate keys at ANY depth,
+    and NaN/Infinity are refused). A duplicate key RAISES rather than silently collapsing to the
+    stdlib's last-wins value, so two different byte strings can never decode to the same object."""
+    from packages.orchestration.run_manifest import strict_json_loads
+    return strict_json_loads(raw, where="gate/evidence artifact")
+
+
 class _EvidenceView:
     """F6 (round 24): a read-only Evidence accessor over an IMMUTABLE ``rel_path -> bytes`` map.
 
@@ -98,24 +107,25 @@ class _EvidenceView:
         return None if b is None else b.decode("utf-8", errors="surrogateescape")
 
     def read_json(self, rel: str) -> dict:
-        """A JSON object from the view, or {} if absent/invalid/non-object (the shared tolerant
-        read used by _mc_read_json / _read_evidence_gate)."""
+        """A JSON object from the view, or {} if absent/invalid/non-object/duplicate-keyed (the
+        shared tolerant read used by _mc_read_json / _read_evidence_gate)."""
         b = self._files.get(self._norm(rel))
         if b is None:
             return {}
         try:
-            data = json.loads(b.decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
+            data = _strict_json_loads(b)                # F5 (round 25): duplicate keys rejected
+        except Exception:
             return {}
         return data if isinstance(data, dict) else {}
 
     def read_json_strict(self, rel: str):
-        """None if absent; ``json.loads`` (which RAISES on invalid JSON) otherwise — the gate loader
-        semantics, so a corrupt gate BLOCKS rather than silently passing."""
+        """None if absent; a DUPLICATE-KEY-REJECTING strict decode otherwise (F5, round 25) — a
+        corrupt or ambiguous gate (``"verdict": "BLOCKED", "verdict": "PASS"``) RAISES and so BLOCKS
+        rather than silently collapsing to the stdlib's last-wins value."""
         b = self._files.get(self._norm(rel))
         if b is None:
             return None
-        return json.loads(b)
+        return _strict_json_loads(b)
 
     def status(self, rel: str) -> str:
         return "present" if self.isfile(rel) else "absent"

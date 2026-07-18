@@ -45,6 +45,19 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _strict_loads(raw, where: str):
+    """F5 (round 25): decode a staged trust-path artifact with the shared duplicate-key-rejecting
+    decoder. A duplicate key at ANY depth (or NaN/Infinity) raises ArchivePlanError and BLOCKS the
+    package rather than silently collapsing to the stdlib's last-wins value."""
+    from packages.orchestration.run_manifest import strict_json_loads
+    try:
+        return strict_json_loads(raw, where=where)
+    except ArchivePlanError:
+        raise
+    except Exception as exc:
+        raise ArchivePlanError(f"{where} is not valid/unambiguous JSON: {exc}") from None
+
+
 class _StagedArtifacts:
     """F5 (round 21): the ONE immutable staged byte map. Each root artifact is read from the staging
     snapshot EXACTLY ONCE; objects are decoded from these bytes and the Plan's evidence members carry
@@ -75,10 +88,7 @@ class _StagedArtifacts:
         raw, _ = self.load(name)
         if raw is None:
             return None
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise ArchivePlanError(f"staged {name} is not valid JSON: {exc}") from None
+        return _strict_loads(raw, f"staged {name}")
 
 
 def _decode_subject(raw: bytes | None):
@@ -88,10 +98,7 @@ def _decode_subject(raw: bytes | None):
     )
     if raw is None:
         return ReviewSubjectV1()
-    try:
-        d = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ArchivePlanError(f"the declared review subject is not valid JSON: {exc}") from None
+    d = _strict_loads(raw, "the declared review subject")
     return decode_review_subject_from_json(d)
 
 
@@ -105,10 +112,7 @@ def _decode_content_proof(raw: bytes | None, *, subject_declared: bool):
                 "a ReviewSubject is declared but the Content Proof is absent — the authority set "
                 "cannot be derived and the package is refused")
         return None
-    try:
-        d = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ArchivePlanError(f"the Content Proof is not valid JSON: {exc}") from None
+    d = _strict_loads(raw, "the Content Proof")
     return decode_content_proof_v1(d)     # raises ContentProofError on schema failure
 
 
