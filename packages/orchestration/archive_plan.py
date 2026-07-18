@@ -81,6 +81,9 @@ _SENSITIVE_NAMES = frozenset({
 })
 #: Operator-state directory prefix — included as non-authoritative context, never blocked.
 _OPERATOR_STATE_PREFIX = ".agent/"
+#: F5 (round 23): the review-package build-output basename prefix (a prior `remedy-review-*.zip` and
+#: its `.sha256` sidecar). Classified EXCLUDE_SAFE_CONTEXT so a prior output cannot recurse.
+_BUILD_OUTPUT_PREFIX = "remedy-review-"
 
 #: F12 (round 19): the bounded archive contract. Values chosen for the current Remedy repository
 #: (~1,400 members, largest source file well under 1 MiB, total tree a few MiB) with generous
@@ -115,6 +118,11 @@ def classify_bundle_path(rel: str, *, changed: bool, kind: str | None = None,
         return DISP_OPERATOR_CONTEXT
     base = norm.rsplit("/", 1)[-1]
     low = base.lower()
+    # F5 (round 23): a PRIOR review package (or its .sha256 sidecar) is a build output, identified
+    # explicitly — never packaged (a previous output must not recurse into the new one), and never
+    # silently absent: it gets an explicit safe-context exclusion.
+    if base.startswith(_BUILD_OUTPUT_PREFIX):
+        return DISP_EXCLUDE_SAFE_CONTEXT
     _sensitive = (base in _SENSITIVE_NAMES or low in _SENSITIVE_NAMES
                   or any(low.endswith(sfx) for sfx in _SENSITIVE_SUFFIXES))
     if _sensitive:
@@ -143,12 +151,14 @@ class ArchiveMemberV1:
     #: For an authoritative record, the content hash / link target the ReviewSubject declared.
     expected_sha256: str | None = None
     expected_link_target: str | None = None
+    #: F4 (round 23): the exact uncompressed byte length bound after the snapshot read.
+    expected_size: int | None = None
 
     def to_json(self) -> dict:
         # F2 (round 19): the packaged plan carries NO local absolute source_root.
         return {"archive_path": self.archive_path, "kind": self.kind, "mode": self.mode,
                 "authoritative": self.authoritative, "source_class": self.source_class,
-                "content_sha256": self.expected_sha256,
+                "content_sha256": self.expected_sha256, "expected_size": self.expected_size,
                 "link_target": self.expected_link_target}
 
 
