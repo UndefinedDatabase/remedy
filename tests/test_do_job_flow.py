@@ -1652,6 +1652,12 @@ class TestReviewZipPackageStatus:
                 "final_verifier": "PASS", "fresh_evidence_gate": "PASS",
                 "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
                 "runtime_integration_gate": "PASS"}}))
+        (ev / "verification_tests.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verification_type": "explicit_commands",
+            "runs": [{"run_id": "vr-0001", "command": "pytest -q", "exit_code": 0, "passed": 1,
+                      "failed": 0, "test_files": ["t.py"], "stdout_summary": "1 passed"}],
+            "command": "pytest -q", "exit_code": 0, "passed": 1, "failed": 0,
+            "test_files": ["t.py"], "timestamp": "2026-07-18T00:00:00Z"}))
 
     @staticmethod
     def _init_clean_git(path):

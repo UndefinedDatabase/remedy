@@ -1037,16 +1037,10 @@ def validate_manual_completion(ev) -> list[str]:
     # 7b: the packaged commit chain is recomputed and verified against the review subject.
     errors.extend(_verify_commit_chain(ev, per_task_union))
 
-    # 8: root verification must exist, exit 0, >=1 passed, 0 failed.
-    if not vt:
-        errors.append("verification_tests.json missing")
-    else:
-        if vt.get("exit_code", -1) != 0:
-            errors.append(f"root verification exit_code != 0 ({vt.get('exit_code')})")
-        if int(vt.get("passed", 0) or 0) < 1:
-            errors.append("root verification passed < 1")
-        if int(vt.get("failed", 0) or 0) != 0:
-            errors.append(f"root verification failed != 0 ({vt.get('failed')})")
+    # 8 (round 26, F3): root verification is STRICTLY validated, fail-closed and NO int() coercion —
+    # a string "9999" passed count, a missing record, or a runs/total mismatch all block.
+    vt_problems, _ = validate_verification_tests(vt if vt else None)
+    errors.extend(vt_problems)
 
     # 9-12: alignment / uncovered / hash mismatches / missing proofs (final verifier + gates).
     if fv.get("file_set_alignment_status") not in ("PASS", "PASS_WITH_RISKS"):
@@ -1555,7 +1549,12 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
         tp = _gget(gate, "test_status.passed")
         if not isinstance(tp, int) or isinstance(tp, bool) or tp < 0:
             problems.append(f"{name} test_status.passed={tp!r} is not a nonnegative integer")
-        elif ctx.get("vt_passed") is not None and tp != ctx["vt_passed"]:
+        elif ctx.get("vt_passed") is None:
+            # F3 (round 26): fail-closed — a READY final_verifier cannot be confirmed without a
+            # strictly-valid VerificationTests total to equal.
+            problems.append(f"{name} test_status.passed cannot be confirmed: the VerificationTests "
+                            f"total is missing or invalid")
+        elif tp != ctx["vt_passed"]:
             problems.append(f"{name} test_status.passed={tp} != recorded verification total "
                             f"{ctx['vt_passed']}")
         # F2: the FV's embedded gate verdicts must EQUAL the separately packaged gate verdicts.
@@ -1667,6 +1666,96 @@ def _safe_rel_path(p) -> bool:
     if not isinstance(p, str) or not p or p.startswith("/") or "\\" in p or "\0" in p:
         return False
     return not any(seg in ("", "..", ".") for seg in p.split("/"))
+
+
+_VT_NAME = "verification_tests.json"
+_VT_SUPPORTED_VERSIONS = frozenset({"1.0.0"})
+_VT_TOP_FIELDS = frozenset({"schema_version", "verification_type", "runs", "command", "exit_code",
+                            "passed", "failed", "test_files", "timestamp"})
+_VT_RUN_FIELDS = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                            "stdout_summary"})
+
+
+def _is_real_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def validate_verification_tests(vt):
+    """F3 (round 26): STRICT, FAIL-CLOSED ``VerificationTestsV1``. Returns ``(problems, passed)``:
+    an empty ``problems`` means the document is exactly a supported, coherent, all-passing
+    verification record and ``passed`` is its authoritative total. No ``int(...)`` coercion — a
+    string ``"9999"`` is refused, never accepted. Missing/invalid/unsupported/incoherent blocks."""
+    if vt is None:
+        return [f"{_VT_NAME} is missing"], None
+    if not isinstance(vt, dict):
+        return [f"{_VT_NAME} is not an object"], None
+    problems: list[str] = []
+    extra = set(vt) - _VT_TOP_FIELDS
+    missing = _VT_TOP_FIELDS - set(vt)
+    if extra:
+        problems.append(f"{_VT_NAME} has unknown field(s) {sorted(extra)}")
+    if missing:
+        problems.append(f"{_VT_NAME} is missing field(s) {sorted(missing)}")
+    if vt.get("schema_version") not in _VT_SUPPORTED_VERSIONS:
+        problems.append(f"{_VT_NAME} schema_version {vt.get('schema_version')!r} unsupported")
+    if not isinstance(vt.get("verification_type"), str):
+        problems.append(f"{_VT_NAME} verification_type is not a string")
+    for f in ("exit_code", "passed", "failed"):
+        if not _is_real_int(vt.get(f)):
+            problems.append(f"{_VT_NAME} {f}={vt.get(f)!r} is not a real integer")
+    if _is_real_int(vt.get("exit_code")) and vt["exit_code"] != 0:
+        problems.append(f"{_VT_NAME} exit_code != 0 ({vt['exit_code']})")
+    if _is_real_int(vt.get("failed")) and vt["failed"] != 0:
+        problems.append(f"{_VT_NAME} failed != 0 ({vt['failed']})")
+    if _is_real_int(vt.get("passed")) and vt["passed"] < 1:
+        problems.append(f"{_VT_NAME} passed < 1 ({vt['passed']})")
+    runs = vt.get("runs")
+    run_files: set = set()
+    if not isinstance(runs, list) or not runs:
+        problems.append(f"{_VT_NAME} runs is not a nonempty list")
+    else:
+        sum_p = sum_f = 0
+        seen_ids: set = set()
+        for i, r in enumerate(runs):
+            if not isinstance(r, dict) or set(r) != _VT_RUN_FIELDS:
+                problems.append(f"{_VT_NAME} runs[{i}] has the wrong field set")
+                continue
+            rid = r.get("run_id")
+            if not isinstance(rid, str) or not rid:
+                problems.append(f"{_VT_NAME} runs[{i}] run_id is empty")
+            elif rid in seen_ids:
+                problems.append(f"{_VT_NAME} duplicate run_id {rid!r}")
+            else:
+                seen_ids.add(rid)
+            for f in ("exit_code", "passed", "failed"):
+                if not _is_real_int(r.get(f)):
+                    problems.append(f"{_VT_NAME} runs[{i}].{f} is not a real integer")
+            if _is_real_int(r.get("exit_code")) and r["exit_code"] != 0:
+                problems.append(f"{_VT_NAME} runs[{i}] exit_code != 0")
+            if _is_real_int(r.get("failed")) and r["failed"] != 0:
+                problems.append(f"{_VT_NAME} runs[{i}] failed != 0")
+            if not isinstance(r.get("command"), str) or not r["command"]:
+                problems.append(f"{_VT_NAME} runs[{i}] command is empty")
+            tf = r.get("test_files")
+            if not isinstance(tf, list) or not all(isinstance(x, str) for x in tf):
+                problems.append(f"{_VT_NAME} runs[{i}] test_files is not a string list")
+            else:
+                run_files |= set(tf)
+            if _is_real_int(r.get("passed")):
+                sum_p += r["passed"]
+            if _is_real_int(r.get("failed")):
+                sum_f += r["failed"]
+        if not problems:
+            if sum_p != vt.get("passed"):
+                problems.append(f"{_VT_NAME} passed {vt.get('passed')} != sum of runs {sum_p}")
+            if sum_f != vt.get("failed"):
+                problems.append(f"{_VT_NAME} failed {vt.get('failed')} != sum of runs {sum_f}")
+    tf_top = vt.get("test_files")
+    if not isinstance(tf_top, list) or not all(isinstance(x, str) for x in tf_top):
+        problems.append(f"{_VT_NAME} test_files is not a string list")
+    elif not problems and set(tf_top) != run_files:
+        problems.append(f"{_VT_NAME} test_files is not the union of the runs' test_files")
+    return problems, (vt.get("passed") if not problems else None)
 
 
 #: The commit gate's embedded gate_checks keys → the READY-matrix gate file whose verdict must match.
@@ -1781,13 +1870,16 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
             ctx["proof_hashes"] = dict(fh)
     except Exception:
         pass                                           # a corrupt proof blocks in the coordinator
+    # F3 (round 26): the VerificationTests are STRICTLY validated, fail-closed. A present-but-invalid
+    # record blocks here; a valid record's ``passed`` is the authoritative total the FV must equal.
+    vt_problems: list[str] = []
     try:
-        vt = load_json("verification_tests.json")
-        if isinstance(vt, dict) and isinstance(vt.get("passed"), int) \
-                and not isinstance(vt.get("passed"), bool):
-            ctx["vt_passed"] = vt["passed"]
-    except Exception:
-        pass
+        vt_raw = load_json(_VT_NAME)
+    except Exception as exc:
+        vt_problems = [f"{_VT_NAME} is not valid JSON: {exc}"]
+    else:
+        vt_problems, ctx["vt_passed"] = validate_verification_tests(vt_raw)
+    ctx["vt_present"] = ctx.get("vt_passed") is not None
 
     # Pass 2 — validate.
     for name, allowed in _VERDICT_GATES.items():
@@ -1804,6 +1896,10 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
             reasons.append(f"{name} verdict {g.get('verdict')!r} is not in {sorted(allowed)}")
             continue
         reasons.extend(_gate_semantic_problems(name, g, verdicts, ctx))
+        # F3 (round 26): a present, valid final_verifier means a READY package is being evaluated —
+        # its VerificationTests must be a strictly-valid, all-passing record.
+        if name == "final_verifier_report.json":
+            reasons.extend(vt_problems)
 
     for name in _OK_GATES:
         g = loaded[name]

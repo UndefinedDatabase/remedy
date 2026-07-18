@@ -161,6 +161,14 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
             "gate_checks": {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
                             "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
                             "runtime_integration_gate": "PASS"}},
+        # round 26: the strictly-valid VerificationTests whose total the final_verifier equals.
+        "verification_tests.json": {
+            "schema_version": "1.0.0", "verification_type": "explicit_commands",
+            "runs": [{"run_id": "vr-0001", "command": "pytest -q", "exit_code": 0, "passed": 1,
+                      "failed": 0, "test_files": ["tests_pkg/test_app.py"],
+                      "stdout_summary": "1 passed"}],
+            "command": "pytest -q", "exit_code": 0, "passed": 1, "failed": 0,
+            "test_files": ["tests_pkg/test_app.py"], "timestamp": "2026-07-18T00:00:00Z"},
     }
 
 
