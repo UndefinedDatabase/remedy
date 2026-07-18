@@ -1287,3 +1287,55 @@ class TestF012Round21IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round22IsPinned:
+    """Round 22: the gate-and-snapshot closure — READY bound to the complete gate matrix over one
+    staged byte map, a strict inventory bijection, and one bundle-policy owner."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def _readme(self):
+        from pathlib import Path as _P
+        return _P("README.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 22" in self._f012()
+
+    def test_the_ready_gate_matrix_is_documented(self):
+        doc = self._f012()
+        assert "The exact READY gate matrix" in doc
+        assert "evaluate_ready_gate_matrix" in doc
+        assert "commit_execution_gate = NEEDS_HUMAN_APPROVAL` is expected and nonblocking" in doc
+
+    def test_one_staged_byte_map_owner_is_documented(self):
+        doc = self._f012()
+        assert "one staged byte-map owner" in doc
+        assert "the package always contains exactly the gate bytes used to decide status" in doc
+
+    def test_strict_inventory_bijection_is_documented(self):
+        doc = self._f012()
+        assert "EvidenceSnapshotInventoryV1" in doc
+        assert "CALLED in the production build before READY is possible" in doc
+
+    def test_one_bundle_policy_owner_is_documented(self):
+        doc = self._f012()
+        assert "the sole bundle-policy owner" in doc
+        assert "no policy-relevant path silently" in doc
+
+    def test_complete_regression_is_documented(self):
+        doc = self._f012()
+        assert "all 46 `test_run_manifest*.py`" in doc
+
+    def test_readme_states_the_gate_matrix(self):
+        r = self._readme()
+        assert "complete gate verdict matrix" in r
+        assert "exact bijection with the plan" in r
+
+    def test_f012_still_in_progress_and_f017_not_started(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "- [~] F012" in status
+        assert "- [ ] F017" in status

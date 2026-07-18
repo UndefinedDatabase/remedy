@@ -134,7 +134,11 @@ recompute the whole chain and no artifact ever hashes itself. Every one of those
 exact **raw-byte** identity — `SHA256` of the exact bytes packaged at that archive path, decoded
 and packaged from one immutable staged byte map (a source changed between decoding it and packaging
 it is refused) — and the final package status is read from the **verified package model** the
-builder returns, never a post-build reread of the mutable manifest on disk. Task truth is read in the
+builder returns, never a post-build reread of the mutable manifest on disk. READY_FOR_REVIEW itself
+is bound to the **complete gate verdict matrix** (final verifier, fresh evidence, artifact contract,
+change provenance, runtime integration, manifest and post-mortem integrity) decoded from those same
+staged gate bytes — a blocking gate can never ride inside a READY package — and the staged snapshot
+inventory is validated as an exact bijection with the plan before READY is possible. Task truth is read in the
 episode's own context: a completed episode's task must be applied or passed, and the status a task
 completed under is frozen so a later episode cannot rewrite it.
 `--check-manifest` is strictly read-only and stays contained THROUGH the inspection:
