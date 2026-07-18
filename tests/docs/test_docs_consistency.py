@@ -1428,3 +1428,45 @@ class TestF012Round24IsPinned:
         doc = self._f012()
         assert "Snapshot-only manifest construction" in doc
         assert "no Evidence helper opens, stats or lists the staging filesystem" in doc
+
+
+class TestF012Round25IsPinned:
+    """Round 25: recursive gate schemas, complete semantics, metadata key safety, exact commit-gate
+    issue derivation, duplicate-key rejection, and no-follow staged acquisition."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 25" in self._f012()
+
+    def test_recursive_schemas_documented(self):
+        doc = self._f012()
+        assert "Recursive gate schemas" in doc
+        assert "an unknown NESTED field blocks" in doc
+
+    def test_complete_semantics_documented(self):
+        doc = self._f012()
+        assert "Complete gate semantics" in doc
+        assert "the packaged ContentProof authority" in doc
+
+    def test_metadata_key_safety_documented(self):
+        doc = self._f012()
+        assert "Metadata key safety" in doc
+        assert "walks dictionary KEYS" in doc
+
+    def test_exact_commit_issues_documented(self):
+        doc = self._f012()
+        assert "Exact commit-gate issues" in doc
+        assert "issue text is not a second" in doc
+
+    def test_duplicate_key_rejection_documented(self):
+        doc = self._f012()
+        assert "Duplicate-key rejection" in doc
+        assert "refuses duplicate keys at ANY depth" in doc
+
+    def test_no_follow_acquisition_documented(self):
+        doc = self._f012()
+        assert "No-follow acquisition" in doc
+        assert "never followed or read" in doc
