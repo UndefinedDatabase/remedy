@@ -19,12 +19,14 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _REQUIRED_SCRIPTS = ("make_review_zip.sh", "build_review_manifest.py", "build_review_zip.py",
-                     "build_observability_index.py", "select_review_evidence.py")
+                     "build_observability_index.py", "select_review_evidence.py",
+                     "stage_review_evidence.py")
 _REQUIRED_MODULES = ("packages/orchestration/__init__.py", "packages/orchestration/data_paths.py",
                      "packages/orchestration/evidence_index.py",
                      "packages/orchestration/review_zip.py",
                      "packages/orchestration/archive_plan.py",
                      "packages/orchestration/review_subject.py",
+                     "packages/orchestration/evidence_inventory.py",
                      "packages/common/__init__.py", "packages/common/secure_fs.py")
 
 _S_IFREG = 0o100000

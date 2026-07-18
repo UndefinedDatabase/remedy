@@ -210,10 +210,21 @@ def main() -> int:
 
     try:
         # F5 — read the root artifacts from the ONE immutable staged byte map (once each).
+        # F2 (round 22) — the SAME map also owns the gate bytes and the snapshot inventory, so the
+        # READY decision and the packaged bytes are one and the same.
         staged = _StagedArtifacts(evidence_root, args.current_prefix)
         subject_bytes, subject_sha = staged.load("review_subject.json")
         proof_bytes, proof_sha = staged.load("current_change_content_proof.json")
         _, chain_sha = staged.load("review_commit_chain.json")
+        SNAPSHOT_INVENTORY_NAME = ""
+        if evidence_root:
+            from packages.orchestration.evidence_inventory import SNAPSHOT_INVENTORY_NAME
+            for _gate in ("final_verifier_report.json", "fresh_evidence_gate.json",
+                          "artifact_contract_gate.json", "change_provenance_gate.json",
+                          "runtime_integration_gate.json", "manifest_integrity.json",
+                          "postmortem_integrity.json"):
+                staged.load(_gate)                          # bind each gate's bytes into the map
+            staged.load(SNAPSHOT_INVENTORY_NAME)
 
         subject = _decode_subject(subject_bytes)
         # F3 — a Subject is declared by its base declaration, not by having files; a declared
@@ -256,6 +267,34 @@ def main() -> int:
             plan_bytes = (json.dumps(finalized.to_json(), indent=2, sort_keys=True) + "\n").encode()
             sha_plan = _sha256_hex(plan_bytes)
 
+            # F1/F2 (round 22) — re-evaluate the READY gate matrix on the SAME staged byte map that
+            # is packaged, and F3 — validate the snapshot inventory bijection against the finalized
+            # plan. A blocking gate or an invalid inventory forces BLOCKED_EVIDENCE, and the gate
+            # bytes were bound into the plan's evidence members so a mutation between decode and
+            # package is refused by snapshot_plan_members above.
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location(
+                "_brm_gates", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                           "build_review_manifest.py"))
+            _brm = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_brm)
+            gate_matrix = _brm.evaluate_ready_gate_matrix(staged.load_json)
+
+            from packages.orchestration.evidence_inventory import (
+                validate_snapshot_inventory,
+            )
+            obs_index_arc = f"{args.current_prefix}/self_run_observability_index.json"
+            inventory_arc = f"{args.current_prefix}/{SNAPSHOT_INVENTORY_NAME}"
+            inv = staged.load_json(SNAPSHOT_INVENTORY_NAME)
+            inventory_problems: list = []
+            if inv is not None:
+                inventory_problems = validate_snapshot_inventory(
+                    inv, finalized, prefix=args.current_prefix,
+                    generated_outside_boundary={obs_index_arc, inventory_arc})
+            elif finalized.evidence_members:
+                inventory_problems = ["evidence_snapshot_inventory.json is missing"]
+            status_blockers = list(gate_matrix["blocking_reasons"]) + inventory_problems
+
             # Phase 3 — the expectation artifact carries plan_sha256 + the full expected model.
             # F2 — every *_sha256 here is the RAW packaged bytes' sha (subject/proof from the one
             # staged byte map), never a reserialized projection.
@@ -287,6 +326,15 @@ def main() -> int:
 
             from packages.orchestration.review_zip import _read_manifest_no_follow
             base_manifest = json.loads(_read_manifest_no_follow(args.manifest_disk))
+            # F1/F3 — the FINAL status is the manifest's status ONLY when the gate matrix and the
+            # snapshot inventory (decoded from the packaged bytes) also pass; else BLOCKED_EVIDENCE.
+            _ms = base_manifest.get("package_status", "UNKNOWN")
+            if _ms in ("READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED") and status_blockers:
+                _ms = "BLOCKED_EVIDENCE"
+            base_manifest["package_status"] = _ms
+            base_manifest["ready_gate_matrix"] = gate_matrix
+            base_manifest["snapshot_inventory_status"] = {
+                "ok": not inventory_problems, "problems": inventory_problems[:8]}
             base_manifest["package_hash_chain"] = {
                 "review_archive_plan_sha256": sha_plan,
                 "review_zip_expectation_sha256": sha_expect,
