@@ -344,7 +344,7 @@ find . \
     "${EVIDENCE_EXCLUDE_ARGS[@]}" \
     -false \
   \) -prune -o \
-  \( -type f -o -type l \) \
+  \( -type f -o -type l -o -type p -o -type s -o -type b -o -type c \) \
   ! -name '.coverage' \
   ! -name '.coverage.*' \
   ! -name 'coverage.xml' \
@@ -540,7 +540,10 @@ if [[ -n "$EV_ROOT_ARG" ]]; then
   PLAN_OUT_ARG="$STAGED_CURRENT/review_archive_plan.json"
 fi
 
-python3 scripts/build_review_zip.py \
+# F6/F7 (round 21): capture build_review_zip's verified-model result (package_status,
+# evidence_authoritative, review_subject_alignment, manifest sha) so the final filename and status
+# come from the VERIFIED package, never a post-build reread of the mutable disk manifest.
+BUILD_RESULT="$(python3 scripts/build_review_zip.py \
   --out "$OUT" \
   --repo-root "$ROOT" \
   --repo-files0 "$TMP0" \
@@ -551,7 +554,8 @@ python3 scripts/build_review_zip.py \
   --current-prefix "$CURRENT_PREFIX" \
   --plan-out "$PLAN_OUT_ARG" \
   --manifest-rel "$MANIFEST" \
-  --manifest-disk "$MANIFEST"
+  --manifest-disk "$MANIFEST")"
+echo "$BUILD_RESULT"
 
 # --- Post-build verification ---
 # Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail.
@@ -639,20 +643,32 @@ fi
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 
-# --- Read package status and rename zip to include it ---
+# --- Package status comes from the VERIFIED build result (F6/F7, round 21), NOT a disk reread ---
+# A disk manifest replaced after ZIP construction cannot alter the filename or reported status.
 PACKAGE_STATUS="$(python3 -c "
-import json
-m = json.load(open('$MANIFEST'))
-print(m.get('package_status', 'UNKNOWN'))
-" 2>/dev/null || echo "UNKNOWN")"
-
+import json, sys
+try:
+    r = json.loads('''$BUILD_RESULT''')
+    print(r.get('package_status', 'UNKNOWN'))
+except Exception:
+    print('UNKNOWN')
+")"
 EVIDENCE_AUTH="$(python3 -c "
 import json
-m = json.load(open('$MANIFEST'))
-ce = m.get('current_evidence', {})
-ef = ce.get('evidence_freshness', {})
-print('true' if ef.get('evidence_authoritative') else 'false')
-" 2>/dev/null || echo "false")"
+try:
+    r = json.loads('''$BUILD_RESULT''')
+    print('true' if r.get('evidence_authoritative') else 'false')
+except Exception:
+    print('false')
+")"
+ALIGNMENT_VERDICT="$(python3 -c "
+import json
+try:
+    r = json.loads('''$BUILD_RESULT''')
+    print(r.get('review_subject_alignment', '$ALIGNMENT_VERDICT'))
+except Exception:
+    print('$ALIGNMENT_VERDICT')
+")"
 
 FINAL_OUT="remedy-review-${STAMP}-${PACKAGE_STATUS}.zip"
 mv "$OUT" "$FINAL_OUT"

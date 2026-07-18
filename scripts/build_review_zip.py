@@ -45,71 +45,84 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _load_subject(path: str):
-    """Fail closed. No path -> legacy empty subject. A supplied path that is missing, invalid JSON
-    or schema-failing BLOCKS, never a silent downgrade to an empty subject (F10, round 19)."""
+class _StagedArtifacts:
+    """F5 (round 21): the ONE immutable staged byte map. Each root artifact is read from the staging
+    snapshot EXACTLY ONCE; objects are decoded from these bytes and the Plan's evidence members carry
+    these exact shas, so `snapshot_plan_members` refuses if a staged file changed between decode and
+    package — decode-bytes and package-bytes are provably identical."""
+
+    def __init__(self, evidence_root: str | None, current_prefix: str):
+        self.by_arcname: dict[str, tuple[bytes, str]] = {}     # arcname -> (bytes, sha256)
+        self._root = evidence_root
+        self._prefix = current_prefix
+
+    def load(self, name: str) -> tuple[bytes | None, str]:
+        """Read `<prefix>/<name>` once (bytes, sha). Absent -> (None, "")."""
+        if not self._root:
+            return None, ""
+        arc = f"{self._prefix}/{name}"
+        if arc in self.by_arcname:
+            return self.by_arcname[arc]
+        p = os.path.join(self._root, arc)
+        if not os.path.isfile(p):
+            return None, ""
+        raw = open(p, "rb").read()
+        rec = (raw, _sha256_hex(raw))
+        self.by_arcname[arc] = rec
+        return rec
+
+    def load_json(self, name: str):
+        raw, _ = self.load(name)
+        if raw is None:
+            return None
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ArchivePlanError(f"staged {name} is not valid JSON: {exc}") from None
+
+
+def _decode_subject(raw: bytes | None):
+    """Fail closed. No bytes -> legacy empty subject. Invalid JSON or schema failure BLOCKS."""
     from packages.orchestration.review_subject import (
         ReviewSubjectV1, decode_review_subject_from_json,
     )
-    if not path:
-        return ReviewSubjectV1(), b""
-    if not os.path.isfile(path):
-        raise ArchivePlanError(f"the declared review subject {path!r} is absent")
+    if raw is None:
+        return ReviewSubjectV1()
     try:
-        raw = open(path, "rb").read()
         d = json.loads(raw)
-    except (OSError, json.JSONDecodeError) as exc:
+    except json.JSONDecodeError as exc:
         raise ArchivePlanError(f"the declared review subject is not valid JSON: {exc}") from None
-    return decode_review_subject_from_json(d), raw
+    return decode_review_subject_from_json(d)
 
 
-def _load_content_proof(path: str, *, subject_declared: bool):
-    """F2 (round 20): the ONE authority source, strict-decoded. When a Subject is declared the proof
-    is MANDATORY; a missing/invalid/schema-failing proof BLOCKS. There is no fail-open ``set()``."""
+def _decode_content_proof(raw: bytes | None, *, subject_declared: bool):
+    """F2/F3 (round 20/21): the ONE authority source, strict-decoded. When a Subject is DECLARED the
+    proof is MANDATORY (even with zero files); a missing/invalid/schema-failing proof BLOCKS."""
     from packages.orchestration.review_subject import decode_content_proof_v1
-    if not path or not os.path.isfile(path):
+    if raw is None:
         if subject_declared:
             raise ArchivePlanError(
                 "a ReviewSubject is declared but the Content Proof is absent — the authority set "
                 "cannot be derived and the package is refused")
-        return None, b""
+        return None
     try:
-        raw = open(path, "rb").read()
         d = json.loads(raw)
-    except (OSError, json.JSONDecodeError) as exc:
+    except json.JSONDecodeError as exc:
         raise ArchivePlanError(f"the Content Proof is not valid JSON: {exc}") from None
-    return decode_content_proof_v1(d), raw     # raises ContentProofError on schema failure
+    return decode_content_proof_v1(d)     # raises ContentProofError on schema failure
 
 
-def _staged_json(evidence_root: str, rel: str):
-    """Load one staged evidence JSON by relative path, or None if absent."""
-    if not evidence_root:
-        return None
-    p = os.path.join(evidence_root, rel)
-    if not os.path.isfile(p):
-        return None
-    try:
-        return json.loads(open(p, "rb").read())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ArchivePlanError(f"staged {rel} is not valid JSON: {exc}") from None
-
-
-def _prefix_paths(paths, prefix):
-    return {f"{prefix}/{p}" for p in paths}
-
-
-def _assert_authority_equality(*, authority: set, subject, content_proof, evidence_root: str,
-                               current_prefix: str) -> None:
-    """F2 (round 20): authority MUST equal every other authoritative set. Any disagreement blocks."""
+def _assert_authority_equality(*, authority: set, subject, content_proof, staged) -> None:
+    """F2 (round 20): authority MUST equal every other authoritative set — all decoded from the ONE
+    staged byte map (F5). Any disagreement blocks."""
     from packages.orchestration.repair_attest import is_attestable_source
 
     if content_proof is not None:
         if authority != content_proof.authority_paths():
             raise ArchivePlanError("authority set != Content-Proof file+tombstone paths")
-        if subject.files:
-            if content_proof.base_commit != subject.base_commit \
-                    or content_proof.head_commit != subject.head_commit:
-                raise ArchivePlanError("Content-Proof base/head != ReviewSubject base/head")
+        if content_proof.base_commit != subject.base_commit \
+                or content_proof.head_commit != subject.head_commit:
+            raise ArchivePlanError("Content-Proof base/head != ReviewSubject base/head")
 
     attestable_subject = {f.path for f in subject.files if is_attestable_source(f.path)}
     if authority != attestable_subject:
@@ -119,16 +132,29 @@ def _assert_authority_equality(*, authority: set, subject, content_proof, eviden
             f"authority set != attestable ReviewSubject paths "
             f"(only_in_authority={only_auth}, only_in_subject={only_subj})")
 
-    fv = _staged_json(evidence_root, f"{current_prefix}/final_verifier_report.json")
+    fv = staged.load_json("final_verifier_report.json")
     if fv is not None:
-        fv_auth = set(fv.get("authoritative_changed_files") or [])
-        if authority != fv_auth:
+        if authority != set(fv.get("authoritative_changed_files") or []):
             raise ArchivePlanError("authority set != Final-Verifier authoritative_changed_files")
-    cpg = _staged_json(evidence_root, f"{current_prefix}/change_provenance_gate.json")
+    cpg = staged.load_json("change_provenance_gate.json")
     if cpg is not None:
-        covered = set(cpg.get("covered_files") or [])
-        if authority != covered:
+        if authority != set(cpg.get("covered_files") or []):
             raise ArchivePlanError("authority set != Change-Provenance covered_files")
+
+
+def _bind_staged_expected_hashes(plan, by_arcname: dict):
+    """F5: set each pre-read staged artifact's decode-time sha as its plan evidence member's expected
+    hash, so the snapshot read that packages it must reproduce the exact bytes that were decoded."""
+    def _fill(members):
+        out = []
+        for m in members:
+            rec = by_arcname.get(m.archive_path)
+            if rec is not None and m.kind == "regular":
+                out.append(dataclasses.replace(m, expected_sha256=rec[1]))
+            else:
+                out.append(m)
+        return tuple(out)
+    return dataclasses.replace(plan, evidence_members=_fill(plan.evidence_members))
 
 
 def _finalize_plan(plan, snapshot):
@@ -183,27 +209,41 @@ def main() -> int:
     evidence_root = args.evidence_root or None
 
     try:
-        subject, subject_bytes = _load_subject(args.subject_json)
-        subject_declared = bool(subject.files)
-        content_proof, proof_bytes = _load_content_proof(
-            args.content_proof_json, subject_declared=subject_declared)
+        # F5 — read the root artifacts from the ONE immutable staged byte map (once each).
+        staged = _StagedArtifacts(evidence_root, args.current_prefix)
+        subject_bytes, subject_sha = staged.load("review_subject.json")
+        proof_bytes, proof_sha = staged.load("current_change_content_proof.json")
+        _, chain_sha = staged.load("review_commit_chain.json")
+
+        subject = _decode_subject(subject_bytes)
+        # F3 — a Subject is declared by its base declaration, not by having files; a declared
+        # zero-file / net-zero / revert subject still requires a strict Proof.
+        subject_declared = subject.declared
+        content_proof = _decode_content_proof(proof_bytes, subject_declared=subject_declared)
         authority = content_proof.authority_paths() if content_proof is not None else set()
 
         if subject_declared:
-            _assert_authority_equality(
-                authority=authority, subject=subject, content_proof=content_proof,
-                evidence_root=args.evidence_root, current_prefix=args.current_prefix)
+            _assert_authority_equality(authority=authority, subject=subject,
+                                       content_proof=content_proof, staged=staged)
 
+        # F2 — the plan's subject identity is the RAW packaged Subject bytes' sha256.
         plan = build_archive_plan(
             repo_root=args.repo_root, subject=subject, repo_context_rel=repo_files,
             evidence_root=evidence_root, evidence_rel=evidence_files,
-            authoritative_paths=authority)
+            authoritative_paths=authority,
+            review_subject_raw_sha256=(subject_sha or None))
+
+        # F5 — bind every pre-read staged artifact's decode-time sha into its plan evidence member,
+        # so snapshot_plan_members REFUSES if the staged file changed between decode and package.
+        plan = _bind_staged_expected_hashes(plan, staged.by_arcname)
 
         # Phase 1 — snapshot every source member once (anchored no-follow, verified).
         snapshot = snapshot_plan_members(plan)
 
         generated: dict = {}
         gen_hashes: dict = {}
+        verified_status = {"package_status": "NO_EVIDENCE", "evidence_authoritative": False,
+                           "review_subject_alignment": "absent", "manifest_sha256": ""}
         if args.plan_out and evidence_root:
             base = os.path.dirname(args.plan_out)
             plan_rel = os.path.relpath(args.plan_out, evidence_root)
@@ -217,12 +257,14 @@ def main() -> int:
             sha_plan = _sha256_hex(plan_bytes)
 
             # Phase 3 — the expectation artifact carries plan_sha256 + the full expected model.
+            # F2 — every *_sha256 here is the RAW packaged bytes' sha (subject/proof from the one
+            # staged byte map), never a reserialized projection.
             expect = {
                 "expectation_v": 1,
-                "verifier": "review_zip.verify_review_zip/round20",
+                "verifier": "review_zip.verify_review_zip/round21",
                 "review_archive_plan_sha256": sha_plan,
-                "review_subject_sha256": _sha256_hex(subject_bytes) if subject_bytes else "",
-                "content_proof_sha256": _sha256_hex(proof_bytes) if proof_bytes else "",
+                "review_subject_sha256": subject_sha,
+                "content_proof_sha256": proof_sha,
                 "authority_set_sha256": _sha256_hex(
                     json.dumps(sorted(authority)).encode()),
                 "expected_member_count": len(snapshot) + 3,   # sources + plan + expectation + manifest
@@ -236,10 +278,8 @@ def main() -> int:
             expect_bytes = (json.dumps(expect, indent=2, sort_keys=True) + "\n").encode()
             sha_expect = _sha256_hex(expect_bytes)
 
-            # Phase 3 — the final manifest carries the whole directed chain of hashes.
-            chain = _staged_json(evidence_root, f"{args.current_prefix}/review_commit_chain.json")
-            commit_chain_sha = _sha256_hex(
-                json.dumps(chain, sort_keys=True).encode()) if chain is not None else ""
+            # F4 — the commit-chain sha is the RAW packaged bytes' sha, from the staged map.
+            commit_chain_sha = chain_sha
             # The commit patch-set sha binds the staged commit patch bytes (by their snapshot hash).
             patch_ids = sorted(
                 snapshot[name].sha256 for name in snapshot if "commit_patch" in name)
@@ -261,8 +301,20 @@ def main() -> int:
 
             generated = {plan_rel: (plan_bytes, 0o644), expect_rel: (expect_bytes, 0o644),
                          manifest_rel: (manifest_bytes, 0o644)}
-            gen_hashes = {plan_rel: sha_plan, expect_rel: sha_expect,
-                          manifest_rel: _sha256_hex(manifest_bytes)}
+            manifest_sha = _sha256_hex(manifest_bytes)
+            gen_hashes = {plan_rel: sha_plan, expect_rel: sha_expect, manifest_rel: manifest_sha}
+
+            # F6/F7 — the FINAL package status comes from the verified in-memory manifest bytes that
+            # are packaged, captured HERE. The Shell uses these, never a post-build disk reread.
+            _ce = base_manifest.get("current_evidence") or {}
+            verified_status = {
+                "package_status": base_manifest.get("package_status", "UNKNOWN"),
+                "evidence_authoritative": bool(
+                    _ce.get("evidence_freshness", {}).get("evidence_authoritative", False)),
+                "review_subject_alignment": (base_manifest.get(
+                    "review_subject_evidence_alignment", {}) or {}).get("verdict", "absent"),
+                "manifest_sha256": manifest_sha,
+            }
 
             # Persist the generated bytes next to the staged evidence for the exporter/other checks;
             # the ZIP is built from the in-memory bytes above, never these files.
@@ -275,8 +327,19 @@ def main() -> int:
             # No evidence / no subject: the manifest is still a generated member, read no-follow.
             from packages.orchestration.review_zip import _read_manifest_no_follow
             manifest_bytes = _read_manifest_no_follow(args.manifest_disk)
+            manifest_sha = _sha256_hex(manifest_bytes)
             generated = {args.manifest_rel: (manifest_bytes, 0o644)}
-            gen_hashes = {args.manifest_rel: _sha256_hex(manifest_bytes)}
+            gen_hashes = {args.manifest_rel: manifest_sha}
+            try:
+                _bm = json.loads(manifest_bytes)
+            except json.JSONDecodeError:
+                _bm = {}
+            verified_status = {
+                "package_status": _bm.get("package_status", "NO_EVIDENCE"),
+                "evidence_authoritative": False,
+                "review_subject_alignment": "absent",
+                "manifest_sha256": manifest_sha,
+            }
 
         # Phase 4 — build the deterministic ZIP from immutable bytes; Phase 5 — reopen and verify.
         result = build_review_zip_from_snapshot(
@@ -301,10 +364,12 @@ def main() -> int:
 
     authoritative = sum(1 for m in result["model"].values() if m.get("authoritative"))
     symlinks = sum(1 for m in result["model"].values() if m.get("kind") == "symlink")
+    # F6/F7 — the reported status is the VERIFIED package model, not a disk-manifest reread.
     print(json.dumps({"member_count": len(result["members"]),
                       "authoritative_count": authoritative,
                       "symlink_count": symlinks,
-                      "tombstone_count": len(plan.tombstones)}))
+                      "tombstone_count": len(plan.tombstones),
+                      **verified_status}))
     return 0
 
 
