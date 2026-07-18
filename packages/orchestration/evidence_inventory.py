@@ -154,20 +154,54 @@ def stage_evidence_tree(src_root: str | Path, dest_dir: str | Path, *,
             stage_evidence_snapshot(src_root, dest_dir, max_bytes=max_bytes, error_cls=error_cls)]
 
 
+#: F10 (round 21): the inventory covers exactly the SOURCE Evidence members that existed at the
+#: staging-snapshot boundary. GENERATED members (the observability index, the plan/expectation/
+#: manifest, and the inventory file itself) are written AFTER the snapshot and are explicitly OUTSIDE
+#: the inventory — they are bound by the directed hash chain instead, not by this inventory.
+INVENTORY_VERSION = 1
+
+
 def write_snapshot_inventory(dest_root: str | Path, members: list[StagedMember]) -> str:
     """Write the typed ``evidence_snapshot_inventory.json`` into ``dest_root`` and return its path.
 
-    The inventory is the immutable record the ArchivePlan consumes: every Evidence ArchiveMember's
-    expected hash comes from here, so a member cannot be verified from one version and packaged from
-    another. The inventory file itself is a generated member bound by the directed hash chain.
+    The inventory is the immutable record of the SOURCE Evidence members at the snapshot boundary:
+    every source Evidence ArchiveMember's expected hash comes from here, so a member cannot be
+    verified from one version and packaged from another. It does NOT cover generated members.
     """
     path = os.path.join(str(dest_root), SNAPSHOT_INVENTORY_NAME)
-    body = {"inventory_v": 1,
+    body = {"inventory_v": INVENTORY_VERSION,
+            "boundary": "source-evidence-at-snapshot",
             "member_count": len(members),
             "members": [m.to_json() for m in members]}
     with open(path, "wb") as fh:
         fh.write((json.dumps(body, indent=2, sort_keys=True) + "\n").encode())
     return path
+
+
+def validate_snapshot_inventory(inventory: dict, plan, *, prefix: str) -> list[str]:
+    """F10 (round 21): prove every inventory entry matches the corresponding Plan Evidence member's
+    hash and mode. ``prefix`` is the in-archive prefix of the staged current tree (evidence/current).
+
+    Generated members (obs index, plan/expectation/manifest, the inventory itself) are OUTSIDE the
+    inventory boundary and are not required to appear here. An inventory entry that names no Plan
+    member, or whose sha256/mode disagrees with it, is a problem.
+    """
+    problems: list[str] = []
+    if inventory.get("inventory_v") != INVENTORY_VERSION:
+        problems.append(f"snapshot inventory version {inventory.get('inventory_v')!r} unsupported")
+    by_arc = {m.archive_path: m for m in plan.evidence_members}
+    for entry in inventory.get("members", []):
+        rel = entry.get("relative_path")
+        arc = f"{prefix}/{rel}"
+        m = by_arc.get(arc)
+        if m is None:
+            problems.append(f"inventory names {arc!r} which is not a Plan evidence member")
+            continue
+        if m.expected_sha256 is not None and m.expected_sha256 != entry.get("sha256"):
+            problems.append(f"inventory {arc!r} sha256 disagrees with the Plan member")
+        if (m.mode & 0o7777) != (int(entry.get("mode", 0)) & 0o7777):
+            problems.append(f"inventory {arc!r} mode disagrees with the Plan member")
+    return problems
 
 
 def list_regular_tree(root: str | Path, *, prefix: str = "",

@@ -834,6 +834,9 @@ class ContentProofError(Exception):
 #: F2 (round 20): the exact field set of the authority proof.
 _CONTENT_PROOF_FIELDS = frozenset({"schema_version", "base_commit", "head_commit", "file_hashes",
                                    "file_count", "tombstones", "tombstone_count"})
+#: F8 (round 21): the EXACT supported proof versions — an unknown/prefixed version (e.g. "1.evil")
+#: blocks. Extend this set deliberately when the proof schema changes; never accept a prefix.
+_SUPPORTED_CONTENT_PROOF_VERSIONS = frozenset({"1.1.0"})
 
 
 @dataclass(frozen=True)
@@ -876,8 +879,9 @@ def validate_content_proof_schema(d: Any) -> list[str]:
         if req not in d:
             problems.append(f"content proof is missing required field {req!r}")
     sv = d.get("schema_version")
-    if not isinstance(sv, str) or not sv.startswith("1."):
-        problems.append(f"content proof schema_version {sv!r} is not a supported version 1.x")
+    if sv not in _SUPPORTED_CONTENT_PROOF_VERSIONS:
+        problems.append(f"content proof schema_version {sv!r} is not an exactly supported version "
+                        f"{sorted(_SUPPORTED_CONTENT_PROOF_VERSIONS)}")
     for cf in ("base_commit", "head_commit"):
         if not _is_hex40(d.get(cf)):
             problems.append(f"content proof {cf} is not a full lowercase sha")
