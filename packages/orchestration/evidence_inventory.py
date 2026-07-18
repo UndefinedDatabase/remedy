@@ -178,29 +178,102 @@ def write_snapshot_inventory(dest_root: str | Path, members: list[StagedMember])
     return path
 
 
-def validate_snapshot_inventory(inventory: dict, plan, *, prefix: str) -> list[str]:
-    """F10 (round 21): prove every inventory entry matches the corresponding Plan Evidence member's
-    hash and mode. ``prefix`` is the in-archive prefix of the staged current tree (evidence/current).
+#: F3 (round 22): the exact EvidenceSnapshotInventoryV1 shape.
+_INVENTORY_FIELDS = frozenset({"inventory_v", "boundary", "member_count", "members"})
+_INVENTORY_MEMBER_FIELDS = frozenset({"relative_path", "kind", "mode", "size", "sha256",
+                                      "source_class"})
+INVENTORY_BOUNDARY = "source-evidence-at-snapshot"
+_INVENTORY_MODES = frozenset({0o644, 0o755})
 
-    Generated members (obs index, plan/expectation/manifest, the inventory itself) are OUTSIDE the
-    inventory boundary and are not required to appear here. An inventory entry that names no Plan
-    member, or whose sha256/mode disagrees with it, is a problem.
+
+def _safe_rel(p) -> bool:
+    if not isinstance(p, str) or not p or p.startswith("/") or "\\" in p or "\0" in p:
+        return False
+    return not any(seg in ("", "..", ".") for seg in p.split("/"))
+
+
+def _is_hex64(v) -> bool:
+    return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v)
+
+
+def validate_snapshot_inventory(inventory: dict, plan, *, prefix: str,
+                                generated_outside_boundary=frozenset()) -> list[str]:
+    """F3 (round 22): strict `EvidenceSnapshotInventoryV1` schema PLUS an EXACT bijection with the
+    Source-Evidence Plan members inside the snapshot boundary.
+
+    ``prefix`` is the staged current tree's in-archive prefix (evidence/current).
+    ``generated_outside_boundary`` is the set of in-archive member paths written AFTER the snapshot
+    (the observability index, the inventory file itself) — explicitly outside the boundary. The
+    directed-chain generated members (plan/expectation/manifest) are not Plan evidence members and
+    are outside by construction.
+
+    Every inventory entry must match a Plan evidence member's hash/mode/size, and every in-boundary
+    Source-Evidence Plan member must appear exactly once. No missing, no extra, no duplicate.
     """
     problems: list[str] = []
+    if not isinstance(inventory, dict):
+        return ["snapshot inventory is not an object"]
+    extra = set(inventory) - _INVENTORY_FIELDS
+    if extra:
+        problems.append(f"snapshot inventory has unknown field(s) {sorted(extra)}")
     if inventory.get("inventory_v") != INVENTORY_VERSION:
         problems.append(f"snapshot inventory version {inventory.get('inventory_v')!r} unsupported")
+    if inventory.get("boundary") != INVENTORY_BOUNDARY:
+        problems.append(f"snapshot inventory boundary {inventory.get('boundary')!r} != "
+                        f"{INVENTORY_BOUNDARY!r}")
+    members = inventory.get("members")
+    if not isinstance(members, list):
+        return problems + ["snapshot inventory members is not a list"]
+    if inventory.get("member_count") != len(members):
+        problems.append(f"snapshot inventory member_count {inventory.get('member_count')!r} != "
+                        f"{len(members)}")
+
     by_arc = {m.archive_path: m for m in plan.evidence_members}
-    for entry in inventory.get("members", []):
+    seen: set[str] = set()
+    inv_arcs: set[str] = set()
+    for entry in members:
+        if not isinstance(entry, dict) or set(entry) != _INVENTORY_MEMBER_FIELDS:
+            problems.append(f"inventory member has the wrong field set: {entry!r}")
+            continue
         rel = entry.get("relative_path")
+        if not _safe_rel(rel):
+            problems.append(f"inventory member path {rel!r} is not a safe relative path")
+            continue
         arc = f"{prefix}/{rel}"
+        if arc in seen:
+            problems.append(f"inventory names {arc!r} more than once")
+            continue
+        seen.add(arc)
+        inv_arcs.add(arc)
+        if entry.get("kind") != "regular":
+            problems.append(f"inventory {arc!r} kind {entry.get('kind')!r} is not 'regular'")
+        if entry.get("mode") not in _INVENTORY_MODES:
+            problems.append(f"inventory {arc!r} mode {entry.get('mode')!r} is not 0o644/0o755")
+        if not isinstance(entry.get("size"), int) or entry.get("size") < 0:
+            problems.append(f"inventory {arc!r} size {entry.get('size')!r} is not a nonneg int")
+        if not _is_hex64(entry.get("sha256")):
+            problems.append(f"inventory {arc!r} sha256 is not a lowercase sha256")
+        if entry.get("source_class") != SOURCE_EVIDENCE:
+            problems.append(f"inventory {arc!r} source_class {entry.get('source_class')!r} != "
+                            f"{SOURCE_EVIDENCE!r}")
         m = by_arc.get(arc)
         if m is None:
             problems.append(f"inventory names {arc!r} which is not a Plan evidence member")
             continue
         if m.expected_sha256 is not None and m.expected_sha256 != entry.get("sha256"):
             problems.append(f"inventory {arc!r} sha256 disagrees with the Plan member")
-        if (m.mode & 0o7777) != (int(entry.get("mode", 0)) & 0o7777):
+        if (m.mode & 0o7777) != (int(entry.get("mode", -1)) & 0o7777):
             problems.append(f"inventory {arc!r} mode disagrees with the Plan member")
+
+    # EXACT bijection: every in-boundary Source-Evidence Plan member must appear exactly once.
+    plan_source = {m.archive_path for m in plan.evidence_members
+                   if m.source_class == SOURCE_EVIDENCE
+                   and m.archive_path not in set(generated_outside_boundary)}
+    for missing in sorted(plan_source - inv_arcs):
+        problems.append(f"inventory is missing Source-Evidence Plan member {missing!r}")
+    for extra_arc in sorted(inv_arcs - plan_source):
+        if extra_arc in set(generated_outside_boundary):
+            problems.append(f"inventory names generated member {extra_arc!r} (outside the boundary)")
     return problems
 
 
