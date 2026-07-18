@@ -86,12 +86,17 @@ def _write_evidence(repo, base, head, ev):
         "verdict": "PASS_WITH_RISKS", "authoritative_changed_files": authority,
         "review_subject_uncovered_files": []}, indent=2, sort_keys=True))
     (ev / "change_provenance_gate.json").write_text(json.dumps({
-        "status": "PASS", "covered_files": authority, "uncovered_files": [],
+        "verdict": "PASS", "covered_files": authority, "uncovered_files": [],
         "source_files": authority}, indent=2, sort_keys=True))
     (ev / "review_commit_chain.json").write_text(json.dumps({
         "chain_v": 1, "base_commit": base, "head_commit": head, "commits": []}, sort_keys=True))
     (ev / "fresh_evidence_gate.json").write_text(json.dumps({
-        "evidence_freshness": {"is_fresh": True}}, indent=2, sort_keys=True))
+        "verdict": "PASS", "evidence_freshness": {"is_fresh": True}}, indent=2, sort_keys=True))
+    # F1 (round 22): the complete READY gate matrix must pass.
+    for g in ("artifact_contract_gate.json", "runtime_integration_gate.json"):
+        (ev / g).write_text(json.dumps({"verdict": "PASS"}, indent=2, sort_keys=True))
+    for g in ("manifest_integrity.json", "postmortem_integrity.json"):
+        (ev / g).write_text(json.dumps({"ok": True}, indent=2, sort_keys=True))
     # root + task artifacts so the manifest treats the run as valid
     (ev / "job_flow.json").write_text('{"job_id":"e2e","final_audit":{"status":"pass"}}')
     for f in ("manifest.json", "agent_run_trace.jsonl", "agent_run_trace_summary.json",
