@@ -1,57 +1,55 @@
-# Live Review — Steps 12361-12560 — F012 hardening round 24 (closed gate schemas + snapshot-only manifest)
+# Live Review — Steps 12561-12760 — F012 hardening round 25 (recursive gate schema + safe snapshot acquisition)
 
 ## Verdict (reviewer-owned)
-**PENDING** — F012 hardened (6 closed-schema/snapshot findings), awaiting re-review (NOT accepted).
+**PENDING** — F012 hardened (6 recursive-schema/acquisition findings), awaiting re-review (NOT accepted).
 
 ## Builder Handoff
 
 Operator-built by hand: no Builder, no Reviewer, no provider GENERATION call (0), no Fable, no
 subagents, no Evidence `job-flow`/`job-run`, no Docker, no new dependency, **no database**, **no
-LLM rerun**, no network. Raw-stream format unchanged; F001 timeout/retry unchanged; F010/F011 not
-weakened. The gate matrix and manifest construction are additive-hardened; no manifest field was
-removed.
+LLM rerun**, no network. The gate matrix and staged-byte acquisition are additive-hardened; no
+manifest field was removed.
 
-External review of `remedy-review-20260718-155415-READY_FOR_REVIEW.zip` (SHA
-`40f1fd24679288515a5229c3f950a5fe7d5a81750530e0d1dc3ca53ca5093e16`, Evidence job
-`14f211210d044bfb`, linked prior `ff07e91816a146e1`, HEAD `2f19a66`) returned SIX findings. Fixed as
+External review of `remedy-review-20260718-190112-READY_FOR_REVIEW.zip` (SHA
+`d40e2454dbfe0e576412bdc257ad7da4aede484256f694d1437f33b44afa0cb9`, Evidence job
+`041261b92c134f5b`, linked prior `14f211210d044bfb`, HEAD `3d11fc9`) returned SIX findings. Fixed as
 one bounded closure block.
 
-- **F1** — each READY gate is validated by an EXACT recursive schema: a CLOSED allowed-field set
-  (unknown field BLOCKS), version closed to {"1.0.0"}, and the complete internal truth of the
-  fresh/artifact/change/runtime gates (per-field + per-check).
-- **F2** — the final_verifier's embedded gate verdicts must EQUAL the packaged gate verdicts; all its
-  blocking fields must be clear; its own commit-readiness view (a distinct field from the packaged
-  commit gate's verdict) must be a not-ready, non-auto-promotable state.
-- **F3** — complete fresh/artifact/change/runtime semantics (nested freshness+validity, every
-  required_artifact true, stale_apply_proofs=[], each runtime check found/not-missing/known
-  type/unique path-safe id + count coherence).
-- **F4** — the commit_execution gate is an EXACT derived document: gate_checks are exactly the five
-  packaged verdicts, non_pass_gates is the derived set, blocked_gates=[], promote_ready=false,
-  verdict NEEDS_HUMAN_APPROVAL.
-- **F5** — every textual gate field is scanned recursively for secrets, local absolute paths and
-  control characters; a canary blocks before the ZIP is built.
-- **F6** — the Root Manifest is built from the IMMUTABLE Source snapshot bytes via
-  `build_manifest_from_snapshot`; no Evidence helper opens/stats/lists the staging filesystem after
-  the snapshot, so no artifact is interpreted from one read and packaged from another.
+- **F1** — every gate is validated by an EXACT typed RECURSIVE schema; an unknown NESTED field, a
+  wrong element type, or a dynamic-map key violating its grammar all block.
+- **F2** — complete READY semantics per gate: FV evidence-completeness/spec/scratch/alignment/change
+  PASS + token-critical clear + test_status.passed == recorded total; fresh id/range direct
+  equality; artifact exact required key set + stream/worktree PASS-or-NOT_APPLICABLE; change
+  covered == source-excluded == evidence_covered == ContentProof authority, and current_hashes ==
+  evidence_hashes == ContentProof file hashes (one authority model).
+- **F3** — the metadata scanner walks dictionary KEYS as well as values; secret/local-path/control/
+  over-length/credential-name keys block, and dynamic keys satisfy their typed grammar.
+- **F4** — the commit gate's blocked_gates, non_pass_gates AND issues are all exactly derived from
+  gate_checks by the writer's deterministic rule; an empty/unrelated issues list blocks.
+- **F5** — every trusted gate/subject/proof/chain decode rejects DUPLICATE JSON keys at any depth
+  (a dependency-free object_pairs_hook), so a duplicated verdict no longer resolves to last-wins.
+- **F6** — staged bytes are acquired only through anchored, O_NOFOLLOW secure_fs reads
+  (`_StagedArtifacts.load` and `_view_from_dir`); a symlink/FIFO/socket/device is never followed or
+  read, size limits are enforced during acquisition, and the preliminary manifest pass uses the same
+  secure reader.
 
 ## Verification
 
 ### Authoritative (each command recorded in the packaged `verification_tests.json`)
-- Round-24 closure suites (gate_exact_schemas, gate_embedded_verdicts, gate_sensitive_metadata,
-  commit_gate_exact_derivation, manifest_from_source_snapshot, manifest_snapshot_races) → **64
-  passed**.
-- The round-23 gate/commit/e2e suites (semantic_consistency, commit_gate_consistency,
-  ready_gate_matrix, authoritative_e2e) → all pass under the round-24 complete fixtures.
-- Broad review/manifest orchestration batch (`-k review or manifest or snapshot or evidence or gate
-  or bundle or archive or commit or stream`) → **2888 passed, 1 pre-existing baseline failure**.
-- Docs consistency (incl. `TestF012Round24IsPinned`) → **209 passed**.
-- compileall exit 0.
+- Round-25 closure suites (recursive_schemas, complete_semantics, key_safety,
+  commit_gate_issue_derivation, duplicate_keys, staged_artifact_no_follow) → **51 passed**.
+- Complete F012/review block (46 test_run_manifest*.py + persisted schemas + round13 + the full
+  review/archive/snapshot/gate batch incl. all round-24 and round-25 suites) → all pass.
+- Complete F010/F011/Evidence block (11 files) → all pass.
+- Authoritative CLI (`tests/test_do_job_flow.py` + `tests/cli`, excluding the two PRE-EXISTING
+  doc-path suites) → all pass.
+- Docs consistency (incl. `TestF012Round25IsPinned`) → all pass.
+- compileall exit 0; `bash -n scripts/make_review_zip.sh` clean; `git diff --check` clean;
+  integrity check passed (fail_count 0).
 
 ### Diagnostic (nonauthoritative; NOT in verification_tests.json)
-- `test_stream_export_e2e.py::...test_final_zip_contains_streams_under_evidence_current` fails
-  because the test's helper-copy list omits `scripts/stage_review_evidence.py` (a stale fixture). It
-  fails IDENTICALLY at the pre-round-24 base `5691c51`, so it is a pre-existing baseline failure,
-  unrelated to this block. Reported for context only, never as a proof.
+- `test_stream_export_e2e.py::...streams_under_evidence_current` fails on a stale fixture (omits
+  `scripts/stage_review_evidence.py`); it fails identically at the pre-round-24 base and is unrelated.
 
 ## Status
 
