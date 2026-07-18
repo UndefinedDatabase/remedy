@@ -472,8 +472,19 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
             str(rec.get("current_mode") or ""),
         )
 
-    recorded = sorted(_key(f) for f in (subject.get("files") or []))
-    fresh = sorted(_key(f.to_json()) for f in recomputed.files)
+    # F3 (round 23): the packaging build writes its own artifacts into the repo root
+    # (`.review_zip_manifest.json`, a `remedy-review-*` output). Those are build outputs, never a
+    # source change, so they must not pollute the review-subject recomputation the coordinator runs
+    # AFTER the manifest exists. (The ArchivePlan classifies them EXCLUDE_SAFE_CONTEXT.)
+    def _is_build_output(rec: dict) -> bool:
+        p = _mc_norm(str(rec.get("path") or ""))
+        base = p.rsplit("/", 1)[-1]
+        return base == ".review_zip_manifest.json" or base.startswith("remedy-review-")
+
+    recorded = sorted(_key(f) for f in (subject.get("files") or [])
+                      if not _is_build_output(f))
+    fresh = sorted(_key(f.to_json()) for f in recomputed.files
+                   if not _is_build_output(f.to_json()))
     if recorded != fresh:
         only_rec = [r for r in recorded if r not in fresh]
         only_new = [r for r in fresh if r not in recorded]
