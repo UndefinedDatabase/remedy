@@ -1082,6 +1082,189 @@ _RUNTIME_CHECK_TYPES = frozenset({"call_exists"})
 _FV_COMMIT_NOT_READY = frozenset({"BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_APPROVAL",
                                   "NEEDS_REPAIR", "NEEDS_TESTS"})
 
+_SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
+_MAX_KEY_LEN = 256
+
+
+# ---- F1/F3 (round 25): typed RECURSIVE gate schemas — an unknown NESTED field, a wrong element
+# type, or a dynamic-map key that violates its grammar all BLOCK. Value SEMANTICS (equality with a
+# PASS gate) stay in _gate_semantic_problems; this layer pins STRUCTURE + dynamic-key safety. ----
+class _Node:
+    """Accept anything structurally (metadata safety is scanned separately by _scan_gate_metadata)."""
+    def check(self, v, path, name):
+        return []
+
+
+class _Scalar(_Node):
+    def __init__(self, py, label):
+        self.py, self.label = py, label
+
+    def check(self, v, path, name):
+        if self.py is int and isinstance(v, bool):        # bool is an int subclass — reject it
+            return [f"{name} {path} is a bool, expected {self.label}"]
+        return [] if isinstance(v, self.py) else [f"{name} {path} is not {self.label}"]
+
+
+class _Obj(_Node):
+    def __init__(self, fields):
+        self.fields = fields
+
+    def check(self, v, path, name):
+        if not isinstance(v, dict):
+            return [f"{name} {path} is not an object"]
+        problems = []
+        extra = set(v) - set(self.fields)
+        if extra:
+            problems.append(f"{name} {path} has unknown field(s) {sorted(extra)} (schema is closed)")
+        for k, node in self.fields.items():
+            if k in v:
+                problems.extend(node.check(v[k], f"{path}.{k}" if path else k, name))
+        return problems
+
+
+class _Map(_Node):
+    """A dynamic-key map: every KEY must satisfy its typed grammar; every value its node."""
+    def __init__(self, key_kind, value):
+        self.key_kind, self.value = key_kind, value
+
+    def check(self, v, path, name):
+        if not isinstance(v, dict):
+            return [f"{name} {path} is not an object"]
+        problems = []
+        for k, val in v.items():
+            if not _valid_dynamic_key(self.key_kind, k):
+                problems.append(f"{name} {path} key {k!r} violates the {self.key_kind} grammar")
+            problems.extend(self.value.check(val, f"{path}[{k!r}]", name))
+        return problems
+
+
+class _Arr(_Node):
+    def __init__(self, elem):
+        self.elem = elem
+
+    def check(self, v, path, name):
+        if not isinstance(v, list):
+            return [f"{name} {path} is not a list"]
+        problems = []
+        for i, e in enumerate(v):
+            problems.extend(self.elem.check(e, f"{path}[{i}]", name))
+        return problems
+
+
+BOOL = _Scalar(bool, "a bool")
+INT = _Scalar(int, "an integer")
+STR = _Scalar(str, "a string")
+ANY = _Node()
+
+
+def _valid_dynamic_key(kind: str, key) -> bool:
+    if not isinstance(key, str) or not key or len(key) > _MAX_KEY_LEN:
+        return False
+    if kind == "task_id":
+        return bool(_SAFE_TASK_ID_RE.fullmatch(key))
+    if kind == "gate_name":
+        return key in _COMMIT_CHECK_TO_GATE
+    if kind in ("repo_path", "artifact_name"):
+        return _safe_rel_path(key)
+    return True                                            # generic str key (still metadata-scanned)
+
+
+_TOKEN_MODELS = _Obj({"builder": ANY, "reviewer": ANY})
+_TOKEN_BLOCK = _Obj({
+    "actual_available": ANY, "actual_prompt_tokens": ANY, "actual_completion_tokens": ANY,
+    "actual_total_tokens": ANY, "estimated_prompt_tokens": ANY, "estimated_completion_tokens": ANY,
+    "estimated_total_tokens": ANY, "measurement_source": STR, "measurement_confidence": STR,
+    "measurement_note": STR, "actual_summary": ANY, "total_cost_usd": ANY,
+    "missing_reason": ANY, "builder_estimated_total": ANY, "reviewer_estimated_total": ANY,
+    "repair_estimated_total": ANY, "provider_call_count": INT, "prompt_trace_count": INT,
+    "actual_call_count": INT, "actual_coverage_complete": BOOL, "actual_missing_reasons": ANY,
+    "cost_call_count": INT, "cost_coverage_complete": BOOL, "cost_coverage_reason": ANY,
+    "cli_version": ANY, "configured_models": _TOKEN_MODELS, "actual_models": _TOKEN_MODELS,
+    "actual_model_verified": BOOL})
+
+#: F1 (round 25): the COMPLETE recursive schema for every gate. Top-level closed field set + every
+#: nested object/list/dynamic-map typed. Replaces the flat top-level-only check.
+_GATE_SCHEMA = {
+    "final_verifier_report.json": _Obj({
+        "schema_version": STR, "verdict": STR, "also_needs_repair": BOOL,
+        "artifact_contract_gate": STR, "change_provenance_gate": STR, "fresh_evidence_gate": STR,
+        "runtime_integration_gate": STR, "commit_execution_gate": STR, "change_provenance": STR,
+        "spec_compliance": STR, "scratch_file_guard": STR, "missing_tests_gate": STR,
+        "file_set_alignment_status": STR, "final_job_review_verdict": STR, "recommended_action": STR,
+        "authoritative_changed_files": _Arr(STR), "changed_files": _Arr(STR),
+        "changed_line_ranges": _Map("repo_path", _Arr(_Arr(INT))),
+        "change_source_mismatches": _Arr(ANY), "content_hash_mismatches": _Arr(ANY),
+        "review_subject_uncovered_files": _Arr(STR), "postmortem_failures": _Arr(ANY),
+        "unresolved_findings": _Arr(ANY), "missing_evidence": _Arr(STR),
+        "execution_mode_findings": _Arr(ANY), "final_job_review_findings": _Arr(ANY),
+        "invocation_args_warnings": _Arr(STR), "model_mismatch_warnings": _Arr(STR),
+        "sticky_binding_warnings": _Arr(ANY), "token_cost_risk_findings": _Arr(ANY),
+        "report_badges": _Arr(STR), "operator_attested_tasks": _Arr(STR),
+        "test_status": _Obj({"ran": BOOL, "passed": INT, "failed": INT}),
+        "evidence_completeness": _Obj({
+            "review_scope_packet": BOOL, "spec_compliance_check": BOOL, "missing_tests_gate": BOOL,
+            "scratch_file_guard": BOOL, "token_truth": BOOL, "safe_diff": BOOL, "review_json": BOOL,
+            "tests_txt": BOOL}),
+        "execution_mode_by_task": _Map("task_id", STR),
+        "sticky_binding_by_task": _Map("task_id", BOOL),
+        "manual_completion": BOOL, "human_final_reviewer_required": BOOL,
+        "postmortem_integrity_blocked": BOOL, "manifest_integrity_blocked": BOOL,
+        "final_job_review_blocked": BOOL, "execution_mode_blocked": BOOL,
+        "model_mismatch_blocked": BOOL, "model_needs_repair": BOOL,
+        "token_cost_has_critical": BOOL, "token_cost_policy_present": BOOL,
+        "token_status": _TOKEN_BLOCK, "token_measurement": _TOKEN_BLOCK,
+        "token_measurement_confidence": STR, "token_measurement_note": STR,
+        "token_actual_summary": ANY}),
+    "fresh_evidence_gate.json": _Obj({
+        "schema_version": STR, "verdict": STR, "evidence_job_id": STR, "current_job_id": STR,
+        "current_step_range": STR, "live_review_step_range": STR, "plan_step_range": STR,
+        "job_id_match": BOOL, "live_review_match": BOOL, "plan_match": BOOL,
+        "evidence_authoritative": BOOL,
+        "evidence_freshness": _Obj({"is_fresh": BOOL, "job_id_match": BOOL, "step_range_match": BOOL}),
+        "evidence_validity": _Obj({"is_valid_current_run": BOOL, "has_job_id": BOOL,
+                                   "has_manifest": BOOL}),
+        "issues": _Arr(STR)}),
+    "artifact_contract_gate.json": _Obj({
+        "schema_version": STR, "verdict": STR, "evidence_job_id": STR, "job_id_fresh": BOOL,
+        "required_artifacts": _Map("artifact_name", BOOL),
+        "optional_artifacts": _Map("artifact_name", BOOL),
+        "missing_required": _Arr(STR), "fv_referenced_missing": _Arr(STR),
+        "critical_fv_missing": _Arr(STR), "issues": _Arr(STR),
+        "stream_artifacts": _Obj({
+            "applicable": BOOL, "verdict": STR, "tasks_with_stream_evidence": _Arr(STR),
+            "artifacts_verified": INT, "artifacts_present": INT,
+            "missing_stream_artifact_listing": _Arr(ANY), "missing_stream_artifacts": _Arr(ANY),
+            "missing_stream_artifact_metadata": _Arr(ANY), "stream_artifact_hash_mismatches": _Arr(ANY),
+            "stream_artifact_size_mismatches": _Arr(ANY), "unexpected_stream_artifacts": _Arr(ANY),
+            "duplicate_stream_artifact_refs": _Arr(ANY), "unsafe_stream_artifact_refs": _Arr(ANY)}),
+        "worktree_artifacts": _Obj({
+            "applicable": BOOL, "verdict": STR, "job_level_handoff": BOOL,
+            "handoff_coverage_verdict": STR, "handoff_coverage_issues": _Arr(ANY),
+            "missing_job_handoff": _Arr(ANY), "worktree_tasks": _Arr(ANY), "diffs_verified": INT,
+            "missing_result_diffs": _Arr(ANY), "missing_result_diff_references": _Arr(ANY),
+            "result_diff_hash_mismatches": _Arr(ANY), "result_diff_size_mismatches": _Arr(ANY),
+            "unreferenced_result_diffs": _Arr(ANY), "unsafe_result_diff_refs": _Arr(ANY)})}),
+    "change_provenance_gate.json": _Obj({
+        "schema_version": STR, "verdict": STR, "current_job_id": STR,
+        "covered_files": _Arr(STR), "source_files": _Arr(STR), "excluded_files": _Arr(STR),
+        "evidence_covered_files": _Arr(STR), "evidence_sources": _Arr(STR), "dirty_files": _Arr(STR),
+        "uncovered_files": _Arr(STR), "stale_apply_proofs": _Arr(ANY), "hash_mismatches": _Arr(ANY),
+        "issues": _Arr(STR), "current_hashes": _Map("repo_path", STR),
+        "evidence_hashes": _Map("repo_path", STR), "content_hash_verified": BOOL}),
+    "runtime_integration_gate.json": _Obj({
+        "schema_version": STR, "verdict": STR, "checks": _Arr(_Obj({
+            "check_id": STR, "check_type": STR, "file_missing": BOOL, "found": BOOL, "pattern": STR,
+            "source_file": STR})), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
+    "manifest_integrity.json": _Obj({
+        "schema_version": STR, "ok": BOOL, "failures": _Arr(ANY), "notes": _Arr(STR)}),
+    "postmortem_integrity.json": _Obj({
+        "schema_version": STR, "ok": BOOL, "failures": _Arr(ANY)}),
+    "commit_execution_gate.json": _Obj({
+        "schema_version": STR, "verdict": STR, "gate_checks": _Map("gate_name", STR),
+        "blocked_gates": _Arr(STR), "non_pass_gates": _Arr(STR), "promote_ready": BOOL,
+        "issues": _Arr(STR)}),
+}
+
 
 def _gget(gate: dict, path: str):
     """Dotted lookup; returns _MISSING if any segment is absent."""
@@ -1105,22 +1288,38 @@ def _check_fields(gate: dict, name: str, spec) -> list[str]:
     return problems
 
 
-def _scan_gate_metadata(gate, name: str) -> list[str]:
-    """F5 (round 24): no trusted gate may carry a secret, a local absolute path or a control
-    character in ANY textual field — scan every string value recursively with the shared scanners."""
+def _unsafe_text(s: str) -> str | None:
+    """Return a reason if a string carries a secret, a local absolute path or a control character."""
     from packages.orchestration.run_manifest import _contains_local_path, _contains_secret
+    if _contains_secret(s):
+        return "a secret"
+    if _contains_local_path(s):
+        return "a local absolute path"
+    if any(ord(c) < 32 and c not in "\t\n\r" for c in s):
+        return "a control character"
+    return None
+
+
+def _scan_gate_metadata(gate, name: str) -> list[str]:
+    """F5 (round 24) / F3 (round 25): no trusted gate may carry a secret, a local absolute path or a
+    control character in ANY textual field — scan every string value AND every dictionary KEY
+    recursively, since an injected map key (e.g. a file-hash keyed by an absolute path) is just as
+    dangerous as a value."""
     problems: list[str] = []
 
     def _walk(value, path):
         if isinstance(value, str):
-            if _contains_secret(value):
-                problems.append(f"{name} field {path} carries a secret")
-            elif _contains_local_path(value):
-                problems.append(f"{name} field {path} carries a local absolute path")
-            elif any(ord(c) < 32 and c not in "\t\n\r" for c in value):
-                problems.append(f"{name} field {path} carries a control character")
+            r = _unsafe_text(value)
+            if r:
+                problems.append(f"{name} field {path} carries {r}")
         elif isinstance(value, dict):
             for k, v in value.items():
+                if isinstance(k, str):
+                    r = _unsafe_text(k)
+                    if r:
+                        problems.append(f"{name} key {path}.{k!r} carries {r}")
+                    elif len(k) > _MAX_KEY_LEN:
+                        problems.append(f"{name} key {path}.{k!r} is implausibly long")
                 _walk(v, f"{path}.{k}")
         elif isinstance(value, list):
             for i, v in enumerate(value):
@@ -1131,16 +1330,15 @@ def _scan_gate_metadata(gate, name: str) -> list[str]:
 
 
 def _gate_closed_schema_problems(name: str, gate: dict) -> list[str]:
-    """F1 (round 24): version-closed + closed allowed-field set + metadata safety."""
+    """F1 (round 24/25): version-closed + EXACT RECURSIVE typed schema (unknown nested field, wrong
+    element type or unsafe dynamic-map key all block) + metadata key/value safety."""
     problems: list[str] = []
     if _gget(gate, "schema_version") not in _SUPPORTED_GATE_VERSIONS:
         problems.append(f"{name} schema_version {gate.get('schema_version')!r} is not supported "
                         f"{sorted(_SUPPORTED_GATE_VERSIONS)}")
-    allowed = _GATE_ALLOWED_FIELDS.get(name)
-    if allowed is not None:
-        extra = set(gate) - allowed
-        if extra:
-            problems.append(f"{name} has unknown field(s) {sorted(extra)} (schema is closed)")
+    schema = _GATE_SCHEMA.get(name)
+    if schema is not None:
+        problems.extend(schema.check(gate, "", name))
     problems.extend(_scan_gate_metadata(gate, name))
     return problems
 
