@@ -1,6 +1,19 @@
-# Context — current state (Steps 11761-11960)
+# Context — current state (Steps 11961-12160)
 
-## Round 21 (current) — F012 final root-identity closure
+## Round 22 (current) — F012 final gate-and-snapshot closure
+
+Review of `remedy-review-20260718-103941-READY_FOR_REVIEW.zip` (Evidence job `5bd1eb8fa7ed4601`)
+returned 5 gate-and-snapshot findings; F012 stays `[~]`. Fixed as one bounded block: READY_FOR_REVIEW
+is now bound to the complete packaged gate verdict matrix (a BLOCKED gate can never ride inside a
+READY package); the manifest and the archive consume ONE immutable staged byte map with the gate
+bytes bound into the plan (a post-manifest mutation blocks); the strict snapshot inventory is
+production-enforced as an exact Plan bijection; the ArchivePlan is the sole bundle-policy owner (the
+shell drops its sensitive exclusions, so an unchanged `.env` gets an EXCLUDE_SAFE_CONTEXT record and
+a FIFO a BLOCK_UNSUPPORTED record); and the complete F012/F010/F011 acceptance regression is
+recorded. Five new suites (34 tests) prove it. See `.agent/plan.md` for the finding table and
+`.agent/live_review.md` for the verification summary.
+
+## Round 21 — F012 final root-identity closure
 
 Review of `remedy-review-20260718-010345-READY_FOR_REVIEW.zip` (Evidence job `0ffc34687764446b`)
 returned 10 final root-identity findings; F012 stays `[~]`. Fixed as one small block: every packaged

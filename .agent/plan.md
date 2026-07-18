@@ -1,3 +1,53 @@
+# Plan — Steps 11961-12160 — F012 hardening round 22 (external FINDINGS, FINAL GATE-AND-SNAPSHOT closure)
+
+## Round 22 binding decision (the five contracts)
+
+Reviewed `remedy-review-20260718-103941-READY_FOR_REVIEW.zip`
+(SHA `b3fee1cdad4c72ac0b82f62cd39f7da64f0030c0508c16c64e787b4d40f28336`, Evidence job
+`5bd1eb8fa7ed4601`, linked prior `0ffc34687764446b`, HEAD `5691c51`). Verdict FINDINGS; F012 `[~]`.
+
+1. **The exact READY gate matrix** — READY_FOR_REVIEW requires, decoded from the exact packaged
+   bytes: `final_verifier.verdict ∈ {PASS, PASS_WITH_RISKS}`, `fresh_evidence.verdict == PASS`,
+   `artifact_contract.verdict == PASS`, `change_provenance.verdict == PASS`,
+   `runtime_integration.verdict == PASS`, `manifest_integrity.ok == true`,
+   `postmortem_integrity.ok == true`. `commit_execution_gate == NEEDS_HUMAN_APPROVAL` stays
+   nonblocking. A missing gate file, invalid gate JSON, unknown schema, blocking verdict or a
+   verdict/bool contradiction → BLOCKED_EVIDENCE. ONE implementation:
+   `evaluate_ready_gate_matrix(load_json)` in build_review_manifest.py, used by the manifest AND
+   re-run by build_review_zip.py on the staged byte map.
+2. **The one staged byte-map owner** — build_review_zip.py's `_StagedArtifacts` is the coordinator:
+   it decodes Subject/Proof/FV/CPG/Chain AND the 7 gate files + the snapshot inventory from ONE map,
+   binds each into the Plan's evidence members' expected hashes (snapshot refuses a change), derives
+   the final status from that map, and injects it into the packaged manifest bytes. No gate/status
+   artifact is read by the manifest and independently re-read for packaging without a hash bind.
+3. **The exact Inventory boundary + bijection** — strict `EvidenceSnapshotInventoryV1` (exact
+   fields/version/boundary, counts, safe unique paths, closed kind/mode, sha256, source class) and
+   an EXACT bijection with every Source-Evidence Plan member inside the boundary (no missing, no
+   extra, hash/mode/size agree). `validate_snapshot_inventory` is CALLED in the production build
+   before READY is possible. Generated members stay outside the boundary.
+4. **The one bundle-policy owner** — `classify_bundle_path` + ArchivePlan. The Shell `find` prunes
+   only structural roots and build junk and enumerates regular/symlink/special files; the sensitive
+   name/suffix exclusions are REMOVED from primary discovery so an unchanged `.env`/log/archive/key
+   reaches the plan and gets an explicit `EXCLUDE_SAFE_CONTEXT` record. Shell regex stays
+   defense-in-depth after the typed build.
+5. **The full authoritative acceptance commands** — every `test_run_manifest*.py` (all 46), the full
+   F010/F011/Evidence block (incl. job_stop_integration, stop_reasons, evidence_mode,
+   final_audit_evidence), every review + task/persisted/episode suite, CLI incl.
+   `tests/test_do_job_flow.py`, docs, integration, compileall, `bash -n`, `git diff --check`,
+   `remedy integrity check` — each recorded separately in `verification_tests.json`.
+
+## Round 22 — the 5 gate-and-snapshot findings
+
+| # | Fix |
+|---|---|
+| 1 | READY bound to the complete packaged gate verdict matrix; a BLOCKED gate cannot be READY |
+| 2 | manifest + archive consume ONE immutable staged byte map; a post-manifest mutation blocks |
+| 3 | strict EvidenceSnapshotInventoryV1 + exact bijection, CALLED in the production build |
+| 4 | ArchivePlan is the sole bundle-policy owner; the shell drops its sensitive exclusions |
+| 5 | the complete F012/F010/F011 acceptance regression recorded in packaged Evidence |
+
+---
+
 # Plan — Steps 11761-11960 — F012 hardening round 21 (external FINDINGS, FINAL ROOT-IDENTITY closure)
 
 ## Round 21 binding decision (the five single sources)
