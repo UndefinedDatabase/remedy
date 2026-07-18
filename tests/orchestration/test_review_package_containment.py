@@ -55,7 +55,9 @@ class TestThePackagerUsesComponentContainment:
 
         import scripts.build_review_manifest as brm
 
-        src = inspect.getsource(brm.build_manifest)
+        # Round 24 (F6): the containment block lives in build_manifest_from_snapshot, the core the
+        # thin build_manifest wrapper delegates to.
+        src = inspect.getsource(brm.build_manifest_from_snapshot)
         assert "contained(" in src
         # the raw sibling-vulnerable pattern must be gone from the containment block
         assert "ev_resolved.startswith(root_resolved)" not in src

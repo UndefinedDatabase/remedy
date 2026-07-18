@@ -1372,12 +1372,14 @@ class TestEvidenceHygiene:
         assert isinstance(data["file_hashes"], dict)
 
     def test_bundle_integrity_stays_packaging_layer(self):
-        from scripts.build_review_manifest import build_manifest
+        from scripts.build_review_manifest import build_manifest_from_snapshot
         from packages.orchestration.final_verifier import build_final_verifier_report
         import inspect
         fv_src = inspect.getsource(build_final_verifier_report)
         assert "review_bundle_integrity" not in fv_src
-        manifest_src = inspect.getsource(build_manifest)
+        # Round 24 (F6): the manifest is assembled by build_manifest_from_snapshot from the
+        # immutable Source-snapshot view; build_manifest is now the thin dir-reading wrapper.
+        manifest_src = inspect.getsource(build_manifest_from_snapshot)
         assert "review_bundle_integrity" in manifest_src
 
 

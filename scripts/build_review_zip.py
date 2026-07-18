@@ -333,11 +333,15 @@ def main() -> int:
                 snapshot[name].sha256 for name in snapshot if "commit_patch" in name)
             patchset_sha = _sha256_hex(json.dumps(patch_ids).encode())
 
-            # F3 (round 23) — REBUILD the Root Manifest from the staged bytes this process packages,
-            # so it is not interpreted from one read (build_review_manifest.py) and packaged from
-            # another. build_manifest reads the same staged evidence tree the ZIP members come from.
-            base_manifest = _brm.build_manifest(
-                evidence_dir=_staged_current, selection_mode=args.selection_mode,
+            # F6 (round 24) — build the Root Manifest from the IMMUTABLE Source snapshot bytes this
+            # process packages, NOT from a fresh re-read of the staged evidence tree. The snapshot
+            # was anchored/verified once above; every Evidence fact in the manifest therefore comes
+            # from exactly the bytes the ZIP carries, so no artifact can be interpreted from one read
+            # and packaged from another, and no staging-filesystem race can slip between them.
+            evidence_view = _brm._view_from_snapshot(snapshot, args.current_prefix)
+            base_manifest = _brm.build_manifest_from_snapshot(
+                evidence_view, evidence_path=_staged_current,
+                selection_mode=args.selection_mode,
                 selection_reason=args.selection_reason, candidate_count=args.candidate_count,
                 rejected_candidate_count=args.rejected_candidate_count,
                 selected_mtime=args.selected_mtime)

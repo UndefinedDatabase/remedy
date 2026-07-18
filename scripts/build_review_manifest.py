@@ -50,6 +50,125 @@ def _check(path: str) -> str:
     return "present" if os.path.isfile(path) else "absent"
 
 
+class _EvidenceView:
+    """F6 (round 24): a read-only Evidence accessor over an IMMUTABLE ``rel_path -> bytes`` map.
+
+    Once this view is built — from the coordinator's Source snapshot, or by reading a directory
+    exactly once — NO Evidence fact in the Root Manifest is ever re-read from the staging
+    filesystem: every gate, proof, provenance and task-run fact comes from these exact bytes, so a
+    file that changes on disk between the snapshot and the manifest cannot be interpreted from one
+    read and packaged from another. Repository/Git facts are resolved separately from the repo.
+    """
+
+    def __init__(self, files, mtimes=None):
+        self._files = {self._norm(k): v for k, v in dict(files).items()}
+        self._mtimes = {self._norm(k): v for k, v in dict(mtimes or {}).items()}
+        self._dirs: set[str] = {""}
+        for k in self._files:
+            parts = k.split("/")
+            for i in range(1, len(parts)):
+                self._dirs.add("/".join(parts[:i]))
+
+    @staticmethod
+    def _norm(rel: str) -> str:
+        return str(rel or "").replace(os.sep, "/").replace("\\", "/").strip("/")
+
+    def isfile(self, rel: str) -> bool:
+        return self._norm(rel) in self._files
+
+    def isdir(self, rel: str) -> bool:
+        return self._norm(rel) in self._dirs
+
+    def listdir(self, rel: str):
+        base = self._norm(rel)
+        prefix = (base + "/") if base else ""
+        names: set[str] = set()
+        for k in list(self._files) + list(self._dirs):
+            if k.startswith(prefix) and k != base:
+                rest = k[len(prefix):]
+                if rest:
+                    names.add(rest.split("/")[0])
+        return sorted(names)
+
+    def read_bytes(self, rel: str):
+        return self._files.get(self._norm(rel))
+
+    def read_text(self, rel: str):
+        b = self._files.get(self._norm(rel))
+        return None if b is None else b.decode("utf-8", errors="surrogateescape")
+
+    def read_json(self, rel: str) -> dict:
+        """A JSON object from the view, or {} if absent/invalid/non-object (the shared tolerant
+        read used by _mc_read_json / _read_evidence_gate)."""
+        b = self._files.get(self._norm(rel))
+        if b is None:
+            return {}
+        try:
+            data = json.loads(b.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def read_json_strict(self, rel: str):
+        """None if absent; ``json.loads`` (which RAISES on invalid JSON) otherwise — the gate loader
+        semantics, so a corrupt gate BLOCKS rather than silently passing."""
+        b = self._files.get(self._norm(rel))
+        if b is None:
+            return None
+        return json.loads(b)
+
+    def status(self, rel: str) -> str:
+        return "present" if self.isfile(rel) else "absent"
+
+    def mtime_iso(self, rel: str) -> str:
+        return self._mtimes.get(self._norm(rel), "")
+
+    def gate_loader(self):
+        return self.read_json_strict
+
+
+def _view_from_dir(evidence_dir: str) -> _EvidenceView:
+    """Read an evidence directory ONCE into an immutable byte map. Used by the standalone CLI and by
+    tests; the coordinator uses ``_view_from_snapshot`` so it never touches the FS after snapshot."""
+    files: dict[str, bytes] = {}
+    mtimes: dict[str, str] = {}
+    root = os.path.abspath(evidence_dir)
+    for dirpath, _dirs, filenames in os.walk(root):
+        for fn in filenames:
+            ap = os.path.join(dirpath, fn)
+            rel = os.path.relpath(ap, root).replace(os.sep, "/")
+            try:
+                with open(ap, "rb") as fh:
+                    files[rel] = fh.read()
+                mtimes[rel] = datetime.fromtimestamp(
+                    os.path.getmtime(ap), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except OSError:
+                continue
+    return _EvidenceView(files, mtimes)
+
+
+def _view_from_snapshot(snapshot, current_prefix: str) -> _EvidenceView:
+    """Build the Evidence view from the coordinator's immutable Source snapshot
+    (``dict[archive_path, SnapshotMember]``): the SAME bytes the ZIP packages, keyed by the path
+    relative to ``current_prefix``. No staging-filesystem read happens here or downstream."""
+    prefix = current_prefix.replace(os.sep, "/").strip("/") + "/"
+    files: dict[str, bytes] = {}
+    for arc, member in snapshot.items():
+        arc_n = str(arc).replace(os.sep, "/").strip("/")
+        if arc_n.startswith(prefix):
+            files[arc_n[len(prefix):]] = member.data
+    return _EvidenceView(files)
+
+
+def _as_view(ev):
+    """Accept an already-built ``_EvidenceView`` OR a directory path (str/os.PathLike). A path is
+    read ONCE into an immutable view — this is the only place the standalone helpers touch the FS,
+    and the coordinator always passes a snapshot-backed view so it never reaches this branch."""
+    if ev is None or isinstance(ev, _EvidenceView):
+        return ev
+    return _view_from_dir(os.fspath(ev)) if os.path.isdir(os.fspath(ev)) else _EvidenceView({})
+
+
 SOURCE_ROOT_TOKEN = "[source_root]"
 EXTERNAL_EVIDENCE_TOKEN = "[external_evidence]"
 
@@ -221,79 +340,63 @@ def _extract_review_state() -> dict:
     }
 
 
-def _scan_task_runs(evidence_dir: str) -> list[dict]:
-    task_runs_dir = os.path.join(evidence_dir, "task_runs")
-    if not os.path.isdir(task_runs_dir):
+def _scan_task_runs(ev) -> list[dict]:
+    ev = _as_view(ev)
+    if not ev.isdir("task_runs"):
         return []
     result = []
-    for entry in sorted(os.listdir(task_runs_dir)):
-        task_path = os.path.join(task_runs_dir, entry)
-        if not os.path.isdir(task_path):
+    for entry in ev.listdir("task_runs"):
+        td = f"task_runs/{entry}"
+        if not ev.isdir(td):
             continue
-        mrp_path = os.path.join(task_path, "manual_repair_provenance.json")
-        is_manual = os.path.isfile(mrp_path)
         info: dict = {
             "task": entry,
-            "prompt_trace": _check(os.path.join(task_path, "prompt_trace.jsonl")),
-            "prompt_trace_summary": _check(os.path.join(task_path, "prompt_trace_summary.json")),
-            "review": _check(os.path.join(task_path, "review.json")),
-            "repair_loop": _check(os.path.join(task_path, "repair_loop.json")),
-            "token_accounting": _check(os.path.join(task_path, "token_accounting.json")),
-            "provider_evidence": _check(os.path.join(task_path, "provider_evidence.json")),
-            "manual_repair_provenance": _check(mrp_path),
-            "is_manual_repair": is_manual,
+            "prompt_trace": ev.status(f"{td}/prompt_trace.jsonl"),
+            "prompt_trace_summary": ev.status(f"{td}/prompt_trace_summary.json"),
+            "review": ev.status(f"{td}/review.json"),
+            "repair_loop": ev.status(f"{td}/repair_loop.json"),
+            "token_accounting": ev.status(f"{td}/token_accounting.json"),
+            "provider_evidence": ev.status(f"{td}/provider_evidence.json"),
+            "manual_repair_provenance": ev.status(f"{td}/manual_repair_provenance.json"),
+            "is_manual_repair": ev.isfile(f"{td}/manual_repair_provenance.json"),
         }
         result.append(info)
     return result
 
 
-def _load_json(path: str) -> dict:
-    if not os.path.isfile(path):
-        return {}
-    try:
-        with open(path) as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def _read_job_id(evidence_dir: str) -> str:
+def _read_job_id(ev: _EvidenceView) -> str:
     """Job ID from provider-flow evidence, else from the bundle manifest.
 
     ``job_flow.json`` is intentionally absent for an operator-attested manual
     completion, so falling back to ``manifest.json`` is what keeps the shared
     manifest from reporting an empty Job ID for a perfectly valid bundle.
     """
-    jf = _load_json(os.path.join(evidence_dir, "job_flow.json"))
-    job_id = str(jf.get("job_id") or "")
+    ev = _as_view(ev)
+    job_id = str(ev.read_json("job_flow.json").get("job_id") or "")
     if job_id:
         return job_id
-    mf = _load_json(os.path.join(evidence_dir, "manifest.json"))
-    job_id = str(mf.get("job_id") or "")
+    job_id = str(ev.read_json("manifest.json").get("job_id") or "")
     if job_id:
         return job_id
-    fjr = _load_json(os.path.join(evidence_dir, "final_job_review.json"))
-    return str(fjr.get("job_id") or "")
+    return str(ev.read_json("final_job_review.json").get("job_id") or "")
 
 
-def _read_final_audit(evidence_dir: str) -> dict:
+def _read_final_audit(ev: _EvidenceView) -> dict:
     """Final audit from provider-flow evidence, else the manual-completion verdict.
 
     No provider observability artifact is fabricated: for a manual completion the
     status comes from the verifier/review artifacts that actually exist.
     """
-    jf = _load_json(os.path.join(evidence_dir, "job_flow.json"))
-    audit = jf.get("final_audit")
+    ev = _as_view(ev)
+    audit = ev.read_json("job_flow.json").get("final_audit")
     if isinstance(audit, dict) and audit:
         return audit
 
-    fv = _load_json(os.path.join(evidence_dir, "final_verifier_report.json"))
+    fv = ev.read_json("final_verifier_report.json")
     status = str(fv.get("verdict") or "")
     source = "final_verifier_report.json"
     if not status:
-        fjr = _load_json(os.path.join(evidence_dir, "final_job_review.json"))
-        status = str(fjr.get("verdict") or "")
+        status = str(ev.read_json("final_job_review.json").get("verdict") or "")
         source = "final_job_review.json"
     if not status:
         return {}
@@ -304,16 +407,10 @@ def _read_final_audit(evidence_dir: str) -> dict:
     }
 
 
-def _read_trace_sources(evidence_dir: str) -> list[str]:
-    sf = os.path.join(evidence_dir, "agent_run_trace_summary.json")
-    if not os.path.isfile(sf):
-        return []
-    try:
-        with open(sf) as f:
-            data = json.load(f)
-        return data.get("trace_sources", [])
-    except (json.JSONDecodeError, OSError):
-        return []
+def _read_trace_sources(ev) -> list[str]:
+    ev = _as_view(ev)
+    data = ev.read_json("agent_run_trace_summary.json")
+    return data.get("trace_sources", []) if isinstance(data, dict) else []
 
 
 REQUIRED_ROOT_ARTIFACTS = [
@@ -352,27 +449,15 @@ MANUAL_COMPLETION_EXEMPT_ROOT_ARTIFACTS = frozenset({
 })
 
 
-def _mc_read_json(evidence_dir: str, rel: str) -> dict:
-    """Read a JSON object from the evidence dir, or {} if absent/invalid."""
-    path = os.path.join(evidence_dir, rel)
-    if not os.path.isfile(path):
-        return {}
-    try:
-        with open(path) as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
-    return data if isinstance(data, dict) else {}
+def _mc_read_json(ev: _EvidenceView, rel: str) -> dict:
+    """Read a JSON object from the Evidence view, or {} if absent/invalid."""
+    return ev.read_json(rel)
 
 
-def _mc_task_dirs(evidence_dir: str) -> list[str]:
-    task_runs_dir = os.path.join(evidence_dir, "task_runs")
-    if not os.path.isdir(task_runs_dir):
+def _mc_task_dirs(ev: _EvidenceView) -> list[str]:
+    if not ev.isdir("task_runs"):
         return []
-    return [
-        e for e in sorted(os.listdir(task_runs_dir))
-        if os.path.isdir(os.path.join(task_runs_dir, e))
-    ]
+    return [e for e in ev.listdir("task_runs") if ev.isdir(f"task_runs/{e}")]
 
 
 def _mc_norm(p: str) -> str:
@@ -388,29 +473,30 @@ def _is_sha256(v) -> bool:
     return isinstance(v, str) and len(v) == 64 and all(c in "0123456789abcdef" for c in v.lower())
 
 
-def _all_task_runs_manual(evidence_dir: str) -> bool:
+def _all_task_runs_manual(ev: _EvidenceView) -> bool:
     """True when every task_run has a valid manual_repair_provenance."""
-    task_dirs = _mc_task_dirs(evidence_dir)
+    task_dirs = _mc_task_dirs(ev)
     if not task_dirs:
         return False
     for entry in task_dirs:
-        mrp = _mc_read_json(evidence_dir, os.path.join("task_runs", entry, "manual_repair_provenance.json"))
+        mrp = _mc_read_json(ev, f"task_runs/{entry}/manual_repair_provenance.json")
         if not (mrp.get("manual_operator_repair") is True and mrp.get("no_provider_calls") is True):
             return False
     return True
 
 
-def _is_manual_completion(evidence_dir: str) -> bool:
+def _is_manual_completion(ev) -> bool:
     """A manual-only completion candidate: the final job review declares the
     manual completion mode AND every task run carries manual provenance. No
     bespoke root artifact — detection rides existing artifacts only."""
-    fjr = _mc_read_json(evidence_dir, "final_job_review.json")
+    ev = _as_view(ev)
+    fjr = _mc_read_json(ev, "final_job_review.json")
     if fjr.get("completion_mode") != "manual_operator_repair":
         return False
-    return _all_task_runs_manual(evidence_dir)
+    return _all_task_runs_manual(ev)
 
 
-def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) -> list:
+def _verify_review_subject_records(ev: _EvidenceView, subject: dict, base: str) -> list:
     """F4 (round 16): the packager RECOMPUTES the whole review subject and holds the artifact to it.
 
     The final package trusted `review_subject.json` — the Evidence job's own account of what it
@@ -421,6 +507,7 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
     So the subject is resolved again here, from the recorded base, and compared record by record:
     path, old_path, status, base_sha256, current_sha256 and file kind.
     """
+    ev = _as_view(ev)
     errors: list = []
     try:
         from packages.orchestration.review_subject import (
@@ -436,7 +523,7 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
     errors.extend(validate_review_subject_schema(subject))
     # The embedded commit list must equal the commit chain's — a forged commits[] here cannot
     # disagree with the recomputed chain.
-    chain = _mc_read_json(evidence_dir, "review_commit_chain.json")
+    chain = _mc_read_json(ev, "review_commit_chain.json")
     subj_commits = [str(c.get("commit") or "") for c in (subject.get("commits") or [])]
     chain_commits = [str(c.get("commit") or "") for c in (chain.get("commits") or [])]
     if subj_commits != chain_commits:
@@ -499,7 +586,7 @@ def _verify_review_subject_records(evidence_dir: str, subject: dict, base: str) 
     return errors
 
 
-def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
+def _verify_commit_patches(ev: _EvidenceView, actual: list) -> list:
     """F7 (round 16): exactly one canonical patch artifact per commit, recomputed here.
 
     The chain recorded `patch_sha256` and shipped nothing to hash it against, so the one field
@@ -509,6 +596,7 @@ def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
     """
     import hashlib as _h
 
+    ev = _as_view(ev)
     errors: list = []
     try:
         from packages.orchestration.review_subject import (
@@ -517,10 +605,9 @@ def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
     except Exception as exc:
         return [f"cannot verify commit patches: {str(exc)[:120]}"]
 
-    pdir = os.path.join(evidence_dir, COMMIT_PATCH_DIRNAME)
     if not actual:
         return errors
-    if not os.path.isdir(pdir):
+    if not ev.isdir(COMMIT_PATCH_DIRNAME):
         return [f"the packaged evidence carries no {COMMIT_PATCH_DIRNAME}/ for its "
                 f"{len(actual)} commit(s)"]
 
@@ -528,12 +615,10 @@ def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
     for c in actual:
         name = commit_patch_filename(c.commit)
         expected_names.add(name)
-        p = os.path.join(pdir, name)
-        if not os.path.isfile(p):
+        packaged = ev.read_bytes(f"{COMMIT_PATCH_DIRNAME}/{name}")
+        if packaged is None:
             errors.append(f"commit {c.commit[:12]} has no packaged patch artifact")
             continue
-        with open(p, "rb") as fh:
-            packaged = fh.read()
         want = commit_patch_bytes(".", c.commit)
         if packaged != want:
             errors.append(
@@ -544,7 +629,7 @@ def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
                 f"packaged patch for commit {c.commit[:12]} hashes to {got[:12]}, but the chain "
                 f"records {c.patch_sha256[:12]}")
 
-    present = {n for n in os.listdir(pdir) if n.endswith(".patch")}
+    present = {n for n in ev.listdir(COMMIT_PATCH_DIRNAME) if n.endswith(".patch")}
     for extra in sorted(present - expected_names):
         errors.append(f"{COMMIT_PATCH_DIRNAME}/ carries {extra!r}, which no chain commit names")
     if len(present) != len(actual):
@@ -554,7 +639,7 @@ def _verify_commit_patches(evidence_dir: str, actual: list) -> list:
     return errors
 
 
-def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
+def _verify_commit_chain(ev: _EvidenceView, per_task_union: set) -> list:
     """Round 15 (F7): the packaged commit history is recomputed, not narrated.
 
     The operator's handoff used to say "there were six commits" in prose. A reader could not check
@@ -562,9 +647,10 @@ def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
     the packaged history actually ends at the reviewed HEAD. So the chain is an artifact, and this
     recomputes it from the repository and holds the artifact to it.
     """
+    ev = _as_view(ev)
     errors: list = []
-    chain = _mc_read_json(evidence_dir, "review_commit_chain.json")
-    subject = _mc_read_json(evidence_dir, "review_subject.json")
+    chain = _mc_read_json(ev, "review_commit_chain.json")
+    subject = _mc_read_json(ev, "review_subject.json")
     if not chain and not subject:
         return errors                     # no declared base: the legacy dirty-tree subject
     base = str(chain.get("base_commit") or "")
@@ -628,8 +714,8 @@ def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
     if actual and base not in actual[0].parents:
         errors.append("the packaged commit chain does not start after the declared base")
 
-    errors.extend(_verify_commit_patches(evidence_dir, actual))
-    errors.extend(_verify_review_subject_records(evidence_dir, subject, base))
+    errors.extend(_verify_commit_patches(ev, actual))
+    errors.extend(_verify_review_subject_records(ev, subject, base))
 
     # Every COMMITTED file in the review subject must be explained by one of these commits: the
     # subject cannot claim a committed change that no packaged commit made.
@@ -652,7 +738,7 @@ def _verify_commit_chain(evidence_dir: str, per_task_union: set) -> list:
 
 
 def _verify_task_provenance_integrity(
-    evidence_dir: str, tid: str, mrp: dict, proof: dict, fjr: dict,
+    ev: _EvidenceView, tid: str, mrp: dict, proof: dict, fjr: dict,
 ) -> list[str]:
     """Finding 1: recompute and verify every provenance hash for one task.
 
@@ -666,11 +752,8 @@ def _verify_task_provenance_integrity(
     if not _CANON_AVAILABLE:
         return [f"{tid}: canonical provenance-hash implementation unavailable"]
 
-    safe_diff_path = os.path.join(evidence_dir, "task_runs", tid, "safe.diff")
-    try:
-        with open(safe_diff_path, encoding="utf-8") as f:
-            safe_content = f.read()
-    except OSError:
+    safe_content = ev.read_text(f"task_runs/{tid}/safe.diff")
+    if safe_content is None:
         return [f"{tid}: safe.diff unreadable"]
 
     # 8: empty / whitespace-only safe.diff is rejected.
@@ -710,7 +793,7 @@ def _verify_task_provenance_integrity(
     diff_paths = set(_canon_parse_safe_diff_paths(safe_content))
     changed = {_mc_norm(f) for f in (mrp.get("changed_files") or [])}
     scoped = {_mc_norm(f) for f in (mrp.get("task_scoped_files") or [])}
-    rsp = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "review_scope_packet.json"))
+    rsp = _mc_read_json(ev, f"task_runs/{tid}/review_scope_packet.json")
     rsp_files = {_mc_norm(f) for f in (rsp.get("changed_files") or [])}
     fjr_task = {_mc_norm(f) for f in ((fjr.get("per_task_changed_files") or {}).get(tid) or [])}
     diff_paths_n = {_mc_norm(f) for f in diff_paths}
@@ -750,7 +833,7 @@ def _verify_task_provenance_integrity(
     return errors
 
 
-def validate_manual_completion(evidence_dir: str) -> list[str]:
+def validate_manual_completion(ev) -> list[str]:
     """Strictly and independently validate a manual-only completion candidate.
 
     Returns a list of human-readable errors; empty means authoritative. Every
@@ -759,17 +842,18 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
     test exit code / failure count, a content-proof hash, the job id, a
     provenance hash, or task overlap) invalidates the candidate.
     """
+    ev = _as_view(ev)
     errors: list[str] = []
-    manifest = _mc_read_json(evidence_dir, "manifest.json")
-    fjr = _mc_read_json(evidence_dir, "final_job_review.json")
-    proof = _mc_read_json(evidence_dir, "current_change_content_proof.json")
-    fv = _mc_read_json(evidence_dir, "final_verifier_report.json")
-    cp = _mc_read_json(evidence_dir, "change_provenance_gate.json")
-    vt = _mc_read_json(evidence_dir, "verification_tests.json")
+    manifest = _mc_read_json(ev, "manifest.json")
+    fjr = _mc_read_json(ev, "final_job_review.json")
+    proof = _mc_read_json(ev, "current_change_content_proof.json")
+    fv = _mc_read_json(ev, "final_verifier_report.json")
+    cp = _mc_read_json(ev, "change_provenance_gate.json")
+    vt = _mc_read_json(ev, "verification_tests.json")
 
     package_job_id = str(manifest.get("job_id") or "")
     planned_task_ids = [str(t) for t in (manifest.get("task_ids") or [])]
-    task_dirs = _mc_task_dirs(evidence_dir)
+    task_dirs = _mc_task_dirs(ev)
 
     # 14 + planned-task coverage: package job id must equal the completion job id
     # and every planned task must have exactly one task run.
@@ -812,10 +896,10 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
     per_task_union: set[str] = set()
     overlap_owner: dict[str, str] = {}
     for tid in task_dirs:
-        rv = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "review.json"))
-        pe = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "provider_evidence.json"))
-        mrp = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "manual_repair_provenance.json"))
-        safe_diff = os.path.join(evidence_dir, "task_runs", tid, "safe.diff")
+        rv = _mc_read_json(ev, f"task_runs/{tid}/review.json")
+        pe = _mc_read_json(ev, f"task_runs/{tid}/provider_evidence.json")
+        mrp = _mc_read_json(ev, f"task_runs/{tid}/manual_repair_provenance.json")
+        safe_diff_rel = f"task_runs/{tid}/safe.diff"
 
         if str(rv.get("final_verdict") or rv.get("verdict") or "") != "operator_attested":
             errors.append(f"{tid}: review verdict is not operator_attested")
@@ -842,7 +926,7 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
         for hf in ("provenance_sha256", "diff_sha256", "tracked_diff_sha256"):
             if not _is_sha256(mrp.get(hf)):
                 errors.append(f"{tid}: provenance {hf} is not a valid sha256")
-        if not os.path.isfile(safe_diff):
+        if not ev.isfile(safe_diff_rel):
             errors.append(f"{tid}: safe.diff missing")
 
         changed = [_mc_norm(f) for f in (mrp.get("changed_files") or [])]
@@ -857,11 +941,11 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
 
         # ---- Finding 1: actually RECOMPUTE and verify every provenance hash,
         #      the safe.diff content, its paths, and the untracked entries. ----
-        errors.extend(_verify_task_provenance_integrity(evidence_dir, tid, mrp, proof, fjr))
+        errors.extend(_verify_task_provenance_integrity(ev, tid, mrp, proof, fjr))
 
         # ---- Finding 5: a task manifest may not claim evidence unavailable
         #      without an explicit effective operator-attested completion state.
-        tm = _mc_read_json(evidence_dir, os.path.join("task_runs", tid, "manifest.json"))
+        tm = _mc_read_json(ev, f"task_runs/{tid}/manifest.json")
         if (tm.get("evidence_available") is not True
                 and tm.get("effective_status") != "operator_attested_complete"):
             errors.append(
@@ -893,7 +977,7 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
             )
 
     # 7b: the packaged commit chain is recomputed and verified against the review subject.
-    errors.extend(_verify_commit_chain(evidence_dir, per_task_union))
+    errors.extend(_verify_commit_chain(ev, per_task_union))
 
     # 8: root verification must exist, exit 0, >=1 passed, 0 failed.
     if not vt:
@@ -923,22 +1007,13 @@ def validate_manual_completion(evidence_dir: str) -> list[str]:
     return errors
 
 
-def _read_evidence_gate(evidence_dir: str, filename: str) -> dict:
-    """Read a gate JSON from the evidence dir, or {} if absent."""
-    path = os.path.join(evidence_dir, filename)
-    if os.path.isfile(path):
-        try:
-            with open(path) as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                return data
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+def _read_evidence_gate(ev: _EvidenceView, filename: str) -> dict:
+    """Read a gate JSON from the Evidence view, or {} if absent/invalid."""
+    return ev.read_json(filename)
 
 
-def _read_fresh_evidence_gate(evidence_dir: str) -> dict:
-    return _read_evidence_gate(evidence_dir, "fresh_evidence_gate.json")
+def _read_fresh_evidence_gate(ev: _EvidenceView) -> dict:
+    return _read_evidence_gate(ev, "fresh_evidence_gate.json")
 
 
 #: F1 (round 22): the EXACT READY gate matrix. READY_FOR_REVIEW is possible only when EVERY required
@@ -1298,22 +1373,17 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
     return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}
 
 
-def _evidence_dir_gate_loader(evidence_dir: str):
-    """A load_json for evaluate_ready_gate_matrix that reads the (staged) evidence dir, raising on
+def _evidence_dir_gate_loader(ev: _EvidenceView):
+    """A load_json for evaluate_ready_gate_matrix backed by the immutable Evidence view, raising on
     invalid JSON so a corrupt gate BLOCKS rather than silently passing."""
-    def _load(name: str):
-        path = os.path.join(evidence_dir, name)
-        if not os.path.isfile(path):
-            return None
-        with open(path, "rb") as fh:
-            return json.loads(fh.read())     # raises json.JSONDecodeError on invalid
-    return _load
+    return ev.gate_loader()
 
 
 def _build_alignment(
-    dirty_files: list[str], evidence_dir: str,
+    dirty_files: list[str], ev: _EvidenceView,
 ) -> dict:
     """Build review_subject/evidence alignment proof."""
+    ev = _as_view(ev)
     _EXCLUDE_DIRS = {
         "remedy-job-evidence", "__pycache__", ".git", ".agent",
         "node_modules", ".data", ".mypy_cache", ".pytest_cache",
@@ -1349,10 +1419,10 @@ def _build_alignment(
         f.split()[-1] for f in dirty_files if _is_source(f)
     })
 
-    cp_gate = _read_evidence_gate(evidence_dir, "change_provenance_gate.json")
-    fv_report = _read_evidence_gate(evidence_dir, "final_verifier_report.json")
-    ce_gate = _read_evidence_gate(evidence_dir, "commit_execution_gate.json")
-    ac_gate = _read_evidence_gate(evidence_dir, "artifact_contract_gate.json")
+    cp_gate = _read_evidence_gate(ev, "change_provenance_gate.json")
+    fv_report = _read_evidence_gate(ev, "final_verifier_report.json")
+    ce_gate = _read_evidence_gate(ev, "commit_execution_gate.json")
+    ac_gate = _read_evidence_gate(ev, "artifact_contract_gate.json")
 
     cp_covered = sorted(cp_gate.get("covered_files", []))
     fv_changed = sorted(fv_report.get("authoritative_changed_files", []))
@@ -1393,23 +1463,24 @@ def _build_alignment(
     }
 
 
-def validate_evidence_candidate(evidence_dir: str) -> dict:
+def validate_evidence_candidate(ev) -> dict:
+    ev = _as_view(ev)
     errors: list[str] = []
     missing_root: list[str] = []
     missing_task: dict[str, list[str]] = {}
 
-    manual_completion = _is_manual_completion(evidence_dir)
+    manual_completion = _is_manual_completion(ev)
     manual_completion_errors: list[str] = []
     not_applicable_root: list[str] = []
 
     if manual_completion:
         # Strict, independent validation of the manual-completion contract.
         # Any mismatch invalidates the candidate and blocks authoritativeness.
-        manual_completion_errors = validate_manual_completion(evidence_dir)
+        manual_completion_errors = validate_manual_completion(ev)
         errors.extend(manual_completion_errors)
 
     for art in REQUIRED_ROOT_ARTIFACTS:
-        if os.path.isfile(os.path.join(evidence_dir, art)):
+        if ev.isfile(art):
             continue
         if manual_completion and art in MANUAL_COMPLETION_EXEMPT_ROOT_ARTIFACTS:
             # A deterministic manual-only completion legitimately has no
@@ -1419,29 +1490,31 @@ def validate_evidence_candidate(evidence_dir: str) -> dict:
         missing_root.append(art)
         errors.append(f"missing root artifact: {art}")
 
-    jf_path = os.path.join(evidence_dir, "job_flow.json")
+    has_job_flow = ev.isfile("job_flow.json")
     job_id = ""
     final_audit_status = ""
     missing_obs: list[str] = []
     target_mutation_detected = False
 
-    if manual_completion and not os.path.isfile(jf_path):
+    if manual_completion and not has_job_flow:
         # Derive identity/verdict from the existing final job review + final
         # verifier, without fabricating a provider job_flow.json.
-        fjr = _mc_read_json(evidence_dir, "final_job_review.json")
-        manifest_obj = _mc_read_json(evidence_dir, "manifest.json")
+        fjr = _mc_read_json(ev, "final_job_review.json")
+        manifest_obj = _mc_read_json(ev, "manifest.json")
         job_id = str(fjr.get("job_id") or manifest_obj.get("job_id") or "")
         if not job_id:
             errors.append("manual completion: job_id could not be derived")
-        fv = _read_evidence_gate(evidence_dir, "final_verifier_report.json")
+        fv = _read_evidence_gate(ev, "final_verifier_report.json")
         final_audit_status = str(fv.get("verdict", "") or "")
         if not final_audit_status:
             errors.append("final_verifier_report.json: verdict missing")
 
-    if os.path.isfile(jf_path):
+    if has_job_flow:
+        raw = ev.read_bytes("job_flow.json")
         try:
-            with open(jf_path) as f:
-                jf_data = json.load(f)
+            jf_data = json.loads(raw) if raw is not None else {}
+            if not isinstance(jf_data, dict):
+                raise json.JSONDecodeError("not an object", "", 0)
             job_id = jf_data.get("job_id", "")
             if not job_id:
                 errors.append("job_flow.json: job_id is empty")
@@ -1458,31 +1531,30 @@ def validate_evidence_candidate(evidence_dir: str) -> dict:
             if tg.get("mutated_target", False):
                 target_mutation_detected = True
                 errors.append("target_guard indicates target mutation")
-        except (json.JSONDecodeError, OSError) as exc:
+        except (json.JSONDecodeError, ValueError) as exc:
             errors.append(f"job_flow.json: parse error: {exc}")
 
-    task_runs_dir = os.path.join(evidence_dir, "task_runs")
     task_run_count = 0
     manual_repair_tasks: list[str] = []
-    if os.path.isdir(task_runs_dir):
-        for entry in sorted(os.listdir(task_runs_dir)):
-            task_path = os.path.join(task_runs_dir, entry)
-            if not os.path.isdir(task_path):
+    if ev.isdir("task_runs"):
+        for entry in ev.listdir("task_runs"):
+            td = f"task_runs/{entry}"
+            if not ev.isdir(td):
                 continue
             task_run_count += 1
-            mrp_path = os.path.join(task_path, "manual_repair_provenance.json")
-            is_manual_repair = os.path.isfile(mrp_path)
+            mrp_rel = f"{td}/manual_repair_provenance.json"
+            is_manual_repair = ev.isfile(mrp_rel)
             if is_manual_repair:
+                raw = ev.read_bytes(mrp_rel)
                 try:
-                    with open(mrp_path) as f:
-                        mrp = json.load(f)
+                    mrp = json.loads(raw) if raw is not None else None
                     if not (isinstance(mrp, dict) and mrp.get("manual_operator_repair") is True
                             and mrp.get("no_provider_calls") is True):
                         is_manual_repair = False
                         errors.append(
                             f"task_runs/{entry}: manual_repair_provenance.json invalid"
                         )
-                except (json.JSONDecodeError, OSError):
+                except (json.JSONDecodeError, ValueError):
                     is_manual_repair = False
                     errors.append(
                         f"task_runs/{entry}: manual_repair_provenance.json unreadable"
@@ -1493,7 +1565,7 @@ def validate_evidence_candidate(evidence_dir: str) -> dict:
             for art in REQUIRED_TASK_ARTIFACTS:
                 if is_manual_repair and art in MANUAL_REPAIR_EXEMPT_ARTIFACTS:
                     continue
-                if not os.path.isfile(os.path.join(task_path, art)):
+                if not ev.isfile(f"{td}/{art}"):
                     task_missing.append(art)
             if task_missing:
                 missing_task[entry] = task_missing
@@ -1541,9 +1613,10 @@ def _sha256_file(path: str) -> str:
 
 
 def _check_bundle_integrity(
-    evidence_dir: str | None,
+    ev,
     source_root: str,
 ) -> dict:
+    ev = _as_view(ev)
     result: dict = {
         "current_content_hash_checked": False,
         "current_content_hash_mismatches": [],
@@ -1552,19 +1625,10 @@ def _check_bundle_integrity(
         "verdict": "PASS",
     }
 
-    if not evidence_dir or not os.path.isdir(evidence_dir):
+    if ev is None or not ev.isfile("current_change_content_proof.json"):
         return result
 
-    proof_path = os.path.join(
-        evidence_dir, "current_change_content_proof.json"
-    )
-    if not os.path.isfile(proof_path):
-        return result
-
-    try:
-        proof = json.loads(open(proof_path).read())
-    except (json.JSONDecodeError, OSError):
-        return result
+    proof = ev.read_json("current_change_content_proof.json")
 
     file_hashes = proof.get("file_hashes", {})
     if not file_hashes:
@@ -1581,7 +1645,7 @@ def _check_bundle_integrity(
 
     kinds: dict[str, str] = {}
     link_targets: dict[str, str] = {}
-    subj = _mc_read_json(evidence_dir, "review_subject.json") if evidence_dir else {}
+    subj = _mc_read_json(ev, "review_subject.json")
     for f in (subj.get("files") or []):
         kinds[_mc_norm(str(f.get("path", "")))] = str(f.get("kind") or "regular")
         if f.get("link_target") is not None:
@@ -1646,6 +1710,32 @@ def build_manifest(
     selected_mtime: str = "",
     rejected_candidate_count: int = 0,
 ) -> dict:
+    """Standalone/CLI/test entry: read the evidence directory ONCE into an immutable byte-map view,
+    then build the manifest from those bytes. The coordinator instead passes its Source snapshot to
+    ``build_manifest_from_snapshot`` so it never re-reads the staging filesystem after the snapshot.
+    """
+    ev = (_view_from_dir(evidence_dir)
+          if evidence_dir and os.path.isdir(evidence_dir) else None)
+    return build_manifest_from_snapshot(
+        ev, evidence_path=evidence_dir, selection_mode=selection_mode,
+        selection_reason=selection_reason, candidate_count=candidate_count,
+        selected_mtime=selected_mtime, rejected_candidate_count=rejected_candidate_count)
+
+
+def build_manifest_from_snapshot(
+    evidence_view: _EvidenceView | None = None,
+    *,
+    evidence_path: str | None = None,
+    selection_mode: str = "",
+    selection_reason: str = "",
+    candidate_count: int = 0,
+    selected_mtime: str = "",
+    rejected_candidate_count: int = 0,
+) -> dict:
+    """F6 (round 24): build the Root Manifest from the IMMUTABLE Evidence view (Source snapshot
+    bytes), never from staging-filesystem re-reads. Repository/Git facts (branch, HEAD, dirty set,
+    commit chain, patch bytes, containment) still come from the repo; ``evidence_path`` is used only
+    for the path-level containment check, not to read any evidence content."""
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     commit = _git(["rev-parse", "HEAD"])
     has_commits_val = _has_commits()
@@ -1667,19 +1757,17 @@ def build_manifest(
     task_runs: list[dict] = []
     current_evidence: dict = {}
 
-    if evidence_dir and os.path.isdir(evidence_dir):
+    if evidence_view is not None:
         for artifact_name in root_artifacts:
-            root_artifacts[artifact_name] = _check(
-                os.path.join(evidence_dir, artifact_name)
-            )
-        task_runs = _scan_task_runs(evidence_dir)
-        job_id = _read_job_id(evidence_dir)
-        audit = _read_final_audit(evidence_dir)
-        trace_sources = _read_trace_sources(evidence_dir)
+            root_artifacts[artifact_name] = evidence_view.status(artifact_name)
+        task_runs = _scan_task_runs(evidence_view)
+        job_id = _read_job_id(evidence_view)
+        audit = _read_final_audit(evidence_view)
+        trace_sources = _read_trace_sources(evidence_view)
 
-        validation = validate_evidence_candidate(evidence_dir)
+        validation = validate_evidence_candidate(evidence_view)
 
-        fresh_gate = _read_fresh_evidence_gate(evidence_dir)
+        fresh_gate = _read_fresh_evidence_gate(evidence_view)
         freshness_ok = bool(
             fresh_gate.get("evidence_freshness", {}).get("is_fresh", False)
         )
@@ -1738,8 +1826,8 @@ def build_manifest(
     review_state = _extract_review_state()
 
     alignment: dict | None = None
-    if evidence_dir and os.path.isdir(evidence_dir):
-        alignment = _build_alignment(dirty, evidence_dir)
+    if evidence_view is not None:
+        alignment = _build_alignment(dirty, evidence_view)
         if alignment["verdict"] == "BLOCKED" and current_evidence:
             current_evidence["evidence_freshness"]["evidence_authoritative"] = False
 
@@ -1762,9 +1850,9 @@ def build_manifest(
         )
         external_paths.append(_shareable_path(cwd, source_root))
 
-    if evidence_dir:
-        ev_resolved = os.path.realpath(evidence_dir)
-        if not contained(source_root, evidence_dir):
+    if evidence_path:
+        ev_resolved = os.path.realpath(evidence_path)
+        if not contained(source_root, evidence_path):
             containment_blockers.append(
                 f"evidence_dir {_shareable_path(ev_resolved, source_root)} "
                 "is outside source_root"
@@ -1797,7 +1885,7 @@ def build_manifest(
     # matrix to pass, decoded from the (staged) gate bytes.
     gate_matrix = {"ok": True, "gate_verdicts": {}, "blocking_reasons": []}
     if current_evidence:
-        gate_matrix = evaluate_ready_gate_matrix(_evidence_dir_gate_loader(evidence_dir))
+        gate_matrix = evaluate_ready_gate_matrix(_evidence_dir_gate_loader(evidence_view))
         if not gate_matrix["ok"]:
             packaging_warnings.append(
                 "gate matrix not satisfied: " + "; ".join(gate_matrix["blocking_reasons"][:4]))
@@ -1814,24 +1902,25 @@ def build_manifest(
     ev_manifest_task_ids: list[str] = []
     ev_manifest_job_id = ""
     ev_manifest_mtime = ""
-    if evidence_dir and os.path.isdir(evidence_dir):
-        ev_mf_path = os.path.join(evidence_dir, "manifest.json")
-        if os.path.isfile(ev_mf_path):
-            try:
-                ev_mf = json.loads(open(ev_mf_path).read())
-                ev_manifest_task_count = ev_mf.get("task_count", 0)
-                ev_manifest_task_ids = ev_mf.get("task_ids", [])
-                ev_manifest_job_id = ev_mf.get("job_id", "")
-                ev_manifest_mtime = datetime.fromtimestamp(
-                    os.path.getmtime(ev_mf_path), tz=timezone.utc
-                ).strftime("%Y-%m-%dT%H:%M:%SZ")
-            except (json.JSONDecodeError, OSError):
-                packaging_warnings.append(
-                    "evidence manifest.json unreadable"
-                )
+    if evidence_view is not None and evidence_view.isfile("manifest.json"):
+        raw = evidence_view.read_bytes("manifest.json")
+        try:
+            ev_mf = json.loads(raw) if raw is not None else {}
+            if not isinstance(ev_mf, dict):
+                raise ValueError("manifest.json is not an object")
+            ev_manifest_task_count = ev_mf.get("task_count", 0)
+            ev_manifest_task_ids = ev_mf.get("task_ids", [])
+            ev_manifest_job_id = ev_mf.get("job_id", "")
+            # F6 (round 24): the packaging-proof timestamp comes from the snapshot view's own frozen
+            # record of the modified time, never a fresh stat of the staging filesystem.
+            ev_manifest_mtime = evidence_view.mtime_iso("manifest.json")
+        except (json.JSONDecodeError, ValueError):
+            packaging_warnings.append(
+                "evidence manifest.json unreadable"
+            )
 
     # Review-bundle integrity: compare packaged files against content proof
-    bundle_integrity = _check_bundle_integrity(evidence_dir, source_root)
+    bundle_integrity = _check_bundle_integrity(evidence_view, source_root)
     if bundle_integrity["verdict"] == "BLOCKED":
         packaging_warnings.append("review bundle content hash mismatch or missing proofs")
         package_status = "BLOCKED_EVIDENCE"
@@ -1847,10 +1936,10 @@ def build_manifest(
             "content hash verification was not performed; integrity unconfirmed"
         )
 
-    _subject = _mc_read_json(evidence_dir, "review_subject.json") if evidence_dir else {}
-    _chain = _mc_read_json(evidence_dir, "review_commit_chain.json") if evidence_dir else {}
-    _proof_doc = _mc_read_json(evidence_dir, "current_change_content_proof.json") \
-        if evidence_dir else {}
+    _subject = _mc_read_json(evidence_view, "review_subject.json") if evidence_view else {}
+    _chain = _mc_read_json(evidence_view, "review_commit_chain.json") if evidence_view else {}
+    _proof_doc = _mc_read_json(evidence_view, "current_change_content_proof.json") \
+        if evidence_view else {}
 
     manifest = {
         "bundle_kind": "remedy_review_zip",
@@ -1883,7 +1972,7 @@ def build_manifest(
         "review_state": review_state,
         "review_subject_evidence_alignment": alignment,
         "packaged_evidence_dir": (
-            _shareable_path(evidence_dir, source_root) if evidence_dir else ""
+            _shareable_path(evidence_path, source_root) if evidence_path else ""
         ),
         "packaged_evidence_job_id": ev_manifest_job_id,
         "packaged_evidence_manifest_task_count": ev_manifest_task_count,
@@ -1893,7 +1982,7 @@ def build_manifest(
         "packaging_command_context": {
             "cwd": _shareable_path(cwd, source_root),
             "evidence_dir_arg": (
-                _shareable_path(evidence_dir, source_root) if evidence_dir else ""
+                _shareable_path(evidence_path, source_root) if evidence_path else ""
             ),
         },
         "source_root_containment": {
