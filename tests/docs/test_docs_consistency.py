@@ -1391,3 +1391,40 @@ class TestF012Round23IsPinned:
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [~] F012" in status
         assert "- [ ] F017" in status
+
+
+class TestF012Round24IsPinned:
+    """Round 24: closed gate schemas, embedded gate equality, exact commit-gate derivation, no
+    unsafe gate metadata, and snapshot-only manifest construction."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 24" in self._f012()
+
+    def test_closed_gate_schemas_are_documented(self):
+        doc = self._f012()
+        assert "Closed gate schemas" in doc
+        assert "an unknown field BLOCKS" in doc
+
+    def test_embedded_gate_equality_is_documented(self):
+        doc = self._f012()
+        assert "Embedded gate equality" in doc
+        assert "must EQUAL the" in doc and "separately packaged gate verdicts" in doc
+
+    def test_exact_commit_gate_derivation_is_documented(self):
+        doc = self._f012()
+        assert "Exact commit-gate derivation" in doc
+        assert "`non_pass_gates` is the derived set" in doc
+
+    def test_unsafe_metadata_scan_is_documented(self):
+        doc = self._f012()
+        assert "No unsafe gate metadata" in doc
+        assert "control character in any field BLOCKS" in doc
+
+    def test_snapshot_only_manifest_is_documented(self):
+        doc = self._f012()
+        assert "Snapshot-only manifest construction" in doc
+        assert "no Evidence helper opens, stats or lists the staging filesystem" in doc
