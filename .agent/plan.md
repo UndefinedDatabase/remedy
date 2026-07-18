@@ -1,3 +1,50 @@
+# Plan — Steps 11761-11960 — F012 hardening round 21 (external FINDINGS, FINAL ROOT-IDENTITY closure)
+
+## Round 21 binding decision (the five single sources)
+
+Reviewed `remedy-review-20260718-010345-READY_FOR_REVIEW.zip`
+(SHA `2b51417f0113bdafdec28bf050fb316922595f3beb2c609b25a8cb5760c010c8`, Evidence job
+`0ffc34687764446b`, linked prior `0706eae436294f93`, HEAD `d7701e9`). Verdict FINDINGS; F012 `[~]`.
+
+1. **Raw-byte identity for every packaged JSON artifact** — the hash of any artifact is
+   `SHA256(exact bytes packaged at that archive path)`. The ArchivePlan's `review_subject_sha256`,
+   the Expectation's, the Manifest chain's and `SHA256(ZIP["…/review_subject.json"])` are ONE value;
+   likewise `commit_chain_sha256 == SHA256(ZIP["…/review_commit_chain.json"])`. No `*_sha256` ever
+   means "hash of a reserialized projection".
+2. **One immutable staged byte map** — `StagedArtifactBytes` reads each root artifact (Subject,
+   Proof, Final-Verifier, Change-Provenance, Commit-Chain) from the staging snapshot exactly once
+   (bytes + sha). Objects are decoded from that map, and the Plan's evidence members carry those
+   exact shas so `snapshot_plan_members` refuses if the staged file changed between decode and
+   package. Decode-bytes and package-bytes are provably identical.
+3. **One bundle-disposition owner** — `classify_bundle_path` + `build_archive_plan`. The Shell
+   `find` enumerates broadly (regular/symlink/special) and is defense-in-depth only; a FIFO/special
+   file gets an explicit `BLOCK_UNSUPPORTED` record, an unchanged sensitive context path an explicit
+   `EXCLUDE_SAFE_CONTEXT` record — nothing silently disappears.
+4. **Final status source** — the verified package model. `build_review_zip.py` emits
+   package_status / evidence_authoritative / member_count / manifest_sha256 on stdout from the
+   in-memory manifest bytes it packaged; the Shell uses THAT, never a post-build disk reread.
+5. **Authoritative regression commands** (each recorded separately in `verification_tests.json`):
+   round-21 closure suites · full F012/review suite · F010/F011/Evidence · CLI incl.
+   `tests/test_do_job_flow.py` · docs · full-package integration · compileall · `bash -n` ·
+   `git diff --check` · `remedy integrity check`.
+
+## Round 21 — the 10 final-identity findings
+
+| # | Fix |
+|---|---|
+| 1 | manifest `review_archive.verification` → `expectation` pointing at review_zip_expectation.json |
+| 2 | one raw-byte hash per artifact; plan/expectation/manifest subject sha == packaged bytes sha |
+| 3 | declared empty Subject still needs a strict Proof — `subject.declared`, not `bool(files)` |
+| 4 | commit_chain_sha == raw packaged commit-chain bytes; not a reserialized object |
+| 5 | one immutable staged byte map for decode AND package; mutation between reads blocks |
+| 6 | one ArchivePlan disposition; FIFO/special/sensitive-context get explicit typed records |
+| 7 | final status from the verified model, not a mutable disk-manifest reread |
+| 8 | ContentProof accepts only `{"1.1.0"}`; exact versions across the root schemas |
+| 9 | complete authoritative regression recorded in verification_tests.json |
+| 10 | snapshot-inventory boundary validated + narrowly claimed |
+
+---
+
 # Plan — Steps 11561-11760 — F012 hardening round 20 (external FINDINGS, ROOT-OF-TRUST closure)
 
 ## Round 20 binding decision (the single sources)

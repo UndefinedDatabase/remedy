@@ -1,6 +1,19 @@
-# Context — current state (Steps 11561-11760)
+# Context — current state (Steps 11761-11960)
 
-## Round 20 (current) — F012 root-of-trust closure
+## Round 21 (current) — F012 final root-identity closure
+
+Review of `remedy-review-20260718-010345-READY_FOR_REVIEW.zip` (Evidence job `0ffc34687764446b`)
+returned 10 final root-identity findings; F012 stays `[~]`. Fixed as one small block: every packaged
+identity is an exact raw-byte identity (`SHA256` of the exact packaged bytes) over ONE immutable
+staged byte map used for both decode and package (a mutation between the two blocks); the manifest
+names only members that exist; a declared zero-file subject still needs a strict Proof; one
+ArchivePlan disposition owns every path (EXCLUDE_SAFE_CONTEXT / BLOCK_UNSUPPORTED, nothing silently
+disappears); the final status comes from the verified build model, not a disk reread; ContentProof
+accepts only `{"1.1.0"}`; and the snapshot inventory is validated and narrowly claimed. Nine new
+suites (33 tests) plus a real end-to-end prove it. See `.agent/plan.md` for the finding table and
+`.agent/live_review.md` for the verification summary.
+
+## Round 20 — F012 root-of-trust closure
 
 Review of `remedy-review-20260717-234531-READY_FOR_REVIEW.zip` (Evidence job `0706eae436294f93`)
 returned 10 root-of-trust findings; F012 stays `[~]`. Fixed as one bounded block: the review package
