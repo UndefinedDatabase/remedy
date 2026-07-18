@@ -31,7 +31,8 @@ _REQUIRED_MODULES = (
 
 
 def _complete_gates(authority=None):
-    """The complete, semantically-consistent READY gate set (round 23) keyed by filename."""
+    """The complete, closed-schema, semantically-consistent READY gate set (round 24) keyed by
+    filename: every field required by the exact recursive validators is present and coherent."""
     authority = list(authority or [])
     return {
         "final_verifier_report.json": {
@@ -41,22 +42,38 @@ def _complete_gates(authority=None):
             "missing_tests_gate": "PASS", "change_source_mismatches": [],
             "review_subject_uncovered_files": [], "content_hash_mismatches": [],
             "postmortem_failures": [], "postmortem_integrity_blocked": False,
-            "manifest_integrity_blocked": False},
+            "manifest_integrity_blocked": False,
+            # round 24: the remaining FV blocking fields + embedded gate verdicts + FV commit view.
+            "final_job_review_blocked": False, "execution_mode_blocked": False,
+            "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
+            "execution_mode_findings": [], "final_job_review_findings": [],
+            "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+            "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
+            "commit_execution_gate": "BLOCKED"},
         "fresh_evidence_gate.json": {
             "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
-            "evidence_freshness": {"is_fresh": True},
-            "evidence_validity": {"is_valid_current_run": True}, "issues": []},
+            "job_id_match": True, "plan_match": True, "live_review_match": True,
+            "evidence_freshness": {"is_fresh": True, "job_id_match": True,
+                                   "step_range_match": True},
+            "evidence_validity": {"has_job_id": True, "has_manifest": True,
+                                  "is_valid_current_run": True}, "issues": []},
         "artifact_contract_gate.json": {
             "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
-            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": []},
+            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": [],
+            "job_id_fresh": True,
+            "required_artifacts": {"manifest.json": True, "final_verifier_report.json": True}},
         "change_provenance_gate.json": {
             "schema_version": "1.0.0", "verdict": "PASS", "covered_files": authority,
             "source_files": authority, "uncovered_files": [], "content_hash_verified": True,
-            "hash_mismatches": [], "issues": []},
+            "hash_mismatches": [], "stale_apply_proofs": [], "issues": []},
         "runtime_integration_gate.json": {
-            "schema_version": "1.0.0", "verdict": "PASS", "checks": ["a", "b", "c"],
+            "schema_version": "1.0.0", "verdict": "PASS",
+            "checks": [{"check_id": f"c{i}", "check_type": "call_exists",
+                        "source_file": "src/app.py", "pattern": "add(", "found": True,
+                        "file_missing": False} for i in range(3)],
             "checks_total": 3, "checks_passed": 3, "issues": []},
-        "manifest_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": []},
+        "manifest_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": [],
+                                    "notes": []},
         "postmortem_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": []},
         "commit_execution_gate.json": {
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,

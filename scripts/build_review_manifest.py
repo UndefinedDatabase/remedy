@@ -959,6 +959,54 @@ _ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES + (_COMMIT_GATE,)
 _SUPPORTED_GATE_VERSIONS = frozenset({"1.0.0"})
 _MISSING = object()
 
+#: F1 (round 24): the CLOSED allowed-field set of every READY gate — an unknown field blocks.
+_GATE_ALLOWED_FIELDS = {
+    "final_verifier_report.json": frozenset({
+        "also_needs_repair", "artifact_contract_gate", "authoritative_changed_files",
+        "change_provenance", "change_provenance_gate", "change_source_mismatches", "changed_files",
+        "changed_line_ranges", "commit_execution_gate", "content_hash_mismatches",
+        "evidence_completeness", "execution_mode_blocked", "execution_mode_by_task",
+        "execution_mode_findings", "file_set_alignment_status", "final_job_review_blocked",
+        "final_job_review_findings", "final_job_review_verdict", "fresh_evidence_gate",
+        "human_final_reviewer_required", "invocation_args_warnings", "manifest_integrity_blocked",
+        "manual_completion", "missing_evidence", "missing_tests_gate", "model_mismatch_blocked",
+        "model_mismatch_warnings", "model_needs_repair", "operator_attested_tasks",
+        "postmortem_failures", "postmortem_integrity_blocked", "recommended_action",
+        "report_badges", "review_subject_uncovered_files", "runtime_integration_gate",
+        "schema_version", "scratch_file_guard", "spec_compliance", "sticky_binding_by_task",
+        "sticky_binding_warnings", "test_status", "token_actual_summary", "token_cost_has_critical",
+        "token_cost_policy_present", "token_cost_risk_findings", "token_measurement",
+        "token_measurement_confidence", "token_measurement_note", "token_status",
+        "unresolved_findings", "verdict"}),
+    "fresh_evidence_gate.json": frozenset({
+        "current_job_id", "current_step_range", "evidence_authoritative", "evidence_freshness",
+        "evidence_job_id", "evidence_validity", "issues", "job_id_match", "live_review_match",
+        "live_review_step_range", "plan_match", "plan_step_range", "schema_version", "verdict"}),
+    "artifact_contract_gate.json": frozenset({
+        "critical_fv_missing", "evidence_job_id", "fv_referenced_missing", "issues", "job_id_fresh",
+        "missing_required", "optional_artifacts", "required_artifacts", "schema_version",
+        "stream_artifacts", "verdict", "worktree_artifacts"}),
+    "change_provenance_gate.json": frozenset({
+        "content_hash_verified", "covered_files", "current_hashes", "current_job_id", "dirty_files",
+        "evidence_covered_files", "evidence_hashes", "evidence_sources", "excluded_files",
+        "hash_mismatches", "issues", "schema_version", "source_files", "stale_apply_proofs",
+        "uncovered_files", "verdict"}),
+    "runtime_integration_gate.json": frozenset({
+        "checks", "checks_passed", "checks_total", "issues", "schema_version", "verdict"}),
+    "manifest_integrity.json": frozenset({"failures", "notes", "ok", "schema_version"}),
+    "postmortem_integrity.json": frozenset({"failures", "ok", "schema_version"}),
+    "commit_execution_gate.json": frozenset({
+        "blocked_gates", "gate_checks", "issues", "non_pass_gates", "promote_ready",
+        "schema_version", "verdict"}),
+}
+_RUNTIME_CHECK_FIELDS = frozenset({"check_id", "check_type", "file_missing", "found", "pattern",
+                                   "source_file"})
+_RUNTIME_CHECK_TYPES = frozenset({"call_exists"})
+#: The FV's OWN commit-readiness view (distinct from the packaged commit gate's verdict); a
+#: pre-acceptance package must never claim it is auto-promotable.
+_FV_COMMIT_NOT_READY = frozenset({"BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_APPROVAL",
+                                  "NEEDS_REPAIR", "NEEDS_TESTS"})
+
 
 def _gget(gate: dict, path: str):
     """Dotted lookup; returns _MISSING if any segment is absent."""
@@ -982,43 +1030,154 @@ def _check_fields(gate: dict, name: str, spec) -> list[str]:
     return problems
 
 
-def _gate_semantic_problems(name: str, gate: dict) -> list[str]:
-    """F1 (round 23): the gate's own INTERNAL truth must be consistent with its PASS/ok label — a
-    document cannot claim PASS while its body records an unresolved blocker, a failed test, a stale
-    or non-authoritative state, a missing artifact, an uncovered file or an integrity failure."""
+def _scan_gate_metadata(gate, name: str) -> list[str]:
+    """F5 (round 24): no trusted gate may carry a secret, a local absolute path or a control
+    character in ANY textual field — scan every string value recursively with the shared scanners."""
+    from packages.orchestration.run_manifest import _contains_local_path, _contains_secret
+    problems: list[str] = []
+
+    def _walk(value, path):
+        if isinstance(value, str):
+            if _contains_secret(value):
+                problems.append(f"{name} field {path} carries a secret")
+            elif _contains_local_path(value):
+                problems.append(f"{name} field {path} carries a local absolute path")
+            elif any(ord(c) < 32 and c not in "\t\n\r" for c in value):
+                problems.append(f"{name} field {path} carries a control character")
+        elif isinstance(value, dict):
+            for k, v in value.items():
+                _walk(v, f"{path}.{k}")
+        elif isinstance(value, list):
+            for i, v in enumerate(value):
+                _walk(v, f"{path}[{i}]")
+
+    _walk(gate, name.replace(".json", ""))
+    return problems
+
+
+def _gate_closed_schema_problems(name: str, gate: dict) -> list[str]:
+    """F1 (round 24): version-closed + closed allowed-field set + metadata safety."""
+    problems: list[str] = []
     if _gget(gate, "schema_version") not in _SUPPORTED_GATE_VERSIONS:
-        return [f"{name} schema_version {gate.get('schema_version')!r} is not supported "
-                f"{sorted(_SUPPORTED_GATE_VERSIONS)}"]
+        problems.append(f"{name} schema_version {gate.get('schema_version')!r} is not supported "
+                        f"{sorted(_SUPPORTED_GATE_VERSIONS)}")
+    allowed = _GATE_ALLOWED_FIELDS.get(name)
+    if allowed is not None:
+        extra = set(gate) - allowed
+        if extra:
+            problems.append(f"{name} has unknown field(s) {sorted(extra)} (schema is closed)")
+    problems.extend(_scan_gate_metadata(gate, name))
+    return problems
+
+
+def _gate_semantic_problems(name: str, gate: dict, verdicts: dict) -> list[str]:
+    """F1/F2/F3 (round 24): the gate's PASS label must be consistent with its complete internal
+    body, and (final_verifier) its embedded gate verdicts must equal the separately packaged
+    gates."""
+    problems = _gate_closed_schema_problems(name, gate)
+
     if name == "final_verifier_report.json":
-        p = _check_fields(gate, name, [
+        problems.extend(_check_fields(gate, name, [
             ("also_needs_repair", False), ("unresolved_findings", []),
             ("test_status.ran", True), ("test_status.failed", 0), ("missing_tests_gate", "PASS"),
             ("change_source_mismatches", []), ("review_subject_uncovered_files", []),
             ("content_hash_mismatches", []), ("postmortem_failures", []),
-            ("postmortem_integrity_blocked", False), ("manifest_integrity_blocked", False)])
-        return p
-    if name == "fresh_evidence_gate.json":
-        return _check_fields(gate, name, [
-            ("evidence_authoritative", True), ("evidence_freshness.is_fresh", True),
-            ("evidence_validity.is_valid_current_run", True), ("issues", [])])
-    if name == "artifact_contract_gate.json":
-        return _check_fields(gate, name, [
-            ("missing_required", []), ("fv_referenced_missing", []),
-            ("critical_fv_missing", []), ("issues", [])])
-    if name == "change_provenance_gate.json":
-        return _check_fields(gate, name, [
-            ("uncovered_files", []), ("content_hash_verified", True),
-            ("hash_mismatches", []), ("issues", [])])
-    if name == "runtime_integration_gate.json":
-        problems = _check_fields(gate, name, [("issues", [])])
-        ct, cp, checks = gate.get("checks_total"), gate.get("checks_passed"), gate.get("checks")
-        if not (isinstance(checks, list) and ct == cp == len(checks)):
-            problems.append(f"{name} checks_total/checks_passed/len(checks) disagree "
-                            f"({ct}/{cp}/{len(checks) if isinstance(checks, list) else '?'})")
+            ("postmortem_integrity_blocked", False), ("manifest_integrity_blocked", False),
+            # F2 (round 24): the remaining FV blocking fields.
+            ("final_job_review_blocked", False), ("execution_mode_blocked", False),
+            ("model_mismatch_blocked", False), ("model_needs_repair", False),
+            ("missing_evidence", []), ("execution_mode_findings", []),
+            ("final_job_review_findings", [])]))
+        # F2: the FV's embedded gate verdicts must EQUAL the separately packaged gate verdicts.
+        for emb, gate_file in (("artifact_contract_gate", "artifact_contract_gate.json"),
+                               ("change_provenance_gate", "change_provenance_gate.json"),
+                               ("fresh_evidence_gate", "fresh_evidence_gate.json"),
+                               ("runtime_integration_gate", "runtime_integration_gate.json")):
+            ev = gate.get(emb)
+            if gate_file in verdicts and ev != verdicts[gate_file]:
+                problems.append(f"{name} embedded {emb}={ev!r} != packaged "
+                                f"{verdicts[gate_file]!r}")
+        # F2: the FV's commit-readiness view (distinct name/meaning from the packaged gate verdict)
+        # must not claim an auto-promotable state for a pre-acceptance package.
+        ce = gate.get("commit_execution_gate")
+        if ce not in _FV_COMMIT_NOT_READY:
+            problems.append(f"{name} commit_execution_gate={ce!r} is not a pre-acceptance "
+                            f"not-ready state {sorted(_FV_COMMIT_NOT_READY)}")
         return problems
+
+    if name == "fresh_evidence_gate.json":
+        problems.extend(_check_fields(gate, name, [
+            ("evidence_authoritative", True), ("job_id_match", True), ("plan_match", True),
+            ("live_review_match", True), ("evidence_validity.has_job_id", True),
+            ("evidence_validity.has_manifest", True),
+            ("evidence_validity.is_valid_current_run", True),
+            ("evidence_freshness.is_fresh", True), ("evidence_freshness.job_id_match", True),
+            ("evidence_freshness.step_range_match", True), ("issues", [])]))
+        return problems
+
+    if name == "artifact_contract_gate.json":
+        problems.extend(_check_fields(gate, name, [
+            ("missing_required", []), ("fv_referenced_missing", []), ("critical_fv_missing", []),
+            ("issues", []), ("job_id_fresh", True)]))
+        req = gate.get("required_artifacts")
+        if not isinstance(req, dict):
+            problems.append(f"{name} required_artifacts is not an object")
+        else:
+            for k, v in req.items():
+                if v is not True:
+                    problems.append(f"{name} required_artifacts[{k!r}]={v!r} is not true")
+        return problems
+
+    if name == "change_provenance_gate.json":
+        problems.extend(_check_fields(gate, name, [
+            ("uncovered_files", []), ("content_hash_verified", True), ("hash_mismatches", []),
+            ("stale_apply_proofs", []), ("issues", [])]))
+        return problems
+
+    if name == "runtime_integration_gate.json":
+        problems.extend(_check_fields(gate, name, [("issues", [])]))
+        checks = gate.get("checks")
+        if not isinstance(checks, list):
+            problems.append(f"{name} checks is not a list")
+        else:
+            ids: set = set()
+            for i, c in enumerate(checks):
+                if not isinstance(c, dict) or set(c) != _RUNTIME_CHECK_FIELDS:
+                    problems.append(f"{name} check[{i}] has the wrong field set")
+                    continue
+                cid = c.get("check_id")
+                if not isinstance(cid, str) or not cid:
+                    problems.append(f"{name} check[{i}] check_id is empty")
+                elif cid in ids:
+                    problems.append(f"{name} duplicate check_id {cid!r}")
+                else:
+                    ids.add(cid)
+                if c.get("check_type") not in _RUNTIME_CHECK_TYPES:
+                    problems.append(f"{name} check {cid!r} check_type {c.get('check_type')!r} "
+                                    f"is not supported")
+                if not _safe_rel_path(c.get("source_file")):
+                    problems.append(f"{name} check {cid!r} source_file is not a safe relative path")
+                if c.get("found") is not True:
+                    problems.append(f"{name} check {cid!r} found is not true")
+                if c.get("file_missing") is not False:
+                    problems.append(f"{name} check {cid!r} file_missing is not false")
+            ct, cp = gate.get("checks_total"), gate.get("checks_passed")
+            if not (ct == cp == len(checks)):
+                problems.append(f"{name} checks_total/checks_passed/len(checks) disagree "
+                                f"({ct}/{cp}/{len(checks)})")
+        return problems
+
     if name in _OK_GATES:
-        return _check_fields(gate, name, [("failures", [])])
-    return []
+        problems.extend(_check_fields(gate, name, [("failures", [])]))
+        return problems
+
+    return problems
+
+
+def _safe_rel_path(p) -> bool:
+    if not isinstance(p, str) or not p or p.startswith("/") or "\\" in p or "\0" in p:
+        return False
+    return not any(seg in ("", "..", ".") for seg in p.split("/"))
 
 
 #: The commit gate's embedded gate_checks keys → the READY-matrix gate file whose verdict must match.
@@ -1032,16 +1191,16 @@ _COMMIT_CHECK_TO_GATE = {
 
 
 def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
-    """F2 (round 23): the commit_execution gate is CHECKED but nonblocking. Its verdict stays
-    NEEDS_HUMAN_APPROVAL for a pre-acceptance package, but a missing/invalid/contradictory commit
-    gate blocks Evidence integrity, and its embedded gate_checks must equal the packaged verdicts."""
+    """F4 (round 24): the commit_execution gate is CHECKED but nonblocking, and it must be an EXACT
+    derived document: its gate_checks are exactly the five packaged gate verdicts, non_pass_gates is
+    the derived set, blocked_gates is empty, promote_ready is false and the verdict is
+    NEEDS_HUMAN_APPROVAL. A missing/invalid/extra/contradictory commit gate blocks Evidence
+    integrity, though human approval itself is expected."""
     if gate is None:
         return [f"{_COMMIT_GATE} is missing"]
     if not isinstance(gate, dict):
         return [f"{_COMMIT_GATE} is not an object"]
-    problems: list[str] = []
-    if gate.get("schema_version") not in _SUPPORTED_GATE_VERSIONS:
-        problems.append(f"{_COMMIT_GATE} schema_version {gate.get('schema_version')!r} unsupported")
+    problems: list[str] = _gate_closed_schema_problems(_COMMIT_GATE, gate)
     if gate.get("verdict") != "NEEDS_HUMAN_APPROVAL":
         problems.append(f"{_COMMIT_GATE} verdict {gate.get('verdict')!r} != NEEDS_HUMAN_APPROVAL")
     if gate.get("promote_ready") is not False:
@@ -1049,75 +1208,91 @@ def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
     if gate.get("blocked_gates") != []:
         problems.append(f"{_COMMIT_GATE} blocked_gates {gate.get('blocked_gates')!r} is nonempty")
     checks = gate.get("gate_checks")
-    if not isinstance(checks, dict):
-        problems.append(f"{_COMMIT_GATE} gate_checks is not an object")
+    if not isinstance(checks, dict) or set(checks) != set(_COMMIT_CHECK_TO_GATE):
+        problems.append(f"{_COMMIT_GATE} gate_checks keys must be exactly "
+                        f"{sorted(_COMMIT_CHECK_TO_GATE)}")
     else:
         for k, gate_file in _COMMIT_CHECK_TO_GATE.items():
-            if k in checks and gate_file in verdicts and checks[k] != verdicts[gate_file]:
+            if gate_file in verdicts and checks[k] != verdicts[gate_file]:
                 problems.append(f"{_COMMIT_GATE} gate_checks[{k!r}]={checks[k]!r} != packaged "
                                 f"{verdicts[gate_file]!r}")
+        derived_non_pass = sorted(k for k in checks if checks[k] != "PASS")
+        if sorted(gate.get("non_pass_gates") or []) != derived_non_pass:
+            problems.append(f"{_COMMIT_GATE} non_pass_gates {gate.get('non_pass_gates')!r} != "
+                            f"the derived {derived_non_pass}")
     return problems
 
 
 def evaluate_ready_gate_matrix(load_json) -> dict:
-    """F1 (round 22) / F1+F2 (round 23): the ONE READY gate evaluation, used by the manifest AND
-    re-run by the archive builder on the staged byte map. Each gate's PASS/ok LABEL is checked, then
-    its INTERNAL consistency; the nonblocking commit gate is validated too. ``load_json(name)``
-    returns the parsed gate dict, ``None`` if absent, and raises on invalid JSON. Returns
-    {ok, gate_verdicts, blocking_reasons}."""
+    """The ONE READY gate evaluation (round 22-24), used by the manifest AND re-run by the archive
+    builder on the staged byte map. First pass records every gate's verdict label; second pass runs
+    the closed-schema + complete semantic + embedded-equality validators (and the exact commit-gate
+    derivation) with all verdicts available. ``load_json(name)`` returns the parsed gate dict,
+    ``None`` if absent, and raises on invalid JSON. Returns {ok, gate_verdicts, blocking_reasons}."""
     verdicts: dict[str, str] = {}
     reasons: list[str] = []
+    loaded: dict[str, object] = {}
 
-    for name, allowed in _VERDICT_GATES.items():
+    def _load(name):
         try:
-            g = load_json(name)
+            return load_json(name)
         except Exception as exc:                       # invalid JSON / unreadable
             reasons.append(f"{name} is not valid JSON: {exc}")
+            return _MISSING
+
+    # Pass 1 — record every gate's verdict/ok label.
+    for name in _VERDICT_GATES:
+        g = loaded[name] = _load(name)
+        if g is _MISSING:
             verdicts[name] = "INVALID"
-            continue
+        elif g is None:
+            verdicts[name] = "MISSING"
+        elif isinstance(g, dict) and isinstance(g.get("verdict"), str):
+            verdicts[name] = g["verdict"]
+        else:
+            verdicts[name] = "UNKNOWN"
+    for name in _OK_GATES:
+        g = loaded[name] = _load(name)
+        if g is _MISSING:
+            verdicts[name] = "INVALID"
+        elif g is None:
+            verdicts[name] = "MISSING"
+        else:
+            verdicts[name] = "ok=true" if (isinstance(g, dict) and g.get("ok") is True) \
+                else f"ok={g.get('ok') if isinstance(g, dict) else g!r}"
+    cg = loaded[_COMMIT_GATE] = _load(_COMMIT_GATE)
+    verdicts[_COMMIT_GATE] = (cg.get("verdict") if isinstance(cg, dict) else "MISSING") \
+        if cg not in (_MISSING, None) else ("INVALID" if cg is _MISSING else "MISSING")
+
+    # Pass 2 — validate.
+    for name, allowed in _VERDICT_GATES.items():
+        g = loaded[name]
+        if g is _MISSING:
+            continue                                   # JSON error already recorded
         if g is None:
             reasons.append(f"{name} is missing")
-            verdicts[name] = "MISSING"
             continue
         if not isinstance(g, dict) or "verdict" not in g:
             reasons.append(f"{name} has no verdict (unknown schema)")
-            verdicts[name] = "UNKNOWN"
             continue
-        v = g.get("verdict")
-        verdicts[name] = v if isinstance(v, str) else "UNKNOWN"
-        if v not in allowed:
-            reasons.append(f"{name} verdict {v!r} is not in {sorted(allowed)}")
+        if g.get("verdict") not in allowed:
+            reasons.append(f"{name} verdict {g.get('verdict')!r} is not in {sorted(allowed)}")
             continue
-        reasons.extend(_gate_semantic_problems(name, g))   # F1 (round 23): internal consistency
+        reasons.extend(_gate_semantic_problems(name, g, verdicts))
 
     for name in _OK_GATES:
-        try:
-            g = load_json(name)
-        except Exception as exc:
-            reasons.append(f"{name} is not valid JSON: {exc}")
-            verdicts[name] = "INVALID"
+        g = loaded[name]
+        if g is _MISSING:
             continue
         if g is None:
             reasons.append(f"{name} is missing")
-            verdicts[name] = "MISSING"
             continue
-        ok = g.get("ok")
-        verdicts[name] = "ok=true" if ok is True else f"ok={ok!r}"
-        if ok is not True:
-            reasons.append(f"{name} ok is {ok!r}, not true")
+        if not (isinstance(g, dict) and g.get("ok") is True):
+            reasons.append(f"{name} ok is {g.get('ok') if isinstance(g, dict) else g!r}, not true")
             continue
-        reasons.extend(_gate_semantic_problems(name, g))
+        reasons.extend(_gate_semantic_problems(name, g, verdicts))
 
-    # F2 (round 23): the checked, nonblocking commit_execution gate.
-    try:
-        cg = load_json(_COMMIT_GATE)
-    except Exception as exc:
-        reasons.append(f"{_COMMIT_GATE} is not valid JSON: {exc}")
-        verdicts[_COMMIT_GATE] = "INVALID"
-        cg = _MISSING
     if cg is not _MISSING:
-        verdicts[_COMMIT_GATE] = (cg.get("verdict") if isinstance(cg, dict) else "UNKNOWN") \
-            if cg is not None else "MISSING"
         reasons.extend(_validate_commit_gate(cg, verdicts))
 
     return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}

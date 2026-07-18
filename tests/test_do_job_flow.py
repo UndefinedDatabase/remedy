@@ -1542,32 +1542,45 @@ class TestReviewZipPackageStatus:
                 "provider_evidence.json",
             ]:
                 (d / art).write_text("{}")
-        # Round 22/23: READY requires the COMPLETE, semantically-consistent gate matrix.
+        # Round 22/23/24: READY requires the COMPLETE, closed-schema, consistent gate matrix.
         (ev / "fresh_evidence_gate.json").write_text(json.dumps({
-            "schema_version": "1.0.0", "verdict": "PASS",
-            "evidence_freshness": {"is_fresh": True}, "evidence_authoritative": True,
-            "evidence_validity": {"is_valid_current_run": True}, "issues": []}))
+            "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
+            "job_id_match": True, "plan_match": True, "live_review_match": True,
+            "evidence_freshness": {"is_fresh": True, "job_id_match": True,
+                                   "step_range_match": True},
+            "evidence_validity": {"has_job_id": True, "has_manifest": True,
+                                  "is_valid_current_run": True}, "issues": []}))
         (ev / "final_verifier_report.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": [],
             "also_needs_repair": False, "unresolved_findings": [],
             "test_status": {"ran": True, "passed": 1, "failed": 0}, "missing_tests_gate": "PASS",
             "change_source_mismatches": [], "review_subject_uncovered_files": [],
             "content_hash_mismatches": [], "postmortem_failures": [],
-            "postmortem_integrity_blocked": False, "manifest_integrity_blocked": False}))
+            "postmortem_integrity_blocked": False, "manifest_integrity_blocked": False,
+            "final_job_review_blocked": False, "execution_mode_blocked": False,
+            "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
+            "execution_mode_findings": [], "final_job_review_findings": [],
+            "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+            "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
+            "commit_execution_gate": "BLOCKED"}))
         (ev / "artifact_contract_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
-            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": []}))
+            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": [],
+            "job_id_fresh": True, "required_artifacts": {"manifest.json": True}}))
         (ev / "change_provenance_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "uncovered_files": [],
-            "content_hash_verified": True, "hash_mismatches": [], "issues": []}))
+            "content_hash_verified": True, "hash_mismatches": [], "stale_apply_proofs": [],
+            "issues": []}))
         (ev / "runtime_integration_gate.json").write_text(json.dumps({
-            "schema_version": "1.0.0", "verdict": "PASS", "checks": ["a"], "checks_total": 1,
-            "checks_passed": 1, "issues": []}))
+            "schema_version": "1.0.0", "verdict": "PASS",
+            "checks": [{"check_id": "c0", "check_type": "call_exists", "source_file": "src/app.py",
+                        "pattern": "add(", "found": True, "file_missing": False}],
+            "checks_total": 1, "checks_passed": 1, "issues": []}))
         for g in ("manifest_integrity.json", "postmortem_integrity.json"):
             (ev / g).write_text(json.dumps({"schema_version": "1.0.0", "ok": True, "failures": []}))
         (ev / "commit_execution_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
-            "blocked_gates": [], "issues": [], "gate_checks": {
+            "blocked_gates": [], "non_pass_gates": [], "issues": [], "gate_checks": {
                 "final_verifier": "PASS", "fresh_evidence_gate": "PASS",
                 "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
                 "runtime_integration_gate": "PASS"}}))
