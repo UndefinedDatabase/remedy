@@ -137,23 +137,70 @@ class _EvidenceView:
         return self.read_json_strict
 
 
+#: F6 (round 25): per-member and aggregate acquisition limits for the anchored no-follow walk.
+_ACQUIRE_MAX_MEMBER_BYTES = 64 * 1024 * 1024
+_ACQUIRE_MAX_TOTAL_BYTES = 512 * 1024 * 1024
+_ACQUIRE_MAX_MEMBERS = 20000
+
+
 def _view_from_dir(evidence_dir: str) -> _EvidenceView:
-    """Read an evidence directory ONCE into an immutable byte map. Used by the standalone CLI and by
-    tests; the coordinator uses ``_view_from_snapshot`` so it never touches the FS after snapshot."""
+    """F6 (round 25): read an evidence directory ONCE into an immutable byte map through the shared
+    ANCHORED, O_NOFOLLOW ``secure_fs`` primitives — never ``os.walk``/``open`` by name. A symlink
+    (dir or file), FIFO, socket or device is NEVER followed or read; every regular member is opened
+    ``O_NOFOLLOW``, identity-checked and stably read. Used by the standalone CLI, by tests, and by
+    make_review_zip.sh's preliminary manifest pass; the coordinator uses ``_view_from_snapshot``."""
+    import stat as _stat
+
+    from packages.common import secure_fs
+
     files: dict[str, bytes] = {}
     mtimes: dict[str, str] = {}
-    root = os.path.abspath(evidence_dir)
-    for dirpath, _dirs, filenames in os.walk(root):
-        for fn in filenames:
-            ap = os.path.join(dirpath, fn)
-            rel = os.path.relpath(ap, root).replace(os.sep, "/")
+    counts = {"members": 0, "total": 0}
+    try:
+        root_fd = secure_fs.anchor_root(evidence_dir, noun="evidence dir", create=False)
+    except Exception:
+        return _EvidenceView({})
+
+    def _collect(dir_fd: int, relbase: str) -> None:
+        for name in secure_fs.list_dir_names(dir_fd):
             try:
-                with open(ap, "rb") as fh:
-                    files[rel] = fh.read()
-                mtimes[rel] = datetime.fromtimestamp(
-                    os.path.getmtime(ap), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                st = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
             except OSError:
                 continue
+            rel = f"{relbase}/{name}" if relbase else name
+            if _stat.S_ISLNK(st.st_mode):
+                continue                                # never follow a symlink — no outside bytes
+            if _stat.S_ISDIR(st.st_mode):
+                try:
+                    sub = secure_fs.open_verified_dir(name, dir_fd=dir_fd, noun="evidence dir")
+                except Exception:
+                    continue
+                try:
+                    _collect(sub, rel)
+                finally:
+                    os.close(sub)
+            elif _stat.S_ISREG(st.st_mode):
+                if counts["members"] >= _ACQUIRE_MAX_MEMBERS:
+                    continue
+                try:
+                    vf = secure_fs.read_verified_file_at(
+                        dir_fd, name, expected_kind="regular",
+                        max_bytes=_ACQUIRE_MAX_MEMBER_BYTES, noun="evidence file")
+                except Exception:
+                    continue                            # symlink swap / torn / over-limit — refuse
+                if counts["total"] + len(vf.data) > _ACQUIRE_MAX_TOTAL_BYTES:
+                    continue
+                counts["members"] += 1
+                counts["total"] += len(vf.data)
+                files[rel] = vf.data
+                mtimes[rel] = datetime.fromtimestamp(
+                    st.st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            # FIFO / socket / device → skipped, never read
+
+    try:
+        _collect(root_fd, "")
+    finally:
+        os.close(root_fd)
     return _EvidenceView(files, mtimes)
 
 

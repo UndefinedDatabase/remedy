@@ -41,6 +41,10 @@ from packages.orchestration.review_zip import (  # noqa: E402
 )
 
 
+#: F6 (round 25): per-member acquisition size limit for the anchored no-follow staged read.
+_ACQUIRE_MAX_MEMBER_BYTES = 64 * 1024 * 1024
+
+
 def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -70,17 +74,25 @@ class _StagedArtifacts:
         self._prefix = current_prefix
 
     def load(self, name: str) -> tuple[bytes | None, str]:
-        """Read `<prefix>/<name>` once (bytes, sha). Absent -> (None, "")."""
+        """Read `<prefix>/<name>` once (bytes, sha). Absent OR unsafe -> (None, "").
+
+        F6 (round 25): the read goes through the shared ANCHORED, O_NOFOLLOW ``secure_fs`` primitive
+        — never ``os.path.isfile`` + ``open`` by name, which FOLLOW a symlink. A staged member that
+        is a symlink (or a regular file swapped to one mid-read) is refused and reported ABSENT, so
+        NO outside bytes are ever read here even before the ArchivePlan blocks the member."""
         if not self._root:
             return None, ""
         arc = f"{self._prefix}/{name}"
         if arc in self.by_arcname:
             return self.by_arcname[arc]
-        p = os.path.join(self._root, arc)
-        if not os.path.isfile(p):
-            return None, ""
-        raw = open(p, "rb").read()
-        rec = (raw, _sha256_hex(raw))
+        from packages.common import secure_fs
+        try:
+            vf = secure_fs.read_verified_relative(
+                self._root, arc, expected_kind="regular",
+                max_bytes=_ACQUIRE_MAX_MEMBER_BYTES, noun="staged evidence artifact")
+        except secure_fs.SecureFsError:
+            return None, ""                             # absent, wrong kind, or a refused symlink
+        rec = (vf.data, _sha256_hex(vf.data))
         self.by_arcname[arc] = rec
         return rec
 
