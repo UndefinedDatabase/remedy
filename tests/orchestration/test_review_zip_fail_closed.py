@@ -31,47 +31,35 @@ def _valid_subject_json():
     }
 
 
-class TestLoaderFailsClosed:
-    def test_no_path_is_the_legacy_empty_subject(self):
-        subj, raw = _bz._load_subject("")
-        assert subj.files == () and raw == b""
+class TestDecoderFailsClosed:
+    def test_no_bytes_is_the_legacy_empty_subject(self):
+        subj = _bz._decode_subject(None)
+        assert subj.files == ()
 
-    def test_a_supplied_but_missing_path_blocks(self, tmp_path):
+    def test_invalid_json_blocks(self):
         with pytest.raises(ArchivePlanError):
-            _bz._load_subject(str(tmp_path / "nope.json"))
+            _bz._decode_subject(b"{not json")
 
-    def test_invalid_json_blocks(self, tmp_path):
-        p = tmp_path / "s.json"
-        p.write_text("{not json")
-        with pytest.raises(ArchivePlanError):
-            _bz._load_subject(str(p))
-
-    def test_a_schema_failing_subject_blocks(self, tmp_path):
-        p = tmp_path / "s.json"
-        # unknown field + a forged path => strict schema rejects, never an empty downgrade
-        p.write_text(json.dumps({"subject_v": 1, "EVIL": "/home/alice", "files": []}))
+    def test_a_schema_failing_subject_blocks(self):
+        raw = json.dumps({"subject_v": 1, "EVIL": "/home/alice", "files": []}).encode()
         with pytest.raises((ReviewSubjectError, ArchivePlanError)):
-            _bz._load_subject(str(p))
+            _bz._decode_subject(raw)
 
-    def test_a_valid_subject_decodes(self, tmp_path):
-        p = tmp_path / "s.json"
-        p.write_text(json.dumps(_valid_subject_json()))
-        subj, raw = _bz._load_subject(str(p))
-        assert [f.path for f in subj.files] == ["a.py"] and raw
+    def test_a_valid_subject_decodes(self):
+        raw = json.dumps(_valid_subject_json()).encode()
+        subj = _bz._decode_subject(raw)
+        assert [f.path for f in subj.files] == ["a.py"]
 
 
 class TestContentProofMandatory:
     def test_declared_subject_with_missing_proof_blocks(self):
-        # F2 (round 20): no fail-open empty authority when a Subject is declared.
+        # F2/F3 (round 20/21): no fail-open empty authority when a Subject is declared.
         with pytest.raises(ArchivePlanError):
-            _bz._load_content_proof("", subject_declared=True)
+            _bz._decode_content_proof(None, subject_declared=True)
 
     def test_no_subject_no_proof_is_empty(self):
-        cp, raw = _bz._load_content_proof("", subject_declared=False)
-        assert cp is None and raw == b""
+        assert _bz._decode_content_proof(None, subject_declared=False) is None
 
-    def test_invalid_proof_json_blocks(self, tmp_path):
-        p = tmp_path / "cp.json"
-        p.write_text("{not json")
+    def test_invalid_proof_json_blocks(self):
         with pytest.raises(ArchivePlanError):
-            _bz._load_content_proof(str(p), subject_declared=True)
+            _bz._decode_content_proof(b"{not json", subject_declared=True)

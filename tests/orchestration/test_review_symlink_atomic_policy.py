@@ -57,10 +57,12 @@ class TestBundleSafetyPolicy:
         assert classify_bundle_path(name, changed=True, is_authoritative_source=lambda p: True) \
             == DISP_BLOCK_SENSITIVE
 
-    def test_an_unchanged_sensitive_context_path_also_blocks(self):
-        # Round 20 F7: the SAME policy applies to unchanged context — a `.log` never enters.
-        assert classify_bundle_path("app.log", changed=False) == DISP_BLOCK_SENSITIVE
-        assert classify_bundle_path("keys.pem", changed=False) == DISP_BLOCK_SENSITIVE
+    def test_an_unchanged_sensitive_context_path_is_safely_excluded(self):
+        # Round 21 F5: unchanged sensitive context is EXCLUDE_SAFE_CONTEXT (never packaged, but an
+        # explicit disposition), while a CHANGED sensitive path is a hard block.
+        from packages.orchestration.archive_plan import DISP_EXCLUDE_SAFE_CONTEXT
+        assert classify_bundle_path("app.log", changed=False) == DISP_EXCLUDE_SAFE_CONTEXT
+        assert classify_bundle_path("keys.pem", changed=False) == DISP_EXCLUDE_SAFE_CONTEXT
 
     def test_a_plain_context_path_is_included(self):
         assert classify_bundle_path("src/app.py", changed=False) == DISP_INCLUDE
