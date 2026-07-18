@@ -50,29 +50,14 @@ def _check(path: str) -> str:
     return "present" if os.path.isfile(path) else "absent"
 
 
-def _no_dup_pairs(pairs):
-    seen: set = set()
-    out: dict = {}
-    for k, v in pairs:
-        if k in seen:
-            raise ValueError(f"duplicate JSON key {k!r}")
-        seen.add(k)
-        out[k] = v
-    return out
-
-
-def _reject_json_constant(name):
-    raise ValueError(f"non-standard JSON constant {name!r}")
-
-
 def _strict_json_loads(raw):
-    """F5 (round 25): the ONE duplicate-key-rejecting decoder for every trusted gate/evidence read.
-    An ``object_pairs_hook`` refuses duplicate keys at ANY depth and NaN/Infinity are refused, so a
-    duplicate key RAISES rather than silently collapsing to the stdlib's last-wins value — two
-    different byte strings can never decode to the same object. Kept dependency-free (no heavy
-    package import) so the standalone manifest builder stays importable in minimal environments."""
-    text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
-    return json.loads(text, object_pairs_hook=_no_dup_pairs, parse_constant=_reject_json_constant)
+    """F5 (round 25/26): the ONE strict decoder for every trusted gate/evidence read — imported from
+    the single shared ``packages.common.strict_json`` implementation, so duplicate keys (at any
+    depth), NaN/Infinity and invalid UTF-8 are refused identically here and in the archive builder.
+    The import is dependency-free so the standalone manifest builder stays importable in minimal
+    environments."""
+    from packages.common.strict_json import strict_loads
+    return strict_loads(raw, where="gate/evidence artifact")
 
 
 class _EvidenceView:
@@ -1170,7 +1155,8 @@ _CREDENTIAL_KEY_RE = re.compile(
 # type, or a dynamic-map key that violates its grammar all BLOCK. Value SEMANTICS (equality with a
 # PASS gate) stay in _gate_semantic_problems; this layer pins STRUCTURE + dynamic-key safety. ----
 class _Node:
-    """Accept anything structurally (metadata safety is scanned separately by _scan_gate_metadata)."""
+    """Base schema node. Subclasses type a trusted value EXACTLY — there is no accept-anything node
+    (F1, round 26): every scalar, list element, nested object and dynamic-map value is typed."""
     def check(self, v, path, name):
         return []
 
@@ -1180,14 +1166,20 @@ class _Scalar(_Node):
         self.py, self.label = py, label
 
     def check(self, v, path, name):
-        if self.py is int and isinstance(v, bool):        # bool is an int subclass — reject it
+        # bool is an int/float subclass — reject it unless bool is explicitly acceptable.
+        allows_bool = self.py is bool or (isinstance(self.py, tuple) and bool in self.py)
+        if isinstance(v, bool) and not allows_bool:
             return [f"{name} {path} is a bool, expected {self.label}"]
         return [] if isinstance(v, self.py) else [f"{name} {path} is not {self.label}"]
 
 
 class _Obj(_Node):
-    def __init__(self, fields):
+    """A closed object: unknown field blocks; every REQUIRED field must be present; optional fields
+    are explicitly documented; each present field is typed (F2, round 26)."""
+    def __init__(self, fields, *, optional=frozenset()):
         self.fields = fields
+        self.optional = frozenset(optional)
+        self.required = frozenset(fields) - self.optional
 
     def check(self, v, path, name):
         if not isinstance(v, dict):
@@ -1196,6 +1188,9 @@ class _Obj(_Node):
         extra = set(v) - set(self.fields)
         if extra:
             problems.append(f"{name} {path} has unknown field(s) {sorted(extra)} (schema is closed)")
+        missing = self.required - set(v)
+        if missing:
+            problems.append(f"{name} {path} is missing required field(s) {sorted(missing)}")
         for k, node in self.fields.items():
             if k in v:
                 problems.extend(node.check(v[k], f"{path}.{k}" if path else k, name))
@@ -1231,10 +1226,41 @@ class _Arr(_Node):
         return problems
 
 
+class _Nullable(_Node):
+    """A value that is EITHER JSON null OR the wrapped node — the explicit nullable union that
+    replaces every ANY on a field the producer may legitimately emit as null (F1, round 26)."""
+    def __init__(self, node):
+        self.node = node
+
+    def check(self, v, path, name):
+        return [] if v is None else self.node.check(v, path, name)
+
+
+class _OneOf(_Node):
+    """A value that must satisfy AT LEAST ONE of the alternative nodes — no catch-all."""
+    def __init__(self, *nodes):
+        self.nodes = nodes
+
+    def check(self, v, path, name):
+        for node in self.nodes:
+            if not node.check(v, path, name):
+                return []
+        return [f"{name} {path} matches none of the allowed shapes"]
+
+
 BOOL = _Scalar(bool, "a bool")
 INT = _Scalar(int, "an integer")
 STR = _Scalar(str, "a string")
-ANY = _Node()
+NUM = _Scalar((int, float), "a number")
+_NINT, _NSTR, _NBOOL, _NNUM = _Nullable(INT), _Nullable(STR), _Nullable(BOOL), _Nullable(NUM)
+_NSTRLIST = _Nullable(_Arr(STR))
+#: An exact closed placeholder for a finding/warning list element: a message string OR an empty
+#: structured record (a READY package requires these lists empty, and a populated arbitrary object
+#: is refused — F1 round 26 removed the ANY catch-all here).
+_FINDING = _OneOf(STR, _Obj({}))
+#: The exact content-hash-mismatch record shape.
+_HASH_MISMATCH = _Obj({"file": STR, "expected": STR, "actual": STR})
+_MODELS = _Obj({"builder": _NSTR, "reviewer": _NSTR})
 
 
 def _valid_dynamic_key(kind: str, key) -> bool:
@@ -1249,21 +1275,44 @@ def _valid_dynamic_key(kind: str, key) -> bool:
     return True                                            # generic str key (still metadata-scanned)
 
 
-_TOKEN_MODELS = _Obj({"builder": ANY, "reviewer": ANY})
-_TOKEN_BLOCK = _Obj({
-    "actual_available": ANY, "actual_prompt_tokens": ANY, "actual_completion_tokens": ANY,
-    "actual_total_tokens": ANY, "estimated_prompt_tokens": ANY, "estimated_completion_tokens": ANY,
-    "estimated_total_tokens": ANY, "measurement_source": STR, "measurement_confidence": STR,
-    "measurement_note": STR, "actual_summary": ANY, "total_cost_usd": ANY,
-    "missing_reason": ANY, "builder_estimated_total": ANY, "reviewer_estimated_total": ANY,
-    "repair_estimated_total": ANY, "provider_call_count": INT, "prompt_trace_count": INT,
-    "actual_call_count": INT, "actual_coverage_complete": BOOL, "actual_missing_reasons": ANY,
-    "cost_call_count": INT, "cost_coverage_complete": BOOL, "cost_coverage_reason": ANY,
-    "cli_version": ANY, "configured_models": _TOKEN_MODELS, "actual_models": _TOKEN_MODELS,
-    "actual_model_verified": BOOL})
+#: F1/F2 (round 26): the token blocks are TWO distinct exact shapes (token_status carries the
+#: estimate/trace fields; token_measurement carries measurement_note + actual_summary).
+_TOKEN_STATUS = _Obj({
+    "actual_available": _NBOOL, "actual_call_count": INT, "actual_completion_tokens": _NINT,
+    "actual_coverage_complete": BOOL, "actual_missing_reasons": _NSTRLIST,
+    "actual_model_verified": BOOL, "actual_models": _MODELS, "actual_prompt_tokens": _NINT,
+    "actual_total_tokens": _NINT, "builder_estimated_total": INT, "cli_version": _NSTR,
+    "configured_models": _MODELS, "cost_call_count": INT, "cost_coverage_complete": BOOL,
+    "cost_coverage_reason": _NSTR, "estimated_completion_tokens": INT, "estimated_prompt_tokens": INT,
+    "estimated_total_tokens": INT, "measurement_confidence": STR, "measurement_source": STR,
+    "missing_reason": _NSTR, "prompt_trace_count": INT, "provider_call_count": INT,
+    "repair_estimated_total": INT, "reviewer_estimated_total": INT, "total_cost_usd": _NNUM})
+_TOKEN_MEASUREMENT = _Obj({
+    "actual_call_count": INT, "actual_coverage_complete": BOOL, "actual_missing_reasons": _NSTRLIST,
+    "actual_model_verified": BOOL, "actual_models": _MODELS, "actual_summary": _Nullable(_Obj({})),
+    "cli_version": _NSTR, "configured_models": _MODELS, "cost_call_count": INT,
+    "cost_coverage_complete": BOOL, "cost_coverage_reason": _NSTR, "measurement_confidence": STR,
+    "measurement_note": STR, "measurement_source": STR, "provider_call_count": INT,
+    "total_cost_usd": _NNUM})
 
-#: F1 (round 25): the COMPLETE recursive schema for every gate. Top-level closed field set + every
-#: nested object/list/dynamic-map typed. Replaces the flat top-level-only check.
+_STREAM_SECTION = _Obj({
+    "applicable": BOOL, "verdict": STR, "tasks_with_stream_evidence": _Arr(STR),
+    "artifacts_verified": INT, "artifacts_present": INT,
+    "missing_stream_artifact_listing": _Arr(_FINDING), "missing_stream_artifacts": _Arr(_FINDING),
+    "missing_stream_artifact_metadata": _Arr(_FINDING),
+    "stream_artifact_hash_mismatches": _Arr(_FINDING), "stream_artifact_size_mismatches": _Arr(_FINDING),
+    "unexpected_stream_artifacts": _Arr(_FINDING), "duplicate_stream_artifact_refs": _Arr(_FINDING),
+    "unsafe_stream_artifact_refs": _Arr(_FINDING)})
+_WORKTREE_SECTION = _Obj({
+    "applicable": BOOL, "verdict": STR, "job_level_handoff": BOOL, "handoff_coverage_verdict": STR,
+    "handoff_coverage_issues": _Arr(_FINDING), "missing_job_handoff": _Arr(_FINDING),
+    "worktree_tasks": _Arr(_FINDING), "diffs_verified": INT, "missing_result_diffs": _Arr(_FINDING),
+    "missing_result_diff_references": _Arr(_FINDING), "result_diff_hash_mismatches": _Arr(_FINDING),
+    "result_diff_size_mismatches": _Arr(_FINDING), "unreferenced_result_diffs": _Arr(_FINDING),
+    "unsafe_result_diff_refs": _Arr(_FINDING)})
+
+#: F1/F2 (round 26): the COMPLETE recursive schema for every gate — fully typed (no ANY), with
+#: required fields enforced. Derived from the real producer's emitted shape.
 _GATE_SCHEMA = {
     "final_verifier_report.json": _Obj({
         "schema_version": STR, "verdict": STR, "also_needs_repair": BOOL,
@@ -1273,12 +1322,12 @@ _GATE_SCHEMA = {
         "file_set_alignment_status": STR, "final_job_review_verdict": STR, "recommended_action": STR,
         "authoritative_changed_files": _Arr(STR), "changed_files": _Arr(STR),
         "changed_line_ranges": _Map("repo_path", _Arr(_Arr(INT))),
-        "change_source_mismatches": _Arr(ANY), "content_hash_mismatches": _Arr(ANY),
-        "review_subject_uncovered_files": _Arr(STR), "postmortem_failures": _Arr(ANY),
-        "unresolved_findings": _Arr(ANY), "missing_evidence": _Arr(STR),
-        "execution_mode_findings": _Arr(ANY), "final_job_review_findings": _Arr(ANY),
+        "change_source_mismatches": _Arr(_FINDING), "content_hash_mismatches": _Arr(_HASH_MISMATCH),
+        "review_subject_uncovered_files": _Arr(STR), "postmortem_failures": _Arr(_FINDING),
+        "unresolved_findings": _Arr(_FINDING), "missing_evidence": _Arr(STR),
+        "execution_mode_findings": _Arr(_FINDING), "final_job_review_findings": _Arr(_FINDING),
         "invocation_args_warnings": _Arr(STR), "model_mismatch_warnings": _Arr(STR),
-        "sticky_binding_warnings": _Arr(ANY), "token_cost_risk_findings": _Arr(ANY),
+        "sticky_binding_warnings": _Arr(_FINDING), "token_cost_risk_findings": _Arr(_FINDING),
         "report_badges": _Arr(STR), "operator_attested_tasks": _Arr(STR),
         "test_status": _Obj({"ran": BOOL, "passed": INT, "failed": INT}),
         "evidence_completeness": _Obj({
@@ -1292,9 +1341,9 @@ _GATE_SCHEMA = {
         "final_job_review_blocked": BOOL, "execution_mode_blocked": BOOL,
         "model_mismatch_blocked": BOOL, "model_needs_repair": BOOL,
         "token_cost_has_critical": BOOL, "token_cost_policy_present": BOOL,
-        "token_status": _TOKEN_BLOCK, "token_measurement": _TOKEN_BLOCK,
+        "token_status": _TOKEN_STATUS, "token_measurement": _TOKEN_MEASUREMENT,
         "token_measurement_confidence": STR, "token_measurement_note": STR,
-        "token_actual_summary": ANY}),
+        "token_actual_summary": _Nullable(_Obj({}))}),
     "fresh_evidence_gate.json": _Obj({
         "schema_version": STR, "verdict": STR, "evidence_job_id": STR, "current_job_id": STR,
         "current_step_range": STR, "live_review_step_range": STR, "plan_step_range": STR,
@@ -1310,25 +1359,13 @@ _GATE_SCHEMA = {
         "optional_artifacts": _Map("artifact_name", BOOL),
         "missing_required": _Arr(STR), "fv_referenced_missing": _Arr(STR),
         "critical_fv_missing": _Arr(STR), "issues": _Arr(STR),
-        "stream_artifacts": _Obj({
-            "applicable": BOOL, "verdict": STR, "tasks_with_stream_evidence": _Arr(STR),
-            "artifacts_verified": INT, "artifacts_present": INT,
-            "missing_stream_artifact_listing": _Arr(ANY), "missing_stream_artifacts": _Arr(ANY),
-            "missing_stream_artifact_metadata": _Arr(ANY), "stream_artifact_hash_mismatches": _Arr(ANY),
-            "stream_artifact_size_mismatches": _Arr(ANY), "unexpected_stream_artifacts": _Arr(ANY),
-            "duplicate_stream_artifact_refs": _Arr(ANY), "unsafe_stream_artifact_refs": _Arr(ANY)}),
-        "worktree_artifacts": _Obj({
-            "applicable": BOOL, "verdict": STR, "job_level_handoff": BOOL,
-            "handoff_coverage_verdict": STR, "handoff_coverage_issues": _Arr(ANY),
-            "missing_job_handoff": _Arr(ANY), "worktree_tasks": _Arr(ANY), "diffs_verified": INT,
-            "missing_result_diffs": _Arr(ANY), "missing_result_diff_references": _Arr(ANY),
-            "result_diff_hash_mismatches": _Arr(ANY), "result_diff_size_mismatches": _Arr(ANY),
-            "unreferenced_result_diffs": _Arr(ANY), "unsafe_result_diff_refs": _Arr(ANY)})}),
+        "stream_artifacts": _STREAM_SECTION, "worktree_artifacts": _WORKTREE_SECTION}),
     "change_provenance_gate.json": _Obj({
         "schema_version": STR, "verdict": STR, "current_job_id": STR,
         "covered_files": _Arr(STR), "source_files": _Arr(STR), "excluded_files": _Arr(STR),
         "evidence_covered_files": _Arr(STR), "evidence_sources": _Arr(STR), "dirty_files": _Arr(STR),
-        "uncovered_files": _Arr(STR), "stale_apply_proofs": _Arr(ANY), "hash_mismatches": _Arr(ANY),
+        "uncovered_files": _Arr(STR), "stale_apply_proofs": _Arr(_FINDING),
+        "hash_mismatches": _Arr(_HASH_MISMATCH),
         "issues": _Arr(STR), "current_hashes": _Map("repo_path", STR),
         "evidence_hashes": _Map("repo_path", STR), "content_hash_verified": BOOL}),
     "runtime_integration_gate.json": _Obj({
@@ -1336,9 +1373,9 @@ _GATE_SCHEMA = {
             "check_id": STR, "check_type": STR, "file_missing": BOOL, "found": BOOL, "pattern": STR,
             "source_file": STR})), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
     "manifest_integrity.json": _Obj({
-        "schema_version": STR, "ok": BOOL, "failures": _Arr(ANY), "notes": _Arr(STR)}),
+        "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
     "postmortem_integrity.json": _Obj({
-        "schema_version": STR, "ok": BOOL, "failures": _Arr(ANY)}),
+        "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING)}),
     "commit_execution_gate.json": _Obj({
         "schema_version": STR, "verdict": STR, "gate_checks": _Map("gate_name", STR),
         "blocked_gates": _Arr(STR), "non_pass_gates": _Arr(STR), "promote_ready": BOOL,

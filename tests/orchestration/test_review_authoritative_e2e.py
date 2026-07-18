@@ -26,7 +26,7 @@ _REQUIRED_MODULES = (
     "packages/orchestration/evidence_index.py", "packages/orchestration/review_zip.py",
     "packages/orchestration/archive_plan.py", "packages/orchestration/review_subject.py",
     "packages/orchestration/evidence_inventory.py", "packages/common/__init__.py",
-    "packages/common/secure_fs.py",
+    "packages/common/secure_fs.py", "packages/common/strict_json.py",
 )
 
 
@@ -53,6 +53,34 @@ def _na_section(kind):
             "unsafe_result_diff_refs": []}
 
 
+def _models(actual_null=True):
+    return {"builder": None, "reviewer": None} if actual_null else {"builder": "", "reviewer": ""}
+
+
+def _token_status():
+    return {"actual_available": False, "actual_call_count": 0, "actual_completion_tokens": None,
+            "actual_coverage_complete": False, "actual_missing_reasons": None,
+            "actual_model_verified": False, "actual_models": _models(True),
+            "actual_prompt_tokens": None, "actual_total_tokens": None, "builder_estimated_total": 0,
+            "cli_version": None, "configured_models": _models(False), "cost_call_count": 0,
+            "cost_coverage_complete": False, "cost_coverage_reason": "no_real_provider_calls",
+            "estimated_completion_tokens": 0, "estimated_prompt_tokens": 0,
+            "estimated_total_tokens": 0, "measurement_confidence": "low",
+            "measurement_source": "character_heuristic", "missing_reason": "operator attested",
+            "prompt_trace_count": 0, "provider_call_count": 0, "repair_estimated_total": 0,
+            "reviewer_estimated_total": 0, "total_cost_usd": None}
+
+
+def _token_measurement():
+    return {"actual_call_count": 0, "actual_coverage_complete": False, "actual_missing_reasons": None,
+            "actual_model_verified": False, "actual_models": _models(True), "actual_summary": None,
+            "cli_version": None, "configured_models": _models(False), "cost_call_count": 0,
+            "cost_coverage_complete": False, "cost_coverage_reason": "no_real_provider_calls",
+            "measurement_confidence": "low", "measurement_note": "operator attested",
+            "measurement_source": "character_heuristic", "provider_call_count": 0,
+            "total_cost_usd": None}
+
+
 def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step="1-2"):
     """The complete, closed-schema, semantically-consistent READY gate set (round 25) keyed by
     filename: every field required by the exact RECURSIVE validators and the COMPLETE semantics is
@@ -62,9 +90,12 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
     hashes = dict(file_hashes) if file_hashes is not None else {p: "0" * 64 for p in authority}
     covered = sorted(hashes) if file_hashes is not None else authority
     return {
+        # round 26: the COMPLETE final_verifier producer shape — every required field present and
+        # fully typed (token_status/token_measurement complete, no ANY).
         "final_verifier_report.json": {
             "schema_version": "1.0.0", "verdict": "PASS_WITH_RISKS",
-            "authoritative_changed_files": authority, "also_needs_repair": False,
+            "authoritative_changed_files": authority, "changed_files": authority,
+            "changed_line_ranges": {}, "also_needs_repair": False,
             "unresolved_findings": [], "test_status": {"ran": True, "passed": 1, "failed": 0},
             "missing_tests_gate": "PASS", "change_source_mismatches": [],
             "review_subject_uncovered_files": [], "content_hash_mismatches": [],
@@ -73,13 +104,20 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
             "final_job_review_blocked": False, "execution_mode_blocked": False,
             "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
             "execution_mode_findings": [], "final_job_review_findings": [],
+            "invocation_args_warnings": [], "model_mismatch_warnings": [],
+            "sticky_binding_warnings": [], "report_badges": [], "operator_attested_tasks": [],
+            "execution_mode_by_task": {}, "sticky_binding_by_task": {},
+            "final_job_review_verdict": "PASS", "recommended_action": "Approve with risks",
+            "manual_completion": True, "human_final_reviewer_required": True,
             "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
             "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
             "commit_execution_gate": "BLOCKED",
-            # round 25: the remaining READY-incompatible FV fields + complete evidence_completeness.
             "spec_compliance": "PASS", "scratch_file_guard": "PASS", "change_provenance": "PASS",
             "file_set_alignment_status": "PASS", "token_cost_has_critical": False,
-            "token_cost_risk_findings": [],
+            "token_cost_policy_present": True, "token_cost_risk_findings": [],
+            "token_status": _token_status(), "token_measurement": _token_measurement(),
+            "token_measurement_confidence": "low", "token_measurement_note": "operator attested",
+            "token_actual_summary": None,
             "evidence_completeness": {"review_scope_packet": True, "spec_compliance_check": True,
                                       "missing_tests_gate": True, "scratch_file_guard": True,
                                       "token_truth": True, "safe_diff": True, "review_json": True,
@@ -101,8 +139,9 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
             "optional_artifacts": {"scratch_file_guard.json": True},
             "stream_artifacts": _na_section("stream"), "worktree_artifacts": _na_section("worktree")},
         "change_provenance_gate.json": {
-            "schema_version": "1.0.0", "verdict": "PASS", "covered_files": covered,
-            "source_files": covered, "excluded_files": [], "evidence_covered_files": covered,
+            "schema_version": "1.0.0", "verdict": "PASS", "current_job_id": job_id,
+            "covered_files": covered, "source_files": covered, "excluded_files": [],
+            "evidence_covered_files": covered, "evidence_sources": [], "dirty_files": [],
             "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
             "stale_apply_proofs": [], "issues": [], "current_hashes": hashes,
             "evidence_hashes": hashes},

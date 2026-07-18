@@ -1559,8 +1559,31 @@ class TestReviewZipPackageStatus:
                                    "step_range_match": True},
             "evidence_validity": {"has_job_id": True, "has_manifest": True,
                                   "is_valid_current_run": True}, "issues": []}))
+        _models_n = {"builder": None, "reviewer": None}
+        _models_c = {"builder": "", "reviewer": ""}
+        _tstatus = {"actual_available": False, "actual_call_count": 0,
+                    "actual_completion_tokens": None, "actual_coverage_complete": False,
+                    "actual_missing_reasons": None, "actual_model_verified": False,
+                    "actual_models": _models_n, "actual_prompt_tokens": None,
+                    "actual_total_tokens": None, "builder_estimated_total": 0, "cli_version": None,
+                    "configured_models": _models_c, "cost_call_count": 0,
+                    "cost_coverage_complete": False, "cost_coverage_reason": "no_real_provider_calls",
+                    "estimated_completion_tokens": 0, "estimated_prompt_tokens": 0,
+                    "estimated_total_tokens": 0, "measurement_confidence": "low",
+                    "measurement_source": "character_heuristic", "missing_reason": "op",
+                    "prompt_trace_count": 0, "provider_call_count": 0, "repair_estimated_total": 0,
+                    "reviewer_estimated_total": 0, "total_cost_usd": None}
+        _tmeas = {"actual_call_count": 0, "actual_coverage_complete": False,
+                  "actual_missing_reasons": None, "actual_model_verified": False,
+                  "actual_models": _models_n, "actual_summary": None, "cli_version": None,
+                  "configured_models": _models_c, "cost_call_count": 0,
+                  "cost_coverage_complete": False, "cost_coverage_reason": "no_real_provider_calls",
+                  "measurement_confidence": "low", "measurement_note": "op",
+                  "measurement_source": "character_heuristic", "provider_call_count": 0,
+                  "total_cost_usd": None}
         (ev / "final_verifier_report.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": _auth,
+            "changed_files": _auth, "changed_line_ranges": {},
             "also_needs_repair": False, "unresolved_findings": [],
             "test_status": {"ran": True, "passed": 1, "failed": 0}, "missing_tests_gate": "PASS",
             "change_source_mismatches": [], "review_subject_uncovered_files": [],
@@ -1569,12 +1592,20 @@ class TestReviewZipPackageStatus:
             "final_job_review_blocked": False, "execution_mode_blocked": False,
             "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
             "execution_mode_findings": [], "final_job_review_findings": [],
+            "invocation_args_warnings": [], "model_mismatch_warnings": [],
+            "sticky_binding_warnings": [], "report_badges": [], "operator_attested_tasks": [],
+            "execution_mode_by_task": {}, "sticky_binding_by_task": {},
+            "final_job_review_verdict": "PASS", "recommended_action": "Approve",
+            "manual_completion": True, "human_final_reviewer_required": True,
             "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
             "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
             "commit_execution_gate": "BLOCKED", "spec_compliance": "PASS",
             "scratch_file_guard": "PASS", "change_provenance": "PASS",
             "file_set_alignment_status": "PASS", "token_cost_has_critical": False,
-            "token_cost_risk_findings": [],
+            "token_cost_policy_present": True, "token_cost_risk_findings": [],
+            "token_status": _tstatus, "token_measurement": _tmeas,
+            "token_measurement_confidence": "low", "token_measurement_note": "op",
+            "token_actual_summary": None,
             "evidence_completeness": {"review_scope_packet": True, "spec_compliance_check": True,
                                       "missing_tests_gate": True, "scratch_file_guard": True,
                                       "token_truth": True, "safe_diff": True, "review_json": True,
@@ -1587,14 +1618,22 @@ class TestReviewZipPackageStatus:
             "optional_artifacts": {"scratch_file_guard.json": True},
             "stream_artifacts": {"applicable": False, "verdict": "NOT_APPLICABLE",
                                  "tasks_with_stream_evidence": [], "artifacts_verified": 0,
-                                 "artifacts_present": 0, "missing_stream_artifacts": [],
-                                 "unexpected_stream_artifacts": []},
+                                 "artifacts_present": 0, "missing_stream_artifact_listing": [],
+                                 "missing_stream_artifacts": [], "missing_stream_artifact_metadata": [],
+                                 "stream_artifact_hash_mismatches": [],
+                                 "stream_artifact_size_mismatches": [], "unexpected_stream_artifacts": [],
+                                 "duplicate_stream_artifact_refs": [], "unsafe_stream_artifact_refs": []},
             "worktree_artifacts": {"applicable": False, "verdict": "NOT_APPLICABLE",
-                                   "job_level_handoff": False, "worktree_tasks": [],
-                                   "diffs_verified": 0, "missing_result_diffs": []}}))
+                                   "job_level_handoff": False, "handoff_coverage_verdict": "",
+                                   "handoff_coverage_issues": [], "missing_job_handoff": [],
+                                   "worktree_tasks": [], "diffs_verified": 0, "missing_result_diffs": [],
+                                   "missing_result_diff_references": [], "result_diff_hash_mismatches": [],
+                                   "result_diff_size_mismatches": [], "unreferenced_result_diffs": [],
+                                   "unsafe_result_diff_refs": []}}))
         (ev / "change_provenance_gate.json").write_text(json.dumps({
-            "schema_version": "1.0.0", "verdict": "PASS", "covered_files": _auth,
-            "source_files": _auth, "excluded_files": [], "evidence_covered_files": _auth,
+            "schema_version": "1.0.0", "verdict": "PASS", "current_job_id": job_id,
+            "covered_files": _auth, "source_files": _auth, "excluded_files": [],
+            "evidence_covered_files": _auth, "evidence_sources": [], "dirty_files": [],
             "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
             "stale_apply_proofs": [], "issues": [], "current_hashes": _hashes,
             "evidence_hashes": _hashes}))
@@ -1603,8 +1642,10 @@ class TestReviewZipPackageStatus:
             "checks": [{"check_id": "c0", "check_type": "call_exists", "source_file": "src/app.py",
                         "pattern": "add(", "found": True, "file_missing": False}],
             "checks_total": 1, "checks_passed": 1, "issues": []}))
-        for g in ("manifest_integrity.json", "postmortem_integrity.json"):
-            (ev / g).write_text(json.dumps({"schema_version": "1.0.0", "ok": True, "failures": []}))
+        (ev / "manifest_integrity.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "ok": True, "failures": [], "notes": []}))
+        (ev / "postmortem_integrity.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "ok": True, "failures": []}))
         (ev / "commit_execution_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
             "blocked_gates": [], "non_pass_gates": [], "issues": [], "gate_checks": {
