@@ -352,8 +352,6 @@ find . \
   ! -name '*.pyo' \
   ! -name 'run_transcript.txt' \
   ! -name '.review_zip_manifest.json' \
-  ! -name 'remedy-review-*.zip' \
-  ! -name 'remedy-review-*.zip.sha256' \
   -print0 \
   | sed -z 's#^\./##' \
   | sort -z -u > "$TMP0"
@@ -532,7 +530,12 @@ BUILD_RESULT="$(python3 scripts/build_review_zip.py \
   --current-prefix "$CURRENT_PREFIX" \
   --plan-out "$PLAN_OUT_ARG" \
   --manifest-rel "$MANIFEST" \
-  --manifest-disk "$MANIFEST")"
+  --manifest-disk "$MANIFEST" \
+  --selection-mode "${SELECTION_MODE:-none}" \
+  --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
+  --candidate-count "$CANDIDATE_COUNT" \
+  --rejected-candidate-count "$REJECTED_COUNT" \
+  --selected-mtime "${SELECTED_MTIME:-}")"
 echo "$BUILD_RESULT"
 
 # --- Post-build verification ---

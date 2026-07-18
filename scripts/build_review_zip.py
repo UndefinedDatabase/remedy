@@ -169,7 +169,8 @@ def _finalize_plan(plan, snapshot):
                 continue
             out.append(dataclasses.replace(
                 m, expected_sha256=(None if snap.kind == "symlink" else snap.sha256),
-                expected_link_target=(snap.link_target if snap.kind == "symlink" else None)))
+                expected_link_target=(snap.link_target if snap.kind == "symlink" else None),
+                expected_size=len(snap.data)))     # F4 (round 23): bind the exact byte length
         return tuple(out)
     return dataclasses.replace(plan, repository_members=_fill(plan.repository_members),
                                evidence_members=_fill(plan.evidence_members))
@@ -202,6 +203,13 @@ def main() -> int:
     ap.add_argument("--plan-out", default="", help="where to also write review_archive_plan.json")
     ap.add_argument("--manifest-rel", required=True)
     ap.add_argument("--manifest-disk", required=True)
+    # F3 (round 23): the coordinator rebuilds the Root Manifest from the SAME staged bytes it
+    # packages, so no evidence artifact is interpreted from one read and packaged from another.
+    ap.add_argument("--selection-mode", default="")
+    ap.add_argument("--selection-reason", default="")
+    ap.add_argument("--candidate-count", type=int, default=0)
+    ap.add_argument("--rejected-candidate-count", type=int, default=0)
+    ap.add_argument("--selected-mtime", default="")
     args = ap.parse_args()
 
     repo_files = read_nul_list(args.repo_files0)
@@ -279,6 +287,7 @@ def main() -> int:
             _brm = _ilu.module_from_spec(_spec)
             _spec.loader.exec_module(_brm)
             gate_matrix = _brm.evaluate_ready_gate_matrix(staged.load_json)
+            _staged_current = os.path.join(evidence_root, args.current_prefix)
 
             from packages.orchestration.evidence_inventory import (
                 validate_snapshot_inventory,
@@ -324,8 +333,14 @@ def main() -> int:
                 snapshot[name].sha256 for name in snapshot if "commit_patch" in name)
             patchset_sha = _sha256_hex(json.dumps(patch_ids).encode())
 
-            from packages.orchestration.review_zip import _read_manifest_no_follow
-            base_manifest = json.loads(_read_manifest_no_follow(args.manifest_disk))
+            # F3 (round 23) — REBUILD the Root Manifest from the staged bytes this process packages,
+            # so it is not interpreted from one read (build_review_manifest.py) and packaged from
+            # another. build_manifest reads the same staged evidence tree the ZIP members come from.
+            base_manifest = _brm.build_manifest(
+                evidence_dir=_staged_current, selection_mode=args.selection_mode,
+                selection_reason=args.selection_reason, candidate_count=args.candidate_count,
+                rejected_candidate_count=args.rejected_candidate_count,
+                selected_mtime=args.selected_mtime)
             # F1/F3 — the FINAL status is the manifest's status ONLY when the gate matrix and the
             # snapshot inventory (decoded from the packaged bytes) also pass; else BLOCKED_EVIDENCE.
             _ms = base_manifest.get("package_status", "UNKNOWN")
