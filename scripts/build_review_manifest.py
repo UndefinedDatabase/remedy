@@ -287,12 +287,39 @@ def _has_commits() -> bool:
         return False
 
 
+def _dirty_line_path(line: str) -> str:
+    """The path from a ``git status --porcelain`` line (``XY PATH``; renames show ``old -> new``)."""
+    body = line[3:] if len(line) > 3 else line
+    if " -> " in body:
+        body = body.split(" -> ", 1)[1]
+    return body.strip().strip('"')
+
+
+def _is_packaging_output(path: str) -> bool:
+    """F6 (round 26): the EXACT generated review-packaging outputs — the in-place Root Manifest the
+    shell writes and the review ZIPs and their sidecars. These are outputs of the packaging run, not
+    a source change, so the Root Manifest's review-state gives them an explicit packaging disposition
+    instead of reporting them as dirty source. The match is exact (not a wildcard): a source file
+    could never be ``.review_zip_manifest.json`` or ``remedy-review-*.zip[.sha256]``."""
+    base = str(path or "").replace("\\", "/").rsplit("/", 1)[-1]
+    if base == ".review_zip_manifest.json":
+        return True
+    return base.startswith("remedy-review-") and (base.endswith(".zip")
+                                                   or base.endswith(".zip.sha256"))
+
+
 def _classify_review_subject(
     branch: str, commit: str, dirty: list[str],
     has_untracked: bool, has_commits_val: bool,
 ) -> dict:
     is_main = branch in ("main", "master")
-    is_dirty = len(dirty) > 0
+    # F6 (round 26): partition the working-tree changes — a self-generated packaging output is NOT a
+    # dirty source change. A branch that is clean except for the packaging output it just wrote is
+    # still a clean feature branch; a real unrelated dirty file still reports dirty.
+    packaging_outputs = sorted({_dirty_line_path(x) for x in dirty
+                                if _is_packaging_output(_dirty_line_path(x))})
+    dirty_source = [x for x in dirty if not _is_packaging_output(_dirty_line_path(x))]
+    is_dirty = len(dirty_source) > 0
 
     if not has_commits_val:
         kind = "unknown"
@@ -302,21 +329,22 @@ def _classify_review_subject(
         summary = f"Clean main at {commit[:12]}"
     elif is_main and is_dirty:
         kind = "dirty_working_tree"
-        summary = f"Dirty working tree on main ({len(dirty)} changed file(s))"
+        summary = f"Dirty working tree on main ({len(dirty_source)} changed file(s))"
     elif not is_main and not is_dirty:
         kind = "feature_branch"
         summary = f"Feature branch {branch} at {commit[:12]}"
     else:
         kind = "dirty_working_tree"
-        summary = f"Dirty feature branch {branch} ({len(dirty)} changed file(s))"
+        summary = f"Dirty feature branch {branch} ({len(dirty_source)} changed file(s))"
 
     return {
         "kind": kind,
         "branch": branch,
         "commit": commit,
-        "dirty_files": dirty,
-        "dirty_file_count_total": len(dirty),
+        "dirty_files": dirty_source,
+        "dirty_file_count_total": len(dirty_source),
         "dirty_files_truncated": False,
+        "packaging_generated_outputs": packaging_outputs,
         "has_untracked_files": has_untracked,
         "has_commits": has_commits_val,
         "degraded_metadata": not has_commits_val,
