@@ -1558,6 +1558,9 @@ _COMMIT_CHECK_TO_GATE = {
     "change_provenance_gate": "change_provenance_gate.json",
     "runtime_integration_gate": "runtime_integration_gate.json",
 }
+#: The commit-gate writer's hard-block verdict set (build_commit_execution_gate); a gate whose check
+#: is one of these appears in blocked_gates and yields a "gate 'x' is BLOCKED" issue.
+_COMMIT_HARD_BLOCK = frozenset({"BLOCKED", "NEEDS_TESTS", "NEEDS_REPAIR", ""})
 
 
 def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
@@ -1575,8 +1578,6 @@ def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
         problems.append(f"{_COMMIT_GATE} verdict {gate.get('verdict')!r} != NEEDS_HUMAN_APPROVAL")
     if gate.get("promote_ready") is not False:
         problems.append(f"{_COMMIT_GATE} promote_ready {gate.get('promote_ready')!r} is not false")
-    if gate.get("blocked_gates") != []:
-        problems.append(f"{_COMMIT_GATE} blocked_gates {gate.get('blocked_gates')!r} is nonempty")
     checks = gate.get("gate_checks")
     if not isinstance(checks, dict) or set(checks) != set(_COMMIT_CHECK_TO_GATE):
         problems.append(f"{_COMMIT_GATE} gate_checks keys must be exactly "
@@ -1586,10 +1587,23 @@ def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
             if gate_file in verdicts and checks[k] != verdicts[gate_file]:
                 problems.append(f"{_COMMIT_GATE} gate_checks[{k!r}]={checks[k]!r} != packaged "
                                 f"{verdicts[gate_file]!r}")
+        # F4 (round 25): blocked_gates, non_pass_gates AND issues are ALL exactly derived from
+        # gate_checks by the SAME deterministic rule as the commit-gate writer — issue text is not a
+        # second source of truth. Any drift (empty or unrelated issues) blocks.
+        derived_blocked = sorted(k for k in checks if checks[k] in _COMMIT_HARD_BLOCK)
         derived_non_pass = sorted(k for k in checks if checks[k] != "PASS")
+        derived_issues = [f"gate {k!r} is BLOCKED" for k in derived_blocked]
+        derived_issues += [f"gate {k!r} is not PASS (verdict {checks[k]!r})"
+                           for k in derived_non_pass if k not in derived_blocked]
+        if sorted(gate.get("blocked_gates") or []) != derived_blocked:
+            problems.append(f"{_COMMIT_GATE} blocked_gates {gate.get('blocked_gates')!r} != "
+                            f"the derived {derived_blocked}")
         if sorted(gate.get("non_pass_gates") or []) != derived_non_pass:
             problems.append(f"{_COMMIT_GATE} non_pass_gates {gate.get('non_pass_gates')!r} != "
                             f"the derived {derived_non_pass}")
+        if list(gate.get("issues") or []) != derived_issues:
+            problems.append(f"{_COMMIT_GATE} issues {gate.get('issues')!r} != the exact derived "
+                            f"{derived_issues}")
     return problems
 
 

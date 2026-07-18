@@ -39,6 +39,7 @@ def test_final_verifier_pass_is_ok():
     g = _gates(**{"final_verifier_report.json": {"verdict": "PASS"}})
     g["commit_execution_gate.json"]["gate_checks"]["final_verifier"] = "PASS"   # keep consistent
     g["commit_execution_gate.json"]["non_pass_gates"] = []   # round 24: exact derivation
+    g["commit_execution_gate.json"]["issues"] = []           # round 25: derived issues
     assert _eval(g)["ok"] is True
 
 

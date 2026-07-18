@@ -117,7 +117,8 @@ def _complete_gates(authority=None, file_hashes=None, job_id="e2e-job-01", step=
         "postmortem_integrity.json": {"schema_version": "1.0.0", "ok": True, "failures": []},
         "commit_execution_gate.json": {
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
-            "blocked_gates": [], "non_pass_gates": ["final_verifier"], "issues": [],
+            "blocked_gates": [], "non_pass_gates": ["final_verifier"],
+            "issues": ["gate 'final_verifier' is not PASS (verdict 'PASS_WITH_RISKS')"],
             "gate_checks": {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
                             "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
                             "runtime_integration_gate": "PASS"}},
