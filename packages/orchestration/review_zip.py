@@ -271,11 +271,11 @@ def build_review_zip_from_snapshot(*, out_path: str | Path, snapshot: dict,
             if m.kind == "symlink":
                 _write_symlink(zf, arcname, m.data)
                 model[arcname] = {"kind": "symlink", "mode": 0o777, "link_target": m.link_target,
-                                  "authoritative": m.authoritative}
+                                  "authoritative": m.authoritative, "size": len(m.data)}
             else:
                 _write_regular(zf, arcname, m.data, m.mode)
                 model[arcname] = {"kind": "regular", "mode": m.mode & 0o7777, "sha256": m.sha256,
-                                  "authoritative": m.authoritative}
+                                  "authoritative": m.authoritative, "size": len(m.data)}
         for arcname in sorted(generated_members):
             data, mode = generated_members[arcname]
             if len(data) > MAX_GENERATED_MEMBER_BYTES:
@@ -283,7 +283,8 @@ def build_review_zip_from_snapshot(*, out_path: str | Path, snapshot: dict,
             _claim(arcname)
             _write_regular(zf, arcname, data, mode)
             model[arcname] = {"kind": "regular", "mode": mode & 0o7777,
-                              "sha256": hashlib.sha256(data).hexdigest(), "authoritative": False}
+                              "sha256": hashlib.sha256(data).hexdigest(),
+                              "authoritative": False, "size": len(data)}
 
     return {"members": sorted(model), "model": model}
 
@@ -361,6 +362,10 @@ def verify_review_zip(out_path: str | Path, expected: dict) -> list[str]:
             if info.date_time != _FIXED_TS:
                 problems.append(f"member {name!r} has a non-deterministic timestamp "
                                 f"{info.date_time}")
+            # F4 (round 23): the exact uncompressed byte length is verified from the ZIP itself.
+            if "size" in want and info.file_size != want["size"]:
+                problems.append(f"member {name!r} uncompressed size {info.file_size} != expected "
+                                f"{want['size']}")
             # F11 (round 19): the ZIP-level metadata policy — one create_system, an allowed
             # compression method, no encryption, no unsupported general-purpose flags.
             if info.create_system != 3:              # 3 = Unix; the type/perm bits live there

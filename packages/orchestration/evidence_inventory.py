@@ -264,6 +264,10 @@ def validate_snapshot_inventory(inventory: dict, plan, *, prefix: str,
             problems.append(f"inventory {arc!r} sha256 disagrees with the Plan member")
         if (m.mode & 0o7777) != (int(entry.get("mode", -1)) & 0o7777):
             problems.append(f"inventory {arc!r} mode disagrees with the Plan member")
+        # F4 (round 23): the size is bound EXACTLY to the plan member's snapshot byte length.
+        if m.expected_size is not None and m.expected_size != entry.get("size"):
+            problems.append(f"inventory {arc!r} size {entry.get('size')!r} disagrees with the "
+                            f"Plan member expected_size {m.expected_size!r}")
 
     # EXACT bijection: every in-boundary Source-Evidence Plan member must appear exactly once.
     plan_source = {m.archive_path for m in plan.evidence_members
