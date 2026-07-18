@@ -1470,3 +1470,45 @@ class TestF012Round25IsPinned:
         doc = self._f012()
         assert "No-follow acquisition" in doc
         assert "never followed or read" in doc
+
+
+class TestF012Round26IsPinned:
+    """Round 26: fully typed gate shapes, required nested fields, strict fail-closed verification
+    total, one bounded acquisition budget, one shared strict decoder, packaging-output disposition."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 26" in self._f012()
+
+    def test_fully_typed_documented(self):
+        doc = self._f012()
+        assert "Fully typed gate shapes" in doc
+        assert "NO accept-anything node" in doc
+
+    def test_required_fields_documented(self):
+        doc = self._f012()
+        assert "Required nested fields" in doc
+        assert "a required field that is\n  absent blocks" in doc or "required field that is" in doc
+
+    def test_strict_verification_documented(self):
+        doc = self._f012()
+        assert "Strict, fail-closed VerificationTests" in doc
+        assert "NO `int()` coercion" in doc
+
+    def test_acquisition_budget_documented(self):
+        doc = self._f012()
+        assert "One bounded acquisition budget" in doc
+        assert "never a silent\n  absence" in doc or "never a silent absence" in doc
+
+    def test_shared_decoder_documented(self):
+        doc = self._f012()
+        assert "One shared strict decoder" in doc
+        assert "keep no private copy" in doc
+
+    def test_packaging_output_disposition_documented(self):
+        doc = self._f012()
+        assert "Packaging output is not dirty source" in doc
+        assert "packaging_generated_outputs" in doc
