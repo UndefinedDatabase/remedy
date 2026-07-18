@@ -1549,6 +1549,14 @@ class TestReviewZipPackageStatus:
             "evidence_authoritative": True,
             "evidence_validity": {"is_valid_current_run": True},
         }))
+        # Round 22: READY requires the COMPLETE gate verdict matrix to pass.
+        (ev / "final_verifier_report.json").write_text(json.dumps({
+            "verdict": "PASS", "authoritative_changed_files": []}))
+        for g in ("artifact_contract_gate.json", "change_provenance_gate.json",
+                  "runtime_integration_gate.json"):
+            (ev / g).write_text(json.dumps({"verdict": "PASS"}))
+        for g in ("manifest_integrity.json", "postmortem_integrity.json"):
+            (ev / g).write_text(json.dumps({"ok": True}))
 
     @staticmethod
     def _init_clean_git(path):
