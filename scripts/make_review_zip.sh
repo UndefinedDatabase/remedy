@@ -348,34 +348,12 @@ find . \
   ! -name '.coverage' \
   ! -name '.coverage.*' \
   ! -name 'coverage.xml' \
-  ! -name '*.zip' \
-  ! -name '*.tar' \
-  ! -name '*.tar.gz' \
-  ! -name '*.tgz' \
-  ! -name '*.log' \
   ! -name '*.pyc' \
   ! -name '*.pyo' \
-  ! -name '.env' \
-  ! -name '.env.*' \
-  ! -name '*.pem' \
-  ! -name '*.key' \
-  ! -name '*.p12' \
-  ! -name '*.pfx' \
-  ! -name '*.crt' \
-  ! -name '*.cer' \
-  ! -name 'settings.local.json' \
-  ! -name 'credentials.json' \
-  ! -name 'service-account.json' \
-  ! -name 'service_account.json' \
-  ! -name 'client_secret.json' \
-  ! -name 'firebase-adminsdk.json' \
-  ! -name 'id_rsa' \
-  ! -name 'id_dsa' \
-  ! -name 'id_ecdsa' \
-  ! -name 'id_ed25519' \
   ! -name 'run_transcript.txt' \
   ! -name '.review_zip_manifest.json' \
   ! -name 'remedy-review-*.zip' \
+  ! -name 'remedy-review-*.zip.sha256' \
   -print0 \
   | sed -z 's#^\./##' \
   | sort -z -u > "$TMP0"
