@@ -1555,7 +1555,6 @@ class TestReviewZipPackageStatus:
         _safe = _bsd(_diff, [])
         _tsha, _ssha = _sht(_diff), _sht(_safe)
         _prov = _cps(_tsha, [])
-        _MA.write_manual_token_truth(str(ev))
         _MA.write_manual_task_evidence(
             str(ev), job_id=job_id, task_id="T001", changed_files=_authority, safe_diff_text=_safe,
             provenance_sha256=_prov, diff_sha256=_prov, tracked_diff_sha256=_tsha,
@@ -1642,6 +1641,8 @@ class TestReviewZipPackageStatus:
                 "schema_version": "1.1.0", "base_commit": "", "head_commit": "",
                 "file_hashes": _hashes, "file_count": len(_hashes),
                 "tombstones": {}, "tombstone_count": 0}))
+        # Round 32 F2: the canonical token truth is the aggregate of the tasks — written AFTER them.
+        _MA.write_manual_token_truth(str(ev))
         # Round 31 F1: regenerate the final verifier report from the assembled bundle with the REAL
         # producer, so the packaged report is reproducible (never a hand-written report).
         from packages.orchestration.final_verifier import build_final_verifier_report

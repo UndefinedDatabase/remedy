@@ -2375,6 +2375,72 @@ def _final_verifier_reproducibility(evidence_view) -> dict:
     return {"checked": True, "reproducible": True, "status": "VERIFIED_EQUAL", "problems": []}
 
 
+def regenerate_token_truth(evidence_view) -> tuple[dict | None, str | None]:
+    """F2 (round 32): the root ``token_truth.json`` is NOT authoritative by itself — it must be the
+    exact aggregate of the per-task token_accounting/provider_evidence. Materialize the immutable
+    snapshot and run the real ``token_truth.build_token_truth`` producer over it. Returns
+    ``(canonical, problem)``; a distinguished failure yields ``(None, reason)`` and never a false
+    success."""
+    import shutil as _shutil
+    import tempfile as _tempfile
+
+    if evidence_view is None:
+        return None, "no Evidence view"
+    files = getattr(evidence_view, "_files", None)
+    if not files:
+        return None, "the Evidence snapshot is empty"
+    try:
+        from packages.orchestration.token_truth import build_token_truth
+    except Exception as exc:
+        return None, f"the token-truth producer is unavailable: {str(exc)[:120]}"
+    tmp = None
+    try:
+        tmp = _tempfile.mkdtemp(prefix="remedy_tt_regen_")
+        for rel, data in files.items():
+            p = os.path.join(tmp, rel)
+            os.makedirs(os.path.dirname(p) or tmp, exist_ok=True)
+            with open(p, "wb") as fh:
+                fh.write(data)
+    except Exception as exc:
+        if tmp:
+            _shutil.rmtree(tmp, ignore_errors=True)
+        return None, f"could not materialize the Evidence snapshot: {str(exc)[:120]}"
+    try:
+        truth = build_token_truth(tmp)
+    except Exception as exc:
+        return None, f"the token-truth producer raised {type(exc).__name__}: {str(exc)[:120]}"
+    finally:
+        _shutil.rmtree(tmp, ignore_errors=True)
+    if not isinstance(truth, dict):
+        return None, f"the token-truth producer returned a {type(truth).__name__}, not an object"
+    return truth, None
+
+
+def _token_truth_authority(evidence_view) -> dict:
+    """Require the packaged ``token_truth.json`` to EQUAL the canonical regeneration from task/provider
+    Evidence. A forged root count/model that no task supports cannot survive. Returns
+    ``{checked, equal, status, problems}`` (``NOT_PRESENT`` when the bundle carries no token truth)."""
+    if evidence_view is None or not getattr(evidence_view, "_files", None):
+        return {"checked": False, "equal": None, "status": "NOT_CHECKED", "problems": []}
+    if not evidence_view.isfile("token_truth.json"):
+        return {"checked": False, "equal": None, "status": "NOT_PRESENT", "problems": []}
+    canonical, problem = regenerate_token_truth(evidence_view)
+    if canonical is None:
+        return {"checked": True, "equal": False, "status": "PRODUCER_ERROR",
+                "problems": [f"token_truth.json could not be regenerated: {problem}"]}
+    supplied = evidence_view.read_json("token_truth.json")
+    if not isinstance(supplied, dict) or not supplied:
+        return {"checked": True, "equal": False, "status": "MISMATCH",
+                "problems": ["token_truth.json is absent/unreadable but the Evidence produces one"]}
+    if supplied != canonical:
+        diffs = sorted(k for k in set(supplied) | set(canonical)
+                       if supplied.get(k) != canonical.get(k))
+        return {"checked": True, "equal": False, "status": "MISMATCH",
+                "problems": [f"token_truth.json is not the aggregate of the task/provider Evidence "
+                             f"(the producer disagrees at: {diffs[:8]})"]}
+    return {"checked": True, "equal": True, "status": "VERIFIED_EQUAL", "problems": []}
+
+
 def _build_alignment(
     dirty_files: list[str], ev: _EvidenceView,
 ) -> dict:
@@ -2972,8 +3038,16 @@ def build_manifest_from_snapshot(
     if not git_status_ok:
         packaging_warnings.append(
             f"git status is {git_snapshot['status']}: {git_snapshot['diagnostic']}")
+    # F2 (round 32): the root token truth must be the exact aggregate of task/provider Evidence — a
+    # forged root count/model that no task supports blocks even if the report reproduces it.
+    tt_authority = {"checked": False, "equal": None, "status": "NOT_CHECKED", "problems": []}
+    if current_evidence:
+        tt_authority = _token_truth_authority(evidence_view)
+        if tt_authority["status"] not in ("VERIFIED_EQUAL", "NOT_PRESENT"):
+            packaging_warnings.extend(tt_authority["problems"])
+    tt_ok_for_ready = tt_authority["status"] in ("VERIFIED_EQUAL", "NOT_PRESENT")
     if (evidence_valid and alignment_ok and containment_ok and gate_matrix["ok"]
-            and fv_ok_for_ready and git_status_ok):
+            and fv_ok_for_ready and git_status_ok and tt_ok_for_ready):
         package_status = "READY_FOR_REVIEW"
     elif not current_evidence:
         package_status = "NO_EVIDENCE"
@@ -3055,6 +3129,8 @@ def build_manifest_from_snapshot(
         "final_verifier_reproducibility": fv_repro,
         "git_status_snapshot": {"status": git_snapshot["status"],
                                 "diagnostic": git_snapshot["diagnostic"]},
+        "token_truth_authority": {"status": tt_authority["status"],
+                                  "problems": tt_authority["problems"][:4]},
         # Back-compat boolean: TRUE only for a verified-equal check. An unchecked/failed state is never
         # serialized true (the tri-state ``status`` carries the real meaning).
         "final_verifier_reproducible": fv_reproducible,

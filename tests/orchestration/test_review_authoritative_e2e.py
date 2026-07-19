@@ -265,12 +265,13 @@ def _write_evidence(repo, base, head, ev):
     safe = build_safe_diff_text(diff, [])
     tracked_sha, safe_sha = sha256_text(diff), sha256_text(safe)
     prov = canonical_provenance_sha256(tracked_sha, [])
-    MA.write_manual_token_truth(str(ev))
     MA.write_manual_task_evidence(
         str(ev), job_id="e2e", task_id="T001", changed_files=authority, safe_diff_text=safe,
         provenance_sha256=prov, diff_sha256=prov, tracked_diff_sha256=tracked_sha,
         safe_diff_sha256=safe_sha, timestamp="2026-07-18T00:00:00+00:00",
         note="operator-attested e2e")
+    # Round 32 F2: the canonical token truth is the aggregate of the tasks — written AFTER them.
+    MA.write_manual_token_truth(str(ev))
 
     report = build_final_verifier_report(str(ev))
     (ev / "final_verifier_report.json").write_text(json.dumps(report, indent=2, sort_keys=True))

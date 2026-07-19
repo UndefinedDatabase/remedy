@@ -61,8 +61,13 @@ def _w(path: str, obj: Any) -> None:
 
 
 def write_manual_token_truth(evidence_dir: str) -> None:
-    """Write the deterministic manual-completion ``token_truth.json`` (valid, nonempty, typed)."""
-    _w(os.path.join(evidence_dir, "token_truth.json"), MANUAL_TOKEN_TRUTH)
+    """Write the CANONICAL ``token_truth.json`` — Round 32 F2: the root token truth is the exact
+    aggregate of the per-task token_accounting/provider_evidence, produced by the real
+    ``token_truth.build_token_truth``. MUST be called AFTER every task's evidence is written, so the
+    aggregate is complete; packaging regenerates and requires exact equality. For a zero-provider
+    manual bundle this deterministically yields the documented manual token truth."""
+    from packages.orchestration.token_truth import build_token_truth
+    _w(os.path.join(evidence_dir, "token_truth.json"), build_token_truth(evidence_dir))
 
 
 def write_manual_task_evidence(
