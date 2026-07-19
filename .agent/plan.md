@@ -1,35 +1,40 @@
-# Plan — Steps 13961-14160 — F012 Final Authority & Packaging Closure Round 32
+# Plan — Steps 14161-14360 — F012 Final Publication & Token-Contract Repair Round 33
 
-Reviewed `remedy-review-20260719-203437-READY_FOR_REVIEW.zip` (SHA `b47226e1...b0363e`, Evidence
-`2d1e749dcff40512`, prior `3316418eb96477f9`, base `095506b`, HEAD `fbbd584`). F1A/F1B and F6
-(gate-totality) accepted — preserve. Remaining authority/packaging block, one commit each:
+Reviewed `remedy-review-20260719-215803-READY_FOR_REVIEW.zip` (SHA `3149a10e...7b64`, Evidence
+`453aab97e0fc3b01`, prior `2d1e749dcff40512`, base `fbbd584`, HEAD `13cd5a5d`). Accepted and preserved:
+final-verifier reproducibility, total gate eval, git-status snapshot, patchset identity, integration
+termination, manual token-truth regeneration/equality, producer-reproducible FV. Four bounded findings,
+one commit each. No broadening.
 
-1. **Canonical token-truth regeneration + root-vs-task equality (F2).** Root `token_truth.json` must
-   equal `token_truth.build_token_truth(staged)` (which aggregates provider_call/actual/cost counts and
-   model identities from the per-task token_accounting/provider_evidence) or BLOCK. The manual producer
-   writes the regenerated truth. A forged root (provider_call_count=1 while tasks say 0, forged model)
-   no longer matches → blocked. token_authority closes unknown fields.
-2. **Complete manual-completion typed cross-artifact contract (F3).** One normalized contract; typed
-   linked-prior summary counts (string "0" blocks); required-when-absent; the canonical
-   `manual_attestation` producer gains a real production entry (operator CLI subcommand) + doc.
-3. **Shared no-clobber publication (F4).** A single Python coordinator resolves/reserves the exact final
-   status-bearing path, refuses tracked/symlink/dir/FIFO/device/foreign collisions, creates exclusively,
-   publishes atomically; the shell cannot bypass via `mv`.
-4. **Fail-closed single Git-status snapshot (F5).** `_git_status_snapshot()` returns typed
-   {status ∈ OK|FAILED|TIMED_OUT|UNAVAILABLE|MALFORMED, records, diagnostic}; only OK is clean; every
-   other blocks READY and is recorded; dirty+untracked derive from ONE snapshot; malformed NUL blocks.
-5. **Whole-file integration termination (F7).** Diagnose + fix the stall in
-   test_review_package_full_integration.py; add order/repetition regression; leave no subprocess.
-6. **Exact path/commit/hash-bound patchset identity (F6-patch).** Select only
-   `evidence/current/review_commit_patches/*.patch`; expected paths derive from review_commit_chain;
-   exactly one patch per commit, no extra; bind ordered (commit, path, sha) records. An unrelated source
-   filename containing `commit_patch` never affects identity. Same derivation in plan/expectation/
-   manifest/verifier.
-7. **Truthful Round-32 docs + operator state.** F1A/F1B/F6 closed; F2/F3 were NOT closed by R31; document
-   the cross-artifact authority + publication contracts. F012 `[~]`, F017 `[ ]`.
+1. **Atomic no-clobber publication lifecycle (F1).** `safe_publish.publish_atomically(src_bytes_path,
+   final_path, repo_root)`: build+verify the ZIP at a private same-filesystem temp path, then publish
+   through ONE no-replace primitive (`os.link` then unlink temp, or `O_CREAT|O_EXCL` link) so exactly
+   one concurrent invocation wins; a loser returns a controlled collision error, never success.
+   `build_review_zip_from_snapshot` stops unlinking `out_path`. The coordinator builds to a private temp
+   then publishes atomically; the shell calls the SAME publication (no second weaker `mv`). No failure
+   path leaves an empty reservation or partial public ZIP; the private temp is always cleaned.
+2. **Fail-closed Git tracked-status (F2).** `safe_publish` interprets `git ls-files --error-unmatch`
+   by EXACT exit code: 0→TRACKED (block), 1→UNTRACKED (allow), anything else / timeout / missing exec
+   → GIT_FAILED/GIT_TIMED_OUT/GIT_UNAVAILABLE → block with a bounded diagnostic. A repo/index/permission
+   failure never becomes "untracked".
+3. **Shared token producer/validator schema (F3).** `token_truth` exposes the canonical measurement
+   source/confidence enums + schema version; `token_authority` imports them (no duplicated strings).
+   Supported sources = exactly what `build_token_truth` emits: `character_heuristic`, `provider_actuals`,
+   `mixed_provider_actuals_and_heuristic` (drop `provider_api`). Complete state invariants for
+   low/high/mixed/zero-provider/no-actual/incomplete-cost/complete. A meta-regression runs every real
+   producer fixture through the validator.
+4. **Real manual-Evidence operator entry (F4).** Expose a concrete supported entry
+   (`job_evidence.create_manual_completion_bundle` / CLI) that an operator invokes to create a manual
+   bundle end-to-end (subject/proof/chain/patches/gates + attestation + canonical token truth) through
+   `write_manual_completion_evidence`; an integration test EXECUTES it in a temp repo (not source
+   inspection); packaging only validates. Zero provider calls, deterministic.
+
+5. **Truthful Round-33 docs + operator state.** F1/F5/F6/F7 + patchset accepted; Round 32 did not close
+   the atomic publication lifecycle and had producer/validator drift; Round 33 closes only these four.
+   F012 `[~]`, F017 `[ ]`.
 
 ## Constraints (unchanged)
 
 Zero provider calls; manual only; no job-flow/job-run/db/network/docker/new deps. Small local commits,
-never amend/squash. No push/PR/merge/main. Do not start F017. Fresh Evidence linked `2d1e749dcff40512`
-through the canonical producer, VERIFIED_EQUAL, git-status OK; one READY ZIP; then stop.
+never amend/squash. No push/PR/merge/main. Do not start F017. Fresh Evidence linked `453aab97e0fc3b01`
+through the real operator entry, VERIFIED_EQUAL, git OK, atomic publish; one READY ZIP; then stop.

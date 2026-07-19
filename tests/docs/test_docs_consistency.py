@@ -1740,3 +1740,36 @@ class TestF012Round32IsPinned:
     def test_manual_production_caller_documented(self):
         doc = self._f012()
         assert "job_evidence.write_manual_completion_evidence" in doc
+
+
+class TestF012Round33IsPinned:
+    """Round 33: publication-lifecycle & producer-caller closure — atomic no-clobber publication
+    really used by both coordinators, fail-closed git tracked-status, shared token-truth schema, and a
+    real end-to-end operator caller for the canonical manual producer."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 33" in self._f012()
+
+    def test_atomic_publication_really_used(self):
+        doc = self._f012()
+        assert "safe_publish.publish_atomically" in doc
+        assert "os.link" in doc and "PublishCollisionError" in doc
+
+    def test_fail_closed_git_tracked_status(self):
+        doc = self._f012()
+        assert "safe_publish.git_tracked_status" in doc
+        assert "never read as \"untracked\"" in doc
+
+    def test_shared_token_schema(self):
+        doc = self._f012()
+        assert "CONFIDENCE_SOURCE_PAIRS" in doc
+        assert "mixed_provider_actuals_and_heuristic" in doc
+
+    def test_real_operator_caller(self):
+        doc = self._f012()
+        assert "job_evidence.create_manual_completion_bundle" in doc
+        assert "temporary git repository" in doc
