@@ -13,7 +13,8 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.safe_publish import (
-    PublishCollisionError, git_tracked_status, publish_atomically,
+    PublishCollisionError, PublishSourceError, git_tracked_status, publish_atomically,
+    verify_source_identity,
 )
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git required")
@@ -100,6 +101,51 @@ class TestAtomicPublish:
         from packages.orchestration import review_zip
         src = inspect.getsource(review_zip.build_review_zip_from_snapshot)
         assert "out_path.unlink()" not in src
+
+
+class TestVerifiedSourceIdentityBinding:
+    """F1 (round 34): the private source published must be the exact verified regular-file/inode/bytes;
+    a pathname swapped after verification (to a symlink, another file, or changed bytes) cannot be
+    published."""
+
+    def _sha(self, p):
+        return __import__("hashlib").sha256(Path(p).read_bytes()).hexdigest()
+
+    def test_correct_sha_publishes(self, tmp_path):
+        repo = _repo(tmp_path)
+        src = _src(repo, b"verified-bytes")
+        final = str(repo / "remedy-review-x.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=self._sha(src))
+        assert Path(final).read_bytes() == b"verified-bytes"
+
+    def test_changed_bytes_after_verification_blocks(self, tmp_path):
+        repo = _repo(tmp_path)
+        src = _src(repo, b"original")
+        stale = self._sha(src)
+        with open(src, "wb") as fh:                          # swap the bytes AFTER "verification"
+            fh.write(b"tampered-different-length")
+        final = str(repo / "remedy-review-y.zip")
+        with pytest.raises(PublishSourceError):
+            publish_atomically(src, final, str(repo), expected_sha256=stale)
+        assert not os.path.exists(final)                     # nothing published
+
+    def test_symlink_source_blocks(self, tmp_path):
+        repo = _repo(tmp_path)
+        real = repo / "real.bin"
+        real.write_bytes(b"payload")
+        link = str(repo / ".remedy_zip_link.part")
+        os.symlink(real, link)
+        final = str(repo / "remedy-review-z.zip")
+        with pytest.raises(PublishSourceError):
+            publish_atomically(link, final, str(repo), expected_sha256=self._sha(real))
+        assert not os.path.exists(final)
+        assert Path(real).read_bytes() == b"payload"
+
+    def test_verify_source_identity_rejects_missing_expected(self, tmp_path):
+        repo = _repo(tmp_path)
+        src = _src(repo, b"x")
+        with pytest.raises(PublishSourceError):
+            verify_source_identity(src, str(repo), expected_sha256=None)
 
 
 class TestGitTrackedStatusFailClosed:

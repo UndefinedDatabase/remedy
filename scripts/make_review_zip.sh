@@ -5,12 +5,17 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
-OUT="remedy-review-${STAMP}.zip"
+# Round 34 F1: there is NO public intermediate ZIP. The Python coordinator derives the exact
+# status-bearing final path from the verified in-memory manifest and publishes its private `.part`
+# DIRECTLY to it. This shell never creates, deletes, validates or renames a public temporary ZIP; it
+# only passes the final-name TEMPLATE (with a {package_status} placeholder) and trusts the coordinator's
+# verified JSON result. The single publication and all Git/publication decisions live in `safe_publish`.
+FINAL_TEMPLATE="remedy-review-${STAMP}-{package_status}.zip"
 
-# F3 (round 29) collision safety: the root manifest and the ZIP output are scratch/output paths this
-# invocation writes. NEVER delete or overwrite a TRACKED project file that collides with one of them —
-# refuse loudly (exit 3) and leave it byte-identical. Checked FIRST, before any packaging work. (An
-# untracked leftover is safe to remove as scratch.)
+# F3 (round 29) collision safety for the ONE remaining root scratch path this invocation writes — the
+# root manifest. NEVER delete or overwrite a TRACKED project file that collides with it — refuse loudly
+# (exit 3) and leave it byte-identical. The ZIP output is no longer a shell-managed path (the coordinator
+# owns its single atomic publication), so no ZIP collision guard lives here.
 _refuse_tracked_output() {
   local path="$1" what="$2"
   if git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
@@ -19,7 +24,6 @@ _refuse_tracked_output() {
   fi
 }
 _refuse_tracked_output ".review_zip_manifest.json" "reserve/delete as its root manifest"
-_refuse_tracked_output "$OUT" "reserve as its ZIP output"
 
 # Parse arguments
 EVIDENCE_DIR=""
@@ -437,16 +441,14 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   fi
 fi
 
-# --- The EXACT repo-root outputs THIS invocation generates (F3, round 29) ---
-# Only these paths are dispositioned as packaging outputs in the PRELIMINARY manifest; each is
-# eligibility-filtered by the builder so a caller can never declare a source path here. The temp ZIP
-# name (before the STATUS-suffix rename) and the root manifest are the outputs that can appear in
-# `git status` at manifest-build time; the STATUS-suffixed final name is not yet on disk, and the
-# `.sha256` sidecar is NOT created by this script so it is not declared. The authoritative manifest
-# is rebuilt by build_review_zip.py, which DERIVES this set internally from --out/--manifest-rel.
+# --- The EXACT repo-root outputs THIS invocation generates (F3, round 29 / F1, round 34) ---
+# The only packaging output that can appear in `git status` at manifest-build time is the root
+# manifest; the status-bearing final ZIP is published only at the very end, by the coordinator, and a
+# `remedy-review-*.zip` name is excluded from the dirty source set anyway. The authoritative manifest is
+# rebuilt by build_review_zip.py, which DERIVES every candidate final ZIP path internally from the
+# final-name template + --manifest-rel.
 GENERATED_OUTPUT_ARGS=(
   --generated-output "$MANIFEST"
-  --generated-output "$OUT"
 )
 
 # --- Build manifest from the STAGED snapshot (F1/F8, round 20) — never the original EVIDENCE_DIR ---
@@ -517,8 +519,9 @@ sort -u "$TMP" -o "$TMP"
 # --- Create zip (round 20 two-phase, directed hash chain) ---
 # Phase 1 snapshots every source member; phases 2-3 emit the directed chain
 # (plan -> expectation -> manifest) as in-memory bytes; phase 4 builds the deterministic ZIP from
-# the immutable bytes; phase 5 reopens and verifies. Subject/Proof are STAGED bytes.
-rm -f "$OUT"
+# the immutable bytes; phase 5 reopens and verifies; phase 6 publishes the verified private `.part`
+# directly to the status-bearing final path. Subject/Proof are STAGED bytes. There is NO public
+# intermediate ZIP, so nothing is deleted or renamed here.
 cd "$ROOT"
 
 EV_ROOT_ARG=""
@@ -547,7 +550,7 @@ fi
 # evidence_authoritative, review_subject_alignment, manifest sha) so the final filename and status
 # come from the VERIFIED package, never a post-build reread of the mutable disk manifest.
 BUILD_RESULT="$(python3 scripts/build_review_zip.py \
-  --out "$OUT" \
+  --final-template "$FINAL_TEMPLATE" \
   --repo-root "$ROOT" \
   --repo-files0 "$TMP0" \
   --evidence-root "$EV_ROOT_ARG" \
@@ -562,39 +565,60 @@ BUILD_RESULT="$(python3 scripts/build_review_zip.py \
   --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
   --candidate-count "$CANDIDATE_COUNT" \
   --rejected-candidate-count "$REJECTED_COUNT" \
-  --selected-mtime "${SELECTED_MTIME:-}")"
+  --selected-mtime "${SELECTED_MTIME:-}")" || BUILD_RC=$?
+BUILD_RC="${BUILD_RC:-0}"
 echo "$BUILD_RESULT"
+if [[ "$BUILD_RC" -ne 0 ]]; then
+  echo "REVIEW_ZIP_ERROR: coordinator failed to build/publish the review ZIP (exit $BUILD_RC)." >&2
+  echo "No public intermediate ZIP was created; nothing to clean up." >&2
+  exit "$BUILD_RC"
+fi
 
-# --- Post-build verification ---
-# Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail.
-# For the same reason every membership test below uses a HERESTRING rather than
-# `echo "$ZIP_LISTING" | grep -q ...`: `grep -q` exits at its first match, the writer takes
-# SIGPIPE, and `set -o pipefail` reports the whole pipeline as failed — so a file that IS in the
-# zip gets reported missing once the listing grows past the pipe buffer. That made the check
-# size-dependent: it passed at ~1,299 entries and failed at ~1,304.
+# --- Trust ONLY the coordinator's verified JSON result (F1, round 34) ---
+# The coordinator already published its verified private `.part` DIRECTLY to the exact status-bearing
+# final path (a single atomic no-replace link, source bytes bound to the verified SHA-256) and returned
+# that path + SHA. This shell derives no filename, publishes nothing, and renames nothing. Every check
+# below is READ-ONLY against the returned final path; a failure never deletes or alters the package.
+_result_field() { BR="$BUILD_RESULT" python3 -c "import json,os,sys; print(json.loads(os.environ['BR']).get(sys.argv[1],''))" "$1"; }
+PACKAGE_STATUS="$(_result_field package_status)"; PACKAGE_STATUS="${PACKAGE_STATUS:-UNKNOWN}"
+EVIDENCE_AUTH="$(BR="$BUILD_RESULT" python3 -c "import json,os; print('true' if json.loads(os.environ['BR']).get('evidence_authoritative') else 'false')")"
+_ALIGN_FROM_RESULT="$(_result_field review_subject_alignment)"
+ALIGNMENT_VERDICT="${_ALIGN_FROM_RESULT:-$ALIGNMENT_VERDICT}"
+OUT="$(_result_field final_path)"
+FINAL_SHA="$(_result_field final_sha256)"
+
+if [[ -z "$OUT" || ! -f "$OUT" ]]; then
+  echo "REVIEW_ZIP_ERROR: coordinator reported no published ZIP (final_path='$OUT')." >&2
+  exit 3
+fi
+# The published ZIP must be the exact bytes the coordinator verified before publication.
+ACTUAL_SHA="$(sha256sum "$OUT" | awk '{print $1}')"
+if [[ -n "$FINAL_SHA" && "$ACTUAL_SHA" != "$FINAL_SHA" ]]; then
+  echo "REVIEW_ZIP_ERROR: published ZIP sha256 ($ACTUAL_SHA) != coordinator-verified sha256 ($FINAL_SHA)." >&2
+  exit 3
+fi
+
+# --- Read-only post-publication checks against the exact published final path ---
+# The coordinator already verified typed membership and hashes; these are a defensive, READ-ONLY
+# re-scan of the published ZIP. On any problem the shell exits non-zero and reports it, but NEVER
+# deletes or rewrites the published, coordinator-verified package.
 ZIP_LISTING="$(unzip -Z1 "$OUT")"
 
-# 1. Verify no unsafe files
 BAD="$(echo "$ZIP_LISTING" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
 if [[ -n "$BAD" ]]; then
-  echo "Unsafe file found in zip:"
+  echo "REVIEW_ZIP_ERROR: unsafe file found in published zip (not deleting the coordinator-verified package):"
   echo "$BAD"
-  rm -f "$OUT"
   exit 1
 fi
 
-# 2. Verify no raw evidence paths leaked
 LEAKED="$(echo "$ZIP_LISTING" | grep -E '^(tmp/|home/|Users/|private/|mnt/|remedy-job-evidence-)' || true)"
 if [[ -n "$LEAKED" ]]; then
-  echo "Local path structure leaked into zip:"
+  echo "REVIEW_ZIP_ERROR: local path structure leaked into published zip:"
   echo "$LEAKED"
-  rm -f "$OUT"
   exit 1
 fi
 
-# 3. Verify manifest content against zip
 VERIFY_ERRORS=""
-
 for AGENT_FILE in .agent/live_review.md .agent/plan.md .agent/review_protocol.md; do
   MANIFEST_STATUS="$(python3 -c "
 import json, sys
@@ -630,7 +654,6 @@ if [[ -n "$STALE_EV" ]]; then
   VERIFY_ERRORS="${VERIFY_ERRORS}Stale evidence dir included in zip: $STALE_EV\n"
 fi
 
-# 4. Verify the observability index is bundled under evidence/current/ (only when evidence present).
 if [[ -n "$EVIDENCE_DIR" ]]; then
   if [[ -n "$OBS_INDEX_STAGED" && -f "$OBS_INDEX_STAGED" ]]; then
     if ! grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME" <<< "$ZIP_LISTING"; then
@@ -642,63 +665,13 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
 fi
 
 if [[ -n "$VERIFY_ERRORS" ]]; then
-  echo "Post-build verification failed:"
+  echo "REVIEW_ZIP_ERROR: read-only post-publication verification failed (package left intact):"
   echo -e "$VERIFY_ERRORS"
-  rm -f "$OUT"
   exit 1
 fi
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
-
-# --- Package status comes from the VERIFIED build result (F6/F7, round 21), NOT a disk reread ---
-# A disk manifest replaced after ZIP construction cannot alter the filename or reported status.
-PACKAGE_STATUS="$(python3 -c "
-import json, sys
-try:
-    r = json.loads('''$BUILD_RESULT''')
-    print(r.get('package_status', 'UNKNOWN'))
-except Exception:
-    print('UNKNOWN')
-")"
-EVIDENCE_AUTH="$(python3 -c "
-import json
-try:
-    r = json.loads('''$BUILD_RESULT''')
-    print('true' if r.get('evidence_authoritative') else 'false')
-except Exception:
-    print('false')
-")"
-ALIGNMENT_VERDICT="$(python3 -c "
-import json
-try:
-    r = json.loads('''$BUILD_RESULT''')
-    print(r.get('review_subject_alignment', '$ALIGNMENT_VERDICT'))
-except Exception:
-    print('$ALIGNMENT_VERDICT')
-")"
-
-FINAL_OUT="remedy-review-${STAMP}-${PACKAGE_STATUS}.zip"
-# F1 (round 33): the shell publishes the status-bearing final path through the SAME atomic no-replace
-# implementation as the Python coordinator (safe_publish.publish_atomically) — never a weaker `mv`. The
-# already-verified temp ZIP ($OUT) is linked to $FINAL_OUT atomically; a losing race or a tracked/
-# unsafe destination is a controlled collision (exit 3), and no existing byte is ever overwritten.
-if ! python3 -c "
-import sys
-from packages.orchestration.safe_publish import publish_atomically, PublishCollisionError
-try:
-    publish_atomically('$OUT', '$FINAL_OUT', '$ROOT')
-except PublishCollisionError as exc:
-    print(f'REVIEW_ZIP_ERROR: {exc}', file=sys.stderr); sys.exit(3)
-"; then
-  echo "REVIEW_ZIP_ERROR: refusing to publish final ZIP (collision or race) at '$FINAL_OUT'" >&2
-  exit 3
-fi
-if [[ ! -f "$FINAL_OUT" || -f "$OUT" ]]; then
-  echo "REVIEW_ZIP_ERROR: final publication did not complete cleanly for '$FINAL_OUT'" >&2
-  exit 3
-fi
-OUT="$FINAL_OUT"
 
 # --- Terminal status block ---
 echo

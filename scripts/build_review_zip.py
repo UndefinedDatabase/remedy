@@ -45,15 +45,30 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _derive_generated_outputs(brm, repo_root: str, out: str, manifest_rel: str) -> frozenset:
-    """F3 (round 29): the exact repository-ROOT-relative outputs THIS invocation generates — the ZIP
-    it writes (``--out``) and the root manifest it emits (``--manifest-rel``) — resolved to
-    repo-root-relative form and filtered to the eligible packaging-output shape. Anything outside the
-    repository root, or not a packaging-output shape, is dropped. This is the SOLE authority for the
-    dirty-subject disposition; there is no caller-supplied free list."""
+#: Round 34 F1: the closed set of package statuses a build can publish under. Every candidate final
+#: path (the template realized for each status) is declared as a generated output so the dirty-subject
+#: disposition never self-blocks, regardless of which status the verified manifest yields.
+_CANDIDATE_STATUSES = (
+    "READY_FOR_REVIEW", "READY_FOR_REVIEW_UNVERIFIED", "BLOCKED_EVIDENCE", "NO_EVIDENCE", "UNKNOWN",
+)
+
+
+def _final_path_for(final_template: str, package_status: str) -> str:
+    """Realize the final-name TEMPLATE for one package status (``{package_status}`` placeholder)."""
+    return final_template.replace("{package_status}", package_status)
+
+
+def _derive_generated_outputs(brm, repo_root: str, outputs, manifest_rel: str) -> frozenset:
+    """F3 (round 29) / F1 (round 34): the exact repository-ROOT-relative outputs THIS invocation
+    generates — every candidate final ZIP path (the status-name template realized for each possible
+    status) plus the root manifest it emits — resolved to repo-root-relative form and filtered to the
+    eligible packaging-output shape. Anything outside the repository root, or not a packaging-output
+    shape, is dropped. This is the SOLE authority for the dirty-subject disposition; there is no
+    caller-supplied free list."""
     root = os.path.abspath(repo_root)
     result = set()
-    for raw in (out, manifest_rel):
+    raws = list(outputs) if not isinstance(outputs, str) else [outputs]
+    for raw in [*raws, manifest_rel]:
         if not raw:
             continue
         ap = raw if os.path.isabs(raw) else os.path.join(root, raw)
@@ -260,7 +275,10 @@ def _expected_model(snapshot, gen_hashes: dict) -> list:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--final-template", required=True,
+                    help="final publication path template containing the {package_status} placeholder; "
+                         "the coordinator derives the exact status-bearing final path from the verified "
+                         "manifest and publishes its private .part directly to it (no public intermediate)")
     ap.add_argument("--repo-root", required=True)
     ap.add_argument("--repo-files0", required=True, help="NUL-delimited repo context file list")
     ap.add_argument("--evidence-root", default="", help="the STAGING root (single byte source)")
@@ -419,8 +437,10 @@ def main() -> int:
             # outputs (the ZIP it writes and the root manifest it emits), never a caller-supplied free
             # list, and each is filtered to the eligible packaging-output shape. A caller cannot name
             # an arbitrary source path here and have it hidden from the dirty subject.
+            _candidate_finals = [_final_path_for(args.final_template, s)
+                                 for s in _CANDIDATE_STATUSES]
             generated_outputs = _derive_generated_outputs(_brm, args.repo_root,
-                                                          args.out, args.manifest_rel)
+                                                          _candidate_finals, args.manifest_rel)
             base_manifest = _brm.build_manifest_from_snapshot(
                 evidence_view, evidence_path=_staged_current,
                 selection_mode=args.selection_mode,
@@ -492,16 +512,24 @@ def main() -> int:
                 "manifest_sha256": manifest_sha,
             }
 
-        # F1 (round 33) — build the deterministic ZIP into a PRIVATE same-filesystem temp path, reopen
-        # and verify it there, then publish to the public --out through ONE atomic no-replace operation.
-        # There is no pre-check-then-write to the public path: the atomic link is the race boundary, so
-        # exactly one concurrent invocation wins and no existing destination is ever truncated.
+        # F1 (round 33/34) — the SINGLE publication. The coordinator already knows the verified
+        # package_status from the in-memory manifest, so it derives the EXACT status-bearing final path
+        # and publishes DIRECTLY to it. The ZIP is built into a PRIVATE same-directory `.part`, reopened
+        # and verified there, its verified SHA-256 is bound, and that same inode is atomically linked
+        # (no-replace) to the final path. There is NO public intermediate ZIP at any time: no pre-check-
+        # then-write, no rename, no second publication. The atomic link is the race boundary, so exactly
+        # one concurrent invocation wins and no existing destination is ever truncated.
         import tempfile as _tempfile
-        from packages.orchestration.safe_publish import PublishCollisionError, publish_atomically
-        _out_dir = os.path.dirname(os.path.abspath(args.out)) or "."
+        from packages.orchestration.safe_publish import (
+            PublishCollisionError, PublishSourceError, publish_atomically,
+        )
+        final_status = str(verified_status.get("package_status") or "UNKNOWN")
+        final_path = _final_path_for(args.final_template, final_status)
+        _out_dir = os.path.dirname(os.path.abspath(final_path)) or "."
         _fd, _tmp = _tempfile.mkstemp(prefix=".remedy_zip_", suffix=".part", dir=_out_dir)
         os.close(_fd)
         published = False
+        published_sha256 = ""
         try:
             result = build_review_zip_from_snapshot(
                 out_path=_tmp, snapshot=snapshot, generated_members=generated)
@@ -511,10 +539,13 @@ def main() -> int:
                 for p in problems:
                     print(f"  - {p}", file=sys.stderr)
                 return 3
+            # Bind the exact verified private bytes; publication refuses to publish anything else.
+            published_sha256 = _sha256_hex(open(_tmp, "rb").read())
             try:
-                publish_atomically(_tmp, args.out, args.repo_root)
+                publish_atomically(_tmp, final_path, args.repo_root,
+                                   expected_sha256=published_sha256)
                 published = True
-            except PublishCollisionError as exc:
+            except (PublishCollisionError, PublishSourceError) as exc:
                 print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
                 return 3
         finally:
@@ -533,10 +564,14 @@ def main() -> int:
     authoritative = sum(1 for m in result["model"].values() if m.get("authoritative"))
     symlinks = sum(1 for m in result["model"].values() if m.get("kind") == "symlink")
     # F6/F7 — the reported status is the VERIFIED package model, not a disk-manifest reread.
+    # F1 (round 34) — the coordinator returns the EXACT published final path and its verified SHA-256;
+    # the shell trusts only these and never re-derives the name or re-publishes.
     print(json.dumps({"member_count": len(result["members"]),
                       "authoritative_count": authoritative,
                       "symlink_count": symlinks,
                       "tombstone_count": len(plan.tombstones),
+                      "final_path": os.path.relpath(os.path.abspath(final_path), os.path.abspath(args.repo_root)).replace(os.sep, "/"),
+                      "final_sha256": published_sha256,
                       **verified_status}))
     return 0
 
