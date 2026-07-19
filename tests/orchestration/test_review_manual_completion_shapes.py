@@ -62,7 +62,12 @@ def _valid() -> dict:
                                        "human_final_reviewer_required": True},
         "task_runs/T001/provider_evidence.json": {"execution_mode": "manual_operator_repair",
                                                   "provider_call_count": 0,
+                                                  "completion_provider_call_count": 0,
+                                                  "prompt_trace_available": False,
                                                   "actual_provider_available": False},
+        "task_runs/T001/token_accounting.json": {"task_id": "T001", "kind": "manual",
+                                                 "reason": "manual", "provider_call_count": 0,
+                                                 "actual_available": False},
         "task_runs/T001/manifest.json": {"evidence_available": True,
                                          "effective_status": "operator_attested_complete"},
         "task_runs/T001/review_scope_packet.json": {"changed_files": ["src/a.py"]},
@@ -139,3 +144,60 @@ class TestManualCompletionMutationMatrix:
             manifest = _brm.build_manifest(d)              # must NOT raise
             assert isinstance(manifest, dict) and "review_subject" in manifest
             assert _brm.validate_evidence_candidate(d)["is_valid_current_run"] is False
+
+
+class TestManualCompletionScalarSemantics:
+    """F3 (round 31) — scalar typing and cross-artifact binding: booleans-for-integers, wrong enums and
+    mismatched counts/task-ids block, and none throws."""
+
+    def _apply(self, rel, field, val):
+        objs = copy.deepcopy(_valid())
+        objs[rel][field] = val
+        return _view(objs)
+
+    def _invalid(self, rel, field, val):
+        ev = self._apply(rel, field, val)
+        vc = _brm.validate_evidence_candidate(ev)          # must not raise
+        assert vc["is_valid_current_run"] is False, f"{rel}.{field}={val!r} stayed valid"
+        return vc["validation_errors"]
+
+    def test_task_count_boolean_blocks(self):
+        assert any("task_count" in e for e in self._invalid("manifest.json", "task_count", False))
+
+    def test_task_count_wrong_value_blocks(self):
+        assert any("task_count" in e for e in self._invalid("manifest.json", "task_count", 999))
+
+    def test_completion_provider_call_count_boolean_blocks(self):
+        assert any("completion_provider_call_count" in e for e in
+                   self._invalid("final_job_review.json", "completion_provider_call_count", False))
+
+    def test_provider_call_count_boolean_blocks(self):
+        assert any("provider_call_count" in e for e in self._invalid(
+            "task_runs/T001/provider_evidence.json", "provider_call_count", False))
+
+    def test_actual_provider_available_string_false_blocks(self):
+        assert any("actual_provider_available" in e for e in self._invalid(
+            "task_runs/T001/provider_evidence.json", "actual_provider_available", "false"))
+
+    def test_prompt_trace_available_true_blocks(self):
+        assert any("prompt_trace_available" in e for e in self._invalid(
+            "task_runs/T001/provider_evidence.json", "prompt_trace_available", True))
+
+    def test_token_accounting_call_count_boolean_blocks(self):
+        assert any("token_accounting.provider_call_count" in e for e in self._invalid(
+            "task_runs/T001/token_accounting.json", "provider_call_count", False))
+
+    def test_token_accounting_kind_not_manual_blocks(self):
+        assert any("token_accounting" in e for e in self._invalid(
+            "task_runs/T001/token_accounting.json", "kind", "actual"))
+
+    def test_no_scalar_mutation_throws(self):
+        for rel, field in (("manifest.json", "task_count"),
+                           ("final_job_review.json", "completion_provider_call_count"),
+                           ("task_runs/T001/provider_evidence.json", "provider_call_count"),
+                           ("task_runs/T001/provider_evidence.json", "actual_provider_available"),
+                           ("task_runs/T001/provider_evidence.json", "prompt_trace_available"),
+                           ("task_runs/T001/token_accounting.json", "provider_call_count")):
+            for val in (None, True, False, -1, 0, 1, 999, "", "0", "false", [], [1], {}, {"x": 1}):
+                ev = self._apply(rel, field, val)
+                _brm.validate_evidence_candidate(ev)       # must not raise

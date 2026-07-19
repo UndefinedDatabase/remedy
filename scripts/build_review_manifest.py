@@ -1087,13 +1087,26 @@ def validate_manual_completion(ev) -> list[str]:
     if planned_task_ids and sorted(task_dirs) != sorted(planned_task_ids):
         errors.append(f"task runs {sorted(task_dirs)} != planned tasks {sorted(planned_task_ids)}")
 
+    # F3 (round 31): manifest.task_count is a real integer (never bool) equal to len(task_ids), and the
+    # planned task ids equal the actual task directories (bound above) and the final review's ids.
+    tc = manifest.get("task_count")
+    if not (isinstance(tc, int) and not isinstance(tc, bool)):
+        errors.append("manifest.json: task_count is not an integer")
+    elif tc != len(planned_task_ids):
+        errors.append(f"manifest.json: task_count {tc} != len(task_ids) {len(planned_task_ids)}")
+    fjr_ptcf = fjr.get("per_task_changed_files")
+    if isinstance(fjr_ptcf, dict) and sorted(str(k) for k in fjr_ptcf) != sorted(planned_task_ids):
+        errors.append("final_job_review.per_task_changed_files task ids != manifest task_ids")
+
     # completion facts on the existing final job review
     if fjr.get("completion_mode") != "manual_operator_repair":
         errors.append("final_job_review.completion_mode != manual_operator_repair")
     if fjr.get("human_final_reviewer_required") is not True:
         errors.append("final_job_review.human_final_reviewer_required is not true")
-    if fjr.get("completion_provider_call_count", -1) != 0:
-        errors.append("final_job_review.completion_provider_call_count != 0")
+    # F3 (round 31): completion_provider_call_count is a real integer 0 (a boolean False is not 0).
+    _cpcc = fjr.get("completion_provider_call_count")
+    if not (isinstance(_cpcc, int) and not isinstance(_cpcc, bool)) or _cpcc != 0:
+        errors.append("final_job_review.completion_provider_call_count is not integer 0")
 
     # Finding 7: the linked prior-job summaries must match the linked ids exactly
     # (an honest historical record, never a fabricated call count).
@@ -1130,10 +1143,23 @@ def validate_manual_completion(ev) -> list[str]:
 
         if pe.get("execution_mode") != "manual_operator_repair":
             errors.append(f"{tid}: provider_evidence.execution_mode != manual_operator_repair")
-        if pe.get("provider_call_count", -1) != 0:
-            errors.append(f"{tid}: provider_evidence.provider_call_count != 0")
-        if pe.get("actual_provider_available") is True:
-            errors.append(f"{tid}: provider_evidence claims provider availability (provider-backed PASS)")
+        # F3 (round 31): provider/completion call counts are real integer 0 (a boolean is not 0), the
+        # actual/prompt-trace availability flags are exactly False (not the string "false" or 999).
+        for _pf in ("provider_call_count", "completion_provider_call_count"):
+            if _pf in pe:
+                _v = pe.get(_pf)
+                if not (isinstance(_v, int) and not isinstance(_v, bool)) or _v != 0:
+                    errors.append(f"{tid}: provider_evidence.{_pf} is not integer 0")
+        if pe.get("actual_provider_available") is not False:
+            errors.append(f"{tid}: provider_evidence.actual_provider_available is not false")
+        if pe.get("prompt_trace_available") is not False:
+            errors.append(f"{tid}: provider_evidence.prompt_trace_available is not false")
+        _ta = _read_mc(ev, f"task_runs/{tid}/token_accounting.json", errors)
+        if _ta.get("kind") != "manual" or _ta.get("reason") != "manual":
+            errors.append(f"{tid}: token_accounting kind/reason are not both 'manual'")
+        _tacc = _ta.get("provider_call_count")
+        if not (isinstance(_tacc, int) and not isinstance(_tacc, bool)) or _tacc != 0:
+            errors.append(f"{tid}: token_accounting.provider_call_count is not integer 0")
 
         if mrp.get("manual_operator_repair") is not True:
             errors.append(f"{tid}: provenance manual_operator_repair is not true")
