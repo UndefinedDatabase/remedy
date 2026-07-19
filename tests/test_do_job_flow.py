@@ -1573,14 +1573,10 @@ class TestReviewZipPackageStatus:
                     "measurement_source": "character_heuristic", "missing_reason": "op",
                     "prompt_trace_count": 0, "provider_call_count": 0, "repair_estimated_total": 0,
                     "reviewer_estimated_total": 0, "total_cost_usd": None}
-        _tmeas = {"actual_call_count": 0, "actual_coverage_complete": False,
-                  "actual_missing_reasons": None, "actual_model_verified": False,
-                  "actual_models": _models_n, "actual_summary": None, "cli_version": None,
-                  "configured_models": _models_c, "cost_call_count": 0,
-                  "cost_coverage_complete": False, "cost_coverage_reason": "no_real_provider_calls",
-                  "measurement_confidence": "low", "measurement_note": "op",
-                  "measurement_source": "character_heuristic", "provider_call_count": 0,
-                  "total_cost_usd": None}
+        # Round 29 F1: the token_measurement block must be the EXACT shared-producer derivation of
+        # token_status, so the gate can reconstruct it. A hand-written block no longer passes.
+        from packages.orchestration.token_measurement import token_measurement_summary
+        _tmeas = token_measurement_summary(_tstatus)
         (ev / "final_verifier_report.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": _auth,
             "changed_files": _auth, "changed_line_ranges": {},
@@ -1604,8 +1600,9 @@ class TestReviewZipPackageStatus:
             "file_set_alignment_status": "PASS", "token_cost_has_critical": False,
             "token_cost_policy_present": True, "token_cost_risk_findings": [],
             "token_status": _tstatus, "token_measurement": _tmeas,
-            "token_measurement_confidence": "low", "token_measurement_note": "op",
-            "token_actual_summary": None,
+            "token_measurement_confidence": _tmeas["measurement_confidence"],
+            "token_measurement_note": _tmeas["measurement_note"],
+            "token_actual_summary": _tmeas["actual_summary"],
             "evidence_completeness": {"review_scope_packet": True, "spec_compliance_check": True,
                                       "missing_tests_gate": True, "scratch_file_guard": True,
                                       "token_truth": True, "safe_diff": True, "review_json": True,
