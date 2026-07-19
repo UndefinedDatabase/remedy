@@ -586,6 +586,10 @@ def attest_operator_repair(
             "actual_available": False,
             "actual_tokens_available": False,
             "reason": "manual",
+            # A manual operator attestation made zero provider calls. The manual-completion validator
+            # requires this to be the integer 0 (matching the canonical manual_attestation producer);
+            # omitting it made an attested export disagree with the validator's schema.
+            "provider_call_count": 0,
             "timestamp": timestamp,
         },
     )
