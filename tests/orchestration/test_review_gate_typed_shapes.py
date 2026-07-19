@@ -218,3 +218,51 @@ class TestRealTokenSummary:
     def test_low_null_summary_no_projection_block(self):
         # low confidence: actual_summary is null, so no summary-field projection is checked.
         assert _ok(self._fv_with("low")) is True
+
+    # --- F1 (round 29): the whole block must be REPRODUCIBLE from the one shared producer, so the
+    # impossible confidence/summary/note combinations the field-list check missed now block. ---
+    def test_packaged_block_equals_a_fresh_producer_rebuild(self):
+        from packages.orchestration.token_measurement import token_measurement_summary
+        for conf in ("high", "mixed", "low"):
+            g = self._fv_with(conf)
+            fv = g["final_verifier_report.json"]
+            assert fv["token_measurement"] == token_measurement_summary(fv["token_status"])
+            assert _ok(g) is True
+
+    def test_high_confidence_with_null_summary_blocks(self):
+        g = self._fv_with("high")
+        fv = g["final_verifier_report.json"]
+        fv["token_measurement"]["actual_summary"] = None
+        fv["token_actual_summary"] = None
+        assert _ok(g) is False
+
+    def test_mixed_confidence_with_null_summary_blocks(self):
+        g = self._fv_with("mixed")
+        fv = g["final_verifier_report.json"]
+        fv["token_measurement"]["actual_summary"] = None
+        fv["token_actual_summary"] = None
+        assert _ok(g) is False
+
+    def test_low_confidence_with_fabricated_summary_blocks(self):
+        g = self._fv_with("low")
+        fv = g["final_verifier_report.json"]
+        fake = {"measurement_confidence": "low"}
+        fv["token_measurement"]["actual_summary"] = fake
+        fv["token_actual_summary"] = fake
+        assert _ok(g) is False
+
+    def test_arbitrary_matching_note_blocks_when_low(self):
+        # A note that matches top+nested but is NOT the producer's low-confidence note blocks.
+        g = self._fv_with("low")
+        fv = g["final_verifier_report.json"]
+        fv["token_measurement"]["measurement_note"] = "arbitrary but consistent"
+        fv["token_measurement_note"] = "arbitrary but consistent"
+        assert _ok(g) is False
+
+    def test_arbitrary_matching_note_blocks_when_high(self):
+        # High confidence's producer note is null; a matching non-null note on both views blocks.
+        g = self._fv_with("high")
+        fv = g["final_verifier_report.json"]
+        fv["token_measurement"]["measurement_note"] = "informational"
+        fv["token_measurement_note"] = "informational"
+        assert _ok(g) is False
