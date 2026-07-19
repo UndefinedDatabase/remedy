@@ -1772,14 +1772,18 @@ def _is_real_int(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def _valid_iso8601(s) -> bool:
+def _valid_utc_datetime(s) -> bool:
+    """F2 (round 28): a real TIMEZONE-AWARE ISO-8601 DATETIME, matching the producer's
+    ``datetime.now(timezone.utc).isoformat()``. A date-only value (``2026-07-19``) or a timezone-
+    naive datetime is refused — both parse to a ``tzinfo``-less value, so requiring ``tzinfo`` rejects
+    them; a ``Z``, ``+00:00`` or explicit offset is accepted."""
     if not isinstance(s, str) or not s.strip():
         return False
     try:
-        datetime.fromisoformat(s.strip().replace("Z", "+00:00"))
-        return True
+        dt = datetime.fromisoformat(s.strip().replace("Z", "+00:00"))
     except ValueError:
         return False
+    return dt.tzinfo is not None and dt.utcoffset() is not None
 
 
 def _vt_safe_files(tf, label, problems):
@@ -1803,7 +1807,8 @@ def validate_verification_tests(vt):
     empty ``problems`` means the document is exactly a supported, coherent, all-passing record and
     ``passed`` is its authoritative total. No ``int(...)`` coercion; the command/timestamp/run_id/
     stdout_summary are typed; per-run and top counts are nonnegative real integers; test-file lists
-    are safe, sorted, duplicate-free; commands and run ids are unique; and every textual key/value is
+    are safe, sorted, duplicate-free; run ids are unique (commands MAY repeat); the top-level
+    command/exit_code are the producer-derived views of the runs; and every textual key/value is
     scanned for secrets/local paths/control characters."""
     if vt is None:
         return [f"{_VT_NAME} is missing"], None
@@ -1822,8 +1827,9 @@ def validate_verification_tests(vt):
         problems.append(f"{_VT_NAME} verification_type {vt.get('verification_type')!r} unsupported")
     if not isinstance(vt.get("command"), str) or not vt.get("command", "").strip():
         problems.append(f"{_VT_NAME} command is not a nonempty string")
-    if not _valid_iso8601(vt.get("timestamp")):
-        problems.append(f"{_VT_NAME} timestamp {vt.get('timestamp')!r} is not a valid ISO-8601 string")
+    if not _valid_utc_datetime(vt.get("timestamp")):
+        problems.append(f"{_VT_NAME} timestamp {vt.get('timestamp')!r} is not a timezone-aware "
+                        f"ISO-8601 datetime")
     for f in ("exit_code", "passed", "failed"):
         if not _is_real_int(vt.get(f)):
             problems.append(f"{_VT_NAME} {f}={vt.get(f)!r} is not a real integer")
@@ -1842,7 +1848,8 @@ def validate_verification_tests(vt):
     else:
         sum_p = sum_f = 0
         seen_ids: set = set()
-        seen_cmds: set = set()
+        run_cmds: list = []
+        run_exits: list = []
         for i, r in enumerate(runs):
             if not isinstance(r, dict) or set(r) != _VT_RUN_FIELDS:
                 problems.append(f"{_VT_NAME} runs[{i}] has the wrong field set")
@@ -1855,12 +1862,14 @@ def validate_verification_tests(vt):
             else:
                 seen_ids.add(rid)
             cmd = r.get("command")
+            # F2 (round 28): a REPEATED command is legitimate (the producer emits two unique runs for
+            # the same command) — distinguished by unique run_id. Command text is NOT required unique.
             if not isinstance(cmd, str) or not cmd.strip():
                 problems.append(f"{_VT_NAME} runs[{i}] command is empty")
-            elif cmd in seen_cmds:
-                problems.append(f"{_VT_NAME} runs[{i}] duplicate command {cmd!r}")
             else:
-                seen_cmds.add(cmd)
+                run_cmds.append(cmd)
+            if _is_real_int(r.get("exit_code")):
+                run_exits.append(r["exit_code"])
             if not isinstance(r.get("stdout_summary"), str):
                 problems.append(f"{_VT_NAME} runs[{i}] stdout_summary is not a string")
             elif len(r["stdout_summary"]) > _VT_MAX_STDOUT:
@@ -1884,6 +1893,17 @@ def validate_verification_tests(vt):
                 problems.append(f"{_VT_NAME} passed {vt.get('passed')} != sum of runs {sum_p}")
             if sum_f != vt.get("failed"):
                 problems.append(f"{_VT_NAME} failed {vt.get('failed')} != sum of runs {sum_f}")
+            # F2 (round 28): the top-level fields are DERIVED from the runs by the exact producer
+            # rule — command is the join, exit_code is 0 only when every run exited 0. A forged or
+            # reordered top-level command no longer passes.
+            derived_command = " && ".join(run_cmds)
+            if vt.get("command") != derived_command:
+                problems.append(f"{_VT_NAME} command is not the producer-derived join of the run "
+                                f"commands")
+            derived_exit = 0 if all(e == 0 for e in run_exits) else 1
+            if vt.get("exit_code") != derived_exit:
+                problems.append(f"{_VT_NAME} exit_code {vt.get('exit_code')!r} != the producer-"
+                                f"derived {derived_exit}")
     tf_top = _vt_safe_files(vt.get("test_files"), "top-level", problems)
     if not problems and tf_top != run_files:
         problems.append(f"{_VT_NAME} test_files is not the union of the runs' test_files")
