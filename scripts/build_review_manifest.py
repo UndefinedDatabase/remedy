@@ -1206,6 +1206,18 @@ def validate_manual_completion(ev) -> list[str]:
     vt_problems, _ = validate_verification_tests(vt if vt else None)
     errors.extend(vt_problems)
 
+    # F2 (round 31): token_truth.json is trust-bearing (the final verifier derives the entire
+    # token_status from it). When claimed present it must be a valid, nonempty, coherent object;
+    # empty/whitespace/malformed/wrong-root/enum-violating token truth blocks.
+    if ev.isfile("token_truth.json"):
+        try:
+            from packages.orchestration.token_authority import validate_token_truth
+            tt_raw = ev.read_json_strict("token_truth.json")
+        except Exception as exc:
+            errors.append(f"token_truth.json is not valid strict JSON: {str(exc)[:120]}")
+        else:
+            errors.extend(validate_token_truth(tt_raw))
+
     # 9-12: alignment / uncovered / hash mismatches / missing proofs (final verifier + gates).
     if fv.get("file_set_alignment_status") not in ("PASS", "PASS_WITH_RISKS"):
         errors.append(f"file_set_alignment_status={fv.get('file_set_alignment_status')}")
