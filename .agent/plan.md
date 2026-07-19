@@ -1,28 +1,36 @@
-# Plan — Steps 12961-13160 — F012 hardening round 27 (REAL TOKEN SHAPES, COMPLETE VERIFICATION TYPING, SAFE ACQUISITION/DIRTY/DECODER BOUNDARIES)
+# Plan — Steps 13161-13360 — F012 hardening round 28 (COHERENCE + INVOCATION-BINDING CLOSURE)
 
-## Round 27 binding decision
+## Round 28 binding decision
 
-Reviewed `remedy-review-20260718-213237-READY_FOR_REVIEW.zip`
-(SHA `9bfe1e5abdedc8d004164b7101cb7c111bef967607cca858c9a8cb11384dd850`, Evidence job
-`ebe675ec74f20c1a`, linked prior `a67d0c3f0513bd11`, HEAD `7fa4466`). Verdict FINDINGS; F012 `[~]`.
+Reviewed `remedy-review-20260719-124709-READY_FOR_REVIEW.zip`
+(SHA `7a452c42...d898d1`, Evidence job `a3d937ec1835eb93`, linked prior `ebe675ec74f20c1a`,
+Base `7fa4466`, HEAD `8c32724`). Verdict FINDINGS; F012 `[~]`. Final F012 hardening round.
 
-1. **Real token summary schema** — `_ACTUAL_TOKEN_SUMMARY` matches the real
-   `final_verifier._token_measurement_summary` (17 fields, mostly nullable); reused for
-   token_measurement.actual_summary + top-level token_actual_summary; measurement notes nullable;
-   top-level projection must equal the nested block. Non-overlapping scope: token schema only.
-2. **Full VerificationTestsV1 typing** — aligned to `job_evidence._run_verifications`: typed
-   command/timestamp/run_id/stdout_summary, nonnegative per-run counts, safe sorted unique test
-   paths, unique run ids/commands, metadata scan. Scope: validate_verification_tests only.
-3. **Acquisition overflow never absence** — `_StagedArtifacts.load` charges from a trusted anchored
-   lstat size before reading; overflow raises ArchivePlanError; absence/symlink/torn distinguished.
-   Scope: build_review_zip _StagedArtifacts only.
-4. **Exact packaging-output identity** — `_is_packaging_output` requires a repo-ROOT path + exact
-   `make_review_zip.sh` filename grammar. Scope: _is_packaging_output only.
-5. **Strict decode at every trust boundary** — job_flow/manual_repair_provenance/manifest/NO_EVIDENCE
-   via the shared strict decoder. Scope: the four remaining bare json.loads sites.
+Four reproduced contract defects, each repaired in its own non-overlapping scope:
+
+1. **Token-status projection coherence** — one shared projection mapping requires every overlapping
+   field of token_measurement / its actual_summary / top-level token_actual_summary to EQUAL the
+   authoritative token_status; a disagreement blocks; the low/null summary carries no projection.
+   Scope: `_token_projection_problems` + its call in the FV branch of `_gate_semantic_problems`.
+2. **Producer-derived VerificationTests** — exact `job_evidence._run_verifications` contract: repeated
+   commands legitimate (unique run ids stay mandatory), top-level command == `" && ".join(run
+   commands)`, exit_code == 0 iff every run exited 0, timestamp a real tz-aware ISO-8601 datetime.
+   Scope: `validate_verification_tests` + `_valid_utc_datetime`.
+3. **Invocation-bound packaging-output identity** — only the EXACT set of outputs the current
+   packaging invocation generates (passed from make_review_zip.sh through both builders) classifies;
+   the invocation-independent grammar is removed. Scope: `_classify_review_subject` + the CLI plumbing.
+4. **Malformed nested Evidence validates, never crashes** — validate the minimal closed shape before
+   reading nested fields; a wrong inner type appends a validation error, never an AttributeError.
+   Scope: `_job_flow_shape_problems` + the job_flow block of `validate_evidence_candidate`.
+
+Plus one isolated maintenance item (separate commit): the stream-export ZIP fixture is repaired for
+the current pipeline (copies every helper, models an internally consistent git-backed job).
 
 ## Constraints (unchanged)
 
-No provider calls; no Evidence job-flow/job-run; no database; no LLM rerun; no network. Small local
-commits, never amend/squash Round 26. Do not push, PR, merge, or begin F017. Fresh Evidence linked
-`ebe675ec74f20c1a`; one READY_FOR_REVIEW ZIP; then stop. Preserve every accepted F012 behavior.
+No provider calls; no Evidence job-flow/job-run; no database; no LLM rerun; no network; no Fable; no
+subagents; no Docker; no new dependency. Manual operator work only. Small local commits, never amend/
+squash Round 27. Do not push, PR, merge, or begin F017. Fresh Evidence linked `a3d937ec1835eb93`; one
+READY_FOR_REVIEW ZIP; then stop. Preserve every accepted F012 behavior. This is the final F012
+hardening round — after it, generic hardening is follow-up maintenance (see the F012 closure section
+of `docs/roadmap/features/T0_F012.md`).

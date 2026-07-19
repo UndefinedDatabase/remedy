@@ -1549,3 +1549,46 @@ class TestF012Round27IsPinned:
         doc = self._f012()
         assert "Strict decode at every trust boundary" in doc
         assert "no silent fallback" in doc
+
+
+class TestF012Round28IsPinned:
+    """Round 28: token-status projection coherence, producer-derived VerificationTests, invocation-
+    bound packaging-output identity, malformed nested Evidence validates instead of crashing, plus the
+    F012 closure statement."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 28" in self._f012()
+
+    def test_token_projection_coherence_documented(self):
+        doc = self._f012()
+        assert "Token-status projection coherence" in doc
+        assert "single authority" in doc
+
+    def test_producer_derived_verification_documented(self):
+        doc = self._f012()
+        assert "Producer-derived VerificationTests" in doc
+        assert '" && ".join(run commands)' in doc
+        assert "timezone-aware ISO-8601 datetime" in doc
+
+    def test_invocation_bound_identity_documented(self):
+        doc = self._f012()
+        assert "Invocation-bound packaging-output identity" in doc
+        assert "only exact membership classifies" in doc
+        # The Round-27 grammar claim is explicitly corrected.
+        assert "invocation-INDEPENDENT" in doc
+
+    def test_malformed_nested_documented(self):
+        doc = self._f012()
+        assert "Malformed nested Evidence validates, never crashes" in doc
+        assert "never raises `AttributeError`" in doc
+
+    def test_closure_section_present(self):
+        doc = self._f012()
+        assert "## F012 closure" in doc
+        assert "deterministic-run behavior" in doc
+        assert "authority and truthfulness of its concrete review package" in doc
+        assert "follow-up maintenance" in doc

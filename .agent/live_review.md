@@ -1,7 +1,8 @@
-# Live Review — Steps 12961-13160 — F012 hardening round 27 (real token shapes, complete verification typing, safe boundaries)
+# Live Review — Steps 13161-13360 — F012 hardening round 28 (coherence + invocation-binding closure)
 
 ## Verdict (reviewer-owned)
-**PENDING** — F012 hardened (5 token/verification/acquisition/dirty/decoder findings), awaiting re-review (NOT accepted).
+**PENDING** — F012 hardened (4 coherence/invocation/crash findings + 1 fixture maintenance), awaiting
+re-review (NOT accepted).
 
 ## Builder Handoff
 
@@ -9,40 +10,41 @@ Operator-built by hand: no Builder, no Reviewer, no provider GENERATION call (0)
 subagents, no Evidence `job-flow`/`job-run`, no Docker, no new dependency, **no database**, **no
 LLM rerun**, no network. Every accepted F012 behavior preserved.
 
-External review of `remedy-review-20260718-213237-READY_FOR_REVIEW.zip` (SHA
-`9bfe1e5abdedc8d004164b7101cb7c111bef967607cca858c9a8cb11384dd850`, Evidence job
-`ebe675ec74f20c1a`, linked prior `a67d0c3f0513bd11`, HEAD `7fa4466`) returned FIVE findings.
+External review of `remedy-review-20260719-124709-READY_FOR_REVIEW.zip` (SHA
+`7a452c42...d898d1`, Evidence job `a3d937ec1835eb93`, linked prior `ebe675ec74f20c1a`, HEAD
+`8c32724`) returned FOUR findings plus one isolated fixture failure.
 
-- **F1** — the Round-26 schema rejected the REAL high/mixed-confidence token summary. One exact
-  `_ACTUAL_TOKEN_SUMMARY` matches `final_verifier._token_measurement_summary`; reused for
-  token_measurement.actual_summary and top-level token_actual_summary; null accepted where the
-  producer emits it; unknown/wrong-type still blocks; top-level may not contradict the nested block.
-- **F2** — `VerificationTestsV1` is fully typed to `job_evidence._run_verifications`: verification
-  type/command/timestamp/run_id/stdout_summary typed, per-run nonnegative counts (a negative offset
-  blocks), safe sorted unique test paths, unique run ids/commands, secret/path/control scan.
-- **F3** — a per-member/aggregate acquisition overflow BLOCKS (charged from a trusted anchored size
-  before reading) and can never become a silent `(None, "")`; absence/symlink/torn distinguished.
-- **F4** — generated packaging outputs identified by EXACT repository-root path grammar; nested files
-  and root lookalikes stay in the dirty subject.
-- **F5** — job_flow.json, manual_repair_provenance.json, the packaged manifest.json and the
-  NO_EVIDENCE root manifest decode through the shared strict decoder; duplicate/NaN/Infinity/bad-UTF8/
-  non-object blocks, no silent fallback.
+- **F1** — a token producer projection could contradict `token_status`. One shared projection mapping
+  requires token_measurement, its actual_summary and top-level token_actual_summary to EQUAL the
+  authoritative token_status for every overlapping field; a disagreement blocks; the low/null summary
+  carries no projection.
+- **F2** — `VerificationTestsV1` diverged from the `_run_verifications` producer. A repeated command
+  is now legitimate (unique run ids stay mandatory), the top-level command must equal
+  `" && ".join(run commands)` and exit_code must be 0 iff every run exited 0, and the timestamp must
+  be a real timezone-aware ISO-8601 datetime (date-only / naive blocks).
+- **F3** — the packaging-output classifier matched an invocation-INDEPENDENT filename grammar, hiding
+  a stale/forged root ZIP. It is now bound to the EXACT set of outputs the current invocation
+  generates, passed from make_review_zip.sh through both builders; only exact membership classifies.
+- **F4** — a valid-JSON job_flow with a malformed nested shape (final_audit a list, target_guard a
+  list) crashed the manifest builder with AttributeError. The minimal closed shape is validated before
+  any nested read; a wrong inner type appends a validation error and never raises.
+- **Fixture (maintenance, separate commit)** — the stream-export review-ZIP fixture is repaired for
+  the current pipeline: it copies every helper make_review_zip.sh invokes and models an internally
+  consistent git-backed job (authority set {docs/README.md} agreed across subject, content proof,
+  final verifier and change-provenance gate). No assertion weakened.
 
 ## Verification
 
 ### Authoritative (each command recorded in the packaged `verification_tests.json`)
-- Round-27 affected suites (gate_typed_shapes, verification_tests_strict, acquisition_budget,
-  shared_strict_decoder, packaging_dirty_disposition) — all pass.
-- Complete F012/RunManifest (vr-0002), complete Review/Packaging (vr-0003, includes all round 24-27
+- Round-28 affected suites — gate_typed_shapes, verification_tests_strict, packaging_dirty_disposition,
+  malformed_nested_evidence, stream_export_e2e (vr-0001) — all pass.
+- Complete F012/RunManifest (vr-0002), complete Review/Packaging (vr-0003, includes all round 24-28
   review suites), complete F010/F011/Evidence (vr-0004), CLI (vr-0005), Docs (vr-0006) — all pass.
 - compileall exit 0; `bash -n scripts/make_review_zip.sh` clean; `git diff --check` clean; integrity
   check passed (fail_count 0).
 
-### Diagnostic (nonauthoritative; NOT in verification_tests.json)
-- `test_stream_export_e2e.py::...streams_under_evidence_current` fails on a stale fixture (omits
-  `scripts/stage_review_evidence.py`); fails identically at the pre-round-24 base, unrelated.
-
 ## Status
 
 F012 `[~]` — **not externally accepted**. F017 and later not started. Branch locally committed,
-unpushed, unmerged.
+unpushed, unmerged. Per the F012 closure section of `docs/roadmap/features/T0_F012.md`, further
+generic hardening is follow-up maintenance and does not reopen F012.
