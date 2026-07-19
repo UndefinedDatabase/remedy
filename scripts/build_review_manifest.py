@@ -2159,6 +2159,45 @@ def _build_alignment(
     }
 
 
+def _nonempty_str(v) -> bool:
+    return isinstance(v, str) and bool(v.strip())
+
+
+def _job_flow_shape_problems(jf_data) -> list[str]:
+    """F4 (round 28): the minimal CLOSED shape ``validate_evidence_candidate`` consumes from
+    job_flow.json. A document that decodes to valid JSON but carries a wrong inner type (``final_audit``
+    a list, ``target_guard`` a list, ...) must APPEND validation errors, never raise AttributeError/
+    TypeError from a ``.get`` on a non-dict. Never raises.
+
+    - root is a JSON object; ``job_id`` a non-empty string;
+    - ``final_audit`` an object with a non-empty string ``status``;
+    - ``final_audit.missing_observability_artifacts`` a list when present;
+    - ``target_guard`` an object when present, with a Boolean ``mutated_target`` when present.
+    """
+    problems: list[str] = []
+    if not isinstance(jf_data, dict):
+        return ["job_flow.json: root is not a JSON object"]
+    if not _nonempty_str(jf_data.get("job_id")):
+        problems.append("job_flow.json: job_id is not a non-empty string")
+    audit = jf_data.get("final_audit")
+    if not isinstance(audit, dict):
+        problems.append("job_flow.json: final_audit is not an object")
+    else:
+        if not _nonempty_str(audit.get("status")):
+            problems.append("job_flow.json: final_audit.status is not a non-empty string")
+        if "missing_observability_artifacts" in audit and not isinstance(
+                audit["missing_observability_artifacts"], list):
+            problems.append(
+                "job_flow.json: final_audit.missing_observability_artifacts is not a list")
+    tg = jf_data.get("target_guard")
+    if tg is not None and not isinstance(tg, dict):
+        problems.append("job_flow.json: target_guard is not an object")
+    elif isinstance(tg, dict) and "mutated_target" in tg and not isinstance(
+            tg["mutated_target"], bool):
+        problems.append("job_flow.json: target_guard.mutated_target is not a boolean")
+    return problems
+
+
 def validate_evidence_candidate(ev) -> dict:
     ev = _as_view(ev)
     errors: list[str] = []
@@ -2207,30 +2246,34 @@ def validate_evidence_candidate(ev) -> dict:
 
     if has_job_flow:
         raw = ev.read_bytes("job_flow.json")
+        jf_data = None
         try:
             # F5 (round 27): job_flow.json is trust-bearing (job_id, final_audit.status) — decode it
             # strictly so a duplicate/contradictory key is refused, never last-wins.
             jf_data = _strict_json_loads(raw) if raw is not None else {}
-            if not isinstance(jf_data, dict):
-                raise json.JSONDecodeError("not an object", "", 0)
-            job_id = jf_data.get("job_id", "")
-            if not job_id:
-                errors.append("job_flow.json: job_id is empty")
-            audit = jf_data.get("final_audit", {})
-            final_audit_status = audit.get("status", "")
-            if not final_audit_status:
-                errors.append("job_flow.json: final_audit.status missing")
-            missing_obs = audit.get("missing_observability_artifacts", [])
-            if missing_obs:
-                errors.append(
-                    f"final_audit.missing_observability_artifacts: {missing_obs}"
-                )
-            tg = jf_data.get("target_guard", {})
-            if tg.get("mutated_target", False):
-                target_mutation_detected = True
-                errors.append("target_guard indicates target mutation")
         except (json.JSONDecodeError, ValueError) as exc:
             errors.append(f"job_flow.json: parse error: {exc}")
+        if jf_data is not None:
+            # F4 (round 28): validate the minimal closed shape BEFORE reading nested fields, so a
+            # valid-JSON-but-wrong-inner-type document (final_audit a list, target_guard a list, ...)
+            # appends errors instead of raising AttributeError from a .get on a non-dict.
+            errors.extend(_job_flow_shape_problems(jf_data))
+            if isinstance(jf_data, dict):
+                jid = jf_data.get("job_id")
+                job_id = jid if isinstance(jid, str) else ""
+                audit = jf_data.get("final_audit")
+                if isinstance(audit, dict):
+                    st = audit.get("status")
+                    final_audit_status = st if isinstance(st, str) else ""
+                    mo = audit.get("missing_observability_artifacts")
+                    if isinstance(mo, list) and mo:
+                        missing_obs = mo
+                        errors.append(
+                            f"final_audit.missing_observability_artifacts: {missing_obs}")
+                tg = jf_data.get("target_guard")
+                if isinstance(tg, dict) and tg.get("mutated_target", False) is True:
+                    target_mutation_detected = True
+                    errors.append("target_guard indicates target mutation")
 
     task_run_count = 0
     manual_repair_tasks: list[str] = []
