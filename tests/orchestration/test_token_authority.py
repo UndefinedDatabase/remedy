@@ -50,7 +50,7 @@ class TestTokenTruthValidator:
 
     def test_totals_incoherent_rejected(self):
         t = dict(MANUAL_TOKEN_TRUTH)
-        t.update({"measurement_confidence": "high", "measurement_source": "provider_api",
+        t.update({"measurement_confidence": "high", "measurement_source": "provider_actuals",
                   "actual_available": True, "actual_call_count": 2, "provider_call_count": 2,
                   "actual_prompt_tokens": 100, "actual_completion_tokens": 50,
                   "actual_total_tokens": 999})
@@ -68,7 +68,7 @@ class TestTokenTruthValidator:
 
     def test_measured_provider_truth_is_valid_and_coherent(self):
         t = dict(MANUAL_TOKEN_TRUTH)
-        t.update({"measurement_confidence": "high", "measurement_source": "provider_api",
+        t.update({"measurement_confidence": "high", "measurement_source": "provider_actuals",
                   "actual_available": True, "actual_call_count": 2, "provider_call_count": 2,
                   "cost_call_count": 2, "actual_prompt_tokens": 100, "actual_completion_tokens": 50,
                   "actual_total_tokens": 150, "total_cost_usd": 0.01})

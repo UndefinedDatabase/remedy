@@ -39,6 +39,19 @@ _MEASUREMENT_SOURCE_MIXED = "mixed_provider_actuals_and_heuristic"
 _MEASUREMENT_CONFIDENCE = "low"
 _MISSING_REASON = "actual token usage unavailable from claude-cli output"
 
+# Round 33 F3: the CANONICAL token-truth schema constants — the SINGLE source of truth shared with the
+# validator (token_authority imports these), so the producer's own output always validates and the
+# enums can never drift. These are EXACTLY the values build_token_truth emits.
+TOKEN_TRUTH_SCHEMA_VERSION = SCHEMA_VERSION
+MEASUREMENT_CONFIDENCES = frozenset({"low", "mixed", "high"})
+MEASUREMENT_SOURCES = frozenset({
+    _MEASUREMENT_SOURCE_HEURISTIC, _MEASUREMENT_SOURCE_ACTUAL, _MEASUREMENT_SOURCE_MIXED})
+#: The exact (confidence -> source) pairing the producer emits; any other combination is incoherent.
+CONFIDENCE_SOURCE_PAIRS = frozenset({
+    ("low", _MEASUREMENT_SOURCE_HEURISTIC),
+    ("high", _MEASUREMENT_SOURCE_ACTUAL),
+    ("mixed", _MEASUREMENT_SOURCE_MIXED)})
+
 # Provider-evidence usage field aliases → normalized actual_* field.
 # Both flat keys and keys under a nested "usage" object are honored.
 _ACTUAL_ALIASES = {

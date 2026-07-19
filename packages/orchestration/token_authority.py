@@ -14,12 +14,17 @@ from __future__ import annotations
 
 from typing import Any
 
-#: The only token-truth schema version this build reads.
-SUPPORTED_TOKEN_TRUTH_VERSIONS = frozenset({"1.0.0"})
-#: Supported measurement-confidence enum.
-MEASUREMENT_CONFIDENCE = frozenset({"high", "mixed", "low"})
-#: Supported measurement-source enum.
-MEASUREMENT_SOURCE = frozenset({"provider_api", "character_heuristic"})
+# Round 33 F3: the schema constants are imported from the PRODUCER (token_truth), never duplicated, so
+# the producer's own output always validates and the enums cannot drift.
+from packages.orchestration.token_truth import (
+    CONFIDENCE_SOURCE_PAIRS,
+    MEASUREMENT_CONFIDENCES as MEASUREMENT_CONFIDENCE,
+    MEASUREMENT_SOURCES as MEASUREMENT_SOURCE,
+    TOKEN_TRUTH_SCHEMA_VERSION,
+)
+
+#: The only token-truth schema version this build reads (shared with the producer).
+SUPPORTED_TOKEN_TRUTH_VERSIONS = frozenset({TOKEN_TRUTH_SCHEMA_VERSION})
 
 #: Integer count fields — must be real ints (never bool) and nonnegative.
 _COUNT_FIELDS = (
@@ -60,6 +65,12 @@ def validate_token_truth(truth: Any) -> list[str]:
     src = truth.get("measurement_source")
     if src not in MEASUREMENT_SOURCE:
         p.append(f"token_truth.measurement_source {src!r} is not in {sorted(MEASUREMENT_SOURCE)}")
+    # F3 (round 33): the confidence↔source pairing must be exactly one the producer emits — a
+    # high-confidence heuristic, or a low-confidence provider-actuals, is incoherent.
+    if conf in MEASUREMENT_CONFIDENCE and src in MEASUREMENT_SOURCE \
+            and (conf, src) not in CONFIDENCE_SOURCE_PAIRS:
+        p.append(f"token_truth.measurement_confidence {conf!r} / measurement_source {src!r} is not a "
+                 f"valid combination")
 
     if not isinstance(truth.get("actual_available"), bool):
         p.append("token_truth.actual_available is not a boolean")
