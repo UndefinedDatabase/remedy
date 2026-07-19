@@ -245,35 +245,56 @@ def _shareable_path(path: str, source_root: str) -> str:
     return f"{EXTERNAL_EVIDENCE_TOKEN}/{os.path.basename(resolved.rstrip(os.sep))}"
 
 
-def _dirty_files() -> list[str]:
-    # ``-u`` lists untracked files individually. Without it git collapses an
-    # untracked directory to ``dir/``, which can never match a covered file and
-    # would wrongly report the whole directory as uncovered.
+def _parse_status_z(raw: str) -> list[tuple[str, str]]:
+    """Parse ``git status --porcelain=v1 -z`` into ``(XY, path)`` records.
+
+    F4 (round 29): the NUL-delimited format preserves BOTH status columns and needs no quoted-path
+    decoding, so the leading status character is never mistaken for part of the path and a path with
+    spaces/unicode/quotes survives verbatim. A rename/copy record (``R``/``C``) is followed by a
+    separate NUL field carrying the ORIGIN path; the record's own path is the NEW path.
+    """
+    records: list[tuple[str, str]] = []
+    parts = raw.split("\0")
+    i = 0
+    while i < len(parts):
+        entry = parts[i]
+        if not entry:
+            i += 1
+            continue
+        xy = entry[:2]
+        path = entry[3:] if len(entry) >= 3 else ""       # skip 'XY ' — never strip the status
+        if xy[:1] in ("R", "C") and i + 1 < len(parts):
+            i += 1                                         # consume the origin field
+        if path:
+            records.append((xy, path))
+        i += 1
+    return records
+
+
+def _git_status_records() -> list[tuple[str, str]]:
+    # ``-u`` lists untracked files individually. Without it git collapses an untracked directory to
+    # ``dir/``, which can never match a covered file and would wrongly report the whole directory as
+    # uncovered. ``--porcelain=v1 -z`` is the stable, NUL-safe machine format.
     try:
         r = subprocess.run(
-            ["git", "status", "--porcelain", "-u"],
+            ["git", "status", "--porcelain=v1", "-z", "-u"],
             capture_output=True, text=True, timeout=10,
         )
         if r.returncode != 0:
             return []
-        return [line.strip() for line in r.stdout.strip().split("\n")
-                if line.strip()]
+        return _parse_status_z(r.stdout)
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
 
 
+def _dirty_files() -> list[str]:
+    # Each record is rebuilt as ``XY PATH`` (two status columns, one space, then the exact path), the
+    # shape ``_dirty_line_path`` reads. The status columns are preserved exactly.
+    return [f"{xy} {path}" for xy, path in _git_status_records()]
+
+
 def _has_untracked_files() -> bool:
-    try:
-        r = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if r.returncode != 0:
-            return False
-        return any(line.startswith("??") for line in r.stdout.strip().split("\n")
-                   if line.strip())
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return False
+    return any(xy == "??" for xy, _ in _git_status_records())
 
 
 def _has_commits() -> bool:
@@ -288,11 +309,17 @@ def _has_commits() -> bool:
 
 
 def _dirty_line_path(line: str) -> str:
-    """The path from a ``git status --porcelain`` line (``XY PATH``; renames show ``old -> new``)."""
-    body = line[3:] if len(line) > 3 else line
+    """The exact repository-relative path from an ``XY PATH`` record.
+
+    F4 (round 29): the path is everything after the two status columns and the single separating
+    space — column 3 onward. The leading status character must NOT be dropped, and the path is never
+    ``.strip()``ed (a path may legitimately contain leading/trailing spaces). A legacy newline-format
+    rename ``old -> new`` still resolves to the new path.
+    """
+    body = line[3:] if len(line) >= 3 else line
     if " -> " in body:
         body = body.split(" -> ", 1)[1]
-    return body.strip().strip('"')
+    return body
 
 
 def _normalize_generated(paths) -> frozenset:
