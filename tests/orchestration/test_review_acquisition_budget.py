@@ -103,3 +103,73 @@ class TestStagedArtifactsBudget:
         sa.load("m0.json")
         with pytest.raises(_brz.ArchivePlanError):
             sa.load("m1.json")
+
+
+class TestStagedOverflowNeverAbsence:
+    """F3 (round 27) — a per-member or aggregate overflow BLOCKS (raises ArchivePlanError) and must
+    never be translated into a silent (None, "") absence; the budget is charged from a trusted
+    anchored size before bytes are read."""
+
+    def _stage_one(self, tmp_path, nbytes):
+        cur = tmp_path / "staging" / "evidence" / "current"
+        cur.mkdir(parents=True)
+        (cur / "m.json").write_text("x" * nbytes)
+        return str(tmp_path / "staging")
+
+    def _sa(self, root, **limits):
+        return _brz._StagedArtifacts(root, "evidence/current",
+                                     budget=AcquisitionBudget(**limits))
+
+    def test_size_under_limit_ok(self, tmp_path):
+        sa = self._sa(self._stage_one(tmp_path, 4), max_member_bytes=5,
+                      max_total_bytes=1000, max_members=100)
+        raw, _ = sa.load("m.json")
+        assert raw == b"xxxx"
+
+    def test_size_at_limit_ok(self, tmp_path):
+        sa = self._sa(self._stage_one(tmp_path, 5), max_member_bytes=5,
+                      max_total_bytes=1000, max_members=100)
+        raw, _ = sa.load("m.json")
+        assert raw == b"xxxxx"
+
+    def test_size_over_limit_blocks_not_absent(self, tmp_path):
+        sa = self._sa(self._stage_one(tmp_path, 6), max_member_bytes=5,
+                      max_total_bytes=1000, max_members=100)
+        with pytest.raises(_brz.ArchivePlanError):
+            sa.load("m.json")
+
+    def test_size_much_larger_blocks_not_absent(self, tmp_path):
+        sa = self._sa(self._stage_one(tmp_path, 5000), max_member_bytes=5,
+                      max_total_bytes=100000, max_members=100)
+        with pytest.raises(_brz.ArchivePlanError):
+            sa.load("m.json")
+
+    def test_shared_at_limit_ok_one_over_blocks(self, tmp_path):
+        cur = tmp_path / "staging" / "evidence" / "current"
+        cur.mkdir(parents=True)
+        (cur / "a.json").write_text("x" * 6)
+        (cur / "b.json").write_text("x" * 4)
+        (cur / "c.json").write_text("x" * 1)
+        sa = self._sa(str(tmp_path / "staging"), max_total_bytes=10,
+                      max_member_bytes=100, max_members=100)
+        sa.load("a.json")
+        sa.load("b.json")                                # total exactly 10 — passes
+        with pytest.raises(_brz.ArchivePlanError):
+            sa.load("c.json")                            # 11 > 10 — blocks, not absent
+
+    def test_missing_optional_is_absent(self, tmp_path):
+        sa = self._sa(self._stage_one(tmp_path, 4), max_member_bytes=5,
+                      max_total_bytes=1000, max_members=100)
+        raw, _ = sa.load("does-not-exist.json")
+        assert raw is None
+
+    def test_symlink_is_absent(self, tmp_path):
+        cur = tmp_path / "staging" / "evidence" / "current"
+        cur.mkdir(parents=True)
+        outside = tmp_path / "outside.json"
+        outside.write_text('{"secret": "x"}')
+        os.symlink(outside, cur / "link.json")
+        sa = self._sa(str(tmp_path / "staging"), max_member_bytes=100,
+                      max_total_bytes=1000, max_members=100)
+        raw, _ = sa.load("link.json")
+        assert raw is None

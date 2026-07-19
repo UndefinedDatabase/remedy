@@ -73,33 +73,56 @@ class _StagedArtifacts:
         self._budget = budget if budget is not None else AcquisitionBudget()
 
     def load(self, name: str) -> tuple[bytes | None, str]:
-        """Read `<prefix>/<name>` once (bytes, sha). Absent OR unsafe -> (None, "").
+        """Read `<prefix>/<name>` once (bytes, sha). GENUINELY ABSENT or a refused symlink/unsafe
+        kind -> (None, ""). A budget overflow or a mid-read integrity failure BLOCKS (raises).
 
-        F6 (round 25): the read goes through the shared ANCHORED, O_NOFOLLOW ``secure_fs`` primitive
-        — never ``os.path.isfile`` + ``open`` by name, which FOLLOW a symlink. A staged member that
-        is a symlink (or a regular file swapped to one mid-read) is refused and reported ABSENT, so
-        NO outside bytes are ever read here even before the ArchivePlan blocks the member.
+        F6 (round 25): the read goes through the shared ANCHORED, O_NOFOLLOW ``secure_fs`` primitives
+        — never ``os.path.isfile`` + ``open`` by name. A symlink (or a regular file swapped to one)
+        is refused, reading no outside bytes.
 
-        F4 (round 26): a successfully-read member is CHARGED against the shared acquisition budget;
-        an over-per-member/over-aggregate/over-count/duplicate acquisition raises ArchivePlanError
-        (a BLOCK) — never a silent absence."""
+        F3 (round 27): the byte budget is charged from a TRUSTWORTHY anchored no-follow ``lstat`` size
+        BEFORE any bytes are read, so a per-member or aggregate OVERFLOW blocks here and can never be
+        translated into a silent absence — the Round-26 bug where the bounded read rejected an
+        over-limit member as ``SecureFsError`` and ``load`` returned ``(None, "")``. Absence,
+        symlink/unsafe-kind, budget overflow and a between-observation-and-read change are all
+        distinguished."""
         if not self._root:
             return None, ""
         arc = f"{self._prefix}/{name}"
         if arc in self.by_arcname:
             return self.by_arcname[arc]                 # cached — do not recharge
+        import stat as _stat
+
         from packages.common import secure_fs
         from packages.common.acquisition_budget import AcquisitionBudgetError
         try:
-            vf = secure_fs.read_verified_relative(
-                self._root, arc, expected_kind="regular",
-                max_bytes=self._budget.max_member_bytes + 1, noun="staged evidence artifact")
+            parent_fd, base = secure_fs.open_anchored_parent(
+                self._root, arc, noun="staged evidence artifact")
         except secure_fs.SecureFsError:
-            return None, ""                             # absent, wrong kind, or a refused symlink
+            return None, ""                             # a missing parent directory — genuinely absent
         try:
-            self._budget.charge(arc, len(vf.data))
-        except AcquisitionBudgetError as exc:
-            raise ArchivePlanError(f"staged acquisition budget exceeded: {exc}") from None
+            try:
+                pre = os.stat(base, dir_fd=parent_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                return None, ""                         # genuinely absent
+            if _stat.S_ISLNK(pre.st_mode) or not _stat.S_ISREG(pre.st_mode):
+                return None, ""                         # refused symlink / non-regular kind
+            # Charge from the trusted anchored size BEFORE reading — an over-limit member BLOCKS.
+            try:
+                self._budget.charge(arc, pre.st_size)
+            except AcquisitionBudgetError as exc:
+                raise ArchivePlanError(f"staged acquisition budget exceeded: {exc}") from None
+            try:
+                vf = secure_fs.read_verified_file_at(
+                    parent_fd, base, expected_kind="regular", max_bytes=pre.st_size + 1,
+                    noun="staged evidence artifact")
+            except secure_fs.SecureFsError as exc:
+                # The file was swapped/grew/torn between the trusted stat and the read — an integrity
+                # failure on a member we already committed to, NOT an absence.
+                raise ArchivePlanError(
+                    f"staged evidence artifact {name!r} changed during acquisition: {exc}") from None
+        finally:
+            os.close(parent_fd)
         rec = (vf.data, _sha256_hex(vf.data))
         self.by_arcname[arc] = rec
         return rec
