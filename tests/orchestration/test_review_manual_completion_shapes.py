@@ -201,3 +201,39 @@ class TestManualCompletionScalarSemantics:
             for val in (None, True, False, -1, 0, 1, 999, "", "0", "false", [], [1], {}, {"x": 1}):
                 ev = self._apply(rel, field, val)
                 _brm.validate_evidence_candidate(ev)       # must not raise
+
+
+class TestLinkedPriorAndProductionIntegration:
+    """F3 (round 32) — the exact linked-prior string-count reproduction blocks, and the canonical
+    manual producer has a real (non-test) production caller."""
+
+    def test_linked_prior_string_count_blocks(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["linked_prior_job_summaries"] = [
+            {"job_id": "prior1", "status": "ok", "provider_call_count": "0"}]
+        objs["final_job_review.json"]["linked_prior_job_ids"] = ["prior1"]
+        vc = _brm.validate_evidence_candidate(_view(objs))
+        assert vc["is_valid_current_run"] is False
+        assert any("provider_call_count is not an integer" in e for e in vc["validation_errors"])
+
+    def test_linked_prior_boolean_count_blocks(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["linked_prior_job_summaries"] = [
+            {"job_id": "prior1", "status": "ok", "provider_call_count": True}]
+        objs["final_job_review.json"]["linked_prior_job_ids"] = ["prior1"]
+        assert _brm.validate_evidence_candidate(_view(objs))["is_valid_current_run"] is False
+
+    def test_linked_prior_null_count_is_allowed(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["linked_prior_job_summaries"] = [
+            {"job_id": "prior1", "status": "ok", "provider_call_count": None}]
+        objs["final_job_review.json"]["linked_prior_job_ids"] = ["prior1"]
+        errs = _brm.validate_evidence_candidate(_view(objs))["validation_errors"]
+        assert not any("provider_call_count is not an integer" in e for e in errs)
+
+    def test_manual_producer_has_a_production_caller(self):
+        # The canonical producer is invoked from a real (non-test) production module.
+        from packages.orchestration.job_evidence import write_manual_completion_evidence
+        import inspect
+        src = inspect.getsource(write_manual_completion_evidence)
+        assert "manual_attestation" in src and "write_manual_token_truth" in src

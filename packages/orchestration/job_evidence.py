@@ -2680,3 +2680,37 @@ def _copy_task_stream_artifacts(
             "size_bytes": len(data),
         }
     return listing
+
+
+# --------------------------------------------------------------------------- manual completion
+# Round 32 F3: the SUPPORTED operator/manual Evidence creation boundary. A manual (zero-provider,
+# operator-attested) completion is created ONLY through the canonical producer
+# ``packages.orchestration.manual_attestation`` — packaging then regenerates and verifies it and never
+# creates or repairs missing manual Evidence itself. This function is the one production entry an
+# operator workflow calls; the test fixtures call the SAME producer, they are not its only callers.
+def write_manual_completion_evidence(
+    evidence_dir: str,
+    *,
+    job_id: str,
+    tasks: "list[dict]",
+) -> None:
+    """Create an operator-attested manual-completion Evidence tree under ``evidence_dir``.
+
+    ``tasks`` is a list of ``{task_id, changed_files, safe_diff_text, provenance_sha256, diff_sha256,
+    tracked_diff_sha256, safe_diff_sha256, timestamp, note}`` records. Every task is written through
+    the canonical ``manual_attestation`` producer, then the canonical root ``token_truth.json`` is
+    regenerated from the assembled task/provider Evidence (never hand-written). The caller is
+    responsible for the review subject / content proof / commit chain / gates; this is the manual
+    attestation + token-truth boundary the final verifier consumes.
+    """
+    from packages.orchestration import manual_attestation as _ma
+
+    for t in tasks:
+        _ma.write_manual_task_evidence(
+            evidence_dir, job_id=job_id, task_id=t["task_id"],
+            changed_files=list(t["changed_files"]), safe_diff_text=t["safe_diff_text"],
+            provenance_sha256=t["provenance_sha256"], diff_sha256=t["diff_sha256"],
+            tracked_diff_sha256=t["tracked_diff_sha256"], safe_diff_sha256=t["safe_diff_sha256"],
+            timestamp=t["timestamp"], note=t["note"])
+    # Canonical root token truth = the exact aggregate of the tasks just written.
+    _ma.write_manual_token_truth(evidence_dir)

@@ -1151,11 +1151,17 @@ def validate_manual_completion(ev) -> list[str]:
     for s in summaries:
         if not isinstance(s, dict):
             continue
-        # provider_call_count may be null (unknown) but must be present.
+        # F3 (round 32): provider_call_count may be null (unknown) but, when present, must be a real
+        # integer — a string "0" (or a boolean) is a forged/untyped historical count and blocks.
         if "provider_call_count" not in s:
             errors.append(f"linked job {s.get('job_id')!r} summary missing provider_call_count")
-        if not s.get("status"):
-            errors.append(f"linked job {s.get('job_id')!r} summary missing status")
+        else:
+            _pcc = s.get("provider_call_count")
+            if _pcc is not None and not (isinstance(_pcc, int) and not isinstance(_pcc, bool)):
+                errors.append(
+                    f"linked job {s.get('job_id')!r} summary provider_call_count is not an integer/null")
+        if not s.get("status") or not isinstance(s.get("status"), str):
+            errors.append(f"linked job {s.get('job_id')!r} summary status is not a nonempty string")
 
     # per-task attestation validity + union of changed files
     per_task_union: set[str] = set()
