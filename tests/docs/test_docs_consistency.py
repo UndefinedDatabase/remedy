@@ -1703,3 +1703,40 @@ class TestF012Round31IsPinned:
         assert "Still OPEN" in doc
         for tag in ("**F4**", "**F5**", "**F7**"):
             assert tag in doc
+
+
+class TestF012Round32IsPinned:
+    """Round 32: final authority & packaging closure — token-truth root binding, complete manual
+    contract, no-clobber publication, fail-closed git-status, exact patchset identity, integration
+    termination."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 32" in self._f012()
+
+    def test_token_truth_binding_documented(self):
+        doc = self._f012()
+        assert "root token truth bound to task/provider Evidence" in doc
+        assert "_token_truth_authority" in doc
+
+    def test_no_clobber_documented(self):
+        doc = self._f012()
+        assert "safe_publish.assert_publishable" in doc
+        assert "mv` is never the" in doc
+
+    def test_git_status_snapshot_documented(self):
+        doc = self._f012()
+        assert "fail-closed single Git-status snapshot" in doc
+        assert "OK|FAILED|TIMED_OUT|UNAVAILABLE|" in doc
+
+    def test_patchset_identity_documented(self):
+        doc = self._f012()
+        assert "commit_patchset_identity" in doc
+        assert "can never enter the identity" in doc
+
+    def test_manual_production_caller_documented(self):
+        doc = self._f012()
+        assert "job_evidence.write_manual_completion_evidence" in doc
