@@ -537,6 +537,81 @@ def _mc_read_json(ev: _EvidenceView, rel: str) -> dict:
     return ev.read_json(rel)
 
 
+# F2 (round 29): the complete pre-consumption shape contract for manual-completion Evidence. Every
+# trust-bearing collection/record field consumed by validate_manual_completion and its _verify_*
+# helpers is validated ONCE, up front, before any iteration or ``.get`` chain — a wrong inner type
+# appends a bounded ``<artifact>: <field> is not a <kind>`` error and normalizes to a safe empty, so
+# no downstream code operates on an unvalidated collection and no AttributeError/TypeError escapes.
+_MC_LIST = "list"           #: a JSON array
+_MC_DICT = "dict"           #: a JSON object
+_MC_LISTDICT = "listdict"   #: an array whose every element is an object
+_MC_DICTLIST = "dictlist"   #: an object whose every value is an array
+
+#: keyed by artifact BASENAME (task artifacts share the basename of their root counterpart).
+_MC_SHAPES: dict[str, dict[str, str]] = {
+    "manifest.json": {"task_ids": _MC_LIST},
+    "final_job_review.json": {
+        "linked_prior_job_ids": _MC_LIST, "linked_prior_job_summaries": _MC_LISTDICT,
+        "per_task_changed_files": _MC_DICTLIST, "actual_changed_files": _MC_LIST,
+        "expected_changed_files": _MC_LIST},
+    "current_change_content_proof.json": {"file_hashes": _MC_DICT, "tombstones": _MC_DICT},
+    "final_verifier_report.json": {
+        "authoritative_changed_files": _MC_LIST, "test_status": _MC_DICT,
+        "review_subject_uncovered_files": _MC_LIST, "content_hash_mismatches": _MC_LIST},
+    "change_provenance_gate.json": {
+        "covered_files": _MC_LIST, "hash_mismatches": _MC_LIST, "uncovered_files": _MC_LIST},
+    "manual_repair_provenance.json": {
+        "changed_files": _MC_LIST, "task_scoped_files": _MC_LIST,
+        "untracked_file_hashes": _MC_LISTDICT},
+    "review_scope_packet.json": {"changed_files": _MC_LIST},
+    "review_commit_chain.json": {"commits": _MC_LISTDICT},
+    "review_subject.json": {"commits": _MC_LISTDICT, "files": _MC_LISTDICT},
+}
+
+
+def _mc_coerce(errors: list, artifact: str, field: str, value, kind: str):
+    if kind == _MC_LIST:
+        if not isinstance(value, list):
+            errors.append(f"{artifact}: {field} is not a list"); return []
+        return value
+    if kind == _MC_DICT:
+        if not isinstance(value, dict):
+            errors.append(f"{artifact}: {field} is not an object"); return {}
+        return value
+    if kind == _MC_LISTDICT:
+        if not isinstance(value, list):
+            errors.append(f"{artifact}: {field} is not a list"); return []
+        clean = []
+        for i, el in enumerate(value):
+            if isinstance(el, dict):
+                clean.append(el)
+            else:
+                errors.append(f"{artifact}: {field}[{i}] is not an object")
+        return clean
+    if kind == _MC_DICTLIST:
+        if not isinstance(value, dict):
+            errors.append(f"{artifact}: {field} is not an object"); return {}
+        out = {}
+        for k, v in value.items():
+            if isinstance(v, list):
+                out[str(k)] = v
+            else:
+                errors.append(f"{artifact}: {field}[{k!r}] is not a list"); out[str(k)] = []
+        return out
+    return value
+
+
+def _read_mc(ev: _EvidenceView, rel: str, errors: list) -> dict:
+    """Read a manual-completion artifact and normalize every consumed structured field to its
+    validated type, appending an error (which invalidates the candidate) for any wrong type."""
+    data = _mc_read_json(ev, rel)
+    spec = _MC_SHAPES.get(rel.rsplit("/", 1)[-1], {})
+    for field, kind in spec.items():
+        if field in data:
+            data[field] = _mc_coerce(errors, rel, field, data[field], kind)
+    return data
+
+
 def _mc_task_dirs(ev: _EvidenceView) -> list[str]:
     if not ev.isdir("task_runs"):
         return []
@@ -606,7 +681,7 @@ def _verify_review_subject_records(ev: _EvidenceView, subject: dict, base: str) 
     errors.extend(validate_review_subject_schema(subject))
     # The embedded commit list must equal the commit chain's — a forged commits[] here cannot
     # disagree with the recomputed chain.
-    chain = _mc_read_json(ev, "review_commit_chain.json")
+    chain = _read_mc(ev, "review_commit_chain.json", errors)
     subj_commits = [str(c.get("commit") or "") for c in (subject.get("commits") or [])]
     chain_commits = [str(c.get("commit") or "") for c in (chain.get("commits") or [])]
     if subj_commits != chain_commits:
@@ -732,8 +807,8 @@ def _verify_commit_chain(ev: _EvidenceView, per_task_union: set) -> list:
     """
     ev = _as_view(ev)
     errors: list = []
-    chain = _mc_read_json(ev, "review_commit_chain.json")
-    subject = _mc_read_json(ev, "review_subject.json")
+    chain = _read_mc(ev, "review_commit_chain.json", errors)
+    subject = _read_mc(ev, "review_subject.json", errors)
     if not chain and not subject:
         return errors                     # no declared base: the legacy dirty-tree subject
     base = str(chain.get("base_commit") or "")
@@ -846,6 +921,24 @@ def _verify_task_provenance_integrity(
     untracked = mrp.get("untracked_file_hashes") or []
     tracked_sha = str(mrp.get("tracked_diff_sha256") or "")
 
+    # F2 (round 29): each untracked entry is a record consumed by the canonical provenance producer
+    # (which subscripts uf['path']/['sha256']/['size_bytes']). Validate the record fields BEFORE that
+    # producer runs, so a well-typed list carrying a malformed entry is a bounded validation error,
+    # never a KeyError from inside repair_attest.
+    bad_untracked = False
+    for i, uf in enumerate(untracked):
+        if not isinstance(uf.get("path"), str) or not uf.get("path"):
+            errors.append(f"{tid}: untracked_file_hashes[{i}].path is not a non-empty string")
+            bad_untracked = True
+        if not isinstance(uf.get("sha256"), str):
+            errors.append(f"{tid}: untracked_file_hashes[{i}].sha256 is not a string")
+            bad_untracked = True
+        if not isinstance(uf.get("size_bytes"), int) or isinstance(uf.get("size_bytes"), bool):
+            errors.append(f"{tid}: untracked_file_hashes[{i}].size_bytes is not an integer")
+            bad_untracked = True
+    if bad_untracked:
+        return errors                                      # do not feed malformed records to the producer
+
     # 1: the emitted safe.diff must hash to the recorded safe_diff_sha256.
     actual_safe_sha = _canon_sha256_text(safe_content)
     if actual_safe_sha != str(mrp.get("safe_diff_sha256") or ""):
@@ -876,7 +969,7 @@ def _verify_task_provenance_integrity(
     diff_paths = set(_canon_parse_safe_diff_paths(safe_content))
     changed = {_mc_norm(f) for f in (mrp.get("changed_files") or [])}
     scoped = {_mc_norm(f) for f in (mrp.get("task_scoped_files") or [])}
-    rsp = _mc_read_json(ev, f"task_runs/{tid}/review_scope_packet.json")
+    rsp = _read_mc(ev, f"task_runs/{tid}/review_scope_packet.json", errors)
     rsp_files = {_mc_norm(f) for f in (rsp.get("changed_files") or [])}
     fjr_task = {_mc_norm(f) for f in ((fjr.get("per_task_changed_files") or {}).get(tid) or [])}
     diff_paths_n = {_mc_norm(f) for f in diff_paths}
@@ -927,11 +1020,11 @@ def validate_manual_completion(ev) -> list[str]:
     """
     ev = _as_view(ev)
     errors: list[str] = []
-    manifest = _mc_read_json(ev, "manifest.json")
-    fjr = _mc_read_json(ev, "final_job_review.json")
-    proof = _mc_read_json(ev, "current_change_content_proof.json")
-    fv = _mc_read_json(ev, "final_verifier_report.json")
-    cp = _mc_read_json(ev, "change_provenance_gate.json")
+    manifest = _read_mc(ev, "manifest.json", errors)
+    fjr = _read_mc(ev, "final_job_review.json", errors)
+    proof = _read_mc(ev, "current_change_content_proof.json", errors)
+    fv = _read_mc(ev, "final_verifier_report.json", errors)
+    cp = _read_mc(ev, "change_provenance_gate.json", errors)
     vt = _mc_read_json(ev, "verification_tests.json")
 
     package_job_id = str(manifest.get("job_id") or "")
@@ -979,9 +1072,9 @@ def validate_manual_completion(ev) -> list[str]:
     per_task_union: set[str] = set()
     overlap_owner: dict[str, str] = {}
     for tid in task_dirs:
-        rv = _mc_read_json(ev, f"task_runs/{tid}/review.json")
-        pe = _mc_read_json(ev, f"task_runs/{tid}/provider_evidence.json")
-        mrp = _mc_read_json(ev, f"task_runs/{tid}/manual_repair_provenance.json")
+        rv = _read_mc(ev, f"task_runs/{tid}/review.json", errors)
+        pe = _read_mc(ev, f"task_runs/{tid}/provider_evidence.json", errors)
+        mrp = _read_mc(ev, f"task_runs/{tid}/manual_repair_provenance.json", errors)
         safe_diff_rel = f"task_runs/{tid}/safe.diff"
 
         if str(rv.get("final_verdict") or rv.get("verdict") or "") != "operator_attested":
@@ -1028,7 +1121,7 @@ def validate_manual_completion(ev) -> list[str]:
 
         # ---- Finding 5: a task manifest may not claim evidence unavailable
         #      without an explicit effective operator-attested completion state.
-        tm = _mc_read_json(ev, f"task_runs/{tid}/manifest.json")
+        tm = _read_mc(ev, f"task_runs/{tid}/manifest.json", errors)
         if (tm.get("evidence_available") is not True
                 and tm.get("effective_status") != "operator_attested_complete"):
             errors.append(
@@ -2361,7 +2454,10 @@ def _check_bundle_integrity(
     if ev is None or not ev.isfile("current_change_content_proof.json"):
         return result
 
-    proof = ev.read_json("current_change_content_proof.json")
+    # F2 (round 29): normalize the consumed collections through the shared shape validator so a
+    # malformed file_hashes/tombstones/subject cannot reach the ``.items()``/iteration below as a
+    # non-collection. A wrong type here is recorded (and blocks) by validate_manual_completion.
+    proof = _read_mc(ev, "current_change_content_proof.json", [])
 
     file_hashes = proof.get("file_hashes", {})
     if not file_hashes:
@@ -2378,7 +2474,7 @@ def _check_bundle_integrity(
 
     kinds: dict[str, str] = {}
     link_targets: dict[str, str] = {}
-    subj = _mc_read_json(ev, "review_subject.json")
+    subj = _read_mc(ev, "review_subject.json", [])
     for f in (subj.get("files") or []):
         kinds[_mc_norm(str(f.get("path", "")))] = str(f.get("kind") or "regular")
         if f.get("link_target") is not None:
