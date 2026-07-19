@@ -2153,7 +2153,9 @@ def validate_evidence_candidate(ev) -> dict:
     if has_job_flow:
         raw = ev.read_bytes("job_flow.json")
         try:
-            jf_data = json.loads(raw) if raw is not None else {}
+            # F5 (round 27): job_flow.json is trust-bearing (job_id, final_audit.status) — decode it
+            # strictly so a duplicate/contradictory key is refused, never last-wins.
+            jf_data = _strict_json_loads(raw) if raw is not None else {}
             if not isinstance(jf_data, dict):
                 raise json.JSONDecodeError("not an object", "", 0)
             job_id = jf_data.get("job_id", "")
@@ -2188,7 +2190,9 @@ def validate_evidence_candidate(ev) -> dict:
             if is_manual_repair:
                 raw = ev.read_bytes(mrp_rel)
                 try:
-                    mrp = json.loads(raw) if raw is not None else None
+                    # F5 (round 27): manual_repair_provenance is trust-bearing — decode strictly so a
+                    # duplicate key cannot silently flip a provenance flag.
+                    mrp = _strict_json_loads(raw) if raw is not None else None
                     if not (isinstance(mrp, dict) and mrp.get("manual_operator_repair") is True
                             and mrp.get("no_provider_calls") is True):
                         is_manual_repair = False
@@ -2546,7 +2550,8 @@ def build_manifest_from_snapshot(
     if evidence_view is not None and evidence_view.isfile("manifest.json"):
         raw = evidence_view.read_bytes("manifest.json")
         try:
-            ev_mf = json.loads(raw) if raw is not None else {}
+            # F5 (round 27): the packaged manifest.json is trust-bearing (job_id, task ids) — strict.
+            ev_mf = _strict_json_loads(raw) if raw is not None else {}
             if not isinstance(ev_mf, dict):
                 raise ValueError("manifest.json is not an object")
             ev_manifest_task_count = ev_mf.get("task_count", 0)

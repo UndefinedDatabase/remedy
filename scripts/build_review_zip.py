@@ -444,10 +444,11 @@ def main() -> int:
             manifest_sha = _sha256_hex(manifest_bytes)
             generated = {args.manifest_rel: (manifest_bytes, 0o644)}
             gen_hashes = {args.manifest_rel: manifest_sha}
-            try:
-                _bm = json.loads(manifest_bytes)
-            except json.JSONDecodeError:
-                _bm = {}
+            # F5 (round 27): the NO_EVIDENCE manifest is trust-bearing (its package_status drives the
+            # final status). Decode it strictly — a duplicate/ambiguous key BLOCKS, never a silent {}.
+            _bm = _strict_loads(manifest_bytes, "no-evidence root manifest")
+            if not isinstance(_bm, dict):
+                raise ArchivePlanError("the no-evidence root manifest is not a JSON object")
             verified_status = {
                 "package_status": _bm.get("package_status", "NO_EVIDENCE"),
                 "evidence_authoritative": False,
