@@ -1773,3 +1773,27 @@ class TestF012Round33IsPinned:
         doc = self._f012()
         assert "job_evidence.create_manual_completion_bundle" in doc
         assert "temporary git repository" in doc
+
+
+class TestF012Round34IsPinned:
+    """Round 34: single-publication & complete-token-truth closure — one private-to-final publication
+    with no public intermediate ZIP, and the complete TokenTruthV1 input/output contract."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 34" in self._f012()
+
+    def test_single_publication_no_public_intermediate(self):
+        doc = self._f012()
+        assert "no public intermediate ZIP" in doc
+        assert "verify_source_identity" in doc and "PublishSourceError" in doc
+        assert 'rm -f "$OUT"' in doc                          # documents its REMOVAL
+
+    def test_complete_token_truth_contract(self):
+        doc = self._f012()
+        assert "complete TokenTruthV1 input + output semantics" in doc
+        assert "TokenEvidenceError" in doc
+        assert "PRODUCER_ERROR" in doc and "BLOCKED_EVIDENCE" in doc
