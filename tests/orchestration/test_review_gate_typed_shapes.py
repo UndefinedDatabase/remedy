@@ -110,20 +110,26 @@ class TestRealTokenSummary:
     output for every confidence branch, using producer-generated data (not hand-written dicts)."""
 
     def _ts(self, confidence):
-        # A token_status the real producer accepts; high/mixed carry real measured values.
-        return {"measurement_confidence": confidence, "measurement_source": "provider_api",
-                "actual_prompt_tokens": 100, "actual_completion_tokens": 50,
-                "actual_total_tokens": 150, "total_cost_usd": 0.01, "cost_call_count": 2,
-                "cost_coverage_complete": True, "cost_coverage_reason": "ok", "provider_call_count": 2,
-                "actual_call_count": 2, "actual_coverage_complete": True, "actual_missing_reasons": None,
-                "cli_version": "1.2.3", "configured_models": {"builder": "c", "reviewer": "c"},
-                "actual_models": {"builder": "c", "reviewer": "c"}, "actual_model_verified": True}
+        # The FULL 25-field token_status (F1 round 28: token_measurement projects it, so the two must
+        # agree). Start from the low default and overlay real measured values for high/mixed.
+        ts = _E2E._token_status()
+        ts.update({"measurement_confidence": confidence, "measurement_source": "provider_api",
+                   "actual_prompt_tokens": 100, "actual_completion_tokens": 50,
+                   "actual_total_tokens": 150, "total_cost_usd": 0.01, "cost_call_count": 2,
+                   "cost_coverage_complete": True, "cost_coverage_reason": "ok",
+                   "provider_call_count": 2, "actual_call_count": 2, "actual_coverage_complete": True,
+                   "actual_missing_reasons": None, "cli_version": "1.2.3",
+                   "configured_models": {"builder": "c", "reviewer": "c"},
+                   "actual_models": {"builder": "c", "reviewer": "c"}, "actual_model_verified": True})
+        return ts
 
     def _fv_with(self, confidence):
         from packages.orchestration.final_verifier import _token_measurement_summary
-        tm = _token_measurement_summary(self._ts(confidence))
+        ts = self._ts(confidence)
+        tm = _token_measurement_summary(ts)
         g = _gates()
         fv = g["final_verifier_report.json"]
+        fv["token_status"] = copy.deepcopy(ts)             # authoritative source the projections copy
         fv["token_measurement"] = copy.deepcopy(tm)
         fv["token_actual_summary"] = copy.deepcopy(tm["actual_summary"])
         fv["token_measurement_note"] = tm["measurement_note"]
@@ -176,3 +182,39 @@ class TestRealTokenSummary:
         g = self._fv_with("low")
         g["final_verifier_report.json"]["token_measurement_note"] = "different note"
         assert _ok(g) is False
+
+    # --- F1 (round 28): token_status is authoritative; each projection must equal it. ---
+    def test_provider_call_count_projection_mismatch_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_status"]["provider_call_count"] = 999
+        assert _ok(g) is False
+
+    def test_actual_total_tokens_projection_mismatch_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_status"]["actual_total_tokens"] = 42
+        assert _ok(g) is False
+
+    def test_total_cost_usd_projection_mismatch_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_status"]["total_cost_usd"] = 9.99
+        assert _ok(g) is False
+
+    def test_actual_models_projection_mismatch_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_status"]["actual_models"] = {"builder": "x",
+                                                                            "reviewer": "x"}
+        assert _ok(g) is False
+
+    def test_actual_coverage_complete_projection_mismatch_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_status"]["actual_coverage_complete"] = False
+        assert _ok(g) is False
+
+    def test_measurement_source_projection_mismatch_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_measurement"]["measurement_source"] = "different"
+        assert _ok(g) is False
+
+    def test_low_null_summary_no_projection_block(self):
+        # low confidence: actual_summary is null, so no summary-field projection is checked.
+        assert _ok(self._fv_with("low")) is True

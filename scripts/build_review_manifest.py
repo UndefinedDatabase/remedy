@@ -1330,6 +1330,38 @@ _TOKEN_MEASUREMENT = _Obj({
     "measurement_note": _Nullable(STR), "measurement_source": STR, "provider_call_count": INT,
     "total_cost_usd": _NNUM})
 
+#: F1 (round 28): the ONE producer-projection mapping — the token_measurement / actual_summary fields
+#: that final_verifier._token_measurement_summary COPIES straight from token_status. Every projection
+#: must equal the authoritative source. (measurement_note/actual_summary are DERIVED, not copied, so
+#: they are excluded from the token_measurement projection set.)
+_TM_PROJECTION_OF_STATUS = frozenset({
+    "measurement_confidence", "measurement_source", "provider_call_count", "actual_call_count",
+    "actual_coverage_complete", "actual_missing_reasons", "cost_call_count", "cost_coverage_complete",
+    "cost_coverage_reason", "total_cost_usd", "cli_version", "configured_models", "actual_models",
+    "actual_model_verified"})
+_SUMMARY_PROJECTION_OF_STATUS = _TM_PROJECTION_OF_STATUS | frozenset({
+    "actual_prompt_tokens", "actual_completion_tokens", "actual_total_tokens"})
+
+
+def _token_projection_problems(name: str, gate: dict) -> list[str]:
+    ts = gate.get("token_status")
+    tm = gate.get("token_measurement")
+    if not isinstance(ts, dict) or not isinstance(tm, dict):
+        return []                                          # a non-object is caught by the schema
+    problems: list[str] = []
+    for f in sorted(_TM_PROJECTION_OF_STATUS):
+        if tm.get(f) != ts.get(f):
+            problems.append(f"{name} token_measurement.{f}={tm.get(f)!r} != token_status.{f}="
+                            f"{ts.get(f)!r}")
+    summ = tm.get("actual_summary")
+    if isinstance(summ, dict):                             # null (low/unavailable) is legitimate
+        for f in sorted(_SUMMARY_PROJECTION_OF_STATUS):
+            if summ.get(f) != ts.get(f):
+                problems.append(f"{name} token_measurement.actual_summary.{f}={summ.get(f)!r} != "
+                                f"token_status.{f}={ts.get(f)!r}")
+    return problems
+
+
 _STREAM_SECTION = _Obj({
     "applicable": BOOL, "verdict": STR, "tasks_with_stream_evidence": _Arr(STR),
     "artifacts_verified": INT, "artifacts_present": INT,
@@ -1624,6 +1656,11 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
                 if gate.get(top) != tm.get(nested):
                     problems.append(f"{name} {top}={gate.get(top)!r} contradicts "
                                     f"token_measurement.{nested}={tm.get(nested)!r}")
+        # F1 (round 28): token_status is the AUTHORITATIVE source; token_measurement and
+        # actual_summary are derived projections of it (final_verifier._token_measurement_summary
+        # copies each field). Every overlapping field must equal token_status, so a mutated
+        # token_status.provider_call_count can no longer disagree with its projections.
+        problems.extend(_token_projection_problems(name, gate))
         return problems
 
     if name == "fresh_evidence_gate.json":
