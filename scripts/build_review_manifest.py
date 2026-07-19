@@ -295,36 +295,34 @@ def _dirty_line_path(line: str) -> str:
     return body.strip().strip('"')
 
 
-#: F4 (round 27): the EXACT repository-ROOT generated packaging outputs. The ZIP name is the precise
-#: format make_review_zip.sh emits — ``remedy-review-<YYYYMMDD>-<HHMMSS>-<STATUS>.zip`` — optionally
-#: with a ``.sha256`` sidecar. Round 26 matched by BASENAME, so a nested fixture
-#: (``tests/fixtures/remedy-review-corpus.zip``), a lookalike (``remedy-review-schema.zip``) or a
-#: nested manifest (``docs/.review_zip_manifest.json``) was wrongly dispositioned out of the dirty
-#: subject — hiding a real changed file. The match now requires a repository-ROOT path (no ``/``) AND
-#: the exact filename grammar, so only the current run's own outputs are excluded.
-_PKG_ZIP_RE = re.compile(r"^remedy-review-\d{8}-\d{6}-[A-Z][A-Z_]*\.zip(\.sha256)?$")
-
-
-def _is_packaging_output(path: str) -> bool:
-    p = str(path or "").replace("\\", "/").strip()
-    if "/" in p:                                         # a NESTED file is an ordinary repository file
-        return False
-    if p == ".review_zip_manifest.json":
-        return True
-    return bool(_PKG_ZIP_RE.fullmatch(p))
+def _normalize_generated(paths) -> frozenset:
+    """The repository-ROOT-relative paths the CURRENT packaging invocation generates, normalized to
+    the same form ``_dirty_line_path`` yields (forward slashes, trimmed, unquoted)."""
+    out = set()
+    for p in (paths or ()):
+        s = str(p or "").replace("\\", "/").strip().strip('"')
+        if s:
+            out.add(s)
+    return frozenset(out)
 
 
 def _classify_review_subject(
     branch: str, commit: str, dirty: list[str],
     has_untracked: bool, has_commits_val: bool,
+    generated_outputs=frozenset(),
 ) -> dict:
     is_main = branch in ("main", "master")
-    # F6 (round 26): partition the working-tree changes — a self-generated packaging output is NOT a
-    # dirty source change. A branch that is clean except for the packaging output it just wrote is
-    # still a clean feature branch; a real unrelated dirty file still reports dirty.
+    # F3 (round 28): a working-tree change is a self-generated packaging output ONLY when its path is
+    # a member of the EXACT set of outputs THIS packaging invocation generates (passed down from
+    # make_review_zip.sh: the current run's root manifest and its own ZIP name). Round 27 matched an
+    # invocation-independent filename GRAMMAR, so an arbitrary leftover/forged root ZIP from another
+    # run (``remedy-review-20200101-000000-READY_FOR_REVIEW.zip``, ``...-EVIL.zip``) was silently
+    # dispositioned out of the dirty subject — hiding a real changed file. Now only exact membership
+    # in the current invocation's own output set classifies; everything else is a dirty source file.
+    gen = _normalize_generated(generated_outputs)
     packaging_outputs = sorted({_dirty_line_path(x) for x in dirty
-                                if _is_packaging_output(_dirty_line_path(x))})
-    dirty_source = [x for x in dirty if not _is_packaging_output(_dirty_line_path(x))]
+                                if _dirty_line_path(x) in gen})
+    dirty_source = [x for x in dirty if _dirty_line_path(x) not in gen]
     is_dirty = len(dirty_source) > 0
 
     if not has_commits_val:
@@ -2411,6 +2409,7 @@ def build_manifest(
     candidate_count: int = 0,
     selected_mtime: str = "",
     rejected_candidate_count: int = 0,
+    generated_outputs=frozenset(),
 ) -> dict:
     """Standalone/CLI/test entry: read the evidence directory ONCE into an immutable byte-map view,
     then build the manifest from those bytes. The coordinator instead passes its Source snapshot to
@@ -2421,7 +2420,8 @@ def build_manifest(
     return build_manifest_from_snapshot(
         ev, evidence_path=evidence_dir, selection_mode=selection_mode,
         selection_reason=selection_reason, candidate_count=candidate_count,
-        selected_mtime=selected_mtime, rejected_candidate_count=rejected_candidate_count)
+        selected_mtime=selected_mtime, rejected_candidate_count=rejected_candidate_count,
+        generated_outputs=generated_outputs)
 
 
 def build_manifest_from_snapshot(
@@ -2433,6 +2433,7 @@ def build_manifest_from_snapshot(
     candidate_count: int = 0,
     selected_mtime: str = "",
     rejected_candidate_count: int = 0,
+    generated_outputs=frozenset(),
 ) -> dict:
     """F6 (round 24): build the Root Manifest from the IMMUTABLE Evidence view (Source snapshot
     bytes), never from staging-filesystem re-reads. Repository/Git facts (branch, HEAD, dirty set,
@@ -2446,6 +2447,7 @@ def build_manifest_from_snapshot(
 
     review_subject = _classify_review_subject(
         branch, commit, dirty, has_untracked, has_commits_val,
+        generated_outputs=generated_outputs,
     )
 
     root_artifacts = {
@@ -2720,6 +2722,10 @@ def main() -> None:
     parser.add_argument("--rejected-candidate-count", type=int, default=0)
     parser.add_argument("--selected-mtime", default="")
     parser.add_argument("--output", default=".review_zip_manifest.json")
+    parser.add_argument(
+        "--generated-output", action="append", default=[], dest="generated_outputs",
+        help="an exact repo-root-relative path THIS packaging invocation generates (repeatable); "
+             "only these are dispositioned as packaging outputs instead of dirty source changes")
     args = parser.parse_args()
 
     manifest = build_manifest(
@@ -2729,6 +2735,7 @@ def main() -> None:
         candidate_count=args.candidate_count,
         selected_mtime=args.selected_mtime,
         rejected_candidate_count=args.rejected_candidate_count,
+        generated_outputs=frozenset(args.generated_outputs),
     )
     out = json.dumps(manifest, indent=2) + "\n"
 

@@ -257,6 +257,10 @@ def main() -> int:
     ap.add_argument("--candidate-count", type=int, default=0)
     ap.add_argument("--rejected-candidate-count", type=int, default=0)
     ap.add_argument("--selected-mtime", default="")
+    ap.add_argument(
+        "--generated-output", action="append", default=[], dest="generated_outputs",
+        help="an exact repo-root-relative path THIS packaging invocation generates (repeatable); "
+             "only these classify as packaging outputs in the manifest review subject")
     args = ap.parse_args()
 
     repo_files = read_nul_list(args.repo_files0)
@@ -391,7 +395,8 @@ def main() -> int:
                 selection_mode=args.selection_mode,
                 selection_reason=args.selection_reason, candidate_count=args.candidate_count,
                 rejected_candidate_count=args.rejected_candidate_count,
-                selected_mtime=args.selected_mtime)
+                selected_mtime=args.selected_mtime,
+                generated_outputs=frozenset(args.generated_outputs))
             # F1/F3 — the FINAL status is the manifest's status ONLY when the gate matrix and the
             # snapshot inventory (decoded from the packaged bytes) also pass; else BLOCKED_EVIDENCE.
             _ms = base_manifest.get("package_status", "UNKNOWN")

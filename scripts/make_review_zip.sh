@@ -423,6 +423,17 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   fi
 fi
 
+# --- The EXACT repo-root outputs THIS invocation generates (F3, round 28) ---
+# Only these paths are dispositioned as packaging outputs in the manifest review subject; an
+# arbitrary leftover/forged root ZIP from another invocation stays a dirty source change. The temp
+# ZIP name (before the STATUS-suffix rename) and the root manifest are the outputs that can appear
+# in `git status` at manifest-build time; the STATUS-suffixed final name is not yet on disk.
+GENERATED_OUTPUT_ARGS=(
+  --generated-output "$MANIFEST"
+  --generated-output "$OUT"
+  --generated-output "${OUT}.sha256"
+)
+
 # --- Build manifest from the STAGED snapshot (F1/F8, round 20) — never the original EVIDENCE_DIR ---
 MANIFEST_EVIDENCE_ARG=""
 if [[ -n "$EVIDENCE_DIR" ]]; then
@@ -435,6 +446,7 @@ python3 scripts/build_review_manifest.py \
   --candidate-count "$CANDIDATE_COUNT" \
   --rejected-candidate-count "$REJECTED_COUNT" \
   --selected-mtime "${SELECTED_MTIME:-}" \
+  "${GENERATED_OUTPUT_ARGS[@]}" \
   --output "$MANIFEST"
 
 echo "$MANIFEST" >> "$TMP"
@@ -531,6 +543,7 @@ BUILD_RESULT="$(python3 scripts/build_review_zip.py \
   --plan-out "$PLAN_OUT_ARG" \
   --manifest-rel "$MANIFEST" \
   --manifest-disk "$MANIFEST" \
+  "${GENERATED_OUTPUT_ARGS[@]}" \
   --selection-mode "${SELECTION_MODE:-none}" \
   --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
   --candidate-count "$CANDIDATE_COUNT" \
