@@ -1,53 +1,55 @@
-# Plan — Steps 13361-13560 — F012 hardening round 29 (SYSTEMIC CLASS CLOSURE)
+# Plan — Steps 13561-13760 — F012 Evidence Authority Round 30 (PRODUCER-DERIVED, STAGED-BYTE-BOUND AUTHORITY)
 
-## Round 29 binding decision
+## Round 30 binding decision
 
-Reviewed `remedy-review-20260719-134026-READY_FOR_REVIEW.zip`
-(SHA `6d1a28a7...e9712`, Evidence `be06ea70dd607523`, linked prior `a3d937ec1835eb93`,
-Base `8c32724`, HEAD `925c6fa`). Verdict FINDINGS. Round 28 fixed the narrow reproductions but did
-not close the complete error classes. Round 29 closes each class systemically, not by example patch.
+Reviewed `remedy-review-20260719-170939-READY_FOR_REVIEW.zip`
+(SHA `b29826a4...f3e21e`, Evidence `ee7cc57fcbe5acdd`, prior `be06ea70dd607523`, HEAD `37053ee`).
+Verdict FINDINGS. Primary blocker: the packaged `final_verifier_report.json` cannot be reproduced by
+the current `build_final_verifier_report` from the packaged Evidence — the report was hand-templated,
+and the real producer rejects the attestation (token_accounting.kind/reason missing;
+manual_repair_provenance.timestamp/workspace_scope/task_scope_known missing) and denies completeness
+for artifacts that do not exist. Replace the remaining trust model with producer-derived,
+staged-byte-bound authority.
 
-Five non-overlapping scopes, each its own commit:
+Non-overlapping Round-30 scopes, one commit each:
 
-1. **Exact token producer re-derivation** — one shared pure module
-   `packages/orchestration/token_measurement.py::token_measurement_summary(token_status)` is the SOLE
-   authority, imported by both `final_verifier.py` and the review gate. The gate computes
-   `expected = token_measurement_summary(token_status)` and requires deep equality with
-   `token_measurement` plus exact equality of the top-level projections
-   (`token_measurement_confidence`/`token_measurement_note`/`token_actual_summary`). Deletes the
-   hand-duplicated projection-field lists so no list can drift from the producer. Evidence is
-   regenerated through the real producer (no hand-edited note). Scope: new module + `final_verifier`
-   import alias + `_gate_semantic_problems` token block + the two dead projection constants.
-2. **Complete manual-completion nested-shape safety** — one typed pre-consumption normalizer validates
-   every trust-bearing collection/record field consumed by `validate_manual_completion` and its
-   `_verify_*` helpers before any iteration or `.get` chain. Wrong types append a bounded
-   `artifact: field is not a <kind>` error and normalize to a safe empty; nothing downstream operates
-   on an unvalidated collection. Scope: `_mc` shape table + `_read_mc` + the `_verify_*` signatures.
-3. **Internally-derived generated-output identity + collision safety** — the classifier filters any
-   supplied generated set through an eligibility gate (repo-ROOT path; exactly
-   `.review_zip_manifest.json` or the `remedy-review-…zip` output form), so an arbitrary source path a
-   caller names can never be dispositioned. `build_review_zip.py` DERIVES the set from its own
-   `--out`/`--manifest-rel` (not a trusted free list) and records it. `make_review_zip.sh` stops
-   passing the non-existent `.sha256` sidecar and REFUSES to delete/reserve a TRACKED manifest/ZIP
-   path. Scope: `_eligible_generated_output` + classifier filter + coordinator derivation + shell
-   collision guard.
-4. **Correct NUL-safe Git porcelain path identity** — `_dirty_files()` uses
-   `git status --porcelain=v1 -z` and preserves the two status columns exactly (no record `.strip()`);
-   `_dirty_line_path` takes the path from column 3 without dropping a leading status char and handles
-   rename/copy `->`/`-z` origin pairs. Scope: `_dirty_files` + `_dirty_line_path` + `_has_untracked`.
-5. **Hermetic stream-export E2E** — the copied-pipeline subprocess receives an intentional
-   `PYTHONPATH=<repo root>` env; a regression clears any inherited path first. No shell/ZIP assertion
-   weakened. Scope: the one fixture test.
-
-6. **Truthful Round-29 documentation + operator state** — T0_F012 Round-29 section, the pinned
-   consistency test, corrected Round-28 over-claims (present-tense "F012 is accepted" → "may be
-   accepted only after external review confirms…"), plan/live-review.
+1. **Staged-byte final-verifier regeneration** — the coordinator materializes the immutable Evidence
+   snapshot, runs the real `build_final_verifier_report` over those bytes, and REQUIRES the supplied
+   `final_verifier_report.json` to be semantically equal or BLOCKS. The report is generated ONCE and
+   reused for gate evaluation, planning, hashing and ZIP emission. Same path for direct Python and
+   shell. Evidence producers corrected so a legitimate manual completion satisfies the real verifier.
+   Scope: `_regenerate_final_verifier` in build_review_zip + the equality gate + the evidence builder.
+2. **Token-truth / token-status authority** — `token_truth.json` must be valid nonempty typed JSON
+   when claimed present; empty/whitespace/malformed/wrong-root does not count as complete. token_status
+   fields validated (enum confidence, real nonneg int counts, finite nonneg cost, totals coherence).
+   Scope: token_truth validity in the FV completeness + a shared token-status validator.
+3. **Complete manual-completion typed semantics** — extend `_MC_SHAPES`/`_read_mc` from container to
+   full scalar typing: exact scalar type, no-bool-for-int, enums, ranges, cross-field/cross-artifact
+   equality (task_count == len(task_ids) == dirs == review ids; provider-call counts agree;
+   no_provider_calls/actual_provider_available/prompt_trace_available consistency). Same normalized
+   structures feed the verifier. Scope: `_MC_SCALARS` + `_read_mc` + validate_manual_completion crosschecks.
+4. **Core no-clobber collision safety** — a shared Python coordinator resolves the exact final path,
+   refuses every tracked/symlink/unsafe/foreign collision, creates exclusively, and publishes
+   atomically; the shell cannot bypass via a later `mv`. Scope: a `safe_publish` primitive used by
+   build_review_zip + make_review_zip.sh reserving all final status paths up front.
+5. **Fail-closed Git-status snapshots** — `_git_status_records` returns a typed
+   {status, records, diagnostic}; only OK may mean clean; every other state blocks READY and is
+   recorded; one command per snapshot; malformed NUL blocks. Scope: `_git_status_snapshot` +
+   classifier + manifest.
+6. **Total gate evaluation** — `evaluate_ready_gate_matrix` finishes closed-schema validation before
+   any semantic op; semantic validators consume normalized typed structures only; never throws; one
+   malformed gate does not hide others. Scope: the semantic layer guards + a recursive mutation matrix.
+7. **Whole-file integration termination** — diagnose and fix the stall in
+   `test_review_package_full_integration.py`; add an order/repetition regression; leave no subprocess.
+8. **Truthful Round-30 documentation + operator state** — the new authority model; correct the
+   Round-29 "classes already closed" over-claim; T0_F012 section + pinned test; plan/live-review.
 
 ## Constraints (unchanged)
 
 No provider calls; no Evidence job-flow/job-run; no database; no LLM rerun; no network; no Fable; no
 subagents; no Docker; no new dependency. Manual operator work only. Small local commits, never amend/
-squash prior rounds. Do not push, PR, merge, or begin F017. Fresh Evidence linked `be06ea70dd607523`;
-one READY_FOR_REVIEW ZIP; then stop. Preserve every accepted F012 behavior, including Round 28's
-externally-verified VerificationTests corrections. F012 stays `[~]`, F017 stays `[ ]`, pending
-external acceptance.
+squash prior rounds. Do not push, PR, merge, or begin F017. Fresh Evidence linked `ee7cc57fcbe5acdd`
+that satisfies the REAL final verifier without hand-editing; one READY_FOR_REVIEW ZIP; then stop.
+Preserve every accepted Round-29 improvement. F012 stays `[~]`, F017 stays `[ ]`, pending external
+acceptance. Authority = staged Evidence bytes → real producers → regenerated final verifier →
+regenerated gates → archive plan → immutable ZIP; a supplied FV/token-status JSON is never authority.

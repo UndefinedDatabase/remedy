@@ -419,7 +419,8 @@ def main() -> int:
                 selection_reason=args.selection_reason, candidate_count=args.candidate_count,
                 rejected_candidate_count=args.rejected_candidate_count,
                 selected_mtime=args.selected_mtime,
-                generated_outputs=generated_outputs)
+                generated_outputs=generated_outputs,
+                verify_final_verifier=True)
             # F1/F3 — the FINAL status is the manifest's status ONLY when the gate matrix and the
             # snapshot inventory (decoded from the packaged bytes) also pass; else BLOCKED_EVIDENCE.
             _ms = base_manifest.get("package_status", "UNKNOWN")
