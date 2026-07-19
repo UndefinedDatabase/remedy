@@ -1,33 +1,28 @@
-# Plan — Steps 12761-12960 — F012 hardening round 26 (FULLY TYPED GATE SHAPES + FAIL-CLOSED VERIFICATION TOTAL + BOUNDED ACQUISITION)
+# Plan — Steps 12961-13160 — F012 hardening round 27 (REAL TOKEN SHAPES, COMPLETE VERIFICATION TYPING, SAFE ACQUISITION/DIRTY/DECODER BOUNDARIES)
 
-## Round 26 binding decision
+## Round 27 binding decision
 
-Reviewed `remedy-review-20260718-201125-READY_FOR_REVIEW.zip`
-(SHA `2250e8cb8d82cecc3b37721ab81a6a5d61816cba7d55634e0d7f80d778374674`, Evidence job
-`a67d0c3f0513bd11`, linked prior `041261b92c134f5b`, HEAD `78cbb9b`). Verdict FINDINGS; F012 `[~]`.
+Reviewed `remedy-review-20260718-213237-READY_FOR_REVIEW.zip`
+(SHA `9bfe1e5abdedc8d004164b7101cb7c111bef967607cca858c9a8cb11384dd850`, Evidence job
+`ebe675ec74f20c1a`, linked prior `a67d0c3f0513bd11`, HEAD `7fa4466`). Verdict FINDINGS; F012 `[~]`.
 
-1. **Fully typed gate shapes** — no `ANY`. `_Nullable(node)` for null-able producer fields,
-   `_OneOf(...)` for closed unions, `_HASH_MISMATCH`/`_FINDING`/`_MODELS` exact records, and two
-   distinct `_TOKEN_STATUS` (25 fields) / `_TOKEN_MEASUREMENT` (16 fields) shapes. bool rejected
-   where an int/number is required.
-2. **Required nested fields** — `_Obj(fields, optional=...)`; a required field absent blocks. Full
-   producer shape required for every gate and nested object (token blocks, stream/worktree sections,
-   test_status, evidence_freshness/validity, integrity notes).
-3. **Strict fail-closed VerificationTestsV1** — exact version {"1.0.0"}, exact top-level + per-run
-   field sets, real-int exit_code/passed/failed (bool rejected, NO int() coercion), exit_code==0,
-   failed==0, passed>=1, unique run ids, totals==sum of runs, test_files==union. Used by the gate
-   matrix AND validate_manual_completion. Missing/invalid/mismatch blocks; FV total must equal it.
-4. **One shared acquisition budget** — `packages/common/acquisition_budget.AcquisitionBudget`
-   (per-member/aggregate/count/duplicate), charged by `_view_from_dir` AND `_StagedArtifacts`;
-   exceed BLOCKS (raises); a cached re-read does not recharge.
-5. **One shared strict JSON decoder** — `packages/common/strict_json.py`; both scripts import it,
-   no private object_pairs_hook copy.
-6. **Packaging output disposition** — `.review_zip_manifest.json`, `remedy-review-*.zip[.sha256]`
-   get an explicit `packaging_generated_outputs` disposition; clean branch stays clean; real dirty
-   stays dirty; a source lookalike is never hidden.
+1. **Real token summary schema** — `_ACTUAL_TOKEN_SUMMARY` matches the real
+   `final_verifier._token_measurement_summary` (17 fields, mostly nullable); reused for
+   token_measurement.actual_summary + top-level token_actual_summary; measurement notes nullable;
+   top-level projection must equal the nested block. Non-overlapping scope: token schema only.
+2. **Full VerificationTestsV1 typing** — aligned to `job_evidence._run_verifications`: typed
+   command/timestamp/run_id/stdout_summary, nonnegative per-run counts, safe sorted unique test
+   paths, unique run ids/commands, metadata scan. Scope: validate_verification_tests only.
+3. **Acquisition overflow never absence** — `_StagedArtifacts.load` charges from a trusted anchored
+   lstat size before reading; overflow raises ArchivePlanError; absence/symlink/torn distinguished.
+   Scope: build_review_zip _StagedArtifacts only.
+4. **Exact packaging-output identity** — `_is_packaging_output` requires a repo-ROOT path + exact
+   `make_review_zip.sh` filename grammar. Scope: _is_packaging_output only.
+5. **Strict decode at every trust boundary** — job_flow/manual_repair_provenance/manifest/NO_EVIDENCE
+   via the shared strict decoder. Scope: the four remaining bare json.loads sites.
 
 ## Constraints (unchanged)
 
 No provider calls; no Evidence job-flow/job-run; no database; no LLM rerun; no network. Small local
-commits, never amend/squash. Do not push, PR, merge, or begin F017. Fresh Evidence linked
-`a67d0c3f0513bd11`; one READY_FOR_REVIEW ZIP; then stop.
+commits, never amend/squash Round 26. Do not push, PR, merge, or begin F017. Fresh Evidence linked
+`ebe675ec74f20c1a`; one READY_FOR_REVIEW ZIP; then stop. Preserve every accepted F012 behavior.
