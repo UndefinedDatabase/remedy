@@ -1512,3 +1512,40 @@ class TestF012Round26IsPinned:
         doc = self._f012()
         assert "Packaging output is not dirty source" in doc
         assert "packaging_generated_outputs" in doc
+
+
+class TestF012Round27IsPinned:
+    """Round 27: real token summary shapes, complete verification typing, acquisition overflow never
+    absence, exact packaging-output identity, strict decode at every trust boundary."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 27" in self._f012()
+
+    def test_real_token_shapes_documented(self):
+        doc = self._f012()
+        assert "Real token measurement shapes" in doc
+        assert "_ACTUAL_TOKEN_SUMMARY" in doc
+
+    def test_complete_verification_typing_documented(self):
+        doc = self._f012()
+        assert "Complete verification typing" in doc
+        assert "_run_verifications" in doc
+
+    def test_acquisition_overflow_never_absence_documented(self):
+        doc = self._f012()
+        assert "Acquisition overflow never absence" in doc
+        assert "BEFORE reading bytes" in doc
+
+    def test_exact_output_identity_documented(self):
+        doc = self._f012()
+        assert "Exact packaging-output identity" in doc
+        assert "nested file or a root lookalike" in doc
+
+    def test_strict_decode_every_boundary_documented(self):
+        doc = self._f012()
+        assert "Strict decode at every trust boundary" in doc
+        assert "no silent fallback" in doc
