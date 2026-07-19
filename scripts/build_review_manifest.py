@@ -1302,12 +1302,26 @@ _TOKEN_STATUS = _Obj({
     "estimated_total_tokens": INT, "measurement_confidence": STR, "measurement_source": STR,
     "missing_reason": _NSTR, "prompt_trace_count": INT, "provider_call_count": INT,
     "repair_estimated_total": INT, "reviewer_estimated_total": INT, "total_cost_usd": _NNUM})
+#: F1 (round 27): the EXACT real ``actual_summary`` shape emitted by
+#: final_verifier._token_measurement_summary for high/mixed confidence. Every field the producer
+#: builds is required; each is typed by the token_status field it copies (mostly nullable). Reused
+#: for both token_measurement.actual_summary AND the top-level token_actual_summary — a null is
+#: accepted where the producer legitimately emits null (low/unavailable confidence), and an unknown
+#: field or wrong scalar type still blocks.
+_ACTUAL_TOKEN_SUMMARY = _Obj({
+    "measurement_confidence": STR, "measurement_source": STR,
+    "actual_prompt_tokens": _NINT, "actual_completion_tokens": _NINT, "actual_total_tokens": _NINT,
+    "total_cost_usd": _NNUM, "cost_call_count": INT, "cost_coverage_complete": BOOL,
+    "cost_coverage_reason": _NSTR, "provider_call_count": INT, "actual_call_count": INT,
+    "actual_coverage_complete": BOOL, "actual_missing_reasons": _NSTRLIST, "cli_version": _NSTR,
+    "configured_models": _MODELS, "actual_models": _MODELS, "actual_model_verified": BOOL})
 _TOKEN_MEASUREMENT = _Obj({
     "actual_call_count": INT, "actual_coverage_complete": BOOL, "actual_missing_reasons": _NSTRLIST,
-    "actual_model_verified": BOOL, "actual_models": _MODELS, "actual_summary": _Nullable(_Obj({})),
+    "actual_model_verified": BOOL, "actual_models": _MODELS,
+    "actual_summary": _Nullable(_ACTUAL_TOKEN_SUMMARY),
     "cli_version": _NSTR, "configured_models": _MODELS, "cost_call_count": INT,
     "cost_coverage_complete": BOOL, "cost_coverage_reason": _NSTR, "measurement_confidence": STR,
-    "measurement_note": STR, "measurement_source": STR, "provider_call_count": INT,
+    "measurement_note": _Nullable(STR), "measurement_source": STR, "provider_call_count": INT,
     "total_cost_usd": _NNUM})
 
 _STREAM_SECTION = _Obj({
@@ -1357,8 +1371,8 @@ _GATE_SCHEMA = {
         "model_mismatch_blocked": BOOL, "model_needs_repair": BOOL,
         "token_cost_has_critical": BOOL, "token_cost_policy_present": BOOL,
         "token_status": _TOKEN_STATUS, "token_measurement": _TOKEN_MEASUREMENT,
-        "token_measurement_confidence": STR, "token_measurement_note": STR,
-        "token_actual_summary": _Nullable(_Obj({}))}),
+        "token_measurement_confidence": STR, "token_measurement_note": _Nullable(STR),
+        "token_actual_summary": _Nullable(_ACTUAL_TOKEN_SUMMARY)}),
     "fresh_evidence_gate.json": _Obj({
         "schema_version": STR, "verdict": STR, "evidence_job_id": STR, "current_job_id": STR,
         "current_step_range": STR, "live_review_step_range": STR, "plan_step_range": STR,
@@ -1593,6 +1607,17 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
         if ce not in _FV_COMMIT_NOT_READY:
             problems.append(f"{name} commit_execution_gate={ce!r} is not a pre-acceptance "
                             f"not-ready state {sorted(_FV_COMMIT_NOT_READY)}")
+        # F1 (round 27): the top-level measurement fields are PROJECTIONS of token_measurement (the
+        # producer copies them). A top-level summary/note/confidence that contradicts the nested
+        # block would be a forged view, so require them equal.
+        tm = gate.get("token_measurement")
+        if isinstance(tm, dict):
+            for top, nested in (("token_actual_summary", "actual_summary"),
+                                ("token_measurement_note", "measurement_note"),
+                                ("token_measurement_confidence", "measurement_confidence")):
+                if gate.get(top) != tm.get(nested):
+                    problems.append(f"{name} {top}={gate.get(top)!r} contradicts "
+                                    f"token_measurement.{nested}={tm.get(nested)!r}")
         return problems
 
     if name == "fresh_evidence_gate.json":
@@ -1691,21 +1716,52 @@ def _safe_rel_path(p) -> bool:
 
 _VT_NAME = "verification_tests.json"
 _VT_SUPPORTED_VERSIONS = frozenset({"1.0.0"})
+_VT_SUPPORTED_TYPES = frozenset({"explicit_commands"})
 _VT_TOP_FIELDS = frozenset({"schema_version", "verification_type", "runs", "command", "exit_code",
                             "passed", "failed", "test_files", "timestamp"})
 _VT_RUN_FIELDS = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
                             "stdout_summary"})
+_VT_RUN_ID_RE = re.compile(r"^vr-\d{4,}$")
+_VT_MAX_STDOUT = 4000
 
 
 def _is_real_int(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
 
 
+def _valid_iso8601(s) -> bool:
+    if not isinstance(s, str) or not s.strip():
+        return False
+    try:
+        datetime.fromisoformat(s.strip().replace("Z", "+00:00"))
+        return True
+    except ValueError:
+        return False
+
+
+def _vt_safe_files(tf, label, problems):
+    """A test-file list: strings, safe normalized relative repo paths, sorted, no duplicates."""
+    if not isinstance(tf, list) or not all(isinstance(x, str) for x in tf):
+        problems.append(f"{_VT_NAME} {label} test_files is not a string list")
+        return set()
+    for p in tf:
+        if not _safe_rel_path(p):
+            problems.append(f"{_VT_NAME} {label} test_file {p!r} is not a safe relative path")
+    if len(set(tf)) != len(tf):
+        problems.append(f"{_VT_NAME} {label} test_files has duplicates")
+    if tf != sorted(tf):
+        problems.append(f"{_VT_NAME} {label} test_files is not sorted")
+    return set(tf)
+
+
 def validate_verification_tests(vt):
-    """F3 (round 26): STRICT, FAIL-CLOSED ``VerificationTestsV1``. Returns ``(problems, passed)``:
-    an empty ``problems`` means the document is exactly a supported, coherent, all-passing
-    verification record and ``passed`` is its authoritative total. No ``int(...)`` coercion — a
-    string ``"9999"`` is refused, never accepted. Missing/invalid/unsupported/incoherent blocks."""
+    """F3 (round 26) / F2 (round 27): STRICT, FAIL-CLOSED, FULLY TYPED ``VerificationTestsV1``,
+    aligned to the ``job_evidence._run_verifications`` producer. Returns ``(problems, passed)``: an
+    empty ``problems`` means the document is exactly a supported, coherent, all-passing record and
+    ``passed`` is its authoritative total. No ``int(...)`` coercion; the command/timestamp/run_id/
+    stdout_summary are typed; per-run and top counts are nonnegative real integers; test-file lists
+    are safe, sorted, duplicate-free; commands and run ids are unique; and every textual key/value is
+    scanned for secrets/local paths/control characters."""
     if vt is None:
         return [f"{_VT_NAME} is missing"], None
     if not isinstance(vt, dict):
@@ -1719,8 +1775,12 @@ def validate_verification_tests(vt):
         problems.append(f"{_VT_NAME} is missing field(s) {sorted(missing)}")
     if vt.get("schema_version") not in _VT_SUPPORTED_VERSIONS:
         problems.append(f"{_VT_NAME} schema_version {vt.get('schema_version')!r} unsupported")
-    if not isinstance(vt.get("verification_type"), str):
-        problems.append(f"{_VT_NAME} verification_type is not a string")
+    if vt.get("verification_type") not in _VT_SUPPORTED_TYPES:
+        problems.append(f"{_VT_NAME} verification_type {vt.get('verification_type')!r} unsupported")
+    if not isinstance(vt.get("command"), str) or not vt.get("command", "").strip():
+        problems.append(f"{_VT_NAME} command is not a nonempty string")
+    if not _valid_iso8601(vt.get("timestamp")):
+        problems.append(f"{_VT_NAME} timestamp {vt.get('timestamp')!r} is not a valid ISO-8601 string")
     for f in ("exit_code", "passed", "failed"):
         if not _is_real_int(vt.get(f)):
             problems.append(f"{_VT_NAME} {f}={vt.get(f)!r} is not a real integer")
@@ -1729,7 +1789,9 @@ def validate_verification_tests(vt):
     if _is_real_int(vt.get("failed")) and vt["failed"] != 0:
         problems.append(f"{_VT_NAME} failed != 0 ({vt['failed']})")
     if _is_real_int(vt.get("passed")) and vt["passed"] < 1:
-        problems.append(f"{_VT_NAME} passed < 1 ({vt['passed']})")
+        problems.append(f"{_VT_NAME} passed < 1 ({vt['passed']}) — no test proven")
+    # F2 (round 27): every textual key AND value is secret/path/control safe, as for gates.
+    problems.extend(_scan_gate_metadata(vt, _VT_NAME))
     runs = vt.get("runs")
     run_files: set = set()
     if not isinstance(runs, list) or not runs:
@@ -1737,17 +1799,29 @@ def validate_verification_tests(vt):
     else:
         sum_p = sum_f = 0
         seen_ids: set = set()
+        seen_cmds: set = set()
         for i, r in enumerate(runs):
             if not isinstance(r, dict) or set(r) != _VT_RUN_FIELDS:
                 problems.append(f"{_VT_NAME} runs[{i}] has the wrong field set")
                 continue
             rid = r.get("run_id")
-            if not isinstance(rid, str) or not rid:
-                problems.append(f"{_VT_NAME} runs[{i}] run_id is empty")
+            if not isinstance(rid, str) or not rid.strip() or not _VT_RUN_ID_RE.fullmatch(rid):
+                problems.append(f"{_VT_NAME} runs[{i}] run_id {rid!r} is empty or malformed")
             elif rid in seen_ids:
                 problems.append(f"{_VT_NAME} duplicate run_id {rid!r}")
             else:
                 seen_ids.add(rid)
+            cmd = r.get("command")
+            if not isinstance(cmd, str) or not cmd.strip():
+                problems.append(f"{_VT_NAME} runs[{i}] command is empty")
+            elif cmd in seen_cmds:
+                problems.append(f"{_VT_NAME} runs[{i}] duplicate command {cmd!r}")
+            else:
+                seen_cmds.add(cmd)
+            if not isinstance(r.get("stdout_summary"), str):
+                problems.append(f"{_VT_NAME} runs[{i}] stdout_summary is not a string")
+            elif len(r["stdout_summary"]) > _VT_MAX_STDOUT:
+                problems.append(f"{_VT_NAME} runs[{i}] stdout_summary is implausibly long")
             for f in ("exit_code", "passed", "failed"):
                 if not _is_real_int(r.get(f)):
                     problems.append(f"{_VT_NAME} runs[{i}].{f} is not a real integer")
@@ -1755,13 +1829,9 @@ def validate_verification_tests(vt):
                 problems.append(f"{_VT_NAME} runs[{i}] exit_code != 0")
             if _is_real_int(r.get("failed")) and r["failed"] != 0:
                 problems.append(f"{_VT_NAME} runs[{i}] failed != 0")
-            if not isinstance(r.get("command"), str) or not r["command"]:
-                problems.append(f"{_VT_NAME} runs[{i}] command is empty")
-            tf = r.get("test_files")
-            if not isinstance(tf, list) or not all(isinstance(x, str) for x in tf):
-                problems.append(f"{_VT_NAME} runs[{i}] test_files is not a string list")
-            else:
-                run_files |= set(tf)
+            if _is_real_int(r.get("passed")) and r["passed"] < 0:
+                problems.append(f"{_VT_NAME} runs[{i}] passed is negative ({r['passed']})")
+            run_files |= _vt_safe_files(r.get("test_files"), f"runs[{i}]", problems)
             if _is_real_int(r.get("passed")):
                 sum_p += r["passed"]
             if _is_real_int(r.get("failed")):
@@ -1771,10 +1841,8 @@ def validate_verification_tests(vt):
                 problems.append(f"{_VT_NAME} passed {vt.get('passed')} != sum of runs {sum_p}")
             if sum_f != vt.get("failed"):
                 problems.append(f"{_VT_NAME} failed {vt.get('failed')} != sum of runs {sum_f}")
-    tf_top = vt.get("test_files")
-    if not isinstance(tf_top, list) or not all(isinstance(x, str) for x in tf_top):
-        problems.append(f"{_VT_NAME} test_files is not a string list")
-    elif not problems and set(tf_top) != run_files:
+    tf_top = _vt_safe_files(vt.get("test_files"), "top-level", problems)
+    if not problems and tf_top != run_files:
         problems.append(f"{_VT_NAME} test_files is not the union of the runs' test_files")
     return problems, (vt.get("passed") if not problems else None)
 

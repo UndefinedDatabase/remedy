@@ -21,7 +21,7 @@ def _vt(**over):
             "runs": [{"run_id": "vr-0001", "command": "pytest -q", "exit_code": 0, "passed": 3,
                       "failed": 0, "test_files": ["a.py"], "stdout_summary": "3 passed"}],
             "command": "pytest -q", "exit_code": 0, "passed": 3, "failed": 0,
-            "test_files": ["a.py"], "timestamp": "t"}
+            "test_files": ["a.py"], "timestamp": "2026-07-18T00:00:00Z"}
     base.update(over)
     return base
 

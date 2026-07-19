@@ -40,7 +40,9 @@ class TestFullyTypedNoCatchAll:
         g["final_verifier_report.json"]["token_status"]["actual_prompt_tokens"] = {"unexpected": 1}
         assert _ok(g) is False
 
-    def test_token_actual_summary_object_blocks(self):
+    def test_token_actual_summary_unknown_field_blocks(self):
+        # An INVALID summary object (unknown fields, missing required) blocks — a VALID producer
+        # summary is proven to PASS in TestRealTokenSummary below.
         g = _gates()
         g["final_verifier_report.json"]["token_actual_summary"] = {"nested": 1}
         assert _ok(g) is False
@@ -100,4 +102,77 @@ class TestRequiredFields:
     def test_manifest_integrity_missing_notes_blocks(self):
         g = _gates()
         del g["manifest_integrity.json"]["notes"]
+        assert _ok(g) is False
+
+
+class TestRealTokenSummary:
+    """F1 (round 27) — the gate schema accepts the ACTUAL final_verifier token-measurement producer
+    output for every confidence branch, using producer-generated data (not hand-written dicts)."""
+
+    def _ts(self, confidence):
+        # A token_status the real producer accepts; high/mixed carry real measured values.
+        return {"measurement_confidence": confidence, "measurement_source": "provider_api",
+                "actual_prompt_tokens": 100, "actual_completion_tokens": 50,
+                "actual_total_tokens": 150, "total_cost_usd": 0.01, "cost_call_count": 2,
+                "cost_coverage_complete": True, "cost_coverage_reason": "ok", "provider_call_count": 2,
+                "actual_call_count": 2, "actual_coverage_complete": True, "actual_missing_reasons": None,
+                "cli_version": "1.2.3", "configured_models": {"builder": "c", "reviewer": "c"},
+                "actual_models": {"builder": "c", "reviewer": "c"}, "actual_model_verified": True}
+
+    def _fv_with(self, confidence):
+        from packages.orchestration.final_verifier import _token_measurement_summary
+        tm = _token_measurement_summary(self._ts(confidence))
+        g = _gates()
+        fv = g["final_verifier_report.json"]
+        fv["token_measurement"] = copy.deepcopy(tm)
+        fv["token_actual_summary"] = copy.deepcopy(tm["actual_summary"])
+        fv["token_measurement_note"] = tm["measurement_note"]
+        fv["token_measurement_confidence"] = tm["measurement_confidence"]
+        return g
+
+    def test_high_confidence_producer_summary_passes(self):
+        assert _ok(self._fv_with("high")) is True
+
+    def test_mixed_confidence_producer_summary_passes(self):
+        assert _ok(self._fv_with("mixed")) is True
+
+    def test_low_confidence_null_summary_and_note_passes(self):
+        # low → actual_summary null, measurement_note the informational string.
+        g = self._fv_with("low")
+        assert g["final_verifier_report.json"]["token_actual_summary"] is None
+        assert _ok(g) is True
+
+    def test_unknown_summary_field_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_actual_summary"]["surprise"] = 1
+        g["final_verifier_report.json"]["token_measurement"]["actual_summary"]["surprise"] = 1
+        assert _ok(g) is False
+
+    def test_wrong_summary_scalar_type_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_actual_summary"]["actual_prompt_tokens"] = "100"
+        g["final_verifier_report.json"]["token_measurement"]["actual_summary"]["actual_prompt_tokens"] = "100"
+        assert _ok(g) is False
+
+    def test_bool_cost_blocks(self):
+        g = self._fv_with("high")
+        g["final_verifier_report.json"]["token_actual_summary"]["total_cost_usd"] = True
+        g["final_verifier_report.json"]["token_measurement"]["actual_summary"]["total_cost_usd"] = True
+        assert _ok(g) is False
+
+    def test_missing_required_summary_field_blocks(self):
+        g = self._fv_with("high")
+        del g["final_verifier_report.json"]["token_actual_summary"]["actual_model_verified"]
+        del g["final_verifier_report.json"]["token_measurement"]["actual_summary"]["actual_model_verified"]
+        assert _ok(g) is False
+
+    def test_top_and_nested_summary_contradiction_blocks(self):
+        g = self._fv_with("high")
+        # top-level summary null while the nested block carries one — a forged view.
+        g["final_verifier_report.json"]["token_actual_summary"] = None
+        assert _ok(g) is False
+
+    def test_note_contradiction_blocks(self):
+        g = self._fv_with("low")
+        g["final_verifier_report.json"]["token_measurement_note"] = "different note"
         assert _ok(g) is False
