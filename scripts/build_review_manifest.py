@@ -245,13 +245,17 @@ def _shareable_path(path: str, source_root: str) -> str:
     return f"{EXTERNAL_EVIDENCE_TOKEN}/{os.path.basename(resolved.rstrip(os.sep))}"
 
 
-def _parse_status_z(raw: str) -> list[tuple[str, str]]:
+def _parse_status_z(raw: str, strict: bool = False) -> list[tuple[str, str]]:
     """Parse ``git status --porcelain=v1 -z`` into ``(XY, path)`` records.
 
     F4 (round 29): the NUL-delimited format preserves BOTH status columns and needs no quoted-path
     decoding, so the leading status character is never mistaken for part of the path and a path with
     spaces/unicode/quotes survives verbatim. A rename/copy record (``R``/``C``) is followed by a
     separate NUL field carrying the ORIGIN path; the record's own path is the NEW path.
+
+    F5 (round 32): with ``strict``, a primary record that is not ``XY<space>PATH`` (two status columns,
+    a space, then a non-empty path) is MALFORMED and raises ``ValueError`` — a corrupt snapshot blocks
+    rather than being read as a partial/clean tree.
     """
     records: list[tuple[str, str]] = []
     parts = raw.split("\0")
@@ -261,6 +265,8 @@ def _parse_status_z(raw: str) -> list[tuple[str, str]]:
         if not entry:
             i += 1
             continue
+        if strict and (len(entry) < 4 or entry[2] != " "):
+            raise ValueError(f"malformed porcelain record {entry[:12]!r}")
         xy = entry[:2]
         path = entry[3:] if len(entry) >= 3 else ""       # skip 'XY ' — never strip the status
         if xy[:1] in ("R", "C") and i + 1 < len(parts):
@@ -271,30 +277,48 @@ def _parse_status_z(raw: str) -> list[tuple[str, str]]:
     return records
 
 
-def _git_status_records() -> list[tuple[str, str]]:
-    # ``-u`` lists untracked files individually. Without it git collapses an untracked directory to
-    # ``dir/``, which can never match a covered file and would wrongly report the whole directory as
-    # uncovered. ``--porcelain=v1 -z`` is the stable, NUL-safe machine format.
+#: F5 (round 32): git-status is acquired ONCE, as a typed immutable snapshot. Only ``OK`` may mean a
+#: clean tree; ``FAILED``/``TIMED_OUT``/``UNAVAILABLE``/``MALFORMED`` block READY and are recorded with
+#: a bounded diagnostic — a git failure can never fall open to "clean".
+def _git_status_snapshot() -> dict:
+    """Run ``git status --porcelain=v1 -z -u`` exactly once and return
+    ``{status, records, diagnostic}``. ``records`` is the parsed ``(XY, path)`` list only when
+    ``status == "OK"``; every failure mode is distinguished and never silently becomes an empty list.
+    """
     try:
         r = subprocess.run(
             ["git", "status", "--porcelain=v1", "-z", "-u"],
             capture_output=True, text=True, timeout=10,
         )
-        if r.returncode != 0:
-            return []
-        return _parse_status_z(r.stdout)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return []
+    except FileNotFoundError:
+        return {"status": "UNAVAILABLE", "records": [], "diagnostic": "git executable not found"}
+    except subprocess.TimeoutExpired:
+        return {"status": "TIMED_OUT", "records": [], "diagnostic": "git status timed out"}
+    except Exception as exc:                               # pragma: no cover - defensive
+        return {"status": "FAILED", "records": [], "diagnostic": f"{type(exc).__name__}: {str(exc)[:120]}"}
+    if r.returncode != 0:
+        return {"status": "FAILED", "records": [],
+                "diagnostic": f"git status exit {r.returncode}: {(r.stderr or '')[:120]}"}
+    try:
+        records = _parse_status_z(r.stdout, strict=True)
+    except ValueError as exc:
+        return {"status": "MALFORMED", "records": [], "diagnostic": str(exc)[:120]}
+    return {"status": "OK", "records": records, "diagnostic": ""}
+
+
+def _git_status_records() -> list[tuple[str, str]]:
+    # Back-compat accessor: the records of the single snapshot (empty on any non-OK status).
+    return _git_status_snapshot()["records"]
 
 
 def _dirty_files() -> list[str]:
-    # Each record is rebuilt as ``XY PATH`` (two status columns, one space, then the exact path), the
-    # shape ``_dirty_line_path`` reads. The status columns are preserved exactly.
+    # Back-compat: an OK snapshot's records rebuilt as ``XY PATH``; a failed snapshot yields no records
+    # (callers that need the fail-closed status use ``_git_status_snapshot`` directly).
     return [f"{xy} {path}" for xy, path in _git_status_records()]
 
 
 def _has_untracked_files() -> bool:
-    return any(xy == "??" for xy, _ in _git_status_records())
+    return any(xy == "??" for xy, _ in _git_status_snapshot()["records"])
 
 
 def _has_commits() -> bool:
@@ -355,7 +379,7 @@ def _normalize_generated(paths) -> frozenset:
 def _classify_review_subject(
     branch: str, commit: str, dirty: list[str],
     has_untracked: bool, has_commits_val: bool,
-    generated_outputs=frozenset(),
+    generated_outputs=frozenset(), git_status: str = "OK",
 ) -> dict:
     is_main = branch in ("main", "master")
     # F3 (round 28): a working-tree change is a self-generated packaging output ONLY when its path is
@@ -371,7 +395,12 @@ def _classify_review_subject(
     dirty_source = [x for x in dirty if _dirty_line_path(x) not in gen]
     is_dirty = len(dirty_source) > 0
 
-    if not has_commits_val:
+    if git_status != "OK":
+        # F5 (round 32): a git-status acquisition that is not OK cannot be reported as clean; the tree
+        # state is unknown and the package must block.
+        kind = "git_status_unavailable"
+        summary = f"git status is {git_status} — the working-tree state cannot be trusted"
+    elif not has_commits_val:
         kind = "unknown"
         summary = "No commits — fresh git init or degraded metadata"
     elif is_main and not is_dirty:
@@ -397,7 +426,8 @@ def _classify_review_subject(
         "packaging_generated_outputs": packaging_outputs,
         "has_untracked_files": has_untracked,
         "has_commits": has_commits_val,
-        "degraded_metadata": not has_commits_val,
+        "degraded_metadata": (not has_commits_val) or git_status != "OK",
+        "git_status": git_status,
         "human_summary": summary,
     }
 
@@ -2768,12 +2798,15 @@ def build_manifest_from_snapshot(
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     commit = _git(["rev-parse", "HEAD"])
     has_commits_val = _has_commits()
-    dirty = _dirty_files()
-    has_untracked = _has_untracked_files()
+    # F5 (round 32): ONE immutable git-status snapshot — dirty and untracked derive from the same
+    # acquisition, and a non-OK status blocks READY rather than falling open to "clean".
+    git_snapshot = _git_status_snapshot()
+    dirty = [f"{xy} {path}" for xy, path in git_snapshot["records"]]
+    has_untracked = any(xy == "??" for xy, _ in git_snapshot["records"])
 
     review_subject = _classify_review_subject(
         branch, commit, dirty, has_untracked, has_commits_val,
-        generated_outputs=generated_outputs,
+        generated_outputs=generated_outputs, git_status=git_snapshot["status"],
     )
 
     root_artifacts = {
@@ -2934,8 +2967,13 @@ def build_manifest_from_snapshot(
     # READY requires VERIFIED_EQUAL whenever Evidence is present; an unchecked or failed regeneration
     # can never be READY_FOR_REVIEW.
     fv_ok_for_ready = (fv_repro["status"] == "VERIFIED_EQUAL") if current_evidence else True
+    # F5 (round 32): a non-OK git-status snapshot blocks READY — the working-tree state is unknown.
+    git_status_ok = git_snapshot["status"] == "OK"
+    if not git_status_ok:
+        packaging_warnings.append(
+            f"git status is {git_snapshot['status']}: {git_snapshot['diagnostic']}")
     if (evidence_valid and alignment_ok and containment_ok and gate_matrix["ok"]
-            and fv_ok_for_ready):
+            and fv_ok_for_ready and git_status_ok):
         package_status = "READY_FOR_REVIEW"
     elif not current_evidence:
         package_status = "NO_EVIDENCE"
@@ -3015,6 +3053,8 @@ def build_manifest_from_snapshot(
         "package_status": package_status,
         "ready_gate_matrix": gate_matrix,
         "final_verifier_reproducibility": fv_repro,
+        "git_status_snapshot": {"status": git_snapshot["status"],
+                                "diagnostic": git_snapshot["diagnostic"]},
         # Back-compat boolean: TRUE only for a verified-equal check. An unchecked/failed state is never
         # serialized true (the tri-state ``status`` carries the real meaning).
         "final_verifier_reproducible": fv_reproducible,
