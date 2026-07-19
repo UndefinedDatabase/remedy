@@ -396,10 +396,18 @@ def main() -> int:
 
             # F4 — the commit-chain sha is the RAW packaged bytes' sha, from the staged map.
             commit_chain_sha = chain_sha
-            # The commit patch-set sha binds the staged commit patch bytes (by their snapshot hash).
-            patch_ids = sorted(
-                snapshot[name].sha256 for name in snapshot if "commit_patch" in name)
-            patchset_sha = _sha256_hex(json.dumps(patch_ids).encode())
+            # F6 (round 32) — the patchset identity is bound to (commit, exact archive path, patch sha)
+            # ordered records derived from review_commit_chain.json. Only exact members under
+            # <prefix>/review_commit_patches/<sha>.patch count; an ordinary source/test filename that
+            # merely contains "commit_patch" can never enter the identity, and a missing/extra patch
+            # blocks.
+            from packages.orchestration.review_subject import commit_patchset_identity
+            _chain_doc = staged.load_json("review_commit_chain.json")
+            _snap_sha = {arc: m.sha256 for arc, m in snapshot.items()}
+            _patchset = commit_patchset_identity(
+                _chain_doc if isinstance(_chain_doc, dict) else {}, _snap_sha, args.current_prefix)
+            patchset_sha = _patchset["sha256"]
+            status_blockers = status_blockers + _patchset["problems"]   # a bad patchset BLOCKS
 
             # F6 (round 24) — build the Root Manifest from the IMMUTABLE Source snapshot bytes this
             # process packages, NOT from a fresh re-read of the staged evidence tree. The snapshot

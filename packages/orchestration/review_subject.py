@@ -509,6 +509,55 @@ def commit_patch_filename(sha: str) -> str:
     return f"{sha}.patch"
 
 
+def commit_patchset_identity(chain: dict, member_sha: "dict|callable", prefix: str) -> dict:
+    """Round 32 F6 — the EXACT, ORDERED patchset identity, bound to (commit, archive path, patch sha).
+
+    ``chain`` is the decoded ``review_commit_chain.json``; ``member_sha`` maps an archive path to its
+    packaged sha256 (a dict or a callable returning the sha or None); ``prefix`` is the current-evidence
+    archive prefix (e.g. ``evidence/current``). Only exact members under
+    ``<prefix>/review_commit_patches/<full-sha>.patch`` count — an ordinary source/test filename that
+    merely contains ``commit_patch`` can never enter the identity. Returns
+    ``{"records": [...], "problems": [...], "sha256": <hex>}``. ``records`` is one ordered entry per
+    chain commit; ``problems`` is non-empty (and blocking) if a patch is missing, extra, or duplicated.
+    """
+    import hashlib as _h
+    import json as _json
+
+    def _sha(arc):
+        return member_sha(arc) if callable(member_sha) else member_sha.get(arc)
+
+    patch_dir = f"{prefix.strip('/')}/{COMMIT_PATCH_DIRNAME}/"
+    commits = chain.get("commits") if isinstance(chain, dict) else None
+    commits = commits if isinstance(commits, list) else []
+    records: list[dict] = []
+    problems: list[str] = []
+    expected_paths: set[str] = set()
+    for c in commits:
+        cid = str((c.get("commit") if isinstance(c, dict) else "") or "")
+        if not (len(cid) == 40 and all(ch in "0123456789abcdef" for ch in cid)):
+            problems.append(f"review_commit_chain commit id {cid[:20]!r} is not a full sha")
+            continue
+        arc = f"{patch_dir}{cid}.patch"
+        expected_paths.add(arc)
+        sha = _sha(arc)
+        if not sha:
+            problems.append(f"missing patch member for commit {cid[:12]} ({arc})")
+            continue
+        records.append({"commit": cid, "path": arc, "sha256": str(sha)})
+
+    # No EXTRA patch member may exist under the patch directory — only the chain's own patches.
+    present: set[str]
+    if callable(member_sha):
+        present = set()   # caller-driven membership; extras are checked by the snapshot inventory
+    else:
+        present = {k for k in member_sha if str(k).startswith(patch_dir) and str(k).endswith(".patch")}
+    for extra in sorted(present - expected_paths):
+        problems.append(f"unexpected patch member {extra} not named by the commit chain")
+
+    payload = _json.dumps(records, sort_keys=True).encode()
+    return {"records": records, "problems": problems, "sha256": _h.sha256(payload).hexdigest()}
+
+
 def read_declared_base(env: dict[str, str] | None = None) -> str | None:
     """Read the operator's base declaration — the ONE place it is read.
 
