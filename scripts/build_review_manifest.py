@@ -1729,6 +1729,12 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
     embedded gate verdicts must equal the separately packaged gates. ``ctx`` carries the packaged
     ContentProof authority/hashes and the recorded verification total for cross-gate coherence."""
     problems = _gate_closed_schema_problems(name, gate)
+    # F6 (round 31): the closed-schema pass MUST complete before any semantic operation. If a field is
+    # the wrong type, the gate already blocks — the semantic layer (which does set()/sorted()/
+    # membership/arith/.get chains) must NOT then run on the unvalidated value and raise. Return the
+    # schema problems and stop; other gates are still evaluated independently by the caller.
+    if problems:
+        return problems
 
     if name == "final_verifier_report.json":
         problems.extend(_check_fields(gate, name, [
@@ -2094,6 +2100,16 @@ def _validate_commit_gate(gate, verdicts: dict) -> list[str]:
     return problems
 
 
+def _safe_gate_semantics(name: str, gate, verdicts: dict, ctx: dict) -> list[str]:
+    """F6 (round 31): a total wrapper — the semantic validators run on schema-validated values, but as
+    defense in depth ANY unexpected exception becomes a bounded blocking reason so one malformed gate
+    can never raise out of ``evaluate_ready_gate_matrix`` and hide the other gates' failures."""
+    try:
+        return _gate_semantic_problems(name, gate, verdicts, ctx)
+    except Exception as exc:                               # pragma: no cover - defensive
+        return [f"{name} could not be evaluated ({type(exc).__name__}); it is malformed and blocks"]
+
+
 def evaluate_ready_gate_matrix(load_json) -> dict:
     """The ONE READY gate evaluation (round 22-24), used by the manifest AND re-run by the archive
     builder on the staged byte map. First pass records every gate's verdict label; second pass runs
@@ -2157,7 +2173,12 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
     except Exception as exc:
         vt_problems = [f"{_VT_NAME} is not valid JSON: {exc}"]
     else:
-        vt_problems, ctx["vt_passed"] = validate_verification_tests(vt_raw)
+        # F6 (round 31): the strict VT validator runs on an untrusted value — a malformed record must
+        # block, never raise out of the matrix.
+        try:
+            vt_problems, ctx["vt_passed"] = validate_verification_tests(vt_raw)
+        except Exception as exc:                           # pragma: no cover - defensive
+            vt_problems = [f"{_VT_NAME} could not be validated ({type(exc).__name__}); it is malformed"]
     ctx["vt_present"] = ctx.get("vt_passed") is not None
 
     # Pass 2 — validate.
@@ -2171,10 +2192,12 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         if not isinstance(g, dict) or "verdict" not in g:
             reasons.append(f"{name} has no verdict (unknown schema)")
             continue
-        if g.get("verdict") not in allowed:
+        # F6 (round 31): a non-string verdict (list/dict/...) is not a hashable membership candidate —
+        # test the type before ``in allowed`` so a malformed verdict blocks instead of raising.
+        if not isinstance(g.get("verdict"), str) or g.get("verdict") not in allowed:
             reasons.append(f"{name} verdict {g.get('verdict')!r} is not in {sorted(allowed)}")
             continue
-        reasons.extend(_gate_semantic_problems(name, g, verdicts, ctx))
+        reasons.extend(_safe_gate_semantics(name, g, verdicts, ctx))
         # F3 (round 26): a present, valid final_verifier means a READY package is being evaluated —
         # its VerificationTests must be a strictly-valid, all-passing record.
         if name == "final_verifier_report.json":
@@ -2190,10 +2213,16 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
         if not (isinstance(g, dict) and g.get("ok") is True):
             reasons.append(f"{name} ok is {g.get('ok') if isinstance(g, dict) else g!r}, not true")
             continue
-        reasons.extend(_gate_semantic_problems(name, g, verdicts, ctx))
+        reasons.extend(_safe_gate_semantics(name, g, verdicts, ctx))
 
-    if cg is not _MISSING:
-        reasons.extend(_validate_commit_gate(cg, verdicts))
+    if cg is None:
+        reasons.append(f"{_COMMIT_GATE} is missing")
+    elif cg is not _MISSING:
+        try:
+            reasons.extend(_validate_commit_gate(cg, verdicts))
+        except Exception as exc:                           # F6: never raise out of the matrix
+            reasons.append(f"{_COMMIT_GATE} could not be evaluated ({type(exc).__name__}); it is "
+                           f"malformed and blocks")
 
     return {"ok": not reasons, "gate_verdicts": verdicts, "blocking_reasons": reasons}
 
@@ -2323,9 +2352,15 @@ def _build_alignment(
     ce_gate = _read_evidence_gate(ev, "commit_execution_gate.json")
     ac_gate = _read_evidence_gate(ev, "artifact_contract_gate.json")
 
-    cp_covered = sorted(cp_gate.get("covered_files", []))
-    fv_changed = sorted(fv_report.get("authoritative_changed_files", []))
-    hash_mismatches = cp_gate.get("hash_mismatches", [])
+    # F6 (round 31): the alignment view consumes gate lists — a malformed gate value (bool/int/dict)
+    # must not raise here; coerce a non-list to empty so the manifest stays valid JSON (the gate matrix
+    # blocks the malformed gate separately).
+    def _as_list_field(d, key):
+        v = d.get(key, []) if isinstance(d, dict) else []
+        return v if isinstance(v, list) else []
+    cp_covered = sorted(str(x) for x in _as_list_field(cp_gate, "covered_files"))
+    fv_changed = sorted(str(x) for x in _as_list_field(fv_report, "authoritative_changed_files"))
+    hash_mismatches = _as_list_field(cp_gate, "hash_mismatches")
 
     covered_set = set(cp_covered)
     fv_set = set(fv_changed)
