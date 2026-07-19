@@ -295,17 +295,23 @@ def _dirty_line_path(line: str) -> str:
     return body.strip().strip('"')
 
 
+#: F4 (round 27): the EXACT repository-ROOT generated packaging outputs. The ZIP name is the precise
+#: format make_review_zip.sh emits — ``remedy-review-<YYYYMMDD>-<HHMMSS>-<STATUS>.zip`` — optionally
+#: with a ``.sha256`` sidecar. Round 26 matched by BASENAME, so a nested fixture
+#: (``tests/fixtures/remedy-review-corpus.zip``), a lookalike (``remedy-review-schema.zip``) or a
+#: nested manifest (``docs/.review_zip_manifest.json``) was wrongly dispositioned out of the dirty
+#: subject — hiding a real changed file. The match now requires a repository-ROOT path (no ``/``) AND
+#: the exact filename grammar, so only the current run's own outputs are excluded.
+_PKG_ZIP_RE = re.compile(r"^remedy-review-\d{8}-\d{6}-[A-Z][A-Z_]*\.zip(\.sha256)?$")
+
+
 def _is_packaging_output(path: str) -> bool:
-    """F6 (round 26): the EXACT generated review-packaging outputs — the in-place Root Manifest the
-    shell writes and the review ZIPs and their sidecars. These are outputs of the packaging run, not
-    a source change, so the Root Manifest's review-state gives them an explicit packaging disposition
-    instead of reporting them as dirty source. The match is exact (not a wildcard): a source file
-    could never be ``.review_zip_manifest.json`` or ``remedy-review-*.zip[.sha256]``."""
-    base = str(path or "").replace("\\", "/").rsplit("/", 1)[-1]
-    if base == ".review_zip_manifest.json":
+    p = str(path or "").replace("\\", "/").strip()
+    if "/" in p:                                         # a NESTED file is an ordinary repository file
+        return False
+    if p == ".review_zip_manifest.json":
         return True
-    return base.startswith("remedy-review-") and (base.endswith(".zip")
-                                                   or base.endswith(".zip.sha256"))
+    return bool(_PKG_ZIP_RE.fullmatch(p))
 
 
 def _classify_review_subject(

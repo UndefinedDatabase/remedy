@@ -51,3 +51,41 @@ class TestClassification:
 
     def test_renamed_line_path_extracted(self):
         assert _brm._dirty_line_path("R  old.py -> new.py") == "new.py"
+
+
+class TestExactRootOnlyGrammar:
+    """F4 (round 27) — only the current run's EXACT repository-root generated outputs are classified;
+    a nested file or a lookalike name is an ordinary repository file and stays in the dirty subject."""
+
+    def test_current_root_outputs_are_generated(self):
+        assert _brm._is_packaging_output(
+            "remedy-review-20260718-213237-READY_FOR_REVIEW.zip")
+        assert _brm._is_packaging_output(
+            "remedy-review-20260718-213237-READY_FOR_REVIEW.zip.sha256")
+        assert _brm._is_packaging_output(".review_zip_manifest.json")
+
+    def test_nested_and_lookalike_stay_dirty(self):
+        for p in ("tests/fixtures/remedy-review-corpus.zip",
+                  "tests/remedy-review-20260718-213237-READY_FOR_REVIEW.zip",
+                  "docs/.review_zip_manifest.json",
+                  "nested/remedy-review-20260718-213237-READY_FOR_REVIEW.zip.sha256",
+                  "remedy-review-schema.zip",
+                  "remedy-review-foo-READY_FOR_REVIEW.zip"):
+            assert not _brm._is_packaging_output(p), p
+
+    def test_dirty_partition_keeps_nested_lookalikes(self):
+        dirty = [
+            "?? tests/fixtures/remedy-review-corpus.zip",
+            "?? remedy-review-schema.zip",
+            " M docs/.review_zip_manifest.json",
+            "?? remedy-review-20260718-213237-READY_FOR_REVIEW.zip",  # the only real output
+            "?? .review_zip_manifest.json",
+        ]
+        r = _brm._classify_review_subject("feature/x", "abc", dirty, True, True)
+        assert r["kind"] == "dirty_working_tree"
+        assert sorted(_brm._dirty_line_path(x) for x in r["dirty_files"]) == sorted([
+            "tests/fixtures/remedy-review-corpus.zip", "remedy-review-schema.zip",
+            "docs/.review_zip_manifest.json"])
+        assert sorted(r["packaging_generated_outputs"]) == sorted([
+            ".review_zip_manifest.json",
+            "remedy-review-20260718-213237-READY_FOR_REVIEW.zip"])
