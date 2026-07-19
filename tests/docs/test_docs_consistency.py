@@ -1668,3 +1668,38 @@ class TestF012Round30IsPinned:
         # F2..F7 are explicitly listed as open, not closed.
         for tag in ("**F2**", "**F5**", "**F6**", "**F7**"):
             assert tag in doc
+
+
+class TestF012Round31IsPinned:
+    """Round 31: fail-closed tri-state reproducibility, token authority, typed manual semantics, total
+    gate evaluation; F4/F5/F7 kept explicitly open."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 31" in self._f012()
+
+    def test_authority_rule_documented(self):
+        doc = self._f012()
+        assert "ran SUCCESSFULLY and exact\nequality was verified" in doc or \
+            "ran SUCCESSFULLY and exact equality was verified" in doc
+        assert "unchecked or failed regeneration is never reproducible" in doc
+
+    def test_tristate_documented(self):
+        doc = self._f012()
+        for s in ("VERIFIED_EQUAL", "VERIFIED_MISMATCH", "NOT_CHECKED", "PRODUCER_ERROR"):
+            assert s in doc
+
+    def test_token_and_scalar_and_gate_documented(self):
+        doc = self._f012()
+        assert "token_authority.validate_token_truth" in doc
+        assert "is the single supported manual-Evidence creation producer" in doc
+        assert "total gate evaluation" in doc
+
+    def test_f4_f5_f7_still_open(self):
+        doc = self._f012()
+        assert "Still OPEN" in doc
+        for tag in ("**F4**", "**F5**", "**F7**"):
+            assert tag in doc

@@ -1,57 +1,51 @@
-# Live Review — Steps 13561-13760 — F012 Evidence Authority Round 30 (PARTIAL: primary blocker closed)
+# Live Review — Steps 13761-13960 — F012 Evidence Semantics Authority Round 31
 
 ## Verdict (reviewer-owned)
-**PENDING** — the primary Round-29 blocker (Finding 1) is fixed; Findings 2–7 remain OPEN and are
-named follow-ups below. Not externally accepted.
+**PENDING** — F1A/F1B/F2/F3/F6 closed; F4/F5/F7 remain OPEN (deferred to the Packaging/System-State
+round). Not externally accepted.
 
 ## Builder Handoff
 
 Operator-built by hand: no Builder, no Reviewer, no provider GENERATION call (0), no Fable, no
 subagents, no Evidence `job-flow`/`job-run`, no Docker, no new dependency, **no database**, **no
-LLM rerun**, no network. Every accepted Round-29 improvement preserved.
+LLM rerun**, no network. Every accepted Round-30 improvement preserved.
 
-External review of `remedy-review-20260719-170939-READY_FOR_REVIEW.zip` (SHA `b29826a4...f3e21e`,
-Evidence `ee7cc57fcbe5acdd`, prior `be06ea70dd607523`, HEAD `37053ee`) returned SEVEN findings.
+External review of `remedy-review-20260719-193515-READY_FOR_REVIEW.zip` (SHA `f6ad4f23...882865`,
+Evidence `3316418eb96477f9`, prior `ee7cc57fcbe5acdd`, base `37053ee`, HEAD `095506b`) confirmed the
+delivered ZIP is reproducible, but left two fail-open holes in F1 plus F2/F3/F6 open.
 
 ### Closed this round
-- **F1 (primary blocker) — final verifier report not reproducible.** The coordinator now REGENERATES
-  the final_verifier_report from the immutable staged Evidence snapshot with the real
-  `build_final_verifier_report` and REQUIRES the packaged report to be semantically equal, else
-  BLOCKED_EVIDENCE (`build_review_zip` passes `verify_final_verifier=True`;
-  `regenerate_final_verifier` materializes the snapshot to a private temp dir and runs the pure
-  producer; the manifest records `final_verifier_reproducible`). A hand-written verdict / manual flag /
-  attested-task list / completeness map / commit-execution status / recommended action can no longer
-  pass. A new product module `packages/orchestration/manual_attestation.py` is the single producer of
-  a legitimate zero-provider manual completion, emitting every field the current verifier requires
-  (complete token_accounting kind/reason, manual_repair_provenance timestamp/workspace_scope/
-  task_scope_known, the completeness artifacts, valid nonempty token_truth). The authoritative e2e
-  fixture is migrated to a producer-generated report; a reproducibility suite proves a fresh rebuild
-  equals the packaged report and that editing any authoritative field blocks.
+- **F1A/F1B** — reproducibility is a fail-closed tri-state `{checked, reproducible, status, problems}`
+  (VERIFIED_EQUAL / VERIFIED_MISMATCH / NOT_CHECKED / PRODUCER_ERROR). build_manifest ALWAYS verifies
+  when Evidence is present; a producer that is unavailable/imports-fail/raises/returns None/returns a
+  non-object, or a materialization failure, is PRODUCER_ERROR — never translated to success. READY
+  requires VERIFIED_EQUAL. do_job_flow fixtures migrated to producer-generated reports.
+- **F2** — `token_authority.validate_token_truth` rejects empty/whitespace/malformed/wrong-root/
+  enum-violating/incoherent token truth; wired into the manual-completion validator. token_status
+  equality is transitively enforced (embedded in the VERIFIED_EQUAL report).
+- **F3** — typed scalar + cross-artifact binding (task_count == len(task_ids); provider/completion
+  call counts integer 0; availability/trace flags exactly False; token_accounting kind/reason manual;
+  booleans rejected for integers). manual_attestation.py is the single supported creation producer.
+- **F6** — evaluate_ready_gate_matrix is total: closed-schema before semantics, type-checked verdict
+  membership, wrapped semantics/commit-gate/VT validation, missing-commit-gate blocks, build_manifest
+  coerces malformed gate lists; recursive mutation matrix proves it never throws.
 
-### OPEN — named follow-ups (NOT addressed this round; must be closed before F012 acceptance)
-- **F2 — token_truth/token_status authority.** token_truth validity-when-present and full
-  token_status regeneration/coherence not yet enforced as a standalone pipeline.
-- **F3 — complete manual-completion typed scalar semantics.** The Round-29 container validation is not
-  yet extended to full scalar typing (no-bool-for-int, enums, ranges, cross-artifact equality).
-- **F4 — core no-clobber collision safety.** Collision safety still lives partly in the shell; the
-  direct Python `--out` overwrite and the final status-bearing `mv` path are not yet closed in a
-  shared Python coordinator.
-- **F5 — fail-closed Git-status snapshots.** `_git_status_records()` still returns `[]` on failure
-  (fail-open); a typed OK/FAILED/… result that blocks READY is not yet implemented.
-- **F6 — total gate evaluation.** `evaluate_ready_gate_matrix` is not yet proven total against a
-  recursive malformed-value mutation matrix.
-- **F7 — full-integration file single-invocation termination.** Not yet investigated/pinned.
+### OPEN — deferred to the Packaging/System-State round (untouched)
+- **F4** — core no-clobber publication (direct --out + final status-bearing path).
+- **F5** — fail-closed Git-status snapshot (_git_status_records still returns [] on failure).
+- **F7** — whole-file integration termination.
 
-## Verification (this round)
+## Verification
 
-- New/affected suites pass: test_review_authoritative_e2e (producer-migrated),
-  test_review_final_verifier_reproducible (new), test_review_manual_completion_shapes,
-  test_final_verifier, test_final_audit_evidence, do_job_flow packaging status suites — green.
-- The full acceptance matrix is re-run before packaging; counts recorded in verification_tests.json.
+- New/affected suites pass: test_review_final_verifier_reproducible (tri-state + producer-failure),
+  test_review_gate_totality, test_token_authority, test_review_manual_completion_shapes (+scalars),
+  test_review_authoritative_e2e, test_do_job_flow (producer-migrated). The full acceptance matrix is
+  re-run before packaging; counts recorded in verification_tests.json.
+- The stream E2E also passes with the parent PYTHONPATH unset.
 
 ## Status
 
-F012 `[~]` — **not externally accepted**; the primary blocker is closed but Findings 2–7 remain open.
-F017 `[ ]` not started. Branch locally committed, unpushed, unmerged. Authority model:
-staged Evidence bytes → real producers → regenerated final verifier → gates → archive plan →
-immutable ZIP; a supplied final-verifier JSON is never authority.
+F012 `[~]` — not externally accepted; F1A/F1B/F2/F3/F6 closed, F4/F5/F7 open. F017 `[ ]` not started.
+Branch locally committed, unpushed, unmerged. Authority: a report is authoritative only when the
+producer ran successfully and exact equality was verified; an unchecked or failed regeneration is
+never reproducible.
