@@ -1524,24 +1524,49 @@ class TestReviewZipPackageStatus:
         }))
         (ev / "manifest.json").write_text(json.dumps({
             "job_id": job_id,
-            "task_count": 2,
-            "task_ids": ["T001", "T002"],
+            "task_count": 1,
+            "task_ids": ["T001"],
         }))
         for art in [
             "agent_run_trace.jsonl", "agent_run_trace_summary.json",
             "prompt_trace_summary.json", "command_transcript.json",
         ]:
             (ev / art).write_text("{}")
-        tr = ev / "task_runs"
-        for tid in ["T001", "T002"]:
-            d = tr / tid
-            d.mkdir(parents=True, exist_ok=True)
-            for art in [
-                "prompt_trace.jsonl", "prompt_trace_summary.json",
-                "review.json", "repair_loop.json", "token_accounting.json",
-                "provider_evidence.json",
-            ]:
-                (d / art).write_text("{}")
+        # Round 31 F1: a single real operator attestation whose final_verifier_report is produced by
+        # the actual producer (regenerated at the end of this method), not a hand-written report.
+        from packages.orchestration import manual_attestation as _MA
+        from packages.orchestration.repair_attest import (
+            build_safe_diff_text as _bsd, canonical_provenance_sha256 as _cps,
+            sha256_text as _sht,
+        )
+        import hashlib as _hl
+        if file_hashes is None:
+            # Materialize a real authority file in the repo root (ev.parent) so the content proof and
+            # bundle-integrity verify against real bytes, and compute its true hash.
+            _content = b"x = 1\n"
+            _src = ev.parent / "src"
+            _src.mkdir(parents=True, exist_ok=True)
+            (_src / "app.py").write_bytes(_content)
+            file_hashes = {"src/app.py": _hl.sha256(_content).hexdigest()}
+        _authority = sorted(dict(file_hashes))
+        _diff = "".join(
+            f"diff --git a/{p} b/{p}\nnew file mode 100644\nindex 0000000..1111111\n"
+            f"--- /dev/null\n+++ b/{p}\n@@ -0,0 +1 @@\n+x = 1\n" for p in _authority)
+        _safe = _bsd(_diff, [])
+        _tsha, _ssha = _sht(_diff), _sht(_safe)
+        _prov = _cps(_tsha, [])
+        _MA.write_manual_token_truth(str(ev))
+        _MA.write_manual_task_evidence(
+            str(ev), job_id=job_id, task_id="T001", changed_files=_authority, safe_diff_text=_safe,
+            provenance_sha256=_prov, diff_sha256=_prov, tracked_diff_sha256=_tsha,
+            safe_diff_sha256=_ssha, timestamp="2026-07-18T00:00:00+00:00",
+            note="operator-attested do_job_flow fixture")
+        (ev / "final_job_review.json").write_text(json.dumps({
+            "job_id": job_id, "completion_mode": "manual_operator_repair",
+            "human_final_reviewer_required": True, "completion_provider_call_count": 0,
+            "linked_prior_job_ids": [], "linked_prior_job_summaries": [],
+            "per_task_changed_files": {"T001": _authority}, "actual_changed_files": _authority,
+            "expected_changed_files": _authority}))
         # Round 22-25: READY requires the COMPLETE, closed-schema, semantically-consistent gate
         # matrix — recursive schemas, complete gate semantics and an exact derived commit gate.
         _hashes = dict(file_hashes) if file_hashes else {"src/app.py": "0" * 64}
@@ -1559,54 +1584,7 @@ class TestReviewZipPackageStatus:
                                    "step_range_match": True},
             "evidence_validity": {"has_job_id": True, "has_manifest": True,
                                   "is_valid_current_run": True}, "issues": []}))
-        _models_n = {"builder": None, "reviewer": None}
-        _models_c = {"builder": "", "reviewer": ""}
-        _tstatus = {"actual_available": False, "actual_call_count": 0,
-                    "actual_completion_tokens": None, "actual_coverage_complete": False,
-                    "actual_missing_reasons": None, "actual_model_verified": False,
-                    "actual_models": _models_n, "actual_prompt_tokens": None,
-                    "actual_total_tokens": None, "builder_estimated_total": 0, "cli_version": None,
-                    "configured_models": _models_c, "cost_call_count": 0,
-                    "cost_coverage_complete": False, "cost_coverage_reason": "no_real_provider_calls",
-                    "estimated_completion_tokens": 0, "estimated_prompt_tokens": 0,
-                    "estimated_total_tokens": 0, "measurement_confidence": "low",
-                    "measurement_source": "character_heuristic", "missing_reason": "op",
-                    "prompt_trace_count": 0, "provider_call_count": 0, "repair_estimated_total": 0,
-                    "reviewer_estimated_total": 0, "total_cost_usd": None}
-        # Round 29 F1: the token_measurement block must be the EXACT shared-producer derivation of
-        # token_status, so the gate can reconstruct it. A hand-written block no longer passes.
-        from packages.orchestration.token_measurement import token_measurement_summary
-        _tmeas = token_measurement_summary(_tstatus)
-        (ev / "final_verifier_report.json").write_text(json.dumps({
-            "schema_version": "1.0.0", "verdict": "PASS", "authoritative_changed_files": _auth,
-            "changed_files": _auth, "changed_line_ranges": {},
-            "also_needs_repair": False, "unresolved_findings": [],
-            "test_status": {"ran": True, "passed": 1, "failed": 0}, "missing_tests_gate": "PASS",
-            "change_source_mismatches": [], "review_subject_uncovered_files": [],
-            "content_hash_mismatches": [], "postmortem_failures": [],
-            "postmortem_integrity_blocked": False, "manifest_integrity_blocked": False,
-            "final_job_review_blocked": False, "execution_mode_blocked": False,
-            "model_mismatch_blocked": False, "model_needs_repair": False, "missing_evidence": [],
-            "execution_mode_findings": [], "final_job_review_findings": [],
-            "invocation_args_warnings": [], "model_mismatch_warnings": [],
-            "sticky_binding_warnings": [], "report_badges": [], "operator_attested_tasks": [],
-            "execution_mode_by_task": {}, "sticky_binding_by_task": {},
-            "final_job_review_verdict": "PASS", "recommended_action": "Approve",
-            "manual_completion": True, "human_final_reviewer_required": True,
-            "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
-            "fresh_evidence_gate": "PASS", "runtime_integration_gate": "PASS",
-            "commit_execution_gate": "BLOCKED", "spec_compliance": "PASS",
-            "scratch_file_guard": "PASS", "change_provenance": "PASS",
-            "file_set_alignment_status": "PASS", "token_cost_has_critical": False,
-            "token_cost_policy_present": True, "token_cost_risk_findings": [],
-            "token_status": _tstatus, "token_measurement": _tmeas,
-            "token_measurement_confidence": _tmeas["measurement_confidence"],
-            "token_measurement_note": _tmeas["measurement_note"],
-            "token_actual_summary": _tmeas["actual_summary"],
-            "evidence_completeness": {"review_scope_packet": True, "spec_compliance_check": True,
-                                      "missing_tests_gate": True, "scratch_file_guard": True,
-                                      "token_truth": True, "safe_diff": True, "review_json": True,
-                                      "tests_txt": True}}))
+        # final_verifier_report.json is REGENERATED by the real producer at the end of this method.
         (ev / "artifact_contract_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
             "fv_referenced_missing": [], "critical_fv_missing": [], "issues": [],
@@ -1645,8 +1623,10 @@ class TestReviewZipPackageStatus:
             "schema_version": "1.0.0", "ok": True, "failures": []}))
         (ev / "commit_execution_gate.json").write_text(json.dumps({
             "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
-            "blocked_gates": [], "non_pass_gates": [], "issues": [], "gate_checks": {
-                "final_verifier": "PASS", "fresh_evidence_gate": "PASS",
+            "blocked_gates": [], "non_pass_gates": ["final_verifier"],
+            "issues": ["gate 'final_verifier' is not PASS (verdict 'PASS_WITH_RISKS')"],
+            "gate_checks": {
+                "final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
                 "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
                 "runtime_integration_gate": "PASS"}}))
         (ev / "verification_tests.json").write_text(json.dumps({
@@ -1655,6 +1635,18 @@ class TestReviewZipPackageStatus:
                       "failed": 0, "test_files": ["t.py"], "stdout_summary": "1 passed"}],
             "command": "pytest -q", "exit_code": 0, "passed": 1, "failed": 0,
             "test_files": ["t.py"], "timestamp": "2026-07-18T00:00:00Z"}))
+        # A content proof for the attested authority, and the commit chain/subject the manual
+        # completion recompute tolerates (no declared base -> the legacy dirty-tree path).
+        if not (ev / "current_change_content_proof.json").exists():
+            (ev / "current_change_content_proof.json").write_text(json.dumps({
+                "schema_version": "1.1.0", "base_commit": "", "head_commit": "",
+                "file_hashes": _hashes, "file_count": len(_hashes),
+                "tombstones": {}, "tombstone_count": 0}))
+        # Round 31 F1: regenerate the final verifier report from the assembled bundle with the REAL
+        # producer, so the packaged report is reproducible (never a hand-written report).
+        from packages.orchestration.final_verifier import build_final_verifier_report
+        (ev / "final_verifier_report.json").write_text(json.dumps(
+            build_final_verifier_report(str(ev))))
 
     @staticmethod
     def _init_clean_git(path):
@@ -1720,8 +1712,8 @@ class TestReviewZipPackageStatus:
         self._init_clean_git(tmp_path)
         m = build_manifest(str(ev), selection_mode="explicit")
         assert m["packaged_evidence_job_id"] == "test-pkg-123"
-        assert m["packaged_evidence_manifest_task_count"] == 2
-        assert m["packaged_evidence_manifest_task_ids"] == ["T001", "T002"]
+        assert m["packaged_evidence_manifest_task_count"] == 1
+        assert m["packaged_evidence_manifest_task_ids"] == ["T001"]
         # Shareable manifest: no machine-specific absolute prefixes.
         assert m["packaged_evidence_dir"] == f"[source_root]/{ev.name}"
         assert m["source_root"] == "[source_root]"

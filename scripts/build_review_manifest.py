@@ -2204,53 +2204,78 @@ def _evidence_dir_gate_loader(ev: _EvidenceView):
     return ev.gate_loader()
 
 
-def regenerate_final_verifier(evidence_view) -> dict | None:
-    """F1 (round 30): the final verifier report is NOT a trusted staged input. Materialize the
+def regenerate_final_verifier(evidence_view) -> tuple[dict | None, str | None]:
+    """F1 (round 30/31): the final verifier report is NOT a trusted staged input. Materialize the
     IMMUTABLE Evidence snapshot to a private temp dir and run the REAL current producer over exactly
-    those bytes, so the report is a pure function of the packaged Evidence. Returns the regenerated
-    report dict, or None when there is no Evidence view."""
+    those bytes. Returns ``(report, problem)``: a dict report and ``None`` on success, or ``(None,
+    reason)`` for a DISTINGUISHED failure — producer unavailable, import/runtime error, materialization
+    failure, or a non-object return. A failure is NEVER translated into success; broad exceptions are
+    reported, not swallowed into a pass."""
     import shutil as _shutil
     import tempfile as _tempfile
 
     if evidence_view is None:
-        return None
+        return None, "no Evidence view"
     files = getattr(evidence_view, "_files", None)
     if not files:
-        return None
+        return None, "the Evidence snapshot is empty"
     try:
         from packages.orchestration.final_verifier import build_final_verifier_report
-    except Exception:                                      # pragma: no cover - import guard
-        return None
-    tmp = _tempfile.mkdtemp(prefix="remedy_fv_regen_")
+    except ImportError as exc:
+        return None, f"the final-verifier producer is unavailable: {str(exc)[:120]}"
+    except Exception as exc:                               # any other import-time failure blocks
+        return None, f"the final-verifier producer failed to import: {str(exc)[:120]}"
+    if not callable(build_final_verifier_report):
+        return None, "the final-verifier producer entry point is missing"
+    tmp = None
     try:
+        tmp = _tempfile.mkdtemp(prefix="remedy_fv_regen_")
         for rel, data in files.items():
             p = os.path.join(tmp, rel)
             os.makedirs(os.path.dirname(p) or tmp, exist_ok=True)
             with open(p, "wb") as fh:
                 fh.write(data)
-        return build_final_verifier_report(tmp)
+    except Exception as exc:
+        if tmp:
+            _shutil.rmtree(tmp, ignore_errors=True)
+        return None, f"could not materialize the Evidence snapshot: {str(exc)[:120]}"
+    try:
+        report = build_final_verifier_report(tmp)
+    except Exception as exc:
+        return None, f"the final-verifier producer raised {type(exc).__name__}: {str(exc)[:120]}"
     finally:
         _shutil.rmtree(tmp, ignore_errors=True)
+    if not isinstance(report, dict):
+        return None, f"the final-verifier producer returned a {type(report).__name__}, not an object"
+    return report, None
 
 
-def _final_verifier_reproducibility(evidence_view) -> tuple[bool, list[str], dict | None]:
-    """Regenerate the final verifier report from the staged snapshot and require the SUPPLIED
-    ``final_verifier_report.json`` to be semantically equal. Returns (reproducible, reasons,
-    regenerated). A supplied report that a fresh producer rebuild does not reproduce BLOCKS — a
-    hand-written or operator-edited verdict/completeness/attestation/gate/token block cannot pass."""
-    regenerated = regenerate_final_verifier(evidence_view)
+def _final_verifier_reproducibility(evidence_view) -> dict:
+    """F1 (round 31): a TRI-STATE reproducibility record — never a bare optimistic boolean. A report is
+    authoritative ONLY when the producer ran successfully and exact equality was verified; an unchecked
+    or failed regeneration is never reproducible.
+
+    Returns ``{checked, reproducible, status, problems}`` where status is one of ``VERIFIED_EQUAL`` /
+    ``VERIFIED_MISMATCH`` / ``NOT_CHECKED`` / ``PRODUCER_ERROR``. Only ``VERIFIED_EQUAL`` permits
+    READY; every other Evidence-bearing state blocks with a bounded reason."""
+    if evidence_view is None or not getattr(evidence_view, "_files", None):
+        return {"checked": False, "reproducible": None, "status": "NOT_CHECKED", "problems": []}
+    regenerated, problem = regenerate_final_verifier(evidence_view)
     if regenerated is None:
-        return True, [], None                              # no Evidence: nothing to reproduce
+        return {"checked": True, "reproducible": False, "status": "PRODUCER_ERROR",
+                "problems": [f"final_verifier_report.json could not be reproduced: {problem}"]}
     supplied = evidence_view.read_json("final_verifier_report.json")
-    if not supplied:
-        return False, ["final_verifier_report.json is absent/unreadable; it cannot be reproduced "
-                       "from the staged Evidence"], regenerated
+    if not isinstance(supplied, dict) or not supplied:
+        return {"checked": True, "reproducible": False, "status": "VERIFIED_MISMATCH",
+                "problems": ["final_verifier_report.json is absent/unreadable; the staged Evidence "
+                             "produces a report it does not carry"]}
     if supplied != regenerated:
         diffs = sorted(k for k in set(supplied) | set(regenerated)
                        if supplied.get(k) != regenerated.get(k))
-        return False, [f"final_verifier_report.json is not reproducible from the staged Evidence "
-                       f"(the real producer disagrees at: {diffs[:8]})"], regenerated
-    return True, [], regenerated
+        return {"checked": True, "reproducible": False, "status": "VERIFIED_MISMATCH",
+                "problems": [f"final_verifier_report.json is not reproducible from the staged Evidence "
+                             f"(the real producer disagrees at: {diffs[:8]})"]}
+    return {"checked": True, "reproducible": True, "status": "VERIFIED_EQUAL", "problems": []}
 
 
 def _build_alignment(
@@ -2658,17 +2683,15 @@ def build_manifest_from_snapshot(
     selected_mtime: str = "",
     rejected_candidate_count: int = 0,
     generated_outputs=frozenset(),
-    verify_final_verifier: bool = False,
 ) -> dict:
     """F6 (round 24): build the Root Manifest from the IMMUTABLE Evidence view (Source snapshot
     bytes), never from staging-filesystem re-reads. Repository/Git facts (branch, HEAD, dirty set,
     commit chain, patch bytes, containment) still come from the repo; ``evidence_path`` is used only
     for the path-level containment check, not to read any evidence content.
 
-    F1 (round 30): the COORDINATOR passes ``verify_final_verifier=True`` so a READY package requires
-    the packaged ``final_verifier_report.json`` to be reproducible from the staged bytes by the real
-    producer. The standalone/diagnostic entry leaves it off (it does not build a distributable
-    package); the authority is enforced at the actual package boundary (build_review_zip)."""
+    F1 (round 31): whenever Evidence is present the final verifier report is ALWAYS regenerated from
+    the staged bytes and checked for exact equality (standalone and coordinator alike), so no path
+    can serialize an unchecked reproducibility claim."""
     branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
     commit = _git(["rev-parse", "HEAD"])
     has_commits_val = _has_commits()
@@ -2824,17 +2847,22 @@ def build_manifest_from_snapshot(
             packaging_warnings.append(
                 "gate matrix not satisfied: " + "; ".join(gate_matrix["blocking_reasons"][:4]))
 
-    # F1 (round 30): the packaged final_verifier_report.json must be REPRODUCIBLE — a fresh run of the
-    # real producer over the exact staged Evidence bytes must equal it. A hand-written or edited
-    # verdict / completeness map / attested-task list / gate label / token block cannot pass.
-    fv_reproducible = True
-    if current_evidence and verify_final_verifier:
-        fv_reproducible, fv_reasons, _ = _final_verifier_reproducibility(evidence_view)
-        if not fv_reproducible:
-            packaging_warnings.extend(fv_reasons)
+    # F1 (round 31): the packaged final_verifier_report.json must be REPRODUCIBLE — a fresh, SUCCESSFUL
+    # run of the real producer over the exact staged Evidence bytes must equal it. This is ALWAYS
+    # performed when Evidence is present (standalone and coordinator alike), so the manifest can never
+    # claim reproducibility it did not verify; a producer failure is PRODUCER_ERROR, never success.
+    fv_repro = {"checked": False, "reproducible": None, "status": "NOT_CHECKED", "problems": []}
+    if current_evidence:
+        fv_repro = _final_verifier_reproducibility(evidence_view)
+        if fv_repro["status"] != "VERIFIED_EQUAL":
+            packaging_warnings.extend(fv_repro["problems"])
+    fv_reproducible = fv_repro["status"] == "VERIFIED_EQUAL"
 
+    # READY requires VERIFIED_EQUAL whenever Evidence is present; an unchecked or failed regeneration
+    # can never be READY_FOR_REVIEW.
+    fv_ok_for_ready = (fv_repro["status"] == "VERIFIED_EQUAL") if current_evidence else True
     if (evidence_valid and alignment_ok and containment_ok and gate_matrix["ok"]
-            and fv_reproducible):
+            and fv_ok_for_ready):
         package_status = "READY_FOR_REVIEW"
     elif not current_evidence:
         package_status = "NO_EVIDENCE"
@@ -2913,6 +2941,9 @@ def build_manifest_from_snapshot(
         "review_package_created": True,
         "package_status": package_status,
         "ready_gate_matrix": gate_matrix,
+        "final_verifier_reproducibility": fv_repro,
+        # Back-compat boolean: TRUE only for a verified-equal check. An unchecked/failed state is never
+        # serialized true (the tri-state ``status`` carries the real meaning).
         "final_verifier_reproducible": fv_reproducible,
         "review_subject": review_subject,
         "review_state": review_state,

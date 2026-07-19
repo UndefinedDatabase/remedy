@@ -1,55 +1,42 @@
-# Plan — Steps 13561-13760 — F012 Evidence Authority Round 30 (PRODUCER-DERIVED, STAGED-BYTE-BOUND AUTHORITY)
+# Plan — Steps 13761-13960 — F012 Evidence Semantics Authority Round 31
 
-## Round 30 binding decision
+## Round 31 binding decision
 
-Reviewed `remedy-review-20260719-170939-READY_FOR_REVIEW.zip`
-(SHA `b29826a4...f3e21e`, Evidence `ee7cc57fcbe5acdd`, prior `be06ea70dd607523`, HEAD `37053ee`).
-Verdict FINDINGS. Primary blocker: the packaged `final_verifier_report.json` cannot be reproduced by
-the current `build_final_verifier_report` from the packaged Evidence — the report was hand-templated,
-and the real producer rejects the attestation (token_accounting.kind/reason missing;
-manual_repair_provenance.timestamp/workspace_scope/task_scope_known missing) and denies completeness
-for artifacts that do not exist. Replace the remaining trust model with producer-derived,
-staged-byte-bound authority.
+Reviewed `remedy-review-20260719-193515-READY_FOR_REVIEW.zip` (SHA `f6ad4f23...882865`, Evidence
+`3316418eb96477f9`, prior `ee7cc57fcbe5acdd`, base `37053ee`, HEAD `095506b`). Round 30 closed the
+main FV-reproducibility path but left two fail-open holes; F2/F3/F6 remain on the same
+Evidence-semantics boundary. Close this coherent block. F4/F5/F7 stay explicitly OPEN, untouched.
 
-Non-overlapping Round-30 scopes, one commit each:
+Non-overlapping Round-31 scopes, one commit each:
 
-1. **Staged-byte final-verifier regeneration** — the coordinator materializes the immutable Evidence
-   snapshot, runs the real `build_final_verifier_report` over those bytes, and REQUIRES the supplied
-   `final_verifier_report.json` to be semantically equal or BLOCKS. The report is generated ONCE and
-   reused for gate evaluation, planning, hashing and ZIP emission. Same path for direct Python and
-   shell. Evidence producers corrected so a legitimate manual completion satisfies the real verifier.
-   Scope: `_regenerate_final_verifier` in build_review_zip + the equality gate + the evidence builder.
-2. **Token-truth / token-status authority** — `token_truth.json` must be valid nonempty typed JSON
-   when claimed present; empty/whitespace/malformed/wrong-root does not count as complete. token_status
-   fields validated (enum confidence, real nonneg int counts, finite nonneg cost, totals coherence).
-   Scope: token_truth validity in the FV completeness + a shared token-status validator.
-3. **Complete manual-completion typed semantics** — extend `_MC_SHAPES`/`_read_mc` from container to
-   full scalar typing: exact scalar type, no-bool-for-int, enums, ranges, cross-field/cross-artifact
-   equality (task_count == len(task_ids) == dirs == review ids; provider-call counts agree;
-   no_provider_calls/actual_provider_available/prompt_trace_available consistency). Same normalized
-   structures feed the verifier. Scope: `_MC_SCALARS` + `_read_mc` + validate_manual_completion crosschecks.
-4. **Core no-clobber collision safety** — a shared Python coordinator resolves the exact final path,
-   refuses every tracked/symlink/unsafe/foreign collision, creates exclusively, and publishes
-   atomically; the shell cannot bypass via a later `mv`. Scope: a `safe_publish` primitive used by
-   build_review_zip + make_review_zip.sh reserving all final status paths up front.
-5. **Fail-closed Git-status snapshots** — `_git_status_records` returns a typed
-   {status, records, diagnostic}; only OK may mean clean; every other state blocks READY and is
-   recorded; one command per snapshot; malformed NUL blocks. Scope: `_git_status_snapshot` +
-   classifier + manifest.
-6. **Total gate evaluation** — `evaluate_ready_gate_matrix` finishes closed-schema validation before
-   any semantic op; semantic validators consume normalized typed structures only; never throws; one
-   malformed gate does not hide others. Scope: the semantic layer guards + a recursive mutation matrix.
-7. **Whole-file integration termination** — diagnose and fix the stall in
-   `test_review_package_full_integration.py`; add an order/repetition regression; leave no subprocess.
-8. **Truthful Round-30 documentation + operator state** — the new authority model; correct the
-   Round-29 "classes already closed" over-claim; T0_F012 section + pinned test; plan/live-review.
+1. **Fail-closed tri-state final-verifier reproducibility (F1A/F1B).** Reproducibility is a tri-state
+   record `{checked, reproducible, status in VERIFIED_EQUAL|VERIFIED_MISMATCH|NOT_CHECKED|
+   PRODUCER_ERROR, problems}`. `build_manifest` ALWAYS verifies when Evidence is present (no unchecked
+   `true`), so the standalone manifest can never claim reproducibility it did not perform. Producer
+   unavailable / import-fail / raise / materialization-fail / None / non-object → PRODUCER_ERROR,
+   reproducible False, BLOCKED_EVIDENCE, bounded reason — never translated to success. READY requires
+   VERIFIED_EQUAL. do_job_flow's hand-FV fixtures migrated to producer-generated reports.
+2. **Token-truth / token-status authority (F2).** One pure producer validates token_truth (nonempty,
+   strict, typed object, schema version, enum confidence/source, int-not-bool nonneg counts, finite
+   nonneg cost, totals coherence, call/coverage/availability coherence, model identity from Evidence)
+   and regenerates token_status; a supplied/embedded token_status must equal regeneration or block.
+   Consumed by the verifier + gate validator. Mutation suite covers every rejection.
+3. **Complete manual-completion typed semantics + production integration (F3).** One normalized typed
+   contract (exact scalar type, no-bool-for-int, enums, nonempty, ranges, cross-field/cross-artifact
+   equality) for every consumed manual-completion artifact; the canonical `manual_attestation`
+   producer is the documented supported creation boundary (operator CLI entry), not test-only. Full
+   scalar mutation matrix.
+4. **Total gate evaluation (F6).** `evaluate_ready_gate_matrix` finishes closed-schema validation
+   before any semantic op; no set/list/sorted/membership/arith/.get on unvalidated values; one
+   malformed gate never hides others; never raises. Recursive mutation matrix.
+5. **Truthful Round-31 docs + operator state.** Authority: a report is authoritative only when the
+   producer ran successfully and exact equality was verified; unchecked/failed regeneration is never
+   reproducible. F4/F5/F7 kept explicitly open.
 
 ## Constraints (unchanged)
 
-No provider calls; no Evidence job-flow/job-run; no database; no LLM rerun; no network; no Fable; no
-subagents; no Docker; no new dependency. Manual operator work only. Small local commits, never amend/
-squash prior rounds. Do not push, PR, merge, or begin F017. Fresh Evidence linked `ee7cc57fcbe5acdd`
-that satisfies the REAL final verifier without hand-editing; one READY_FOR_REVIEW ZIP; then stop.
-Preserve every accepted Round-29 improvement. F012 stays `[~]`, F017 stays `[ ]`, pending external
-acceptance. Authority = staged Evidence bytes → real producers → regenerated final verifier →
-regenerated gates → archive plan → immutable ZIP; a supplied FV/token-status JSON is never authority.
+Zero provider calls; manual only; no job-flow/job-run/db/network/docker/new deps. Small local commits,
+never amend/squash. No push/PR/merge/main. Do not start F017. Fresh Evidence linked
+`3316418eb96477f9` satisfying the real verifier with VERIFIED_EQUAL; one READY ZIP; then stop. F012
+`[~]`, F017 `[ ]`. F4 (no-clobber publication), F5 (fail-closed git status), F7 (integration-file
+termination) remain OPEN and are not touched this round.
