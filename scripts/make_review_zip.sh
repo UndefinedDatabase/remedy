@@ -7,6 +7,20 @@ cd "$ROOT"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="remedy-review-${STAMP}.zip"
 
+# F3 (round 29) collision safety: the root manifest and the ZIP output are scratch/output paths this
+# invocation writes. NEVER delete or overwrite a TRACKED project file that collides with one of them —
+# refuse loudly (exit 3) and leave it byte-identical. Checked FIRST, before any packaging work. (An
+# untracked leftover is safe to remove as scratch.)
+_refuse_tracked_output() {
+  local path="$1" what="$2"
+  if git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+    echo "REVIEW_ZIP_ERROR: refusing to $what tracked project file '$path' (packaging output collision)" >&2
+    exit 3
+  fi
+}
+_refuse_tracked_output ".review_zip_manifest.json" "reserve/delete as its root manifest"
+_refuse_tracked_output "$OUT" "reserve as its ZIP output"
+
 # Parse arguments
 EVIDENCE_DIR=""
 SELECTION_MODE=""
@@ -423,15 +437,16 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
   fi
 fi
 
-# --- The EXACT repo-root outputs THIS invocation generates (F3, round 28) ---
-# Only these paths are dispositioned as packaging outputs in the manifest review subject; an
-# arbitrary leftover/forged root ZIP from another invocation stays a dirty source change. The temp
-# ZIP name (before the STATUS-suffix rename) and the root manifest are the outputs that can appear
-# in `git status` at manifest-build time; the STATUS-suffixed final name is not yet on disk.
+# --- The EXACT repo-root outputs THIS invocation generates (F3, round 29) ---
+# Only these paths are dispositioned as packaging outputs in the PRELIMINARY manifest; each is
+# eligibility-filtered by the builder so a caller can never declare a source path here. The temp ZIP
+# name (before the STATUS-suffix rename) and the root manifest are the outputs that can appear in
+# `git status` at manifest-build time; the STATUS-suffixed final name is not yet on disk, and the
+# `.sha256` sidecar is NOT created by this script so it is not declared. The authoritative manifest
+# is rebuilt by build_review_zip.py, which DERIVES this set internally from --out/--manifest-rel.
 GENERATED_OUTPUT_ARGS=(
   --generated-output "$MANIFEST"
   --generated-output "$OUT"
-  --generated-output "${OUT}.sha256"
 )
 
 # --- Build manifest from the STAGED snapshot (F1/F8, round 20) — never the original EVIDENCE_DIR ---
@@ -543,7 +558,6 @@ BUILD_RESULT="$(python3 scripts/build_review_zip.py \
   --plan-out "$PLAN_OUT_ARG" \
   --manifest-rel "$MANIFEST" \
   --manifest-disk "$MANIFEST" \
-  "${GENERATED_OUTPUT_ARGS[@]}" \
   --selection-mode "${SELECTION_MODE:-none}" \
   --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
   --candidate-count "$CANDIDATE_COUNT" \

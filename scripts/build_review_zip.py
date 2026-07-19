@@ -45,6 +45,27 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _derive_generated_outputs(brm, repo_root: str, out: str, manifest_rel: str) -> frozenset:
+    """F3 (round 29): the exact repository-ROOT-relative outputs THIS invocation generates — the ZIP
+    it writes (``--out``) and the root manifest it emits (``--manifest-rel``) — resolved to
+    repo-root-relative form and filtered to the eligible packaging-output shape. Anything outside the
+    repository root, or not a packaging-output shape, is dropped. This is the SOLE authority for the
+    dirty-subject disposition; there is no caller-supplied free list."""
+    root = os.path.abspath(repo_root)
+    result = set()
+    for raw in (out, manifest_rel):
+        if not raw:
+            continue
+        ap = raw if os.path.isabs(raw) else os.path.join(root, raw)
+        try:
+            rel = os.path.relpath(os.path.abspath(ap), root).replace(os.sep, "/")
+        except ValueError:
+            continue
+        if brm._eligible_generated_output(rel):
+            result.add(rel)
+    return frozenset(result)
+
+
 def _strict_loads(raw, where: str):
     """F5 (round 25/26): decode a staged trust-path artifact with the ONE shared strict decoder
     (``packages.common.strict_json``). A duplicate key at ANY depth (or NaN/Infinity/bad UTF-8)
@@ -257,10 +278,6 @@ def main() -> int:
     ap.add_argument("--candidate-count", type=int, default=0)
     ap.add_argument("--rejected-candidate-count", type=int, default=0)
     ap.add_argument("--selected-mtime", default="")
-    ap.add_argument(
-        "--generated-output", action="append", default=[], dest="generated_outputs",
-        help="an exact repo-root-relative path THIS packaging invocation generates (repeatable); "
-             "only these classify as packaging outputs in the manifest review subject")
     args = ap.parse_args()
 
     repo_files = read_nul_list(args.repo_files0)
@@ -390,13 +407,19 @@ def main() -> int:
             # from exactly the bytes the ZIP carries, so no artifact can be interpreted from one read
             # and packaged from another, and no staging-filesystem race can slip between them.
             evidence_view = _brm._view_from_snapshot(snapshot, args.current_prefix)
+            # F3 (round 29): the generated-output set is DERIVED from THIS coordinator's own concrete
+            # outputs (the ZIP it writes and the root manifest it emits), never a caller-supplied free
+            # list, and each is filtered to the eligible packaging-output shape. A caller cannot name
+            # an arbitrary source path here and have it hidden from the dirty subject.
+            generated_outputs = _derive_generated_outputs(_brm, args.repo_root,
+                                                          args.out, args.manifest_rel)
             base_manifest = _brm.build_manifest_from_snapshot(
                 evidence_view, evidence_path=_staged_current,
                 selection_mode=args.selection_mode,
                 selection_reason=args.selection_reason, candidate_count=args.candidate_count,
                 rejected_candidate_count=args.rejected_candidate_count,
                 selected_mtime=args.selected_mtime,
-                generated_outputs=frozenset(args.generated_outputs))
+                generated_outputs=generated_outputs)
             # F1/F3 — the FINAL status is the manifest's status ONLY when the gate matrix and the
             # snapshot inventory (decoded from the packaged bytes) also pass; else BLOCKED_EVIDENCE.
             _ms = base_manifest.get("package_status", "UNKNOWN")

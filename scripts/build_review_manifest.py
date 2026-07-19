@@ -322,13 +322,32 @@ def _dirty_line_path(line: str) -> str:
     return body
 
 
+#: The ONLY shapes a repository-ROOT path may take to be a packaging output: the root manifest, or a
+#: ``remedy-review-<YYYYMMDD>-<HHMMSS>[-<STATUS>].zip`` (with an optional ``.sha256`` sidecar). This is
+#: a floor, not the authority — the authority is exact membership in the invocation's DERIVED set.
+_GENERATED_OUTPUT_RE = re.compile(r"^remedy-review-\d{8}-\d{6}(-[A-Z][A-Z_]*)?\.zip(\.sha256)?$")
+
+
+def _eligible_generated_output(path: str) -> bool:
+    """F3 (round 29): a path may be treated as a self-generated packaging output ONLY when it is a
+    repository-ROOT path (no directory component) whose name is a packaging-output shape. A caller
+    that declares an arbitrary SOURCE path (``scripts/security_fix.py``) — or a root source lookalike
+    — can therefore never have it dispositioned out of the dirty subject, no matter what set it
+    supplies."""
+    p = str(path or "").replace("\\", "/").strip().strip('"')
+    if not p or "/" in p:
+        return False
+    return p == ".review_zip_manifest.json" or bool(_GENERATED_OUTPUT_RE.fullmatch(p))
+
+
 def _normalize_generated(paths) -> frozenset:
     """The repository-ROOT-relative paths the CURRENT packaging invocation generates, normalized to
-    the same form ``_dirty_line_path`` yields (forward slashes, trimmed, unquoted)."""
+    the same form ``_dirty_line_path`` yields (forward slashes, trimmed, unquoted) and filtered to
+    the eligible packaging-output shapes — an ineligible declared path is dropped, never trusted."""
     out = set()
     for p in (paths or ()):
         s = str(p or "").replace("\\", "/").strip().strip('"')
-        if s:
+        if s and _eligible_generated_output(s):
             out.add(s)
     return frozenset(out)
 
