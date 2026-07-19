@@ -249,7 +249,8 @@ class TestStreamArtifactsReachTheReviewZip:
         shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
         # Every helper make_review_zip.sh invokes (transitively) — the pipeline now stages, indexes,
         # builds the manifest, and packages the ZIP across four separate scripts. A missing one aborts
-        # the run, so copy the complete set (the packages/ tree resolves via the inherited env).
+        # the run, so copy the complete set (the packages/ tree resolves via the EXPLICIT PYTHONPATH
+        # set on the child below, never inherited outer-shell state).
         for helper in ("select_review_evidence.py", "stage_review_evidence.py",
                        "build_observability_index.py", "build_review_manifest.py",
                        "build_review_zip.py"):
@@ -267,9 +268,18 @@ class TestStreamArtifactsReachTheReviewZip:
         ev_dir = repo / "remedy-job-evidence-stream"
         shutil.copytree(exported, ev_dir)
 
+        # F5 (round 29): the mini repository deliberately isolates the PACKAGING scripts but not the
+        # `packages/` tree, so the copied pipeline imports the Remedy package code from the repository
+        # under test through an INTENTIONAL PYTHONPATH — never accidental inherited outer-shell state.
+        # Start from a CLEARED path so the child environment is fully explicit and reproducible.
+        import os
+        env = os.environ.copy()
+        env.pop("PYTHONPATH", None)
+        env["PYTHONPATH"] = str(REPO_ROOT)
+
         proc = subprocess.run(
             ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev_dir)],
-            cwd=repo, capture_output=True, text=True, timeout=120,
+            cwd=repo, capture_output=True, text=True, timeout=120, env=env,
         )
         assert proc.returncode == 0, proc.stdout + proc.stderr
 
