@@ -51,10 +51,9 @@ def _isolated_repo(tmp_path):
     (repo / "scripts").mkdir(parents=True)
     for name in _REQUIRED_SCRIPTS:
         shutil.copy2(REPO_ROOT / "scripts" / name, repo / "scripts" / name)
-    for rel in _REQUIRED_MODULES:
-        dst = repo / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(REPO_ROOT / rel, dst)
+    # Round 32: copy the COMPLETE packages tree so every runtime import resolves.
+    shutil.copytree(REPO_ROOT / "packages", repo / "packages",
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     (repo / "README.md").write_text("# t\n")
     env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
