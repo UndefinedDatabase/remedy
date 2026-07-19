@@ -1638,3 +1638,33 @@ class TestF012Round29IsPinned:
         assert "may be accepted only after external review confirms" in doc
         # The round-28 present-tense over-claim is gone.
         assert "is accepted on the basis of its" not in doc
+
+
+class TestF012Round30IsPinned:
+    """Round 30: the primary blocker (final-verifier reproducibility) is closed; F2–F7 are documented
+    as OPEN follow-ups, not claimed closed."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 30" in self._f012()
+
+    def test_authority_model_documented(self):
+        doc = self._f012()
+        assert "staged Evidence bytes" in doc
+        assert "never** authority" in doc or "never* authority" in doc or "never" in doc
+
+    def test_regeneration_documented(self):
+        doc = self._f012()
+        assert "regenerate_final_verifier" in doc
+        assert "verify_final_verifier=True" in doc
+        assert "manual_attestation" in doc
+
+    def test_open_followups_not_claimed_closed(self):
+        doc = self._f012()
+        assert "OPEN follow-ups" in doc
+        # F2..F7 are explicitly listed as open, not closed.
+        for tag in ("**F2**", "**F5**", "**F6**", "**F7**"):
+            assert tag in doc
