@@ -408,12 +408,11 @@ def _make_git_repo_with_scripts(tmp_path: Path) -> Path:
         src = REPO_ROOT / "scripts" / name
         assert src.exists(), f"missing packaging dependency in source tree: {src}"
         shutil.copy2(src, repo / "scripts" / name)
-    for rel in _REQUIRED_PACKAGE_MODULES:
-        src = REPO_ROOT / rel
-        assert src.exists(), f"missing package module: {src}"
-        dst = repo / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+    # Round 32 F-fix: copy the COMPLETE packages tree (not a curated subset that breaks whenever a
+    # script gains a new import), so every runtime import resolves and the package files an
+    # evidence-index test references as source paths are present.
+    shutil.copytree(REPO_ROOT / "packages", repo / "packages",
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
     (repo / "README.md").write_text("# test\n")
     env = {**os.environ, "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "t@t",
