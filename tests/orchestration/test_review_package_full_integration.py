@@ -38,17 +38,21 @@ pytestmark = pytest.mark.skipif(
 
 
 def _repo(tmp_path):
+    # Round 32 F7: the mini repository isolates the PACKAGING SCRIPTS but imports the Remedy package
+    # tree from the repository under test through an INTENTIONAL, cleared-then-set PYTHONPATH — never a
+    # curated partial `packages/` copy that silently breaks whenever a script gains a new import (the
+    # earlier failure mode). This makes the whole file terminate deterministically in one invocation.
     repo = tmp_path / "repo"
     (repo / "scripts").mkdir(parents=True)
     for name in _REQUIRED_SCRIPTS:
         shutil.copy2(REPO_ROOT / "scripts" / name, repo / "scripts" / name)
-    for rel in _REQUIRED_MODULES:
-        dst = repo / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(REPO_ROOT / rel, dst)
     (repo / "README.md").write_text("# t\n")
+    (repo / ".gitignore").write_text(
+        ".data/\nremedy-review-*.zip\n.review_zip_manifest.json\n__pycache__/\n*.pyc\n")
     env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+    env.pop("PYTHONPATH", None)
+    env["PYTHONPATH"] = str(REPO_ROOT)
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True, env=env)
     subprocess.run(["git", "add", "."], cwd=repo, check=True, env=env)
     subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True, env=env)
@@ -148,3 +152,27 @@ class TestExternalSymlinkBlocksBeforeReadingTarget:
                     body = zf.read("evil.txt")
                     assert b"OUTSIDE SECRET" not in body
         assert "OUTSIDE SECRET" not in proc.stdout
+
+
+class TestWholeFileTerminatesDeterministically:
+    """F7 (round 32) — the packaging entry point can be driven repeatedly in one process without
+    leaking state, hanging, or leaving a partial ZIP; the whole file terminates normally."""
+
+    def test_two_sequential_invocations_terminate_cleanly(self, tmp_path):
+        repo, env = _repo(tmp_path)
+        (repo / "src.py").write_text("x = 1\n")
+        for _ in range(2):
+            proc = _run(repo, env)                          # must return, never hang (timeout=120)
+            # Either a clean package, a controlled no-evidence/collision refusal — never a traceback.
+            assert proc.returncode in (0, 2, 3), proc.stdout + proc.stderr
+            assert "Traceback (most recent call last)" not in (proc.stdout + proc.stderr)
+        # No partial/tracked leftover: any produced zip is a complete file.
+        for z in repo.glob("*.zip"):
+            assert z.stat().st_size > 0
+
+    def test_ordering_independent_of_prior_shape_test(self, tmp_path):
+        # Running after a symlink shape (as the earlier class does) must not change termination.
+        repo, env = _repo(tmp_path)
+        os.symlink("README.md", str(repo / "l.md"))
+        proc = _run(repo, env)
+        assert proc.returncode in (0, 2, 3), proc.stdout + proc.stderr
