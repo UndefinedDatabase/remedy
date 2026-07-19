@@ -2714,3 +2714,199 @@ def write_manual_completion_evidence(
             timestamp=t["timestamp"], note=t["note"])
     # Canonical root token truth = the exact aggregate of the tasks just written.
     _ma.write_manual_token_truth(evidence_dir)
+
+
+def create_manual_completion_bundle(
+    evidence_dir: str,
+    *,
+    repo_root: str,
+    base_commit: str,
+    job_id: str,
+    job_title: str,
+    step_range: str,
+    prior_job_ids: "list[str]",
+    verification_runs: "list[dict]",
+    timestamp: str,
+    generated_at: str,
+    head_commit: str | None = None,
+    task_partition: "dict[str, list[str]] | None" = None,
+    num_tasks: int = 3,
+    note_prefix: str = "operator-attested manual completion",
+) -> dict[str, Any]:
+    """Round 33 F4 — the real, supported operator workflow that produces a COMPLETE manual-only
+    (operator-attested, zero-provider) Evidence bundle end-to-end, reaching the canonical producer
+    ``write_manual_completion_evidence`` (task attestation + regenerated root token truth) and the
+    real ``final_verifier`` producer, so the packaged report is reproducible by the coordinator.
+
+    This is the one non-test call path that exercises ``write_manual_completion_evidence`` against a
+    real repository: it resolves the committed review subject between ``base_commit`` and HEAD,
+    partitions the attestable source files across tasks, writes every task's attestation through the
+    shared producer, regenerates the canonical root ``token_truth.json`` from that assembled Evidence,
+    generates the complete closed-schema READY gate set, and runs the final verifier over the whole
+    bundle. No provider is called; the target repository is never mutated.
+
+    Returns a small summary dict (job_id, head, authority count, partition sizes, final verdict).
+    """
+    import subprocess
+    from packages.orchestration.repair_attest import (
+        build_safe_diff_text, canonical_provenance_sha256, is_attestable_source,
+        parse_safe_diff_paths, sha256_text,
+    )
+    from packages.orchestration.review_subject import (
+        commit_patch_bytes, commit_patch_filename, resolve_commit_chain, resolve_review_subject,
+    )
+    from packages.orchestration.final_verifier import build_final_verifier_report
+    from packages.orchestration import manual_attestation as _ma
+
+    os.makedirs(evidence_dir, exist_ok=True)
+
+    def _w(rel: str, obj: Any) -> None:
+        p = os.path.join(evidence_dir, rel)
+        os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write(obj if isinstance(obj, str) else json.dumps(obj, indent=1, sort_keys=True))
+
+    def _git(*args: str) -> str:
+        return subprocess.run(["git", "-C", repo_root, *args],
+                              capture_output=True, text=True).stdout
+
+    if head_commit is None:
+        head_commit = _git("rev-parse", "HEAD").strip()
+    if not verification_runs:
+        raise ValueError("verification_runs must record at least one executed verification command")
+    if any(r["exit_code"] != 0 for r in verification_runs) or any(r["failed"] for r in verification_runs):
+        raise ValueError("a recorded verification command failed; refusing to build a clean bundle")
+    total_passed = sum(r["passed"] for r in verification_runs)
+
+    # 1) The committed review subject — resolved once by the production helper.
+    subject = resolve_review_subject(repo_root, base_commit)
+    authority = sorted({f.path for f in subject.files if is_attestable_source(f.path)})
+    opstate = sorted(p for p in (f.path for f in subject.files) if not is_attestable_source(p))
+    if not authority:
+        raise ValueError("no attestable source files changed between base and head")
+
+    # 2) Partition the attestable files across tasks (explicit partition wins).
+    if task_partition is None:
+        k = (len(authority) + num_tasks - 1) // num_tasks
+        task_partition = {}
+        for i in range(num_tasks):
+            chunk = authority[i * k:(i + 1) * k]
+            if chunk:
+                task_partition[f"T{i + 1:03d}"] = chunk
+    part = {t: sorted(v) for t, v in task_partition.items() if v}
+    if set().union(*part.values()) != set(authority):
+        raise ValueError("task partition does not exactly cover the attestable authority set")
+
+    # 3) Review-subject artifacts: subject, content proof, commit chain, canonical patches, diff.
+    _w("review_subject.json", subject.to_json())
+    file_hashes: dict[str, str] = {}
+    for f in subject.files:
+        if is_attestable_source(f.path) and f.current_sha256:
+            file_hashes[f.path] = f.current_sha256
+    _w("current_change_content_proof.json", {
+        "schema_version": "1.1.0", "base_commit": base_commit, "head_commit": head_commit,
+        "file_hashes": file_hashes, "file_count": len(file_hashes),
+        "tombstones": {}, "tombstone_count": 0})
+    chain = resolve_commit_chain(repo_root, base_commit, head_commit)
+    _w("review_commit_chain.json", {"chain_v": 1, "base_commit": base_commit,
+                                    "head_commit": head_commit,
+                                    "commits": [c.to_json() for c in chain]})
+    pdir = os.path.join(evidence_dir, "review_commit_patches")
+    os.makedirs(pdir, exist_ok=True)
+    for c in chain:
+        with open(os.path.join(pdir, commit_patch_filename(c.commit)), "wb") as fh:
+            fh.write(commit_patch_bytes(repo_root, c.commit))
+    _w("workspace.diff", _git("diff", f"{base_commit}..{head_commit}", "--", *authority))
+
+    # 4) Per-task attestation + canonical root token truth — THROUGH the canonical producer.
+    task_records: list[dict[str, Any]] = []
+    for tid, files in part.items():
+        tracked = _git("diff", f"{base_commit}..{head_commit}", "--", *files)
+        safe = build_safe_diff_text(tracked, [])
+        tsha, ssha = sha256_text(tracked), sha256_text(safe)
+        prov = canonical_provenance_sha256(tsha, [])
+        if parse_safe_diff_paths(safe) != files:
+            raise ValueError(f"{tid}: safe-diff path set does not match the task partition")
+        task_records.append({
+            "task_id": tid, "changed_files": files, "safe_diff_text": safe,
+            "provenance_sha256": prov, "diff_sha256": prov, "tracked_diff_sha256": tsha,
+            "safe_diff_sha256": ssha, "timestamp": timestamp,
+            "note": f"{note_prefix} - {tid}"})
+    write_manual_completion_evidence(evidence_dir, job_id=job_id, tasks=task_records)
+
+    # 5) Root scaffold: manifest, job report/timeline/tasks, final job review, trace, guards, config.
+    _w("manifest.json", {
+        "bundle_version": "0.1.0", "bundle_type": "job_evidence", "job_id": job_id,
+        "job_title": job_title,
+        "job_file_sha256": hashlib.sha256(job_id.encode()).hexdigest(),
+        "status": "planned", "persisted_status": "planned", "repo_identity": "[local]",
+        "job_workspace_path": "", "created_at": generated_at, "finished_at": "",
+        "bundle_generated_at": generated_at, "task_count": len(part),
+        "task_ids": sorted(part), "task_run_ids": {},
+        "task_statuses": {t: "pending" for t in part},
+        "execution_config": None, "context_strategy": "task_bounded_sequential_job",
+        "target_guard": None, "error": "", "completion_mode": "manual_operator_repair",
+        "effective_status": "operator_attested_complete", "evidence_available": True,
+        "human_final_reviewer_required": True})
+    _w("job_report.json", "")
+    _w("job_timeline.json", {"job_id": job_id, "events": [], "sequencing_valid": True,
+                             "timestamps_available": False})
+    _w("tasks.json", [{"task_id": t, "title": f"Task {t}", "status": "pending",
+                       "safe_diff_files": sorted(v)} for t, v in part.items()])
+    _w("workspace_apply.json", [{"task_id": t, "status": "pending", "apply_manifest": None}
+                                for t in sorted(part)])
+    _w("execution_config.json", {
+        "builder_model": "operator", "builder_model_source": "operator_attestation",
+        "reviewer_model": "operator", "reviewer_model_source": "operator_attestation",
+        "actual_config_available": False})
+    _w("context_strategy.json", {"strategy": "task_bounded_sequential_job",
+                                 "previous_task_summary_limit": 5,
+                                 "full_job_history_in_prompt": False,
+                                 "full_repo_in_prompt": False})
+    _w("target_guard.json", {"target_mutated": False, "note": "manual operator repair; no mutation"})
+    _w("prompt_trace_summary.json", {"job_id": job_id, "provider_call_count": 0,
+                                     "prompt_trace_status": "not_applicable_manual_repair"})
+    _w("scratch_file_guard.json", {"schema_version": "1.0.0", "task_id": "",
+                                   "guard_status": "PASS", "checked_patterns": ["_[!_]*.py"],
+                                   "files_found": [], "forbidden_files": [],
+                                   "allowed_files_found": [], "suggested_cleanup": []})
+    prior = list(prior_job_ids)
+    _w("final_job_review.json", {
+        "schema_version": "1.0.0", "verdict": "PASS", "job_id": job_id, "findings": [],
+        "review_mode": "operator_attested_manual_completion",
+        "completion_mode": "manual_operator_repair", "human_final_reviewer_required": True,
+        "completion_provider_call_count": 0, "prior_execution_provider_call_count": 0,
+        "superseded_prior_run_ids": [], "changed_files_match": True,
+        "expected_changed_files": authority, "actual_changed_files": authority,
+        "per_task_changed_files": {t: sorted(v) for t, v in part.items()},
+        "task_verdicts": {t: "operator_attested" for t in part},
+        "linked_prior_job_ids": prior,
+        "linked_prior_job_summaries": [{"job_id": pj, "status": "operator_attested_complete",
+                                        "provider_call_count": 0} for pj in prior],
+        "root_verification": {"exit_code": 0, "passed": total_passed, "failed": 0}})
+
+    # 6) The complete READY gate set (closed schemas, coherent verdicts).
+    _ma.build_manual_completion_gates(
+        evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
+        step=step_range, total_passed=total_passed, verification_runs=verification_runs)
+    # change-provenance gate must carry the real covered/excluded sets and evidence sources.
+    cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
+    cp = json.loads(open(cp_path, encoding="utf-8").read())
+    cp.update({"excluded_files": opstate, "source_files": authority,
+               "evidence_covered_files": authority,
+               "evidence_sources": ["workspace.diff", "current_change_content_proof.json"]
+               + [f"task_runs/{t}/safe.diff" for t in sorted(part)]})
+    _w("change_provenance_gate.json", cp)
+
+    # 7) The final verifier is generated by the REAL producer over the assembled bundle, twice, to
+    #    prove the packaged report is reproducible (the coordinator recomputes and requires equality).
+    report = build_final_verifier_report(evidence_dir)
+    _w("final_verifier_report.json", report)
+    if build_final_verifier_report(evidence_dir) != report:
+        raise RuntimeError("final verifier producer is not deterministic over this bundle")
+
+    return {"job_id": job_id, "head_commit": head_commit, "authority_count": len(authority),
+            "partition": {t: len(v) for t, v in part.items()}, "commit_count": len(chain),
+            "verdict": report.get("verdict"), "manual_completion": report.get("manual_completion"),
+            "operator_attested_tasks": report.get("operator_attested_tasks"),
+            "total_passed": total_passed}

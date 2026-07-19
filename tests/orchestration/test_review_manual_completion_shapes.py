@@ -231,9 +231,122 @@ class TestLinkedPriorAndProductionIntegration:
         errs = _brm.validate_evidence_candidate(_view(objs))["validation_errors"]
         assert not any("provider_call_count is not an integer" in e for e in errs)
 
-    def test_manual_producer_has_a_production_caller(self):
-        # The canonical producer is invoked from a real (non-test) production module.
-        from packages.orchestration.job_evidence import write_manual_completion_evidence
+    def test_write_manual_completion_evidence_has_a_real_production_caller(self):
+        # F4 (round 33): a NON-TEST module reaches the canonical producer, verified by repo search
+        # (not by inspecting the producer's own source). The execution proof is the e2e test below.
+        import subprocess
+        out = subprocess.run(
+            ["grep", "-rl", "--include=*.py", "write_manual_completion_evidence(",
+             str(REPO_ROOT / "packages"), str(REPO_ROOT / "scripts")],
+            capture_output=True, text=True).stdout.split()
+        # A non-test production file both defines and calls the canonical producer.
+        prod = [p for p in out if "/tests/" not in p.replace(os.sep, "/")
+                and not p.rsplit("/", 1)[-1].startswith("test_")]
+        assert any(p.endswith("job_evidence.py") for p in prod), out
+        from packages.orchestration.job_evidence import create_manual_completion_bundle
         import inspect
-        src = inspect.getsource(write_manual_completion_evidence)
-        assert "manual_attestation" in src and "write_manual_token_truth" in src
+        assert "write_manual_completion_evidence(" in inspect.getsource(
+            create_manual_completion_bundle)
+
+
+def _init_repo(root: Path) -> None:
+    import subprocess
+    root.mkdir(parents=True, exist_ok=True)
+    for args in (["git", "init", "-q"], ["git", "config", "user.email", "op@remedy"],
+                 ["git", "config", "user.name", "operator"]):
+        subprocess.run(args, cwd=root, check=True, capture_output=True)
+
+
+def _commit(root: Path, rel: str, text: str, msg: str) -> None:
+    import subprocess
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", msg], cwd=root, check=True, capture_output=True)
+
+
+def _rev(root: Path, ref: str = "HEAD") -> str:
+    import subprocess
+    return subprocess.run(["git", "rev-parse", ref], cwd=root, check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+class TestManualCompletionRunsEndToEnd:
+    """F4 (round 33) — the canonical manual producer is exercised END-TO-END by its real operator
+    entry ``job_evidence.create_manual_completion_bundle`` in a temporary repository, and the produced
+    bundle passes the coordinator's own READY evaluation: manual-completion clean, final-verifier
+    reproducible (VERIFIED_EQUAL), token-truth authority VERIFIED_EQUAL, gate matrix ok."""
+
+    def _make_repo(self, tmp_path):
+        repo = tmp_path / "repo"
+        _init_repo(repo)
+        # Base: four source/test files under a couple of packages.
+        _commit(repo, "src_pkg/alpha.py", "def a():\n    return 1\n", "base alpha")
+        _commit(repo, "src_pkg/beta.py", "def b():\n    return 2\n", "base beta")
+        _commit(repo, "tests_pkg/test_alpha.py", "def test_a():\n    assert True\n", "base ta")
+        _commit(repo, "tests_pkg/test_beta.py", "def test_b():\n    assert True\n", "base tb")
+        base = _rev(repo)
+        # Head: several commits that change every one of those source files.
+        _commit(repo, "src_pkg/alpha.py", "def a():\n    return 10\n", "work alpha")
+        _commit(repo, "src_pkg/beta.py", "def b():\n    return 20\n", "work beta")
+        _commit(repo, "tests_pkg/test_alpha.py",
+                "def test_a():\n    assert a_result() == 10\n", "work ta")
+        _commit(repo, "tests_pkg/test_beta.py",
+                "def test_b():\n    assert b_result() == 20\n", "work tb")
+        head = _rev(repo)
+        return repo, base, head
+
+    def _bundle(self, evd, repo, base, head):
+        from packages.orchestration.job_evidence import create_manual_completion_bundle
+        runs = [{"run_id": "vr-0001", "command": "pytest -q tests_pkg", "exit_code": 0,
+                 "passed": 2, "failed": 0, "test_files": ["tests_pkg/test_alpha.py",
+                 "tests_pkg/test_beta.py"], "stdout_summary": "2 passed"}]
+        return create_manual_completion_bundle(
+            str(evd), repo_root=str(repo), base_commit=base, head_commit=head,
+            job_id="e2ef4bundle0001", job_title="F4 manual e2e", step_range="1-2",
+            prior_job_ids=["priore2ef4000001"], verification_runs=runs,
+            timestamp="2026-07-19T00:00:00+00:00",
+            generated_at="2026-07-19T00:00:00.000000+00:00", num_tasks=2,
+            note_prefix="F4 manual e2e")
+
+    def test_end_to_end_bundle_is_ready(self, tmp_path, monkeypatch):
+        repo, base, head = self._make_repo(tmp_path)
+        evd = tmp_path / "evidence"
+        summary = self._bundle(evd, repo, base, head)
+        # The coordinator recomputes the commit chain against the packaged repository (CWD).
+        monkeypatch.chdir(repo)
+
+        # The canonical producer actually ran: task attestation + regenerated root token truth exist.
+        assert (evd / "token_truth.json").is_file()
+        assert (evd / "task_runs" / "T001" / "manual_repair_provenance.json").is_file()
+        assert (evd / "task_runs" / "T002" / "provider_evidence.json").is_file()
+
+        # The root token truth is the canonical zero-provider manual truth and validates clean.
+        from packages.orchestration.token_authority import validate_token_truth
+        tt = json.loads((evd / "token_truth.json").read_text(encoding="utf-8"))
+        assert validate_token_truth(tt) == []
+        assert tt["measurement_source"] == "character_heuristic"
+        assert tt["provider_call_count"] == 0
+
+        # The coordinator's own READY evaluation over the produced bytes.
+        ev = _brm._view_from_dir(str(evd))
+        gm = _brm.evaluate_ready_gate_matrix(ev.gate_loader())
+        assert gm["ok"] is True, gm["blocking_reasons"]
+        assert _brm.validate_manual_completion(ev) == []
+        assert _brm.validate_evidence_candidate(ev)["is_valid_current_run"] is True
+        assert _brm._final_verifier_reproducibility(ev)["status"] == "VERIFIED_EQUAL"
+        assert _brm._token_truth_authority(ev)["status"] == "VERIFIED_EQUAL"
+
+        assert summary["manual_completion"] is True
+        assert summary["verdict"] == "PASS_WITH_RISKS"
+        assert sorted(summary["operator_attested_tasks"]) == ["T001", "T002"]
+
+    def test_producer_is_reproducible(self, tmp_path):
+        # The same repo bundled twice yields byte-identical final verifier + token truth.
+        repo, base, head = self._make_repo(tmp_path)
+        evd1, evd2 = tmp_path / "e1", tmp_path / "e2"
+        self._bundle(evd1, repo, base, head)
+        self._bundle(evd2, repo, base, head)
+        for name in ("final_verifier_report.json", "token_truth.json"):
+            assert (evd1 / name).read_text() == (evd2 / name).read_text(), name
