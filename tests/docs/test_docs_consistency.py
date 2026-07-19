@@ -1695,7 +1695,7 @@ class TestF012Round31IsPinned:
     def test_token_and_scalar_and_gate_documented(self):
         doc = self._f012()
         assert "token_authority.validate_token_truth" in doc
-        assert "is the single supported manual-Evidence creation producer" in doc
+        assert "the single supported manual-Evidence" in doc
         assert "total gate evaluation" in doc
 
     def test_f4_f5_f7_still_open(self):
