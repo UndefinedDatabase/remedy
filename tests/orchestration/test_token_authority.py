@@ -67,11 +67,15 @@ class TestTokenTruthValidator:
         assert any("actual_prompt_tokens" in x for x in validate_token_truth(t))
 
     def test_measured_provider_truth_is_valid_and_coherent(self):
+        # A COMPLETE, coherent high-confidence measured TokenTruthV1 (round 34: coverage flags, cost
+        # coverage and missing_reason must all agree with the counts).
         t = dict(MANUAL_TOKEN_TRUTH)
         t.update({"measurement_confidence": "high", "measurement_source": "provider_actuals",
                   "actual_available": True, "actual_call_count": 2, "provider_call_count": 2,
                   "cost_call_count": 2, "actual_prompt_tokens": 100, "actual_completion_tokens": 50,
-                  "actual_total_tokens": 150, "total_cost_usd": 0.01})
-        assert validate_token_truth(t) == []
+                  "actual_total_tokens": 150, "total_cost_usd": 0.01,
+                  "actual_coverage_complete": True, "cost_coverage_complete": True,
+                  "cost_coverage_reason": None, "missing_reason": None})
+        assert validate_token_truth(t) == [], validate_token_truth(t)
         # And the shared producer derives a non-null summary from it.
         assert token_measurement_summary(t)["actual_summary"] is not None

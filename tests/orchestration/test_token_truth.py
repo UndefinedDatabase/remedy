@@ -647,8 +647,12 @@ def test_root_provider_call_count_from_provider_evidence(tmp_path: Path) -> None
     assert report["actual_coverage_complete"] is True
 
 
-def test_actual_call_count_never_exceeds_provider_call_count(tmp_path: Path) -> None:
-    """Malformed per-task counts are clamped: actual <= provider, cost <= actual."""
+def test_actual_call_count_exceeding_provider_is_a_producer_error(tmp_path: Path) -> None:
+    """Round 34 F2: malformed per-task counts (actual > provider, or cost > actual) are NOT clamped
+    into a plausible value — the producer raises a bounded TokenEvidenceError so the packaging
+    authority reports PRODUCER_ERROR and BLOCKED_EVIDENCE."""
+    import pytest
+    from packages.orchestration.token_truth import TokenEvidenceError
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
                    "builder_provider": "claude-cli",
@@ -658,11 +662,8 @@ def test_actual_call_count_never_exceeds_provider_call_count(tmp_path: Path) -> 
                    "actual_call_count": 5,
                    "cost_call_count": 9,
                })
-    report = build_token_truth(str(tmp_path))
-    assert report["provider_call_count"] == 2
-    assert report["actual_call_count"] == 2
-    assert report["cost_call_count"] == 2
-    assert report["actual_call_count"] <= report["provider_call_count"]
+    with pytest.raises(TokenEvidenceError):
+        build_token_truth(str(tmp_path))
 
 
 def test_manual_repair_task_not_in_provider_call_count(tmp_path: Path) -> None:

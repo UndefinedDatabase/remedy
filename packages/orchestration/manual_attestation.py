@@ -20,6 +20,14 @@ from typing import Any
 #: low confidence (heuristic only) with every actual/provider count zeroed and every cost unknown.
 MANUAL_TOKEN_TRUTH: dict[str, Any] = {
     "schema_version": "1.0.0",
+    # Round 34 F2: the complete, closed TokenTruthV1 shape the real producer emits for a zero-task
+    # manual completion — every field present so it validates against the full output schema.
+    "source": "evidence_aggregation",
+    "provider": "claude-cli",
+    "model": "",
+    "per_task": {},
+    "actual_cache_creation_tokens": None,
+    "actual_cache_read_tokens": None,
     "actual_available": False,
     "actual_prompt_tokens": None,
     "actual_completion_tokens": None,
@@ -43,8 +51,8 @@ MANUAL_TOKEN_TRUTH: dict[str, Any] = {
     "cost_coverage_complete": False,
     "cost_coverage_reason": "no_real_provider_calls",
     "cli_version": None,
-    "builder_configured_model": None,
-    "reviewer_configured_model": None,
+    "builder_configured_model": "",
+    "reviewer_configured_model": "",
     "builder_actual_model": None,
     "reviewer_actual_model": None,
     "actual_model_verified": False,
