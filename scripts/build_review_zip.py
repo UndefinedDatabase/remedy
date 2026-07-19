@@ -492,6 +492,15 @@ def main() -> int:
                 "manifest_sha256": manifest_sha,
             }
 
+        # F4 (round 32) — the ONE no-clobber boundary before any bytes are written: refuse a tracked,
+        # symlink, directory, FIFO/device or foreign pre-existing output. Direct Python and the shell
+        # wrapper share this exact check.
+        from packages.orchestration.safe_publish import PublishCollisionError, assert_publishable
+        try:
+            assert_publishable(args.out, args.repo_root)
+        except PublishCollisionError as exc:
+            print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
+            return 3
         # Phase 4 — build the deterministic ZIP from immutable bytes; Phase 5 — reopen and verify.
         result = build_review_zip_from_snapshot(
             out_path=args.out, snapshot=snapshot, generated_members=generated)

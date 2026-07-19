@@ -679,7 +679,25 @@ except Exception:
 ")"
 
 FINAL_OUT="remedy-review-${STAMP}-${PACKAGE_STATUS}.zip"
-mv "$OUT" "$FINAL_OUT"
+# F4 (round 32): the SAME no-clobber boundary as the direct Python coordinator applies to the final
+# status-bearing path — a tracked / symlink / directory / FIFO / device / foreign pre-existing file is
+# refused BEFORE the rename, so an overwrite-capable `mv` is never the security boundary.
+if ! python3 -c "
+import sys
+from packages.orchestration.safe_publish import assert_publishable, PublishCollisionError
+try:
+    assert_publishable('$FINAL_OUT', '$ROOT', owned_paths=frozenset({'$FINAL_OUT'}))
+except PublishCollisionError as exc:
+    print(f'REVIEW_ZIP_ERROR: {exc}', file=sys.stderr); sys.exit(3)
+"; then
+  echo "REVIEW_ZIP_ERROR: refusing to publish final ZIP over a collision at '$FINAL_OUT'" >&2
+  exit 3
+fi
+mv -n "$OUT" "$FINAL_OUT"
+if [[ ! -f "$FINAL_OUT" || -f "$OUT" ]]; then
+  echo "REVIEW_ZIP_ERROR: final publication did not complete cleanly for '$FINAL_OUT'" >&2
+  exit 3
+fi
 OUT="$FINAL_OUT"
 
 # --- Terminal status block ---
