@@ -1,36 +1,53 @@
-# Plan — Steps 13161-13360 — F012 hardening round 28 (COHERENCE + INVOCATION-BINDING CLOSURE)
+# Plan — Steps 13361-13560 — F012 hardening round 29 (SYSTEMIC CLASS CLOSURE)
 
-## Round 28 binding decision
+## Round 29 binding decision
 
-Reviewed `remedy-review-20260719-124709-READY_FOR_REVIEW.zip`
-(SHA `7a452c42...d898d1`, Evidence job `a3d937ec1835eb93`, linked prior `ebe675ec74f20c1a`,
-Base `7fa4466`, HEAD `8c32724`). Verdict FINDINGS; F012 `[~]`. Final F012 hardening round.
+Reviewed `remedy-review-20260719-134026-READY_FOR_REVIEW.zip`
+(SHA `6d1a28a7...e9712`, Evidence `be06ea70dd607523`, linked prior `a3d937ec1835eb93`,
+Base `8c32724`, HEAD `925c6fa`). Verdict FINDINGS. Round 28 fixed the narrow reproductions but did
+not close the complete error classes. Round 29 closes each class systemically, not by example patch.
 
-Four reproduced contract defects, each repaired in its own non-overlapping scope:
+Five non-overlapping scopes, each its own commit:
 
-1. **Token-status projection coherence** — one shared projection mapping requires every overlapping
-   field of token_measurement / its actual_summary / top-level token_actual_summary to EQUAL the
-   authoritative token_status; a disagreement blocks; the low/null summary carries no projection.
-   Scope: `_token_projection_problems` + its call in the FV branch of `_gate_semantic_problems`.
-2. **Producer-derived VerificationTests** — exact `job_evidence._run_verifications` contract: repeated
-   commands legitimate (unique run ids stay mandatory), top-level command == `" && ".join(run
-   commands)`, exit_code == 0 iff every run exited 0, timestamp a real tz-aware ISO-8601 datetime.
-   Scope: `validate_verification_tests` + `_valid_utc_datetime`.
-3. **Invocation-bound packaging-output identity** — only the EXACT set of outputs the current
-   packaging invocation generates (passed from make_review_zip.sh through both builders) classifies;
-   the invocation-independent grammar is removed. Scope: `_classify_review_subject` + the CLI plumbing.
-4. **Malformed nested Evidence validates, never crashes** — validate the minimal closed shape before
-   reading nested fields; a wrong inner type appends a validation error, never an AttributeError.
-   Scope: `_job_flow_shape_problems` + the job_flow block of `validate_evidence_candidate`.
+1. **Exact token producer re-derivation** — one shared pure module
+   `packages/orchestration/token_measurement.py::token_measurement_summary(token_status)` is the SOLE
+   authority, imported by both `final_verifier.py` and the review gate. The gate computes
+   `expected = token_measurement_summary(token_status)` and requires deep equality with
+   `token_measurement` plus exact equality of the top-level projections
+   (`token_measurement_confidence`/`token_measurement_note`/`token_actual_summary`). Deletes the
+   hand-duplicated projection-field lists so no list can drift from the producer. Evidence is
+   regenerated through the real producer (no hand-edited note). Scope: new module + `final_verifier`
+   import alias + `_gate_semantic_problems` token block + the two dead projection constants.
+2. **Complete manual-completion nested-shape safety** — one typed pre-consumption normalizer validates
+   every trust-bearing collection/record field consumed by `validate_manual_completion` and its
+   `_verify_*` helpers before any iteration or `.get` chain. Wrong types append a bounded
+   `artifact: field is not a <kind>` error and normalize to a safe empty; nothing downstream operates
+   on an unvalidated collection. Scope: `_mc` shape table + `_read_mc` + the `_verify_*` signatures.
+3. **Internally-derived generated-output identity + collision safety** — the classifier filters any
+   supplied generated set through an eligibility gate (repo-ROOT path; exactly
+   `.review_zip_manifest.json` or the `remedy-review-…zip` output form), so an arbitrary source path a
+   caller names can never be dispositioned. `build_review_zip.py` DERIVES the set from its own
+   `--out`/`--manifest-rel` (not a trusted free list) and records it. `make_review_zip.sh` stops
+   passing the non-existent `.sha256` sidecar and REFUSES to delete/reserve a TRACKED manifest/ZIP
+   path. Scope: `_eligible_generated_output` + classifier filter + coordinator derivation + shell
+   collision guard.
+4. **Correct NUL-safe Git porcelain path identity** — `_dirty_files()` uses
+   `git status --porcelain=v1 -z` and preserves the two status columns exactly (no record `.strip()`);
+   `_dirty_line_path` takes the path from column 3 without dropping a leading status char and handles
+   rename/copy `->`/`-z` origin pairs. Scope: `_dirty_files` + `_dirty_line_path` + `_has_untracked`.
+5. **Hermetic stream-export E2E** — the copied-pipeline subprocess receives an intentional
+   `PYTHONPATH=<repo root>` env; a regression clears any inherited path first. No shell/ZIP assertion
+   weakened. Scope: the one fixture test.
 
-Plus one isolated maintenance item (separate commit): the stream-export ZIP fixture is repaired for
-the current pipeline (copies every helper, models an internally consistent git-backed job).
+6. **Truthful Round-29 documentation + operator state** — T0_F012 Round-29 section, the pinned
+   consistency test, corrected Round-28 over-claims (present-tense "F012 is accepted" → "may be
+   accepted only after external review confirms…"), plan/live-review.
 
 ## Constraints (unchanged)
 
 No provider calls; no Evidence job-flow/job-run; no database; no LLM rerun; no network; no Fable; no
 subagents; no Docker; no new dependency. Manual operator work only. Small local commits, never amend/
-squash Round 27. Do not push, PR, merge, or begin F017. Fresh Evidence linked `a3d937ec1835eb93`; one
-READY_FOR_REVIEW ZIP; then stop. Preserve every accepted F012 behavior. This is the final F012
-hardening round — after it, generic hardening is follow-up maintenance (see the F012 closure section
-of `docs/roadmap/features/T0_F012.md`).
+squash prior rounds. Do not push, PR, merge, or begin F017. Fresh Evidence linked `be06ea70dd607523`;
+one READY_FOR_REVIEW ZIP; then stop. Preserve every accepted F012 behavior, including Round 28's
+externally-verified VerificationTests corrections. F012 stays `[~]`, F017 stays `[ ]`, pending
+external acceptance.

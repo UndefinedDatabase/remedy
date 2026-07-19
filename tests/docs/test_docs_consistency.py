@@ -1588,7 +1588,53 @@ class TestF012Round28IsPinned:
 
     def test_closure_section_present(self):
         doc = self._f012()
-        assert "## F012 closure" in doc
+        # Round 29 corrected the heading from a present-tense "closure" to conditional acceptance.
+        assert "## F012 acceptance criteria (external acceptance PENDING)" in doc
         assert "deterministic-run behavior" in doc
         assert "authority and truthfulness of its concrete review package" in doc
         assert "follow-up maintenance" in doc
+
+
+class TestF012Round29IsPinned:
+    """Round 29: complete-class closure — token producer re-derivation, manual-completion shape safety,
+    internally-derived generated-output identity, NUL-safe git paths, hermetic packaging E2E, and the
+    corrected (conditional) acceptance wording."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 29" in self._f012()
+
+    def test_token_rederivation_documented(self):
+        doc = self._f012()
+        assert "Complete token producer re-derivation" in doc
+        assert "token_measurement.token_measurement_summary(token_status)" in doc
+
+    def test_manual_shape_safety_documented(self):
+        doc = self._f012()
+        assert "Complete manual-completion shape safety" in doc
+        assert "before any iteration\n  or `.get` chain" in doc or "before any iteration" in doc
+
+    def test_internally_derived_identity_documented(self):
+        doc = self._f012()
+        assert "Internally-derived generated-output identity" in doc
+        assert "a caller cannot declare a source path a" in doc
+        assert "exit 3" in doc
+
+    def test_nul_safe_git_paths_documented(self):
+        doc = self._f012()
+        assert "NUL-safe Git porcelain paths" in doc
+        assert "porcelain=v1 -z" in doc
+
+    def test_hermetic_e2e_documented(self):
+        doc = self._f012()
+        assert "Hermetic review-packaging E2E" in doc
+        assert "env -u PYTHONPATH" in doc
+
+    def test_acceptance_is_conditional_not_present_tense(self):
+        doc = self._f012()
+        assert "may be accepted only after external review confirms" in doc
+        # The round-28 present-tense over-claim is gone.
+        assert "is accepted on the basis of its" not in doc
