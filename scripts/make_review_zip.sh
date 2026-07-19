@@ -679,21 +679,21 @@ except Exception:
 ")"
 
 FINAL_OUT="remedy-review-${STAMP}-${PACKAGE_STATUS}.zip"
-# F4 (round 32): the SAME no-clobber boundary as the direct Python coordinator applies to the final
-# status-bearing path — a tracked / symlink / directory / FIFO / device / foreign pre-existing file is
-# refused BEFORE the rename, so an overwrite-capable `mv` is never the security boundary.
+# F1 (round 33): the shell publishes the status-bearing final path through the SAME atomic no-replace
+# implementation as the Python coordinator (safe_publish.publish_atomically) — never a weaker `mv`. The
+# already-verified temp ZIP ($OUT) is linked to $FINAL_OUT atomically; a losing race or a tracked/
+# unsafe destination is a controlled collision (exit 3), and no existing byte is ever overwritten.
 if ! python3 -c "
 import sys
-from packages.orchestration.safe_publish import assert_publishable, PublishCollisionError
+from packages.orchestration.safe_publish import publish_atomically, PublishCollisionError
 try:
-    assert_publishable('$FINAL_OUT', '$ROOT', owned_paths=frozenset({'$FINAL_OUT'}))
+    publish_atomically('$OUT', '$FINAL_OUT', '$ROOT')
 except PublishCollisionError as exc:
     print(f'REVIEW_ZIP_ERROR: {exc}', file=sys.stderr); sys.exit(3)
 "; then
-  echo "REVIEW_ZIP_ERROR: refusing to publish final ZIP over a collision at '$FINAL_OUT'" >&2
+  echo "REVIEW_ZIP_ERROR: refusing to publish final ZIP (collision or race) at '$FINAL_OUT'" >&2
   exit 3
 fi
-mv -n "$OUT" "$FINAL_OUT"
 if [[ ! -f "$FINAL_OUT" || -f "$OUT" ]]; then
   echo "REVIEW_ZIP_ERROR: final publication did not complete cleanly for '$FINAL_OUT'" >&2
   exit 3

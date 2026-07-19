@@ -20,19 +20,42 @@ class PublishCollisionError(Exception):
     """A packaging output path collides with a tracked/unsafe/foreign filesystem entry."""
 
 
-def _is_tracked(path: str, repo_root: str) -> bool:
+def git_tracked_status(path: str, repo_root: str) -> tuple[str, str]:
+    """Round 33 F2: interpret ``git ls-files --error-unmatch`` by EXACT exit code, never by
+    ``returncode != 0``. Returns ``(status, diagnostic)`` where status is one of ``TRACKED`` (exit 0),
+    ``UNTRACKED`` (exit 1 — the exact "path is not tracked" result), ``GIT_FAILED`` (any other exit,
+    e.g. 128 repo/index/permission error), ``GIT_TIMED_OUT`` or ``GIT_UNAVAILABLE``. Only ``UNTRACKED``
+    lets publication proceed; every other state (including a Git-internal failure) blocks."""
     try:
         rel = os.path.relpath(os.path.abspath(path), os.path.abspath(repo_root))
     except ValueError:
-        return False
+        return "GIT_FAILED", "output path is not within the repository root"
     try:
-        r = subprocess.run(["git", "ls-files", "--error-unmatch", "--", rel],
-                           cwd=repo_root, capture_output=True, timeout=10)
-        return r.returncode == 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        # If git cannot be consulted we CANNOT prove the path is untracked — refuse (fail closed).
+        r = subprocess.run(["git", "ls-files", "--error-unmatch", "-z", "--", rel],
+                           cwd=repo_root, capture_output=True, text=True, timeout=10)
+    except FileNotFoundError:
+        return "GIT_UNAVAILABLE", "git executable not found"
+    except subprocess.TimeoutExpired:
+        return "GIT_TIMED_OUT", "git ls-files timed out"
+    except Exception as exc:                               # pragma: no cover - defensive
+        return "GIT_FAILED", f"{type(exc).__name__}: {str(exc)[:100]}"
+    if r.returncode == 0:
+        return "TRACKED", ""
+    if r.returncode == 1:
+        return "UNTRACKED", ""
+    return "GIT_FAILED", f"git ls-files exit {r.returncode}: {(r.stderr or '')[:100]}"
+
+
+def _assert_untracked(path: str, repo_root: str) -> None:
+    status, diag = git_tracked_status(path, repo_root)
+    if status == "TRACKED":
         raise PublishCollisionError(
-            f"cannot determine tracked status of {path!r}; refusing to publish")
+            f"refusing to write output over TRACKED project file {path!r}")
+    if status != "UNTRACKED":
+        # A repository/index/permission/invocation/Git-internal failure is NEVER interpreted as
+        # untracked — publication fails closed with a bounded diagnostic.
+        raise PublishCollisionError(
+            f"cannot determine tracked status of {path!r} ({status}: {diag}); refusing to publish")
 
 
 def assert_publishable(path: str, repo_root: str, *, owned_paths: frozenset = frozenset()) -> None:
@@ -46,9 +69,7 @@ def assert_publishable(path: str, repo_root: str, *, owned_paths: frozenset = fr
     except OSError as exc:
         raise PublishCollisionError(f"cannot stat output path {path!r}: {exc}")
 
-    if _is_tracked(path, repo_root):
-        raise PublishCollisionError(
-            f"refusing to write output over TRACKED project file {path!r}")
+    _assert_untracked(path, repo_root)
 
     if st is not None:
         mode = st.st_mode
@@ -76,3 +97,35 @@ def atomic_reserve(path: str) -> int:
         return os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
     except FileExistsError:
         raise PublishCollisionError(f"output path already reserved/created: {path!r}")
+
+
+def publish_atomically(source_path: str, final_path: str, repo_root: str,
+                       *, cleanup_source: bool = True) -> None:
+    """Round 33 F1: publish an ALREADY-BUILT-AND-VERIFIED private ZIP at ``source_path`` to the public
+    ``final_path`` through ONE atomic, no-replace operation — ``os.link`` fails with ``FileExistsError``
+    if ``final_path`` exists, so exactly one concurrent invocation wins and no existing destination is
+    ever truncated or unlinked. ``source_path`` must be on the SAME filesystem as ``final_path``. On a
+    losing race (or a tracked/unsafe destination) a ``PublishCollisionError`` is raised; the caller's
+    private ``source_path`` is removed (unless ``cleanup_source`` is false) so no partial reservation
+    leaks. The winning ``final_path`` is the complete, byte-identical ZIP."""
+    final = os.path.abspath(final_path)
+    parent = os.path.dirname(final) or "."
+    try:
+        if not os.path.isdir(parent):
+            raise PublishCollisionError(f"output parent directory does not exist: {parent!r}")
+        # Advisory refusal of tracked / symlink / directory / FIFO / device / foreign destinations
+        # BEFORE the atomic link; the link itself is the race-proof no-clobber boundary.
+        assert_publishable(final, repo_root, owned_paths=frozenset({final, final_path}))
+        try:
+            os.link(source_path, final)                    # ATOMIC no-replace publication
+        except FileExistsError:
+            raise PublishCollisionError(
+                f"another invocation already published {final_path!r}; this one loses the race")
+        except OSError as exc:
+            raise PublishCollisionError(f"could not publish {final_path!r}: {exc}")
+    finally:
+        if cleanup_source:
+            try:
+                os.unlink(source_path)                     # remove the now-linked private temp
+            except OSError:
+                pass

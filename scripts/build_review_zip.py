@@ -492,35 +492,43 @@ def main() -> int:
                 "manifest_sha256": manifest_sha,
             }
 
-        # F4 (round 32) — the ONE no-clobber boundary before any bytes are written: refuse a tracked,
-        # symlink, directory, FIFO/device or foreign pre-existing output. Direct Python and the shell
-        # wrapper share this exact check.
-        from packages.orchestration.safe_publish import PublishCollisionError, assert_publishable
+        # F1 (round 33) — build the deterministic ZIP into a PRIVATE same-filesystem temp path, reopen
+        # and verify it there, then publish to the public --out through ONE atomic no-replace operation.
+        # There is no pre-check-then-write to the public path: the atomic link is the race boundary, so
+        # exactly one concurrent invocation wins and no existing destination is ever truncated.
+        import tempfile as _tempfile
+        from packages.orchestration.safe_publish import PublishCollisionError, publish_atomically
+        _out_dir = os.path.dirname(os.path.abspath(args.out)) or "."
+        _fd, _tmp = _tempfile.mkstemp(prefix=".remedy_zip_", suffix=".part", dir=_out_dir)
+        os.close(_fd)
+        published = False
         try:
-            assert_publishable(args.out, args.repo_root)
-        except PublishCollisionError as exc:
-            print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
-            return 3
-        # Phase 4 — build the deterministic ZIP from immutable bytes; Phase 5 — reopen and verify.
-        result = build_review_zip_from_snapshot(
-            out_path=args.out, snapshot=snapshot, generated_members=generated)
-        problems = verify_review_zip(args.out, result)
+            result = build_review_zip_from_snapshot(
+                out_path=_tmp, snapshot=snapshot, generated_members=generated)
+            problems = verify_review_zip(_tmp, result)
+            if problems:
+                print("REVIEW_ZIP_VERIFICATION_FAILED:", file=sys.stderr)
+                for p in problems:
+                    print(f"  - {p}", file=sys.stderr)
+                return 3
+            try:
+                publish_atomically(_tmp, args.out, args.repo_root)
+                published = True
+            except PublishCollisionError as exc:
+                print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
+                return 3
+        finally:
+            if not published:
+                try:
+                    os.unlink(_tmp)                  # never leave a private partial artifact
+                except OSError:
+                    pass
     except (ReviewZipError, ArchivePlanError) as exc:
         print(f"REVIEW_ZIP_ERROR: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:                         # a ReviewSubjectError/ContentProofError/etc.
         print(f"REVIEW_ZIP_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
-
-    if problems:
-        print("REVIEW_ZIP_VERIFICATION_FAILED:", file=sys.stderr)
-        for p in problems:
-            print(f"  - {p}", file=sys.stderr)
-        try:
-            os.unlink(args.out)                      # F10: retain the output only when clean
-        except OSError:
-            pass
-        return 3
 
     authoritative = sum(1 for m in result["model"].values() if m.get("authoritative"))
     symlinks = sum(1 for m in result["model"].values() if m.get("kind") == "symlink")

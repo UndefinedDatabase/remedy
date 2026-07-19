@@ -260,9 +260,10 @@ def build_review_zip_from_snapshot(*, out_path: str | Path, snapshot: dict,
             raise ReviewZipError(f"duplicate archive member: {arcname!r}")
         seen.add(arcname)
 
+    # F1 (round 33): the builder writes into a caller-provided PRIVATE temp path and never deletes a
+    # public destination — atomic no-replace publication is the coordinator's responsibility
+    # (safe_publish.publish_atomically). The path here is created/truncated by ZipFile 'w'.
     out_path = Path(out_path)
-    if out_path.exists():
-        out_path.unlink()
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for arcname in sorted(snapshot):
