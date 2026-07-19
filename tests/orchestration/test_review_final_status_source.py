@@ -36,11 +36,14 @@ def _repo(tmp_path):
 class TestStatusComesFromTheVerifiedModel:
     def test_the_shell_reads_status_from_the_build_result(self):
         src = MAKE.read_text()
-        # The status block uses BUILD_RESULT (stdout), not a post-build json.load of the manifest.
+        # Round 34: the shell trusts ONLY the coordinator's verified JSON result (BUILD_RESULT) for the
+        # package status/path — never a post-build json.load of the mutable disk manifest.
         assert "BUILD_RESULT" in src
-        block = src.split("Package status comes from the VERIFIED build result")[1]
-        block = block.split("Terminal status block")[0]
+        block = src.split("Trust ONLY the coordinator's verified JSON result")[1]
+        block = block.split("Read-only post-publication checks")[0]
+        assert "PACKAGE_STATUS" in block
         assert "json.load(open('$MANIFEST'))" not in block
+        assert "json.loads('''$BUILD_RESULT'''" not in block
 
     def test_build_zip_emits_the_verified_status(self):
         src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
