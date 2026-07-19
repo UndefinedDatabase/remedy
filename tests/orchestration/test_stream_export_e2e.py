@@ -56,12 +56,31 @@ def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
     return data_dir
 
 
+def _git(repo: Path, *args) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+
+
 @pytest.fixture
 def demo_repo(tmp_path: Path) -> Path:
+    # A REAL git worktree: a committed base, then a HEAD commit whose diff is exactly docs/README.md
+    # — the file FakeProvider's builder authoritatively "changes". So the exported bundle is
+    # internally consistent: the review subject, the content proof (full 40-hex base/head commits, a
+    # requirement the packaging pipeline enforces), final_verifier authoritative_changed_files and the
+    # change-provenance covered_files all resolve to the SAME authority set {docs/README.md}.
     repo = tmp_path / "repo"
     (repo / "src").mkdir(parents=True)
     (repo / "README.md").write_text("# Demo\n")
     (repo / "src" / "main.py").write_text("def hello():\n    return 'hello'\n")
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+    _git(repo, "config", "user.email", "demo@example.test")
+    _git(repo, "config", "user.name", "Demo")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    (repo / "docs").mkdir(parents=True)
+    (repo / "docs" / "README.md").write_text("# docs\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "change docs/README.md")
     return repo
 
 
@@ -221,18 +240,29 @@ class TestStreamArtifactsReachTheReviewZip:
         task_id, refs = _plant_stream_evidence(job)
 
         exported = tmp_path / "evidence_out"
-        export_job_evidence(job.job_id, str(exported))
+        base = _git(demo_repo, "rev-parse", "HEAD~1")
+        export_job_evidence(job.job_id, str(exported), declared_base=base)
 
         # A minimal repository holding the real script and the exported bundle.
         repo = tmp_path / "ziprepo"
         (repo / "scripts").mkdir(parents=True)
         shutil.copy2(MAKE_REVIEW_ZIP, repo / "scripts" / "make_review_zip.sh")
-        for helper in ("build_review_manifest.py", "build_observability_index.py"):
+        # Every helper make_review_zip.sh invokes (transitively) — the pipeline now stages, indexes,
+        # builds the manifest, and packages the ZIP across four separate scripts. A missing one aborts
+        # the run, so copy the complete set (the packages/ tree resolves via the inherited env).
+        for helper in ("select_review_evidence.py", "stage_review_evidence.py",
+                       "build_observability_index.py", "build_review_manifest.py",
+                       "build_review_zip.py"):
             src = MAKE_REVIEW_ZIP.parent / helper
-            if src.exists():
-                shutil.copy2(src, repo / "scripts" / helper)
+            assert src.exists(), f"missing pipeline helper in the real repo: {helper}"
+            shutil.copy2(src, repo / "scripts" / helper)
         (repo / "README.md").write_text("# tmp\n")
+        # The authoritative source file the bundle proves (docs/README.md) is packaged from THIS repo
+        # and its bytes are verified against the content-proof hash, so it must be present verbatim.
+        (repo / "docs").mkdir(parents=True)
+        (repo / "docs" / "README.md").write_text("# docs\n")
         subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
 
         ev_dir = repo / "remedy-job-evidence-stream"
         shutil.copytree(exported, ev_dir)
