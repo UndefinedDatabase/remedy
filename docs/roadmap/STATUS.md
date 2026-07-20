@@ -15,7 +15,7 @@
 - [x] F010 — Automatic failure post-mortems (classifier + call/task/job post-mortems + `remedy stats failures` · accepted 2026-07-14 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 01363c70e13046e2 · package remedy-review-20260714-135557-READY_FOR_REVIEW.zip)
 - [x] F011 — Kill switch (`remedy job stop` + safe points + STOPPED state + `job_stopped` event + stopped post-mortem · accepted 2026-07-14 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 49955e41c49f41bc · package remedy-review-20260714-223538-READY_FOR_REVIEW.zip)
 - [x] F012 — Deterministic runs (RunManifestV1 + `on_call_finalized` seam + `remedy job rerun --check-manifest` · accepted 2026-07-20 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job r40_authority_contract_closure · package remedy-review-20260720-211130-READY_FOR_REVIEW.zip)
-- [~] F017 — Scope fences (T001+T002 built: FenceSpec + pure checker + applicator enforcement + atomicity + violation Evidence + postmortem · 121 tests)
+- [~] F017 — Scope fences (T001+T002+T003 built: FenceSpec + pure checker + applicator enforcement + fail-closed builtins + shared resolver + job model + config keys + CLI · 333 tests · READY_FOR_REVIEW)
 - [ ] F018 — Budgets & stop conditions
 - [ ] F146 — Project identity & repo autodetection
 - [ ] F081 — remedy init

@@ -46,7 +46,8 @@ produce one READY_FOR_REVIEW ZIP. Manual operator only.
 6. evidence(f017): fresh canonical F017 Evidence + READY_FOR_REVIEW ZIP
 
 ## Current Step
-Scope 1 — fixing config enforcement, dedup, fail-closed builtins.
+All 4 scopes complete. Evidence + READY_FOR_REVIEW ZIP produced.
+Awaiting external acceptance.
 
 ## Constraints
 - No Fable/subagents/providers/network/Docker. Manual only.

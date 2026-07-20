@@ -16,5 +16,16 @@ Tests:  `tests/orchestration/test_fences.py` — 78 passed
         `tests/orchestration/test_fence_e2e.py` — 43 passed
 Total:  164 tests (+ 112 postmortem/config)
 
+## Evidence
+Job ID: `492b969f-b802-453f-b9da-77554071d7ab`
+Base: `fe9898aec951486ee72e6d42eef5cd905c71c625`
+Head: `0846a1878cf3f239b7d1f12c4715e030346b9c86`
+Authority: 17 files, 3 tasks (T001-T003)
+Verdict: PASS_WITH_RISKS (operator-attested manual)
+ZIP: `remedy-review-20260720-233422-READY_FOR_REVIEW.zip` (7.8M, 1438 members)
+Package status: READY_FOR_REVIEW
+Evidence authoritative: true
+Review subject alignment: PASS
+
 ## Next
-- Fresh canonical F017 Evidence + READY_FOR_REVIEW ZIP
+Awaiting external acceptance. F017 stays `[~]`.
