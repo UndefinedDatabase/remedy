@@ -184,7 +184,9 @@ class TestCollisionSafeNaming:
         path = write_fence_violations_artifact(
             result, tmp_path, applicator="source_apply", job_id="abc123",
         )
-        assert path.name == "fence_violations_abc123_source_apply.json"
+        assert path.name.startswith("fence_violations_abc123_")
+        assert path.name.endswith("_source_apply.json")
+        assert path.exists()
 
     def test_without_job_id(self, tmp_path):
         touched = [TouchedPath(".git/HEAD", "modify")]
@@ -192,15 +194,27 @@ class TestCollisionSafeNaming:
         path = write_fence_violations_artifact(
             result, tmp_path, applicator="test",
         )
-        assert path.name == "fence_violations_test.json"
+        assert path.name.startswith("fence_violations_")
+        assert path.name.endswith("_test.json")
 
     def test_without_any_context(self, tmp_path):
         touched = [TouchedPath(".git/HEAD", "modify")]
         result = check_change_set(tmp_path, FenceSpec(), touched)
         path = write_fence_violations_artifact(result, tmp_path)
-        assert path.name == "fence_violations.json"
+        assert path.name.startswith("fence_violations_")
+        assert path.name.endswith(".json")
+        assert path.exists()
 
-    def test_two_applicators_no_collision(self, tmp_path):
+    def test_event_id_in_payload(self, tmp_path):
+        touched = [TouchedPath(".git/HEAD", "modify")]
+        result = check_change_set(tmp_path, FenceSpec(), touched)
+        path = write_fence_violations_artifact(result, tmp_path, job_id="j1")
+        import json
+        data = json.loads(path.read_text())
+        assert "event_id" in data
+        assert len(data["event_id"]) == 8
+
+    def test_two_writes_unique_event_ids(self, tmp_path):
         touched = [TouchedPath(".git/HEAD", "modify")]
         result = check_change_set(tmp_path, FenceSpec(), touched)
         p1 = write_fence_violations_artifact(

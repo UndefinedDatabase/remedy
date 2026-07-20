@@ -53,6 +53,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import uuid
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
@@ -497,7 +498,7 @@ class FenceViolationError(Exception):
 
     def __init__(self, result: ChangeSetFenceResult) -> None:
         self.result = result
-        paths = ", ".join(v.path for v in result.violations[:3])
+        paths = ", ".join(_redact_path(v.path) for v in result.violations[:3])
         count = len(result.violations)
         suffix = f" (and {count - 3} more)" if count > 3 else ""
         super().__init__(
@@ -570,7 +571,8 @@ def write_fence_violations_artifact(
 ) -> Path | None:
     """Write fence_violations.json to evidence_dir. Returns path or None.
 
-    Collision-safe: uses job_id + applicator suffix when available.
+    No-clobber: uuid-based event_id guarantees unique artifact names.
+    Atomic write via write_file_atomically (O_NOFOLLOW, O_EXCL, fsync).
     Redacts absolute paths in violation details.
     Persistence failure raises — must block repo mutation.
     """
@@ -579,15 +581,17 @@ def write_fence_violations_artifact(
 
     evidence_dir.mkdir(parents=True, exist_ok=True)
 
-    suffix = ""
+    event_id = str(uuid.uuid4())[:8]
+    suffix = f"_{event_id}"
     if job_id:
-        suffix = f"_{job_id[:12]}"
+        suffix = f"_{job_id[:12]}{suffix}"
     if applicator:
         suffix = f"{suffix}_{applicator}"
-    artifact_path = evidence_dir / f"fence_violations{suffix}.json"
+    artifact_name = f"fence_violations{suffix}.json"
 
     payload = {
         "schema": "fence_violations/v1",
+        "event_id": event_id,
         "applicator": applicator,
         "job_id": job_id,
         "intent_id": intent_id,
@@ -605,11 +609,20 @@ def write_fence_violations_artifact(
         ],
     }
 
-    artifact_path.write_text(
-        json.dumps(payload, indent=2, sort_keys=False) + "\n",
-        encoding="utf-8",
+    data = (json.dumps(payload, indent=2, sort_keys=False) + "\n").encode("utf-8")
+
+    from packages.common.secure_fs import write_file_atomically
+
+    dir_fd = os.open(
+        str(evidence_dir),
+        os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0),
     )
-    return artifact_path
+    try:
+        write_file_atomically(dir_fd, artifact_name, data, create_only=True)
+    finally:
+        os.close(dir_fd)
+
+    return evidence_dir / artifact_name
 
 
 @dataclass(frozen=True)
