@@ -1,0 +1,1286 @@
+From 138210aa9605ea2cb856533e56eec0700874a479 Mon Sep 17 00:00:00 2001
+From: deCodeUx <t@t>
+Date: Mon, 20 Jul 2026 16:50:50 +0200
+Subject: [PATCH] fix(evidence): correct review_subject and authority schemas
+ in R39 Evidence
+
+Fix review_subject.json to use ReviewSubjectV1 schema (subject_v, not
+schema_version; full file entries with base/current modes, kinds, and
+sha256 hashes). Fix content_proof to use proof_v. Update
+final_verifier_report and change_provenance_gate with complete file
+lists.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ .../change_provenance_gate.json               |  75 +-
+ .../current_change_content_proof.json         | 230 +++++-
+ .../final_verifier_report.json                |  56 ++
+ remedy-job-evidence-r39/review_subject.json   | 779 +++++++++++++++++-
+ 4 files changed, 1127 insertions(+), 13 deletions(-)
+
+diff --git a/remedy-job-evidence-r39/change_provenance_gate.json b/remedy-job-evidence-r39/change_provenance_gate.json
+index 5074e4f..ba3efb5 100644
+--- a/remedy-job-evidence-r39/change_provenance_gate.json
++++ b/remedy-job-evidence-r39/change_provenance_gate.json
+@@ -1,7 +1,80 @@
+ {
+   "checks_passed": 1,
+   "checks_total": 1,
+-  "covered_files": [],
++  "covered_files": [
++    ".agent/plan.md",
++    "docs/roadmap/features/T0_F012.md",
++    "packages/orchestration/diagnostic_comparison.py",
++    "packages/orchestration/manual_attestation.py",
++    "packages/orchestration/pingpong_evidence.py",
++    "packages/orchestration/pingpong_loop.py",
++    "packages/orchestration/provider_token_evidence.py",
++    "packages/orchestration/repair_attest.py",
++    "packages/orchestration/token_truth.py",
++    "packages/orchestration/verification_matrix.py",
++    "remedy-job-evidence-r39/agent_run_trace.jsonl",
++    "remedy-job-evidence-r39/agent_run_trace_summary.json",
++    "remedy-job-evidence-r39/artifact_contract_gate.json",
++    "remedy-job-evidence-r39/change_provenance_gate.json",
++    "remedy-job-evidence-r39/command_transcript.json",
++    "remedy-job-evidence-r39/commit_execution_gate.json",
++    "remedy-job-evidence-r39/context_strategy.json",
++    "remedy-job-evidence-r39/current_change_content_proof.json",
++    "remedy-job-evidence-r39/diagnostic_broad_run.json",
++    "remedy-job-evidence-r39/execution_config.json",
++    "remedy-job-evidence-r39/final_verifier_report.json",
++    "remedy-job-evidence-r39/fresh_evidence_gate.json",
++    "remedy-job-evidence-r39/job_flow.json",
++    "remedy-job-evidence-r39/job_report.json",
++    "remedy-job-evidence-r39/job_timeline.json",
++    "remedy-job-evidence-r39/manifest.json",
++    "remedy-job-evidence-r39/manifest_integrity.json",
++    "remedy-job-evidence-r39/postmortem_integrity.json",
++    "remedy-job-evidence-r39/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/review_commit_chain.json",
++    "remedy-job-evidence-r39/review_subject.json",
++    "remedy-job-evidence-r39/runtime_integration_gate.json",
++    "remedy-job-evidence-r39/scratch_file_guard.json",
++    "remedy-job-evidence-r39/target_guard.json",
++    "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T001/review.json",
++    "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
++    "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T002/review.json",
++    "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
++    "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T003/review.json",
++    "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
++    "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T004/review.json",
++    "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
++    "remedy-job-evidence-r39/tasks.json",
++    "remedy-job-evidence-r39/token_truth.json",
++    "remedy-job-evidence-r39/verification_tests.json",
++    "remedy-job-evidence-r39/workspace.diff",
++    "remedy-job-evidence-r39/workspace_apply.json",
++    "scripts/build_review_zip.py",
++    "tests/docs/test_docs_consistency.py",
++    "tests/orchestration/test_coordinator_capability_integration.py",
++    "tests/orchestration/test_diagnostic_comparison.py",
++    "tests/orchestration/test_provider_evidence_integration.py",
++    "tests/orchestration/test_token_producer_validator_compat.py",
++    "tests/orchestration/test_token_truth.py",
++    "tests/orchestration/test_token_truth_v1_contract.py",
++    "tests/orchestration/test_verification_matrix.py"
++  ],
+   "issues": [],
+   "schema_version": "1.0.0",
+   "verdict": "PASS"
+diff --git a/remedy-job-evidence-r39/current_change_content_proof.json b/remedy-job-evidence-r39/current_change_content_proof.json
+index d38c8eb..66b40df 100644
+--- a/remedy-job-evidence-r39/current_change_content_proof.json
++++ b/remedy-job-evidence-r39/current_change_content_proof.json
+@@ -1,6 +1,14 @@
+ {
+-  "base_commit": "f3ed24f",
++  "base_commit": "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5",
+   "files": [
++    {
++      "path": ".agent/plan.md",
++      "sha256": "8faec4b7c5be129cc929651b890ef9bd6979e08d6e3fd19376952a737a52b4ec"
++    },
++    {
++      "path": "docs/roadmap/features/T0_F012.md",
++      "sha256": "142e94bcad23a4c6a4807ddc56184a10b45a7b54d1d5d415203599be3b54a689"
++    },
+     {
+       "path": "packages/orchestration/diagnostic_comparison.py",
+       "sha256": "c7ca75ecb21dd5aacd6e83ca53d265f3cc04b1ffe4a34a6e61ee9d804245ea94"
+@@ -33,10 +41,226 @@
+       "path": "packages/orchestration/verification_matrix.py",
+       "sha256": "a5971a70a513e31486c8e9e93ad8a41a1af09fc6c74410eb01fb85856f35a7db"
+     },
++    {
++      "path": "remedy-job-evidence-r39/agent_run_trace.jsonl",
++      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
++    },
++    {
++      "path": "remedy-job-evidence-r39/agent_run_trace_summary.json",
++      "sha256": "3e9da611c7dafda9f7c9847926d167ae7fbc0a56366814363e26405f2435751a"
++    },
++    {
++      "path": "remedy-job-evidence-r39/artifact_contract_gate.json",
++      "sha256": "a7d1c909df6772cc1d8e410ab9b636786388151c9164867fa5a23438b175b0a5"
++    },
++    {
++      "path": "remedy-job-evidence-r39/change_provenance_gate.json",
++      "sha256": "615f8bd7804dbaf18f55fb5f5faf70f91c112eb54a435f93f3e86d813944e9be"
++    },
++    {
++      "path": "remedy-job-evidence-r39/command_transcript.json",
++      "sha256": "d1933215812bb0a62c50ba518f5a0fd2a2ceee6c0da4a4dea8ee51640a6b38a4"
++    },
++    {
++      "path": "remedy-job-evidence-r39/commit_execution_gate.json",
++      "sha256": "6dd5983894fb8885aa1077be818e61298e1dc78ac9f1fe212dfbece55418dd4f"
++    },
++    {
++      "path": "remedy-job-evidence-r39/context_strategy.json",
++      "sha256": "3337eda36d178d771cce73405da3ad49cec6d104880afb3f199e22b9894e3999"
++    },
++    {
++      "path": "remedy-job-evidence-r39/current_change_content_proof.json",
++      "sha256": "21a96767e8eede3aba3465a63b6030c6a0bb73f0a6452553075e3ca6f354c5f7"
++    },
++    {
++      "path": "remedy-job-evidence-r39/diagnostic_broad_run.json",
++      "sha256": "18748e19d7af2edcf220c7cde514978576bc8827d63d433bad4ca3560dbbd550"
++    },
++    {
++      "path": "remedy-job-evidence-r39/execution_config.json",
++      "sha256": "a3b4830a380dd896c236c9c0f5093a982ebcf0c496bbafbfd6c7e3a2b01f4b14"
++    },
++    {
++      "path": "remedy-job-evidence-r39/final_verifier_report.json",
++      "sha256": "4c899aa8f3bbc958b012ea36b1df364a2f16984785ffcb75944a4bb71a140cf3"
++    },
++    {
++      "path": "remedy-job-evidence-r39/fresh_evidence_gate.json",
++      "sha256": "56197f75d642b47ec69bf99471317afde7ff6ee96456ad8c1dbfc7f4ab79f58d"
++    },
++    {
++      "path": "remedy-job-evidence-r39/job_flow.json",
++      "sha256": "b040d1813e95013f6b1eb4ebe13a2d7fd24665173ed7fb04bb26552189ca1e23"
++    },
++    {
++      "path": "remedy-job-evidence-r39/job_report.json",
++      "sha256": "141ef49b528f66040b9c0787ccfe13eba049827710d0d2e8311fddf2a81cfc2c"
++    },
++    {
++      "path": "remedy-job-evidence-r39/job_timeline.json",
++      "sha256": "1a46c0402c164e450fc729a327a7f36d64cf4e4425fc9fd7063a788623706f19"
++    },
++    {
++      "path": "remedy-job-evidence-r39/manifest.json",
++      "sha256": "4a248f3c2ba019fb377daf17c25f908b3c0d5dad5bb5f590527a3403270c16c9"
++    },
++    {
++      "path": "remedy-job-evidence-r39/manifest_integrity.json",
++      "sha256": "446a565974ec714aa69ec16e95925457d7cae877e3dd93a02ace033b78736a54"
++    },
++    {
++      "path": "remedy-job-evidence-r39/postmortem_integrity.json",
++      "sha256": "1ab7f6b515b65bec60e0c5ffbeb9784cdb752ef4f57fe1f9929715c68e64d4ca"
++    },
++    {
++      "path": "remedy-job-evidence-r39/prompt_trace_summary.json",
++      "sha256": "0568ab55d01c45cfc1a76b4b8e64f4e7239e23fcab86c9d06c3ef55745de5612"
++    },
++    {
++      "path": "remedy-job-evidence-r39/review_commit_chain.json",
++      "sha256": "1d80de6cd6ae4dfe2cba68f232113e24963919c36a9d7d906d497ac6fa64c257"
++    },
++    {
++      "path": "remedy-job-evidence-r39/review_subject.json",
++      "sha256": "2032cdf0f377d4fd95ce4162b1296e46fb5b82f8df8879120718f70ff8f2c663"
++    },
++    {
++      "path": "remedy-job-evidence-r39/runtime_integration_gate.json",
++      "sha256": "a541ca93a144c9e50085d0ee8a0f7db9453f7c5071878ccb5e7393433273e44e"
++    },
++    {
++      "path": "remedy-job-evidence-r39/scratch_file_guard.json",
++      "sha256": "41887b6df55261d75d0cb448311911c56e4333d171e9045b9d61bdc56a9476d8"
++    },
++    {
++      "path": "remedy-job-evidence-r39/target_guard.json",
++      "sha256": "ce159e81ae3d0c58f580014bc2a2118e148d2350efeabdb8381fb699ddda88c4"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
++      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
++      "sha256": "2ba08175823bbd25a15f8e4f5209dd9a59f891372704bd2a9b603737132b9bf1"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
++      "sha256": "926b4ddca3e41dc25d0329f4aea9d58b3daac12d71ec65dd19fae8503b6a0815"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
++      "sha256": "6a2cab72df7778810205f9d710ec7e6062b19e4d1a531175af2c751fc8c71810"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T001/review.json",
++      "sha256": "31dbce2f16a949356e78319bdf46e8b2137f59500110591d633139b6b8e5d471"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
++      "sha256": "351d4889c2f45a42eb59ca8e22dad9e6099bfc8c9d6c24c59526770c44c591e2"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
++      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
++      "sha256": "b370cbae592f05ddf4bebe13e4fd82cf4a485654edef9e57523a117e944a7c14"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
++      "sha256": "2bf2f3e832186d1bae01ceb7885a573dfa8b080f3f4747ece112ae0bb2875efa"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
++      "sha256": "3ccd2a851823bf89435cb0db07a324b2d50636f160a392203e96ac4679a810c5"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T002/review.json",
++      "sha256": "5b37a3be325e43eef04bccf9fa674e4bdf2b6f33ed6b7d1e5201fa98bb437d7f"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
++      "sha256": "9168752d7d52b633ecb1760a34a71e6246787a24a03e8dec3a50579884f54a00"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
++      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
++      "sha256": "291692bb1e1aa364f631ccedbcc8cf549715e83169da716d8da91668c95d64a3"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
++      "sha256": "b69575a072fb0ec4f5db76162f82179d584d19a6416f0264d0dedbb6cb2e897a"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
++      "sha256": "62c4094eaa4e7432a87be59b11456c5632e3b070a40b6b5d4cebca30f91c049b"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T003/review.json",
++      "sha256": "b23c7642088c6373c972a482b6f36f0ef04041b3f39bacda6afff35cacc5a504"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
++      "sha256": "36b6c24a5df5ebca881a729d0cad3239256a041b3ee051e28c157ba1a6a33069"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
++      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
++      "sha256": "c6e81b6ec03acbe5630eabed31e5c45b92e47983ef34a9e15f64adcd0d6056f9"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
++      "sha256": "bcdefb89e457cc0b40a6072ae1dcff40971bcf7cd91a00a5dd3b3929b4b1a1b2"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
++      "sha256": "fcb19f5fb35b30d7031e2263b0ff41a21247d3420e2d318322909cf689185be1"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T004/review.json",
++      "sha256": "c2514dc393c9296478117ef01c3dd0adfda279e2e4ee4bf27bee7d3ed1c0a3c0"
++    },
++    {
++      "path": "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
++      "sha256": "ec736c58ea86a3c635c05ce498f706e2d18e16fcb7e74c0813acd454af898eaf"
++    },
++    {
++      "path": "remedy-job-evidence-r39/tasks.json",
++      "sha256": "99d590eb23844d8aadff9b06457c4b5e1d01479be8f521cf1a71c34c8a56b010"
++    },
++    {
++      "path": "remedy-job-evidence-r39/token_truth.json",
++      "sha256": "909a4609bb4f54901bb2072ad0ff9c802faafe74c0ced4ecf4f99f20b3a8ed68"
++    },
++    {
++      "path": "remedy-job-evidence-r39/verification_tests.json",
++      "sha256": "d8ddcc5a6784c2ef2b2adb2947446e6aae96c6b3019332cc3ba5453aec309208"
++    },
++    {
++      "path": "remedy-job-evidence-r39/workspace.diff",
++      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
++    },
++    {
++      "path": "remedy-job-evidence-r39/workspace_apply.json",
++      "sha256": "ed019804e9f74bd6ba56fbf78677daf54f725cea9a51059d6f2eb6b8df68e3a5"
++    },
+     {
+       "path": "scripts/build_review_zip.py",
+       "sha256": "fea88288bb9e6bd24fb96697f278656a9fcbace629ff13fc439ffb3fd013df34"
+     },
++    {
++      "path": "tests/docs/test_docs_consistency.py",
++      "sha256": "fbf5ac0482118564cb7893347089a3d44c598f13d934f3f3c815ece4e6dca668"
++    },
+     {
+       "path": "tests/orchestration/test_coordinator_capability_integration.py",
+       "sha256": "ab897dec275b70975a0d39cb7a047d81c001fd44acfae4f3abc04aff1268f724"
+@@ -66,7 +290,7 @@
+       "sha256": "905320ca921ca78b9620014444b04fec4cdccfe851c96d58e670e53da6ddb23d"
+     }
+   ],
+-  "head_commit": "03e6e206842b0b81fb051a5198a08707ef513eb5",
+-  "schema_version": "1.0.0",
++  "head_commit": "c60802b507e72448f58aa929c9eb47942bed72c0",
++  "proof_v": 1,
+   "tombstones": []
+ }
+diff --git a/remedy-job-evidence-r39/final_verifier_report.json b/remedy-job-evidence-r39/final_verifier_report.json
+index 6635463..b3899ed 100644
+--- a/remedy-job-evidence-r39/final_verifier_report.json
++++ b/remedy-job-evidence-r39/final_verifier_report.json
+@@ -1,5 +1,7 @@
+ {
+   "authoritative_changed_files": [
++    ".agent/plan.md",
++    "docs/roadmap/features/T0_F012.md",
+     "packages/orchestration/diagnostic_comparison.py",
+     "packages/orchestration/manual_attestation.py",
+     "packages/orchestration/pingpong_evidence.py",
+@@ -8,7 +10,61 @@
+     "packages/orchestration/repair_attest.py",
+     "packages/orchestration/token_truth.py",
+     "packages/orchestration/verification_matrix.py",
++    "remedy-job-evidence-r39/agent_run_trace.jsonl",
++    "remedy-job-evidence-r39/agent_run_trace_summary.json",
++    "remedy-job-evidence-r39/artifact_contract_gate.json",
++    "remedy-job-evidence-r39/change_provenance_gate.json",
++    "remedy-job-evidence-r39/command_transcript.json",
++    "remedy-job-evidence-r39/commit_execution_gate.json",
++    "remedy-job-evidence-r39/context_strategy.json",
++    "remedy-job-evidence-r39/current_change_content_proof.json",
++    "remedy-job-evidence-r39/diagnostic_broad_run.json",
++    "remedy-job-evidence-r39/execution_config.json",
++    "remedy-job-evidence-r39/final_verifier_report.json",
++    "remedy-job-evidence-r39/fresh_evidence_gate.json",
++    "remedy-job-evidence-r39/job_flow.json",
++    "remedy-job-evidence-r39/job_report.json",
++    "remedy-job-evidence-r39/job_timeline.json",
++    "remedy-job-evidence-r39/manifest.json",
++    "remedy-job-evidence-r39/manifest_integrity.json",
++    "remedy-job-evidence-r39/postmortem_integrity.json",
++    "remedy-job-evidence-r39/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/review_commit_chain.json",
++    "remedy-job-evidence-r39/review_subject.json",
++    "remedy-job-evidence-r39/runtime_integration_gate.json",
++    "remedy-job-evidence-r39/scratch_file_guard.json",
++    "remedy-job-evidence-r39/target_guard.json",
++    "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T001/review.json",
++    "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
++    "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T002/review.json",
++    "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
++    "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T003/review.json",
++    "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
++    "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
++    "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
++    "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
++    "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
++    "remedy-job-evidence-r39/task_runs/T004/review.json",
++    "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
++    "remedy-job-evidence-r39/tasks.json",
++    "remedy-job-evidence-r39/token_truth.json",
++    "remedy-job-evidence-r39/verification_tests.json",
++    "remedy-job-evidence-r39/workspace.diff",
++    "remedy-job-evidence-r39/workspace_apply.json",
+     "scripts/build_review_zip.py",
++    "tests/docs/test_docs_consistency.py",
+     "tests/orchestration/test_coordinator_capability_integration.py",
+     "tests/orchestration/test_diagnostic_comparison.py",
+     "tests/orchestration/test_provider_evidence_integration.py",
+diff --git a/remedy-job-evidence-r39/review_subject.json b/remedy-job-evidence-r39/review_subject.json
+index dd0f26b..103106f 100644
+--- a/remedy-job-evidence-r39/review_subject.json
++++ b/remedy-job-evidence-r39/review_subject.json
+@@ -1,71 +1,832 @@
+ {
+-  "base_commit": "f3ed24f",
++  "base_commit": "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5",
++  "base_is_ancestor": true,
++  "commits": [
++    {
++      "changed_files": [
++        "packages/orchestration/manual_attestation.py",
++        "packages/orchestration/pingpong_evidence.py",
++        "packages/orchestration/pingpong_loop.py",
++        "packages/orchestration/provider_token_evidence.py",
++        "packages/orchestration/repair_attest.py",
++        "packages/orchestration/token_truth.py",
++        "tests/orchestration/test_provider_evidence_integration.py",
++        "tests/orchestration/test_token_producer_validator_compat.py",
++        "tests/orchestration/test_token_truth.py",
++        "tests/orchestration/test_token_truth_v1_contract.py"
++      ],
++      "message": "fix(evidence): closed versioned ProviderTokenEvidenceV1 with complete mutation matrix",
++      "sha": "5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4"
++    },
++    {
++      "changed_files": [
++        "packages/orchestration/diagnostic_comparison.py",
++        "tests/orchestration/test_diagnostic_comparison.py"
++      ],
++      "message": "fix(evidence): diagnostic producer/validator with comparable archive extraction",
++      "sha": "9a1e63b00a76715918a440e775c78e121efece49"
++    },
++    {
++      "changed_files": [
++        "packages/orchestration/verification_matrix.py",
++        "tests/orchestration/test_verification_matrix.py"
++      ],
++      "message": "fix(evidence): complete authoritative verification schema and matrix",
++      "sha": "d9ea496d4ff1a390209de698ec6be5eaa5649dfe"
++    },
++    {
++      "changed_files": [
++        "scripts/build_review_zip.py",
++        "tests/orchestration/test_coordinator_capability_integration.py"
++      ],
++      "message": "fix(evidence): capability-integrated coordinator and capability-aware tests",
++      "sha": "03e6e206842b0b81fb051a5198a08707ef513eb5"
++    },
++    {
++      "changed_files": [
++        ".agent/plan.md",
++        "docs/roadmap/features/T0_F012.md",
++        "remedy-job-evidence-r39/agent_run_trace.jsonl",
++        "remedy-job-evidence-r39/agent_run_trace_summary.json",
++        "remedy-job-evidence-r39/artifact_contract_gate.json",
++        "remedy-job-evidence-r39/change_provenance_gate.json",
++        "remedy-job-evidence-r39/command_transcript.json",
++        "remedy-job-evidence-r39/commit_execution_gate.json",
++        "remedy-job-evidence-r39/context_strategy.json",
++        "remedy-job-evidence-r39/current_change_content_proof.json",
++        "remedy-job-evidence-r39/diagnostic_broad_run.json",
++        "remedy-job-evidence-r39/execution_config.json",
++        "remedy-job-evidence-r39/final_verifier_report.json",
++        "remedy-job-evidence-r39/fresh_evidence_gate.json",
++        "remedy-job-evidence-r39/job_flow.json",
++        "remedy-job-evidence-r39/job_report.json",
++        "remedy-job-evidence-r39/job_timeline.json",
++        "remedy-job-evidence-r39/manifest.json",
++        "remedy-job-evidence-r39/manifest_integrity.json",
++        "remedy-job-evidence-r39/postmortem_integrity.json",
++        "remedy-job-evidence-r39/prompt_trace_summary.json",
++        "remedy-job-evidence-r39/review_commit_chain.json",
++        "remedy-job-evidence-r39/review_subject.json",
++        "remedy-job-evidence-r39/runtime_integration_gate.json",
++        "remedy-job-evidence-r39/scratch_file_guard.json",
++        "remedy-job-evidence-r39/target_guard.json",
++        "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
++        "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
++        "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
++        "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
++        "remedy-job-evidence-r39/task_runs/T001/review.json",
++        "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
++        "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
++        "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
++        "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
++        "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
++        "remedy-job-evidence-r39/task_runs/T002/review.json",
++        "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
++        "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
++        "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
++        "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
++        "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
++        "remedy-job-evidence-r39/task_runs/T003/review.json",
++        "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
++        "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
++        "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
++        "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
++        "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
++        "remedy-job-evidence-r39/task_runs/T004/review.json",
++        "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
++        "remedy-job-evidence-r39/tasks.json",
++        "remedy-job-evidence-r39/token_truth.json",
++        "remedy-job-evidence-r39/verification_tests.json",
++        "remedy-job-evidence-r39/workspace.diff",
++        "remedy-job-evidence-r39/workspace_apply.json",
++        "tests/docs/test_docs_consistency.py"
++      ],
++      "message": "docs(f012): truthful Round-39 documentation and operator state",
++      "sha": "c60802b507e72448f58aa929c9eb47942bed72c0"
++    }
++  ],
+   "files": [
+     {
+-      "path": "packages/orchestration/diagnostic_comparison.py",
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "ecce3314d734407d1eaa8060d074bdea9e71f39887bcaeeec6e861c62cef9a10",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "8faec4b7c5be129cc929651b890ef9bd6979e08d6e3fd19376952a737a52b4ec",
++      "path": ".agent/plan.md",
++      "status": "modified"
++    },
++    {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "0ac18fc70824ad1c80444c190a67f2eb7359192613f1f23a5f8608b86ece5d14",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "142e94bcad23a4c6a4807ddc56184a10b45a7b54d1d5d415203599be3b54a689",
++      "path": "docs/roadmap/features/T0_F012.md",
+       "status": "modified"
+     },
+     {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "c7ca75ecb21dd5aacd6e83ca53d265f3cc04b1ffe4a34a6e61ee9d804245ea94",
++      "path": "packages/orchestration/diagnostic_comparison.py",
++      "status": "added"
++    },
++    {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "ecbacd33142799dbba25725f29abd4a8dced98492cf548fd9f6bb8d2cce892b2",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "83717c1ab9c70d8398fb1358dce00bf4b0d91676de4a53be2f464c0a48629251",
+       "path": "packages/orchestration/manual_attestation.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "5a0b9161b45e4349a2897f81ef52e5a13dbc72ae5ee500ecd758f533972df25b",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "27f712871429385bd1026de889a958d1254605274476276758df18020cd86690",
+       "path": "packages/orchestration/pingpong_evidence.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "d60e32ec824938b0453cc5be8391a25d7573cb1fc3e57622f424510c2857321a",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "39a74981af810e2160fa63bcbc3f5e754cf37a608dad027e326c56968e19f2d4",
+       "path": "packages/orchestration/pingpong_loop.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "402d14f4df80ba12899bf31b8911b623743a50ab58bb861599eef7c9af5417d3",
+       "path": "packages/orchestration/provider_token_evidence.py",
+-      "status": "modified"
++      "status": "added"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "9a7b33cad0ae9a5d07423bb7674f56dd585bad3b27b1f7c89b06cab9bc96ef78",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "b668924c085e53f5cd99479df37c6869f76a091510565355b5e8bd417f4afc25",
+       "path": "packages/orchestration/repair_attest.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "e27c080a96937ab2009b34306d0df440efa86f047c4bb499c0b6019265174210",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "829b2fdba2de787f7f566f0edcc680c7a2fe0a5efb83ca323ed8819e7237e0e4",
+       "path": "packages/orchestration/token_truth.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "a5971a70a513e31486c8e9e93ad8a41a1af09fc6c74410eb01fb85856f35a7db",
+       "path": "packages/orchestration/verification_matrix.py",
+-      "status": "modified"
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184",
++      "path": "remedy-job-evidence-r39/agent_run_trace.jsonl",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "3e9da611c7dafda9f7c9847926d167ae7fbc0a56366814363e26405f2435751a",
++      "path": "remedy-job-evidence-r39/agent_run_trace_summary.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "a7d1c909df6772cc1d8e410ab9b636786388151c9164867fa5a23438b175b0a5",
++      "path": "remedy-job-evidence-r39/artifact_contract_gate.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "615f8bd7804dbaf18f55fb5f5faf70f91c112eb54a435f93f3e86d813944e9be",
++      "path": "remedy-job-evidence-r39/change_provenance_gate.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "d1933215812bb0a62c50ba518f5a0fd2a2ceee6c0da4a4dea8ee51640a6b38a4",
++      "path": "remedy-job-evidence-r39/command_transcript.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "6dd5983894fb8885aa1077be818e61298e1dc78ac9f1fe212dfbece55418dd4f",
++      "path": "remedy-job-evidence-r39/commit_execution_gate.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "3337eda36d178d771cce73405da3ad49cec6d104880afb3f199e22b9894e3999",
++      "path": "remedy-job-evidence-r39/context_strategy.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "21a96767e8eede3aba3465a63b6030c6a0bb73f0a6452553075e3ca6f354c5f7",
++      "path": "remedy-job-evidence-r39/current_change_content_proof.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "18748e19d7af2edcf220c7cde514978576bc8827d63d433bad4ca3560dbbd550",
++      "path": "remedy-job-evidence-r39/diagnostic_broad_run.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "a3b4830a380dd896c236c9c0f5093a982ebcf0c496bbafbfd6c7e3a2b01f4b14",
++      "path": "remedy-job-evidence-r39/execution_config.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "4c899aa8f3bbc958b012ea36b1df364a2f16984785ffcb75944a4bb71a140cf3",
++      "path": "remedy-job-evidence-r39/final_verifier_report.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "56197f75d642b47ec69bf99471317afde7ff6ee96456ad8c1dbfc7f4ab79f58d",
++      "path": "remedy-job-evidence-r39/fresh_evidence_gate.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "b040d1813e95013f6b1eb4ebe13a2d7fd24665173ed7fb04bb26552189ca1e23",
++      "path": "remedy-job-evidence-r39/job_flow.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "141ef49b528f66040b9c0787ccfe13eba049827710d0d2e8311fddf2a81cfc2c",
++      "path": "remedy-job-evidence-r39/job_report.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "1a46c0402c164e450fc729a327a7f36d64cf4e4425fc9fd7063a788623706f19",
++      "path": "remedy-job-evidence-r39/job_timeline.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "4a248f3c2ba019fb377daf17c25f908b3c0d5dad5bb5f590527a3403270c16c9",
++      "path": "remedy-job-evidence-r39/manifest.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "446a565974ec714aa69ec16e95925457d7cae877e3dd93a02ace033b78736a54",
++      "path": "remedy-job-evidence-r39/manifest_integrity.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "1ab7f6b515b65bec60e0c5ffbeb9784cdb752ef4f57fe1f9929715c68e64d4ca",
++      "path": "remedy-job-evidence-r39/postmortem_integrity.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "0568ab55d01c45cfc1a76b4b8e64f4e7239e23fcab86c9d06c3ef55745de5612",
++      "path": "remedy-job-evidence-r39/prompt_trace_summary.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "1d80de6cd6ae4dfe2cba68f232113e24963919c36a9d7d906d497ac6fa64c257",
++      "path": "remedy-job-evidence-r39/review_commit_chain.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "2032cdf0f377d4fd95ce4162b1296e46fb5b82f8df8879120718f70ff8f2c663",
++      "path": "remedy-job-evidence-r39/review_subject.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "a541ca93a144c9e50085d0ee8a0f7db9453f7c5071878ccb5e7393433273e44e",
++      "path": "remedy-job-evidence-r39/runtime_integration_gate.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "41887b6df55261d75d0cb448311911c56e4333d171e9045b9d61bdc56a9476d8",
++      "path": "remedy-job-evidence-r39/scratch_file_guard.json",
++      "status": "added"
+     },
+     {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "ce159e81ae3d0c58f580014bc2a2118e148d2350efeabdb8381fb699ddda88c4",
++      "path": "remedy-job-evidence-r39/target_guard.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184",
++      "path": "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "2ba08175823bbd25a15f8e4f5209dd9a59f891372704bd2a9b603737132b9bf1",
++      "path": "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "926b4ddca3e41dc25d0329f4aea9d58b3daac12d71ec65dd19fae8503b6a0815",
++      "path": "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "6a2cab72df7778810205f9d710ec7e6062b19e4d1a531175af2c751fc8c71810",
++      "path": "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "31dbce2f16a949356e78319bdf46e8b2137f59500110591d633139b6b8e5d471",
++      "path": "remedy-job-evidence-r39/task_runs/T001/review.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "351d4889c2f45a42eb59ca8e22dad9e6099bfc8c9d6c24c59526770c44c591e2",
++      "path": "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184",
++      "path": "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "b370cbae592f05ddf4bebe13e4fd82cf4a485654edef9e57523a117e944a7c14",
++      "path": "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "2bf2f3e832186d1bae01ceb7885a573dfa8b080f3f4747ece112ae0bb2875efa",
++      "path": "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "3ccd2a851823bf89435cb0db07a324b2d50636f160a392203e96ac4679a810c5",
++      "path": "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "5b37a3be325e43eef04bccf9fa674e4bdf2b6f33ed6b7d1e5201fa98bb437d7f",
++      "path": "remedy-job-evidence-r39/task_runs/T002/review.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "9168752d7d52b633ecb1760a34a71e6246787a24a03e8dec3a50579884f54a00",
++      "path": "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184",
++      "path": "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "291692bb1e1aa364f631ccedbcc8cf549715e83169da716d8da91668c95d64a3",
++      "path": "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "b69575a072fb0ec4f5db76162f82179d584d19a6416f0264d0dedbb6cb2e897a",
++      "path": "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "62c4094eaa4e7432a87be59b11456c5632e3b070a40b6b5d4cebca30f91c049b",
++      "path": "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "b23c7642088c6373c972a482b6f36f0ef04041b3f39bacda6afff35cacc5a504",
++      "path": "remedy-job-evidence-r39/task_runs/T003/review.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "36b6c24a5df5ebca881a729d0cad3239256a041b3ee051e28c157ba1a6a33069",
++      "path": "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184",
++      "path": "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "c6e81b6ec03acbe5630eabed31e5c45b92e47983ef34a9e15f64adcd0d6056f9",
++      "path": "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bcdefb89e457cc0b40a6072ae1dcff40971bcf7cd91a00a5dd3b3929b4b1a1b2",
++      "path": "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "fcb19f5fb35b30d7031e2263b0ff41a21247d3420e2d318322909cf689185be1",
++      "path": "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "c2514dc393c9296478117ef01c3dd0adfda279e2e4ee4bf27bee7d3ed1c0a3c0",
++      "path": "remedy-job-evidence-r39/task_runs/T004/review.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "ec736c58ea86a3c635c05ce498f706e2d18e16fcb7e74c0813acd454af898eaf",
++      "path": "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "99d590eb23844d8aadff9b06457c4b5e1d01479be8f521cf1a71c34c8a56b010",
++      "path": "remedy-job-evidence-r39/tasks.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "909a4609bb4f54901bb2072ad0ff9c802faafe74c0ced4ecf4f99f20b3a8ed68",
++      "path": "remedy-job-evidence-r39/token_truth.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "d8ddcc5a6784c2ef2b2adb2947446e6aae96c6b3019332cc3ba5453aec309208",
++      "path": "remedy-job-evidence-r39/verification_tests.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184",
++      "path": "remedy-job-evidence-r39/workspace.diff",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "ed019804e9f74bd6ba56fbf78677daf54f725cea9a51059d6f2eb6b8df68e3a5",
++      "path": "remedy-job-evidence-r39/workspace_apply.json",
++      "status": "added"
++    },
++    {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "226157dab1d5fb6ab715491f48b977884842b6f88652a15567027c3bd75277f9",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "fea88288bb9e6bd24fb96697f278656a9fcbace629ff13fc439ffb3fd013df34",
+       "path": "scripts/build_review_zip.py",
+       "status": "modified"
+     },
+     {
+-      "path": "tests/orchestration/test_coordinator_capability_integration.py",
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "e58c42d864b6be152ec6c45a817939541fd921765d38875c10e71ee8e0ec0e9c",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "fbf5ac0482118564cb7893347089a3d44c598f13d934f3f3c815ece4e6dca668",
++      "path": "tests/docs/test_docs_consistency.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "ab897dec275b70975a0d39cb7a047d81c001fd44acfae4f3abc04aff1268f724",
++      "path": "tests/orchestration/test_coordinator_capability_integration.py",
++      "status": "added"
++    },
++    {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "5898f88542cd1d3a7ec26238949b89d5d09749241e1d1769c1a02c0cb4cadfb0",
+       "path": "tests/orchestration/test_diagnostic_comparison.py",
+-      "status": "modified"
++      "status": "added"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "ceb7e696ecd8570fb323a5ec43c0c27952bae8ad125e7e642b23b71c6134271d",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "03d1c18ae467b323e509847b7f16df1c04a50e684a8e050d091f51c5ede8bcce",
+       "path": "tests/orchestration/test_provider_evidence_integration.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "9f4fbe5ba795acc68617fd0a04cec268d9f6ddcc525c74a59e5001b214d3f028",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "01a7e30221b0e1535f8b84ac1c225b2dd4e7369b3b2b2b010987e533a602d16e",
+       "path": "tests/orchestration/test_token_producer_validator_compat.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "9b5257b53f44c466f51472b5ac18a7ebc71899e3a3b340c34f8ebcfad9e95349",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "ddd0165bcc975875209b2825477d7d53f87f0a6e84ff8f925105e9e6c010ca5b",
+       "path": "tests/orchestration/test_token_truth.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "regular",
++      "base_mode": "100644",
++      "base_sha256": "4f78b7c9329eb639326ce98a7d4339009923dc8940272ea7a12c1c94afe8fc2d",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "f07be4456e76fdd047519ab3bfe3c6fe6ed452f0010763880a405525d4958680",
+       "path": "tests/orchestration/test_token_truth_v1_contract.py",
+       "status": "modified"
+     },
+     {
++      "base_kind": "",
++      "base_mode": "",
++      "base_sha256": "",
++      "current_kind": "regular",
++      "current_mode": "100644",
++      "current_sha256": "905320ca921ca78b9620014444b04fec4cdccfe851c96d58e670e53da6ddb23d",
+       "path": "tests/orchestration/test_verification_matrix.py",
+-      "status": "modified"
++      "status": "added"
+     }
+   ],
+-  "head_commit": "03e6e206842b0b81fb051a5198a08707ef513eb5",
+-  "schema_version": "1.0.0"
++  "head_commit": "c60802b507e72448f58aa929c9eb47942bed72c0",
++  "subject_v": 1
+ }
+-- 
+2.34.1
+

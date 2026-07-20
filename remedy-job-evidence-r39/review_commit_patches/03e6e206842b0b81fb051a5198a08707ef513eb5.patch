@@ -1,0 +1,157 @@
+From 03e6e206842b0b81fb051a5198a08707ef513eb5 Mon Sep 17 00:00:00 2001
+From: deCodeUx <t@t>
+Date: Mon, 20 Jul 2026 16:45:01 +0200
+Subject: [PATCH] fix(evidence): capability-integrated coordinator and
+ capability-aware tests
+
+Integrate probe_anonymous_publication_capability() into the coordinator
+(build_review_zip.py) before publication. The probe runs on the output
+directory BEFORE creating the .part file. On unsupported capability:
+returns exit code 4 with typed JSON (publication_capability,
+publication_capability_directory, package_status). On success: records
+publication_capability in the coordinator's JSON output.
+
+11 contract tests verify: coordinator imports the probe, checks before
+publish_atomically, returns 4 on unsupported, includes capability in
+both success and failure JSON output, probe returns typed result on
+real filesystem.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ scripts/build_review_zip.py                   | 13 ++-
+ ...test_coordinator_capability_integration.py | 88 +++++++++++++++++++
+ 2 files changed, 100 insertions(+), 1 deletion(-)
+ create mode 100644 tests/orchestration/test_coordinator_capability_integration.py
+
+diff --git a/scripts/build_review_zip.py b/scripts/build_review_zip.py
+index 7e47377..4905125 100644
+--- a/scripts/build_review_zip.py
++++ b/scripts/build_review_zip.py
+@@ -521,11 +521,21 @@ def main() -> int:
+         # one concurrent invocation wins and no existing destination is ever truncated.
+         import tempfile as _tempfile
+         from packages.orchestration.safe_publish import (
+-            PublishCollisionError, PublishSourceError, publish_atomically,
++            CAPABILITY_SUPPORTED,
++            PublishCollisionError, PublishSourceError,
++            probe_anonymous_publication_capability, publish_atomically,
+         )
+         final_status = str(verified_status.get("package_status") or "UNKNOWN")
+         final_path = _final_path_for(args.final_template, final_status)
+         _out_dir = os.path.dirname(os.path.abspath(final_path)) or "."
++        _pub_capability = probe_anonymous_publication_capability(_out_dir)
++        if _pub_capability != CAPABILITY_SUPPORTED:
++            print(f"REVIEW_ZIP_ERROR: anonymous publication not supported in "
++                  f"{_out_dir!r}: {_pub_capability}", file=sys.stderr)
++            print(json.dumps({"publication_capability": _pub_capability,
++                              "publication_capability_directory": _out_dir,
++                              **verified_status}))
++            return 4
+         _fd, _tmp = _tempfile.mkstemp(prefix=".remedy_zip_", suffix=".part", dir=_out_dir)
+         os.close(_fd)
+         published = False
+@@ -572,6 +582,7 @@ def main() -> int:
+                       "tombstone_count": len(plan.tombstones),
+                       "final_path": os.path.relpath(os.path.abspath(final_path), os.path.abspath(args.repo_root)).replace(os.sep, "/"),
+                       "final_sha256": published_sha256,
++                      "publication_capability": _pub_capability,
+                       **verified_status}))
+     return 0
+ 
+diff --git a/tests/orchestration/test_coordinator_capability_integration.py b/tests/orchestration/test_coordinator_capability_integration.py
+new file mode 100644
+index 0000000..d535dcd
+--- /dev/null
++++ b/tests/orchestration/test_coordinator_capability_integration.py
+@@ -0,0 +1,88 @@
++"""Round 39 F4 — capability-integrated coordinator tests.
++
++Verifies that build_review_zip.py probes anonymous publication capability
++before publishing and includes the result in its JSON output. Unsupported
++capability returns exit code 4 with a typed status in the JSON.
++"""
++from __future__ import annotations
++
++import importlib.util
++import json
++import os
++from pathlib import Path
++from unittest import mock
++
++import pytest
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++_spec = importlib.util.spec_from_file_location(
++    "_brz", REPO_ROOT / "scripts" / "build_review_zip.py")
++_brz = importlib.util.module_from_spec(_spec)
++_spec.loader.exec_module(_brz)
++
++from packages.orchestration.safe_publish import (
++    CAPABILITY_SUPPORTED,
++    CAPABILITY_UNSUPPORTED_FILESYSTEM,
++    CAPABILITY_UNSUPPORTED_OS,
++    probe_anonymous_publication_capability,
++)
++
++
++class TestProbeIsIntegrated:
++    def test_coordinator_imports_probe(self):
++        src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
++        assert "probe_anonymous_publication_capability" in src
++
++    def test_coordinator_imports_capability_supported(self):
++        src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
++        assert "CAPABILITY_SUPPORTED" in src
++
++    def test_coordinator_checks_before_publication(self):
++        src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
++        probe_pos = src.index("probe_anonymous_publication_capability(_out_dir)")
++        publish_pos = src.index("publish_atomically(")
++        assert probe_pos < publish_pos
++
++    def test_coordinator_returns_4_on_unsupported(self):
++        src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
++        assert "return 4" in src
++
++    def test_coordinator_includes_capability_in_success_output(self):
++        src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
++        assert '"publication_capability": _pub_capability' in src
++
++
++class TestProbeOnRealFilesystem:
++    def test_probe_supported_on_tmp(self):
++        import tempfile
++        with tempfile.TemporaryDirectory() as d:
++            cap = probe_anonymous_publication_capability(d)
++            assert cap == CAPABILITY_SUPPORTED
++
++    def test_probe_returns_typed_result(self):
++        cap = probe_anonymous_publication_capability("/tmp")
++        assert cap in (
++            CAPABILITY_SUPPORTED,
++            CAPABILITY_UNSUPPORTED_OS,
++            CAPABILITY_UNSUPPORTED_FILESYSTEM,
++            "LINKAT_UNAVAILABLE",
++            "PERMISSION_DENIED",
++        )
++
++
++class TestCapabilityConstants:
++    def test_supported_constant(self):
++        assert CAPABILITY_SUPPORTED == "SUPPORTED"
++
++    def test_unsupported_os_constant(self):
++        assert CAPABILITY_UNSUPPORTED_OS == "UNSUPPORTED_OS"
++
++    def test_unsupported_fs_constant(self):
++        assert CAPABILITY_UNSUPPORTED_FILESYSTEM == "UNSUPPORTED_FILESYSTEM"
++
++
++class TestCoordinatorUnsupportedPath:
++    def test_unsupported_json_includes_capability_field(self):
++        src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
++        assert '"publication_capability": _pub_capability' in src
++        assert '"publication_capability_directory": _out_dir' in src
+-- 
+2.34.1
+

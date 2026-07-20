@@ -1,20 +1,146 @@
 {
   "commits": [
     {
-      "message": "fix(evidence): closed versioned ProviderTokenEvidenceV1 with complete mutation matrix",
-      "sha": "5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4"
+      "changed_files": [
+        "packages/orchestration/manual_attestation.py",
+        "packages/orchestration/pingpong_evidence.py",
+        "packages/orchestration/pingpong_loop.py",
+        "packages/orchestration/provider_token_evidence.py",
+        "packages/orchestration/repair_attest.py",
+        "packages/orchestration/token_truth.py",
+        "tests/orchestration/test_provider_evidence_integration.py",
+        "tests/orchestration/test_token_producer_validator_compat.py",
+        "tests/orchestration/test_token_truth.py",
+        "tests/orchestration/test_token_truth_v1_contract.py"
+      ],
+      "commit": "5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4",
+      "parents": [
+        "f3ed24ff4b95451787a4eeffa4e84f5229fa34f2"
+      ],
+      "patch_sha256": "fc629bb084782d5dbe1d55517bfa327e5c7e8fb2843dd1bdc36336a321618797",
+      "subject": "fix(evidence): closed versioned ProviderTokenEvidenceV1 with complete mutation matrix",
+      "tree": "2e40ac4aaeb561f6d31e99522bd62caf3d535e03"
     },
     {
-      "message": "fix(evidence): diagnostic producer/validator with comparable archive extraction",
-      "sha": "9a1e63b00a76715918a440e775c78e121efece49"
+      "changed_files": [
+        "packages/orchestration/diagnostic_comparison.py",
+        "tests/orchestration/test_diagnostic_comparison.py"
+      ],
+      "commit": "9a1e63b00a76715918a440e775c78e121efece49",
+      "parents": [
+        "5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4"
+      ],
+      "patch_sha256": "071580a44dc69216cec31508d0e5692fcb57818db318b392e62f4eb3142b42fb",
+      "subject": "fix(evidence): diagnostic producer/validator with comparable archive extraction",
+      "tree": "81fe15f07ce6ac88933e8653343ff10225d9253c"
     },
     {
-      "message": "fix(evidence): complete authoritative verification schema and matrix",
-      "sha": "d9ea496d4ff1a390209de698ec6be5eaa5649dfe"
+      "changed_files": [
+        "packages/orchestration/verification_matrix.py",
+        "tests/orchestration/test_verification_matrix.py"
+      ],
+      "commit": "d9ea496d4ff1a390209de698ec6be5eaa5649dfe",
+      "parents": [
+        "9a1e63b00a76715918a440e775c78e121efece49"
+      ],
+      "patch_sha256": "b933a0363f52bd4bd5a35118b4edc28cdbe9eb2210e08ae982cf507bd3bb0df5",
+      "subject": "fix(evidence): complete authoritative verification schema and matrix",
+      "tree": "44d6fd08ae0ca204f34cbd16f7ef2d01a41738a8"
     },
     {
-      "message": "fix(evidence): capability-integrated coordinator and capability-aware tests",
-      "sha": "03e6e206842b0b81fb051a5198a08707ef513eb5"
+      "changed_files": [
+        "scripts/build_review_zip.py",
+        "tests/orchestration/test_coordinator_capability_integration.py"
+      ],
+      "commit": "03e6e206842b0b81fb051a5198a08707ef513eb5",
+      "parents": [
+        "d9ea496d4ff1a390209de698ec6be5eaa5649dfe"
+      ],
+      "patch_sha256": "c39c146d70e942d0bb8eae4960ca1e251c5b8f4bfc651b316187992a03762cbb",
+      "subject": "fix(evidence): capability-integrated coordinator and capability-aware tests",
+      "tree": "401f787d9ff687d2b7fb293d5d6a369b2f370ef0"
+    },
+    {
+      "changed_files": [
+        ".agent/plan.md",
+        "docs/roadmap/features/T0_F012.md",
+        "remedy-job-evidence-r39/agent_run_trace.jsonl",
+        "remedy-job-evidence-r39/agent_run_trace_summary.json",
+        "remedy-job-evidence-r39/artifact_contract_gate.json",
+        "remedy-job-evidence-r39/change_provenance_gate.json",
+        "remedy-job-evidence-r39/command_transcript.json",
+        "remedy-job-evidence-r39/commit_execution_gate.json",
+        "remedy-job-evidence-r39/context_strategy.json",
+        "remedy-job-evidence-r39/current_change_content_proof.json",
+        "remedy-job-evidence-r39/diagnostic_broad_run.json",
+        "remedy-job-evidence-r39/execution_config.json",
+        "remedy-job-evidence-r39/final_verifier_report.json",
+        "remedy-job-evidence-r39/fresh_evidence_gate.json",
+        "remedy-job-evidence-r39/job_flow.json",
+        "remedy-job-evidence-r39/job_report.json",
+        "remedy-job-evidence-r39/job_timeline.json",
+        "remedy-job-evidence-r39/manifest.json",
+        "remedy-job-evidence-r39/manifest_integrity.json",
+        "remedy-job-evidence-r39/postmortem_integrity.json",
+        "remedy-job-evidence-r39/prompt_trace_summary.json",
+        "remedy-job-evidence-r39/review_commit_chain.json",
+        "remedy-job-evidence-r39/review_subject.json",
+        "remedy-job-evidence-r39/runtime_integration_gate.json",
+        "remedy-job-evidence-r39/scratch_file_guard.json",
+        "remedy-job-evidence-r39/target_guard.json",
+        "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
+        "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
+        "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
+        "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
+        "remedy-job-evidence-r39/task_runs/T001/review.json",
+        "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
+        "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
+        "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
+        "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
+        "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
+        "remedy-job-evidence-r39/task_runs/T002/review.json",
+        "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
+        "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
+        "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
+        "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
+        "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
+        "remedy-job-evidence-r39/task_runs/T003/review.json",
+        "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
+        "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
+        "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
+        "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
+        "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
+        "remedy-job-evidence-r39/task_runs/T004/review.json",
+        "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
+        "remedy-job-evidence-r39/tasks.json",
+        "remedy-job-evidence-r39/token_truth.json",
+        "remedy-job-evidence-r39/verification_tests.json",
+        "remedy-job-evidence-r39/workspace.diff",
+        "remedy-job-evidence-r39/workspace_apply.json",
+        "tests/docs/test_docs_consistency.py"
+      ],
+      "commit": "c60802b507e72448f58aa929c9eb47942bed72c0",
+      "parents": [
+        "03e6e206842b0b81fb051a5198a08707ef513eb5"
+      ],
+      "patch_sha256": "b7889438e3d84c8569186669634036d5a9fd086c90140ae6ba9d59bc4e6fe5a1",
+      "subject": "docs(f012): truthful Round-39 documentation and operator state",
+      "tree": "3a48838ed35709c2841e593c94835e02ce6ff16a"
+    },
+    {
+      "changed_files": [
+        "remedy-job-evidence-r39/change_provenance_gate.json",
+        "remedy-job-evidence-r39/current_change_content_proof.json",
+        "remedy-job-evidence-r39/final_verifier_report.json",
+        "remedy-job-evidence-r39/review_subject.json"
+      ],
+      "commit": "138210aa9605ea2cb856533e56eec0700874a479",
+      "parents": [
+        "c60802b507e72448f58aa929c9eb47942bed72c0"
+      ],
+      "patch_sha256": "ef897ca813df79762f901acab02c21eeb17fb11214c68b4d452448b0d87becde",
+      "subject": "fix(evidence): correct review_subject and authority schemas in R39 Evidence",
+      "tree": "26bbbf7590b19433ecb94b0e7091799c363967fe"
     }
   ],
   "schema_version": "1.0.0"

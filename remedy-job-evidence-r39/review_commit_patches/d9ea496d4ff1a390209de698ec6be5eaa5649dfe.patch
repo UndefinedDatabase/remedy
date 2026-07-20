@@ -1,0 +1,391 @@
+From d9ea496d4ff1a390209de698ec6be5eaa5649dfe Mon Sep 17 00:00:00 2001
+From: deCodeUx <t@t>
+Date: Mon, 20 Jul 2026 16:43:17 +0200
+Subject: [PATCH] fix(evidence): complete authoritative verification schema and
+ matrix
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Create packages/orchestration/verification_matrix.py with typed producer
+and completeness validator for verification_tests.json.
+
+The run producer validates types (rejects bool-as-int, negative counts,
+malformed run_id). The tests producer derives all top-level fields
+(command, exit_code, passed, failed, test_files) from individual runs —
+no field is caller-asserted at the aggregate level. Rejects duplicate
+run_ids and empty inputs.
+
+The completeness validator checks all required suites are present in the
+run commands, top-level counts equal sum of runs, and run_ids are unique.
+Producer output passes the existing VerificationTestsV1 validator in
+build_review_manifest.py. 23 contract tests.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ packages/orchestration/verification_matrix.py | 172 +++++++++++++++++
+ .../orchestration/test_verification_matrix.py | 173 ++++++++++++++++++
+ 2 files changed, 345 insertions(+)
+ create mode 100644 packages/orchestration/verification_matrix.py
+ create mode 100644 tests/orchestration/test_verification_matrix.py
+
+diff --git a/packages/orchestration/verification_matrix.py b/packages/orchestration/verification_matrix.py
+new file mode 100644
+index 0000000..a0ebd51
+--- /dev/null
++++ b/packages/orchestration/verification_matrix.py
+@@ -0,0 +1,172 @@
++"""Round 39 F3 — complete authoritative verification matrix producer and validator.
++
++Round 38's verification_tests.json was incomplete: missing suites, inconsistent
++counts, no real timestamps. This module provides a typed producer that builds
++the verification_tests.json artifact conforming to the existing VerificationTestsV1
++schema (1.0.0) in build_review_manifest.py, plus a completeness validator that
++checks all expected suites are present with consistent counts.
++
++The producer accepts individual run results and derives all top-level fields
++(command, exit_code, passed, failed, test_files, timestamp) from the runs — no
++field is caller-asserted at the top level. The completeness validator checks
++that a recorded matrix covers a declared required-suite list.
++"""
++from __future__ import annotations
++
++import re
++
++VERIFICATION_TESTS_SCHEMA_VERSION = "1.0.0"
++
++_RUN_ID_RE = re.compile(r"^vr-\d{4,}$")
++
++
++class VerificationMatrixError(Exception):
++    """The verification matrix cannot be built from the provided inputs."""
++
++
++def _next_run_id(existing: list[dict]) -> str:
++    max_n = 0
++    for r in existing:
++        m = _RUN_ID_RE.fullmatch(r.get("run_id", ""))
++        if m:
++            n = int(r["run_id"].split("-")[1])
++            if n > max_n:
++                max_n = n
++    return f"vr-{max_n + 1:04d}"
++
++
++def produce_verification_run(
++    *,
++    run_id: str,
++    command: str,
++    exit_code: int,
++    passed: int,
++    failed: int,
++    test_files: list[str],
++    stdout_summary: str,
++) -> dict:
++    """Build a single verification run conforming to VerificationTestsV1 run schema."""
++    if not run_id or not _RUN_ID_RE.fullmatch(run_id):
++        raise VerificationMatrixError(f"run_id {run_id!r} is malformed (expected vr-NNNN)")
++    if not command:
++        raise VerificationMatrixError("command is required")
++    if not isinstance(exit_code, int) or isinstance(exit_code, bool):
++        raise VerificationMatrixError(f"exit_code must be int, got {type(exit_code).__name__}")
++    if not isinstance(passed, int) or isinstance(passed, bool) or passed < 0:
++        raise VerificationMatrixError(f"passed must be non-negative int, got {passed!r}")
++    if not isinstance(failed, int) or isinstance(failed, bool) or failed < 0:
++        raise VerificationMatrixError(f"failed must be non-negative int, got {failed!r}")
++    if not isinstance(test_files, list):
++        raise VerificationMatrixError("test_files must be a list")
++    return {
++        "run_id": run_id,
++        "command": command,
++        "exit_code": exit_code,
++        "passed": passed,
++        "failed": failed,
++        "test_files": sorted(set(test_files)),
++        "stdout_summary": stdout_summary,
++    }
++
++
++def produce_verification_tests(
++    *,
++    runs: list[dict],
++    timestamp: str,
++) -> dict:
++    """Build the complete verification_tests.json from individual runs.
++
++    Top-level command, exit_code, passed, failed, and test_files are derived from
++    the runs — never caller-asserted. The timestamp is the real wall-clock time
++    of the verification.
++    """
++    if not runs:
++        raise VerificationMatrixError("at least one verification run is required")
++    if not timestamp:
++        raise VerificationMatrixError("timestamp is required")
++
++    seen_ids: set[str] = set()
++    for r in runs:
++        rid = r.get("run_id", "")
++        if rid in seen_ids:
++            raise VerificationMatrixError(f"duplicate run_id {rid!r}")
++        seen_ids.add(rid)
++
++    total_passed = sum(r["passed"] for r in runs)
++    total_failed = sum(r["failed"] for r in runs)
++    combined_command = " && ".join(r["command"] for r in runs)
++    combined_exit = 0 if all(r["exit_code"] == 0 for r in runs) else 1
++    all_files: set[str] = set()
++    for r in runs:
++        all_files.update(r["test_files"])
++
++    return {
++        "schema_version": VERIFICATION_TESTS_SCHEMA_VERSION,
++        "verification_type": "explicit_commands",
++        "runs": runs,
++        "command": combined_command,
++        "exit_code": combined_exit,
++        "passed": total_passed,
++        "failed": total_failed,
++        "test_files": sorted(all_files),
++        "timestamp": timestamp,
++    }
++
++
++def validate_verification_completeness(
++    vt: dict,
++    required_suites: list[str],
++) -> list[str]:
++    """Validate that a verification_tests document covers all required suites.
++
++    Returns problems (empty = complete). This is a COMPLETENESS check, not a
++    schema check — the schema check is in build_review_manifest.validate_verification_tests().
++    """
++    problems: list[str] = []
++    if not isinstance(vt, dict):
++        return ["verification_tests is not a dict"]
++
++    runs = vt.get("runs")
++    if not isinstance(runs, list):
++        return ["verification_tests.runs is not a list"]
++
++    run_commands = {r.get("command", "") for r in runs if isinstance(r, dict)}
++
++    missing_suites = []
++    for suite in required_suites:
++        if not any(suite in cmd for cmd in run_commands):
++            missing_suites.append(suite)
++    if missing_suites:
++        problems.append(f"missing required suites: {missing_suites}")
++
++    total_passed = vt.get("passed", 0)
++    if isinstance(total_passed, int) and not isinstance(total_passed, bool):
++        sum_passed = sum(
++            r.get("passed", 0) for r in runs
++            if isinstance(r, dict) and isinstance(r.get("passed"), int)
++            and not isinstance(r.get("passed"), bool)
++        )
++        if total_passed != sum_passed:
++            problems.append(
++                f"top-level passed ({total_passed}) != sum of runs ({sum_passed})")
++
++    total_failed = vt.get("failed", 0)
++    if isinstance(total_failed, int) and not isinstance(total_failed, bool):
++        sum_failed = sum(
++            r.get("failed", 0) for r in runs
++            if isinstance(r, dict) and isinstance(r.get("failed"), int)
++            and not isinstance(r.get("failed"), bool)
++        )
++        if total_failed != sum_failed:
++            problems.append(
++                f"top-level failed ({total_failed}) != sum of runs ({sum_failed})")
++
++    seen_ids: set[str] = set()
++    for r in runs:
++        if isinstance(r, dict):
++            rid = r.get("run_id", "")
++            if rid in seen_ids:
++                problems.append(f"duplicate run_id: {rid!r}")
++            seen_ids.add(rid)
++
++    return problems
+diff --git a/tests/orchestration/test_verification_matrix.py b/tests/orchestration/test_verification_matrix.py
+new file mode 100644
+index 0000000..1136b33
+--- /dev/null
++++ b/tests/orchestration/test_verification_matrix.py
+@@ -0,0 +1,173 @@
++"""Round 39 F3 — verification matrix producer/completeness-validator contract tests.
++
++Every producer output conforms to the existing VerificationTestsV1 schema. Top-level
++fields are derived from runs, never caller-asserted. Completeness checks detect
++missing suites and inconsistent counts.
++"""
++from __future__ import annotations
++
++import importlib.util
++from pathlib import Path
++
++import pytest
++
++from packages.orchestration.verification_matrix import (
++    VERIFICATION_TESTS_SCHEMA_VERSION,
++    VerificationMatrixError,
++    produce_verification_run,
++    produce_verification_tests,
++    validate_verification_completeness,
++)
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++_brm_spec = importlib.util.spec_from_file_location(
++    "_brm_vm", REPO_ROOT / "scripts" / "build_review_manifest.py")
++_brm = importlib.util.module_from_spec(_brm_spec)
++_brm_spec.loader.exec_module(_brm)
++
++
++def _run(run_id="vr-0001", command="pytest tests/a.py -q", exit_code=0,
++         passed=10, failed=0, test_files=None, stdout_summary="10 passed"):
++    return produce_verification_run(
++        run_id=run_id, command=command, exit_code=exit_code,
++        passed=passed, failed=failed,
++        test_files=test_files or ["tests/a.py"],
++        stdout_summary=stdout_summary)
++
++
++def _full(runs=None, timestamp="2026-07-20T12:00:00+00:00"):
++    if runs is None:
++        runs = [_run()]
++    return produce_verification_tests(runs=runs, timestamp=timestamp)
++
++
++class TestProducerOutputPassesExistingValidator:
++    def test_single_run(self):
++        vt = _full()
++        problems, passed = _brm.validate_verification_tests(vt)
++        assert problems == [] and passed == 10
++
++    def test_multiple_runs(self):
++        runs = [
++            _run(run_id="vr-0001", command="pytest tests/a.py -q", passed=10,
++                 test_files=["tests/a.py"]),
++            _run(run_id="vr-0002", command="pytest tests/b.py -q", passed=20,
++                 test_files=["tests/b.py"]),
++        ]
++        vt = _full(runs=runs)
++        problems, passed = _brm.validate_verification_tests(vt)
++        assert problems == [] and passed == 30
++
++    def test_derived_command_is_join(self):
++        runs = [
++            _run(run_id="vr-0001", command="cmd1"),
++            _run(run_id="vr-0002", command="cmd2"),
++        ]
++        vt = _full(runs=runs)
++        assert vt["command"] == "cmd1 && cmd2"
++
++    def test_derived_exit_code_all_zero(self):
++        vt = _full()
++        assert vt["exit_code"] == 0
++
++    def test_derived_test_files_union(self):
++        runs = [
++            _run(run_id="vr-0001", test_files=["a.py", "b.py"]),
++            _run(run_id="vr-0002", test_files=["b.py", "c.py"]),
++        ]
++        vt = _full(runs=runs)
++        assert vt["test_files"] == ["a.py", "b.py", "c.py"]
++
++
++class TestRunProducerRejectsInvalid:
++    def test_bad_run_id(self):
++        with pytest.raises(VerificationMatrixError, match="run_id"):
++            _run(run_id="bad")
++
++    def test_empty_command(self):
++        with pytest.raises(VerificationMatrixError, match="command"):
++            _run(command="")
++
++    def test_bool_exit_code(self):
++        with pytest.raises(VerificationMatrixError, match="exit_code"):
++            _run(exit_code=True)
++
++    def test_bool_passed(self):
++        with pytest.raises(VerificationMatrixError, match="passed"):
++            _run(passed=True)
++
++    def test_negative_passed(self):
++        with pytest.raises(VerificationMatrixError, match="passed"):
++            _run(passed=-1)
++
++    def test_negative_failed(self):
++        with pytest.raises(VerificationMatrixError, match="failed"):
++            _run(failed=-1)
++
++
++class TestTestsProducerRejectsInvalid:
++    def test_empty_runs(self):
++        with pytest.raises(VerificationMatrixError, match="at least one"):
++            produce_verification_tests(runs=[], timestamp="2026-07-20T12:00:00+00:00")
++
++    def test_missing_timestamp(self):
++        with pytest.raises(VerificationMatrixError, match="timestamp"):
++            produce_verification_tests(runs=[_run()], timestamp="")
++
++    def test_duplicate_run_id(self):
++        with pytest.raises(VerificationMatrixError, match="duplicate"):
++            produce_verification_tests(
++                runs=[_run(run_id="vr-0001"), _run(run_id="vr-0001")],
++                timestamp="2026-07-20T12:00:00+00:00")
++
++
++class TestCompletenessValidator:
++    def test_complete_matrix(self):
++        runs = [
++            _run(run_id="vr-0001", command="pytest tests/a.py"),
++            _run(run_id="vr-0002", command="pytest tests/b.py"),
++        ]
++        vt = _full(runs=runs)
++        problems = validate_verification_completeness(vt, ["tests/a.py", "tests/b.py"])
++        assert problems == []
++
++    def test_missing_suite(self):
++        vt = _full()
++        problems = validate_verification_completeness(
++            vt, ["tests/a.py", "tests/missing.py"])
++        assert any("missing required suites" in p for p in problems)
++
++    def test_count_mismatch(self):
++        vt = _full()
++        vt["passed"] = 999
++        problems = validate_verification_completeness(vt, [])
++        assert any("sum of runs" in p for p in problems)
++
++    def test_failed_count_mismatch(self):
++        vt = _full()
++        vt["failed"] = 999
++        problems = validate_verification_completeness(vt, [])
++        assert any("sum of runs" in p for p in problems)
++
++    def test_duplicate_run_id_detected(self):
++        vt = _full()
++        vt["runs"].append(dict(vt["runs"][0]))
++        problems = validate_verification_completeness(vt, [])
++        assert any("duplicate" in p for p in problems)
++
++    def test_not_a_dict(self):
++        problems = validate_verification_completeness("bad", [])
++        assert any("not a dict" in p for p in problems)
++
++    def test_runs_not_a_list(self):
++        problems = validate_verification_completeness({"runs": "bad"}, [])
++        assert any("not a list" in p for p in problems)
++
++
++class TestSchemaVersion:
++    def test_version_is_1_0_0(self):
++        assert VERIFICATION_TESTS_SCHEMA_VERSION == "1.0.0"
++
++    def test_producer_emits_version(self):
++        vt = _full()
++        assert vt["schema_version"] == "1.0.0"
+-- 
+2.34.1
+
