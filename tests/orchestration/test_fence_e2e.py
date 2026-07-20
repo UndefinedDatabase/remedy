@@ -26,6 +26,7 @@ from packages.orchestration.scope_fences import (
     BuiltinResolutionResult,
     ChangeSetFenceResult,
     EnforceResult,
+    FenceConfigError,
     FenceSpec,
     FenceViolationError,
     TouchedPath,
@@ -77,11 +78,11 @@ class TestResolveFenceSpec:
         assert spec.allow_globs == ()
         assert spec.deny_globs == ()
 
-    def test_malformed_toml_gives_defaults(self, tmp_path):
+    def test_malformed_toml_raises_fence_config_error(self, tmp_path):
         toml = tmp_path / "remedy.toml"
         toml.write_text("{{not valid toml}}", encoding="utf-8")
-        spec = resolve_fence_spec(tmp_path)
-        assert spec.allow_globs == ()
+        with pytest.raises(FenceConfigError, match="malformed config"):
+            resolve_fence_spec(tmp_path)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

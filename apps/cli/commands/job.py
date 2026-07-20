@@ -1285,8 +1285,9 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.config import get_config
     from packages.orchestration.scope_fences import (
         BUILTIN_DENY,
-        load_fence_spec,
+        FenceConfigError,
         resolve_effective_builtins,
+        resolve_fence_spec_effective,
     )
 
     try:
@@ -1302,28 +1303,21 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
     if job.fences is not None:
         job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
 
-    config_path = repo_root / "remedy.toml"
-    spec = load_fence_spec(
-        job_fences=job_fences_dict,
-        config_path=config_path if config_path.is_file() else None,
-        worktree_root=repo_root if repo_root.is_dir() else None,
-    )
+    try:
+        eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
+    except FenceConfigError as exc:
+        print(f"Fence config error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    spec = eff.spec
+    source = eff.source
 
     cfg = get_config()
     scope_allow = cfg.get("scope.allow")
     scope_deny = cfg.get("scope.deny")
 
-    warnings: list[str] = []
+    warnings: list[str] = list(eff.warnings)
     if not spec.allow_globs and not spec.deny_globs:
         warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
-
-    source = "defaults"
-    if job.fences is not None:
-        source = "per-job"
-    elif config_path.is_file():
-        from packages.orchestration.scope_fences import _read_scope_table
-        if _read_scope_table(config_path) is not None:
-            source = "project config (remedy.toml [remedy.scope])"
 
     builtins = list(BUILTIN_DENY)
     extra = []

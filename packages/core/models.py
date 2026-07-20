@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 def _utcnow() -> datetime:
@@ -131,7 +131,10 @@ class JobFences(BaseModel):
     Both fields are optional lists of glob strings. An empty list means
     no restriction (allow) or no additional denies (deny).
     Malformed input fails closed via Pydantic validation — no str() coercion.
+    extra="forbid" rejects unknown fields.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     allow: list[str] = Field(default_factory=list)
     deny: list[str] = Field(default_factory=list)

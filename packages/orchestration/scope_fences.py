@@ -38,8 +38,11 @@ Public API::
     check_change_set(worktree_root, spec, touched) -> ChangeSetFenceResult
     load_fence_spec(job_fences=None, config_path=None, worktree_root=None) -> FenceSpec
     resolve_fence_spec(worktree_root, job_fences=None) -> FenceSpec
+    resolve_fence_spec_effective(worktree_root, job_fences=None) -> EffectiveFenceResult
     resolve_effective_builtins(worktree_root) -> tuple[tuple[str, str], ...]
     BuiltinResolutionResult — typed outcome of dynamic builtin resolution
+    EffectiveFenceResult — provenance carrier for resolved fence spec
+    FenceConfigError — raised on malformed config (fail closed, not allow-all)
     EnforceResult — outcome of enforce_change_set
     enforce_change_set(worktree_root, touched, **ctx) -> EnforceResult
     write_fence_violations_artifact(result, evidence_dir, **ctx) -> Path | None
@@ -50,7 +53,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
@@ -292,92 +294,135 @@ def _resolve_effective_builtins_typed(
     return BuiltinResolutionResult(extra_denies=extra, resolved=True)
 
 
+class FenceConfigError(Exception):
+    """Raised when scope fence config is malformed — fail closed, not allow-all."""
+
+
+def _validate_glob_list(items: object, label: str) -> list[str]:
+    """Validate that items is a list of strings. Raise FenceConfigError if not."""
+    if not isinstance(items, list):
+        raise FenceConfigError(
+            f"F017: {label} must be a list, got {type(items).__name__}"
+        )
+    for i, item in enumerate(items):
+        if not isinstance(item, str):
+            raise FenceConfigError(
+                f"F017: {label}[{i}] must be a string, got {type(item).__name__}"
+            )
+    return items
+
+
+@dataclass(frozen=True)
+class EffectiveFenceResult:
+    """Provenance carrier for resolved fence spec."""
+
+    spec: FenceSpec
+    source: str  # "per-job", "central-config", "defaults"
+    warnings: tuple[str, ...] = ()
+    diagnostics: tuple[str, ...] = ()
+
+
 def load_fence_spec(
     *,
     job_fences: dict | None = None,
     config_path: Path | None = None,
     worktree_root: Path | None = None,
 ) -> FenceSpec:
-    """Load FenceSpec with precedence: per-job > [scope] config > defaults.
+    """Load FenceSpec with precedence: per-job > central config > defaults.
 
-    Args:
-        job_fences: Per-job fence dict with optional ``allow`` and ``deny``
-                    lists of glob strings.
-        config_path: Path to remedy.toml for reading a ``[remedy.scope]``
-                     table.
-        worktree_root: Worktree root for resolving dynamic builtin denies.
+    Uses the central config system (env > project TOML > user TOML > default)
+    for scope.allow/scope.deny resolution. Env vars REMEDY_SCOPE_ALLOW and
+    REMEDY_SCOPE_DENY are properly enforced.
 
-    Returns:
-        Resolved FenceSpec.  Default is empty (allow everything, deny nothing
-        beyond builtins).
+    Raises FenceConfigError if config exists but is malformed or contains
+    invalid values — never silently defaults to allow-all on parse error.
     """
-    extra = ()
+    return _load_fence_spec_effective(
+        job_fences=job_fences,
+        config_path=config_path,
+        worktree_root=worktree_root,
+    ).spec
+
+
+def _load_fence_spec_effective(
+    *,
+    job_fences: dict | None = None,
+    config_path: Path | None = None,
+    worktree_root: Path | None = None,
+) -> EffectiveFenceResult:
+    """Internal: resolve fence spec with provenance tracking."""
+    extra: tuple[tuple[str, str], ...] = ()
     if worktree_root is not None:
         extra = resolve_effective_builtins(worktree_root)
 
+    warnings: list[str] = []
+
     if job_fences is not None:
-        allow = job_fences.get("allow", [])
-        deny = job_fences.get("deny", [])
-        if isinstance(allow, list) and isinstance(deny, list):
-            spec = FenceSpec(
-                allow_globs=tuple(str(g) for g in allow),
-                deny_globs=tuple(str(g) for g in deny),
-                extra_builtin_denies=extra,
+        allow = _validate_glob_list(job_fences.get("allow", []), "job_fences.allow")
+        deny = _validate_glob_list(job_fences.get("deny", []), "job_fences.deny")
+        spec = FenceSpec(
+            allow_globs=tuple(allow),
+            deny_globs=tuple(deny),
+            extra_builtin_denies=extra,
+        )
+        if not spec.allow_globs:
+            w = (
+                "F017: empty allow list in per-job fences — "
+                "treating as allow-all (no path restrictions beyond denies)"
             )
-            if not spec.allow_globs:
-                logger.warning(
-                    "F017: empty allow list in per-job fences — "
-                    "treating as allow-all (no path restrictions beyond denies)"
-                )
-            return spec
+            logger.warning(w)
+            warnings.append(w)
+        return EffectiveFenceResult(
+            spec=spec, source="per-job", warnings=tuple(warnings),
+        )
 
     if config_path is not None:
-        scope = _read_scope_table(config_path)
-        if scope is not None:
-            allow = scope.get("allow", [])
-            deny = scope.get("deny", [])
-            if isinstance(allow, list) and isinstance(deny, list):
-                spec = FenceSpec(
-                    allow_globs=tuple(str(g) for g in allow),
-                    deny_globs=tuple(str(g) for g in deny),
-                    extra_builtin_denies=extra,
+        from packages.orchestration.config import load_config
+
+        cfg = load_config(project_path=config_path)
+        diagnostics = tuple(cfg.load_report.warnings)
+
+        for d in diagnostics:
+            if "Malformed TOML" in d:
+                raise FenceConfigError(
+                    f"F017: refusing to default to allow-all on malformed config: {d}"
                 )
-                if not spec.allow_globs:
-                    logger.warning(
-                        "F017: empty allow list in [scope] config — "
-                        "treating as allow-all (no path restrictions "
-                        "beyond denies)"
-                    )
-                return spec
 
-    return FenceSpec(extra_builtin_denies=extra)
+        scope_allow = cfg.get("scope.allow")
+        scope_deny = cfg.get("scope.deny")
 
+        if scope_allow is not None or scope_deny is not None:
+            allow = _validate_glob_list(
+                scope_allow if scope_allow is not None else [], "scope.allow",
+            )
+            deny = _validate_glob_list(
+                scope_deny if scope_deny is not None else [], "scope.deny",
+            )
+            spec = FenceSpec(
+                allow_globs=tuple(allow),
+                deny_globs=tuple(deny),
+                extra_builtin_denies=extra,
+            )
+            if not spec.allow_globs and scope_allow is not None:
+                w = (
+                    "F017: empty allow list in config — "
+                    "treating as allow-all (no path restrictions beyond denies)"
+                )
+                logger.warning(w)
+                warnings.append(w)
+            return EffectiveFenceResult(
+                spec=spec, source="central-config",
+                warnings=tuple(warnings), diagnostics=diagnostics,
+            )
 
-def _read_scope_table(config_path: Path) -> dict | None:
-    """Read the ``[remedy.scope]`` table from a remedy.toml file."""
-    if sys.version_info >= (3, 11):
-        import tomllib
-    else:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ImportError:
-            return None
+        return EffectiveFenceResult(
+            spec=FenceSpec(extra_builtin_denies=extra),
+            source="defaults", diagnostics=diagnostics,
+        )
 
-    if not config_path.is_file():
-        return None
-    try:
-        with open(config_path, "rb") as f:
-            parsed = tomllib.load(f)
-    except Exception:
-        return None
-
-    remedy = parsed.get("remedy", {})
-    if not isinstance(remedy, dict):
-        return None
-    scope = remedy.get("scope")
-    if isinstance(scope, dict):
-        return scope
-    return None
+    return EffectiveFenceResult(
+        spec=FenceSpec(extra_builtin_denies=extra), source="defaults",
+    )
 
 
 def resolve_fence_spec(
@@ -387,13 +432,28 @@ def resolve_fence_spec(
 ) -> FenceSpec:
     """Shared effective-spec resolver used by every production write path.
 
-    Combines per-job fences > project remedy.toml [remedy.scope] > defaults.
-    Always passes config_path so project config is actually read.
+    Combines per-job fences > central config (env > project > user > default) >
+    defaults. Always passes config_path so env vars and project config are
+    properly enforced.
     """
     config_path = worktree_root / "remedy.toml"
     return load_fence_spec(
         job_fences=job_fences,
-        config_path=config_path if config_path.is_file() else None,
+        config_path=config_path,
+        worktree_root=worktree_root,
+    )
+
+
+def resolve_fence_spec_effective(
+    worktree_root: Path,
+    *,
+    job_fences: dict | None = None,
+) -> EffectiveFenceResult:
+    """Public provenance-carrying resolver — used by CLI for source detection."""
+    config_path = worktree_root / "remedy.toml"
+    return _load_fence_spec_effective(
+        job_fences=job_fences,
+        config_path=config_path,
         worktree_root=worktree_root,
     )
 

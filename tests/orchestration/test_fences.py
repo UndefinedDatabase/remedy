@@ -17,6 +17,7 @@ import pytest
 from packages.orchestration.scope_fences import (
     BUILTIN_DENY,
     FenceCheckResult,
+    FenceConfigError,
     FenceSpec,
     check_path,
     load_fence_spec,
@@ -578,11 +579,11 @@ class TestLoadFenceSpec:
         spec = load_fence_spec(config_path=config)
         assert spec == FenceSpec()
 
-    def test_malformed_config_falls_to_default(self, tmp_path):
+    def test_malformed_config_raises_fence_config_error(self, tmp_path):
         config = tmp_path / "remedy.toml"
         config.write_text("this is not valid toml {{{", encoding="utf-8")
-        spec = load_fence_spec(config_path=config)
-        assert spec == FenceSpec()
+        with pytest.raises(FenceConfigError, match="malformed config"):
+            load_fence_spec(config_path=config)
 
     def test_job_fences_deny_only(self):
         spec = load_fence_spec(job_fences={"deny": ["vendor/**"]})
