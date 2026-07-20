@@ -245,6 +245,20 @@ def _shareable_path(path: str, source_root: str) -> str:
     return f"{EXTERNAL_EVIDENCE_TOKEN}/{os.path.basename(resolved.rstrip(os.sep))}"
 
 
+def _probe_publication_capability(source_root: str) -> dict:
+    """Round 40 F5: probe and bind publication capability into the root manifest."""
+    try:
+        from packages.orchestration.safe_publish import probe_anonymous_publication_capability
+        status = probe_anonymous_publication_capability(source_root)
+    except Exception:
+        status = "PROBE_ERROR"
+    return {
+        "status": status,
+        "primitive": "linkat" if status == "SUPPORTED" else "none",
+        "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
 def _parse_status_z(raw: str, strict: bool = False) -> list[tuple[str, str]]:
     """Parse ``git status --porcelain=v1 -z`` into ``(XY, path)`` records.
 
@@ -3253,6 +3267,7 @@ def build_manifest_from_snapshot(
             "blockers": containment_blockers,
         },
         "external_paths_detected": external_paths,
+        "publication_capability": _probe_publication_capability(source_root),
         "review_bundle_integrity": bundle_integrity,
         "packaging_warnings": packaging_warnings,
         "policy": (

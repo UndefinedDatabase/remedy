@@ -86,3 +86,43 @@ class TestCoordinatorUnsupportedPath:
         src = (REPO_ROOT / "scripts" / "build_review_zip.py").read_text()
         assert '"publication_capability": _pub_capability' in src
         assert '"publication_capability_directory": _out_dir' in src
+
+
+_brm_spec = importlib.util.spec_from_file_location(
+    "_brm_cap", REPO_ROOT / "scripts" / "build_review_manifest.py")
+_brm = importlib.util.module_from_spec(_brm_spec)
+_brm_spec.loader.exec_module(_brm)
+
+
+class TestManifestBoundPublicationCapability:
+    """Round 40 F5: the root manifest binds publication_capability with
+    status, primitive, and checked_at — both supported and unsupported paths."""
+
+    def test_manifest_includes_publication_capability(self):
+        m = _brm.build_manifest()
+        assert "publication_capability" in m
+        cap = m["publication_capability"]
+        assert isinstance(cap, dict)
+        assert "status" in cap
+        assert "primitive" in cap
+        assert "checked_at" in cap
+
+    def test_supported_capability_has_linkat_primitive(self):
+        m = _brm.build_manifest()
+        cap = m["publication_capability"]
+        if cap["status"] == "SUPPORTED":
+            assert cap["primitive"] == "linkat"
+
+    def test_unsupported_capability_has_none_primitive(self):
+        with mock.patch("packages.orchestration.safe_publish.probe_anonymous_publication_capability",
+                        return_value="UNSUPPORTED_FILESYSTEM"):
+            m = _brm.build_manifest()
+            cap = m["publication_capability"]
+            assert cap["status"] == "UNSUPPORTED_FILESYSTEM"
+            assert cap["primitive"] == "none"
+
+    def test_checked_at_is_a_timestamp(self):
+        m = _brm.build_manifest()
+        cap = m["publication_capability"]
+        assert cap["checked_at"].endswith("Z")
+        assert "T" in cap["checked_at"]
