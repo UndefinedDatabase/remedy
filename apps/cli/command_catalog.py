@@ -332,6 +332,17 @@ CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
+        command_id="job.fences",
+        group_id="job",
+        subcommand="fences",
+        description="Show effective scope fences for a job (F017).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.status", "job.show"),
+    ),
+
+    CommandEntry(
         command_id="job.fulfill",
         group_id="job",
         subcommand="fulfill",

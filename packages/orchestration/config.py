@@ -60,7 +60,12 @@ class ConfigValue:
 
 @dataclass(frozen=True)
 class ConfigKeySpec:
-    """Definition of one config key."""
+    """Definition of one config key.
+
+    value_type supports: str, int, float, bool, list.
+    When value_type is list, values are list-of-strings. Env var values
+    are split on commas. TOML arrays are used as-is.
+    """
 
     key: str
     env_var: str
@@ -220,6 +225,20 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=False,
         env_only=True,
     ),
+    ConfigKeySpec(
+        key="scope.allow",
+        env_var="REMEDY_SCOPE_ALLOW",
+        description="Glob patterns for allowed write paths (F017 scope fences)",
+        value_type=list,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="scope.deny",
+        env_var="REMEDY_SCOPE_DENY",
+        description="Glob patterns for denied write paths (F017 scope fences)",
+        value_type=list,
+        default=None,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
@@ -291,6 +310,8 @@ def _coerce_value(raw: str, spec: ConfigKeySpec) -> Any:
         return int(raw)
     if spec.value_type is bool:
         return raw.lower() in ("1", "true", "yes")
+    if spec.value_type is list:
+        return [s.strip() for s in raw.split(",") if s.strip()]
     return raw
 
 

@@ -125,6 +125,18 @@ class Task(BaseModel):
     output_artifact_ids: list[UUID] = Field(default_factory=list)
 
 
+class JobFences(BaseModel):
+    """Closed type for per-job scope fences (F017 T003).
+
+    Both fields are optional lists of glob strings. An empty list means
+    no restriction (allow) or no additional denies (deny).
+    Malformed input fails closed via Pydantic validation — no str() coercion.
+    """
+
+    allow: list[str] = Field(default_factory=list)
+    deny: list[str] = Field(default_factory=list)
+
+
 class Job(BaseModel):
     """Top-level orchestration unit composed of tasks."""
 
@@ -137,3 +149,4 @@ class Job(BaseModel):
     artifacts: list[Artifact] = Field(default_factory=list)
     budget: Budget = Field(default_factory=Budget)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    fences: JobFences | None = None

@@ -1277,6 +1277,103 @@ def _cmd_job_fulfill(
         print(summarize_job_fulfillment(record))
 
 
+def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
+    """Show effective scope fences for a job (F017 T003)."""
+    import json as _json
+    from pathlib import Path
+
+    from packages.orchestration.config import get_config
+    from packages.orchestration.scope_fences import (
+        BUILTIN_DENY,
+        load_fence_spec,
+        resolve_effective_builtins,
+    )
+
+    try:
+        job = load_job(UUID(job_id_str))
+    except (ValueError, JobNotFoundError):
+        print(f"Job not found: {job_id_str}", file=sys.stderr)
+        sys.exit(1)
+
+    repo_str = job.metadata.get("target_repo", "") or "."
+    repo_root = Path(repo_str)
+
+    job_fences_dict = None
+    if job.fences is not None:
+        job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
+
+    config_path = repo_root / "remedy.toml"
+    spec = load_fence_spec(
+        job_fences=job_fences_dict,
+        config_path=config_path if config_path.is_file() else None,
+        worktree_root=repo_root if repo_root.is_dir() else None,
+    )
+
+    cfg = get_config()
+    scope_allow = cfg.get("scope.allow")
+    scope_deny = cfg.get("scope.deny")
+
+    warnings: list[str] = []
+    if not spec.allow_globs and not spec.deny_globs:
+        warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
+
+    source = "defaults"
+    if job.fences is not None:
+        source = "per-job"
+    elif config_path.is_file():
+        from packages.orchestration.scope_fences import _read_scope_table
+        if _read_scope_table(config_path) is not None:
+            source = "project config (remedy.toml [remedy.scope])"
+
+    builtins = list(BUILTIN_DENY)
+    extra = []
+    if repo_root.is_dir():
+        try:
+            extra_t = resolve_effective_builtins(repo_root)
+            extra = [e for e in extra_t]
+        except RuntimeError as exc:
+            warnings.append(f"builtin resolution failed: {exc}")
+
+    result = {
+        "job_id": job_id_str,
+        "source": source,
+        "allow_globs": list(spec.allow_globs),
+        "deny_globs": list(spec.deny_globs),
+        "builtin_denies": [
+            {"pattern": p, "reason": r} for p, r in builtins
+        ],
+        "extra_builtin_denies": [
+            {"pattern": p, "reason": r} for p, r in extra
+        ],
+        "config_scope_allow": scope_allow,
+        "config_scope_deny": scope_deny,
+        "warnings": warnings,
+    }
+
+    if json_output:
+        print(_json.dumps(result, indent=2))
+    else:
+        print(f"Scope fences for job {job_id_str[:8]}:")
+        print(f"  Source: {source}")
+        if spec.allow_globs:
+            print(f"  Allow:  {', '.join(spec.allow_globs)}")
+        else:
+            print("  Allow:  (all — no restrictions)")
+        if spec.deny_globs:
+            print(f"  Deny:   {', '.join(spec.deny_globs)}")
+        else:
+            print("  Deny:   (none beyond builtins)")
+        print("  Builtin denies:")
+        for p, r in builtins:
+            print(f"    {p:30s} — {r}")
+        for p, r in extra:
+            print(f"    {p:30s} — {r}")
+        if warnings:
+            print("  Warnings:")
+            for w in warnings:
+                print(f"    ⚠ {w}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -1318,6 +1415,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "job.report": lambda args: _cmd_job_report(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.fences": lambda args: _cmd_job_fences(
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
