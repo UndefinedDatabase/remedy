@@ -325,6 +325,11 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
         if pe is not None:
             validate_provider_token_evidence(pe, _pe_ctx)
             validate_provider_evidence(pe, _pe_ctx)
+            pe_tid = pe.get("task_id")
+            if pe_tid is not None and pe_tid != tid:
+                raise TokenEvidenceError(
+                    f"{_pe_ctx}: task_id {pe_tid!r} does not match containing "
+                    f"directory {tid!r}")
             if not provider:
                 provider = (_strict_string(pe, "builder_provider", _pe_ctx)
                             or _strict_string(pe, "provider", _pe_ctx))

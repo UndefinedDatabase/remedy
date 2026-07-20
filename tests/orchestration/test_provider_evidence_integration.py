@@ -1212,3 +1212,106 @@ class TestNoActualProviderAttemptAccounting:
         assert ev["actual_available"] is False
         assert ev["parse_source"] == "manual"
         assert "provider_call_count" not in ev
+
+
+class TestManualPECrossFieldRejection:
+    """Round 40 F3: trust-bearing claims on a manual PE must be rejected, not silently discarded."""
+
+    def test_combined_contradiction_blocks(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        from packages.orchestration.token_truth import TokenEvidenceError
+        pe = {
+            "schema_version": "1.0.0",
+            "task_id": "T999",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "provider_attempts": [{"call_id": "claimed-call", "status": "success"}],
+            "actual_provider_available": True,
+            "prompt_trace_available": True,
+            "completion_provider_call_count": 999,
+            "reviewer_provider": "forged-provider",
+            "cli_versions": {"reviewer": 123},
+        }
+        with pytest.raises(TokenEvidenceError):
+            validate_provider_token_evidence(pe, "test")
+
+    def test_provider_attempts_on_manual_blocks(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        from packages.orchestration.token_truth import TokenEvidenceError
+        pe = {
+            "schema_version": "1.0.0",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "provider_attempts": [{"call_id": "x"}],
+        }
+        with pytest.raises(TokenEvidenceError, match="provider_attempts"):
+            validate_provider_token_evidence(pe, "test")
+
+    def test_actual_provider_available_on_manual_blocks(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        from packages.orchestration.token_truth import TokenEvidenceError
+        pe = {
+            "schema_version": "1.0.0",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "actual_provider_available": True,
+        }
+        with pytest.raises(TokenEvidenceError, match="actual_provider_available"):
+            validate_provider_token_evidence(pe, "test")
+
+    def test_prompt_trace_available_on_manual_blocks(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        from packages.orchestration.token_truth import TokenEvidenceError
+        pe = {
+            "schema_version": "1.0.0",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "prompt_trace_available": True,
+        }
+        with pytest.raises(TokenEvidenceError, match="prompt_trace_available"):
+            validate_provider_token_evidence(pe, "test")
+
+    def test_completion_provider_call_count_nonzero_blocks(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        from packages.orchestration.token_truth import TokenEvidenceError
+        pe = {
+            "schema_version": "1.0.0",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "completion_provider_call_count": 5,
+        }
+        with pytest.raises(TokenEvidenceError, match="completion_provider_call_count"):
+            validate_provider_token_evidence(pe, "test")
+
+    def test_prior_execution_on_manual_blocks(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        from packages.orchestration.token_truth import TokenEvidenceError
+        pe = {
+            "schema_version": "1.0.0",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "prior_execution": {"old": True},
+        }
+        with pytest.raises(TokenEvidenceError, match="prior_execution"):
+            validate_provider_token_evidence(pe, "test")
+
+    def test_task_id_mismatch_blocks_in_token_truth(self, tmp_path):
+        from packages.orchestration.token_truth import TokenEvidenceError, build_token_truth
+        td = tmp_path / "task_runs" / "T001"
+        td.mkdir(parents=True)
+        pe = {
+            "schema_version": "1.0.0",
+            "task_id": "T999",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+        }
+        (td / "provider_evidence.json").write_text(json.dumps(pe))
+        (td / "token_accounting.json").write_text(json.dumps({
+            "task_id": "T001", "kind": "manual", "reason": "manual",
+            "actual_available": False, "actual_tokens_available": False,
+            "provider_call_count": 0, "estimated_total_tokens": 0,
+            "builder_prompt_tokens_estimated": 0, "reviewer_prompt_tokens_estimated": 0,
+            "repair_prompt_tokens_estimated": 0,
+        }))
+        with pytest.raises(TokenEvidenceError, match="does not match containing directory"):
+            build_token_truth(str(tmp_path))

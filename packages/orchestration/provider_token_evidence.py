@@ -185,3 +185,35 @@ def validate_provider_token_evidence(pe: dict, ctx: str) -> None:
         if isinstance(pe.get("usage"), dict) and pe["usage"]:
             raise TokenEvidenceError(
                 f"{ctx}: manual_operator_repair must not carry usage counters")
+        cpc = pe.get("completion_provider_call_count")
+        if cpc is not None and not (_is_int(cpc) and cpc == 0):
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair requires completion_provider_call_count=0 "
+                f"or absent, got {cpc!r}")
+        pa = pe.get("provider_attempts")
+        if pa is not None and pa != []:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not carry provider_attempts")
+        if pe.get("actual_provider_available") is True:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not claim actual_provider_available=true")
+        if pe.get("prompt_trace_available") is True:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not claim prompt_trace_available=true")
+        if pe.get("actual_coverage_complete") is True:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not claim actual_coverage_complete=true")
+        if pe.get("cost_coverage_complete") is True:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not claim cost_coverage_complete=true")
+        if pe.get("total_cost_usd") is not None:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not claim total_cost_usd={pe['total_cost_usd']!r}")
+        cvs = pe.get("cli_versions")
+        if cvs is not None and not isinstance(cvs, dict):
+            raise TokenEvidenceError(
+                f"{ctx}: cli_versions must be a dict or absent, got {type(cvs).__name__}")
+        prior = pe.get("prior_execution")
+        if prior is not None:
+            raise TokenEvidenceError(
+                f"{ctx}: manual_operator_repair must not carry prior_execution")
