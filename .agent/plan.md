@@ -1,23 +1,53 @@
-# Plan — F017 Scope Fences — T001
+# Plan — F017 Scope Fences — T002
 
 ## Goal
-Implement the pure FenceSpec + path checker with exhaustive tests (T001 block).
-Do not touch the applicator (T002) or add CLI/config keys (T003).
+Implement T002: applicator enforcement, atomicity, violation Evidence,
+and postmortem classification. Preserve T001 behavior. Do not implement T003.
 
-## Current Step
-T001 implementation complete. Committing.
+## Scope 1 — T001 builtin-boundary repairs
+- `.git` denied as path COMPONENT anywhere (not just root prefix)
+- Effective Remedy data dir resolved dynamically via `resolve_data_root()`
+- Protected when inside worktree; `.data/` remains static fallback
+- `extra_builtin_denies` field on FenceSpec (backward compatible)
+- `resolve_effective_builtins(worktree_root)` function
+- Fix `test_non_root_git_dir_allowed` → now denied
+- Add regression tests for nested `.git` and overridden data dir
 
-## Done
-- [x] Read T0_F017.md spec
-- [x] Inspect applicator choke point (patch_apply, source_apply, repo_applicator)
-- [x] Implement `packages/orchestration/scope_fences.py`
-- [x] Implement `tests/orchestration/test_fences.py` — 78 tests pass
-- [x] Update T0_F017.md with built state and T002 choke point
-- [x] Update STATUS.md to `[~]` for F017
-- [ ] Commit: FenceSpec + pure checker
-- [ ] Commit: tests + docs/state
+## Scope 2 — shared change-set preflight
+- `TouchedPath` (path, operation, role) frozen dataclass
+- `FenceViolation` (path, normalized, operation, role, reason, matched_rule, rule_source)
+- `ChangeSetFenceResult` (allowed, violations, warnings, touched_count)
+- `FenceViolationError` typed exception carrying stable violation set
+- `check_change_set(worktree_root, spec, touched_paths)` pure preflight
+- Deterministic ordering, dedup, all violations collected
+- Uses `check_path` as single semantic authority
+
+## Scope 3 — applicator enforcement + atomicity
+- `source_apply.apply_structured_patch`: derive touched-path set, preflight
+  before snapshot/mutation. Violation → no mutation, no snapshot.
+- `patch_apply.apply_patch_intent`: defensive single-intent preflight.
+- `job_fulfillment.run_job_fulfill`: preflight ALL intent targets before
+  first `_approve_and_apply_intent` call. One violation → nothing applied.
+- `do_continue.py`: single-intent preflight before apply.
+- `repo_applicator`: preflight before `_write_to_repo`.
+- All enforcement uses shared `check_change_set` from scope_fences.
+
+## Scope 4 — violation Evidence + postmortem classification
+- `fence_violations.json` artifact with closed schema
+- Written to Evidence root before error escapes
+- No absolute paths; Evidence-safe relative paths only
+- `FENCE_VIOLATION` added to `FailureClass` enum
+- `FenceViolationError` classified as `fence_violation` via typed exception
+- `fence_violation` added to `TERMINAL_STATUS_CLASSES`
+
+## Commits
+1. T001 builtin repairs + shared change-set preflight
+2. Applicator and batch-boundary enforcement
+3. Violation Evidence + postmortem classification
+4. T002 tests + truthful documentation/state
 
 ## Constraints
-- Do not push, create PR, or merge
-- Do not touch applicator beyond documenting T002 choke point
-- Do not modify worktree creation, git internals, STATUS semantics, Flight Plan schema
+- Do not push, create PR, merge, modify main, or start T003/F018
+- Do not amend/squash T001 commits
+- Do not weaken or xfail tests
+- Zero provider calls
