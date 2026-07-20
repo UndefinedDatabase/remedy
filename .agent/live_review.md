@@ -1,15 +1,11 @@
-# Live Review — F012 Deterministic Runs
+# Live Review — F017 Scope Fences
 
-## Verdict
-**PASS_WITH_RISKS — ACCEPTED** (2026-07-20)
+## Status
+**T001 BUILT** — FenceSpec + pure path checker + exhaustive tests.
 
-External acceptance recorded. F012 is `[x]` DONE.
-
-Evidence job: `r40_authority_contract_closure`
-Package: `remedy-review-20260720-211130-READY_FOR_REVIEW.zip`
-SHA-256: `66884087f1095cb7dfb1526794559b8e249a7a7b62e0d35561d82d6d3f50d734`
-Accepted HEAD: `c484160cea24f3d95c6ee2acbde6a1a8346194f1`
-Provider calls: 0
+Module: `packages/orchestration/scope_fences.py`
+Tests:  `tests/orchestration/test_fences.py` — 78 passed
 
 ## Next
-F017 — Scope fences (`[ ]`, not started).
+- T002: applicator enforcement at the choke point (not started)
+- T003: job field, config keys, CLI display (not started)
