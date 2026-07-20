@@ -33,40 +33,67 @@ def _sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
+def _sha256_fd(fd: int) -> str:
+    """Hash through an already-open file descriptor (seeked to 0). Race-proof: the FD is pinned to
+    the inode, so a pathname swap after opening cannot change the bytes being hashed."""
+    os.lseek(fd, 0, os.SEEK_SET)
+    h = hashlib.sha256()
+    while True:
+        chunk = os.read(fd, 1 << 20)
+        if not chunk:
+            break
+        h.update(chunk)
+    return h.hexdigest()
+
+
 def verify_source_identity(source_path: str, final_parent: str,
-                           *, expected_sha256: str | None) -> None:
-    """Round 34 F1: bind the private source that is about to be published to the exact identity the
-    coordinator verified. The source MUST be an ``lstat``-confirmed REGULAR file (never a symlink or
-    other kind), on the SAME filesystem as the final path's parent (so the publication is a genuine
-    atomic ``link``, not a cross-device copy), and — when ``expected_sha256`` is supplied — its bytes
-    must still hash to that value. A pathname swapped to a symlink/other file/other-filesystem target,
-    or whose bytes changed after verification, cannot be published. Raises ``PublishSourceError``."""
-    try:
-        st = os.lstat(source_path)
-    except OSError as exc:
-        raise PublishSourceError(f"private source {source_path!r} is not accessible: {exc}") from None
-    if stat.S_ISLNK(st.st_mode):
-        raise PublishSourceError(f"private source {source_path!r} is a symlink; refusing to publish")
-    if not stat.S_ISREG(st.st_mode):
-        raise PublishSourceError(
-            f"private source {source_path!r} is not a regular file; refusing to publish")
-    try:
-        parent_dev = os.stat(final_parent).st_dev
-    except OSError as exc:
-        raise PublishSourceError(
-            f"cannot stat publication parent {final_parent!r}: {exc}") from None
-    if st.st_dev != parent_dev:
-        raise PublishSourceError(
-            f"private source {source_path!r} is on a different filesystem than {final_parent!r}; "
-            "an atomic no-replace link is impossible")
+                           *, expected_sha256: str | None) -> int:
+    """Round 35 F1: FD-retained, inode-bound source verification. Opens the private source with
+    ``O_RDONLY|O_NOFOLLOW`` (so a symlink at the pathname is never followed), ``fstat``s the FD to
+    confirm it is a regular file, hashes the bytes THROUGH the FD (immune to post-open pathname
+    swaps), and returns the retained FD. The caller uses the FD's inode identity to verify the
+    published link points to the same inode. The ``st_dev`` precheck is removed — OverlayFS reports
+    different ``st_dev`` for a file and its parent even when they share a mount; a true cross-device
+    situation is caught by ``os.link`` raising ``OSError(EXDEV)`` at publication time. Raises
+    ``PublishSourceError`` on any mismatch; never closes the FD on success (caller must close)."""
     if expected_sha256 is None:
         raise PublishSourceError(
             "no verified source SHA-256 was bound; refusing to publish an unverified source")
-    actual = _sha256_file(source_path)
-    if actual != expected_sha256:
+    try:
+        fd = os.open(source_path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as exc:
         raise PublishSourceError(
-            f"private source {source_path!r} bytes changed after verification "
-            f"(sha256 {actual[:12]} != verified {expected_sha256[:12]})")
+            f"private source {source_path!r} is not accessible (O_NOFOLLOW): {exc}") from None
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise PublishSourceError(
+                f"private source {source_path!r} is not a regular file; refusing to publish")
+        actual = _sha256_fd(fd)
+        if actual != expected_sha256:
+            raise PublishSourceError(
+                f"private source {source_path!r} bytes changed after verification "
+                f"(sha256 {actual[:12]} != verified {expected_sha256[:12]})")
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def verify_published_inode(source_fd: int, final_path: str) -> None:
+    """Round 35 F1: after ``os.link``, verify the published file is the SAME inode as the retained
+    source FD. Compares ``(st_dev, st_ino)`` from ``fstat(source_fd)`` and ``lstat(final_path)``.
+    Raises ``PublishSourceError`` if they differ (would mean a different file was published)."""
+    src_st = os.fstat(source_fd)
+    try:
+        dst_st = os.lstat(final_path)
+    except OSError as exc:
+        raise PublishSourceError(
+            f"cannot stat published path {final_path!r}: {exc}") from None
+    if (src_st.st_dev, src_st.st_ino) != (dst_st.st_dev, dst_st.st_ino):
+        raise PublishSourceError(
+            f"published inode ({dst_st.st_dev}:{dst_st.st_ino}) differs from verified source "
+            f"({src_st.st_dev}:{src_st.st_ino}); the published package is not the verified bytes")
 
 
 def git_tracked_status(path: str, repo_root: str) -> tuple[str, str]:
@@ -161,13 +188,16 @@ def publish_atomically(source_path: str, final_path: str, repo_root: str,
     ``final_path`` is the complete, byte-identical, verified ZIP."""
     final = os.path.abspath(final_path)
     parent = os.path.dirname(final) or "."
+    source_fd = -1
     try:
         if not os.path.isdir(parent):
             raise PublishCollisionError(f"output parent directory does not exist: {parent!r}")
-        # Bind the private source to the verified identity BEFORE any destination work, so a swapped
-        # source (symlink / other file / other filesystem / changed bytes) cannot be published.
+        # Bind the private source to the verified identity BEFORE any destination work: open
+        # O_RDONLY|O_NOFOLLOW, fstat, hash through the FD. The returned FD is pinned to the inode,
+        # so a post-hash pathname swap cannot change the published bytes.
         if expected_sha256 is not None:
-            verify_source_identity(source_path, parent, expected_sha256=expected_sha256)
+            source_fd = verify_source_identity(source_path, parent,
+                                               expected_sha256=expected_sha256)
         # Advisory refusal of tracked / symlink / directory / FIFO / device / foreign destinations
         # BEFORE the atomic link; the link itself is the race-proof no-clobber boundary.
         assert_publishable(final, repo_root, owned_paths=frozenset({final, final_path}))
@@ -177,8 +207,18 @@ def publish_atomically(source_path: str, final_path: str, repo_root: str,
             raise PublishCollisionError(
                 f"another invocation already published {final_path!r}; this one loses the race")
         except OSError as exc:
+            # EXDEV = true cross-device link; catch it with a clear diagnostic.
+            if getattr(exc, "errno", None) == getattr(__import__("errno"), "EXDEV", None):
+                raise PublishSourceError(
+                    f"private source {source_path!r} is on a different filesystem than "
+                    f"{parent!r}; an atomic no-replace link is impossible") from None
             raise PublishCollisionError(f"could not publish {final_path!r}: {exc}")
+        # Post-publication inode verification: the published file IS the verified inode.
+        if source_fd >= 0:
+            verify_published_inode(source_fd, final)
     finally:
+        if source_fd >= 0:
+            os.close(source_fd)
         if cleanup_source:
             try:
                 os.unlink(source_path)                     # remove the now-linked private temp

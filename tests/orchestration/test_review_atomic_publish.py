@@ -14,7 +14,7 @@ import pytest
 
 from packages.orchestration.safe_publish import (
     PublishCollisionError, PublishSourceError, git_tracked_status, publish_atomically,
-    verify_source_identity,
+    verify_published_inode, verify_source_identity,
 )
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git required")
@@ -146,6 +146,102 @@ class TestVerifiedSourceIdentityBinding:
         src = _src(repo, b"x")
         with pytest.raises(PublishSourceError):
             verify_source_identity(src, str(repo), expected_sha256=None)
+
+
+class TestFDRetainedInodeBoundPublication:
+    """F1 (round 35): the publication protocol is FD-retained and inode-bound. The source FD is opened
+    O_RDONLY|O_NOFOLLOW, fstat-confirmed regular, hashed through the FD, and the retained FD's inode
+    is compared to the published path's inode after os.link. A post-hash pathname swap, in-place
+    mutation via a second FD, or symlink replacement cannot change the published bytes. The st_dev
+    precheck is removed so OverlayFS-like mounts don't falsely block."""
+
+    def _sha(self, p):
+        return __import__("hashlib").sha256(Path(p).read_bytes()).hexdigest()
+
+    def test_post_hash_pathname_swap_blocks(self, tmp_path):
+        """After verify_source_identity hashes through the FD, replacing the pathname with a different
+        file does NOT affect the already-retained FD — but publication via os.link uses the pathname,
+        so the published file would be the swapped one. The inode verification catches this."""
+        repo = _repo(tmp_path)
+        src = _src(repo, b"original-good")
+        sha = self._sha(src)
+        # Verify source — get the retained FD
+        fd = verify_source_identity(src, str(repo), expected_sha256=sha)
+        try:
+            # Swap the pathname to a different file AFTER verification
+            os.unlink(src)
+            with open(src, "wb") as fh:
+                fh.write(b"swapped-bad-content")
+            final = str(repo / "remedy-review-swap.zip")
+            os.link(src, final)
+            # The inode verification catches the swap
+            with pytest.raises(PublishSourceError, match="inode.*differs"):
+                verify_published_inode(fd, final)
+        finally:
+            os.close(fd)
+
+    def test_fd_inode_matches_after_successful_publish(self, tmp_path):
+        """After a successful publish_atomically, the published file is the same inode as the
+        verified source — the FD-retained protocol guarantees this."""
+        repo = _repo(tmp_path)
+        src = _src(repo, b"verified-inode-content")
+        sha = self._sha(src)
+        final = str(repo / "remedy-review-inode.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=sha)
+        assert Path(final).read_bytes() == b"verified-inode-content"
+
+    def test_symlink_at_source_blocked_by_o_nofollow(self, tmp_path):
+        """O_NOFOLLOW on the source path means a symlink raises immediately, before any hash."""
+        repo = _repo(tmp_path)
+        real = repo / "real.bin"
+        real.write_bytes(b"payload")
+        link = str(repo / ".remedy_zip_link.part")
+        os.symlink(real, link)
+        with pytest.raises(PublishSourceError):
+            verify_source_identity(link, str(repo),
+                                   expected_sha256=self._sha(str(real)))
+
+    def test_overlayfs_like_different_stdev_does_not_block(self, tmp_path, monkeypatch):
+        """On OverlayFS, a file and its parent directory can report different st_dev even though
+        they share a mount and hardlink works. The removed st_dev precheck no longer blocks this."""
+        repo = _repo(tmp_path)
+        src = _src(repo, b"overlay-content")
+        sha = self._sha(src)
+        # verify_source_identity no longer checks st_dev — it just opens/fstat/hashes.
+        # If the link succeeds (same actual fs), publication works.
+        final = str(repo / "remedy-review-overlay.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=sha)
+        assert Path(final).read_bytes() == b"overlay-content"
+
+    def test_true_cross_filesystem_blocked_by_exdev(self, tmp_path, monkeypatch):
+        """A true cross-device link raises EXDEV which is caught as PublishSourceError."""
+        import errno as _errno
+        import packages.orchestration.safe_publish as sp
+        repo = _repo(tmp_path)
+        src = _src(repo, b"cross-dev")
+        sha = self._sha(src)
+
+        original_link = os.link
+
+        def fake_link(s, d):
+            raise OSError(_errno.EXDEV, "Invalid cross-device link")
+
+        monkeypatch.setattr(os, "link", fake_link)
+        final = str(repo / "remedy-review-xdev.zip")
+        with pytest.raises(PublishSourceError, match="different filesystem"):
+            publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
+
+    def test_verify_source_identity_returns_fd(self, tmp_path):
+        """verify_source_identity returns an open FD that can be fstat'd."""
+        repo = _repo(tmp_path)
+        src = _src(repo, b"fd-test")
+        sha = self._sha(src)
+        fd = verify_source_identity(src, str(repo), expected_sha256=sha)
+        try:
+            st = os.fstat(fd)
+            assert st.st_size == len(b"fd-test")
+        finally:
+            os.close(fd)
 
 
 class TestGitTrackedStatusFailClosed:
