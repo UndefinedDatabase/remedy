@@ -1832,3 +1832,33 @@ class TestF012Round37IsPinned:
         assert "7440 passed" in doc
         assert "pre-existing" in doc.lower()
         assert "not the aggregate" in doc or "invalid" in doc
+
+
+class TestF012Round38IsPinned:
+    """Round 38: versioned PE schema, publication capability, machine-validated diagnostic."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 38" in self._f012()
+
+    def test_cost_call_count_requirement(self):
+        doc = self._f012()
+        assert "cost_call_count" in doc
+        assert "cost without call-count" in doc.lower() or "cost_call_count is absent" in doc.lower()
+
+    def test_ambiguous_actual_model_rejected(self):
+        doc = self._f012()
+        assert "ambiguous" in doc.lower()
+        assert "actual_model" in doc
+
+    def test_verified_model_zero_calls(self):
+        doc = self._f012()
+        assert "provider_call_count" in doc
+
+    def test_publication_capability_probe(self):
+        doc = self._f012()
+        assert "probe_anonymous_publication_capability" in doc or "SUPPORTED" in doc
+        assert "UNSUPPORTED_OS" in doc or "capability" in doc.lower()

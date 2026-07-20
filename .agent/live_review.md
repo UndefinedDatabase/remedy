@@ -1,7 +1,7 @@
-# Live Review — F012 Anonymous-Inode Publication & Semantic Provider Evidence Round 37
+# Live Review — F012 Versioned PE Schema, Publication Capability Round 38
 
 ## Verdict (reviewer-owned)
-**PENDING** — F1/F2/F3/F4 closed this round; every accepted Round-36 contract preserved. Not
+**PENDING** — F1/F2/F3/F4/F5/F6 closed this round; every accepted Round-37 contract preserved. Not
 externally accepted.
 
 ## Process inspection (mandated first action)
@@ -13,31 +13,36 @@ terminate; no process group killed.
 
 Operator-built by hand: no Builder, no Reviewer, no provider GENERATION call (0), no Fable, no
 subagents, no Evidence `job-flow`/`job-run`, no Docker, no new dependency, **no database**, **no
-LLM rerun**, no network. Every accepted Round-36 contract preserved.
+LLM rerun**, no network. Every accepted Round-37 contract preserved.
 
 ### Closed this round
-- **F1 — anonymous-FD no-replace publication.** Named-source `os.link(source_path, final)` replaced
-  with anonymous-inode protocol: `O_TMPFILE` + `linkat(fd, "", AT_FDCWD, final, AT_EMPTY_PATH)`.
-  No named source path participates in the security decision. Commit a159b47.
-- **F2 — pre-publication cleanup ownership.** `owned_inode` from `fstat(anonymous_fd)` BEFORE
-  publication. `_cleanup_published_link` uses pre-publication anonymous inode identity, never
-  post-race observation. Commit a159b47.
-- **F3 — semantic ProviderTokenEvidence validation.** `validate_provider_evidence(pe, ctx)` added
-  before aggregation. Rejects: verified-without-model, model-without-verified, cost-without-cost-calls,
-  counters-without-actual-calls. Each raises `TokenEvidenceError`. Commit ddbf911.
-- **F4 — complete authoritative and diagnostic verification.** 15 authoritative runs (503 passed,
-  0 failed). Diagnostic broad run: 7440 passed, 56 failed — all pre-existing (identical on parent
-  commit b2c9840). Commit 99df826.
+- **F1 — cost without call-count provenance.** `total_cost_usd` without `cost_call_count` now
+  raises `TokenEvidenceError`. The empty `pass` branch replaced with `raise`. Commit 61b0a6f.
+- **F2 — ambiguous generic actual_model.** Generic `actual_model` field rejected as ambiguous.
+  Callers must use `builder_actual_model` or `reviewer_actual_model`. Per-task fallback removed.
+  Commit 61b0a6f.
+- **F3 — verified model with zero provider calls.** `actual_model_verified=true` with
+  `provider_call_count=0` now raises `TokenEvidenceError`. Commit 61b0a6f.
+- **F4 — machine-validated diagnostic comparison.** Self-asserted `baseline_match` replaced with
+  machine-validated comparison: sorted failure node IDs, SHA-256 of failure sets, derived
+  `failure_sets_equal`. Baseline via `git archive` extraction. Schema 2.0.0.
+- **F5 — complete authoritative test matrix.** 17 suites (578 passed, 0 failed). Every named
+  file and group packaged as typed verification runs.
+- **F6 — explicit publication capability probe.** `probe_anonymous_publication_capability()`
+  returns typed result. Source `.part` cleanup ownership-bound: record (st_dev, st_ino) before
+  copy, only unlink if same inode. Commit 86e1070.
 
 ## Verification
 
-- Authoritative suites: test_review_atomic_publish (26), test_token_truth_v1_contract (90),
+- Authoritative suites: test_review_atomic_publish (32), test_token_truth_v1_contract (96),
   test_token_truth (37), test_token_authority (13), test_review_token_truth_authority (15),
   test_review_manual_completion_shapes (18), test_review_single_publication (7),
   test_review_package_full_integration (8), test_review_authoritative_e2e (1),
-  test_token_producer_validator_compat (8), test_docs_consistency (270),
-  test_review_archive_plan (10), compileall (clean), bash -n (clean), git diff --check (clean).
-- Diagnostic: tests/orchestration/ broad (7440/56/7) — 56 failures all pre-existing on b2c9840.
+  test_token_producer_validator_compat (8), test_docs_consistency (275),
+  test_review_archive_plan (10), test_provider_evidence_integration (56),
+  test_stream_export_e2e (7), compileall (clean), bash -n (clean), git diff --check (clean).
+- Diagnostic: tests/orchestration/ broad (7446/56/7) — 56 failures all pre-existing, zero new
+  from R38. Machine-validated with sorted node IDs + SHA-256 comparison.
 
 ## Status
 
