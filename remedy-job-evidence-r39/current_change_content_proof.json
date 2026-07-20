@@ -1,6 +1,14 @@
 {
-  "base_commit": "f3ed24f",
+  "base_commit": "b0ba27ac40c1d8e92316f09dd54162ec780d7cb5",
   "files": [
+    {
+      "path": ".agent/plan.md",
+      "sha256": "8faec4b7c5be129cc929651b890ef9bd6979e08d6e3fd19376952a737a52b4ec"
+    },
+    {
+      "path": "docs/roadmap/features/T0_F012.md",
+      "sha256": "142e94bcad23a4c6a4807ddc56184a10b45a7b54d1d5d415203599be3b54a689"
+    },
     {
       "path": "packages/orchestration/diagnostic_comparison.py",
       "sha256": "c7ca75ecb21dd5aacd6e83ca53d265f3cc04b1ffe4a34a6e61ee9d804245ea94"
@@ -34,8 +42,224 @@
       "sha256": "a5971a70a513e31486c8e9e93ad8a41a1af09fc6c74410eb01fb85856f35a7db"
     },
     {
+      "path": "remedy-job-evidence-r39/agent_run_trace.jsonl",
+      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
+    },
+    {
+      "path": "remedy-job-evidence-r39/agent_run_trace_summary.json",
+      "sha256": "3e9da611c7dafda9f7c9847926d167ae7fbc0a56366814363e26405f2435751a"
+    },
+    {
+      "path": "remedy-job-evidence-r39/artifact_contract_gate.json",
+      "sha256": "a7d1c909df6772cc1d8e410ab9b636786388151c9164867fa5a23438b175b0a5"
+    },
+    {
+      "path": "remedy-job-evidence-r39/change_provenance_gate.json",
+      "sha256": "615f8bd7804dbaf18f55fb5f5faf70f91c112eb54a435f93f3e86d813944e9be"
+    },
+    {
+      "path": "remedy-job-evidence-r39/command_transcript.json",
+      "sha256": "d1933215812bb0a62c50ba518f5a0fd2a2ceee6c0da4a4dea8ee51640a6b38a4"
+    },
+    {
+      "path": "remedy-job-evidence-r39/commit_execution_gate.json",
+      "sha256": "6dd5983894fb8885aa1077be818e61298e1dc78ac9f1fe212dfbece55418dd4f"
+    },
+    {
+      "path": "remedy-job-evidence-r39/context_strategy.json",
+      "sha256": "3337eda36d178d771cce73405da3ad49cec6d104880afb3f199e22b9894e3999"
+    },
+    {
+      "path": "remedy-job-evidence-r39/current_change_content_proof.json",
+      "sha256": "21a96767e8eede3aba3465a63b6030c6a0bb73f0a6452553075e3ca6f354c5f7"
+    },
+    {
+      "path": "remedy-job-evidence-r39/diagnostic_broad_run.json",
+      "sha256": "18748e19d7af2edcf220c7cde514978576bc8827d63d433bad4ca3560dbbd550"
+    },
+    {
+      "path": "remedy-job-evidence-r39/execution_config.json",
+      "sha256": "a3b4830a380dd896c236c9c0f5093a982ebcf0c496bbafbfd6c7e3a2b01f4b14"
+    },
+    {
+      "path": "remedy-job-evidence-r39/final_verifier_report.json",
+      "sha256": "4c899aa8f3bbc958b012ea36b1df364a2f16984785ffcb75944a4bb71a140cf3"
+    },
+    {
+      "path": "remedy-job-evidence-r39/fresh_evidence_gate.json",
+      "sha256": "56197f75d642b47ec69bf99471317afde7ff6ee96456ad8c1dbfc7f4ab79f58d"
+    },
+    {
+      "path": "remedy-job-evidence-r39/job_flow.json",
+      "sha256": "b040d1813e95013f6b1eb4ebe13a2d7fd24665173ed7fb04bb26552189ca1e23"
+    },
+    {
+      "path": "remedy-job-evidence-r39/job_report.json",
+      "sha256": "141ef49b528f66040b9c0787ccfe13eba049827710d0d2e8311fddf2a81cfc2c"
+    },
+    {
+      "path": "remedy-job-evidence-r39/job_timeline.json",
+      "sha256": "1a46c0402c164e450fc729a327a7f36d64cf4e4425fc9fd7063a788623706f19"
+    },
+    {
+      "path": "remedy-job-evidence-r39/manifest.json",
+      "sha256": "4a248f3c2ba019fb377daf17c25f908b3c0d5dad5bb5f590527a3403270c16c9"
+    },
+    {
+      "path": "remedy-job-evidence-r39/manifest_integrity.json",
+      "sha256": "446a565974ec714aa69ec16e95925457d7cae877e3dd93a02ace033b78736a54"
+    },
+    {
+      "path": "remedy-job-evidence-r39/postmortem_integrity.json",
+      "sha256": "1ab7f6b515b65bec60e0c5ffbeb9784cdb752ef4f57fe1f9929715c68e64d4ca"
+    },
+    {
+      "path": "remedy-job-evidence-r39/prompt_trace_summary.json",
+      "sha256": "0568ab55d01c45cfc1a76b4b8e64f4e7239e23fcab86c9d06c3ef55745de5612"
+    },
+    {
+      "path": "remedy-job-evidence-r39/review_commit_chain.json",
+      "sha256": "1d80de6cd6ae4dfe2cba68f232113e24963919c36a9d7d906d497ac6fa64c257"
+    },
+    {
+      "path": "remedy-job-evidence-r39/review_subject.json",
+      "sha256": "2032cdf0f377d4fd95ce4162b1296e46fb5b82f8df8879120718f70ff8f2c663"
+    },
+    {
+      "path": "remedy-job-evidence-r39/runtime_integration_gate.json",
+      "sha256": "a541ca93a144c9e50085d0ee8a0f7db9453f7c5071878ccb5e7393433273e44e"
+    },
+    {
+      "path": "remedy-job-evidence-r39/scratch_file_guard.json",
+      "sha256": "41887b6df55261d75d0cb448311911c56e4333d171e9045b9d61bdc56a9476d8"
+    },
+    {
+      "path": "remedy-job-evidence-r39/target_guard.json",
+      "sha256": "ce159e81ae3d0c58f580014bc2a2118e148d2350efeabdb8381fb699ddda88c4"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T001/prompt_trace.jsonl",
+      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T001/prompt_trace_summary.json",
+      "sha256": "2ba08175823bbd25a15f8e4f5209dd9a59f891372704bd2a9b603737132b9bf1"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T001/provider_evidence.json",
+      "sha256": "926b4ddca3e41dc25d0329f4aea9d58b3daac12d71ec65dd19fae8503b6a0815"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T001/repair_loop.json",
+      "sha256": "6a2cab72df7778810205f9d710ec7e6062b19e4d1a531175af2c751fc8c71810"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T001/review.json",
+      "sha256": "31dbce2f16a949356e78319bdf46e8b2137f59500110591d633139b6b8e5d471"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T001/token_accounting.json",
+      "sha256": "351d4889c2f45a42eb59ca8e22dad9e6099bfc8c9d6c24c59526770c44c591e2"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T002/prompt_trace.jsonl",
+      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T002/prompt_trace_summary.json",
+      "sha256": "b370cbae592f05ddf4bebe13e4fd82cf4a485654edef9e57523a117e944a7c14"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T002/provider_evidence.json",
+      "sha256": "2bf2f3e832186d1bae01ceb7885a573dfa8b080f3f4747ece112ae0bb2875efa"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T002/repair_loop.json",
+      "sha256": "3ccd2a851823bf89435cb0db07a324b2d50636f160a392203e96ac4679a810c5"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T002/review.json",
+      "sha256": "5b37a3be325e43eef04bccf9fa674e4bdf2b6f33ed6b7d1e5201fa98bb437d7f"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T002/token_accounting.json",
+      "sha256": "9168752d7d52b633ecb1760a34a71e6246787a24a03e8dec3a50579884f54a00"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T003/prompt_trace.jsonl",
+      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T003/prompt_trace_summary.json",
+      "sha256": "291692bb1e1aa364f631ccedbcc8cf549715e83169da716d8da91668c95d64a3"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T003/provider_evidence.json",
+      "sha256": "b69575a072fb0ec4f5db76162f82179d584d19a6416f0264d0dedbb6cb2e897a"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T003/repair_loop.json",
+      "sha256": "62c4094eaa4e7432a87be59b11456c5632e3b070a40b6b5d4cebca30f91c049b"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T003/review.json",
+      "sha256": "b23c7642088c6373c972a482b6f36f0ef04041b3f39bacda6afff35cacc5a504"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T003/token_accounting.json",
+      "sha256": "36b6c24a5df5ebca881a729d0cad3239256a041b3ee051e28c157ba1a6a33069"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T004/prompt_trace.jsonl",
+      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T004/prompt_trace_summary.json",
+      "sha256": "c6e81b6ec03acbe5630eabed31e5c45b92e47983ef34a9e15f64adcd0d6056f9"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T004/provider_evidence.json",
+      "sha256": "bcdefb89e457cc0b40a6072ae1dcff40971bcf7cd91a00a5dd3b3929b4b1a1b2"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T004/repair_loop.json",
+      "sha256": "fcb19f5fb35b30d7031e2263b0ff41a21247d3420e2d318322909cf689185be1"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T004/review.json",
+      "sha256": "c2514dc393c9296478117ef01c3dd0adfda279e2e4ee4bf27bee7d3ed1c0a3c0"
+    },
+    {
+      "path": "remedy-job-evidence-r39/task_runs/T004/token_accounting.json",
+      "sha256": "ec736c58ea86a3c635c05ce498f706e2d18e16fcb7e74c0813acd454af898eaf"
+    },
+    {
+      "path": "remedy-job-evidence-r39/tasks.json",
+      "sha256": "99d590eb23844d8aadff9b06457c4b5e1d01479be8f521cf1a71c34c8a56b010"
+    },
+    {
+      "path": "remedy-job-evidence-r39/token_truth.json",
+      "sha256": "909a4609bb4f54901bb2072ad0ff9c802faafe74c0ced4ecf4f99f20b3a8ed68"
+    },
+    {
+      "path": "remedy-job-evidence-r39/verification_tests.json",
+      "sha256": "d8ddcc5a6784c2ef2b2adb2947446e6aae96c6b3019332cc3ba5453aec309208"
+    },
+    {
+      "path": "remedy-job-evidence-r39/workspace.diff",
+      "sha256": "bd85bcdb8d4e613a79cb62d0903946ad10c83e63dc75f67614c159c0dbf4d184"
+    },
+    {
+      "path": "remedy-job-evidence-r39/workspace_apply.json",
+      "sha256": "ed019804e9f74bd6ba56fbf78677daf54f725cea9a51059d6f2eb6b8df68e3a5"
+    },
+    {
       "path": "scripts/build_review_zip.py",
       "sha256": "fea88288bb9e6bd24fb96697f278656a9fcbace629ff13fc439ffb3fd013df34"
+    },
+    {
+      "path": "tests/docs/test_docs_consistency.py",
+      "sha256": "fbf5ac0482118564cb7893347089a3d44c598f13d934f3f3c815ece4e6dca668"
     },
     {
       "path": "tests/orchestration/test_coordinator_capability_integration.py",
@@ -66,7 +290,7 @@
       "sha256": "905320ca921ca78b9620014444b04fec4cdccfe851c96d58e670e53da6ddb23d"
     }
   ],
-  "head_commit": "03e6e206842b0b81fb051a5198a08707ef513eb5",
-  "schema_version": "1.0.0",
+  "head_commit": "c60802b507e72448f58aa929c9eb47942bed72c0",
+  "proof_v": 1,
   "tombstones": []
 }
