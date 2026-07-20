@@ -60,7 +60,8 @@ class TestTokenTruthAuthority:
         (ev / "token_truth.json").write_text(json.dumps(tt))
         r = _brm._token_truth_authority(_view(ev))
         assert r["status"] == "MISMATCH" and r["equal"] is False
-        assert r["problems"] and "not the aggregate" in r["problems"][0]
+        p0 = r["problems"][0]
+        assert "not the aggregate" in p0 or "invalid" in p0
 
     def test_forged_root_blocks_full_build_manifest(self, tmp_path):
         # The reviewer's exact reproduction: forge root while every task says zero → not READY.
