@@ -1799,39 +1799,36 @@ class TestF012Round34IsPinned:
         assert "PRODUCER_ERROR" in doc and "BLOCKED_EVIDENCE" in doc
 
 
-class TestF012Round36IsPinned:
-    """Round 36: byte-and-inode-bound publication & typed token-input closure — post-publication
-    re-hash, pathname replacement cleanup, typed object roots, strict scalar fields, red-test repair."""
+class TestF012Round37IsPinned:
+    """Round 37: anonymous-inode publication & semantic provider evidence — O_TMPFILE + linkat,
+    pre-publication cleanup ownership, validate_provider_evidence, diagnostic broad run."""
 
     def _f012(self):
         from pathlib import Path as _P
         return _P("docs/roadmap/features/T0_F012.md").read_text()
 
     def test_the_round_is_recorded(self):
-        assert "Hardening round 36" in self._f012()
+        assert "Hardening round 37" in self._f012()
 
-    def test_byte_and_inode_bound_publication(self):
+    def test_anonymous_inode_publication(self):
         doc = self._f012()
-        assert "verify_published_identity" in doc
-        assert "re-hash" in doc.lower() or "re-hash" in doc
-        assert "same-inode" in doc
+        assert "O_TMPFILE" in doc
+        assert "linkat" in doc
+        assert "anonymous" in doc.lower()
 
-    def test_pathname_replacement_cleanup(self):
+    def test_pre_publication_cleanup_ownership(self):
         doc = self._f012()
-        assert "_cleanup_published_link" in doc
-        assert "lstat" in doc or "dev:ino" in doc
+        assert "fstat(anonymous_fd)" in doc or "fstat" in doc
+        assert "BEFORE publication" in doc or "pre-publication" in doc.lower()
 
-    def test_typed_object_roots(self):
+    def test_semantic_provider_evidence(self):
         doc = self._f012()
-        assert "non-dict" in doc or "object root" in doc.lower()
+        assert "validate_provider_evidence" in doc
+        assert "actual_model_verified" in doc
         assert "TokenEvidenceError" in doc
 
-    def test_strict_scalar_fields(self):
+    def test_diagnostic_broad_run(self):
         doc = self._f012()
-        assert "_strict_string" in doc
-        assert "str()" in doc or "coercion" in doc.lower()
-
-    def test_red_test_repair(self):
-        doc = self._f012()
-        assert "test_forged_root_field_blocks" in doc
+        assert "7440 passed" in doc
+        assert "pre-existing" in doc.lower()
         assert "not the aggregate" in doc or "invalid" in doc
