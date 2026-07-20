@@ -191,11 +191,11 @@ class TestPrimaryDocsAreHonest:
         assert "2026-07-14" in f011.group(0), "the acceptance date is missing"
         assert "remedy job stop" in f011.group(0)
         assert "STOPPED state" in f011.group(0)
-        # F012 is implemented and in progress; F017 is the next unchecked feature.
-        f012 = re.search(r"^- \[~\] F012 — Deterministic runs.*$", text, re.M)
-        assert f012, "F012 is built and must be in progress"
-        assert not re.search(r"^- \[x\] F012 —", text, re.M)
-        assert "remedy job rerun --check-manifest" in f012.group(0)
+        # F012 is externally accepted; F017 is the next unchecked feature.
+        f012 = re.search(r"^- \[x\] F012 — Deterministic runs.*$", text, re.M)
+        assert f012, "F012 is externally accepted and must be checked off"
+        assert "r40_authority_contract_closure" in f012.group(0)
+        assert "PASS_WITH_RISKS — ACCEPTED" in f012.group(0)
         assert re.search(r"^- \[ \] F017 —", text, re.M)
 
     def test_the_f012_document_describes_the_deterministic_runs_feature(self):
@@ -638,7 +638,7 @@ class TestF012Round13IsPinned:
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -736,7 +736,7 @@ class TestF012Round14IsPinned:
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -844,7 +844,7 @@ class TestF012Round15IsPinned:
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -934,7 +934,7 @@ class TestF012Round16IsPinned:
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1016,7 +1016,7 @@ class TestF012Round17IsPinned:
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1084,7 +1084,7 @@ class TestF012Round18IsPinned:
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1220,7 +1220,7 @@ class TestF012Round20IsPinned:
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1285,7 +1285,7 @@ class TestF012Round21IsPinned:
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1337,7 +1337,7 @@ class TestF012Round22IsPinned:
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1389,7 +1389,7 @@ class TestF012Round23IsPinned:
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
-        assert "- [~] F012" in status
+        assert "- [x] F012" in status
         assert "- [ ] F017" in status
 
 
@@ -1588,11 +1588,10 @@ class TestF012Round28IsPinned:
 
     def test_closure_section_present(self):
         doc = self._f012()
-        # Round 29 corrected the heading from a present-tense "closure" to conditional acceptance.
-        assert "## F012 acceptance criteria (external acceptance PENDING)" in doc
-        assert "deterministic-run behavior" in doc
-        assert "authority and truthfulness of its concrete review package" in doc
-        assert "follow-up maintenance" in doc
+        # F012 is externally accepted; the acceptance section records the verdict.
+        assert "External acceptance" in doc
+        assert "PASS_WITH_RISKS — ACCEPTED" in doc
+        assert "Maintenance follow-ups" in doc or "follow-up maintenance" in doc
 
 
 class TestF012Round29IsPinned:
@@ -1633,10 +1632,11 @@ class TestF012Round29IsPinned:
         assert "Hermetic review-packaging E2E" in doc
         assert "env -u PYTHONPATH" in doc
 
-    def test_acceptance_is_conditional_not_present_tense(self):
+    def test_acceptance_is_recorded(self):
         doc = self._f012()
-        assert "may be accepted only after external review confirms" in doc
-        # The round-28 present-tense over-claim is gone.
+        # F012 is externally accepted; the document records the verdict and date.
+        assert "PASS_WITH_RISKS — ACCEPTED" in doc
+        assert "2026-07-20" in doc
         assert "is accepted on the basis of its" not in doc
 
 
@@ -1934,4 +1934,26 @@ class TestF012Round40IsPinned:
 
     def test_authoritative_test_count(self):
         doc = self._f012()
-        assert "528 passed" in doc
+        assert "538 passed" in doc
+
+    def test_external_acceptance_recorded(self):
+        doc = self._f012()
+        assert "PASS_WITH_RISKS — ACCEPTED" in doc
+        assert "2026-07-20" in doc
+        assert "r40_authority_contract_closure" in doc
+
+    def test_accepted_residual_risks_section(self):
+        doc = self._f012()
+        assert "Accepted residual risks" in doc
+
+    def test_maintenance_followups_do_not_reopen(self):
+        doc = self._f012()
+        assert "FOLLOWUP-F012-A" in doc
+        assert "FOLLOWUP-F012-B" in doc
+        assert "FOLLOWUP-F012-C" in doc
+        assert "do NOT change F012" in doc or "do not reopen F012" in doc.lower()
+
+    def test_status_is_done(self):
+        from pathlib import Path as _P
+        status = _P("docs/roadmap/STATUS.md").read_text()
+        assert "[x] F012" in status

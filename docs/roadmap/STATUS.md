@@ -14,7 +14,7 @@
 - [x] F007 — Runtime harness (PR #127 · merge 7733a1d · follow-up d0a08a1 · persistent supervisor · accepted 2026-07-13 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 2e820a4dbf9842cf · package remedy-review-20260713-115439-READY_FOR_REVIEW.zip)
 - [x] F010 — Automatic failure post-mortems (classifier + call/task/job post-mortems + `remedy stats failures` · accepted 2026-07-14 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 01363c70e13046e2 · package remedy-review-20260714-135557-READY_FOR_REVIEW.zip)
 - [x] F011 — Kill switch (`remedy job stop` + safe points + STOPPED state + `job_stopped` event + stopped post-mortem · accepted 2026-07-14 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 49955e41c49f41bc · package remedy-review-20260714-223538-READY_FOR_REVIEW.zip)
-- [~] F012 — Deterministic runs (RunManifestV1 + `on_call_finalized` seam + `remedy job rerun --check-manifest` · external acceptance pending)
+- [x] F012 — Deterministic runs (RunManifestV1 + `on_call_finalized` seam + `remedy job rerun --check-manifest` · accepted 2026-07-20 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job r40_authority_contract_closure · package remedy-review-20260720-211130-READY_FOR_REVIEW.zip)
 - [ ] F017 — Scope fences
 - [ ] F018 — Budgets & stop conditions
 - [ ] F146 — Project identity & repo autodetection
