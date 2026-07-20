@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from packages.orchestration.token_truth import (
+    TokenEvidenceError,
     build_token_truth,
     write_token_truth,
 )
@@ -200,11 +203,12 @@ def test_per_task_actual_model_from_provider_evidence(tmp_path: Path) -> None:
     (d / "provider_evidence.json").write_text(json.dumps({
         "builder_provider": "claude-cli",
         "actual_model": "claude-opus-4-20250514",
+        "actual_model_verified": True,
     }))
     report = build_token_truth(str(tmp_path))
     t001 = report["per_task"]["T001"]
-    assert t001["actual_model"] is None
-    assert t001["actual_model_verified"] is False
+    assert t001["actual_model"] == "claude-opus-4-20250514"
+    assert t001["actual_model_verified"] is True
 
 
 def test_per_task_actual_model_verified(tmp_path: Path) -> None:
@@ -438,17 +442,16 @@ def test_configured_model_does_not_become_actual(tmp_path: Path) -> None:
     assert report["actual_model_verified"] is False
 
 
-def test_actual_model_remains_null_without_verification(tmp_path: Path) -> None:
+def test_actual_model_without_verified_raises(tmp_path: Path) -> None:
+    """Round 37 F3: actual model identity without actual_model_verified=true is contradictory."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
                    "builder_provider": "claude-cli",
                    "builder_configured_model": "opus",
                    "builder_actual_model": "claude-opus-4-20250514",
                })
-    report = build_token_truth(str(tmp_path))
-    assert report["builder_actual_model"] is None
-    assert report["actual_model_verified"] is False
-    assert report["per_task"]["T001"]["actual_model"] is None
+    with pytest.raises(TokenEvidenceError, match="actual model identity present"):
+        build_token_truth(str(tmp_path))
 
 
 # --- Fix 4: provider-call actual coverage ---
@@ -681,8 +684,6 @@ def test_manual_repair_task_not_in_provider_call_count(tmp_path: Path) -> None:
                provider_evidence={
                    "builder_provider": "operator",
                    "execution_mode": "manual_operator_repair",
-                   "usage": {"input_tokens": 9999, "output_tokens": 8888},
-                   "total_cost_usd": 5.0,
                    "provider_call_count": 0,
                    "actual_call_count": 0,
                    "cost_call_count": 0,

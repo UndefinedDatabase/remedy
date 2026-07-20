@@ -471,6 +471,70 @@ class TestScalarCoercionBlocked:
             build_token_truth(str(tmp_path))
 
 
+class TestSemanticProviderEvidenceContract:
+    """Round 37 F3: contradictory provider evidence raises TokenEvidenceError — never silently
+    normalized. Each test proves one exact contradiction → PRODUCER_ERROR → BLOCKED_EVIDENCE."""
+
+    _ACC = {"builder_prompt_tokens_estimated": 0}
+
+    def test_verified_true_without_model_identity(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "actual_model_verified": True}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="actual_model_verified=true but no actual model"):
+            build_token_truth(str(tmp_path))
+
+    def test_model_identity_without_verified(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "builder_actual_model": "claude-x", "actual_model_verified": False}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="actual model identity present but actual_model_verified is not true"):
+            build_token_truth(str(tmp_path))
+
+    def test_model_identity_without_verified_field(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "reviewer_actual_model": "claude-y"}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="actual model identity present"):
+            build_token_truth(str(tmp_path))
+
+    def test_cost_present_but_cost_call_count_zero(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "actual_call_count": 1, "cost_call_count": 0, "total_cost_usd": 0.05,
+              "actual_prompt_tokens": 10, "actual_completion_tokens": 5, "actual_total_tokens": 15,
+              "actual_model_verified": True, "builder_actual_model": "claude-x"}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="total_cost_usd present.*cost_call_count is 0"):
+            build_token_truth(str(tmp_path))
+
+    def test_actual_counters_with_actual_call_count_zero(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "actual_call_count": 0, "cost_call_count": 0,
+              "actual_prompt_tokens": 10, "actual_completion_tokens": 5}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="actual_call_count=0 but actual token counters present"):
+            build_token_truth(str(tmp_path))
+
+    def test_valid_zero_calls_zero_counters_passes(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 0,
+              "actual_call_count": 0, "cost_call_count": 0}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        t = build_token_truth(str(tmp_path))
+        assert validate_token_truth(t) == []
+
+    def test_valid_model_with_verified_passes(self, tmp_path):
+        _seed(tmp_path, "T001", self._ACC, _complete_actuals_pe())
+        t = build_token_truth(str(tmp_path))
+        assert validate_token_truth(t) == []
+
+    def test_actual_model_field_without_verified(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "actual_model": "claude-z"}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="actual model identity present"):
+            build_token_truth(str(tmp_path))
+
+
 class TestMetaRegression:
     """Every valid producer fixture validates; a representative malformed input never yields an
     accepted TokenTruthV1 (it raises before one is produced)."""

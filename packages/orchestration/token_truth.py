@@ -168,6 +168,49 @@ def _strict_string_list(container: dict, key: str, ctx: str) -> list[str] | None
     return v
 
 
+def validate_provider_evidence(pe: dict, ctx: str) -> None:
+    """Round 37 F3: semantic cross-field validation of provider evidence. Raises
+    ``TokenEvidenceError`` for contradictory field combinations that previous rounds
+    silently normalized."""
+    amv = pe.get("actual_model_verified")
+    bam = pe.get("builder_actual_model")
+    ram = pe.get("reviewer_actual_model")
+    am = pe.get("actual_model")
+    has_any_model = bool(bam or ram or am)
+
+    if amv is True and not has_any_model:
+        raise TokenEvidenceError(
+            f"{ctx}: actual_model_verified=true but no actual model identity "
+            "(builder_actual_model, reviewer_actual_model, or actual_model)")
+    if has_any_model and amv is not True:
+        raise TokenEvidenceError(
+            f"{ctx}: actual model identity present but actual_model_verified is not true")
+
+    cost = pe.get("total_cost_usd")
+    cc = pe.get("cost_call_count")
+    if cost is not None and _is_int(cc) and cc == 0:
+        raise TokenEvidenceError(
+            f"{ctx}: total_cost_usd present ({cost!r}) but cost_call_count is 0")
+    if _is_int(cc) and cc > 0 and "total_cost_usd" not in pe:
+        pass
+    if cost is not None and "cost_call_count" not in pe:
+        pass
+
+    ac = pe.get("actual_call_count")
+    has_actual_counters = any(
+        alias in pe or (isinstance(pe.get("usage"), dict) and alias in pe["usage"])
+        for aliases in _ACTUAL_ALIASES.values()
+        for alias in aliases
+    )
+
+    if _is_int(ac) and ac == 0 and has_actual_counters:
+        raise TokenEvidenceError(
+            f"{ctx}: actual_call_count=0 but actual token counters present")
+    if has_actual_counters and _is_int(ac) and ac < 0:
+        raise TokenEvidenceError(
+            f"{ctx}: actual_call_count is negative ({ac})")
+
+
 def _extract_actual(provider_evidence: Any, ctx: str = "provider_evidence") -> dict[str, int] | None:
     """Pull normalized actual usage counters from provider evidence.
 
@@ -261,6 +304,7 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
         _pe_ctx = f"task_runs/{tid}/provider_evidence.json"
         pe = _read_json(base / "task_runs" / tid / "provider_evidence.json")
         if pe is not None:
+            validate_provider_evidence(pe, _pe_ctx)
             if not provider:
                 provider = (_strict_string(pe, "builder_provider", _pe_ctx)
                             or _strict_string(pe, "provider", _pe_ctx))
