@@ -1,51 +1,80 @@
-# Plan — F012 Versioned PE Schema, Authoritative Evidence, Publication Capability Round 38
+# Plan — F012 Round 39 — COMPLETE
 
-Round-37 contracts FROZEN. External review returned six bounded findings. Round 38 closes
-exactly these and broadens no further.
+Round-38 contracts FROZEN. External review returned four bounded findings. Round 39 closed
+exactly these four. All scopes complete, all tests green, Evidence generated.
 
-## Scope 1 — complete versioned ProviderTokenEvidence
+## Scope 1 — closed versioned ProviderTokenEvidenceV1
 
-Round 37 validated semantic relationships but left three gaps:
+Round 38 added semantic cross-field validation but left the input schema open:
 
-- F1: `total_cost_usd` present without `cost_call_count` → silently accepted (pass branch).
-  Fix: raise `TokenEvidenceError` — cost must carry its call-count provenance.
-- F2: generic `actual_model` accepted by validation, used as per-task fallback, but discarded
-  at aggregate level. Fix: reject `actual_model` as ambiguous — require `builder_actual_model`
-  or `reviewer_actual_model` explicitly.
-- F3: `actual_model_verified=true` with `provider_call_count=0` accepted. Fix: require
-  `provider_call_count > 0` when `actual_model_verified=true`.
+- No schema_version required (missing version passes).
+- Wrong schema_version passes (e.g. "999.0").
+- Unknown trust-bearing fields accepted (e.g. "claimed_actual_cost_usd").
+- Unknown execution_mode accepted (e.g. "banana").
+- Missing `provider_call_count` on non-manual PE causes inference (`+= 1`).
 
-Tests: each exact reproduction → `TokenEvidenceError` → PRODUCER_ERROR → BLOCKED_EVIDENCE.
+Fix: Create `packages/orchestration/provider_token_evidence.py` with:
+- `PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION = "1.0.0"`
+- Closed allowed field set
+- Required fields by execution mode
+- Supported execution modes enum
+- `validate_provider_token_evidence(pe, ctx)` — the single entry point
 
-## Scope 2 — machine-verifiable authoritative and diagnostic test Evidence
+In `token_truth.py`:
+- Call new validator at the start of PE processing (before `validate_provider_evidence`)
+- Remove `agg_provider_call_count += 1` fallback when `provider_call_count` absent
+- Require `provider_call_count` in all non-manual PE
 
-- F4: diagnostic broad-run baseline comparison is self-asserted (`baseline_match: true`).
-  Fix: produce machine-validated comparison — sorted failure node IDs, SHA-256 of failure
-  sets, derived `failure_sets_equal`. Use `git archive` for baseline extraction.
-- F5: authoritative test matrix incomplete. Fix: package every named file and group as
-  typed verification runs with exact command, timestamps, durations, counts.
+Tests: complete omission/mutation matrix + all 5 external reproductions.
 
-## Scope 3 — explicit anonymous-publication capability contract
+## Scope 2 — diagnostic producer and validator
 
-- F6: O_TMPFILE availability is implicit. Fix: typed capability probe returning
-  SUPPORTED / UNSUPPORTED_OS / UNSUPPORTED_FILESYSTEM / LINKAT_UNAVAILABLE / PERMISSION_DENIED.
-  Capability-aware tests. Source `.part` cleanup ownership binding: record (st_dev, st_ino)
-  before copy, unlink only if same inode.
+Round 38's `diagnostic_broad_run.json` was captured at afe8394, not final HEAD f3ed24f,
+and has no production consumer.
+
+Fix: Create `packages/orchestration/diagnostic_comparison.py` with:
+- `produce_diagnostic_comparison(repo_root, base_commit, current_commit, command, ...)` —
+  extracts both commits via `git archive`, runs the exact same command in both,
+  produces sorted failure IDs, SHA-256 hashes, derived comparison.
+- `validate_diagnostic_comparison(comparison, expected_head)` — recomputes counts,
+  sortedness, set differences, hashes, `failure_sets_equal`, commit == expected_head.
+
+The Evidence bundle calls the producer; the final verifier calls the validator.
+
+## Scope 3 — complete authoritative verification matrix
+
+Round 38's verification_tests.json recorded 17 runs / 583 passed but handoff said 578.
+Missing: reviewer-confirmed suites, full F012/RunManifest group, Review/Packaging group,
+F010/F011/Evidence group, CLI group, Docs group. No real timestamps.
+
+Fix: Extend the verification_runs to cover all listed suites. Each run records
+real start/end timestamps (ISO-8601), duration, exact command, environment qualifiers,
+exit code, passed/failed/skipped, and failing node IDs when applicable. Top-level
+totals are the exact sum of individual runs.
+
+## Scope 4 — capability-integrated publication
+
+`probe_anonymous_publication_capability()` has no production callers.
+
+Fix:
+- In `build_review_zip.py`: probe the final parent directory before publication;
+  record result in coordinator JSON output; SUPPORTED required for publication;
+  unsupported → typed error, zero public outputs.
+- In `make_review_zip.sh` output parsing: record capability in `.review_zip_manifest.json`.
+- Capability-aware tests: on supported → real publication + concurrency + shell E2E;
+  on unsupported → typed status, nonzero result, zero public/part files.
+  Tests green in both environments (no skips).
 
 ## Commits (in order)
 
-1. `fix(evidence): complete versioned PE schema and semantic matrix` ✓
-1b. `fix(evidence): update integration test fixtures for cost_call_count` ✓
-2. `fix(evidence): publication capability probe and source-cleanup ownership`
-3. `docs(f012): truthful Round-38 documentation and operator state`
-
-Diagnostic comparison (F4) and authoritative verification matrix (F5) are Evidence
-artifacts packaged into the review ZIP — not separate commits. Machine-validated
-diagnostic_broad_run.json with sorted node IDs, SHA-256, and derived
-failure_sets_equal is produced and verified before ZIP build.
+1. `fix(evidence): closed versioned ProviderTokenEvidenceV1 with complete mutation matrix`
+2. `fix(evidence): diagnostic producer/validator with comparable archive execution`
+3. `fix(evidence): complete authoritative verification schema and matrix`
+4. `fix(evidence): capability-integrated coordinator and capability-aware tests`
+5. `docs(f012): truthful Round-39 documentation and operator state`
 
 ## Constraints (unchanged)
 
 Zero provider calls; manual only; no job-flow/job-run/db/network/docker/new deps. Small local
 commits, never amend/squash. No push/PR/merge/main. Do not start F017. Fresh Evidence linked to
-prior `r37_anonymous_inode_semantic_provider`, VERIFIED_EQUAL, git OK; one READY ZIP; then stop.
+prior `r38_versioned_pe_publication_capability`, VERIFIED_EQUAL, git OK; one READY ZIP; then stop.

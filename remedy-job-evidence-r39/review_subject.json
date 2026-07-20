@@ -1,0 +1,71 @@
+{
+  "base_commit": "f3ed24f",
+  "files": [
+    {
+      "path": "packages/orchestration/diagnostic_comparison.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/manual_attestation.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/pingpong_evidence.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/pingpong_loop.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/provider_token_evidence.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/repair_attest.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/token_truth.py",
+      "status": "modified"
+    },
+    {
+      "path": "packages/orchestration/verification_matrix.py",
+      "status": "modified"
+    },
+    {
+      "path": "scripts/build_review_zip.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_coordinator_capability_integration.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_diagnostic_comparison.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_provider_evidence_integration.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_token_producer_validator_compat.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_token_truth.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_token_truth_v1_contract.py",
+      "status": "modified"
+    },
+    {
+      "path": "tests/orchestration/test_verification_matrix.py",
+      "status": "modified"
+    }
+  ],
+  "head_commit": "03e6e206842b0b81fb051a5198a08707ef513eb5",
+  "schema_version": "1.0.0"
+}

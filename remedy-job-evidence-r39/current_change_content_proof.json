@@ -1,0 +1,72 @@
+{
+  "base_commit": "f3ed24f",
+  "files": [
+    {
+      "path": "packages/orchestration/diagnostic_comparison.py",
+      "sha256": "c7ca75ecb21dd5aacd6e83ca53d265f3cc04b1ffe4a34a6e61ee9d804245ea94"
+    },
+    {
+      "path": "packages/orchestration/manual_attestation.py",
+      "sha256": "83717c1ab9c70d8398fb1358dce00bf4b0d91676de4a53be2f464c0a48629251"
+    },
+    {
+      "path": "packages/orchestration/pingpong_evidence.py",
+      "sha256": "27f712871429385bd1026de889a958d1254605274476276758df18020cd86690"
+    },
+    {
+      "path": "packages/orchestration/pingpong_loop.py",
+      "sha256": "39a74981af810e2160fa63bcbc3f5e754cf37a608dad027e326c56968e19f2d4"
+    },
+    {
+      "path": "packages/orchestration/provider_token_evidence.py",
+      "sha256": "402d14f4df80ba12899bf31b8911b623743a50ab58bb861599eef7c9af5417d3"
+    },
+    {
+      "path": "packages/orchestration/repair_attest.py",
+      "sha256": "b668924c085e53f5cd99479df37c6869f76a091510565355b5e8bd417f4afc25"
+    },
+    {
+      "path": "packages/orchestration/token_truth.py",
+      "sha256": "829b2fdba2de787f7f566f0edcc680c7a2fe0a5efb83ca323ed8819e7237e0e4"
+    },
+    {
+      "path": "packages/orchestration/verification_matrix.py",
+      "sha256": "a5971a70a513e31486c8e9e93ad8a41a1af09fc6c74410eb01fb85856f35a7db"
+    },
+    {
+      "path": "scripts/build_review_zip.py",
+      "sha256": "fea88288bb9e6bd24fb96697f278656a9fcbace629ff13fc439ffb3fd013df34"
+    },
+    {
+      "path": "tests/orchestration/test_coordinator_capability_integration.py",
+      "sha256": "ab897dec275b70975a0d39cb7a047d81c001fd44acfae4f3abc04aff1268f724"
+    },
+    {
+      "path": "tests/orchestration/test_diagnostic_comparison.py",
+      "sha256": "5898f88542cd1d3a7ec26238949b89d5d09749241e1d1769c1a02c0cb4cadfb0"
+    },
+    {
+      "path": "tests/orchestration/test_provider_evidence_integration.py",
+      "sha256": "03d1c18ae467b323e509847b7f16df1c04a50e684a8e050d091f51c5ede8bcce"
+    },
+    {
+      "path": "tests/orchestration/test_token_producer_validator_compat.py",
+      "sha256": "01a7e30221b0e1535f8b84ac1c225b2dd4e7369b3b2b2b010987e533a602d16e"
+    },
+    {
+      "path": "tests/orchestration/test_token_truth.py",
+      "sha256": "ddd0165bcc975875209b2825477d7d53f87f0a6e84ff8f925105e9e6c010ca5b"
+    },
+    {
+      "path": "tests/orchestration/test_token_truth_v1_contract.py",
+      "sha256": "f07be4456e76fdd047519ab3bfe3c6fe6ed452f0010763880a405525d4958680"
+    },
+    {
+      "path": "tests/orchestration/test_verification_matrix.py",
+      "sha256": "905320ca921ca78b9620014444b04fec4cdccfe851c96d58e670e53da6ddb23d"
+    }
+  ],
+  "head_commit": "03e6e206842b0b81fb051a5198a08707ef513eb5",
+  "schema_version": "1.0.0",
+  "tombstones": []
+}

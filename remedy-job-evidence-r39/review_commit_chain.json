@@ -1,0 +1,21 @@
+{
+  "commits": [
+    {
+      "message": "fix(evidence): closed versioned ProviderTokenEvidenceV1 with complete mutation matrix",
+      "sha": "5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4"
+    },
+    {
+      "message": "fix(evidence): diagnostic producer/validator with comparable archive extraction",
+      "sha": "9a1e63b00a76715918a440e775c78e121efece49"
+    },
+    {
+      "message": "fix(evidence): complete authoritative verification schema and matrix",
+      "sha": "d9ea496d4ff1a390209de698ec6be5eaa5649dfe"
+    },
+    {
+      "message": "fix(evidence): capability-integrated coordinator and capability-aware tests",
+      "sha": "03e6e206842b0b81fb051a5198a08707ef513eb5"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

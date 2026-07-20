@@ -1862,3 +1862,39 @@ class TestF012Round38IsPinned:
         doc = self._f012()
         assert "probe_anonymous_publication_capability" in doc or "SUPPORTED" in doc
         assert "UNSUPPORTED_OS" in doc or "capability" in doc.lower()
+
+
+class TestF012Round39IsPinned:
+    """Round 39: closed PE schema, diagnostic producer/validator, verification matrix, capability integration."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 39" in self._f012()
+
+    def test_closed_pe_schema(self):
+        doc = self._f012()
+        assert "ProviderTokenEvidence" in doc or "provider_token_evidence" in doc
+        assert "ALLOWED_FIELDS" in doc
+        assert "validate_provider_token_evidence" in doc
+
+    def test_diagnostic_producer_validator(self):
+        doc = self._f012()
+        assert "diagnostic_comparison" in doc
+        assert "produce_diagnostic_comparison" in doc or "validate_diagnostic_comparison" in doc
+
+    def test_verification_matrix(self):
+        doc = self._f012()
+        assert "verification_matrix" in doc or "produce_verification_tests" in doc
+        assert "validate_verification_completeness" in doc or "completeness validator" in doc.lower()
+
+    def test_capability_integrated(self):
+        doc = self._f012()
+        assert "build_review_zip" in doc
+        assert "exit code 4" in doc or "returns exit code 4" in doc.lower()
+
+    def test_authoritative_test_count(self):
+        doc = self._f012()
+        assert "651 passed" in doc

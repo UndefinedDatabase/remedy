@@ -1,0 +1,18 @@
+[
+  {
+    "description": "Closed versioned ProviderTokenEvidenceV1",
+    "task_id": "T001"
+  },
+  {
+    "description": "Diagnostic producer/validator",
+    "task_id": "T002"
+  },
+  {
+    "description": "Verification matrix producer/completeness validator",
+    "task_id": "T003"
+  },
+  {
+    "description": "Capability-integrated coordinator",
+    "task_id": "T004"
+  }
+]

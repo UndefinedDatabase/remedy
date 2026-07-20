@@ -1,0 +1,253 @@
+{
+  "command": "python3 -m pytest tests/orchestration/test_review_atomic_publish.py -q && python3 -m pytest tests/orchestration/test_token_truth_v1_contract.py -q && python3 -m pytest tests/orchestration/test_token_truth.py -q && python3 -m pytest tests/orchestration/test_token_authority.py -q && python3 -m pytest tests/orchestration/test_review_token_truth_authority.py -q && python3 -m pytest tests/orchestration/test_review_manual_completion_shapes.py -q && python3 -m pytest tests/orchestration/test_review_single_publication.py -q && python3 -m pytest tests/orchestration/test_review_package_full_integration.py -q && python3 -m pytest tests/orchestration/test_review_authoritative_e2e.py -q && python3 -m pytest tests/orchestration/test_token_producer_validator_compat.py -q && python3 -m pytest tests/docs/test_docs_consistency.py -q && python3 -m pytest tests/orchestration/test_review_archive_plan.py -q && python3 -m pytest tests/orchestration/test_provider_evidence_integration.py -q && python3 -m pytest tests/orchestration/test_stream_export_e2e.py -q && python3 -m pytest tests/orchestration/test_diagnostic_comparison.py -q && python3 -m pytest tests/orchestration/test_verification_matrix.py -q && python3 -m pytest tests/orchestration/test_coordinator_capability_integration.py -q && python3 -m compileall packages/ scripts/ -q && bash -n scripts/make_review_zip.sh && git diff --check HEAD~4..HEAD",
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 651,
+  "runs": [
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_atomic_publish.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 32,
+      "run_id": "vr-0001",
+      "stdout_summary": "32 passed",
+      "test_files": [
+        "tests/orchestration/test_review_atomic_publish.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_token_truth_v1_contract.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 101,
+      "run_id": "vr-0002",
+      "stdout_summary": "101 passed",
+      "test_files": [
+        "tests/orchestration/test_token_truth_v1_contract.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_token_truth.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 37,
+      "run_id": "vr-0003",
+      "stdout_summary": "37 passed",
+      "test_files": [
+        "tests/orchestration/test_token_truth.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_token_authority.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 13,
+      "run_id": "vr-0004",
+      "stdout_summary": "13 passed",
+      "test_files": [
+        "tests/orchestration/test_token_authority.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_token_truth_authority.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 15,
+      "run_id": "vr-0005",
+      "stdout_summary": "15 passed",
+      "test_files": [
+        "tests/orchestration/test_review_token_truth_authority.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_manual_completion_shapes.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 18,
+      "run_id": "vr-0006",
+      "stdout_summary": "18 passed",
+      "test_files": [
+        "tests/orchestration/test_review_manual_completion_shapes.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_single_publication.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 7,
+      "run_id": "vr-0007",
+      "stdout_summary": "7 passed",
+      "test_files": [
+        "tests/orchestration/test_review_single_publication.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_package_full_integration.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 8,
+      "run_id": "vr-0008",
+      "stdout_summary": "8 passed",
+      "test_files": [
+        "tests/orchestration/test_review_package_full_integration.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_authoritative_e2e.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 1,
+      "run_id": "vr-0009",
+      "stdout_summary": "1 passed",
+      "test_files": [
+        "tests/orchestration/test_review_authoritative_e2e.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_token_producer_validator_compat.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 8,
+      "run_id": "vr-0010",
+      "stdout_summary": "8 passed",
+      "test_files": [
+        "tests/orchestration/test_token_producer_validator_compat.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/docs/test_docs_consistency.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 281,
+      "run_id": "vr-0011",
+      "stdout_summary": "281 passed",
+      "test_files": [
+        "tests/docs/test_docs_consistency.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_review_archive_plan.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 10,
+      "run_id": "vr-0012",
+      "stdout_summary": "10 passed",
+      "test_files": [
+        "tests/orchestration/test_review_archive_plan.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_provider_evidence_integration.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 56,
+      "run_id": "vr-0013",
+      "stdout_summary": "56 passed",
+      "test_files": [
+        "tests/orchestration/test_provider_evidence_integration.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_stream_export_e2e.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 7,
+      "run_id": "vr-0014",
+      "stdout_summary": "7 passed",
+      "test_files": [
+        "tests/orchestration/test_stream_export_e2e.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_diagnostic_comparison.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 23,
+      "run_id": "vr-0015",
+      "stdout_summary": "23 passed",
+      "test_files": [
+        "tests/orchestration/test_diagnostic_comparison.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_verification_matrix.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 23,
+      "run_id": "vr-0016",
+      "stdout_summary": "23 passed",
+      "test_files": [
+        "tests/orchestration/test_verification_matrix.py"
+      ]
+    },
+    {
+      "command": "python3 -m pytest tests/orchestration/test_coordinator_capability_integration.py -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 11,
+      "run_id": "vr-0017",
+      "stdout_summary": "11 passed",
+      "test_files": [
+        "tests/orchestration/test_coordinator_capability_integration.py"
+      ]
+    },
+    {
+      "command": "python3 -m compileall packages/ scripts/ -q",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 0,
+      "run_id": "vr-0018",
+      "stdout_summary": "clean",
+      "test_files": [
+        "compileall"
+      ]
+    },
+    {
+      "command": "bash -n scripts/make_review_zip.sh",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 0,
+      "run_id": "vr-0019",
+      "stdout_summary": "clean",
+      "test_files": [
+        "bash_syntax"
+      ]
+    },
+    {
+      "command": "git diff --check HEAD~4..HEAD",
+      "exit_code": 0,
+      "failed": 0,
+      "passed": 0,
+      "run_id": "vr-0020",
+      "stdout_summary": "clean",
+      "test_files": [
+        "git_whitespace"
+      ]
+    }
+  ],
+  "schema_version": "1.0.0",
+  "test_files": [
+    "bash_syntax",
+    "compileall",
+    "git_whitespace",
+    "tests/docs/test_docs_consistency.py",
+    "tests/orchestration/test_coordinator_capability_integration.py",
+    "tests/orchestration/test_diagnostic_comparison.py",
+    "tests/orchestration/test_provider_evidence_integration.py",
+    "tests/orchestration/test_review_archive_plan.py",
+    "tests/orchestration/test_review_atomic_publish.py",
+    "tests/orchestration/test_review_authoritative_e2e.py",
+    "tests/orchestration/test_review_manual_completion_shapes.py",
+    "tests/orchestration/test_review_package_full_integration.py",
+    "tests/orchestration/test_review_single_publication.py",
+    "tests/orchestration/test_review_token_truth_authority.py",
+    "tests/orchestration/test_stream_export_e2e.py",
+    "tests/orchestration/test_token_authority.py",
+    "tests/orchestration/test_token_producer_validator_compat.py",
+    "tests/orchestration/test_token_truth.py",
+    "tests/orchestration/test_token_truth_v1_contract.py",
+    "tests/orchestration/test_verification_matrix.py"
+  ],
+  "timestamp": "2026-07-20T12:00:00+00:00",
+  "verification_type": "explicit_commands"
+}
