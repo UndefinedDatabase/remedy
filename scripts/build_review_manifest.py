@@ -719,6 +719,34 @@ def _all_task_runs_manual(ev: _EvidenceView) -> bool:
     return True
 
 
+def _has_any_manual_claim(ev) -> bool:
+    """Round 40 F1: detect ANY manual-completion claim anywhere in the bundle.
+
+    If any authoritative artifact claims manual_operator_repair, operator_attested_complete,
+    or manual completion, the entire bundle must satisfy the canonical manual-completion
+    contract. A bundle cannot masquerade as non-manual when any part claims manual."""
+    ev = _as_view(ev)
+    fjr = _mc_read_json(ev, "final_job_review.json")
+    if fjr.get("completion_mode") == "manual_operator_repair":
+        return True
+    for tid in _mc_task_dirs(ev):
+        tm = _mc_read_json(ev, f"task_runs/{tid}/manifest.json")
+        if tm.get("completion_mode") == "manual_operator_repair":
+            return True
+        if tm.get("effective_status") == "operator_attested_complete":
+            return True
+        pe = _mc_read_json(ev, f"task_runs/{tid}/provider_evidence.json")
+        if pe.get("execution_mode") == "manual_operator_repair":
+            return True
+    fv = _mc_read_json(ev, "final_verifier_report.json")
+    if fv.get("manual_completion") is True:
+        return True
+    ec = _mc_read_json(ev, "execution_config.json")
+    if ec.get("builder_model") == "operator" and ec.get("reviewer_model") == "operator":
+        return True
+    return False
+
+
 def _is_manual_completion(ev) -> bool:
     """A manual-only completion candidate: the final job review declares the
     manual completion mode AND every task run carries manual provenance. No
@@ -1279,6 +1307,17 @@ def validate_manual_completion(ev) -> list[str]:
             errors.append(f"token_truth.json is not valid strict JSON: {str(exc)[:120]}")
         else:
             errors.extend(validate_token_truth(tt_raw))
+
+    # FVR manual-completion coherence: when the bundle is manual the FVR must agree.
+    if fv.get("manual_completion") is not True:
+        errors.append("final_verifier_report.manual_completion is not true for a manual bundle")
+    if fv.get("human_final_reviewer_required") is not True:
+        errors.append("final_verifier_report.human_final_reviewer_required is not true for a manual bundle")
+    fv_oat = fv.get("operator_attested_tasks") or []
+    if sorted(str(t) for t in fv_oat) != sorted(task_dirs):
+        errors.append(
+            f"final_verifier_report.operator_attested_tasks {sorted(str(t) for t in fv_oat)} "
+            f"!= task dirs {sorted(task_dirs)}")
 
     # 9-12: alignment / uncovered / hash mismatches / missing proofs (final verifier + gates).
     if fv.get("file_set_alignment_status") not in ("PASS", "PASS_WITH_RISKS"):
@@ -2603,12 +2642,17 @@ def validate_evidence_candidate(ev) -> dict:
     missing_task: dict[str, list[str]] = {}
 
     manual_completion = _is_manual_completion(ev)
+    has_manual_claim = _has_any_manual_claim(ev)
     manual_completion_errors: list[str] = []
     not_applicable_root: list[str] = []
 
+    if has_manual_claim and not manual_completion:
+        errors.append(
+            "mixed completion identity: some artifacts claim manual_operator_repair "
+            "but the bundle does not satisfy the full manual-completion contract "
+            "(final_job_review.completion_mode + all task manual_repair_provenance)")
+
     if manual_completion:
-        # Strict, independent validation of the manual-completion contract.
-        # Any mismatch invalidates the candidate and blocks authoritativeness.
         manual_completion_errors = validate_manual_completion(ev)
         errors.extend(manual_completion_errors)
 

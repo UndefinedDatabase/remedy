@@ -1,80 +1,93 @@
-# Plan — F012 Round 39 — COMPLETE
+# Plan — F012 Round 40 — Package-Authority Closure
 
-Round-38 contracts FROZEN. External review returned four bounded findings. Round 39 closed
-exactly these four. All scopes complete, all tests green, Evidence generated.
+Round-39 contracts FROZEN. External review returned five authority findings. Round 40 closes
+exactly these five. No broadening.
 
-## Scope 1 — closed versioned ProviderTokenEvidenceV1
+## Scope 1 — manual-completion identity and operator attestation
 
-Round 38 added semantic cross-field validation but left the input schema open:
-
-- No schema_version required (missing version passes).
-- Wrong schema_version passes (e.g. "999.0").
-- Unknown trust-bearing fields accepted (e.g. "claimed_actual_cost_usd").
-- Unknown execution_mode accepted (e.g. "banana").
-- Missing `provider_call_count` on non-manual PE causes inference (`+= 1`).
-
-Fix: Create `packages/orchestration/provider_token_evidence.py` with:
-- `PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION = "1.0.0"`
-- Closed allowed field set
-- Required fields by execution mode
-- Supported execution modes enum
-- `validate_provider_token_evidence(pe, ctx)` — the single entry point
-
-In `token_truth.py`:
-- Call new validator at the start of PE processing (before `validate_provider_evidence`)
-- Remove `agg_provider_call_count += 1` fallback when `provider_call_count` absent
-- Require `provider_call_count` in all non-manual PE
-
-Tests: complete omission/mutation matrix + all 5 external reproductions.
-
-## Scope 2 — diagnostic producer and validator
-
-Round 38's `diagnostic_broad_run.json` was captured at afe8394, not final HEAD f3ed24f,
-and has no production consumer.
-
-Fix: Create `packages/orchestration/diagnostic_comparison.py` with:
-- `produce_diagnostic_comparison(repo_root, base_commit, current_commit, command, ...)` —
-  extracts both commits via `git archive`, runs the exact same command in both,
-  produces sorted failure IDs, SHA-256 hashes, derived comparison.
-- `validate_diagnostic_comparison(comparison, expected_head)` — recomputes counts,
-  sortedness, set differences, hashes, `failure_sets_equal`, commit == expected_head.
-
-The Evidence bundle calls the producer; the final verifier calls the validator.
-
-## Scope 3 — complete authoritative verification matrix
-
-Round 38's verification_tests.json recorded 17 runs / 583 passed but handoff said 578.
-Missing: reviewer-confirmed suites, full F012/RunManifest group, Review/Packaging group,
-F010/F011/Evidence group, CLI group, Docs group. No real timestamps.
-
-Fix: Extend the verification_runs to cover all listed suites. Each run records
-real start/end timestamps (ISO-8601), duration, exact command, environment qualifiers,
-exit code, passed/failed/skipped, and failing node IDs when applicable. Top-level
-totals are the exact sum of individual runs.
-
-## Scope 4 — capability-integrated publication
-
-`probe_anonymous_publication_capability()` has no production callers.
+Round 39's Evidence claims `manual_operator_repair` / `operator_attested_complete` in task
+manifests and provider evidence, but the final verifier reports `manual_completion=false` /
+`operator_attested_tasks=[]` because task directories lack complete manual-attestation
+artifacts (manual_repair_provenance.json with correct fields, operator-attested review.json).
 
 Fix:
-- In `build_review_zip.py`: probe the final parent directory before publication;
-  record result in coordinator JSON output; SUPPORTED required for publication;
-  unsupported → typed error, zero public outputs.
-- In `make_review_zip.sh` output parsing: record capability in `.review_zip_manifest.json`.
-- Capability-aware tests: on supported → real publication + concurrency + shell E2E;
-  on unsupported → typed status, nonzero result, zero public/part files.
-  Tests green in both environments (no skips).
+- Create `validate_manual_completion_identity(evidence_view)` in build_review_manifest.py —
+  a fail-closed function that identifies ANY manual claim in the bundle and requires the
+  COMPLETE manual contract when one is found. Mixed identity blocks.
+- Integrate into `_build_manifest()` so READY blocks on a manual-claiming bundle that fails
+  manual validation.
+- Ensure `validate_evidence_candidate()` does not allow a manual-claiming bundle to bypass
+  the manual path.
+- Generate fresh R40 Evidence through `create_manual_completion_bundle` so the FVR reports
+  `manual_completion=true`, `operator_attested_tasks=[all]`, `human_final_reviewer_required=true`.
+- Test: a mixed-identity bundle blocks.
+
+## Scope 2 — unconditional commit-patch byte/chain verification
+
+Round 39's packaged patches were generated with `git format-patch` while the chain's
+`patch_sha256` values come from `git diff-tree -p` (the canonical producer). All 9 mismatch.
+
+Fix:
+- Regenerate all patch files using the canonical `commit_patch_bytes()` producer.
+- Verify every packaged patch matches its `patch_sha256` from the chain.
+- The existing `_verify_commit_patches()` in build_review_manifest.py already checks this —
+  it was just the Evidence that had wrong bytes.
+- Test: add a test that forges one patch body and verifies it blocks.
+
+## Scope 3 — complete ProviderTokenEvidenceV1 preservation/rejection contract
+
+Round 39's validator accepts and silently discards trust-bearing fields like `task_id`
+mismatch, `provider_attempts`, `actual_provider_available=true`, `prompt_trace_available=true`,
+`completion_provider_call_count=999`, `reviewer_provider` on manual, `cli_versions` typed wrong.
+
+Fix:
+- In `provider_token_evidence.py`: add cross-field validation for manual mode:
+  - `completion_provider_call_count` must be 0 or absent
+  - `provider_attempts` must be absent or empty list
+  - `actual_provider_available` must be false or absent
+  - `prompt_trace_available` must be false
+  - `reviewer_provider` must be "operator" or absent
+  - `cli_versions` must be dict or absent
+  - `task_id` must match containing directory (validated in token_truth.py)
+- In `token_truth.py`: validate `task_id` in PE matches directory name.
+- Test: the exact combined reproduction from the finding produces TokenEvidenceError.
+
+## Scope 4 — package-enforced diagnostic and verification Evidence
+
+Round 39's diagnostic_broad_run.json references HEAD 03e6e206 (stale), not current HEAD
+9cee26d. Package construction does not validate or block on stale diagnostics.
+
+Round 39's verification_matrix.py is not invoked by package construction.
+
+Fix:
+- For diagnostics: do NOT package a stale diagnostic. Remove stale `diagnostic_broad_run.json`
+  from Evidence. The package does not require it for READY. If present, validate it.
+- For verification: define the F012 required suite contract as a production constant.
+  Package construction validates verification_tests.json completeness.
+- Test: missing required verification run blocks.
+
+## Scope 5 — manifest-bound publication capability with capability-aware tests
+
+Round 39's coordinator probes capability but the root manifest doesn't bind it.
+
+Fix:
+- In build_review_manifest.py: record publication_capability in the root manifest with
+  status/primitive/checked_at fields, bound into the package hash chain.
+- Ensure capability-aware tests work on both supported and unsupported paths.
+- No new named-path fallback.
 
 ## Commits (in order)
 
-1. `fix(evidence): closed versioned ProviderTokenEvidenceV1 with complete mutation matrix`
-2. `fix(evidence): diagnostic producer/validator with comparable archive execution`
-3. `fix(evidence): complete authoritative verification schema and matrix`
-4. `fix(evidence): capability-integrated coordinator and capability-aware tests`
-5. `docs(f012): truthful Round-39 documentation and operator state`
+1. `fix(evidence): manual-completion identity contract and canonical Evidence`
+2. `fix(evidence): canonical commit-patch bytes from repository producer`
+3. `fix(evidence): complete ProviderTokenEvidenceV1 cross-field contract`
+4. `fix(evidence): package-enforced diagnostic and verification authority`
+5. `fix(evidence): manifest-bound publication capability`
+6. `docs(f012): truthful Round-40 documentation and operator state`
 
 ## Constraints (unchanged)
 
 Zero provider calls; manual only; no job-flow/job-run/db/network/docker/new deps. Small local
 commits, never amend/squash. No push/PR/merge/main. Do not start F017. Fresh Evidence linked to
-prior `r38_versioned_pe_publication_capability`, VERIFIED_EQUAL, git OK; one READY ZIP; then stop.
+prior `r39_closed_pe_diagnostic_verification_capability`, VERIFIED_EQUAL, git OK; one READY ZIP;
+then stop.

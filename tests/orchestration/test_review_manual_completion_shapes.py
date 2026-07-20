@@ -350,3 +350,64 @@ class TestManualCompletionRunsEndToEnd:
         self._bundle(evd2, repo, base, head)
         for name in ("final_verifier_report.json", "token_truth.json"):
             assert (evd1 / name).read_text() == (evd2 / name).read_text(), name
+
+
+class TestMixedCompletionIdentityBlocks:
+    """Round 40 F1: a bundle with ANY manual claim that does NOT satisfy the full manual-completion
+    contract blocks with a mixed-identity error. This prevents masquerading."""
+
+    def test_pe_manual_but_fjr_not_manual_blocks(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["completion_mode"] = "provider_backed"
+        ev = _view(objs)
+        assert _brm._has_any_manual_claim(ev) is True
+        assert _brm._is_manual_completion(ev) is False
+        vc = _brm.validate_evidence_candidate(ev)
+        assert vc["is_valid_current_run"] is False
+        assert any("mixed completion identity" in e for e in vc["validation_errors"])
+
+    def test_task_manifest_manual_but_fjr_not_manual_blocks(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["completion_mode"] = "provider_backed"
+        objs["task_runs/T001/provider_evidence.json"]["execution_mode"] = "provider_backed"
+        ev = _view(objs)
+        assert _brm._has_any_manual_claim(ev) is True
+        assert _brm._is_manual_completion(ev) is False
+        vc = _brm.validate_evidence_candidate(ev)
+        assert vc["is_valid_current_run"] is False
+        assert any("mixed completion identity" in e for e in vc["validation_errors"])
+
+    def test_fvr_manual_but_fjr_not_manual_blocks(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["completion_mode"] = "provider_backed"
+        objs["task_runs/T001/provider_evidence.json"]["execution_mode"] = "provider_backed"
+        objs["task_runs/T001/manifest.json"]["effective_status"] = "complete"
+        objs["task_runs/T001/manifest.json"]["completion_mode"] = "provider_backed"
+        objs["final_verifier_report.json"]["manual_completion"] = True
+        ev = _view(objs)
+        assert _brm._has_any_manual_claim(ev) is True
+        assert _brm._is_manual_completion(ev) is False
+        vc = _brm.validate_evidence_candidate(ev)
+        assert vc["is_valid_current_run"] is False
+        assert any("mixed completion identity" in e for e in vc["validation_errors"])
+
+    def test_execution_config_operator_but_fjr_not_manual_blocks(self):
+        objs = copy.deepcopy(_valid())
+        objs["final_job_review.json"]["completion_mode"] = "provider_backed"
+        objs["task_runs/T001/provider_evidence.json"]["execution_mode"] = "provider_backed"
+        objs["task_runs/T001/manifest.json"]["effective_status"] = "complete"
+        objs["task_runs/T001/manifest.json"]["completion_mode"] = "provider_backed"
+        objs["execution_config.json"] = {"builder_model": "operator", "reviewer_model": "operator"}
+        ev = _view(objs)
+        assert _brm._has_any_manual_claim(ev) is True
+        assert _brm._is_manual_completion(ev) is False
+        vc = _brm.validate_evidence_candidate(ev)
+        assert vc["is_valid_current_run"] is False
+        assert any("mixed completion identity" in e for e in vc["validation_errors"])
+
+    def test_fully_consistent_manual_bundle_has_no_mixed_identity_error(self):
+        ev = _view(_valid())
+        assert _brm._has_any_manual_claim(ev) is True
+        assert _brm._is_manual_completion(ev) is True
+        vc = _brm.validate_evidence_candidate(ev)
+        assert not any("mixed completion identity" in e for e in vc["validation_errors"])
