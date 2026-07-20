@@ -185,10 +185,13 @@ def apply_patch_intent(
     from packages.orchestration.scope_fences import (
         TouchedPath as _TouchedPath,
         check_change_set as _check_change_set,
-        load_fence_spec as _load_fence_spec,
+        resolve_fence_spec as _resolve_fence_spec,
     )
 
-    _fence_spec = _load_fence_spec(worktree_root=repo_root)
+    _job_fences = None
+    if hasattr(job, "fences") and job.fences is not None:
+        _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+    _fence_spec = _resolve_fence_spec(repo_root, job_fences=_job_fences)
     _fence_touched = [_TouchedPath(path=target_path, operation=action, role="target")]
     _fence_result = _check_change_set(repo_root, _fence_spec, _fence_touched)
     if not _fence_result.allowed:

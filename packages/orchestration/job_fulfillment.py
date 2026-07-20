@@ -805,12 +805,12 @@ def run_job_fulfill(
             FenceViolationError,
             TouchedPath as _TP,
             check_change_set as _ccs,
-            load_fence_spec as _lfs,
+            resolve_fence_spec as _rfs,
             write_fence_violations_artifact as _wfva,
         )
 
         _staging_root = staging_ws.staging_dir
-        _fence_spec = _lfs(worktree_root=_staging_root)
+        _fence_spec = _rfs(_staging_root)
         _batch_touched: list[_TP] = []
         for wo in worker_outputs:
             _aid = wo.get("artifact_id", "")

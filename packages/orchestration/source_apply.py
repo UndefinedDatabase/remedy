@@ -246,15 +246,17 @@ def apply_structured_patch(
 
     # F017 T002: fence preflight — before snapshot, before any mutation
     from packages.orchestration.scope_fences import (
-        FenceSpec,
         FenceViolationError,
         TouchedPath,
         check_change_set,
-        load_fence_spec,
+        resolve_fence_spec,
         write_fence_violations_artifact,
     )
 
-    fence_spec = load_fence_spec(worktree_root=repo_root)
+    _job_fences = None
+    if hasattr(job, "fences") and job.fences is not None:
+        _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+    fence_spec = resolve_fence_spec(repo_root, job_fences=_job_fences)
     touched: list[TouchedPath] = []
     for op in patch.file_ops:
         touched.append(TouchedPath(

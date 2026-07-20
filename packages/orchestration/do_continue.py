@@ -609,12 +609,12 @@ def run_do_continue(
             from packages.orchestration.scope_fences import (
                 TouchedPath as _FTP,
                 check_change_set as _f_ccs,
-                load_fence_spec as _f_lfs,
+                resolve_fence_spec as _f_rfs,
             )
             _f_intent = get_patch_intent(job, iid)
             if _f_intent and _f_intent.get("target_path"):
                 _f_repo = Path(job.metadata.get("target_repo", "") or ".")
-                _f_spec = _f_lfs(worktree_root=_f_repo)
+                _f_spec = _f_rfs(_f_repo)
                 _f_tp = [_FTP(
                     path=_f_intent["target_path"],
                     operation=_f_intent.get("action", "modify"),

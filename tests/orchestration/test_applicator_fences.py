@@ -317,7 +317,7 @@ class TestFenceViolationsArtifact:
             applicator="source_apply", job_id="j1", intent_id="i1",
         )
         assert path is not None
-        assert path.name == "fence_violations.json"
+        assert path.name == "fence_violations_j1_source_apply.json"
         data = json.loads(path.read_text())
         assert data["schema"] == "fence_violations/v1"
         assert data["applicator"] == "source_apply"

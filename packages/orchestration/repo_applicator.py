@@ -173,10 +173,10 @@ def apply_task_output_to_repo(
         FenceViolationError,
         TouchedPath,
         check_change_set,
-        load_fence_spec,
+        resolve_fence_spec,
     )
 
-    fence_spec = load_fence_spec(worktree_root=repo_root)
+    fence_spec = resolve_fence_spec(repo_root)
     fence_result = check_change_set(
         repo_root, fence_spec,
         [TouchedPath(path=relative_path, operation="create", role="target")],
