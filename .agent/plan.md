@@ -1,69 +1,62 @@
-# Plan — F012 Byte-and-Inode-Bound Publication & Typed Token-Input Closure Round 36
+# Plan — F012 Anonymous-Inode Publication, Semantic Provider Evidence, Complete Verification Round 37
 
-Round-35 contracts FROZEN. External review returned five bounded findings. Round 36 closes
+Round-36 contracts FROZEN. External review returned four bounded findings. Round 37 closes
 exactly these and broadens no further.
 
-## Scope 1 — exact verified-source publication (byte + inode binding)
+## Scope 1 — anonymous immutable publication inode
 
-Round 35's FD-retained inode check is necessary but insufficient: a same-inode in-place mutation
-through a second writable FD passes the inode check. A detected pathname swap leaves an evil
-final ZIP on disk.
+Round 36's publication still links a named source path (`os.link(source_path, final)`). A writable
+FD on that named inode can mutate it after the final hash read. Cleanup ownership is inferred
+after the race (lstat of the just-linked final path), so a foreign replacement can be removed.
 
-- `safe_publish.py`: replace `verify_published_inode` with `verify_published_identity` — after
-  `os.link`, compare inode AND re-hash through the retained FD. Post-publication hash mismatch
-  raises `PublishSourceError`. Make `expected_sha256` mandatory (missing → `PublishSourceError`).
-  On any post-publication failure, `_cleanup_published_link` unlinks the final path only after
-  proving it is the inode this invocation created. No foreign pre-existing destination removed.
-- Tests: same-inode in-place mutation blocks + no final remains, pathname replacement blocks +
-  no final remains, symlink replacement blocks, omitted hash blocks, OverlayFS still succeeds,
-  cross-fs blocks, concurrent exactly one wins (all with expected_sha256), foreign pre-existing
-  preserved, successful bytes hash exactly.
+- `safe_publish.py`: replace named-source publication with anonymous-FD protocol:
+  1. `O_TMPFILE` creates an anonymous inode in the final parent directory.
+  2. Copy verified source bytes into the anonymous FD.
+  3. `fsync` + set mode.
+  4. Hash the anonymous FD; require `expected_sha256`.
+  5. `linkat(fd, "", AT_FDCWD, final, AT_EMPTY_PATH)` for no-replace publication.
+  6. Known inode = `fstat(anonymous_fd)` BEFORE publication (not from post-link lstat).
+  7. Post-publication: open final with `O_NOFOLLOW`, compare inode, re-hash both FDs.
+  8. Cleanup uses pre-publication anonymous inode, never post-race observation.
+  9. `O_TMPFILE`/`linkat` unavailable → fail closed with `PublishSourceError`.
+- Tests: named `.part` mutation after anonymous copy cannot alter publication; no pathname
+  swap affects anonymous inode; no external writable FD on anonymous inode; final bytes ==
+  expected_sha256; exactly one concurrent publisher wins; pre-existing destination preserved;
+  no `os.link(source_path, final)` fallback; foreign replacement between publication and
+  postverification remains byte-identical.
 
-## Scope 2 — typed raw token Evidence (object roots + scalar fields)
+## Scope 2 — semantic Provider-Evidence validation
 
-Round 35's strict JSON syntax (duplicate keys, NaN, etc.) did not validate the decoded root
-type or trust-bearing scalar fields.
+Round 36 validated field types but not semantic relationships. Contradictory provider evidence
+(verified model without identity, cost without cost-covered call, etc.) is silently normalized.
 
-### 2a — typed object roots
-`_read_json` currently returns non-dict types (null, list) as valid decoded data which callers
-treat as absent. Fix: `FileNotFoundError` = absent; any other OSError = present-invalid; decoded
-non-dict root = present-invalid (raises `TokenEvidenceError`).
+- `token_truth.py`: add `validate_provider_evidence(pe, ctx)` before aggregation:
+  - `actual_model_verified=true` → at least one nonempty actual model identity required
+  - actual model identity present → `actual_model_verified` must be true
+  - `total_cost_usd` present → `cost_call_count > 0`
+  - `cost_call_count == 0` → `total_cost_usd` must be absent or null
+  - `actual_call_count == 0` → ordinary actual token counters must be absent
+  - actual token counters present → `actual_call_count > 0`
+  All raise `TokenEvidenceError`.
+- Tests: each exact contradiction → `TokenEvidenceError` → authority = PRODUCER_ERROR
+  → package_status = BLOCKED_EVIDENCE.
 
-### 2b — scalar field validation
-`str()` coerces non-string provider/model/role/configured_model into "valid" strings. Fix: add
-`_strict_string`, `_strict_nullable_string`, `_strict_string_list` helpers. Validate every
-trust-bearing identity field and `usage` when present.
+## Scope 3 — complete authoritative and diagnostic verification
 
-- Tests: list/null/string/number/bool roots for each Evidence file raise; non-string provider,
-  model, role, configured_model, cli_version raise; non-list actual_missing_reasons raises;
-  non-dict usage raises; table-driven mutation suite.
+Round 36 packaged only 12 test files (496 passed, 0 failed). The quoted 7432/56 broad run was
+not packaged. The verification contract requires every authoritative command separately plus
+any quoted diagnostic run with a grounded baseline comparison.
 
-## Scope 3 — red-test repair + complete verification + truthful documentation
-
-### 3a — red-test repair
-`test_review_token_truth_authority.py::test_forged_root_field_blocks` asserts "not the aggregate"
-in reason, but round-35 validation now catches invalid supplied truth as "invalid" before the
-comparison. Update assertions to accept either "not the aggregate" OR "invalid" without removing
-the reason check.
-
-### 3b — complete verification
-Run every named test file separately. Record every command in `verification_tests.json`.
-
-### 3c — truthful documentation
-Update T0_F012.md, test_docs_consistency.py, plan.md, live_review.md. Correct round-35
-overclaims.
-
-## Execution
-
-All five findings closed:
-- Scope 1: f31f9ee (byte-and-inode-bound publication + cleanup)
-- Scope 2: f5763bb (typed roots + strict scalars)
-- Scope 3a: 81518c7 (red-test repair)
-- Scope 3c: docs commit (pending)
+- Package every required authoritative command as its own typed run in `verification_tests.json`.
+- Run the broad orchestration suite; capture failing node IDs.
+- Run the same command against a grounded baseline commit; capture baseline failures.
+- Prove the failure sets are identical (pre-existing, unchanged).
+- Package the diagnostic run as a typed artifact (not authoritative green proof).
+- Update T0_F012.md, test_docs_consistency.py, plan.md, live_review.md.
 
 ## Constraints (unchanged)
 
 Zero provider calls; manual only; no job-flow/job-run/db/network/docker/new deps. Small local
 commits, never amend/squash. No push/PR/merge/main. Do not start F017. Fresh Evidence linked to
-prior `c323341f2542e9d4` through the real operator entry, VERIFIED_EQUAL, git OK; one READY ZIP;
-then stop.
+prior `r36_byte_inode_typed_token` through the real operator entry, VERIFIED_EQUAL, git OK; one
+READY ZIP; then stop.
