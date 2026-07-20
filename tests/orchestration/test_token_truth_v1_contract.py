@@ -375,6 +375,102 @@ class TestAuthorityValidatesBothOutputs:
         assert res["status"] == "VERIFIED_EQUAL", res
 
 
+class TestTypedRootContract:
+    """Round 36 F3: a present token Evidence file with a non-object root (null, list, string, number,
+    Boolean) is PRESENT_INVALID and raises TokenEvidenceError — never treated as absent."""
+
+    def _base(self, tmp_path, tid="T001"):
+        d = tmp_path / "task_runs" / tid
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @pytest.mark.parametrize("root", ["[]", "null", '"string"', "42", "true"])
+    def test_provider_evidence_non_object_raises(self, tmp_path, root):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_text('{"builder_prompt_tokens_estimated": 0}')
+        (d / "provider_evidence.json").write_text(root)
+        with pytest.raises(TokenEvidenceError, match="not an object"):
+            build_token_truth(str(tmp_path))
+
+    @pytest.mark.parametrize("root", ["[]", "null", '"string"', "42", "true"])
+    def test_token_accounting_non_object_raises(self, tmp_path, root):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_text(root)
+        (d / "provider_evidence.json").write_text("{}")
+        with pytest.raises(TokenEvidenceError, match="not an object"):
+            build_token_truth(str(tmp_path))
+
+    @pytest.mark.parametrize("root", ["[]", "null", '"string"', "42", "true"])
+    def test_prompt_trace_non_object_raises(self, tmp_path, root):
+        (tmp_path / "prompt_trace_summary.json").write_text(root)
+        with pytest.raises(TokenEvidenceError, match="not an object"):
+            build_token_truth(str(tmp_path))
+
+    def test_read_error_is_present_invalid(self, tmp_path):
+        """A directory at the expected file path is a read error, not absent."""
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").mkdir()
+        (d / "provider_evidence.json").write_text("{}")
+        with pytest.raises(TokenEvidenceError, match="cannot read"):
+            build_token_truth(str(tmp_path))
+
+
+class TestScalarCoercionBlocked:
+    """Round 36 F4: trust-bearing provider/model values must be actual strings — ``str()`` coercion
+    of non-string types is a producer error."""
+
+    _SCALAR_MUTATIONS = [
+        ("builder_provider", 123),
+        ("builder_provider", True),
+        ("builder_provider", ["forged"]),
+        ("provider", 123),
+        ("model", ["forged"]),
+        ("model", 42),
+        ("builder_model", True),
+        ("builder_configured_model", 123),
+        ("reviewer_configured_model", False),
+        ("cli_version", 42),
+    ]
+
+    @pytest.mark.parametrize("field,val", _SCALAR_MUTATIONS, ids=[f"{f}={v!r}" for f, v in _SCALAR_MUTATIONS])
+    def test_non_string_identity_raises(self, tmp_path, field, val):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1}
+        pe[field] = val
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, pe)
+        with pytest.raises(TokenEvidenceError, match="not a string"):
+            build_token_truth(str(tmp_path))
+
+    def test_non_string_actual_missing_reason_raises(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "actual_missing_reasons": [123]}
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, pe)
+        with pytest.raises(TokenEvidenceError, match="not a list of strings"):
+            build_token_truth(str(tmp_path))
+
+    def test_usage_non_object_raises(self, tmp_path):
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "usage": [1, 2, 3]}
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, pe)
+        with pytest.raises(TokenEvidenceError, match="usage is not an object"):
+            build_token_truth(str(tmp_path))
+
+    def test_non_string_role_raises(self, tmp_path):
+        d = tmp_path / "task_runs" / "T001"
+        d.mkdir(parents=True)
+        (d / "token_accounting.json").write_text('{"role": 123, "builder_prompt_tokens_estimated": 0}')
+        (d / "provider_evidence.json").write_text("{}")
+        with pytest.raises(TokenEvidenceError, match="not a string"):
+            build_token_truth(str(tmp_path))
+
+    def test_non_string_configured_model_raises(self, tmp_path):
+        d = tmp_path / "task_runs" / "T001"
+        d.mkdir(parents=True)
+        (d / "token_accounting.json").write_text('{"configured_model": 42, "builder_prompt_tokens_estimated": 0}')
+        (d / "provider_evidence.json").write_text("{}")
+        with pytest.raises(TokenEvidenceError, match="not a string"):
+            build_token_truth(str(tmp_path))
+
+
 class TestMetaRegression:
     """Every valid producer fixture validates; a representative malformed input never yields an
     accepted TokenTruthV1 (it raises before one is produced)."""
