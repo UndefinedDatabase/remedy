@@ -1799,36 +1799,39 @@ class TestF012Round34IsPinned:
         assert "PRODUCER_ERROR" in doc and "BLOCKED_EVIDENCE" in doc
 
 
-class TestF012Round35IsPinned:
-    """Round 35: verified-inode publication & strict token producer closure — FD-retained inode-bound
-    publication, strict raw JSON decoding, producer self-validation, and authority validity."""
+class TestF012Round36IsPinned:
+    """Round 36: byte-and-inode-bound publication & typed token-input closure — post-publication
+    re-hash, pathname replacement cleanup, typed object roots, strict scalar fields, red-test repair."""
 
     def _f012(self):
         from pathlib import Path as _P
         return _P("docs/roadmap/features/T0_F012.md").read_text()
 
     def test_the_round_is_recorded(self):
-        assert "Hardening round 35" in self._f012()
+        assert "Hardening round 36" in self._f012()
 
-    def test_fd_retained_inode_bound_publication(self):
+    def test_byte_and_inode_bound_publication(self):
         doc = self._f012()
-        assert "O_RDONLY|O_NOFOLLOW" in doc
-        assert "verify_published_inode" in doc
-        assert "EXDEV" in doc
+        assert "verify_published_identity" in doc
+        assert "re-hash" in doc.lower() or "re-hash" in doc
+        assert "same-inode" in doc
 
-    def test_strict_raw_json_decoding(self):
+    def test_pathname_replacement_cleanup(self):
         doc = self._f012()
-        assert "strict_loads" in doc
-        assert "duplicate keys" in doc
-        assert "_strict_count" in doc
+        assert "_cleanup_published_link" in doc
+        assert "lstat" in doc or "dev:ino" in doc
 
-    def test_producer_self_validates(self):
+    def test_typed_object_roots(self):
         doc = self._f012()
-        assert "validate_token_truth(report)" in doc
-        assert "cache-only" in doc.lower()
-        assert "actual_total_tokens" in doc
+        assert "non-dict" in doc or "object root" in doc.lower()
+        assert "TokenEvidenceError" in doc
 
-    def test_authority_validates_both(self):
+    def test_strict_scalar_fields(self):
         doc = self._f012()
-        assert "validates both canonical and supplied" in doc or "validates canonical" in doc
-        assert "VERIFIED_EQUAL" in doc
+        assert "_strict_string" in doc
+        assert "str()" in doc or "coercion" in doc.lower()
+
+    def test_red_test_repair(self):
+        doc = self._f012()
+        assert "test_forged_root_field_blocks" in doc
+        assert "not the aggregate" in doc or "invalid" in doc

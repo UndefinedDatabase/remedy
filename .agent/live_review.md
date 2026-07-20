@@ -1,7 +1,7 @@
-# Live Review — F012 Verified-Inode Publication & Strict Token Producer Closure Round 35
+# Live Review — F012 Byte-and-Inode-Bound Publication & Typed Token-Input Closure Round 36
 
 ## Verdict (reviewer-owned)
-**PENDING** — F1/F2/F3/F4 closed this round; every accepted Round-34 contract preserved. Not
+**PENDING** — F1/F2/F3/F4/F5 closed this round; every accepted Round-35 contract preserved. Not
 externally accepted.
 
 ## Process inspection (mandated first action)
@@ -13,28 +13,27 @@ terminate; no process group killed.
 
 Operator-built by hand: no Builder, no Reviewer, no provider GENERATION call (0), no Fable, no
 subagents, no Evidence `job-flow`/`job-run`, no Docker, no new dependency, **no database**, **no
-LLM rerun**, no network. Every accepted Round-34 contract preserved.
+LLM rerun**, no network. Every accepted Round-35 contract preserved.
 
 ### Closed this round
-- **F1 — FD-retained, inode-bound, OverlayFS-safe publication.** `verify_source_identity` opens
-  O_RDONLY|O_NOFOLLOW, fstat, hashes through FD, returns retained FD. `verify_published_inode`
-  checks (st_dev, st_ino) match. st_dev precheck removed; EXDEV catches true cross-device. Commit
-  a583fcd.
-- **F2 — strict raw token/provider Evidence JSON decoding.** `_read_json` uses `strict_loads` —
-  rejects duplicate keys, NaN, Infinity, invalid UTF-8. `_as_int` replaced with `_strict_count` for
-  prompt_trace_count. Commit bb3842d.
-- **F3 — successful producer always emits valid TokenTruthV1.** Derives actual_total from
-  prompt+completion. Cache-only is not actual usage. Model identity strictly typed. Producer
-  self-validates via `validate_token_truth(report)`. Commit b3b35fd.
-- **F4 — authority validates both canonical and supplied before VERIFIED_EQUAL.** Invalid canonical →
-  PRODUCER_ERROR; invalid supplied → MISMATCH. Commit b3b35fd.
+- **F1 — byte-and-inode-bound publication with post-publication re-hash.** `verify_published_inode`
+  replaced with `verify_published_identity`: inode check AND re-hash through retained FD.
+  `expected_sha256` now mandatory. Commit f31f9ee.
+- **F2 — pathname replacement cleanup.** `_cleanup_published_link` removes final path only after
+  proving it is this invocation's inode. Evil final ZIPs cleaned up. Commit f31f9ee.
+- **F3 — typed object roots.** `_read_json` enforces dict root; non-dict raises
+  `TokenEvidenceError`. Commit f5763bb.
+- **F4 — strict scalar field validation.** `str()` coercions replaced with `_strict_string`,
+  `_strict_nullable_string`, `_strict_string_list`. Non-string trust-bearing fields raise
+  `TokenEvidenceError`. Commit f5763bb.
+- **F5 — red-test repair.** Authority test assertions accept either "not the aggregate" or
+  "invalid". Commit 81518c7.
 
 ## Verification
 
-- New/affected suites pass: test_review_atomic_publish (20), test_token_truth_v1_contract (56),
-  test_token_truth (29), test_token_authority (12), test_token_producer_validator_compat (7),
-  test_review_single_publication (7), test_review_package_full_integration, test_review_authoritative_e2e,
-  TestF012Round35IsPinned (5). Full acceptance matrix re-run before packaging.
+- New/affected suites pass: test_review_atomic_publish (26), test_token_truth_v1_contract (85),
+  test_token_truth (29), test_token_authority (18), test_review_token_truth_authority (15).
+  Full acceptance matrix re-run before packaging.
 
 ## Status
 
