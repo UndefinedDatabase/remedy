@@ -599,71 +599,12 @@ def _token_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
     }
 
 
-# Informational note surfaced when token counts are pure character heuristics.
-# It is advisory only — a low-confidence measurement never blocks promotion.
-_LOW_CONFIDENCE_TOKEN_NOTE = (
-    "Token counts are low-confidence character heuristics; no provider exposed "
-    "measured usage. Informational only — does not affect the verdict."
+# Round 29 F1: the pure token-measurement derivation is the SINGLE source of truth, shared with the
+# review gate so the two can never drift. This module keeps a thin back-compatible alias.
+from packages.orchestration.token_measurement import (  # noqa: E402
+    LOW_CONFIDENCE_TOKEN_NOTE as _LOW_CONFIDENCE_TOKEN_NOTE,
+    token_measurement_summary as _token_measurement_summary,
 )
-
-
-def _token_measurement_summary(token_status: dict[str, Any]) -> dict[str, Any]:
-    """Derive a measurement-confidence view over the token_truth-backed status.
-
-    - ``low`` confidence (all heuristic): attach an informational note only.
-    - ``high``/``mixed`` confidence: attach the actual token/cost summary.
-
-    Never returns anything that alters the verdict — this is reporting only.
-    """
-    confidence = str(token_status.get("measurement_confidence", "") or "")
-    note: str | None = None
-    actual_summary: dict[str, Any] | None = None
-
-    if confidence in ("high", "mixed"):
-        actual_summary = {
-            "measurement_confidence": confidence,
-            "measurement_source": token_status.get("measurement_source"),
-            "actual_prompt_tokens": token_status.get("actual_prompt_tokens"),
-            "actual_completion_tokens": token_status.get("actual_completion_tokens"),
-            "actual_total_tokens": token_status.get("actual_total_tokens"),
-            "total_cost_usd": token_status.get("total_cost_usd"),
-            "cost_call_count": token_status.get("cost_call_count"),
-            "cost_coverage_complete": token_status.get("cost_coverage_complete"),
-            "cost_coverage_reason": token_status.get("cost_coverage_reason"),
-            "provider_call_count": token_status.get("provider_call_count"),
-            "actual_call_count": token_status.get("actual_call_count"),
-            "actual_coverage_complete": token_status.get("actual_coverage_complete"),
-            "actual_missing_reasons": token_status.get("actual_missing_reasons"),
-            "cli_version": token_status.get("cli_version"),
-            "configured_models": token_status.get("configured_models"),
-            "actual_models": token_status.get("actual_models"),
-            "actual_model_verified": token_status.get("actual_model_verified"),
-        }
-    elif confidence == "low" or (
-        not confidence and not token_status.get("actual_available")
-    ):
-        note = _LOW_CONFIDENCE_TOKEN_NOTE
-
-    # F003: the measurement summary always preserves coverage/cost/model fields
-    # from token_truth — unknown stays None, never zero/false.
-    return {
-        "measurement_confidence": confidence,
-        "measurement_source": token_status.get("measurement_source"),
-        "measurement_note": note,
-        "actual_summary": actual_summary,
-        "provider_call_count": token_status.get("provider_call_count"),
-        "actual_call_count": token_status.get("actual_call_count"),
-        "actual_coverage_complete": token_status.get("actual_coverage_complete"),
-        "actual_missing_reasons": token_status.get("actual_missing_reasons"),
-        "cost_call_count": token_status.get("cost_call_count"),
-        "cost_coverage_complete": token_status.get("cost_coverage_complete"),
-        "cost_coverage_reason": token_status.get("cost_coverage_reason"),
-        "total_cost_usd": token_status.get("total_cost_usd"),
-        "cli_version": token_status.get("cli_version"),
-        "configured_models": token_status.get("configured_models"),
-        "actual_models": token_status.get("actual_models"),
-        "actual_model_verified": token_status.get("actual_model_verified"),
-    }
 
 
 def _evidence_completeness(base: Path, task_ids: list[str]) -> dict[str, bool]:
@@ -877,6 +818,15 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     )
     postmortem_integrity_blocked = bool(postmortem_failures)
 
+    # F012: a required run-input manifest that could not be written or read is a broken
+    # evidence contract, the same as a lost post-mortem. It BLOCKS.
+    _manifest_integrity = _read_json(base / "manifest_integrity.json")
+    manifest_failures = (
+        list(_manifest_integrity.get("failures") or [])
+        if isinstance(_manifest_integrity, dict) else []
+    )
+    manifest_integrity_blocked = bool(manifest_failures)
+
     unresolved_findings = _collect_unresolved_findings(base, task_ids)
 
     _vt_runs = verification_tests.get("runs") if isinstance(verification_tests, dict) else None
@@ -973,6 +923,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
 
     gates_blocked = (
         postmortem_integrity_blocked
+        or manifest_integrity_blocked
         or scratch_file_guard == "BLOCKED"
         or spec_compliance == "BLOCKED"
         or any_core_gate_blocked
@@ -1069,6 +1020,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
         # F010: required post-mortems that could not be written. Non-empty ⇒ BLOCKED.
         "postmortem_failures": postmortem_failures,
         "postmortem_integrity_blocked": postmortem_integrity_blocked,
+        "manifest_integrity_blocked": manifest_integrity_blocked,
         "change_provenance": change_provenance,
         "change_provenance_gate": change_provenance,
         "fresh_evidence_gate": fresh_evidence_gate,

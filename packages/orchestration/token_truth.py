@@ -28,6 +28,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from packages.common.strict_json import StrictJsonError, strict_loads
+from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+
 SCHEMA_VERSION = "1.0.0"
 
 _SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
@@ -38,6 +41,19 @@ _MEASUREMENT_SOURCE_ACTUAL = "provider_actuals"
 _MEASUREMENT_SOURCE_MIXED = "mixed_provider_actuals_and_heuristic"
 _MEASUREMENT_CONFIDENCE = "low"
 _MISSING_REASON = "actual token usage unavailable from claude-cli output"
+
+# Round 33 F3: the CANONICAL token-truth schema constants — the SINGLE source of truth shared with the
+# validator (token_authority imports these), so the producer's own output always validates and the
+# enums can never drift. These are EXACTLY the values build_token_truth emits.
+TOKEN_TRUTH_SCHEMA_VERSION = SCHEMA_VERSION
+MEASUREMENT_CONFIDENCES = frozenset({"low", "mixed", "high"})
+MEASUREMENT_SOURCES = frozenset({
+    _MEASUREMENT_SOURCE_HEURISTIC, _MEASUREMENT_SOURCE_ACTUAL, _MEASUREMENT_SOURCE_MIXED})
+#: The exact (confidence -> source) pairing the producer emits; any other combination is incoherent.
+CONFIDENCE_SOURCE_PAIRS = frozenset({
+    ("low", _MEASUREMENT_SOURCE_HEURISTIC),
+    ("high", _MEASUREMENT_SOURCE_ACTUAL),
+    ("mixed", _MEASUREMENT_SOURCE_MIXED)})
 
 # Provider-evidence usage field aliases → normalized actual_* field.
 # Both flat keys and keys under a nested "usage" object are honored.
@@ -57,11 +73,58 @@ _ACTUAL_ALIASES = {
 }
 
 
-def _read_json(path: Path) -> Any:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+class TokenEvidenceError(Exception):
+    """Round 34 F2: a per-task token_accounting/provider_evidence field is malformed (wrong type,
+    boolean-as-int, negative, non-finite cost, or a violated cross-field relationship). The producer
+    RAISES rather than coercing/clamping it into a plausible value, so a bounded producer error becomes
+    ``token_truth_authority = PRODUCER_ERROR`` and ``package_status = BLOCKED_EVIDENCE``."""
+
+
+def _is_int(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _strict_count(container: dict, key: str, ctx: str, *, default: int = 0) -> int:
+    """A consumed COUNT/token field: absent → ``default``; present → a real nonnegative integer
+    (never a bool, float, or string). Anything else raises ``TokenEvidenceError``."""
+    if key not in container:
+        return default
+    v = container[key]
+    if not _is_int(v) or v < 0:
+        raise TokenEvidenceError(f"{ctx}.{key} is not a nonnegative integer: {v!r}")
+    return v
+
+
+def _strict_cost(container: dict, key: str, ctx: str) -> float | None:
+    """A consumed COST field: absent/null → None; present → a finite nonnegative number (never bool)."""
+    if key not in container or container[key] is None:
         return None
+    v = container[key]
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise TokenEvidenceError(f"{ctx}.{key} is not a finite nonnegative number: {v!r}")
+    if v != v or v in (float("inf"), float("-inf")) or v < 0:
+        raise TokenEvidenceError(f"{ctx}.{key} is not a finite nonnegative number: {v!r}")
+    return float(v)
+
+
+def _read_json(path: Path) -> dict | None:
+    """Round 36 F3: strict typed JSON decode. ``FileNotFoundError`` → ``None`` (genuinely absent).
+    Any other read error → ``TokenEvidenceError`` (present-invalid). A non-object root (null, list,
+    string, number, Boolean) → ``TokenEvidenceError``."""
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise TokenEvidenceError(f"cannot read {path}: {exc}") from None
+    try:
+        data = strict_loads(raw, where=str(path))
+    except StrictJsonError as exc:
+        raise TokenEvidenceError(f"malformed JSON in {path}: {exc}") from None
+    if not isinstance(data, dict):
+        raise TokenEvidenceError(
+            f"{path} has a {type(data).__name__} root, not an object")
+    return data
 
 
 def _task_ids(base: Path) -> list[str]:
@@ -76,17 +139,107 @@ def _task_ids(base: Path) -> list[str]:
     )
 
 
-def _as_int(value: Any) -> int:
-    return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else 0
+def _strict_string(container: dict, key: str, ctx: str, *, default: str = "") -> str:
+    """A trust-bearing string field: absent/null → ``default``; present → must be a real string."""
+    if key not in container or container[key] is None:
+        return default
+    v = container[key]
+    if not isinstance(v, str):
+        raise TokenEvidenceError(f"{ctx}.{key} is not a string: {v!r}")
+    return v
 
 
-def _extract_actual(provider_evidence: Any) -> dict[str, int] | None:
+def _strict_nullable_string(container: dict, key: str, ctx: str) -> str | None:
+    """A nullable string field: absent/null → ``None``; present → must be a real string."""
+    if key not in container or container[key] is None:
+        return None
+    v = container[key]
+    if not isinstance(v, str):
+        raise TokenEvidenceError(f"{ctx}.{key} is not a string: {v!r}")
+    return v
+
+
+def _strict_string_list(container: dict, key: str, ctx: str) -> list[str] | None:
+    """A nullable list-of-strings field."""
+    if key not in container or container[key] is None:
+        return None
+    v = container[key]
+    if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+        raise TokenEvidenceError(f"{ctx}.{key} is not a list of strings: {v!r}")
+    return v
+
+
+def validate_provider_evidence(pe: dict, ctx: str) -> None:
+    """Round 37 F3: semantic cross-field validation of provider evidence. Raises
+    ``TokenEvidenceError`` for contradictory field combinations that previous rounds
+    silently normalized."""
+    amv = pe.get("actual_model_verified")
+    bam = pe.get("builder_actual_model")
+    ram = pe.get("reviewer_actual_model")
+    am = pe.get("actual_model")
+
+    # Round 38 F2: reject ambiguous generic actual_model — require role-specific fields.
+    if am is not None:
+        raise TokenEvidenceError(
+            f"{ctx}: generic 'actual_model' field is ambiguous; "
+            "use 'builder_actual_model' or 'reviewer_actual_model' instead")
+
+    has_any_model = bool(bam or ram)
+
+    if amv is True and not has_any_model:
+        raise TokenEvidenceError(
+            f"{ctx}: actual_model_verified=true but no actual model identity "
+            "(builder_actual_model or reviewer_actual_model)")
+    if has_any_model and amv is not True:
+        raise TokenEvidenceError(
+            f"{ctx}: actual model identity present but actual_model_verified is not true")
+
+    # Round 38 F3: verified model requires at least one provider call.
+    if amv is True:
+        pc = pe.get("provider_call_count")
+        if _is_int(pc) and pc == 0:
+            raise TokenEvidenceError(
+                f"{ctx}: actual_model_verified=true but provider_call_count is 0")
+
+    cost = pe.get("total_cost_usd")
+    cc = pe.get("cost_call_count")
+    if cost is not None and _is_int(cc) and cc == 0:
+        raise TokenEvidenceError(
+            f"{ctx}: total_cost_usd present ({cost!r}) but cost_call_count is 0")
+    if _is_int(cc) and cc > 0 and "total_cost_usd" not in pe:
+        pass
+    # Round 38 F1: cost must carry its call-count provenance.
+    if cost is not None and "cost_call_count" not in pe:
+        raise TokenEvidenceError(
+            f"{ctx}: total_cost_usd present ({cost!r}) but cost_call_count is absent")
+
+    ac = pe.get("actual_call_count")
+    _core_actual_fields = ("actual_prompt_tokens", "actual_completion_tokens", "actual_total_tokens")
+    has_actual_counters = any(
+        alias in pe or (isinstance(pe.get("usage"), dict) and alias in pe["usage"])
+        for field, aliases in _ACTUAL_ALIASES.items()
+        if field in _core_actual_fields
+        for alias in aliases
+    )
+
+    if _is_int(ac) and ac == 0 and has_actual_counters:
+        raise TokenEvidenceError(
+            f"{ctx}: actual_call_count=0 but actual token counters present")
+    if has_actual_counters and _is_int(ac) and ac < 0:
+        raise TokenEvidenceError(
+            f"{ctx}: actual_call_count is negative ({ac})")
+
+
+def _extract_actual(provider_evidence: Any, ctx: str = "provider_evidence") -> dict[str, int] | None:
     """Pull normalized actual usage counters from provider evidence.
 
-    Looks at the top level and at a nested ``usage`` object. Returns a mapping of
-    ``actual_*`` field name → int for every counter found, or None when the
-    provider exposed no usage data at all (the common claude-cli case).
-    """
+    Looks at the top level and at a nested ``usage`` object. Returns a mapping of ``actual_*`` field
+    name → nonnegative int for every counter found, or None when the provider exposed no usage data at
+    all (the common claude-cli case). Round 34 F2: a PRESENT usage counter is STRICTLY validated — a
+    real nonnegative integer (never a bool, float, string or negative). A malformed counter (e.g. a
+    negative cache-creation token) raises ``TokenEvidenceError`` rather than being coerced with
+    ``int()`` into a plausible value. When all three of prompt/completion/total are present they must
+    agree (total == prompt + completion)."""
     if not isinstance(provider_evidence, dict):
         return None
 
@@ -98,16 +251,33 @@ def _extract_actual(provider_evidence: Any) -> dict[str, int] | None:
     found: dict[str, int] = {}
     for field, aliases in _ACTUAL_ALIASES.items():
         for src in sources:
-            present = False
+            hit = None
             for alias in aliases:
-                if alias in src and isinstance(src[alias], (int, float)) and not isinstance(src[alias], bool):
-                    found[field] = found.get(field, 0) + int(src[alias])
-                    present = True
+                if alias in src:
+                    hit = alias
                     break
-            if present:
+            if hit is not None:
+                v = src[hit]
+                if not _is_int(v) or v < 0:
+                    raise TokenEvidenceError(
+                        f"{ctx}.{hit} is not a nonnegative integer token count: {v!r}")
+                found[field] = found.get(field, 0) + v
                 break
 
-    return found or None
+    if not found:
+        return None
+    ap = found.get("actual_prompt_tokens")
+    cp = found.get("actual_completion_tokens")
+    at = found.get("actual_total_tokens")
+    if ap is not None and cp is not None and at is not None and at != ap + cp:
+        raise TokenEvidenceError(
+            f"{ctx} actual_total_tokens ({at}) != actual_prompt_tokens + actual_completion_tokens "
+            f"({ap} + {cp})")
+    # Round 35 F3: derive actual_total from prompt + completion when absent — prevents emitting a
+    # high-confidence report with actual_total_tokens=None while prompt and completion are present.
+    if ap is not None and cp is not None and at is None:
+        found["actual_total_tokens"] = ap + cp
+    return found
 
 
 def build_token_truth(evidence_dir: str) -> dict[str, Any]:
@@ -141,40 +311,68 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
     actual_missing_reasons: list[str] = []
 
     for tid in task_ids:
-        acc = _read_json(base / "task_runs" / tid / "token_accounting.json")
-        acc = acc if isinstance(acc, dict) else {}
-        builder = _as_int(acc.get("builder_prompt_tokens_estimated"))
-        reviewer = _as_int(acc.get("reviewer_prompt_tokens_estimated"))
-        repair = _as_int(acc.get("repair_prompt_tokens_estimated"))
+        _acc_ctx = f"task_runs/{tid}/token_accounting.json"
+        acc = _read_json(base / "task_runs" / tid / "token_accounting.json") or {}
+        builder = _strict_count(acc, "builder_prompt_tokens_estimated", _acc_ctx)
+        reviewer = _strict_count(acc, "reviewer_prompt_tokens_estimated", _acc_ctx)
+        repair = _strict_count(acc, "repair_prompt_tokens_estimated", _acc_ctx)
         builder_total += builder
         reviewer_total += reviewer
         repair_total += repair
 
+        _pe_ctx = f"task_runs/{tid}/provider_evidence.json"
         pe = _read_json(base / "task_runs" / tid / "provider_evidence.json")
-        if isinstance(pe, dict):
+        if pe is not None:
+            validate_provider_token_evidence(pe, _pe_ctx)
+            validate_provider_evidence(pe, _pe_ctx)
+            pe_tid = pe.get("task_id")
+            if pe_tid is not None and pe_tid != tid:
+                raise TokenEvidenceError(
+                    f"{_pe_ctx}: task_id {pe_tid!r} does not match containing "
+                    f"directory {tid!r}")
             if not provider:
-                provider = str(pe.get("builder_provider") or pe.get("provider") or "")
+                provider = (_strict_string(pe, "builder_provider", _pe_ctx)
+                            or _strict_string(pe, "provider", _pe_ctx))
             if not model:
-                model = str(pe.get("model") or pe.get("builder_model") or "")
+                model = (_strict_string(pe, "model", _pe_ctx)
+                         or _strict_string(pe, "builder_model", _pe_ctx))
             if not builder_configured_model:
-                builder_configured_model = str(pe.get("builder_configured_model") or "")
+                builder_configured_model = _strict_string(pe, "builder_configured_model", _pe_ctx)
             if not reviewer_configured_model:
-                reviewer_configured_model = str(pe.get("reviewer_configured_model") or "")
+                reviewer_configured_model = _strict_string(pe, "reviewer_configured_model", _pe_ctx)
+            if "actual_model_verified" in pe and not isinstance(pe["actual_model_verified"], bool):
+                raise TokenEvidenceError(f"{_pe_ctx}.actual_model_verified is not a boolean")
             if pe.get("actual_model_verified"):
-                actual_model_verified = True
-                if pe.get("builder_actual_model"):
-                    builder_actual_model = pe["builder_actual_model"]
-                if pe.get("reviewer_actual_model"):
-                    reviewer_actual_model = pe["reviewer_actual_model"]
-            if pe.get("cli_version") and not cli_version:
-                cli_version = pe["cli_version"]
-            for amr in (pe.get("actual_missing_reasons") or []):
-                if amr and amr not in actual_missing_reasons:
-                    actual_missing_reasons.append(str(amr))
+                _bam = _strict_nullable_string(pe, "builder_actual_model", _pe_ctx)
+                _ram = _strict_nullable_string(pe, "reviewer_actual_model", _pe_ctx)
+                if _bam:
+                    builder_actual_model = _bam
+                    actual_model_verified = True
+                if _ram:
+                    reviewer_actual_model = _ram
+                    actual_model_verified = True
+            _cv = _strict_nullable_string(pe, "cli_version", _pe_ctx)
+            if _cv and not cli_version:
+                cli_version = _cv
+            _amr_raw = pe.get("actual_missing_reasons")
+            if _amr_raw is not None:
+                if not isinstance(_amr_raw, list) or not all(isinstance(x, str) for x in _amr_raw):
+                    raise TokenEvidenceError(
+                        f"{_pe_ctx}.actual_missing_reasons is not a list of strings: {_amr_raw!r}")
+                for amr in _amr_raw:
+                    if amr and amr not in actual_missing_reasons:
+                        actual_missing_reasons.append(amr)
+            _usage_raw = pe.get("usage")
+            if _usage_raw is not None and not isinstance(_usage_raw, dict):
+                raise TokenEvidenceError(
+                    f"{_pe_ctx}.usage is not an object: {type(_usage_raw).__name__}")
 
-        task_actual = _extract_actual(pe)
-        task_has_actual = task_actual is not None
-        exec_mode = str(pe.get("execution_mode", "")) if isinstance(pe, dict) else ""
+        task_actual = _extract_actual(pe, _pe_ctx)
+        task_has_actual = (task_actual is not None and
+                          ("actual_prompt_tokens" in task_actual
+                           or "actual_completion_tokens" in task_actual))
+        exec_mode = _strict_string(pe, "execution_mode", _pe_ctx) if pe is not None else ""
+        task_cost = _strict_cost(pe, "total_cost_usd", _pe_ctx) if pe is not None else None
         if exec_mode == "manual_operator_repair":
             task_actual = None
             task_has_actual = False
@@ -183,36 +381,40 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
             actual_task_count += 1
             for field, val in task_actual.items():
                 actual_totals[field] = actual_totals.get(field, 0) + val
-            if isinstance(pe, dict):
-                cost = pe.get("total_cost_usd")
-                if isinstance(cost, (int, float)) and not isinstance(cost, bool):
-                    total_cost_usd += float(cost)
-                    any_cost = True
+            if task_cost is not None:
+                total_cost_usd += task_cost
+                any_cost = True
 
-        if isinstance(pe, dict):
+        if pe is not None:
             has_call_counts = "provider_call_count" in pe
             if has_call_counts:
-                # Clamp so malformed evidence can never claim more measured
-                # calls than real provider calls (actual <= provider, cost <= actual).
-                task_pc = _as_int(pe.get("provider_call_count"))
-                task_ac = min(_as_int(pe.get("actual_call_count")), task_pc)
-                task_cc = min(_as_int(pe.get("cost_call_count")), task_ac)
+                # F2 (round 34): call counts are VALIDATED, never clamped. Malformed evidence that
+                # claims more measured/cost calls than real provider calls is a bounded producer error.
+                task_pc = _strict_count(pe, "provider_call_count", _pe_ctx)
+                task_ac = _strict_count(pe, "actual_call_count", _pe_ctx)
+                task_cc = _strict_count(pe, "cost_call_count", _pe_ctx)
+                if task_ac > task_pc:
+                    raise TokenEvidenceError(
+                        f"{_pe_ctx}: actual_call_count ({task_ac}) > provider_call_count ({task_pc})")
+                if task_cc > task_ac:
+                    raise TokenEvidenceError(
+                        f"{_pe_ctx}: cost_call_count ({task_cc}) > actual_call_count ({task_ac})")
+                # A partial-coverage state (some but not all costed calls) legitimately carries a
+                # cost_call_count > 0 with a withheld (null) total_cost_usd — the total is only
+                # published when coverage is complete, so no cross-check is enforced here.
                 agg_provider_call_count += task_pc
                 agg_actual_call_count += task_ac
                 agg_cost_call_count += task_cc
             elif exec_mode != "manual_operator_repair":
-                agg_provider_call_count += 1
-                if task_has_actual:
-                    agg_actual_call_count += 1
-                    cost_val = pe.get("total_cost_usd")
-                    if isinstance(cost_val, (int, float)) and not isinstance(cost_val, bool):
-                        agg_cost_call_count += 1
+                raise TokenEvidenceError(
+                    f"{_pe_ctx}: provider_call_count is required for "
+                    f"execution_mode={exec_mode!r}")
 
-        task_role = str(acc.get("role", "unknown")) if acc else "unknown"
-        task_configured_model = str(acc.get("configured_model", "")) if acc else ""
+        task_role = _strict_string(acc, "role", _acc_ctx, default="unknown") if acc else "unknown"
+        task_configured_model = _strict_string(acc, "configured_model", _acc_ctx) if acc else ""
         task_actual_model = None
-        if isinstance(pe, dict):
-            ta_model = pe.get("builder_actual_model") or pe.get("actual_model")
+        if pe is not None:
+            ta_model = _strict_nullable_string(pe, "builder_actual_model", _pe_ctx)
             if ta_model and pe.get("actual_model_verified"):
                 task_actual_model = ta_model
 
@@ -238,8 +440,8 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
     # trace is written per composed prompt, not per real provider attempt.
     trace = _read_json(base / "prompt_trace_summary.json")
     prompt_trace_count = 0
-    if isinstance(trace, dict):
-        prompt_trace_count = _as_int(trace.get("total_prompts"))
+    if trace is not None:
+        prompt_trace_count = _strict_count(trace, "total_prompts", "prompt_trace_summary.json")
 
     agg_actual_coverage_complete = (
         agg_actual_call_count == agg_provider_call_count
@@ -316,6 +518,14 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
         "cost_call_count": agg_cost_call_count,
         "cli_version": cli_version,
     }
+    # Round 35 F3: the producer self-validates — a successful build_token_truth never returns an
+    # invalid TokenTruthV1. Lazy import to avoid circular dependency (token_authority imports from
+    # this module).
+    from packages.orchestration.token_authority import validate_token_truth
+    problems = validate_token_truth(report)
+    if problems:
+        raise TokenEvidenceError(
+            f"producer emitted an invalid TokenTruthV1: {'; '.join(problems[:5])}")
     return report
 
 

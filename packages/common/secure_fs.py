@@ -26,14 +26,21 @@ post-mortem problem and an F011 failure still sounds like a stop-control problem
 from __future__ import annotations
 
 import contextlib
+import errno
+import fcntl
 import os
 import secrets
 import stat
+import time
 from pathlib import Path
 from typing import Any, Callable
 
 __all__ = [
     "SecureFsError",
+    "exclusive_lock_fd",
+    "release_lock_fd",
+    "publish_dir_atomically",
+    "remove_tree_at",
     "MissingComponent",
     "DIR_FD_SUPPORTED",
     "require_platform",
@@ -103,9 +110,30 @@ def lexical_parts(directory: Path | str, root: Path | str, *,
     return parts
 
 
+def require_single_component(name: str, *, error_cls: ErrorCls = SecureFsError,
+                             noun: str = "path") -> None:
+    """One real directory component — never a traversal, never a path.
+
+    ``..`` is not a symlink and IS a directory, so every no-follow identity check below happily
+    opens it and walks the caller straight out of the tree one level per component. Anchored
+    traversal is only a containment guarantee if what it traverses are components; the check
+    therefore belongs HERE, at the single opener every anchored walk goes through, rather than in
+    each caller's loop where one forgotten call reopens the hole.
+
+    ``os.sep`` is the documented exception: an absolute walk bootstraps from the real root.
+    """
+    if name == os.sep:
+        return
+    if not name or name in (os.curdir, os.pardir):
+        raise error_cls(f"refusing to open {noun} component {name!r}: not a real component")
+    if os.sep in name or (os.altsep and os.altsep in name) or "\0" in name:
+        raise error_cls(f"refusing to open {noun} component {name!r}: not a single component")
+
+
 def open_verified_dir(name: str, dir_fd: int | None = None, *,
                       error_cls: ErrorCls = SecureFsError, noun: str = "path") -> int:
     """Open ONE directory component and prove it is the thing we inspected."""
+    require_single_component(name, error_cls=error_cls, noun=noun)
     try:
         pre = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
     except FileNotFoundError as exc:
@@ -336,6 +364,170 @@ def read_verified_file(name: str, dir_fd: int, *, max_bytes: int = 0,
         os.close(fd)
 
 
+class VerifiedFile:
+    """The typed, no-follow result of reading one path: what it IS, and its bytes.
+
+    F3 (round 18): for a regular file, ``data`` is its own bytes; for a symlink, ``data`` is its
+    literal target text (never the bytes it points at). ``kind`` and ``mode`` come from the fd/
+    lstat that produced ``data``, not from a separate earlier check that a swap could invalidate.
+    """
+    __slots__ = ("kind", "data", "mode", "st_dev", "st_ino")
+
+    def __init__(self, kind: str, data: bytes, mode: int, st_dev: int, st_ino: int) -> None:
+        self.kind = kind
+        self.data = data
+        self.mode = mode
+        self.st_dev = st_dev
+        self.st_ino = st_ino
+
+
+def read_verified_file_at(parent_fd: int, name: str, *, expected_kind: str,
+                          max_bytes: int = 0, expected_mode: int | None = None,
+                          error_cls: ErrorCls = SecureFsError,
+                          noun: str = "file") -> "VerifiedFile":
+    """Read ONE component ``name`` relative to a HELD, anchored ``parent_fd`` — atomically typed.
+
+    F3 (round 18): the vulnerable shape was ``lstat(path)`` then ``open(path)``/``read_bytes(path)``
+    by NAME — an attacker swaps ``path`` to an external symlink in the window and the second call
+    follows it, so outside bytes are hashed or archived. Here every step operates on ``name``
+    RELATIVE TO the same held directory descriptor, and the regular path opens with ``O_NOFOLLOW``
+    then re-``fstat``s the OPEN descriptor's ``(st_dev, st_ino)`` against the pre-open lstat: an
+    ignored ``O_NOFOLLOW`` or a between-check swap changes the inode and is refused, never read.
+
+    ``expected_kind`` is ``"regular"`` or ``"symlink"``. A path that is not the expected kind is
+    refused — a regular file swapped to a symlink cannot satisfy a regular read, and vice versa.
+    """
+    if expected_kind not in ("regular", "symlink"):
+        raise error_cls(f"unsupported expected kind {expected_kind!r} for {noun}")
+    try:
+        pre = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        raise error_cls(f"the {noun} {name!r} is absent") from None
+    except OSError as exc:
+        raise error_cls(f"the {noun} {name!r} could not be inspected: "
+                        f"{type(exc).__name__}: {exc}") from exc
+
+    if expected_kind == "symlink":
+        if not stat.S_ISLNK(pre.st_mode):
+            raise error_cls(f"the {noun} {name!r} was expected to be a symlink but is not")
+        try:
+            target = os.readlink(name, dir_fd=parent_fd)   # never follows
+            post = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except OSError as exc:
+            raise error_cls(f"the symlink {noun} {name!r} could not be read safely: "
+                            f"{type(exc).__name__}: {exc}") from exc
+        if (not stat.S_ISLNK(post.st_mode)
+                or (post.st_dev, post.st_ino) != (pre.st_dev, pre.st_ino)):
+            raise error_cls(f"the symlink {noun} {name!r} changed during the read")
+        return VerifiedFile("symlink", target.encode("utf-8", errors="surrogateescape"),
+                            post.st_mode, post.st_dev, post.st_ino)
+
+    # regular
+    if stat.S_ISLNK(pre.st_mode):
+        raise error_cls(f"refusing to read a symlinked {noun} {name!r} as a regular file")
+    if not stat.S_ISREG(pre.st_mode):
+        raise error_cls(f"the {noun} {name!r} is not a regular file")
+    if max_bytes and pre.st_size > max_bytes:
+        raise error_cls(f"the {noun} {name!r} is implausibly large ({pre.st_size} bytes)")
+    try:
+        fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent_fd)
+    except OSError as exc:
+        raise error_cls(f"the {noun} {name!r} could not be opened safely (a symlink was swapped "
+                        f"in?): {type(exc).__name__}: {exc}") from exc
+    try:
+        initial = os.fstat(fd)
+        if (not stat.S_ISREG(initial.st_mode)
+                or (initial.st_dev, initial.st_ino) != (pre.st_dev, pre.st_ino)):
+            raise error_cls(f"the {noun} {name!r} is not the file it claimed to be (a symlink "
+                            f"was followed, or it changed between the check and the open)")
+        # F4 (round 19): the OPENED file's EXECUTABILITY must match what the caller planned. A plan
+        # for 0755 whose source is now non-executable (or a 0644 plan whose source is executable)
+        # is refused — the mode is bound to the bytes, not merely written into ZIP metadata. Only
+        # the executable bit is canonical for a review member: the exact group/other bits (0664,
+        # 0640, …) are working-tree noise the ZIP normalizes to 0644/0755.
+        if expected_mode is not None:
+            src_exec = bool(initial.st_mode & 0o111)
+            want_exec = bool(expected_mode & 0o111)
+            if src_exec != want_exec:
+                raise error_cls(
+                    f"the {noun} {name!r} is {'executable' if src_exec else 'not executable'}, "
+                    f"but the plan expected {'executable' if want_exec else 'a plain file'}")
+        if max_bytes and initial.st_size > max_bytes:
+            raise error_cls(f"the {noun} {name!r} is implausibly large ({initial.st_size} bytes)")
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            total += len(chunk)
+            if max_bytes and total > max_bytes:
+                raise error_cls(f"the {noun} {name!r} is implausibly large")
+            chunks.append(chunk)
+        # F5 (round 19): STABLE same-inode read. A file modified in place during a multi-chunk read
+        # returns mixed old/new bytes with no error. Re-fstat the SAME open descriptor and require
+        # its identity, type, mode, size and mtime/ctime nanoseconds unchanged across the read; any
+        # drift means the bytes are a torn mixture and must be discarded, never hashed or archived.
+        final = os.fstat(fd)
+        if ((final.st_dev, final.st_ino) != (initial.st_dev, initial.st_ino)
+                or not stat.S_ISREG(final.st_mode)
+                or (final.st_mode & 0o7777) != (initial.st_mode & 0o7777)
+                or final.st_size != initial.st_size
+                or final.st_size != total
+                or final.st_mtime_ns != initial.st_mtime_ns
+                or final.st_ctime_ns != initial.st_ctime_ns):
+            raise error_cls(
+                f"the {noun} {name!r} changed while it was being read (a torn read); "
+                f"refusing the mixed bytes")
+        return VerifiedFile("regular", b"".join(chunks), final.st_mode, final.st_dev,
+                            final.st_ino)
+    finally:
+        os.close(fd)
+
+
+def open_anchored_parent(root: Path | str, rel: str, *, error_cls: ErrorCls = SecureFsError,
+                         noun: str = "file") -> tuple[int, str]:
+    """Traverse a relative path's DIRECTORY components under an anchored root, no-follow.
+
+    Returns ``(parent_fd, basename)`` — the caller reads ``basename`` with
+    ``read_verified_file_at`` and then closes ``parent_fd``. Every component is opened relative to
+    the descriptor above it with ``O_NOFOLLOW`` identity checks, so a symlinked directory
+    component cannot redirect the walk.
+    """
+    parts = lexical_parts(str(Path(root) / rel), root, error_cls=error_cls, noun=noun)
+    if not parts:
+        raise error_cls(f"{noun} names no path under the root: {rel!r}")
+    fd = anchor_root(root, error_cls=error_cls, noun=noun, create=False)
+    try:
+        for comp in parts[:-1]:
+            nxt = open_verified_dir(comp, dir_fd=fd, error_cls=error_cls, noun=noun)
+            os.close(fd)
+            fd = nxt
+    except MissingComponent as exc:
+        # A missing PARENT directory is an absent file, reported in the caller's own error type
+        # rather than leaking a bare FileNotFoundError/MissingComponent past its `except`.
+        os.close(fd)
+        raise error_cls(f"{noun} {rel!r} is absent (missing parent {exc})") from None
+    except Exception:
+        os.close(fd)
+        raise
+    return fd, parts[-1]
+
+
+def read_verified_relative(root: Path | str, rel: str, *, expected_kind: str,
+                           max_bytes: int = 0, expected_mode: int | None = None,
+                           error_cls: ErrorCls = SecureFsError,
+                           noun: str = "file") -> "VerifiedFile":
+    """The whole anchored no-follow read of a repo-relative path — traverse, read, close."""
+    parent_fd, base = open_anchored_parent(root, rel, error_cls=error_cls, noun=noun)
+    try:
+        return read_verified_file_at(parent_fd, base, expected_kind=expected_kind,
+                                     max_bytes=max_bytes, expected_mode=expected_mode,
+                                     error_cls=error_cls, noun=noun)
+    finally:
+        os.close(parent_fd)
+
+
 def write_file_atomically(dir_fd: int, name: str, data: bytes, *, create_only: bool,
                           file_mode: int = 0o600, error_cls: ErrorCls = SecureFsError,
                           noun: str = "file") -> bool:
@@ -397,6 +589,111 @@ def write_file_atomically(dir_fd: int, name: str, data: bytes, *, create_only: b
                 os.unlink(tmp_name, dir_fd=dir_fd)
 
 
+def exclusive_lock_fd(name: str, dir_fd: int, *, timeout_sec: float = 30.0,
+                      poll_sec: float = 0.005, file_mode: int = 0o600,
+                      error_cls: ErrorCls = SecureFsError,
+                      noun: str = "lock") -> int:
+    """Acquire an EXCLUSIVE advisory lock on ``name`` through a held directory fd.
+
+    The lock is `flock`-based, so the kernel releases it when the holder's file description is
+    closed — including on an abrupt process death. Nothing has to be cleaned up afterwards, and
+    a crashed writer can never leave a permanent claim behind.
+
+    Returns the held fd; the caller MUST call ``release_lock_fd``. Blocks up to ``timeout_sec``
+    and then raises rather than waiting forever, so a wedged holder surfaces as a bounded,
+    diagnosable error instead of a hang.
+    """
+    require_platform(error_cls, noun)
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    try:
+        fd = os.open(name, flags, file_mode, dir_fd=dir_fd)
+    except OSError as exc:
+        raise error_cls(f"{noun} could not be opened: {type(exc).__name__}: {exc}") from exc
+    deadline = time.monotonic() + max(0.0, timeout_sec)
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fd
+        except OSError:
+            if time.monotonic() >= deadline:
+                os.close(fd)
+                raise error_cls(
+                    f"{noun} is held by another writer and did not become available within "
+                    f"{timeout_sec:g}s")
+            time.sleep(poll_sec)
+
+
+def release_lock_fd(fd: int) -> None:
+    """Release and close a lock fd. Safe to call once, from a ``finally``."""
+    try:
+        with contextlib.suppress(OSError):
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        with contextlib.suppress(OSError):
+            os.close(fd)
+
+
+def publish_dir_atomically(staging_name: str, final_name: str, dir_fd: int, *,
+                           error_cls: ErrorCls = SecureFsError,
+                           noun: str = "directory") -> bool:
+    """Publish a FULLY-BUILT staging directory under ``final_name`` through a held fd.
+
+    ``rename`` of a directory onto a non-empty directory fails on POSIX, so an existing
+    published directory is never silently replaced and ``False`` is returned — the caller owns
+    the conflict, exactly as ``write_file_atomically(create_only=True)`` does for files. This is
+    what makes an episode publication all-or-nothing: everything is built and verified under an
+    unpredictable private name first, and the single rename is the only moment the canonical
+    name exists at all.
+    """
+    try:
+        os.rename(staging_name, final_name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+        return True
+    except (FileExistsError, NotADirectoryError):
+        return False
+    except OSError as exc:
+        # ENOTEMPTY (and on some systems EEXIST) — the destination is a published directory.
+        if exc.errno in (errno.ENOTEMPTY, errno.EEXIST):
+            return False
+        raise error_cls(
+            f"{noun} could not be published: {type(exc).__name__}: {exc}") from exc
+
+
+def remove_tree_at(name: str, dir_fd: int, *, error_cls: ErrorCls = SecureFsError,
+                   noun: str = "directory") -> None:
+    """Remove a directory subtree through held fds, never following a symlink.
+
+    Used ONLY to clean up a private staging directory this process created under an
+    unpredictable name: it never touches a published name, so a losing writer can never delete a
+    winner's file.
+    """
+    try:
+        sub_fd = os.open(name, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                         | getattr(os, "O_NOFOLLOW", 0), dir_fd=dir_fd)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise error_cls(f"{noun} could not be cleaned: {exc}") from exc
+    try:
+        try:
+            entries = os.listdir(sub_fd)
+        except OSError as exc:
+            raise error_cls(f"{noun} could not be cleaned: {exc}") from exc
+        for entry in entries:
+            try:
+                st = os.stat(entry, dir_fd=sub_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            if stat.S_ISDIR(st.st_mode):
+                remove_tree_at(entry, sub_fd, error_cls=error_cls, noun=noun)
+            else:
+                with contextlib.suppress(OSError):
+                    os.unlink(entry, dir_fd=sub_fd)
+    finally:
+        os.close(sub_fd)
+    with contextlib.suppress(OSError):
+        os.rmdir(name, dir_fd=dir_fd)
+
+
 def unlink_at(name: str, dir_fd: int, *, error_cls: ErrorCls = SecureFsError,
               noun: str = "file") -> bool:
     """Remove a name through a held directory fd. False when it was not there."""
@@ -421,6 +718,13 @@ def list_dir_names(dir_fd: int, *, error_cls: ErrorCls = SecureFsError,
 
 
 def json_bytes(payload: Any, *, indent: int = 2, sort_keys: bool = True) -> bytes:
+    """Canonical JSON bytes — STANDARD JSON only.
+
+    ``allow_nan=False`` refuses ``NaN`` / ``Infinity`` / ``-Infinity``: Python emits those as
+    bare words that are NOT valid JSON, so any other reader would reject the record we just
+    published (and a non-finite float has no place in an input identity or a hash).
+    """
     import json
 
-    return (json.dumps(payload, indent=indent, sort_keys=sort_keys) + "\n").encode("utf-8")
+    return (json.dumps(payload, indent=indent, sort_keys=sort_keys,
+                       allow_nan=False) + "\n").encode("utf-8")

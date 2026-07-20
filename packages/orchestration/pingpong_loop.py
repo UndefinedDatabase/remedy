@@ -180,6 +180,12 @@ class PingPongResult:
     # reason a post-mortem could NOT be written, if that ever happens.
     postmortem_paths: list[str] = field(default_factory=list)
     postmortem_error: str = ""
+    # F012: the execution episode that owns this run's finalized calls (F4).
+    episode_id: str = ""
+    # F012: the finalized logical provider calls of this run, recorded through the single
+    # ``on_call_finalized`` seam — one per Builder attempt, Reviewer attempt and bounded parse
+    # retry that actually ran. The run manifest's call-hash list is built ONLY from these.
+    finalized_calls: list[Any] = field(default_factory=list)
     # F011: the stop that ended this run, if one did. `final_status == "stopped"` is a
     # deliberate terminal outcome — not a provider failure, not a review failure, not a
     # retry reason and never `unknown`.
@@ -2014,6 +2020,57 @@ def _call_with_retry(
     return out
 
 
+def shared_call_id(out: Any, role: str, round_no: int, kind: str) -> str:
+    """The ONE call-identity function F010's post-mortem writer and F012's manifest both use.
+
+    A streamed call keeps its provider-assigned stream call id (which names a real
+    attempt-indexed directory); a fallback/fake call gets a stable synthesized id in the
+    ``calls/`` namespace. There is exactly one definition, so the post-mortem and the manifest
+    can never disagree about which call they are describing."""
+    stream_id = getattr(out, "stream_call_id", "") or ""
+    if stream_id:
+        return stream_id
+    # F2 (round 15): ONE canonical spelling, from the shared formatter -- so what the
+    # generator writes and what the validators accept cannot drift apart.
+    from packages.orchestration.call_identity import canonical_call_number
+
+    return f"calls/{role}/round-{canonical_call_number(max(1, round_no))}/{kind}"
+
+
+def finalized_call_context(result: Any, out: Any, *, role: str, round_num: int, kind: str,
+                           fallback_prompt: str = "", ok: bool | None = None) -> Any:
+    """Build the ONE ``FinalizedCallContext`` for a finalized logical provider call.
+
+    F012 records every finalized call from this object; F010's post-mortem writer builds it
+    for a terminal failure and takes the call identity from it. Because both go through this
+    single constructor, the manifest entry and the post-mortem describe the same call with the
+    same identity and the same input fingerprint. The sequence is the next slot in the run's
+    finalized-call list, so the identity is unique per (task, run, sequence, role, round,
+    kind, call_id)."""
+    from packages.orchestration.call_identity import CallIdentity, sha_text
+    from packages.orchestration.run_manifest import FinalizedCallContext
+
+    prepared = getattr(out, "prepared_input", None)
+    if prepared is not None:
+        fingerprint = prepared.fingerprint
+        prepared_json = prepared.to_json()
+        source = "provider_transport"
+    else:
+        fingerprint = sha_text(fallback_prompt or "")
+        prepared_json = {"prompt_sha256": fingerprint, "mode": "loop_fallback"}
+        source = "loop_fallback"
+
+    identity = CallIdentity(
+        job_id=result.job_id, task_id=result.task_id, run_id=result.run_id,
+        sequence=len(result.finalized_calls) + 1, role=role, round=round_num, kind=kind,
+        call_id=shared_call_id(out, role, round_num, kind),
+        episode_id=getattr(result, "episode_id", "") or "")
+    if ok is None:
+        ok = not bool(getattr(out, "error", ""))
+    return FinalizedCallContext(identity=identity, fingerprint=fingerprint,
+                                prepared_input=prepared_json, fingerprint_source=source, ok=ok)
+
+
 def _record_call_failure(
     result: PingPongResult,
     out: Any,
@@ -2024,6 +2081,7 @@ def _record_call_failure(
     round_no: int = 1,
     kind: str = "attempt",
     call_reasons: list[str] | None = None,
+    finalized_context: Any = None,
 ) -> str:
     """F010: one post-mortem for ONE logical provider call that finally failed.
 
@@ -2080,8 +2138,17 @@ def _record_call_failure(
         reviewer_verdict=getattr(out, "verdict", "") or "",
     ))
 
-    call_id = getattr(out, "stream_call_id", "") or (
-        f"calls/{role}/round-{max(1, round_no):02d}/{kind}")
+    # F10: F010 records against the EXACT ``FinalizedCallContext`` the loop finalized for this
+    # same ``out`` — passed in directly, never re-derived from ``result.finalized_calls[-1]``
+    # (which is fragile if any other call was finalized in between). The context's identity
+    # (and call_id) is taken verbatim; the sequence is never advanced.
+    call_id = ""
+    ident = getattr(finalized_context, "identity", None)
+    if ident is not None and ident.role == role and ident.round == round_no \
+            and ident.kind == kind:
+        call_id = ident.call_id
+    if not call_id:                       # defensive: derive without advancing the sequence
+        call_id = shared_call_id(out, role, round_no, kind)
 
     record = PostmortemV1(
         failure_class=verdict.failure_class,
@@ -2116,7 +2183,10 @@ def _record_call_failure(
         with contextlib.suppress(ValueError):
             rel = written.relative_to(anchor).as_posix()
     if not rel:
-        rel = f"calls/{role}/round-{max(1, round_no):02d}/{kind}/{written.name}"
+        from packages.orchestration.call_identity import canonical_call_number
+
+        rel = (f"calls/{role}/round-{canonical_call_number(max(1, round_no))}/{kind}/"
+               f"{written.name}")
     result.postmortem_paths.append(rel)
     return str(directory)
 
@@ -2170,6 +2240,7 @@ def run_pingpong(
     workspace_owner: str = "run",
     workspace_start_tree: str = "",
     stop_check: Callable[[], Any] | None = None,
+    episode_id: str = "",
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2211,6 +2282,7 @@ def run_pingpong(
         job_id=job_id,
         task_id=task_id,
     )
+    result.episode_id = episode_id
 
     # F001: Compute adaptive timeouts from profile (if set), otherwise use raw timeout_sec
     _allowed_files = 0
@@ -2396,6 +2468,27 @@ def run_pingpong(
             return None
         return stop_check()
 
+    def _finalize_call(result, out, *, role: str, round_num: int, kind: str,
+                       fallback_prompt: str, ok: bool):
+        """The single call-finalization seam. Fires once per finalized logical provider call
+        (builder attempt, reviewer attempt, bounded parse retry) — never for a call that did
+        not start — and records F012's input from the shared ``FinalizedCallContext``.
+
+        F010's post-mortem writer builds the SAME ``FinalizedCallContext`` (via
+        :func:`finalized_call_context`) on a terminal failure, so both features consume one
+        finalized-call object with one identity and one input fingerprint. The recorded
+        fingerprint is the provider's OWN ``prepared_input`` (exact request its transport
+        received), not a prompt re-hashed here — so recorded == sent."""
+        from packages.orchestration.run_manifest import on_call_finalized
+
+        ctx = finalized_call_context(result, out, role=role, round_num=round_num,
+                                     kind=kind, fallback_prompt=fallback_prompt, ok=ok)
+        on_call_finalized(ctx, result.finalized_calls)
+        # F10: hand the EXACT finalized context back so a terminal failure records F010 against
+        # this precise call — never by re-deriving it from ``result.finalized_calls[-1]``, which
+        # is fragile if any other call was finalized in between.
+        return ctx
+
     def _record_stop(signal: Any) -> None:
         """A stop is a first-class terminal outcome, carrying the exact signal that caused
         it. It is never a provider failure and never a retry reason."""
@@ -2512,13 +2605,19 @@ def run_pingpong(
             )
             rd.builder_output = builder_out
 
+            # F012: the Builder call is finalized — record its input through the single seam.
+            builder_ctx = _finalize_call(
+                result, builder_out, role="builder", round_num=round_num, kind="attempt",
+                fallback_prompt=builder_prompt, ok=not bool(builder_out.error))
+
             if builder_out.error:
                 # The logical builder call is over: F001 retried what was retryable and
-                # this is what is left. Exactly one post-mortem (F010).
+                # this is what is left. Exactly one post-mortem (F010), recorded against the
+                # exact finalized context (F10).
                 _record_call_failure(
                     result, builder_out, role="builder", provider=builder_name,
                     provider_obj=builder_provider, round_no=round_num, kind="attempt",
-                    call_reasons=builder_call_reasons,
+                    call_reasons=builder_call_reasons, finalized_context=builder_ctx,
                 )
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
@@ -2714,6 +2813,12 @@ def run_pingpong(
                 call_reasons=reviewer_call_reasons,
             )
 
+            # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
+            # terminal reviewer failure records F010 against it (F10).
+            reviewer_final_ctx = _finalize_call(
+                result, reviewer_out, role="reviewer", round_num=round_num, kind="attempt",
+                fallback_prompt=reviewer_effective, ok=not bool(reviewer_out.error))
+
             # --- Bounded parse retry (one attempt) ---
             # SAFE POINT 4 — the parse retry is another provider call. A stop observed here
             # leaves the malformed first response exactly as it was recorded and starts
@@ -2762,6 +2867,12 @@ def run_pingpong(
                 if not retry_out.error:
                     retry_out.parse_retry_recovered = True
                     result.reviewer_json_recovered = True
+                # F012: the parse retry is its own finalized logical call. A recovered retry
+                # records its input here and writes NO failure post-mortem (F010 unchanged).
+                # F10: the parse-retry context supersedes the attempt as the failing call.
+                reviewer_final_ctx = _finalize_call(
+                    result, retry_out, role="reviewer", round_num=round_num, kind="parse-retry",
+                    fallback_prompt=retry_prompt, ok=not bool(retry_out.error))
                 reviewer_out = retry_out
 
             rd.reviewer_output = reviewer_out
@@ -2800,6 +2911,7 @@ def run_pingpong(
                     kind=("parse-retry" if getattr(reviewer_out, "parse_retried", False)
                           else "attempt"),
                     call_reasons=reviewer_call_reasons,
+                    finalized_context=reviewer_final_ctx,
                 )
                 rd.finished_at = datetime.now(timezone.utc).isoformat()
                 result.rounds.append(rd)
@@ -3381,7 +3493,13 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
     builder_write_mode = result.claude_cli_write_mode or "none"
     reviewer_write_mode = "none"
 
+    from packages.orchestration.provider_token_evidence import PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION
+
+    em = "manual_operator_repair" if result.execution_mode == "manual_operator_repair" else "provider_backed"
+
     evidence: dict[str, Any] = {
+        "schema_version": PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION,
+        "execution_mode": em,
         "builder_provider": result.builder_provider,
         "reviewer_provider": result.reviewer_provider,
         "builder_provider_kind": builder_kind,
@@ -3938,6 +4056,12 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
         # that only lived in memory was a recording failure nobody would ever see.
         "postmortem_paths": list(result.postmortem_paths)[:50],
         "postmortem_error": result.postmortem_error,
+        # F012: the finalized logical provider calls, recorded through the single
+        # ``on_call_finalized`` seam. The run manifest's call-hash list is built ONLY from
+        # these — never by re-walking call directories.
+        "finalized_calls": [
+            c.to_json() if hasattr(c, "to_json") else c for c in result.finalized_calls
+        ],
         # F011: the stop that ended this run, when one did. Present ONLY for a stopped run,
         # so an ordinary run's JSON is byte-for-byte what it always was. Bounded, redacted,
         # versioned: no absolute path and no secret ever reaches a run record.

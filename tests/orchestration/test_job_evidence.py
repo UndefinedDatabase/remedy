@@ -1065,9 +1065,14 @@ class TestDogfoodCommandShape:
         proof_file = out / "current_change_content_proof.json"
         assert proof_file.exists(), "current_change_content_proof.json must exist after export"
         data = json.loads(proof_file.read_text())
-        assert data["schema_version"] == "1.0.0"
+        # Round 15: the proof gained typed deletion tombstones and the resolved review
+        # base/head, so a removed file is recorded rather than silently absent.
+        assert data["schema_version"] == "1.1.0"
         assert "file_hashes" in data
         assert "file_count" in data
+        assert "tombstones" in data
+        assert "tombstone_count" in data
+        assert "base_commit" in data and "head_commit" in data
 
     def test_change_provenance_exists_after_export(self, isolate_data_root, demo_repo, tmp_path):
         """Change provenance gate must exist after export with stale_apply_proofs field."""
@@ -1367,12 +1372,14 @@ class TestEvidenceHygiene:
         assert isinstance(data["file_hashes"], dict)
 
     def test_bundle_integrity_stays_packaging_layer(self):
-        from scripts.build_review_manifest import build_manifest
+        from scripts.build_review_manifest import build_manifest_from_snapshot
         from packages.orchestration.final_verifier import build_final_verifier_report
         import inspect
         fv_src = inspect.getsource(build_final_verifier_report)
         assert "review_bundle_integrity" not in fv_src
-        manifest_src = inspect.getsource(build_manifest)
+        # Round 24 (F6): the manifest is assembled by build_manifest_from_snapshot from the
+        # immutable Source-snapshot view; build_manifest is now the thin dir-reading wrapper.
+        manifest_src = inspect.getsource(build_manifest_from_snapshot)
         assert "review_bundle_integrity" in manifest_src
 
 
@@ -1576,3 +1583,58 @@ class TestAttestationOverlayNoFakeStubs:
         )
         pe = json.loads(Path(result["files"]["provider_evidence.json"]).read_text())
         assert pe["prompt_trace_status"] == "not_applicable_manual_repair"
+
+
+class TestManualCompletionFinalizeActuallyRuns:
+    """Round 16 regression: `_finalize_manual_completion` swallows any exception into
+    `manual_completion_finalize.error.txt` and continues. That is deliberate — one broken
+    overlay must not abort the whole export — but it means a bug in that path (an F8 import that
+    was in scope for one function and not the other) went silent: `completion_mode` never got
+    written, the packager saw a non-manual job, and required provider-flow root artifacts were
+    reported MISSING. The attest tests all passed because none asserted the overlay SUCCEEDED.
+    """
+
+    def test_the_finalize_step_leaves_no_error_file(self, isolate_data_root, demo_repo,
+                                                    tmp_path):
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.repair_attest import attest_operator_repair
+
+        job = _run_completed_job(demo_repo)
+        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
+        out = Path(tmp_path / "ev_finalize")
+        export_job_evidence(job.job_id, str(out))
+        err = out / "manual_completion_finalize.error.txt"
+        assert not err.exists(), (
+            f"the manual-completion overlay failed silently: "
+            f"{err.read_text()[:200] if err.exists() else ''}")
+
+    def test_the_completion_mode_reaches_the_final_job_review(self, isolate_data_root,
+                                                              demo_repo, tmp_path):
+        """The fact the packager's manual-completion detector reads. Without it, an
+        operator-attested package is misclassified and blocked."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.repair_attest import attest_operator_repair
+
+        job = _run_completed_job(demo_repo)
+        attest_operator_repair(job.job_id, "T001", "manual fix", str(demo_repo))
+        out = Path(tmp_path / "ev_cm")
+        export_job_evidence(job.job_id, str(out))
+        fjr = json.loads((out / "final_job_review.json").read_text())
+        assert fjr.get("completion_mode") == "manual_operator_repair"
+
+    def test_the_packager_detects_manual_completion(self, isolate_data_root, demo_repo,
+                                                    tmp_path):
+        """End to end into the packager's own predicate — the one whose False reintroduced the
+        missing-root-artifact block."""
+        from scripts.build_review_manifest import _is_manual_completion
+
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.repair_attest import attest_operator_repair
+
+        job = _run_completed_job(demo_repo)
+        # ALL task runs must be manual for the packager to treat the job as manual completion.
+        for t in job.tasks:
+            attest_operator_repair(job.job_id, t.task_id, "manual fix", str(demo_repo))
+        out = Path(tmp_path / "ev_pkg")
+        export_job_evidence(job.job_id, str(out))
+        assert _is_manual_completion(str(out)) is True

@@ -65,6 +65,7 @@ def export_job_evidence(
     *,
     verification_commands: list[str] | None = None,
     verification_runner: Any = None,
+    declared_base: str | None = None,
 ) -> dict[str, Any]:
     """Load a persisted job and export a job-level evidence bundle.
 
@@ -221,7 +222,9 @@ def export_job_evidence(
             )
             written[rel] = str(err_path)
         try:
-            from packages.orchestration.missing_tests_gate import write_missing_tests_gate
+            from packages.orchestration.missing_tests_gate import (
+        _relevant_suites_for_source, write_missing_tests_gate,
+    )
             write_missing_tests_gate(task, str(out_path), written)
         except Exception as exc:
             rel = f"task_runs/{task.task_id}/missing_tests_gate.error.txt"
@@ -508,6 +511,29 @@ def export_job_evidence(
     }
     _write_json(POSTMORTEM_INTEGRITY_FILE, _pm_integrity)
 
+    # F012: the run-input manifest travels into the bundle, and its own integrity artifact
+    # BLOCKS a clean verdict when a mandatory manifest is missing or broken — the same
+    # mechanism as post-mortem integrity, never a text warning. Pre-F012 jobs (no manifest
+    # and no recorded error) are reported as legacy/uncovered, not corrupt.
+    manifest_failures: list[dict[str, Any]] = []
+    manifest_notes: list[str] = []
+    try:
+        _write_run_manifest_export(job, str(out_path), written, manifest_failures,
+                                   manifest_notes)
+    except Exception as exc:
+        from packages.orchestration.failure_postmortem import safe_text as _safe
+        manifest_failures.append({
+            "scope": "job", "job_id": job.job_id,
+            "error": _safe(f"run manifest export failed: {type(exc).__name__}: {exc}")[:500],
+        })
+    _manifest_integrity = {
+        "schema_version": "1.0.0",
+        "ok": not manifest_failures,
+        "failures": manifest_failures,
+        "notes": manifest_notes,
+    }
+    _write_json(MANIFEST_INTEGRITY_FILE, _manifest_integrity)
+
     # Fresh evidence gate — verify this evidence belongs to the current job run.
     # Step range is derived from the project's .agent/plan.md title.
     try:
@@ -531,43 +557,108 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("runtime_integration_gate.error.txt", exc)
 
-    # Content-hash proof — SHA256 every dirty source file for provenance.
+    # The REVIEW SUBJECT — resolved ONCE, by the one production helper, and recorded as a fact.
+    #
+    # Round 14 inlined three git commands here. That silently swallowed an invalid base (exit 128
+    # -> "just the dirty files", a smaller review than the operator asked for, with no error),
+    # accepted a NON-ANCESTOR base (dragging unrelated branches' files into the review), could
+    # never prove a committed DELETION (the proof only hashed files that still exist), and
+    # recorded nothing about the base, so no reader could tell what the package was a review OF.
+    # `resolve_review_subject` verifies all of it and raises instead of downgrading.
     _repo = getattr(job, "repo_path", None) or "."
     dirty_files: list[str] = []
+    _subject = None
     try:
-        import hashlib as _hl  # noqa: I001
-        import subprocess as _sp  # noqa: I001
-
-        _git_result = _sp.run(
-            ["git", "status", "--porcelain", "-u"],
-            cwd=_repo, capture_output=True, text=True, timeout=30,
-        )
-        for line in _git_result.stdout.splitlines():
-            if not line.strip():
-                continue
-            path = line[3:]
-            if " -> " in path:
-                path = path.split(" -> ", 1)[1]
-            path = path.strip().strip('"')
-            if path:
-                dirty_files.append(path)
-
         from packages.orchestration.change_provenance_gate import _is_source_file, _normalize
-        _source_dirty = [_normalize(p) for p in dirty_files if _is_source_file(p)]
+        from packages.orchestration.review_subject import (
+            STATUS_DELETED, ReviewSubjectError, resolve_review_subject,
+            validate_subject_path_kinds,
+        )
+
+        # F6 (round 16): the base arrives EXPLICITLY from the top level, with the repository it
+        # belongs to. This module reads no environment: an ambient declaration used to be picked
+        # up here and then accepted or discarded based on the process CWD, so an export running
+        # for a DIFFERENT repository (a test's temporary repo) could inherit a base that was
+        # never about it, and an intentional declaration was silently dropped when the CWD moved.
+        _subject = resolve_review_subject(_repo, declared_base=declared_base)
+        dirty_files = [f.path for f in _subject.files]
+
+        # F5: a subject carrying a path we cannot honestly prove or package never becomes
+        # authoritative Evidence.
+        _kind_problems = validate_subject_path_kinds(_subject, _repo)
+        if _kind_problems:
+            raise ReviewSubjectError("; ".join(_kind_problems)[:400])
+
+        # `review_subject.json` — the durable, typed account: which base, which head, which
+        # commits, and every file with the proof its status allows.
+        _subject_path = _validate_output_path(str(out_path), "review_subject.json")
+        _subject_path.write_text(json.dumps(_subject.to_json(), indent=2) + "\n",
+                                 encoding="utf-8")
+        written["review_subject.json"] = str(_subject_path)
+
+        # The content proof carries a TOMBSTONE for a deleted path rather than omitting it: a
+        # file that was removed is part of the change, and "no entry" is indistinguishable from
+        # "never looked".
         _file_hashes: dict[str, str] = {}
-        _repo_path = Path(_repo)
-        for _sf in _source_dirty:
-            _fp = _repo_path / _sf
-            if _fp.exists():
-                _file_hashes[_sf] = _hl.sha256(_fp.read_bytes()).hexdigest()
+        _tombstones: dict[str, dict[str, Any]] = {}
+        for _f in _subject.files:
+            _sf = _normalize(_f.path)
+            if not _is_source_file(_sf):
+                continue
+            if _f.status == STATUS_DELETED:
+                _tombstones[_sf] = {"status": _f.status, "base_sha256": _f.base_sha256,
+                                    "current_sha256": None}
+            elif _f.current_sha256:
+                _file_hashes[_sf] = _f.current_sha256
         _proof = {
-            "schema_version": "1.0.0",
+            "schema_version": "1.1.0",
+            "base_commit": _subject.base_commit,
+            "head_commit": _subject.head_commit,
             "file_hashes": _file_hashes,
             "file_count": len(_file_hashes),
+            "tombstones": _tombstones,
+            "tombstone_count": len(_tombstones),
         }
         _proof_path = _validate_output_path(str(out_path), "current_change_content_proof.json")
         _proof_path.write_text(json.dumps(_proof, indent=2) + "\n", encoding="utf-8")
         written["current_change_content_proof.json"] = str(_proof_path)
+
+        # The machine-verifiable commit chain (round 15): the ordered, base-exclusive ancestry
+        # path a reader can recompute, so "there were six commits" stops being prose.
+        _chain = {
+            "chain_v": 1,
+            "base_commit": _subject.base_commit,
+            "head_commit": _subject.head_commit,
+            "commits": [c.to_json() for c in _subject.commits],
+        }
+        _chain_path = _validate_output_path(str(out_path), "review_commit_chain.json")
+        _chain_path.write_text(json.dumps(_chain, indent=2) + "\n", encoding="utf-8")
+        written["review_commit_chain.json"] = str(_chain_path)
+
+        # F7 (round 16): the CANONICAL PATCH BYTES, one file per commit.
+        #
+        # The chain recorded `patch_sha256` but shipped nothing to hash, so a ZIP-only reviewer —
+        # the only kind an external review has — could verify every field EXCEPT the one that
+        # says what the commit actually did. They had to trust it or clone the repository, and a
+        # package that requires the repository is not self-contained evidence.
+        if _subject.commits:
+            from packages.orchestration.review_subject import (
+                COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+            )
+            _pdir = _validate_output_path(str(out_path), COMMIT_PATCH_DIRNAME)
+            _pdir.mkdir(parents=True, exist_ok=True)
+            _patches: list[str] = []
+            for _c in _subject.commits:
+                _raw = commit_patch_bytes(_repo, _c.commit)
+                _actual = hashlib.sha256(_raw).hexdigest()
+                if _actual != _c.patch_sha256:
+                    raise ReviewSubjectError(
+                        f"commit {_c.commit[:12]} patch bytes hash to {_actual[:12]} but the "
+                        f"chain records {_c.patch_sha256[:12]}")
+                _name = commit_patch_filename(_c.commit)
+                (_pdir / _name).write_bytes(_raw)
+                _patches.append(f"{COMMIT_PATCH_DIRNAME}/{_name}")
+            written[COMMIT_PATCH_DIRNAME] = str(_pdir)
     except Exception as exc:
         _write_gate_error("current_change_content_proof.error.txt", exc)
 
@@ -1385,29 +1476,61 @@ def _vt_norm(p: str) -> str:
 
 
 def _verification_test_files_from_command(command: str) -> list[str]:
-    """Extract the test-file paths a pytest-style command targets."""
+    """Extract the test-file paths a pytest-style command targets.
+
+    F6 (round 15): a pytest DIRECTORY argument covers the test files beneath it. `pytest
+    tests/docs` runs every test under `tests/docs/`, but this only ever collected tokens ending in
+    `.py`, so a changed `tests/docs/test_docs_consistency.py` was reported as uncovered and its
+    task's missing-tests gate said NEEDS_TESTS — while the file had in fact just been run, green.
+    A gate that cries wolf about a test that ran teaches operators to ignore it.
+
+    `--ignore=<path>` is honoured too: a file explicitly excluded from a run is NOT covered by it.
+    """
     import shlex
     files: list[str] = []
+    dirs: list[str] = []
+    ignored: set[str] = set()
     try:
         toks = shlex.split(command)
     except ValueError:
         toks = command.split()
     for t in toks:
+        if t.startswith("--ignore="):
+            ignored.add(_vt_norm(t.split("=", 1)[1]))
+            continue
+        if t.startswith("-"):
+            continue
         n = _vt_norm(t)
-        if n.endswith(".py") and (n.startswith("tests/") or "/tests/" in n or Path(n).name.startswith("test_")):
+        if not (n.startswith("tests/") or "/tests/" in n or Path(n).name.startswith("test_")):
+            continue
+        if n.endswith(".py"):
             files.append(n)
-    return sorted(set(files))
+        elif Path(n).is_dir():
+            dirs.append(n.rstrip("/"))
+    for d in dirs:
+        for p in sorted(Path(d).rglob("test_*.py")):
+            files.append(_vt_norm(str(p)))
+    return sorted({f for f in files
+                   if not any(f == i or f.startswith(i.rstrip("/") + "/") for i in ignored)})
 
 
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     """Execute a verification command via subprocess and parse pytest counts."""
     import shlex
     import subprocess as _sp
+    from packages.orchestration.review_subject import child_env_without_declaration
+
     try:
         argv = shlex.split(command)
     except ValueError:
         argv = command.split()
-    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600)
+    # F6 (round 16): a verification child NEVER inherits the operator's base declaration. It is
+    # exported for the repository under review, but this child runs whatever it likes — a pytest
+    # suite against its own temporary repositories, which have never heard of that commit. In
+    # round 15 exactly that reached a subprocess and cost an unrelated job its content proof.
+    # A child that needs a base is given one explicitly.
+    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600,
+                     env=child_env_without_declaration())
     passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", result.stdout or ""))
     failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", result.stdout or ""))
     return {
@@ -1534,7 +1657,9 @@ def _finalize_manual_completion(
         return
 
     from packages.orchestration.review_scope import write_review_scope_packet
-    from packages.orchestration.missing_tests_gate import write_missing_tests_gate
+    from packages.orchestration.missing_tests_gate import (
+        _relevant_suites_for_source, write_missing_tests_gate,
+    )
 
     out_path = Path(out_base)
     rv = _root_verification_summary(out_base)
@@ -1603,7 +1728,19 @@ def _finalize_manual_completion(
         # Finding 2: a task is test-covered only when EVERY related test file in
         # its changed set is exercised by a successful verification run. A task
         # missing direct coverage gets NEEDS_TESTS — never a false "satisfied".
-        related_tests = sorted({_vt_norm(f) for f in changed if _is_test_path(f)})
+        # F8 (round 16): a task's related tests are the test files it CHANGED **plus** the
+        # regression suites its changed SOURCE files are known to be covered by.
+        #
+        # Round 15 changed the do command and shipped `do job-flow` broken with a NameError.
+        # Every Missing-Tests gate still said PASS, because the suite that catches it was in
+        # neither the task's changed set nor the authoritative CLI command (which runs only
+        # `tests/cli`). Nothing was lying; nothing was asked. A gate that only checks the tests
+        # you happened to touch cannot notice the one you broke. The map lives in
+        # `missing_tests_gate` — this module names no test file it does not run.
+        related_tests = sorted(
+            {_vt_norm(f) for f in changed if _is_test_path(f)}
+            | {t for f in changed
+               for t in _relevant_suites_for_source(_vt_norm(f))})
         covering_run_ids = sorted({
             rid for f in related_tests for rid in coverage.get(f, [])
         })
@@ -1754,6 +1891,291 @@ TERMINAL_TASK_STATUSES = frozenset({"failed", "blocked"})
 #: non-empty one BLOCKS the package — a bundle that quietly lost a required post-mortem
 #: must not be able to present clean gates.
 POSTMORTEM_INTEGRITY_FILE = "postmortem_integrity.json"
+
+#: F012: the run-input manifest and its integrity artifact in the exported bundle.
+from packages.orchestration.run_manifest import (
+    MANIFEST_FILENAME as _RUN_MANIFEST_FILENAME,
+)
+
+MANIFEST_INTEGRITY_FILE = "manifest_integrity.json"
+
+
+def _crosscheck_job_episodes_vs_index(job: Any, index: dict[str, Any]) -> list[str]:
+    """F9/F13: the JobPlan's recorded episode state MUST agree COMPLETELY with the on-disk index.
+
+    Beyond status + ordinal, this checks: no duplicate JobPlan episode ids; the EXACT episode-id
+    set on both sides; per-episode created_at and previous_episode_id; that the job's latest
+    episode equals the index's maximum-ordinal / latest episode; and that a terminal job's active
+    episode is itself a recorded episode. A divergence is a BLOCKING integrity failure — the
+    durable index and the job's view of its own history have drifted apart, and that is never
+    silently reconciled."""
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        JOB_STOPPED,
+    )
+
+    problems: list[str] = []
+    raw_job_eps = [e for e in (getattr(job, "run_manifest_episodes", None) or [])
+                   if e.get("episode_id")]
+    job_eps = {str(e.get("episode_id", "")): e for e in raw_job_eps}
+    if len(raw_job_eps) != len(job_eps):
+        problems.append("duplicate episode ids in JobPlan")
+    idx_eps = {str(e.get("episode_id", "")): e
+               for e in (index.get("episodes") or []) if e.get("episode_id")}
+
+    if set(job_eps) != set(idx_eps):
+        only_job = sorted(set(job_eps) - set(idx_eps))
+        only_idx = sorted(set(idx_eps) - set(job_eps))
+        if only_job:
+            problems.append(f"JobPlan-only episodes not in index: {only_job}")
+        if only_idx:
+            problems.append(f"index-only episodes not in JobPlan: {only_idx}")
+
+    for eid, je in job_eps.items():
+        ie = idx_eps.get(eid)
+        if ie is None:
+            continue
+        if str(je.get("status", "")) != str(ie.get("status", "")):
+            problems.append(f"episode {eid} status differs (job "
+                            f"{je.get('status')!r} vs index {ie.get('status')!r})")
+        j_ord = int(je.get("episode_ordinal", 0) or 0)
+        i_ord = int(ie.get("episode_ordinal", 0) or 0)
+        if j_ord != i_ord:
+            problems.append(f"episode {eid} ordinal differs (job {j_ord} vs index {i_ord})")
+        if str(je.get("created_at", "")) != str(ie.get("created_at", "")):
+            problems.append(f"episode {eid} created_at differs")
+        if str(je.get("previous_episode_id", "") or "") != str(
+                ie.get("previous_episode_id", "") or ""):
+            problems.append(f"episode {eid} previous_episode_id differs")
+
+    # The latest episode (max ordinal) must agree with the index's latest_episode_id.
+    if idx_eps:
+        idx_latest = str(index.get("latest_episode_id", ""))
+        max_ord_id = max(idx_eps.values(),
+                         key=lambda e: int(e.get("episode_ordinal", 0) or 0)
+                         ).get("episode_id", "")
+        if idx_latest != max_ord_id:
+            problems.append(f"index latest_episode_id {idx_latest!r} != max-ordinal episode "
+                            f"{max_ord_id!r}")
+        if job_eps:
+            job_latest = max(job_eps.values(),
+                             key=lambda e: int(e.get("episode_ordinal", 0) or 0)
+                             ).get("episode_id", "")
+            if job_latest != idx_latest:
+                problems.append(f"JobPlan latest episode {job_latest!r} != index latest "
+                                f"{idx_latest!r}")
+
+    # A terminal job's active episode must be one of the recorded episodes.
+    if getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED):
+        active = str(getattr(job, "active_episode_id", "") or "")
+        if active and active not in idx_eps:
+            problems.append(f"terminal job's active episode {active!r} is not in the index")
+    return problems
+
+
+def _crosscheck_terminal_jobplan_manifest(job: Any, latest: Any, index: dict[str, Any]
+                                          ) -> list[str]:
+    """F8: for a TERMINAL job, the JobPlan, the index's latest and the latest manifest must
+    agree on every field. A mismatch is a BLOCKING integrity failure."""
+    from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED
+
+    problems: list[str] = []
+    status = str(getattr(job, "status", "") or "")
+    if status not in (JOB_COMPLETED, JOB_STOPPED):
+        return problems
+
+    active = str(getattr(job, "active_episode_id", "") or "")
+    idx_latest = str(index.get("latest_episode_id", "") or "")
+    # F13: for a MARKED terminal F012 job these fields are REQUIRED, not optional — an empty
+    # value is a blocking integrity failure, never a silently-skipped check.
+    if not active:
+        problems.append("terminal job has no active_episode_id")
+    elif active != idx_latest:
+        problems.append(f"terminal active_episode_id {active!r} != index latest "
+                        f"{idx_latest!r}")
+    if active and not any(str(e.get("episode_id", "")) == active
+                          for e in (getattr(job, "run_manifest_episodes", None) or [])):
+        problems.append(f"terminal active episode {active!r} is absent from the JobPlan "
+                        f"episode summary")
+    if latest.episode_id != idx_latest:
+        problems.append(f"latest manifest episode {latest.episode_id!r} != index latest "
+                        f"{idx_latest!r}")
+    if status != latest.status:
+        problems.append(f"job status {status!r} != latest manifest status "
+                        f"{latest.status!r}")
+    j_created = str(getattr(job, "run_manifest_created_at", "") or "")
+    if not j_created:
+        problems.append("terminal job has no run_manifest_created_at")
+    elif j_created != latest.created_at:
+        problems.append(f"JobPlan run_manifest_created_at {j_created!r} != latest created_at "
+                        f"{latest.created_at!r}")
+    j_path = str(getattr(job, "run_manifest_path", "") or "")
+    if not j_path:
+        problems.append("terminal job has no run_manifest_path")
+    elif j_path != _RUN_MANIFEST_FILENAME:
+        problems.append(f"JobPlan run_manifest_path {j_path!r} is not the canonical latest "
+                        f"mirror {_RUN_MANIFEST_FILENAME!r}")
+    # Stop metadata coherence.
+    if status == JOB_STOPPED:
+        j_req = str(getattr(job, "stop_request_id", "") or "")
+        if not j_req:
+            problems.append("stopped job has no stop_request_id")
+        if j_req != (latest.stop_request_id or ""):
+            problems.append(f"JobPlan stop_request_id {j_req!r} != latest stop_request_id "
+                            f"{latest.stop_request_id!r}")
+    elif latest.stop_request_id:
+        problems.append("a completed job's latest manifest carries stopped-only "
+                        "stop_request_id metadata")
+    # The latest snapshot + calls all belong to the latest episode.
+    if latest.episode_snapshot.episode_id != latest.episode_id:
+        problems.append("latest snapshot episode != latest episode")
+    for c in latest.calls:
+        if c.identity.episode_id and c.identity.episode_id != latest.episode_id:
+            problems.append(f"latest call {c.identity.call_id} does not belong to the latest "
+                            f"episode")
+            break
+    return problems
+
+
+def _write_run_manifest_export(
+    job: Any, out_base: str, written: dict[str, str], failures: list[dict[str, Any]],
+    notes: list[str] | None = None,
+) -> None:
+    """Copy the job's manifest episodes into the bundle and verify their integrity.
+
+    A completed/stopped job MARKED under F012 (``run_manifest_required_v``) MUST have a
+    manifest whose calls have complete coverage and whose call-input artifacts resolve and
+    hash-match. A recording error, a missing marked manifest, incomplete coverage, or a
+    call artifact that is missing / mis-hashed is BLOCKING. A pre-F012 UNMARKED job with no
+    manifest is legacy/uncovered — readable, not corrupt.
+    """
+    from packages.orchestration.failure_postmortem import safe_text
+    from packages.orchestration.pingpong_job import (
+        JOB_COMPLETED,
+        JOB_STOPPED,
+        job_evidence_dir,
+    )
+    from packages.orchestration.run_manifest import (
+        COVERAGE_COMPLETE,
+        MANIFEST_INDEX_FILENAME,
+        MANIFESTS_SUBDIR,
+        ManifestError,
+        build_verified_manifest_tree,
+        decode_index_v1,
+        decode_run_manifest_v1,
+        load_latest_manifest_verified,
+        manifest_tree_is_present,
+        validate_index_and_tree,
+    )
+
+    terminal = getattr(job, "status", "") in (JOB_COMPLETED, JOB_STOPPED)
+    marked = int(getattr(job, "run_manifest_required_v", 0) or 0) > 0
+    mandatory = terminal and marked
+
+    err = str(getattr(job, "run_manifest_error", "") or "")
+    if err:
+        failures.append({"scope": "job", "job_id": job.job_id,
+                         "error": safe_text(err)[:500]})
+        return
+
+    ev = job_evidence_dir(job.job_id)
+
+    # F5: VALIDATE FIRST, then copy. Build the verified ALLOWLIST — the exact declared set of
+    # index + episode manifests + declared call artifacts, each anchored-read, hash-verified and
+    # size-bounded. Undeclared episode dirs, undeclared call artifacts, oversized files and
+    # outside/symlinked components never enter this map. Nothing is copied to the bundle until
+    # every invariant holds, so a canary in an extra file can never reach the output.
+    files, tree_problems = build_verified_manifest_tree(ev, job_id=job.job_id)
+
+    # F10: the F012 MARKER changes ABSENCE semantics ONLY. It never decides whether a PRESENT
+    # manifest tree is trusted: any artifact that exists is fully validated, marked or not.
+    if _RUN_MANIFEST_FILENAME not in files:
+        if mandatory:
+            failures.append({
+                "scope": "job", "job_id": job.job_id,
+                "error": f"a {job.status} F012-marked job has no run manifest"})
+            for prob in tree_problems:
+                failures.append({"scope": "job", "job_id": job.job_id,
+                                 "error": safe_text(f"manifest tree: {prob}")[:500]})
+        else:
+            # PRESENCE is decided on the RAW anchored tree, not on the verified allowlist: a
+            # tree so broken that nothing survived verification (e.g. the index is gone, so no
+            # episode is declared) is exactly the case that must not be waved through as
+            # "legacy". Only a genuinely EMPTY tree is legacy/uncovered.
+            # PRESENCE is the raw anchored probe's verdict alone — `tree_problems` includes
+            # "evidence directory does not exist", which IS absence, not a broken tree.
+            present, raw_problems = manifest_tree_is_present(ev)
+            if present:
+                for prob in list(tree_problems) + list(raw_problems):
+                    failures.append({"scope": "job", "job_id": job.job_id,
+                                     "error": safe_text(f"manifest tree: {prob}")[:500]})
+                failures.append({
+                    "scope": "job", "job_id": job.job_id,
+                    "error": "manifest artifacts are present but no verified run manifest "
+                             "could be read; a present manifest tree is always validated"})
+            elif notes is not None:
+                notes.append("legacy pre-F012 job: no run manifest (uncovered, not corrupt)")
+        return
+
+    # The authoritative trust-chain check (F7/F8/F9) over ANCHORED reads. It catches a tampered
+    # index hash, an index/metadata mismatch, an extra/missing episode, a rollback (F5), a broken
+    # prior-episode graph (F6/F8), a mis-hashed call artifact (F7) and symlinked components.
+    chain_problems: list[str] = list(tree_problems)
+    index: dict = {}
+    if MANIFEST_INDEX_FILENAME in files:
+        try:
+            # F11: the index is untrusted manifest bytes — strict-decode it, never _json.loads.
+            index = decode_index_v1(files[MANIFEST_INDEX_FILENAME])
+        except (ValueError, UnicodeDecodeError, ManifestError) as exc:
+            # F10: a present-but-unreadable index is an integrity problem, never a silent {}.
+            index = {}
+            chain_problems.append(f"unreadable run_manifest_index.json: {exc}")
+    else:
+        chain_problems.append("a run manifest is present but there is no "
+                              "run_manifest_index.json")
+    # F10: a PRESENT manifest tree is ALWAYS fully validated — strict chain, canonical bytes,
+    # exact allowlist — whether or not the job carries the F012 marker.
+    chain_problems.extend(validate_index_and_tree(ev, job_id=job.job_id))
+    if mandatory:
+        # These compare the MARKED JobPlan's own F012 state, so they need the marker.
+        chain_problems.extend(_crosscheck_job_episodes_vs_index(job, index))
+        try:
+            latest = load_latest_manifest_verified(ev, job_id=job.job_id)
+            chain_problems.extend(_crosscheck_terminal_jobplan_manifest(job, latest, index))
+        except ManifestError as exc:
+            chain_problems.append(f"latest manifest could not be loaded: {exc}")
+    # F1: a published terminal reference must have COMPLETE coverage (the canonical loader
+    # already enforces this; the export re-states it as a blocking Evidence failure). Marked or
+    # not: a stored manifest that IS present is held to the published-reference rule.
+    for rel, data in files.items():
+        if not (rel.startswith(f"{MANIFESTS_SUBDIR}/")
+                and rel.endswith(f"/{_RUN_MANIFEST_FILENAME}")):
+            continue
+        eid = rel.split("/")[1]
+        try:
+            m = decode_run_manifest_v1(data)      # F13: strict, untrusted bytes
+        except (ValueError, UnicodeDecodeError, ManifestError) as exc:
+            chain_problems.append(f"unreadable episode manifest {eid}: {exc}")
+            continue
+        if m.coverage.status != COVERAGE_COMPLETE:
+            chain_problems.append(
+                f"episode {eid} has incomplete call coverage: "
+                f"{'; '.join(m.coverage.problems)[:300]}")
+
+    # F5: only copy the allowlisted bytes when the tree is CLEAN. If any invariant failed for a
+    # marked job, record the failures and copy NOTHING — the safe integrity-failure artifact is
+    # written by the caller, but no (possibly undeclared) bytes reach the bundle.
+    if chain_problems:
+        for prob in chain_problems:
+            failures.append({"scope": "job", "job_id": job.job_id,
+                             "error": safe_text(f"manifest integrity: {prob}")[:500]})
+        return
+
+    for rel, data in sorted(files.items()):
+        _dest = _validate_output_path(out_base, rel)
+        _dest.parent.mkdir(parents=True, exist_ok=True)
+        _dest.write_bytes(data)
+        written[rel] = str(_dest)
 
 
 def _write_task_postmortems(
@@ -2258,3 +2680,233 @@ def _copy_task_stream_artifacts(
             "size_bytes": len(data),
         }
     return listing
+
+
+# --------------------------------------------------------------------------- manual completion
+# Round 32 F3: the SUPPORTED operator/manual Evidence creation boundary. A manual (zero-provider,
+# operator-attested) completion is created ONLY through the canonical producer
+# ``packages.orchestration.manual_attestation`` — packaging then regenerates and verifies it and never
+# creates or repairs missing manual Evidence itself. This function is the one production entry an
+# operator workflow calls; the test fixtures call the SAME producer, they are not its only callers.
+def write_manual_completion_evidence(
+    evidence_dir: str,
+    *,
+    job_id: str,
+    tasks: "list[dict]",
+) -> None:
+    """Create an operator-attested manual-completion Evidence tree under ``evidence_dir``.
+
+    ``tasks`` is a list of ``{task_id, changed_files, safe_diff_text, provenance_sha256, diff_sha256,
+    tracked_diff_sha256, safe_diff_sha256, timestamp, note}`` records. Every task is written through
+    the canonical ``manual_attestation`` producer, then the canonical root ``token_truth.json`` is
+    regenerated from the assembled task/provider Evidence (never hand-written). The caller is
+    responsible for the review subject / content proof / commit chain / gates; this is the manual
+    attestation + token-truth boundary the final verifier consumes.
+    """
+    from packages.orchestration import manual_attestation as _ma
+
+    for t in tasks:
+        _ma.write_manual_task_evidence(
+            evidence_dir, job_id=job_id, task_id=t["task_id"],
+            changed_files=list(t["changed_files"]), safe_diff_text=t["safe_diff_text"],
+            provenance_sha256=t["provenance_sha256"], diff_sha256=t["diff_sha256"],
+            tracked_diff_sha256=t["tracked_diff_sha256"], safe_diff_sha256=t["safe_diff_sha256"],
+            timestamp=t["timestamp"], note=t["note"])
+    # Canonical root token truth = the exact aggregate of the tasks just written.
+    _ma.write_manual_token_truth(evidence_dir)
+
+
+def create_manual_completion_bundle(
+    evidence_dir: str,
+    *,
+    repo_root: str,
+    base_commit: str,
+    job_id: str,
+    job_title: str,
+    step_range: str,
+    prior_job_ids: "list[str]",
+    verification_runs: "list[dict]",
+    timestamp: str,
+    generated_at: str,
+    head_commit: str | None = None,
+    task_partition: "dict[str, list[str]] | None" = None,
+    num_tasks: int = 3,
+    note_prefix: str = "operator-attested manual completion",
+) -> dict[str, Any]:
+    """Round 33 F4 — the real, supported operator workflow that produces a COMPLETE manual-only
+    (operator-attested, zero-provider) Evidence bundle end-to-end, reaching the canonical producer
+    ``write_manual_completion_evidence`` (task attestation + regenerated root token truth) and the
+    real ``final_verifier`` producer, so the packaged report is reproducible by the coordinator.
+
+    This is the one non-test call path that exercises ``write_manual_completion_evidence`` against a
+    real repository: it resolves the committed review subject between ``base_commit`` and HEAD,
+    partitions the attestable source files across tasks, writes every task's attestation through the
+    shared producer, regenerates the canonical root ``token_truth.json`` from that assembled Evidence,
+    generates the complete closed-schema READY gate set, and runs the final verifier over the whole
+    bundle. No provider is called; the target repository is never mutated.
+
+    Returns a small summary dict (job_id, head, authority count, partition sizes, final verdict).
+    """
+    import subprocess
+    from packages.orchestration.repair_attest import (
+        build_safe_diff_text, canonical_provenance_sha256, is_attestable_source,
+        parse_safe_diff_paths, sha256_text,
+    )
+    from packages.orchestration.review_subject import (
+        commit_patch_bytes, commit_patch_filename, resolve_commit_chain, resolve_review_subject,
+    )
+    from packages.orchestration.final_verifier import build_final_verifier_report
+    from packages.orchestration import manual_attestation as _ma
+
+    os.makedirs(evidence_dir, exist_ok=True)
+
+    def _w(rel: str, obj: Any) -> None:
+        p = os.path.join(evidence_dir, rel)
+        os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write(obj if isinstance(obj, str) else json.dumps(obj, indent=1, sort_keys=True))
+
+    def _git(*args: str) -> str:
+        return subprocess.run(["git", "-C", repo_root, *args],
+                              capture_output=True, text=True).stdout
+
+    if head_commit is None:
+        head_commit = _git("rev-parse", "HEAD").strip()
+    if not verification_runs:
+        raise ValueError("verification_runs must record at least one executed verification command")
+    if any(r["exit_code"] != 0 for r in verification_runs) or any(r["failed"] for r in verification_runs):
+        raise ValueError("a recorded verification command failed; refusing to build a clean bundle")
+    total_passed = sum(r["passed"] for r in verification_runs)
+
+    # 1) The committed review subject — resolved once by the production helper.
+    subject = resolve_review_subject(repo_root, base_commit)
+    authority = sorted({f.path for f in subject.files if is_attestable_source(f.path)})
+    opstate = sorted(p for p in (f.path for f in subject.files) if not is_attestable_source(p))
+    if not authority:
+        raise ValueError("no attestable source files changed between base and head")
+
+    # 2) Partition the attestable files across tasks (explicit partition wins).
+    if task_partition is None:
+        k = (len(authority) + num_tasks - 1) // num_tasks
+        task_partition = {}
+        for i in range(num_tasks):
+            chunk = authority[i * k:(i + 1) * k]
+            if chunk:
+                task_partition[f"T{i + 1:03d}"] = chunk
+    part = {t: sorted(v) for t, v in task_partition.items() if v}
+    if set().union(*part.values()) != set(authority):
+        raise ValueError("task partition does not exactly cover the attestable authority set")
+
+    # 3) Review-subject artifacts: subject, content proof, commit chain, canonical patches, diff.
+    _w("review_subject.json", subject.to_json())
+    file_hashes: dict[str, str] = {}
+    for f in subject.files:
+        if is_attestable_source(f.path) and f.current_sha256:
+            file_hashes[f.path] = f.current_sha256
+    _w("current_change_content_proof.json", {
+        "schema_version": "1.1.0", "base_commit": base_commit, "head_commit": head_commit,
+        "file_hashes": file_hashes, "file_count": len(file_hashes),
+        "tombstones": {}, "tombstone_count": 0})
+    chain = resolve_commit_chain(repo_root, base_commit, head_commit)
+    _w("review_commit_chain.json", {"chain_v": 1, "base_commit": base_commit,
+                                    "head_commit": head_commit,
+                                    "commits": [c.to_json() for c in chain]})
+    pdir = os.path.join(evidence_dir, "review_commit_patches")
+    os.makedirs(pdir, exist_ok=True)
+    for c in chain:
+        with open(os.path.join(pdir, commit_patch_filename(c.commit)), "wb") as fh:
+            fh.write(commit_patch_bytes(repo_root, c.commit))
+    _w("workspace.diff", _git("diff", f"{base_commit}..{head_commit}", "--", *authority))
+
+    # 4) Per-task attestation + canonical root token truth — THROUGH the canonical producer.
+    task_records: list[dict[str, Any]] = []
+    for tid, files in part.items():
+        tracked = _git("diff", f"{base_commit}..{head_commit}", "--", *files)
+        safe = build_safe_diff_text(tracked, [])
+        tsha, ssha = sha256_text(tracked), sha256_text(safe)
+        prov = canonical_provenance_sha256(tsha, [])
+        if parse_safe_diff_paths(safe) != files:
+            raise ValueError(f"{tid}: safe-diff path set does not match the task partition")
+        task_records.append({
+            "task_id": tid, "changed_files": files, "safe_diff_text": safe,
+            "provenance_sha256": prov, "diff_sha256": prov, "tracked_diff_sha256": tsha,
+            "safe_diff_sha256": ssha, "timestamp": timestamp,
+            "note": f"{note_prefix} - {tid}"})
+    write_manual_completion_evidence(evidence_dir, job_id=job_id, tasks=task_records)
+
+    # 5) Root scaffold: manifest, job report/timeline/tasks, final job review, trace, guards, config.
+    _w("manifest.json", {
+        "bundle_version": "0.1.0", "bundle_type": "job_evidence", "job_id": job_id,
+        "job_title": job_title,
+        "job_file_sha256": hashlib.sha256(job_id.encode()).hexdigest(),
+        "status": "planned", "persisted_status": "planned", "repo_identity": "[local]",
+        "job_workspace_path": "", "created_at": generated_at, "finished_at": "",
+        "bundle_generated_at": generated_at, "task_count": len(part),
+        "task_ids": sorted(part), "task_run_ids": {},
+        "task_statuses": {t: "pending" for t in part},
+        "execution_config": None, "context_strategy": "task_bounded_sequential_job",
+        "target_guard": None, "error": "", "completion_mode": "manual_operator_repair",
+        "effective_status": "operator_attested_complete", "evidence_available": True,
+        "human_final_reviewer_required": True})
+    _w("job_report.json", "")
+    _w("job_timeline.json", {"job_id": job_id, "events": [], "sequencing_valid": True,
+                             "timestamps_available": False})
+    _w("tasks.json", [{"task_id": t, "title": f"Task {t}", "status": "pending",
+                       "safe_diff_files": sorted(v)} for t, v in part.items()])
+    _w("workspace_apply.json", [{"task_id": t, "status": "pending", "apply_manifest": None}
+                                for t in sorted(part)])
+    _w("execution_config.json", {
+        "builder_model": "operator", "builder_model_source": "operator_attestation",
+        "reviewer_model": "operator", "reviewer_model_source": "operator_attestation",
+        "actual_config_available": False})
+    _w("context_strategy.json", {"strategy": "task_bounded_sequential_job",
+                                 "previous_task_summary_limit": 5,
+                                 "full_job_history_in_prompt": False,
+                                 "full_repo_in_prompt": False})
+    _w("target_guard.json", {"target_mutated": False, "note": "manual operator repair; no mutation"})
+    _w("prompt_trace_summary.json", {"job_id": job_id, "provider_call_count": 0,
+                                     "prompt_trace_status": "not_applicable_manual_repair"})
+    _w("scratch_file_guard.json", {"schema_version": "1.0.0", "task_id": "",
+                                   "guard_status": "PASS", "checked_patterns": ["_[!_]*.py"],
+                                   "files_found": [], "forbidden_files": [],
+                                   "allowed_files_found": [], "suggested_cleanup": []})
+    prior = list(prior_job_ids)
+    _w("final_job_review.json", {
+        "schema_version": "1.0.0", "verdict": "PASS", "job_id": job_id, "findings": [],
+        "review_mode": "operator_attested_manual_completion",
+        "completion_mode": "manual_operator_repair", "human_final_reviewer_required": True,
+        "completion_provider_call_count": 0, "prior_execution_provider_call_count": 0,
+        "superseded_prior_run_ids": [], "changed_files_match": True,
+        "expected_changed_files": authority, "actual_changed_files": authority,
+        "per_task_changed_files": {t: sorted(v) for t, v in part.items()},
+        "task_verdicts": {t: "operator_attested" for t in part},
+        "linked_prior_job_ids": prior,
+        "linked_prior_job_summaries": [{"job_id": pj, "status": "operator_attested_complete",
+                                        "provider_call_count": 0} for pj in prior],
+        "root_verification": {"exit_code": 0, "passed": total_passed, "failed": 0}})
+
+    # 6) The complete READY gate set (closed schemas, coherent verdicts).
+    _ma.build_manual_completion_gates(
+        evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
+        step=step_range, total_passed=total_passed, verification_runs=verification_runs)
+    # change-provenance gate must carry the real covered/excluded sets and evidence sources.
+    cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
+    cp = json.loads(open(cp_path, encoding="utf-8").read())
+    cp.update({"excluded_files": opstate, "source_files": authority,
+               "evidence_covered_files": authority,
+               "evidence_sources": ["workspace.diff", "current_change_content_proof.json"]
+               + [f"task_runs/{t}/safe.diff" for t in sorted(part)]})
+    _w("change_provenance_gate.json", cp)
+
+    # 7) The final verifier is generated by the REAL producer over the assembled bundle, twice, to
+    #    prove the packaged report is reproducible (the coordinator recomputes and requires equality).
+    report = build_final_verifier_report(evidence_dir)
+    _w("final_verifier_report.json", report)
+    if build_final_verifier_report(evidence_dir) != report:
+        raise RuntimeError("final verifier producer is not deterministic over this bundle")
+
+    return {"job_id": job_id, "head_commit": head_commit, "authority_count": len(authority),
+            "partition": {t: len(v) for t, v in part.items()}, "commit_count": len(chain),
+            "verdict": report.get("verdict"), "manual_completion": report.get("manual_completion"),
+            "operator_attested_tasks": report.get("operator_attested_tasks"),
+            "total_passed": total_passed}

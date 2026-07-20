@@ -353,13 +353,19 @@ class TestReviewZipHygiene:
         text = script.read_text()
         assert ".data" in text
 
-    def test_make_review_zip_excludes_secrets(self):
+    def test_make_review_zip_guards_secrets_defense_in_depth(self):
+        # Round 22 F4: the SENSITIVE inclusion/exclusion decision moved to classify_bundle_path +
+        # ArchivePlan (an unchanged .env → EXCLUDE_SAFE_CONTEXT). The shell keeps a post-build
+        # defense-in-depth grep that refuses a package if a secret ever reached the zip.
         script = Path("scripts/make_review_zip.sh")
         if not script.exists():
             pytest.skip("make_review_zip.sh not found")
         text = script.read_text()
-        assert ".env" in text
-        assert "secret" in text.lower()
+        assert "\\.env" in text          # post-build BAD-file guard still refuses a leaked .env
+        from packages.orchestration.archive_plan import (
+            DISP_EXCLUDE_SAFE_CONTEXT, classify_bundle_path,
+        )
+        assert classify_bundle_path(".env", changed=False) == DISP_EXCLUDE_SAFE_CONTEXT
 
 
 # ---------------------------------------------------------------------------

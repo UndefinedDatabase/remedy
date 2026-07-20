@@ -185,6 +185,18 @@ class ExecutionConfig:
     claude_cli_write_mode: str = "none"
     claude_cli_write_mode_source: str = "default"
     context_strategy: str = "task_bounded_sequential_job"
+    # F012 round 4 (F2): invocation-level controls that alter execution/evidence. Material
+    # inputs, persisted with their source so `explicit > persisted > default` is auditable.
+    timeout_sec: int = 120
+    timeout_sec_source: str = "default"
+    timeout_profile: str = ""
+    timeout_profile_source: str = "default"
+    max_output_chars: int = 50000
+    max_output_chars_source: str = "default"
+    stream_evidence: bool = False
+    stream_evidence_source: str = "default"
+    max_tasks: int = 0
+    max_tasks_source: str = "default"
 
 
 @dataclass
@@ -239,6 +251,21 @@ class JobPlan:
     stop_postmortem_path: str = ""        # evidence-relative, never absolute
     stop_error: str = ""                  # a recording failure, kept durable (blocking)
     stop_event_error: str = ""
+    # F012: the run-input manifest this job left (evidence-relative), and the reason one
+    # could not be written. A write failure is durable and blocks a falsely clean package.
+    run_manifest_path: str = ""
+    run_manifest_error: str = ""
+    run_manifest_created_at: str = ""
+    # F012 episode model + start snapshot + legacy marker.
+    run_manifest_required_v: int = 0          # >0 marks a job created/first-run under F012
+    active_episode_id: str = ""               # this run episode's id (completed episodes)
+    episode_start_workspace_tree: str = ""    # F4: workspace tree at this episode's start
+    input_snapshot: dict = field(default_factory=dict)   # captured at episode start
+    # F1/F12: a durable reason the MANDATORY episode-start snapshot could not be captured (or
+    # was invalid). Its presence means the job was HARD-BLOCKED before any provider work — the
+    # runner started zero tasks and made zero provider calls.
+    input_snapshot_error: str = ""
+    run_manifest_episodes: list = field(default_factory=list)  # index of episode dicts
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +422,16 @@ def _export_execution_config(c: ExecutionConfig | None) -> dict[str, Any] | None
         "claude_cli_write_mode": c.claude_cli_write_mode,
         "claude_cli_write_mode_source": c.claude_cli_write_mode_source,
         "context_strategy": c.context_strategy,
+        "timeout_sec": c.timeout_sec,
+        "timeout_sec_source": c.timeout_sec_source,
+        "timeout_profile": c.timeout_profile,
+        "timeout_profile_source": c.timeout_profile_source,
+        "max_output_chars": c.max_output_chars,
+        "max_output_chars_source": c.max_output_chars_source,
+        "stream_evidence": c.stream_evidence,
+        "stream_evidence_source": c.stream_evidence_source,
+        "max_tasks": c.max_tasks,
+        "max_tasks_source": c.max_tasks_source,
     }
 
 
@@ -429,6 +466,16 @@ def _import_execution_config(d: dict[str, Any] | None) -> ExecutionConfig | None
         claude_cli_write_mode=d.get("claude_cli_write_mode", "none"),
         claude_cli_write_mode_source=d.get("claude_cli_write_mode_source", "default"),
         context_strategy=d.get("context_strategy", "task_bounded_sequential_job"),
+        timeout_sec=int(d.get("timeout_sec", 120) or 120),
+        timeout_sec_source=d.get("timeout_sec_source", "default"),
+        timeout_profile=d.get("timeout_profile", ""),
+        timeout_profile_source=d.get("timeout_profile_source", "default"),
+        max_output_chars=int(d.get("max_output_chars", 50000) or 50000),
+        max_output_chars_source=d.get("max_output_chars_source", "default"),
+        stream_evidence=bool(d.get("stream_evidence", False)),
+        stream_evidence_source=d.get("stream_evidence_source", "default"),
+        max_tasks=int(d.get("max_tasks", 0) or 0),
+        max_tasks_source=d.get("max_tasks_source", "default"),
     )
 
 
@@ -519,6 +566,17 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
             "error": job.stop_error,
             "event_error": job.stop_event_error,
         },
+        "run_manifest": {
+            "path": job.run_manifest_path,
+            "error": job.run_manifest_error,
+            "created_at": job.run_manifest_created_at,
+            "required_v": job.run_manifest_required_v,
+            "active_episode_id": job.active_episode_id,
+            "episode_start_workspace_tree": job.episode_start_workspace_tree,
+            "input_snapshot": job.input_snapshot,
+            "input_snapshot_error": job.input_snapshot_error,
+            "episodes": job.run_manifest_episodes,
+        },
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -599,6 +657,15 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         stop_postmortem_path=str((data.get("stop") or {}).get("postmortem_path", "") or ""),
         stop_error=str((data.get("stop") or {}).get("error", "") or ""),
         stop_event_error=str((data.get("stop") or {}).get("event_error", "") or ""),
+        run_manifest_path=str((data.get("run_manifest") or {}).get("path", "") or ""),
+        run_manifest_error=str((data.get("run_manifest") or {}).get("error", "") or ""),
+        run_manifest_created_at=str((data.get("run_manifest") or {}).get("created_at", "") or ""),
+        run_manifest_required_v=int((data.get("run_manifest") or {}).get("required_v", 0) or 0),
+        active_episode_id=str((data.get("run_manifest") or {}).get("active_episode_id", "") or ""),
+        episode_start_workspace_tree=str((data.get("run_manifest") or {}).get("episode_start_workspace_tree", "") or ""),
+        input_snapshot=dict((data.get("run_manifest") or {}).get("input_snapshot") or {}),
+        input_snapshot_error=str((data.get("run_manifest") or {}).get("input_snapshot_error", "") or ""),
+        run_manifest_episodes=list((data.get("run_manifest") or {}).get("episodes") or []),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -1476,12 +1543,12 @@ def run_job(
     repair_rounds: int | None = None,
     repair_rounds_source: str | None = None,
     test_command: str | None = None,
-    timeout_sec: int = 120,
-    timeout_profile: str = "",
-    max_output_chars: int = 50000,
+    timeout_sec: int | None = None,
+    timeout_profile: str | None = None,
+    max_output_chars: int | None = None,
     claude_cli_write_mode: str | None = None,
-    stream_evidence: bool = False,
-    max_tasks: int = 0,
+    stream_evidence: bool | None = None,
+    max_tasks: int | None = None,
 ) -> JobPlan:
     """Execute pending tasks sequentially through the ping-pong loop.
 
@@ -1547,6 +1614,32 @@ def run_job(
     repair_effort, rpe_src = _resolve_cfg(
         repair_effort, ec.repair_effort if ec else None, "")
 
+    # F3: resolve the invocation-level controls with an OMISSION SENTINEL (None). Only a value
+    # the caller actually supplied (``passed is not None``) is an explicit invocation — so an
+    # explicit value that happens to equal the product default STILL overrides a persisted one,
+    # and an omitted flag never masquerades as an explicit default. Precedence is strictly
+    # explicit(non-None) > persisted > product default, mirroring ``_resolve_cfg``.
+    def _resolve_inv(passed: Any, default: Any, persisted: Any):
+        if passed is not None:
+            return passed, "invocation"
+        if persisted is not None:
+            return persisted, "persisted"
+        return default, "default"
+
+    _ts, _ts_src = _resolve_inv(timeout_sec, 120, ec.timeout_sec if ec else None)
+    _tp, _tp_src = _resolve_inv(timeout_profile, "", ec.timeout_profile if ec else None)
+    _moc, _moc_src = _resolve_inv(max_output_chars, 50000,
+                                  ec.max_output_chars if ec else None)
+    _se, _se_src = _resolve_inv(stream_evidence, False, ec.stream_evidence if ec else None)
+    _mt, _mt_src = _resolve_inv(max_tasks, 0, ec.max_tasks if ec else None)
+
+    # F2: from here on the ONLY values that exist are the RESOLVED ones. Rebind the canonical
+    # locals so every downstream use — the task cap, the provider kwargs, the stream-evidence
+    # switch, the reports and the manifest — executes exactly what was recorded. There is no
+    # second, un-resolved variable that the runner could accidentally use instead.
+    timeout_sec, timeout_profile, max_output_chars = _ts, _tp, _moc
+    stream_evidence, max_tasks = _se, _mt
+
     job.execution_config = ExecutionConfig(
         builder=builder_name,
         builder_source=builder_src,
@@ -1574,11 +1667,20 @@ def run_job(
         test_command_source=test_cmd_src,
         claude_cli_write_mode=claude_cli_write_mode,
         claude_cli_write_mode_source=write_mode_src,
+        timeout_sec=_ts, timeout_sec_source=_ts_src,
+        timeout_profile=_tp, timeout_profile_source=_tp_src,
+        max_output_chars=_moc, max_output_chars_source=_moc_src,
+        stream_evidence=_se, stream_evidence_source=_se_src,
+        max_tasks=_mt, max_tasks_source=_mt_src,
     )
 
     # Record repair-round metadata at job level
     job.repair_rounds_allowed = repair_rounds
     job.repair_rounds_source = rr_src
+
+    # F012/F1: mark the job as manifest-required now, but capture the typed episode-start
+    # snapshot only once the active episode id exists and is bound to it (below).
+    _mark_manifest_required(job)
 
     # F011 SAFE POINT ZERO — before ANY work. The job is loaded and its config resolved;
     # nothing has been acquired, locked, snapshotted or mutated. A stop that was already
@@ -1597,12 +1699,35 @@ def run_job(
 
     _pre_stop = _stop_check()
     if _pre_stop is not None:
+        # F012: a pre-work stop finalizes the episode that was ALREADY under way (its calls
+        # are tagged with the persisted active_episode_id). Reuse it so a stop-retry converges
+        # on the same episode and the same calls; only a first-ever run with no episode yet
+        # allocates one.
+        if not job.active_episode_id:
+            job.active_episode_id = uuid4().hex[:16]
+        # F1: a stop-retry of an episode that already captured its snapshot REUSES it (the
+        # persisted wrapper is bound to this episode and is ok). A first-ever pre-work stop —
+        # no bound snapshot yet — gets its OWN explicit ``pre_work_stop`` snapshot; it is never
+        # left empty and never rebuilt at finalize.
+        if not _episode_snapshot_bound_ok(job):
+            _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
+        # F5: PERSIST the allocated episode id + its bound snapshot BEFORE the stop transaction,
+        # so a retry of a stop whose finalization failed reuses the SAME episode id (and its
+        # already-written manifest), converging idempotently instead of allocating a fresh
+        # episode that would disagree with the on-disk index. This persist is with the job still
+        # non-stopped, so it never races the STOPPED checkpoint.
+        _persist_job(job)
         try:
             return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
         except StopFinalizationError:
             # The stop could not be made durable. The request is still pending and no work
             # has begun — which is the safe outcome, and the job records why.
             return job
+
+    # F012: no pending pre-work stop — this is a real execution EPISODE. Allocate a fresh
+    # episode id now (a resume gets its own episode; only calls made in THIS episode are
+    # collected into its manifest).
+    job.active_episode_id = uuid4().hex[:16]
 
     # F006: the job workspace IS a job-owned git worktree for a git target.
     # The runner owns the handle (and its lock) for the whole execution.
@@ -1623,6 +1748,42 @@ def run_job(
     try:
         # Step 4837: Snapshot real target repo before any task runs
         target_snap = _snapshot_target_repo(job.repo_path)
+
+        # F012 (F4): record the job-workspace tree at THIS episode's start. For a resume, it
+        # already contains the work applied by earlier episodes, which is a material input.
+        # F12: a FAILURE to capture it is a snapshot-capture failure — it is NEVER silently
+        # substituted with an empty tree. The typed reason is folded into the snapshot wrapper.
+        job.episode_start_workspace_tree = ""
+        _ws_tree_problems: tuple[str, ...] = ()
+        if job_handle is not None:
+            try:
+                from packages.orchestration import worktrees as _W
+                job.episode_start_workspace_tree = _W.write_tree(job_handle)
+            except Exception as exc:
+                from packages.orchestration.failure_postmortem import safe_text
+                job.episode_start_workspace_tree = ""
+                _ws_tree_problems = (safe_text(
+                    f"episode_start_workspace_tree capture failed: "
+                    f"{type(exc).__name__}: {exc}")[:300],)
+
+        # F012/F1: capture the typed episode-start snapshot now that the workspace is acquired
+        # and the base identity (target_base_commit, job_initial_tree) is populated — this is
+        # the stable, episode-bound snapshot the completed manifest consumes verbatim.
+        _snap_wrapper = _capture_input_snapshot(
+            job, phase=_PHASE_EPISODE_START, extra_problems=_ws_tree_problems)
+
+        # F1/F12: VALIDATE the wrapper immediately. A failed or invalid mandatory snapshot is a
+        # HARD BLOCK *before any task or provider call* — the job is set to a durable non-running
+        # blocked state carrying the reason, persisted, and returned. Zero tasks run, zero
+        # provider calls happen, and no false "completed" result is produced. The failure is
+        # discovered HERE, not later at terminal manifest writing.
+        _snap_block = _snapshot_block_reason(job, _snap_wrapper, phase=_PHASE_EPISODE_START)
+        if _snap_block:
+            job.status = JOB_BLOCKED
+            job.input_snapshot_error = _snap_block
+            job.error = f"episode_start_snapshot_failed: {_snap_block}"
+            _persist_job(job)
+            return job
 
         job.status = JOB_RUNNING
         _persist_job(job)
@@ -1729,6 +1890,7 @@ def run_job(
                     workspace_owner="job" if job_handle is not None else "run",
                     workspace_start_tree=task.task_start_tree,
                     stop_check=_stop_check,
+                    episode_id=job.active_episode_id,
                 )
             except Exception as exc:
                 task.status = TASK_FAILED
@@ -1910,6 +2072,12 @@ def run_job(
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.status = JOB_PAUSED
+
+        # F012: a completed job records its episode's manifest, after every call input is
+        # known. A paused/partial job is not a finished run and gets none yet.
+        if job.status == JOB_COMPLETED:
+            _write_run_manifest_record(job, status="completed",
+                                       episode_id=job.active_episode_id)
 
         _persist_job(job)
         return job
@@ -2488,7 +2656,22 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
             _persist_job(job)
             raise StopFinalizationError(job.stop_event_error)
 
-    # --- 4/5. the durable STOPPED checkpoint ------------------------------------------
+    # --- 4. the F012 manifest is part of the stop transaction -------------------------
+    # It must PUBLISH before the stop request is acknowledged. If it fails, the request
+    # stays pending (raise below), the next run observes the same request and finalizes the
+    # SAME stop episode (episode id derived from the request id, so archive/post-mortem/event
+    # /manifest all stay exactly once). The stop reason is never replaced by the manifest
+    # error — the primary stop stands.
+    # F5: the stopped manifest represents the ACTIVE execution episode — same episode id as its
+    # snapshot and its calls. The stop request id is carried as SEPARATE terminal metadata, not
+    # smuggled in as the episode id. (A pre-work stop already allocated an active episode.)
+    if not _write_run_manifest_record(job, status="stopped",
+                                      episode_id=job.active_episode_id,
+                                      stop_request_id=signal.request_id):
+        _persist_job(job)             # durable blocking error; request still pending
+        raise StopFinalizationError(job.run_manifest_error)
+
+    # --- 5. the durable STOPPED checkpoint --------------------------------------------
     job.status = JOB_STOPPED
     job.error = ""
     _persist_job(job)                 # if THIS throws, the request is still pending: good
@@ -2504,6 +2687,230 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
             f"stop_acknowledge_failed: {type(exc).__name__}: {exc}")[:500]
         _persist_job(job)
     return job
+
+
+_PHASE_EPISODE_START = "episode_start"
+_PHASE_PRE_WORK_STOP = "pre_work_stop"
+
+
+def _mark_manifest_required(job: JobPlan) -> None:
+    """Stamp the F012 marker: a job first run under F012 is expected to have a manifest, so a
+    later completed/stopped job WITHOUT one is blocking rather than legacy."""
+    from packages.orchestration.run_manifest import MANIFEST_REQUIRED_VERSION
+    job.run_manifest_required_v = MANIFEST_REQUIRED_VERSION
+
+
+def _capture_input_snapshot(job: JobPlan, *, phase: str,
+                            extra_problems: tuple[str, ...] = ()) -> "Any":
+    """F1/F11/F12: capture the typed, EPISODE-OWNED input snapshot at episode START, bound to
+    the active episode and a named ``phase``. The result is stored as an
+    ``EpisodeInputSnapshotV1`` wrapper (status ok|failed) — a capture FAILURE (including a
+    ``extra_problems`` failure such as a failed episode-start workspace-tree capture) is
+    recorded as data, never swallowed to an empty dict, and NEVER re-probed at episode end. The
+    caller must treat a non-``ok`` wrapper as a blocking pre-work condition."""
+    from packages.orchestration.run_manifest import capture_episode_input_snapshot
+
+    _mark_manifest_required(job)
+    wrapper = capture_episode_input_snapshot(
+        job, episode_id=job.active_episode_id, capture_phase=phase,
+        extra_problems=extra_problems)
+    job.input_snapshot = wrapper.to_json()
+    return wrapper
+
+
+def _snapshot_block_reason(job: JobPlan, wrapper: "Any", *, phase: str) -> str:
+    """Return a non-empty reason string when the mandatory episode snapshot is NOT usable
+    (capture failed or the wrapper is invalid / foreign to the active episode), else ''.
+    Used to HARD-BLOCK the job before any task or provider call (F1/F6/F12)."""
+    from packages.orchestration.run_manifest import validate_episode_input_snapshot
+
+    probs = validate_episode_input_snapshot(
+        wrapper, expected_episode_id=job.active_episode_id)
+    if wrapper.capture_phase != phase:
+        probs = [*probs, f"snapshot phase {wrapper.capture_phase!r} != expected {phase!r}"]
+    if not wrapper.is_ok():
+        # is_ok() already folds in validate(); surface the captured failure problems too.
+        probs = [*probs, *[str(p) for p in wrapper.problems]]
+    return "; ".join(dict.fromkeys(p for p in probs if p))[:500]
+
+
+def _episode_snapshot_bound_ok(job: JobPlan) -> bool:
+    """True when a persisted, ``ok`` episode snapshot is already bound to the active episode —
+    the signal that a stop-retry must REUSE it rather than recapture (F1)."""
+    from packages.orchestration.run_manifest import decode_episode_snapshot_v1
+
+    if not job.input_snapshot or not job.active_episode_id:
+        return False
+    try:
+        # F5: the persisted JobPlan snapshot is UNTRUSTED disk state — strict-decode it. A
+        # malformed record never returns ok and is never reused.
+        w = decode_episode_snapshot_v1(job.input_snapshot)
+    except Exception:
+        return False
+    return w.is_ok() and w.episode_id == job.active_episode_id
+
+
+def _episodes_from_canonical(order: list) -> list:
+    """The JobPlan-level episode index, taken verbatim from the CANONICAL on-disk order (F10)."""
+    return [{"episode_id": e["episode_id"], "status": e["status"],
+             "created_at": e["created_at"], "episode_ordinal": e["episode_ordinal"],
+             "previous_episode_id": e["previous_episode_id"]} for e in order]
+
+
+def _crosscheck_jobplan_vs_canonical(job: JobPlan, canonical_existing: list,
+                                     current_episode_id: str) -> list:
+    """F9/F10: the JobPlan's own episode view (excluding the episode being written) MUST agree
+    with the canonical on-disk index. A divergence means the durable index and the job's view
+    have drifted — the append is refused, never silently reconciled."""
+    job_eps = {str(e.get("episode_id", "")): e for e in job.run_manifest_episodes
+               if e.get("episode_id") and e.get("episode_id") != current_episode_id}
+    if len([e for e in job.run_manifest_episodes
+            if e.get("episode_id") and e.get("episode_id") != current_episode_id]) != len(job_eps):
+        return ["duplicate episode ids in JobPlan"]
+    can_eps = {str(e["episode_id"]): e for e in canonical_existing}
+    problems: list = []
+    if set(job_eps) != set(can_eps):
+        problems.append(f"episode id set differs: job {sorted(job_eps)} vs "
+                        f"index {sorted(can_eps)}")
+    for eid, ce in can_eps.items():
+        je = job_eps.get(eid)
+        if je is None:
+            continue
+        if int(je.get("episode_ordinal", 0) or 0) != int(ce["episode_ordinal"]):
+            problems.append(f"episode {eid} ordinal differs")
+        if str(je.get("status", "")) != str(ce["status"]):
+            problems.append(f"episode {eid} status differs")
+        if str(je.get("created_at", "")) != str(ce["created_at"]):
+            problems.append(f"episode {eid} created_at differs")
+        if str(je.get("previous_episode_id", "") or "") != str(ce["previous_episode_id"] or ""):
+            problems.append(f"episode {eid} previous_episode_id differs")
+    return problems
+
+
+def _write_run_manifest_record(job: JobPlan, *, status: str, episode_id: str,
+                               created_at: str | None = None,
+                               stop_request_id: str = "") -> bool:
+    """F012: write ONE immutable manifest for one execution EPISODE. Never raises.
+
+    Uses the typed episode-start snapshot wrapper captured at episode start (F4). The episode
+    ordinal + immediate predecessor are derived from the CANONICAL verified index, never from
+    mutable JobPlan state (F10), after cross-checking the two agree (F9). Idempotent for the
+    same episode content; a conflicting write for the same episode is captured as an error.
+    Returns True on success, False on a recording failure (``job.run_manifest_error`` carries
+    why, and the evidence export turns it into a BLOCKING integrity failure)."""
+    from packages.orchestration.run_manifest import (
+        MANIFEST_FILENAME,
+        ManifestError,
+        build_run_manifest,
+        decode_episode_snapshot_v1,
+        ensure_evidence_root_anchored,
+        episode_manifest_exists_anchored,
+        load_episode_manifest_verified,
+        read_canonical_episode_order,
+        rebuild_manifest_mirror_and_index_from_canonical_episodes,
+        utc_now_iso,
+        validate_episode_input_snapshot,
+        write_run_manifest,
+    )
+
+    try:
+        ev = job_evidence_dir(job.job_id)
+        # F5: a stopped/completed manifest's episode id IS the active execution episode — the
+        # snapshot, the calls and the manifest all name the same episode. The stop REQUEST id is
+        # carried separately as terminal metadata, never used as the episode id.
+        if episode_id != job.active_episode_id:
+            raise ManifestError(
+                f"manifest episode {episode_id!r} != active episode "
+                f"{job.active_episode_id!r} (F5)")
+
+        # F11: an episode manifest is IMMUTABLE. Decide whether it already exists through
+        # ANCHORED reads (never Path.is_file()). If it does (a retry of a stop whose
+        # acknowledge/persist failed), re-issue the CANONICAL on-disk record through the
+        # verified trust chain — never a rebuild from possibly-shifted job state.
+        if episode_manifest_exists_anchored(ev, episode_id):
+            try:
+                canonical = load_episode_manifest_verified(ev, episode_id,
+                                                           expected_job_id=job.job_id)
+            except ManifestError:
+                # F3/F4: the IMMUTABLE episode exists but the DERIVED mirror/index is
+                # broken/partial (a crash during index publication). Recover by rebuilding the
+                # derived projection PURELY from the immutable episode records, then reload —
+                # so a partial publication converges on retry instead of failing forever.
+                rebuild_manifest_mirror_and_index_from_canonical_episodes(
+                    ev, root=ev, job_id=job.job_id)
+                canonical = load_episode_manifest_verified(ev, episode_id,
+                                                           expected_job_id=job.job_id)
+            write_run_manifest(ev, canonical, root=ev)
+            job.run_manifest_path = MANIFEST_FILENAME
+            job.run_manifest_created_at = canonical.created_at
+            job.run_manifest_error = ""
+            job.run_manifest_episodes = _episodes_from_canonical(
+                read_canonical_episode_order(ev, job_id=job.job_id))
+            return True
+
+        # F5: creation time is PER EPISODE. A retry reuses its stamp; a resumed episode gets its
+        # own — never the prior episode's timestamp.
+        prior_stamp = ""
+        for e in job.run_manifest_episodes:
+            if e.get("episode_id") == episode_id:
+                prior_stamp = e.get("created_at", "")
+                break
+        stamp = created_at or prior_stamp or utc_now_iso()
+
+        # F4/F6: consume the typed, episode-bound snapshot WRAPPER verbatim and validate it
+        # strictly. A missing / FAILED / invalid / foreign snapshot is a BLOCKING recording
+        # error — the finalizer NEVER re-probes a fresh terminal snapshot to paper over it.
+        # F5: strict-decode the persisted snapshot; a malformed record is a durable bounded
+        # manifest error, never coerced into a usable snapshot.
+        wrapper = (decode_episode_snapshot_v1(job.input_snapshot)
+                   if job.input_snapshot else None)
+        if wrapper is None:
+            raise ManifestError("no episode-start input snapshot (F1 blocking)")
+        sp = validate_episode_input_snapshot(wrapper, expected_episode_id=job.active_episode_id)
+        if sp or not wrapper.is_ok():
+            raise ManifestError(
+                "episode-start snapshot invalid or a failed capture (F1/F4/F6): "
+                + "; ".join(sp or list(wrapper.problems))[:300])
+
+        # F10: derive the ordinal + immediate predecessor from the CANONICAL verified index —
+        # NOT mutable JobPlan metadata. Then cross-check the JobPlan agrees (F9) and refuse the
+        # append on any disagreement, so tampered JobPlan state cannot redirect episode order.
+        ensure_evidence_root_anchored(ev)
+        canonical_order = read_canonical_episode_order(ev, job_id=job.job_id)
+        existing = [e for e in canonical_order if e["episode_id"] != episode_id]
+        xcheck = _crosscheck_jobplan_vs_canonical(job, existing, episode_id)
+        if xcheck:
+            raise ManifestError("JobPlan/index disagreement (F9/F10): " + "; ".join(xcheck))
+        ordinal = len(existing) + 1
+        previous_episode_id = existing[-1]["episode_id"] if existing else ""
+        prior = tuple(e["episode_id"] for e in existing)     # ascending ordinal order (F8)
+
+        # F5 (round 10): the CANONICAL prior-episode set and its ordinals — the only ground on
+        # which a call may be excluded as "someone else's history". A call naming an episode
+        # that is not in this map is unattributable, and unattributable is a coverage problem,
+        # never a silent exclusion.
+        prior_ordinals = {e["episode_id"]: int(e["episode_ordinal"]) for e in existing}
+        manifest = build_run_manifest(job, status=status, episode_id=episode_id,
+                                      created_at=stamp, episode_snapshot=wrapper,
+                                      prior_episode_ids=prior,
+                                      owned_episode_id=job.active_episode_id,
+                                      prior_episode_ordinals=prior_ordinals,
+                                      episode_ordinal=ordinal,
+                                      previous_episode_id=previous_episode_id,
+                                      stop_request_id=stop_request_id)
+        write_run_manifest(ev, manifest, root=ev)
+        job.run_manifest_path = MANIFEST_FILENAME
+        job.run_manifest_created_at = stamp          # job-level = latest episode
+        job.run_manifest_error = ""
+        # F10: refresh the JobPlan's episode index from the RESULTING canonical order.
+        job.run_manifest_episodes = _episodes_from_canonical(
+            read_canonical_episode_order(ev, job_id=job.job_id))
+        return True
+    except Exception as exc:                       # never mask the primary job outcome
+        from packages.orchestration.failure_postmortem import safe_text
+        job.run_manifest_error = safe_text(
+            f"run_manifest_write_failed: {type(exc).__name__}: {exc}")[:500]
+        return False
 
 
 def _task_stream_dir(job_id: str, task_id: str):

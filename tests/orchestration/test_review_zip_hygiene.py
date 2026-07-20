@@ -377,13 +377,26 @@ class TestZipManifestContentVerification:
 _REQUIRED_SCRIPTS = (
     "make_review_zip.sh",
     "build_review_manifest.py",
+    "build_review_zip.py",                 # F8 (round 17): the NUL-safe archive builder
     "build_observability_index.py",
     "select_review_evidence.py",
+    "stage_review_evidence.py",            # F8 (round 19): typed no-follow evidence staging
 )
 _REQUIRED_PACKAGE_MODULES = (
     "packages/orchestration/__init__.py",
     "packages/orchestration/data_paths.py",
     "packages/orchestration/evidence_index.py",
+    # F9/F8 (round 17): the containment helper and the archive builder the packager now imports.
+    "packages/orchestration/review_zip.py",
+    # F1/F3 (round 18): the typed ArchivePlan, the strict review-subject decoder, and secure_fs's
+    # anchored reader the plan-driven builder uses. The attest predicate is imported lazily by the
+    # builder and defaulted when absent, so the minimal fixture need not carry the full stack.
+    "packages/orchestration/archive_plan.py",
+    "packages/orchestration/review_subject.py",
+    # F8 (round 19): the typed no-follow evidence inventory the staging CLI drives.
+    "packages/orchestration/evidence_inventory.py",
+    "packages/common/__init__.py",
+    "packages/common/secure_fs.py", "packages/common/strict_json.py", "packages/common/acquisition_budget.py",
 )
 
 
@@ -395,12 +408,11 @@ def _make_git_repo_with_scripts(tmp_path: Path) -> Path:
         src = REPO_ROOT / "scripts" / name
         assert src.exists(), f"missing packaging dependency in source tree: {src}"
         shutil.copy2(src, repo / "scripts" / name)
-    for rel in _REQUIRED_PACKAGE_MODULES:
-        src = REPO_ROOT / rel
-        assert src.exists(), f"missing package module: {src}"
-        dst = repo / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+    # Round 32 F-fix: copy the COMPLETE packages tree (not a curated subset that breaks whenever a
+    # script gains a new import), so every runtime import resolves and the package files an
+    # evidence-index test references as source paths are present.
+    shutil.copytree(REPO_ROOT / "packages", repo / "packages",
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
     (repo / "README.md").write_text("# test\n")
     env = {**os.environ, "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "t@t",

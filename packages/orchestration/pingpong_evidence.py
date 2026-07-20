@@ -413,10 +413,19 @@ def _build_provider_evidence_json(run_data: dict[str, Any]) -> dict[str, Any]:
     """Build provider_evidence.json from run data."""
     pe = run_data.get("provider_evidence")
     if pe:
-        return _redact_json_value(dict(pe))
+        redacted = _redact_json_value(dict(pe))
+        if "schema_version" not in redacted:
+            from packages.orchestration.provider_token_evidence import PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION
+            redacted["schema_version"] = PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION
+        return redacted
     return {
+        "schema_version": "1.0.0",
+        "execution_mode": "provider_backed",
         "builder_provider": run_data.get("builder_provider", ""),
         "reviewer_provider": run_data.get("reviewer_provider", ""),
+        "provider_call_count": 0,
+        "actual_call_count": 0,
+        "cost_call_count": 0,
     }
 
 

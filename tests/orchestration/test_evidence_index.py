@@ -270,8 +270,10 @@ class TestDirtyFileEnumeration:
         sys.path.insert(0, str(root / "scripts"))
         import build_review_manifest as brm
         import inspect
-        src = inspect.getsource(brm._dirty_files)
-        assert '"-u"' in src, "_dirty_files must enumerate untracked files individually"
+        # Round 32 F5: the single git-status acquisition lives in _git_status_snapshot
+        # (NUL-safe porcelain=v1 -z); -u still enumerates untracked files individually there.
+        src = inspect.getsource(brm._git_status_snapshot)
+        assert '"-u"' in src, "_git_status_snapshot must enumerate untracked files individually"
 
     def test_untracked_dir_is_expanded(self, tmp_path, monkeypatch):
         repo = _repo(tmp_path / "r")

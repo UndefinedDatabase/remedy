@@ -49,6 +49,17 @@ def _get_dispatch_table() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 
+def _stream_group(parser: argparse.ArgumentParser):
+    """F15: the ONE mutually-exclusive group carrying ``--stream-evidence`` /
+    ``--no-stream-evidence`` for this parser, so supplying BOTH is a usage error (exit 2)
+    instead of silent last-one-wins."""
+    grp = getattr(parser, "_remedy_stream_group", None)
+    if grp is None:
+        grp = parser.add_mutually_exclusive_group()
+        parser._remedy_stream_group = grp
+    return grp
+
+
 def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> None:
     """Add arguments from catalog entry to argparse parser."""
     for arg in cmd.args:
@@ -230,14 +241,30 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument("--test-command", default=arg.default, dest="test_command", help=arg.help)
             elif arg.name == "--provider-timeout-sec":
                 parser.add_argument("--provider-timeout-sec", default=arg.default, dest="provider_timeout_sec", help=arg.help)
+            elif arg.name == "--timeout-sec":
+                # F1: omission stays None so run_job resolves explicit>persisted>default.
+                parser.add_argument("--timeout-sec", default=None, dest="timeout_sec", help=arg.help)
             elif arg.name == "--timeout-profile":
-                parser.add_argument("--timeout-profile", default=arg.default, dest="timeout_profile", help=arg.help)
+                # F1: omission stays None — never pre-resolved to "normal".
+                parser.add_argument("--timeout-profile", default=None, dest="timeout_profile", help=arg.help)
             elif arg.name == "--max-output-chars":
-                parser.add_argument("--max-output-chars", default=arg.default, dest="max_output_chars", help=arg.help)
+                parser.add_argument("--max-output-chars", default=None, dest="max_output_chars", help=arg.help)
+            elif arg.name == "--max-tasks":
+                # F1: omission stays None (not "0"), so a persisted cap is not silently cleared.
+                parser.add_argument("--max-tasks", default=None, dest="max_tasks", help=arg.help)
             elif arg.name == "--claude-cli-write-mode":
                 parser.add_argument("--claude-cli-write-mode", default=arg.default, dest="claude_cli_write_mode", help=arg.help)
             elif arg.name == "--stream-evidence":
-                parser.add_argument("--stream-evidence", action="store_true", dest="stream_evidence", help=arg.help)
+                # F1/F15: tri-state AND mutually exclusive — omitted None, --stream-evidence
+                # True, --no-stream-evidence False, BOTH is a usage error (exit 2). The pair
+                # shares one argparse mutually-exclusive group per command parser.
+                _stream_group(parser).add_argument(
+                    "--stream-evidence", action="store_const", const=True,
+                    default=None, dest="stream_evidence", help=arg.help)
+            elif arg.name == "--no-stream-evidence":
+                _stream_group(parser).add_argument(
+                    "--no-stream-evidence", action="store_const", const=False,
+                    dest="stream_evidence", help=arg.help)
             elif arg.name == "--task-file":
                 parser.add_argument("--task-file", default="", dest="task_file", help=arg.help)
             elif arg.name == "--task-stdin":
@@ -271,11 +298,21 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument(arg.name, help=arg.help)
 
 
+class _UsageError(SystemExit):
+    """F15: a usage error that CARRIES its message, so the conflict can be explained instead of
+    exiting silently (e.g. `--stream-evidence` together with `--no-stream-evidence`)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(2)
+        self.message = message
+
+
 class _SilentParser(argparse.ArgumentParser):
-    """ArgumentParser that raises SystemExit without printing to stderr."""
+    """ArgumentParser that raises SystemExit without printing to stderr — but keeps the message
+    so the caller can render it (F15)."""
 
     def error(self, message: str) -> None:  # type: ignore[override]
-        raise SystemExit(2)
+        raise _UsageError(message)
 
     def exit(self, status: int = 0, message: str | None = None) -> None:  # type: ignore[override]
         raise SystemExit(status)
@@ -415,6 +452,10 @@ def _pre_scan_help(argv: list[str] | None) -> bool:
     return True
 
 
+def _wants_json(raw: list[str]) -> bool:
+    return "--json" in (raw or [])
+
+
 def main(argv: list[str] | None = None) -> None:
     """Entry point for the grouped CLI."""
     # Pre-scan for --help to avoid argparse SystemExit on missing required args
@@ -444,8 +485,20 @@ def main(argv: list[str] | None = None) -> None:
     # Intercept argparse errors for clean output
     try:
         args, unknown = parser.parse_known_args(argv)
-    except SystemExit:
+    except SystemExit as exc:
         raw = argv if argv is not None else sys.argv[1:]
+        # F15: a conflicting/invalid option combination EXPLAINS itself (both stream flags →
+        # exit 2 with the reason), instead of silently falling through to generic help.
+        msg = getattr(exc, "message", "")
+        if msg and ("not allowed with" in msg or "mutually exclusive" in msg):
+            where = f"remedy {raw[0]} {raw[1]}" if len(raw) >= 2 else "remedy"
+            if _wants_json(raw):
+                import json as _json
+                print(_json.dumps({"ok": False, "error": "conflicting_options",
+                                   "message": msg}, indent=2))
+            else:
+                print(render_error(where, msg), file=sys.stderr)
+            sys.exit(2)
         if not raw:
             _print_root_help()
             return

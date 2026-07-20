@@ -160,22 +160,54 @@ class TestJobFlowHandlerWiring:
         assert COMMAND_ID in table
         assert callable(table[COMMAND_ID])
 
+    #: F15: `--stream-evidence` / `--no-stream-evidence` are ONE mutually-exclusive store_const
+    #: pair (omitted None / True / False), so no valid argv carries both, and neither takes a
+    #: value. Supplying both is a usage error BY DESIGN — see
+    #: `TestJobFlowStreamFlagsStayExclusive` below, which pins that.
+    _BARE_FLAGS = {"--json", "--stream-evidence", "--no-stream-evidence"}
+    _EXCLUSIVE_PARTNERS = {"--no-stream-evidence"}
+
     def test_every_catalog_arg_name_is_parseable(self) -> None:
-        """The catalog options for the command must all be accepted by the parser."""
+        """The catalog options for the command must all be accepted by the parser.
+
+        F1 (round 16): this test used to append `--stream-evidence v --no-stream-evidence v`,
+        which is not a command anyone can type — both halves of an exclusive pair, each given a
+        value neither accepts. It asserted the parser would swallow an invalid argv, so the only
+        honest repairs were to weaken the parser or to fix the test. The parser is right: the
+        test now builds a VALID argv and the exclusivity is proven separately.
+        """
         cmd = get_command(COMMAND_ID)
-        # Build an argv that supplies a value for every option.
         argv = ["do", "job-flow"]
         for a in cmd.args:
-            if not a.is_option:
+            if not a.is_option or a.name in self._EXCLUSIVE_PARTNERS:
                 continue
-            if a.name == "--json":
-                argv.append("--json")
+            if a.name in self._BARE_FLAGS:
+                argv.append(a.name)
             elif a.name == "--repair-rounds":
                 argv.extend([a.name, "2"])
             else:
                 argv.extend([a.name, "v"])
         ns = build_parser().parse_args(argv)
         assert ns._command_id == COMMAND_ID
+        assert ns.stream_evidence is True
+
+    def test_the_exclusive_partner_is_parseable_on_its_own(self) -> None:
+        """The name skipped above is a real option — proven here, not left unchecked."""
+        ns = build_parser().parse_args(
+            ["do", "job-flow", "--job-file", "j.md", "--no-stream-evidence"])
+        assert ns._command_id == COMMAND_ID
+        assert ns.stream_evidence is False
+
+    def test_every_catalog_option_name_is_individually_accepted(self) -> None:
+        """Each catalog option name, one at a time — so no name can hide behind another."""
+        parser = build_parser()
+        for a in get_command(COMMAND_ID).args:
+            if not a.is_option:
+                continue
+            base = ["do", "job-flow", "--job-file", "j.md"]
+            argv = base + ([a.name] if a.name in self._BARE_FLAGS
+                           else [a.name, "2" if a.name == "--repair-rounds" else "v"])
+            assert parser.parse_args(argv)._command_id == COMMAND_ID, a.name
 
 
 # ---------------------------------------------------------------------------
@@ -1484,7 +1516,7 @@ class TestManifestEvidenceValidity:
 class TestReviewZipPackageStatus:
     """Tests for package_status, packaging proof, and always-build semantics."""
 
-    def _seed_valid_evidence(self, ev, job_id="test-pkg-123"):
+    def _seed_valid_evidence(self, ev, job_id="test-pkg-123", file_hashes=None):
         ev.mkdir(parents=True, exist_ok=True)
         (ev / "job_flow.json").write_text(json.dumps({
             "job_id": job_id,
@@ -1492,31 +1524,130 @@ class TestReviewZipPackageStatus:
         }))
         (ev / "manifest.json").write_text(json.dumps({
             "job_id": job_id,
-            "task_count": 2,
-            "task_ids": ["T001", "T002"],
+            "task_count": 1,
+            "task_ids": ["T001"],
         }))
         for art in [
             "agent_run_trace.jsonl", "agent_run_trace_summary.json",
             "prompt_trace_summary.json", "command_transcript.json",
         ]:
             (ev / art).write_text("{}")
-        tr = ev / "task_runs"
-        for tid in ["T001", "T002"]:
-            d = tr / tid
-            d.mkdir(parents=True, exist_ok=True)
-            for art in [
-                "prompt_trace.jsonl", "prompt_trace_summary.json",
-                "review.json", "repair_loop.json", "token_accounting.json",
-                "provider_evidence.json",
-            ]:
-                (d / art).write_text("{}")
-        # fresh_evidence_gate for freshness
+        # Round 31 F1: a single real operator attestation whose final_verifier_report is produced by
+        # the actual producer (regenerated at the end of this method), not a hand-written report.
+        from packages.orchestration import manual_attestation as _MA
+        from packages.orchestration.repair_attest import (
+            build_safe_diff_text as _bsd, canonical_provenance_sha256 as _cps,
+            sha256_text as _sht,
+        )
+        import hashlib as _hl
+        if file_hashes is None:
+            # Materialize a real authority file in the repo root (ev.parent) so the content proof and
+            # bundle-integrity verify against real bytes, and compute its true hash.
+            _content = b"x = 1\n"
+            _src = ev.parent / "src"
+            _src.mkdir(parents=True, exist_ok=True)
+            (_src / "app.py").write_bytes(_content)
+            file_hashes = {"src/app.py": _hl.sha256(_content).hexdigest()}
+        _authority = sorted(dict(file_hashes))
+        _diff = "".join(
+            f"diff --git a/{p} b/{p}\nnew file mode 100644\nindex 0000000..1111111\n"
+            f"--- /dev/null\n+++ b/{p}\n@@ -0,0 +1 @@\n+x = 1\n" for p in _authority)
+        _safe = _bsd(_diff, [])
+        _tsha, _ssha = _sht(_diff), _sht(_safe)
+        _prov = _cps(_tsha, [])
+        _MA.write_manual_task_evidence(
+            str(ev), job_id=job_id, task_id="T001", changed_files=_authority, safe_diff_text=_safe,
+            provenance_sha256=_prov, diff_sha256=_prov, tracked_diff_sha256=_tsha,
+            safe_diff_sha256=_ssha, timestamp="2026-07-18T00:00:00+00:00",
+            note="operator-attested do_job_flow fixture")
+        (ev / "final_job_review.json").write_text(json.dumps({
+            "job_id": job_id, "completion_mode": "manual_operator_repair",
+            "human_final_reviewer_required": True, "completion_provider_call_count": 0,
+            "linked_prior_job_ids": [], "linked_prior_job_summaries": [],
+            "per_task_changed_files": {"T001": _authority}, "actual_changed_files": _authority,
+            "expected_changed_files": _authority}))
+        # Round 22-25: READY requires the COMPLETE, closed-schema, semantically-consistent gate
+        # matrix — recursive schemas, complete gate semantics and an exact derived commit gate.
+        _hashes = dict(file_hashes) if file_hashes else {"src/app.py": "0" * 64}
+        _auth = sorted(_hashes)
+        _core = ("manifest.json", "job_report.json", "token_truth.json", "fresh_evidence_gate.json",
+                 "artifact_contract_gate.json", "runtime_integration_gate.json",
+                 "change_provenance_gate.json", "commit_execution_gate.json",
+                 "final_verifier_report.json")
         (ev / "fresh_evidence_gate.json").write_text(json.dumps({
-            "verdict": "PASS",
-            "evidence_freshness": {"is_fresh": True},
-            "evidence_authoritative": True,
-            "evidence_validity": {"is_valid_current_run": True},
-        }))
+            "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
+            "job_id_match": True, "plan_match": True, "live_review_match": True,
+            "evidence_job_id": job_id, "current_job_id": job_id,
+            "current_step_range": "1-2", "live_review_step_range": "1-2", "plan_step_range": "1-2",
+            "evidence_freshness": {"is_fresh": True, "job_id_match": True,
+                                   "step_range_match": True},
+            "evidence_validity": {"has_job_id": True, "has_manifest": True,
+                                  "is_valid_current_run": True}, "issues": []}))
+        # final_verifier_report.json is REGENERATED by the real producer at the end of this method.
+        (ev / "artifact_contract_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "PASS", "missing_required": [],
+            "fv_referenced_missing": [], "critical_fv_missing": [], "issues": [],
+            "job_id_fresh": True, "evidence_job_id": job_id,
+            "required_artifacts": {a: True for a in _core},
+            "optional_artifacts": {"scratch_file_guard.json": True},
+            "stream_artifacts": {"applicable": False, "verdict": "NOT_APPLICABLE",
+                                 "tasks_with_stream_evidence": [], "artifacts_verified": 0,
+                                 "artifacts_present": 0, "missing_stream_artifact_listing": [],
+                                 "missing_stream_artifacts": [], "missing_stream_artifact_metadata": [],
+                                 "stream_artifact_hash_mismatches": [],
+                                 "stream_artifact_size_mismatches": [], "unexpected_stream_artifacts": [],
+                                 "duplicate_stream_artifact_refs": [], "unsafe_stream_artifact_refs": []},
+            "worktree_artifacts": {"applicable": False, "verdict": "NOT_APPLICABLE",
+                                   "job_level_handoff": False, "handoff_coverage_verdict": "",
+                                   "handoff_coverage_issues": [], "missing_job_handoff": [],
+                                   "worktree_tasks": [], "diffs_verified": 0, "missing_result_diffs": [],
+                                   "missing_result_diff_references": [], "result_diff_hash_mismatches": [],
+                                   "result_diff_size_mismatches": [], "unreferenced_result_diffs": [],
+                                   "unsafe_result_diff_refs": []}}))
+        (ev / "change_provenance_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "PASS", "current_job_id": job_id,
+            "covered_files": _auth, "source_files": _auth, "excluded_files": [],
+            "evidence_covered_files": _auth, "evidence_sources": [], "dirty_files": [],
+            "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
+            "stale_apply_proofs": [], "issues": [], "current_hashes": _hashes,
+            "evidence_hashes": _hashes}))
+        (ev / "runtime_integration_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "PASS",
+            "checks": [{"check_id": "c0", "check_type": "call_exists", "source_file": "src/app.py",
+                        "pattern": "add(", "found": True, "file_missing": False}],
+            "checks_total": 1, "checks_passed": 1, "issues": []}))
+        (ev / "manifest_integrity.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "ok": True, "failures": [], "notes": []}))
+        (ev / "postmortem_integrity.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "ok": True, "failures": []}))
+        (ev / "commit_execution_gate.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
+            "blocked_gates": [], "non_pass_gates": ["final_verifier"],
+            "issues": ["gate 'final_verifier' is not PASS (verdict 'PASS_WITH_RISKS')"],
+            "gate_checks": {
+                "final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
+                "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+                "runtime_integration_gate": "PASS"}}))
+        (ev / "verification_tests.json").write_text(json.dumps({
+            "schema_version": "1.0.0", "verification_type": "explicit_commands",
+            "runs": [{"run_id": "vr-0001", "command": "pytest -q", "exit_code": 0, "passed": 1,
+                      "failed": 0, "test_files": ["t.py"], "stdout_summary": "1 passed"}],
+            "command": "pytest -q", "exit_code": 0, "passed": 1, "failed": 0,
+            "test_files": ["t.py"], "timestamp": "2026-07-18T00:00:00Z"}))
+        # A content proof for the attested authority, and the commit chain/subject the manual
+        # completion recompute tolerates (no declared base -> the legacy dirty-tree path).
+        if not (ev / "current_change_content_proof.json").exists():
+            (ev / "current_change_content_proof.json").write_text(json.dumps({
+                "schema_version": "1.1.0", "base_commit": "", "head_commit": "",
+                "file_hashes": _hashes, "file_count": len(_hashes),
+                "tombstones": {}, "tombstone_count": 0}))
+        # Round 32 F2: the canonical token truth is the aggregate of the tasks — written AFTER them.
+        _MA.write_manual_token_truth(str(ev))
+        # Round 31 F1: regenerate the final verifier report from the assembled bundle with the REAL
+        # producer, so the packaged report is reproducible (never a hand-written report).
+        from packages.orchestration.final_verifier import build_final_verifier_report
+        (ev / "final_verifier_report.json").write_text(json.dumps(
+            build_final_verifier_report(str(ev))))
 
     @staticmethod
     def _init_clean_git(path):
@@ -1582,8 +1713,8 @@ class TestReviewZipPackageStatus:
         self._init_clean_git(tmp_path)
         m = build_manifest(str(ev), selection_mode="explicit")
         assert m["packaged_evidence_job_id"] == "test-pkg-123"
-        assert m["packaged_evidence_manifest_task_count"] == 2
-        assert m["packaged_evidence_manifest_task_ids"] == ["T001", "T002"]
+        assert m["packaged_evidence_manifest_task_count"] == 1
+        assert m["packaged_evidence_manifest_task_ids"] == ["T001"]
         # Shareable manifest: no machine-specific absolute prefixes.
         assert m["packaged_evidence_dir"] == f"[source_root]/{ev.name}"
         assert m["source_root"] == "[source_root]"
@@ -1871,9 +2002,9 @@ class TestReviewBundleIntegrity:
         import hashlib
         ev = tmp_path / "evidence"
         ev.mkdir(parents=True, exist_ok=True)
-        # Seed valid evidence base
+        # Seed valid evidence base — bind the change-provenance hash maps to the same proof hashes.
         TestReviewZipPackageStatus._seed_valid_evidence(
-            TestReviewZipPackageStatus(), ev
+            TestReviewZipPackageStatus(), ev, file_hashes=proof_hashes
         )
         # Write content proof
         proof = {
@@ -2361,3 +2492,87 @@ class TestCliRoleFlags:
             "--repair-provider", "--repair-model", "--repair-effort",
         ):
             assert flag in arg_names, f"do.job-flow missing {flag}"
+
+
+# ---------------------------------------------------------------------------
+# Round 16 — F1: the restored timeout hint and the exclusivity it must not weaken
+# ---------------------------------------------------------------------------
+
+
+class TestJobFlowStreamFlagsStayExclusive:
+    """F15 is not collateral damage of F1's repair: supplying both halves is still exit 2."""
+
+    def test_both_stream_flags_is_a_usage_error(self) -> None:
+        import pytest as _pytest
+        from apps.cli.grouped import _UsageError
+
+        with _pytest.raises((_UsageError, SystemExit)):
+            build_parser().parse_args(
+                ["do", "job-flow", "--job-file", "j.md",
+                 "--stream-evidence", "--no-stream-evidence"])
+
+    def test_omitting_both_stays_the_omission_sentinel(self) -> None:
+        ns = build_parser().parse_args(["do", "job-flow", "--job-file", "j.md"])
+        assert ns.stream_evidence is None
+
+
+class TestTheTimeoutHintReportsResolvedTruth:
+    """F1 (round 16): the hint reports what `run_job` RESOLVED and recorded.
+
+    It must never re-resolve a default at the call site — that is what the shared
+    `RunInvocation` exists to prevent, and re-introducing `timeout_sec or 120` here would
+    silently defeat the omission sentinel the whole tri-state contract rests on.
+    """
+
+    def _job(self, timeout_sec):
+        from packages.orchestration.pingpong_job import ExecutionConfig, JobPlan
+
+        job = JobPlan(job_id="j" * 16, job_title="t", repo_path="/tmp/x")
+        if timeout_sec is not None:
+            job.execution_config = ExecutionConfig(timeout_sec=timeout_sec)
+        return job
+
+    def test_an_omitted_timeout_reports_the_resolved_product_default(self) -> None:
+        """Omission is preserved into `run_job`; the hint then reports what it settled on."""
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(120)                       # what run_job resolved and persisted
+        assert _effective_timeout_sec(job) == 120
+        hint = _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job))
+        assert "120s" in hint and "--timeout-sec 900" in hint
+
+    def test_an_explicit_timeout_reports_that_timeout(self) -> None:
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(300)
+        assert _effective_timeout_sec(job) == 300
+        assert "300s" in _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job))
+
+    def test_an_explicit_profile_reports_its_effective_timeout(self) -> None:
+        """A profile resolves to a number inside `run_job`; the hint reports the EFFECT."""
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(900)                       # e.g. a long profile
+        assert _effective_timeout_sec(job) == 900
+        assert _build_timeout_hint("claude-cli", "fake", _effective_timeout_sec(job)) == ""
+
+    def test_no_execution_config_says_nothing_rather_than_guessing(self) -> None:
+        from apps.cli.commands.do_cmd import _build_timeout_hint, _effective_timeout_sec
+
+        job = self._job(None)
+        assert _effective_timeout_sec(job) is None
+        assert _build_timeout_hint("claude-cli", "fake", None) == ""
+
+    def test_non_cli_providers_never_get_the_hint(self) -> None:
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+
+        assert _build_timeout_hint("fake", "fake", 10) == ""
+
+    def test_the_hint_never_changes_execution(self) -> None:
+        """Informational only: it reads the persisted config and returns a string."""
+        import inspect
+
+        from apps.cli.commands.do_cmd import _build_timeout_hint
+
+        src = inspect.getsource(_build_timeout_hint)
+        assert "run_job" not in src and "=" not in src.split("return")[-1]

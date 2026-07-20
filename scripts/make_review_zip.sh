@@ -5,7 +5,25 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
-OUT="remedy-review-${STAMP}.zip"
+# Round 34 F1: there is NO public intermediate ZIP. The Python coordinator derives the exact
+# status-bearing final path from the verified in-memory manifest and publishes its private `.part`
+# DIRECTLY to it. This shell never creates, deletes, validates or renames a public temporary ZIP; it
+# only passes the final-name TEMPLATE (with a {package_status} placeholder) and trusts the coordinator's
+# verified JSON result. The single publication and all Git/publication decisions live in `safe_publish`.
+FINAL_TEMPLATE="remedy-review-${STAMP}-{package_status}.zip"
+
+# F3 (round 29) collision safety for the ONE remaining root scratch path this invocation writes — the
+# root manifest. NEVER delete or overwrite a TRACKED project file that collides with it — refuse loudly
+# (exit 3) and leave it byte-identical. The ZIP output is no longer a shell-managed path (the coordinator
+# owns its single atomic publication), so no ZIP collision guard lives here.
+_refuse_tracked_output() {
+  local path="$1" what="$2"
+  if git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+    echo "REVIEW_ZIP_ERROR: refusing to $what tracked project file '$path' (packaging output collision)" >&2
+    exit 3
+  fi
+}
+_refuse_tracked_output ".review_zip_manifest.json" "reserve/delete as its root manifest"
 
 # Parse arguments
 EVIDENCE_DIR=""
@@ -298,6 +316,8 @@ if [[ "$SELECTION_MODE" == "explicit" ]]; then
 fi
 
 TMP="$(mktemp)"
+TMP0="$(mktemp)"        # NUL-delimited repo file list (F8, round 17)
+TMP_EV0="$(mktemp)"     # NUL-delimited evidence file list
 MANIFEST=".review_zip_manifest.json"
 rm -f "$MANIFEST"
 trap 'rm -f "$TMP" "$MANIFEST"' EXIT
@@ -342,48 +362,108 @@ find . \
     "${EVIDENCE_EXCLUDE_ARGS[@]}" \
     -false \
   \) -prune -o \
-  -type f \
+  \( -type f -o -type l -o -type p -o -type s -o -type b -o -type c \) \
   ! -name '.coverage' \
   ! -name '.coverage.*' \
   ! -name 'coverage.xml' \
-  ! -name '*.zip' \
-  ! -name '*.tar' \
-  ! -name '*.tar.gz' \
-  ! -name '*.tgz' \
-  ! -name '*.log' \
   ! -name '*.pyc' \
   ! -name '*.pyo' \
-  ! -name '.env' \
-  ! -name '.env.*' \
-  ! -name '*.pem' \
-  ! -name '*.key' \
-  ! -name '*.p12' \
-  ! -name '*.pfx' \
-  ! -name '*.crt' \
-  ! -name '*.cer' \
-  ! -name 'settings.local.json' \
-  ! -name 'credentials.json' \
-  ! -name 'service-account.json' \
-  ! -name 'service_account.json' \
-  ! -name 'client_secret.json' \
-  ! -name 'firebase-adminsdk.json' \
-  ! -name 'id_rsa' \
-  ! -name 'id_dsa' \
-  ! -name 'id_ecdsa' \
-  ! -name 'id_ed25519' \
   ! -name 'run_transcript.txt' \
-  -print \
-  | sed 's#^\./##' \
-  | sort -u > "$TMP"
+  ! -name '.review_zip_manifest.json' \
+  -print0 \
+  | sed -z 's#^\./##' \
+  | sort -z -u > "$TMP0"
+# F8 (round 17): the repo file list is NUL-delimited so a filename containing a newline survives
+# into the archive. `$TMP` (newline) stays for the manifest/alignment steps, which only ever see
+# ordinary source paths.
+tr '\0' '\n' < "$TMP0" > "$TMP"
 
-# --- Build manifest using Python (always-valid JSON) ---
+# F1 (round 20): SAFE EVIDENCE SNAPSHOT PRECEDES EVERY EVIDENCE READ. Stage the Evidence to a
+# private immutable snapshot FIRST — anchored, no-follow, hashed, bounded — and then validate,
+# build the manifest, derive Subject/Proof/Gates and package ONLY the staged bytes. Nothing reads
+# the original EVIDENCE_DIR again after this point.
+# The private staging snapshot lives under the repo's gitignored .data/ so it stays CONTAINED
+# within source_root (the manifest refuses evidence from outside the trusted root). It is still a
+# fresh, private, immutable per-build directory, removed on exit.
+mkdir -p "$ROOT/.data"
+EVIDENCE_STAGING="$(mktemp -d "$ROOT/.data/review_staging.XXXXXX")"
+trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$TMP0" "$TMP_EV0" "$MANIFEST"' EXIT
+
+CURRENT_PREFIX="evidence/current"
+OBS_INDEX_NAME="self_run_observability_index.json"
+OBS_INDEX_STAGED=""
+STAGED_CURRENT="$EVIDENCE_STAGING/$CURRENT_PREFIX"
+
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  mkdir -p "$STAGED_CURRENT"
+
+  # F1/F3/F9/F10 (round 20): typed no-follow snapshot. Copies once, hashes each staged member into
+  # evidence_snapshot_inventory.json, and enforces count/aggregate limits DURING the walk. A
+  # symlink/FIFO/device or an over-limit tree BLOCKS before the rest is copied.
+  if ! python3 scripts/stage_review_evidence.py stage \
+       --src "$EVIDENCE_DIR" --dest "$STAGED_CURRENT" --inventory-out "$STAGED_CURRENT" >/dev/null; then
+    echo "Evidence staging refused an unsafe or over-limit member in $EVIDENCE_DIR." >&2
+    exit 2
+  fi
+
+  # --- Observability index generated from the STAGED bytes (F1, round 20) ---
+  OBS_INDEX_STAGED="$STAGED_CURRENT/$OBS_INDEX_NAME"
+  if [[ -f "scripts/build_observability_index.py" ]]; then
+    if python3 scripts/build_observability_index.py \
+         --evidence-dir "$STAGED_CURRENT" \
+         --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
+      echo "Observability index generated from staged bytes: $CURRENT_PREFIX/$OBS_INDEX_NAME"
+    else
+      echo "Warning: observability index generation failed for staged evidence" >&2
+    fi
+  else
+    echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
+  fi
+
+  # --- Supplemental history (context only; never affects package status) — also staged safely ---
+  if [[ -n "$HISTORY_ENTRIES" ]]; then
+    IFS=',' read -r -a _HIST <<< "$HISTORY_ENTRIES"
+    for entry in "${_HIST[@]}"; do
+      [[ -z "$entry" ]] && continue
+      h_job="${entry%%:*}"
+      h_dir="${entry#*:}"
+      [[ -z "$h_job" || -z "$h_dir" || ! -d "$h_dir" ]] && continue
+      [[ "$h_job" == "$SELECTED_JOB_ID" ]] && continue   # never duplicate current
+      h_prefix="evidence/history/$h_job"
+      mkdir -p "$EVIDENCE_STAGING/$h_prefix"
+      if ! python3 scripts/stage_review_evidence.py stage \
+           --src "$h_dir" --dest "$EVIDENCE_STAGING/$h_prefix" >/dev/null; then
+        echo "History staging refused an unsafe member in $h_dir." >&2
+        exit 2
+      fi
+      echo "Included supplemental history: $h_prefix (context only)"
+    done
+  fi
+fi
+
+# --- The EXACT repo-root outputs THIS invocation generates (F3, round 29 / F1, round 34) ---
+# The only packaging output that can appear in `git status` at manifest-build time is the root
+# manifest; the status-bearing final ZIP is published only at the very end, by the coordinator, and a
+# `remedy-review-*.zip` name is excluded from the dirty source set anyway. The authoritative manifest is
+# rebuilt by build_review_zip.py, which DERIVES every candidate final ZIP path internally from the
+# final-name template + --manifest-rel.
+GENERATED_OUTPUT_ARGS=(
+  --generated-output "$MANIFEST"
+)
+
+# --- Build manifest from the STAGED snapshot (F1/F8, round 20) — never the original EVIDENCE_DIR ---
+MANIFEST_EVIDENCE_ARG=""
+if [[ -n "$EVIDENCE_DIR" ]]; then
+  MANIFEST_EVIDENCE_ARG="$STAGED_CURRENT"
+fi
 python3 scripts/build_review_manifest.py \
-  --evidence-dir "${EVIDENCE_DIR:-}" \
+  --evidence-dir "${MANIFEST_EVIDENCE_ARG}" \
   --selection-mode "${SELECTION_MODE:-none}" \
   --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
   --candidate-count "$CANDIDATE_COUNT" \
   --rejected-candidate-count "$REJECTED_COUNT" \
   --selected-mtime "${SELECTED_MTIME:-}" \
+  "${GENERATED_OUTPUT_ARGS[@]}" \
   --output "$MANIFEST"
 
 echo "$MANIFEST" >> "$TMP"
@@ -421,115 +501,124 @@ if [[ "$EVIDENCE_VALID" == "false" && -n "$EVIDENCE_DIR" ]]; then
   echo "Zip will be built anyway — reviewer will see validation status in manifest."
 fi
 
-# --- Include current evidence under evidence/current/ prefix (if evidence exists) ---
-EVIDENCE_STAGING="$(mktemp -d)"
-trap 'rm -rf "$EVIDENCE_STAGING" "$TMP" "$MANIFEST"' EXIT
-
-CURRENT_PREFIX="evidence/current"
-OBS_INDEX_NAME="self_run_observability_index.json"
-OBS_INDEX_STAGED=""
-
+# --- The staged evidence file list (typed no-follow walk of the snapshot; includes the manifest
+#     is NOT here — the manifest is a repo-root member). Built AFTER the manifest so the list is
+#     complete for the archive builder. ---
 if [[ -n "$EVIDENCE_DIR" ]]; then
-  mkdir -p "$EVIDENCE_STAGING/$CURRENT_PREFIX"
-
-  find "$EVIDENCE_DIR" -type f \
-    ! -name '*.pyc' ! -name '*.pyo' \
-    -print0 \
-  | while IFS= read -r -d '' src; do
-      rel="${src#$EVIDENCE_DIR/}"
-      dest="$EVIDENCE_STAGING/$CURRENT_PREFIX/$rel"
-      mkdir -p "$(dirname "$dest")"
-      cp "$src" "$dest"
-    done
-
-  # --- Ensure the observability index ships in the zip ---
-  OBS_INDEX_STAGED="$EVIDENCE_STAGING/$CURRENT_PREFIX/$OBS_INDEX_NAME"
-  if [[ -f "scripts/build_observability_index.py" ]]; then
-    if python3 scripts/build_observability_index.py \
-         --evidence-dir "$EVIDENCE_DIR" \
-         --output "$OBS_INDEX_STAGED" >/dev/null 2>&1; then
-      echo "Observability index generated: $CURRENT_PREFIX/$OBS_INDEX_NAME"
-    else
-      echo "Warning: observability index generation failed for $EVIDENCE_DIR" >&2
-    fi
-  else
-    echo "Warning: scripts/build_observability_index.py not found; index not generated" >&2
+  if ! python3 scripts/stage_review_evidence.py list \
+       --root "$EVIDENCE_STAGING" --nul-out "$TMP_EV0" --text-out "$TMP_EV0.txt"; then
+    echo "Evidence staging tree contains an unsafe member." >&2
+    exit 2
   fi
-
-  # --- Supplemental history (context only; never affects package status) ---
-  if [[ -n "$HISTORY_ENTRIES" ]]; then
-    IFS=',' read -r -a _HIST <<< "$HISTORY_ENTRIES"
-    for entry in "${_HIST[@]}"; do
-      [[ -z "$entry" ]] && continue
-      h_job="${entry%%:*}"
-      h_dir="${entry#*:}"
-      [[ -z "$h_job" || -z "$h_dir" || ! -d "$h_dir" ]] && continue
-      [[ "$h_job" == "$SELECTED_JOB_ID" ]] && continue   # never duplicate current
-      h_prefix="evidence/history/$h_job"
-      mkdir -p "$EVIDENCE_STAGING/$h_prefix"
-      find "$h_dir" -type f ! -name '*.pyc' ! -name '*.pyo' -print0 \
-      | while IFS= read -r -d '' src; do
-          rel="${src#$h_dir/}"
-          dest="$EVIDENCE_STAGING/$h_prefix/$rel"
-          mkdir -p "$(dirname "$dest")"
-          cp "$src" "$dest"
-        done
-      echo "Included supplemental history: $h_prefix (context only)"
-    done
-  fi
-
-  find "$EVIDENCE_STAGING" -type f -print \
-    | sed "s#^${EVIDENCE_STAGING}/##" \
-    | sort -u >> "$TMP"
+  cat "$TMP_EV0.txt" >> "$TMP"
+  rm -f "$TMP_EV0.txt"
 fi
 
 sort -u "$TMP" -o "$TMP"
 
-# --- Create zip ---
-rm -f "$OUT"
-
+# --- Create zip (round 20 two-phase, directed hash chain) ---
+# Phase 1 snapshots every source member; phases 2-3 emit the directed chain
+# (plan -> expectation -> manifest) as in-memory bytes; phase 4 builds the deterministic ZIP from
+# the immutable bytes; phase 5 reopens and verifies; phase 6 publishes the verified private `.part`
+# directly to the status-bearing final path. Subject/Proof are STAGED bytes. There is NO public
+# intermediate ZIP, so nothing is deleted or renamed here.
 cd "$ROOT"
-REPO_FILES="$(grep -v '^evidence/' "$TMP" || true)"
-if [[ -n "$REPO_FILES" ]]; then
-  echo "$REPO_FILES" | zip -q -@ "$OUT"
-fi
 
+EV_ROOT_ARG=""
+EV_FILES_ARG=""
 if [[ -n "$EVIDENCE_DIR" ]]; then
-  cd "$EVIDENCE_STAGING"
-  EV_FILES="$(find evidence -type f 2>/dev/null || true)"
-  if [[ -n "$EV_FILES" ]]; then
-    echo "$EV_FILES" | zip -q -@ "$ROOT/$OUT" -g
-  fi
+  EV_ROOT_ARG="$EVIDENCE_STAGING"
+  EV_FILES_ARG="$TMP_EV0"
 fi
 
-cd "$ROOT"
-zip -q "$OUT" "$MANIFEST" -g
+# Round 20: Subject, Content-Proof and the generated plan all live in the STAGED snapshot, never
+# the original EVIDENCE_DIR.
+SUBJECT_JSON_ARG=""
+CONTENT_PROOF_ARG=""
+PLAN_OUT_ARG=""
+if [[ -n "$EVIDENCE_DIR" && -f "$STAGED_CURRENT/review_subject.json" ]]; then
+  SUBJECT_JSON_ARG="$STAGED_CURRENT/review_subject.json"
+fi
+if [[ -n "$EVIDENCE_DIR" && -f "$STAGED_CURRENT/current_change_content_proof.json" ]]; then
+  CONTENT_PROOF_ARG="$STAGED_CURRENT/current_change_content_proof.json"
+fi
+if [[ -n "$EV_ROOT_ARG" ]]; then
+  PLAN_OUT_ARG="$STAGED_CURRENT/review_archive_plan.json"
+fi
 
-# --- Post-build verification ---
-# Capture listing once to avoid SIGPIPE from grep -q killing unzip under pipefail
+# F6/F7 (round 21): capture build_review_zip's verified-model result (package_status,
+# evidence_authoritative, review_subject_alignment, manifest sha) so the final filename and status
+# come from the VERIFIED package, never a post-build reread of the mutable disk manifest.
+BUILD_RESULT="$(python3 scripts/build_review_zip.py \
+  --final-template "$FINAL_TEMPLATE" \
+  --repo-root "$ROOT" \
+  --repo-files0 "$TMP0" \
+  --evidence-root "$EV_ROOT_ARG" \
+  --evidence-files0 "$EV_FILES_ARG" \
+  --subject-json "$SUBJECT_JSON_ARG" \
+  --content-proof-json "$CONTENT_PROOF_ARG" \
+  --current-prefix "$CURRENT_PREFIX" \
+  --plan-out "$PLAN_OUT_ARG" \
+  --manifest-rel "$MANIFEST" \
+  --manifest-disk "$MANIFEST" \
+  --selection-mode "${SELECTION_MODE:-none}" \
+  --selection-reason "${SELECTION_REASON:-no_evidence_available}" \
+  --candidate-count "$CANDIDATE_COUNT" \
+  --rejected-candidate-count "$REJECTED_COUNT" \
+  --selected-mtime "${SELECTED_MTIME:-}")" || BUILD_RC=$?
+BUILD_RC="${BUILD_RC:-0}"
+echo "$BUILD_RESULT"
+if [[ "$BUILD_RC" -ne 0 ]]; then
+  echo "REVIEW_ZIP_ERROR: coordinator failed to build/publish the review ZIP (exit $BUILD_RC)." >&2
+  echo "No public intermediate ZIP was created; nothing to clean up." >&2
+  exit "$BUILD_RC"
+fi
+
+# --- Trust ONLY the coordinator's verified JSON result (F1, round 34) ---
+# The coordinator already published its verified private `.part` DIRECTLY to the exact status-bearing
+# final path (a single atomic no-replace link, source bytes bound to the verified SHA-256) and returned
+# that path + SHA. This shell derives no filename, publishes nothing, and renames nothing. Every check
+# below is READ-ONLY against the returned final path; a failure never deletes or alters the package.
+_result_field() { BR="$BUILD_RESULT" python3 -c "import json,os,sys; print(json.loads(os.environ['BR']).get(sys.argv[1],''))" "$1"; }
+PACKAGE_STATUS="$(_result_field package_status)"; PACKAGE_STATUS="${PACKAGE_STATUS:-UNKNOWN}"
+EVIDENCE_AUTH="$(BR="$BUILD_RESULT" python3 -c "import json,os; print('true' if json.loads(os.environ['BR']).get('evidence_authoritative') else 'false')")"
+_ALIGN_FROM_RESULT="$(_result_field review_subject_alignment)"
+ALIGNMENT_VERDICT="${_ALIGN_FROM_RESULT:-$ALIGNMENT_VERDICT}"
+OUT="$(_result_field final_path)"
+FINAL_SHA="$(_result_field final_sha256)"
+
+if [[ -z "$OUT" || ! -f "$OUT" ]]; then
+  echo "REVIEW_ZIP_ERROR: coordinator reported no published ZIP (final_path='$OUT')." >&2
+  exit 3
+fi
+# The published ZIP must be the exact bytes the coordinator verified before publication.
+ACTUAL_SHA="$(sha256sum "$OUT" | awk '{print $1}')"
+if [[ -n "$FINAL_SHA" && "$ACTUAL_SHA" != "$FINAL_SHA" ]]; then
+  echo "REVIEW_ZIP_ERROR: published ZIP sha256 ($ACTUAL_SHA) != coordinator-verified sha256 ($FINAL_SHA)." >&2
+  exit 3
+fi
+
+# --- Read-only post-publication checks against the exact published final path ---
+# The coordinator already verified typed membership and hashes; these are a defensive, READ-ONLY
+# re-scan of the published ZIP. On any problem the shell exits non-zero and reports it, but NEVER
+# deletes or rewrites the published, coordinator-verified package.
 ZIP_LISTING="$(unzip -Z1 "$OUT")"
 
-# 1. Verify no unsafe files
 BAD="$(echo "$ZIP_LISTING" | grep -E '(^|/)(__pycache__|node_modules|\.git|\.data|\.venv|venv|htmlcov|\.tox|\.coverage_reports)(/|$)|\.pyc$|\.pyo$|(^|/)\.env($|\.)|\.log$|(^|/)\.coverage$|(^|/)coverage\.xml$' || true)"
 if [[ -n "$BAD" ]]; then
-  echo "Unsafe file found in zip:"
+  echo "REVIEW_ZIP_ERROR: unsafe file found in published zip (not deleting the coordinator-verified package):"
   echo "$BAD"
-  rm -f "$OUT"
   exit 1
 fi
 
-# 2. Verify no raw evidence paths leaked
 LEAKED="$(echo "$ZIP_LISTING" | grep -E '^(tmp/|home/|Users/|private/|mnt/|remedy-job-evidence-)' || true)"
 if [[ -n "$LEAKED" ]]; then
-  echo "Local path structure leaked into zip:"
+  echo "REVIEW_ZIP_ERROR: local path structure leaked into published zip:"
   echo "$LEAKED"
-  rm -f "$OUT"
   exit 1
 fi
 
-# 3. Verify manifest content against zip
 VERIFY_ERRORS=""
-
 for AGENT_FILE in .agent/live_review.md .agent/plan.md .agent/review_protocol.md; do
   MANIFEST_STATUS="$(python3 -c "
 import json, sys
@@ -537,7 +626,7 @@ m = json.load(open('$MANIFEST'))
 print(m.get('agent_state', {}).get('$AGENT_FILE', 'absent'))
 " 2>/dev/null || echo "error")"
   if [[ "$MANIFEST_STATUS" == "present" ]]; then
-    if ! echo "$ZIP_LISTING" | grep -qF "$AGENT_FILE"; then
+    if ! grep -qF "$AGENT_FILE" <<< "$ZIP_LISTING"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $AGENT_FILE present but missing from zip\n"
     fi
   fi
@@ -554,7 +643,7 @@ for name, status in ce.get('root_artifacts', {}).items():
 " 2>/dev/null || true)"
   while read -r expected; do
     [[ -z "$expected" ]] && continue
-    if ! echo "$ZIP_LISTING" | grep -qF "$expected"; then
+    if ! grep -qF "$expected" <<< "$ZIP_LISTING"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Manifest says $expected present but missing from zip\n"
     fi
   done <<< "$EXPECTED_EVIDENCE"
@@ -565,10 +654,9 @@ if [[ -n "$STALE_EV" ]]; then
   VERIFY_ERRORS="${VERIFY_ERRORS}Stale evidence dir included in zip: $STALE_EV\n"
 fi
 
-# 4. Verify the observability index is bundled under evidence/current/ (only when evidence present).
 if [[ -n "$EVIDENCE_DIR" ]]; then
   if [[ -n "$OBS_INDEX_STAGED" && -f "$OBS_INDEX_STAGED" ]]; then
-    if ! echo "$ZIP_LISTING" | grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME"; then
+    if ! grep -qF "$CURRENT_PREFIX/$OBS_INDEX_NAME" <<< "$ZIP_LISTING"; then
       VERIFY_ERRORS="${VERIFY_ERRORS}Observability index generated but missing from zip: $CURRENT_PREFIX/$OBS_INDEX_NAME\n"
     fi
   else
@@ -577,33 +665,13 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
 fi
 
 if [[ -n "$VERIFY_ERRORS" ]]; then
-  echo "Post-build verification failed:"
+  echo "REVIEW_ZIP_ERROR: read-only post-publication verification failed (package left intact):"
   echo -e "$VERIFY_ERRORS"
-  rm -f "$OUT"
   exit 1
 fi
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
-
-# --- Read package status and rename zip to include it ---
-PACKAGE_STATUS="$(python3 -c "
-import json
-m = json.load(open('$MANIFEST'))
-print(m.get('package_status', 'UNKNOWN'))
-" 2>/dev/null || echo "UNKNOWN")"
-
-EVIDENCE_AUTH="$(python3 -c "
-import json
-m = json.load(open('$MANIFEST'))
-ce = m.get('current_evidence', {})
-ef = ce.get('evidence_freshness', {})
-print('true' if ef.get('evidence_authoritative') else 'false')
-" 2>/dev/null || echo "false")"
-
-FINAL_OUT="remedy-review-${STAMP}-${PACKAGE_STATUS}.zip"
-mv "$OUT" "$FINAL_OUT"
-OUT="$FINAL_OUT"
 
 # --- Terminal status block ---
 echo
