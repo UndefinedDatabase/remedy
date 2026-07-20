@@ -17,6 +17,15 @@ import re
 
 VERIFICATION_TESTS_SCHEMA_VERSION = "1.0.0"
 
+REQUIRED_F012_VERIFICATION_SUITES = [
+    "test_provider_evidence_integration",
+    "test_review_manual_completion_shapes",
+    "test_review_authoritative_e2e",
+    "test_token_truth_v1_contract",
+    "test_review_subject_artifact_integrity",
+    "test_docs_consistency",
+]
+
 _RUN_ID_RE = re.compile(r"^vr-\d{4,}$")
 
 

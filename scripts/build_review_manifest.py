@@ -2763,6 +2763,33 @@ def validate_evidence_candidate(ev) -> dict:
     if task_run_count == 0:
         errors.append("no task runs found")
 
+    # Round 40 F4: verification completeness — the verification matrix must cover
+    # all required F012 suites. The schema check is already done by the gate matrix;
+    # this is the COMPLETENESS check over the required suite list.
+    vt_raw = _mc_read_json(ev, "verification_tests.json")
+    if vt_raw:
+        try:
+            from packages.orchestration.verification_matrix import (
+                REQUIRED_F012_VERIFICATION_SUITES, validate_verification_completeness,
+            )
+            vc_problems = validate_verification_completeness(
+                vt_raw, REQUIRED_F012_VERIFICATION_SUITES)
+            errors.extend(vc_problems)
+        except ImportError:
+            pass
+
+    # Round 40 F4: diagnostic staleness — if diagnostic_broad_run.json is present,
+    # its head_commit must match the review subject's HEAD.
+    diag_raw = _mc_read_json(ev, "diagnostic_broad_run.json")
+    if diag_raw:
+        subj = _mc_read_json(ev, "review_subject.json")
+        diag_head = str(diag_raw.get("head_commit") or "")
+        subj_head = str(subj.get("head_commit") or "")
+        if diag_head and subj_head and diag_head != subj_head:
+            errors.append(
+                f"diagnostic_broad_run.json references stale HEAD {diag_head[:12]}, "
+                f"expected {subj_head[:12]}")
+
     def _root_status(art: str) -> str:
         if art in not_applicable_root:
             return "not_applicable_manual_completion"
