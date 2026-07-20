@@ -211,10 +211,11 @@ class TestBuiltinDeny:
         result = check_path(".git/HEAD", tmp_path, spec)
         assert not result.allowed
 
-    def test_non_root_git_dir_allowed(self, tmp_path):
-        """A .git dir nested under a subdirectory is NOT the repo's git dir."""
+    def test_non_root_git_dir_denied(self, tmp_path):
+        """.git as path component anywhere is denied (T002 component match)."""
         result = check_path("submodule/.git/config", tmp_path, FenceSpec())
-        assert result.allowed
+        assert not result.allowed
+        assert "builtin:git directory" in result.reason
 
     def test_builtin_constant_is_reviewable(self):
         assert isinstance(BUILTIN_DENY, tuple)
