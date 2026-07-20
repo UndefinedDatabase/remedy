@@ -11,6 +11,8 @@ On refusal every pre-existing byte is preserved exactly (nothing is opened, trun
 """
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import hashlib
 import os
 import stat
@@ -23,6 +25,32 @@ class PublishCollisionError(Exception):
 
 class PublishSourceError(Exception):
     """The private source to be published is not the exact verified regular file/inode/bytes."""
+
+
+# ------------------------------------------------------------------------------- libc linkat binding
+_AT_FDCWD = -100
+_AT_EMPTY_PATH = 0x1000
+
+_libc = None
+_linkat = None
+
+
+def _get_linkat():
+    global _libc, _linkat
+    if _linkat is not None:
+        return _linkat
+    libname = ctypes.util.find_library("c")
+    if not libname:
+        return None
+    try:
+        _libc = ctypes.CDLL(libname, use_errno=True)
+        fn = _libc.linkat
+        fn.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
+        fn.restype = ctypes.c_int
+        _linkat = fn
+        return fn
+    except (OSError, AttributeError):
+        return None
 
 
 def _sha256_file(path: str) -> str:
@@ -44,6 +72,38 @@ def _sha256_fd(fd: int) -> str:
             break
         h.update(chunk)
     return h.hexdigest()
+
+
+def _copy_to_fd(src_path: str, dst_fd: int) -> None:
+    """Copy bytes from a named path into an open FD using O_NOFOLLOW reads."""
+    try:
+        src_fd = os.open(src_path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise PublishSourceError(
+            f"private source {src_path!r} is not accessible (O_NOFOLLOW): {exc}") from None
+    try:
+        while True:
+            chunk = os.read(src_fd, 1 << 20)
+            if not chunk:
+                break
+            os.write(dst_fd, chunk)
+    finally:
+        os.close(src_fd)
+
+
+def _linkat_anonymous(anon_fd: int, final_path: str) -> None:
+    """Publish an anonymous inode to ``final_path`` via ``linkat(fd, "", AT_FDCWD, path,
+    AT_EMPTY_PATH)``. No-replace: fails with ``FileExistsError`` when the target exists."""
+    fn = _get_linkat()
+    if fn is None:
+        raise PublishSourceError(
+            "linkat is unavailable on this platform; cannot publish from an anonymous inode")
+    ret = fn(anon_fd, b"", _AT_FDCWD, os.fsencode(final_path), _AT_EMPTY_PATH)
+    if ret != 0:
+        err = ctypes.get_errno()
+        if err == 17:  # EEXIST
+            raise FileExistsError(f"target already exists: {final_path}")
+        raise OSError(err, os.strerror(err), final_path)
 
 
 def verify_source_identity(source_path: str, final_parent: str,
@@ -82,24 +142,33 @@ def verify_source_identity(source_path: str, final_parent: str,
 
 def verify_published_identity(source_fd: int, final_path: str,
                               expected_sha256: str) -> None:
-    """Round 36 F1: after ``os.link``, verify the published file is the SAME inode AND SAME BYTES
-    as the verified source. The inode check catches a pathname swap; the re-hash catches a same-inode
-    in-place mutation through a second writable FD."""
+    """Round 37 F1: after anonymous-FD publication, verify the published file is the SAME inode AND
+    SAME BYTES as the anonymous source. Opens the final path with O_NOFOLLOW to avoid following a
+    symlink replacement."""
     src_st = os.fstat(source_fd)
     try:
-        dst_st = os.lstat(final_path)
+        final_fd = os.open(final_path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError as exc:
         raise PublishSourceError(
-            f"cannot stat published path {final_path!r}: {exc}") from None
-    if (src_st.st_dev, src_st.st_ino) != (dst_st.st_dev, dst_st.st_ino):
-        raise PublishSourceError(
-            f"published inode ({dst_st.st_dev}:{dst_st.st_ino}) differs from verified source "
-            f"({src_st.st_dev}:{src_st.st_ino}); the published package is not the verified bytes")
-    rehash = _sha256_fd(source_fd)
-    if rehash != expected_sha256:
-        raise PublishSourceError(
-            f"published bytes changed after verification (in-place mutation detected: "
-            f"sha256 {rehash[:12]} != verified {expected_sha256[:12]})")
+            f"cannot open published path {final_path!r} for verification: {exc}") from None
+    try:
+        dst_st = os.fstat(final_fd)
+        if (src_st.st_dev, src_st.st_ino) != (dst_st.st_dev, dst_st.st_ino):
+            raise PublishSourceError(
+                f"published inode ({dst_st.st_dev}:{dst_st.st_ino}) differs from anonymous source "
+                f"({src_st.st_dev}:{src_st.st_ino}); the published package is not the verified bytes")
+        final_hash = _sha256_fd(final_fd)
+        if final_hash != expected_sha256:
+            raise PublishSourceError(
+                f"published bytes do not match expected hash "
+                f"(sha256 {final_hash[:12]} != verified {expected_sha256[:12]})")
+        source_rehash = _sha256_fd(source_fd)
+        if source_rehash != expected_sha256:
+            raise PublishSourceError(
+                f"anonymous source bytes changed after publication (in-place mutation detected: "
+                f"sha256 {source_rehash[:12]} != verified {expected_sha256[:12]})")
+    finally:
+        os.close(final_fd)
 
 
 def git_tracked_status(path: str, repo_root: str) -> tuple[str, str]:
@@ -181,61 +250,92 @@ def atomic_reserve(path: str) -> int:
         raise PublishCollisionError(f"output path already reserved/created: {path!r}")
 
 
-def _cleanup_published_link(final_path: str, linked_inode: tuple[int, int]) -> None:
-    """Remove the final path ONLY if it is still the inode this invocation created."""
+def _cleanup_published_link(final_path: str, owned_inode: tuple[int, int]) -> None:
+    """Round 37 F2: remove the final path ONLY if it is still the inode this invocation created.
+    ``owned_inode`` is known from ``fstat(anonymous_fd)`` BEFORE publication — never derived from
+    a post-link observation of the final path."""
     try:
         st = os.lstat(final_path)
-        if (st.st_dev, st.st_ino) == linked_inode:
+        if (st.st_dev, st.st_ino) == owned_inode:
             os.unlink(final_path)
     except OSError:
         pass
 
 
+def _create_anonymous_inode(parent: str) -> int:
+    """Create an anonymous regular file in ``parent`` via ``O_TMPFILE``. Returns an open writable FD.
+    Raises ``PublishSourceError`` if ``O_TMPFILE`` is not supported."""
+    if not hasattr(os, "O_TMPFILE"):
+        raise PublishSourceError(
+            "O_TMPFILE is not available on this platform; cannot create an anonymous publication inode")
+    try:
+        return os.open(parent, os.O_RDWR | os.O_TMPFILE, 0o644)
+    except OSError as exc:
+        raise PublishSourceError(
+            f"cannot create anonymous inode in {parent!r} (O_TMPFILE): {exc}") from None
+
+
 def publish_atomically(source_path: str, final_path: str, repo_root: str,
                        *, cleanup_source: bool = True,
                        expected_sha256: str | None = None) -> None:
-    """Round 36 F1: publish a private ZIP to ``final_path`` through ``os.link`` (no-replace). The
-    source is bound to exact verified bytes AND inode identity: hash through a retained FD before
-    the link, then re-hash after publication to catch same-inode in-place mutation. On any
-    post-publication failure the final path is removed (proving it is our inode first) so no
-    misleading final ZIP remains. ``expected_sha256`` is mandatory — a missing hash blocks."""
+    """Round 37 F1/F2: publish a private ZIP to ``final_path`` through an anonymous inode.
+
+    The named ``source_path`` is never directly linked to the final path. Instead:
+    1. An anonymous inode is created via ``O_TMPFILE`` in the final parent.
+    2. Source bytes are copied into the anonymous FD.
+    3. The anonymous FD is fsynced and hashed; hash must equal ``expected_sha256``.
+    4. The anonymous inode identity is recorded from ``fstat(anonymous_fd)`` BEFORE publication.
+    5. ``linkat(fd, "", AT_FDCWD, final, AT_EMPTY_PATH)`` publishes with no-replace semantics.
+    6. Post-publication: final path opened O_NOFOLLOW, inode + hash verified against anonymous FD.
+    7. On failure, cleanup uses the pre-publication inode identity (never post-race observation).
+
+    No named source path participates in the security decision. ``expected_sha256`` is mandatory."""
     final = os.path.abspath(final_path)
     parent = os.path.dirname(final) or "."
-    source_fd = -1
-    linked_inode: tuple[int, int] | None = None
+    anon_fd = -1
+    owned_inode: tuple[int, int] | None = None
+    published = False
     try:
         if expected_sha256 is None:
             raise PublishSourceError(
                 "no verified source SHA-256 was bound; refusing to publish an unverified source")
         if not os.path.isdir(parent):
             raise PublishCollisionError(f"output parent directory does not exist: {parent!r}")
-        source_fd = verify_source_identity(source_path, parent,
-                                           expected_sha256=expected_sha256)
+
+        anon_fd = _create_anonymous_inode(parent)
+        _copy_to_fd(source_path, anon_fd)
+        os.fsync(anon_fd)
+        os.fchmod(anon_fd, 0o444)
+
+        anon_hash = _sha256_fd(anon_fd)
+        if anon_hash != expected_sha256:
+            raise PublishSourceError(
+                f"anonymous inode bytes do not match expected hash "
+                f"(sha256 {anon_hash[:12]} != verified {expected_sha256[:12]})")
+
+        anon_st = os.fstat(anon_fd)
+        owned_inode = (anon_st.st_dev, anon_st.st_ino)
+
         assert_publishable(final, repo_root, owned_paths=frozenset({final, final_path}))
+
         try:
-            os.link(source_path, final)
+            _linkat_anonymous(anon_fd, final)
         except FileExistsError:
             raise PublishCollisionError(
                 f"another invocation already published {final_path!r}; this one loses the race")
         except OSError as exc:
-            if getattr(exc, "errno", None) == getattr(__import__("errno"), "EXDEV", None):
-                raise PublishSourceError(
-                    f"private source {source_path!r} is on a different filesystem than "
-                    f"{parent!r}; an atomic no-replace link is impossible") from None
             raise PublishCollisionError(f"could not publish {final_path!r}: {exc}")
-        try:
-            lst = os.lstat(final)
-            linked_inode = (lst.st_dev, lst.st_ino)
-        except OSError:
-            pass
-        verify_published_identity(source_fd, final, expected_sha256)
+
+        published = True
+        verify_published_identity(anon_fd, final, expected_sha256)
+
     except (PublishSourceError, PublishCollisionError):
-        if linked_inode is not None:
-            _cleanup_published_link(final, linked_inode)
+        if published and owned_inode is not None:
+            _cleanup_published_link(final, owned_inode)
         raise
     finally:
-        if source_fd >= 0:
-            os.close(source_fd)
+        if anon_fd >= 0:
+            os.close(anon_fd)
         if cleanup_source:
             try:
                 os.unlink(source_path)

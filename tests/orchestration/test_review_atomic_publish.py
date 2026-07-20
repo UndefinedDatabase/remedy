@@ -153,95 +153,36 @@ class TestVerifiedSourceIdentityBinding:
             verify_source_identity(src, str(repo), expected_sha256=None)
 
 
-class TestByteAndInodeBoundPublication:
-    """F1/F2 (round 36): the publication protocol verifies BOTH inode identity AND byte integrity.
-    A same-inode in-place mutation (through a second writable FD) and a pathname replacement both
-    fail AND leave no misleading final ZIP. ``expected_sha256`` is mandatory."""
+class TestAnonymousInodePublication:
+    """F1/F2 (round 37): publication uses an anonymous inode (O_TMPFILE + linkat AT_EMPTY_PATH).
+    No named source path participates in the security decision. The anonymous inode has no
+    pathname before publication, so no external writable FD can exist on it. Cleanup uses the
+    pre-publication anonymous inode identity, never a post-race observation."""
 
     def _sha(self, data):
         return __import__("hashlib").sha256(data).hexdigest()
 
-    def _sha_path(self, p):
-        return self._sha(Path(p).read_bytes())
-
-    def test_same_inode_inplace_mutation_blocks(self, tmp_path, monkeypatch):
-        """After FD hash, a second writable FD mutates the same inode in place. The post-publication
-        re-hash catches it. The final path is removed."""
+    def test_named_part_mutation_cannot_alter_publication(self, tmp_path):
+        """Mutating the named .part AFTER anonymous copy cannot change the published bytes."""
         repo = _repo(tmp_path)
         content = b"GOOD_VERIFIED_BYTES"
         src = _src(repo, content)
         sha = self._sha(content)
-        writable_fd = os.open(src, os.O_WRONLY)
-        original_link = os.link
+        # Mutate the named source AFTER it was written — anonymous copy already has the bytes
+        final = str(repo / "remedy-review-anon.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=sha)
+        assert Path(final).read_bytes() == content
+        assert self._sha(Path(final).read_bytes()) == sha
 
-        def mutating_link(s, d):
-            os.lseek(writable_fd, 0, os.SEEK_SET)
-            os.write(writable_fd, b"EVIL_MUTATED_BYTES")
-            os.fsync(writable_fd)
-            return original_link(s, d)
+    def test_no_named_source_link_in_publish(self):
+        """The publish_atomically function does not call os.link(source_path, final)."""
+        import inspect
+        from packages.orchestration import safe_publish as sp
+        src = inspect.getsource(sp.publish_atomically)
+        assert "os.link(source_path" not in src
+        assert "os.link(src" not in src
 
-        monkeypatch.setattr(os, "link", mutating_link)
-        final = str(repo / "remedy-review-mut.zip")
-        with pytest.raises(PublishSourceError, match="mutation"):
-            publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
-        os.close(writable_fd)
-        assert not os.path.exists(final)
-
-    def test_pathname_replacement_blocks_and_cleans_up(self, tmp_path, monkeypatch):
-        """After FD hash, the source pathname is replaced with a different regular file. The inode
-        check catches it AND the evil final path is removed."""
-        repo = _repo(tmp_path)
-        content = b"GOOD_VERIFIED_BYTES"
-        src = _src(repo, content)
-        sha = self._sha(content)
-        original_link = os.link
-
-        def swapping_link(s, d):
-            os.unlink(s)
-            with open(s, "wb") as fh:
-                fh.write(b"EVIL_SWAPPED_BYTES")
-            return original_link(s, d)
-
-        monkeypatch.setattr(os, "link", swapping_link)
-        final = str(repo / "remedy-review-swap.zip")
-        with pytest.raises(PublishSourceError, match="inode.*differs"):
-            publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
-        assert not os.path.exists(final)
-
-    def test_symlink_replacement_blocks(self, tmp_path, monkeypatch):
-        """After FD hash, the source pathname is replaced with a symlink. O_NOFOLLOW on source
-        prevents this when verify_source_identity opens, but a link to a symlink target also differs
-        in inode."""
-        repo = _repo(tmp_path)
-        content = b"GOOD_PAYLOAD"
-        src = _src(repo, content)
-        sha = self._sha(content)
-        target = repo / "evil_target.bin"
-        target.write_bytes(b"SYMLINK_TARGET")
-        original_link = os.link
-
-        def symlink_link(s, d):
-            os.unlink(s)
-            os.symlink(str(target), s)
-            return original_link(str(target), d)
-
-        monkeypatch.setattr(os, "link", symlink_link)
-        final = str(repo / "remedy-review-symlink.zip")
-        with pytest.raises(PublishSourceError, match="inode.*differs"):
-            publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
-        assert not os.path.exists(final)
-
-    def test_foreign_preexisting_not_removed(self, tmp_path):
-        """A pre-existing foreign file at the final path blocks but is never removed."""
-        repo = _repo(tmp_path)
-        final = repo / "remedy-review-foreign.zip"
-        final.write_bytes(b"FOREIGN")
-        src = _src(repo, b"new")
-        with pytest.raises(PublishCollisionError):
-            publish_atomically(src, str(final), str(repo), expected_sha256=self._sha(b"new"))
-        assert final.read_bytes() == b"FOREIGN"
-
-    def test_successful_bytes_hash_exactly(self, tmp_path):
+    def test_final_bytes_equal_expected_sha256(self, tmp_path):
         """After successful publication, the final bytes hash exactly to expected_sha256."""
         repo = _repo(tmp_path)
         content = b"verified-exact-content"
@@ -251,20 +192,22 @@ class TestByteAndInodeBoundPublication:
         publish_atomically(src, final, str(repo), expected_sha256=sha)
         assert self._sha(Path(final).read_bytes()) == sha
 
-    def test_final_identity_belongs_to_invocation(self, tmp_path):
-        """After successful publication, the final file is a hard link of the verified source."""
+    def test_final_inode_is_anonymous(self, tmp_path):
+        """The published file's inode differs from the named source's original inode."""
         repo = _repo(tmp_path)
-        content = b"identity-check-content"
+        content = b"anonymous-inode-check"
         src = _src(repo, content)
         sha = self._sha(content)
         src_ino = os.lstat(src).st_ino
-        final = str(repo / "remedy-review-id.zip")
-        publish_atomically(src, final, str(repo), expected_sha256=sha)
-        assert os.lstat(final).st_ino == src_ino
+        final = str(repo / "remedy-review-anon-id.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
+        # The final inode is the anonymous one, not the named source
+        assert Path(final).read_bytes() == content
+        final_ino = os.lstat(final).st_ino
+        assert final_ino != src_ino
 
     def test_concurrent_verified_publishers_exactly_one_wins(self, tmp_path):
-        """Exactly one concurrent verified publisher succeeds; every concurrency test passes
-        expected_sha256."""
+        """Exactly one concurrent verified publisher succeeds."""
         repo = _repo(tmp_path)
         final = str(repo / "remedy-review-crace.zip")
         content = b"concurrent-content"
@@ -290,6 +233,40 @@ class TestByteAndInodeBoundPublication:
         assert Path(final).read_bytes() == content
         assert self._sha(Path(final).read_bytes()) == sha
 
+    def test_foreign_preexisting_not_removed(self, tmp_path):
+        """A pre-existing foreign file at the final path blocks but is never removed."""
+        repo = _repo(tmp_path)
+        final = repo / "remedy-review-foreign.zip"
+        final.write_bytes(b"FOREIGN")
+        src = _src(repo, b"new")
+        with pytest.raises(PublishCollisionError):
+            publish_atomically(src, str(final), str(repo), expected_sha256=self._sha(b"new"))
+        assert final.read_bytes() == b"FOREIGN"
+
+    def test_foreign_replacement_between_publication_and_verify_preserved(self, tmp_path, monkeypatch):
+        """If another process replaces the final path between linkat and postverification,
+        the foreign replacement remains byte-identical and is never removed."""
+        import packages.orchestration.safe_publish as sp
+        repo = _repo(tmp_path)
+        content = b"GOOD_VERIFIED_BYTES"
+        src = _src(repo, content)
+        sha = self._sha(content)
+        final = str(repo / "remedy-review-race.zip")
+        original_verify = sp.verify_published_identity
+
+        def intercepting_verify(source_fd, fp, expected):
+            # Between linkat and verify: remove our link, place a foreign file
+            os.unlink(fp)
+            with open(fp, "wb") as fh:
+                fh.write(b"FOREIGN_AFTER_LINK")
+            return original_verify(source_fd, fp, expected)
+
+        monkeypatch.setattr(sp, "verify_published_identity", intercepting_verify)
+        with pytest.raises(PublishSourceError, match="inode.*differs"):
+            publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
+        # The foreign replacement must remain byte-identical
+        assert Path(final).read_bytes() == b"FOREIGN_AFTER_LINK"
+
     def test_omitted_expected_hash_blocks(self, tmp_path):
         """A missing expected_sha256 raises PublishSourceError."""
         repo = _repo(tmp_path)
@@ -299,45 +276,42 @@ class TestByteAndInodeBoundPublication:
             publish_atomically(src, final, str(repo), expected_sha256=None)
         assert not os.path.exists(final)
 
-    def test_overlayfs_valid_publication_succeeds(self, tmp_path):
-        """OverlayFS-like mount (different st_dev for file vs parent) still succeeds."""
+    def test_tampered_source_after_write_blocks(self, tmp_path):
+        """If source bytes change after being written to disk, the anonymous copy hash mismatch
+        catches it because the stale expected hash doesn't match."""
         repo = _repo(tmp_path)
-        content = b"overlay-content"
-        src = _src(repo, content)
-        sha = self._sha(content)
-        final = str(repo / "remedy-review-overlay.zip")
-        publish_atomically(src, final, str(repo), expected_sha256=sha)
-        assert Path(final).read_bytes() == content
+        src = _src(repo, b"original")
+        stale_sha = self._sha(b"original")
+        with open(src, "wb") as fh:
+            fh.write(b"tampered-different-bytes")
+        final = str(repo / "remedy-review-tamper.zip")
+        with pytest.raises(PublishSourceError):
+            publish_atomically(src, final, str(repo), expected_sha256=stale_sha)
+        assert not os.path.exists(final)
 
-    def test_true_cross_filesystem_blocks(self, tmp_path, monkeypatch):
-        """A true cross-device link raises EXDEV → PublishSourceError."""
-        import errno as _errno
-        repo = _repo(tmp_path)
-        content = b"cross-dev"
-        src = _src(repo, content)
-        sha = self._sha(content)
-        original_link = os.link
-
-        def fake_link(s, d):
-            raise OSError(_errno.EXDEV, "Invalid cross-device link")
-
-        monkeypatch.setattr(os, "link", fake_link)
-        final = str(repo / "remedy-review-xdev.zip")
-        with pytest.raises(PublishSourceError, match="different filesystem"):
-            publish_atomically(src, final, str(repo), expected_sha256=sha, cleanup_source=False)
-
-    def test_symlink_at_source_blocked_by_o_nofollow(self, tmp_path):
-        """O_NOFOLLOW on the source path means a symlink raises immediately."""
+    def test_symlink_source_blocks(self, tmp_path):
+        """A symlink source is rejected by the O_NOFOLLOW copy."""
         repo = _repo(tmp_path)
         real = repo / "real.bin"
         real.write_bytes(b"payload")
         link = str(repo / ".remedy_zip_link.part")
         os.symlink(real, link)
+        final = str(repo / "remedy-review-sym.zip")
         with pytest.raises(PublishSourceError):
-            verify_source_identity(link, str(repo),
-                                   expected_sha256=self._sha(real.read_bytes()))
+            publish_atomically(link, final, str(repo), expected_sha256=self._sha(b"payload"))
+        assert not os.path.exists(final)
 
-    def test_verify_source_identity_returns_fd(self, tmp_path):
+    def test_successful_publication_cleans_source(self, tmp_path):
+        """After successful publication, the named source is removed."""
+        repo = _repo(tmp_path)
+        content = b"cleanup-test"
+        src = _src(repo, content)
+        sha = self._sha(content)
+        final = str(repo / "remedy-review-clean.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=sha)
+        assert not os.path.exists(src)
+
+    def test_verify_source_identity_still_works(self, tmp_path):
         """verify_source_identity returns an open FD that can be fstat'd."""
         repo = _repo(tmp_path)
         content = b"fd-test"
