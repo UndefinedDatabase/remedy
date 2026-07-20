@@ -605,6 +605,33 @@ def run_do_continue(
             _record(result, ContinuePhase.SNAPSHOT, "resumed", "Snapshot already verified.")
             _record(result, ContinuePhase.APPLY, "resumed", "Apply already completed (idempotent).")
         else:
+            # F017 T002: single-intent fence preflight
+            from packages.orchestration.scope_fences import (
+                TouchedPath as _FTP,
+                check_change_set as _f_ccs,
+                load_fence_spec as _f_lfs,
+            )
+            _f_intent = get_patch_intent(job, iid)
+            if _f_intent and _f_intent.get("target_path"):
+                _f_repo = Path(job.metadata.get("target_repo", "") or ".")
+                _f_spec = _f_lfs(worktree_root=_f_repo)
+                _f_tp = [_FTP(
+                    path=_f_intent["target_path"],
+                    operation=_f_intent.get("action", "modify"),
+                    role="target",
+                )]
+                _f_r = _f_ccs(_f_repo, _f_spec, _f_tp)
+                if not _f_r.allowed:
+                    _record(result, ContinuePhase.SNAPSHOT, "completed", "Snapshot not needed.")
+                    _record(result, ContinuePhase.APPLY, "blocked", "Apply blocked: fence_violation")
+                    result.stop_reason = ContinueStopReason.APPLY_FAILED
+                    result.next_safe_action = f"remedy change proof {request.job_id} --json"
+                    result.evidence_status = "unknown"
+                    _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+                        "stop_reason": result.stop_reason, "reason": "fence_violation",
+                    })
+                    return result
+
             from packages.orchestration.patch_apply import apply_patch_intent
             apply_res = apply_patch_intent(job, iid, data_dir=data_dir)
             if apply_res.state == "blocked":

@@ -244,6 +244,38 @@ def apply_structured_patch(
         result.errors.append(f"repo path not found: {repo_root}")
         return result
 
+    # F017 T002: fence preflight — before snapshot, before any mutation
+    from packages.orchestration.scope_fences import (
+        FenceSpec,
+        FenceViolationError,
+        TouchedPath,
+        check_change_set,
+        load_fence_spec,
+        write_fence_violations_artifact,
+    )
+
+    fence_spec = load_fence_spec(worktree_root=repo_root)
+    touched: list[TouchedPath] = []
+    for op in patch.file_ops:
+        touched.append(TouchedPath(
+            path=op.path, operation=op.action, role="target",
+        ))
+    for diff in patch.unified_diffs:
+        touched.append(TouchedPath(
+            path=diff.path, operation="modify", role="target",
+        ))
+    if touched:
+        fence_result = check_change_set(repo_root, fence_spec, touched)
+        if not fence_result.allowed:
+            data_dir_path = Path(data_dir) if data_dir else resolve_data_root()
+            write_fence_violations_artifact(
+                fence_result, data_dir_path,
+                applicator="source_apply",
+                job_id=str(getattr(job, "id", None) or job_id or "unknown"),
+                intent_id=intent_id or "",
+            )
+            raise FenceViolationError(fence_result)
+
     data_dir_path = Path(data_dir) if data_dir else resolve_data_root()
     job_id_str = str(getattr(job, "id", None) or job_id or "unknown")
 

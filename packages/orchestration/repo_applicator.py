@@ -168,6 +168,22 @@ def apply_task_output_to_repo(
     if relative_path is None:
         return []
 
+    # F017 T002: fence preflight before write
+    from packages.orchestration.scope_fences import (
+        FenceViolationError,
+        TouchedPath,
+        check_change_set,
+        load_fence_spec,
+    )
+
+    fence_spec = load_fence_spec(worktree_root=repo_root)
+    fence_result = check_change_set(
+        repo_root, fence_spec,
+        [TouchedPath(path=relative_path, operation="create", role="target")],
+    )
+    if not fence_result.allowed:
+        raise FenceViolationError(fence_result)
+
     content = _build_repo_file_content(task_type, summary, artifact.content)
 
     target = _write_to_repo(repo_root, relative_path, content)

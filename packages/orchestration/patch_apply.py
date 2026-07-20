@@ -181,6 +181,19 @@ def apply_patch_intent(
     if risk in _BLOCKED_RISKS:
         return _blocked(f"unsupported_risk:{risk}", target_path, action)
 
+    # ── 7b. F017 T002: defensive fence check ──────────────────────────────
+    from packages.orchestration.scope_fences import (
+        TouchedPath as _TouchedPath,
+        check_change_set as _check_change_set,
+        load_fence_spec as _load_fence_spec,
+    )
+
+    _fence_spec = _load_fence_spec(worktree_root=repo_root)
+    _fence_touched = [_TouchedPath(path=target_path, operation=action, role="target")]
+    _fence_result = _check_change_set(repo_root, _fence_spec, _fence_touched)
+    if not _fence_result.allowed:
+        return _blocked("fence_violation", target_path, action)
+
     # ── 8. Permissions ────────────────────────────────────────────────────
     # repo_overwrite is NOT required or consulted here.
     # shell_exec is NOT used here.
