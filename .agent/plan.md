@@ -61,7 +61,7 @@ covering all commits.
 6. docs(f017): final implementation state + Evidence + READY_FOR_REVIEW ZIP
 
 ## Current Step
-Scope 4 complete. Committing secure Evidence, then Scope 5.
+Scope 6 — docs + Evidence + READY_FOR_REVIEW ZIP.
 
 ## Constraints
 - No Fable/subagents/providers/network/Docker. Manual only.
