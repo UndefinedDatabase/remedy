@@ -136,6 +136,8 @@ def _build_repo_file_content(task_type: str, summary: str, artifact_content: str
 def apply_task_output_to_repo(
     artifact: Artifact,
     repo_root: Path,
+    *,
+    job_fences: dict | None = None,
 ) -> list[str]:
     """Apply eligible task output to the attached target repository.
 
@@ -152,6 +154,7 @@ def apply_task_output_to_repo(
       - task_type is not eligible (no keyword match)
       - target file already exists (no overwrite)
 
+    Raises FenceViolationError if the target path violates scope fences.
     Raises RuntimeError if the resolved target path falls outside repo_root.
 
     This function does not mutate the artifact or the job.  The caller is
@@ -168,21 +171,15 @@ def apply_task_output_to_repo(
     if relative_path is None:
         return []
 
-    # F017 T002: fence preflight before write
-    from packages.orchestration.scope_fences import (
-        FenceViolationError,
-        TouchedPath,
-        check_change_set,
-        resolve_fence_spec,
-    )
+    # F017: fence preflight via shared enforcement boundary
+    from packages.orchestration.scope_fences import TouchedPath, enforce_change_set
 
-    fence_spec = resolve_fence_spec(repo_root)
-    fence_result = check_change_set(
-        repo_root, fence_spec,
+    enforce_change_set(
+        repo_root,
         [TouchedPath(path=relative_path, operation="create", role="target")],
+        applicator="repo_applicator",
+        job_fences=job_fences,
     )
-    if not fence_result.allowed:
-        raise FenceViolationError(fence_result)
 
     content = _build_repo_file_content(task_type, summary, artifact.content)
 
@@ -221,4 +218,7 @@ def check_and_apply_to_repo(
         artifact.metadata["repo_application_skipped_reason"] = "permission_denied"
         return []
 
-    return apply_task_output_to_repo(artifact, repo_root)
+    _job_fences = None
+    if hasattr(job, "fences") and job.fences is not None:
+        _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+    return apply_task_output_to_repo(artifact, repo_root, job_fences=_job_fences)

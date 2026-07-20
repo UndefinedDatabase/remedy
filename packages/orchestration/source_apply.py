@@ -244,19 +244,12 @@ def apply_structured_patch(
         result.errors.append(f"repo path not found: {repo_root}")
         return result
 
-    # F017 T002: fence preflight — before snapshot, before any mutation
-    from packages.orchestration.scope_fences import (
-        FenceViolationError,
-        TouchedPath,
-        check_change_set,
-        resolve_fence_spec,
-        write_fence_violations_artifact,
-    )
+    # F017: fence preflight — before snapshot, before any mutation
+    from packages.orchestration.scope_fences import TouchedPath, enforce_change_set
 
     _job_fences = None
     if hasattr(job, "fences") and job.fences is not None:
         _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
-    fence_spec = resolve_fence_spec(repo_root, job_fences=_job_fences)
     touched: list[TouchedPath] = []
     for op in patch.file_ops:
         touched.append(TouchedPath(
@@ -267,16 +260,14 @@ def apply_structured_patch(
             path=diff.path, operation="modify", role="target",
         ))
     if touched:
-        fence_result = check_change_set(repo_root, fence_spec, touched)
-        if not fence_result.allowed:
-            data_dir_path = Path(data_dir) if data_dir else resolve_data_root()
-            write_fence_violations_artifact(
-                fence_result, data_dir_path,
-                applicator="source_apply",
-                job_id=str(getattr(job, "id", None) or job_id or "unknown"),
-                intent_id=intent_id or "",
-            )
-            raise FenceViolationError(fence_result)
+        enforce_change_set(
+            repo_root, touched,
+            applicator="source_apply",
+            job_id=str(getattr(job, "id", None) or job_id or "unknown"),
+            intent_id=intent_id or "",
+            evidence_dir=Path(data_dir) if data_dir else resolve_data_root(),
+            job_fences=_job_fences,
+        )
 
     data_dir_path = Path(data_dir) if data_dir else resolve_data_root()
     job_id_str = str(getattr(job, "id", None) or job_id or "unknown")

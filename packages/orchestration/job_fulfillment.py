@@ -796,7 +796,7 @@ def run_job_fulfill(
         # ── APPROVAL + APPLY (in staging via target_repo_override) ────
         record.status = JobFulfillmentStatus.APPROVAL_READY
 
-        # F017 T002: batch fence preflight — ALL intent targets before first apply
+        # F017: batch fence preflight — ALL intent targets before first apply
         from packages.orchestration.approval_queue import (
             get_patch_intent as _gpi,
             make_intent_id as _mii,
@@ -804,13 +804,13 @@ def run_job_fulfill(
         from packages.orchestration.scope_fences import (
             FenceViolationError,
             TouchedPath as _TP,
-            check_change_set as _ccs,
-            resolve_fence_spec as _rfs,
-            write_fence_violations_artifact as _wfva,
+            enforce_change_set as _enforce,
         )
 
         _staging_root = staging_ws.staging_dir
-        _fence_spec = _rfs(_staging_root)
+        _job_fences = None
+        if hasattr(job, "fences") and job.fences is not None:
+            _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
         _batch_touched: list[_TP] = []
         for wo in worker_outputs:
             _aid = wo.get("artifact_id", "")
@@ -825,11 +825,15 @@ def run_job_fulfill(
                         role="target")
                 )
         if _batch_touched:
-            _fence_r = _ccs(_staging_root, _fence_spec, _batch_touched)
-            if not _fence_r.allowed:
-                _wfva(_fence_r, data_dir,
-                      applicator="job_fulfillment",
-                      job_id=job_id)
+            try:
+                _enforce(
+                    _staging_root, _batch_touched,
+                    applicator="job_fulfillment",
+                    job_id=job_id,
+                    evidence_dir=data_dir,
+                    job_fences=_job_fences,
+                )
+            except FenceViolationError:
                 discard_staging(staging_ws, "fence_violation")
                 staging_result.discarded = True
                 staging_result.discard_reason = "fence_violation"

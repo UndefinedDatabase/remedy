@@ -181,20 +181,27 @@ def apply_patch_intent(
     if risk in _BLOCKED_RISKS:
         return _blocked(f"unsupported_risk:{risk}", target_path, action)
 
-    # ── 7b. F017 T002: defensive fence check ──────────────────────────────
+    # ── 7b. F017: fence check via shared enforcement boundary ──────────────
     from packages.orchestration.scope_fences import (
+        FenceViolationError as _FVE,
         TouchedPath as _TouchedPath,
-        check_change_set as _check_change_set,
-        resolve_fence_spec as _resolve_fence_spec,
+        enforce_change_set as _enforce,
     )
 
     _job_fences = None
     if hasattr(job, "fences") and job.fences is not None:
         _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
-    _fence_spec = _resolve_fence_spec(repo_root, job_fences=_job_fences)
-    _fence_touched = [_TouchedPath(path=target_path, operation=action, role="target")]
-    _fence_result = _check_change_set(repo_root, _fence_spec, _fence_touched)
-    if not _fence_result.allowed:
+    try:
+        _enforce(
+            repo_root,
+            [_TouchedPath(path=target_path, operation=action, role="target")],
+            applicator="patch_apply",
+            job_id=str(getattr(job, "id", "")),
+            intent_id=intent_id,
+            evidence_dir=data_dir,
+            job_fences=_job_fences,
+        )
+    except _FVE:
         return _blocked("fence_violation", target_path, action)
 
     # ── 8. Permissions ────────────────────────────────────────────────────

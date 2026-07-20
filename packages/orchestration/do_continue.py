@@ -67,6 +67,7 @@ class ContinueStopReason:
     BLOCKED_INELIGIBLE = "blocked_ineligible"
     SNAPSHOT_FAILED = "snapshot_failed"
     APPLY_FAILED = "apply_failed"
+    FENCE_VIOLATION = "fence_violation"
     TEST_BLOCKED = "test_blocked"
     LEASE_UNAVAILABLE = "lease_unavailable"
     ERROR = "error"
@@ -605,26 +606,36 @@ def run_do_continue(
             _record(result, ContinuePhase.SNAPSHOT, "resumed", "Snapshot already verified.")
             _record(result, ContinuePhase.APPLY, "resumed", "Apply already completed (idempotent).")
         else:
-            # F017 T002: single-intent fence preflight
+            # F017: fence preflight via shared enforcement boundary
             from packages.orchestration.scope_fences import (
+                FenceViolationError as _FVE,
                 TouchedPath as _FTP,
-                check_change_set as _f_ccs,
-                resolve_fence_spec as _f_rfs,
+                enforce_change_set as _f_enforce,
             )
             _f_intent = get_patch_intent(job, iid)
             if _f_intent and _f_intent.get("target_path"):
                 _f_repo = Path(job.metadata.get("target_repo", "") or ".")
-                _f_spec = _f_rfs(_f_repo)
-                _f_tp = [_FTP(
-                    path=_f_intent["target_path"],
-                    operation=_f_intent.get("action", "modify"),
-                    role="target",
-                )]
-                _f_r = _f_ccs(_f_repo, _f_spec, _f_tp)
-                if not _f_r.allowed:
+                _f_job_fences = None
+                if hasattr(job, "fences") and job.fences is not None:
+                    _f_job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+                try:
+                    _f_enforce(
+                        _f_repo,
+                        [_FTP(
+                            path=_f_intent["target_path"],
+                            operation=_f_intent.get("action", "modify"),
+                            role="target",
+                        )],
+                        applicator="do_continue",
+                        job_id=request.job_id,
+                        intent_id=iid,
+                        evidence_dir=data_dir,
+                        job_fences=_f_job_fences,
+                    )
+                except _FVE:
                     _record(result, ContinuePhase.SNAPSHOT, "completed", "Snapshot not needed.")
                     _record(result, ContinuePhase.APPLY, "blocked", "Apply blocked: fence_violation")
-                    result.stop_reason = ContinueStopReason.APPLY_FAILED
+                    result.stop_reason = ContinueStopReason.FENCE_VIOLATION
                     result.next_safe_action = f"remedy change proof {request.job_id} --json"
                     result.evidence_status = "unknown"
                     _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
