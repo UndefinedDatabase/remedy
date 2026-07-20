@@ -93,6 +93,17 @@ _BAD_PE = {
     "nonfinite_cost": _complete_actuals_pe(total_cost_usd=float("inf")),
     "negative_cost": _complete_actuals_pe(total_cost_usd=-0.5),
     "boolean_token": _complete_actuals_pe(actual_prompt_tokens=True),
+    "cost_without_cost_call_count": {
+        "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
+        "actual_call_count": 1, "actual_prompt_tokens": 10, "actual_completion_tokens": 5,
+        "actual_total_tokens": 15, "total_cost_usd": 0.25},
+    "ambiguous_actual_model": {
+        "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
+        "actual_model": "claude-x", "actual_model_verified": True},
+    "verified_model_zero_provider_calls": {
+        "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 0,
+        "actual_call_count": 0, "cost_call_count": 0,
+        "actual_model_verified": True, "builder_actual_model": "claude-x"},
 }
 
 
@@ -527,11 +538,37 @@ class TestSemanticProviderEvidenceContract:
         t = build_token_truth(str(tmp_path))
         assert validate_token_truth(t) == []
 
-    def test_actual_model_field_without_verified(self, tmp_path):
+    def test_actual_model_field_rejected_as_ambiguous(self, tmp_path):
+        """Round 38 F2: generic actual_model is ambiguous — use builder/reviewer fields."""
         pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
               "actual_model": "claude-z"}
         _seed(tmp_path, "T001", self._ACC, pe)
-        with pytest.raises(TokenEvidenceError, match="actual model identity present"):
+        with pytest.raises(TokenEvidenceError, match="generic 'actual_model' field is ambiguous"):
+            build_token_truth(str(tmp_path))
+
+    def test_cost_without_cost_call_count_raises(self, tmp_path):
+        """Round 38 F1: total_cost_usd=0.25 without cost_call_count must be PRODUCER_ERROR."""
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+              "actual_call_count": 1, "actual_prompt_tokens": 10, "actual_completion_tokens": 5,
+              "actual_total_tokens": 15, "total_cost_usd": 0.25}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="total_cost_usd present.*cost_call_count is absent"):
+            build_token_truth(str(tmp_path))
+
+    def test_verified_model_with_zero_provider_calls_raises(self, tmp_path):
+        """Round 38 F3: actual_model_verified=true with provider_call_count=0 is contradictory."""
+        pe = {"execution_mode": "provider_backed", "provider_call_count": 0,
+              "actual_call_count": 0, "cost_call_count": 0,
+              "actual_model_verified": True, "builder_actual_model": "claude-x"}
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="actual_model_verified=true but provider_call_count is 0"):
+            build_token_truth(str(tmp_path))
+
+    def test_actual_model_with_verified_and_cost_call_count(self, tmp_path):
+        """Round 38 F2: actual_model in PE is always rejected, even with verified=true."""
+        pe = _complete_actuals_pe(actual_model="claude-z")
+        _seed(tmp_path, "T001", self._ACC, pe)
+        with pytest.raises(TokenEvidenceError, match="generic 'actual_model' field is ambiguous"):
             build_token_truth(str(tmp_path))
 
 

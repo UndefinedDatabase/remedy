@@ -176,15 +176,29 @@ def validate_provider_evidence(pe: dict, ctx: str) -> None:
     bam = pe.get("builder_actual_model")
     ram = pe.get("reviewer_actual_model")
     am = pe.get("actual_model")
-    has_any_model = bool(bam or ram or am)
+
+    # Round 38 F2: reject ambiguous generic actual_model — require role-specific fields.
+    if am is not None:
+        raise TokenEvidenceError(
+            f"{ctx}: generic 'actual_model' field is ambiguous; "
+            "use 'builder_actual_model' or 'reviewer_actual_model' instead")
+
+    has_any_model = bool(bam or ram)
 
     if amv is True and not has_any_model:
         raise TokenEvidenceError(
             f"{ctx}: actual_model_verified=true but no actual model identity "
-            "(builder_actual_model, reviewer_actual_model, or actual_model)")
+            "(builder_actual_model or reviewer_actual_model)")
     if has_any_model and amv is not True:
         raise TokenEvidenceError(
             f"{ctx}: actual model identity present but actual_model_verified is not true")
+
+    # Round 38 F3: verified model requires at least one provider call.
+    if amv is True:
+        pc = pe.get("provider_call_count")
+        if _is_int(pc) and pc == 0:
+            raise TokenEvidenceError(
+                f"{ctx}: actual_model_verified=true but provider_call_count is 0")
 
     cost = pe.get("total_cost_usd")
     cc = pe.get("cost_call_count")
@@ -193,8 +207,10 @@ def validate_provider_evidence(pe: dict, ctx: str) -> None:
             f"{ctx}: total_cost_usd present ({cost!r}) but cost_call_count is 0")
     if _is_int(cc) and cc > 0 and "total_cost_usd" not in pe:
         pass
+    # Round 38 F1: cost must carry its call-count provenance.
     if cost is not None and "cost_call_count" not in pe:
-        pass
+        raise TokenEvidenceError(
+            f"{ctx}: total_cost_usd present ({cost!r}) but cost_call_count is absent")
 
     ac = pe.get("actual_call_count")
     has_actual_counters = any(
@@ -391,8 +407,7 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
         task_configured_model = _strict_string(acc, "configured_model", _acc_ctx) if acc else ""
         task_actual_model = None
         if pe is not None:
-            ta_model = (_strict_nullable_string(pe, "builder_actual_model", _pe_ctx)
-                        or _strict_nullable_string(pe, "actual_model", _pe_ctx))
+            ta_model = _strict_nullable_string(pe, "builder_actual_model", _pe_ctx)
             if ta_model and pe.get("actual_model_verified"):
                 task_actual_model = ta_model
 

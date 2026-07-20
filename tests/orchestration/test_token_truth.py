@@ -202,7 +202,7 @@ def test_per_task_actual_model_from_provider_evidence(tmp_path: Path) -> None:
     }))
     (d / "provider_evidence.json").write_text(json.dumps({
         "builder_provider": "claude-cli",
-        "actual_model": "claude-opus-4-20250514",
+        "builder_actual_model": "claude-opus-4-20250514",
         "actual_model_verified": True,
     }))
     report = build_token_truth(str(tmp_path))
@@ -303,13 +303,15 @@ def test_mixed_provider_and_manual_no_double_count(tmp_path: Path) -> None:
                    "usage": {"input_tokens": 1200, "output_tokens": 300,
                              "total_tokens": 1500},
                    "total_cost_usd": 0.01,
+                   "cost_call_count": 1,
+                   "actual_call_count": 1,
+                   "provider_call_count": 1,
                })
     _seed_task(tmp_path, "T002", builder=2000, reviewer=0, repair=0,
                provider_evidence={
                    "builder_provider": "operator",
                    "execution_mode": "manual_operator_repair",
-                   "usage": {"input_tokens": 9999, "output_tokens": 8888},
-                   "total_cost_usd": 5.0,
+                   "provider_call_count": 0,
                })
 
     report = build_token_truth(str(tmp_path))
@@ -332,8 +334,7 @@ def test_estimated_never_labeled_actual_all_manual(tmp_path: Path) -> None:
                provider_evidence={
                    "builder_provider": "operator",
                    "execution_mode": "manual_operator_repair",
-                   "usage": {"input_tokens": 7000, "output_tokens": 6000},
-                   "total_cost_usd": 3.0,
+                   "provider_call_count": 0,
                })
 
     report = build_token_truth(str(tmp_path))
@@ -385,6 +386,7 @@ def test_high_confidence_measurement_source(tmp_path: Path) -> None:
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.005,
+                   "provider_call_count": 1, "actual_call_count": 1, "cost_call_count": 1,
                })
     report = build_token_truth(str(tmp_path))
     assert report["measurement_confidence"] == "high"
@@ -397,6 +399,7 @@ def test_mixed_confidence_measurement_source(tmp_path: Path) -> None:
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.005,
+                   "provider_call_count": 1, "actual_call_count": 1, "cost_call_count": 1,
                })
     _seed_task(tmp_path, "T002", builder=100, reviewer=50, repair=0,
                provider_evidence={"builder_provider": "claude-cli"})
