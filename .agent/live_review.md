@@ -14,18 +14,28 @@ CLI:    `apps/cli/commands/job.py` — remedy job fences
 Tests:  `tests/orchestration/test_fences.py` — 78 passed
         `tests/orchestration/test_applicator_fences.py` — 43 passed
         `tests/orchestration/test_fence_e2e.py` — 43 passed
-Total:  164 tests (+ 112 postmortem/config)
+Total:  164 tests (+ 112 postmortem + 57 config)
 
-## Evidence
-Job ID: `492b969f-b802-453f-b9da-77554071d7ab`
-Base: `fe9898aec951486ee72e6d42eef5cd905c71c625`
-Head: `0846a1878cf3f239b7d1f12c4715e030346b9c86`
-Authority: 17 files, 3 tasks (T001-T003)
-Verdict: PASS_WITH_RISKS (operator-attested manual)
-ZIP: `remedy-review-20260720-233422-READY_FOR_REVIEW.zip` (7.8M, 1438 members)
-Package status: READY_FOR_REVIEW
-Evidence authoritative: true
-Review subject alignment: PASS
+## Package discrepancy (a0aa69f)
+ZIP `remedy-review-20260720-233422-READY_FOR_REVIEW.zip` was built at
+HEAD `0846a18` (10 commits). Commit `a0aa69f` was created AFTER packaging
+as an agent state update (live_review + plan + STATUS). It is the 11th
+commit on the branch but is not covered by the review subject, commit
+chain, or content proof in the ZIP. The ZIP content is correct for the
+10-commit authority set.
+
+## External review findings (under repair)
+1. Duplicate TOML authority — `_read_scope_table` bypasses central config
+2. Malformed config fails open — parse error → default allow-all
+3. JobFences not closed — accepts unknown fields
+4. Five applicators diverge — different subsets of resolve/check/write/raise
+5. `enforce_change_set()` has no production callers
+6. Artifact writer uses `write_text` — no symlink protection, no atomic write
+7. Exception message leaks absolute paths
+8. repo_applicator doesn't pass job_fences
+9. patch_apply writes no Evidence artifact
+10. do_continue uses APPLY_FAILED instead of FENCE_VIOLATION
 
 ## Next
-Awaiting external acceptance. F017 stays `[~]`.
+Scope 2-5 implementation: centralized resolver, shared enforcement,
+secure Evidence, complete E2E tests, fresh package.

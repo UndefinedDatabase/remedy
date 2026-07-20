@@ -1,53 +1,67 @@
-# Plan — F017 Scope Fences — Completion Block
+# Plan — F017 Scope Fences — Final Repair & Authority Block
 
 ## Goal
-Complete F017: repair T002 external-review findings, implement T003
-(job field + config keys + CLI), create fresh canonical Evidence,
-produce one READY_FOR_REVIEW ZIP. Manual operator only.
+Close all external-review findings: duplicate TOML authority, malformed-config
+fail-open, open JobFences model, divergent applicator enforcement, unsafe
+artifact writer, missing E2E coverage. Reconcile stale package. Produce one
+corrected READY_FOR_REVIEW ZIP.
 
-## Scope 1 — T002 enforcement/config repairs
-- Shared effective-spec resolver: all 5 applicators call
-  `load_fence_spec(worktree_root=..., config_path=<repo>/remedy.toml)`.
-  Extract `resolve_fence_spec(worktree_root)` to do this in one place.
-- Fix `resolve_effective_builtins` fail-open: typed BuiltinResolutionResult
-  replaces bare-except-returns-empty. Failure = fail closed.
-- Fix `check_change_set` dedup: key `(path, operation)` → `(path, operation, role)`.
+## Discrepancy resolution
+ZIP `remedy-review-20260720-233422-READY_FOR_REVIEW.zip` was built at
+HEAD `0846a18` (10 commits). Commit `a0aa69f` was created AFTER packaging
+(agent state update only — 3 files: live_review, plan, STATUS). The ZIP
+content is valid for the 10-commit review subject; `a0aa69f` is a post-
+packaging commit not covered by the package. This block starts from the
+actual branch HEAD `a0aa69f` (11 commits) and will produce a new package
+covering all commits.
 
-## Scope 2 — Durable violation Evidence + real E2E tests
-- Shared `enforce_change_set(worktree_root, spec, touched, evidence_ctx)`.
-- Job-scoped, collision-safe Evidence location (not global data root).
-- Closed versioned artifact schema with redacted absolute paths.
-- Persistence failure still blocks repo mutation.
-- All 5 paths expose typed `fence_violation` classification.
-- Real production E2E tests: invoke actual entry points
-  (source_apply, patch_apply, job_fulfillment, do_continue, repo_applicator).
-- Artifact safety tests (abs path redaction, collision safety, symlink safety).
+## Scope 1 — reconcile branch, STATUS, operator truth
+- Record a0aa69f discrepancy in live_review.md
+- Update STATUS.md truthfully: T001-T003 built, external-review findings
+  under repair, pending external acceptance
+- Update context.md, plan.md, live_review.md
 
-## Scope 3 — Complete T003 (job/config/CLI)
-- Job model: optional `fences` field on Job (backward-compatible,
-  closed type, no str() coercion, malformed fails closed).
-- Config: extend ConfigKeySpec with `list` value_type for list-of-strings.
-  Register `scope.allow` and `scope.deny` keys.
-- CLI: `remedy job fences <id>` showing effective allow/deny/builtin rules,
-  source of each, warnings, JSON output.
+## Scope 2 — closed centralized FenceSpec resolution
+- Remove `_read_scope_table` private TOML parser from scope_fences.py
+- Use central config system (scope.allow, scope.deny) for project/env config
+- Add `FenceConfigError` — malformed config blocks, never defaults
+- Close `JobFences` with `extra="forbid"`, validate list members
+- Create `EffectiveFenceResult` typed provenance carrier
+- Document precedence: per-job > central config (env > project > user > default)
+  > defaults; builtins always apply
 
-## Scope 4 — Fresh canonical F017 Evidence + package
-- Fresh F017-specific manual Evidence (new job ID, not reusing F012/R40).
-- Update T0_F017.md built state with T003 section.
-- Update .agent/live_review.md, .agent/context.md.
-- One READY_FOR_REVIEW ZIP.
+## Scope 3 — shared production enforcement + per-job propagation
+- All 5 applicators use `enforce_change_set` — no divergent load/check/write
+- Propagate job_fences to repo_applicator (fix check_and_apply_to_repo)
+- patch_apply: Evidence artifact + typed classification (not just blocked_reason)
+- do_continue: FENCE_VIOLATION stop reason (not APPLY_FAILED), Evidence artifact
+- Consistent postmortem classification everywhere
+
+## Scope 4 — secure durable Evidence + redaction
+- Replace write_text with secure_fs.write_file_atomically (O_NOFOLLOW, O_EXCL)
+- anchor_destination for containment
+- No-clobber unique event IDs (uuid-based)
+- Closed artifact schema with event_id, provenance, warnings
+- Redact absolute paths in exception messages and postmortem reasons
+- ContinueStopReason.FENCE_VIOLATION added
+
+## Scope 5 — real E2E tests + Evidence + package
+- E2E tests for all 5 applicators with per-job/project/env fences
+- CLI execution tests (real CLI against persisted jobs)
+- Security tests (closed model, symlink, abs path, malformed config)
+- Regression matrix (all existing suites)
+- Fresh canonical F017 Evidence + READY_FOR_REVIEW ZIP
 
 ## Commits
-1. fix(f017): repair T002 config enforcement + dedup + fail-closed builtins
-2. feat(f017): shared enforce_change_set adapter + job-scoped Evidence
-3. test(f017): real production E2E tests for all 5 applicators
-4. feat(f017): T003 job model fences field + config key extension + CLI
-5. docs(f017): T003 built state + updated context/live_review
-6. evidence(f017): fresh canonical F017 Evidence + READY_FOR_REVIEW ZIP
+1. fix(f017): reconcile branch/STATUS/operator state with review findings
+2. fix(f017): centralized FenceSpec resolution + closed JobFences + FenceConfigError
+3. fix(f017): shared production enforcement boundary + per-job propagation
+4. fix(f017): secure durable Evidence + consistent redaction
+5. test(f017): complete E2E coverage for all write paths and CLI
+6. docs(f017): final implementation state + Evidence + READY_FOR_REVIEW ZIP
 
 ## Current Step
-All 4 scopes complete. Evidence + READY_FOR_REVIEW ZIP produced.
-Awaiting external acceptance.
+Scope 1 complete. Committing reconciliation, then Scope 2.
 
 ## Constraints
 - No Fable/subagents/providers/network/Docker. Manual only.
@@ -55,3 +69,8 @@ Awaiting external acceptance.
 - Do not push, create PR, merge, modify main, or start F018.
 - Do not weaken, delete, skip, or xfail tests.
 - F017 stays `[~]`, F018 stays `[ ]`.
+
+## Pre-existing baseline failures
+test_job_fulfillment.py::TestFulfilledDemoGuide — 7 tests fail because
+docs/first-fulfilled-job-demo-v0.md was moved to docs/system/ in commit
+e4023a4 (docs restructure) BEFORE F017 branched. Not an F017 regression.

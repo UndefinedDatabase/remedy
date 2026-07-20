@@ -2,40 +2,43 @@
 
 ## Branch
 `feature/f017-scope-fences` (from main after F012 merge)
+Base commit: `fe9898a`
 
-## Scope
-T001 + T002 + T002 repairs + T003 built. Evidence + ZIP pending.
+## Current state
+T001–T003 built (11 commits). External review returned 10 findings.
+Repair block in progress: Scopes 1–5 (reconciliation → centralized
+resolver → shared enforcement → secure Evidence → E2E + package).
 
-## Key decisions
-- Module placed at `packages/orchestration/scope_fences.py` (not `fences.py`)
-- `.git/` uses component matching: denied anywhere in path
-- `extra_builtin_denies` on FenceSpec for dynamic entries (e.g. REMEDY_DATA_DIR)
-- `resolve_effective_builtins` fails closed (RuntimeError, not empty tuple)
-- `BuiltinResolutionResult` typed result for error detail
-- `resolve_fence_spec(worktree_root)` shared resolver — always passes config_path
-- `enforce_change_set` shared adapter — job-scoped Evidence
-- `check_change_set` dedup key: `(path, operation, role)` — preserves roles
-- Collision-safe artifact naming: `fence_violations_{jobid}_{applicator}.json`
-- Absolute path redaction in violation artifacts
-- `..` is structurally denied (never resolved, even if non-escaping)
-- Symlink resolution uses `Path.resolve()` (read-only filesystem access)
-- Case sensitivity: no folding, documented as filesystem-dependent
-- Empty allow list = allow-all with logged warning (not a brick)
-- Config scope table read from `[remedy.scope]` in remedy.toml
-- `JobFences` closed Pydantic type on Job model (optional, default None)
-- `ConfigKeySpec.value_type` extended with `list` for list-of-strings
+Previous ZIP (`remedy-review-20260720-233422`) built at `0846a18`
+(10 commits). Commit `a0aa69f` added after packaging (agent state only).
+That ZIP is stale — new package will cover all commits.
+
+## External review findings (under repair)
+1. `_read_scope_table` duplicates central config — env vars never enforced
+2. Malformed config fails open (parse error → default allow-all)
+3. `JobFences` not closed — accepts unknown fields
+4. Five applicators diverge — different subsets of resolve/check/write/raise
+5. `enforce_change_set()` has no production callers
+6. Artifact writer uses `write_text` — no symlink protection, no atomic write
+7. Exception message leaks absolute paths
+8. `repo_applicator` doesn't pass `job_fences`
+9. `patch_apply` writes no Evidence artifact
+10. `do_continue` uses `APPLY_FAILED` instead of `FENCE_VIOLATION`
+
+## Key decisions (carried forward)
+- Module: `packages/orchestration/scope_fences.py`
+- `.git/` component matching anywhere in path
+- `extra_builtin_denies` on FenceSpec for dynamic entries
+- `resolve_effective_builtins` fails closed (RuntimeError)
+- `check_change_set` dedup key: `(path, operation, role)`
+- Collision-safe artifact naming
+- `..` structurally denied (never resolved)
+- Empty allow list = allow-all with logged warning
+- `JobFences` on Job model (optional, default None)
 - `scope.allow` / `scope.deny` registered config keys
-- `remedy job fences <id>` CLI command with JSON support
 
-## Enforcement sites (T002 + repairs)
-- All use shared `resolve_fence_spec(worktree_root)` with config_path
-- All pass per-job fences via `job.fences` when available
-- `source_apply.apply_structured_patch` — preflight before snapshot
-- `patch_apply.apply_patch_intent` — defensive single-intent check
-- `job_fulfillment.run_job_fulfill` — batch preflight before intent loop
-- `do_continue` — single-intent preflight before apply
-- `repo_applicator.apply_task_output_to_repo` — preflight before write
-
-## Evidence + postmortem
-- Collision-safe `fence_violations_{id}_{applicator}.json` with `fence_violations/v1` schema
-- `FENCE_VIOLATION` in FailureClass, classified via typed exception
+## Constraints
+- No providers, no network, no Docker, no subagents
+- Do not amend/squash existing commits
+- Do not push, create PR, merge, or modify main
+- F017 stays `[~]`, F018 stays `[ ]`
