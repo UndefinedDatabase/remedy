@@ -306,12 +306,20 @@ def _seed(base: Path, tid: str, *, actual: bool, cost: float | None = None,
         "repair_prompt_tokens_estimated": 0,
     }))
     pe: dict = {"builder_provider": "claude-cli"}
+    is_manual = execution_mode == "manual_operator_repair"
     if execution_mode:
         pe["execution_mode"] = execution_mode
-    if actual:
+    if is_manual:
+        pe["provider_call_count"] = 0
+    elif actual:
         pe["usage"] = {"input_tokens": 1000, "output_tokens": 500}
+        pe["provider_call_count"] = 1
+        pe["actual_call_count"] = 1
         if cost is not None:
             pe["total_cost_usd"] = cost
+            pe["cost_call_count"] = 1
+        else:
+            pe["cost_call_count"] = 0
     (d / "provider_evidence.json").write_text(json.dumps(pe))
 
 
