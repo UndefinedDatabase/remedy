@@ -95,6 +95,8 @@ class FailureClass(str, enum.Enum):
     STOPPED = "stopped"
     #: Reserved for F018's budgets. Classifiable; nothing in F010 produces it.
     BUDGET_EXHAUSTED = "budget_exhausted"
+    #: F017 scope fence violation. A write path was blocked by fence checks.
+    FENCE_VIOLATION = "fence_violation"
     UNKNOWN = "unknown"
 
 
@@ -138,6 +140,7 @@ TERMINAL_STATUS_CLASSES: dict[str, FailureClass] = {
     "runtime_probe_failed": FailureClass.RUNTIME_PROBE_FAILED,
     "stopped": FailureClass.STOPPED,
     "budget_exhausted": FailureClass.BUDGET_EXHAUSTED,
+    "fence_violation": FailureClass.FENCE_VIOLATION,
 }
 
 #: Structured ``error_class`` values produced by the provider layer.
@@ -202,12 +205,15 @@ class Classification:
 
 def _classify_exception(exc: BaseException) -> Classification | None:
     """Typed exceptions win: they are the least ambiguous thing we ever get."""
+    from packages.orchestration.scope_fences import FenceViolationError
     from packages.orchestration.worktrees import (
         WorktreeConflictError,
         WorktreeLockError,
     )
 
     text = f"{type(exc).__name__}: {exc}"
+    if isinstance(exc, FenceViolationError):
+        return Classification(FailureClass.FENCE_VIOLATION, SIGNAL_TYPED_EXCEPTION, text)
     if isinstance(exc, WorktreeConflictError):
         return Classification(FailureClass.WORKTREE_CONFLICT, SIGNAL_TYPED_EXCEPTION, text)
     if isinstance(exc, WorktreeLockError):
