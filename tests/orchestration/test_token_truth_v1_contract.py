@@ -290,6 +290,91 @@ class TestPackagingAuthorityBlocksMalformedInput:
         assert res["status"] == "PRODUCER_ERROR", res
 
 
+class TestProducerDerivesMissingTotal:
+    """Round 35 F3: when prompt and completion are present but total is absent, the producer derives
+    actual_total_tokens = prompt + completion rather than emitting null (which would be invalid at
+    high confidence)."""
+
+    def test_prompt_completion_without_total_derives(self, tmp_path):
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0},
+              {"execution_mode": "provider_backed", "provider_call_count": 1,
+               "actual_call_count": 1, "cost_call_count": 1, "total_cost_usd": 0.01,
+               "actual_prompt_tokens": 10, "actual_completion_tokens": 5,
+               "builder_provider": "claude"})
+        t = build_token_truth(str(tmp_path))
+        assert t["actual_total_tokens"] == 15
+        assert t["measurement_confidence"] == "high"
+        assert validate_token_truth(t) == []
+
+
+class TestCacheOnlyNotHigh:
+    """Round 35 F3: cache-only evidence (only cache_creation/cache_read, no prompt/completion/total)
+    is supplementary metadata — it must not trigger high confidence."""
+
+    def test_cache_only_is_not_high(self, tmp_path):
+        """Cache-only evidence (only cache_creation/cache_read, no prompt/completion/total) is
+        treated as no-actual-usage — low confidence, actual_available=False."""
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0},
+              {"execution_mode": "provider_backed", "provider_call_count": 1,
+               "actual_cache_creation_tokens": 5, "actual_cache_read_tokens": 3,
+               "builder_provider": "claude"})
+        t = build_token_truth(str(tmp_path))
+        assert t["measurement_confidence"] == "low"
+        assert t["actual_available"] is False
+        assert validate_token_truth(t) == []
+
+
+class TestNonStringModelIdentityBlocks:
+    """Round 35 F3: a non-string model identity (int, bool, list) in provider_evidence is a
+    producer error — not silently accepted."""
+
+    def test_integer_builder_model_raises(self, tmp_path):
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0},
+              _complete_actuals_pe(builder_actual_model=123))
+        with pytest.raises(TokenEvidenceError, match="not a string"):
+            build_token_truth(str(tmp_path))
+
+    def test_list_reviewer_model_raises(self, tmp_path):
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0},
+              {**_complete_actuals_pe(), "reviewer_actual_model": ["m"]})
+        with pytest.raises(TokenEvidenceError, match="not a string"):
+            build_token_truth(str(tmp_path))
+
+
+class TestAuthorityValidatesBothOutputs:
+    """Round 35 F4: _token_truth_authority validates BOTH canonical and supplied before declaring
+    VERIFIED_EQUAL. An invalid canonical → PRODUCER_ERROR; an invalid supplied → MISMATCH."""
+
+    def _brm(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "_brm_tt", Path(__file__).resolve().parents[2] / "scripts" / "build_review_manifest.py")
+        brm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(brm)
+        return brm
+
+    def test_invalid_supplied_is_mismatch(self, tmp_path):
+        brm = self._brm()
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, _complete_actuals_pe())
+        # Build valid token truth, then corrupt the supplied copy
+        t = build_token_truth(str(tmp_path))
+        t["surprise_field"] = True  # unknown field → invalid
+        (tmp_path / "token_truth.json").write_text(json.dumps(t))
+        ev = brm._view_from_dir(str(tmp_path))
+        res = brm._token_truth_authority(ev)
+        assert res["status"] == "MISMATCH", res
+        assert any("invalid" in p for p in res["problems"])
+
+    def test_valid_equal_is_verified_equal(self, tmp_path):
+        brm = self._brm()
+        _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, _complete_actuals_pe())
+        t = build_token_truth(str(tmp_path))
+        (tmp_path / "token_truth.json").write_text(json.dumps(t))
+        ev = brm._view_from_dir(str(tmp_path))
+        res = brm._token_truth_authority(ev)
+        assert res["status"] == "VERIFIED_EQUAL", res
+
+
 class TestMetaRegression:
     """Every valid producer fixture validates; a representative malformed input never yields an
     accepted TokenTruthV1 (it raises before one is produced)."""

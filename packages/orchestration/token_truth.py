@@ -179,6 +179,10 @@ def _extract_actual(provider_evidence: Any, ctx: str = "provider_evidence") -> d
         raise TokenEvidenceError(
             f"{ctx} actual_total_tokens ({at}) != actual_prompt_tokens + actual_completion_tokens "
             f"({ap} + {cp})")
+    # Round 35 F3: derive actual_total from prompt + completion when absent — prevents emitting a
+    # high-confidence report with actual_total_tokens=None while prompt and completion are present.
+    if ap is not None and cp is not None and at is None:
+        found["actual_total_tokens"] = ap + cp
     return found
 
 
@@ -241,12 +245,20 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
             if pe.get("actual_model_verified"):
                 # F2 (round 34): a verified actual model is honored ONLY with a real model identity —
                 # never a bare `verified: true` with null builder/reviewer models.
+                # Round 35 F3: model identity must be a string — a non-string (int, bool, list) is a
+                # producer error, not silently accepted.
                 _bam = pe.get("builder_actual_model")
                 _ram = pe.get("reviewer_actual_model")
-                if _bam:
+                if _bam is not None and not isinstance(_bam, str):
+                    raise TokenEvidenceError(
+                        f"{_pe_ctx}.builder_actual_model is not a string: {_bam!r}")
+                if _ram is not None and not isinstance(_ram, str):
+                    raise TokenEvidenceError(
+                        f"{_pe_ctx}.reviewer_actual_model is not a string: {_ram!r}")
+                if isinstance(_bam, str) and _bam:
                     builder_actual_model = _bam
                     actual_model_verified = True
-                if _ram:
+                if isinstance(_ram, str) and _ram:
                     reviewer_actual_model = _ram
                     actual_model_verified = True
             if pe.get("cli_version") and not cli_version:
@@ -256,7 +268,11 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
                     actual_missing_reasons.append(str(amr))
 
         task_actual = _extract_actual(pe, _pe_ctx)
-        task_has_actual = task_actual is not None
+        # Round 35 F3: cache-only evidence (no prompt or completion tokens) is supplementary
+        # metadata, not a usage measurement — it must not trigger high confidence.
+        task_has_actual = (task_actual is not None and
+                          ("actual_prompt_tokens" in task_actual
+                           or "actual_completion_tokens" in task_actual))
         exec_mode = str(pe.get("execution_mode", "")) if isinstance(pe, dict) else ""
         task_cost = _strict_cost(pe, "total_cost_usd", _pe_ctx) if isinstance(pe, dict) else None
         if exec_mode == "manual_operator_repair":
@@ -406,6 +422,14 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
         "cost_call_count": agg_cost_call_count,
         "cli_version": cli_version,
     }
+    # Round 35 F3: the producer self-validates — a successful build_token_truth never returns an
+    # invalid TokenTruthV1. Lazy import to avoid circular dependency (token_authority imports from
+    # this module).
+    from packages.orchestration.token_authority import validate_token_truth
+    problems = validate_token_truth(report)
+    if problems:
+        raise TokenEvidenceError(
+            f"producer emitted an invalid TokenTruthV1: {'; '.join(problems[:5])}")
     return report
 
 

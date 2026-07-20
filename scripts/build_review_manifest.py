@@ -2424,8 +2424,11 @@ def regenerate_token_truth(evidence_view) -> tuple[dict | None, str | None]:
 
 def _token_truth_authority(evidence_view) -> dict:
     """Require the packaged ``token_truth.json`` to EQUAL the canonical regeneration from task/provider
-    Evidence. A forged root count/model that no task supports cannot survive. Returns
-    ``{checked, equal, status, problems}`` (``NOT_PRESENT`` when the bundle carries no token truth)."""
+    Evidence, AND both canonical and supplied must individually pass ``validate_token_truth``. A forged
+    root count/model that no task supports cannot survive. Returns ``{checked, equal, status, problems}``
+    (``NOT_PRESENT`` when the bundle carries no token truth). Round 35 F4: VERIFIED_EQUAL requires BOTH
+    outputs to be valid — an invalid canonical that equals an invalid supplied is PRODUCER_ERROR, and a
+    valid canonical that does not equal an invalid supplied is MISMATCH."""
     if evidence_view is None or not getattr(evidence_view, "_files", None):
         return {"checked": False, "equal": None, "status": "NOT_CHECKED", "problems": []}
     if not evidence_view.isfile("token_truth.json"):
@@ -2434,10 +2437,27 @@ def _token_truth_authority(evidence_view) -> dict:
     if canonical is None:
         return {"checked": True, "equal": False, "status": "PRODUCER_ERROR",
                 "problems": [f"token_truth.json could not be regenerated: {problem}"]}
+    # Round 35 F4: validate canonical output — the producer self-validates (round 35 F3), but
+    # belt-and-suspenders: if the canonical is invalid, it's a PRODUCER_ERROR.
+    try:
+        from packages.orchestration.token_authority import validate_token_truth
+        canonical_problems = validate_token_truth(canonical)
+    except Exception as exc:
+        return {"checked": True, "equal": False, "status": "PRODUCER_ERROR",
+                "problems": [f"canonical token_truth validation failed: {str(exc)[:120]}"]}
+    if canonical_problems:
+        return {"checked": True, "equal": False, "status": "PRODUCER_ERROR",
+                "problems": [f"canonical token_truth is invalid: {'; '.join(canonical_problems[:5])}"]}
     supplied = evidence_view.read_json("token_truth.json")
     if not isinstance(supplied, dict) or not supplied:
         return {"checked": True, "equal": False, "status": "MISMATCH",
                 "problems": ["token_truth.json is absent/unreadable but the Evidence produces one"]}
+    # Round 35 F4: validate supplied output — an invalid supplied cannot be VERIFIED_EQUAL.
+    supplied_problems = validate_token_truth(supplied)
+    if supplied_problems:
+        return {"checked": True, "equal": False, "status": "MISMATCH",
+                "problems": [f"supplied token_truth.json is invalid: "
+                             f"{'; '.join(supplied_problems[:5])}"]}
     if supplied != canonical:
         diffs = sorted(k for k in set(supplied) | set(canonical)
                        if supplied.get(k) != canonical.get(k))
