@@ -1898,3 +1898,40 @@ class TestF012Round39IsPinned:
     def test_authoritative_test_count(self):
         doc = self._f012()
         assert "651 passed" in doc
+
+
+class TestF012Round40IsPinned:
+    """Round 40: authority contract closure — 5 findings closed."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 40" in self._f012()
+
+    def test_mixed_identity_check(self):
+        doc = self._f012()
+        assert "_has_any_manual_claim" in doc or "mixed completion identity" in doc.lower()
+
+    def test_forged_patch_bytes_test(self):
+        doc = self._f012()
+        assert "ForgedPatchBytesBlock" in doc or "commit_patch_bytes" in doc
+
+    def test_pe_cross_field_validation(self):
+        doc = self._f012()
+        assert "completion_provider_call_count" in doc
+        assert "provider_attempts" in doc
+
+    def test_verification_completeness_enforced(self):
+        doc = self._f012()
+        assert "REQUIRED_F012_VERIFICATION_SUITES" in doc or "required_verification_suites" in doc
+
+    def test_publication_capability_in_manifest(self):
+        doc = self._f012()
+        assert "publication_capability" in doc
+        assert "primitive" in doc
+
+    def test_authoritative_test_count(self):
+        doc = self._f012()
+        assert "528 passed" in doc
