@@ -2649,7 +2649,7 @@ def _job_flow_shape_problems(jf_data) -> list[str]:
     return problems
 
 
-def validate_evidence_candidate(ev) -> dict:
+def validate_evidence_candidate(ev, *, required_verification_suites=None) -> dict:
     ev = _as_view(ev)
     errors: list[str] = []
     missing_root: list[str] = []
@@ -2777,20 +2777,20 @@ def validate_evidence_candidate(ev) -> dict:
     if task_run_count == 0:
         errors.append("no task runs found")
 
-    # Round 40 F4: verification completeness — the verification matrix must cover
-    # all required F012 suites. The schema check is already done by the gate matrix;
-    # this is the COMPLETENESS check over the required suite list.
-    vt_raw = _mc_read_json(ev, "verification_tests.json")
-    if vt_raw:
-        try:
-            from packages.orchestration.verification_matrix import (
-                REQUIRED_F012_VERIFICATION_SUITES, validate_verification_completeness,
-            )
-            vc_problems = validate_verification_completeness(
-                vt_raw, REQUIRED_F012_VERIFICATION_SUITES)
-            errors.extend(vc_problems)
-        except ImportError:
-            pass
+    # Round 40 F4: verification completeness — when the caller supplies required suites,
+    # the verification matrix must cover all of them.
+    if required_verification_suites:
+        vt_raw = _mc_read_json(ev, "verification_tests.json")
+        if vt_raw:
+            try:
+                from packages.orchestration.verification_matrix import (
+                    validate_verification_completeness,
+                )
+                vc_problems = validate_verification_completeness(
+                    vt_raw, required_verification_suites)
+                errors.extend(vc_problems)
+            except ImportError:
+                pass
 
     # Round 40 F4: diagnostic staleness — if diagnostic_broad_run.json is present,
     # its head_commit must match the review subject's HEAD.
