@@ -13,7 +13,10 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.safe_publish import (
-    PublishCollisionError, PublishSourceError, git_tracked_status, publish_atomically,
+    CAPABILITY_LINKAT_UNAVAILABLE, CAPABILITY_SUPPORTED, CAPABILITY_UNSUPPORTED_FILESYSTEM,
+    CAPABILITY_UNSUPPORTED_OS,
+    PublishCollisionError, PublishSourceError, git_tracked_status,
+    probe_anonymous_publication_capability, publish_atomically,
     verify_published_identity, verify_source_identity,
 )
 
@@ -365,3 +368,83 @@ class TestGitTrackedStatusFailClosed:
             raise subprocess.TimeoutExpired(cmd="git", timeout=10)
         monkeypatch.setattr(sp.subprocess, "run", slow)
         assert git_tracked_status(str(repo / "x.zip"), str(repo))[0] == "GIT_TIMED_OUT"
+
+
+class TestPublicationCapabilityProbe:
+    """Round 38 F6: typed capability probe for anonymous-inode publication."""
+
+    def test_supported_on_real_filesystem(self, tmp_path):
+        cap = probe_anonymous_publication_capability(str(tmp_path))
+        assert cap == CAPABILITY_SUPPORTED
+
+    def test_unsupported_os_without_o_tmpfile(self, monkeypatch):
+        monkeypatch.delattr(os, "O_TMPFILE", raising=False)
+        import packages.orchestration.safe_publish as sp
+        monkeypatch.delattr(sp.os, "O_TMPFILE", raising=False)
+        cap = sp.probe_anonymous_publication_capability("/tmp")
+        assert cap == CAPABILITY_UNSUPPORTED_OS
+
+    def test_linkat_unavailable(self, tmp_path, monkeypatch):
+        import packages.orchestration.safe_publish as sp
+        monkeypatch.setattr(sp, "_get_linkat", lambda: None)
+        cap = sp.probe_anonymous_publication_capability(str(tmp_path))
+        assert cap == CAPABILITY_LINKAT_UNAVAILABLE
+
+    def test_unsupported_filesystem(self, tmp_path, monkeypatch):
+        import packages.orchestration.safe_publish as sp
+        orig_open = sp.os.open
+
+        def reject_tmpfile(path, flags, mode=0o644):
+            if hasattr(os, "O_TMPFILE") and (flags & os.O_TMPFILE):
+                raise OSError(95, "Operation not supported")
+            return orig_open(path, flags, mode)
+        monkeypatch.setattr(sp.os, "open", reject_tmpfile)
+        cap = sp.probe_anonymous_publication_capability(str(tmp_path))
+        assert cap == CAPABILITY_UNSUPPORTED_FILESYSTEM
+
+
+class TestSourceCleanupOwnershipBinding:
+    """Round 38 F6: source .part cleanup only unlinks the inode that was recorded
+    before the copy. A replaced or moved source is preserved."""
+
+    def _sha(self, data):
+        return __import__("hashlib").sha256(data).hexdigest()
+
+    def test_replaced_source_not_removed(self, tmp_path):
+        """If another process replaces the source .part between copy and cleanup,
+        the replacement is not unlinked."""
+        import packages.orchestration.safe_publish as sp
+        repo = _repo(tmp_path)
+        content = b"OWNED_CONTENT"
+        src = _src(repo, content)
+        sha = self._sha(content)
+        final = str(repo / "remedy-review-own.zip")
+
+        original_copy = sp._copy_to_fd
+
+        def intercepting_copy(src_path, dst_fd):
+            original_copy(src_path, dst_fd)
+            # Replace source with a DIFFERENT inode (new file at same path)
+            replacement = src_path + ".new"
+            with open(replacement, "wb") as fh:
+                fh.write(b"FOREIGN_REPLACEMENT")
+            os.rename(replacement, src_path)
+
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(sp, "_copy_to_fd", intercepting_copy)
+        try:
+            publish_atomically(src, final, str(repo), expected_sha256=sha)
+        finally:
+            monkeypatch.undo()
+        assert os.path.exists(src)
+        assert Path(src).read_bytes() == b"FOREIGN_REPLACEMENT"
+
+    def test_same_inode_source_removed(self, tmp_path):
+        """When the source inode hasn't changed, cleanup removes it."""
+        repo = _repo(tmp_path)
+        content = b"SAME_INODE"
+        src = _src(repo, content)
+        sha = self._sha(content)
+        final = str(repo / "remedy-review-same.zip")
+        publish_atomically(src, final, str(repo), expected_sha256=sha)
+        assert not os.path.exists(src)

@@ -27,6 +27,14 @@ class PublishSourceError(Exception):
     """The private source to be published is not the exact verified regular file/inode/bytes."""
 
 
+# Round 38 F6: typed capability levels for anonymous-inode publication.
+CAPABILITY_SUPPORTED = "SUPPORTED"
+CAPABILITY_UNSUPPORTED_OS = "UNSUPPORTED_OS"
+CAPABILITY_UNSUPPORTED_FILESYSTEM = "UNSUPPORTED_FILESYSTEM"
+CAPABILITY_LINKAT_UNAVAILABLE = "LINKAT_UNAVAILABLE"
+CAPABILITY_PERMISSION_DENIED = "PERMISSION_DENIED"
+
+
 # ------------------------------------------------------------------------------- libc linkat binding
 _AT_FDCWD = -100
 _AT_EMPTY_PATH = 0x1000
@@ -275,6 +283,25 @@ def _create_anonymous_inode(parent: str) -> int:
             f"cannot create anonymous inode in {parent!r} (O_TMPFILE): {exc}") from None
 
 
+def probe_anonymous_publication_capability(directory: str) -> str:
+    """Round 38 F6: typed capability probe for anonymous-inode publication.
+
+    Returns one of: SUPPORTED, UNSUPPORTED_OS, UNSUPPORTED_FILESYSTEM,
+    LINKAT_UNAVAILABLE, PERMISSION_DENIED."""
+    if not hasattr(os, "O_TMPFILE"):
+        return CAPABILITY_UNSUPPORTED_OS
+    if _get_linkat() is None:
+        return CAPABILITY_LINKAT_UNAVAILABLE
+    try:
+        fd = os.open(directory, os.O_RDWR | os.O_TMPFILE, 0o644)
+    except PermissionError:
+        return CAPABILITY_PERMISSION_DENIED
+    except OSError:
+        return CAPABILITY_UNSUPPORTED_FILESYSTEM
+    os.close(fd)
+    return CAPABILITY_SUPPORTED
+
+
 def publish_atomically(source_path: str, final_path: str, repo_root: str,
                        *, cleanup_source: bool = True,
                        expected_sha256: str | None = None) -> None:
@@ -294,6 +321,7 @@ def publish_atomically(source_path: str, final_path: str, repo_root: str,
     parent = os.path.dirname(final) or "."
     anon_fd = -1
     owned_inode: tuple[int, int] | None = None
+    source_inode: tuple[int, int] | None = None
     published = False
     try:
         if expected_sha256 is None:
@@ -301,6 +329,13 @@ def publish_atomically(source_path: str, final_path: str, repo_root: str,
                 "no verified source SHA-256 was bound; refusing to publish an unverified source")
         if not os.path.isdir(parent):
             raise PublishCollisionError(f"output parent directory does not exist: {parent!r}")
+
+        # Round 38 F6: record source inode BEFORE copy for ownership-bound cleanup.
+        try:
+            src_st = os.lstat(source_path)
+            source_inode = (src_st.st_dev, src_st.st_ino)
+        except OSError:
+            pass
 
         anon_fd = _create_anonymous_inode(parent)
         _copy_to_fd(source_path, anon_fd)
@@ -337,7 +372,18 @@ def publish_atomically(source_path: str, final_path: str, repo_root: str,
         if anon_fd >= 0:
             os.close(anon_fd)
         if cleanup_source:
-            try:
-                os.unlink(source_path)
-            except OSError:
-                pass
+            _cleanup_source_if_owned(source_path, source_inode)
+
+
+def _cleanup_source_if_owned(source_path: str,
+                             owned_inode: tuple[int, int] | None) -> None:
+    """Round 38 F6: unlink source ONLY if it is still the inode we recorded before copy.
+    A replaced or moved source is never unlinked."""
+    if owned_inode is None:
+        return
+    try:
+        st = os.lstat(source_path)
+        if (st.st_dev, st.st_ino) == owned_inode:
+            os.unlink(source_path)
+    except OSError:
+        pass

@@ -32,13 +32,17 @@ Tests: each exact reproduction → `TokenEvidenceError` → PRODUCER_ERROR → B
   Capability-aware tests. Source `.part` cleanup ownership binding: record (st_dev, st_ino)
   before copy, unlink only if same inode.
 
-## Commits (5, in order)
+## Commits (in order)
 
-1. `fix(evidence): complete versioned PE schema and semantic matrix`
-2. `fix(evidence): validated diagnostic current-vs-baseline comparison`
-3. `fix(evidence): complete authoritative verification matrix`
-4. `fix(evidence): publication capability probe and source-cleanup ownership`
-5. `docs(f012): truthful Round-38 documentation and operator state`
+1. `fix(evidence): complete versioned PE schema and semantic matrix` ✓
+1b. `fix(evidence): update integration test fixtures for cost_call_count` ✓
+2. `fix(evidence): publication capability probe and source-cleanup ownership`
+3. `docs(f012): truthful Round-38 documentation and operator state`
+
+Diagnostic comparison (F4) and authoritative verification matrix (F5) are Evidence
+artifacts packaged into the review ZIP — not separate commits. Machine-validated
+diagnostic_broad_run.json with sorted node IDs, SHA-256, and derived
+failure_sets_equal is produced and verified before ZIP build.
 
 ## Constraints (unchanged)
 
