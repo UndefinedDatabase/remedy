@@ -162,3 +162,35 @@ class TestForgedRecordsBlock:
              "current_sha256": "f" * 64, "kind": "regular"}))
         probs = _verify(self.ev, self.r, monkeypatch)
         assert any("does not confirm" in p for p in probs), probs
+
+
+class TestForgedPatchBytesBlock:
+    """Round 40 F2: a packaged patch file whose bytes do not match the canonical
+    ``commit_patch_bytes()`` producer is detected and blocks."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, repo, tmp_path):
+        from packages.orchestration.review_subject import resolve_review_subject
+        self.r, self.base = repo
+        self.ev = tmp_path / "ev"
+        self.subject = resolve_review_subject(self.r, self.base)
+        _export(self.ev, self.subject, self.r)
+
+    def test_forged_patch_bytes_block(self, monkeypatch):
+        from packages.orchestration.review_subject import (
+            COMMIT_PATCH_DIRNAME, commit_patch_filename,
+        )
+        from scripts.build_review_manifest import _verify_commit_patches, _as_view
+        monkeypatch.chdir(self.r)
+        c = self.subject.commits[0]
+        patch_path = self.ev / COMMIT_PATCH_DIRNAME / commit_patch_filename(c.commit)
+        patch_path.write_bytes(b"From fake Mon Sep 17 00:00:00 2001\nforged patch\n")
+        ev = _as_view(str(self.ev))
+        probs = _verify_commit_patches(ev, self.subject.commits)
+        assert any("not the repository" in p for p in probs), probs
+
+    def test_honest_patches_pass(self, monkeypatch):
+        from scripts.build_review_manifest import _verify_commit_patches, _as_view
+        monkeypatch.chdir(self.r)
+        ev = _as_view(str(self.ev))
+        assert _verify_commit_patches(ev, self.subject.commits) == []
