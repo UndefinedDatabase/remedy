@@ -1,53 +1,56 @@
-# Plan — F017 Scope Fences — T002
+# Plan — F017 Scope Fences — Completion Block
 
 ## Goal
-Implement T002: applicator enforcement, atomicity, violation Evidence,
-and postmortem classification. Preserve T001 behavior. Do not implement T003.
+Complete F017: repair T002 external-review findings, implement T003
+(job field + config keys + CLI), create fresh canonical Evidence,
+produce one READY_FOR_REVIEW ZIP. Manual operator only.
 
-## Scope 1 — T001 builtin-boundary repairs
-- `.git` denied as path COMPONENT anywhere (not just root prefix)
-- Effective Remedy data dir resolved dynamically via `resolve_data_root()`
-- Protected when inside worktree; `.data/` remains static fallback
-- `extra_builtin_denies` field on FenceSpec (backward compatible)
-- `resolve_effective_builtins(worktree_root)` function
-- Fix `test_non_root_git_dir_allowed` → now denied
-- Add regression tests for nested `.git` and overridden data dir
+## Scope 1 — T002 enforcement/config repairs
+- Shared effective-spec resolver: all 5 applicators call
+  `load_fence_spec(worktree_root=..., config_path=<repo>/remedy.toml)`.
+  Extract `resolve_fence_spec(worktree_root)` to do this in one place.
+- Fix `resolve_effective_builtins` fail-open: typed BuiltinResolutionResult
+  replaces bare-except-returns-empty. Failure = fail closed.
+- Fix `check_change_set` dedup: key `(path, operation)` → `(path, operation, role)`.
 
-## Scope 2 — shared change-set preflight
-- `TouchedPath` (path, operation, role) frozen dataclass
-- `FenceViolation` (path, normalized, operation, role, reason, matched_rule, rule_source)
-- `ChangeSetFenceResult` (allowed, violations, warnings, touched_count)
-- `FenceViolationError` typed exception carrying stable violation set
-- `check_change_set(worktree_root, spec, touched_paths)` pure preflight
-- Deterministic ordering, dedup, all violations collected
-- Uses `check_path` as single semantic authority
+## Scope 2 — Durable violation Evidence + real E2E tests
+- Shared `enforce_change_set(worktree_root, spec, touched, evidence_ctx)`.
+- Job-scoped, collision-safe Evidence location (not global data root).
+- Closed versioned artifact schema with redacted absolute paths.
+- Persistence failure still blocks repo mutation.
+- All 5 paths expose typed `fence_violation` classification.
+- Real production E2E tests: invoke actual entry points
+  (source_apply, patch_apply, job_fulfillment, do_continue, repo_applicator).
+- Artifact safety tests (abs path redaction, collision safety, symlink safety).
 
-## Scope 3 — applicator enforcement + atomicity
-- `source_apply.apply_structured_patch`: derive touched-path set, preflight
-  before snapshot/mutation. Violation → no mutation, no snapshot.
-- `patch_apply.apply_patch_intent`: defensive single-intent preflight.
-- `job_fulfillment.run_job_fulfill`: preflight ALL intent targets before
-  first `_approve_and_apply_intent` call. One violation → nothing applied.
-- `do_continue.py`: single-intent preflight before apply.
-- `repo_applicator`: preflight before `_write_to_repo`.
-- All enforcement uses shared `check_change_set` from scope_fences.
+## Scope 3 — Complete T003 (job/config/CLI)
+- Job model: optional `fences` field on Job (backward-compatible,
+  closed type, no str() coercion, malformed fails closed).
+- Config: extend ConfigKeySpec with `list` value_type for list-of-strings.
+  Register `scope.allow` and `scope.deny` keys.
+- CLI: `remedy job fences <id>` showing effective allow/deny/builtin rules,
+  source of each, warnings, JSON output.
 
-## Scope 4 — violation Evidence + postmortem classification
-- `fence_violations.json` artifact with closed schema
-- Written to Evidence root before error escapes
-- No absolute paths; Evidence-safe relative paths only
-- `FENCE_VIOLATION` added to `FailureClass` enum
-- `FenceViolationError` classified as `fence_violation` via typed exception
-- `fence_violation` added to `TERMINAL_STATUS_CLASSES`
+## Scope 4 — Fresh canonical F017 Evidence + package
+- Fresh F017-specific manual Evidence (new job ID, not reusing F012/R40).
+- Update T0_F017.md built state with T003 section.
+- Update .agent/live_review.md, .agent/context.md.
+- One READY_FOR_REVIEW ZIP.
 
 ## Commits
-1. T001 builtin repairs + shared change-set preflight
-2. Applicator and batch-boundary enforcement
-3. Violation Evidence + postmortem classification
-4. T002 tests + truthful documentation/state
+1. fix(f017): repair T002 config enforcement + dedup + fail-closed builtins
+2. feat(f017): shared enforce_change_set adapter + job-scoped Evidence
+3. test(f017): real production E2E tests for all 5 applicators
+4. feat(f017): T003 job model fences field + config key extension + CLI
+5. docs(f017): T003 built state + updated context/live_review
+6. evidence(f017): fresh canonical F017 Evidence + READY_FOR_REVIEW ZIP
+
+## Current Step
+Scope 1 — fixing config enforcement, dedup, fail-closed builtins.
 
 ## Constraints
-- Do not push, create PR, merge, modify main, or start T003/F018
-- Do not amend/squash T001 commits
-- Do not weaken or xfail tests
-- Zero provider calls
+- No Fable/subagents/providers/network/Docker. Manual only.
+- Do not amend/squash existing F017 commits.
+- Do not push, create PR, merge, modify main, or start F018.
+- Do not weaken, delete, skip, or xfail tests.
+- F017 stays `[~]`, F018 stays `[ ]`.
