@@ -141,6 +141,28 @@
       "patch_sha256": "ef897ca813df79762f901acab02c21eeb17fb11214c68b4d452448b0d87becde",
       "subject": "fix(evidence): correct review_subject and authority schemas in R39 Evidence",
       "tree": "26bbbf7590b19433ecb94b0e7091799c363967fe"
+    },
+    {
+      "changed_files": [
+        "remedy-job-evidence-r39/change_provenance_gate.json",
+        "remedy-job-evidence-r39/current_change_content_proof.json",
+        "remedy-job-evidence-r39/final_verifier_report.json",
+        "remedy-job-evidence-r39/review_commit_chain.json",
+        "remedy-job-evidence-r39/review_commit_patches/03e6e206842b0b81fb051a5198a08707ef513eb5.patch",
+        "remedy-job-evidence-r39/review_commit_patches/138210aa9605ea2cb856533e56eec0700874a479.patch",
+        "remedy-job-evidence-r39/review_commit_patches/5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4.patch",
+        "remedy-job-evidence-r39/review_commit_patches/9a1e63b00a76715918a440e775c78e121efece49.patch",
+        "remedy-job-evidence-r39/review_commit_patches/c60802b507e72448f58aa929c9eb47942bed72c0.patch",
+        "remedy-job-evidence-r39/review_commit_patches/d9ea496d4ff1a390209de698ec6be5eaa5649dfe.patch",
+        "remedy-job-evidence-r39/review_subject.json"
+      ],
+      "commit": "be57fa1538067a99d1fa46fb100240c2c062e86d",
+      "parents": [
+        "138210aa9605ea2cb856533e56eec0700874a479"
+      ],
+      "patch_sha256": "43ff360d6c19ac8c959140d58097abd21e65208081f9d3fc75e67c541f91963f",
+      "subject": "fix(evidence): correct content proof, commit chain, and authority sets in R39 Evidence",
+      "tree": "605ebd0745d7d8eb7377e37bc8dba733e45ef4a7"
     }
   ],
   "schema_version": "1.0.0"

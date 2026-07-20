@@ -143,6 +143,28 @@
       "patch_sha256": "ef897ca813df79762f901acab02c21eeb17fb11214c68b4d452448b0d87becde",
       "subject": "fix(evidence): correct review_subject and authority schemas in R39 Evidence",
       "tree": "26bbbf7590b19433ecb94b0e7091799c363967fe"
+    },
+    {
+      "changed_files": [
+        "remedy-job-evidence-r39/change_provenance_gate.json",
+        "remedy-job-evidence-r39/current_change_content_proof.json",
+        "remedy-job-evidence-r39/final_verifier_report.json",
+        "remedy-job-evidence-r39/review_commit_chain.json",
+        "remedy-job-evidence-r39/review_commit_patches/03e6e206842b0b81fb051a5198a08707ef513eb5.patch",
+        "remedy-job-evidence-r39/review_commit_patches/138210aa9605ea2cb856533e56eec0700874a479.patch",
+        "remedy-job-evidence-r39/review_commit_patches/5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4.patch",
+        "remedy-job-evidence-r39/review_commit_patches/9a1e63b00a76715918a440e775c78e121efece49.patch",
+        "remedy-job-evidence-r39/review_commit_patches/c60802b507e72448f58aa929c9eb47942bed72c0.patch",
+        "remedy-job-evidence-r39/review_commit_patches/d9ea496d4ff1a390209de698ec6be5eaa5649dfe.patch",
+        "remedy-job-evidence-r39/review_subject.json"
+      ],
+      "commit": "be57fa1538067a99d1fa46fb100240c2c062e86d",
+      "parents": [
+        "138210aa9605ea2cb856533e56eec0700874a479"
+      ],
+      "patch_sha256": "43ff360d6c19ac8c959140d58097abd21e65208081f9d3fc75e67c541f91963f",
+      "subject": "fix(evidence): correct content proof, commit chain, and authority sets in R39 Evidence",
+      "tree": "605ebd0745d7d8eb7377e37bc8dba733e45ef4a7"
     }
   ],
   "files": [
@@ -267,7 +289,7 @@
     {
       "base_sha256": null,
       "current_mode": "100644",
-      "current_sha256": "f39038658078d5cab821635154d1c76ccc40575a55d3ae69a1553707f2dee358",
+      "current_sha256": "3a268d12e8022b31e4f988aa64c8275a6701b2ee6d7aab1749b5a0c6ddf05283",
       "kind": "regular",
       "path": "remedy-job-evidence-r39/change_provenance_gate.json",
       "status": "added"
@@ -299,7 +321,7 @@
     {
       "base_sha256": null,
       "current_mode": "100644",
-      "current_sha256": "7e9f31589080203d0052f06166e52fc39fd4848ba995d8599b7a1c09f1048bbf",
+      "current_sha256": "574c8e18d7d594536e43c0030bdaacb12483f169d1e82c9d035c4aa257e20027",
       "kind": "regular",
       "path": "remedy-job-evidence-r39/current_change_content_proof.json",
       "status": "added"
@@ -323,7 +345,7 @@
     {
       "base_sha256": null,
       "current_mode": "100644",
-      "current_sha256": "948db421b7e5654f11ad6b67ecf433ec7060bed235e9bece0a8e549d6a102e2d",
+      "current_sha256": "8696a340cf9346c0a4c17eb8cdb0495f9aca0cba4a4781bd94b3c0881aae279a",
       "kind": "regular",
       "path": "remedy-job-evidence-r39/final_verifier_report.json",
       "status": "added"
@@ -395,7 +417,7 @@
     {
       "base_sha256": null,
       "current_mode": "100644",
-      "current_sha256": "1d80de6cd6ae4dfe2cba68f232113e24963919c36a9d7d906d497ac6fa64c257",
+      "current_sha256": "80aa31de8f9db8760c7fc2124ec8c5a5c2fd5be36416d8270b7a120dc1828133",
       "kind": "regular",
       "path": "remedy-job-evidence-r39/review_commit_chain.json",
       "status": "added"
@@ -403,7 +425,55 @@
     {
       "base_sha256": null,
       "current_mode": "100644",
-      "current_sha256": "d72e8f322f6105a098b91d5db6d0a782f15c906f90470dede5047c4956f08f1f",
+      "current_sha256": "ee7e0045151857ad2836e5a7f3826630684faaab14135b2af39715bff726bb64",
+      "kind": "regular",
+      "path": "remedy-job-evidence-r39/review_commit_patches/03e6e206842b0b81fb051a5198a08707ef513eb5.patch",
+      "status": "added"
+    },
+    {
+      "base_sha256": null,
+      "current_mode": "100644",
+      "current_sha256": "d566e5b0589ea1599f4f935638c5a97631d33d684c8dd63c6ad943ebbb880ee4",
+      "kind": "regular",
+      "path": "remedy-job-evidence-r39/review_commit_patches/138210aa9605ea2cb856533e56eec0700874a479.patch",
+      "status": "added"
+    },
+    {
+      "base_sha256": null,
+      "current_mode": "100644",
+      "current_sha256": "0a93928e7b3fb1f0d2016d40da38f07af1a5d130c8264cc34bd76e18aba88054",
+      "kind": "regular",
+      "path": "remedy-job-evidence-r39/review_commit_patches/5cc616d8ec1cb8c44cc114ea936ab44ecbd44da4.patch",
+      "status": "added"
+    },
+    {
+      "base_sha256": null,
+      "current_mode": "100644",
+      "current_sha256": "6f5fc6955d4ea4898934af821ce61f086479ef953b4979f3f6605108065dbe04",
+      "kind": "regular",
+      "path": "remedy-job-evidence-r39/review_commit_patches/9a1e63b00a76715918a440e775c78e121efece49.patch",
+      "status": "added"
+    },
+    {
+      "base_sha256": null,
+      "current_mode": "100644",
+      "current_sha256": "386fe62baa40aa0206cb8c5510e781fc966aa323b427371606779744f77c5ad1",
+      "kind": "regular",
+      "path": "remedy-job-evidence-r39/review_commit_patches/c60802b507e72448f58aa929c9eb47942bed72c0.patch",
+      "status": "added"
+    },
+    {
+      "base_sha256": null,
+      "current_mode": "100644",
+      "current_sha256": "b3f382f708f70bac15c008e6da721bc70a57dbfd07aa76ef24573b740bcfff51",
+      "kind": "regular",
+      "path": "remedy-job-evidence-r39/review_commit_patches/d9ea496d4ff1a390209de698ec6be5eaa5649dfe.patch",
+      "status": "added"
+    },
+    {
+      "base_sha256": null,
+      "current_mode": "100644",
+      "current_sha256": "fddbc55dcaa056022c5d85061ad0067ef6ce520eafcb2056efaf1a4d182ba095",
       "kind": "regular",
       "path": "remedy-job-evidence-r39/review_subject.json",
       "status": "added"
@@ -749,6 +819,6 @@
       "status": "added"
     }
   ],
-  "head_commit": "138210aa9605ea2cb856533e56eec0700874a479",
+  "head_commit": "be57fa1538067a99d1fa46fb100240c2c062e86d",
   "subject_v": 1
 }
