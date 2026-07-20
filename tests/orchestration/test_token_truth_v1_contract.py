@@ -110,6 +110,82 @@ class TestMalformedInputIsProducerError:
             build_token_truth(str(tmp_path))
 
 
+# -------------------------------------------------------- strict raw JSON decoding (round 35 F2)
+class TestStrictRawJsonDecoding:
+    """Round 35 F2: _read_json uses strict_loads — duplicate keys, NaN, Infinity, invalid UTF-8, and
+    wrong root types in token_accounting/provider_evidence/prompt_trace_summary raise
+    TokenEvidenceError (present-invalid), while genuinely absent files degrade to None."""
+
+    def _base(self, tmp_path, tid="T001"):
+        d = tmp_path / "task_runs" / tid
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def test_duplicate_key_in_token_accounting_raises(self, tmp_path):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_text(
+            '{"builder_prompt_tokens_estimated": 0, "builder_prompt_tokens_estimated": 1}')
+        (d / "provider_evidence.json").write_text('{}')
+        with pytest.raises(TokenEvidenceError, match="duplicate"):
+            build_token_truth(str(tmp_path))
+
+    def test_nan_in_provider_evidence_raises(self, tmp_path):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_text('{"builder_prompt_tokens_estimated": 0}')
+        (d / "provider_evidence.json").write_text('{"total_cost_usd": NaN}')
+        with pytest.raises(TokenEvidenceError, match="non-standard|malformed"):
+            build_token_truth(str(tmp_path))
+
+    def test_infinity_in_provider_evidence_raises(self, tmp_path):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_text('{"builder_prompt_tokens_estimated": 0}')
+        (d / "provider_evidence.json").write_text('{"total_cost_usd": Infinity}')
+        with pytest.raises(TokenEvidenceError, match="non-standard|malformed"):
+            build_token_truth(str(tmp_path))
+
+    def test_invalid_utf8_raises(self, tmp_path):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_bytes(b'{"builder_prompt_tokens_estimated": \xff}')
+        (d / "provider_evidence.json").write_text('{}')
+        with pytest.raises(TokenEvidenceError, match="UTF-8|malformed"):
+            build_token_truth(str(tmp_path))
+
+    def test_malformed_json_raises(self, tmp_path):
+        d = self._base(tmp_path)
+        (d / "token_accounting.json").write_text('{bad json}')
+        (d / "provider_evidence.json").write_text('{}')
+        with pytest.raises(TokenEvidenceError, match="malformed"):
+            build_token_truth(str(tmp_path))
+
+    def test_absent_files_degrade_gracefully(self, tmp_path):
+        """Genuinely absent token_accounting/provider_evidence files degrade to empty — no error."""
+        d = self._base(tmp_path)
+        # Only create the directory, no files inside
+        report = build_token_truth(str(tmp_path))
+        assert report["per_task"]["T001"]["builder_estimated"] == 0
+
+    def test_duplicate_key_in_prompt_trace_raises(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text(
+            '{"total_prompts": 1, "total_prompts": 2}')
+        with pytest.raises(TokenEvidenceError, match="duplicate"):
+            build_token_truth(str(tmp_path))
+
+    def test_bool_prompt_trace_count_raises(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text('{"total_prompts": true}')
+        with pytest.raises(TokenEvidenceError, match="nonnegative integer"):
+            build_token_truth(str(tmp_path))
+
+    def test_float_prompt_trace_count_raises(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text('{"total_prompts": 1.5}')
+        with pytest.raises(TokenEvidenceError, match="nonnegative integer"):
+            build_token_truth(str(tmp_path))
+
+    def test_string_prompt_trace_count_raises(self, tmp_path):
+        (tmp_path / "prompt_trace_summary.json").write_text('{"total_prompts": "3"}')
+        with pytest.raises(TokenEvidenceError, match="nonnegative integer"):
+            build_token_truth(str(tmp_path))
+
+
 # ---------------------------------------------------------------- incoherent OUTPUT → validator blocks
 class TestOutputInvariantsBlock:
     def _t(self, tmp_path):

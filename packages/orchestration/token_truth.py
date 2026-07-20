@@ -28,6 +28,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from packages.common.strict_json import StrictJsonError, strict_loads
+
 SCHEMA_VERSION = "1.0.0"
 
 _SAFE_TASK_ID_RE = re.compile(r"^T\d{3,}$")
@@ -105,10 +107,17 @@ def _strict_cost(container: dict, key: str, ctx: str) -> float | None:
 
 
 def _read_json(path: Path) -> Any:
+    """Round 35 F2: strict JSON decode — rejects duplicate keys, NaN, Infinity, invalid UTF-8.
+    Absent files degrade to None (genuinely absent). Present-but-malformed files raise
+    ``TokenEvidenceError`` so the packaging authority reports PRODUCER_ERROR."""
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        raw = path.read_bytes()
+    except OSError:
         return None
+    try:
+        return strict_loads(raw, where=str(path))
+    except StrictJsonError as exc:
+        raise TokenEvidenceError(f"malformed JSON in {path}: {exc}") from None
 
 
 def _task_ids(base: Path) -> list[str]:
@@ -320,7 +329,7 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
     trace = _read_json(base / "prompt_trace_summary.json")
     prompt_trace_count = 0
     if isinstance(trace, dict):
-        prompt_trace_count = _as_int(trace.get("total_prompts"))
+        prompt_trace_count = _strict_count(trace, "total_prompts", "prompt_trace_summary.json")
 
     agg_actual_coverage_complete = (
         agg_actual_call_count == agg_provider_call_count
