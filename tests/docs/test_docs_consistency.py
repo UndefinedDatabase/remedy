@@ -1797,3 +1797,38 @@ class TestF012Round34IsPinned:
         assert "complete TokenTruthV1 input + output semantics" in doc
         assert "TokenEvidenceError" in doc
         assert "PRODUCER_ERROR" in doc and "BLOCKED_EVIDENCE" in doc
+
+
+class TestF012Round35IsPinned:
+    """Round 35: verified-inode publication & strict token producer closure — FD-retained inode-bound
+    publication, strict raw JSON decoding, producer self-validation, and authority validity."""
+
+    def _f012(self):
+        from pathlib import Path as _P
+        return _P("docs/roadmap/features/T0_F012.md").read_text()
+
+    def test_the_round_is_recorded(self):
+        assert "Hardening round 35" in self._f012()
+
+    def test_fd_retained_inode_bound_publication(self):
+        doc = self._f012()
+        assert "O_RDONLY|O_NOFOLLOW" in doc
+        assert "verify_published_inode" in doc
+        assert "EXDEV" in doc
+
+    def test_strict_raw_json_decoding(self):
+        doc = self._f012()
+        assert "strict_loads" in doc
+        assert "duplicate keys" in doc
+        assert "_strict_count" in doc
+
+    def test_producer_self_validates(self):
+        doc = self._f012()
+        assert "validate_token_truth(report)" in doc
+        assert "cache-only" in doc.lower()
+        assert "actual_total_tokens" in doc
+
+    def test_authority_validates_both(self):
+        doc = self._f012()
+        assert "validates both canonical and supplied" in doc or "validates canonical" in doc
+        assert "VERIFIED_EQUAL" in doc
