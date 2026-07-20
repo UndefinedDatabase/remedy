@@ -552,3 +552,216 @@ class TestJobFencesCLI:
     def test_handler_registered(self):
         from apps.cli.commands.job import COMMAND_HANDLERS
         assert "job.fences" in COMMAND_HANDLERS
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — centralized config (env var enforcement)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestEnvVarEnforcement:
+    """Finding #1: env vars REMEDY_SCOPE_DENY/ALLOW must be enforced."""
+
+    def test_env_deny_enforced_via_resolve(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_SCOPE_DENY", "secrets/**")
+        spec = resolve_fence_spec(tmp_path)
+        assert "secrets/**" in spec.deny_globs
+
+    def test_env_allow_enforced_via_resolve(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_SCOPE_ALLOW", "src/**")
+        spec = resolve_fence_spec(tmp_path)
+        assert "src/**" in spec.allow_globs
+
+    def test_env_deny_blocks_path(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_SCOPE_DENY", "secrets/**")
+        spec = resolve_fence_spec(tmp_path)
+        from packages.orchestration.scope_fences import check_path
+        result = check_path("secrets/key.pem", tmp_path, spec)
+        assert not result.allowed
+
+    def test_env_beats_project_toml(self, tmp_path, monkeypatch):
+        (tmp_path / "remedy.toml").write_text(
+            '[remedy.scope]\ndeny = ["vendor/**"]\n', encoding="utf-8",
+        )
+        monkeypatch.setenv("REMEDY_SCOPE_DENY", "secrets/**")
+        spec = resolve_fence_spec(tmp_path)
+        assert "secrets/**" in spec.deny_globs
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — FenceConfigError (fail-closed config)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestFenceConfigErrorE2E:
+    """Finding #2: malformed config must fail closed, not allow-all."""
+
+    def test_malformed_toml_raises(self, tmp_path):
+        (tmp_path / "remedy.toml").write_text("{{bad toml}}", encoding="utf-8")
+        with pytest.raises(FenceConfigError, match="malformed config"):
+            resolve_fence_spec(tmp_path)
+
+    def test_non_string_glob_raises(self):
+        from packages.orchestration.scope_fences import load_fence_spec
+        with pytest.raises(FenceConfigError, match="must be a string"):
+            load_fence_spec(job_fences={"allow": [123], "deny": []})
+
+    def test_non_list_allow_raises(self):
+        from packages.orchestration.scope_fences import load_fence_spec
+        with pytest.raises(FenceConfigError, match="must be a list"):
+            load_fence_spec(job_fences={"allow": "not-a-list", "deny": []})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — closed JobFences (extra="forbid")
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestClosedJobFences:
+    """Finding #3: JobFences must reject unknown fields."""
+
+    def test_extra_field_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            JobFences(allow=["src/**"], deny=[], sneaky="hack")
+
+    def test_valid_fields_accepted(self):
+        from packages.core.models import JobFences
+        fences = JobFences(allow=["src/**"], deny=["vendor/**"])
+        assert fences.allow == ["src/**"]
+        assert fences.deny == ["vendor/**"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — EffectiveFenceResult provenance
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestEffectiveFenceResult:
+    """Provenance carrier for resolved fence spec."""
+
+    def test_per_job_source(self, tmp_path):
+        from packages.orchestration.scope_fences import resolve_fence_spec_effective
+        result = resolve_fence_spec_effective(
+            tmp_path, job_fences={"allow": ["src/**"], "deny": []},
+        )
+        assert result.source == "per-job"
+        assert result.spec.allow_globs == ("src/**",)
+
+    def test_central_config_source(self, tmp_path):
+        from packages.orchestration.scope_fences import resolve_fence_spec_effective
+        (tmp_path / "remedy.toml").write_text(
+            '[remedy.scope]\ndeny = ["vendor/**"]\n', encoding="utf-8",
+        )
+        result = resolve_fence_spec_effective(tmp_path)
+        assert result.source == "central-config"
+        assert "vendor/**" in result.spec.deny_globs
+
+    def test_defaults_source(self, tmp_path):
+        from packages.orchestration.scope_fences import resolve_fence_spec_effective
+        result = resolve_fence_spec_effective(tmp_path)
+        assert result.source == "defaults"
+
+    def test_env_var_source(self, tmp_path, monkeypatch):
+        from packages.orchestration.scope_fences import resolve_fence_spec_effective
+        monkeypatch.setenv("REMEDY_SCOPE_DENY", "secrets/**")
+        result = resolve_fence_spec_effective(tmp_path)
+        assert result.source == "central-config"
+        assert "secrets/**" in result.spec.deny_globs
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — secure artifact writer
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestSecureArtifactWriter:
+    """Finding #6: artifact writer must use atomic write with O_NOFOLLOW."""
+
+    def test_artifact_is_regular_file(self, tmp_path):
+        touched = [TouchedPath(".git/HEAD", "modify")]
+        result = check_change_set(tmp_path, FenceSpec(), touched)
+        path = write_fence_violations_artifact(result, tmp_path, job_id="j1")
+        assert path.is_file()
+        assert not path.is_symlink()
+
+    def test_artifact_valid_json(self, tmp_path):
+        touched = [TouchedPath(".git/HEAD", "modify")]
+        result = check_change_set(tmp_path, FenceSpec(), touched)
+        path = write_fence_violations_artifact(result, tmp_path, job_id="j1")
+        data = json.loads(path.read_text())
+        assert data["schema"] == "fence_violations/v1"
+        assert "event_id" in data
+        assert data["violation_count"] == 1
+
+    def test_no_absolute_paths_in_exception(self, tmp_path):
+        touched = [TouchedPath("/etc/passwd", "modify")]
+        result = check_change_set(tmp_path, FenceSpec(), touched)
+        assert not result.allowed
+        exc = FenceViolationError(result)
+        assert "/etc/" not in str(exc)
+        assert "<abs-redacted>" in str(exc)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — ContinueStopReason.FENCE_VIOLATION
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestContinueStopReasonFenceViolation:
+    """Finding #10: do_continue must use FENCE_VIOLATION, not APPLY_FAILED."""
+
+    def test_fence_violation_stop_reason_exists(self):
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert hasattr(ContinueStopReason, "FENCE_VIOLATION")
+        assert ContinueStopReason.FENCE_VIOLATION == "fence_violation"
+
+    def test_apply_failed_still_exists(self):
+        from packages.orchestration.do_continue import ContinueStopReason
+        assert hasattr(ContinueStopReason, "APPLY_FAILED")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Repair findings — repo_applicator propagates job_fences
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRepoApplicatorJobFences:
+    """Finding #8: repo_applicator must propagate job_fences."""
+
+    def test_apply_with_job_fences_deny(self, tmp_path, monkeypatch):
+        from packages.core.models import JobFences
+        from packages.orchestration.repo_applicator import apply_task_output_to_repo
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+
+        artifact = Artifact(
+            name="test",
+            content="Proposed Changes:\n  - test\n",
+            metadata={"task_type": "documentation", "summary": "test"},
+        )
+        job_fences = {"allow": [], "deny": ["docs/**"]}
+        with pytest.raises(FenceViolationError):
+            apply_task_output_to_repo(artifact, tmp_path, job_fences=job_fences)
+
+    def test_check_and_apply_propagates_fences(self, tmp_path, monkeypatch):
+        from packages.core.models import JobFences
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.repo_applicator import check_and_apply_to_repo
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+
+        job = Job(
+            name="test",
+            fences=JobFences(allow=[], deny=["docs/**"]),
+        )
+        set_permission(job, Capability.repo_generated_write, allow=True)
+
+        artifact = Artifact(
+            name="test",
+            content="Proposed Changes:\n  - test\n",
+            metadata={"task_type": "documentation", "summary": "test"},
+        )
+        with pytest.raises(FenceViolationError):
+            check_and_apply_to_repo(job, artifact, tmp_path)
