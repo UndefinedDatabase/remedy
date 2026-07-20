@@ -521,11 +521,21 @@ def main() -> int:
         # one concurrent invocation wins and no existing destination is ever truncated.
         import tempfile as _tempfile
         from packages.orchestration.safe_publish import (
-            PublishCollisionError, PublishSourceError, publish_atomically,
+            CAPABILITY_SUPPORTED,
+            PublishCollisionError, PublishSourceError,
+            probe_anonymous_publication_capability, publish_atomically,
         )
         final_status = str(verified_status.get("package_status") or "UNKNOWN")
         final_path = _final_path_for(args.final_template, final_status)
         _out_dir = os.path.dirname(os.path.abspath(final_path)) or "."
+        _pub_capability = probe_anonymous_publication_capability(_out_dir)
+        if _pub_capability != CAPABILITY_SUPPORTED:
+            print(f"REVIEW_ZIP_ERROR: anonymous publication not supported in "
+                  f"{_out_dir!r}: {_pub_capability}", file=sys.stderr)
+            print(json.dumps({"publication_capability": _pub_capability,
+                              "publication_capability_directory": _out_dir,
+                              **verified_status}))
+            return 4
         _fd, _tmp = _tempfile.mkstemp(prefix=".remedy_zip_", suffix=".part", dir=_out_dir)
         os.close(_fd)
         published = False
@@ -572,6 +582,7 @@ def main() -> int:
                       "tombstone_count": len(plan.tombstones),
                       "final_path": os.path.relpath(os.path.abspath(final_path), os.path.abspath(args.repo_root)).replace(os.sep, "/"),
                       "final_sha256": published_sha256,
+                      "publication_capability": _pub_capability,
                       **verified_status}))
     return 0
 
