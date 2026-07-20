@@ -102,6 +102,7 @@ def write_manual_task_evidence(
         "reviews": [{"round": 1, "kind": "operator_attestation", "verdict": "operator_attested",
                      "reviewer": "operator", "summary": note, "finding_count": 0, "findings": []}]})
     _w(os.path.join(td, "provider_evidence.json"), {
+        "schema_version": "1.0.0",
         "task_id": task_id, "execution_mode": "manual_operator_repair", "builder_provider": "operator",
         "reviewer_provider": "operator", "provider_call_count": 0, "prompt_trace_available": False,
         "prompt_trace_status": "not_applicable_manual_repair", "actual_provider_available": False,

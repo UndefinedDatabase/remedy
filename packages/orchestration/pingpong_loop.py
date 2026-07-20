@@ -3493,7 +3493,13 @@ def _build_provider_evidence(result: PingPongResult) -> dict[str, Any]:
     builder_write_mode = result.claude_cli_write_mode or "none"
     reviewer_write_mode = "none"
 
+    from packages.orchestration.provider_token_evidence import PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION
+
+    em = "manual_operator_repair" if result.execution_mode == "manual_operator_repair" else "provider_backed"
+
     evidence: dict[str, Any] = {
+        "schema_version": PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION,
+        "execution_mode": em,
         "builder_provider": result.builder_provider,
         "reviewer_provider": result.reviewer_provider,
         "builder_provider_kind": builder_kind,

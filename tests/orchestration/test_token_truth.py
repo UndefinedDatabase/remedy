@@ -39,8 +39,12 @@ def _seed_task(
     }))
     if provider_evidence is None:
         provider_evidence = {
+            "schema_version": "1.0.0",
+            "execution_mode": "provider_backed",
             "builder_provider": "claude-cli",
-            "reviewer_provider": "claude-cli",
+            "provider_call_count": 1,
+            "actual_call_count": 0,
+            "cost_call_count": 0,
         }
     (d / "provider_evidence.json").write_text(json.dumps(provider_evidence))
 
@@ -100,8 +104,13 @@ def test_multiple_tasks_aggregate(tmp_path: Path) -> None:
 
 def test_actual_usage_populated(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", provider_evidence={
+        "schema_version": "1.0.0",
+        "execution_mode": "provider_backed",
         "builder_provider": "anthropic-api",
         "model": "claude-opus-4-8",
+        "provider_call_count": 1,
+        "actual_call_count": 1,
+        "cost_call_count": 0,
         "usage": {
             "input_tokens": 1200,
             "output_tokens": 340,
@@ -184,7 +193,12 @@ def test_per_task_includes_role(tmp_path: Path) -> None:
         "configured_model": "opus",
     }))
     (d / "provider_evidence.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "execution_mode": "provider_backed",
         "builder_provider": "claude-cli",
+        "provider_call_count": 1,
+        "actual_call_count": 0,
+        "cost_call_count": 0,
     }))
     report = build_token_truth(str(tmp_path))
     t001 = report["per_task"]["T001"]
@@ -201,7 +215,12 @@ def test_per_task_actual_model_from_provider_evidence(tmp_path: Path) -> None:
         "repair_prompt_tokens_estimated": 0,
     }))
     (d / "provider_evidence.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "execution_mode": "provider_backed",
         "builder_provider": "claude-cli",
+        "provider_call_count": 1,
+        "actual_call_count": 0,
+        "cost_call_count": 0,
         "builder_actual_model": "claude-opus-4-20250514",
         "actual_model_verified": True,
     }))
@@ -220,7 +239,12 @@ def test_per_task_actual_model_verified(tmp_path: Path) -> None:
         "repair_prompt_tokens_estimated": 0,
     }))
     (d / "provider_evidence.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "execution_mode": "provider_backed",
         "builder_provider": "claude-cli",
+        "provider_call_count": 1,
+        "actual_call_count": 0,
+        "cost_call_count": 0,
         "builder_actual_model": "claude-opus-4-20250514",
         "actual_model_verified": True,
     }))
@@ -241,7 +265,12 @@ def test_actual_available_false_no_fake_actuals(tmp_path: Path) -> None:
 def test_actual_available_true_no_estimation_method(tmp_path: Path) -> None:
     _seed_task(tmp_path, builder=500, reviewer=200, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude",
+                   "provider_call_count": 1,
+                   "actual_call_count": 1,
+                   "cost_call_count": 0,
                    "usage": {"input_tokens": 1000, "output_tokens": 500},
                })
     report = build_token_truth(str(tmp_path))
@@ -259,7 +288,12 @@ def test_missing_role_defaults_to_unknown(tmp_path: Path) -> None:
         "repair_prompt_tokens_estimated": 0,
     }))
     (d / "provider_evidence.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
+        "execution_mode": "provider_backed",
         "builder_provider": "claude-cli",
+        "provider_call_count": 1,
+        "actual_call_count": 0,
+        "cost_call_count": 0,
     }))
     report = build_token_truth(str(tmp_path))
     t001 = report["per_task"]["T001"]
@@ -277,11 +311,10 @@ def test_estimation_method_recorded_when_estimated(tmp_path: Path) -> None:
 def test_manual_operator_repair_not_actual_usage(tmp_path: Path) -> None:
     """A manual operator repair must never be labeled as actual provider usage."""
     _seed_task(tmp_path, provider_evidence={
-        "builder_provider": "operator",
-        "reviewer_provider": "operator",
+        "schema_version": "1.0.0",
         "execution_mode": "manual_operator_repair",
-        # Stray counters must NOT be counted as actual usage.
-        "usage": {"input_tokens": 1000, "output_tokens": 500},
+        "builder_provider": "operator",
+        "provider_call_count": 0,
     })
     report = build_token_truth(str(tmp_path))
     assert report["actual_available"] is False
@@ -299,18 +332,21 @@ def test_mixed_provider_and_manual_no_double_count(tmp_path: Path) -> None:
     'mixed' (some measured, some not)."""
     _seed_task(tmp_path, "T001", builder=1000, reviewer=0, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "anthropic-api",
                    "usage": {"input_tokens": 1200, "output_tokens": 300,
                              "total_tokens": 1500},
                    "total_cost_usd": 0.01,
-                   "cost_call_count": 1,
-                   "actual_call_count": 1,
                    "provider_call_count": 1,
+                   "actual_call_count": 1,
+                   "cost_call_count": 1,
                })
     _seed_task(tmp_path, "T002", builder=2000, reviewer=0, repair=0,
                provider_evidence={
-                   "builder_provider": "operator",
+                   "schema_version": "1.0.0",
                    "execution_mode": "manual_operator_repair",
+                   "builder_provider": "operator",
                    "provider_call_count": 0,
                })
 
@@ -332,8 +368,9 @@ def test_estimated_never_labeled_actual_all_manual(tmp_path: Path) -> None:
     actual usage or cost."""
     _seed_task(tmp_path, "T001", builder=4000, reviewer=1000, repair=0,
                provider_evidence={
-                   "builder_provider": "operator",
+                   "schema_version": "1.0.0",
                    "execution_mode": "manual_operator_repair",
+                   "builder_provider": "operator",
                    "provider_call_count": 0,
                })
 
@@ -361,9 +398,10 @@ def test_manual_repair_kind_manual_no_provider_usage(tmp_path: Path) -> None:
         "repair_prompt_tokens_estimated": 0,
     }))
     (d / "provider_evidence.json").write_text(json.dumps({
+        "schema_version": "1.0.0",
         "task_id": "T001",
-        "builder_provider": "operator",
         "execution_mode": "manual_operator_repair",
+        "builder_provider": "operator",
         "provider_call_count": 0,
     }))
 
@@ -383,6 +421,8 @@ def test_manual_repair_kind_manual_no_provider_usage(tmp_path: Path) -> None:
 def test_high_confidence_measurement_source(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.005,
@@ -396,21 +436,21 @@ def test_high_confidence_measurement_source(tmp_path: Path) -> None:
 def test_mixed_confidence_measurement_source(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.005,
                    "provider_call_count": 1, "actual_call_count": 1, "cost_call_count": 1,
                })
-    _seed_task(tmp_path, "T002", builder=100, reviewer=50, repair=0,
-               provider_evidence={"builder_provider": "claude-cli"})
+    _seed_task(tmp_path, "T002", builder=100, reviewer=50, repair=0)
     report = build_token_truth(str(tmp_path))
     assert report["measurement_confidence"] == "mixed"
     assert report["measurement_source"] == "mixed_provider_actuals_and_heuristic"
 
 
 def test_low_confidence_measurement_source(tmp_path: Path) -> None:
-    _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
-               provider_evidence={"builder_provider": "claude-cli"})
+    _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0)
     report = build_token_truth(str(tmp_path))
     assert report["measurement_confidence"] == "low"
     assert report["measurement_source"] == "character_heuristic"
@@ -419,7 +459,12 @@ def test_low_confidence_measurement_source(tmp_path: Path) -> None:
 def test_actual_usage_without_cost_keeps_cost_none(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
+                   "provider_call_count": 1,
+                   "actual_call_count": 1,
+                   "cost_call_count": 0,
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                })
     report = build_token_truth(str(tmp_path))
@@ -433,7 +478,12 @@ def test_actual_usage_without_cost_keeps_cost_none(tmp_path: Path) -> None:
 def test_configured_model_does_not_become_actual(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
+                   "provider_call_count": 1,
+                   "actual_call_count": 0,
+                   "cost_call_count": 0,
                    "builder_configured_model": "opus",
                    "reviewer_configured_model": "opus",
                })
@@ -449,7 +499,12 @@ def test_actual_model_without_verified_raises(tmp_path: Path) -> None:
     """Round 37 F3: actual model identity without actual_model_verified=true is contradictory."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
+                   "provider_call_count": 1,
+                   "actual_call_count": 0,
+                   "cost_call_count": 0,
                    "builder_configured_model": "opus",
                    "builder_actual_model": "claude-opus-4-20250514",
                })
@@ -462,6 +517,8 @@ def test_actual_model_without_verified_raises(tmp_path: Path) -> None:
 def test_actual_coverage_all_measured(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -478,6 +535,8 @@ def test_actual_coverage_all_measured(tmp_path: Path) -> None:
 def test_actual_coverage_mixed(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -493,6 +552,8 @@ def test_actual_coverage_mixed(tmp_path: Path) -> None:
 def test_actual_coverage_none(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "provider_call_count": 2,
                    "actual_call_count": 0,
@@ -507,6 +568,8 @@ def test_actual_coverage_none(tmp_path: Path) -> None:
 def test_partial_cost_returns_null(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -523,6 +586,8 @@ def test_partial_cost_returns_null(tmp_path: Path) -> None:
 def test_full_cost_returns_sum(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.05,
@@ -538,6 +603,8 @@ def test_full_cost_returns_sum(tmp_path: Path) -> None:
 def test_no_cost_returns_null_no_heuristic(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "provider_call_count": 2,
@@ -556,6 +623,8 @@ def test_cost_missing_because_actuals_missing(tmp_path: Path) -> None:
     total_cost_usd stays null and the reason names the missing actuals."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -574,6 +643,8 @@ def test_cost_missing_because_actuals_and_cost_missing(tmp_path: Path) -> None:
     """Some calls lack actuals AND some actual-covered calls lack cost."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -591,6 +662,8 @@ def test_no_actuals_at_all_cost_null(tmp_path: Path) -> None:
     """Real provider calls with no parsed actuals: cost null, reason honest."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "provider_call_count": 2,
                    "actual_call_count": 0,
@@ -606,6 +679,8 @@ def test_no_actuals_at_all_cost_null(tmp_path: Path) -> None:
 def test_cost_coverage_reason_none_when_complete(tmp_path: Path) -> None:
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.05,
@@ -627,6 +702,8 @@ def test_root_provider_call_count_from_provider_evidence(tmp_path: Path) -> None
     trace count is exposed separately as prompt_trace_count."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -636,6 +713,8 @@ def test_root_provider_call_count_from_provider_evidence(tmp_path: Path) -> None
                })
     _seed_task(tmp_path, "T002", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
                    "total_cost_usd": 0.02,
@@ -661,6 +740,8 @@ def test_actual_call_count_exceeding_provider_is_a_producer_error(tmp_path: Path
     from packages.orchestration.token_truth import TokenEvidenceError
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -676,6 +757,8 @@ def test_manual_repair_task_not_in_provider_call_count(tmp_path: Path) -> None:
     """Manual/fake tasks never contribute real provider calls."""
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={
+                   "schema_version": "1.0.0",
+                   "execution_mode": "provider_backed",
                    "builder_provider": "claude-cli",
                    "usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
                    "total_cost_usd": 0.01,
@@ -685,11 +768,10 @@ def test_manual_repair_task_not_in_provider_call_count(tmp_path: Path) -> None:
                })
     _seed_task(tmp_path, "T002", builder=100, reviewer=50, repair=0,
                provider_evidence={
-                   "builder_provider": "operator",
+                   "schema_version": "1.0.0",
                    "execution_mode": "manual_operator_repair",
+                   "builder_provider": "operator",
                    "provider_call_count": 0,
-                   "actual_call_count": 0,
-                   "cost_call_count": 0,
                })
     report = build_token_truth(str(tmp_path))
     assert report["provider_call_count"] == 2

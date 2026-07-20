@@ -36,17 +36,18 @@ class TestProducerOutputAlwaysValidates:
 
     def test_manual_zero_provider(self, tmp_path):
         _seed(tmp_path, "T001", {"task_id": "T001", "kind": "manual", "reason": "manual"},
-              {"task_id": "T001", "execution_mode": "manual_operator_repair", "provider_call_count": 0})
+              {"schema_version": "1.0.0", "task_id": "T001", "execution_mode": "manual_operator_repair", "provider_call_count": 0})
         tt = build_token_truth(str(tmp_path))
         assert tt["measurement_source"] == "character_heuristic" and tt["measurement_confidence"] == "low"
         assert validate_token_truth(tt) == []
 
     def test_complete_provider_actuals_high(self, tmp_path):
         _seed(tmp_path, "T001", {"task_id": "T001", "builder_prompt_tokens_estimated": 0},
-              {"task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
-               "actual_call_count": 1, "cost_call_count": 1, "actual_prompt_tokens": 10,
-               "actual_completion_tokens": 5, "actual_total_tokens": 15, "total_cost_usd": 0.01,
-               "actual_model_verified": True, "builder_actual_model": "c", "builder_provider": "claude"})
+              {"schema_version": "1.0.0", "task_id": "T001", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 1, "cost_call_count": 1,
+               "actual_prompt_tokens": 10, "actual_completion_tokens": 5, "actual_total_tokens": 15,
+               "total_cost_usd": 0.01, "actual_model_verified": True, "builder_actual_model": "c",
+               "builder_provider": "claude"})
         tt = build_token_truth(str(tmp_path))
         assert tt["measurement_source"] == "provider_actuals" and tt["measurement_confidence"] == "high"
         assert validate_token_truth(tt) == []
@@ -54,11 +55,13 @@ class TestProducerOutputAlwaysValidates:
     def test_mixed_partial_actual_coverage(self, tmp_path):
         # One task measured, one heuristic → mixed.
         _seed(tmp_path, "T001", {"task_id": "T001", "builder_prompt_tokens_estimated": 0},
-              {"task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
-               "actual_call_count": 1, "cost_call_count": 0, "actual_prompt_tokens": 10,
-               "actual_completion_tokens": 5, "actual_total_tokens": 15, "builder_provider": "claude"})
+              {"schema_version": "1.0.0", "task_id": "T001", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 1, "cost_call_count": 0,
+               "actual_prompt_tokens": 10, "actual_completion_tokens": 5, "actual_total_tokens": 15,
+               "builder_provider": "claude"})
         _seed(tmp_path, "T002", {"task_id": "T002", "builder_prompt_tokens_estimated": 3},
-              {"task_id": "T002", "execution_mode": "provider_backed", "provider_call_count": 1})
+              {"schema_version": "1.0.0", "task_id": "T002", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0})
         tt = build_token_truth(str(tmp_path))
         assert tt["measurement_source"] == "mixed_provider_actuals_and_heuristic"
         assert tt["measurement_confidence"] == "mixed"
@@ -66,7 +69,8 @@ class TestProducerOutputAlwaysValidates:
 
     def test_provider_calls_without_measured_usage_is_low(self, tmp_path):
         _seed(tmp_path, "T001", {"task_id": "T001", "builder_prompt_tokens_estimated": 5},
-              {"task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1})
+              {"schema_version": "1.0.0", "task_id": "T001", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0})
         tt = build_token_truth(str(tmp_path))
         assert tt["measurement_confidence"] == "low" and tt["actual_available"] is False
         assert validate_token_truth(tt) == []
@@ -86,8 +90,9 @@ class TestSharedProducerHelperValidates:
 
     def test_seed_with_actuals_validates(self, tmp_path):
         _TT._seed_task(tmp_path, "T001", provider_evidence={
-            "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
-            "actual_call_count": 1, "cost_call_count": 1, "actual_prompt_tokens": 8,
-            "actual_completion_tokens": 4, "actual_total_tokens": 12, "total_cost_usd": 0.02,
-            "actual_model_verified": True, "builder_actual_model": "c", "builder_provider": "claude"})
+            "schema_version": "1.0.0", "task_id": "T001", "execution_mode": "provider_backed",
+            "provider_call_count": 1, "actual_call_count": 1, "cost_call_count": 1,
+            "actual_prompt_tokens": 8, "actual_completion_tokens": 4, "actual_total_tokens": 12,
+            "total_cost_usd": 0.02, "actual_model_verified": True, "builder_actual_model": "c",
+            "builder_provider": "claude"})
         assert validate_token_truth(build_token_truth(str(tmp_path))) == []

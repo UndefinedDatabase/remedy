@@ -531,9 +531,11 @@ def attest_operator_repair(
         target.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         written[filename] = str(target)
 
+    from packages.orchestration.provider_token_evidence import PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION
     _write_json(
         "provider_evidence.json",
         {
+            "schema_version": PROVIDER_TOKEN_EVIDENCE_SCHEMA_VERSION,
             "task_id": task_id,
             "execution_mode": ExecutionMode.MANUAL_OPERATOR_REPAIR.value,
             "builder_provider": "operator",

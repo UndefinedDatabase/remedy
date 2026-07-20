@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.common.strict_json import StrictJsonError, strict_loads
+from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -213,9 +214,11 @@ def validate_provider_evidence(pe: dict, ctx: str) -> None:
             f"{ctx}: total_cost_usd present ({cost!r}) but cost_call_count is absent")
 
     ac = pe.get("actual_call_count")
+    _core_actual_fields = ("actual_prompt_tokens", "actual_completion_tokens", "actual_total_tokens")
     has_actual_counters = any(
         alias in pe or (isinstance(pe.get("usage"), dict) and alias in pe["usage"])
-        for aliases in _ACTUAL_ALIASES.values()
+        for field, aliases in _ACTUAL_ALIASES.items()
+        if field in _core_actual_fields
         for alias in aliases
     )
 
@@ -320,6 +323,7 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
         _pe_ctx = f"task_runs/{tid}/provider_evidence.json"
         pe = _read_json(base / "task_runs" / tid / "provider_evidence.json")
         if pe is not None:
+            validate_provider_token_evidence(pe, _pe_ctx)
             validate_provider_evidence(pe, _pe_ctx)
             if not provider:
                 provider = (_strict_string(pe, "builder_provider", _pe_ctx)
@@ -397,11 +401,9 @@ def build_token_truth(evidence_dir: str) -> dict[str, Any]:
                 agg_actual_call_count += task_ac
                 agg_cost_call_count += task_cc
             elif exec_mode != "manual_operator_repair":
-                agg_provider_call_count += 1
-                if task_has_actual:
-                    agg_actual_call_count += 1
-                    if task_cost is not None:
-                        agg_cost_call_count += 1
+                raise TokenEvidenceError(
+                    f"{_pe_ctx}: provider_call_count is required for "
+                    f"execution_mode={exec_mode!r}")
 
         task_role = _strict_string(acc, "role", _acc_ctx, default="unknown") if acc else "unknown"
         task_configured_model = _strict_string(acc, "configured_model", _acc_ctx) if acc else ""

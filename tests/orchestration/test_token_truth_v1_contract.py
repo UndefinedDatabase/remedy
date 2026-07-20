@@ -26,7 +26,8 @@ def _seed(base: Path, tid: str, acc: dict, pe: dict) -> None:
 
 
 def _complete_actuals_pe(**over) -> dict:
-    pe = {"task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
+    pe = {"schema_version": "1.0.0",
+          "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
           "actual_call_count": 1, "cost_call_count": 1, "actual_prompt_tokens": 10,
           "actual_completion_tokens": 5, "actual_total_tokens": 15,
           "actual_cache_creation_tokens": 3, "actual_cache_read_tokens": 2,
@@ -48,12 +49,14 @@ def _valid_high_truth(tmp_path: Path) -> dict:
 class TestValidProducerStates:
     def test_zero_provider_manual(self, tmp_path):
         _seed(tmp_path, "T001", {"kind": "manual", "reason": "manual"},
-              {"execution_mode": "manual_operator_repair", "provider_call_count": 0})
+              {"schema_version": "1.0.0", "execution_mode": "manual_operator_repair",
+               "provider_call_count": 0})
         assert validate_token_truth(build_token_truth(str(tmp_path))) == []
 
     def test_provider_without_usage(self, tmp_path):
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 5},
-              {"execution_mode": "provider_backed", "provider_call_count": 1})
+              {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0})
         assert validate_token_truth(build_token_truth(str(tmp_path))) == []
 
     def test_complete_actuals_and_cost_with_cache_and_model(self, tmp_path):
@@ -73,7 +76,8 @@ class TestValidProducerStates:
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, _complete_actuals_pe(
             cost_call_count=0, total_cost_usd=None))
         _seed(tmp_path, "T002", {"builder_prompt_tokens_estimated": 3},
-              {"execution_mode": "provider_backed", "provider_call_count": 1})
+              {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0})
         t = build_token_truth(str(tmp_path))
         assert t["measurement_confidence"] == "mixed"
         assert validate_token_truth(t) == []
@@ -94,16 +98,36 @@ _BAD_PE = {
     "negative_cost": _complete_actuals_pe(total_cost_usd=-0.5),
     "boolean_token": _complete_actuals_pe(actual_prompt_tokens=True),
     "cost_without_cost_call_count": {
+        "schema_version": "1.0.0",
         "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
         "actual_call_count": 1, "actual_prompt_tokens": 10, "actual_completion_tokens": 5,
         "actual_total_tokens": 15, "total_cost_usd": 0.25},
     "ambiguous_actual_model": {
+        "schema_version": "1.0.0",
         "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 1,
+        "actual_call_count": 0, "cost_call_count": 0,
         "actual_model": "claude-x", "actual_model_verified": True},
     "verified_model_zero_provider_calls": {
+        "schema_version": "1.0.0",
         "task_id": "T001", "execution_mode": "provider_backed", "provider_call_count": 0,
         "actual_call_count": 0, "cost_call_count": 0,
         "actual_model_verified": True, "builder_actual_model": "claude-x"},
+    "missing_schema_version": {
+        "execution_mode": "provider_backed", "provider_call_count": 0,
+        "actual_call_count": 0, "cost_call_count": 0},
+    "wrong_schema_version": {
+        "schema_version": "999.0", "execution_mode": "provider_backed",
+        "provider_call_count": 0, "actual_call_count": 0, "cost_call_count": 0},
+    "unknown_trust_bearing_field": {
+        "schema_version": "1.0.0", "execution_mode": "provider_backed",
+        "provider_call_count": 0, "actual_call_count": 0, "cost_call_count": 0,
+        "claimed_actual_cost_usd": 999},
+    "unknown_execution_mode": {
+        "schema_version": "1.0.0", "execution_mode": "banana",
+        "provider_call_count": 0, "actual_call_count": 0, "cost_call_count": 0},
+    "missing_provider_call_count": {
+        "schema_version": "1.0.0", "execution_mode": "provider_backed",
+        "actual_call_count": 0, "cost_call_count": 0},
 }
 
 
@@ -116,7 +140,8 @@ class TestMalformedInputIsProducerError:
 
     def test_negative_estimated_is_producer_error(self, tmp_path):
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": -3},
-              {"execution_mode": "provider_backed", "provider_call_count": 1})
+              {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0})
         with pytest.raises(TokenEvidenceError):
             build_token_truth(str(tmp_path))
 
@@ -308,7 +333,8 @@ class TestProducerDerivesMissingTotal:
 
     def test_prompt_completion_without_total_derives(self, tmp_path):
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0},
-              {"execution_mode": "provider_backed", "provider_call_count": 1,
+              {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+               "provider_call_count": 1,
                "actual_call_count": 1, "cost_call_count": 1, "total_cost_usd": 0.01,
                "actual_prompt_tokens": 10, "actual_completion_tokens": 5,
                "builder_provider": "claude"})
@@ -326,7 +352,8 @@ class TestCacheOnlyNotHigh:
         """Cache-only evidence (only cache_creation/cache_read, no prompt/completion/total) is
         treated as no-actual-usage — low confidence, actual_available=False."""
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0},
-              {"execution_mode": "provider_backed", "provider_call_count": 1,
+              {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+               "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
                "actual_cache_creation_tokens": 5, "actual_cache_read_tokens": 3,
                "builder_provider": "claude"})
         t = build_token_truth(str(tmp_path))
@@ -445,21 +472,24 @@ class TestScalarCoercionBlocked:
 
     @pytest.mark.parametrize("field,val", _SCALAR_MUTATIONS, ids=[f"{f}={v!r}" for f, v in _SCALAR_MUTATIONS])
     def test_non_string_identity_raises(self, tmp_path, field, val):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1}
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0}
         pe[field] = val
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, pe)
         with pytest.raises(TokenEvidenceError, match="not a string"):
             build_token_truth(str(tmp_path))
 
     def test_non_string_actual_missing_reason_raises(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
               "actual_missing_reasons": [123]}
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, pe)
         with pytest.raises(TokenEvidenceError, match="not a list of strings"):
             build_token_truth(str(tmp_path))
 
     def test_usage_non_object_raises(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
               "usage": [1, 2, 3]}
         _seed(tmp_path, "T001", {"builder_prompt_tokens_estimated": 0}, pe)
         with pytest.raises(TokenEvidenceError, match="usage is not an object"):
@@ -469,7 +499,6 @@ class TestScalarCoercionBlocked:
         d = tmp_path / "task_runs" / "T001"
         d.mkdir(parents=True)
         (d / "token_accounting.json").write_text('{"role": 123, "builder_prompt_tokens_estimated": 0}')
-        (d / "provider_evidence.json").write_text("{}")
         with pytest.raises(TokenEvidenceError, match="not a string"):
             build_token_truth(str(tmp_path))
 
@@ -477,7 +506,6 @@ class TestScalarCoercionBlocked:
         d = tmp_path / "task_runs" / "T001"
         d.mkdir(parents=True)
         (d / "token_accounting.json").write_text('{"configured_model": 42, "builder_prompt_tokens_estimated": 0}')
-        (d / "provider_evidence.json").write_text("{}")
         with pytest.raises(TokenEvidenceError, match="not a string"):
             build_token_truth(str(tmp_path))
 
@@ -489,28 +517,32 @@ class TestSemanticProviderEvidenceContract:
     _ACC = {"builder_prompt_tokens_estimated": 0}
 
     def test_verified_true_without_model_identity(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
               "actual_model_verified": True}
         _seed(tmp_path, "T001", self._ACC, pe)
         with pytest.raises(TokenEvidenceError, match="actual_model_verified=true but no actual model"):
             build_token_truth(str(tmp_path))
 
     def test_model_identity_without_verified(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
               "builder_actual_model": "claude-x", "actual_model_verified": False}
         _seed(tmp_path, "T001", self._ACC, pe)
         with pytest.raises(TokenEvidenceError, match="actual model identity present but actual_model_verified is not true"):
             build_token_truth(str(tmp_path))
 
     def test_model_identity_without_verified_field(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
               "reviewer_actual_model": "claude-y"}
         _seed(tmp_path, "T001", self._ACC, pe)
         with pytest.raises(TokenEvidenceError, match="actual model identity present"):
             build_token_truth(str(tmp_path))
 
     def test_cost_present_but_cost_call_count_zero(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1,
               "actual_call_count": 1, "cost_call_count": 0, "total_cost_usd": 0.05,
               "actual_prompt_tokens": 10, "actual_completion_tokens": 5, "actual_total_tokens": 15,
               "actual_model_verified": True, "builder_actual_model": "claude-x"}
@@ -519,7 +551,8 @@ class TestSemanticProviderEvidenceContract:
             build_token_truth(str(tmp_path))
 
     def test_actual_counters_with_actual_call_count_zero(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1,
               "actual_call_count": 0, "cost_call_count": 0,
               "actual_prompt_tokens": 10, "actual_completion_tokens": 5}
         _seed(tmp_path, "T001", self._ACC, pe)
@@ -527,8 +560,8 @@ class TestSemanticProviderEvidenceContract:
             build_token_truth(str(tmp_path))
 
     def test_valid_zero_calls_zero_counters_passes(self, tmp_path):
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 0,
-              "actual_call_count": 0, "cost_call_count": 0}
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 0, "actual_call_count": 0, "cost_call_count": 0}
         _seed(tmp_path, "T001", self._ACC, pe)
         t = build_token_truth(str(tmp_path))
         assert validate_token_truth(t) == []
@@ -539,25 +572,28 @@ class TestSemanticProviderEvidenceContract:
         assert validate_token_truth(t) == []
 
     def test_actual_model_field_rejected_as_ambiguous(self, tmp_path):
-        """Round 38 F2: generic actual_model is ambiguous — use builder/reviewer fields."""
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        """Round 38 F2 / Round 39: actual_model rejected — closed schema excludes it."""
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1, "actual_call_count": 0, "cost_call_count": 0,
               "actual_model": "claude-z"}
         _seed(tmp_path, "T001", self._ACC, pe)
-        with pytest.raises(TokenEvidenceError, match="generic 'actual_model' field is ambiguous"):
+        with pytest.raises(TokenEvidenceError, match="unknown fields"):
             build_token_truth(str(tmp_path))
 
     def test_cost_without_cost_call_count_raises(self, tmp_path):
-        """Round 38 F1: total_cost_usd=0.25 without cost_call_count must be PRODUCER_ERROR."""
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 1,
+        """Round 38 F1 / Round 39: cost_call_count required for provider_backed."""
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 1,
               "actual_call_count": 1, "actual_prompt_tokens": 10, "actual_completion_tokens": 5,
               "actual_total_tokens": 15, "total_cost_usd": 0.25}
         _seed(tmp_path, "T001", self._ACC, pe)
-        with pytest.raises(TokenEvidenceError, match="total_cost_usd present.*cost_call_count is absent"):
+        with pytest.raises(TokenEvidenceError, match="cost_call_count.*missing"):
             build_token_truth(str(tmp_path))
 
     def test_verified_model_with_zero_provider_calls_raises(self, tmp_path):
         """Round 38 F3: actual_model_verified=true with provider_call_count=0 is contradictory."""
-        pe = {"execution_mode": "provider_backed", "provider_call_count": 0,
+        pe = {"schema_version": "1.0.0", "execution_mode": "provider_backed",
+              "provider_call_count": 0,
               "actual_call_count": 0, "cost_call_count": 0,
               "actual_model_verified": True, "builder_actual_model": "claude-x"}
         _seed(tmp_path, "T001", self._ACC, pe)
@@ -565,10 +601,10 @@ class TestSemanticProviderEvidenceContract:
             build_token_truth(str(tmp_path))
 
     def test_actual_model_with_verified_and_cost_call_count(self, tmp_path):
-        """Round 38 F2: actual_model in PE is always rejected, even with verified=true."""
+        """Round 38 F2 / Round 39: actual_model rejected — closed schema excludes it."""
         pe = _complete_actuals_pe(actual_model="claude-z")
         _seed(tmp_path, "T001", self._ACC, pe)
-        with pytest.raises(TokenEvidenceError, match="generic 'actual_model' field is ambiguous"):
+        with pytest.raises(TokenEvidenceError, match="unknown fields"):
             build_token_truth(str(tmp_path))
 
 

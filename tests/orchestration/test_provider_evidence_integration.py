@@ -305,10 +305,12 @@ def _seed(base: Path, tid: str, *, actual: bool, cost: float | None = None,
         "reviewer_prompt_tokens_estimated": 50,
         "repair_prompt_tokens_estimated": 0,
     }))
-    pe: dict = {"builder_provider": "claude-cli"}
     is_manual = execution_mode == "manual_operator_repair"
-    if execution_mode:
-        pe["execution_mode"] = execution_mode
+    pe: dict = {
+        "schema_version": "1.0.0",
+        "execution_mode": execution_mode or ("manual_operator_repair" if is_manual else "provider_backed"),
+        "builder_provider": "claude-cli",
+    }
     if is_manual:
         pe["provider_call_count"] = 0
     elif actual:
@@ -320,6 +322,10 @@ def _seed(base: Path, tid: str, *, actual: bool, cost: float | None = None,
             pe["cost_call_count"] = 1
         else:
             pe["cost_call_count"] = 0
+    else:
+        pe["provider_call_count"] = 1
+        pe["actual_call_count"] = 0
+        pe["cost_call_count"] = 0
     (d / "provider_evidence.json").write_text(json.dumps(pe))
 
 
