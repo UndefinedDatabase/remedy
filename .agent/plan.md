@@ -1,40 +1,60 @@
-# Plan — F018 Runtime-Authority & Final-Packaging Round
+# Plan — F018 Budgets & Stop Conditions (Final Closure)
 
 ## Goal
-Close 9 external reproductions from the reviewed ZIP. All source fixes,
-real production tests, truthful Evidence, one canonical full review ZIP.
+Close 10 blocking reproductions from external review of
+remedy-review-20260721-235837-READY_FOR_REVIEW.zip.
+Steps 1-10 scope-based closure. One canonical READY_FOR_REVIEW ZIP.
 
-## Status: IN PROGRESS
+## Status: COMMITTING
 
-## Scope 1 — Final branch and package authority
-- [x] Inspect branch, record base/HEAD/commit count
-- [ ] Ensure clean tree before Evidence
-- [ ] Full review ZIP via make_review_zip.sh pipeline
+## Scope 1 — Clean branch history
+- [x] Backup mixed branch, cherry-pick 14 legitimate commits
+- [x] Exclude Evidence blobs from git tracking (.gitignore)
 
-## Scope 2 — Immutable budget persistence and project context
-- [x] _cmd_do_job_run: use persisted JobPlan budgets, do not re-read CWD
-- [x] _cmd_create_job: pass project repo_path to resolve_job_budgets
-- [x] _cmd_do: pass project_root=repo to resolve_job_budgets
+## Scope 2 — Strict persisted budget decode
+- [x] model_validate failure blocks as corrupt_budget_state (never None)
 
-## Scope 3 — Resumed Actuals and strict counters
-- [x] run_job: seed accumulators from persisted budget_actuals on resume
-- [x] run_job: persist budget_actuals before ALL stop paths
-- [x] collect_counters_from_actuals: reject bool/float/string coercion
-- [x] BudgetCounters: reject naive evaluated_at, empty source strings
-- [x] closed source vocabulary (_VALID_SOURCES)
+## Scope 3 — Strict resumed actuals
+- [x] Reject bool/float/string/negative for persisted counter fields
+- [x] Validate actual_call_count <= provider_call_count
 
-## Scope 4 — JobPlan Decision, display and stop identity
-- [x] _cmd_job_budget: dual Core Job / JobPlan lookup
-- [x] decision_queue: support JobPlan (has .job_id not .id)
-- [x] Pre-work stop: allocate episode before computing budget identity
+## Scope 4 — BudgetCounters invariants
+- [x] Closed source vocabulary (_VALID_SOURCES)
+- [x] Measured tokens require measured calls
+- [x] Measured calls require sources
+- [x] Timezone-aware started_at
 
-## Scope 5 — Real runtime verification, docs and canonical package
-- [x] RunManifest: normalize deadline to UTC, empty dict → null
-- [x] runtime_integration_gate: 8 real test bindings added
-- [x] Replace inspect-only tests with real runtime tests (55 pass)
-- [x] Update T0_F018.md
-- [ ] Update context.md
-- [ ] Canonical Evidence + full review ZIP
+## Scope 5 — JobPlan Decision Queue compatibility
+- [x] getattr fallback for .metadata and .artifacts on JobPlan
+- [x] AttributeError catch in list_patch_intents and derive_stop_reasons
+
+## Scope 6 — Stopped job budget override block
+- [x] CLI refuses budget flags on stopped jobs (exit 2, Decision workflow)
+
+## Scope 7 — Real runtime gate
+- [x] Replace test-name-existence checks with test_execution_binding checks
+- [x] Gate accepts verification_data, binds to executed test records
+- [x] Zero-checks guard (empty checks → BLOCKED)
+- [x] Gate schema version bumped to 1.1.0
+- [x] Evidence pipeline writes gate AFTER verification_tests
+
+## Scope 8 — Verification authority
+- [x] All F018 suites pass: 258 tests
+- [x] Related suites pass: 389 tests
+- [x] Gate + flow suites pass: 260 tests
+
+## Scope 9 — Docs & state updates
+- [x] plan.md updated
+- [ ] context.md updated
+- [ ] live_review.md updated
+- [ ] T0_F018.md updated
+- [ ] STATUS.md updated
+
+## Scope 10 — Final sequencing
+- [ ] Commit all tracked files
+- [ ] Confirm clean tree
+- [ ] Generate Evidence + ZIP
+- [ ] Verify HEAD/hashes/size/members
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.
