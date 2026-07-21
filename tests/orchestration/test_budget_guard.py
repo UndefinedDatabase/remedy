@@ -30,7 +30,7 @@ class TestBudgetCounters:
         assert c.total_call_count == 0
 
     def test_total_call_count(self):
-        c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2)
+        c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2, actual_sources=("pingpong_actuals",))
         assert c.total_call_count == 5
 
     def test_has_unmeasured(self):
@@ -38,13 +38,14 @@ class TestBudgetCounters:
         assert c.has_unmeasured is True
 
     def test_token_description_all_measured(self):
-        c = BudgetCounters(provider_calls=1, measured_token_total=5000, measured_call_count=1)
+        c = BudgetCounters(provider_calls=1, measured_token_total=5000, measured_call_count=1, actual_sources=("pingpong_actuals",))
         assert c.token_description() == "5000 tokens"
 
     def test_token_description_with_unmeasured(self):
         c = BudgetCounters(
             provider_calls=3, measured_token_total=5000,
             measured_call_count=1, unmeasured_call_count=2,
+            actual_sources=("pingpong_actuals",),
         )
         desc = c.token_description()
         assert ">=" in desc
@@ -60,7 +61,7 @@ class TestBudgetCounters:
             elapsed_seconds=120.5,
             evaluated_at=T0,
             started_at=T0 - timedelta(minutes=2),
-            actual_sources=("cli", "log"),
+            actual_sources=("pingpong_actuals", "token_actuals"),
         )
         d = c.to_json()
         assert d["provider_calls"] == 5
@@ -68,7 +69,7 @@ class TestBudgetCounters:
         assert d["measured_call_count"] == 4
         assert d["unmeasured_call_count"] == 1
         assert d["elapsed_seconds"] == 120.5
-        assert d["actual_sources"] == ["cli", "log"]
+        assert d["actual_sources"] == ["pingpong_actuals", "token_actuals"]
         assert d["started_at"] is not None
 
     def test_frozen(self):
@@ -98,10 +99,10 @@ class TestBudgetCounters:
 
     def test_rejects_inconsistent_call_counts(self):
         with pytest.raises(BudgetCounterError, match="!="):
-            BudgetCounters(provider_calls=5, measured_call_count=1, unmeasured_call_count=1)
+            BudgetCounters(provider_calls=5, measured_call_count=1, unmeasured_call_count=1, actual_sources=("pingpong_actuals",))
 
     def test_consistent_call_counts_pass(self):
-        c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2)
+        c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2, actual_sources=("pingpong_actuals",))
         assert c.provider_calls == 5
 
     def test_rejects_nan_elapsed(self):
@@ -128,20 +129,20 @@ class TestEvaluateNoBudgets:
 class TestEvaluateProviderCalls:
     def test_under_limit(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=5, measured_call_count=5)
+        c = BudgetCounters(provider_calls=5, measured_call_count=5, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is False
 
     def test_at_limit(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=10, measured_call_count=10)
+        c = BudgetCounters(provider_calls=10, measured_call_count=10, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
         assert r.first_exhausted_limit == "max_provider_calls"
 
     def test_over_limit(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=15, measured_call_count=15)
+        c = BudgetCounters(provider_calls=15, measured_call_count=15, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
         assert r.first_exhausted_limit == "max_provider_calls"
@@ -150,14 +151,14 @@ class TestEvaluateProviderCalls:
 class TestEvaluateTokens:
     def test_under_limit_all_measured(self):
         b = JobBudgets(max_total_tokens=100_000)
-        c = BudgetCounters(provider_calls=5, measured_token_total=50_000, measured_call_count=5)
+        c = BudgetCounters(provider_calls=5, measured_token_total=50_000, measured_call_count=5, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is False
         assert r.token_lower_bound is False
 
     def test_at_limit_all_measured(self):
         b = JobBudgets(max_total_tokens=100_000)
-        c = BudgetCounters(provider_calls=5, measured_token_total=100_000, measured_call_count=5)
+        c = BudgetCounters(provider_calls=5, measured_token_total=100_000, measured_call_count=5, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
         assert r.first_exhausted_limit == "max_total_tokens"
@@ -170,6 +171,7 @@ class TestEvaluateTokens:
             measured_token_total=50_000,
             measured_call_count=3,
             unmeasured_call_count=2,
+            actual_sources=("pingpong_actuals",),
         )
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is False
@@ -185,6 +187,7 @@ class TestEvaluateTokens:
             measured_token_total=120_000,
             measured_call_count=4,
             unmeasured_call_count=1,
+            actual_sources=("pingpong_actuals",),
         )
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
@@ -259,6 +262,7 @@ class TestEvaluateMultipleLimits:
             provider_calls=10,
             measured_token_total=2000,
             measured_call_count=10,
+            actual_sources=("pingpong_actuals",),
         )
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
@@ -270,6 +274,7 @@ class TestEvaluateMultipleLimits:
             provider_calls=5,
             measured_token_total=2000,
             measured_call_count=5,
+            actual_sources=("pingpong_actuals",),
         )
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
@@ -288,6 +293,7 @@ class TestEvaluateMultipleLimits:
             measured_token_total=500,
             measured_call_count=5,
             elapsed_seconds=600.0,
+            actual_sources=("pingpong_actuals",),
         )
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
@@ -300,6 +306,7 @@ class TestEvaluateMultipleLimits:
             measured_token_total=999_999,
             measured_call_count=999,
             elapsed_seconds=99999.0,
+            actual_sources=("pingpong_actuals",),
         )
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is False
@@ -308,7 +315,7 @@ class TestEvaluateMultipleLimits:
 class TestEvaluationSerialization:
     def test_to_json_structure(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=5, measured_call_count=5, evaluated_at=T0)
+        c = BudgetCounters(provider_calls=5, measured_call_count=5, evaluated_at=T0, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         d = r.to_json()
         assert "configured_limits" in d
@@ -327,13 +334,13 @@ class TestEvaluationSerialization:
 class TestSourceDescriptions:
     def test_provider_calls_source(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=5, measured_call_count=5)
+        c = BudgetCounters(provider_calls=5, measured_call_count=5, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert any("provider_calls: 5/10" in s for s in r.source_descriptions)
 
     def test_tokens_source(self):
         b = JobBudgets(max_total_tokens=100_000)
-        c = BudgetCounters(provider_calls=1, measured_token_total=50_000, measured_call_count=1)
+        c = BudgetCounters(provider_calls=1, measured_token_total=50_000, measured_call_count=1, actual_sources=("pingpong_actuals",))
         r = evaluate_budget(b, c, now=T0)
         assert any("tokens:" in s for s in r.source_descriptions)
 
@@ -422,6 +429,7 @@ class TestRunContractConsolidation:
         assert "max_tokens" not in status.exhausted_budgets
         counters = BudgetCounters(
             provider_calls=1, measured_token_total=5000, measured_call_count=1,
+            actual_sources=("pingpong_actuals",),
         )
         evaluation = evaluate_budget(job.budgets, counters, now=T0)
         assert evaluation.exhausted is False

@@ -1,4 +1,4 @@
-"""Tests for runtime_integration_gate.py — static wiring verification."""
+"""Tests for runtime_integration_gate.py — static wiring + test execution bindings."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 
 from packages.orchestration.runtime_integration_gate import (
     INTEGRATION_CHECKS,
+    TEST_EXECUTION_BINDINGS,
     build_runtime_integration_gate,
     write_runtime_integration_gate,
 )
@@ -44,7 +45,7 @@ def test_all_calls_present_passes(tmp_path):
     assert gate["checks_total"] == 2
     assert gate["issues"] == []
     assert all(c["found"] for c in gate["checks"])
-    assert gate["schema_version"] == "1.0.0"
+    assert gate["schema_version"] == "1.1.0"
 
 
 def test_missing_call_blocks(tmp_path):
@@ -60,7 +61,6 @@ def test_missing_call_blocks(tmp_path):
 
 
 def test_missing_source_file_blocks(tmp_path):
-    # No file created at all.
     gate = build_runtime_integration_gate(str(tmp_path), checks=_CHECKS)
 
     assert gate["verdict"] == "BLOCKED"
@@ -80,24 +80,134 @@ def test_default_checks_cover_all_gate_writers():
     } <= patterns
 
 
-def test_default_checks_target_job_evidence(tmp_path):
-    # A repo whose job_evidence.py wires every writer passes the default checks.
-    body = "\n".join(
-        f"{c['pattern']}(...)" for c in INTEGRATION_CHECKS
-    )
-    _seed_source(tmp_path, "packages/orchestration/job_evidence.py", body + "\n")
+def _seed_all_static_checks(tmp_path):
+    """Seed every source file referenced by INTEGRATION_CHECKS with its patterns."""
+    by_file: dict[str, list[str]] = {}
+    for c in INTEGRATION_CHECKS:
+        by_file.setdefault(c["source_file"], []).append(c["pattern"])
+    for rel, patterns in by_file.items():
+        _seed_source(tmp_path, rel, "\n".join(f"{p}(...)" for p in patterns) + "\n")
+
+
+def test_default_static_checks_pass_with_patterns(tmp_path):
+    _seed_all_static_checks(tmp_path)
 
     gate = build_runtime_integration_gate(str(tmp_path))
 
+    static_checks = [c for c in gate["checks"] if c["check_type"] == "call_exists"]
+    assert len(static_checks) == len(INTEGRATION_CHECKS)
+    assert all(c["found"] for c in static_checks)
+
+    binding_checks = [c for c in gate["checks"] if c["check_type"] == "test_execution_binding"]
+    assert len(binding_checks) == len(TEST_EXECUTION_BINDINGS)
+    assert all(not c["found"] for c in binding_checks)
+    assert gate["verdict"] == "BLOCKED"
+
+
+def test_execution_binding_passes_with_matching_data(tmp_path):
+    _seed_all_static_checks(tmp_path)
+
+    vdata = {"runs": []}
+    for b in TEST_EXECUTION_BINDINGS:
+        vdata["runs"].append({
+            "run_id": f"vr-{b['check_id']}",
+            "command": f"pytest {b['test_file']}",
+            "exit_code": 0,
+            "passed": b["min_passed"] + 10,
+            "failed": 0,
+            "skipped": 0,
+            "selected": b["min_passed"] + 10,
+            "node_ids": [f"{b['test_file']}::test_{i}" for i in range(3)],
+            "output_hash": "sha256:abc123",
+            "head_sha": "deadbeef",
+            "test_files": [b["test_file"]],
+        })
+
+    gate = build_runtime_integration_gate(
+        str(tmp_path), verification_data=vdata,
+    )
     assert gate["verdict"] == "PASS"
-    assert gate["checks_total"] == len(INTEGRATION_CHECKS)
+    assert gate["checks_total"] == len(INTEGRATION_CHECKS) + len(TEST_EXECUTION_BINDINGS)
+    assert gate["issues"] == []
+
+    for c in gate["checks"]:
+        if c["check_type"] == "test_execution_binding":
+            assert c["found"] is True
+            assert "bound_run" in c
+            assert c["bound_run"]["exit_code"] == 0
+            assert c["bound_run"]["head_sha"] == "deadbeef"
+
+
+def test_execution_binding_fails_without_data(tmp_path):
+    _seed_all_static_checks(tmp_path)
+
+    gate = build_runtime_integration_gate(str(tmp_path))
+
+    bindings = [c for c in gate["checks"] if c["check_type"] == "test_execution_binding"]
+    assert len(bindings) == len(TEST_EXECUTION_BINDINGS)
+    assert all(not c["found"] for c in bindings)
+    assert gate["verdict"] == "BLOCKED"
+
+
+def test_execution_binding_fails_insufficient_passes(tmp_path):
+    _seed_all_static_checks(tmp_path)
+
+    b = TEST_EXECUTION_BINDINGS[0]
+    vdata = {"runs": [{
+        "run_id": "vr-1",
+        "command": f"pytest {b['test_file']}",
+        "exit_code": 0,
+        "passed": 1,
+        "failed": 0,
+        "test_files": [b["test_file"]],
+    }]}
+
+    gate = build_runtime_integration_gate(
+        str(tmp_path), verification_data=vdata,
+    )
+    target = next(c for c in gate["checks"]
+                  if c["check_id"] == b["check_id"])
+    assert target["found"] is False
+    assert gate["verdict"] == "BLOCKED"
+
+
+def test_execution_binding_fails_nonzero_exit(tmp_path):
+    _seed_all_static_checks(tmp_path)
+
+    b = TEST_EXECUTION_BINDINGS[0]
+    vdata = {"runs": [{
+        "run_id": "vr-1",
+        "command": f"pytest {b['test_file']}",
+        "exit_code": 1,
+        "passed": 200,
+        "failed": 1,
+        "test_files": [b["test_file"]],
+    }]}
+
+    gate = build_runtime_integration_gate(
+        str(tmp_path), verification_data=vdata,
+    )
+    target = next(c for c in gate["checks"]
+                  if c["check_id"] == b["check_id"])
+    assert target["found"] is False
+
+
+def test_zero_checks_blocks(tmp_path):
+    gate = build_runtime_integration_gate(str(tmp_path), checks=[])
+
+    assert gate["verdict"] == "BLOCKED"
+    assert gate["checks_total"] == 0
+    assert "zero checks" in gate["issues"][0]
 
 
 def test_write_registers_output(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
-    body = "\n".join(f"{c['pattern']}(...)" for c in INTEGRATION_CHECKS)
-    _seed_source(repo, "packages/orchestration/job_evidence.py", body + "\n")
+    by_file: dict[str, list[str]] = {}
+    for c in INTEGRATION_CHECKS:
+        by_file.setdefault(c["source_file"], []).append(c["pattern"])
+    for rel, patterns in by_file.items():
+        _seed_source(repo, rel, "\n".join(f"{p}(...)" for p in patterns) + "\n")
 
     evidence = tmp_path / "evidence"
     written: dict[str, str] = {}
@@ -105,11 +215,49 @@ def test_write_registers_output(tmp_path):
 
     assert "runtime_integration_gate.json" in written
     on_disk = json.loads((evidence / "runtime_integration_gate.json").read_text())
+    assert on_disk["schema_version"] == "1.1.0"
+
+
+def test_write_with_verification_data(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    by_file: dict[str, list[str]] = {}
+    for c in INTEGRATION_CHECKS:
+        by_file.setdefault(c["source_file"], []).append(c["pattern"])
+    for rel, patterns in by_file.items():
+        _seed_source(repo, rel, "\n".join(f"{p}(...)" for p in patterns) + "\n")
+
+    vdata = {"runs": []}
+    for b in TEST_EXECUTION_BINDINGS:
+        vdata["runs"].append({
+            "run_id": f"vr-{b['check_id']}",
+            "command": f"pytest {b['test_file']}",
+            "exit_code": 0,
+            "passed": b["min_passed"] + 5,
+            "failed": 0,
+            "test_files": [b["test_file"]],
+        })
+
+    evidence = tmp_path / "evidence"
+    written: dict[str, str] = {}
+    write_runtime_integration_gate(
+        str(evidence), str(repo), written, verification_data=vdata,
+    )
+
+    on_disk = json.loads((evidence / "runtime_integration_gate.json").read_text())
     assert on_disk["verdict"] == "PASS"
-    assert on_disk["schema_version"] == "1.0.0"
 
 
 def test_write_noop_when_no_evidence_dir(tmp_path):
     written: dict[str, str] = {}
     write_runtime_integration_gate("", str(tmp_path), written)
     assert written == {}
+
+
+def test_custom_checks_skip_execution_bindings(tmp_path):
+    _seed_source(tmp_path, "pkg/pipeline.py", "write_gate_a()\nwrite_gate_b()\n")
+
+    gate = build_runtime_integration_gate(str(tmp_path), checks=_CHECKS)
+
+    assert gate["checks_total"] == 2
+    assert not any(c["check_type"] == "test_execution_binding" for c in gate["checks"])

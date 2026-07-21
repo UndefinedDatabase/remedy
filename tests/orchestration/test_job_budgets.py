@@ -408,7 +408,7 @@ class TestBudgetCountersStrictValidation:
             elapsed_seconds=60.0,
             evaluated_at=now,
             started_at=now - timedelta(seconds=60),
-            actual_sources=("run_1", "run_2"),
+            actual_sources=("pingpong_actuals", "token_actuals"),
         )
         assert c.provider_calls == 5
 
@@ -713,6 +713,7 @@ class TestBudgetStopSignal:
         budgets = JobBudgets(max_provider_calls=3)
         counters = BudgetCounters(
             provider_calls=3, measured_call_count=3,
+            actual_sources=("pingpong_actuals",),
         )
         result = should_stop("test-job", budgets=budgets, counters=counters)
         assert result.should_stop
@@ -776,7 +777,7 @@ class TestHonestBudgetDisplay:
     def test_with_runs_has_evaluation(self):
         from packages.orchestration.budget_guard import BudgetCounters, evaluate_budget
         budgets = JobBudgets(max_provider_calls=10)
-        counters = BudgetCounters(provider_calls=3, measured_call_count=3)
+        counters = BudgetCounters(provider_calls=3, measured_call_count=3, actual_sources=("pingpong_actuals",))
         evaluation = evaluate_budget(budgets, counters)
         out = {"evaluation": evaluation.to_json()}
         assert out["evaluation"]["counters"]["provider_calls"] == 3

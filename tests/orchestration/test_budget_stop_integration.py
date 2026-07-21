@@ -54,7 +54,7 @@ class TestShouldStopOperatorFirst:
     def test_operator_stop_before_budget(self, tmp_path):
         request_stop("test-job-003", reason="kill", control_root_path=tmp_path)
         budgets = JobBudgets(max_provider_calls=10)
-        counters = BudgetCounters(provider_calls=100, measured_call_count=100)
+        counters = BudgetCounters(provider_calls=100, measured_call_count=100, actual_sources=("pingpong_actuals",))
         r = should_stop(
             "test-job-003",
             budgets=budgets,
@@ -67,7 +67,7 @@ class TestShouldStopOperatorFirst:
 
     def test_budget_exhausted_no_operator(self, tmp_path):
         budgets = JobBudgets(max_provider_calls=3)
-        counters = BudgetCounters(provider_calls=3, measured_call_count=3)
+        counters = BudgetCounters(provider_calls=3, measured_call_count=3, actual_sources=("pingpong_actuals",))
         r = should_stop(
             "test-job-004",
             budgets=budgets,
@@ -82,7 +82,7 @@ class TestShouldStopOperatorFirst:
 
     def test_budget_not_exhausted_continues(self, tmp_path):
         budgets = JobBudgets(max_provider_calls=10)
-        counters = BudgetCounters(provider_calls=2, measured_call_count=2)
+        counters = BudgetCounters(provider_calls=2, measured_call_count=2, actual_sources=("pingpong_actuals",))
         r = should_stop(
             "test-job-005",
             budgets=budgets,
@@ -98,7 +98,7 @@ class TestThreeCallLimit:
 
     def test_three_calls_allowed(self, tmp_path):
         budgets = JobBudgets(max_provider_calls=3)
-        counters = BudgetCounters(provider_calls=2, measured_call_count=2)
+        counters = BudgetCounters(provider_calls=2, measured_call_count=2, actual_sources=("pingpong_actuals",))
         r = should_stop(
             "test-job-3c1",
             budgets=budgets,
@@ -110,7 +110,7 @@ class TestThreeCallLimit:
 
     def test_at_three_calls_stops(self, tmp_path):
         budgets = JobBudgets(max_provider_calls=3)
-        counters = BudgetCounters(provider_calls=3, measured_call_count=3)
+        counters = BudgetCounters(provider_calls=3, measured_call_count=3, actual_sources=("pingpong_actuals",))
         r = should_stop(
             "test-job-3c2",
             budgets=budgets,
@@ -162,7 +162,7 @@ class TestShouldStopSerialization:
 
     def test_budget_stop_to_json(self, tmp_path):
         budgets = JobBudgets(max_provider_calls=1)
-        counters = BudgetCounters(provider_calls=5, measured_call_count=5)
+        counters = BudgetCounters(provider_calls=5, measured_call_count=5, actual_sources=("pingpong_actuals",))
         r = should_stop(
             "test-job-j2",
             budgets=budgets,
@@ -184,7 +184,7 @@ class TestDecisionQueueEntry:
 
     def test_budget_evaluation_carries_limit_info(self):
         budgets = JobBudgets(max_total_tokens=1000)
-        counters = BudgetCounters(provider_calls=5, measured_token_total=2000, measured_call_count=5)
+        counters = BudgetCounters(provider_calls=5, measured_token_total=2000, measured_call_count=5, actual_sources=("pingpong_actuals",))
         evaluation = evaluate_budget(budgets, counters, now=T0)
         assert evaluation.exhausted is True
         assert evaluation.first_exhausted_limit == "max_total_tokens"
@@ -261,10 +261,10 @@ class TestCounterValidation:
 
     def test_inconsistent_counts_rejected(self):
         with pytest.raises(BudgetCounterError):
-            BudgetCounters(provider_calls=5, measured_call_count=2, unmeasured_call_count=1)
+            BudgetCounters(provider_calls=5, measured_call_count=2, unmeasured_call_count=1, actual_sources=("pingpong_actuals",))
 
     def test_consistent_counts_accepted(self):
-        c = BudgetCounters(provider_calls=3, measured_call_count=2, unmeasured_call_count=1)
+        c = BudgetCounters(provider_calls=3, measured_call_count=2, unmeasured_call_count=1, actual_sources=("pingpong_actuals",))
         assert c.provider_calls == 3
 
 

@@ -245,6 +245,7 @@ class TestCounterContradictions:
                 provider_calls=5,
                 measured_call_count=3,
                 unmeasured_call_count=3,
+                actual_sources=("pingpong_actuals",),
             )
 
 
@@ -457,24 +458,26 @@ class TestRuntimeIntegrationGateNonzero:
         f018_ids = {cid for cid in check_ids if cid.startswith("f018_")}
         assert len(f018_ids) >= 5
 
-    def test_gate_passes_on_live_repo(self):
+    def test_gate_static_checks_pass_on_live_repo(self):
         from packages.orchestration.runtime_integration_gate import (
             build_runtime_integration_gate,
         )
 
         gate = build_runtime_integration_gate(".")
-        assert gate["checks_total"] > 0
-        assert gate["checks_passed"] == gate["checks_total"]
-        assert gate["verdict"] == "PASS"
+        static = [c for c in gate["checks"] if c["check_type"] == "call_exists"]
+        assert len(static) > 0
+        assert all(c["found"] for c in static)
+        bindings = [c for c in gate["checks"] if c["check_type"] == "test_execution_binding"]
+        assert len(bindings) >= 4
 
-    def test_gate_test_bindings_present(self):
-        from packages.orchestration.runtime_integration_gate import INTEGRATION_CHECKS
+    def test_gate_test_execution_bindings_defined(self):
+        from packages.orchestration.runtime_integration_gate import TEST_EXECUTION_BINDINGS
 
-        check_ids = {c["check_id"] for c in INTEGRATION_CHECKS}
-        assert "f018_test_job_run_retains_persisted_budget" in check_ids
-        assert "f018_test_resume_retains_counters" in check_ids
-        assert "f018_test_strict_actuals_reject_coercion" in check_ids
-        assert "f018_test_prework_stop_identity_stable" in check_ids
+        check_ids = {b["check_id"] for b in TEST_EXECUTION_BINDINGS}
+        assert "f018_test_authority_integration_execution" in check_ids
+        assert "f018_test_budget_guard_execution" in check_ids
+        assert "f018_test_job_budgets_execution" in check_ids
+        assert "f018_test_budget_stop_integration_execution" in check_ids
 
 
 class TestBudgetActualsPersistence:
@@ -742,6 +745,7 @@ class TestBudgetEvaluation:
             provider_calls=5,
             measured_call_count=5,
             measured_token_total=10000,
+            actual_sources=("pingpong_actuals",),
         )
         result = evaluate_budget(budgets, counters)
         assert result.exhausted is True
@@ -759,6 +763,7 @@ class TestBudgetEvaluation:
             provider_calls=3,
             measured_call_count=3,
             measured_token_total=5000,
+            actual_sources=("pingpong_actuals",),
         )
         result = evaluate_budget(budgets, counters)
         assert result.exhausted is False
@@ -813,3 +818,251 @@ class TestBudgetCountersTimezoneAware:
                  "total_tokens": 0},
                 started_at=datetime(2026, 7, 1, 12, 0, 0),
             )
+
+
+# =============================================================================
+# Reproduction closure round 2 — 10 blocking findings
+# =============================================================================
+
+
+class TestCorruptPersistedBudgetsBlock:
+    """Finding 6: malformed persisted JobPlan budgets must block, never unlimited."""
+
+    def test_zero_limit_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"max_provider_calls": 0})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_negative_limit_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"max_provider_calls": -5})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_boolean_limit_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"max_provider_calls": True})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_string_limit_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"max_provider_calls": "10"})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_float_limit_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"max_provider_calls": 3.5})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_unknown_field_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"max_provider_calls": 5, "unknown_key": 42})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_naive_deadline_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budgets={"deadline": "2026-12-31T00:00:00"})
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == "blocked"
+        assert "corrupt_budget_state" in result.error
+
+    def test_none_budgets_ok(self):
+        """None budgets = no limits, not corrupt."""
+        from packages.orchestration.pingpong_job import JobPlan
+        job = JobPlan(budgets=None)
+        assert job.budgets is None
+
+
+class TestStrictResumedActuals:
+    """Finding 7: resumed Actuals must not coerce types."""
+
+    def test_bool_provider_calls_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={"provider_call_count": True})
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="bool"):
+            run_job(job.job_id)
+
+    def test_float_total_tokens_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={"total_tokens": 1.5})
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="float"):
+            run_job(job.job_id)
+
+    def test_string_actual_count_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={"actual_call_count": "3"})
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="str"):
+            run_job(job.job_id)
+
+    def test_negative_counter_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={"provider_call_count": -1})
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="negative"):
+            run_job(job.job_id)
+
+    def test_measured_exceeds_provider_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={
+            "provider_call_count": 2,
+            "actual_call_count": 5,
+            "total_tokens": 0,
+        })
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="actual_call_count"):
+            run_job(job.job_id)
+
+
+class TestBudgetCountersInvariants:
+    """Finding 8: BudgetCounters must reject impossible direct states."""
+
+    def test_measured_tokens_without_measured_calls_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="measured_token_total"):
+            BudgetCounters(
+                provider_calls=1, measured_call_count=0,
+                unmeasured_call_count=1, measured_token_total=10,
+            )
+
+    def test_measured_calls_without_sources_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="actual_sources is empty"):
+            BudgetCounters(
+                provider_calls=1, measured_call_count=1,
+                measured_token_total=100,
+            )
+
+    def test_unknown_source_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="unknown source"):
+            BudgetCounters(
+                provider_calls=1, measured_call_count=1,
+                measured_token_total=100,
+                actual_sources=("made_up",),
+            )
+
+    def test_naive_started_at_rejected_in_constructor(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="timezone-aware"):
+            BudgetCounters(started_at=datetime(2026, 7, 1, 12, 0, 0))
+
+    def test_valid_counters_pass(self):
+        from packages.orchestration.budget_guard import BudgetCounters
+        c = BudgetCounters(
+            provider_calls=3, measured_call_count=2,
+            unmeasured_call_count=1, measured_token_total=500,
+            actual_sources=("pingpong_actuals",),
+            started_at=T0, evaluated_at=T0 + timedelta(seconds=30),
+        )
+        assert c.provider_calls == 3
+
+
+class TestRealJobPlanDecision:
+    """Finding 4: real JobPlan must produce a budget Decision without crashing."""
+
+    def test_jobplan_budget_stop_creates_decision(self):
+        from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan, JOB_STOPPED
+
+        job = JobPlan(
+            status=JOB_STOPPED,
+            stop_reason="budget_exhausted:max_provider_calls",
+            stop_source="budget",
+            stop_request_id="budget_abc123",
+        )
+        events = [{
+            "event": "job_stopped",
+            "timestamp": "2026-07-22T10:00:00+00:00",
+            "metadata": {
+                "source": "budget",
+                "request_id": "budget_abc123",
+                "reason": "budget_exhausted:max_provider_calls",
+                "exhausted_limit": "max_provider_calls",
+            },
+        }]
+        decisions = list_decisions(job, events)
+        budget_decisions = [d for d in decisions if d.type == "token_budget"]
+        assert len(budget_decisions) == 1
+        d = budget_decisions[0]
+        assert d.id == "budget:budget_abc123"
+        assert d.next_actions == ("extend", "abandon")
+        assert d.source == "budget_guard"
+
+    def test_jobplan_no_metadata_attr_safe(self):
+        """JobPlan has no .metadata — list_decisions must not crash."""
+        from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan
+
+        job = JobPlan()
+        assert not hasattr(job, "metadata")
+        decisions = list_decisions(job, [])
+        assert isinstance(decisions, list)
+
+    def test_repeated_list_no_duplicates(self):
+        from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.pingpong_job import JobPlan, JOB_STOPPED
+
+        job = JobPlan(
+            status=JOB_STOPPED,
+            stop_source="budget",
+            stop_reason="budget_exhausted:max_provider_calls",
+            stop_request_id="budget_xyz",
+        )
+        events = [{
+            "event": "job_stopped",
+            "timestamp": "2026-07-22T10:00:00+00:00",
+            "metadata": {
+                "source": "budget",
+                "request_id": "budget_xyz",
+                "reason": "budget_exhausted:max_provider_calls",
+            },
+        }]
+        d1 = list_decisions(job, events)
+        d2 = list_decisions(job, events)
+        budget_ids_1 = [d.id for d in d1 if d.type == "token_budget"]
+        budget_ids_2 = [d.id for d in d2 if d.type == "token_budget"]
+        assert budget_ids_1 == budget_ids_2
+        assert len(budget_ids_1) == 1
+
+
+class TestStoppedJobBudgetOverrideBlocked:
+    """Finding 5: do job-run must not bypass Decision with raw budget flags."""
+
+    def test_stopped_job_refuses_budget_flags(self):
+        from packages.orchestration.pingpong_job import (
+            JobPlan, JOB_STOPPED, _persist_job,
+        )
+
+        job = JobPlan(status=JOB_STOPPED, stop_source="budget")
+        _persist_job(job)
+
+        from packages.orchestration.pingpong_job import load_job_plan
+        loaded = load_job_plan(job.job_id)
+        assert loaded is not None
+        assert loaded.status == "stopped"
