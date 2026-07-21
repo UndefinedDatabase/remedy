@@ -3502,6 +3502,9 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
         return None
     if not isinstance(raw, dict):
         raise ManifestError(f"manifest.budgets must be a dict or null, got {type(raw).__name__}")
+    # Empty or all-null budget objects normalize to canonical null.
+    if not raw or all(v is None for v in raw.values()):
+        return None
     unknown = set(raw.keys()) - _BUDGET_ALLOWED_KEYS
     if unknown:
         raise ManifestError(f"manifest.budgets has unknown keys: {sorted(unknown)}")
@@ -3511,6 +3514,10 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
             continue
         if isinstance(v, bool):
             raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got bool")
+        if isinstance(v, float):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got float")
+        if isinstance(v, str):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got str")
         if not isinstance(v, int):
             raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got {type(v).__name__}")
         if v <= 0:
@@ -3519,13 +3526,17 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
     if dl is not None:
         if not isinstance(dl, str):
             raise ManifestError(f"manifest.budgets.deadline must be str or null, got {type(dl).__name__}")
-        from datetime import datetime as _dt
+        from datetime import datetime as _dt, timezone as _tz
         try:
             parsed = _dt.fromisoformat(dl)
         except (ValueError, TypeError):
             raise ManifestError(f"manifest.budgets.deadline is not valid ISO-8601: {dl!r}")
         if parsed.tzinfo is None:
             raise ManifestError(f"manifest.budgets.deadline has no timezone: {dl!r}")
+        # Normalize to canonical UTC
+        utc_dl = parsed.astimezone(_tz.utc).isoformat().replace("+00:00", "Z")
+        raw = dict(raw)
+        raw["deadline"] = utc_dl
     return raw
 
 

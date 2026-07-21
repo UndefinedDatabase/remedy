@@ -51,6 +51,8 @@ class BudgetCounters:
         if not isinstance(self.evaluated_at, datetime):
             raise BudgetCounterError(
                 f"evaluated_at must be a datetime, got {type(self.evaluated_at).__name__}")
+        if self.evaluated_at.tzinfo is None:
+            raise BudgetCounterError("evaluated_at must be timezone-aware")
         if not isinstance(self.actual_sources, tuple):
             raise BudgetCounterError(
                 f"actual_sources must be a tuple, got {type(self.actual_sources).__name__}")
@@ -58,6 +60,9 @@ class BudgetCounters:
             if not isinstance(src, str):
                 raise BudgetCounterError(
                     f"actual_sources[{i}] must be str, got {type(src).__name__}")
+            if not src:
+                raise BudgetCounterError(
+                    f"actual_sources[{i}] must not be empty")
         if self.started_at is not None:
             if not isinstance(self.started_at, datetime):
                 raise BudgetCounterError(
@@ -228,25 +233,65 @@ def collect_counters_from_actuals(
     """
     if now is None:
         now = datetime.now(timezone.utc)
-    provider_call_count = int(actuals.get("provider_call_count", 0) or 0)
-    actual_call_count = int(actuals.get("actual_call_count", 0) or 0)
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        raise BudgetCounterError("now must be a timezone-aware datetime")
+
+    provider_call_count = actuals.get("provider_call_count", 0)
+    actual_call_count = actuals.get("actual_call_count", 0)
+    total_tokens = actuals.get("total_tokens", 0)
+    for _name, _val in (("provider_call_count", provider_call_count),
+                        ("actual_call_count", actual_call_count),
+                        ("total_tokens", total_tokens)):
+        if _val is None:
+            _val = 0
+        if isinstance(_val, bool):
+            raise BudgetCounterError(f"{_name} must be int, got bool")
+        if isinstance(_val, float):
+            raise BudgetCounterError(f"{_name} must be int, got float")
+        if isinstance(_val, str):
+            raise BudgetCounterError(f"{_name} must be int, got str")
+        if not isinstance(_val, int):
+            raise BudgetCounterError(
+                f"{_name} must be int, got {type(_val).__name__}")
+        if _val < 0:
+            raise BudgetCounterError(f"{_name} must be non-negative, got {_val}")
+    if provider_call_count is None:
+        provider_call_count = 0
+    if actual_call_count is None:
+        actual_call_count = 0
+    if total_tokens is None:
+        total_tokens = 0
     if actual_call_count > provider_call_count:
         raise BudgetCounterError(
             f"actual_call_count ({actual_call_count}) > "
             f"provider_call_count ({provider_call_count})")
     unmeasured = provider_call_count - actual_call_count
-    total_tokens = int(actuals.get("total_tokens", 0) or 0)
     if total_tokens > 0 and actual_call_count == 0:
         raise BudgetCounterError(
             f"measured tokens ({total_tokens}) without any measured calls")
     elapsed = 0.0
     if started_at is not None:
+        if not isinstance(started_at, datetime):
+            raise BudgetCounterError(
+                f"started_at must be datetime, got {type(started_at).__name__}")
+        if started_at.tzinfo is None:
+            raise BudgetCounterError("started_at must be timezone-aware")
         elapsed = max(0.0, (now - started_at).total_seconds())
+
+    _VALID_SOURCES = frozenset({
+        "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
+        "token_actuals", "aggregate_actuals",
+    })
     if actual_sources is None:
         actual_sources = ("pingpong_actuals",) if actual_call_count > 0 else ()
     if actual_call_count > 0 and not actual_sources:
         raise BudgetCounterError(
             "measured calls present but actual_sources is empty")
+    for _s in actual_sources:
+        if not isinstance(_s, str) or not _s:
+            raise BudgetCounterError(f"actual_sources contains invalid entry: {_s!r}")
+        if _s not in _VALID_SOURCES:
+            raise BudgetCounterError(f"unknown actual source: {_s!r}")
     return BudgetCounters(
         provider_calls=provider_call_count,
         measured_token_total=total_tokens,
