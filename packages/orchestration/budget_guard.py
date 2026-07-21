@@ -12,6 +12,10 @@ from typing import Any
 from packages.core.models import JobBudgets
 
 
+class BudgetCounterError(ValueError):
+    """Impossible counter data detected."""
+
+
 @dataclass(frozen=True)
 class BudgetCounters:
     """Observed actuals for budget evaluation."""
@@ -24,6 +28,25 @@ class BudgetCounters:
     evaluated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
     actual_sources: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in ("provider_calls", "measured_token_total", "measured_call_count",
+                      "unmeasured_call_count"):
+            val = getattr(self, name)
+            if isinstance(val, bool):
+                raise BudgetCounterError(f"{name} must be int, got bool")
+            if not isinstance(val, int) or val < 0:
+                raise BudgetCounterError(
+                    f"{name} must be a non-negative integer, got {val!r}")
+        if not isinstance(self.elapsed_seconds, (int, float)) or self.elapsed_seconds < 0:
+            raise BudgetCounterError(
+                f"elapsed_seconds must be non-negative, got {self.elapsed_seconds!r}")
+        expected = self.measured_call_count + self.unmeasured_call_count
+        if self.provider_calls != expected:
+            raise BudgetCounterError(
+                f"provider_calls ({self.provider_calls}) != "
+                f"measured_call_count ({self.measured_call_count}) + "
+                f"unmeasured_call_count ({self.unmeasured_call_count})")
 
     @property
     def total_call_count(self) -> int:
@@ -105,6 +128,10 @@ def evaluate_budget(
     if now is None:
         now = datetime.now(timezone.utc)
 
+    elapsed = counters.elapsed_seconds
+    if counters.started_at is not None:
+        elapsed = max(0.0, (now - counters.started_at).total_seconds())
+
     exhausted_limits: list[str] = []
     warnings: list[str] = []
     sources: list[str] = []
@@ -133,8 +160,8 @@ def evaluate_budget(
 
     if budgets.max_wall_clock_minutes is not None:
         limit_secs = budgets.max_wall_clock_minutes * 60
-        sources.append(f"wall_clock: {counters.elapsed_seconds:.0f}s/{limit_secs}s")
-        if counters.elapsed_seconds >= limit_secs:
+        sources.append(f"wall_clock: {elapsed:.0f}s/{limit_secs}s")
+        if elapsed >= limit_secs:
             exhausted_limits.append("max_wall_clock_minutes")
 
     if budgets.deadline is not None:
@@ -156,4 +183,36 @@ def evaluate_budget(
         token_lower_bound=token_lower_bound,
         warnings=tuple(warnings),
         source_descriptions=tuple(sources),
+    )
+
+
+def collect_counters_from_actuals(
+    actuals: dict[str, Any],
+    *,
+    started_at: datetime | None = None,
+    now: datetime | None = None,
+) -> BudgetCounters:
+    """Build BudgetCounters from _aggregate_usage_actuals() output.
+
+    This is the public bridge from PingPongResult's aggregated actuals
+    to the budget evaluation system. Never re-parses provider output.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    provider_call_count = actuals.get("provider_call_count", 0)
+    actual_call_count = actuals.get("actual_call_count", 0)
+    unmeasured = max(0, provider_call_count - actual_call_count)
+    total_tokens = actuals.get("total_tokens", 0) or 0
+    elapsed = 0.0
+    if started_at is not None:
+        elapsed = max(0.0, (now - started_at).total_seconds())
+    return BudgetCounters(
+        provider_calls=provider_call_count,
+        measured_token_total=total_tokens,
+        measured_call_count=actual_call_count,
+        unmeasured_call_count=unmeasured,
+        elapsed_seconds=elapsed,
+        evaluated_at=now,
+        started_at=started_at,
+        actual_sources=("pingpong_actuals",),
     )

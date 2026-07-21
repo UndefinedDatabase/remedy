@@ -7,8 +7,10 @@ import pytest
 
 from packages.core.models import JobBudgets
 from packages.orchestration.budget_guard import (
+    BudgetCounterError,
     BudgetCounters,
     BudgetEvaluation,
+    collect_counters_from_actuals,
     evaluate_budget,
 )
 
@@ -28,19 +30,22 @@ class TestBudgetCounters:
         assert c.total_call_count == 0
 
     def test_total_call_count(self):
-        c = BudgetCounters(measured_call_count=3, unmeasured_call_count=2)
+        c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2)
         assert c.total_call_count == 5
 
     def test_has_unmeasured(self):
-        c = BudgetCounters(unmeasured_call_count=1)
+        c = BudgetCounters(provider_calls=1, measured_call_count=0, unmeasured_call_count=1)
         assert c.has_unmeasured is True
 
     def test_token_description_all_measured(self):
-        c = BudgetCounters(measured_token_total=5000)
+        c = BudgetCounters(provider_calls=1, measured_token_total=5000, measured_call_count=1)
         assert c.token_description() == "5000 tokens"
 
     def test_token_description_with_unmeasured(self):
-        c = BudgetCounters(measured_token_total=5000, unmeasured_call_count=2)
+        c = BudgetCounters(
+            provider_calls=3, measured_token_total=5000,
+            measured_call_count=1, unmeasured_call_count=2,
+        )
         desc = c.token_description()
         assert ">=" in desc
         assert "5000" in desc
@@ -71,6 +76,34 @@ class TestBudgetCounters:
         with pytest.raises(AttributeError):
             c.provider_calls = 5  # type: ignore[misc]
 
+    def test_rejects_negative_provider_calls(self):
+        with pytest.raises(BudgetCounterError, match="non-negative"):
+            BudgetCounters(provider_calls=-1)
+
+    def test_rejects_negative_tokens(self):
+        with pytest.raises(BudgetCounterError, match="non-negative"):
+            BudgetCounters(measured_token_total=-100)
+
+    def test_rejects_boolean_provider_calls(self):
+        with pytest.raises(BudgetCounterError, match="bool"):
+            BudgetCounters(provider_calls=True)  # type: ignore[arg-type]
+
+    def test_rejects_boolean_measured_count(self):
+        with pytest.raises(BudgetCounterError, match="bool"):
+            BudgetCounters(measured_call_count=True)  # type: ignore[arg-type]
+
+    def test_rejects_negative_elapsed(self):
+        with pytest.raises(BudgetCounterError, match="non-negative"):
+            BudgetCounters(elapsed_seconds=-1.0)
+
+    def test_rejects_inconsistent_call_counts(self):
+        with pytest.raises(BudgetCounterError, match="!="):
+            BudgetCounters(provider_calls=5, measured_call_count=1, unmeasured_call_count=1)
+
+    def test_consistent_call_counts_pass(self):
+        c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2)
+        assert c.provider_calls == 5
+
 
 class TestEvaluateNoBudgets:
     def test_none_budgets_not_exhausted(self):
@@ -83,20 +116,20 @@ class TestEvaluateNoBudgets:
 class TestEvaluateProviderCalls:
     def test_under_limit(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=5)
+        c = BudgetCounters(provider_calls=5, measured_call_count=5)
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is False
 
     def test_at_limit(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=10)
+        c = BudgetCounters(provider_calls=10, measured_call_count=10)
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
         assert r.first_exhausted_limit == "max_provider_calls"
 
     def test_over_limit(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=15)
+        c = BudgetCounters(provider_calls=15, measured_call_count=15)
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
         assert r.first_exhausted_limit == "max_provider_calls"
@@ -105,14 +138,14 @@ class TestEvaluateProviderCalls:
 class TestEvaluateTokens:
     def test_under_limit_all_measured(self):
         b = JobBudgets(max_total_tokens=100_000)
-        c = BudgetCounters(measured_token_total=50_000, measured_call_count=5)
+        c = BudgetCounters(provider_calls=5, measured_token_total=50_000, measured_call_count=5)
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is False
         assert r.token_lower_bound is False
 
     def test_at_limit_all_measured(self):
         b = JobBudgets(max_total_tokens=100_000)
-        c = BudgetCounters(measured_token_total=100_000, measured_call_count=5)
+        c = BudgetCounters(provider_calls=5, measured_token_total=100_000, measured_call_count=5)
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
         assert r.first_exhausted_limit == "max_total_tokens"
@@ -121,6 +154,7 @@ class TestEvaluateTokens:
     def test_under_limit_with_unmeasured_warns(self):
         b = JobBudgets(max_total_tokens=100_000)
         c = BudgetCounters(
+            provider_calls=5,
             measured_token_total=50_000,
             measured_call_count=3,
             unmeasured_call_count=2,
@@ -135,6 +169,7 @@ class TestEvaluateTokens:
     def test_over_limit_with_unmeasured(self):
         b = JobBudgets(max_total_tokens=100_000)
         c = BudgetCounters(
+            provider_calls=5,
             measured_token_total=120_000,
             measured_call_count=4,
             unmeasured_call_count=1,
@@ -164,6 +199,21 @@ class TestEvaluateWallClock:
         c = BudgetCounters(elapsed_seconds=900.0)
         r = evaluate_budget(b, c, now=T0)
         assert r.exhausted is True
+
+    def test_wall_clock_from_started_at(self):
+        started = T0 - timedelta(minutes=65)
+        b = JobBudgets(max_wall_clock_minutes=60)
+        c = BudgetCounters(started_at=started, elapsed_seconds=0.0)
+        r = evaluate_budget(b, c, now=T0)
+        assert r.exhausted is True
+        assert r.first_exhausted_limit == "max_wall_clock_minutes"
+
+    def test_wall_clock_started_at_under_limit(self):
+        started = T0 - timedelta(minutes=30)
+        b = JobBudgets(max_wall_clock_minutes=60)
+        c = BudgetCounters(started_at=started, elapsed_seconds=0.0)
+        r = evaluate_budget(b, c, now=T0)
+        assert r.exhausted is False
 
 
 class TestEvaluateDeadline:
@@ -236,6 +286,7 @@ class TestEvaluateMultipleLimits:
         c = BudgetCounters(
             provider_calls=999,
             measured_token_total=999_999,
+            measured_call_count=999,
             elapsed_seconds=99999.0,
         )
         r = evaluate_budget(b, c, now=T0)
@@ -245,7 +296,7 @@ class TestEvaluateMultipleLimits:
 class TestEvaluationSerialization:
     def test_to_json_structure(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=5, evaluated_at=T0)
+        c = BudgetCounters(provider_calls=5, measured_call_count=5, evaluated_at=T0)
         r = evaluate_budget(b, c, now=T0)
         d = r.to_json()
         assert "configured_limits" in d
@@ -264,13 +315,13 @@ class TestEvaluationSerialization:
 class TestSourceDescriptions:
     def test_provider_calls_source(self):
         b = JobBudgets(max_provider_calls=10)
-        c = BudgetCounters(provider_calls=5)
+        c = BudgetCounters(provider_calls=5, measured_call_count=5)
         r = evaluate_budget(b, c, now=T0)
         assert any("provider_calls: 5/10" in s for s in r.source_descriptions)
 
     def test_tokens_source(self):
         b = JobBudgets(max_total_tokens=100_000)
-        c = BudgetCounters(measured_token_total=50_000)
+        c = BudgetCounters(provider_calls=1, measured_token_total=50_000, measured_call_count=1)
         r = evaluate_budget(b, c, now=T0)
         assert any("tokens:" in s for s in r.source_descriptions)
 
@@ -286,3 +337,37 @@ class TestSourceDescriptions:
         c = BudgetCounters()
         r = evaluate_budget(b, c, now=T0)
         assert any("deadline:" in s for s in r.source_descriptions)
+
+
+class TestCollectCountersFromActuals:
+    def test_basic_collection(self):
+        actuals = {
+            "provider_call_count": 5,
+            "actual_call_count": 4,
+            "total_tokens": 10000,
+        }
+        c = collect_counters_from_actuals(actuals, now=T0)
+        assert c.provider_calls == 5
+        assert c.measured_call_count == 4
+        assert c.unmeasured_call_count == 1
+        assert c.measured_token_total == 10000
+
+    def test_with_started_at(self):
+        actuals = {"provider_call_count": 1, "actual_call_count": 1, "total_tokens": 500}
+        started = T0 - timedelta(minutes=10)
+        c = collect_counters_from_actuals(actuals, started_at=started, now=T0)
+        assert c.elapsed_seconds == pytest.approx(600.0)
+        assert c.started_at == started
+
+    def test_no_provider_calls(self):
+        actuals = {"provider_call_count": 0, "actual_call_count": 0, "total_tokens": 0}
+        c = collect_counters_from_actuals(actuals, now=T0)
+        assert c.provider_calls == 0
+        assert c.measured_call_count == 0
+
+    def test_all_unmeasured(self):
+        actuals = {"provider_call_count": 3, "actual_call_count": 0, "total_tokens": 0}
+        c = collect_counters_from_actuals(actuals, now=T0)
+        assert c.provider_calls == 3
+        assert c.unmeasured_call_count == 3
+        assert c.has_unmeasured is True
