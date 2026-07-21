@@ -104,6 +104,18 @@ class TestBudgetCounters:
         c = BudgetCounters(provider_calls=5, measured_call_count=3, unmeasured_call_count=2)
         assert c.provider_calls == 5
 
+    def test_rejects_nan_elapsed(self):
+        with pytest.raises(BudgetCounterError, match="finite"):
+            BudgetCounters(elapsed_seconds=float("nan"))
+
+    def test_rejects_inf_elapsed(self):
+        with pytest.raises(BudgetCounterError, match="finite"):
+            BudgetCounters(elapsed_seconds=float("inf"))
+
+    def test_rejects_neg_inf_elapsed(self):
+        with pytest.raises(BudgetCounterError, match="non-negative"):
+            BudgetCounters(elapsed_seconds=float("-inf"))
+
 
 class TestEvaluateNoBudgets:
     def test_none_budgets_not_exhausted(self):

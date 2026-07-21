@@ -5,6 +5,7 @@ No writes, no stop, no side effects. Injected clock for wall-time/deadline.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -41,6 +42,9 @@ class BudgetCounters:
         if not isinstance(self.elapsed_seconds, (int, float)) or self.elapsed_seconds < 0:
             raise BudgetCounterError(
                 f"elapsed_seconds must be non-negative, got {self.elapsed_seconds!r}")
+        if isinstance(self.elapsed_seconds, float) and not math.isfinite(self.elapsed_seconds):
+            raise BudgetCounterError(
+                f"elapsed_seconds must be finite, got {self.elapsed_seconds!r}")
         expected = self.measured_call_count + self.unmeasured_call_count
         if self.provider_calls != expected:
             raise BudgetCounterError(
