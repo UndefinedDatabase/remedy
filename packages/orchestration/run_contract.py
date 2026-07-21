@@ -485,7 +485,20 @@ def build_default_run_contract(job: Job) -> RunContract:
 
     Deterministic — derives contract from job metadata only.
     No LLM calls, no network, no filesystem access.
+
+    When ``job.budgets`` is set, overlapping fields inherit from F018
+    so there is ONE budget authority — JobBudgets is canonical for
+    max_tokens and max_runtime_seconds when it specifies them.
     """
+    max_tokens = 200_000
+    max_runtime_seconds = 600
+    budgets = getattr(job, "budgets", None)
+    if budgets is not None:
+        if getattr(budgets, "max_total_tokens", None) is not None:
+            max_tokens = budgets.max_total_tokens
+        if getattr(budgets, "max_wall_clock_minutes", None) is not None:
+            max_runtime_seconds = budgets.max_wall_clock_minutes * 60
+
     return RunContract(
         version=1,
         contract_id=f"rc-{str(job.id)[:8]}",
@@ -496,8 +509,8 @@ def build_default_run_contract(job: Job) -> RunContract:
         denied_actions=_DEFAULT_DENIED_ACTIONS,
         max_loops=10,
         max_test_runs=0,
-        max_runtime_seconds=600,
-        max_tokens=200_000,
+        max_runtime_seconds=max_runtime_seconds,
+        max_tokens=max_tokens,
         max_cost_cents=500,
         allowed_paths=(),
         denied_paths=_DEFAULT_DENIED_PATHS,
