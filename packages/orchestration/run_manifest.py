@@ -2397,7 +2397,7 @@ class RunManifestV1:
             episode_ordinal=int(d.get("episode_ordinal", 1) or 1),
             previous_episode_id=str(d.get("previous_episode_id", "") or ""),
             stop_request_id=str(d.get("stop_request_id", "") or ""),
-            budgets=d.get("budgets"),
+            budgets=_decode_budgets_field(d.get("budgets")),
         )
 
 
@@ -3493,7 +3493,11 @@ _BUDGET_ALLOWED_KEYS = {
 
 
 def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
-    """F018: validate the closed JobBudgets schema on a budgets dict (or None)."""
+    """F018: validate the closed JobBudgets schema on a budgets dict (or None).
+
+    Rejects zero, negative, bool, float, and unknown keys. Deadline must be a
+    valid timezone-aware ISO-8601 string.
+    """
     if raw is None:
         return None
     if not isinstance(raw, dict):
@@ -3503,13 +3507,25 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
         raise ManifestError(f"manifest.budgets has unknown keys: {sorted(unknown)}")
     for k in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
         v = raw.get(k)
-        if v is not None and not isinstance(v, int):
-            raise ManifestError(f"manifest.budgets.{k} must be int or null, got {type(v).__name__}")
+        if v is None:
+            continue
         if isinstance(v, bool):
-            raise ManifestError(f"manifest.budgets.{k} must be int or null, got bool")
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got bool")
+        if not isinstance(v, int):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got {type(v).__name__}")
+        if v <= 0:
+            raise ManifestError(f"manifest.budgets.{k} must be strictly positive, got {v}")
     dl = raw.get("deadline")
-    if dl is not None and not isinstance(dl, str):
-        raise ManifestError(f"manifest.budgets.deadline must be str or null, got {type(dl).__name__}")
+    if dl is not None:
+        if not isinstance(dl, str):
+            raise ManifestError(f"manifest.budgets.deadline must be str or null, got {type(dl).__name__}")
+        from datetime import datetime as _dt
+        try:
+            parsed = _dt.fromisoformat(dl)
+        except (ValueError, TypeError):
+            raise ManifestError(f"manifest.budgets.deadline is not valid ISO-8601: {dl!r}")
+        if parsed.tzinfo is None:
+            raise ManifestError(f"manifest.budgets.deadline has no timezone: {dl!r}")
     return raw
 
 
@@ -4295,7 +4311,10 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
     job_budgets = getattr(job, "budgets", None)
     budgets_snapshot: dict[str, Any] | None = None
     if job_budgets is not None:
-        budgets_snapshot = job_budgets.model_dump(mode="json") if hasattr(job_budgets, "model_dump") else None
+        if hasattr(job_budgets, "model_dump"):
+            budgets_snapshot = job_budgets.model_dump(mode="json")
+        elif isinstance(job_budgets, dict):
+            budgets_snapshot = dict(job_budgets)
     return RunManifestV1(
         job_id=str(getattr(job, "job_id", "")),
         episode_id=episode_id,
@@ -4362,7 +4381,8 @@ def _bind_artifact_refs(manifest: RunManifestV1) -> RunManifestV1:
         prior_episode_ids=manifest.prior_episode_ids,
         episode_ordinal=manifest.episode_ordinal,
         previous_episode_id=manifest.previous_episode_id,
-        stop_request_id=manifest.stop_request_id)
+        stop_request_id=manifest.stop_request_id,
+        budgets=manifest.budgets)
 
 
 def _decode_existing_episode(raw: bytes, episode_id: str) -> RunManifestV1:
