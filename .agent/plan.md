@@ -1,50 +1,46 @@
-# Plan — F018 Budgets & Stop Conditions — T001–T002
+# Plan — F018 Budgets & Stop Conditions — Full Implementation
 
 ## Goal
-Persisted job budgets + actual-only budget evaluation. No stop integration
-(T003/T004 deferred). One clean F018 branch + one canonical READY_FOR_REVIEW ZIP.
+Complete F018 repair: wire budgets end-to-end from CLI through evaluation
+to stop integration. Five logically scoped commits, fresh Evidence, one
+READY_FOR_REVIEW ZIP.
 
-## Scope 1 — F018 T001: persisted budget model, config, flags, precedence
-- `JobBudgets` Pydantic model on Job (closed, extra="forbid", model_validator)
-- Fields: max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline
-- Central config keys: budget.max_total_tokens, budget.max_provider_calls,
-  budget.max_wall_clock_minutes, budget.deadline
-- CLI flags: --max-total-tokens, --max-provider-calls, --max-wall-clock-minutes, --deadline
-- Precedence: CLI > project config > no limit
-- RunManifest snapshot includes resolved budgets
-- Validation: strictly positive finite integers, aware UTC deadline, extra="forbid"
-- Tests: test_job_budgets.py
+## Scope 1 — Real budget persistence/config/CLI/RunManifest
+- Remove private TOML/env authority from budget_resolution.py; route through config.py
+- Wire _cmd_create_job() to consume budget flags, validate, resolve, persist Job(budgets=...)
+- Wire _cmd_do() to consume budget flags for do run and dry-run
+- Add budgets field to RunManifestV1 with schema/drift/round-trip tests
+- Malformed config blocks (not silently returns None)
+- Tests: extend test_job_budgets.py + test_run_manifest.py
 
-## Scope 2 — F018 T002: actual-only budget evaluation
-- `budget_guard.py`: BudgetCounters, BudgetEvaluation, evaluate_budget()
-- Actuals source: F003 token_actuals.UsageActuals (measured tokens)
-- Provider calls: recorded call count from run_manifest FinalizedCall
-- Partial/unmeasured: ">= N tokens (M calls unmeasured)"
-- Injected clock for wall-time/deadline
-- Deterministic first-exhausted precedence
-- No writes, no stop, no side effects
-- Tests: test_budget_guard.py
+## Scope 2 — Canonical actual-counter collection + budget authority consolidation
+- Public pure aggregation from PingPongResult.provider_attempts / _aggregate_usage_actuals
+- Closed counter contract validation: nonneg, no booleans, measured+unmeasured==provider_calls
+- Wall-clock derivation from started_at+now instead of arbitrary elapsed_seconds
+- RunContract.max_tokens → delegates to JobBudgets.max_total_tokens when both set
+- RunContract.max_runtime_seconds → delegates to JobBudgets.max_wall_clock_minutes when both set
+- One canonical authority, no contradictory answers
+- Tests: extend test_budget_guard.py
 
-## Scope 3 — T003 seam discovery + docs + Evidence + package
-- Safe-point seams documented (no integration)
-- Decision-queue entry documented (no implementation)
-- Postmortem class BUDGET_EXHAUSTED already exists
-- docs, STATUS, agent state updated
-- Evidence + canonical ZIP
+## Scope 3 — Unified safe-point stop integration + decision idempotency
+- should_stop() in safe_points.py: operator stop → budget → continue
+- Three-call limit stops before call four
+- Stop persistence via F011 path (StopSignal with budget reason)
+- Decision queue entry (type="token_budget", extend/abandon)
+- Past deadline at start refuses work
+- Postmortem class BUDGET_EXHAUSTED wired
+- Tests: test_budget_stop_integration.py
 
-## RunContract overlap decision
-RunContract.check_budget is an INTERNAL execution-contract checker.
-F018 JobBudgets is the USER-FACING budget model (persisted on Job, set via CLI/config).
-Adapter: F018 evaluate_budget reads JobBudgets from the Job; it does NOT duplicate
-RunContract.check_budget. RunContract remains the internal execution boundary
-for max_loops, max_test_runs, max_runtime_seconds, max_cost_cents.
-F018 adds the user-facing job-level budgets as a SEPARATE, non-overlapping concern.
-There is NO overlap because the field names differ and the evaluation surfaces differ.
+## Scope 4 — Budget display, regression proof, docs, final Evidence
+- `remedy job budget <id>` CLI command (human + JSON output)
+- Full test suites for all scopes
+- Docs updates (T0_F018.md built state, STATUS.md)
+- Fresh Evidence bundle + READY_FOR_REVIEW ZIP
 
 ## Current Step
-Scope 1: implementing JobBudgets model.
+Scope 1: wiring budget_resolution.py through config.py, CLI handlers, RunManifest.
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.
-Do not amend/squash. Do not push/PR/merge F018.
+Do not amend/squash. Do not push/PR/merge.
 F017 [x]. F018 [~]. F146 [ ].
