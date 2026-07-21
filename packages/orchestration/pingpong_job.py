@@ -268,6 +268,10 @@ class JobPlan:
     run_manifest_episodes: list = field(default_factory=list)  # index of episode dicts
     # F018: job budget limits (serialized dict from JobBudgets.model_dump, or None).
     budgets: dict | None = None
+    # F018: set exactly once immediately before the first real work begins.
+    # Planning and waiting time do not count. Resume preserves the original.
+    first_running_at: str = ""
+    budget_actuals: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +289,11 @@ def _persist_job(job: JobPlan) -> Path:
     out = job_dir / "job.json"
     out.write_text(_json.dumps(_export_job(job), indent=2) + "\n")
     return out
+
+
+def save_job_plan(job: JobPlan) -> Path:
+    """Public API to persist a JobPlan. Returns path to job.json."""
+    return _persist_job(job)
 
 
 def load_job_plan(job_id: str) -> JobPlan | None:
@@ -580,6 +589,8 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
             "episodes": job.run_manifest_episodes,
         },
         "budgets": job.budgets,
+        "first_running_at": job.first_running_at,
+        "budget_actuals": job.budget_actuals,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -670,6 +681,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         input_snapshot_error=str((data.get("run_manifest") or {}).get("input_snapshot_error", "") or ""),
         run_manifest_episodes=list((data.get("run_manifest") or {}).get("episodes") or []),
         budgets=data.get("budgets"),
+        first_running_at=str(data.get("first_running_at", "") or ""),
+        budget_actuals=data.get("budget_actuals"),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -1710,11 +1723,13 @@ def run_job(
     _accumulated_measured = 0
     _accumulated_unmeasured = 0
     _run_started_at = datetime.now(timezone.utc)
-    if getattr(job, "created_at", None):
+    if getattr(job, "first_running_at", ""):
         try:
-            _run_started_at = datetime.fromisoformat(job.created_at)
+            _run_started_at = datetime.fromisoformat(job.first_running_at)
         except (ValueError, TypeError):
             pass
+    else:
+        job.first_running_at = _run_started_at.isoformat()
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
     _job_budgets = None
@@ -1742,13 +1757,15 @@ def run_job(
             _accumulated_unmeasured += 1
 
     def _stop_check():
-        from packages.orchestration.budget_guard import BudgetCounters
-        counters = BudgetCounters(
-            provider_calls=_accumulated_provider_calls,
-            measured_token_total=_accumulated_tokens,
-            measured_call_count=_accumulated_measured,
-            unmeasured_call_count=_accumulated_unmeasured,
+        from packages.orchestration.budget_guard import collect_counters_from_actuals
+        counters = collect_counters_from_actuals(
+            {
+                "provider_call_count": _accumulated_provider_calls,
+                "actual_call_count": _accumulated_measured,
+                "total_tokens": _accumulated_tokens,
+            },
             started_at=_run_started_at,
+            actual_sources=("pingpong_live",) if _accumulated_measured > 0 else (),
         )
         result = _should_stop(
             job.job_id,
@@ -1761,8 +1778,9 @@ def run_job(
         if result.source == "operator":
             return result.operator_signal
         import hashlib as _hl
+        _episode = getattr(job, "active_episode_id", "") or ""
         _budget_id = _hl.sha256(
-            f"{job.job_id}:{result.reason}".encode()).hexdigest()[:16]
+            f"{job.job_id}:{_episode}:{result.reason}".encode()).hexdigest()[:16]
         return _StopSignal(
             job_id=job.job_id,
             request_id=f"budget_{_budget_id}",
@@ -2137,6 +2155,14 @@ def run_job(
 
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.status = JOB_PAUSED
+
+        # F018: persist accumulated actuals for honest budget CLI
+        job.budget_actuals = {
+            "provider_call_count": _accumulated_provider_calls,
+            "actual_call_count": _accumulated_measured,
+            "total_tokens": _accumulated_tokens,
+            "started_at": _run_started_at.isoformat(),
+        }
 
         # F012: a completed job records its episode's manifest, after every call input is
         # known. A paused/partial job is not a finished run and gets none yet.

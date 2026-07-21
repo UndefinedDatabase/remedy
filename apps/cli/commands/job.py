@@ -1400,30 +1400,51 @@ def _cmd_job_budget(
             print(f"Job {str(job.id)[:8]}: no budgets configured.")
         return
 
-    from packages.orchestration.budget_guard import BudgetCounters, evaluate_budget
+    from packages.orchestration.budget_guard import (
+        collect_counters_from_actuals,
+        evaluate_budget,
+    )
     from packages.orchestration.pingpong_job import load_job_plan
 
     job_plan = load_job_plan(str(job.id))
-    has_runs = False
-    if job_plan is not None:
+    counters = None
+    evaluation = None
+    _counter_status = "no_runs"
+
+    if job_plan is not None and getattr(job_plan, "budget_actuals", None) is not None:
+        actuals = job_plan.budget_actuals
+        _started_at = None
+        if actuals.get("started_at"):
+            from datetime import datetime
+            try:
+                _started_at = datetime.fromisoformat(actuals["started_at"])
+            except (ValueError, TypeError):
+                pass
+        try:
+            counters = collect_counters_from_actuals(
+                actuals, started_at=_started_at,
+                actual_sources=("persisted_job_actuals",),
+            )
+            evaluation = evaluate_budget(job.budgets, counters)
+            _counter_status = "evaluated"
+        except Exception:
+            _counter_status = "actuals_invalid"
+    elif job_plan is not None:
         has_runs = any(
             t.run_id and t.status in ("applied", "passed", "stopped")
             for t in getattr(job_plan, "tasks", [])
         )
-
-    counters = None
-    evaluation = None
-    _counter_status = "no_runs"
-    if has_runs:
-        _counter_status = "unavailable"
+        if has_runs:
+            _counter_status = "actuals_not_persisted"
 
     if json_output:
         out: dict = {
             "job_id": str(job.id),
             "limits": job.budgets.model_dump(mode="json"),
+            "counters": counters.to_json() if counters else None,
+            "evaluation": evaluation.to_json() if evaluation else None,
+            "status": _counter_status,
         }
-        out["counters"] = None
-        out["status"] = _counter_status
         print(_json.dumps(out, indent=2))
     else:
         print(f"Budget for job {str(job.id)[:8]}:")
@@ -1444,7 +1465,7 @@ def _cmd_job_budget(
             for warn in evaluation.warnings:
                 print(f"  WARNING: {warn}")
         else:
-            print("  counters:              unavailable (no completed runs)")
+            print(f"  counters:              {_counter_status}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

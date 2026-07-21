@@ -216,21 +216,37 @@ def collect_counters_from_actuals(
     *,
     started_at: datetime | None = None,
     now: datetime | None = None,
+    actual_sources: tuple[str, ...] | None = None,
 ) -> BudgetCounters:
     """Build BudgetCounters from _aggregate_usage_actuals() output.
 
     This is the public bridge from PingPongResult's aggregated actuals
     to the budget evaluation system. Never re-parses provider output.
+
+    *actual_sources*: provenance of the actuals data. Must not be empty
+    when measured calls are present.
     """
     if now is None:
         now = datetime.now(timezone.utc)
-    provider_call_count = actuals.get("provider_call_count", 0)
-    actual_call_count = actuals.get("actual_call_count", 0)
-    unmeasured = max(0, provider_call_count - actual_call_count)
-    total_tokens = actuals.get("total_tokens", 0) or 0
+    provider_call_count = int(actuals.get("provider_call_count", 0) or 0)
+    actual_call_count = int(actuals.get("actual_call_count", 0) or 0)
+    if actual_call_count > provider_call_count:
+        raise BudgetCounterError(
+            f"actual_call_count ({actual_call_count}) > "
+            f"provider_call_count ({provider_call_count})")
+    unmeasured = provider_call_count - actual_call_count
+    total_tokens = int(actuals.get("total_tokens", 0) or 0)
+    if total_tokens > 0 and actual_call_count == 0:
+        raise BudgetCounterError(
+            f"measured tokens ({total_tokens}) without any measured calls")
     elapsed = 0.0
     if started_at is not None:
         elapsed = max(0.0, (now - started_at).total_seconds())
+    if actual_sources is None:
+        actual_sources = ("pingpong_actuals",) if actual_call_count > 0 else ()
+    if actual_call_count > 0 and not actual_sources:
+        raise BudgetCounterError(
+            "measured calls present but actual_sources is empty")
     return BudgetCounters(
         provider_calls=provider_call_count,
         measured_token_total=total_tokens,
@@ -239,5 +255,5 @@ def collect_counters_from_actuals(
         elapsed_seconds=elapsed,
         evaluated_at=now,
         started_at=started_at,
-        actual_sources=("pingpong_actuals",),
+        actual_sources=actual_sources,
     )
