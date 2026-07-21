@@ -410,3 +410,129 @@ class TestBudgetCountersStrictValidation:
             actual_sources=("run_1", "run_2"),
         )
         assert c.provider_calls == 5
+
+
+class TestRunManifestBudgetIdentity:
+    """F018: budgets in RunManifest logical_input_projection and from_trusted_json."""
+
+    def _make_manifest_with_budgets(self, budgets_dict):
+        from packages.orchestration.run_manifest import RunManifestV1, EpisodeInputSnapshotV1
+        snap = EpisodeInputSnapshotV1.__new__(EpisodeInputSnapshotV1)
+        object.__setattr__(snap, "status", "ok")
+        object.__setattr__(snap, "version", 1)
+        object.__setattr__(snap, "episode_id", "ep1")
+        object.__setattr__(snap, "capture_phase", "episode_start")
+        object.__setattr__(snap, "problems", ())
+        inp = type("Inp", (), {
+            "remedy_git_sha": "abc123",
+            "remedy_dirty": False,
+            "remedy_worktree": {},
+            "target_base_commit": "def456",
+            "target_head": "def456",
+            "target_tree": "tree1",
+            "target_worktree": {},
+            "job_initial_tree": "jtree1",
+            "episode_start_workspace_identity": None,
+            "job_file_sha256": "jfh1",
+            "models": {},
+            "config": [],
+            "environment": [],
+            "job_input": {},
+        })()
+        object.__setattr__(snap, "input", inp)
+        return RunManifestV1(
+            job_id="j1", episode_id="ep1", created_at="now", status="completed",
+            episode_snapshot=snap, job_input_sha256="jish",
+            calls=(), coverage=type("Cov", (), {"status": "complete", "problems": ()})(),
+            budgets=budgets_dict,
+        )
+
+    def test_budgets_in_logical_projection(self):
+        b = {"max_total_tokens": 100000, "max_provider_calls": 10,
+             "max_wall_clock_minutes": None, "deadline": None}
+        m = self._make_manifest_with_budgets(b)
+        proj = m.logical_input_projection()
+        assert "budgets" in proj
+        assert proj["budgets"]["max_total_tokens"] == 100000
+
+    def test_no_budgets_in_logical_projection(self):
+        m = self._make_manifest_with_budgets(None)
+        proj = m.logical_input_projection()
+        assert proj["budgets"] is None
+
+    def test_different_budgets_different_hash(self):
+        m1 = self._make_manifest_with_budgets(
+            {"max_total_tokens": 100000, "max_provider_calls": None,
+             "max_wall_clock_minutes": None, "deadline": None})
+        m2 = self._make_manifest_with_budgets(
+            {"max_total_tokens": 200000, "max_provider_calls": None,
+             "max_wall_clock_minutes": None, "deadline": None})
+        assert m1.logical_input_sha256() != m2.logical_input_sha256()
+
+    def test_from_trusted_json_preserves_budgets(self):
+        from packages.orchestration.run_manifest import RunManifestV1, MANIFEST_VERSION
+        b = {"max_total_tokens": 50000, "max_provider_calls": 5,
+             "max_wall_clock_minutes": None, "deadline": None}
+        m = self._make_manifest_with_budgets(b)
+        snap_dict = {
+            "snapshot_v": 1,
+            "episode_id": "ep1",
+            "captured_at": "now",
+            "capture_phase": "episode_start",
+            "status": "ok",
+            "problems": [],
+            "input": {
+                "remedy_git_sha": "abc123", "remedy_dirty": False,
+                "remedy_worktree": {}, "target_base_commit": "def456",
+                "target_head": "def456", "target_tree": "tree1",
+                "target_worktree": {},
+                "job_initial_tree": "jtree1",
+                "episode_start_workspace_tree": "",
+                "episode_start_workspace_identity": None,
+                "job_file_sha256": "jfh1",
+                "models": {}, "config": [], "environment": [],
+                "job_input": {"tasks": []},
+                "job_input_sha256": "jish",
+            },
+        }
+        d = {
+            "manifest_v": MANIFEST_VERSION,
+            "job_id": "j1", "episode_id": "ep1", "created_at": "now",
+            "status": "completed",
+            "episode_snapshot": snap_dict,
+            "job_input_sha256": "jish",
+            "calls": [], "coverage": {"status": "complete", "problems": []},
+            "call_expectation": {"episode_phase": "worked", "tasks": []},
+            "call_ledgers": [],
+            "prior_episode_ids": [], "episode_ordinal": 1,
+            "previous_episode_id": "", "stop_request_id": "",
+            "budgets": b,
+        }
+        m2 = RunManifestV1.from_trusted_json(d)
+        assert m2.budgets == b
+
+    def test_decode_budgets_rejects_unknown_keys(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="unknown keys"):
+            _decode_budgets_field({"max_total_tokens": 100, "unknown_field": 42})
+
+    def test_decode_budgets_rejects_bool_int_field(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="bool"):
+            _decode_budgets_field({"max_total_tokens": True})
+
+    def test_decode_budgets_rejects_string_int_field(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="int or null"):
+            _decode_budgets_field({"max_provider_calls": "five"})
+
+    def test_decode_budgets_accepts_valid(self):
+        from packages.orchestration.run_manifest import _decode_budgets_field
+        result = _decode_budgets_field(
+            {"max_total_tokens": 100, "max_provider_calls": None,
+             "max_wall_clock_minutes": 60, "deadline": "2026-12-31T00:00:00+00:00"})
+        assert result["max_total_tokens"] == 100
+
+    def test_decode_budgets_accepts_none(self):
+        from packages.orchestration.run_manifest import _decode_budgets_field
+        assert _decode_budgets_field(None) is None

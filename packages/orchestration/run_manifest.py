@@ -2343,6 +2343,9 @@ class RunManifestV1:
                  "kind": c.identity.kind, "fingerprint": c.fingerprint}
                 for c in sorted(self.calls, key=lambda c: c.identity.logical_key())
             ],
+            # F018: budget limits are a material input — two runs with different budgets
+            # are logically different even if everything else matches.
+            "budgets": self.budgets,
         }
 
     #: Back-compat alias — the input comparison IS the logical projection.
@@ -2394,6 +2397,7 @@ class RunManifestV1:
             episode_ordinal=int(d.get("episode_ordinal", 1) or 1),
             previous_episode_id=str(d.get("previous_episode_id", "") or ""),
             stop_request_id=str(d.get("stop_request_id", "") or ""),
+            budgets=d.get("budgets"),
         )
 
 
@@ -3483,6 +3487,32 @@ def decode_call_expectation_v1(raw: Any) -> "CallExpectationV1":
     return CallExpectationV1(episode_phase=phase, tasks=tuple(tasks))
 
 
+_BUDGET_ALLOWED_KEYS = {
+    "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "deadline",
+}
+
+
+def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
+    """F018: validate the closed JobBudgets schema on a budgets dict (or None)."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ManifestError(f"manifest.budgets must be a dict or null, got {type(raw).__name__}")
+    unknown = set(raw.keys()) - _BUDGET_ALLOWED_KEYS
+    if unknown:
+        raise ManifestError(f"manifest.budgets has unknown keys: {sorted(unknown)}")
+    for k in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+        v = raw.get(k)
+        if v is not None and not isinstance(v, int):
+            raise ManifestError(f"manifest.budgets.{k} must be int or null, got {type(v).__name__}")
+        if isinstance(v, bool):
+            raise ManifestError(f"manifest.budgets.{k} must be int or null, got bool")
+    dl = raw.get("deadline")
+    if dl is not None and not isinstance(dl, str):
+        raise ManifestError(f"manifest.budgets.deadline must be str or null, got {type(dl).__name__}")
+    return raw
+
+
 def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
     """F4: THE strict decoder for an untrusted run-manifest record (bytes or parsed dict).
 
@@ -3540,7 +3570,7 @@ def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
                                            max_len=_S.MAX_ID_LEN, allow_empty=True),
             stop_request_id=_S.req_str(d, "stop_request_id", "manifest",
                                        max_len=_S.MAX_ID_LEN, allow_empty=True),
-            budgets=d.get("budgets"),
+            budgets=_decode_budgets_field(d.get("budgets")),
         )
     except _S.SchemaError as exc:
         raise ManifestError(f"manifest schema: {exc}") from None
