@@ -41,6 +41,7 @@ Public API::
     resolve_fence_spec_effective(worktree_root, job_fences=None) -> EffectiveFenceResult
     resolve_effective_builtins(worktree_root) -> tuple[tuple[str, str], ...]
     BuiltinResolutionResult — typed outcome of dynamic builtin resolution
+    EffectiveFenceRule — one effective rule with exact provenance
     EffectiveFenceResult — provenance carrier for resolved fence spec
     FenceConfigError — raised on malformed config (fail closed, not allow-all)
     EnforceResult — outcome of enforce_change_set
@@ -305,12 +306,29 @@ def _validate_glob_list(items: object, label: str) -> list[str]:
         raise FenceConfigError(
             f"F017: {label} must be a list, got {type(items).__name__}"
         )
+    result: list[str] = []
     for i, item in enumerate(items):
         if not isinstance(item, str):
             raise FenceConfigError(
                 f"F017: {label}[{i}] must be a string, got {type(item).__name__}"
             )
-    return items
+        trimmed = item.strip()
+        if not trimmed:
+            raise FenceConfigError(
+                f"F017: {label}[{i}] is empty or whitespace-only after trimming"
+            )
+        result.append(trimmed)
+    return result
+
+
+@dataclass(frozen=True)
+class EffectiveFenceRule:
+    """One effective rule with exact provenance."""
+
+    pattern: str
+    kind: str  # "allow", "deny", "builtin"
+    source: str  # "per_job", "environment", "project", "default", "builtin", "dynamic_builtin"
+    reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -318,9 +336,13 @@ class EffectiveFenceResult:
     """Provenance carrier for resolved fence spec."""
 
     spec: FenceSpec
-    source: str  # "per-job", "central-config", "defaults"
+    source: str  # "per-job", "central-config", "defaults" (compat)
+    allow_rules: tuple[EffectiveFenceRule, ...] = ()
+    deny_rules: tuple[EffectiveFenceRule, ...] = ()
+    builtin_rules: tuple[EffectiveFenceRule, ...] = ()
     warnings: tuple[str, ...] = ()
     diagnostics: tuple[str, ...] = ()
+    case_sensitivity: str = "as-is"
 
 
 def load_fence_spec(
@@ -345,6 +367,23 @@ def load_fence_spec(
     ).spec
 
 
+def _build_builtin_rules(
+    extra: tuple[tuple[str, str], ...] = (),
+) -> tuple[EffectiveFenceRule, ...]:
+    """Build EffectiveFenceRule records for all builtin and dynamic builtin denies."""
+    rules: list[EffectiveFenceRule] = []
+    for pattern, reason in BUILTIN_DENY:
+        rules.append(EffectiveFenceRule(
+            pattern=pattern, kind="builtin", source="builtin", reason=reason,
+        ))
+    for pattern, reason in extra:
+        rules.append(EffectiveFenceRule(
+            pattern=pattern, kind="builtin", source="dynamic_builtin",
+            reason=_redact_path(reason),
+        ))
+    return tuple(rules)
+
+
 def _load_fence_spec_effective(
     *,
     job_fences: dict | None = None,
@@ -356,6 +395,7 @@ def _load_fence_spec_effective(
     if worktree_root is not None:
         extra = resolve_effective_builtins(worktree_root)
 
+    builtin_rules = _build_builtin_rules(extra)
     warnings: list[str] = []
 
     if job_fences is not None:
@@ -374,11 +414,21 @@ def _load_fence_spec_effective(
             logger.warning(w)
             warnings.append(w)
         return EffectiveFenceResult(
-            spec=spec, source="per-job", warnings=tuple(warnings),
+            spec=spec, source="per-job",
+            allow_rules=tuple(
+                EffectiveFenceRule(pattern=p, kind="allow", source="per_job")
+                for p in allow
+            ),
+            deny_rules=tuple(
+                EffectiveFenceRule(pattern=p, kind="deny", source="per_job")
+                for p in deny
+            ),
+            builtin_rules=builtin_rules,
+            warnings=tuple(warnings),
         )
 
     if config_path is not None:
-        from packages.orchestration.config import load_config
+        from packages.orchestration.config import ConfigSource, load_config
 
         cfg = load_config(project_path=config_path)
         diagnostics = tuple(cfg.load_report.warnings)
@@ -411,18 +461,37 @@ def _load_fence_spec_effective(
                 )
                 logger.warning(w)
                 warnings.append(w)
+            _SOURCE_MAP = {
+                ConfigSource.ENV: "environment",
+                ConfigSource.PROJECT: "project",
+                ConfigSource.USER: "user",
+                ConfigSource.DEFAULT: "default",
+            }
+            allow_src = _SOURCE_MAP.get(cfg.get_source("scope.allow"), "project")
+            deny_src = _SOURCE_MAP.get(cfg.get_source("scope.deny"), "project")
             return EffectiveFenceResult(
                 spec=spec, source="central-config",
+                allow_rules=tuple(
+                    EffectiveFenceRule(pattern=p, kind="allow", source=allow_src)
+                    for p in allow
+                ),
+                deny_rules=tuple(
+                    EffectiveFenceRule(pattern=p, kind="deny", source=deny_src)
+                    for p in deny
+                ),
+                builtin_rules=builtin_rules,
                 warnings=tuple(warnings), diagnostics=diagnostics,
             )
 
         return EffectiveFenceResult(
             spec=FenceSpec(extra_builtin_denies=extra),
-            source="defaults", diagnostics=diagnostics,
+            source="defaults", builtin_rules=builtin_rules,
+            diagnostics=diagnostics,
         )
 
     return EffectiveFenceResult(
         spec=FenceSpec(extra_builtin_denies=extra), source="defaults",
+        builtin_rules=builtin_rules,
     )
 
 
@@ -538,7 +607,7 @@ def check_change_set(
                 )
             )
 
-    violations.sort(key=lambda v: (v.path, v.operation))
+    violations.sort(key=lambda v: (v.path, v.operation, v.role))
 
     return ChangeSetFenceResult(
         allowed=len(violations) == 0,
