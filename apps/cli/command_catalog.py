@@ -264,6 +264,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("do.job-run", "do.job-report"),
     ),
     CommandEntry(
+        command_id="job.budget",
+        group_id="job",
+        subcommand="budget",
+        description="Show budget limits and current counters for a job (F018).",
+        action_class="read_metadata",
+        supports_json=True,
+        args=(
+            ArgDef("job_id", "Job ID to inspect"),
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+        related=("job.show", "job.stop"),
+    ),
+    CommandEntry(
         command_id="job.run-next",
         group_id="job",
         subcommand="run-next",
