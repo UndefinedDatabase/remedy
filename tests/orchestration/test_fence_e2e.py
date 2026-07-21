@@ -765,3 +765,223 @@ class TestRepoApplicatorJobFences:
         )
         with pytest.raises(FenceViolationError):
             check_and_apply_to_repo(job, artifact, tmp_path)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Five-path production E2E — provenance + persistence + schema v2
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestProvenanceE2E:
+    """enforce_change_set carries rule-level provenance through to artifact and exception."""
+
+    def test_violation_error_carries_effective_result(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        (tmp_path / "remedy.toml").write_text(
+            '[remedy.scope]\ndeny = ["vendor/**"]\n', encoding="utf-8",
+        )
+        touched = [TouchedPath("vendor/lib.so", "create")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(tmp_path, touched, applicator="test", job_id="j1")
+        err = exc_info.value
+        assert err.effective_result is not None
+        assert err.effective_result.source == "central-config"
+        assert any(r.pattern == "vendor/**" for r in err.effective_result.deny_rules)
+
+    def test_artifact_v2_has_per_violation_rule_info(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        (tmp_path / "remedy.toml").write_text(
+            '[remedy.scope]\ndeny = ["secrets/**"]\n', encoding="utf-8",
+        )
+        touched = [TouchedPath("secrets/key.pem", "create")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(tmp_path, touched, applicator="test", job_id="j2")
+        err = exc_info.value
+        assert err.artifact_path is not None
+        data = json.loads(err.artifact_path.read_text())
+        assert data["schema"] == "fence_violations/v2"
+        assert data["schema_version"] == "2.0.0"
+        v = data["violations"][0]
+        assert v["matched_rule"] == "secrets/**"
+        assert v["rule_kind"] == "deny"
+        assert v["rule_source"] == "project"
+        assert v["path_kind"] == "relative"
+        assert v["reason_code"] in ("denied", "")
+
+    def test_builtin_violation_rule_info(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        touched = [TouchedPath(".git/config", "modify")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(tmp_path, touched, applicator="test", job_id="j3")
+        err = exc_info.value
+        assert err.artifact_path is not None
+        data = json.loads(err.artifact_path.read_text())
+        v = data["violations"][0]
+        assert v["rule_kind"] == "builtin"
+        assert v["rule_source"] == "builtin"
+        assert v["matched_rule"] == ".git/"
+
+    def test_per_job_fence_provenance(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        touched = [TouchedPath("lib/x.py", "create")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(
+                tmp_path, touched, applicator="test", job_id="j4",
+                job_fences={"allow": ["src/**"], "deny": []},
+            )
+        err = exc_info.value
+        assert err.effective_result.source == "per-job"
+        assert any(r.source == "per_job" for r in err.effective_result.allow_rules)
+
+    def test_env_var_provenance(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setenv("REMEDY_SCOPE_DENY", "vendor/**")
+        touched = [TouchedPath("vendor/x.so", "create")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(tmp_path, touched, applicator="test", job_id="j5")
+        err = exc_info.value
+        assert any(r.source == "environment" for r in err.effective_result.deny_rules)
+
+
+class TestPersistenceFailureE2E:
+    """Artifact write failure preserves primary FenceViolationError."""
+
+    def test_persistence_failure_still_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        data_dir = tmp_path / "data"
+        data_dir.mkdir(parents=True)
+        (data_dir / "jobs").write_text("blocker")
+
+        touched = [TouchedPath(".git/config", "modify")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(
+                tmp_path, touched, applicator="test", job_id="j1",
+                evidence_dir=data_dir,
+            )
+        err = exc_info.value
+        assert err.persistence_status == "failed"
+        assert err.artifact_path is None
+        assert not err.result.allowed
+
+    def test_successful_persistence_status(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        touched = [TouchedPath(".git/config", "modify")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(
+                tmp_path, touched, applicator="test", job_id="j1",
+                evidence_dir=tmp_path / "data",
+            )
+        err = exc_info.value
+        assert err.persistence_status == "persisted"
+        assert err.artifact_path is not None
+        assert err.artifact_path.exists()
+
+
+class TestPatchApplyFenceE2E:
+    """Real patch_apply.apply_patch_intent with fence-violating paths."""
+
+    def _make_job_with_intent(self, tmp_path, target_path=".git/config"):
+        from packages.orchestration.approval_queue import (
+            APPROVAL_APPROVED,
+            make_intent_id,
+            set_approval_state,
+        )
+        from packages.orchestration.permissions import Capability, set_permission
+
+        job = Job(name="test-patch-fence")
+        set_permission(job, Capability.repo_generated_write, allow=True)
+        job.metadata["target_repo"] = str(tmp_path)
+
+        art_id = uuid4()
+        artifact = Artifact(
+            id=art_id, name="test-patch", content="# test",
+            kind=ArtifactKind.BUILDER_PROPOSAL,
+            metadata={
+                "patch_intent_explanations": [{
+                    "file": target_path,
+                    "action": "create",
+                    "risk": "low",
+                    "reason": "test",
+                    "summary": "test patch",
+                }],
+            },
+        )
+        job.artifacts.append(artifact)
+        intent_id = make_intent_id(art_id, 0)
+        set_approval_state(job, intent_id, APPROVAL_APPROVED, decided_by="test")
+        return job, intent_id
+
+    def test_fence_blocks_config_deny(self, tmp_path, monkeypatch):
+        from packages.orchestration.patch_apply import apply_patch_intent
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        (tmp_path / "remedy.toml").write_text(
+            '[remedy.scope]\ndeny = ["secrets/**"]\n', encoding="utf-8",
+        )
+        job, intent_id = self._make_job_with_intent(tmp_path, "secrets/key.md")
+
+        result = apply_patch_intent(job, intent_id, data_dir=tmp_path / "data")
+        assert result.state == "blocked"
+        assert result.blocked_reason == "fence_violation"
+
+    def test_fence_blocks_job_deny(self, tmp_path, monkeypatch):
+        from packages.core.models import JobFences
+        from packages.orchestration.patch_apply import apply_patch_intent
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job, intent_id = self._make_job_with_intent(tmp_path, "vendor/lib.md")
+        job.fences = JobFences(allow=[], deny=["vendor/**"])
+
+        result = apply_patch_intent(job, intent_id, data_dir=tmp_path / "data")
+        assert result.state == "blocked"
+        assert result.blocked_reason == "fence_violation"
+
+
+class TestDeterministicOrderingE2E:
+    """Violation ordering is deterministic including role."""
+
+    def test_sort_by_path_op_role(self, tmp_path):
+        touched = [
+            TouchedPath(".git/config", "modify", role="target"),
+            TouchedPath(".git/config", "modify", role="source"),
+            TouchedPath(".git/HEAD", "modify", role="target"),
+        ]
+        result = check_change_set(tmp_path, FenceSpec(), touched)
+        paths = [(v.path, v.operation, v.role) for v in result.violations]
+        assert paths == sorted(paths)
+
+    def test_sort_stability(self, tmp_path):
+        touched = [
+            TouchedPath("remedy.toml", "modify", role="z"),
+            TouchedPath(".git/x", "modify", role="a"),
+            TouchedPath(".git/x", "modify", role="b"),
+            TouchedPath("remedy.toml", "modify", role="a"),
+        ]
+        result = check_change_set(tmp_path, FenceSpec(), touched)
+        paths = [(v.path, v.operation, v.role) for v in result.violations]
+        assert paths == sorted(paths)
+
+
+class TestStrictGlobContractsE2E:
+    """Whitespace trimming and empty-glob rejection."""
+
+    def test_whitespace_trimmed(self, tmp_path):
+        from packages.orchestration.scope_fences import load_fence_spec
+        spec = load_fence_spec(job_fences={"allow": ["  src/**  "], "deny": [" vendor/** "]})
+        assert spec.allow_globs == ("src/**",)
+        assert spec.deny_globs == ("vendor/**",)
+
+    def test_empty_after_trim_rejected(self):
+        from packages.orchestration.scope_fences import load_fence_spec
+        with pytest.raises(FenceConfigError):
+            load_fence_spec(job_fences={"allow": ["  "], "deny": []})
+
+    def test_whitespace_only_rejected(self):
+        from packages.orchestration.scope_fences import load_fence_spec
+        with pytest.raises(FenceConfigError):
+            load_fence_spec(job_fences={"allow": ["\t\n"], "deny": []})
+
+    def test_empty_string_rejected(self):
+        from packages.orchestration.scope_fences import load_fence_spec
+        with pytest.raises(FenceConfigError):
+            load_fence_spec(job_fences={"allow": [""], "deny": []})
