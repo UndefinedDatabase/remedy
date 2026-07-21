@@ -1955,12 +1955,16 @@ def _call_with_retry(
     on_provider_attempt: Callable[[ProviderAttempt], None] | None = None,
     is_parse_retry: bool = False,
     call_reasons: list[str] | None = None,
+    stop_check: Callable[[], Any] | None = None,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
     Only retries on timeout or nonzero exit (detected via error string).
     Never retries review rejects. Records retry evidence on result.
     Every call (initial + retries) is recorded as a ProviderAttempt.
+
+    ``stop_check`` (F018) is evaluated before each transport retry. A budget
+    exhaustion observed between retries prevents the next call from starting.
 
     ``on_call(transport_attempt, is_transport_retry)`` — when given — runs
     IMMEDIATELY BEFORE every real ``call_fn()`` invocation, so a caller can
@@ -2003,6 +2007,10 @@ def _call_with_retry(
 
         backoff = next_backoff(attempt)
         if backoff is None:
+            return out
+
+        # F018: check budget before spending another transport call
+        if stop_check is not None and stop_check() is not None:
             return out
 
         result.retries_used += 1
@@ -2609,6 +2617,7 @@ def run_pingpong(
                 provider=builder_name,
                 on_provider_attempt=on_provider_call,
                 call_reasons=builder_call_reasons,
+                stop_check=_stopped,
             )
             rd.builder_output = builder_out
 
@@ -2819,6 +2828,7 @@ def run_pingpong(
                 ),
                 on_provider_attempt=on_provider_call,
                 call_reasons=reviewer_call_reasons,
+                stop_check=_stopped,
             )
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
@@ -2871,6 +2881,7 @@ def run_pingpong(
                     on_call=_rev_trace(retry_prompt, "parse-retry", "review-parse-retry"),
                     on_provider_attempt=on_provider_call,
                     call_reasons=reviewer_call_reasons,
+                    stop_check=_stopped,
                 )
                 retry_out.parse_retried = True
                 if not retry_out.error:

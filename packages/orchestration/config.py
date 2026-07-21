@@ -496,9 +496,17 @@ def load_config(
 
     for key in project_flat:
         if key not in _KEY_SPEC_MAP:
+            if key.startswith("budget."):
+                from packages.orchestration.budget_resolution import BudgetConfigError
+                raise BudgetConfigError(
+                    f"Unknown budget config key in {p_path}: {key!r}")
             diagnostics.append(f"Unknown key in {p_path}: {key}")
     for key in user_flat:
         if key not in _KEY_SPEC_MAP:
+            if key.startswith("budget."):
+                from packages.orchestration.budget_resolution import BudgetConfigError
+                raise BudgetConfigError(
+                    f"Unknown budget config key in {u_path}: {key!r}")
             diagnostics.append(f"Unknown key in {u_path}: {key}")
 
     report = ConfigLoadReport(

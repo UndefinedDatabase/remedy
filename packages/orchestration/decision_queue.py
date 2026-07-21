@@ -146,14 +146,28 @@ def list_decisions(
                 resolved_at=None,
             ))
 
-    # 5. Budget exhaustion
+    # 5. Budget exhaustion — check job fields, metadata, AND stop events
     budget_error = str(
         job.metadata.get("budget_stop_reason", "")
         or job.metadata.get("error", "")
         or getattr(job, "error", "")
         or ""
     )
-    if "budget_exhausted" in budget_error:
+    if "budget_exhausted" not in budget_error:
+        _stop_reason = str(getattr(job, "stop_reason", "") or "")
+        _stop_source = str(getattr(job, "stop_source", "") or "")
+        if "budget" in _stop_source or "budget_exhausted" in _stop_reason:
+            budget_error = _stop_reason or "budget_exhausted"
+
+    if "budget_exhausted" not in budget_error:
+        for ev in events:
+            if (ev.get("event") == "job_stopped"
+                    and str((ev.get("metadata") or {}).get("source", "")) == "budget"):
+                budget_error = str(
+                    (ev.get("metadata") or {}).get("reason", "budget_exhausted"))
+                break
+
+    if budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error):
         decisions.append(HumanDecision(
             id="budget_exhausted",
             type="token_budget",

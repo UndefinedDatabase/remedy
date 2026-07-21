@@ -1710,6 +1710,11 @@ def run_job(
     _accumulated_measured = 0
     _accumulated_unmeasured = 0
     _run_started_at = datetime.now(timezone.utc)
+    if getattr(job, "created_at", None):
+        try:
+            _run_started_at = datetime.fromisoformat(job.created_at)
+        except (ValueError, TypeError):
+            pass
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
     _job_budgets = None
@@ -1755,9 +1760,12 @@ def run_job(
             return None
         if result.source == "operator":
             return result.operator_signal
+        import hashlib as _hl
+        _budget_id = _hl.sha256(
+            f"{job.job_id}:{result.reason}".encode()).hexdigest()[:16]
         return _StopSignal(
             job_id=job.job_id,
-            request_id=f"budget_{uuid4().hex[:12]}",
+            request_id=f"budget_{_budget_id}",
             reason=result.reason,
             source="budget",
         )
@@ -2534,11 +2542,14 @@ def _write_stop_postmortem(job: JobPlan, signal: Any, task_id: str) -> None:
         write_postmortem,
     )
 
+    _is_budget = getattr(signal, "source", "") == "budget"
+    _terminal = "budget_exhausted" if _is_budget else "stopped"
+
     try:
         record = build_job_rollup(
             job_id=job.job_id,
             signals=FailureSignals(
-                terminal_status="stopped",
+                terminal_status=_terminal,
                 error_text=f"stop requested: {signal.reason}",
             ),
         )

@@ -1411,23 +1411,19 @@ def _cmd_job_budget(
             for t in getattr(job_plan, "tasks", [])
         )
 
+    counters = None
+    evaluation = None
+    _counter_status = "no_runs"
     if has_runs:
-        counters = BudgetCounters()
-        evaluation = evaluate_budget(job.budgets, counters)
-    else:
-        counters = None
-        evaluation = None
+        _counter_status = "unavailable"
 
     if json_output:
         out: dict = {
             "job_id": str(job.id),
             "limits": job.budgets.model_dump(mode="json"),
         }
-        if evaluation is not None:
-            out["evaluation"] = evaluation.to_json()
-        else:
-            out["counters"] = None
-            out["status"] = "no_runs"
+        out["counters"] = None
+        out["status"] = _counter_status
         print(_json.dumps(out, indent=2))
     else:
         print(f"Budget for job {str(job.id)[:8]}:")

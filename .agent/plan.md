@@ -1,56 +1,28 @@
 # Plan — F018 Budgets & Stop Conditions — Full Rebuild
 
 ## Goal
-Close all 9 external review blocking findings. Wire budgets end-to-end
+Close all 13 external review blocking findings. Wire budgets end-to-end
 from CLI through durable persistence, live intra-task counters, F011
-stop integration, and RunManifest identity. Five scoped commits, fresh
-Evidence, one READY_FOR_REVIEW ZIP.
+stop integration, and RunManifest identity. Clean branch, fresh Evidence,
+one READY_FOR_REVIEW ZIP.
 
-## Scope 1 — Branch cleanup + durable budget persistence
-- Backup current mixed branch, reset to implementation-only commits
-- Add `budgets` field to `JobPlan` dataclass
-- Wire budgets through `_export_job()` / `_import_job()`
-- Wire `_cmd_do_pingpong()` → `run_pingpong()` budgets parameter
-- Wire `run_job()` budgets parameter from `Job.budgets` to `JobPlan`
-- Fail-closed config: malformed TOML/env raises BudgetConfigError
-- BudgetCounters strict validation (reject bool elapsed_seconds,
-  non-datetime evaluated_at, non-str actual_sources, started_at > evaluated_at)
-- Tests for persistence round-trip, CLI wiring, config fail-closed
-
-## Scope 2 — RunManifest budget identity + strict decoding
-- Add `budgets` to `logical_input_projection()`
-- Deserialize budgets in `from_trusted_json()`
-- Add budgets to `_bind_artifact_refs()` if applicable
-- Strict decoder validates closed JobBudgets schema on budgets dict
-- Tests for identity inclusion, round-trip, schema validation
-
-## Scope 3 — Live intra-task counters + F011 durable budget stops
-- Mutable counter accumulator updated BEFORE each provider call
-  (not after task) so pre-call safe points see all prior attempts
-- Budget stops use `_stop_job()` F011 transaction (stop archive,
-  postmortem, event, manifest, persist, acknowledge) instead of
-  JOB_BLOCKED with job.error
-- Past deadline blocks before first call (pre-work stop)
-- Decision queue entry for budget exhaustion
-- Tests: three-call-limit stops before call four, deadline-at-start,
-  durable stop path, decision idempotency
-
-## Scope 4 — Honest CLI + production E2E + docs
-- `remedy job budget` typed display states: available/no_runs/
-  partial/corrupt/unavailable (never invents zeros)
-- `_collect_job_counters` handles real actuals from persisted runs
-- JSON output: counters or explicit null, never structured zeros
-- Real E2E tests (budget wiring, fail-closed config, honest display)
-- Docs updates (T0_F018.md built state, STATUS.md)
-
-## Scope 5 — Canonical Evidence + final package
-- Three canonical manual-completion tasks (not five custom ones)
-- Fresh token_truth.json with real test counts
-- One READY_FOR_REVIEW ZIP
-- Change provenance gate
+## Finding Fixes Applied
+1. Pre-call budget check → stop_check in _call_with_retry (pingpong_loop.py)
+2. Fail-closed config → BudgetConfigError on unknown budget.* keys (config.py)
+3. RunManifest authority → already wired (budgets in logical_input_projection)
+4. Counter validation → already wired (BudgetCounters.__post_init__)
+5. Honest CLI → no_runs/unavailable, never evaluates zeros (job.py)
+6. Deterministic identity → sha256-based budget stop request_id (pingpong_job.py)
+7. Decision queue → checks stop events + fields (decision_queue.py)
+8. Budget postmortem → terminal_status="budget_exhausted" (pingpong_job.py)
+9. Wall-clock continuity → uses job.created_at across resumes (pingpong_job.py)
+10. CLI path → already wired (--max-total-tokens etc + config)
+11. RunContract authority → already inherits from JobBudgets
+12. Evidence churn → clean branch (reset to 884a8b8)
+13. live_review.md → rewritten for F018
 
 ## Current Step
-Scope 4 — DONE. Next: Scope 5
+Tests + Evidence + ZIP.
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.
