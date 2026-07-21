@@ -200,6 +200,7 @@ def _cmd_do(
             cli_max_provider_calls=max_provider_calls,
             cli_max_wall_clock_minutes=max_wall_clock_minutes,
             cli_deadline=deadline,
+            project_root=repo,
         )
     except (BudgetConfigError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1051,18 +1052,25 @@ def _cmd_do_job_run(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(2)
 
-    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
-    try:
-        budgets = resolve_job_budgets(
-            cli_max_total_tokens=max_total_tokens,
-            cli_max_provider_calls=max_provider_calls,
-            cli_max_wall_clock_minutes=max_wall_clock_minutes,
-            cli_deadline=deadline,
-        )
-    except (BudgetConfigError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(2)
-    budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
+    # F018: only resolve budgets from CLI/config when the caller explicitly passed budget
+    # flags.  When no flags are given, the persisted JobPlan budgets are authoritative —
+    # do NOT re-read mutable CWD config and silently replace them.
+    _has_budget_flags = any(v is not None for v in (
+        max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline))
+    budgets_dict = None
+    if _has_budget_flags:
+        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+        try:
+            budgets = resolve_job_budgets(
+                cli_max_total_tokens=max_total_tokens,
+                cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_deadline=deadline,
+            )
+        except (BudgetConfigError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+        budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
 
     from packages.orchestration.pingpong_job import (
         export_job_report,

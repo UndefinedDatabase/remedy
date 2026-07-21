@@ -74,12 +74,16 @@ def _cmd_create_job(
         state = RunState.PLANNED
 
     from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    _project_repo = None
+    if project is not None and hasattr(project, "repo_paths") and project.repo_paths:
+        _project_repo = project.repo_paths[0]
     try:
         budgets = resolve_job_budgets(
             cli_max_total_tokens=max_total_tokens,
             cli_max_provider_calls=max_provider_calls,
             cli_max_wall_clock_minutes=max_wall_clock_minutes,
             cli_deadline=deadline,
+            project_root=_project_repo,
         )
     except (BudgetConfigError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -1384,21 +1388,11 @@ def _cmd_job_budget(
     *,
     json_output: bool = False,
 ) -> None:
-    """Show budget limits and current counters for a job."""
+    """Show budget limits and current counters for a job.
+
+    Supports both Core Job UUIDs and JobPlan hex IDs.
+    """
     import json as _json
-
-    try:
-        job = load_job(job_id)
-    except JobNotFoundError:
-        print(f"Error: job {job_id!r} not found.", file=sys.stderr)
-        sys.exit(1)
-
-    if job.budgets is None:
-        if json_output:
-            print(_json.dumps({"job_id": str(job.id), "budgets": None}, indent=2))
-        else:
-            print(f"Job {str(job.id)[:8]}: no budgets configured.")
-        return
 
     from packages.orchestration.budget_guard import (
         collect_counters_from_actuals,
@@ -1406,56 +1400,122 @@ def _cmd_job_budget(
     )
     from packages.orchestration.pingpong_job import load_job_plan
 
-    job_plan = load_job_plan(str(job.id))
+    _job_display_id = job_id
+    _budgets = None
+    _budgets_dict = None
     counters = None
     evaluation = None
     _counter_status = "no_runs"
+    _found_as = None
 
-    if job_plan is not None and getattr(job_plan, "budget_actuals", None) is not None:
-        actuals = job_plan.budget_actuals
-        _started_at = None
-        if actuals.get("started_at"):
-            from datetime import datetime
+    job_plan = load_job_plan(job_id)
+    if job_plan is not None:
+        _found_as = "job_plan"
+        _job_display_id = job_plan.job_id
+        if job_plan.budgets is not None:
+            from packages.core.models import JobBudgets
             try:
-                _started_at = datetime.fromisoformat(actuals["started_at"])
-            except (ValueError, TypeError):
-                pass
-        try:
-            counters = collect_counters_from_actuals(
-                actuals, started_at=_started_at,
-                actual_sources=("persisted_job_actuals",),
+                _budgets = JobBudgets.model_validate(job_plan.budgets)
+                _budgets_dict = job_plan.budgets
+            except Exception:
+                _budgets_dict = job_plan.budgets
+
+        if getattr(job_plan, "budget_actuals", None) is not None:
+            actuals = job_plan.budget_actuals
+            _started_at = None
+            if actuals.get("started_at"):
+                from datetime import datetime
+                try:
+                    _started_at = datetime.fromisoformat(actuals["started_at"])
+                except (ValueError, TypeError):
+                    pass
+            try:
+                counters = collect_counters_from_actuals(
+                    actuals, started_at=_started_at,
+                    actual_sources=("persisted_job_actuals",),
+                )
+                if _budgets is not None:
+                    evaluation = evaluate_budget(_budgets, counters)
+                _counter_status = "evaluated"
+            except Exception:
+                _counter_status = "actuals_invalid"
+        else:
+            has_runs = any(
+                t.run_id and t.status in ("applied", "passed", "stopped")
+                for t in getattr(job_plan, "tasks", [])
             )
-            evaluation = evaluate_budget(job.budgets, counters)
-            _counter_status = "evaluated"
-        except Exception:
-            _counter_status = "actuals_invalid"
-    elif job_plan is not None:
-        has_runs = any(
-            t.run_id and t.status in ("applied", "passed", "stopped")
-            for t in getattr(job_plan, "tasks", [])
-        )
-        if has_runs:
-            _counter_status = "actuals_not_persisted"
+            if has_runs:
+                _counter_status = "actuals_not_persisted"
+
+    if _found_as is None:
+        try:
+            job = load_job(job_id)
+        except JobNotFoundError:
+            print(f"Error: job {job_id!r} not found.", file=sys.stderr)
+            sys.exit(1)
+        _found_as = "core_job"
+        _job_display_id = str(job.id)
+        _budgets = job.budgets
+
+        if _budgets is None:
+            if json_output:
+                print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
+            else:
+                print(f"Job {_job_display_id[:8]}: no budgets configured.")
+            return
+
+        _plan_for_core = load_job_plan(_job_display_id)
+        if _plan_for_core is not None and getattr(_plan_for_core, "budget_actuals", None) is not None:
+            actuals = _plan_for_core.budget_actuals
+            _started_at = None
+            if actuals.get("started_at"):
+                from datetime import datetime
+                try:
+                    _started_at = datetime.fromisoformat(actuals["started_at"])
+                except (ValueError, TypeError):
+                    pass
+            try:
+                counters = collect_counters_from_actuals(
+                    actuals, started_at=_started_at,
+                    actual_sources=("persisted_job_actuals",),
+                )
+                evaluation = evaluate_budget(_budgets, counters)
+                _counter_status = "evaluated"
+            except Exception:
+                _counter_status = "actuals_invalid"
+
+    if _budgets is None and _budgets_dict is None:
+        if json_output:
+            print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
+        else:
+            print(f"Job {_job_display_id[:8]}: no budgets configured.")
+        return
 
     if json_output:
         out: dict = {
-            "job_id": str(job.id),
-            "limits": job.budgets.model_dump(mode="json"),
+            "job_id": _job_display_id,
+            "found_as": _found_as,
+            "limits": (_budgets.model_dump(mode="json") if _budgets else _budgets_dict),
             "counters": counters.to_json() if counters else None,
             "evaluation": evaluation.to_json() if evaluation else None,
             "status": _counter_status,
         }
         print(_json.dumps(out, indent=2))
     else:
-        print(f"Budget for job {str(job.id)[:8]}:")
-        if job.budgets.max_total_tokens is not None:
-            print(f"  max_total_tokens:      {job.budgets.max_total_tokens}")
-        if job.budgets.max_provider_calls is not None:
-            print(f"  max_provider_calls:    {job.budgets.max_provider_calls}")
-        if job.budgets.max_wall_clock_minutes is not None:
-            print(f"  max_wall_clock_minutes: {job.budgets.max_wall_clock_minutes}")
-        if job.budgets.deadline is not None:
-            print(f"  deadline:              {job.budgets.deadline.isoformat()}")
+        print(f"Budget for job {_job_display_id[:8]} ({_found_as}):")
+        if _budgets is not None:
+            if _budgets.max_total_tokens is not None:
+                print(f"  max_total_tokens:      {_budgets.max_total_tokens}")
+            if _budgets.max_provider_calls is not None:
+                print(f"  max_provider_calls:    {_budgets.max_provider_calls}")
+            if _budgets.max_wall_clock_minutes is not None:
+                print(f"  max_wall_clock_minutes: {_budgets.max_wall_clock_minutes}")
+            if _budgets.deadline is not None:
+                print(f"  deadline:              {_budgets.deadline.isoformat()}")
+        elif _budgets_dict is not None:
+            for k, v in _budgets_dict.items():
+                if v is not None:
+                    print(f"  {k}: {v}")
         if evaluation is not None:
             print(f"  exhausted:             {evaluation.exhausted}")
             if evaluation.first_exhausted_limit:

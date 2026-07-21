@@ -48,12 +48,15 @@ DECISION_TYPES = frozenset({
 
 
 def list_decisions(
-    job: Job,
+    job: "Job | Any",
     events: list[dict[str, Any]],
 ) -> list[HumanDecision]:
-    """Derive all pending human decisions from existing state."""
+    """Derive all pending human decisions from existing state.
+
+    Accepts both Core Job (has .id UUID) and JobPlan (has .job_id str).
+    """
     decisions: list[HumanDecision] = []
-    job_id = str(job.id)
+    job_id = str(getattr(job, "job_id", None) or getattr(job, "id", ""))
 
     # 1. Pending patch approvals
     try:
