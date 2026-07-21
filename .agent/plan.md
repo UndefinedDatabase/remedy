@@ -34,7 +34,7 @@ One clean F017 branch + one canonical READY_FOR_REVIEW ZIP.
 - no post-ZIP commit
 
 ## Current Step
-Scope 1: creating backup and clean branches.
+Scope 4: docs consistency fixed. Running validation suites, building Evidence + ZIP.
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.

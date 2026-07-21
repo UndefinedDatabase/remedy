@@ -1,14 +1,17 @@
 # Context — F017 Scope Fences
 
 ## Branch
-`feature/f017-scope-fences` (from main after F012 merge)
+`feature/f017-scope-fences-clean` (reconstructed from mixed branch)
 Base commit: `fe9898a`
+Previous mixed branch: `feature/f017-scope-fences` (backed up at `backup/f017-scope-fences-mixed-17592a5`)
+Unrelated roadmap commit: separated to `docs/roadmap-features-f221-f250`
 
 ## Current state
 T001–T003 built + repaired. All 10 external review findings closed.
-Second repair round (final closure): repo_applicator job-scoped Evidence,
-diagnostic sanitizer, allow-list provenance, strict JobFences validation,
-full E2E coverage. Artifact schema v2. Pending external acceptance.
+Final closure block: 7 findings closed. Branch cleanup: unrelated
+roadmap commit 0b71df6 removed. General POSIX path redaction. Real
+production E2E (20 tests). Docs consistency fixed. 27 commits, HEAD ca65478.
+Pending external acceptance.
 
 ## Key decisions (carried forward)
 - Module: `packages/orchestration/scope_fences.py`

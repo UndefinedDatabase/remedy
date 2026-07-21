@@ -14,7 +14,8 @@ Config: `packages/orchestration/config.py` — scope.allow, scope.deny
 CLI:    `apps/cli/commands/job.py` — remedy job fences
 Tests:  `tests/orchestration/test_fences.py` — 78 passed
         `tests/orchestration/test_applicator_fences.py` — 43 passed
-        `tests/orchestration/test_fence_e2e.py` — 104 passed
+        `tests/orchestration/test_fence_e2e.py` — 130 passed
+        `tests/orchestration/test_fence_production_e2e.py` — 20 passed
 
 ## Package discrepancy (a0aa69f) — RESOLVED
 Previous ZIP (`remedy-review-20260720-233422`) built at `0846a18`
@@ -41,6 +42,26 @@ commits including repair scopes 1-5.
 5. Strict JobFences validation → Pydantic model_validator (trim, reject empty/non-string/nested)
 6. Real production E2E → sanitizer, allow-list provenance, JobFences validation, job-scoped Evidence tests
 7. Canonical ZIP → via `create_manual_completion_bundle` + `make_review_zip.sh`
+
+## Branch cleanup (2026-07-21)
+Unrelated commit `0b71df6` (30 F221-F250 roadmap files) separated from
+F017 branch. Clean branch `feature/f017-scope-fences-clean` at `ca65478`
+with 27 commits. Backup at `backup/f017-scope-fences-mixed-17592a5`.
+Roadmap work at `docs/roadmap-features-f221-f250`.
+
+## Post-cleanup scopes (2026-07-21)
+- Scope 2: general POSIX path redaction (`_POSIX_ABS_RE` catches all abs paths)
+- Scope 3: 20 production E2E tests (job_fulfillment, do_continue, CLI fences)
+- Scope 4: docs consistency (12 assertions updated), Evidence, canonical ZIP
+
+### Test counts (post-cleanup)
+- `test_fences.py` — 78 passed
+- `test_applicator_fences.py` — 43 passed
+- `test_fence_e2e.py` — 130 passed
+- `test_fence_production_e2e.py` — 20 passed
+- `test_config.py` — 57 passed
+- `test_failure_postmortem.py` — 112 passed
+- **Total fence-related: 440 passed, 0 failed**
 
 ## Next
 Pending external acceptance. F017 stays `[~]`.
