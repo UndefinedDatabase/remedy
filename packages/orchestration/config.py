@@ -239,6 +239,34 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=list,
         default=None,
     ),
+    ConfigKeySpec(
+        key="budget.max_total_tokens",
+        env_var="REMEDY_BUDGET_MAX_TOTAL_TOKENS",
+        description="Maximum total tokens for a job (F018 budgets)",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.max_provider_calls",
+        env_var="REMEDY_BUDGET_MAX_PROVIDER_CALLS",
+        description="Maximum provider calls for a job (F018 budgets)",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.max_wall_clock_minutes",
+        env_var="REMEDY_BUDGET_MAX_WALL_CLOCK_MINUTES",
+        description="Maximum wall-clock minutes for a job (F018 budgets)",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.deadline",
+        env_var="REMEDY_BUDGET_DEADLINE",
+        description="UTC deadline for a job as ISO 8601 string (F018 budgets)",
+        value_type=str,
+        default=None,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}

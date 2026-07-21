@@ -125,6 +125,62 @@ class Task(BaseModel):
     output_artifact_ids: list[UUID] = Field(default_factory=list)
 
 
+class JobBudgets(BaseModel):
+    """Closed type for per-job budget limits (F018 T001).
+
+    All fields are optional. Absent means no limit.
+    extra="forbid" rejects unknown fields.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_total_tokens: int | None = None
+    max_provider_calls: int | None = None
+    max_wall_clock_minutes: int | None = None
+    deadline: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_booleans(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+                if name in data and isinstance(data[name], bool):
+                    raise ValueError(f"JobBudgets.{name} must be an integer, got bool")
+        return data
+
+    @model_validator(mode="after")
+    def _validate_budget_fields(self) -> JobBudgets:
+        for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+            val = getattr(self, name)
+            if val is not None:
+                if isinstance(val, bool):
+                    raise ValueError(f"JobBudgets.{name} must be an integer, got bool")
+                if not isinstance(val, int):
+                    raise ValueError(
+                        f"JobBudgets.{name} must be an integer, "
+                        f"got {type(val).__name__}"
+                    )
+                if val <= 0:
+                    raise ValueError(f"JobBudgets.{name} must be strictly positive, got {val}")
+                if not (-2**53 < val < 2**53):
+                    raise ValueError(f"JobBudgets.{name} is not finite")
+        if self.deadline is not None:
+            if not isinstance(self.deadline, datetime):
+                raise ValueError(
+                    f"JobBudgets.deadline must be a datetime, "
+                    f"got {type(self.deadline).__name__}"
+                )
+            if self.deadline.tzinfo is None:
+                raise ValueError(
+                    "JobBudgets.deadline must be timezone-aware (UTC)"
+                )
+            object.__setattr__(
+                self, "deadline",
+                self.deadline.astimezone(timezone.utc),
+            )
+        return self
+
+
 class JobFences(BaseModel):
     """Closed type for per-job scope fences (F017 T003).
 
@@ -174,3 +230,4 @@ class Job(BaseModel):
     budget: Budget = Field(default_factory=Budget)
     metadata: dict[str, Any] = Field(default_factory=dict)
     fences: JobFences | None = None
+    budgets: JobBudgets | None = None
