@@ -1,54 +1,42 @@
-# Plan — F017 Scope Fences — Final Closure
+# Plan — F017 Scope Fences — Final Cleanup & Review Preparation
 
 ## Goal
-Close 7 findings from non-canonical package review: repo_applicator
-job-scoped Evidence, persistence diagnostic redaction, allow-list
-provenance, strict JobFences validation, real production E2E tests,
-one canonical full Remedy READY_FOR_REVIEW package.
+Close 4 contracts: split unrelated roadmap commit, complete
+diagnostic redaction, add real production E2E, make docs truthful.
+One clean F017 branch + one canonical READY_FOR_REVIEW ZIP.
 
-## Branch state
-Base: `fe9898a`
-HEAD: `ee156ab` (23 commits; 17 original + 1 roadmap + 5 acceptance repair)
-Previous ZIP: non-canonical (6 members, missing root manifest/subject/
-content proof/commit chain/patches/final verifier/token truth/gates).
-Post-ZIP commit problem: ZIP declared HEAD 705ab36 but ee156ab followed.
+## Scope 1 — clean branch reconstruction
+- backup branch at mixed HEAD
+- roadmap branch from base with 0b71df6
+- clean F017 branch: all commits except 0b71df6
+- verify no T14/T15/T16/T17 feature files changed
+- record old-to-new commit mapping
 
-## Scope 1 — remaining model/provenance/redaction contracts ✓
-- ✓ repo_applicator: check_and_apply_to_repo passes job_id and evidence_dir
-- ✓ _sanitize_diagnostic: regex redaction of POSIX/Win/UNC/file URI paths
-- ✓ _match_violation_rule: 4-tuple with applicable_rules for allow-list violations
-- ✓ write_fence_violations_artifact: unpacks 4-tuple, includes applicable_rules
-- ✓ enforce_change_set: uses _sanitize_diagnostic for persistence errors
-- ✓ JobFences Pydantic model_validator: trim, reject empty/non-string/nested
+## Scope 2 — general POSIX diagnostic redaction
+- _POSIX_ABS_RE: match ANY absolute path, not just known roots
+- 20+ table-driven sanitizer tests
+- commit on clean branch
 
-## Scope 2 — E2E tests ✓
-- ✓ _sanitize_diagnostic mutation tests (POSIX/Win/UNC/file-uri/control/length/multi)
-- ✓ Allow-list provenance: rule_source + applicable_rules in artifact
-- ✓ JobFences strict validation: trim, empty, int, bool, nested, dict
-- ✓ repo_applicator job-scoped Evidence via check_and_apply_to_repo
-- ✓ Persistence failure via check_and_apply_to_repo
-- ✓ All 289 fence tests passing (test_fences + test_applicator_fences + test_fence_e2e)
+## Scope 3 — real production E2E
+- test_fence_production_e2e.py
+- run_job_fulfill: per-job/config/env deny → staging discarded
+- run_do_continue: denied intent → FENCE_VIOLATION stop
+- CLI _cmd_job_fences: human/JSON/rules/builtin/error paths
+- commit on clean branch
 
-## Scope 3 — regression proof, STATUS/docs/state, final package
-- ✓ Updated context.md, live_review.md, plan.md
-- Commit #1 + #2 + #3
-- Confirm clean tree
-- Fresh canonical Evidence via create_manual_completion_bundle
-- Build canonical ZIP via make_review_zip.sh
-- Verify SHA-256
-- No commit after packaging
-
-## Commits
-1. fix(f017): repo-applicator job Evidence + diagnostic sanitizer + provenance + model validation
-2. test(f017): real production E2E for all five paths + CLI + regression
-3. docs(f017): final state + canonical Evidence + READY_FOR_REVIEW package
+## Scope 4 — docs consistency + Evidence + package
+- fix 12 failing F017 assertions (accept [~])
+- update agent state files
+- update T0_F017.md
+- run all required validation suites
+- fresh Evidence via create_manual_completion_bundle
+- canonical ZIP via make_review_zip.sh
+- no post-ZIP commit
 
 ## Current Step
-Scope 3: committing and packaging.
+Scope 1: creating backup and clean branches.
 
 ## Constraints
-- No Fable/subagents/providers/network/Docker. Manual only.
-- Do not amend/squash existing F017 commits.
-- Do not push, create PR, merge, modify main, or start F018.
-- Do not weaken, delete, skip, or xfail tests.
-- F017 stays `[~]`, F018 stays `[ ]`.
+No Fable/subagents/providers/network/Docker.
+Do not amend/squash. Do not push/PR/merge/modify main.
+F017 [~]. F018 [ ].

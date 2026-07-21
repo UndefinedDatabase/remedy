@@ -644,7 +644,7 @@ def _redact_path(path_str: str) -> str:
 
 import re as _re
 
-_POSIX_ABS_RE = _re.compile(r"/(?:home|tmp|var|etc|usr|opt|root|mnt|private|Users|proc|sys|dev)(?:/[^\s:;,\"')\]}>]+)?")
+_POSIX_ABS_RE = _re.compile(r"/[a-zA-Z0-9_.\-][^\s:;,\"')\]}>]*")
 _WIN_DRIVE_RE = _re.compile(r"[A-Za-z]:\\[^\s:;,\"')\]}>]+")
 _UNC_RE = _re.compile(r"\\\\[^\s:;,\"')\]}>]+")
 _FILE_URI_RE = _re.compile(r"file://[^\s:;,\"')\]}>]+")

@@ -1075,6 +1075,70 @@ class TestSanitizeDiagnostic:
         assert _sanitize_diagnostic(msg) == msg
 
 
+_GENERAL_POSIX_CASES = [
+    # (input, leaked_substrings, expected_substrings, description)
+    ("/workspace/company/repo/file.py", ["/workspace"], ["<path-redacted>"], "workspace root"),
+    ("/data/customer/db.sqlite", ["/data/"], ["<path-redacted>"], "data root"),
+    ("/srv/private/secret.txt", ["/srv/"], ["<path-redacted>"], "srv root"),
+    ("/custom/path/here", ["/custom/"], ["<path-redacted>"], "custom root"),
+    ("/run/user/1000/bus", ["/run/"], ["<path-redacted>"], "run root"),
+    ("/nix/store/abc-123/bin/foo", ["/nix/"], ["<path-redacted>"], "nix store"),
+    ("/unknown-root/deep/path.txt", ["/unknown-root/"], ["<path-redacted>"], "unknown root"),
+    ("open failed at /workspace/a.py", ["/workspace"], ["open failed at", "<path-redacted>"], "path in middle"),
+    ("err: /srv/x end", ["/srv/"], ["err:", "<path-redacted>", "end"], "preserves surrounding text"),
+    ("/opt/local/bin/tool and /srv/db/x.db", ["/opt/", "/srv/"], ["<path-redacted>"], "multiple paths"),
+    ("err /a/b/c.py and /x/y/z.py", ["/a/b/", "/x/y/"], ["<path-redacted>"], "two unknown-root paths"),
+    ("errno 13: /custom/f.txt", ["/custom/"], ["errno 13:", "<path-redacted>"], "errno preserved"),
+    ("[Errno 2] No such file: /deep/nested/path/f.py", ["/deep/"], ["[Errno 2] No such file:", "<path-redacted>"], "bracket errno preserved"),
+    ("EACCES /private/secret", ["/private/"], ["EACCES", "<path-redacted>"], "posix error category preserved"),
+    ("/a.py", ["/a.py"], ["<path-redacted>"], "short single-component path"),
+    ("/dot.file/sub/path", ["/dot.file/"], ["<path-redacted>"], "dot in first segment"),
+    ("/path-with-dashes/file_under.py", ["/path-with-dashes/"], ["<path-redacted>"], "dashes and underscores"),
+    ("safe message no paths", [], ["safe message no paths"], "no paths unchanged"),
+    ("", [], [""], "empty string"),
+    ("x" * 300, [], [], "long string bounded to 200"),
+    ("/mnt/vol/a.txt and /workspace/b.txt", ["/mnt/", "/workspace/"], ["<path-redacted>"], "mixed known+unknown roots"),
+    ("Permission denied: '/workspace/file'", ["/workspace/"], ["Permission denied:", "<path-redacted>"], "path in quotes"),
+    ("IOError at /custom/deep/path.json\n/data/other", ["/custom/", "/data/"], ["<path-redacted>"], "newline + multiple paths"),
+    ("/secret.key", ["/secret.key"], ["<path-redacted>"], "root-level file"),
+]
+
+
+class TestGeneralPosixDiagnosticRedaction:
+    """General POSIX path sanitization — any absolute path redacted."""
+
+    @pytest.mark.parametrize(
+        "raw, leaked, expected, desc",
+        _GENERAL_POSIX_CASES,
+        ids=[c[3] for c in _GENERAL_POSIX_CASES],
+    )
+    def test_general_posix_redaction(self, raw, leaked, expected, desc):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        result = _sanitize_diagnostic(raw)
+        for sub in leaked:
+            assert sub not in result, f"leaked {sub!r} in result: {result!r}"
+        for sub in expected:
+            if sub:
+                assert sub in result, f"expected {sub!r} not in result: {result!r}"
+        assert len(result) <= 200
+
+    def test_deterministic_output(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "error at /workspace/company/secret.py: denied"
+        r1 = _sanitize_diagnostic(msg)
+        r2 = _sanitize_diagnostic(msg)
+        assert r1 == r2
+
+    def test_no_partial_path_prefix_leak(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "failed: /workspace/company/repo/file.py"
+        result = _sanitize_diagnostic(msg)
+        assert "/workspace" not in result
+        assert "/company" not in result
+        assert "/repo" not in result
+        assert "file.py" not in result
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Allow-list provenance — applicable_rules in violation artifact
 # ═══════════════════════════════════════════════════════════════════════════
