@@ -1720,6 +1720,22 @@ def run_job(
         except Exception:
             _job_budgets = None
 
+    def _on_provider_call(attempt):
+        nonlocal _accumulated_provider_calls, _accumulated_tokens
+        nonlocal _accumulated_measured, _accumulated_unmeasured
+        if getattr(attempt, "provider", "fake") == "fake":
+            return
+        _accumulated_provider_calls += 1
+        ua = getattr(attempt, "usage_actuals", None)
+        if ua is not None:
+            _accumulated_measured += 1
+            _accumulated_tokens += (
+                getattr(ua, "input_tokens", 0) +
+                getattr(ua, "output_tokens", 0)
+            )
+        else:
+            _accumulated_unmeasured += 1
+
     def _stop_check():
         from packages.orchestration.budget_guard import BudgetCounters
         counters = BudgetCounters(
@@ -1739,39 +1755,23 @@ def run_job(
             return None
         if result.source == "operator":
             return result.operator_signal
-        return result
+        return _StopSignal(
+            job_id=job.job_id,
+            request_id=f"budget_{uuid4().hex[:12]}",
+            reason=result.reason,
+            source="budget",
+        )
 
     _pre_stop = _stop_check()
     if _pre_stop is not None:
-        if isinstance(_pre_stop, _StopSignal):
-            # F012: a pre-work stop finalizes the episode that was ALREADY under way (its calls
-            # are tagged with the persisted active_episode_id). Reuse it so a stop-retry converges
-            # on the same episode and the same calls; only a first-ever run with no episode yet
-            # allocates one.
-            if not job.active_episode_id:
-                job.active_episode_id = uuid4().hex[:16]
-            # F1: a stop-retry of an episode that already captured its snapshot REUSES it (the
-            # persisted wrapper is bound to this episode and is ok). A first-ever pre-work stop —
-            # no bound snapshot yet — gets its OWN explicit ``pre_work_stop`` snapshot; it is never
-            # left empty and never rebuilt at finalize.
-            if not _episode_snapshot_bound_ok(job):
-                _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
-            # F5: PERSIST the allocated episode id + its bound snapshot BEFORE the stop transaction,
-            # so a retry of a stop whose finalization failed reuses the SAME episode id (and its
-            # already-written manifest), converging idempotently instead of allocating a fresh
-            # episode that would disagree with the on-disk index. This persist is with the job still
-            # non-stopped, so it never races the STOPPED checkpoint.
-            _persist_job(job)
-            try:
-                return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
-            except StopFinalizationError:
-                # The stop could not be made durable. The request is still pending and no work
-                # has begun — which is the safe outcome, and the job records why.
-                return job
-        else:
-            job.status = JOB_BLOCKED
-            job.error = f"budget_exhausted_pre_work: {getattr(_pre_stop, 'reason', 'budget')}"
-            _persist_job(job)
+        if not job.active_episode_id:
+            job.active_episode_id = uuid4().hex[:16]
+        if not _episode_snapshot_bound_ok(job):
+            _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
+        _persist_job(job)
+        try:
+            return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
+        except StopFinalizationError:
             return job
 
     # F012: no pending pre-work stop — this is a real execution EPISODE. Allocate a fresh
@@ -1868,15 +1868,9 @@ def run_job(
             # calls, every task still pending.
             _stop = _stop_check()
             if _stop is not None:
-                if isinstance(_stop, _StopSignal):
-                    try:
-                        return _stop_job(job, _stop, task=None, control_root_path=_control)
-                    except StopFinalizationError:
-                        return job          # request still pending; no task work begins
-                else:
-                    job.status = JOB_BLOCKED
-                    job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
-                    _persist_job(job)
+                try:
+                    return _stop_job(job, _stop, task=None, control_root_path=_control)
+                except StopFinalizationError:
                     return job
 
             # Build bounded task prompt
@@ -1947,6 +1941,7 @@ def run_job(
                     workspace_start_tree=task.task_start_tree,
                     stop_check=_stop_check,
                     episode_id=job.active_episode_id,
+                    on_provider_call=_on_provider_call,
                 )
             except Exception as exc:
                 task.status = TASK_FAILED
@@ -1962,21 +1957,6 @@ def run_job(
             task.safe_diff_files = list(result.safe_diff_files)
             task.repair_rounds_used = result.repair_rounds_used
             task.repair_rounds_allowed = result.repair_rounds_allowed
-
-            # F018: accumulate budget counters from this task's provider attempts
-            for attempt in getattr(result, "provider_attempts", []):
-                if getattr(attempt, "provider", "fake") == "fake":
-                    continue
-                _accumulated_provider_calls += 1
-                ua = getattr(attempt, "usage_actuals", None)
-                if ua is not None:
-                    _accumulated_measured += 1
-                    _accumulated_tokens += (
-                        getattr(ua, "input_tokens", 0) +
-                        getattr(ua, "output_tokens", 0)
-                    )
-                else:
-                    _accumulated_unmeasured += 1
 
             # Extract test/reviewer info from rounds
             if result.rounds:
@@ -2689,19 +2669,20 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
         task.status = TASK_PENDING
         task.task_attempt_state = "active"     # its start tree stays valid for the resume
 
+    _is_budget_stop = getattr(signal, "source", "") == "budget"
+
     # --- 1. archive (no removal yet) --------------------------------------------------
-    try:
-        archive_ref = archive_stop(job.job_id, signal,
-                                   control_root_path=control_root_path)
-    except Exception as exc:
-        # An unarchived request is NOT a consumed episode: no event, no post-mortem, no
-        # stopped job claiming a history that does not exist. The request stays pending and
-        # the job stops doing work — fail-safe, and durably recorded as incomplete.
-        job.stop_error = safe_text(
-            f"stop_archive_failed: {type(exc).__name__}: {exc}")[:500]
-        job.stop_request_id = getattr(signal, "request_id", "")
-        _persist_job(job)
-        raise StopFinalizationError(job.stop_error) from exc
+    archive_ref = ""
+    if not _is_budget_stop:
+        try:
+            archive_ref = archive_stop(job.job_id, signal,
+                                       control_root_path=control_root_path)
+        except Exception as exc:
+            job.stop_error = safe_text(
+                f"stop_archive_failed: {type(exc).__name__}: {exc}")[:500]
+            job.stop_request_id = getattr(signal, "request_id", "")
+            _persist_job(job)
+            raise StopFinalizationError(job.stop_error) from exc
 
     # --- 2. post-mortem (idempotent) --------------------------------------------------
     # The request id goes on the job as soon as the archive exists: whatever happens next,
@@ -2754,15 +2735,13 @@ def _stop_job(job: JobPlan, signal: Any, *, task: TaskEntry | None,
     _persist_job(job)                 # if THIS throws, the request is still pending: good
 
     # --- 6. the request has done its job ----------------------------------------------
-    try:
-        acknowledge_stop(job.job_id, signal, control_root_path=control_root_path)
-    except Exception as exc:
-        # The job IS stopped and durable; only the tidying failed. Say so, and let the next
-        # finalization remove the request — it will find the archive, the post-mortem and
-        # the event already there and add none of them twice.
-        job.stop_error = safe_text(
-            f"stop_acknowledge_failed: {type(exc).__name__}: {exc}")[:500]
-        _persist_job(job)
+    if not _is_budget_stop:
+        try:
+            acknowledge_stop(job.job_id, signal, control_root_path=control_root_path)
+        except Exception as exc:
+            job.stop_error = safe_text(
+                f"stop_acknowledge_failed: {type(exc).__name__}: {exc}")[:500]
+            _persist_job(job)
     return job
 
 

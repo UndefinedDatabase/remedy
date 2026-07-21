@@ -536,3 +536,217 @@ class TestRunManifestBudgetIdentity:
     def test_decode_budgets_accepts_none(self):
         from packages.orchestration.run_manifest import _decode_budgets_field
         assert _decode_budgets_field(None) is None
+
+
+class TestOnProviderAttemptCallback:
+    """F018: _call_with_retry fires on_provider_attempt after each _record_attempt."""
+
+    def _make_result(self):
+        from packages.orchestration.pingpong_loop import PingPongResult
+        return PingPongResult(
+            goal="test", repo_path="/tmp/test",
+            builder_provider="fake", reviewer_provider="fake",
+            builder_model="", reviewer_model="",
+            max_rounds=1, started_at="2026-01-01T00:00:00+00:00",
+        )
+
+    def _make_output(self, *, error="", usage_actuals=None):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            error=error, raw_text="", output="ok", verdict="pass",
+            usage_actuals=usage_actuals, actual_missing_reason="",
+            stream_call_id="", stream_artifact_refs=[],
+        )
+
+    def test_callback_fires_on_success(self):
+        from packages.orchestration.pingpong_loop import _call_with_retry, ProviderAttempt
+        result = self._make_result()
+        out = self._make_output()
+        captured = []
+        _call_with_retry(
+            lambda: out,
+            result=result,
+            role="builder",
+            provider="test-provider",
+            on_provider_attempt=lambda a: captured.append(a),
+        )
+        assert len(captured) == 1
+        assert isinstance(captured[0], ProviderAttempt)
+        assert captured[0].role == "builder"
+        assert captured[0].provider == "test-provider"
+
+    def test_callback_fires_on_retry(self):
+        from packages.orchestration.pingpong_loop import _call_with_retry
+        result = self._make_result()
+        call_count = 0
+
+        def call_fn():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return self._make_output(error="provider_error: timeout after 30s")
+            return self._make_output()
+
+        captured = []
+        _call_with_retry(
+            call_fn,
+            result=result,
+            role="builder",
+            provider="test-provider",
+            on_provider_attempt=lambda a: captured.append(a),
+        )
+        assert len(captured) == 2
+        assert not captured[0].is_retry
+        assert captured[1].is_retry
+
+    def test_no_callback_no_error(self):
+        from packages.orchestration.pingpong_loop import _call_with_retry
+        result = self._make_result()
+        out = self._make_output()
+        _call_with_retry(
+            lambda: out,
+            result=result,
+            role="builder",
+            provider="test-provider",
+            on_provider_attempt=None,
+        )
+        assert len(result.provider_attempts) == 1
+
+    def test_callback_receives_usage_actuals(self):
+        from types import SimpleNamespace
+        from packages.orchestration.pingpong_loop import _call_with_retry
+        result = self._make_result()
+        ua = SimpleNamespace(input_tokens=100, output_tokens=50)
+        out = self._make_output(usage_actuals=ua)
+        captured = []
+        _call_with_retry(
+            lambda: out,
+            result=result,
+            role="builder",
+            provider="claude-cli",
+            on_provider_attempt=lambda a: captured.append(a),
+        )
+        assert captured[0].usage_actuals is ua
+
+
+class TestLiveCounterCallback:
+    """F018: _on_provider_call in run_job updates accumulators immediately."""
+
+    def test_live_counter_skips_fake_provider(self):
+        from types import SimpleNamespace
+        calls = 0
+        tokens = 0
+        measured = 0
+        unmeasured = 0
+
+        def on_call(attempt):
+            nonlocal calls, tokens, measured, unmeasured
+            if getattr(attempt, "provider", "fake") == "fake":
+                return
+            calls += 1
+            ua = getattr(attempt, "usage_actuals", None)
+            if ua is not None:
+                measured += 1
+                tokens += getattr(ua, "input_tokens", 0) + getattr(ua, "output_tokens", 0)
+            else:
+                unmeasured += 1
+
+        fake_attempt = SimpleNamespace(provider="fake", usage_actuals=None)
+        on_call(fake_attempt)
+        assert calls == 0
+
+    def test_live_counter_updates_on_real_provider(self):
+        from types import SimpleNamespace
+        calls = 0
+        tokens = 0
+        measured = 0
+        unmeasured = 0
+
+        def on_call(attempt):
+            nonlocal calls, tokens, measured, unmeasured
+            if getattr(attempt, "provider", "fake") == "fake":
+                return
+            calls += 1
+            ua = getattr(attempt, "usage_actuals", None)
+            if ua is not None:
+                measured += 1
+                tokens += getattr(ua, "input_tokens", 0) + getattr(ua, "output_tokens", 0)
+            else:
+                unmeasured += 1
+
+        real_attempt = SimpleNamespace(
+            provider="claude-cli",
+            usage_actuals=SimpleNamespace(input_tokens=500, output_tokens=200),
+        )
+        on_call(real_attempt)
+        assert calls == 1
+        assert tokens == 700
+        assert measured == 1
+        assert unmeasured == 0
+
+    def test_live_counter_unmeasured_when_no_actuals(self):
+        from types import SimpleNamespace
+        calls = 0
+        unmeasured = 0
+
+        def on_call(attempt):
+            nonlocal calls, unmeasured
+            if getattr(attempt, "provider", "fake") == "fake":
+                return
+            calls += 1
+            if getattr(attempt, "usage_actuals", None) is None:
+                unmeasured += 1
+
+        real_attempt = SimpleNamespace(provider="ollama", usage_actuals=None)
+        on_call(real_attempt)
+        assert calls == 1
+        assert unmeasured == 1
+
+
+class TestBudgetStopSignal:
+    """F018: budget exhaustion creates StopSignal with source='budget'."""
+
+    def test_budget_stop_returns_stop_signal(self):
+        from packages.orchestration.safe_points import should_stop, StopSignal
+        from packages.orchestration.budget_guard import BudgetCounters
+        budgets = JobBudgets(max_provider_calls=3)
+        counters = BudgetCounters(
+            provider_calls=3, measured_call_count=3,
+        )
+        result = should_stop("test-job", budgets=budgets, counters=counters)
+        assert result.should_stop
+        assert result.source == "budget"
+        assert "max_provider_calls" in result.reason
+
+    def test_budget_stop_signal_constructed_correctly(self):
+        from packages.orchestration.safe_points import StopSignal
+        signal = StopSignal(
+            job_id="test-job",
+            request_id="budget_abc123",
+            reason="budget_exhausted:max_provider_calls",
+            source="budget",
+        )
+        assert signal.source == "budget"
+        assert signal.request_id.startswith("budget_")
+        assert signal.job_id == "test-job"
+        j = signal.to_json()
+        assert j["source"] == "budget"
+
+    def test_deadline_stop_returns_exhausted(self):
+        from packages.orchestration.budget_guard import evaluate_budget, BudgetCounters
+        past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        budgets = JobBudgets(deadline=past)
+        counters = BudgetCounters()
+        result = evaluate_budget(budgets, counters)
+        assert result.exhausted
+        assert result.first_exhausted_limit == "deadline"
+
+    def test_past_deadline_blocks_before_first_call(self):
+        from packages.orchestration.safe_points import should_stop
+        from packages.orchestration.budget_guard import BudgetCounters
+        past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        budgets = JobBudgets(deadline=past)
+        counters = BudgetCounters()
+        result = should_stop("test-job", budgets=budgets, counters=counters)
+        assert result.should_stop
+        assert "deadline" in result.reason

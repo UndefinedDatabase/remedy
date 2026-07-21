@@ -440,6 +440,7 @@ def _cmd_do_pingpong(
 
     # F018: build a budget-aware stop_check for the bare ping-pong path.
     _stop_check = None
+    _on_provider_call = None
     if budgets is not None:
         from datetime import datetime as _dt, timezone as _tz
         from packages.orchestration.budget_guard import BudgetCounters as _BC
@@ -450,6 +451,21 @@ def _cmd_do_pingpong(
         _pp_tokens = 0
         _pp_measured = 0
         _pp_unmeasured = 0
+
+        def _on_provider_call(attempt):
+            nonlocal _pp_calls, _pp_tokens, _pp_measured, _pp_unmeasured
+            if getattr(attempt, "provider", "fake") == "fake":
+                return
+            _pp_calls += 1
+            ua = getattr(attempt, "usage_actuals", None)
+            if ua is not None:
+                _pp_measured += 1
+                _pp_tokens += (
+                    getattr(ua, "input_tokens", 0) +
+                    getattr(ua, "output_tokens", 0)
+                )
+            else:
+                _pp_unmeasured += 1
 
         def _stop_check():
             counters = _BC(
@@ -485,6 +501,7 @@ def _cmd_do_pingpong(
         repair_rounds_source=repair_rounds_source,
         stream_evidence=stream_evidence,
         stop_check=_stop_check,
+        on_provider_call=_on_provider_call,
     )
 
     data = export_pingpong_json(result)

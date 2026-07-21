@@ -50,7 +50,7 @@ Evidence, one READY_FOR_REVIEW ZIP.
 - Change provenance gate
 
 ## Current Step
-Scope 1 — durable budget persistence (branch cleanup done)
+Scope 3 — DONE. Next: Scope 4
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.

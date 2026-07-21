@@ -1952,6 +1952,7 @@ def _call_with_retry(
     role: str,
     provider: str = "",
     on_call: Any = None,
+    on_provider_attempt: Callable[[ProviderAttempt], None] | None = None,
     is_parse_retry: bool = False,
     call_reasons: list[str] | None = None,
 ) -> Any:
@@ -1975,6 +1976,8 @@ def _call_with_retry(
     # retries stay part of that ONE logical parse retry.
     _record_attempt(result, out, role, provider,
                     is_retry=is_parse_retry, is_parse_retry=is_parse_retry)
+    if on_provider_attempt is not None:
+        on_provider_attempt(result.provider_attempts[-1])
     for attempt in range(MAX_RETRIES):
         if not out.error:
             return out
@@ -2016,6 +2019,8 @@ def _call_with_retry(
         out = call_fn()
         _record_attempt(result, out, role, provider,
                         is_retry=True, is_parse_retry=is_parse_retry)
+        if on_provider_attempt is not None:
+            on_provider_attempt(result.provider_attempts[-1])
 
     return out
 
@@ -2241,6 +2246,7 @@ def run_pingpong(
     workspace_start_tree: str = "",
     stop_check: Callable[[], Any] | None = None,
     episode_id: str = "",
+    on_provider_call: Callable[[ProviderAttempt], None] | None = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2601,6 +2607,7 @@ def run_pingpong(
                 result=result,
                 role="builder",
                 provider=builder_name,
+                on_provider_attempt=on_provider_call,
                 call_reasons=builder_call_reasons,
             )
             rd.builder_output = builder_out
@@ -2810,6 +2817,7 @@ def run_pingpong(
                     "review",
                     "re-review" if is_repair else "review",
                 ),
+                on_provider_attempt=on_provider_call,
                 call_reasons=reviewer_call_reasons,
             )
 
@@ -2861,6 +2869,7 @@ def run_pingpong(
                     provider=reviewer_name,
                     is_parse_retry=True,
                     on_call=_rev_trace(retry_prompt, "parse-retry", "review-parse-retry"),
+                    on_provider_attempt=on_provider_call,
                     call_reasons=reviewer_call_reasons,
                 )
                 retry_out.parse_retried = True
