@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def _utcnow() -> datetime:
@@ -125,6 +125,42 @@ class Task(BaseModel):
     output_artifact_ids: list[UUID] = Field(default_factory=list)
 
 
+class JobFences(BaseModel):
+    """Closed type for per-job scope fences (F017 T003).
+
+    Both fields are optional lists of glob strings. An empty list means
+    no restriction (allow) or no additional denies (deny).
+    Malformed input fails closed via Pydantic validation — no str() coercion.
+    extra="forbid" rejects unknown fields.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    allow: list[str] = Field(default_factory=list)
+    deny: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_glob_entries(self) -> JobFences:
+        for field_name in ("allow", "deny"):
+            raw = getattr(self, field_name)
+            cleaned: list[str] = []
+            for i, item in enumerate(raw):
+                if not isinstance(item, str):
+                    raise ValueError(
+                        f"JobFences.{field_name}[{i}] must be a string, "
+                        f"got {type(item).__name__}"
+                    )
+                trimmed = item.strip()
+                if not trimmed:
+                    raise ValueError(
+                        f"JobFences.{field_name}[{i}] is empty or "
+                        f"whitespace-only after trimming"
+                    )
+                cleaned.append(trimmed)
+            object.__setattr__(self, field_name, cleaned)
+        return self
+
+
 class Job(BaseModel):
     """Top-level orchestration unit composed of tasks."""
 
@@ -137,3 +173,4 @@ class Job(BaseModel):
     artifacts: list[Artifact] = Field(default_factory=list)
     budget: Budget = Field(default_factory=Budget)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    fences: JobFences | None = None

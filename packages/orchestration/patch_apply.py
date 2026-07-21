@@ -181,6 +181,29 @@ def apply_patch_intent(
     if risk in _BLOCKED_RISKS:
         return _blocked(f"unsupported_risk:{risk}", target_path, action)
 
+    # ── 7b. F017: fence check via shared enforcement boundary ──────────────
+    from packages.orchestration.scope_fences import (
+        FenceViolationError as _FVE,
+        TouchedPath as _TouchedPath,
+        enforce_change_set as _enforce,
+    )
+
+    _job_fences = None
+    if hasattr(job, "fences") and job.fences is not None:
+        _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+    try:
+        _enforce(
+            repo_root,
+            [_TouchedPath(path=target_path, operation=action, role="target")],
+            applicator="patch_apply",
+            job_id=str(getattr(job, "id", "")),
+            intent_id=intent_id,
+            evidence_dir=data_dir,
+            job_fences=_job_fences,
+        )
+    except _FVE:
+        return _blocked("fence_violation", target_path, action)
+
     # ── 8. Permissions ────────────────────────────────────────────────────
     # repo_overwrite is NOT required or consulted here.
     # shell_exec is NOT used here.

@@ -105,6 +105,21 @@ class TestClassifyEveryClass:
 
     def test_every_enum_member_is_reachable(self):
         """No class exists that nothing can ever produce."""
+        from packages.orchestration.scope_fences import (
+            ChangeSetFenceResult,
+            FenceViolation,
+            FenceViolationError,
+        )
+
+        _fence_err = FenceViolationError(ChangeSetFenceResult(
+            allowed=False,
+            violations=(FenceViolation(
+                path=".git/x", normalized=".git/x",
+                operation="modify", role="target",
+                reason="denied:builtin:git directory",
+            ),),
+            touched_count=1,
+        ))
         produced = set()
         for signals in (
             FailureSignals(exception=WorktreeConflictError("x")),
@@ -112,6 +127,7 @@ class TestClassifyEveryClass:
             FailureSignals(exception=subprocess.TimeoutExpired("c", 1)),
             FailureSignals(exception=subprocess.CalledProcessError(1, "c")),
             FailureSignals(exception=FileNotFoundError("c")),
+            FailureSignals(exception=_fence_err),
             FailureSignals(terminal_status="test_failed"),
             FailureSignals(terminal_status="review_failed"),
             FailureSignals(terminal_status="stopped"),

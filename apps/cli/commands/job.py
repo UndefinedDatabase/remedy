@@ -1277,6 +1277,91 @@ def _cmd_job_fulfill(
         print(summarize_job_fulfillment(record))
 
 
+def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
+    """Show effective scope fences for a job (F017 T003)."""
+    import json as _json
+    from pathlib import Path
+
+    from packages.orchestration.scope_fences import (
+        FenceConfigError,
+        resolve_fence_spec_effective,
+    )
+
+    try:
+        job = load_job(UUID(job_id_str))
+    except (ValueError, JobNotFoundError):
+        print(f"Job not found: {job_id_str}", file=sys.stderr)
+        sys.exit(1)
+
+    repo_str = job.metadata.get("target_repo", "") or ""
+    if not repo_str:
+        print(f"Job {job_id_str[:8]} has no target_repo attached", file=sys.stderr)
+        sys.exit(2)
+    repo_root = Path(repo_str)
+    if not repo_root.is_dir():
+        print(f"Target repo does not exist: {repo_str}", file=sys.stderr)
+        sys.exit(2)
+
+    job_fences_dict = None
+    if job.fences is not None:
+        job_fences_dict = {"allow": job.fences.allow, "deny": job.fences.deny}
+
+    try:
+        eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
+    except FenceConfigError as exc:
+        print(f"Fence config error: {exc}", file=sys.stderr)
+        sys.exit(3)
+    except RuntimeError as exc:
+        print(f"Builtin resolution failed: {exc}", file=sys.stderr)
+        sys.exit(4)
+    spec = eff.spec
+
+    warnings: list[str] = list(eff.warnings)
+    if not spec.allow_globs and not spec.deny_globs:
+        warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
+
+    def _rule_dict(r):
+        return {"pattern": r.pattern, "kind": r.kind, "source": r.source, "reason": r.reason}
+
+    result = {
+        "job_id": job_id_str,
+        "source": eff.source,
+        "case_sensitivity": eff.case_sensitivity,
+        "allow_rules": [_rule_dict(r) for r in eff.allow_rules],
+        "deny_rules": [_rule_dict(r) for r in eff.deny_rules],
+        "builtin_rules": [_rule_dict(r) for r in eff.builtin_rules],
+        "allow_globs": list(spec.allow_globs),
+        "deny_globs": list(spec.deny_globs),
+        "warnings": warnings,
+    }
+
+    if json_output:
+        print(_json.dumps(result, indent=2))
+    else:
+        print(f"Scope fences for job {job_id_str[:8]}:")
+        print(f"  Source: {eff.source}")
+        print(f"  Case:   {eff.case_sensitivity}")
+        if eff.allow_rules:
+            print("  Allow rules:")
+            for r in eff.allow_rules:
+                print(f"    {r.pattern:30s} [{r.source}]")
+        else:
+            print("  Allow:  (all — no restrictions)")
+        if eff.deny_rules:
+            print("  Deny rules:")
+            for r in eff.deny_rules:
+                print(f"    {r.pattern:30s} [{r.source}]")
+        else:
+            print("  Deny:   (none beyond builtins)")
+        print("  Builtin rules:")
+        for r in eff.builtin_rules:
+            print(f"    {r.pattern:30s} [{r.source}] {r.reason}")
+        if warnings:
+            print("  Warnings:")
+            for w in warnings:
+                print(f"    {w}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
@@ -1318,6 +1403,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "job.report": lambda args: _cmd_job_report(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.fences": lambda args: _cmd_job_fences(
         args.job_id,
         json_output=getattr(args, "json", False),
     ),

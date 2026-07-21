@@ -67,6 +67,7 @@ class ContinueStopReason:
     BLOCKED_INELIGIBLE = "blocked_ineligible"
     SNAPSHOT_FAILED = "snapshot_failed"
     APPLY_FAILED = "apply_failed"
+    FENCE_VIOLATION = "fence_violation"
     TEST_BLOCKED = "test_blocked"
     LEASE_UNAVAILABLE = "lease_unavailable"
     ERROR = "error"
@@ -605,6 +606,43 @@ def run_do_continue(
             _record(result, ContinuePhase.SNAPSHOT, "resumed", "Snapshot already verified.")
             _record(result, ContinuePhase.APPLY, "resumed", "Apply already completed (idempotent).")
         else:
+            # F017: fence preflight via shared enforcement boundary
+            from packages.orchestration.scope_fences import (
+                FenceViolationError as _FVE,
+                TouchedPath as _FTP,
+                enforce_change_set as _f_enforce,
+            )
+            _f_intent = get_patch_intent(job, iid)
+            if _f_intent and _f_intent.get("target_path"):
+                _f_repo = Path(job.metadata.get("target_repo", "") or ".")
+                _f_job_fences = None
+                if hasattr(job, "fences") and job.fences is not None:
+                    _f_job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+                try:
+                    _f_enforce(
+                        _f_repo,
+                        [_FTP(
+                            path=_f_intent["target_path"],
+                            operation=_f_intent.get("action", "modify"),
+                            role="target",
+                        )],
+                        applicator="do_continue",
+                        job_id=request.job_id,
+                        intent_id=iid,
+                        evidence_dir=data_dir,
+                        job_fences=_f_job_fences,
+                    )
+                except _FVE:
+                    _record(result, ContinuePhase.SNAPSHOT, "completed", "Snapshot not needed.")
+                    _record(result, ContinuePhase.APPLY, "blocked", "Apply blocked: fence_violation")
+                    result.stop_reason = ContinueStopReason.FENCE_VIOLATION
+                    result.next_safe_action = f"remedy change proof {request.job_id} --json"
+                    result.evidence_status = "unknown"
+                    _emit_continue(data_dir, request.job_id, "do_continue_stopped", {
+                        "stop_reason": result.stop_reason, "reason": "fence_violation",
+                    })
+                    return result
+
             from packages.orchestration.patch_apply import apply_patch_intent
             apply_res = apply_patch_intent(job, iid, data_dir=data_dir)
             if apply_res.state == "blocked":

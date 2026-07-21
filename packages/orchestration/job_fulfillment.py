@@ -796,6 +796,52 @@ def run_job_fulfill(
         # ── APPROVAL + APPLY (in staging via target_repo_override) ────
         record.status = JobFulfillmentStatus.APPROVAL_READY
 
+        # F017: batch fence preflight — ALL intent targets before first apply
+        from packages.orchestration.approval_queue import (
+            get_patch_intent as _gpi,
+            make_intent_id as _mii,
+        )
+        from packages.orchestration.scope_fences import (
+            FenceViolationError,
+            TouchedPath as _TP,
+            enforce_change_set as _enforce,
+        )
+
+        _staging_root = staging_ws.staging_dir
+        _job_fences = None
+        if hasattr(job, "fences") and job.fences is not None:
+            _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
+        _batch_touched: list[_TP] = []
+        for wo in worker_outputs:
+            _aid = wo.get("artifact_id", "")
+            if not _aid:
+                continue
+            _iid = _mii(UUID(_aid), 0)
+            _intent = _gpi(job, _iid)
+            if _intent and _intent.get("target_path"):
+                _batch_touched.append(
+                    _TP(path=_intent["target_path"],
+                        operation=_intent.get("action", "modify"),
+                        role="target")
+                )
+        if _batch_touched:
+            try:
+                _enforce(
+                    _staging_root, _batch_touched,
+                    applicator="job_fulfillment",
+                    job_id=job_id,
+                    evidence_dir=data_dir,
+                    job_fences=_job_fences,
+                )
+            except FenceViolationError:
+                discard_staging(staging_ws, "fence_violation")
+                staging_result.discarded = True
+                staging_result.discard_reason = "fence_violation"
+                record.status = JobFulfillmentStatus.BLOCKED
+                record.stop_reason = "fence_violation"
+                save_fulfillment_record(record, data_dir)
+                return record
+
         for wo in worker_outputs:
             art_id = wo.get("artifact_id", "")
             if not art_id:
