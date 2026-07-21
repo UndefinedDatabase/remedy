@@ -168,21 +168,32 @@ def list_decisions(
                 break
 
     if budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error):
+        _budget_request_id = ""
+        _budget_created_at = ""
+        _budget_limit = ""
+        for ev in events:
+            if (ev.get("event") == "job_stopped"
+                    and str((ev.get("metadata") or {}).get("source", "")) == "budget"):
+                _budget_request_id = str(
+                    (ev.get("metadata") or {}).get("request_id", ""))
+                _budget_created_at = str(ev.get("timestamp", ""))
+                _budget_limit = str(
+                    (ev.get("metadata") or {}).get("exhausted_limit", ""))
+                break
+        _decision_id = (f"budget:{_budget_request_id}"
+                        if _budget_request_id else "budget_exhausted")
         decisions.append(HumanDecision(
-            id="budget_exhausted",
+            id=_decision_id,
             type="token_budget",
             status="open",
             severity="blocker",
             source="budget_guard",
             related_node_id="",
-            related_intent_id="",
+            related_intent_id=_budget_request_id,
             related_file="",
             safe_summary=f"Job stopped: {budget_error[:200]}",
-            next_actions=(
-                "Increase budget limits and re-run.",
-                f"remedy job budget {job_id[:8]}",
-            ),
-            created_at="",
+            next_actions=("extend", "abandon"),
+            created_at=_budget_created_at,
             resolved_at=None,
         ))
 
