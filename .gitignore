@@ -224,6 +224,7 @@ remedy-review-*
 
 # Remedy job evidence (ephemeral self-run artifacts)
 remedy-job-evidence-*/
+.agent/Evidence/
 
 # Run transcripts
 run_transcript.txt
