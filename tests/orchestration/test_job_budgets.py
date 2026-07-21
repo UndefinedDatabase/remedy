@@ -159,16 +159,17 @@ class TestJobBudgetsModel:
         finally:
             reset_config()
 
-    def test_malformed_toml_raises_not_none(self, tmp_path, monkeypatch):
+    def test_malformed_toml_raises_budget_config_error(self, tmp_path, monkeypatch):
+        """F018: malformed TOML fails closed with BudgetConfigError."""
         toml = tmp_path / "remedy.toml"
         toml.write_text('{{bad toml')
-        from packages.orchestration.budget_resolution import resolve_job_budgets
+        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
         from packages.orchestration.config import reset_config
         monkeypatch.chdir(tmp_path)
         reset_config()
         try:
-            result = resolve_job_budgets()
-            assert result is None
+            with pytest.raises(BudgetConfigError, match="Malformed TOML"):
+                resolve_job_budgets()
         finally:
             reset_config()
 
@@ -523,7 +524,7 @@ class TestRunManifestBudgetIdentity:
 
     def test_decode_budgets_rejects_string_int_field(self):
         from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
-        with pytest.raises(ManifestError, match="int or null"):
+        with pytest.raises(ManifestError, match="strictly positive int"):
             _decode_budgets_field({"max_provider_calls": "five"})
 
     def test_decode_budgets_accepts_valid(self):

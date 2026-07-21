@@ -1,28 +1,25 @@
-# Plan — F018 Budgets & Stop Conditions — Full Rebuild
+# Plan — F018 Budgets & Stop Conditions — Authority & Integration Round
 
 ## Goal
-Close all 13 external review blocking findings. Wire budgets end-to-end
-from CLI through durable persistence, live intra-task counters, F011
-stop integration, and RunManifest identity. Clean branch, fresh Evidence,
-one READY_FOR_REVIEW ZIP.
+Close 14 external review findings. All source fixes applied, 28 new integration
+tests pass, existing tests updated (3 tests that pinned unsafe behavior replaced
+with fail-closed assertions).
 
-## Finding Fixes Applied
-1. Pre-call budget check → stop_check in _call_with_retry (pingpong_loop.py)
-2. Fail-closed config → BudgetConfigError on unknown budget.* keys (config.py)
-3. RunManifest authority → already wired (budgets in logical_input_projection)
-4. Counter validation → already wired (BudgetCounters.__post_init__)
-5. Honest CLI → no_runs/unavailable, never evaluates zeros (job.py)
-6. Deterministic identity → sha256-based budget stop request_id (pingpong_job.py)
-7. Decision queue → checks stop events + fields (decision_queue.py)
-8. Budget postmortem → terminal_status="budget_exhausted" (pingpong_job.py)
-9. Wall-clock continuity → uses job.created_at across resumes (pingpong_job.py)
-10. CLI path → already wired (--max-total-tokens etc + config)
-11. RunContract authority → already inherits from JobBudgets
-12. Evidence churn → clean branch (reset to 884a8b8)
-13. live_review.md → rewritten for F018
+## Status: Commits + Evidence + ZIP remaining
 
-## Current Step
-Tests + Evidence + ZIP.
+## Completed
+- [x] Scope 1: Fail-closed config + durable JobPlan budget persistence
+- [x] Scope 2: Canonical RunManifest + Actuals authority
+- [x] Scope 3: Stable stop identity, wall clock + Decision Queue
+- [x] Scope 4: RunContract reconciliation + honest budget CLI
+- [x] Scope 5 (partial): 28 integration tests pass, existing tests fixed
+
+## Remaining
+- [ ] 6 logical commits
+- [ ] Update docs: STATUS.md, T0_F018.md, context.md
+- [ ] Fresh Evidence via create_manual_completion_bundle
+- [ ] One canonical READY_FOR_REVIEW ZIP
+- [ ] Mandatory detailed handoff
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.

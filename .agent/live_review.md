@@ -37,7 +37,13 @@ CLI:     `apps/cli/commands/job.py` — remedy job budget (honest: never invents
 - `test_budget_guard.py` — 52+ passed
 - `test_job_budgets.py` — 76+ passed
 - `test_safe_points.py` — 78+ passed
-- `test_budget_stop_integration.py` — 23+ passed
+- `test_budget_stop_integration.py` — 39 passed
+- `test_config.py` — 57 passed
+- `test_failure_postmortem.py` — 112 passed
+- `test_run_contract.py` — 88 passed
+- `test_run_manifest.py` — 44 passed
+- `test_stop_reasons.py` — 10 passed
+- **Total: 556 passed across 9 suites**
 
 ## Next
 Pending external acceptance. F018 stays `[~]`.

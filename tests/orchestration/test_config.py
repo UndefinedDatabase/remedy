@@ -330,11 +330,13 @@ class TestSetConfigValueGuards:
 
 
 class TestLoadDiagnostics:
-    def test_malformed_toml_warning(self, tmp_path):
+    def test_malformed_toml_raises_budget_config_error(self, tmp_path):
+        """F018: malformed TOML must fail closed, not return empty dict."""
+        from packages.orchestration.budget_resolution import BudgetConfigError
         bad = tmp_path / "bad.toml"
         bad.write_text("this is [ not valid toml ugh")
-        config = load_config(project_path=bad, user_path=Path("/nonexistent/user.toml"))
-        assert any("Malformed TOML" in w for w in config.load_report.warnings)
+        with pytest.raises(BudgetConfigError, match="Malformed TOML"):
+            load_config(project_path=bad, user_path=Path("/nonexistent/user.toml"))
 
     def test_unknown_key_warning(self, tmp_path):
         toml_file = tmp_path / "remedy.toml"
