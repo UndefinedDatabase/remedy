@@ -6,8 +6,10 @@ Base commit: `fe9898a`
 
 ## Current state
 T001–T003 built + repaired. All 10 external review findings closed.
-Repair block complete (6 commits: aec3d12..Scope 6).
-354 fence-related tests passing. Pending external acceptance.
+Acceptance repair complete: rule-level provenance, job-scoped durable
+Evidence, typed persistence failures, strict glob contracts, CLI
+provenance, five-path E2E tests. Artifact schema v2.
+200 fence tests passing. Pending external acceptance.
 
 ## External review findings — ALL CLOSED
 See `.agent/live_review.md` for per-finding commit references.
