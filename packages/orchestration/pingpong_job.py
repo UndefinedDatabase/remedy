@@ -1718,10 +1718,15 @@ def run_job(
     from packages.orchestration.safe_points import should_stop as _should_stop, StopSignal as _StopSignal
     _control = _control_root()
 
-    _accumulated_provider_calls = 0
-    _accumulated_tokens = 0
-    _accumulated_measured = 0
-    _accumulated_unmeasured = 0
+    # F018: seed accumulators from persisted budget_actuals on resume.
+    # A stopped-then-resumed job must NOT reset counters to zero.
+    _prior = getattr(job, "budget_actuals", None) or {}
+    _accumulated_provider_calls = int(_prior.get("provider_call_count", 0) or 0)
+    _accumulated_tokens = int(_prior.get("total_tokens", 0) or 0)
+    _accumulated_measured = int(_prior.get("actual_call_count", 0) or 0)
+    _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
+    if _accumulated_unmeasured < 0:
+        _accumulated_unmeasured = 0
     _run_started_at = datetime.now(timezone.utc)
     if getattr(job, "first_running_at", ""):
         try:
@@ -1788,12 +1793,25 @@ def run_job(
             source="budget",
         )
 
+    def _persist_budget_actuals():
+        """Persist live counters so they survive stop/resume."""
+        job.budget_actuals = {
+            "provider_call_count": _accumulated_provider_calls,
+            "actual_call_count": _accumulated_measured,
+            "total_tokens": _accumulated_tokens,
+            "started_at": _run_started_at.isoformat(),
+        }
+
+    # F018: allocate episode BEFORE computing budget identity so the stop
+    # request_id is stable across finalization failures.
+    if not job.active_episode_id:
+        job.active_episode_id = uuid4().hex[:16]
+
     _pre_stop = _stop_check()
     if _pre_stop is not None:
-        if not job.active_episode_id:
-            job.active_episode_id = uuid4().hex[:16]
         if not _episode_snapshot_bound_ok(job):
             _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
+        _persist_budget_actuals()
         _persist_job(job)
         try:
             return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
@@ -1894,6 +1912,8 @@ def run_job(
             # calls, every task still pending.
             _stop = _stop_check()
             if _stop is not None:
+                _persist_budget_actuals()
+                _persist_job(job)
                 try:
                     return _stop_job(job, _stop, task=None, control_root_path=_control)
                 except StopFinalizationError:
@@ -2004,6 +2024,7 @@ def run_job(
                     source=result.stop_source or "unknown",
                     requested_at=result.stop_requested_at,
                 )
+                _persist_budget_actuals()
                 try:
                     return _stop_job(job, signal, task=task, control_root_path=_control)
                 except StopFinalizationError:
@@ -2086,6 +2107,7 @@ def run_job(
             # now takes effect before the NEXT task is dispatched.
             _stop = _stop_check()
             if _stop is not None:
+                _persist_budget_actuals()
                 if isinstance(_stop, _StopSignal):
                     try:
                         return _stop_job(job, _stop, task=None, control_root_path=_control)
@@ -2156,13 +2178,7 @@ def run_job(
         elif has_pending and max_tasks > 0 and tasks_run >= max_tasks:
             job.status = JOB_PAUSED
 
-        # F018: persist accumulated actuals for honest budget CLI
-        job.budget_actuals = {
-            "provider_call_count": _accumulated_provider_calls,
-            "actual_call_count": _accumulated_measured,
-            "total_tokens": _accumulated_tokens,
-            "started_at": _run_started_at.isoformat(),
-        }
+        _persist_budget_actuals()
 
         # F012: a completed job records its episode's manifest, after every call input is
         # known. A paused/partial job is not a finished run and gets none yet.
