@@ -1,11 +1,12 @@
 """F018 T001 — budget resolution: CLI flags > env vars > project config > no limit.
 
-Resolves a JobBudgets from the three precedence layers.
+Resolves a JobBudgets from the central config system (config.py).
+CLI flags override env/TOML; malformed values raise BudgetConfigError.
 """
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from packages.core.models import JobBudgets
@@ -50,30 +51,12 @@ def _pos_int(name: str, raw: Any) -> int | None:
     return raw
 
 
-_ENV_MAP = {
-    "max_total_tokens": "REMEDY_BUDGET_MAX_TOTAL_TOKENS",
-    "max_provider_calls": "REMEDY_BUDGET_MAX_PROVIDER_CALLS",
-    "max_wall_clock_minutes": "REMEDY_BUDGET_MAX_WALL_CLOCK_MINUTES",
-    "deadline": "REMEDY_BUDGET_DEADLINE",
+_CONFIG_KEYS = {
+    "max_total_tokens": "budget.max_total_tokens",
+    "max_provider_calls": "budget.max_provider_calls",
+    "max_wall_clock_minutes": "budget.max_wall_clock_minutes",
+    "deadline": "budget.deadline",
 }
-
-
-def _load_budget_toml(config_path: str) -> dict[str, Any]:
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        import tomli as tomllib  # type: ignore[no-redef]
-    try:
-        with open(config_path, "rb") as f:
-            data = tomllib.load(f)
-    except Exception:
-        return {}
-    budget = data.get("remedy", {}).get("budget", {})
-    if not isinstance(budget, dict):
-        raise BudgetConfigError(
-            f"[remedy.budget] must be a table, got {type(budget).__name__}"
-        )
-    return budget
 
 
 def resolve_job_budgets(
@@ -84,17 +67,23 @@ def resolve_job_budgets(
     cli_deadline: str | None = None,
     config_path: str | None = None,
 ) -> JobBudgets | None:
-    budget_cfg = _load_budget_toml(config_path) if config_path else {}
+    """Resolve budget values through CLI > env > TOML > no-limit precedence.
+
+    Uses config.py as the single authority for env/TOML resolution.
+    CLI flags, when present, override everything.
+    Malformed values raise BudgetConfigError (never silently returns None).
+    """
+    from packages.orchestration.config import ConfigSource, load_config
+
+    cfg = load_config() if not config_path else load_config(
+        project_path=Path(config_path))
 
     def _resolve_int(name: str, cli_val: str | None) -> int | None:
         if cli_val is not None:
             return _pos_int(name, cli_val)
-        env_val = os.environ.get(_ENV_MAP[name])
-        if env_val is not None:
-            return _pos_int(name, env_val)
-        cfg_val = budget_cfg.get(name)
-        if cfg_val is not None:
-            return _pos_int(name, cfg_val)
+        cv = cfg.get_value(_CONFIG_KEYS[name])
+        if cv is not None and cv.source != ConfigSource.DEFAULT and cv.value is not None:
+            return _pos_int(name, cv.value)
         return None
 
     max_total_tokens = _resolve_int("max_total_tokens", cli_max_total_tokens)
@@ -105,11 +94,9 @@ def resolve_job_budgets(
     if cli_deadline is not None:
         deadline = _parse_deadline(cli_deadline)
     else:
-        env_dl = os.environ.get(_ENV_MAP["deadline"])
-        if env_dl is not None and env_dl.strip():
-            deadline = _parse_deadline(env_dl)
-        elif "deadline" in budget_cfg:
-            raw_dl = budget_cfg["deadline"]
+        cv = cfg.get_value(_CONFIG_KEYS["deadline"])
+        if cv is not None and cv.source != ConfigSource.DEFAULT and cv.value is not None:
+            raw_dl = cv.value
             if not isinstance(raw_dl, str):
                 raise BudgetConfigError(
                     f"budget.deadline must be a string, got {type(raw_dl).__name__}"

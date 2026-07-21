@@ -2230,6 +2230,7 @@ class RunManifestV1:
     # episode id. The episode id is the active execution episode; the request id names which
     # stop produced this stopped record. Empty for non-stopped manifests.
     stop_request_id: str = ""
+    budgets: dict[str, Any] | None = None
     manifest_v: int = MANIFEST_VERSION
 
     @property
@@ -2257,6 +2258,7 @@ class RunManifestV1:
             "episode_ordinal": self.episode_ordinal,
             "previous_episode_id": self.previous_episode_id,
             "stop_request_id": self.stop_request_id,
+            "budgets": self.budgets,
         }
 
     def canonical_bytes(self) -> bytes:
@@ -3502,7 +3504,7 @@ def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
                                "episode_snapshot", "job_input_sha256", "calls", "coverage",
                                "call_expectation", "call_ledgers", "prior_episode_ids",
                                "episode_ordinal", "previous_episode_id",
-                               "stop_request_id"}, "manifest")
+                               "stop_request_id", "budgets"}, "manifest")
         if _S.req_int(d, "manifest_v", "manifest", minimum=0, maximum=1000) != MANIFEST_VERSION:
             raise ManifestError(
                 f"unsupported manifest_v {d.get('manifest_v')!r} "
@@ -3538,6 +3540,7 @@ def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
                                            max_len=_S.MAX_ID_LEN, allow_empty=True),
             stop_request_id=_S.req_str(d, "stop_request_id", "manifest",
                                        max_len=_S.MAX_ID_LEN, allow_empty=True),
+            budgets=d.get("budgets"),
         )
     except _S.SchemaError as exc:
         raise ManifestError(f"manifest schema: {exc}") from None

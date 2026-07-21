@@ -187,7 +187,26 @@ def _cmd_do(
     approve_scope: bool = False,
     repair_rounds: int | None = None,
     stream_evidence: bool = False,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
 ) -> None:
+    # --- Budget resolution ---
+    budgets = None
+    if any(v is not None for v in (max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline)):
+        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+        try:
+            budgets = resolve_job_budgets(
+                cli_max_total_tokens=max_total_tokens,
+                cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_deadline=deadline,
+            )
+        except (BudgetConfigError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+
     # --- Task input loading ---
     task_input = None
     if task_file and task_stdin:
@@ -2413,6 +2432,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         approve_scope=getattr(args, "approve_scope", False),
         repair_rounds=getattr(args, "repair_rounds", None),
         stream_evidence=getattr(args, "stream_evidence", False),
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",

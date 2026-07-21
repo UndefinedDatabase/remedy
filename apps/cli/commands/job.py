@@ -26,6 +26,10 @@ def _cmd_create_job(
     project_id: str | None = None,
     task_type: str | None = None,
     task_description: str | None = None,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
 ) -> None:
     from packages.orchestration.run_log import RunLogWriter
 
@@ -69,12 +73,27 @@ def _cmd_create_job(
         tasks = [Task(description=description, inputs={"task_type": task_type})]
         state = RunState.PLANNED
 
+    budgets = None
+    if any(v is not None for v in (max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline)):
+        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+        try:
+            budgets = resolve_job_budgets(
+                cli_max_total_tokens=max_total_tokens,
+                cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_deadline=deadline,
+            )
+        except (BudgetConfigError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
         state=state,
         tasks=tasks,
         metadata=metadata,
+        budgets=budgets,
     )
     save_job(job)
     print(job.id)
@@ -1362,18 +1381,76 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
                 print(f"    {w}")
 
 
+def _cmd_job_budget(
+    job_id: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Show budget limits and current counters for a job."""
+    import json as _json
+
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        print(f"Error: job {job_id!r} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    if job.budgets is None:
+        if json_output:
+            print(_json.dumps({"job_id": str(job.id), "budgets": None}, indent=2))
+        else:
+            print(f"Job {str(job.id)[:8]}: no budgets configured.")
+        return
+
+    from packages.orchestration.budget_guard import BudgetCounters, evaluate_budget
+
+    counters = BudgetCounters()
+    evaluation = evaluate_budget(job.budgets, counters)
+
+    if json_output:
+        print(_json.dumps({
+            "job_id": str(job.id),
+            "evaluation": evaluation.to_json(),
+        }, indent=2))
+    else:
+        print(f"Budget for job {str(job.id)[:8]}:")
+        if job.budgets.max_total_tokens is not None:
+            print(f"  max_total_tokens:      {job.budgets.max_total_tokens}")
+        if job.budgets.max_provider_calls is not None:
+            print(f"  max_provider_calls:    {job.budgets.max_provider_calls}")
+        if job.budgets.max_wall_clock_minutes is not None:
+            print(f"  max_wall_clock_minutes: {job.budgets.max_wall_clock_minutes}")
+        if job.budgets.deadline is not None:
+            print(f"  deadline:              {job.budgets.deadline.isoformat()}")
+        print(f"  exhausted:             {evaluation.exhausted}")
+        if evaluation.first_exhausted_limit:
+            print(f"  first_exhausted:       {evaluation.first_exhausted_limit}")
+        for src in evaluation.source_descriptions:
+            print(f"  {src}")
+        for warn in evaluation.warnings:
+            print(f"  WARNING: {warn}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
         project_id=getattr(args, "project", None),
         task_type=getattr(args, "task_type", None),
         task_description=getattr(args, "task_description", None),
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
     ),
     "job.list": lambda args: _cmd_list_jobs(),
     "job.show": lambda args: _cmd_show_job(args.job_id),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
     "job.permissions": lambda args: _cmd_show_permissions(args.job_id),
+    "job.budget": lambda args: _cmd_job_budget(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
     "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.run-loop": lambda args: _cmd_run_loop(
