@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def _utcnow() -> datetime:
@@ -138,6 +138,27 @@ class JobFences(BaseModel):
 
     allow: list[str] = Field(default_factory=list)
     deny: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_glob_entries(self) -> JobFences:
+        for field_name in ("allow", "deny"):
+            raw = getattr(self, field_name)
+            cleaned: list[str] = []
+            for i, item in enumerate(raw):
+                if not isinstance(item, str):
+                    raise ValueError(
+                        f"JobFences.{field_name}[{i}] must be a string, "
+                        f"got {type(item).__name__}"
+                    )
+                trimmed = item.strip()
+                if not trimmed:
+                    raise ValueError(
+                        f"JobFences.{field_name}[{i}] is empty or "
+                        f"whitespace-only after trimming"
+                    )
+                cleaned.append(trimmed)
+            object.__setattr__(self, field_name, cleaned)
+        return self
 
 
 class Job(BaseModel):

@@ -138,6 +138,8 @@ def apply_task_output_to_repo(
     repo_root: Path,
     *,
     job_fences: dict | None = None,
+    job_id: str = "",
+    evidence_dir: Path | None = None,
 ) -> list[str]:
     """Apply eligible task output to the attached target repository.
 
@@ -178,6 +180,8 @@ def apply_task_output_to_repo(
         repo_root,
         [TouchedPath(path=relative_path, operation="create", role="target")],
         applicator="repo_applicator",
+        job_id=job_id,
+        evidence_dir=evidence_dir,
         job_fences=job_fences,
     )
 
@@ -221,4 +225,14 @@ def check_and_apply_to_repo(
     _job_fences = None
     if hasattr(job, "fences") and job.fences is not None:
         _job_fences = {"allow": job.fences.allow, "deny": job.fences.deny}
-    return apply_task_output_to_repo(artifact, repo_root, job_fences=_job_fences)
+
+    from packages.orchestration.data_paths import resolve_data_root
+    _evidence_dir = resolve_data_root()
+    _job_id = str(getattr(job, "id", "") or "")
+
+    return apply_task_output_to_repo(
+        artifact, repo_root,
+        job_fences=_job_fences,
+        job_id=_job_id,
+        evidence_dir=_evidence_dir,
+    )

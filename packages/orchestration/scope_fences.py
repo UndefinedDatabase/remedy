@@ -642,29 +642,62 @@ def _redact_path(path_str: str) -> str:
     return path_str
 
 
+import re as _re
+
+_POSIX_ABS_RE = _re.compile(r"/(?:home|tmp|var|etc|usr|opt|root|mnt|private|Users|proc|sys|dev)(?:/[^\s:;,\"')\]}>]+)?")
+_WIN_DRIVE_RE = _re.compile(r"[A-Za-z]:\\[^\s:;,\"')\]}>]+")
+_UNC_RE = _re.compile(r"\\\\[^\s:;,\"')\]}>]+")
+_FILE_URI_RE = _re.compile(r"file://[^\s:;,\"')\]}>]+")
+_CONTROL_RE = _re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+_DIAGNOSTIC_MAX_LEN = 200
+
+
+def _sanitize_diagnostic(raw: str) -> str:
+    """Sanitize an exception message for safe storage in Evidence and logs.
+
+    Redacts embedded filesystem paths (POSIX absolute, Windows drive,
+    UNC, file: URIs). Strips control characters. Bounds length.
+    """
+    if not raw:
+        return ""
+    s = _CONTROL_RE.sub("", raw)
+    s = s.replace("\n", " ").replace("\r", "")
+    s = _FILE_URI_RE.sub("<file-uri-redacted>", s)
+    s = _UNC_RE.sub("<unc-redacted>", s)
+    s = _WIN_DRIVE_RE.sub("<win-path-redacted>", s)
+    s = _POSIX_ABS_RE.sub("<path-redacted>", s)
+    return s[:_DIAGNOSTIC_MAX_LEN]
+
+
 def _match_violation_rule(
     v: FenceViolation,
     effective: EffectiveFenceResult | None,
-) -> tuple[str, str, str]:
-    """Return (matched_rule, rule_kind, rule_source) for a violation."""
+) -> tuple[str, str, str, list[dict]]:
+    """Return (matched_rule, rule_kind, rule_source, applicable_rules) for a violation."""
     if effective is None:
-        return ("", "", "")
+        return ("", "", "", [])
     reason = v.reason
     if reason.startswith("denied:builtin:"):
         for r in effective.builtin_rules:
             builtin_tag = f"builtin:{r.reason}"
             if builtin_tag in reason:
-                return (r.pattern, r.kind, r.source)
-        return ("", "builtin", "builtin")
+                return (r.pattern, r.kind, r.source, [])
+        return ("", "builtin", "builtin", [])
     if reason.startswith("denied:deny_glob:"):
         matched_pattern = reason.split("denied:deny_glob:", 1)[1]
         for r in effective.deny_rules:
             if r.pattern == matched_pattern:
-                return (r.pattern, r.kind, r.source)
-        return (matched_pattern, "deny", "")
+                return (r.pattern, r.kind, r.source, [])
+        return (matched_pattern, "deny", "", [])
     if reason.startswith("denied:not_in_allow_list"):
-        return ("", "allow", "")
-    return ("", "", "")
+        source = effective.allow_rules[0].source if effective.allow_rules else effective.source
+        applicable = [
+            {"pattern": r.pattern, "source": r.source}
+            for r in effective.allow_rules
+        ]
+        return ("", "allow", source, applicable)
+    return ("", "", "", [])
 
 
 def _path_kind(path: str) -> str:
@@ -709,9 +742,9 @@ def write_fence_violations_artifact(
 
     violations_payload = []
     for v in result.violations:
-        matched_rule, rule_kind, rule_source = _match_violation_rule(v, effective)
+        matched_rule, rule_kind, rule_source, applicable_rules = _match_violation_rule(v, effective)
         reason_code = v.reason.split(":")[0] if ":" in v.reason else v.reason
-        violations_payload.append({
+        entry: dict = {
             "path": _redact_path(v.path),
             "normalized": _redact_path(v.normalized),
             "path_kind": _path_kind(v.path),
@@ -722,7 +755,10 @@ def write_fence_violations_artifact(
             "matched_rule": matched_rule,
             "rule_kind": rule_kind,
             "rule_source": rule_source,
-        })
+        }
+        if applicable_rules:
+            entry["applicable_rules"] = applicable_rules
+        violations_payload.append(entry)
 
     payload: dict = {
         "schema": "fence_violations/v2",
@@ -817,8 +853,7 @@ def enforce_change_set(
         persistence_status = "persisted"
     except Exception as persist_exc:
         persistence_status = "failed"
-        raw = str(persist_exc)
-        secondary_diagnostic = _redact_path(raw)[:200]
+        secondary_diagnostic = _sanitize_diagnostic(str(persist_exc))
         logger.error(
             "F017: fence violation Evidence persistence failed: %s",
             secondary_diagnostic,
