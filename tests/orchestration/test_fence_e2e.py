@@ -985,3 +985,261 @@ class TestStrictGlobContractsE2E:
         from packages.orchestration.scope_fences import load_fence_spec
         with pytest.raises(FenceConfigError):
             load_fence_spec(job_fences={"allow": [""], "deny": []})
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Diagnostic sanitizer — _sanitize_diagnostic
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestSanitizeDiagnostic:
+    """_sanitize_diagnostic redacts embedded private paths from persistence error messages."""
+
+    def test_posix_path_at_start(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        assert "<path-redacted>" in _sanitize_diagnostic("/home/user/secret/file.py error")
+        assert "/home/" not in _sanitize_diagnostic("/home/user/secret/file.py error")
+
+    def test_posix_path_in_middle(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "failed to write /tmp/remedy/data/jobs/j1.json: disk full"
+        result = _sanitize_diagnostic(msg)
+        assert "/tmp/" not in result
+        assert "<path-redacted>" in result
+        assert "disk full" in result
+
+    def test_posix_path_at_end(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "permission denied: /var/log/remedy.log"
+        result = _sanitize_diagnostic(msg)
+        assert "/var/" not in result
+        assert "<path-redacted>" in result
+
+    def test_windows_drive_path(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = r"failed: C:\Users\admin\secret.txt"
+        result = _sanitize_diagnostic(msg)
+        assert "C:\\" not in result
+        assert "<win-path-redacted>" in result
+
+    def test_unc_path(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = r"error at \\server\share\file.txt"
+        result = _sanitize_diagnostic(msg)
+        assert r"\\server" not in result
+        assert "<unc-redacted>" in result
+
+    def test_file_uri(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "see file:///home/user/docs/readme.md"
+        result = _sanitize_diagnostic(msg)
+        assert "file://" not in result
+        assert "<file-uri-redacted>" in result
+
+    def test_control_chars_stripped(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "error\x00with\x07control\x1fchars"
+        result = _sanitize_diagnostic(msg)
+        assert "\x00" not in result
+        assert "\x07" not in result
+        assert "\x1f" not in result
+
+    def test_length_bounded(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "x" * 500
+        result = _sanitize_diagnostic(msg)
+        assert len(result) <= 200
+
+    def test_empty_string(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        assert _sanitize_diagnostic("") == ""
+
+    def test_newlines_replaced(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "line1\nline2\rline3"
+        result = _sanitize_diagnostic(msg)
+        assert "\n" not in result
+        assert "\r" not in result
+
+    def test_multiple_path_types(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = r"err /home/x/a.py and C:\Users\b.txt and \\srv\c"
+        result = _sanitize_diagnostic(msg)
+        assert "/home/" not in result
+        assert "C:\\" not in result
+        assert r"\\srv" not in result
+
+    def test_safe_message_unchanged(self):
+        from packages.orchestration.scope_fences import _sanitize_diagnostic
+        msg = "disk full: cannot create directory"
+        assert _sanitize_diagnostic(msg) == msg
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Allow-list provenance — applicable_rules in violation artifact
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestAllowListProvenanceE2E:
+    """not_in_allow_list violations carry rule_source and applicable_rules."""
+
+    def test_allow_list_violation_has_source(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        touched = [TouchedPath("lib/x.py", "create")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(
+                tmp_path, touched, applicator="test", job_id="j1",
+                job_fences={"allow": ["src/**"], "deny": []},
+            )
+        err = exc_info.value
+        assert err.artifact_path is not None
+        data = json.loads(err.artifact_path.read_text())
+        v = data["violations"][0]
+        assert v["rule_source"] != ""
+        assert v["rule_kind"] == "allow"
+
+    def test_allow_list_violation_has_applicable_rules(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        touched = [TouchedPath("vendor/x.py", "create")]
+        with pytest.raises(FenceViolationError) as exc_info:
+            enforce_change_set(
+                tmp_path, touched, applicator="test", job_id="j2",
+                job_fences={"allow": ["src/**", "docs/**"], "deny": []},
+            )
+        err = exc_info.value
+        data = json.loads(err.artifact_path.read_text())
+        v = data["violations"][0]
+        assert "applicable_rules" in v
+        assert len(v["applicable_rules"]) == 2
+        patterns = [r["pattern"] for r in v["applicable_rules"]]
+        assert "src/**" in patterns
+        assert "docs/**" in patterns
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# JobFences strict model validation
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestJobFencesStrictValidation:
+    """Pydantic model_validator rejects invalid glob entries at construction."""
+
+    def test_trims_whitespace(self):
+        from packages.core.models import JobFences
+        f = JobFences(allow=["  src/**  "], deny=[" vendor/** "])
+        assert f.allow == ["src/**"]
+        assert f.deny == ["vendor/**"]
+
+    def test_empty_after_trim_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="empty"):
+            JobFences(allow=["  "])
+
+    def test_tab_only_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="empty"):
+            JobFences(deny=["\t"])
+
+    def test_int_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            JobFences(allow=[42])
+
+    def test_bool_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            JobFences(deny=[True])
+
+    def test_nested_list_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            JobFences(allow=[["nested"]])
+
+    def test_dict_rejected(self):
+        from packages.core.models import JobFences
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            JobFences(deny=[{"pattern": "x"}])
+
+    def test_valid_globs_accepted(self):
+        from packages.core.models import JobFences
+        f = JobFences(allow=["src/**", "lib/*.py"], deny=["vendor/**"])
+        assert f.allow == ["src/**", "lib/*.py"]
+        assert f.deny == ["vendor/**"]
+
+    def test_default_empty(self):
+        from packages.core.models import JobFences
+        f = JobFences()
+        assert f.allow == []
+        assert f.deny == []
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# repo_applicator job-scoped Evidence
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRepoApplicatorJobScopedEvidence:
+    """check_and_apply_to_repo passes job_id and evidence_dir through to enforce_change_set."""
+
+    def test_job_scoped_artifact_via_check_and_apply(self, tmp_path, monkeypatch):
+        from packages.core.models import JobFences
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.repo_applicator import check_and_apply_to_repo
+
+        data_dir = tmp_path / "data"
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+
+        job = Job(
+            name="test-job-scope",
+            fences=JobFences(allow=[], deny=["docs/**"]),
+        )
+        set_permission(job, Capability.repo_generated_write, allow=True)
+
+        artifact = Artifact(
+            name="test",
+            content="Proposed Changes:\n  - test\n",
+            metadata={"task_type": "documentation", "summary": "test"},
+        )
+        with pytest.raises(FenceViolationError) as exc_info:
+            check_and_apply_to_repo(job, artifact, tmp_path)
+
+        err = exc_info.value
+        assert err.artifact_path is not None
+        job_dir = data_dir / "jobs" / str(job.id)
+        assert job_dir.is_dir()
+        artifacts = list(job_dir.glob("fence_violations*.json"))
+        assert len(artifacts) == 1
+
+    def test_persistence_failure_still_raises(self, tmp_path, monkeypatch):
+        from packages.core.models import JobFences
+        from packages.orchestration.permissions import Capability, set_permission
+        from packages.orchestration.repo_applicator import check_and_apply_to_repo
+
+        data_dir = tmp_path / "data"
+        data_dir.mkdir(parents=True)
+        (data_dir / "jobs").write_text("blocker")
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+
+        job = Job(
+            name="test-persist-fail",
+            fences=JobFences(allow=[], deny=["docs/**"]),
+        )
+        set_permission(job, Capability.repo_generated_write, allow=True)
+
+        artifact = Artifact(
+            name="test",
+            content="Proposed Changes:\n  - test\n",
+            metadata={"task_type": "documentation", "summary": "test"},
+        )
+        with pytest.raises(FenceViolationError) as exc_info:
+            check_and_apply_to_repo(job, artifact, tmp_path)
+
+        err = exc_info.value
+        assert err.persistence_status == "failed"
+        assert err.artifact_path is None
