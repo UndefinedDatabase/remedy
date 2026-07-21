@@ -23,7 +23,17 @@ _JOB_EVIDENCE = "packages/orchestration/job_evidence.py"
 # Each check: the evidence pipeline must reference the given pattern in the
 # named source file. ``call_exists`` asserts a writer function is invoked;
 # ``artifact_written`` asserts an artifact filename is registered.
+_PINGPONG_JOB = "packages/orchestration/pingpong_job.py"
+_BUDGET_GUARD = "packages/orchestration/budget_guard.py"
+_BUDGET_RES = "packages/orchestration/budget_resolution.py"
+_RUN_CONTRACT = "packages/orchestration/run_contract.py"
+_DECISION_Q = "packages/orchestration/decision_queue.py"
+_RUN_MANIFEST = "packages/orchestration/run_manifest.py"
+_CONFIG = "packages/orchestration/config.py"
+_DO_CMD = "apps/cli/commands/do_cmd.py"
+
 INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
+    # Gate-writer meta-checks
     {
         "check_id": "job_evidence_calls_fresh_evidence_gate",
         "source_file": _JOB_EVIDENCE,
@@ -53,6 +63,67 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "source_file": _JOB_EVIDENCE,
         "check_type": "call_exists",
         "pattern": "write_commit_execution_gate",
+    },
+    # F018: budget system production-path integration checks
+    {
+        "check_id": "f018_run_job_calls_collect_counters",
+        "source_file": _PINGPONG_JOB,
+        "check_type": "call_exists",
+        "pattern": "collect_counters_from_actuals",
+    },
+    {
+        "check_id": "f018_run_job_persists_budget_actuals",
+        "source_file": _PINGPONG_JOB,
+        "check_type": "call_exists",
+        "pattern": "budget_actuals",
+    },
+    {
+        "check_id": "f018_run_job_uses_first_running_at",
+        "source_file": _PINGPONG_JOB,
+        "check_type": "call_exists",
+        "pattern": "first_running_at",
+    },
+    {
+        "check_id": "f018_config_fail_closed_budgets",
+        "source_file": _CONFIG,
+        "check_type": "call_exists",
+        "pattern": "fail_closed_for_budgets",
+    },
+    {
+        "check_id": "f018_budget_resolution_project_root",
+        "source_file": _BUDGET_RES,
+        "check_type": "call_exists",
+        "pattern": "project_root",
+    },
+    {
+        "check_id": "f018_run_manifest_decode_budgets",
+        "source_file": _RUN_MANIFEST,
+        "check_type": "call_exists",
+        "pattern": "_decode_budgets_field",
+    },
+    {
+        "check_id": "f018_run_contract_reconcile_budgets",
+        "source_file": _RUN_CONTRACT,
+        "check_type": "call_exists",
+        "pattern": "_reconcile_budget_fields",
+    },
+    {
+        "check_id": "f018_decision_queue_budget_actions",
+        "source_file": _DECISION_Q,
+        "check_type": "call_exists",
+        "pattern": "\"extend\", \"abandon\"",
+    },
+    {
+        "check_id": "f018_do_job_plan_budget_flags",
+        "source_file": _DO_CMD,
+        "check_type": "call_exists",
+        "pattern": "resolve_job_budgets",
+    },
+    {
+        "check_id": "f018_budget_guard_counter_validation",
+        "source_file": _BUDGET_GUARD,
+        "check_type": "call_exists",
+        "pattern": "BudgetCounterError",
     },
 )
 

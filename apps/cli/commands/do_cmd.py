@@ -919,6 +919,10 @@ def _cmd_do_job_plan(
     *,
     job_file: str = "",
     repo: str = ".",
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
     json_output: bool = False,
 ) -> None:
     """Parse a job file into ordered tasks (no provider calls)."""
@@ -928,17 +932,36 @@ def _cmd_do_job_plan(
         print("Error: --job-file is required", file=sys.stderr)
         sys.exit(1)
 
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+            project_root=repo,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     job = plan_job_from_file(job_file, repo)
 
     if job.error:
         print(f"Error: {job.error}", file=sys.stderr)
         sys.exit(1)
 
+    if budgets is not None:
+        job.budgets = budgets.model_dump(mode="json")
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(job)
+
     if json_output:
         print(json.dumps({
             "job_id": job.job_id,
             "job_title": job.job_title,
             "status": job.status,
+            "budgets": job.budgets,
             "tasks": [
                 {"task_id": t.task_id, "title": t.title, "status": t.status}
                 for t in job.tasks
@@ -951,6 +974,8 @@ def _cmd_do_job_plan(
         print(f"Tasks: {len(job.tasks)}")
         for t in job.tasks:
             print(f"  {t.task_id}: {t.title}")
+        if budgets is not None:
+            print(f"Budgets: {job.budgets}")
         print(f"\nNext: remedy do job-run {job.job_id}")
 
 
@@ -974,6 +999,10 @@ def _cmd_do_job_run(
     repair_provider: str | None = None,
     repair_model: str | None = None,
     repair_effort: str | None = None,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -1022,6 +1051,19 @@ def _cmd_do_job_run(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(2)
 
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+    budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
+
     from packages.orchestration.pingpong_job import (
         export_job_report,
         run_job,
@@ -1043,6 +1085,7 @@ def _cmd_do_job_run(
         repair_rounds_source=repair_source,
         test_command=test_command,
         claude_cli_write_mode=claude_cli_write_mode,
+        budgets=budgets_dict,
         **invocation.as_run_job_kwargs(),
     )
 
@@ -2528,6 +2571,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.job-plan": lambda args: _cmd_do_job_plan(
         job_file=getattr(args, "job_file", None) or "",
         repo=getattr(args, "repo", None) or ".",
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
         json_output=getattr(args, "json", False),
     ),
     "do.job-run": lambda args: _cmd_do_job_run(
@@ -2549,6 +2596,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_provider=getattr(args, "repair_provider", None),
         repair_model=getattr(args, "repair_model", None),
         repair_effort=getattr(args, "repair_effort", None),
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
     ),
     "do.job-resume": lambda args: _cmd_do_job_resume(
         args.job_id,

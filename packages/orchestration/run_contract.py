@@ -567,14 +567,73 @@ def ensure_contract(job: Job) -> RunContract:
     """Return the persisted contract, creating and saving one if absent.
 
     Guarantees stable contract_id and created_at across reloads.
+    When JobBudgets changed since the persisted contract was created,
+    reconciles max_tokens and max_runtime_seconds to match.
     Caller must persist the job if this function creates a new contract.
     """
     existing = load_contract(job)
     if existing is not None:
+        existing = _reconcile_budget_fields(job, existing)
         return existing
     contract = build_default_run_contract(job)
     save_contract(job, contract)
     return contract
+
+
+def _reconcile_budget_fields(job: Job, contract: RunContract) -> RunContract:
+    """If JobBudgets diverged from the persisted contract, update contract."""
+    budgets = getattr(job, "budgets", None)
+    if budgets is None:
+        return contract
+
+    want_tokens = contract.max_tokens
+    want_runtime = contract.max_runtime_seconds
+
+    if getattr(budgets, "max_total_tokens", None) is not None:
+        want_tokens = budgets.max_total_tokens
+    if getattr(budgets, "max_wall_clock_minutes", None) is not None:
+        want_runtime = budgets.max_wall_clock_minutes * 60
+
+    if want_tokens == contract.max_tokens and want_runtime == contract.max_runtime_seconds:
+        return contract
+
+    import logging
+    logging.getLogger(__name__).warning(
+        "RunContract max_tokens/max_runtime_seconds reconciled to match JobBudgets "
+        "(contract had %d/%d, budgets want %d/%d)",
+        contract.max_tokens, contract.max_runtime_seconds,
+        want_tokens, want_runtime,
+    )
+    updated = RunContract(
+        version=contract.version,
+        contract_id=contract.contract_id,
+        job_id=contract.job_id,
+        scope=contract.scope,
+        autonomy_level=contract.autonomy_level,
+        allowed_actions=contract.allowed_actions,
+        denied_actions=contract.denied_actions,
+        max_loops=contract.max_loops,
+        max_test_runs=contract.max_test_runs,
+        max_runtime_seconds=want_runtime,
+        max_tokens=want_tokens,
+        max_cost_cents=contract.max_cost_cents,
+        allowed_paths=contract.allowed_paths,
+        denied_paths=contract.denied_paths,
+        stop_before_apply=contract.stop_before_apply,
+        stop_on_unknown_risk=contract.stop_on_unknown_risk,
+        stop_on_medium_risk=contract.stop_on_medium_risk,
+        prefer_local=contract.prefer_local,
+        no_cloud=contract.no_cloud,
+        model_policy=contract.model_policy,
+        command_policy=contract.command_policy,
+        stop_conditions=contract.stop_conditions,
+        requires_approval_for=contract.requires_approval_for,
+        source=contract.source,
+        created_at=contract.created_at,
+        notes=contract.notes,
+    )
+    save_contract(job, updated)
+    return updated
 
 
 def needs_contract_migration(job: Job) -> bool:
