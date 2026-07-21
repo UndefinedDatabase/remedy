@@ -1282,11 +1282,8 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
     import json as _json
     from pathlib import Path
 
-    from packages.orchestration.config import get_config
     from packages.orchestration.scope_fences import (
-        BUILTIN_DENY,
         FenceConfigError,
-        resolve_effective_builtins,
         resolve_fence_spec_effective,
     )
 
@@ -1296,8 +1293,14 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
         print(f"Job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
 
-    repo_str = job.metadata.get("target_repo", "") or "."
+    repo_str = job.metadata.get("target_repo", "") or ""
+    if not repo_str:
+        print(f"Job {job_id_str[:8]} has no target_repo attached", file=sys.stderr)
+        sys.exit(2)
     repo_root = Path(repo_str)
+    if not repo_root.is_dir():
+        print(f"Target repo does not exist: {repo_str}", file=sys.stderr)
+        sys.exit(2)
 
     job_fences_dict = None
     if job.fences is not None:
@@ -1307,40 +1310,28 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
         eff = resolve_fence_spec_effective(repo_root, job_fences=job_fences_dict)
     except FenceConfigError as exc:
         print(f"Fence config error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(3)
+    except RuntimeError as exc:
+        print(f"Builtin resolution failed: {exc}", file=sys.stderr)
+        sys.exit(4)
     spec = eff.spec
-    source = eff.source
-
-    cfg = get_config()
-    scope_allow = cfg.get("scope.allow")
-    scope_deny = cfg.get("scope.deny")
 
     warnings: list[str] = list(eff.warnings)
     if not spec.allow_globs and not spec.deny_globs:
         warnings.append("no configured allow/deny globs — defaults apply (allow all, builtin denies only)")
 
-    builtins = list(BUILTIN_DENY)
-    extra = []
-    if repo_root.is_dir():
-        try:
-            extra_t = resolve_effective_builtins(repo_root)
-            extra = [e for e in extra_t]
-        except RuntimeError as exc:
-            warnings.append(f"builtin resolution failed: {exc}")
+    def _rule_dict(r):
+        return {"pattern": r.pattern, "kind": r.kind, "source": r.source, "reason": r.reason}
 
     result = {
         "job_id": job_id_str,
-        "source": source,
+        "source": eff.source,
+        "case_sensitivity": eff.case_sensitivity,
+        "allow_rules": [_rule_dict(r) for r in eff.allow_rules],
+        "deny_rules": [_rule_dict(r) for r in eff.deny_rules],
+        "builtin_rules": [_rule_dict(r) for r in eff.builtin_rules],
         "allow_globs": list(spec.allow_globs),
         "deny_globs": list(spec.deny_globs),
-        "builtin_denies": [
-            {"pattern": p, "reason": r} for p, r in builtins
-        ],
-        "extra_builtin_denies": [
-            {"pattern": p, "reason": r} for p, r in extra
-        ],
-        "config_scope_allow": scope_allow,
-        "config_scope_deny": scope_deny,
         "warnings": warnings,
     }
 
@@ -1348,24 +1339,27 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
         print(_json.dumps(result, indent=2))
     else:
         print(f"Scope fences for job {job_id_str[:8]}:")
-        print(f"  Source: {source}")
-        if spec.allow_globs:
-            print(f"  Allow:  {', '.join(spec.allow_globs)}")
+        print(f"  Source: {eff.source}")
+        print(f"  Case:   {eff.case_sensitivity}")
+        if eff.allow_rules:
+            print("  Allow rules:")
+            for r in eff.allow_rules:
+                print(f"    {r.pattern:30s} [{r.source}]")
         else:
             print("  Allow:  (all — no restrictions)")
-        if spec.deny_globs:
-            print(f"  Deny:   {', '.join(spec.deny_globs)}")
+        if eff.deny_rules:
+            print("  Deny rules:")
+            for r in eff.deny_rules:
+                print(f"    {r.pattern:30s} [{r.source}]")
         else:
             print("  Deny:   (none beyond builtins)")
-        print("  Builtin denies:")
-        for p, r in builtins:
-            print(f"    {p:30s} — {r}")
-        for p, r in extra:
-            print(f"    {p:30s} — {r}")
+        print("  Builtin rules:")
+        for r in eff.builtin_rules:
+            print(f"    {r.pattern:30s} [{r.source}] {r.reason}")
         if warnings:
             print("  Warnings:")
             for w in warnings:
-                print(f"    ⚠ {w}")
+                print(f"    {w}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
