@@ -32,6 +32,8 @@ _RUN_MANIFEST = "packages/orchestration/run_manifest.py"
 _CONFIG = "packages/orchestration/config.py"
 _DO_CMD = "apps/cli/commands/do_cmd.py"
 
+_F018_TEST = "tests/orchestration/test_f018_authority_integration.py"
+
 INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
     # Gate-writer meta-checks
     {
@@ -75,7 +77,7 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "check_id": "f018_run_job_persists_budget_actuals",
         "source_file": _PINGPONG_JOB,
         "check_type": "call_exists",
-        "pattern": "budget_actuals",
+        "pattern": "_persist_budget_actuals",
     },
     {
         "check_id": "f018_run_job_uses_first_running_at",
@@ -124,6 +126,55 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "source_file": _BUDGET_GUARD,
         "check_type": "call_exists",
         "pattern": "BudgetCounterError",
+    },
+    # F018: real test bindings — require specific test functions exist
+    {
+        "check_id": "f018_test_job_run_retains_persisted_budget",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_job_run_retains_persisted_budget",
+    },
+    {
+        "check_id": "f018_test_resume_retains_counters",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_resume_seeds_from_persisted_actuals",
+    },
+    {
+        "check_id": "f018_test_strict_actuals_reject_coercion",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_bool_provider_calls_rejected",
+    },
+    {
+        "check_id": "f018_test_decision_from_jobplan_stop",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_jobplan_stop_creates_decision",
+    },
+    {
+        "check_id": "f018_test_prework_stop_identity_stable",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_prework_stop_identity_stable",
+    },
+    {
+        "check_id": "f018_test_manifest_deadline_utc",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_deadline_normalized_to_utc",
+    },
+    {
+        "check_id": "f018_test_empty_budgets_normalize_null",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_empty_budgets_normalize_to_null",
+    },
+    {
+        "check_id": "f018_test_jobplan_budget_display",
+        "source_file": _F018_TEST,
+        "check_type": "call_exists",
+        "pattern": "test_jobplan_budget_display",
     },
 )
 
