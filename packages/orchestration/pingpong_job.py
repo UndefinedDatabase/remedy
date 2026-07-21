@@ -1720,13 +1720,34 @@ def run_job(
 
     # F018: seed accumulators from persisted budget_actuals on resume.
     # A stopped-then-resumed job must NOT reset counters to zero.
+    # Strict decode — corrupt persisted actuals block, never coerce.
     _prior = getattr(job, "budget_actuals", None) or {}
-    _accumulated_provider_calls = int(_prior.get("provider_call_count", 0) or 0)
-    _accumulated_tokens = int(_prior.get("total_tokens", 0) or 0)
-    _accumulated_measured = int(_prior.get("actual_call_count", 0) or 0)
+    if _prior:
+        from packages.orchestration.budget_guard import BudgetCounterError as _BCError
+        for _afield in ("provider_call_count", "total_tokens", "actual_call_count"):
+            _aval = _prior.get(_afield, 0)
+            if _aval is None:
+                _aval = 0
+                _prior[_afield] = 0
+            if isinstance(_aval, bool):
+                raise _BCError(f"persisted {_afield} is bool, not int")
+            if isinstance(_aval, float):
+                raise _BCError(f"persisted {_afield} is float, not int")
+            if isinstance(_aval, str):
+                raise _BCError(f"persisted {_afield} is str, not int")
+            if not isinstance(_aval, int):
+                raise _BCError(f"persisted {_afield} has type {type(_aval).__name__}")
+            if _aval < 0:
+                raise _BCError(f"persisted {_afield} is negative: {_aval}")
+        _pc = _prior.get("provider_call_count", 0) or 0
+        _ac = _prior.get("actual_call_count", 0) or 0
+        if _ac > _pc:
+            raise _BCError(
+                f"persisted actual_call_count ({_ac}) > provider_call_count ({_pc})")
+    _accumulated_provider_calls = _prior.get("provider_call_count", 0) or 0
+    _accumulated_tokens = _prior.get("total_tokens", 0) or 0
+    _accumulated_measured = _prior.get("actual_call_count", 0) or 0
     _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
-    if _accumulated_unmeasured < 0:
-        _accumulated_unmeasured = 0
     _run_started_at = datetime.now(timezone.utc)
     if getattr(job, "first_running_at", ""):
         try:
@@ -1737,13 +1758,18 @@ def run_job(
         job.first_running_at = _run_started_at.isoformat()
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
+    # A malformed persisted budget MUST block — never silently continue as unlimited.
     _job_budgets = None
     if job.budgets is not None:
         from packages.core.models import JobBudgets as _JobBudgets
         try:
             _job_budgets = _JobBudgets.model_validate(job.budgets)
-        except Exception:
-            _job_budgets = None
+        except Exception as _budget_exc:
+            job.status = JOB_BLOCKED
+            job.error = f"corrupt_budget_state: {_budget_exc}"
+            _write_job_postmortem_record(job, _budget_exc)
+            _persist_job(job)
+            return job
 
     def _on_provider_call(attempt):
         nonlocal _accumulated_provider_calls, _accumulated_tokens

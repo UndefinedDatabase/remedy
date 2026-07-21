@@ -56,6 +56,10 @@ class BudgetCounters:
         if not isinstance(self.actual_sources, tuple):
             raise BudgetCounterError(
                 f"actual_sources must be a tuple, got {type(self.actual_sources).__name__}")
+        _VALID_SOURCES = frozenset({
+            "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
+            "token_actuals", "aggregate_actuals",
+        })
         for i, src in enumerate(self.actual_sources):
             if not isinstance(src, str):
                 raise BudgetCounterError(
@@ -63,10 +67,15 @@ class BudgetCounters:
             if not src:
                 raise BudgetCounterError(
                     f"actual_sources[{i}] must not be empty")
+            if src not in _VALID_SOURCES:
+                raise BudgetCounterError(
+                    f"actual_sources[{i}] unknown source: {src!r}")
         if self.started_at is not None:
             if not isinstance(self.started_at, datetime):
                 raise BudgetCounterError(
                     f"started_at must be a datetime or None, got {type(self.started_at).__name__}")
+            if self.started_at.tzinfo is None:
+                raise BudgetCounterError("started_at must be timezone-aware")
             if self.started_at > self.evaluated_at:
                 raise BudgetCounterError(
                     f"started_at ({self.started_at.isoformat()}) is after "
@@ -77,6 +86,13 @@ class BudgetCounters:
                 f"provider_calls ({self.provider_calls}) != "
                 f"measured_call_count ({self.measured_call_count}) + "
                 f"unmeasured_call_count ({self.unmeasured_call_count})")
+        if self.measured_token_total > 0 and self.measured_call_count == 0:
+            raise BudgetCounterError(
+                f"measured_token_total ({self.measured_token_total}) > 0 "
+                f"but measured_call_count is 0")
+        if self.measured_call_count > 0 and not self.actual_sources:
+            raise BudgetCounterError(
+                "measured_call_count > 0 but actual_sources is empty")
 
     @property
     def total_call_count(self) -> int:

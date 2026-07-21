@@ -58,7 +58,7 @@ def list_decisions(
     decisions: list[HumanDecision] = []
     job_id = str(getattr(job, "job_id", None) or getattr(job, "id", ""))
 
-    # 1. Pending patch approvals
+    # 1. Pending patch approvals (Core Job only; JobPlan has no .artifacts).
     try:
         from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
         intents = list_patch_intents(job)
@@ -81,7 +81,7 @@ def list_decisions(
                     created_at=pi.get("created_at", ""),
                     resolved_at=None,
                 ))
-    except (ImportError, ValueError, OSError):
+    except (ImportError, ValueError, OSError, AttributeError):
         pass
 
     # 2. Stop reasons / blockers
@@ -104,7 +104,7 @@ def list_decisions(
                     created_at=sr.created_at,
                     resolved_at=None,
                 ))
-    except (ImportError, ValueError, OSError):
+    except (ImportError, ValueError, OSError, AttributeError):
         pass
 
     # 3. Test failures
@@ -150,9 +150,13 @@ def list_decisions(
             ))
 
     # 5. Budget exhaustion — check job fields, metadata, AND stop events
+    # JobPlan has no .metadata attribute; Core Job does. Safe for both.
+    _job_meta = getattr(job, "metadata", None) or {}
+    if not isinstance(_job_meta, dict):
+        _job_meta = {}
     budget_error = str(
-        job.metadata.get("budget_stop_reason", "")
-        or job.metadata.get("error", "")
+        _job_meta.get("budget_stop_reason", "")
+        or _job_meta.get("error", "")
         or getattr(job, "error", "")
         or ""
     )
