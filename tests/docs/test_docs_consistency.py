@@ -191,12 +191,12 @@ class TestPrimaryDocsAreHonest:
         assert "2026-07-14" in f011.group(0), "the acceptance date is missing"
         assert "remedy job stop" in f011.group(0)
         assert "STOPPED state" in f011.group(0)
-        # F012 is externally accepted; F017 is in progress.
+        # F012 is externally accepted; F017 is externally accepted.
         f012 = re.search(r"^- \[x\] F012 — Deterministic runs.*$", text, re.M)
         assert f012, "F012 is externally accepted and must be checked off"
         assert "r40_authority_contract_closure" in f012.group(0)
         assert "PASS_WITH_RISKS — ACCEPTED" in f012.group(0)
-        assert re.search(r"^- \[~\] F017 —", text, re.M)
+        assert re.search(r"^- \[x\] F017 —", text, re.M)
 
     def test_the_f012_document_describes_the_deterministic_runs_feature(self):
         feature = (REPO / "docs" / "roadmap" / "features" / "T0_F012.md").read_text(
@@ -221,9 +221,9 @@ class TestPrimaryDocsAreHonest:
         assert "01363c70e13046e2" in f010.group(0), "the accepted Evidence job is missing"
         assert "PASS_WITH_RISKS — ACCEPTED" in f010.group(0)
         assert "2026-07-14" in f010.group(0), "the acceptance date is missing"
-        # ...and nothing after F012 has been started, except F017 (in progress).
+        # ...and nothing after F012 has been started, except F017 (accepted).
         assert re.search(r"^- \[ \] F008 —", text, re.M)
-        assert re.search(r"^- \[~\] F017 —", text, re.M)
+        assert re.search(r"^- \[x\] F017 —", text, re.M)
 
 
 class TestPrimaryDocLinksResolve:
@@ -639,7 +639,7 @@ class TestF012Round13IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round14IsPinned:
@@ -737,7 +737,7 @@ class TestF012Round14IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round15IsPinned:
@@ -845,7 +845,7 @@ class TestF012Round15IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round16IsPinned:
@@ -935,7 +935,7 @@ class TestF012Round16IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round17IsPinned:
@@ -1017,7 +1017,7 @@ class TestF012Round17IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round18IsPinned:
@@ -1085,7 +1085,7 @@ class TestF012Round18IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round19IsPinned:
@@ -1221,7 +1221,7 @@ class TestF012Round20IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round21IsPinned:
@@ -1286,7 +1286,7 @@ class TestF012Round21IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round22IsPinned:
@@ -1338,7 +1338,7 @@ class TestF012Round22IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round23IsPinned:
@@ -1390,7 +1390,7 @@ class TestF012Round23IsPinned:
         from pathlib import Path as _P
         status = _P("docs/roadmap/STATUS.md").read_text()
         assert "- [x] F012" in status
-        assert "- [~] F017" in status
+        assert "- [x] F017" in status
 
 
 class TestF012Round24IsPinned:
