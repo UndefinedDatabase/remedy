@@ -70,17 +70,25 @@ def resolve_job_budgets(
     cli_max_wall_clock_minutes: str | None = None,
     cli_deadline: str | None = None,
     config_path: str | None = None,
+    project_root: str | None = None,
 ) -> JobBudgets | None:
     """Resolve budget values through CLI > env > TOML > no-limit precedence.
 
     Uses config.py as the single authority for env/TOML resolution.
     CLI flags, when present, override everything.
     Malformed values raise BudgetConfigError (never silently returns None).
+
+    *project_root*: if given, resolve project config from that directory
+    instead of process CWD. A ``config_path`` takes precedence.
     """
     from packages.orchestration.config import ConfigSource, load_config
 
-    cfg = load_config() if not config_path else load_config(
-        project_path=Path(config_path))
+    if config_path:
+        cfg = load_config(project_path=Path(config_path))
+    elif project_root:
+        cfg = load_config(project_path=Path(project_root) / "remedy.toml")
+    else:
+        cfg = load_config()
 
     def _resolve_int(name: str, cli_val: str | None) -> int | None:
         if cli_val is not None:
