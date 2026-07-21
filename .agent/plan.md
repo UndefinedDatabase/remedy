@@ -1,23 +1,40 @@
-# Plan — F018 Budgets & Stop Conditions — Authority & Integration Round
+# Plan — F018 Runtime-Authority & Final-Packaging Round
 
 ## Goal
-Close 14 external review findings. All source fixes applied, 28 new integration
-tests pass, existing tests updated (3 tests that pinned unsafe behavior replaced
-with fail-closed assertions).
+Close 9 external reproductions from the reviewed ZIP. All source fixes,
+real production tests, truthful Evidence, one canonical full review ZIP.
 
-## Status: COMPLETE — Evidence + ZIP delivered
+## Status: IN PROGRESS
 
-## Completed
-- [x] Scope 1: Fail-closed config + durable JobPlan budget persistence
-- [x] Scope 2: Canonical RunManifest + Actuals authority
-- [x] Scope 3: Stable stop identity, wall clock + Decision Queue
-- [x] Scope 4: RunContract reconciliation + honest budget CLI
-- [x] Scope 5: 28 integration tests pass, existing tests fixed
-- [x] 6 logical commits (d91fd5e → 48b73a2)
-- [x] Updated docs: STATUS.md, T0_F018.md, context.md
-- [x] Fresh Evidence via create_manual_completion_bundle
-- [x] Canonical READY_FOR_REVIEW ZIP
-- [x] Mandatory detailed handoff
+## Scope 1 — Final branch and package authority
+- [x] Inspect branch, record base/HEAD/commit count
+- [ ] Ensure clean tree before Evidence
+- [ ] Full review ZIP via make_review_zip.sh pipeline
+
+## Scope 2 — Immutable budget persistence and project context
+- [x] _cmd_do_job_run: use persisted JobPlan budgets, do not re-read CWD
+- [x] _cmd_create_job: pass project repo_path to resolve_job_budgets
+- [x] _cmd_do: pass project_root=repo to resolve_job_budgets
+
+## Scope 3 — Resumed Actuals and strict counters
+- [x] run_job: seed accumulators from persisted budget_actuals on resume
+- [x] run_job: persist budget_actuals before ALL stop paths
+- [x] collect_counters_from_actuals: reject bool/float/string coercion
+- [x] BudgetCounters: reject naive evaluated_at, empty source strings
+- [x] closed source vocabulary (_VALID_SOURCES)
+
+## Scope 4 — JobPlan Decision, display and stop identity
+- [x] _cmd_job_budget: dual Core Job / JobPlan lookup
+- [x] decision_queue: support JobPlan (has .job_id not .id)
+- [x] Pre-work stop: allocate episode before computing budget identity
+
+## Scope 5 — Real runtime verification, docs and canonical package
+- [x] RunManifest: normalize deadline to UTC, empty dict → null
+- [x] runtime_integration_gate: 8 real test bindings added
+- [x] Replace inspect-only tests with real runtime tests (55 pass)
+- [x] Update T0_F018.md
+- [ ] Update context.md
+- [ ] Canonical Evidence + full review ZIP
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.
