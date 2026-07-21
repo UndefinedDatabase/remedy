@@ -549,13 +549,8 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("fresh_evidence_gate.error.txt", exc)
 
-    # Runtime integration gate — verify gate writers are wired into the pipeline.
-    try:
-        from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
-        _repo_root = getattr(job, "repo_path", None) or "."
-        write_runtime_integration_gate(str(out_path), _repo_root, written)
-    except Exception as exc:
-        _write_gate_error("runtime_integration_gate.error.txt", exc)
+    # Runtime integration gate — moved AFTER verification_tests so it can bind
+    # to executed test records. See block below (after _run_verifications).
 
     # The REVIEW SUBJECT — resolved ONCE, by the one production helper, and recorded as a fact.
     #
@@ -676,6 +671,7 @@ def export_job_evidence(
     # each as a run with a stable id. Nothing is claimed verified that was not
     # actually run; unit tests inject a deterministic runner to avoid recursively
     # spawning pytest (finding 3). No hardcoded smoke suite (findings 2/3/4).
+    _vt_data = None
     try:
         _repo = getattr(job, "repo_path", None) or "."
         _vt_data = _run_verifications(
@@ -687,6 +683,18 @@ def export_job_evidence(
             written["verification_tests.json"] = str(_vt_path)
     except Exception as exc:
         _write_gate_error("verification_tests.error.txt", exc)
+
+    # Runtime integration gate — AFTER verification_tests so it can bind to
+    # executed test records (node IDs, exit codes, pass/fail/skip counts).
+    try:
+        from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
+        _repo_root = getattr(job, "repo_path", None) or "."
+        write_runtime_integration_gate(
+            str(out_path), _repo_root, written,
+            verification_data=_vt_data,
+        )
+    except Exception as exc:
+        _write_gate_error("runtime_integration_gate.error.txt", exc)
 
     # Manual-completion finalization — deterministic second pass, AFTER
     # verification_tests.json exists and BEFORE the final verifier. Regenerates
@@ -1516,6 +1524,7 @@ def _verification_test_files_from_command(command: str) -> list[str]:
 
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     """Execute a verification command via subprocess and parse pytest counts."""
+    import hashlib
     import shlex
     import subprocess as _sp
     from packages.orchestration.review_subject import child_env_without_declaration
@@ -1524,20 +1533,37 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         argv = shlex.split(command)
     except ValueError:
         argv = command.split()
-    # F6 (round 16): a verification child NEVER inherits the operator's base declaration. It is
-    # exported for the repository under review, but this child runs whatever it likes — a pytest
-    # suite against its own temporary repositories, which have never heard of that commit. In
-    # round 15 exactly that reached a subprocess and cost an unrelated job its content proof.
-    # A child that needs a base is given one explicitly.
-    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600,
-                     env=child_env_without_declaration())
-    passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", result.stdout or ""))
-    failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", result.stdout or ""))
+    _env = child_env_without_declaration()
+
+    argv_v = list(argv)
+    if "-v" not in argv_v and "--verbose" not in argv_v:
+        argv_v.append("-v")
+    result = _sp.run(argv_v, cwd=repo, capture_output=True, text=True, timeout=600,
+                     env=_env)
+    stdout = result.stdout or ""
+    passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", stdout))
+    failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", stdout))
+    skipped = sum(int(x) for x in re.findall(r"(\d+)\s+skipped", stdout))
+    node_ids = re.findall(r"^(tests/\S+::\S+)\s+(?:PASSED|FAILED|ERROR|SKIPPED)", stdout, re.MULTILINE)
+    selected = len(node_ids) if node_ids else (passed + failed + skipped)
+    output_hash = hashlib.sha256(stdout.encode("utf-8", errors="replace")).hexdigest()
+    head_sha = ""
+    try:
+        _h = _sp.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
+                      text=True, timeout=10, env=_env)
+        head_sha = (_h.stdout or "").strip()
+    except Exception:
+        pass
     return {
         "exit_code": result.returncode,
         "passed": passed,
         "failed": failed,
-        "stdout_summary": (result.stdout or "")[-2000:],
+        "skipped": skipped,
+        "selected": selected,
+        "node_ids": node_ids,
+        "output_hash": f"sha256:{output_hash}",
+        "head_sha": head_sha,
+        "stdout_summary": stdout[-2000:],
         "stderr_summary": (result.stderr or "")[-1000:],
     }
 
@@ -1572,6 +1598,11 @@ def _run_verifications(
             "exit_code": int(r.get("exit_code", -1)),
             "passed": int(r.get("passed", 0) or 0),
             "failed": int(r.get("failed", 0) or 0),
+            "skipped": int(r.get("skipped", 0) or 0),
+            "selected": int(r.get("selected", 0) or 0),
+            "node_ids": list(r.get("node_ids") or []),
+            "output_hash": str(r.get("output_hash", "") or ""),
+            "head_sha": str(r.get("head_sha", "") or ""),
             "test_files": test_files,
             "stdout_summary": str(r.get("stdout_summary", "") or "")[-2000:],
         })

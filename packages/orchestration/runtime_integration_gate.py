@@ -2,13 +2,12 @@
 
 Deterministic, read-only orchestration logic: no provider calls, no target-repo
 mutation, no job state mutation. Uses static analysis (source-text search) to
-confirm that the evidence-pipeline module actually *calls* each gate writer.
-A gate module that exists but is never invoked produces no evidence — this gate
-catches that class of silent regression.
+confirm that the evidence-pipeline module actually *calls* each gate writer,
+and binds to executed test records when verification data is provided.
 
 Public API:
-    build_runtime_integration_gate(repo_root, checks=None) -> dict
-    write_runtime_integration_gate(evidence_dir, repo_root, written=None) -> None
+    build_runtime_integration_gate(repo_root, checks=None, verification_data=None) -> dict
+    write_runtime_integration_gate(evidence_dir, repo_root, written=None, verification_data=None) -> None
 """
 from __future__ import annotations
 
@@ -16,7 +15,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 _JOB_EVIDENCE = "packages/orchestration/job_evidence.py"
 
@@ -127,54 +126,32 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "check_type": "call_exists",
         "pattern": "BudgetCounterError",
     },
-    # F018: real test bindings — require specific test functions exist
+)
+
+TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
     {
-        "check_id": "f018_test_job_run_retains_persisted_budget",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_job_run_retains_persisted_budget",
+        "check_id": "f018_test_authority_integration_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F018_TEST,
+        "min_passed": 70,
     },
     {
-        "check_id": "f018_test_resume_retains_counters",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_resume_seeds_from_persisted_actuals",
+        "check_id": "f018_test_budget_guard_execution",
+        "check_type": "test_execution_binding",
+        "test_file": "tests/orchestration/test_budget_guard.py",
+        "min_passed": 45,
     },
     {
-        "check_id": "f018_test_strict_actuals_reject_coercion",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_bool_provider_calls_rejected",
+        "check_id": "f018_test_job_budgets_execution",
+        "check_type": "test_execution_binding",
+        "test_file": "tests/orchestration/test_job_budgets.py",
+        "min_passed": 65,
     },
     {
-        "check_id": "f018_test_decision_from_jobplan_stop",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_jobplan_stop_creates_decision",
-    },
-    {
-        "check_id": "f018_test_prework_stop_identity_stable",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_prework_stop_identity_stable",
-    },
-    {
-        "check_id": "f018_test_manifest_deadline_utc",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_deadline_normalized_to_utc",
-    },
-    {
-        "check_id": "f018_test_empty_budgets_normalize_null",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_empty_budgets_normalize_to_null",
-    },
-    {
-        "check_id": "f018_test_jobplan_budget_display",
-        "source_file": _F018_TEST,
-        "check_type": "call_exists",
-        "pattern": "test_jobplan_budget_display",
+        "check_id": "f018_test_budget_stop_integration_execution",
+        "check_type": "test_execution_binding",
+        "test_file": "tests/orchestration/test_budget_stop_integration.py",
+        "min_passed": 30,
     },
 )
 
@@ -189,13 +166,16 @@ def _read_text(path: Path) -> str | None:
 def build_runtime_integration_gate(
     repo_root: str,
     checks: list[dict[str, str]] | None = None,
+    verification_data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Statically verify each integration check against ``repo_root``.
+    """Verify integration via source-text checks and test execution bindings.
 
-    ``checks`` overrides ``INTEGRATION_CHECKS`` when provided. For each check the
-    named ``source_file`` (relative to ``repo_root``) is read and searched for
-    ``pattern``. A check passes when the pattern is present. A missing or
-    unreadable source file fails the check. Never mutates any file.
+    ``checks`` overrides ``INTEGRATION_CHECKS`` when provided. For each
+    ``call_exists`` check, the named ``source_file`` is read and searched for
+    ``pattern``. ``test_execution_binding`` checks validate against
+    ``verification_data`` (the verification_tests.json payload).
+
+    Gate never passes with zero checks.
     """
     root = Path(repo_root) if repo_root else Path(".")
     active = list(checks) if checks is not None else [dict(c) for c in INTEGRATION_CHECKS]
@@ -230,7 +210,20 @@ def build_runtime_integration_gate(
                     f"{check_id}: pattern {pattern!r} not found in {source_file!r}"
                 )
 
-    all_passed = all(r["found"] for r in results) and bool(results)
+    if checks is None:
+        _bind_test_execution(results, issues, verification_data)
+
+    if not results:
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "verdict": "BLOCKED",
+            "checks": [],
+            "checks_total": 0,
+            "checks_passed": 0,
+            "issues": ["gate has zero checks"],
+        }
+
+    all_passed = all(r["found"] for r in results)
     verdict = "PASS" if all_passed else "BLOCKED"
 
     return {
@@ -243,10 +236,68 @@ def build_runtime_integration_gate(
     }
 
 
+def _bind_test_execution(
+    results: list[dict[str, Any]],
+    issues: list[str],
+    verification_data: dict[str, Any] | None,
+) -> None:
+    """Validate TEST_EXECUTION_BINDINGS against verification run data."""
+    runs = []
+    if isinstance(verification_data, dict):
+        runs = verification_data.get("runs") or []
+
+    for binding in TEST_EXECUTION_BINDINGS:
+        check_id = binding["check_id"]
+        test_file = binding["test_file"]
+        min_passed = int(binding.get("min_passed", 1))
+
+        bound_run = None
+        for run in runs:
+            run_files = run.get("test_files") or []
+            if test_file not in run_files:
+                continue
+            if run.get("exit_code", -1) != 0:
+                continue
+            if (run.get("passed") or 0) < min_passed:
+                continue
+            bound_run = {
+                "run_id": run.get("run_id", ""),
+                "command": run.get("command", ""),
+                "exit_code": run.get("exit_code", -1),
+                "passed": run.get("passed", 0),
+                "failed": run.get("failed", 0),
+                "skipped": run.get("skipped", 0),
+                "selected": run.get("selected", 0),
+                "node_ids": run.get("node_ids", []),
+                "output_hash": run.get("output_hash", ""),
+                "head_sha": run.get("head_sha", ""),
+            }
+            break
+
+        found = bound_run is not None
+        entry: dict[str, Any] = {
+            "check_id": check_id,
+            "check_type": "test_execution_binding",
+            "test_file": test_file,
+            "min_passed": min_passed,
+            "found": found,
+        }
+        if bound_run is not None:
+            entry["bound_run"] = bound_run
+        results.append(entry)
+
+        if not found:
+            issues.append(
+                f"{check_id}: no passing execution for {test_file!r} "
+                f"(need >= {min_passed} passed, exit_code 0)"
+            )
+
+
 def write_runtime_integration_gate(
     evidence_dir: str,
     repo_root: str,
     written: dict[str, str] | None = None,
+    verification_data: dict[str, Any] | None = None,
 ) -> None:
     """Build and write ``runtime_integration_gate.json`` into ``evidence_dir``.
 
@@ -256,7 +307,9 @@ def write_runtime_integration_gate(
     if not evidence_dir:
         return
 
-    gate = build_runtime_integration_gate(repo_root)
+    gate = build_runtime_integration_gate(
+        repo_root, verification_data=verification_data,
+    )
 
     out_dir = Path(evidence_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
