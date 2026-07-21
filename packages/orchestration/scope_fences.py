@@ -565,8 +565,20 @@ class ChangeSetFenceResult:
 class FenceViolationError(Exception):
     """Typed blocking exception carrying a stable violation set."""
 
-    def __init__(self, result: ChangeSetFenceResult) -> None:
+    def __init__(
+        self,
+        result: ChangeSetFenceResult,
+        *,
+        effective_result: EffectiveFenceResult | None = None,
+        artifact_path: Path | None = None,
+        persistence_status: str = "not_attempted",
+        secondary_diagnostic: str = "",
+    ) -> None:
         self.result = result
+        self.effective_result = effective_result
+        self.artifact_path = artifact_path
+        self.persistence_status = persistence_status
+        self.secondary_diagnostic = secondary_diagnostic
         paths = ", ".join(_redact_path(v.path) for v in result.violations[:3])
         count = len(result.violations)
         suffix = f" (and {count - 3} more)" if count > 3 else ""
@@ -630,13 +642,50 @@ def _redact_path(path_str: str) -> str:
     return path_str
 
 
+def _match_violation_rule(
+    v: FenceViolation,
+    effective: EffectiveFenceResult | None,
+) -> tuple[str, str, str]:
+    """Return (matched_rule, rule_kind, rule_source) for a violation."""
+    if effective is None:
+        return ("", "", "")
+    reason = v.reason
+    if reason.startswith("denied:builtin:"):
+        for r in effective.builtin_rules:
+            builtin_tag = f"builtin:{r.reason}"
+            if builtin_tag in reason:
+                return (r.pattern, r.kind, r.source)
+        return ("", "builtin", "builtin")
+    if reason.startswith("denied:deny_glob:"):
+        matched_pattern = reason.split("denied:deny_glob:", 1)[1]
+        for r in effective.deny_rules:
+            if r.pattern == matched_pattern:
+                return (r.pattern, r.kind, r.source)
+        return (matched_pattern, "deny", "")
+    if reason.startswith("denied:not_in_allow_list"):
+        return ("", "allow", "")
+    return ("", "", "")
+
+
+def _path_kind(path: str) -> str:
+    """Classify a path for artifact reporting."""
+    if os.path.isabs(path):
+        return "absolute"
+    if ".." in path.split("/"):
+        return "traversal"
+    return "relative"
+
+
 def write_fence_violations_artifact(
     result: ChangeSetFenceResult,
     evidence_dir: Path,
     *,
     applicator: str = "",
     job_id: str = "",
+    task_id: str = "",
+    run_id: str = "",
     intent_id: str = "",
+    effective: EffectiveFenceResult | None = None,
 ) -> Path | None:
     """Write fence_violations.json to evidence_dir. Returns path or None.
 
@@ -658,25 +707,41 @@ def write_fence_violations_artifact(
         suffix = f"{suffix}_{applicator}"
     artifact_name = f"fence_violations{suffix}.json"
 
-    payload = {
-        "schema": "fence_violations/v1",
+    violations_payload = []
+    for v in result.violations:
+        matched_rule, rule_kind, rule_source = _match_violation_rule(v, effective)
+        reason_code = v.reason.split(":")[0] if ":" in v.reason else v.reason
+        violations_payload.append({
+            "path": _redact_path(v.path),
+            "normalized": _redact_path(v.normalized),
+            "path_kind": _path_kind(v.path),
+            "operation": v.operation,
+            "role": v.role,
+            "reason_code": reason_code,
+            "reason": v.reason,
+            "matched_rule": matched_rule,
+            "rule_kind": rule_kind,
+            "rule_source": rule_source,
+        })
+
+    payload: dict = {
+        "schema": "fence_violations/v2",
+        "schema_version": "2.0.0",
         "event_id": event_id,
         "applicator": applicator,
         "job_id": job_id,
+        "task_id": task_id,
+        "run_id": run_id,
         "intent_id": intent_id,
+        "case_sensitivity": "as-is",
         "touched_count": result.touched_count,
         "violation_count": len(result.violations),
-        "violations": [
-            {
-                "path": _redact_path(v.path),
-                "normalized": _redact_path(v.normalized),
-                "operation": v.operation,
-                "role": v.role,
-                "reason": v.reason,
-            }
-            for v in result.violations
-        ],
+        "violations": violations_payload,
+        "persistence_status": "persisted",
+        "secondary_persistence_diagnostic": "",
     }
+    if effective:
+        payload["warnings"] = list(effective.warnings)
 
     data = (json.dumps(payload, indent=2, sort_keys=False) + "\n").encode("utf-8")
 
@@ -708,19 +773,22 @@ def enforce_change_set(
     *,
     applicator: str = "",
     job_id: str = "",
+    task_id: str = "",
+    run_id: str = "",
     intent_id: str = "",
     evidence_dir: Path | None = None,
     job_fences: dict | None = None,
 ) -> EnforceResult:
     """Shared enforcement adapter for all production write paths.
 
-    1. Resolves effective fence spec (per-job > project config > defaults).
+    1. Resolves effective fence spec with provenance (per-job > config > defaults).
     2. Runs change-set preflight.
     3. On violation: writes durable Evidence artifact, raises FenceViolationError.
-    4. Artifact persistence failure still raises — repo mutation blocked.
+    4. Artifact persistence failure preserves the primary FenceViolationError —
+       repo mutation stays blocked, persistence_status = "failed".
     """
-    spec = resolve_fence_spec(worktree_root, job_fences=job_fences)
-    fence_result = check_change_set(worktree_root, spec, touched)
+    effective = resolve_fence_spec_effective(worktree_root, job_fences=job_fences)
+    fence_result = check_change_set(worktree_root, effective.spec, touched)
 
     if fence_result.allowed:
         return EnforceResult(fence_result=fence_result)
@@ -732,11 +800,34 @@ def enforce_change_set(
     if job_id:
         edir = edir / "jobs" / job_id[:36]
 
-    artifact_path = write_fence_violations_artifact(
-        fence_result, edir,
-        applicator=applicator,
-        job_id=job_id,
-        intent_id=intent_id,
-    )
+    artifact_path: Path | None = None
+    persistence_status = "not_attempted"
+    secondary_diagnostic = ""
 
-    raise FenceViolationError(fence_result)
+    try:
+        artifact_path = write_fence_violations_artifact(
+            fence_result, edir,
+            applicator=applicator,
+            job_id=job_id,
+            task_id=task_id,
+            run_id=run_id,
+            intent_id=intent_id,
+            effective=effective,
+        )
+        persistence_status = "persisted"
+    except Exception as persist_exc:
+        persistence_status = "failed"
+        raw = str(persist_exc)
+        secondary_diagnostic = _redact_path(raw)[:200]
+        logger.error(
+            "F017: fence violation Evidence persistence failed: %s",
+            secondary_diagnostic,
+        )
+
+    raise FenceViolationError(
+        fence_result,
+        effective_result=effective,
+        artifact_path=artifact_path,
+        persistence_status=persistence_status,
+        secondary_diagnostic=secondary_diagnostic,
+    )

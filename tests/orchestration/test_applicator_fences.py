@@ -320,7 +320,7 @@ class TestFenceViolationsArtifact:
         assert path.name.startswith("fence_violations_j1_")
         assert path.name.endswith("_source_apply.json")
         data = json.loads(path.read_text())
-        assert data["schema"] == "fence_violations/v1"
+        assert data["schema"] == "fence_violations/v2"
         assert "event_id" in data
         assert data["applicator"] == "source_apply"
         assert data["job_id"] == "j1"

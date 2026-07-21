@@ -114,7 +114,7 @@ class TestEnforceChangeSet:
         artifacts = list(job_ev.glob("fence_violations*.json"))
         assert len(artifacts) == 1
         data = json.loads(artifacts[0].read_text())
-        assert data["schema"] == "fence_violations/v1"
+        assert data["schema"] == "fence_violations/v2"
         assert data["applicator"] == "test_apply"
 
     def test_job_scoped_evidence_dir(self, tmp_path, monkeypatch):
@@ -691,7 +691,7 @@ class TestSecureArtifactWriter:
         result = check_change_set(tmp_path, FenceSpec(), touched)
         path = write_fence_violations_artifact(result, tmp_path, job_id="j1")
         data = json.loads(path.read_text())
-        assert data["schema"] == "fence_violations/v1"
+        assert data["schema"] == "fence_violations/v2"
         assert "event_id" in data
         assert data["violation_count"] == 1
 
