@@ -39,12 +39,33 @@ class BudgetCounters:
             if not isinstance(val, int) or val < 0:
                 raise BudgetCounterError(
                     f"{name} must be a non-negative integer, got {val!r}")
+        if isinstance(self.elapsed_seconds, bool):
+            raise BudgetCounterError(
+                f"elapsed_seconds must be a number, got bool")
         if not isinstance(self.elapsed_seconds, (int, float)) or self.elapsed_seconds < 0:
             raise BudgetCounterError(
                 f"elapsed_seconds must be non-negative, got {self.elapsed_seconds!r}")
         if isinstance(self.elapsed_seconds, float) and not math.isfinite(self.elapsed_seconds):
             raise BudgetCounterError(
                 f"elapsed_seconds must be finite, got {self.elapsed_seconds!r}")
+        if not isinstance(self.evaluated_at, datetime):
+            raise BudgetCounterError(
+                f"evaluated_at must be a datetime, got {type(self.evaluated_at).__name__}")
+        if not isinstance(self.actual_sources, tuple):
+            raise BudgetCounterError(
+                f"actual_sources must be a tuple, got {type(self.actual_sources).__name__}")
+        for i, src in enumerate(self.actual_sources):
+            if not isinstance(src, str):
+                raise BudgetCounterError(
+                    f"actual_sources[{i}] must be str, got {type(src).__name__}")
+        if self.started_at is not None:
+            if not isinstance(self.started_at, datetime):
+                raise BudgetCounterError(
+                    f"started_at must be a datetime or None, got {type(self.started_at).__name__}")
+            if self.started_at > self.evaluated_at:
+                raise BudgetCounterError(
+                    f"started_at ({self.started_at.isoformat()}) is after "
+                    f"evaluated_at ({self.evaluated_at.isoformat()})")
         expected = self.measured_call_count + self.unmeasured_call_count
         if self.provider_calls != expected:
             raise BudgetCounterError(

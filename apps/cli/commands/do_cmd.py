@@ -438,6 +438,34 @@ def _cmd_do_pingpong(
             print(f"Budgets: {budgets}")
         print()
 
+    # F018: build a budget-aware stop_check for the bare ping-pong path.
+    _stop_check = None
+    if budgets is not None:
+        from datetime import datetime as _dt, timezone as _tz
+        from packages.orchestration.budget_guard import BudgetCounters as _BC
+        from packages.orchestration.safe_points import should_stop as _should_stop
+
+        _pp_started = _dt.now(_tz.utc)
+        _pp_calls = 0
+        _pp_tokens = 0
+        _pp_measured = 0
+        _pp_unmeasured = 0
+
+        def _stop_check():
+            counters = _BC(
+                provider_calls=_pp_calls,
+                measured_token_total=_pp_tokens,
+                measured_call_count=_pp_measured,
+                unmeasured_call_count=_pp_unmeasured,
+                started_at=_pp_started,
+            )
+            result = _should_stop("", budgets=budgets, counters=counters)
+            if not result.should_stop:
+                return None
+            if result.source == "operator":
+                return result.operator_signal
+            return result
+
     result = run_pingpong(
         goal,
         repo,
@@ -456,6 +484,7 @@ def _cmd_do_pingpong(
         repair_rounds=repair_rounds,
         repair_rounds_source=repair_rounds_source,
         stream_evidence=stream_evidence,
+        stop_check=_stop_check,
     )
 
     data = export_pingpong_json(result)

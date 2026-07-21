@@ -313,3 +313,100 @@ class TestRunManifestBudgetSnapshot:
         job = Job(name="no-budget")
         job_budgets = getattr(job, "budgets", None)
         assert job_budgets is None
+
+
+class TestJobPlanBudgetsPersistence:
+    """F018: JobPlan budgets field persisted through _export_job/_import_job."""
+
+    def test_jobplan_budgets_field_default_none(self):
+        from packages.orchestration.pingpong_job import JobPlan
+        plan = JobPlan()
+        assert plan.budgets is None
+
+    def test_jobplan_budgets_roundtrip(self):
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
+        dl = datetime(2026, 12, 31, tzinfo=timezone.utc)
+        b = JobBudgets(max_total_tokens=100000, max_provider_calls=10, deadline=dl)
+        plan = JobPlan(budgets=b.model_dump(mode="json"))
+        exported = _export_job(plan)
+        assert exported["budgets"] is not None
+        assert exported["budgets"]["max_total_tokens"] == 100000
+        imported = _import_job(exported)
+        assert imported.budgets is not None
+        assert imported.budgets["max_total_tokens"] == 100000
+        assert imported.budgets["max_provider_calls"] == 10
+
+    def test_jobplan_no_budgets_roundtrip(self):
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
+        plan = JobPlan()
+        exported = _export_job(plan)
+        assert exported["budgets"] is None
+        imported = _import_job(exported)
+        assert imported.budgets is None
+
+    def test_jobplan_old_format_no_budgets_key(self):
+        from packages.orchestration.pingpong_job import _import_job
+        data = {"job_id": "test123"}
+        imported = _import_job(data)
+        assert imported.budgets is None
+
+    def test_jobplan_budgets_reconstructible(self):
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
+        b = JobBudgets(max_wall_clock_minutes=60)
+        plan = JobPlan(budgets=b.model_dump(mode="json"))
+        exported = _export_job(plan)
+        imported = _import_job(exported)
+        reconstructed = JobBudgets.model_validate(imported.budgets)
+        assert reconstructed.max_wall_clock_minutes == 60
+        assert reconstructed.max_total_tokens is None
+
+
+class TestBudgetCountersStrictValidation:
+    """F018: BudgetCounters rejects permissive inputs."""
+
+    def test_elapsed_seconds_bool_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="elapsed_seconds.*bool"):
+            BudgetCounters(elapsed_seconds=True)
+
+    def test_evaluated_at_string_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="evaluated_at.*datetime"):
+            BudgetCounters(evaluated_at="not-datetime")
+
+    def test_actual_sources_non_tuple_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="actual_sources.*tuple"):
+            BudgetCounters(actual_sources=[123])
+
+    def test_actual_sources_non_string_element_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="actual_sources.*str"):
+            BudgetCounters(actual_sources=(123,))
+
+    def test_started_at_after_evaluated_at_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        future = datetime(2099, 1, 1, tzinfo=timezone.utc)
+        past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        with pytest.raises(BudgetCounterError, match="started_at.*after"):
+            BudgetCounters(started_at=future, evaluated_at=past)
+
+    def test_started_at_non_datetime_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
+        with pytest.raises(BudgetCounterError, match="started_at.*datetime"):
+            BudgetCounters(started_at="2020-01-01")
+
+    def test_valid_counters_pass(self):
+        from packages.orchestration.budget_guard import BudgetCounters
+        now = datetime.now(timezone.utc)
+        c = BudgetCounters(
+            provider_calls=5,
+            measured_token_total=1000,
+            measured_call_count=3,
+            unmeasured_call_count=2,
+            elapsed_seconds=60.0,
+            evaluated_at=now,
+            started_at=now - timedelta(seconds=60),
+            actual_sources=("run_1", "run_2"),
+        )
+        assert c.provider_calls == 5

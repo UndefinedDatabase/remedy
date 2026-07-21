@@ -266,6 +266,8 @@ class JobPlan:
     # runner started zero tasks and made zero provider calls.
     input_snapshot_error: str = ""
     run_manifest_episodes: list = field(default_factory=list)  # index of episode dicts
+    # F018: job budget limits (serialized dict from JobBudgets.model_dump, or None).
+    budgets: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -577,6 +579,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
             "input_snapshot_error": job.input_snapshot_error,
             "episodes": job.run_manifest_episodes,
         },
+        "budgets": job.budgets,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -666,6 +669,7 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         input_snapshot=dict((data.get("run_manifest") or {}).get("input_snapshot") or {}),
         input_snapshot_error=str((data.get("run_manifest") or {}).get("input_snapshot_error", "") or ""),
         run_manifest_episodes=list((data.get("run_manifest") or {}).get("episodes") or []),
+        budgets=data.get("budgets"),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -1549,6 +1553,7 @@ def run_job(
     claude_cli_write_mode: str | None = None,
     stream_evidence: bool | None = None,
     max_tasks: int | None = None,
+    budgets: dict | None = None,
 ) -> JobPlan:
     """Execute pending tasks sequentially through the ping-pong loop.
 
@@ -1574,6 +1579,12 @@ def run_job(
             status=JOB_BLOCKED,
             error=f"job_not_found: {job_id}",
         )
+
+    # F018: apply caller-supplied budgets (CLI override); persisted budgets on the JobPlan
+    # are kept if no caller override is provided.
+    if budgets is not None:
+        job.budgets = budgets
+        _persist_job(job)
 
     # Step 4869: Resolve each config field — explicit > persisted > default
     ec = job.execution_config
@@ -1700,6 +1711,15 @@ def run_job(
     _accumulated_unmeasured = 0
     _run_started_at = datetime.now(timezone.utc)
 
+    # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
+    _job_budgets = None
+    if job.budgets is not None:
+        from packages.core.models import JobBudgets as _JobBudgets
+        try:
+            _job_budgets = _JobBudgets.model_validate(job.budgets)
+        except Exception:
+            _job_budgets = None
+
     def _stop_check():
         from packages.orchestration.budget_guard import BudgetCounters
         counters = BudgetCounters(
@@ -1711,7 +1731,7 @@ def run_job(
         )
         result = _should_stop(
             job.job_id,
-            budgets=getattr(job, "budgets", None),
+            budgets=_job_budgets,
             counters=counters,
             control_root_path=_control,
         )
