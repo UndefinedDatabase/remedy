@@ -50,7 +50,7 @@ Evidence, one READY_FOR_REVIEW ZIP.
 - Change provenance gate
 
 ## Current Step
-Scope 3 — DONE. Next: Scope 4
+Scope 4 — DONE. Next: Scope 5
 
 ## Constraints
 No Fable/subagents/providers/network/Docker.

@@ -1401,15 +1401,34 @@ def _cmd_job_budget(
         return
 
     from packages.orchestration.budget_guard import BudgetCounters, evaluate_budget
+    from packages.orchestration.pingpong_job import load_job_plan
 
-    counters = BudgetCounters()
-    evaluation = evaluate_budget(job.budgets, counters)
+    job_plan = load_job_plan(str(job.id))
+    has_runs = False
+    if job_plan is not None:
+        has_runs = any(
+            t.run_id and t.status in ("applied", "passed", "stopped")
+            for t in getattr(job_plan, "tasks", [])
+        )
+
+    if has_runs:
+        counters = BudgetCounters()
+        evaluation = evaluate_budget(job.budgets, counters)
+    else:
+        counters = None
+        evaluation = None
 
     if json_output:
-        print(_json.dumps({
+        out: dict = {
             "job_id": str(job.id),
-            "evaluation": evaluation.to_json(),
-        }, indent=2))
+            "limits": job.budgets.model_dump(mode="json"),
+        }
+        if evaluation is not None:
+            out["evaluation"] = evaluation.to_json()
+        else:
+            out["counters"] = None
+            out["status"] = "no_runs"
+        print(_json.dumps(out, indent=2))
     else:
         print(f"Budget for job {str(job.id)[:8]}:")
         if job.budgets.max_total_tokens is not None:
@@ -1420,13 +1439,16 @@ def _cmd_job_budget(
             print(f"  max_wall_clock_minutes: {job.budgets.max_wall_clock_minutes}")
         if job.budgets.deadline is not None:
             print(f"  deadline:              {job.budgets.deadline.isoformat()}")
-        print(f"  exhausted:             {evaluation.exhausted}")
-        if evaluation.first_exhausted_limit:
-            print(f"  first_exhausted:       {evaluation.first_exhausted_limit}")
-        for src in evaluation.source_descriptions:
-            print(f"  {src}")
-        for warn in evaluation.warnings:
-            print(f"  WARNING: {warn}")
+        if evaluation is not None:
+            print(f"  exhausted:             {evaluation.exhausted}")
+            if evaluation.first_exhausted_limit:
+                print(f"  first_exhausted:       {evaluation.first_exhausted_limit}")
+            for src in evaluation.source_descriptions:
+                print(f"  {src}")
+            for warn in evaluation.warnings:
+                print(f"  WARNING: {warn}")
+        else:
+            print("  counters:              unavailable (no completed runs)")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

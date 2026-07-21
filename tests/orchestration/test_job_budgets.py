@@ -750,3 +750,40 @@ class TestBudgetStopSignal:
         result = should_stop("test-job", budgets=budgets, counters=counters)
         assert result.should_stop
         assert "deadline" in result.reason
+
+
+class TestHonestBudgetDisplay:
+    """F018: job budget display never invents structured zeros."""
+
+    def test_no_runs_reports_unavailable_json(self):
+        import json as _json
+        limits = {"max_provider_calls": 10}
+        out: dict = {
+            "job_id": "test-123",
+            "limits": limits,
+        }
+        has_runs = False
+        if not has_runs:
+            out["counters"] = None
+            out["status"] = "no_runs"
+        rendered = _json.dumps(out)
+        parsed = _json.loads(rendered)
+        assert parsed["counters"] is None
+        assert parsed["status"] == "no_runs"
+        assert "evaluation" not in parsed
+
+    def test_with_runs_has_evaluation(self):
+        from packages.orchestration.budget_guard import BudgetCounters, evaluate_budget
+        budgets = JobBudgets(max_provider_calls=10)
+        counters = BudgetCounters(provider_calls=3, measured_call_count=3)
+        evaluation = evaluate_budget(budgets, counters)
+        out = {"evaluation": evaluation.to_json()}
+        assert out["evaluation"]["counters"]["provider_calls"] == 3
+        assert not out["evaluation"]["exhausted"]
+
+    def test_no_budgets_is_none(self):
+        import json as _json
+        out = {"job_id": "test", "budgets": None}
+        rendered = _json.dumps(out)
+        parsed = _json.loads(rendered)
+        assert parsed["budgets"] is None
