@@ -192,6 +192,28 @@ class TestDecisionQueueEntry:
         assert d["first_exhausted_limit"] == "max_total_tokens"
 
 
+class TestDecisionQueueDerivation:
+    """list_decisions derives token_budget from job state."""
+
+    def test_budget_exhausted_produces_decision(self):
+        from packages.core.models import Job
+        from packages.orchestration.decision_queue import list_decisions
+        job = Job(name="budget-test", metadata={"error": "budget_exhausted: max_provider_calls"})
+        decisions = list_decisions(job, [])
+        budget_decisions = [d for d in decisions if d.type == "token_budget"]
+        assert len(budget_decisions) == 1
+        assert budget_decisions[0].severity == "blocker"
+        assert "budget_exhausted" in budget_decisions[0].safe_summary
+
+    def test_no_budget_error_no_decision(self):
+        from packages.core.models import Job
+        from packages.orchestration.decision_queue import list_decisions
+        job = Job(name="ok-test")
+        decisions = list_decisions(job, [])
+        budget_decisions = [d for d in decisions if d.type == "token_budget"]
+        assert len(budget_decisions) == 0
+
+
 class TestPostmortemClass:
     """FailureClass.BUDGET_EXHAUSTED exists and is classifiable."""
 

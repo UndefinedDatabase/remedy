@@ -1691,37 +1691,67 @@ def run_job(
     # Binding the control root resolves a path. It creates nothing, and it touches neither
     # the repository nor the workspace.
     from packages.orchestration.safe_points import control_root as _control_root
-    from packages.orchestration.safe_points import stop_requested as _stop_requested
+    from packages.orchestration.safe_points import should_stop as _should_stop, StopSignal as _StopSignal
     _control = _control_root()
 
+    _accumulated_provider_calls = 0
+    _accumulated_tokens = 0
+    _accumulated_measured = 0
+    _accumulated_unmeasured = 0
+    _run_started_at = datetime.now(timezone.utc)
+
     def _stop_check():
-        return _stop_requested(job.job_id, control_root_path=_control)
+        from packages.orchestration.budget_guard import BudgetCounters
+        counters = BudgetCounters(
+            provider_calls=_accumulated_provider_calls,
+            measured_token_total=_accumulated_tokens,
+            measured_call_count=_accumulated_measured,
+            unmeasured_call_count=_accumulated_unmeasured,
+            started_at=_run_started_at,
+        )
+        result = _should_stop(
+            job.job_id,
+            budgets=getattr(job, "budgets", None),
+            counters=counters,
+            control_root_path=_control,
+        )
+        if not result.should_stop:
+            return None
+        if result.source == "operator":
+            return result.operator_signal
+        return result
 
     _pre_stop = _stop_check()
     if _pre_stop is not None:
-        # F012: a pre-work stop finalizes the episode that was ALREADY under way (its calls
-        # are tagged with the persisted active_episode_id). Reuse it so a stop-retry converges
-        # on the same episode and the same calls; only a first-ever run with no episode yet
-        # allocates one.
-        if not job.active_episode_id:
-            job.active_episode_id = uuid4().hex[:16]
-        # F1: a stop-retry of an episode that already captured its snapshot REUSES it (the
-        # persisted wrapper is bound to this episode and is ok). A first-ever pre-work stop —
-        # no bound snapshot yet — gets its OWN explicit ``pre_work_stop`` snapshot; it is never
-        # left empty and never rebuilt at finalize.
-        if not _episode_snapshot_bound_ok(job):
-            _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
-        # F5: PERSIST the allocated episode id + its bound snapshot BEFORE the stop transaction,
-        # so a retry of a stop whose finalization failed reuses the SAME episode id (and its
-        # already-written manifest), converging idempotently instead of allocating a fresh
-        # episode that would disagree with the on-disk index. This persist is with the job still
-        # non-stopped, so it never races the STOPPED checkpoint.
-        _persist_job(job)
-        try:
-            return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
-        except StopFinalizationError:
-            # The stop could not be made durable. The request is still pending and no work
-            # has begun — which is the safe outcome, and the job records why.
+        if isinstance(_pre_stop, _StopSignal):
+            # F012: a pre-work stop finalizes the episode that was ALREADY under way (its calls
+            # are tagged with the persisted active_episode_id). Reuse it so a stop-retry converges
+            # on the same episode and the same calls; only a first-ever run with no episode yet
+            # allocates one.
+            if not job.active_episode_id:
+                job.active_episode_id = uuid4().hex[:16]
+            # F1: a stop-retry of an episode that already captured its snapshot REUSES it (the
+            # persisted wrapper is bound to this episode and is ok). A first-ever pre-work stop —
+            # no bound snapshot yet — gets its OWN explicit ``pre_work_stop`` snapshot; it is never
+            # left empty and never rebuilt at finalize.
+            if not _episode_snapshot_bound_ok(job):
+                _capture_input_snapshot(job, phase=_PHASE_PRE_WORK_STOP)
+            # F5: PERSIST the allocated episode id + its bound snapshot BEFORE the stop transaction,
+            # so a retry of a stop whose finalization failed reuses the SAME episode id (and its
+            # already-written manifest), converging idempotently instead of allocating a fresh
+            # episode that would disagree with the on-disk index. This persist is with the job still
+            # non-stopped, so it never races the STOPPED checkpoint.
+            _persist_job(job)
+            try:
+                return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
+            except StopFinalizationError:
+                # The stop could not be made durable. The request is still pending and no work
+                # has begun — which is the safe outcome, and the job records why.
+                return job
+        else:
+            job.status = JOB_BLOCKED
+            job.error = f"budget_exhausted_pre_work: {getattr(_pre_stop, 'reason', 'budget')}"
+            _persist_job(job)
             return job
 
     # F012: no pending pre-work stop — this is a real execution EPISODE. Allocate a fresh
@@ -1818,10 +1848,16 @@ def run_job(
             # calls, every task still pending.
             _stop = _stop_check()
             if _stop is not None:
-                try:
-                    return _stop_job(job, _stop, task=None, control_root_path=_control)
-                except StopFinalizationError:
-                    return job          # request still pending; no task work begins
+                if isinstance(_stop, _StopSignal):
+                    try:
+                        return _stop_job(job, _stop, task=None, control_root_path=_control)
+                    except StopFinalizationError:
+                        return job          # request still pending; no task work begins
+                else:
+                    job.status = JOB_BLOCKED
+                    job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
+                    _persist_job(job)
+                    return job
 
             # Build bounded task prompt
             task_prompt = _build_task_prompt(job, task, previous_summaries)
@@ -1906,6 +1942,21 @@ def run_job(
             task.safe_diff_files = list(result.safe_diff_files)
             task.repair_rounds_used = result.repair_rounds_used
             task.repair_rounds_allowed = result.repair_rounds_allowed
+
+            # F018: accumulate budget counters from this task's provider attempts
+            for attempt in getattr(result, "provider_attempts", []):
+                if getattr(attempt, "provider", "fake") == "fake":
+                    continue
+                _accumulated_provider_calls += 1
+                ua = getattr(attempt, "usage_actuals", None)
+                if ua is not None:
+                    _accumulated_measured += 1
+                    _accumulated_tokens += (
+                        getattr(ua, "input_tokens", 0) +
+                        getattr(ua, "output_tokens", 0)
+                    )
+                else:
+                    _accumulated_unmeasured += 1
 
             # Extract test/reviewer info from rounds
             if result.rounds:
@@ -2009,10 +2060,16 @@ def run_job(
             # now takes effect before the NEXT task is dispatched.
             _stop = _stop_check()
             if _stop is not None:
-                try:
-                    return _stop_job(job, _stop, task=None, control_root_path=_control)
-                except StopFinalizationError:
-                    return job          # no further task is dispatched
+                if isinstance(_stop, _StopSignal):
+                    try:
+                        return _stop_job(job, _stop, task=None, control_root_path=_control)
+                    except StopFinalizationError:
+                        return job          # no further task is dispatched
+                else:
+                    job.status = JOB_BLOCKED
+                    job.error = f"budget_exhausted: {getattr(_stop, 'reason', 'budget')}"
+                    _persist_job(job)
+                    return job
 
         # Determine final job status
         all_done = all(

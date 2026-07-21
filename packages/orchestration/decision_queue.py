@@ -146,7 +146,33 @@ def list_decisions(
                 resolved_at=None,
             ))
 
-    # 5. Stale/needs_review memory cards
+    # 5. Budget exhaustion
+    budget_error = str(
+        job.metadata.get("budget_stop_reason", "")
+        or job.metadata.get("error", "")
+        or getattr(job, "error", "")
+        or ""
+    )
+    if "budget_exhausted" in budget_error:
+        decisions.append(HumanDecision(
+            id="budget_exhausted",
+            type="token_budget",
+            status="open",
+            severity="blocker",
+            source="budget_guard",
+            related_node_id="",
+            related_intent_id="",
+            related_file="",
+            safe_summary=f"Job stopped: {budget_error[:200]}",
+            next_actions=(
+                "Increase budget limits and re-run.",
+                f"remedy job budget {job_id[:8]}",
+            ),
+            created_at="",
+            resolved_at=None,
+        ))
+
+    # 6. Stale/needs_review memory cards
     try:
         from packages.memory.local_gateway import list_memory
         entries = list_memory()
