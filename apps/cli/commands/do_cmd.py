@@ -192,20 +192,18 @@ def _cmd_do(
     max_wall_clock_minutes: str | None = None,
     deadline: str | None = None,
 ) -> None:
-    # --- Budget resolution ---
-    budgets = None
-    if any(v is not None for v in (max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline)):
-        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
-        try:
-            budgets = resolve_job_budgets(
-                cli_max_total_tokens=max_total_tokens,
-                cli_max_provider_calls=max_provider_calls,
-                cli_max_wall_clock_minutes=max_wall_clock_minutes,
-                cli_deadline=deadline,
-            )
-        except (BudgetConfigError, ValueError) as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
+    # --- Budget resolution (always runs — catches config-only budgets) ---
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
 
     # --- Task input loading ---
     task_input = None
@@ -292,6 +290,7 @@ def _cmd_do(
             repair_rounds=repair_rounds,
             repair_rounds_source=repair_rounds_source,
             stream_evidence=stream_evidence,
+            budgets=budgets,
         )
         return
 
@@ -328,6 +327,7 @@ def _cmd_do(
             autonomy_level=autonomy_level,
             max_loops=max_cycles,
             stop_before_apply=True,
+            budgets=budgets,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -394,6 +394,7 @@ def _cmd_do_pingpong(
     repair_rounds: int = 0,
     repair_rounds_source: str = "",
     stream_evidence: bool = False,
+    budgets: Any = None,
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -433,6 +434,8 @@ def _cmd_do_pingpong(
             print(f"Test command: {test_command}")
         if repair_rounds > 0:
             print(f"Repair rounds: {repair_rounds}")
+        if budgets is not None:
+            print(f"Budgets: {budgets}")
         print()
 
     result = run_pingpong(

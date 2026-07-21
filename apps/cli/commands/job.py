@@ -73,19 +73,17 @@ def _cmd_create_job(
         tasks = [Task(description=description, inputs={"task_type": task_type})]
         state = RunState.PLANNED
 
-    budgets = None
-    if any(v is not None for v in (max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline)):
-        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
-        try:
-            budgets = resolve_job_budgets(
-                cli_max_total_tokens=max_total_tokens,
-                cli_max_provider_calls=max_provider_calls,
-                cli_max_wall_clock_minutes=max_wall_clock_minutes,
-                cli_deadline=deadline,
-            )
-        except (BudgetConfigError, ValueError) as exc:
-            print(f"Error: {exc}", file=sys.stderr)
-            sys.exit(2)
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
 
     job = Job(
         name=prompt[:50],

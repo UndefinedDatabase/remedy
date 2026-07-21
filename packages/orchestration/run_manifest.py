@@ -4262,6 +4262,10 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
     coverage = CallCoverage(
         status=COVERAGE_COMPLETE if not problems else COVERAGE_INCOMPLETE,
         problems=tuple(sorted(problems)))
+    job_budgets = getattr(job, "budgets", None)
+    budgets_snapshot: dict[str, Any] | None = None
+    if job_budgets is not None:
+        budgets_snapshot = job_budgets.model_dump(mode="json") if hasattr(job_budgets, "model_dump") else None
     return RunManifestV1(
         job_id=str(getattr(job, "job_id", "")),
         episode_id=episode_id,
@@ -4279,6 +4283,7 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
         episode_ordinal=int(episode_ordinal),
         previous_episode_id=str(previous_episode_id or ""),
         stop_request_id=str(stop_request_id or ""),
+        budgets=budgets_snapshot,
     )
 
 

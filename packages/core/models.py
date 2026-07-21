@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 
 def _utcnow() -> datetime:
@@ -129,37 +129,22 @@ class JobBudgets(BaseModel):
     """Closed type for per-job budget limits (F018 T001).
 
     All fields are optional. Absent means no limit.
+    StrictInt rejects bool, float, and string coercion.
     extra="forbid" rejects unknown fields.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    max_total_tokens: int | None = None
-    max_provider_calls: int | None = None
-    max_wall_clock_minutes: int | None = None
+    max_total_tokens: StrictInt | None = None
+    max_provider_calls: StrictInt | None = None
+    max_wall_clock_minutes: StrictInt | None = None
     deadline: datetime | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _reject_booleans(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
-                if name in data and isinstance(data[name], bool):
-                    raise ValueError(f"JobBudgets.{name} must be an integer, got bool")
-        return data
 
     @model_validator(mode="after")
     def _validate_budget_fields(self) -> JobBudgets:
         for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
             val = getattr(self, name)
             if val is not None:
-                if isinstance(val, bool):
-                    raise ValueError(f"JobBudgets.{name} must be an integer, got bool")
-                if not isinstance(val, int):
-                    raise ValueError(
-                        f"JobBudgets.{name} must be an integer, "
-                        f"got {type(val).__name__}"
-                    )
                 if val <= 0:
                     raise ValueError(f"JobBudgets.{name} must be strictly positive, got {val}")
                 if not (-2**53 < val < 2**53):

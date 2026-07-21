@@ -44,6 +44,10 @@ def _pos_int(name: str, raw: Any) -> int | None:
             raw = int(raw)
         except ValueError:
             raise BudgetConfigError(f"{name} is not a valid integer: {raw!r}")
+    if isinstance(raw, float):
+        if raw != int(raw):
+            raise BudgetConfigError(f"{name} must be an integer, got float {raw}")
+        raw = int(raw)
     if not isinstance(raw, int):
         raise BudgetConfigError(f"{name} must be an integer, got {type(raw).__name__}")
     if raw <= 0:
