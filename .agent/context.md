@@ -6,13 +6,9 @@ Base commit: `fe9898a`
 
 ## Current state
 T001–T003 built + repaired. All 10 external review findings closed.
-Acceptance repair complete: rule-level provenance, job-scoped durable
-Evidence, typed persistence failures, strict glob contracts, CLI
-provenance, five-path E2E tests. Artifact schema v2.
-200 fence tests passing. Pending external acceptance.
-
-## External review findings — ALL CLOSED
-See `.agent/live_review.md` for per-finding commit references.
+Second repair round (final closure): repo_applicator job-scoped Evidence,
+diagnostic sanitizer, allow-list provenance, strict JobFences validation,
+full E2E coverage. Artifact schema v2. Pending external acceptance.
 
 ## Key decisions (carried forward)
 - Module: `packages/orchestration/scope_fences.py`
@@ -24,12 +20,15 @@ See `.agent/live_review.md` for per-finding commit references.
 - `..` structurally denied (never resolved)
 - Empty allow list = allow-all with logged warning
 - `JobFences` on Job model (optional, default None, extra="forbid")
+- `JobFences` Pydantic model_validator: trims whitespace, rejects empty/non-string
 - `scope.allow` / `scope.deny` registered config keys
 - `FenceConfigError` on malformed config (fail-closed, never defaults)
 - `EffectiveFenceResult` typed provenance carrier
 - All 5 applicators use `enforce_change_set` (no divergence)
 - `write_file_atomically` for Evidence artifacts (O_NOFOLLOW, create_only)
-- `_redact_path` in exception messages and artifacts
+- `_sanitize_diagnostic` replaces `_redact_path(raw)[:200]` in persistence errors
+- `_match_violation_rule` returns 4-tuple with `applicable_rules`
+- `check_and_apply_to_repo` passes `job_id` and `evidence_dir` through
 
 ## Constraints
 - No providers, no network, no Docker, no subagents

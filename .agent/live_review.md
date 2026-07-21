@@ -9,13 +9,12 @@
                   Repairs: centralized resolver, closed JobFences, provenance.
 
 Module: `packages/orchestration/scope_fences.py`
-Model:  `packages/core/models.py` — JobFences (closed, extra="forbid")
+Model:  `packages/core/models.py` — JobFences (closed, extra="forbid", model_validator)
 Config: `packages/orchestration/config.py` — scope.allow, scope.deny
 CLI:    `apps/cli/commands/job.py` — remedy job fences
 Tests:  `tests/orchestration/test_fences.py` — 78 passed
         `tests/orchestration/test_applicator_fences.py` — 43 passed
-        `tests/orchestration/test_fence_e2e.py` — 64 passed
-Total:  185 tests (+ 112 postmortem + 57 config = 354 total)
+        `tests/orchestration/test_fence_e2e.py` — 104 passed
 
 ## Package discrepancy (a0aa69f) — RESOLVED
 Previous ZIP (`remedy-review-20260720-233422`) built at `0846a18`
@@ -33,6 +32,15 @@ commits including repair scopes 1-5.
 8. ~~repo_applicator no job_fences~~ → `check_and_apply_to_repo` propagates (a2e6c0c)
 9. ~~patch_apply no Evidence~~ → writes via `enforce_change_set` (a2e6c0c)
 10. ~~do_continue uses APPLY_FAILED~~ → `FENCE_VIOLATION` stop reason (a2e6c0c)
+
+## Final closure findings — ALL CLOSED
+1. Non-canonical review package → canonical Evidence via `create_manual_completion_bundle`
+2. repo_applicator job-scoped Evidence → `check_and_apply_to_repo` passes job_id + evidence_dir
+3. Diagnostic path leaks → `_sanitize_diagnostic` regex-based redaction (POSIX/Win/UNC/file URI)
+4. Allow-list violation provenance → `_match_violation_rule` returns rule_source + applicable_rules
+5. Strict JobFences validation → Pydantic model_validator (trim, reject empty/non-string/nested)
+6. Real production E2E → sanitizer, allow-list provenance, JobFences validation, job-scoped Evidence tests
+7. Canonical ZIP → via `create_manual_completion_bundle` + `make_review_zip.sh`
 
 ## Next
 Pending external acceptance. F017 stays `[~]`.
