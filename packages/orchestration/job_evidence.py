@@ -1530,6 +1530,10 @@ def _scrub_paths(text: str, repo: str) -> str:
     home = os.path.expanduser("~")
     if home and home != "/":
         text = text.replace(home, "~")
+    if text and not text.startswith("\n"):
+        nl = text.find("\n")
+        if nl > 0:
+            text = text[nl + 1:]
     return text
 
 
