@@ -100,7 +100,8 @@ class TestProducerCoherence:
     def _produce(self, commands, runner=None):
         from packages.orchestration.job_evidence import _run_verifications
         runner = runner or (lambda c: {"exit_code": 0, "passed": 1, "failed": 0,
-                                       "test_files": ["a.py"], "stdout_summary": "1 passed"})
+                                       "test_files": ["a.py"], "stdout_summary": "1 passed",
+                                       "node_ids": ["a.py::test_one"]})
         return _run_verifications(commands, repo=".", runner=runner)
 
     def test_duplicate_commands_distinct_run_ids_pass(self):
@@ -149,8 +150,9 @@ class TestProducerCoherence:
         def runner(c):
             if "compileall" in c:
                 return {"exit_code": 0, "passed": 0, "failed": 0, "test_files": [],
-                        "stdout_summary": ""}
+                        "stdout_summary": "", "node_ids": []}
             return {"exit_code": 0, "passed": 3, "failed": 0, "test_files": ["a.py"],
-                    "stdout_summary": "3 passed"}
+                    "stdout_summary": "3 passed",
+                    "node_ids": ["a.py::t1", "a.py::t2", "a.py::t3"]}
         vt = self._produce(["pytest -q a.py", "python -m compileall -q ."], runner)
         assert _brm.validate_verification_tests(vt)[0] == []

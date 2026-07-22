@@ -316,3 +316,147 @@ def collect_counters_from_actuals(
         started_at=started_at,
         actual_sources=actual_sources,
     )
+
+
+_PERSISTED_ACTUALS_FIELDS = frozenset({
+    "schema_version", "provider_call_count", "actual_call_count",
+    "unmeasured_call_count", "total_tokens", "actual_sources", "started_at",
+})
+
+
+def decode_persisted_budget_actuals(
+    raw: dict[str, Any],
+    *,
+    first_running_at: str | None = None,
+) -> dict[str, Any]:
+    """Decode and validate a PersistedBudgetActualsV1 record.
+
+    Returns a validated dict with typed values. Raises BudgetCounterError on
+    any schema violation — no default-zero repair, no invented sources.
+
+    When *first_running_at* is provided, the persisted started_at must
+    represent the same UTC instant; a mismatch is corrupt state.
+    """
+    if not isinstance(raw, dict):
+        raise BudgetCounterError(
+            f"persisted actuals must be a dict, got {type(raw).__name__}")
+    missing = _PERSISTED_ACTUALS_FIELDS - set(raw)
+    if missing:
+        raise BudgetCounterError(
+            f"persisted actuals missing required fields: {sorted(missing)}")
+    extra = set(raw) - _PERSISTED_ACTUALS_FIELDS
+    if extra:
+        raise BudgetCounterError(
+            f"persisted actuals has unknown fields: {sorted(extra)}")
+    sv = raw["schema_version"]
+    if sv != "1.0.0":
+        raise BudgetCounterError(
+            f"persisted actuals schema_version {sv!r} is not '1.0.0'")
+
+    for name in ("provider_call_count", "actual_call_count",
+                 "unmeasured_call_count", "total_tokens"):
+        val = raw[name]
+        if isinstance(val, bool):
+            raise BudgetCounterError(f"persisted {name} is bool, not int")
+        if isinstance(val, float):
+            raise BudgetCounterError(f"persisted {name} is float, not int")
+        if isinstance(val, str):
+            raise BudgetCounterError(f"persisted {name} is str, not int")
+        if not isinstance(val, int):
+            raise BudgetCounterError(
+                f"persisted {name} has type {type(val).__name__}")
+        if val < 0:
+            raise BudgetCounterError(f"persisted {name} is negative: {val}")
+
+    pc = raw["provider_call_count"]
+    ac = raw["actual_call_count"]
+    umc = raw["unmeasured_call_count"]
+    tt = raw["total_tokens"]
+    if umc != pc - ac:
+        raise BudgetCounterError(
+            f"persisted unmeasured_call_count ({umc}) != "
+            f"provider_call_count ({pc}) - actual_call_count ({ac})")
+    if tt > 0 and ac == 0:
+        raise BudgetCounterError(
+            f"persisted total_tokens ({tt}) > 0 but actual_call_count is 0")
+    if ac > pc:
+        raise BudgetCounterError(
+            f"persisted actual_call_count ({ac}) > "
+            f"provider_call_count ({pc})")
+
+    asrc = raw["actual_sources"]
+    if not isinstance(asrc, (list, tuple)):
+        raise BudgetCounterError(
+            f"persisted actual_sources has type {type(asrc).__name__}")
+    for i, s in enumerate(asrc):
+        if not isinstance(s, str) or not s:
+            raise BudgetCounterError(
+                f"persisted actual_sources[{i}] is not a nonempty string")
+        if s not in VALID_ACTUAL_SOURCES:
+            raise BudgetCounterError(
+                f"persisted actual_sources[{i}] unknown: {s!r}")
+    if ac > 0 and len(asrc) == 0:
+        raise BudgetCounterError(
+            f"persisted actual_call_count ({ac}) > 0 but actual_sources empty")
+
+    sa_raw = raw["started_at"]
+    if not isinstance(sa_raw, str) or not sa_raw:
+        raise BudgetCounterError(
+            f"persisted started_at must be a nonempty string, got {sa_raw!r}")
+    try:
+        sa_parsed = datetime.fromisoformat(sa_raw)
+    except (ValueError, TypeError) as exc:
+        raise BudgetCounterError(
+            f"persisted started_at cannot be parsed: {sa_raw!r}: {exc}")
+    if sa_parsed.tzinfo is None:
+        raise BudgetCounterError(
+            f"persisted started_at is timezone-naive: {sa_raw!r}")
+
+    if first_running_at is not None:
+        try:
+            fra_parsed = datetime.fromisoformat(first_running_at)
+        except (ValueError, TypeError) as exc:
+            raise BudgetCounterError(
+                f"first_running_at cannot be parsed: {first_running_at!r}: {exc}")
+        if fra_parsed.tzinfo is None:
+            raise BudgetCounterError(
+                f"first_running_at is timezone-naive: {first_running_at!r}")
+        if sa_parsed != fra_parsed:
+            raise BudgetCounterError(
+                f"persisted started_at ({sa_raw}) != "
+                f"first_running_at ({first_running_at}): wall-clock split")
+
+    return {
+        "schema_version": sv,
+        "provider_call_count": pc,
+        "actual_call_count": ac,
+        "unmeasured_call_count": umc,
+        "total_tokens": tt,
+        "actual_sources": tuple(str(s) for s in asrc),
+        "started_at": sa_parsed,
+    }
+
+
+def counters_from_persisted(
+    validated: dict[str, Any],
+    *,
+    now: datetime | None = None,
+) -> BudgetCounters:
+    """Build BudgetCounters from a validated persisted actuals record.
+
+    The record must have been validated by decode_persisted_budget_actuals first.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    sa = validated["started_at"]
+    elapsed = max(0.0, (now - sa).total_seconds()) if isinstance(sa, datetime) else 0.0
+    return BudgetCounters(
+        provider_calls=validated["provider_call_count"],
+        measured_token_total=validated["total_tokens"],
+        measured_call_count=validated["actual_call_count"],
+        unmeasured_call_count=validated["unmeasured_call_count"],
+        elapsed_seconds=elapsed,
+        evaluated_at=now,
+        started_at=sa,
+        actual_sources=validated["actual_sources"],
+    )

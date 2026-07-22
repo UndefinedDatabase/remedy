@@ -94,12 +94,15 @@ def _STUB_RUNNER(command: str) -> dict:
     if "test_manual_completion_bundle" in command:
         raise AssertionError("recursive verification of the running test module")
     files = [t for t in shlex.split(command) if t.endswith(".py")]
+    _n_passed = len(files) or 1
+    _nids = [f"{f}::test_stub_{i}" for i, f in enumerate(files)] if files else ["stub::test_0"]
     return {
         "exit_code": 0,
-        "passed": len(files) or 1,
+        "passed": _n_passed,
         "failed": 0,
         "test_files": files,
         "stdout_summary": "stub-run",
+        "node_ids": _nids,
     }
 
 

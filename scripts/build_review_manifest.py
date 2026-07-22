@@ -2239,6 +2239,23 @@ def validate_verification_tests(vt):
                     problems.append(f"{_VT_NAME} runs[{i}].node_ids is not a list of strings")
                 if not isinstance(r.get("duration_seconds"), (int, float)) or isinstance(r.get("duration_seconds"), bool) or r.get("duration_seconds", -1) < 0:
                     problems.append(f"{_VT_NAME} runs[{i}].duration_seconds is not a non-negative number")
+                if all(_is_real_int(r.get(f)) for f in ("selected", "passed", "failed", "skipped")):
+                    _expected_sel = r["passed"] + r["failed"] + r["skipped"]
+                    if r["selected"] != _expected_sel:
+                        problems.append(f"{_VT_NAME} runs[{i}] selected ({r['selected']}) != "
+                                        f"passed+failed+skipped ({_expected_sel})")
+                if isinstance(r.get("node_ids"), list) and _is_real_int(r.get("selected")):
+                    if len(r["node_ids"]) != r["selected"]:
+                        problems.append(f"{_VT_NAME} runs[{i}] node_ids count ({len(r['node_ids'])}) != "
+                                        f"selected ({r['selected']})")
+                if (isinstance(r.get("output_hash"), str)
+                        and re.fullmatch(r"[0-9a-f]{64}", r["output_hash"])
+                        and isinstance(r.get("stdout_summary"), str)):
+                    import hashlib as _hl
+                    _expected_hash = _hl.sha256(r["stdout_summary"].encode()).hexdigest()
+                    if r["output_hash"] != _expected_hash:
+                        problems.append(f"{_VT_NAME} runs[{i}] output_hash does not match "
+                                        f"sha256(stdout_summary)")
             if _is_real_int(r.get("passed")):
                 sum_p += r["passed"]
             if _is_real_int(r.get("failed")):

@@ -1633,7 +1633,7 @@ def _run_verifications(
         _output_hash = str(r.get("output_hash", "") or "")
         if _output_hash.startswith("sha256:"):
             _output_hash = _output_hash[7:]
-        if not _output_hash and _stdout_summary:
+        if not _output_hash:
             import hashlib as _hl_norm
             _output_hash = _hl_norm.sha256(
                 _stdout_summary.encode("utf-8", errors="replace")).hexdigest()

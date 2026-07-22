@@ -1742,68 +1742,19 @@ def run_job(
     # F018: seed accumulators from persisted budget_actuals on resume.
     # A stopped-then-resumed job must NOT reset counters to zero.
     # Strict decode — corrupt persisted actuals block, never coerce.
-    _prior = getattr(job, "budget_actuals", None) or {}
-    if _prior:
-        from packages.orchestration.budget_guard import BudgetCounterError as _BCError
-        _sv_val = _prior.get("schema_version")
-        if _sv_val != "1.0.0":
-            raise _BCError(
-                f"persisted budget_actuals schema_version {_sv_val!r} "
-                f"is not '1.0.0'")
-        for _afield in ("provider_call_count", "total_tokens", "actual_call_count"):
-            _aval = _prior.get(_afield, 0)
-            if _aval is None:
-                _aval = 0
-                _prior[_afield] = 0
-            if isinstance(_aval, bool):
-                raise _BCError(f"persisted {_afield} is bool, not int")
-            if isinstance(_aval, float):
-                raise _BCError(f"persisted {_afield} is float, not int")
-            if isinstance(_aval, str):
-                raise _BCError(f"persisted {_afield} is str, not int")
-            if not isinstance(_aval, int):
-                raise _BCError(f"persisted {_afield} has type {type(_aval).__name__}")
-            if _aval < 0:
-                raise _BCError(f"persisted {_afield} is negative: {_aval}")
-        _pc = _prior.get("provider_call_count", 0) or 0
-        _ac = _prior.get("actual_call_count", 0) or 0
-        if _ac > _pc:
-            raise _BCError(
-                f"persisted actual_call_count ({_ac}) > provider_call_count ({_pc})")
-        _umc = _prior.get("unmeasured_call_count")
-        if _umc is not None:
-            if not isinstance(_umc, int) or isinstance(_umc, bool) or _umc < 0:
-                raise _BCError(
-                    f"persisted unmeasured_call_count invalid: {_umc!r}")
-            if _umc != _pc - _ac:
-                raise _BCError(
-                    f"persisted unmeasured_call_count ({_umc}) != "
-                    f"provider_call_count ({_pc}) - actual_call_count ({_ac})")
-        _asrc = _prior.get("actual_sources")
-        if _asrc is not None and not isinstance(_asrc, (list, tuple)):
-            raise _BCError(
-                f"persisted actual_sources has type {type(_asrc).__name__}")
-        if _asrc is not None and isinstance(_asrc, (list, tuple)):
-            from packages.orchestration.budget_guard import VALID_ACTUAL_SOURCES as _VAS
-            for _si, _sv in enumerate(_asrc):
-                if not isinstance(_sv, str) or _sv not in _VAS:
-                    raise _BCError(
-                        f"persisted actual_sources[{_si}] unknown: {_sv!r}")
-        if _ac > 0 and (not _asrc or not isinstance(_asrc, (list, tuple))
-                        or len(_asrc) == 0):
-            raise _BCError(
-                f"persisted actual_call_count ({_ac}) > 0 but "
-                f"actual_sources is missing or empty")
-        _CLOSED_ACTUALS_KEYS = frozenset({
-            "schema_version", "provider_call_count", "actual_call_count",
-            "total_tokens", "started_at", "actual_sources", "unmeasured_call_count",
-        })
-        _extra = set(_prior) - _CLOSED_ACTUALS_KEYS
-        if _extra:
-            raise _BCError(f"persisted actuals has unknown keys: {sorted(_extra)}")
-    _accumulated_provider_calls = _prior.get("provider_call_count", 0) or 0
-    _accumulated_tokens = _prior.get("total_tokens", 0) or 0
-    _accumulated_measured = _prior.get("actual_call_count", 0) or 0
+    _prior_raw = getattr(job, "budget_actuals", None) or {}
+    _prior_validated: dict[str, Any] = {}
+    if _prior_raw:
+        from packages.orchestration.budget_guard import (
+            BudgetCounterError as _BCError,
+            decode_persisted_budget_actuals as _decode_actuals,
+        )
+        _fra_for_check = getattr(job, "first_running_at", "") or None
+        _prior_validated = _decode_actuals(
+            _prior_raw, first_running_at=_fra_for_check)
+    _accumulated_provider_calls = _prior_validated.get("provider_call_count", 0)
+    _accumulated_tokens = _prior_validated.get("total_tokens", 0)
+    _accumulated_measured = _prior_validated.get("actual_call_count", 0)
     _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
     # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume.
     # Invalid or timezone-naive values block — never silently become now().
@@ -1897,10 +1848,10 @@ def run_job(
         a lifecycle state, not a measurement source.
         """
         _sources: set[str] = set()
-        _prior_src = _prior.get("actual_sources", ()) if _prior else ()
+        _prior_src = _prior_validated.get("actual_sources", ()) if _prior_validated else ()
         if isinstance(_prior_src, (list, tuple)):
             _sources.update(s for s in _prior_src if isinstance(s, str))
-        if _accumulated_measured > _prior.get("actual_call_count", 0) if _prior else _accumulated_measured > 0:
+        if _accumulated_measured > _prior_validated.get("actual_call_count", 0) if _prior_validated else _accumulated_measured > 0:
             _sources.add("pingpong_live")
         _sources.discard("persisted_resume")
         job.budget_actuals = {

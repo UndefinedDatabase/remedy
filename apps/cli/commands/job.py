@@ -1394,10 +1394,7 @@ def _cmd_job_budget(
     """
     import json as _json
 
-    from packages.orchestration.budget_guard import (
-        collect_counters_from_actuals,
-        evaluate_budget,
-    )
+    from packages.orchestration.budget_guard import evaluate_budget
     from packages.orchestration.pingpong_job import load_job_plan
 
     _job_display_id = job_id
@@ -1406,6 +1403,7 @@ def _cmd_job_budget(
     counters = None
     evaluation = None
     _counter_status = "no_runs"
+    _counter_diagnostic = ""
     _found_as = None
 
     job_plan = load_job_plan(job_id)
@@ -1421,29 +1419,22 @@ def _cmd_job_budget(
                 _budgets_dict = job_plan.budgets
 
         if getattr(job_plan, "budget_actuals", None) is not None:
-            actuals = job_plan.budget_actuals
-            _started_at = None
-            if actuals.get("started_at"):
-                from datetime import datetime
-                try:
-                    _started_at = datetime.fromisoformat(actuals["started_at"])
-                except (ValueError, TypeError):
-                    pass
-            _real_sources = actuals.get("actual_sources")
-            if isinstance(_real_sources, (list, tuple)) and _real_sources:
-                _source_tuple = tuple(str(s) for s in _real_sources)
-            else:
-                _source_tuple = ("persisted_job_actuals",)
+            from packages.orchestration.budget_guard import (
+                BudgetCounterError,
+                counters_from_persisted,
+                decode_persisted_budget_actuals,
+            )
+            _fra = getattr(job_plan, "first_running_at", "") or None
             try:
-                counters = collect_counters_from_actuals(
-                    actuals, started_at=_started_at,
-                    actual_sources=_source_tuple,
-                )
+                _validated = decode_persisted_budget_actuals(
+                    job_plan.budget_actuals, first_running_at=_fra)
+                counters = counters_from_persisted(_validated)
                 if _budgets is not None:
                     evaluation = evaluate_budget(_budgets, counters)
                 _counter_status = "evaluated"
-            except Exception as _budget_exc:
+            except (BudgetCounterError, Exception) as _budget_exc:
                 _counter_status = "corrupt"
+                _counter_diagnostic = str(_budget_exc)
                 counters = None
                 evaluation = None
         else:
@@ -1473,28 +1464,21 @@ def _cmd_job_budget(
 
         _plan_for_core = load_job_plan(_job_display_id)
         if _plan_for_core is not None and getattr(_plan_for_core, "budget_actuals", None) is not None:
-            actuals = _plan_for_core.budget_actuals
-            _started_at = None
-            if actuals.get("started_at"):
-                from datetime import datetime
-                try:
-                    _started_at = datetime.fromisoformat(actuals["started_at"])
-                except (ValueError, TypeError):
-                    pass
-            _real_sources = actuals.get("actual_sources")
-            if isinstance(_real_sources, (list, tuple)) and _real_sources:
-                _source_tuple = tuple(str(s) for s in _real_sources)
-            else:
-                _source_tuple = ("persisted_job_actuals",)
+            from packages.orchestration.budget_guard import (
+                BudgetCounterError,
+                counters_from_persisted,
+                decode_persisted_budget_actuals,
+            )
+            _fra = getattr(_plan_for_core, "first_running_at", "") or None
             try:
-                counters = collect_counters_from_actuals(
-                    actuals, started_at=_started_at,
-                    actual_sources=_source_tuple,
-                )
+                _validated = decode_persisted_budget_actuals(
+                    _plan_for_core.budget_actuals, first_running_at=_fra)
+                counters = counters_from_persisted(_validated)
                 evaluation = evaluate_budget(_budgets, counters)
                 _counter_status = "evaluated"
-            except Exception as _budget_exc:
+            except (BudgetCounterError, Exception) as _budget_exc:
                 _counter_status = "corrupt"
+                _counter_diagnostic = str(_budget_exc)
                 counters = None
                 evaluation = None
 
@@ -1513,6 +1497,7 @@ def _cmd_job_budget(
             "counters": counters.to_json() if counters else None,
             "evaluation": evaluation.to_json() if evaluation else None,
             "status": _counter_status,
+            "diagnostic": _counter_diagnostic or None,
         }
         print(_json.dumps(out, indent=2))
     else:
@@ -1540,6 +1525,8 @@ def _cmd_job_budget(
                 print(f"  WARNING: {warn}")
         else:
             print(f"  counters:              {_counter_status}")
+            if _counter_diagnostic:
+                print(f"  diagnostic:            {_counter_diagnostic}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

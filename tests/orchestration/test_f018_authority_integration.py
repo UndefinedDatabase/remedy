@@ -301,9 +301,12 @@ class TestHonestBudgetCLI:
         job = JobPlan(job_id="budgetdisplay1")
         job.budgets = {"max_total_tokens": 50000, "max_provider_calls": 10}
         job.budget_actuals = {
+            "schema_version": "1.0.0",
             "provider_call_count": 3,
             "actual_call_count": 2,
+            "unmeasured_call_count": 1,
             "total_tokens": 8000,
+            "actual_sources": ["pingpong_actuals"],
             "started_at": T0.isoformat(),
         }
 
@@ -897,7 +900,12 @@ class TestStrictResumedActuals:
     def test_bool_provider_calls_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "provider_call_count": True})
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0", "provider_call_count": True,
+            "actual_call_count": 0, "unmeasured_call_count": 0,
+            "total_tokens": 0, "actual_sources": [],
+            "started_at": T0.isoformat(),
+        })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="bool"):
             run_job(job.job_id)
@@ -905,7 +913,12 @@ class TestStrictResumedActuals:
     def test_float_total_tokens_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "total_tokens": 1.5})
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0", "provider_call_count": 0,
+            "actual_call_count": 0, "unmeasured_call_count": 0,
+            "total_tokens": 1.5, "actual_sources": [],
+            "started_at": T0.isoformat(),
+        })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="float"):
             run_job(job.job_id)
@@ -913,7 +926,12 @@ class TestStrictResumedActuals:
     def test_string_actual_count_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "actual_call_count": "3"})
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0", "provider_call_count": 0,
+            "actual_call_count": "3", "unmeasured_call_count": 0,
+            "total_tokens": 0, "actual_sources": [],
+            "started_at": T0.isoformat(),
+        })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="str"):
             run_job(job.job_id)
@@ -921,7 +939,12 @@ class TestStrictResumedActuals:
     def test_negative_counter_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "provider_call_count": -1})
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0", "provider_call_count": -1,
+            "actual_call_count": 0, "unmeasured_call_count": 0,
+            "total_tokens": 0, "actual_sources": [],
+            "started_at": T0.isoformat(),
+        })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="negative"):
             run_job(job.job_id)
@@ -933,7 +956,10 @@ class TestStrictResumedActuals:
             "schema_version": "1.0.0",
             "provider_call_count": 2,
             "actual_call_count": 5,
+            "unmeasured_call_count": 0,
             "total_tokens": 0,
+            "actual_sources": ["pingpong_actuals"],
+            "started_at": T0.isoformat(),
         })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="actual_call_count"):
@@ -1192,6 +1218,8 @@ class TestVTv11FieldsRetained:
     def test_manifest_validates_v11_fields(self, tmp_path):
         """Repro 3: build_review_manifest validates V1.1 field set."""
         from scripts.build_review_manifest import validate_verification_tests
+        _stdout = "3 passed"
+        _hash = hashlib.sha256(_stdout.encode()).hexdigest()
         vt = {
             "schema_version": "1.1.0", "verification_type": "explicit_commands",
             "command": "pytest tests/a.py", "exit_code": 0, "passed": 3, "failed": 0,
@@ -1200,9 +1228,10 @@ class TestVTv11FieldsRetained:
             "runs": [{
                 "run_id": "vr-0001", "command": "pytest tests/a.py", "exit_code": 0,
                 "passed": 3, "failed": 0, "test_files": ["tests/a.py"],
-                "stdout_summary": "ok", "head_sha": "abc123", "output_hash": "a" * 64,
+                "stdout_summary": _stdout, "head_sha": "abc123", "output_hash": _hash,
                 "selected": 3, "deselected": 0, "skipped": 0,
-                "node_ids": ["tests/a.py::test_x"], "duration_seconds": 0.5,
+                "node_ids": ["tests/a.py::t1", "tests/a.py::t2", "tests/a.py::t3"],
+                "duration_seconds": 0.5,
             }],
         }
         problems, total = validate_verification_tests(vt)
@@ -1412,7 +1441,12 @@ class TestPersistedActualsSchemaVersion:
     def test_wrong_schema_version_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"schema_version": "banana", "provider_call_count": 0})
+        job = JobPlan(budget_actuals={
+            "schema_version": "banana", "provider_call_count": 0,
+            "actual_call_count": 0, "unmeasured_call_count": 0,
+            "total_tokens": 0, "actual_sources": [],
+            "started_at": T0.isoformat(),
+        })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="schema_version"):
             run_job(job.job_id)
@@ -1421,10 +1455,10 @@ class TestPersistedActualsSchemaVersion:
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
         job = JobPlan(budget_actuals={
-            "schema_version": "1.0.0",
-            "provider_call_count": 0,
-            "actual_call_count": 0,
-            "total_tokens": 0,
+            "schema_version": "1.0.0", "provider_call_count": 0,
+            "actual_call_count": 0, "unmeasured_call_count": 0,
+            "total_tokens": 0, "actual_sources": [],
+            "started_at": T0.isoformat(),
         })
         _persist_job(job)
         result = run_job(job.job_id)
@@ -1441,7 +1475,9 @@ class TestPersistedActualsMissingSources:
             "schema_version": "1.0.0",
             "provider_call_count": 1,
             "actual_call_count": 1,
+            "unmeasured_call_count": 0,
             "total_tokens": 100,
+            "started_at": T0.isoformat(),
         })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="actual_sources"):
@@ -1454,8 +1490,10 @@ class TestPersistedActualsMissingSources:
             "schema_version": "1.0.0",
             "provider_call_count": 1,
             "actual_call_count": 1,
+            "unmeasured_call_count": 0,
             "total_tokens": 100,
             "actual_sources": [],
+            "started_at": T0.isoformat(),
         })
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="actual_sources"):
@@ -1467,7 +1505,10 @@ class TestPersistedActualsMissingSources:
             "schema_version": "1.0.0",
             "provider_call_count": 0,
             "actual_call_count": 0,
+            "unmeasured_call_count": 0,
             "total_tokens": 0,
+            "actual_sources": [],
+            "started_at": T0.isoformat(),
         })
         _persist_job(job)
         result = run_job(job.job_id)
@@ -1502,3 +1543,218 @@ class TestCorruptFirstRunningAt:
         _persist_job(job)
         result = run_job(job.job_id)
         assert result.status != JOB_BLOCKED or "first_running_at" not in (result.error or "")
+
+
+class TestWallClockSplit:
+    """Scope 2: started_at must equal first_running_at; mismatch blocks."""
+
+    def test_mismatched_timestamps_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(
+            first_running_at="2026-07-01T12:00:00+00:00",
+            budget_actuals={
+                "schema_version": "1.0.0",
+                "provider_call_count": 0,
+                "actual_call_count": 0,
+                "unmeasured_call_count": 0,
+                "total_tokens": 0,
+                "actual_sources": [],
+                "started_at": "2026-07-01T13:00:00+00:00",
+            },
+        )
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="wall-clock split"):
+            run_job(job.job_id)
+
+    def test_matching_timestamps_passes(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        ts = "2026-07-01T12:00:00+00:00"
+        job = JobPlan(
+            first_running_at=ts,
+            budget_actuals={
+                "schema_version": "1.0.0",
+                "provider_call_count": 0,
+                "actual_call_count": 0,
+                "unmeasured_call_count": 0,
+                "total_tokens": 0,
+                "actual_sources": [],
+                "started_at": ts,
+            },
+        )
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.error is None or "wall-clock" not in (result.error or "")
+
+    def test_cli_reports_corrupt_on_mismatch(self, monkeypatch):
+        from packages.orchestration.pingpong_job import JobPlan
+        import io
+        job = JobPlan(
+            job_id="wallclock1",
+            first_running_at="2026-07-01T12:00:00+00:00",
+            budget_actuals={
+                "schema_version": "1.0.0",
+                "provider_call_count": 0,
+                "actual_call_count": 0,
+                "unmeasured_call_count": 0,
+                "total_tokens": 0,
+                "actual_sources": [],
+                "started_at": "2026-07-01T14:00:00+00:00",
+            },
+        )
+        job.budgets = {"max_provider_calls": 10}
+        monkeypatch.setattr(
+            "packages.orchestration.pingpong_job.load_job_plan",
+            lambda jid: job if jid == "wallclock1" else None,
+        )
+        buf = io.StringIO()
+        monkeypatch.setattr("sys.stdout", buf)
+        from apps.cli.commands.job import _cmd_job_budget
+        _cmd_job_budget("wallclock1", json_output=True)
+        data = json.loads(buf.getvalue())
+        assert data["status"] == "corrupt"
+        assert "wall-clock" in data.get("diagnostic", "")
+
+
+class TestRealThreeCallLimit:
+    """Scope 3: real three-call-limit acceptance through run_job path.
+
+    FakeProvider builds/reviews; builder_name="counted" makes _on_provider_call
+    count them instead of skipping. max_provider_calls=3 → calls 1-3 execute,
+    call 4 never begins, job stops with budget_exhausted.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _isolate(self, tmp_path, monkeypatch):
+        data_dir = tmp_path / "remedy_data"
+        data_dir.mkdir()
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+
+    @pytest.fixture
+    def demo_repo(self, tmp_path):
+        import subprocess
+        repo = tmp_path / "repo"
+        (repo / "docs").mkdir(parents=True)
+        (repo / "docs" / "README.md").write_text("# docs\n")
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True,
+                        capture_output=True)
+        subprocess.run(["git", "config", "user.email", "t@test"],
+                        cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "T"],
+                        cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"],
+                        cwd=repo, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "base"],
+                        cwd=repo, check=True, capture_output=True)
+        return repo
+
+    def test_three_calls_then_stop(self, demo_repo):
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+        from packages.orchestration.pingpong_provider import FakeProvider
+
+        job_text = """\
+# Job: three-call-test
+
+## Task 1
+Touch docs/README.md
+
+Acceptance:
+- file exists
+"""
+        job = parse_job_file(job_text, str(demo_repo))
+        job.budgets = {"max_provider_calls": 3}
+        from packages.orchestration.pingpong_job import _persist_job
+        _persist_job(job)
+
+        result = run_job(
+            job.job_id,
+            builder_name="counted",
+            reviewer_name="counted",
+            builder_provider=FakeProvider(pass_on_round=99, fail_on_round=99),
+            reviewer_provider=FakeProvider(pass_on_round=99, fail_on_round=99),
+            repair_rounds=5,
+        )
+
+        assert result.status == "stopped", f"expected stopped, got {result.status}: {result.error}"
+        actuals = result.budget_actuals
+        assert actuals is not None
+        assert actuals["provider_call_count"] == 3
+        assert actuals["schema_version"] == "1.0.0"
+        assert result.stop_source == "budget"
+
+
+class TestVTCrossConsistency:
+    """Scope 4: VT V1.1 cross-consistency — selected, node_ids, output_hash."""
+
+    def _valid_run(self, **overrides):
+        base = {
+            "run_id": "vr-0001", "command": "pytest tests/a.py", "exit_code": 0,
+            "passed": 3, "failed": 0, "test_files": ["tests/a.py"],
+            "stdout_summary": "3 passed",
+            "head_sha": "abc123",
+            "output_hash": hashlib.sha256(b"3 passed").hexdigest(),
+            "selected": 3, "deselected": 0, "skipped": 0,
+            "node_ids": ["tests/a.py::t1", "tests/a.py::t2", "tests/a.py::t3"],
+            "duration_seconds": 0.5,
+        }
+        base.update(overrides)
+        return base
+
+    def _valid_vt(self, runs=None):
+        r = runs or [self._valid_run()]
+        return {
+            "schema_version": "1.1.0",
+            "verification_type": "explicit_commands",
+            "command": " && ".join(run["command"] for run in r),
+            "exit_code": 0, "passed": sum(run["passed"] for run in r),
+            "failed": 0, "test_files": ["tests/a.py"],
+            "timestamp": datetime.now(UTC).isoformat(),
+            "runs": r,
+        }
+
+    def test_valid_vt_passes(self):
+        from scripts.build_review_manifest import validate_verification_tests
+        problems, total = validate_verification_tests(self._valid_vt())
+        assert not problems
+        assert total == 3
+
+    def test_selected_overcount_blocked(self):
+        from scripts.build_review_manifest import validate_verification_tests
+        vt = self._valid_vt([self._valid_run(selected=99)])
+        problems, _ = validate_verification_tests(vt)
+        assert any("selected" in p and "passed+failed+skipped" in p for p in problems)
+
+    def test_selected_undercount_blocked(self):
+        from scripts.build_review_manifest import validate_verification_tests
+        vt = self._valid_vt([self._valid_run(selected=1)])
+        problems, _ = validate_verification_tests(vt)
+        assert any("selected" in p for p in problems)
+
+    def test_node_ids_count_mismatch_blocked(self):
+        from scripts.build_review_manifest import validate_verification_tests
+        vt = self._valid_vt([self._valid_run(
+            node_ids=["tests/a.py::t1"],
+        )])
+        problems, _ = validate_verification_tests(vt)
+        assert any("node_ids count" in p for p in problems)
+
+    def test_output_hash_tamper_blocked(self):
+        from scripts.build_review_manifest import validate_verification_tests
+        vt = self._valid_vt([self._valid_run(
+            output_hash="b" * 64,
+        )])
+        problems, _ = validate_verification_tests(vt)
+        assert any("output_hash" in p and "stdout_summary" in p for p in problems)
+
+    def test_output_hash_matches_stdout(self):
+        from scripts.build_review_manifest import validate_verification_tests
+        summary = "5 passed in 0.3s"
+        h = hashlib.sha256(summary.encode()).hexdigest()
+        vt = self._valid_vt([self._valid_run(
+            stdout_summary=summary, output_hash=h,
+            passed=5, selected=5,
+            node_ids=["t::a", "t::b", "t::c", "t::d", "t::e"],
+        )])
+        problems, total = validate_verification_tests(vt)
+        assert not problems
+        assert total == 5
