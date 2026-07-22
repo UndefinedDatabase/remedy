@@ -1374,7 +1374,7 @@ _COMMIT_GATE = "commit_execution_gate.json"
 _ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES + (_COMMIT_GATE,)
 
 #: F1 (round 23): every READY gate's schema is version-closed.
-_SUPPORTED_GATE_VERSIONS = frozenset({"1.0.0"})
+_SUPPORTED_GATE_VERSIONS = frozenset({"1.0.0", "1.1.0"})
 _MISSING = object()
 
 #: F1 (round 24): the CLOSED allowed-field set of every READY gate — an unknown field blocks.
@@ -1417,9 +1417,16 @@ _GATE_ALLOWED_FIELDS = {
         "blocked_gates", "gate_checks", "issues", "non_pass_gates", "promote_ready",
         "schema_version", "verdict"}),
 }
-_RUNTIME_CHECK_FIELDS = frozenset({"check_id", "check_type", "file_missing", "found", "pattern",
-                                   "source_file"})
-_RUNTIME_CHECK_TYPES = frozenset({"call_exists"})
+_RUNTIME_STATIC_CHECK_FIELDS = frozenset({"check_id", "check_type", "file_missing", "found",
+                                          "pattern", "source_file"})
+_RUNTIME_BINDING_REQUIRED_FIELDS = frozenset({"check_id", "check_type", "test_file", "min_passed",
+                                               "found"})
+_RUNTIME_BINDING_OPTIONAL_FIELDS = frozenset({"bound_run"})
+_RUNTIME_BOUND_RUN_REQUIRED = frozenset({"run_id", "command", "exit_code", "passed", "failed",
+                                          "skipped", "selected", "node_ids", "output_hash",
+                                          "head_sha"})
+_RUNTIME_BOUND_RUN_OPTIONAL = frozenset({"deselected", "duration_seconds"})
+_RUNTIME_CHECK_TYPES = frozenset({"call_exists", "test_execution_binding"})
 #: The FV's OWN commit-readiness view (distinct from the packaged commit gate's verdict); a
 #: pre-acceptance package must never claim it is auto-promotable.
 _FV_COMMIT_NOT_READY = frozenset({"BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_APPROVAL",
@@ -1700,9 +1707,17 @@ _GATE_SCHEMA = {
         "issues": _Arr(STR), "current_hashes": _Map("repo_path", STR),
         "evidence_hashes": _Map("repo_path", STR), "content_hash_verified": BOOL}),
     "runtime_integration_gate.json": _Obj({
-        "schema_version": STR, "verdict": STR, "checks": _Arr(_Obj({
-            "check_id": STR, "check_type": STR, "file_missing": BOOL, "found": BOOL, "pattern": STR,
-            "source_file": STR})), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
+        "schema_version": STR, "verdict": STR, "checks": _Arr(_OneOf(
+            _Obj({"check_id": STR, "check_type": STR, "file_missing": BOOL, "found": BOOL,
+                  "pattern": STR, "source_file": STR}),
+            _Obj({"check_id": STR, "check_type": STR, "test_file": STR, "min_passed": INT,
+                  "found": BOOL, "bound_run": _Obj({
+                      "run_id": STR, "command": STR, "exit_code": INT, "passed": INT, "failed": INT,
+                      "skipped": INT, "selected": INT, "node_ids": _Arr(STR),
+                      "output_hash": STR, "head_sha": STR},
+                      optional={"deselected", "duration_seconds"})},
+                 optional={"bound_run"}),
+        )), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
     "manifest_integrity.json": _Obj({
         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
     "postmortem_integrity.json": _Obj({
@@ -1977,10 +1992,70 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
         if not isinstance(checks, list):
             problems.append(f"{name} checks is not a list")
         else:
+            if len(checks) == 0:
+                problems.append(f"{name} checks_total is zero — gate cannot pass with no checks")
             ids: set = set()
             for i, c in enumerate(checks):
-                if not isinstance(c, dict) or set(c) != _RUNTIME_CHECK_FIELDS:
-                    problems.append(f"{name} check[{i}] has the wrong field set")
+                if not isinstance(c, dict):
+                    problems.append(f"{name} check[{i}] is not an object")
+                    continue
+                ct = c.get("check_type")
+                if ct == "call_exists":
+                    if set(c) != _RUNTIME_STATIC_CHECK_FIELDS:
+                        problems.append(f"{name} checks[{i}] has unknown field(s) "
+                                        f"{sorted(set(c) - _RUNTIME_STATIC_CHECK_FIELDS)} "
+                                        f"(schema is closed)" if set(c) - _RUNTIME_STATIC_CHECK_FIELDS
+                                        else f"{name} checks[{i}] is missing required field(s) "
+                                        f"{sorted(_RUNTIME_STATIC_CHECK_FIELDS - set(c))}")
+                        continue
+                    if not _safe_rel_path(c.get("source_file")):
+                        problems.append(f"{name} check {c.get('check_id')!r} source_file "
+                                        f"is not a safe relative path")
+                    if c.get("file_missing") is not False:
+                        problems.append(f"{name} check {c.get('check_id')!r} file_missing is not false")
+                elif ct == "test_execution_binding":
+                    allowed = _RUNTIME_BINDING_REQUIRED_FIELDS | _RUNTIME_BINDING_OPTIONAL_FIELDS
+                    extra = set(c) - allowed
+                    missing = _RUNTIME_BINDING_REQUIRED_FIELDS - set(c)
+                    if extra:
+                        problems.append(f"{name} checks[{i}] has unknown field(s) {sorted(extra)}")
+                        continue
+                    if missing:
+                        problems.append(f"{name} checks[{i}] is missing required field(s) "
+                                        f"{sorted(missing)}")
+                        continue
+                    if not isinstance(c.get("test_file"), str) or not c["test_file"]:
+                        problems.append(f"{name} check {c.get('check_id')!r} test_file is empty")
+                    if not isinstance(c.get("min_passed"), int) or c.get("min_passed", 0) < 1:
+                        problems.append(f"{name} check {c.get('check_id')!r} min_passed < 1")
+                    br = c.get("bound_run")
+                    if c.get("found") is True and br is not None:
+                        if isinstance(br, dict):
+                            br_extra = set(br) - _RUNTIME_BOUND_RUN_REQUIRED - _RUNTIME_BOUND_RUN_OPTIONAL
+                            br_missing = _RUNTIME_BOUND_RUN_REQUIRED - set(br)
+                            if br_extra:
+                                problems.append(f"{name} checks[{i}].bound_run has unknown field(s) "
+                                                f"{sorted(br_extra)}")
+                            if br_missing:
+                                problems.append(f"{name} checks[{i}].bound_run is missing field(s) "
+                                                f"{sorted(br_missing)}")
+                            if not br_extra and not br_missing:
+                                if not isinstance(br.get("head_sha"), str) or not br["head_sha"]:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.head_sha is empty")
+                                if not isinstance(br.get("output_hash"), str) or not br["output_hash"]:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.output_hash is empty")
+                                _mp = c.get("min_passed", 1)
+                                _bp = br.get("passed", 0)
+                                if isinstance(_mp, int) and isinstance(_bp, int) and _bp < _mp:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.passed ({_bp}) < "
+                                        f"min_passed ({_mp})")
+                        else:
+                            problems.append(f"{name} checks[{i}].bound_run is not an object")
+                else:
+                    problems.append(f"{name} check[{i}] check_type {ct!r} is not supported")
                     continue
                 cid = c.get("check_id")
                 if not isinstance(cid, str) or not cid:
@@ -1989,15 +2064,8 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
                     problems.append(f"{name} duplicate check_id {cid!r}")
                 else:
                     ids.add(cid)
-                if c.get("check_type") not in _RUNTIME_CHECK_TYPES:
-                    problems.append(f"{name} check {cid!r} check_type {c.get('check_type')!r} "
-                                    f"is not supported")
-                if not _safe_rel_path(c.get("source_file")):
-                    problems.append(f"{name} check {cid!r} source_file is not a safe relative path")
                 if c.get("found") is not True:
-                    problems.append(f"{name} check {cid!r} found is not true")
-                if c.get("file_missing") is not False:
-                    problems.append(f"{name} check {cid!r} file_missing is not false")
+                    problems.append(f"{name} check {c.get('check_id')!r} found is not true")
             ct, cp = gate.get("checks_total"), gate.get("checks_passed")
             if not (ct == cp == len(checks)):
                 problems.append(f"{name} checks_total/checks_passed/len(checks) disagree "

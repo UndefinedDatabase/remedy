@@ -406,6 +406,17 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
     exit 2
   fi
 
+  # --- F018 Scope 2: refresh derivable gates in the STAGED copy (after staging,
+  #     before manifest). Ensures the packaged runtime gate matches production v1.1.0. ---
+  if [[ -f "scripts/refresh_review_evidence.py" ]]; then
+    if python3 scripts/refresh_review_evidence.py \
+         --staged-dir "$STAGED_CURRENT" --repo-root "$ROOT"; then
+      echo "Evidence refresh completed for staged copy."
+    else
+      echo "WARNING: Evidence refresh failed for staged copy." >&2
+    fi
+  fi
+
   # --- Observability index generated from the STAGED bytes (F1, round 20) ---
   OBS_INDEX_STAGED="$STAGED_CURRENT/$OBS_INDEX_NAME"
   if [[ -f "scripts/build_observability_index.py" ]]; then

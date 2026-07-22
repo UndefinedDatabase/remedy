@@ -1593,6 +1593,22 @@ def run_job(
             error=f"job_not_found: {job_id}",
         )
 
+    # F018 Scope 6: a stopped job with a pending operator stop signal must not silently
+    # resume.  Check HERE — before config resolution, budget setup, or any timestamp —
+    # so the guard lives in the run_job boundary, not only in the CLI.
+    if job.status == JOB_STOPPED:
+        from packages.orchestration.safe_points import (
+            control_root as _cr_guard,
+            stop_requested as _sr_guard,
+        )
+        _pending_guard = _sr_guard(job.job_id, control_root_path=_cr_guard())
+        if _pending_guard is not None:
+            job.error = (
+                f"stopped_job_has_pending_stop: {_pending_guard.reason} "
+                f"(request_id={_pending_guard.request_id})")
+            _persist_job(job)
+            return job
+
     # F018: apply caller-supplied budgets (CLI override); persisted budgets on the JobPlan
     # are kept if no caller override is provided.
     if budgets is not None:
@@ -1744,18 +1760,42 @@ def run_job(
         if _ac > _pc:
             raise _BCError(
                 f"persisted actual_call_count ({_ac}) > provider_call_count ({_pc})")
+        # F018 Scope 8: validate optional v1.0.0 provenance fields when present.
+        _umc = _prior.get("unmeasured_call_count")
+        if _umc is not None:
+            if not isinstance(_umc, int) or isinstance(_umc, bool) or _umc < 0:
+                raise _BCError(
+                    f"persisted unmeasured_call_count invalid: {_umc!r}")
+            if _umc != _pc - _ac:
+                raise _BCError(
+                    f"persisted unmeasured_call_count ({_umc}) != "
+                    f"provider_call_count ({_pc}) - actual_call_count ({_ac})")
+        _asrc = _prior.get("actual_sources")
+        if _asrc is not None and not isinstance(_asrc, (list, tuple)):
+            raise _BCError(
+                f"persisted actual_sources has type {type(_asrc).__name__}")
+        _CLOSED_ACTUALS_KEYS = frozenset({
+            "schema_version", "provider_call_count", "actual_call_count",
+            "total_tokens", "started_at", "actual_sources", "unmeasured_call_count",
+        })
+        _extra = set(_prior) - _CLOSED_ACTUALS_KEYS
+        if _extra:
+            raise _BCError(f"persisted actuals has unknown keys: {sorted(_extra)}")
     _accumulated_provider_calls = _prior.get("provider_call_count", 0) or 0
     _accumulated_tokens = _prior.get("total_tokens", 0) or 0
     _accumulated_measured = _prior.get("actual_call_count", 0) or 0
     _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
+    # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume,
+    # but do NOT write job.first_running_at yet — that happens only after all pre-work
+    # validation (budget decode, pre-stop check) passes, so a corrupt-budget block or
+    # a pending stop never stamps a start time on a job that never actually ran.
     _run_started_at = datetime.now(timezone.utc)
-    if getattr(job, "first_running_at", ""):
+    _first_run_already_set = bool(getattr(job, "first_running_at", ""))
+    if _first_run_already_set:
         try:
             _run_started_at = datetime.fromisoformat(job.first_running_at)
         except (ValueError, TypeError):
             pass
-    else:
-        job.first_running_at = _run_started_at.isoformat()
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
     # A malformed persisted budget MUST block — never silently continue as unlimited.
@@ -1820,12 +1860,24 @@ def run_job(
         )
 
     def _persist_budget_actuals():
-        """Persist live counters so they survive stop/resume."""
+        """Persist live counters so they survive stop/resume.
+
+        F018 Scope 8: closed Actuals schema — every field documented, actual_sources
+        records where measurements came from so BudgetCounters reconstruction is exact.
+        """
+        _sources: list[str] = []
+        if _accumulated_measured > 0:
+            _sources.append("pingpong_live")
+        if _prior and _prior.get("actual_call_count", 0):
+            _sources.append("persisted_resume")
         job.budget_actuals = {
+            "schema_version": "1.0.0",
             "provider_call_count": _accumulated_provider_calls,
             "actual_call_count": _accumulated_measured,
             "total_tokens": _accumulated_tokens,
             "started_at": _run_started_at.isoformat(),
+            "actual_sources": tuple(sorted(set(_sources))),
+            "unmeasured_call_count": _accumulated_unmeasured,
         }
 
     # F018: allocate episode BEFORE computing budget identity so the stop
@@ -1843,6 +1895,11 @@ def run_job(
             return _stop_job(job, _pre_stop, task=None, control_root_path=_control)
         except StopFinalizationError:
             return job
+
+    # F018 Scope 7: all pre-work validation passed (budget decoded, no pending stop).
+    # NOW stamp first_running_at so it's never set on a job that blocked before running.
+    if not _first_run_already_set:
+        job.first_running_at = _run_started_at.isoformat()
 
     # F012: no pending pre-work stop — this is a real execution EPISODE. Allocate a fresh
     # episode id now (a resume gets its own episode; only calls made in THIS episode are

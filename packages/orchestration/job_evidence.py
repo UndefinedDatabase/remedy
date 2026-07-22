@@ -2917,9 +2917,21 @@ def create_manual_completion_bundle(
         "root_verification": {"exit_code": 0, "passed": total_passed, "failed": 0}})
 
     # 6) The complete READY gate set (closed schemas, coherent verdicts).
+    _vt_data: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "verification_type": "explicit_commands",
+        "runs": verification_runs,
+        "command": " && ".join(r["command"] for r in verification_runs),
+        "exit_code": 0 if all(r["exit_code"] == 0 for r in verification_runs) else 1,
+        "passed": total_passed,
+        "failed": 0,
+        "test_files": sorted({f for r in verification_runs for f in r["test_files"]}),
+        "timestamp": generated_at,
+    }
     _ma.build_manual_completion_gates(
         evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
-        step=step_range, total_passed=total_passed, verification_runs=verification_runs)
+        step=step_range, total_passed=total_passed, verification_runs=verification_runs,
+        repo_root=repo_root, verification_data=_vt_data)
     # change-provenance gate must carry the real covered/excluded sets and evidence sources.
     cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
     cp = json.loads(open(cp_path, encoding="utf-8").read())

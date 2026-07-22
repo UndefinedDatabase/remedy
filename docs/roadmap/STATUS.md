@@ -16,7 +16,7 @@
 - [x] F011 — Kill switch (`remedy job stop` + safe points + STOPPED state + `job_stopped` event + stopped post-mortem · accepted 2026-07-14 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 49955e41c49f41bc · package remedy-review-20260714-223538-READY_FOR_REVIEW.zip)
 - [x] F012 — Deterministic runs (RunManifestV1 + `on_call_finalized` seam + `remedy job rerun --check-manifest` · accepted 2026-07-20 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job r40_authority_contract_closure · package remedy-review-20260720-211130-READY_FOR_REVIEW.zip)
 - [x] F017 — Scope fences (T001–T003 built + repaired + cleanup; accepted 2026-07-21 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job da34f448-ad80-49ae-b8eb-8c4e7ec46645 · package remedy-review-20260721-132745-READY_FOR_REVIEW.zip · SHA-256 a6fab50307b1db62fc7491943ba68975757f4177d2f1f1047c9528c9e30b81c4 · accepted HEAD c8c72f5370249ad3239ebd9eecbd65dd252a9d5c)
-- [~] F018 — Budgets & stop conditions (T001–T004 complete, authority round closing 10 reproductions · 258 F018 tests + 649 related = 907 passing · Evidence + package pending)
+- [~] F018 — Budgets & stop conditions (T001–T004 complete, package-pipeline closure: v1.1.0 gate unified, staged refresh, stopped-job guard, first_running_at timing, closed actuals · 28 new E2E + 444 focused + 8038 full suite = 8510 passing · Evidence + package pending)
 - [ ] F146 — Project identity & repo autodetection
 - [ ] F081 — remedy init
 - [ ] F147 — Golden-path CLI

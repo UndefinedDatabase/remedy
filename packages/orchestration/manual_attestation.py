@@ -169,9 +169,12 @@ def _na_worktree():
 
 def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: list[str],
                                   file_hashes: dict, step: str, total_passed: int,
-                                  verification_runs: list) -> None:
+                                  verification_runs: list,
+                                  repo_root: str = ".",
+                                  verification_data: dict | None = None) -> None:
     """Write the complete, semantically-consistent READY gate set + verification_tests for a manual
-    completion. ``authority`` is the covered source-file list; ``file_hashes`` maps each to its sha."""
+    completion. ``authority`` is the covered source-file list; ``file_hashes`` maps each to its sha.
+    ``repo_root`` and ``verification_data`` are forwarded to the production runtime-gate producer."""
     covered = sorted(file_hashes)
     _w(os.path.join(evidence_dir, "fresh_evidence_gate.json"), {
         "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
@@ -194,9 +197,10 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
         "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
         "stale_apply_proofs": [], "issues": [], "current_hashes": dict(file_hashes),
         "evidence_hashes": dict(file_hashes)})
-    _w(os.path.join(evidence_dir, "runtime_integration_gate.json"), {
-        "schema_version": "1.0.0", "verdict": "PASS", "checks": [], "checks_total": 0,
-        "checks_passed": 0, "issues": []})
+    from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
+    write_runtime_integration_gate(
+        evidence_dir, repo_root=repo_root,
+        verification_data=verification_data)
     _w(os.path.join(evidence_dir, "manifest_integrity.json"),
        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),
