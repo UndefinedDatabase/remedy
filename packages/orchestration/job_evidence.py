@@ -1535,7 +1535,7 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         argv = command.split()
     _env = child_env_without_declaration()
 
-    argv_v = list(argv)
+    argv_v = [a for a in argv if a not in ("-q", "--quiet")]
     if "-v" not in argv_v and "--verbose" not in argv_v:
         argv_v.append("-v")
     import time as _time
