@@ -16,7 +16,7 @@
 - [x] F011 — Kill switch (`remedy job stop` + safe points + STOPPED state + `job_stopped` event + stopped post-mortem · accepted 2026-07-14 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job 49955e41c49f41bc · package remedy-review-20260714-223538-READY_FOR_REVIEW.zip)
 - [x] F012 — Deterministic runs (RunManifestV1 + `on_call_finalized` seam + `remedy job rerun --check-manifest` · accepted 2026-07-20 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job r40_authority_contract_closure · package remedy-review-20260720-211130-READY_FOR_REVIEW.zip)
 - [x] F017 — Scope fences (T001–T003 built + repaired + cleanup; accepted 2026-07-21 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job da34f448-ad80-49ae-b8eb-8c4e7ec46645 · package remedy-review-20260721-132745-READY_FOR_REVIEW.zip · SHA-256 a6fab50307b1db62fc7491943ba68975757f4177d2f1f1047c9528c9e30b81c4 · accepted HEAD c8c72f5370249ad3239ebd9eecbd65dd252a9d5c)
-- [~] F018 — Budgets & stop conditions (T001–T004 complete, 10-repro closure: VT V1.1 truthful, strict persisted actuals schema + provenance, honest budget display, corrupt first_running_at blocks, exact gate binding, manual-completion gate exemption, .agent/Evidence ZIP exclusion · 31 authority tests + 513 focused passing · Evidence + package pending)
+- [x] F018 — Budgets & stop conditions (T001–T004 complete; accepted 2026-07-22 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job f018_final_closure_684c4eaf027e · package remedy-review-20260722-175112-READY_FOR_REVIEW.zip · SHA-256 41a77d46e5f48c1120937061d33e2c505cee00633f0f31147c14a054fc4aeaad · accepted HEAD 30dd4a8107bf6346e046d2faa098ee8a23f4191a)
 - [ ] F146 — Project identity & repo autodetection
 - [ ] F081 — remedy init
 - [ ] F147 — Golden-path CLI

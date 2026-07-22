@@ -11,7 +11,7 @@ unified wall-clock authority (started_at == first_running_at cross-check),
 honest budget CLI (shared decoder, mismatch → corrupt), real three-call
 acceptance test through run_job, VT V1.1 cross-consistency (selected ==
 p+f+s, node_ids count, output_hash verifiable). 114 authority tests +
-focused passing in 8 suites. Evidence + ZIP pending.
+focused passing in 9 suites.
 
 ## Final closure changes (this round)
 1. `decode_persisted_budget_actuals` in budget_guard.py — 7-field strict decoder
@@ -35,8 +35,11 @@ focused passing in 8 suites. Evidence + ZIP pending.
 - tests/orchestration/test_manual_completion_bundle.py (fixture fixes)
 - .agent/plan.md, .agent/context.md, .agent/live_review.md
 
-## Constraints
-- No providers, no network, no Docker, no subagents
-- Do not amend/squash existing commits
-- Do not push/PR/merge/modify main
-- F018 [~], F146 [ ]
+## External Acceptance
+- **Verdict**: PASS_WITH_RISKS — ACCEPTED (2026-07-22)
+- **Accepted HEAD**: `30dd4a8107bf6346e046d2faa098ee8a23f4191a`
+- **Evidence job**: `f018_final_closure_684c4eaf027e`
+- **Package**: `remedy-review-20260722-175112-READY_FOR_REVIEW.zip`
+- **SHA-256**: `41a77d46e5f48c1120937061d33e2c505cee00633f0f31147c14a054fc4aeaad`
+- 547 tests passing across 9 suites
+- F018 [x]. F146 [ ] — next, not started.

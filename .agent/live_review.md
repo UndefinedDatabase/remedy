@@ -36,6 +36,13 @@ Package: `scripts/make_review_zip.sh` — refresh-before-manifest pipeline
 33. VT output_hash: verifiable sha256(stdout_summary), always computed
 34. Test fixture completeness: all actuals records have 7 required fields
 
+## External Acceptance
+- **Verdict**: PASS_WITH_RISKS — ACCEPTED (2026-07-22)
+- **Accepted HEAD**: `30dd4a8107bf6346e046d2faa098ee8a23f4191a`
+- **Evidence job**: `f018_final_closure_684c4eaf027e`
+- **Package**: `remedy-review-20260722-175112-READY_FOR_REVIEW.zip` (SHA-256 `41a77d46...fc4aeaad`)
+- Next: F146 — not started.
+
 ## Test suites (final acceptance round)
 - `test_f018_authority_integration.py` — 114 passed (10 new, fixtures updated)
 - `test_review_verification_tests_strict.py` — 24 passed (fixtures updated)

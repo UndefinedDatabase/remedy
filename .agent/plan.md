@@ -6,7 +6,7 @@ package. Canonical PersistedBudgetActualsV1, unified wall-clock authority,
 honest CLI, real three-call E2E, VT V1.1 cross-consistency, output proof.
 One canonical ZIP from base 190b3528a2dada6a27fdd9c2fdb75a6a00e7ea43.
 
-## Status: IMPLEMENTING
+## Status: COMPLETE
 
 ## Scope 1 — Canonical PersistedBudgetActualsV1
 - [x] Shared decoder/encoder in budget_guard.py with exact 7-field schema
@@ -36,11 +36,14 @@ One canonical ZIP from base 190b3528a2dada6a27fdd9c2fdb75a6a00e7ea43.
 
 ## Scope 5 — Truthful final state, Evidence and ZIP
 - [x] Update context.md, plan.md, live_review.md
-- [ ] Commit all tracked files; confirm clean tree
-- [ ] Fresh Evidence from base 190b3528
-- [ ] One make_review_zip.sh invocation; no post-ZIP commit
+- [x] Commit all tracked files; confirm clean tree
+- [x] Fresh Evidence from base 190b3528
+- [x] One make_review_zip.sh invocation; no post-ZIP commit
 
-## Constraints
-No Fable/subagents/providers/network/Docker.
-Do not amend/squash. Do not push/PR/merge.
-F018 [~]. F146 [ ].
+## External Acceptance
+Verdict: PASS_WITH_RISKS — ACCEPTED (2026-07-22).
+Evidence job: f018_final_closure_684c4eaf027e.
+Package: remedy-review-20260722-175112-READY_FOR_REVIEW.zip.
+SHA-256: 41a77d46e5f48c1120937061d33e2c505cee00633f0f31147c14a054fc4aeaad.
+Accepted HEAD: 30dd4a8107bf6346e046d2faa098ee8a23f4191a.
+F018 [x]. F146 [ ] — next, not started.
