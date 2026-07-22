@@ -48,14 +48,17 @@ DECISION_TYPES = frozenset({
 
 
 def list_decisions(
-    job: Job,
+    job: "Job | Any",
     events: list[dict[str, Any]],
 ) -> list[HumanDecision]:
-    """Derive all pending human decisions from existing state."""
-    decisions: list[HumanDecision] = []
-    job_id = str(job.id)
+    """Derive all pending human decisions from existing state.
 
-    # 1. Pending patch approvals
+    Accepts both Core Job (has .id UUID) and JobPlan (has .job_id str).
+    """
+    decisions: list[HumanDecision] = []
+    job_id = str(getattr(job, "job_id", None) or getattr(job, "id", ""))
+
+    # 1. Pending patch approvals (Core Job only; JobPlan has no .artifacts).
     try:
         from packages.orchestration.approval_queue import APPROVAL_PENDING, list_patch_intents
         intents = list_patch_intents(job)
@@ -78,7 +81,7 @@ def list_decisions(
                     created_at=pi.get("created_at", ""),
                     resolved_at=None,
                 ))
-    except (ImportError, ValueError, OSError):
+    except (ImportError, ValueError, OSError, AttributeError):
         pass
 
     # 2. Stop reasons / blockers
@@ -101,7 +104,7 @@ def list_decisions(
                     created_at=sr.created_at,
                     resolved_at=None,
                 ))
-    except (ImportError, ValueError, OSError):
+    except (ImportError, ValueError, OSError, AttributeError):
         pass
 
     # 3. Test failures
@@ -146,7 +149,62 @@ def list_decisions(
                 resolved_at=None,
             ))
 
-    # 5. Stale/needs_review memory cards
+    # 5. Budget exhaustion — check job fields, metadata, AND stop events
+    # JobPlan has no .metadata attribute; Core Job does. Safe for both.
+    _job_meta = getattr(job, "metadata", None) or {}
+    if not isinstance(_job_meta, dict):
+        _job_meta = {}
+    budget_error = str(
+        _job_meta.get("budget_stop_reason", "")
+        or _job_meta.get("error", "")
+        or getattr(job, "error", "")
+        or ""
+    )
+    if "budget_exhausted" not in budget_error:
+        _stop_reason = str(getattr(job, "stop_reason", "") or "")
+        _stop_source = str(getattr(job, "stop_source", "") or "")
+        if "budget" in _stop_source or "budget_exhausted" in _stop_reason:
+            budget_error = _stop_reason or "budget_exhausted"
+
+    if "budget_exhausted" not in budget_error:
+        for ev in events:
+            if (ev.get("event") == "job_stopped"
+                    and str((ev.get("metadata") or {}).get("source", "")) == "budget"):
+                budget_error = str(
+                    (ev.get("metadata") or {}).get("reason", "budget_exhausted"))
+                break
+
+    if budget_error and ("budget_exhausted" in budget_error or "budget" in budget_error):
+        _budget_request_id = ""
+        _budget_created_at = ""
+        _budget_limit = ""
+        for ev in events:
+            if (ev.get("event") == "job_stopped"
+                    and str((ev.get("metadata") or {}).get("source", "")) == "budget"):
+                _budget_request_id = str(
+                    (ev.get("metadata") or {}).get("request_id", ""))
+                _budget_created_at = str(ev.get("timestamp", ""))
+                _budget_limit = str(
+                    (ev.get("metadata") or {}).get("exhausted_limit", ""))
+                break
+        _decision_id = (f"budget:{_budget_request_id}"
+                        if _budget_request_id else "budget_exhausted")
+        decisions.append(HumanDecision(
+            id=_decision_id,
+            type="token_budget",
+            status="open",
+            severity="blocker",
+            source="budget_guard",
+            related_node_id="",
+            related_intent_id=_budget_request_id,
+            related_file="",
+            safe_summary=f"Job stopped: {budget_error[:200]}",
+            next_actions=("extend", "abandon"),
+            created_at=_budget_created_at,
+            resolved_at=None,
+        ))
+
+    # 6. Stale/needs_review memory cards
     try:
         from packages.memory.local_gateway import list_memory
         entries = list_memory()

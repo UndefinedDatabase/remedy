@@ -169,9 +169,12 @@ def _na_worktree():
 
 def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: list[str],
                                   file_hashes: dict, step: str, total_passed: int,
-                                  verification_runs: list) -> None:
+                                  verification_runs: list,
+                                  repo_root: str = ".",
+                                  verification_data: dict | None = None) -> None:
     """Write the complete, semantically-consistent READY gate set + verification_tests for a manual
-    completion. ``authority`` is the covered source-file list; ``file_hashes`` maps each to its sha."""
+    completion. ``authority`` is the covered source-file list; ``file_hashes`` maps each to its sha.
+    ``repo_root`` and ``verification_data`` are forwarded to the production runtime-gate producer."""
     covered = sorted(file_hashes)
     _w(os.path.join(evidence_dir, "fresh_evidence_gate.json"), {
         "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
@@ -194,9 +197,10 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
         "uncovered_files": [], "content_hash_verified": True, "hash_mismatches": [],
         "stale_apply_proofs": [], "issues": [], "current_hashes": dict(file_hashes),
         "evidence_hashes": dict(file_hashes)})
-    _w(os.path.join(evidence_dir, "runtime_integration_gate.json"), {
-        "schema_version": "1.0.0", "verdict": "PASS", "checks": [], "checks_total": 0,
-        "checks_passed": 0, "issues": []})
+    from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
+    write_runtime_integration_gate(
+        evidence_dir, repo_root=repo_root,
+        verification_data=verification_data)
     _w(os.path.join(evidence_dir, "manifest_integrity.json"),
        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),
@@ -208,10 +212,16 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
         "gate_checks": {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
                         "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
                         "runtime_integration_gate": "PASS"}})
+    _VT_V11_FIELDS = {"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                       "stdout_summary", "head_sha", "output_hash", "selected",
+                       "deselected", "skipped", "node_ids", "duration_seconds"}
+    _vt_runs = [{k: r[k] for k in _VT_V11_FIELDS if k in r} for r in verification_runs]
     dc = " && ".join(r["command"] for r in verification_runs)
     de = 0 if all(r["exit_code"] == 0 for r in verification_runs) else 1
+    from datetime import datetime as _dt, timezone as _tz
+    _vt_ts = _dt.now(_tz.utc).isoformat()
     _w(os.path.join(evidence_dir, "verification_tests.json"), {
-        "schema_version": "1.0.0", "verification_type": "explicit_commands", "runs": verification_runs,
+        "schema_version": "1.1.0", "verification_type": "explicit_commands", "runs": _vt_runs,
         "command": dc, "exit_code": de, "passed": total_passed, "failed": 0,
         "test_files": sorted({f for r in verification_runs for f in r["test_files"]}),
-        "timestamp": "2026-07-19T00:00:00+00:00"})
+        "timestamp": _vt_ts})

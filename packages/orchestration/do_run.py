@@ -153,6 +153,7 @@ def run_do(
     autonomy_level: int = 2,
     max_loops: int = 1,
     stop_before_apply: bool = True,
+    budgets: Any = None,
 ) -> DoRunResult:
     """Run remedy do v1 — fixture only, phased, safe.
 
@@ -211,7 +212,7 @@ def run_do(
     repo_exists = repo.is_dir()
     result.repo_path_safe = repo.name if repo_exists else ""
 
-    job = Job(name=goal[:80], user_prompt=goal[:500])
+    job = Job(name=goal[:80], user_prompt=goal[:500], budgets=budgets)
     if repo_exists:
         art = Artifact(
             name="repo-ref", content="",

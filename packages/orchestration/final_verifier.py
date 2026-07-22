@@ -904,15 +904,27 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     final_job_review = _final_job_review_check(base)
     invocation_args_warnings = _invocation_args_honesty(exec_config)
 
+    is_full_manual_completion = (
+        bool(operator_attested_tasks)
+        and len(operator_attested_tasks) == len(task_ids)
+        and len(task_ids) > 0
+    )
     upstream_gate_verdicts = {
         "fresh_evidence_gate": fresh_evidence_gate,
         "artifact_contract_gate": artifact_contract_gate,
         "runtime_integration_gate": runtime_integration_gate,
         "change_provenance_gate": change_provenance,
     }
-    any_core_gate_blocked = any(
-        v == "BLOCKED" for v in upstream_gate_verdicts.values() if v
-    )
+    if is_full_manual_completion:
+        _manual_exempt = {"fresh_evidence_gate", "runtime_integration_gate"}
+        any_core_gate_blocked = any(
+            v == "BLOCKED" for k, v in upstream_gate_verdicts.items()
+            if v and k not in _manual_exempt
+        )
+    else:
+        any_core_gate_blocked = any(
+            v == "BLOCKED" for v in upstream_gate_verdicts.values() if v
+        )
 
     file_alignment_blocked = (
         file_alignment["file_set_alignment_status"] == "BLOCKED"
@@ -976,11 +988,7 @@ def build_final_verifier_report(evidence_dir: str) -> dict[str, Any]:
     # Detected from existing artifacts: every task attested + the final job
     # review declaring the manual completion mode (no bespoke root artifact).
     fjr_data = _read_json(base / "final_job_review.json")
-    manual_completion = (
-        bool(operator_attested_tasks)
-        and len(operator_attested_tasks) == len(task_ids)
-        and len(task_ids) > 0
-    )
+    manual_completion = is_full_manual_completion
     human_final_review_required = bool(
         manual_completion
         or (isinstance(fjr_data, dict) and fjr_data.get("human_final_reviewer_required"))

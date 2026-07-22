@@ -1952,14 +1952,19 @@ def _call_with_retry(
     role: str,
     provider: str = "",
     on_call: Any = None,
+    on_provider_attempt: Callable[[ProviderAttempt], None] | None = None,
     is_parse_retry: bool = False,
     call_reasons: list[str] | None = None,
+    stop_check: Callable[[], Any] | None = None,
 ) -> Any:
     """Call a provider function with bounded retry on transient failures.
 
     Only retries on timeout or nonzero exit (detected via error string).
     Never retries review rejects. Records retry evidence on result.
     Every call (initial + retries) is recorded as a ProviderAttempt.
+
+    ``stop_check`` (F018) is evaluated before each transport retry. A budget
+    exhaustion observed between retries prevents the next call from starting.
 
     ``on_call(transport_attempt, is_transport_retry)`` — when given — runs
     IMMEDIATELY BEFORE every real ``call_fn()`` invocation, so a caller can
@@ -1975,6 +1980,8 @@ def _call_with_retry(
     # retries stay part of that ONE logical parse retry.
     _record_attempt(result, out, role, provider,
                     is_retry=is_parse_retry, is_parse_retry=is_parse_retry)
+    if on_provider_attempt is not None:
+        on_provider_attempt(result.provider_attempts[-1])
     for attempt in range(MAX_RETRIES):
         if not out.error:
             return out
@@ -2002,6 +2009,10 @@ def _call_with_retry(
         if backoff is None:
             return out
 
+        # F018: check budget before spending another transport call
+        if stop_check is not None and stop_check() is not None:
+            return out
+
         result.retries_used += 1
         _reason = f"{role}:attempt{attempt + 1}:{out.error[:120]}"
         result.retry_reasons.append(_reason)          # the run-global summary, unchanged
@@ -2016,6 +2027,8 @@ def _call_with_retry(
         out = call_fn()
         _record_attempt(result, out, role, provider,
                         is_retry=True, is_parse_retry=is_parse_retry)
+        if on_provider_attempt is not None:
+            on_provider_attempt(result.provider_attempts[-1])
 
     return out
 
@@ -2241,6 +2254,7 @@ def run_pingpong(
     workspace_start_tree: str = "",
     stop_check: Callable[[], Any] | None = None,
     episode_id: str = "",
+    on_provider_call: Callable[[ProviderAttempt], None] | None = None,
 ) -> PingPongResult:
     """Run the Builder <> Reviewer ping-pong loop.
 
@@ -2601,7 +2615,9 @@ def run_pingpong(
                 result=result,
                 role="builder",
                 provider=builder_name,
+                on_provider_attempt=on_provider_call,
                 call_reasons=builder_call_reasons,
+                stop_check=_stopped,
             )
             rd.builder_output = builder_out
 
@@ -2810,7 +2826,9 @@ def run_pingpong(
                     "review",
                     "re-review" if is_repair else "review",
                 ),
+                on_provider_attempt=on_provider_call,
                 call_reasons=reviewer_call_reasons,
+                stop_check=_stopped,
             )
 
             # F012: the Reviewer attempt is finalized. Track the exact finalized context so a
@@ -2861,7 +2879,9 @@ def run_pingpong(
                     provider=reviewer_name,
                     is_parse_retry=True,
                     on_call=_rev_trace(retry_prompt, "parse-retry", "review-parse-retry"),
+                    on_provider_attempt=on_provider_call,
                     call_reasons=reviewer_call_reasons,
+                    stop_check=_stopped,
                 )
                 retry_out.parse_retried = True
                 if not retry_out.error:

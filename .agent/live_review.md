@@ -1,67 +1,55 @@
-# Live Review — F017 Scope Fences
+# Live Review — F018 Budgets & Stop Conditions
 
 ## Status
-**T001 BUILT** — FenceSpec + pure path checker + exhaustive tests.
-**T002 BUILT + REPAIRED** — Applicator enforcement, atomicity, change-set
-                  preflight, violation Evidence, postmortem classification.
-                  Repairs: config enforcement, fail-closed builtins, role dedup.
-**T003 BUILT + REPAIRED** — Job model fences field, config keys, CLI display.
-                  Repairs: centralized resolver, closed JobFences, provenance.
+**BUILT + REPAIRED + ALL REPRODUCTION FINDINGS CLOSED + FINAL ACCEPTANCE** —
+Canonical PersistedBudgetActualsV1, wall-clock authority, real three-call test,
+VT V1.1 cross-consistency with output_hash verification.
 
-Module: `packages/orchestration/scope_fences.py`
-Model:  `packages/core/models.py` — JobFences (closed, extra="forbid", model_validator)
-Config: `packages/orchestration/config.py` — scope.allow, scope.deny
-CLI:    `apps/cli/commands/job.py` — remedy job fences
-Tests:  `tests/orchestration/test_fences.py` — 78 passed
-        `tests/orchestration/test_applicator_fences.py` — 43 passed
-        `tests/orchestration/test_fence_e2e.py` — 130 passed
-        `tests/orchestration/test_fence_production_e2e.py` — 20 passed
+Module:  `packages/orchestration/budget_guard.py` — pure deterministic evaluation +
+         `decode_persisted_budget_actuals` (7-field strict decoder) +
+         `counters_from_persisted` (validated → BudgetCounters)
+Model:   `packages/core/models.py` — JobBudgets (closed, extra="forbid", StrictInt)
+Config:  `packages/orchestration/config.py` — budget.* keys (fail-closed on unknown)
+Resolve: `packages/orchestration/budget_resolution.py` — CLI/env/TOML precedence
+Safe:    `packages/orchestration/safe_points.py` — unified should_stop predicate
+Runner:  `packages/orchestration/pingpong_job.py` — wall-clock continuity, shared decoder
+Loop:    `packages/orchestration/pingpong_loop.py` — pre-retry budget check
+Stop:    `packages/orchestration/stop_reasons.py` — StopReason derivation
+Post:    `packages/orchestration/failure_postmortem.py` — budget_exhausted FailureClass
+Decision:`packages/orchestration/decision_queue.py` — budget stop event detection (JobPlan safe)
+Manifest:`packages/orchestration/run_manifest.py` — budgets in logical_input_projection
+Contract:`packages/orchestration/run_contract.py` — inherits from JobBudgets
+CLI:     `apps/cli/commands/job.py` — remedy job budget (shared decoder, corrupt diagnostic)
+         `apps/cli/commands/do_cmd.py` — budget-aware stop_check + stopped-job guard
+Gate:    `packages/orchestration/runtime_integration_gate.py` — 15 source checks + 4 execution bindings
+Attest:  `packages/orchestration/manual_attestation.py` — real gate producer (v1.1.0)
+Refresh: `scripts/refresh_review_evidence.py` — staged gate regeneration
+Manifest:`scripts/build_review_manifest.py` — v1.0.0 + v1.1.0 gate validation + cross-consistency
+Package: `scripts/make_review_zip.sh` — refresh-before-manifest pipeline
 
-## Package discrepancy (a0aa69f) — RESOLVED
-Previous ZIP (`remedy-review-20260720-233422`) built at `0846a18`
-(10 commits). Superseded by repair block. New package covers all
-commits including repair scopes 1-5.
+## Final acceptance closure — ALL CLOSED
+28. Canonical PersistedBudgetActualsV1: shared decoder, exact 7-field schema, no default-zero
+29. Wall-clock authority: started_at == first_running_at cross-check in decoder
+30. Honest CLI: shared decoder, mismatch → corrupt, diagnostic output
+31. Real three-call: FakeProvider with counted names, budget stops at 3
+32. VT V1.1 cross-consistency: selected == p+f+s, node_ids count == selected
+33. VT output_hash: verifiable sha256(stdout_summary), always computed
+34. Test fixture completeness: all actuals records have 7 required fields
 
-## External review findings — ALL CLOSED
-1. ~~Duplicate TOML authority~~ → removed `_read_scope_table`, central config only (35f3e67)
-2. ~~Malformed config fails open~~ → `FenceConfigError` raised, fail-closed (35f3e67)
-3. ~~JobFences not closed~~ → `extra="forbid"` on model (35f3e67)
-4. ~~Five applicators diverge~~ → all 5 use `enforce_change_set` (a2e6c0c)
-5. ~~No production callers~~ → 5 applicators call `enforce_change_set` (a2e6c0c)
-6. ~~Artifact writer uses write_text~~ → `write_file_atomically` + O_NOFOLLOW + uuid (f1ce7a4)
-7. ~~Exception leaks abs paths~~ → `_redact_path` in FenceViolationError (f1ce7a4)
-8. ~~repo_applicator no job_fences~~ → `check_and_apply_to_repo` propagates (a2e6c0c)
-9. ~~patch_apply no Evidence~~ → writes via `enforce_change_set` (a2e6c0c)
-10. ~~do_continue uses APPLY_FAILED~~ → `FENCE_VIOLATION` stop reason (a2e6c0c)
+## External Acceptance
+- **Verdict**: PASS_WITH_RISKS — ACCEPTED (2026-07-22)
+- **Accepted HEAD**: `30dd4a8107bf6346e046d2faa098ee8a23f4191a`
+- **Evidence job**: `f018_final_closure_684c4eaf027e`
+- **Package**: `remedy-review-20260722-175112-READY_FOR_REVIEW.zip` (SHA-256 `41a77d46...fc4aeaad`)
+- Next: F146 — not started.
 
-## Final closure findings — ALL CLOSED
-1. Non-canonical review package → canonical Evidence via `create_manual_completion_bundle`
-2. repo_applicator job-scoped Evidence → `check_and_apply_to_repo` passes job_id + evidence_dir
-3. Diagnostic path leaks → `_sanitize_diagnostic` regex-based redaction (POSIX/Win/UNC/file URI)
-4. Allow-list violation provenance → `_match_violation_rule` returns rule_source + applicable_rules
-5. Strict JobFences validation → Pydantic model_validator (trim, reject empty/non-string/nested)
-6. Real production E2E → sanitizer, allow-list provenance, JobFences validation, job-scoped Evidence tests
-7. Canonical ZIP → via `create_manual_completion_bundle` + `make_review_zip.sh`
-
-## Branch cleanup (2026-07-21)
-Unrelated commit `0b71df6` (30 F221-F250 roadmap files) separated from
-F017 branch. Clean branch `feature/f017-scope-fences-clean` at `ca65478`
-with 27 commits. Backup at `backup/f017-scope-fences-mixed-17592a5`.
-Roadmap work at `docs/roadmap-features-f221-f250`.
-
-## Post-cleanup scopes (2026-07-21)
-- Scope 2: general POSIX path redaction (`_POSIX_ABS_RE` catches all abs paths)
-- Scope 3: 20 production E2E tests (job_fulfillment, do_continue, CLI fences)
-- Scope 4: docs consistency (12 assertions updated), Evidence, canonical ZIP
-
-### Test counts (post-cleanup)
-- `test_fences.py` — 78 passed
-- `test_applicator_fences.py` — 43 passed
-- `test_fence_e2e.py` — 130 passed
-- `test_fence_production_e2e.py` — 20 passed
-- `test_config.py` — 57 passed
-- `test_failure_postmortem.py` — 112 passed
-- **Total fence-related: 440 passed, 0 failed**
-
-## Next
-Pending external acceptance. F017 stays `[~]`.
+## Test suites (final acceptance round)
+- `test_f018_authority_integration.py` — 114 passed (10 new, fixtures updated)
+- `test_review_verification_tests_strict.py` — 24 passed (fixtures updated)
+- `test_budget_guard.py` — 52 passed
+- `test_job_budgets.py` — 76 passed
+- `test_budget_stop_integration.py` — 39 passed
+- `test_manual_completion_bundle.py` — 44 passed
+- `test_final_verifier.py` — 97 passed
+- `test_token_truth.py` — 37 passed
+- `test_provider_evidence_integration.py` — 64 passed

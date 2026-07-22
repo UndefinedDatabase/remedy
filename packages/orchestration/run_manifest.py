@@ -2230,6 +2230,7 @@ class RunManifestV1:
     # episode id. The episode id is the active execution episode; the request id names which
     # stop produced this stopped record. Empty for non-stopped manifests.
     stop_request_id: str = ""
+    budgets: dict[str, Any] | None = None
     manifest_v: int = MANIFEST_VERSION
 
     @property
@@ -2257,6 +2258,7 @@ class RunManifestV1:
             "episode_ordinal": self.episode_ordinal,
             "previous_episode_id": self.previous_episode_id,
             "stop_request_id": self.stop_request_id,
+            "budgets": self.budgets,
         }
 
     def canonical_bytes(self) -> bytes:
@@ -2341,6 +2343,9 @@ class RunManifestV1:
                  "kind": c.identity.kind, "fingerprint": c.fingerprint}
                 for c in sorted(self.calls, key=lambda c: c.identity.logical_key())
             ],
+            # F018: budget limits are a material input — two runs with different budgets
+            # are logically different even if everything else matches.
+            "budgets": self.budgets,
         }
 
     #: Back-compat alias — the input comparison IS the logical projection.
@@ -2392,6 +2397,7 @@ class RunManifestV1:
             episode_ordinal=int(d.get("episode_ordinal", 1) or 1),
             previous_episode_id=str(d.get("previous_episode_id", "") or ""),
             stop_request_id=str(d.get("stop_request_id", "") or ""),
+            budgets=_decode_budgets_field(d.get("budgets")),
         )
 
 
@@ -3481,6 +3487,59 @@ def decode_call_expectation_v1(raw: Any) -> "CallExpectationV1":
     return CallExpectationV1(episode_phase=phase, tasks=tuple(tasks))
 
 
+_BUDGET_ALLOWED_KEYS = {
+    "max_total_tokens", "max_provider_calls", "max_wall_clock_minutes", "deadline",
+}
+
+
+def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
+    """F018: validate the closed JobBudgets schema on a budgets dict (or None).
+
+    Rejects zero, negative, bool, float, and unknown keys. Deadline must be a
+    valid timezone-aware ISO-8601 string.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ManifestError(f"manifest.budgets must be a dict or null, got {type(raw).__name__}")
+    # Empty or all-null budget objects normalize to canonical null.
+    if not raw or all(v is None for v in raw.values()):
+        return None
+    unknown = set(raw.keys()) - _BUDGET_ALLOWED_KEYS
+    if unknown:
+        raise ManifestError(f"manifest.budgets has unknown keys: {sorted(unknown)}")
+    for k in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+        v = raw.get(k)
+        if v is None:
+            continue
+        if isinstance(v, bool):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got bool")
+        if isinstance(v, float):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got float")
+        if isinstance(v, str):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got str")
+        if not isinstance(v, int):
+            raise ManifestError(f"manifest.budgets.{k} must be a strictly positive int, got {type(v).__name__}")
+        if v <= 0:
+            raise ManifestError(f"manifest.budgets.{k} must be strictly positive, got {v}")
+    dl = raw.get("deadline")
+    if dl is not None:
+        if not isinstance(dl, str):
+            raise ManifestError(f"manifest.budgets.deadline must be str or null, got {type(dl).__name__}")
+        from datetime import datetime as _dt, timezone as _tz
+        try:
+            parsed = _dt.fromisoformat(dl)
+        except (ValueError, TypeError):
+            raise ManifestError(f"manifest.budgets.deadline is not valid ISO-8601: {dl!r}")
+        if parsed.tzinfo is None:
+            raise ManifestError(f"manifest.budgets.deadline has no timezone: {dl!r}")
+        # Normalize to canonical UTC
+        utc_dl = parsed.astimezone(_tz.utc).isoformat().replace("+00:00", "Z")
+        raw = dict(raw)
+        raw["deadline"] = utc_dl
+    return raw
+
+
 def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
     """F4: THE strict decoder for an untrusted run-manifest record (bytes or parsed dict).
 
@@ -3502,7 +3561,7 @@ def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
                                "episode_snapshot", "job_input_sha256", "calls", "coverage",
                                "call_expectation", "call_ledgers", "prior_episode_ids",
                                "episode_ordinal", "previous_episode_id",
-                               "stop_request_id"}, "manifest")
+                               "stop_request_id", "budgets"}, "manifest")
         if _S.req_int(d, "manifest_v", "manifest", minimum=0, maximum=1000) != MANIFEST_VERSION:
             raise ManifestError(
                 f"unsupported manifest_v {d.get('manifest_v')!r} "
@@ -3538,6 +3597,7 @@ def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
                                            max_len=_S.MAX_ID_LEN, allow_empty=True),
             stop_request_id=_S.req_str(d, "stop_request_id", "manifest",
                                        max_len=_S.MAX_ID_LEN, allow_empty=True),
+            budgets=_decode_budgets_field(d.get("budgets")),
         )
     except _S.SchemaError as exc:
         raise ManifestError(f"manifest schema: {exc}") from None
@@ -4259,6 +4319,13 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
     coverage = CallCoverage(
         status=COVERAGE_COMPLETE if not problems else COVERAGE_INCOMPLETE,
         problems=tuple(sorted(problems)))
+    job_budgets = getattr(job, "budgets", None)
+    budgets_snapshot: dict[str, Any] | None = None
+    if job_budgets is not None:
+        if hasattr(job_budgets, "model_dump"):
+            budgets_snapshot = job_budgets.model_dump(mode="json")
+        elif isinstance(job_budgets, dict):
+            budgets_snapshot = dict(job_budgets)
     return RunManifestV1(
         job_id=str(getattr(job, "job_id", "")),
         episode_id=episode_id,
@@ -4276,6 +4343,7 @@ def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: st
         episode_ordinal=int(episode_ordinal),
         previous_episode_id=str(previous_episode_id or ""),
         stop_request_id=str(stop_request_id or ""),
+        budgets=budgets_snapshot,
     )
 
 
@@ -4324,7 +4392,8 @@ def _bind_artifact_refs(manifest: RunManifestV1) -> RunManifestV1:
         prior_episode_ids=manifest.prior_episode_ids,
         episode_ordinal=manifest.episode_ordinal,
         previous_episode_id=manifest.previous_episode_id,
-        stop_request_id=manifest.stop_request_id)
+        stop_request_id=manifest.stop_request_id,
+        budgets=manifest.budgets)
 
 
 def _decode_existing_episode(raw: bytes, episode_id: str) -> RunManifestV1:

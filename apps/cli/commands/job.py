@@ -26,6 +26,10 @@ def _cmd_create_job(
     project_id: str | None = None,
     task_type: str | None = None,
     task_description: str | None = None,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
 ) -> None:
     from packages.orchestration.run_log import RunLogWriter
 
@@ -69,12 +73,29 @@ def _cmd_create_job(
         tasks = [Task(description=description, inputs={"task_type": task_type})]
         state = RunState.PLANNED
 
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    _project_repo = None
+    if project is not None and hasattr(project, "repo_paths") and project.repo_paths:
+        _project_repo = project.repo_paths[0]
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+            project_root=_project_repo,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     job = Job(
         name=prompt[:50],
         user_prompt=prompt,
         state=state,
         tasks=tasks,
         metadata=metadata,
+        budgets=budgets,
     )
     save_job(job)
     print(job.id)
@@ -1362,18 +1383,172 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
                 print(f"    {w}")
 
 
+def _cmd_job_budget(
+    job_id: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Show budget limits and current counters for a job.
+
+    Supports both Core Job UUIDs and JobPlan hex IDs.
+    """
+    import json as _json
+
+    from packages.orchestration.budget_guard import evaluate_budget
+    from packages.orchestration.pingpong_job import load_job_plan
+
+    _job_display_id = job_id
+    _budgets = None
+    _budgets_dict = None
+    counters = None
+    evaluation = None
+    _counter_status = "no_runs"
+    _counter_diagnostic = ""
+    _found_as = None
+
+    job_plan = load_job_plan(job_id)
+    if job_plan is not None:
+        _found_as = "job_plan"
+        _job_display_id = job_plan.job_id
+        if job_plan.budgets is not None:
+            from packages.core.models import JobBudgets
+            try:
+                _budgets = JobBudgets.model_validate(job_plan.budgets)
+                _budgets_dict = job_plan.budgets
+            except Exception:
+                _budgets_dict = job_plan.budgets
+
+        if getattr(job_plan, "budget_actuals", None) is not None:
+            from packages.orchestration.budget_guard import (
+                BudgetCounterError,
+                counters_from_persisted,
+                decode_persisted_budget_actuals,
+            )
+            _fra = getattr(job_plan, "first_running_at", "") or None
+            try:
+                _validated = decode_persisted_budget_actuals(
+                    job_plan.budget_actuals, first_running_at=_fra)
+                counters = counters_from_persisted(_validated)
+                if _budgets is not None:
+                    evaluation = evaluate_budget(_budgets, counters)
+                _counter_status = "evaluated"
+            except (BudgetCounterError, Exception) as _budget_exc:
+                _counter_status = "corrupt"
+                _counter_diagnostic = str(_budget_exc)
+                counters = None
+                evaluation = None
+        else:
+            has_runs = any(
+                t.run_id and t.status in ("applied", "passed", "stopped")
+                for t in getattr(job_plan, "tasks", [])
+            )
+            if has_runs:
+                _counter_status = "actuals_not_persisted"
+
+    if _found_as is None:
+        try:
+            job = load_job(job_id)
+        except JobNotFoundError:
+            print(f"Error: job {job_id!r} not found.", file=sys.stderr)
+            sys.exit(1)
+        _found_as = "core_job"
+        _job_display_id = str(job.id)
+        _budgets = job.budgets
+
+        if _budgets is None:
+            if json_output:
+                print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
+            else:
+                print(f"Job {_job_display_id[:8]}: no budgets configured.")
+            return
+
+        _plan_for_core = load_job_plan(_job_display_id)
+        if _plan_for_core is not None and getattr(_plan_for_core, "budget_actuals", None) is not None:
+            from packages.orchestration.budget_guard import (
+                BudgetCounterError,
+                counters_from_persisted,
+                decode_persisted_budget_actuals,
+            )
+            _fra = getattr(_plan_for_core, "first_running_at", "") or None
+            try:
+                _validated = decode_persisted_budget_actuals(
+                    _plan_for_core.budget_actuals, first_running_at=_fra)
+                counters = counters_from_persisted(_validated)
+                evaluation = evaluate_budget(_budgets, counters)
+                _counter_status = "evaluated"
+            except (BudgetCounterError, Exception) as _budget_exc:
+                _counter_status = "corrupt"
+                _counter_diagnostic = str(_budget_exc)
+                counters = None
+                evaluation = None
+
+    if _budgets is None and _budgets_dict is None:
+        if json_output:
+            print(_json.dumps({"job_id": _job_display_id, "budgets": None}, indent=2))
+        else:
+            print(f"Job {_job_display_id[:8]}: no budgets configured.")
+        return
+
+    if json_output:
+        out: dict = {
+            "job_id": _job_display_id,
+            "found_as": _found_as,
+            "limits": (_budgets.model_dump(mode="json") if _budgets else _budgets_dict),
+            "counters": counters.to_json() if counters else None,
+            "evaluation": evaluation.to_json() if evaluation else None,
+            "status": _counter_status,
+            "diagnostic": _counter_diagnostic or None,
+        }
+        print(_json.dumps(out, indent=2))
+    else:
+        print(f"Budget for job {_job_display_id[:8]} ({_found_as}):")
+        if _budgets is not None:
+            if _budgets.max_total_tokens is not None:
+                print(f"  max_total_tokens:      {_budgets.max_total_tokens}")
+            if _budgets.max_provider_calls is not None:
+                print(f"  max_provider_calls:    {_budgets.max_provider_calls}")
+            if _budgets.max_wall_clock_minutes is not None:
+                print(f"  max_wall_clock_minutes: {_budgets.max_wall_clock_minutes}")
+            if _budgets.deadline is not None:
+                print(f"  deadline:              {_budgets.deadline.isoformat()}")
+        elif _budgets_dict is not None:
+            for k, v in _budgets_dict.items():
+                if v is not None:
+                    print(f"  {k}: {v}")
+        if evaluation is not None:
+            print(f"  exhausted:             {evaluation.exhausted}")
+            if evaluation.first_exhausted_limit:
+                print(f"  first_exhausted:       {evaluation.first_exhausted_limit}")
+            for src in evaluation.source_descriptions:
+                print(f"  {src}")
+            for warn in evaluation.warnings:
+                print(f"  WARNING: {warn}")
+        else:
+            print(f"  counters:              {_counter_status}")
+            if _counter_diagnostic:
+                print(f"  diagnostic:            {_counter_diagnostic}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.create": lambda args: _cmd_create_job(
         args.prompt,
         project_id=getattr(args, "project", None),
         task_type=getattr(args, "task_type", None),
         task_description=getattr(args, "task_description", None),
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
     ),
     "job.list": lambda args: _cmd_list_jobs(),
     "job.show": lambda args: _cmd_show_job(args.job_id),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),
     "job.permissions": lambda args: _cmd_show_permissions(args.job_id),
+    "job.budget": lambda args: _cmd_job_budget(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
     "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.run-loop": lambda args: _cmd_run_loop(

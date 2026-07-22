@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 
 
 def _utcnow() -> datetime:
@@ -125,6 +125,47 @@ class Task(BaseModel):
     output_artifact_ids: list[UUID] = Field(default_factory=list)
 
 
+class JobBudgets(BaseModel):
+    """Closed type for per-job budget limits (F018 T001).
+
+    All fields are optional. Absent means no limit.
+    StrictInt rejects bool, float, and string coercion.
+    extra="forbid" rejects unknown fields.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_total_tokens: StrictInt | None = None
+    max_provider_calls: StrictInt | None = None
+    max_wall_clock_minutes: StrictInt | None = None
+    deadline: datetime | None = None
+
+    @model_validator(mode="after")
+    def _validate_budget_fields(self) -> JobBudgets:
+        for name in ("max_total_tokens", "max_provider_calls", "max_wall_clock_minutes"):
+            val = getattr(self, name)
+            if val is not None:
+                if val <= 0:
+                    raise ValueError(f"JobBudgets.{name} must be strictly positive, got {val}")
+                if not (-2**53 < val < 2**53):
+                    raise ValueError(f"JobBudgets.{name} is not finite")
+        if self.deadline is not None:
+            if not isinstance(self.deadline, datetime):
+                raise ValueError(
+                    f"JobBudgets.deadline must be a datetime, "
+                    f"got {type(self.deadline).__name__}"
+                )
+            if self.deadline.tzinfo is None:
+                raise ValueError(
+                    "JobBudgets.deadline must be timezone-aware (UTC)"
+                )
+            object.__setattr__(
+                self, "deadline",
+                self.deadline.astimezone(timezone.utc),
+            )
+        return self
+
+
 class JobFences(BaseModel):
     """Closed type for per-job scope fences (F017 T003).
 
@@ -174,3 +215,4 @@ class Job(BaseModel):
     budget: Budget = Field(default_factory=Budget)
     metadata: dict[str, Any] = Field(default_factory=dict)
     fences: JobFences | None = None
+    budgets: JobBudgets | None = None

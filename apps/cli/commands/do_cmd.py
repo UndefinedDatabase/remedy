@@ -187,7 +187,25 @@ def _cmd_do(
     approve_scope: bool = False,
     repair_rounds: int | None = None,
     stream_evidence: bool = False,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
 ) -> None:
+    # --- Budget resolution (always runs — catches config-only budgets) ---
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+            project_root=repo,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     # --- Task input loading ---
     task_input = None
     if task_file and task_stdin:
@@ -273,6 +291,7 @@ def _cmd_do(
             repair_rounds=repair_rounds,
             repair_rounds_source=repair_rounds_source,
             stream_evidence=stream_evidence,
+            budgets=budgets,
         )
         return
 
@@ -309,6 +328,7 @@ def _cmd_do(
             autonomy_level=autonomy_level,
             max_loops=max_cycles,
             stop_before_apply=True,
+            budgets=budgets,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -375,6 +395,7 @@ def _cmd_do_pingpong(
     repair_rounds: int = 0,
     repair_rounds_source: str = "",
     stream_evidence: bool = False,
+    budgets: Any = None,
 ) -> None:
     """Run Builder ↔ Reviewer ping-pong loop."""
     if builder not in _VALID_PINGPONG_PROVIDERS:
@@ -414,7 +435,53 @@ def _cmd_do_pingpong(
             print(f"Test command: {test_command}")
         if repair_rounds > 0:
             print(f"Repair rounds: {repair_rounds}")
+        if budgets is not None:
+            print(f"Budgets: {budgets}")
         print()
+
+    # F018: build a budget-aware stop_check for the bare ping-pong path.
+    _stop_check = None
+    _on_provider_call = None
+    if budgets is not None:
+        from datetime import datetime as _dt, timezone as _tz
+        from packages.orchestration.budget_guard import BudgetCounters as _BC
+        from packages.orchestration.safe_points import should_stop as _should_stop
+
+        _pp_started = _dt.now(_tz.utc)
+        _pp_calls = 0
+        _pp_tokens = 0
+        _pp_measured = 0
+        _pp_unmeasured = 0
+
+        def _on_provider_call(attempt):
+            nonlocal _pp_calls, _pp_tokens, _pp_measured, _pp_unmeasured
+            if getattr(attempt, "provider", "fake") == "fake":
+                return
+            _pp_calls += 1
+            ua = getattr(attempt, "usage_actuals", None)
+            if ua is not None:
+                _pp_measured += 1
+                _pp_tokens += (
+                    getattr(ua, "input_tokens", 0) +
+                    getattr(ua, "output_tokens", 0)
+                )
+            else:
+                _pp_unmeasured += 1
+
+        def _stop_check():
+            counters = _BC(
+                provider_calls=_pp_calls,
+                measured_token_total=_pp_tokens,
+                measured_call_count=_pp_measured,
+                unmeasured_call_count=_pp_unmeasured,
+                started_at=_pp_started,
+            )
+            result = _should_stop("", budgets=budgets, counters=counters)
+            if not result.should_stop:
+                return None
+            if result.source == "operator":
+                return result.operator_signal
+            return result
 
     result = run_pingpong(
         goal,
@@ -434,6 +501,8 @@ def _cmd_do_pingpong(
         repair_rounds=repair_rounds,
         repair_rounds_source=repair_rounds_source,
         stream_evidence=stream_evidence,
+        stop_check=_stop_check,
+        on_provider_call=_on_provider_call,
     )
 
     data = export_pingpong_json(result)
@@ -851,6 +920,10 @@ def _cmd_do_job_plan(
     *,
     job_file: str = "",
     repo: str = ".",
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
     json_output: bool = False,
 ) -> None:
     """Parse a job file into ordered tasks (no provider calls)."""
@@ -860,17 +933,36 @@ def _cmd_do_job_plan(
         print("Error: --job-file is required", file=sys.stderr)
         sys.exit(1)
 
+    from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+    try:
+        budgets = resolve_job_budgets(
+            cli_max_total_tokens=max_total_tokens,
+            cli_max_provider_calls=max_provider_calls,
+            cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_deadline=deadline,
+            project_root=repo,
+        )
+    except (BudgetConfigError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     job = plan_job_from_file(job_file, repo)
 
     if job.error:
         print(f"Error: {job.error}", file=sys.stderr)
         sys.exit(1)
 
+    if budgets is not None:
+        job.budgets = budgets.model_dump(mode="json")
+        from packages.orchestration.pingpong_job import save_job_plan
+        save_job_plan(job)
+
     if json_output:
         print(json.dumps({
             "job_id": job.job_id,
             "job_title": job.job_title,
             "status": job.status,
+            "budgets": job.budgets,
             "tasks": [
                 {"task_id": t.task_id, "title": t.title, "status": t.status}
                 for t in job.tasks
@@ -883,6 +975,8 @@ def _cmd_do_job_plan(
         print(f"Tasks: {len(job.tasks)}")
         for t in job.tasks:
             print(f"  {t.task_id}: {t.title}")
+        if budgets is not None:
+            print(f"Budgets: {job.budgets}")
         print(f"\nNext: remedy do job-run {job.job_id}")
 
 
@@ -906,6 +1000,10 @@ def _cmd_do_job_run(
     repair_provider: str | None = None,
     repair_model: str | None = None,
     repair_effort: str | None = None,
+    max_total_tokens: str | None = None,
+    max_provider_calls: str | None = None,
+    max_wall_clock_minutes: str | None = None,
+    deadline: str | None = None,
 ) -> None:
     """Run pending tasks sequentially through the ping-pong loop.
 
@@ -954,6 +1052,37 @@ def _cmd_do_job_run(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(2)
 
+    # F018: only resolve budgets from CLI/config when the caller explicitly passed budget
+    # flags.  When no flags are given, the persisted JobPlan budgets are authoritative —
+    # do NOT re-read mutable CWD config and silently replace them.
+    _has_budget_flags = any(v is not None for v in (
+        max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline))
+    budgets_dict = None
+    if _has_budget_flags:
+        # F018: raw budget flags must not silently override a stopped job's limits.
+        # Changing limits requires an explicit Decision answer (extend/abandon).
+        from packages.orchestration.pingpong_job import load_job_plan
+        _existing = load_job_plan(job_id)
+        if _existing is not None and getattr(_existing, "status", "") == "stopped":
+            print(
+                "Error: job is stopped — budget limits cannot be changed via CLI flags. "
+                "Use the Decision workflow (extend/abandon) to resume a stopped job.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
+        try:
+            budgets = resolve_job_budgets(
+                cli_max_total_tokens=max_total_tokens,
+                cli_max_provider_calls=max_provider_calls,
+                cli_max_wall_clock_minutes=max_wall_clock_minutes,
+                cli_deadline=deadline,
+            )
+        except (BudgetConfigError, ValueError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(2)
+        budgets_dict = budgets.model_dump(mode="json") if budgets is not None else None
+
     from packages.orchestration.pingpong_job import (
         export_job_report,
         run_job,
@@ -975,6 +1104,7 @@ def _cmd_do_job_run(
         repair_rounds_source=repair_source,
         test_command=test_command,
         claude_cli_write_mode=claude_cli_write_mode,
+        budgets=budgets_dict,
         **invocation.as_run_job_kwargs(),
     )
 
@@ -2413,6 +2543,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         approve_scope=getattr(args, "approve_scope", False),
         repair_rounds=getattr(args, "repair_rounds", None),
         stream_evidence=getattr(args, "stream_evidence", False),
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",
@@ -2456,6 +2590,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.job-plan": lambda args: _cmd_do_job_plan(
         job_file=getattr(args, "job_file", None) or "",
         repo=getattr(args, "repo", None) or ".",
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
         json_output=getattr(args, "json", False),
     ),
     "do.job-run": lambda args: _cmd_do_job_run(
@@ -2477,6 +2615,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         repair_provider=getattr(args, "repair_provider", None),
         repair_model=getattr(args, "repair_model", None),
         repair_effort=getattr(args, "repair_effort", None),
+        max_total_tokens=getattr(args, "max_total_tokens", None),
+        max_provider_calls=getattr(args, "max_provider_calls", None),
+        max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        deadline=getattr(args, "deadline", None),
     ),
     "do.job-resume": lambda args: _cmd_do_job_resume(
         args.job_id,

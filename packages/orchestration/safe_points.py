@@ -556,3 +556,69 @@ def stop_status(job_id: str, *, control_root_path: Path | None = None) -> StopSt
         pending=stop_requested(jid, control_root_path=control_root_path),
         archived=tuple(archived_signals(jid, control_root_path=control_root_path)),
     )
+
+
+# ---------------------------------------------------------------------------
+# Unified should_stop — ONE evaluation per safe point
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ShouldStopResult:
+    """Result of the unified safe-point check."""
+
+    should_stop: bool
+    reason: str = ""
+    source: str = ""
+    operator_signal: StopSignal | None = None
+    budget_evaluation: Any = None
+
+    def to_json(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "should_stop": self.should_stop,
+            "reason": self.reason,
+            "source": self.source,
+        }
+        if self.operator_signal is not None:
+            d["operator_signal"] = self.operator_signal.to_json()
+        if self.budget_evaluation is not None:
+            d["budget_evaluation"] = self.budget_evaluation.to_json()
+        return d
+
+
+def should_stop(
+    job_id: str,
+    *,
+    budgets: Any | None = None,
+    counters: Any | None = None,
+    now: datetime | None = None,
+    control_root_path: Path | None = None,
+) -> ShouldStopResult:
+    """Unified safe-point check: operator stop first, then budget, then continue.
+
+    This is the SINGLE entry point for safe-point evaluation.
+    Call it once per safe point; never call stop_requested and budget check separately.
+    """
+    signal = stop_requested(job_id, control_root_path=control_root_path)
+    if signal is not None:
+        return ShouldStopResult(
+            should_stop=True,
+            reason=f"operator_stop: {signal.reason}",
+            source="operator",
+            operator_signal=signal,
+        )
+
+    if budgets is not None and counters is not None:
+        from packages.orchestration.budget_guard import evaluate_budget
+
+        evaluation = evaluate_budget(budgets, counters, now=now)
+        if evaluation.exhausted:
+            limit = evaluation.first_exhausted_limit or "unknown"
+            return ShouldStopResult(
+                should_stop=True,
+                reason=f"budget_exhausted:{limit}",
+                source="budget",
+                budget_evaluation=evaluation,
+            )
+
+    return ShouldStopResult(should_stop=False)

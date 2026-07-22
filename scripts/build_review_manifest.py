@@ -1374,7 +1374,7 @@ _COMMIT_GATE = "commit_execution_gate.json"
 _ALL_READY_GATES = tuple(_VERDICT_GATES) + _OK_GATES + (_COMMIT_GATE,)
 
 #: F1 (round 23): every READY gate's schema is version-closed.
-_SUPPORTED_GATE_VERSIONS = frozenset({"1.0.0"})
+_SUPPORTED_GATE_VERSIONS = frozenset({"1.0.0", "1.1.0"})
 _MISSING = object()
 
 #: F1 (round 24): the CLOSED allowed-field set of every READY gate — an unknown field blocks.
@@ -1417,9 +1417,16 @@ _GATE_ALLOWED_FIELDS = {
         "blocked_gates", "gate_checks", "issues", "non_pass_gates", "promote_ready",
         "schema_version", "verdict"}),
 }
-_RUNTIME_CHECK_FIELDS = frozenset({"check_id", "check_type", "file_missing", "found", "pattern",
-                                   "source_file"})
-_RUNTIME_CHECK_TYPES = frozenset({"call_exists"})
+_RUNTIME_STATIC_CHECK_FIELDS = frozenset({"check_id", "check_type", "file_missing", "found",
+                                          "pattern", "source_file"})
+_RUNTIME_BINDING_REQUIRED_FIELDS = frozenset({"check_id", "check_type", "test_file", "min_passed",
+                                               "found"})
+_RUNTIME_BINDING_OPTIONAL_FIELDS = frozenset({"bound_run", "critical_node_ids"})
+_RUNTIME_BOUND_RUN_REQUIRED = frozenset({"run_id", "command", "exit_code", "passed", "failed",
+                                          "skipped", "selected", "node_ids", "output_hash",
+                                          "head_sha"})
+_RUNTIME_BOUND_RUN_OPTIONAL = frozenset({"deselected", "duration_seconds"})
+_RUNTIME_CHECK_TYPES = frozenset({"call_exists", "test_execution_binding"})
 #: The FV's OWN commit-readiness view (distinct from the packaged commit gate's verdict); a
 #: pre-acceptance package must never claim it is auto-promotable.
 _FV_COMMIT_NOT_READY = frozenset({"BLOCKED", "NEEDS_HUMAN_APPROVAL", "NEEDS_APPROVAL",
@@ -1700,9 +1707,18 @@ _GATE_SCHEMA = {
         "issues": _Arr(STR), "current_hashes": _Map("repo_path", STR),
         "evidence_hashes": _Map("repo_path", STR), "content_hash_verified": BOOL}),
     "runtime_integration_gate.json": _Obj({
-        "schema_version": STR, "verdict": STR, "checks": _Arr(_Obj({
-            "check_id": STR, "check_type": STR, "file_missing": BOOL, "found": BOOL, "pattern": STR,
-            "source_file": STR})), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
+        "schema_version": STR, "verdict": STR, "checks": _Arr(_OneOf(
+            _Obj({"check_id": STR, "check_type": STR, "file_missing": BOOL, "found": BOOL,
+                  "pattern": STR, "source_file": STR}),
+            _Obj({"check_id": STR, "check_type": STR, "test_file": STR, "min_passed": INT,
+                  "found": BOOL, "bound_run": _Obj({
+                      "run_id": STR, "command": STR, "exit_code": INT, "passed": INT, "failed": INT,
+                      "skipped": INT, "selected": INT, "node_ids": _Arr(STR),
+                      "output_hash": STR, "head_sha": STR},
+                      optional={"deselected", "duration_seconds"}),
+                  "critical_node_ids": _Arr(STR)},
+                 optional={"bound_run", "critical_node_ids"}),
+        )), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
     "manifest_integrity.json": _Obj({
         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
     "postmortem_integrity.json": _Obj({
@@ -1977,10 +1993,78 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
         if not isinstance(checks, list):
             problems.append(f"{name} checks is not a list")
         else:
+            if len(checks) == 0:
+                problems.append(f"{name} checks_total is zero — gate cannot pass with no checks")
             ids: set = set()
             for i, c in enumerate(checks):
-                if not isinstance(c, dict) or set(c) != _RUNTIME_CHECK_FIELDS:
-                    problems.append(f"{name} check[{i}] has the wrong field set")
+                if not isinstance(c, dict):
+                    problems.append(f"{name} check[{i}] is not an object")
+                    continue
+                ct = c.get("check_type")
+                if ct == "call_exists":
+                    if set(c) != _RUNTIME_STATIC_CHECK_FIELDS:
+                        problems.append(f"{name} checks[{i}] has unknown field(s) "
+                                        f"{sorted(set(c) - _RUNTIME_STATIC_CHECK_FIELDS)} "
+                                        f"(schema is closed)" if set(c) - _RUNTIME_STATIC_CHECK_FIELDS
+                                        else f"{name} checks[{i}] is missing required field(s) "
+                                        f"{sorted(_RUNTIME_STATIC_CHECK_FIELDS - set(c))}")
+                        continue
+                    if not _safe_rel_path(c.get("source_file")):
+                        problems.append(f"{name} check {c.get('check_id')!r} source_file "
+                                        f"is not a safe relative path")
+                    if c.get("file_missing") is not False:
+                        problems.append(f"{name} check {c.get('check_id')!r} file_missing is not false")
+                elif ct == "test_execution_binding":
+                    allowed = _RUNTIME_BINDING_REQUIRED_FIELDS | _RUNTIME_BINDING_OPTIONAL_FIELDS
+                    extra = set(c) - allowed
+                    missing = _RUNTIME_BINDING_REQUIRED_FIELDS - set(c)
+                    if extra:
+                        problems.append(f"{name} checks[{i}] has unknown field(s) {sorted(extra)}")
+                        continue
+                    if missing:
+                        problems.append(f"{name} checks[{i}] is missing required field(s) "
+                                        f"{sorted(missing)}")
+                        continue
+                    if not isinstance(c.get("test_file"), str) or not c["test_file"]:
+                        problems.append(f"{name} check {c.get('check_id')!r} test_file is empty")
+                    if not isinstance(c.get("min_passed"), int) or c.get("min_passed", 0) < 1:
+                        problems.append(f"{name} check {c.get('check_id')!r} min_passed < 1")
+                    br = c.get("bound_run")
+                    if c.get("found") is True and br is not None:
+                        if isinstance(br, dict):
+                            br_extra = set(br) - _RUNTIME_BOUND_RUN_REQUIRED - _RUNTIME_BOUND_RUN_OPTIONAL
+                            br_missing = _RUNTIME_BOUND_RUN_REQUIRED - set(br)
+                            if br_extra:
+                                problems.append(f"{name} checks[{i}].bound_run has unknown field(s) "
+                                                f"{sorted(br_extra)}")
+                            if br_missing:
+                                problems.append(f"{name} checks[{i}].bound_run is missing field(s) "
+                                                f"{sorted(br_missing)}")
+                            if not br_extra and not br_missing:
+                                if not isinstance(br.get("head_sha"), str) or not br["head_sha"]:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.head_sha is empty")
+                                elif ctx.get("review_subject_head") and br["head_sha"] != ctx["review_subject_head"]:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.head_sha "
+                                        f"{br['head_sha']!r} != Review Subject HEAD "
+                                        f"{ctx['review_subject_head']!r}")
+                                if not isinstance(br.get("output_hash"), str) or not br["output_hash"]:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.output_hash is empty")
+                                elif not re.fullmatch(r"[0-9a-f]{64}", br["output_hash"]):
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.output_hash is not sha256 hex")
+                                _mp = c.get("min_passed", 1)
+                                _bp = br.get("passed", 0)
+                                if isinstance(_mp, int) and isinstance(_bp, int) and _bp < _mp:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.passed ({_bp}) < "
+                                        f"min_passed ({_mp})")
+                        else:
+                            problems.append(f"{name} checks[{i}].bound_run is not an object")
+                else:
+                    problems.append(f"{name} check[{i}] check_type {ct!r} is not supported")
                     continue
                 cid = c.get("check_id")
                 if not isinstance(cid, str) or not cid:
@@ -1989,15 +2073,8 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
                     problems.append(f"{name} duplicate check_id {cid!r}")
                 else:
                     ids.add(cid)
-                if c.get("check_type") not in _RUNTIME_CHECK_TYPES:
-                    problems.append(f"{name} check {cid!r} check_type {c.get('check_type')!r} "
-                                    f"is not supported")
-                if not _safe_rel_path(c.get("source_file")):
-                    problems.append(f"{name} check {cid!r} source_file is not a safe relative path")
                 if c.get("found") is not True:
-                    problems.append(f"{name} check {cid!r} found is not true")
-                if c.get("file_missing") is not False:
-                    problems.append(f"{name} check {cid!r} file_missing is not false")
+                    problems.append(f"{name} check {c.get('check_id')!r} found is not true")
             ct, cp = gate.get("checks_total"), gate.get("checks_passed")
             if not (ct == cp == len(checks)):
                 problems.append(f"{name} checks_total/checks_passed/len(checks) disagree "
@@ -2018,12 +2095,16 @@ def _safe_rel_path(p) -> bool:
 
 
 _VT_NAME = "verification_tests.json"
-_VT_SUPPORTED_VERSIONS = frozenset({"1.0.0"})
+_VT_SUPPORTED_VERSIONS = frozenset({"1.0.0", "1.1.0"})
 _VT_SUPPORTED_TYPES = frozenset({"explicit_commands"})
 _VT_TOP_FIELDS = frozenset({"schema_version", "verification_type", "runs", "command", "exit_code",
                             "passed", "failed", "test_files", "timestamp"})
-_VT_RUN_FIELDS = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
-                            "stdout_summary"})
+_VT_RUN_FIELDS_V10 = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                                "stdout_summary"})
+_VT_RUN_FIELDS_V11 = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                                "stdout_summary", "head_sha", "output_hash", "selected",
+                                "deselected", "skipped", "node_ids", "duration_seconds"})
+_VT_RUN_FIELDS = _VT_RUN_FIELDS_V10
 _VT_RUN_ID_RE = re.compile(r"^vr-\d{4,}$")
 _VT_MAX_STDOUT = 4000
 
@@ -2110,8 +2191,10 @@ def validate_verification_tests(vt):
         seen_ids: set = set()
         run_cmds: list = []
         run_exits: list = []
+        _vt_ver = vt.get("schema_version", "1.0.0")
+        _expected_run_fields = _VT_RUN_FIELDS_V11 if _vt_ver == "1.1.0" else _VT_RUN_FIELDS_V10
         for i, r in enumerate(runs):
-            if not isinstance(r, dict) or set(r) != _VT_RUN_FIELDS:
+            if not isinstance(r, dict) or set(r) != _expected_run_fields:
                 problems.append(f"{_VT_NAME} runs[{i}] has the wrong field set")
                 continue
             rid = r.get("run_id")
@@ -2144,6 +2227,35 @@ def validate_verification_tests(vt):
             if _is_real_int(r.get("passed")) and r["passed"] < 0:
                 problems.append(f"{_VT_NAME} runs[{i}] passed is negative ({r['passed']})")
             run_files |= _vt_safe_files(r.get("test_files"), f"runs[{i}]", problems)
+            if _vt_ver == "1.1.0":
+                if not isinstance(r.get("head_sha"), str) or not r["head_sha"]:
+                    problems.append(f"{_VT_NAME} runs[{i}].head_sha is empty")
+                if not isinstance(r.get("output_hash"), str) or not re.fullmatch(r"[0-9a-f]{64}", r.get("output_hash", "")):
+                    problems.append(f"{_VT_NAME} runs[{i}].output_hash is not sha256 hex")
+                for _nf in ("selected", "deselected", "skipped"):
+                    if not _is_real_int(r.get(_nf)) or r.get(_nf, -1) < 0:
+                        problems.append(f"{_VT_NAME} runs[{i}].{_nf} is not a non-negative integer")
+                if not isinstance(r.get("node_ids"), list) or not all(isinstance(n, str) for n in r.get("node_ids", [])):
+                    problems.append(f"{_VT_NAME} runs[{i}].node_ids is not a list of strings")
+                if not isinstance(r.get("duration_seconds"), (int, float)) or isinstance(r.get("duration_seconds"), bool) or r.get("duration_seconds", -1) < 0:
+                    problems.append(f"{_VT_NAME} runs[{i}].duration_seconds is not a non-negative number")
+                if all(_is_real_int(r.get(f)) for f in ("selected", "passed", "failed", "skipped")):
+                    _expected_sel = r["passed"] + r["failed"] + r["skipped"]
+                    if r["selected"] != _expected_sel:
+                        problems.append(f"{_VT_NAME} runs[{i}] selected ({r['selected']}) != "
+                                        f"passed+failed+skipped ({_expected_sel})")
+                if isinstance(r.get("node_ids"), list) and _is_real_int(r.get("selected")):
+                    if len(r["node_ids"]) != r["selected"]:
+                        problems.append(f"{_VT_NAME} runs[{i}] node_ids count ({len(r['node_ids'])}) != "
+                                        f"selected ({r['selected']})")
+                if (isinstance(r.get("output_hash"), str)
+                        and re.fullmatch(r"[0-9a-f]{64}", r["output_hash"])
+                        and isinstance(r.get("stdout_summary"), str)):
+                    import hashlib as _hl
+                    _expected_hash = _hl.sha256(r["stdout_summary"].encode()).hexdigest()
+                    if r["output_hash"] != _expected_hash:
+                        problems.append(f"{_VT_NAME} runs[{i}] output_hash does not match "
+                                        f"sha256(stdout_summary)")
             if _is_real_int(r.get("passed")):
                 sum_p += r["passed"]
             if _is_real_int(r.get("failed")):
@@ -2282,7 +2394,8 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
     # the recorded verification total — decoded from the SAME loader so no second authority model
     # exists. A missing/invalid proof leaves the cross-checks off (the coordinator refuses it
     # separately); a present proof binds change-provenance and the FV test total.
-    ctx: dict = {"proof_authority": None, "proof_hashes": None, "vt_passed": None}
+    ctx: dict = {"proof_authority": None, "proof_hashes": None, "vt_passed": None,
+                 "review_subject_head": None}
     try:
         proof = load_json("current_change_content_proof.json")
         if isinstance(proof, dict):
@@ -2292,6 +2405,12 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
             ctx["proof_hashes"] = dict(fh)
     except Exception:
         pass                                           # a corrupt proof blocks in the coordinator
+    try:
+        _rs = load_json("review_subject.json")
+        if isinstance(_rs, dict) and isinstance(_rs.get("head_commit"), str):
+            ctx["review_subject_head"] = _rs["head_commit"]
+    except Exception:
+        pass
     # F3 (round 26): the VerificationTests are STRICTLY validated, fail-closed. A present-but-invalid
     # record blocks here; a valid record's ``passed`` is the authoritative total the FV must equal.
     vt_problems: list[str] = []

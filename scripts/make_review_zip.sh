@@ -333,6 +333,7 @@ find . \
   \( \
     -path './.git' -o \
     -path './.data' -o \
+    -path './.agent/Evidence' -o \
     -path './node_modules' -o \
     -path './*/node_modules' -o \
     -path './dist' -o \
@@ -404,6 +405,17 @@ if [[ -n "$EVIDENCE_DIR" ]]; then
        --src "$EVIDENCE_DIR" --dest "$STAGED_CURRENT" --inventory-out "$STAGED_CURRENT" >/dev/null; then
     echo "Evidence staging refused an unsafe or over-limit member in $EVIDENCE_DIR." >&2
     exit 2
+  fi
+
+  # --- F018 Scope 2: refresh derivable gates in the STAGED copy (after staging,
+  #     before manifest). Ensures the packaged runtime gate matches production v1.1.0. ---
+  if [[ -f "scripts/refresh_review_evidence.py" ]]; then
+    if python3 scripts/refresh_review_evidence.py \
+         --staged-dir "$STAGED_CURRENT" --repo-root "$ROOT"; then
+      echo "Evidence refresh completed for staged copy."
+    else
+      echo "WARNING: Evidence refresh failed for staged copy." >&2
+    fi
   fi
 
   # --- Observability index generated from the STAGED bytes (F1, round 20) ---

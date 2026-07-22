@@ -549,13 +549,8 @@ def export_job_evidence(
     except Exception as exc:
         _write_gate_error("fresh_evidence_gate.error.txt", exc)
 
-    # Runtime integration gate — verify gate writers are wired into the pipeline.
-    try:
-        from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
-        _repo_root = getattr(job, "repo_path", None) or "."
-        write_runtime_integration_gate(str(out_path), _repo_root, written)
-    except Exception as exc:
-        _write_gate_error("runtime_integration_gate.error.txt", exc)
+    # Runtime integration gate — moved AFTER verification_tests so it can bind
+    # to executed test records. See block below (after _run_verifications).
 
     # The REVIEW SUBJECT — resolved ONCE, by the one production helper, and recorded as a fact.
     #
@@ -676,6 +671,7 @@ def export_job_evidence(
     # each as a run with a stable id. Nothing is claimed verified that was not
     # actually run; unit tests inject a deterministic runner to avoid recursively
     # spawning pytest (finding 3). No hardcoded smoke suite (findings 2/3/4).
+    _vt_data = None
     try:
         _repo = getattr(job, "repo_path", None) or "."
         _vt_data = _run_verifications(
@@ -687,6 +683,18 @@ def export_job_evidence(
             written["verification_tests.json"] = str(_vt_path)
     except Exception as exc:
         _write_gate_error("verification_tests.error.txt", exc)
+
+    # Runtime integration gate — AFTER verification_tests so it can bind to
+    # executed test records (node IDs, exit codes, pass/fail/skip counts).
+    try:
+        from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
+        _repo_root = getattr(job, "repo_path", None) or "."
+        write_runtime_integration_gate(
+            str(out_path), _repo_root, written,
+            verification_data=_vt_data,
+        )
+    except Exception as exc:
+        _write_gate_error("runtime_integration_gate.error.txt", exc)
 
     # Manual-completion finalization — deterministic second pass, AFTER
     # verification_tests.json exists and BEFORE the final verifier. Regenerates
@@ -1514,8 +1522,24 @@ def _verification_test_files_from_command(command: str) -> list[str]:
                    if not any(f == i or f.startswith(i.rstrip("/") + "/") for i in ignored)})
 
 
+def _scrub_paths(text: str, repo: str) -> str:
+    """Replace local absolute paths with relative equivalents for safe packaging."""
+    abs_repo = os.path.abspath(repo)
+    if abs_repo and abs_repo != "/":
+        text = text.replace(abs_repo + "/", "").replace(abs_repo, ".")
+    home = os.path.expanduser("~")
+    if home and home != "/":
+        text = text.replace(home, "~")
+    if text and not text.startswith("\n"):
+        nl = text.find("\n")
+        if nl > 0:
+            text = text[nl + 1:]
+    return text
+
+
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     """Execute a verification command via subprocess and parse pytest counts."""
+    import hashlib
     import shlex
     import subprocess as _sp
     from packages.orchestration.review_subject import child_env_without_declaration
@@ -1524,21 +1548,44 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         argv = shlex.split(command)
     except ValueError:
         argv = command.split()
-    # F6 (round 16): a verification child NEVER inherits the operator's base declaration. It is
-    # exported for the repository under review, but this child runs whatever it likes — a pytest
-    # suite against its own temporary repositories, which have never heard of that commit. In
-    # round 15 exactly that reached a subprocess and cost an unrelated job its content proof.
-    # A child that needs a base is given one explicitly.
-    result = _sp.run(argv, cwd=repo, capture_output=True, text=True, timeout=600,
-                     env=child_env_without_declaration())
-    passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", result.stdout or ""))
-    failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", result.stdout or ""))
+    _env = child_env_without_declaration()
+
+    argv_v = [a for a in argv if a not in ("-q", "--quiet")]
+    if "-v" not in argv_v and "--verbose" not in argv_v:
+        argv_v.append("-v")
+    import time as _time
+    _t0 = _time.monotonic()
+    result = _sp.run(argv_v, cwd=repo, capture_output=True, text=True, timeout=600,
+                     env=_env)
+    _duration = round(_time.monotonic() - _t0, 3)
+    stdout = result.stdout or ""
+    passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", stdout))
+    failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", stdout))
+    skipped = sum(int(x) for x in re.findall(r"(\d+)\s+skipped", stdout))
+    deselected = sum(int(x) for x in re.findall(r"(\d+)\s+deselected", stdout))
+    node_ids = re.findall(r"^(tests/\S+::\S+)\s+(?:PASSED|FAILED|ERROR|SKIPPED)", stdout, re.MULTILINE)
+    selected = len(node_ids) if node_ids else (passed + failed + skipped)
+    output_hash = hashlib.sha256(stdout.encode("utf-8", errors="replace")).hexdigest()
+    head_sha = ""
+    try:
+        _h = _sp.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True,
+                      text=True, timeout=10, env=_env)
+        head_sha = (_h.stdout or "").strip()
+    except Exception:
+        pass
     return {
         "exit_code": result.returncode,
         "passed": passed,
         "failed": failed,
-        "stdout_summary": (result.stdout or "")[-2000:],
-        "stderr_summary": (result.stderr or "")[-1000:],
+        "skipped": skipped,
+        "selected": selected,
+        "deselected": deselected,
+        "node_ids": node_ids,
+        "output_hash": output_hash,
+        "head_sha": head_sha,
+        "stdout_summary": _scrub_paths(stdout[-2000:], repo),
+        "stderr_summary": _scrub_paths((result.stderr or "")[-1000:], repo),
+        "duration_seconds": _duration,
     }
 
 
@@ -1556,9 +1603,17 @@ def _run_verifications(
     """
     if not commands and runner is None:
         return None
+    import subprocess as _sp_head
     from datetime import datetime as _dt, timezone as _tz
     cmds = [c for c in (commands or []) if c and c.strip()]
     runs: list[dict[str, Any]] = []
+    _head_sha_default = ""
+    try:
+        _h_d = _sp_head.run(["git", "rev-parse", "HEAD"], cwd=repo,
+                             capture_output=True, text=True, timeout=10)
+        _head_sha_default = (_h_d.stdout or "").strip()
+    except Exception:
+        pass
     for i, cmd in enumerate(cmds):
         rid = f"vr-{i + 1:04d}"
         r = runner(cmd) if runner is not None else _default_verification_runner(cmd, repo)
@@ -1566,24 +1621,52 @@ def _run_verifications(
         if test_files is None:
             test_files = _verification_test_files_from_command(cmd)
         test_files = sorted({_vt_norm(f) for f in test_files})
+        _passed = int(r.get("passed", 0) or 0)
+        _failed = int(r.get("failed", 0) or 0)
+        _skipped = int(r.get("skipped", 0) or 0)
+        _node_ids = list(r.get("node_ids") or [])
+        _selected = int(r.get("selected", 0) or 0)
+        if not _selected:
+            _selected = len(_node_ids) if _node_ids else (_passed + _failed + _skipped)
+        _deselected = int(r.get("deselected", 0) or 0)
+        _stdout_summary = str(r.get("stdout_summary", "") or "")[-2000:]
+        _output_hash = str(r.get("output_hash", "") or "")
+        if _output_hash.startswith("sha256:"):
+            _output_hash = _output_hash[7:]
+        if not _output_hash:
+            import hashlib as _hl_norm
+            _output_hash = _hl_norm.sha256(
+                _stdout_summary.encode("utf-8", errors="replace")).hexdigest()
+        _head_sha = str(r.get("head_sha", "") or "") or _head_sha_default
+        _duration = r.get("duration_seconds")
+        if _duration is None:
+            _duration = 0.0
+        else:
+            _duration = round(float(_duration), 3)
         runs.append({
             "run_id": rid,
             "command": cmd,
             "exit_code": int(r.get("exit_code", -1)),
-            "passed": int(r.get("passed", 0) or 0),
-            "failed": int(r.get("failed", 0) or 0),
+            "passed": _passed,
+            "failed": _failed,
+            "skipped": _skipped,
+            "selected": _selected,
+            "deselected": _deselected,
+            "node_ids": _node_ids,
+            "output_hash": _output_hash,
+            "head_sha": _head_sha,
+            "duration_seconds": _duration,
             "test_files": test_files,
-            "stdout_summary": str(r.get("stdout_summary", "") or "")[-2000:],
+            "stdout_summary": _stdout_summary,
         })
     total_passed = sum(x["passed"] for x in runs)
     total_failed = sum(x["failed"] for x in runs)
     exit_code = 0 if runs and all(x["exit_code"] == 0 for x in runs) else (0 if not runs else 1)
     all_files = sorted({f for x in runs for f in x["test_files"]})
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "verification_type": "explicit_commands",
         "runs": runs,
-        # Backward-compatible top-level fields derived from the runs.
         "command": " && ".join(c["command"] for c in runs),
         "exit_code": exit_code,
         "passed": total_passed,
@@ -2886,9 +2969,21 @@ def create_manual_completion_bundle(
         "root_verification": {"exit_code": 0, "passed": total_passed, "failed": 0}})
 
     # 6) The complete READY gate set (closed schemas, coherent verdicts).
+    _vt_data: dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "verification_type": "explicit_commands",
+        "runs": verification_runs,
+        "command": " && ".join(r["command"] for r in verification_runs),
+        "exit_code": 0 if all(r["exit_code"] == 0 for r in verification_runs) else 1,
+        "passed": total_passed,
+        "failed": 0,
+        "test_files": sorted({f for r in verification_runs for f in r["test_files"]}),
+        "timestamp": generated_at,
+    }
     _ma.build_manual_completion_gates(
         evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
-        step=step_range, total_passed=total_passed, verification_runs=verification_runs)
+        step=step_range, total_passed=total_passed, verification_runs=verification_runs,
+        repo_root=repo_root, verification_data=_vt_data)
     # change-provenance gate must carry the real covered/excluded sets and evidence sources.
     cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
     cp = json.loads(open(cp_path, encoding="utf-8").read())

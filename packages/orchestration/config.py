@@ -239,6 +239,34 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=list,
         default=None,
     ),
+    ConfigKeySpec(
+        key="budget.max_total_tokens",
+        env_var="REMEDY_BUDGET_MAX_TOTAL_TOKENS",
+        description="Maximum total tokens for a job (F018 budgets)",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.max_provider_calls",
+        env_var="REMEDY_BUDGET_MAX_PROVIDER_CALLS",
+        description="Maximum provider calls for a job (F018 budgets)",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.max_wall_clock_minutes",
+        env_var="REMEDY_BUDGET_MAX_WALL_CLOCK_MINUTES",
+        description="Maximum wall-clock minutes for a job (F018 budgets)",
+        value_type=int,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.deadline",
+        env_var="REMEDY_BUDGET_DEADLINE",
+        description="UTC deadline for a job as ISO 8601 string (F018 budgets)",
+        value_type=str,
+        default=None,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
@@ -260,8 +288,13 @@ _DEFAULT_PROJECT_PATH = Path("remedy.toml")
 _DEFAULT_USER_PATH = Path.home() / ".config" / "remedy" / "remedy.toml"
 
 
-def _load_toml(path: Path, diagnostics: list[str] | None = None) -> dict[str, Any]:
-    """Load a TOML file and return the parsed dict. Returns {} if missing or unparseable."""
+def _load_toml(path: Path, diagnostics: list[str] | None = None,
+               *, fail_closed_for_budgets: bool = False) -> dict[str, Any]:
+    """Load a TOML file and return the parsed dict. Returns {} if missing.
+
+    When *fail_closed_for_budgets* is True AND the file exists but cannot be
+    parsed, a ``BudgetConfigError`` is raised instead of silently returning {}.
+    """
     if tomllib is None:
         if diagnostics is not None and path.is_file():
             diagnostics.append(f"TOML parser unavailable (install tomli for Python <3.11): {path}")
@@ -272,6 +305,10 @@ def _load_toml(path: Path, diagnostics: list[str] | None = None) -> dict[str, An
         with open(path, "rb") as f:
             return tomllib.load(f)
     except Exception as exc:
+        if fail_closed_for_budgets:
+            from packages.orchestration.budget_resolution import BudgetConfigError
+            raise BudgetConfigError(
+                f"Malformed TOML in {path}: {exc}") from exc
         if diagnostics is not None:
             diagnostics.append(f"Malformed TOML in {path}: {exc}")
         return {}
@@ -460,17 +497,25 @@ def load_config(
 
     diagnostics: list[str] = []
 
-    project_raw = _load_toml(p_path, diagnostics)
-    user_raw = _load_toml(u_path, diagnostics)
+    project_raw = _load_toml(p_path, diagnostics, fail_closed_for_budgets=True)
+    user_raw = _load_toml(u_path, diagnostics, fail_closed_for_budgets=True)
 
     project_flat = _flatten_toml(_extract_remedy_table(project_raw))
     user_flat = _flatten_toml(_extract_remedy_table(user_raw))
 
     for key in project_flat:
         if key not in _KEY_SPEC_MAP:
+            if key.startswith("budget."):
+                from packages.orchestration.budget_resolution import BudgetConfigError
+                raise BudgetConfigError(
+                    f"Unknown budget config key in {p_path}: {key!r}")
             diagnostics.append(f"Unknown key in {p_path}: {key}")
     for key in user_flat:
         if key not in _KEY_SPEC_MAP:
+            if key.startswith("budget."):
+                from packages.orchestration.budget_resolution import BudgetConfigError
+                raise BudgetConfigError(
+                    f"Unknown budget config key in {u_path}: {key!r}")
             diagnostics.append(f"Unknown key in {u_path}: {key}")
 
     report = ConfigLoadReport(
