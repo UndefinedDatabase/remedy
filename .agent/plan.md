@@ -23,6 +23,7 @@ boundaries, real E2E tests, then one canonical ZIP.
 - [x] scripts/refresh_review_evidence.py: regenerate derivable gates in staging
 - [x] make_review_zip.sh: call refresh after staging, before manifest
 - [x] evidence_refresh_report.json with gate verdicts
+- [x] Refresh updates evidence_snapshot_inventory.json for written files
 
 ## Scope 3 — Strict F018 runtime authority boundaries ✓
 - [x] Stopped-job override guard in run_job boundary (not just CLI)
@@ -33,14 +34,14 @@ boundaries, real E2E tests, then one canonical ZIP.
 
 ## Scope 4 — Full real package E2E tests ✓
 - [x] Manual bundle → v1.1.0 gate with nonzero checks (7 tests)
-- [x] Stale v1.0 gate automatically refreshed in staging (4 tests)
+- [x] Stale v1.0 gate automatically refreshed in staging (5 tests incl. inventory update)
 - [x] Original Evidence not mutated (1 test)
 - [x] BLOCKED_EVIDENCE for missing prerequisites (1 test)
 - [x] Manifest validator for v1.1.0 (8 tests)
 - [x] Stopped-job guard (2 tests)
 - [x] first_running_at timing (1 test)
 - [x] Persisted actuals schema (4 tests)
-- [x] Run full test matrix: 444 focused + 56 package + 8038 full suite
+- [x] Run full test matrix: 287 focused + 8067 full suite
 
 ## Scope 5 — Truthful docs, final Evidence and one canonical ZIP
 - [x] STATUS.md, T0_F018.md, context.md, live_review.md, plan.md updated

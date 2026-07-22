@@ -10,12 +10,12 @@ v1.1.0 runtime gate with 19 real checks (not zero-check v1.0.0). Manifest
 validator accepts v1.1.0 with version-discriminated field sets. Staged evidence
 refresh regenerates stale gates before packaging. Runtime boundaries hardened:
 stopped-job guard in run_job, first_running_at timing, closed actuals schema.
-28 new E2E tests + 444 focused + 8038 full suite passing. Evidence + ZIP pending.
+29 new E2E tests + 287 focused + 8067 full suite passing. Evidence + ZIP pending.
 
 ## Package-pipeline closure changes
 1. Unified gate producer: manual_attestation calls real write_runtime_integration_gate
 2. Versioned gate validation: build_review_manifest.py accepts v1.0.0 + v1.1.0
-3. Staged evidence refresh: scripts/refresh_review_evidence.py in make_review_zip.sh
+3. Staged evidence refresh: scripts/refresh_review_evidence.py in make_review_zip.sh + inventory update
 4. Stopped-job guard: run_job blocks if pending stop signal exists
 5. first_running_at timing: deferred until after budget validation + pre-stop pass
 6. Closed actuals schema: schema_version, actual_sources, unmeasured_call_count

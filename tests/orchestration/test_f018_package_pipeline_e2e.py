@@ -363,6 +363,52 @@ class TestEvidenceRefresh:
             report = json.loads(f.read())
         assert report["schema_version"] == "1.0.0"
 
+    def test_inventory_updated_after_refresh(self, scratch):
+        import hashlib
+        from scripts.refresh_review_evidence import refresh_staged_evidence
+
+        stale = {"schema_version": "1.0.0", "verdict": "PASS",
+                 "checks": [], "checks_total": 0, "checks_passed": 0, "issues": []}
+        gate_path = os.path.join(scratch, "runtime_integration_gate.json")
+        with open(gate_path, "w") as f:
+            json.dump(stale, f)
+
+        vt = _make_verification_data()
+        with open(os.path.join(scratch, "verification_tests.json"), "w") as f:
+            json.dump(vt, f)
+
+        old_inv = {
+            "inventory_v": 1,
+            "boundary": "source-evidence-at-snapshot",
+            "member_count": 2,
+            "members": [
+                {"kind": "regular", "mode": 420, "relative_path": "runtime_integration_gate.json",
+                 "sha256": "old_hash", "size": 100, "source_class": "evidence"},
+                {"kind": "regular", "mode": 420, "relative_path": "verification_tests.json",
+                 "sha256": "vt_hash", "size": 50, "source_class": "evidence"},
+            ],
+        }
+        inv_path = os.path.join(scratch, "evidence_snapshot_inventory.json")
+        with open(inv_path, "w") as f:
+            json.dump(old_inv, f)
+
+        refresh_staged_evidence(scratch, ".")
+
+        with open(inv_path) as f:
+            updated_inv = json.loads(f.read())
+
+        paths = [m["relative_path"] for m in updated_inv["members"]]
+        assert "evidence_refresh_report.json" in paths
+        assert "runtime_integration_gate.json" in paths
+        assert updated_inv["member_count"] == len(updated_inv["members"])
+
+        gate_entry = [m for m in updated_inv["members"]
+                      if m["relative_path"] == "runtime_integration_gate.json"][0]
+        assert gate_entry["sha256"] != "old_hash"
+        with open(gate_path, "rb") as f:
+            expected_sha = hashlib.sha256(f.read()).hexdigest()
+        assert gate_entry["sha256"] == expected_sha
+
     def test_original_evidence_not_mutated(self, scratch):
         from scripts.refresh_review_evidence import refresh_staged_evidence
         orig_dir = os.path.join(scratch, "original")

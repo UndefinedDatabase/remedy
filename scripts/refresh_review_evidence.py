@@ -15,6 +15,7 @@ what was regenerated (or left unchanged) and with what verdicts.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -101,7 +102,48 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
 
     report_path = os.path.join(staged_dir, "evidence_refresh_report.json")
     _write_json(report_path, report)
+
+    _update_inventory(staged_dir, report)
     return report
+
+
+def _file_sha256(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _update_inventory(staged_dir: str, report: dict) -> None:
+    """Update evidence_snapshot_inventory.json for files written by this refresh."""
+    inv_path = os.path.join(staged_dir, "evidence_snapshot_inventory.json")
+    inv = _read_json(inv_path)
+    if inv is None or not isinstance(inv.get("members"), list):
+        return
+
+    touched: list[str] = ["evidence_refresh_report.json"]
+    for g in report.get("refreshed_gates", []):
+        touched.append(g["gate"])
+
+    members_by_path = {m["relative_path"]: m for m in inv["members"]}
+    for rel in touched:
+        disk = os.path.join(staged_dir, rel)
+        if not os.path.isfile(disk):
+            continue
+        entry = {
+            "kind": "regular",
+            "mode": 0o644,
+            "relative_path": rel,
+            "sha256": _file_sha256(disk),
+            "size": os.path.getsize(disk),
+            "source_class": "evidence",
+        }
+        members_by_path[rel] = entry
+
+    inv["members"] = sorted(members_by_path.values(), key=lambda m: m["relative_path"])
+    inv["member_count"] = len(inv["members"])
+    _write_json(inv_path, inv)
 
 
 def main():

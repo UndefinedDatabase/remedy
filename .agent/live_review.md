@@ -39,14 +39,14 @@ Package: `scripts/make_review_zip.sh` — refresh-before-manifest pipeline
 ## Package-pipeline closure — ROOT CAUSE FIXED
 11. Manual attestation: hardcoded zero-check v1.0.0 → real v1.1.0 gate producer
 12. Manifest validator: v1.1.0 accepted with version-discriminated field sets
-13. Staged refresh: scripts/refresh_review_evidence.py regenerates stale gates
+13. Staged refresh: scripts/refresh_review_evidence.py regenerates stale gates + updates inventory
 14. Stopped-job guard in run_job: pending stop → block before config resolution
 15. first_running_at timing: deferred past budget validation and pre-stop check
 16. Closed actuals schema: schema_version + actual_sources + unmeasured_call_count
 17. Stronger bound_run validation: head_sha, output_hash non-empty; passed ≥ min_passed
 
 ## Test suites (package-pipeline closure round)
-- `test_f018_package_pipeline_e2e.py` — 28 passed (new)
+- `test_f018_package_pipeline_e2e.py` — 29 passed (new)
 - `test_f018_authority_integration.py` — 77 passed
 - `test_budget_guard.py` — 52 passed
 - `test_job_budgets.py` — 76 passed
