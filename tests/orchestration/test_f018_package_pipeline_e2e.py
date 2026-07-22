@@ -31,9 +31,11 @@ def _make_verification_data(
     test_files=None,
     passed_counts=None,
     head_sha="abc123",
-    output_hash="sha256:test",
+    output_hash=None,
 ):
     """Build complete verification_data matching all 4 binding test files."""
+    if output_hash is None:
+        output_hash = "a" * 64
     if test_files is None:
         test_files = [
             "tests/orchestration/test_f018_authority_integration.py",
@@ -42,10 +44,18 @@ def _make_verification_data(
             "tests/orchestration/test_budget_stop_integration.py",
         ]
     if passed_counts is None:
-        passed_counts = [77, 52, 76, 39]
+        passed_counts = [95, 52, 76, 39]
+
+    from packages.orchestration.runtime_integration_gate import TEST_EXECUTION_BINDINGS
+    _binding_map = {b["test_file"]: b for b in TEST_EXECUTION_BINDINGS}
 
     runs = []
     for i, (tf, pc) in enumerate(zip(test_files, passed_counts)):
+        node_ids = [f"{tf}::test_{j}" for j in range(3)]
+        binding = _binding_map.get(tf)
+        if binding:
+            for crit in binding.get("critical_node_ids", []):
+                node_ids.append(f"{tf}::{crit}")
         runs.append({
             "run_id": f"vr-{i + 1:04d}",
             "command": f"pytest {tf}",
@@ -56,7 +66,7 @@ def _make_verification_data(
             "stdout_summary": f"{pc} passed",
             "skipped": 0,
             "selected": pc,
-            "node_ids": [f"{tf}::test_{i}"],
+            "node_ids": node_ids,
             "output_hash": output_hash,
             "head_sha": head_sha,
         })
@@ -136,7 +146,7 @@ class TestGateProducerV110:
             br = b["bound_run"]
             assert isinstance(br, dict)
             assert br["head_sha"] == "abc123"
-            assert br["output_hash"] == "sha256:test"
+            assert br["output_hash"] == "a" * 64
             assert br["passed"] >= b["min_passed"]
 
     def test_missing_binding_blocks_gate(self, scratch):
@@ -329,10 +339,13 @@ class TestEvidenceRefresh:
             build_runtime_integration_gate,
         )
         from scripts.refresh_review_evidence import refresh_staged_evidence
+        vd = _make_verification_data()
         gate = build_runtime_integration_gate(
-            ".", verification_data=_make_verification_data())
+            ".", verification_data=vd)
         with open(os.path.join(scratch, "runtime_integration_gate.json"), "w") as f:
-            json.dump(gate, f)
+            f.write(json.dumps(gate, indent=1, sort_keys=True))
+        with open(os.path.join(scratch, "verification_tests.json"), "w") as f:
+            json.dump(vd, f)
 
         report = refresh_staged_evidence(scratch, ".")
         assert len(report["unchanged_gates"]) == 1

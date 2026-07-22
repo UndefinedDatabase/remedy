@@ -47,7 +47,7 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
 
     report: dict[str, Any] = {
         "schema_version": "1.0.0",
-        "staged_dir": staged_dir,
+        "staged_dir": os.path.basename(staged_dir),
         "refreshed_gates": [],
         "unchanged_gates": [],
         "issues": [],
@@ -56,36 +56,34 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
     existing_gate = _read_json(gate_path)
     verification_data = _read_json(vt_path)
 
-    needs_refresh = False
-    refresh_reason = ""
-
     if existing_gate is None:
-        needs_refresh = True
         refresh_reason = "runtime_integration_gate.json missing from staged evidence"
     elif existing_gate.get("schema_version") != "1.1.0":
-        needs_refresh = True
         refresh_reason = (
             f"stale schema_version {existing_gate.get('schema_version')!r} "
             f"(production is 1.1.0)")
     elif existing_gate.get("checks_total", 0) == 0:
-        needs_refresh = True
         refresh_reason = "zero checks in existing gate"
-    elif existing_gate.get("verdict") == "PASS":
-        report["unchanged_gates"].append({
-            "gate": "runtime_integration_gate.json",
-            "reason": "already v1.1.0 with passing checks",
-            "schema_version": existing_gate.get("schema_version"),
-            "checks_total": existing_gate.get("checks_total"),
-            "verdict": existing_gate.get("verdict"),
-        })
+    else:
+        refresh_reason = "always-rebuild: regenerated and compared against existing"
 
-    if needs_refresh:
-        try:
-            from packages.orchestration.runtime_integration_gate import (
-                build_runtime_integration_gate,
-            )
-            new_gate = build_runtime_integration_gate(
-                repo_root, verification_data=verification_data)
+    try:
+        from packages.orchestration.runtime_integration_gate import (
+            build_runtime_integration_gate,
+        )
+        new_gate = build_runtime_integration_gate(
+            repo_root, verification_data=verification_data)
+        existing_json = json.dumps(existing_gate, indent=1, sort_keys=True) if existing_gate else None
+        new_json = json.dumps(new_gate, indent=1, sort_keys=True)
+        if existing_json == new_json:
+            report["unchanged_gates"].append({
+                "gate": "runtime_integration_gate.json",
+                "reason": "rebuilt from source; identical to existing",
+                "schema_version": new_gate.get("schema_version"),
+                "checks_total": new_gate.get("checks_total"),
+                "verdict": new_gate.get("verdict"),
+            })
+        else:
             _write_json(gate_path, new_gate)
             report["refreshed_gates"].append({
                 "gate": "runtime_integration_gate.json",
@@ -95,10 +93,10 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
                 "new_checks_passed": new_gate.get("checks_passed"),
                 "new_verdict": new_gate.get("verdict"),
             })
-        except Exception as exc:
-            report["issues"].append(
-                f"failed to regenerate runtime_integration_gate: "
-                f"{type(exc).__name__}: {exc}")
+    except Exception as exc:
+        report["issues"].append(
+            f"failed to regenerate runtime_integration_gate: "
+            f"{type(exc).__name__}: {exc}")
 
     report_path = os.path.join(staged_dir, "evidence_refresh_report.json")
     _write_json(report_path, report)

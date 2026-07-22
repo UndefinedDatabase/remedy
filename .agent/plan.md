@@ -1,54 +1,49 @@
-# Plan — F018 Budgets & Stop Conditions (Package-Authority Closure)
+# Plan — F018 Budgets & Stop Conditions (Final Acceptance Closure)
 
 ## Goal
-Close package-pipeline root cause: manual Evidence hardcodes zero-check v1.0.0
-runtime gate while production source has v1.1.0 with 19 checks. Fix unified
-manual Evidence, versioned gate validation, staged refresh, strict F018 runtime
-boundaries, real E2E tests, then one canonical ZIP.
+Close 9 exact reproductions from the reviewed package. Fix authoritative
+stopped-job override, closed Actuals sources, Verification V1.1 with full
+fields, reproducible Runtime Gate, always-rebuild refresh, manifest HEAD
+cross-check, privacy-safe report, full F018 base, truthful docs. One
+canonical ZIP from accepted F017 merge base.
 
-## Status: IMPLEMENTING — scopes 1-4 complete, scope 5 in progress
+## Status: IMPLEMENTING — tests pass, docs updated, pending commit + Evidence + ZIP
 
-## Scope 1 — Unified manual Evidence and runtime-gate schema ✓
-- [x] build_manual_completion_gates: replace hardcoded zero-check gate with real
-      build_runtime_integration_gate call
-- [x] create_manual_completion_bundle: pass repo_root + verification_data to gate
-- [x] build_review_manifest.py: add 1.1.0 to _SUPPORTED_GATE_VERSIONS
-- [x] build_review_manifest.py: version-discriminated gate check schema (v1.0
-      static + v1.1 execution binding)
-- [x] build_review_manifest.py: zero-checks-total blocks READY_FOR_REVIEW
-- [x] build_review_manifest.py: exact bound_run schema validation
-- [x] Tests for v1.1.0 gate validation
+## Scope 1 — Authoritative stopped-job and Actuals contracts
+- [x] run_job: reject budget replacement on stopped jobs (not just CLI)
+- [x] Actuals: preserve original measurement sources across resume
+- [x] Actuals: remove "persisted_resume" from emitted sources
+- [x] Actuals: validate source vocabulary in persisted actuals decoder
+- [x] Tests: direct run_job override blocked, persisted budget unchanged,
+      invalid source rejected, sources survive two resumes
 
-## Scope 2 — Staged Evidence refresh and latest-ZIP correctness ✓
-- [x] scripts/refresh_review_evidence.py: regenerate derivable gates in staging
-- [x] make_review_zip.sh: call refresh after staging, before manifest
-- [x] evidence_refresh_report.json with gate verdicts
-- [x] Refresh updates evidence_snapshot_inventory.json for written files
+## Scope 2 — Verification V1.1 and reproducible runtime gate
+- [x] VT schema 1.1.0: retain all fields (head_sha, output_hash, selected,
+      deselected, skipped, node_ids, duration_seconds)
+- [x] Do not strip fields in manual_attestation.py
+- [x] Timestamp from real generated time, not hardcoded
+- [x] Runtime Gate reproducible from packaged VT + source
+- [x] Add critical node bindings for key behaviors
+- [x] Tests: VT v1.1 roundtrip, gate rebuild from packaged inputs
 
-## Scope 3 — Strict F018 runtime authority boundaries ✓
-- [x] Stopped-job override guard in run_job boundary (not just CLI)
-- [x] first_running_at not set before pre-work validation
-- [x] Complete persisted actuals provenance (closed Actuals state)
-- [x] Stronger execution bindings (HEAD SHA, output_hash, passed >= min_passed)
-- [x] Tests for each boundary
+## Scope 3 — Staged refresh, privacy and final-HEAD enforcement
+- [x] Refresh: always rebuild gate and compare, never trust existing PASS
+- [x] Refresh: redact absolute paths from report
+- [x] Manifest: validate bound_run.head_sha == Review Subject HEAD
+- [x] Manifest: validate output_hash sha256 syntax
+- [x] Tests: stale v1.1 wrong HEAD, privacy scan, HEAD mismatch
 
-## Scope 4 — Full real package E2E tests ✓
-- [x] Manual bundle → v1.1.0 gate with nonzero checks (7 tests)
-- [x] Stale v1.0 gate automatically refreshed in staging (5 tests incl. inventory update)
-- [x] Original Evidence not mutated (1 test)
-- [x] BLOCKED_EVIDENCE for missing prerequisites (1 test)
-- [x] Manifest validator for v1.1.0 (8 tests)
-- [x] Stopped-job guard (2 tests)
-- [x] first_running_at timing (1 test)
-- [x] Persisted actuals schema (4 tests)
-- [x] Run full test matrix: 287 focused + 8067 full suite
+## Scope 4 — Full-feature review scope and real E2E tests
+- [x] Run complete test matrix per scope 10
+- [x] New tests for each reproduction (22 new authority tests)
+- [ ] Evidence base: 190b3528a2dada6a27fdd9c2fdb75a6a00e7ea43
 
-## Scope 5 — Truthful docs, final Evidence and one canonical ZIP
-- [x] STATUS.md, T0_F018.md, context.md, live_review.md, plan.md updated
+## Scope 5 — Truthful docs, final Evidence and one newest authoritative ZIP
+- [x] Fix "8067 full suite passing" claim (report failures truthfully)
+- [x] Update STATUS.md, T0_F018.md, plan.md
 - [ ] Commit all tracked files
-- [ ] Fresh manual Evidence for final HEAD
-- [ ] Run make_review_zip.sh once
-- [ ] Verify ZIP (HEAD, SHA-256, members, status)
+- [ ] Fresh Evidence from F017 merge base
+- [ ] One make_review_zip.sh invocation
 - [ ] No post-ZIP commit
 
 ## Constraints

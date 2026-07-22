@@ -109,6 +109,9 @@ def test_execution_binding_passes_with_matching_data(tmp_path):
 
     vdata = {"runs": []}
     for b in TEST_EXECUTION_BINDINGS:
+        node_ids = [f"{b['test_file']}::test_{i}" for i in range(3)]
+        for crit in b.get("critical_node_ids", []):
+            node_ids.append(f"{b['test_file']}::{crit}")
         vdata["runs"].append({
             "run_id": f"vr-{b['check_id']}",
             "command": f"pytest {b['test_file']}",
@@ -117,8 +120,8 @@ def test_execution_binding_passes_with_matching_data(tmp_path):
             "failed": 0,
             "skipped": 0,
             "selected": b["min_passed"] + 10,
-            "node_ids": [f"{b['test_file']}::test_{i}" for i in range(3)],
-            "output_hash": "sha256:abc123",
+            "node_ids": node_ids,
+            "output_hash": "a" * 64,
             "head_sha": "deadbeef",
             "test_files": [b["test_file"]],
         })
@@ -229,12 +232,20 @@ def test_write_with_verification_data(tmp_path):
 
     vdata = {"runs": []}
     for b in TEST_EXECUTION_BINDINGS:
+        node_ids = [f"{b['test_file']}::test_{i}" for i in range(3)]
+        for crit in b.get("critical_node_ids", []):
+            node_ids.append(f"{b['test_file']}::{crit}")
         vdata["runs"].append({
             "run_id": f"vr-{b['check_id']}",
             "command": f"pytest {b['test_file']}",
             "exit_code": 0,
             "passed": b["min_passed"] + 5,
             "failed": 0,
+            "skipped": 0,
+            "selected": b["min_passed"] + 5,
+            "node_ids": node_ids,
+            "output_hash": "a" * 64,
+            "head_sha": "deadbeef",
             "test_files": [b["test_file"]],
         })
 

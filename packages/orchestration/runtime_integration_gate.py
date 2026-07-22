@@ -134,12 +134,23 @@ TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
         "check_type": "test_execution_binding",
         "test_file": _F018_TEST,
         "min_passed": 70,
+        "critical_node_ids": [
+            "TestStoppedJobBudgetOverrideBlocked::test_stopped_job_refuses_budget_flags",
+            "TestClosedSourceVocabulary::test_unknown_source_rejected",
+            "TestClosedSourceVocabulary::test_valid_sources_accepted",
+            "TestStrictActualsRejectCoercion",
+            "TestCorruptPersistedBudgetsBlock",
+        ],
     },
     {
         "check_id": "f018_test_budget_guard_execution",
         "check_type": "test_execution_binding",
         "test_file": "tests/orchestration/test_budget_guard.py",
         "min_passed": 45,
+        "critical_node_ids": [
+            "TestBudgetCounters::test_rejects_inconsistent_call_counts",
+            "TestBudgetCounters::test_rejects_negative_provider_calls",
+        ],
     },
     {
         "check_id": "f018_test_job_budgets_execution",
@@ -275,6 +286,16 @@ def _bind_test_execution(
             break
 
         found = bound_run is not None
+        critical = binding.get("critical_node_ids") or []
+        missing_critical: list[str] = []
+        if found and critical and bound_run is not None:
+            run_nodes = bound_run.get("node_ids") or []
+            for crit in critical:
+                if not any(crit in nid for nid in run_nodes):
+                    missing_critical.append(crit)
+            if missing_critical:
+                found = False
+
         entry: dict[str, Any] = {
             "check_id": check_id,
             "check_type": "test_execution_binding",
@@ -282,11 +303,17 @@ def _bind_test_execution(
             "min_passed": min_passed,
             "found": found,
         }
+        if critical:
+            entry["critical_node_ids"] = critical
         if bound_run is not None:
             entry["bound_run"] = bound_run
         results.append(entry)
 
-        if not found:
+        if missing_critical:
+            issues.append(
+                f"{check_id}: critical node(s) missing from execution: "
+                f"{missing_critical}")
+        elif not found:
             issues.append(
                 f"{check_id}: no passing execution for {test_file!r} "
                 f"(need >= {min_passed} passed, exit_code 0)"

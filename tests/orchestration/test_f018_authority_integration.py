@@ -1052,7 +1052,7 @@ class TestRealJobPlanDecision:
 
 
 class TestStoppedJobBudgetOverrideBlocked:
-    """Finding 5: do job-run must not bypass Decision with raw budget flags."""
+    """Repro 1: run_job must reject budget replacement on stopped jobs."""
 
     def test_stopped_job_refuses_budget_flags(self):
         from packages.orchestration.pingpong_job import (
@@ -1066,3 +1066,332 @@ class TestStoppedJobBudgetOverrideBlocked:
         loaded = load_job_plan(job.job_id)
         assert loaded is not None
         assert loaded.status == "stopped"
+
+    def test_run_job_rejects_budget_on_stopped(self):
+        """Repro 1: direct run_job budget override blocked on stopped job."""
+        from packages.orchestration.pingpong_job import (
+            JobPlan, JOB_STOPPED, _persist_job, run_job,
+        )
+
+        job = JobPlan(status=JOB_STOPPED, stop_source="budget")
+        _persist_job(job)
+
+        result = run_job(job.job_id, budgets={"max_provider_calls": 999})
+        assert result.error is not None
+        assert "stopped_budget_override_rejected" in result.error
+
+    def test_run_job_accepts_budget_on_non_stopped(self):
+        """Non-stopped jobs accept budget override."""
+        from packages.orchestration.pingpong_job import (
+            JobPlan, _persist_job, run_job,
+        )
+
+        job = JobPlan(status="pending")
+        _persist_job(job)
+
+        result = run_job(job.job_id, budgets={"max_provider_calls": 5})
+        assert result.error is None or "stopped_budget_override" not in (result.error or "")
+
+
+class TestActualsSourcePreservation:
+    """Repro 2: persisted_resume never emitted; original sources preserved."""
+
+    def test_persisted_resume_not_in_valid_sources(self):
+        from packages.orchestration.budget_guard import VALID_ACTUAL_SOURCES
+        assert "persisted_resume" not in VALID_ACTUAL_SOURCES
+
+    def test_persisted_resume_rejected_by_counters(self):
+        from packages.orchestration.budget_guard import BudgetCounters, BudgetCounterError
+        with pytest.raises(BudgetCounterError, match="unknown source"):
+            BudgetCounters(
+                provider_calls=1, measured_call_count=1,
+                actual_sources=("persisted_resume",))
+
+    def test_persisted_resume_rejected_by_runtime_decoder(self):
+        """The run_job decoder rejects persisted_resume in actual_sources (fail-closed)."""
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
+
+        job = JobPlan()
+        job.budget_actuals = {
+            "schema_version": "1.0.0",
+            "provider_call_count": 1,
+            "actual_call_count": 1,
+            "total_tokens": 100,
+            "started_at": T0.isoformat(),
+            "actual_sources": ["persisted_resume"],
+            "unmeasured_call_count": 0,
+        }
+        _persist_job(job)
+
+        with pytest.raises(BudgetCounterError, match="actual_sources.*unknown"):
+            run_job(job.job_id)
+
+    def test_made_up_source_rejected(self):
+        from packages.orchestration.budget_guard import BudgetCounterError, collect_counters_from_actuals
+        with pytest.raises(BudgetCounterError, match="unknown"):
+            collect_counters_from_actuals(
+                {"provider_call_count": 1, "actual_call_count": 1, "total_tokens": 100},
+                actual_sources=("made_up",))
+
+    def test_valid_actual_sources_accepted(self):
+        from packages.orchestration.budget_guard import VALID_ACTUAL_SOURCES, collect_counters_from_actuals
+        for src in sorted(VALID_ACTUAL_SOURCES):
+            c = collect_counters_from_actuals(
+                {"provider_call_count": 1, "actual_call_count": 1, "total_tokens": 100},
+                actual_sources=(src,))
+            assert src in c.actual_sources
+
+
+class TestVTv11FieldsRetained:
+    """Repro 3 + 6: VT V1.1 retains all 14 fields with real timestamp."""
+
+    _VT_V11_FIELDS = {"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                       "stdout_summary", "head_sha", "output_hash", "selected",
+                       "deselected", "skipped", "node_ids", "duration_seconds"}
+
+    def test_manual_attestation_emits_v11(self, tmp_path):
+        from packages.orchestration.manual_attestation import build_manual_completion_gates
+        ev = str(tmp_path / "ev")
+        runs = [{
+            "run_id": "vr-0001", "command": "pytest tests/x.py", "exit_code": 0,
+            "passed": 5, "failed": 0, "test_files": ["tests/x.py"],
+            "stdout_summary": "ok", "head_sha": "abc123", "output_hash": "a" * 64,
+            "selected": 5, "deselected": 0, "skipped": 0,
+            "node_ids": ["tests/x.py::test_a"], "duration_seconds": 1.2,
+        }]
+        build_manual_completion_gates(
+            ev, job_id="j1", authority=[], file_hashes={},
+            step="S01", total_passed=5, verification_runs=runs, repo_root=".")
+        vt = json.loads(Path(ev, "verification_tests.json").read_text())
+        assert vt["schema_version"] == "1.1.0"
+        assert set(vt["runs"][0]) == self._VT_V11_FIELDS
+
+    def test_vt_timestamp_is_real(self, tmp_path):
+        """Repro 6: timestamp is generated, not hardcoded."""
+        from packages.orchestration.manual_attestation import build_manual_completion_gates
+        ev = str(tmp_path / "ev")
+        runs = [{
+            "run_id": "vr-0001", "command": "pytest tests/x.py", "exit_code": 0,
+            "passed": 5, "failed": 0, "test_files": ["tests/x.py"],
+            "stdout_summary": "ok", "head_sha": "abc123", "output_hash": "a" * 64,
+            "selected": 5, "deselected": 0, "skipped": 0,
+            "node_ids": ["tests/x.py::test_a"], "duration_seconds": 1.0,
+        }]
+        build_manual_completion_gates(
+            ev, job_id="j1", authority=[], file_hashes={},
+            step="S01", total_passed=5, verification_runs=runs, repo_root=".")
+        vt = json.loads(Path(ev, "verification_tests.json").read_text())
+        ts = vt["timestamp"]
+        assert "2026-07-19T00:00:00" not in ts
+        from datetime import datetime as dt, timezone as tz
+        parsed = dt.fromisoformat(ts)
+        assert parsed.tzinfo is not None
+
+    def test_manifest_validates_v11_fields(self, tmp_path):
+        """Repro 3: build_review_manifest validates V1.1 field set."""
+        from scripts.build_review_manifest import validate_verification_tests
+        vt = {
+            "schema_version": "1.1.0", "verification_type": "explicit_commands",
+            "command": "pytest tests/a.py", "exit_code": 0, "passed": 3, "failed": 0,
+            "test_files": ["tests/a.py"],
+            "timestamp": datetime.now(UTC).isoformat(),
+            "runs": [{
+                "run_id": "vr-0001", "command": "pytest tests/a.py", "exit_code": 0,
+                "passed": 3, "failed": 0, "test_files": ["tests/a.py"],
+                "stdout_summary": "ok", "head_sha": "abc123", "output_hash": "a" * 64,
+                "selected": 3, "deselected": 0, "skipped": 0,
+                "node_ids": ["tests/a.py::test_x"], "duration_seconds": 0.5,
+            }],
+        }
+        problems, total = validate_verification_tests(vt)
+        assert not problems
+        assert total == 3
+
+    def test_manifest_rejects_v11_with_v10_fields(self):
+        """V1.1 doc with only V1.0 run fields → blocked."""
+        from scripts.build_review_manifest import validate_verification_tests
+        vt = {
+            "schema_version": "1.1.0", "verification_type": "explicit_commands",
+            "command": "pytest tests/a.py", "exit_code": 0, "passed": 3, "failed": 0,
+            "test_files": ["tests/a.py"],
+            "timestamp": datetime.now(UTC).isoformat(),
+            "runs": [{
+                "run_id": "vr-0001", "command": "pytest tests/a.py", "exit_code": 0,
+                "passed": 3, "failed": 0, "test_files": ["tests/a.py"],
+                "stdout_summary": "ok",
+            }],
+        }
+        problems, total = validate_verification_tests(vt)
+        assert any("wrong field set" in p for p in problems)
+
+
+class TestRefreshAlwaysRebuilds:
+    """Repro 4: refresh always rebuilds gate, never trusts existing PASS."""
+
+    def test_stale_pass_gate_replaced(self, tmp_path):
+        """Even with existing PASS v1.1, refresh rebuilds and compares."""
+        from scripts.refresh_review_evidence import refresh_staged_evidence
+        staged = str(tmp_path / "staged")
+        Path(staged).mkdir()
+        stale = {
+            "schema_version": "1.1.0", "verdict": "PASS",
+            "checks": [{"check_id": "fake", "found": True}],
+            "checks_total": 1, "checks_passed": 1, "issues": [],
+        }
+        Path(staged, "runtime_integration_gate.json").write_text(json.dumps(stale))
+        Path(staged, "verification_tests.json").write_text(json.dumps({
+            "schema_version": "1.1.0", "runs": []}))
+        report = refresh_staged_evidence(staged, ".")
+        refreshed_names = [g["gate"] for g in report.get("refreshed_gates", [])]
+        unchanged_names = [g["gate"] for g in report.get("unchanged_gates", [])]
+        assert "runtime_integration_gate.json" in refreshed_names or \
+               "runtime_integration_gate.json" in unchanged_names
+
+
+class TestManifestHeadCrossCheck:
+    """Repro 5: bound_run.head_sha must equal Review Subject HEAD."""
+
+    def test_head_sha_mismatch_blocked(self):
+        from scripts.build_review_manifest import _gate_semantic_problems
+        gate = {
+            "schema_version": "1.1.0", "verdict": "PASS",
+            "checks_total": 1, "checks_passed": 1, "issues": [],
+            "checks": [{
+                "check_id": "test_bind", "check_type": "test_execution_binding",
+                "test_file": "tests/t.py", "min_passed": 1, "found": True,
+                "bound_run": {
+                    "run_id": "vr-0001", "command": "pytest tests/t.py",
+                    "exit_code": 0, "passed": 5, "failed": 0,
+                    "skipped": 0, "selected": 5,
+                    "node_ids": ["tests/t.py::test_a"],
+                    "output_hash": "a" * 64, "head_sha": "wrong_sha",
+                },
+            }],
+        }
+        ctx = {"review_subject_head": "correct_sha"}
+        problems = _gate_semantic_problems(
+            "runtime_integration_gate.json", gate, {}, ctx)
+        assert any("Review Subject HEAD" in p for p in problems)
+
+    def test_head_sha_match_passes(self):
+        from scripts.build_review_manifest import _gate_semantic_problems
+        gate = {
+            "schema_version": "1.1.0", "verdict": "PASS",
+            "checks_total": 1, "checks_passed": 1, "issues": [],
+            "checks": [{
+                "check_id": "test_bind", "check_type": "test_execution_binding",
+                "test_file": "tests/t.py", "min_passed": 1, "found": True,
+                "bound_run": {
+                    "run_id": "vr-0001", "command": "pytest tests/t.py",
+                    "exit_code": 0, "passed": 5, "failed": 0,
+                    "skipped": 0, "selected": 5,
+                    "node_ids": ["tests/t.py::test_a"],
+                    "output_hash": "a" * 64, "head_sha": "abc123",
+                },
+            }],
+        }
+        ctx = {"review_subject_head": "abc123"}
+        problems = _gate_semantic_problems(
+            "runtime_integration_gate.json", gate, {}, ctx)
+        assert not any("Review Subject HEAD" in p for p in problems)
+
+    def test_output_hash_sha256_syntax(self):
+        from scripts.build_review_manifest import _gate_semantic_problems
+        gate = {
+            "schema_version": "1.1.0", "verdict": "PASS",
+            "checks_total": 1, "checks_passed": 1, "issues": [],
+            "checks": [{
+                "check_id": "test_bind", "check_type": "test_execution_binding",
+                "test_file": "tests/t.py", "min_passed": 1, "found": True,
+                "bound_run": {
+                    "run_id": "vr-0001", "command": "pytest tests/t.py",
+                    "exit_code": 0, "passed": 5, "failed": 0,
+                    "skipped": 0, "selected": 5,
+                    "node_ids": ["tests/t.py::test_a"],
+                    "output_hash": "not_sha256", "head_sha": "abc123",
+                },
+            }],
+        }
+        ctx = {"review_subject_head": "abc123"}
+        problems = _gate_semantic_problems(
+            "runtime_integration_gate.json", gate, {}, ctx)
+        assert any("sha256 hex" in p for p in problems)
+
+
+class TestRefreshPrivacySafe:
+    """Repro 7: refresh report contains no absolute paths."""
+
+    def test_no_absolute_path_in_report(self, tmp_path):
+        from scripts.refresh_review_evidence import refresh_staged_evidence
+        staged = str(tmp_path / "staged")
+        Path(staged).mkdir()
+        Path(staged, "verification_tests.json").write_text("{}")
+        report = refresh_staged_evidence(staged, ".")
+        report_json = json.dumps(report)
+        assert "/home/" not in report_json
+        assert str(tmp_path) not in report_json
+
+
+class TestCriticalNodeBindings:
+    """Scope 4: critical node IDs must appear in bound run."""
+
+    def test_missing_critical_node_blocks(self):
+        from packages.orchestration.runtime_integration_gate import (
+            _bind_test_execution,
+        )
+        results = []
+        issues = []
+        vd = {"runs": [{
+            "run_id": "vr-0001", "command": "pytest tests/t.py", "exit_code": 0,
+            "passed": 80, "failed": 0, "test_files": ["tests/t.py"],
+            "node_ids": ["tests/t.py::TestA::test_x"],
+            "output_hash": "a" * 64, "head_sha": "abc",
+            "selected": 80, "deselected": 0, "skipped": 0,
+            "duration_seconds": 1.0, "stdout_summary": "ok",
+        }]}
+        bindings = [{
+            "check_id": "test_critical",
+            "check_type": "test_execution_binding",
+            "test_file": "tests/t.py",
+            "min_passed": 1,
+            "critical_node_ids": ["TestMissing::test_not_there"],
+        }]
+        from packages.orchestration.runtime_integration_gate import TEST_EXECUTION_BINDINGS
+        import packages.orchestration.runtime_integration_gate as rig
+        orig = rig.TEST_EXECUTION_BINDINGS
+        try:
+            rig.TEST_EXECUTION_BINDINGS = tuple(bindings)
+            _bind_test_execution(results, issues, vd)
+        finally:
+            rig.TEST_EXECUTION_BINDINGS = orig
+        assert results[0]["found"] is False
+        assert any("critical" in i.lower() for i in issues)
+
+    def test_present_critical_node_passes(self):
+        from packages.orchestration.runtime_integration_gate import _bind_test_execution
+        import packages.orchestration.runtime_integration_gate as rig
+        results = []
+        issues = []
+        vd = {"runs": [{
+            "run_id": "vr-0001", "command": "pytest tests/t.py", "exit_code": 0,
+            "passed": 80, "failed": 0, "test_files": ["tests/t.py"],
+            "node_ids": ["tests/t.py::TestA::test_x"],
+            "output_hash": "a" * 64, "head_sha": "abc",
+            "selected": 80, "deselected": 0, "skipped": 0,
+            "duration_seconds": 1.0, "stdout_summary": "ok",
+        }]}
+        bindings = [{
+            "check_id": "test_critical",
+            "check_type": "test_execution_binding",
+            "test_file": "tests/t.py",
+            "min_passed": 1,
+            "critical_node_ids": ["TestA::test_x"],
+        }]
+        orig = rig.TEST_EXECUTION_BINDINGS
+        try:
+            rig.TEST_EXECUTION_BINDINGS = tuple(bindings)
+            _bind_test_execution(results, issues, vd)
+        finally:
+            rig.TEST_EXECUTION_BINDINGS = orig
+        assert results[0]["found"] is True

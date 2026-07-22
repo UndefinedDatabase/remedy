@@ -1609,8 +1609,13 @@ def run_job(
             _persist_job(job)
             return job
 
-    # F018: apply caller-supplied budgets (CLI override); persisted budgets on the JobPlan
-    # are kept if no caller override is provided.
+    if budgets is not None and job.status == JOB_STOPPED:
+        job.error = (
+            "stopped_budget_override_rejected: a stopped job's budget cannot be "
+            "replaced via run_job; use the Decision workflow (extend/abandon)")
+        _persist_job(job)
+        return job
+
     if budgets is not None:
         job.budgets = budgets
         _persist_job(job)
@@ -1774,6 +1779,12 @@ def run_job(
         if _asrc is not None and not isinstance(_asrc, (list, tuple)):
             raise _BCError(
                 f"persisted actual_sources has type {type(_asrc).__name__}")
+        if _asrc is not None and isinstance(_asrc, (list, tuple)):
+            from packages.orchestration.budget_guard import VALID_ACTUAL_SOURCES as _VAS
+            for _si, _sv in enumerate(_asrc):
+                if not isinstance(_sv, str) or _sv not in _VAS:
+                    raise _BCError(
+                        f"persisted actual_sources[{_si}] unknown: {_sv!r}")
         _CLOSED_ACTUALS_KEYS = frozenset({
             "schema_version", "provider_call_count", "actual_call_count",
             "total_tokens", "started_at", "actual_sources", "unmeasured_call_count",
@@ -1862,21 +1873,24 @@ def run_job(
     def _persist_budget_actuals():
         """Persist live counters so they survive stop/resume.
 
-        F018 Scope 8: closed Actuals schema — every field documented, actual_sources
-        records where measurements came from so BudgetCounters reconstruction is exact.
+        Actual_sources preserves the original measurement sources from prior runs
+        and adds "pingpong_live" only when this run measured new calls. Resume is
+        a lifecycle state, not a measurement source.
         """
-        _sources: list[str] = []
-        if _accumulated_measured > 0:
-            _sources.append("pingpong_live")
-        if _prior and _prior.get("actual_call_count", 0):
-            _sources.append("persisted_resume")
+        _sources: set[str] = set()
+        _prior_src = _prior.get("actual_sources", ()) if _prior else ()
+        if isinstance(_prior_src, (list, tuple)):
+            _sources.update(s for s in _prior_src if isinstance(s, str))
+        if _accumulated_measured > _prior.get("actual_call_count", 0) if _prior else _accumulated_measured > 0:
+            _sources.add("pingpong_live")
+        _sources.discard("persisted_resume")
         job.budget_actuals = {
             "schema_version": "1.0.0",
             "provider_call_count": _accumulated_provider_calls,
             "actual_call_count": _accumulated_measured,
             "total_tokens": _accumulated_tokens,
             "started_at": _run_started_at.isoformat(),
-            "actual_sources": tuple(sorted(set(_sources))),
+            "actual_sources": tuple(sorted(_sources)),
             "unmeasured_call_count": _accumulated_unmeasured,
         }
 

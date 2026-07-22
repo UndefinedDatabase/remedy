@@ -1421,7 +1421,7 @@ _RUNTIME_STATIC_CHECK_FIELDS = frozenset({"check_id", "check_type", "file_missin
                                           "pattern", "source_file"})
 _RUNTIME_BINDING_REQUIRED_FIELDS = frozenset({"check_id", "check_type", "test_file", "min_passed",
                                                "found"})
-_RUNTIME_BINDING_OPTIONAL_FIELDS = frozenset({"bound_run"})
+_RUNTIME_BINDING_OPTIONAL_FIELDS = frozenset({"bound_run", "critical_node_ids"})
 _RUNTIME_BOUND_RUN_REQUIRED = frozenset({"run_id", "command", "exit_code", "passed", "failed",
                                           "skipped", "selected", "node_ids", "output_hash",
                                           "head_sha"})
@@ -1715,8 +1715,9 @@ _GATE_SCHEMA = {
                       "run_id": STR, "command": STR, "exit_code": INT, "passed": INT, "failed": INT,
                       "skipped": INT, "selected": INT, "node_ids": _Arr(STR),
                       "output_hash": STR, "head_sha": STR},
-                      optional={"deselected", "duration_seconds"})},
-                 optional={"bound_run"}),
+                      optional={"deselected", "duration_seconds"}),
+                  "critical_node_ids": _Arr(STR)},
+                 optional={"bound_run", "critical_node_ids"}),
         )), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
     "manifest_integrity.json": _Obj({
         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
@@ -2043,9 +2044,17 @@ def _gate_semantic_problems(name: str, gate: dict, verdicts: dict, ctx: dict) ->
                                 if not isinstance(br.get("head_sha"), str) or not br["head_sha"]:
                                     problems.append(
                                         f"{name} checks[{i}].bound_run.head_sha is empty")
+                                elif ctx.get("review_subject_head") and br["head_sha"] != ctx["review_subject_head"]:
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.head_sha "
+                                        f"{br['head_sha']!r} != Review Subject HEAD "
+                                        f"{ctx['review_subject_head']!r}")
                                 if not isinstance(br.get("output_hash"), str) or not br["output_hash"]:
                                     problems.append(
                                         f"{name} checks[{i}].bound_run.output_hash is empty")
+                                elif not re.fullmatch(r"[0-9a-f]{64}", br["output_hash"]):
+                                    problems.append(
+                                        f"{name} checks[{i}].bound_run.output_hash is not sha256 hex")
                                 _mp = c.get("min_passed", 1)
                                 _bp = br.get("passed", 0)
                                 if isinstance(_mp, int) and isinstance(_bp, int) and _bp < _mp:
@@ -2086,12 +2095,16 @@ def _safe_rel_path(p) -> bool:
 
 
 _VT_NAME = "verification_tests.json"
-_VT_SUPPORTED_VERSIONS = frozenset({"1.0.0"})
+_VT_SUPPORTED_VERSIONS = frozenset({"1.0.0", "1.1.0"})
 _VT_SUPPORTED_TYPES = frozenset({"explicit_commands"})
 _VT_TOP_FIELDS = frozenset({"schema_version", "verification_type", "runs", "command", "exit_code",
                             "passed", "failed", "test_files", "timestamp"})
-_VT_RUN_FIELDS = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
-                            "stdout_summary"})
+_VT_RUN_FIELDS_V10 = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                                "stdout_summary"})
+_VT_RUN_FIELDS_V11 = frozenset({"run_id", "command", "exit_code", "passed", "failed", "test_files",
+                                "stdout_summary", "head_sha", "output_hash", "selected",
+                                "deselected", "skipped", "node_ids", "duration_seconds"})
+_VT_RUN_FIELDS = _VT_RUN_FIELDS_V10
 _VT_RUN_ID_RE = re.compile(r"^vr-\d{4,}$")
 _VT_MAX_STDOUT = 4000
 
@@ -2178,8 +2191,10 @@ def validate_verification_tests(vt):
         seen_ids: set = set()
         run_cmds: list = []
         run_exits: list = []
+        _vt_ver = vt.get("schema_version", "1.0.0")
+        _expected_run_fields = _VT_RUN_FIELDS_V11 if _vt_ver == "1.1.0" else _VT_RUN_FIELDS_V10
         for i, r in enumerate(runs):
-            if not isinstance(r, dict) or set(r) != _VT_RUN_FIELDS:
+            if not isinstance(r, dict) or set(r) != _expected_run_fields:
                 problems.append(f"{_VT_NAME} runs[{i}] has the wrong field set")
                 continue
             rid = r.get("run_id")
@@ -2212,6 +2227,18 @@ def validate_verification_tests(vt):
             if _is_real_int(r.get("passed")) and r["passed"] < 0:
                 problems.append(f"{_VT_NAME} runs[{i}] passed is negative ({r['passed']})")
             run_files |= _vt_safe_files(r.get("test_files"), f"runs[{i}]", problems)
+            if _vt_ver == "1.1.0":
+                if not isinstance(r.get("head_sha"), str) or not r["head_sha"]:
+                    problems.append(f"{_VT_NAME} runs[{i}].head_sha is empty")
+                if not isinstance(r.get("output_hash"), str) or not re.fullmatch(r"[0-9a-f]{64}", r.get("output_hash", "")):
+                    problems.append(f"{_VT_NAME} runs[{i}].output_hash is not sha256 hex")
+                for _nf in ("selected", "deselected", "skipped"):
+                    if not _is_real_int(r.get(_nf)) or r.get(_nf, -1) < 0:
+                        problems.append(f"{_VT_NAME} runs[{i}].{_nf} is not a non-negative integer")
+                if not isinstance(r.get("node_ids"), list) or not all(isinstance(n, str) for n in r.get("node_ids", [])):
+                    problems.append(f"{_VT_NAME} runs[{i}].node_ids is not a list of strings")
+                if not isinstance(r.get("duration_seconds"), (int, float)) or isinstance(r.get("duration_seconds"), bool) or r.get("duration_seconds", -1) < 0:
+                    problems.append(f"{_VT_NAME} runs[{i}].duration_seconds is not a non-negative number")
             if _is_real_int(r.get("passed")):
                 sum_p += r["passed"]
             if _is_real_int(r.get("failed")):
@@ -2350,7 +2377,8 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
     # the recorded verification total — decoded from the SAME loader so no second authority model
     # exists. A missing/invalid proof leaves the cross-checks off (the coordinator refuses it
     # separately); a present proof binds change-provenance and the FV test total.
-    ctx: dict = {"proof_authority": None, "proof_hashes": None, "vt_passed": None}
+    ctx: dict = {"proof_authority": None, "proof_hashes": None, "vt_passed": None,
+                 "review_subject_head": None}
     try:
         proof = load_json("current_change_content_proof.json")
         if isinstance(proof, dict):
@@ -2360,6 +2388,12 @@ def evaluate_ready_gate_matrix(load_json) -> dict:
             ctx["proof_hashes"] = dict(fh)
     except Exception:
         pass                                           # a corrupt proof blocks in the coordinator
+    try:
+        _rs = load_json("review_subject.json")
+        if isinstance(_rs, dict) and isinstance(_rs.get("head_commit"), str):
+            ctx["review_subject_head"] = _rs["head_commit"]
+    except Exception:
+        pass
     # F3 (round 26): the VerificationTests are STRICTLY validated, fail-closed. A present-but-invalid
     # record blocks here; a valid record's ``passed`` is the authoritative total the FV must equal.
     vt_problems: list[str] = []

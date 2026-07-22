@@ -13,6 +13,12 @@ from typing import Any
 from packages.core.models import JobBudgets
 
 
+VALID_ACTUAL_SOURCES = frozenset({
+    "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
+    "token_actuals", "aggregate_actuals",
+})
+
+
 class BudgetCounterError(ValueError):
     """Impossible counter data detected."""
 
@@ -56,10 +62,6 @@ class BudgetCounters:
         if not isinstance(self.actual_sources, tuple):
             raise BudgetCounterError(
                 f"actual_sources must be a tuple, got {type(self.actual_sources).__name__}")
-        _VALID_SOURCES = frozenset({
-            "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
-            "token_actuals", "aggregate_actuals",
-        })
         for i, src in enumerate(self.actual_sources):
             if not isinstance(src, str):
                 raise BudgetCounterError(
@@ -67,7 +69,7 @@ class BudgetCounters:
             if not src:
                 raise BudgetCounterError(
                     f"actual_sources[{i}] must not be empty")
-            if src not in _VALID_SOURCES:
+            if src not in VALID_ACTUAL_SOURCES:
                 raise BudgetCounterError(
                     f"actual_sources[{i}] unknown source: {src!r}")
         if self.started_at is not None:
@@ -294,10 +296,6 @@ def collect_counters_from_actuals(
             raise BudgetCounterError("started_at must be timezone-aware")
         elapsed = max(0.0, (now - started_at).total_seconds())
 
-    _VALID_SOURCES = frozenset({
-        "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
-        "token_actuals", "aggregate_actuals",
-    })
     if actual_sources is None:
         actual_sources = ("pingpong_actuals",) if actual_call_count > 0 else ()
     if actual_call_count > 0 and not actual_sources:
@@ -306,7 +304,7 @@ def collect_counters_from_actuals(
     for _s in actual_sources:
         if not isinstance(_s, str) or not _s:
             raise BudgetCounterError(f"actual_sources contains invalid entry: {_s!r}")
-        if _s not in _VALID_SOURCES:
+        if _s not in VALID_ACTUAL_SOURCES:
             raise BudgetCounterError(f"unknown actual source: {_s!r}")
     return BudgetCounters(
         provider_calls=provider_call_count,
