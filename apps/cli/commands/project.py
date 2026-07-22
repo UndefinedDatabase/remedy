@@ -28,8 +28,9 @@ def _cmd_list_projects() -> None:
         print("No projects found.")
         return
     for p in projects:
+        slug = p.slug or "-"
         desc = f"  {p.description}" if p.description else ""
-        print(f"{p.id}  {p.name}{desc}")
+        print(f"{p.id}  {slug:<20s}  {p.name}{desc}")
 
 
 def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
@@ -287,6 +288,83 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
             print(f"Command: {summary.next_command}")
 
 
+def _cmd_project_current(*, json_output: bool = False) -> None:
+    import os
+
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        resolve_project,
+    )
+
+    cwd = os.getcwd()
+    project = resolve_project(cwd)
+    if project is None:
+        print(
+            "No project registered for this repo. Run: remedy init",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+    if json_output:
+        all_jobs = list_jobs()
+        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+        print(_json.dumps({
+            "slug": project.slug,
+            "id": str(project.id),
+            "name": project.name,
+            "canonical_repo_path": project.canonical_repo_path,
+            "repo_paths": list(project.repo_paths),
+            "job_count": len(linked_jobs),
+        }, indent=2))
+    else:
+        all_jobs = list_jobs()
+        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
+        print(f"slug  : {project.slug}")
+        print(f"id    : {project.id}")
+        print(f"name  : {project.name}")
+        print(f"repo  : {project.canonical_repo_path or '(none)'}")
+        print(f"jobs  : {len(linked_jobs)}")
+
+
+def _cmd_project_attach_repo(repo_path_str: str) -> None:
+    import os
+    from pathlib import Path
+
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        attach_repo,
+        find_project_by_repo,
+        load_project,
+        resolve_project,
+        save_project,
+    )
+
+    repo_real = str(Path(repo_path_str).resolve())
+
+    existing = find_project_by_repo(repo_real)
+    if existing is not None:
+        print(f"Repo already registered to project {existing.slug} ({str(existing.id)[:8]})")
+        return
+
+    cwd = os.getcwd()
+    project = resolve_project(cwd)
+    if project is None:
+        print(
+            "No project registered for this repo. Run: remedy init",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+    added = attach_repo(project, repo_path_str)
+    if project.canonical_repo_path is None:
+        project.canonical_repo_path = repo_real
+    save_project(project)
+    if added:
+        print(f"Attached {repo_real} to project {project.slug} ({str(project.id)[:8]})")
+    else:
+        print(f"Repo already attached to project {project.slug} (no-op)")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
     "project.list": lambda args: _cmd_list_projects(),
@@ -296,4 +374,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.brain": lambda args: _cmd_project_brain(args.project_id, json_output=args.json),
     "project.context": lambda args: _cmd_project_context(args.project_id, json_output=args.json),
     "project.summary": lambda args: _cmd_project_summary(args.project_id, json_output=args.json),
+    "project.current": lambda args: _cmd_project_current(json_output=args.json),
+    "project.attach": lambda args: _cmd_project_attach_repo(args.repo),
 }
