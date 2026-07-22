@@ -45,25 +45,28 @@ Package: `scripts/make_review_zip.sh` — refresh-before-manifest pipeline
 16. Closed actuals schema: schema_version + actual_sources + unmeasured_call_count
 17. Stronger bound_run validation: head_sha, output_hash non-empty; passed ≥ min_passed
 
-## Test suites (package-pipeline closure round)
-- `test_f018_package_pipeline_e2e.py` — 29 passed (new)
-- `test_f018_authority_integration.py` — 77 passed
+## 10-reproduction evidence integrity closure — ALL CLOSED
+18. VT V1.1 normalization: truthful counts + monotonic duration capture
+19. Strict persisted actuals: schema_version="1.0.0" required, reject banana/None
+20. Source provenance: actual_sources required when actual_call_count > 0
+21. Honest budget display: _cmd_job_budget passes real actual_sources
+22. Corrupt first_running_at: blocks job instead of silent now() fallback
+23. Exact gate binding: test_run_job_rejects_budget_on_stopped + 3 new nodes
+24. .agent/Evidence exclusion from ZIP packaging
+25. prior_execution accepted as audit dict on manual operator repairs
+26. Manual completion gate exemption: fresh_evidence + runtime_integration
+27. Manual completion tests: 44/44 passing (was 40/44)
+
+## Test suites (10-reproduction closure round)
+- `test_f018_authority_integration.py` — 104 passed (9 new)
 - `test_budget_guard.py` — 52 passed
 - `test_job_budgets.py` — 76 passed
 - `test_budget_stop_integration.py` — 39 passed
-- `test_runtime_integration_gate.py` — 14 passed
-- `test_review_gate_exact_schemas.py` — 18 passed
-- `test_review_gate_recursive_schemas.py` — 7 passed
-- `test_review_gate_semantic_consistency.py` — 27 passed
-- `test_review_gate_complete_semantics.py` — 46 passed
-- `test_review_gate_typed_shapes.py` — 17 passed
-- `test_review_gate_totality.py` — 3 passed
-- `test_review_gate_embedded_verdicts.py` — 6 passed
-- `test_review_gate_key_safety.py` — 5 passed
-- `test_review_gate_sensitive_metadata.py` — 5 passed
-- `test_review_gate_duplicate_keys.py` — 5 passed
-- `test_review_ready_gate_matrix.py` — 19 passed
-- Full orchestration suite: 8038 passed (pre-existing failures only)
+- `test_manual_completion_bundle.py` — 44 passed (4 fixed)
+- `test_final_verifier.py` — 97 passed
+- `test_token_truth.py` — 37 passed
+- `test_provider_evidence_integration.py` — 64 passed (1 updated)
+- Total focused: 513 passed
 
 ## Next
-Evidence + full review ZIP. F018 stays `[~]`.
+Commit → Evidence from base 190b3528 → ZIP → receipt → stop. F018 stays `[~]`.

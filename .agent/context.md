@@ -1,34 +1,39 @@
-# Context — F018 Budgets & Stop Conditions (Package-Pipeline Closure)
+# Context — F018 Budgets & Stop Conditions (10-Reproduction Closure)
 
 ## Branch
 `feature/f018-budgets-stop-conditions-clean`
-Base commit: `720d97290601709fd988d784c638ffe151fc405c`
+Base commit: `190b3528a2dada6a27fdd9c2fdb75a6a00e7ea43`
 
 ## Current state
-Package-pipeline closure round. Root cause fixed: manual Evidence now produces
-v1.1.0 runtime gate with 19 real checks (not zero-check v1.0.0). Manifest
-validator accepts v1.1.0 with version-discriminated field sets. Staged evidence
-refresh regenerates stale gates before packaging. Runtime boundaries hardened:
-stopped-job guard in run_job, first_running_at timing, closed actuals schema.
-29 new E2E tests + 287 focused + 8067 full suite passing. Evidence + ZIP pending.
+10-reproduction closure round. External reviewer returned BLOCKED_EVIDENCE on
+10 exact reproductions. All 10 closed through production-code fixes:
+truthful VT V1.1 (counts + durations), strict persisted actuals (schema +
+provenance), honest budget display, corrupt first_running_at blocks, exact
+gate binding, manual-completion gate exemption, .agent/Evidence ZIP exclusion.
+104 authority tests + 513 focused passing in 8 suites. Evidence + ZIP pending.
 
-## Package-pipeline closure changes
-1. Unified gate producer: manual_attestation calls real write_runtime_integration_gate
-2. Versioned gate validation: build_review_manifest.py accepts v1.0.0 + v1.1.0
-3. Staged evidence refresh: scripts/refresh_review_evidence.py in make_review_zip.sh + inventory update
-4. Stopped-job guard: run_job blocks if pending stop signal exists
-5. first_running_at timing: deferred until after budget validation + pre-stop pass
-6. Closed actuals schema: schema_version, actual_sources, unmeasured_call_count
-7. Stronger bound_run validation: head_sha, output_hash non-empty; passed >= min_passed
+## 10-reproduction closure changes
+1. VT V1.1 normalization: `_run_verifications` schema 1.1.0, field derivation
+2. Monotonic duration in `_default_verification_runner`
+3. Strict schema_version on persisted actuals in pingpong_job.py
+4. Required actual_sources when actual_call_count > 0
+5. Honest _cmd_job_budget passes real actual_sources
+6. Corrupt first_running_at blocks instead of silent now() fallback
+7. Exact runtime gate binding: test_run_job_rejects_budget_on_stopped + 3 new nodes
+8. .agent/Evidence excluded from make_review_zip.sh
+9. prior_execution accepted as dict on manual repairs (provider_token_evidence.py)
+10. Manual completions exempt from fresh_evidence/runtime_integration gate blocking
 
 ## Files changed (this round)
-- packages/orchestration/manual_attestation.py (real gate producer call)
-- packages/orchestration/job_evidence.py (verification_data passthrough)
-- packages/orchestration/pingpong_job.py (stopped-job guard, timing, actuals)
-- scripts/build_review_manifest.py (v1.1.0 support, stronger binding validation)
-- scripts/refresh_review_evidence.py (new — staged gate refresh)
-- scripts/make_review_zip.sh (refresh integration)
-- tests/orchestration/test_f018_package_pipeline_e2e.py (28 new E2E tests)
+- packages/orchestration/job_evidence.py (VT V1.1, duration, deselected)
+- packages/orchestration/pingpong_job.py (strict schema, sources, first_running_at)
+- packages/orchestration/provider_token_evidence.py (prior_execution acceptance)
+- packages/orchestration/final_verifier.py (manual completion gate exemption)
+- packages/orchestration/runtime_integration_gate.py (binding + critical nodes)
+- apps/cli/commands/job.py (honest actual_sources passthrough)
+- scripts/make_review_zip.sh (.agent/Evidence exclusion)
+- tests/orchestration/test_f018_authority_integration.py (9 new + 5 fixed)
+- tests/orchestration/test_provider_evidence_integration.py (prior_execution test)
 - docs/roadmap/STATUS.md, docs/roadmap/features/T0_F018.md
 
 ## Constraints

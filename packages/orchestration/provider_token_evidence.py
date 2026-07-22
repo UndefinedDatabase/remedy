@@ -214,6 +214,6 @@ def validate_provider_token_evidence(pe: dict, ctx: str) -> None:
             raise TokenEvidenceError(
                 f"{ctx}: cli_versions must be a dict or absent, got {type(cvs).__name__}")
         prior = pe.get("prior_execution")
-        if prior is not None:
+        if prior is not None and not isinstance(prior, dict):
             raise TokenEvidenceError(
-                f"{ctx}: manual_operator_repair must not carry prior_execution")
+                f"{ctx}: prior_execution must be null or a dict, got {type(prior).__name__}")

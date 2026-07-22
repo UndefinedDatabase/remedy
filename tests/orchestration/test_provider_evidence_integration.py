@@ -1283,14 +1283,24 @@ class TestManualPECrossFieldRejection:
         with pytest.raises(TokenEvidenceError, match="completion_provider_call_count"):
             validate_provider_token_evidence(pe, "test")
 
-    def test_prior_execution_on_manual_blocks(self):
+    def test_prior_execution_dict_on_manual_accepted(self):
+        from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
+        pe = {
+            "schema_version": "1.0.0",
+            "execution_mode": "manual_operator_repair",
+            "provider_call_count": 0,
+            "prior_execution": {"provider_call_count": 1},
+        }
+        validate_provider_token_evidence(pe, "test")
+
+    def test_prior_execution_non_dict_on_manual_blocks(self):
         from packages.orchestration.provider_token_evidence import validate_provider_token_evidence
         from packages.orchestration.token_truth import TokenEvidenceError
         pe = {
             "schema_version": "1.0.0",
             "execution_mode": "manual_operator_repair",
             "provider_call_count": 0,
-            "prior_execution": {"old": True},
+            "prior_execution": "stale",
         }
         with pytest.raises(TokenEvidenceError, match="prior_execution"):
             validate_provider_token_evidence(pe, "test")

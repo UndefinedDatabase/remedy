@@ -897,7 +897,7 @@ class TestStrictResumedActuals:
     def test_bool_provider_calls_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"provider_call_count": True})
+        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "provider_call_count": True})
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="bool"):
             run_job(job.job_id)
@@ -905,7 +905,7 @@ class TestStrictResumedActuals:
     def test_float_total_tokens_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"total_tokens": 1.5})
+        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "total_tokens": 1.5})
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="float"):
             run_job(job.job_id)
@@ -913,7 +913,7 @@ class TestStrictResumedActuals:
     def test_string_actual_count_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"actual_call_count": "3"})
+        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "actual_call_count": "3"})
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="str"):
             run_job(job.job_id)
@@ -921,7 +921,7 @@ class TestStrictResumedActuals:
     def test_negative_counter_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
-        job = JobPlan(budget_actuals={"provider_call_count": -1})
+        job = JobPlan(budget_actuals={"schema_version": "1.0.0", "provider_call_count": -1})
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="negative"):
             run_job(job.job_id)
@@ -930,6 +930,7 @@ class TestStrictResumedActuals:
         from packages.orchestration.budget_guard import BudgetCounterError
         from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
         job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0",
             "provider_call_count": 2,
             "actual_call_count": 5,
             "total_tokens": 0,
@@ -1395,3 +1396,109 @@ class TestCriticalNodeBindings:
         finally:
             rig.TEST_EXECUTION_BINDINGS = orig
         assert results[0]["found"] is True
+
+
+class TestPersistedActualsSchemaVersion:
+    """Repro 6: persisted Actuals must reject invalid schema_version."""
+
+    def test_missing_schema_version_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={"provider_call_count": 0})
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="schema_version"):
+            run_job(job.job_id)
+
+    def test_wrong_schema_version_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={"schema_version": "banana", "provider_call_count": 0})
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="schema_version"):
+            run_job(job.job_id)
+
+    def test_valid_schema_version_passes(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0",
+            "provider_call_count": 0,
+            "actual_call_count": 0,
+            "total_tokens": 0,
+        })
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status != "blocked" or "schema_version" not in (result.error or "")
+
+
+class TestPersistedActualsMissingSources:
+    """Repro 7: persisted measured Actuals must require source provenance."""
+
+    def test_positive_count_missing_sources_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0",
+            "provider_call_count": 1,
+            "actual_call_count": 1,
+            "total_tokens": 100,
+        })
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="actual_sources"):
+            run_job(job.job_id)
+
+    def test_positive_count_empty_sources_raises(self):
+        from packages.orchestration.budget_guard import BudgetCounterError
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0",
+            "provider_call_count": 1,
+            "actual_call_count": 1,
+            "total_tokens": 100,
+            "actual_sources": [],
+        })
+        _persist_job(job)
+        with pytest.raises(BudgetCounterError, match="actual_sources"):
+            run_job(job.job_id)
+
+    def test_zero_count_no_sources_passes(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        job = JobPlan(budget_actuals={
+            "schema_version": "1.0.0",
+            "provider_call_count": 0,
+            "actual_call_count": 0,
+            "total_tokens": 0,
+        })
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status != "blocked" or "actual_sources" not in (result.error or "")
+
+
+class TestCorruptFirstRunningAt:
+    """Repro 9: corrupt persisted first_running_at must block, not fail open."""
+
+    def test_unparseable_value_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job, JOB_BLOCKED
+        job = JobPlan(first_running_at="not-a-date")
+        job.status = "running"
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == JOB_BLOCKED
+        assert "corrupt_first_running_at" in (result.error or "")
+
+    def test_naive_datetime_blocks(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job, JOB_BLOCKED
+        job = JobPlan(first_running_at="2026-07-01T12:00:00")
+        job.status = "running"
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status == JOB_BLOCKED
+        assert "timezone-naive" in (result.error or "")
+
+    def test_valid_iso_utc_passes(self):
+        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job, JOB_BLOCKED
+        job = JobPlan(first_running_at="2026-07-01T12:00:00+00:00")
+        job.status = "running"
+        _persist_job(job)
+        result = run_job(job.job_id)
+        assert result.status != JOB_BLOCKED or "first_running_at" not in (result.error or "")

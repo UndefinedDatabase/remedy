@@ -333,6 +333,7 @@ find . \
   \( \
     -path './.git' -o \
     -path './.data' -o \
+    -path './.agent/Evidence' -o \
     -path './node_modules' -o \
     -path './*/node_modules' -o \
     -path './dist' -o \

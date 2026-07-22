@@ -135,11 +135,14 @@ TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
         "test_file": _F018_TEST,
         "min_passed": 70,
         "critical_node_ids": [
-            "TestStoppedJobBudgetOverrideBlocked::test_stopped_job_refuses_budget_flags",
+            "TestStoppedJobBudgetOverrideBlocked::test_run_job_rejects_budget_on_stopped",
             "TestClosedSourceVocabulary::test_unknown_source_rejected",
             "TestClosedSourceVocabulary::test_valid_sources_accepted",
             "TestStrictActualsRejectCoercion",
             "TestCorruptPersistedBudgetsBlock",
+            "TestPersistedActualsSchemaVersion",
+            "TestPersistedActualsMissingSources",
+            "TestCorruptFirstRunningAt",
         ],
     },
     {

@@ -1429,16 +1429,23 @@ def _cmd_job_budget(
                     _started_at = datetime.fromisoformat(actuals["started_at"])
                 except (ValueError, TypeError):
                     pass
+            _real_sources = actuals.get("actual_sources")
+            if isinstance(_real_sources, (list, tuple)) and _real_sources:
+                _source_tuple = tuple(str(s) for s in _real_sources)
+            else:
+                _source_tuple = ("persisted_job_actuals",)
             try:
                 counters = collect_counters_from_actuals(
                     actuals, started_at=_started_at,
-                    actual_sources=("persisted_job_actuals",),
+                    actual_sources=_source_tuple,
                 )
                 if _budgets is not None:
                     evaluation = evaluate_budget(_budgets, counters)
                 _counter_status = "evaluated"
-            except Exception:
-                _counter_status = "actuals_invalid"
+            except Exception as _budget_exc:
+                _counter_status = "corrupt"
+                counters = None
+                evaluation = None
         else:
             has_runs = any(
                 t.run_id and t.status in ("applied", "passed", "stopped")
@@ -1474,15 +1481,22 @@ def _cmd_job_budget(
                     _started_at = datetime.fromisoformat(actuals["started_at"])
                 except (ValueError, TypeError):
                     pass
+            _real_sources = actuals.get("actual_sources")
+            if isinstance(_real_sources, (list, tuple)) and _real_sources:
+                _source_tuple = tuple(str(s) for s in _real_sources)
+            else:
+                _source_tuple = ("persisted_job_actuals",)
             try:
                 counters = collect_counters_from_actuals(
                     actuals, started_at=_started_at,
-                    actual_sources=("persisted_job_actuals",),
+                    actual_sources=_source_tuple,
                 )
                 evaluation = evaluate_budget(_budgets, counters)
                 _counter_status = "evaluated"
-            except Exception:
-                _counter_status = "actuals_invalid"
+            except Exception as _budget_exc:
+                _counter_status = "corrupt"
+                counters = None
+                evaluation = None
 
     if _budgets is None and _budgets_dict is None:
         if json_output:

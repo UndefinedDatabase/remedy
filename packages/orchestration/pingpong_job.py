@@ -1745,6 +1745,11 @@ def run_job(
     _prior = getattr(job, "budget_actuals", None) or {}
     if _prior:
         from packages.orchestration.budget_guard import BudgetCounterError as _BCError
+        _sv_val = _prior.get("schema_version")
+        if _sv_val != "1.0.0":
+            raise _BCError(
+                f"persisted budget_actuals schema_version {_sv_val!r} "
+                f"is not '1.0.0'")
         for _afield in ("provider_call_count", "total_tokens", "actual_call_count"):
             _aval = _prior.get(_afield, 0)
             if _aval is None:
@@ -1765,7 +1770,6 @@ def run_job(
         if _ac > _pc:
             raise _BCError(
                 f"persisted actual_call_count ({_ac}) > provider_call_count ({_pc})")
-        # F018 Scope 8: validate optional v1.0.0 provenance fields when present.
         _umc = _prior.get("unmeasured_call_count")
         if _umc is not None:
             if not isinstance(_umc, int) or isinstance(_umc, bool) or _umc < 0:
@@ -1785,6 +1789,11 @@ def run_job(
                 if not isinstance(_sv, str) or _sv not in _VAS:
                     raise _BCError(
                         f"persisted actual_sources[{_si}] unknown: {_sv!r}")
+        if _ac > 0 and (not _asrc or not isinstance(_asrc, (list, tuple))
+                        or len(_asrc) == 0):
+            raise _BCError(
+                f"persisted actual_call_count ({_ac}) > 0 but "
+                f"actual_sources is missing or empty")
         _CLOSED_ACTUALS_KEYS = frozenset({
             "schema_version", "provider_call_count", "actual_call_count",
             "total_tokens", "started_at", "actual_sources", "unmeasured_call_count",
@@ -1796,17 +1805,27 @@ def run_job(
     _accumulated_tokens = _prior.get("total_tokens", 0) or 0
     _accumulated_measured = _prior.get("actual_call_count", 0) or 0
     _accumulated_unmeasured = _accumulated_provider_calls - _accumulated_measured
-    # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume,
-    # but do NOT write job.first_running_at yet — that happens only after all pre-work
-    # validation (budget decode, pre-stop check) passes, so a corrupt-budget block or
-    # a pending stop never stamps a start time on a job that never actually ran.
+    # F018 Scope 7: compute _run_started_at from persisted first_running_at on resume.
+    # Invalid or timezone-naive values block — never silently become now().
     _run_started_at = datetime.now(timezone.utc)
     _first_run_already_set = bool(getattr(job, "first_running_at", ""))
     if _first_run_already_set:
+        _fra_raw = job.first_running_at
         try:
-            _run_started_at = datetime.fromisoformat(job.first_running_at)
-        except (ValueError, TypeError):
-            pass
+            _fra_parsed = datetime.fromisoformat(_fra_raw)
+        except (ValueError, TypeError) as _fra_exc:
+            job.status = JOB_BLOCKED
+            job.error = (
+                f"corrupt_first_running_at: cannot parse {_fra_raw!r}: {_fra_exc}")
+            _persist_job(job)
+            return job
+        if _fra_parsed.tzinfo is None:
+            job.status = JOB_BLOCKED
+            job.error = (
+                f"corrupt_first_running_at: timezone-naive value {_fra_raw!r}")
+            _persist_job(job)
+            return job
+        _run_started_at = _fra_parsed
 
     # F018: reconstruct JobBudgets from the persisted dict once (reused by _stop_check).
     # A malformed persisted budget MUST block — never silently continue as unlimited.

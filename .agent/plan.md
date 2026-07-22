@@ -1,48 +1,45 @@
-# Plan — F018 Budgets & Stop Conditions (Final Acceptance Closure)
+# Plan — F018 Budgets & Stop Conditions (Evidence Integrity Closure)
 
 ## Goal
-Close 9 exact reproductions from the reviewed package. Fix authoritative
-stopped-job override, closed Actuals sources, Verification V1.1 with full
-fields, reproducible Runtime Gate, always-rebuild refresh, manifest HEAD
-cross-check, privacy-safe report, full F018 base, truthful docs. One
-canonical ZIP from accepted F017 merge base.
+Close 10 exact blocking reproductions from the reviewed BLOCKED_EVIDENCE
+package. Fix truthful Verification V1.1 producer, generic Manual Completion
+compatibility, strict persisted Actuals and first_running_at, honest budget
+display, exact Runtime Gate critical bindings, single-Evidence packaging,
+truthful terminal handoff. One canonical ZIP from F017 merge base
+190b3528a2dada6a27fdd9c2fdb75a6a00e7ea43.
 
-## Status: IMPLEMENTING — tests pass, docs updated, pending commit + Evidence + ZIP
+## Status: COMMITTING
 
-## Scope 1 — Authoritative stopped-job and Actuals contracts
-- [x] run_job: reject budget replacement on stopped jobs (not just CLI)
-- [x] Actuals: preserve original measurement sources across resume
-- [x] Actuals: remove "persisted_resume" from emitted sources
-- [x] Actuals: validate source vocabulary in persisted actuals decoder
-- [x] Tests: direct run_job override blocked, persisted budget unchanged,
-      invalid source rejected, sources survive two resumes
+## Scope 1 — Unified truthful Verification V1.1
+- [x] _run_verifications: schema_version "1.1.0" (was "1.0.0" with V1.1 fields)
+- [x] _run_verifications: add duration_seconds (monotonic) and deselected to runs
+- [x] _default_verification_runner: capture duration, emit deselected
+- [x] Normalize injected runner output: derive missing V1.1 fields safely
+- [x] Generic Manual Completion: fix 4 failing tests through production compat
+- [x] VT cross-consistency: selected derived from node_ids or p+f+s
 
-## Scope 2 — Verification V1.1 and reproducible runtime gate
-- [x] VT schema 1.1.0: retain all fields (head_sha, output_hash, selected,
-      deselected, skipped, node_ids, duration_seconds)
-- [x] Do not strip fields in manual_attestation.py
-- [x] Timestamp from real generated time, not hardcoded
-- [x] Runtime Gate reproducible from packaged VT + source
-- [x] Add critical node bindings for key behaviors
-- [x] Tests: VT v1.1 roundtrip, gate rebuild from packaged inputs
+## Scope 2 — Strict persisted Actuals and first-running authority
+- [x] Persisted actuals: require schema_version == "1.0.0" (missing/unknown blocks)
+- [x] Persisted actuals: require actual_sources when actual_call_count > 0
+- [x] first_running_at: invalid text blocks (not silently becomes now())
+- [x] first_running_at: timezone-naive blocks
+- [x] Corrupt state reaches no workspace, provider or mutation
+- [x] Tests for each strict guard (3 new classes, 9 tests)
 
-## Scope 3 — Staged refresh, privacy and final-HEAD enforcement
-- [x] Refresh: always rebuild gate and compare, never trust existing PASS
-- [x] Refresh: redact absolute paths from report
-- [x] Manifest: validate bound_run.head_sha == Review Subject HEAD
-- [x] Manifest: validate output_hash sha256 syntax
-- [x] Tests: stale v1.1 wrong HEAD, privacy scan, HEAD mismatch
+## Scope 3 — Honest budget display and exact Runtime bindings
+- [x] _cmd_job_budget: pass real persisted actual_sources (not "persisted_job_actuals")
+- [x] _cmd_job_budget: corrupt record → status "corrupt" with diagnostic
+- [x] Runtime Gate: bind strongest test_run_job_rejects_budget_on_stopped
+- [x] Runtime Gate: add critical bindings for strict behaviors (3 new nodes)
 
-## Scope 4 — Full-feature review scope and real E2E tests
-- [x] Run complete test matrix per scope 10
-- [x] New tests for each reproduction (22 new authority tests)
-- [ ] Evidence base: 190b3528a2dada6a27fdd9c2fdb75a6a00e7ea43
+## Scope 4 — Clean single-Evidence package contents
+- [x] make_review_zip.sh: exclude .agent/Evidence/ from find walk
 
-## Scope 5 — Truthful docs, final Evidence and one newest authoritative ZIP
-- [x] Fix "8067 full suite passing" claim (report failures truthfully)
-- [x] Update STATUS.md, T0_F018.md, plan.md
+## Scope 5 — Tests, truthful docs, final canonical ZIP
+- [x] Run complete test matrix: 513 passed in 8 suites
+- [x] Update STATUS.md, T0_F018.md, context.md, live_review.md
 - [ ] Commit all tracked files
-- [ ] Fresh Evidence from F017 merge base
+- [ ] Fresh Evidence from base 190b3528
 - [ ] One make_review_zip.sh invocation
 - [ ] No post-ZIP commit
 

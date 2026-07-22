@@ -1538,12 +1538,16 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     argv_v = list(argv)
     if "-v" not in argv_v and "--verbose" not in argv_v:
         argv_v.append("-v")
+    import time as _time
+    _t0 = _time.monotonic()
     result = _sp.run(argv_v, cwd=repo, capture_output=True, text=True, timeout=600,
                      env=_env)
+    _duration = round(_time.monotonic() - _t0, 3)
     stdout = result.stdout or ""
     passed = sum(int(x) for x in re.findall(r"(\d+)\s+passed", stdout))
     failed = sum(int(x) for x in re.findall(r"(\d+)\s+(?:failed|error)", stdout))
     skipped = sum(int(x) for x in re.findall(r"(\d+)\s+skipped", stdout))
+    deselected = sum(int(x) for x in re.findall(r"(\d+)\s+deselected", stdout))
     node_ids = re.findall(r"^(tests/\S+::\S+)\s+(?:PASSED|FAILED|ERROR|SKIPPED)", stdout, re.MULTILINE)
     selected = len(node_ids) if node_ids else (passed + failed + skipped)
     output_hash = hashlib.sha256(stdout.encode("utf-8", errors="replace")).hexdigest()
@@ -1560,11 +1564,13 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         "failed": failed,
         "skipped": skipped,
         "selected": selected,
+        "deselected": deselected,
         "node_ids": node_ids,
         "output_hash": f"sha256:{output_hash}",
         "head_sha": head_sha,
         "stdout_summary": stdout[-2000:],
         "stderr_summary": (result.stderr or "")[-1000:],
+        "duration_seconds": _duration,
     }
 
 
@@ -1582,9 +1588,17 @@ def _run_verifications(
     """
     if not commands and runner is None:
         return None
+    import subprocess as _sp_head
     from datetime import datetime as _dt, timezone as _tz
     cmds = [c for c in (commands or []) if c and c.strip()]
     runs: list[dict[str, Any]] = []
+    _head_sha_default = ""
+    try:
+        _h_d = _sp_head.run(["git", "rev-parse", "HEAD"], cwd=repo,
+                             capture_output=True, text=True, timeout=10)
+        _head_sha_default = (_h_d.stdout or "").strip()
+    except Exception:
+        pass
     for i, cmd in enumerate(cmds):
         rid = f"vr-{i + 1:04d}"
         r = runner(cmd) if runner is not None else _default_verification_runner(cmd, repo)
@@ -1592,29 +1606,50 @@ def _run_verifications(
         if test_files is None:
             test_files = _verification_test_files_from_command(cmd)
         test_files = sorted({_vt_norm(f) for f in test_files})
+        _passed = int(r.get("passed", 0) or 0)
+        _failed = int(r.get("failed", 0) or 0)
+        _skipped = int(r.get("skipped", 0) or 0)
+        _node_ids = list(r.get("node_ids") or [])
+        _selected = int(r.get("selected", 0) or 0)
+        if not _selected:
+            _selected = len(_node_ids) if _node_ids else (_passed + _failed + _skipped)
+        _deselected = int(r.get("deselected", 0) or 0)
+        _stdout_summary = str(r.get("stdout_summary", "") or "")[-2000:]
+        _output_hash = str(r.get("output_hash", "") or "")
+        if not _output_hash and _stdout_summary:
+            import hashlib as _hl_norm
+            _output_hash = _hl_norm.sha256(
+                _stdout_summary.encode("utf-8", errors="replace")).hexdigest()
+        _head_sha = str(r.get("head_sha", "") or "") or _head_sha_default
+        _duration = r.get("duration_seconds")
+        if _duration is None:
+            _duration = 0.0
+        else:
+            _duration = round(float(_duration), 3)
         runs.append({
             "run_id": rid,
             "command": cmd,
             "exit_code": int(r.get("exit_code", -1)),
-            "passed": int(r.get("passed", 0) or 0),
-            "failed": int(r.get("failed", 0) or 0),
-            "skipped": int(r.get("skipped", 0) or 0),
-            "selected": int(r.get("selected", 0) or 0),
-            "node_ids": list(r.get("node_ids") or []),
-            "output_hash": str(r.get("output_hash", "") or ""),
-            "head_sha": str(r.get("head_sha", "") or ""),
+            "passed": _passed,
+            "failed": _failed,
+            "skipped": _skipped,
+            "selected": _selected,
+            "deselected": _deselected,
+            "node_ids": _node_ids,
+            "output_hash": _output_hash,
+            "head_sha": _head_sha,
+            "duration_seconds": _duration,
             "test_files": test_files,
-            "stdout_summary": str(r.get("stdout_summary", "") or "")[-2000:],
+            "stdout_summary": _stdout_summary,
         })
     total_passed = sum(x["passed"] for x in runs)
     total_failed = sum(x["failed"] for x in runs)
     exit_code = 0 if runs and all(x["exit_code"] == 0 for x in runs) else (0 if not runs else 1)
     all_files = sorted({f for x in runs for f in x["test_files"]})
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "verification_type": "explicit_commands",
         "runs": runs,
-        # Backward-compatible top-level fields derived from the runs.
         "command": " && ".join(c["command"] for c in runs),
         "exit_code": exit_code,
         "passed": total_passed,
