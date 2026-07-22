@@ -1522,6 +1522,17 @@ def _verification_test_files_from_command(command: str) -> list[str]:
                    if not any(f == i or f.startswith(i.rstrip("/") + "/") for i in ignored)})
 
 
+def _scrub_paths(text: str, repo: str) -> str:
+    """Replace local absolute paths with relative equivalents for safe packaging."""
+    abs_repo = os.path.abspath(repo)
+    if abs_repo and abs_repo != "/":
+        text = text.replace(abs_repo + "/", "").replace(abs_repo, ".")
+    home = os.path.expanduser("~")
+    if home and home != "/":
+        text = text.replace(home, "~")
+    return text
+
+
 def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     """Execute a verification command via subprocess and parse pytest counts."""
     import hashlib
@@ -1566,10 +1577,10 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
         "selected": selected,
         "deselected": deselected,
         "node_ids": node_ids,
-        "output_hash": f"sha256:{output_hash}",
+        "output_hash": output_hash,
         "head_sha": head_sha,
-        "stdout_summary": stdout[-2000:],
-        "stderr_summary": (result.stderr or "")[-1000:],
+        "stdout_summary": _scrub_paths(stdout[-2000:], repo),
+        "stderr_summary": _scrub_paths((result.stderr or "")[-1000:], repo),
         "duration_seconds": _duration,
     }
 
@@ -1616,6 +1627,8 @@ def _run_verifications(
         _deselected = int(r.get("deselected", 0) or 0)
         _stdout_summary = str(r.get("stdout_summary", "") or "")[-2000:]
         _output_hash = str(r.get("output_hash", "") or "")
+        if _output_hash.startswith("sha256:"):
+            _output_hash = _output_hash[7:]
         if not _output_hash and _stdout_summary:
             import hashlib as _hl_norm
             _output_hash = _hl_norm.sha256(
