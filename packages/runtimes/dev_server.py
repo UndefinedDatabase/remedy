@@ -239,7 +239,12 @@ def validate_spec(spec: RuntimeSpec, project_root: str | Path) -> RuntimeSpec:
 # ---------------------------------------------------------------------------
 
 def project_digest(project_root: str | Path) -> str:
-    """Resolved-path digest — the SAME helper F006 uses. This is NOT F146."""
+    """Workspace key digest for the dev_server runtime directory.
+
+    F146: this is a WORKSPACE KEY, not a project identity. The canonical
+    project identity is the registry UUID (RemyProject.id). This wrapper
+    is an allowed call site — the guard test permits it.
+    """
     from packages.orchestration.worktrees import project_id
     return project_id(project_root)
 

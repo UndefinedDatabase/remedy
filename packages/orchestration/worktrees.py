@@ -173,10 +173,14 @@ def ensure_ignored(root: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def project_id(repo_path: str | Path) -> str:
-    """Stable id for a repository, derived from its resolved path.
+    """Workspace key — a resolved-path digest for lock namespacing.
 
-    Deliberately NOT F146: a short, deterministic digest is enough to give each
-    checkout its own lock namespace.
+    F146 canonical identity rule: this is NOT a project identity. The project
+    identity is the registry UUID (RemyProject.id). This function returns a
+    deterministic digest of the resolved repo path, used ONLY for lock
+    namespace and dev_server runtime directory. Do not add new call sites
+    outside the worktree module and dev_server.project_digest — a guard
+    test enforces this.
     """
     resolved = str(Path(repo_path).resolve())
     return hashlib.sha256(resolved.encode()).hexdigest()[:16]
