@@ -6,7 +6,9 @@ across features (last used: R-0076). History lives in git and in each
 feature's evidence zip.
 
 ### R-0077: `remedy init` bare invocation breaks the group-help contract + real-registry side effects in tests
-- **Status**: Open → Done: R-0077
+- **Status**: Resolved
+- **Reviewer**: re-ran tests/test_grouped_cli.py (471 passed, 0 fail); grouped.py verified as a pure
+  constant hoist, inject-logic byte-identical; no real-registry side effects in help tests.
 - **Severity**: High
 - **Area**: apps/cli/grouped.py (_ALWAYS_INJECT), tests/test_grouped_cli.py
 - **Details**: `_ALWAYS_INJECT = {"init"}` makes `remedy init` with no
@@ -31,7 +33,9 @@ feature's evidence zip.
   pytest tests/test_grouped_cli.py -q → 0 failures.
 
 ### R-0078: init tests are not data-dir-isolated; the idempotency mtime-proof is dead code
-- **Status**: Open → Done: R-0078
+- **Status**: Resolved
+- **Reviewer**: verified REMEDY_DATA_DIR per-test isolation + real before/after mtime compare with
+  first-run guard; real projects dir 312→312 across a full run.
 - **Severity**: Medium
 - **Area**: tests/cli/test_init_cmd.py
 - **Details**: `_ENV` sets PYTHONPATH but not REMEDY_DATA_DIR, so every init
@@ -56,7 +60,9 @@ feature's evidence zip.
   full run of the file.
 
 ### R-0079: false verification claim in the handoff
-- **Status**: Open → Done: R-0079
+- **Status**: Resolved
+- **Reviewer**: handoff rewritten with numbers matching the reviewer's independent run (471 / 5 / 312 /
+  3 pre-existing).
 - **Severity**: Low
 - **Area**: .agent/handoff.md
 - **Details**: Handoff states 'CLI suite (tests/cli): same failure pattern as
@@ -73,7 +79,9 @@ feature's evidence zip.
   branch's results.
 
 ### R-0080: runtime table written to remedy.toml — read by neither loader (inert config)
-- **Status**: Open → Done: R-0080
+- **Status**: Resolved
+- **Reviewer**: reproduced in an isolated fixture — [runtime] written to .remedy/config.toml,
+  resolve_spec(root).source == "config", port 5173.
 - **Severity**: High
 - **Area**: apps/cli/commands/init_cmd.py (_build_config / _handle_init)
 - **Details**: init writes the `[runtime]` table into the repo-root
