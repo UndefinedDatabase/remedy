@@ -334,6 +334,33 @@ class TestInitHygiene:
         exclude = (repo / ".git" / "info" / "exclude").read_text(encoding="utf-8")
         assert ".remedy-wt/" in exclude
 
+    def test_in_repo_data_dir_ignored(self, tmp_path):
+        """REMEDY_DATA_DIR inside repo → entry in .git/info/exclude, hidden from git status."""
+        repo = _make_git_repo(tmp_path / "repo")
+        data_dir = repo / ".data"
+        data_dir.mkdir()
+        (data_dir / "dummy").write_text("x", encoding="utf-8")
+        env = {**_make_env(tmp_path), "REMEDY_DATA_DIR": str(data_dir)}
+
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+        assert "[created] ignore .data/" in r.stdout
+
+        exclude = (repo / ".git" / "info" / "exclude").read_text(encoding="utf-8")
+        assert ".data/" in exclude
+
+        status = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in status.stdout.strip().splitlines():
+            assert ".data" not in line, (
+                f".data should be hidden by exclude: {status.stdout}"
+            )
+            assert ".gitignore" not in line, (
+                f".gitignore should not exist: {status.stdout}"
+            )
+
     def test_no_gitignore_modified(self, tmp_path):
         """Ignore entries use .git/info/exclude, not .gitignore."""
         repo = _make_git_repo(tmp_path / "repo")

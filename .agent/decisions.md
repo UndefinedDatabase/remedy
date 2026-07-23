@@ -16,6 +16,12 @@ mechanism as `ensure_ignored` in worktrees.py. Inline implementation (not
 importing `_git` private helper) to avoid coupling. Entries added:
 `.remedy-wt/` (always), data-dir and workspaces (only if inside repo).
 Decision: reuse existing exclude pattern, not a sibling mechanism.
+The `_ensure_ignore_entry` duplication vs worktrees.ensure_ignored is a
+deliberate low-risk scope tradeoff: refactoring F006-shared code inside
+F081 would widen the blast radius with no functional benefit. Both
+implementations use the identical `.git/info/exclude` append-if-absent
+pattern. If a shared helper is warranted later, it belongs in a dedicated
+refactor, not in a feature branch.
 
 ## 2026-07-23: Runtime table written to .remedy/config.toml, not remedy.toml (R-0080)
 Two config systems exist: `config.py` reads `remedy.toml` `[remedy]` table only;
