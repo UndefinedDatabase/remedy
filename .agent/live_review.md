@@ -56,7 +56,7 @@ feature's evidence zip.
   full run of the file.
 
 ### R-0079: false verification claim in the handoff
-- **Status**: Open
+- **Status**: Open → Done: R-0079
 - **Severity**: Low
 - **Area**: .agent/handoff.md
 - **Details**: Handoff states 'CLI suite (tests/cli): same failure pattern as

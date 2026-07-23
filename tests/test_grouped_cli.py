@@ -23,10 +23,10 @@ import pytest
 
 from apps.cli.command_catalog import GROUPS, get_commands_for_group
 from apps.cli.grouped import _ALWAYS_INJECT, build_parser
-
-_HELP_CONTRACT_GROUPS = [g for g in GROUPS if g not in _ALWAYS_INJECT]
 from packages.core.models import Job, Task
 from packages.orchestration.storage import save_job
+
+_HELP_CONTRACT_GROUPS = [g for g in GROUPS if g not in _ALWAYS_INJECT]
 
 # ---------------------------------------------------------------------------
 # Helpers
