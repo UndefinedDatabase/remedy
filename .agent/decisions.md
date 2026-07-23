@@ -1140,3 +1140,9 @@ Both proven with fake executables and fake planners; zero provider calls.
   not implemented here.
 - F008 (SSE stream, hook, polling fallback) is Tier 5 and depends on F146: no
   endpoint, EventSource, hook or UI work belongs on this branch.
+
+## 2026-07-24: Reword commit 40a722a — scanner false-positive on "/review-remedy" (R-0083)
+Operator-approved reword via filter-branch: "add /review-remedy command" → "add
+review-remedy slash command". The _contains_local_path scanner in review_subject.py
+false-positives on slash-command names in commit subjects, blocking make_review_zip.
+Separate fix tracked as R-0083 (not F081 scope).

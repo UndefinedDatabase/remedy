@@ -187,3 +187,22 @@ feature's evidence zip.
   handoff to the TRUE zip result — never omit a BLOCKED build. If the producer
   genuinely cannot run for F081, report the raw error and STOP for an operator
   decision (do not silently fall back).
+
+### R-0083: review-subject scanner flags slash-command tokens in commit subjects as local paths (latent packaging hazard)
+- **Status**: Documented risk (Low) — routed to planning; separate fix, NOT F081 scope
+- **Severity**: Low
+- **Area**: packages/orchestration/review_subject.py (_metadata_is_safe → _contains_local_path)
+- **Details**: _metadata_is_safe() rejects any commit subject containing a
+  "/token" (e.g. a slash-command name like "/review-remedy"), so
+  make_review_zip aborts with ReviewSubjectError before any artifact is built.
+  This is a false positive (slash-command name, not a filesystem path) and will
+  block the closure zip of ANY feature branch whose history carries such a
+  subject. Hit at F081 closure on commit 40a722a; worked around by rewording
+  the subject (operator-approved). The heuristic itself is unchanged and
+  remains a latent hazard for future features.
+- **Evidence**: reviewer ran _metadata_is_safe over ef1e2e9..HEAD → exactly 1
+  unsafe subject (40a722a "chore(workflow): add /review-remedy command");
+  make_review_zip exit 2 ReviewSubjectError commit subject carries path.
+- **Expected fix (separate item)**: tighten _contains_local_path so a bare
+  slash-command token in a commit subject is not treated as a filesystem path,
+  without weakening real path/secret detection. File as its own roadmap/fix.
