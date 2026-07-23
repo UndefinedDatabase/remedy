@@ -28,8 +28,8 @@ def _cmd_create_project(name: str, description: str | None) -> None:
 
 
 def _cmd_list_projects() -> None:
-    from packages.orchestration.project_registry import list_projects
-    projects = list_projects()
+    from packages.orchestration.project_registry import _list_projects_readonly
+    projects = _list_projects_readonly()
     if not projects:
         print("No projects found.")
         return
@@ -42,8 +42,9 @@ def _cmd_list_projects() -> None:
 def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
+        _load_project_readonly,
+        _projects_dir,
         export_project_json,
-        load_project,
         summarize_project,
     )
 
@@ -53,7 +54,10 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
         print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
