@@ -16,9 +16,13 @@ from packages.orchestration.project_registry import (
     ProjectNotFoundError,
     RemyProject,
     RepoOwnershipConflictError,
+    _list_projects_readonly,
+    _load_project_readonly,
     _lookup_by_slug_or_uuid_readonly,
     _managed_worktree_parent,
     _migrate_legacy,
+    _project_set_readonly,
+    _projects_dir,
     _validate_slug,
     attach_repo_canonical,
     find_project_by_repo,
@@ -1005,3 +1009,190 @@ class TestFeatureAwareGate:
         assert len(f146_checks) > 0
         f018_checks = [c for c in gate["checks"] if c["check_id"].startswith("f018_")]
         assert len(f018_checks) == 0
+
+
+# ---------------------------------------------------------------------------
+# R4: Deterministic read-only projection
+# ---------------------------------------------------------------------------
+
+
+class TestDeterministicReadonlyProjection:
+    """_project_set_readonly allocates unique slugs across the full set
+    deterministically, regardless of disk enumeration order."""
+
+    def test_reverse_order_same_slugs(self, tmp_path, monkeypatch):
+        """Two same-name legacy projects get consistent slugs regardless of load order."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+
+        from datetime import datetime, timezone
+        t1 = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        t2 = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+        p1 = _make_project(name="My App", created_at=t1)
+        p2 = _make_project(name="My App", created_at=t2)
+
+        data1 = json.loads(p1.model_dump_json())
+        data2 = json.loads(p2.model_dump_json())
+        data1.pop("slug", None)
+        data2.pop("slug", None)
+        (d / f"{p1.id}.json").write_text(json.dumps(data1))
+        (d / f"{p2.id}.json").write_text(json.dumps(data2))
+
+        result = _project_set_readonly()
+        slugs = {str(p.id): p.slug for p in result}
+
+        assert slugs[str(p1.id)] == "my-app"
+        assert slugs[str(p2.id)] == "my-app-2"
+
+    def test_projection_never_writes(self, tmp_path, monkeypatch):
+        """_project_set_readonly must not modify any file on disk."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+
+        p = _make_project(name="NoWrite")
+        data = json.loads(p.model_dump_json())
+        data.pop("slug", None)
+        f = d / f"{p.id}.json"
+        f.write_text(json.dumps(data))
+
+        before_bytes = f.read_bytes()
+        before_mtime = f.stat().st_mtime_ns
+
+        result = _project_set_readonly()
+        assert len(result) == 1
+        assert result[0].slug == "nowrite"
+
+        assert f.read_bytes() == before_bytes
+        assert f.stat().st_mtime_ns == before_mtime
+
+    def test_persisted_slug_reserved(self, tmp_path, monkeypatch):
+        """A project with persisted slug keeps it; legacy record gets suffix."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+
+        p1 = _make_project(name="Widget", slug="widget")
+        save_project(p1)
+
+        from datetime import datetime, timezone
+        p2 = _make_project(name="Widget", created_at=datetime(2020, 1, 1, tzinfo=timezone.utc))
+        data2 = json.loads(p2.model_dump_json())
+        data2.pop("slug", None)
+        (d / f"{p2.id}.json").write_text(json.dumps(data2))
+
+        result = _project_set_readonly()
+        slugs = {str(p.id): p.slug for p in result}
+        assert slugs[str(p1.id)] == "widget"
+        assert slugs[str(p2.id)] == "widget-2"
+
+    def test_load_readonly_uses_projection(self, tmp_path, monkeypatch):
+        """_load_project_readonly returns deterministic slug from full-set projection."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+
+        from datetime import datetime, timezone
+        p1 = _make_project(name="Dup", created_at=datetime(2024, 1, 1, tzinfo=timezone.utc))
+        p2 = _make_project(name="Dup", created_at=datetime(2024, 6, 1, tzinfo=timezone.utc))
+
+        for p in [p1, p2]:
+            data = json.loads(p.model_dump_json())
+            data.pop("slug", None)
+            (d / f"{p.id}.json").write_text(json.dumps(data))
+
+        loaded = _load_project_readonly(d / f"{p1.id}.json")
+        assert loaded.slug == "dup"
+
+        loaded2 = _load_project_readonly(d / f"{p2.id}.json")
+        assert loaded2.slug == "dup-2"
+
+    def test_list_readonly_sorted_newest_first(self, tmp_path, monkeypatch):
+        """_list_projects_readonly returns projects sorted by created_at descending."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+
+        from datetime import datetime, timezone
+        p1 = _make_project(name="Old", slug="old", created_at=datetime(2023, 1, 1, tzinfo=timezone.utc))
+        p2 = _make_project(name="New", slug="new", created_at=datetime(2025, 1, 1, tzinfo=timezone.utc))
+        save_project(p1)
+        save_project(p2)
+
+        result = _list_projects_readonly()
+        assert result[0].name == "New"
+        assert result[1].name == "Old"
+
+
+# ---------------------------------------------------------------------------
+# R4: Gate feature_id propagation
+# ---------------------------------------------------------------------------
+
+
+class TestGateFeatureId:
+    def test_feature_id_in_output(self):
+        from packages.orchestration.runtime_integration_gate import (
+            build_runtime_integration_gate,
+        )
+        gate = build_runtime_integration_gate(
+            str(Path(__file__).resolve().parents[2]),
+            feature_id="f146",
+        )
+        assert gate["feature_id"] == "f146"
+
+    def test_no_feature_id_when_none(self):
+        from packages.orchestration.runtime_integration_gate import (
+            build_runtime_integration_gate,
+        )
+        gate = build_runtime_integration_gate(
+            str(Path(__file__).resolve().parents[2]),
+        )
+        assert "feature_id" not in gate
+
+    def test_f146_registry_binding_exists(self):
+        from packages.orchestration.runtime_integration_gate import (
+            TEST_EXECUTION_BINDINGS,
+        )
+        ids = [b["check_id"] for b in TEST_EXECUTION_BINDINGS]
+        assert "f146_test_registry_execution" in ids
+
+    def test_refresh_preserves_feature_id(self, tmp_path):
+        """refresh_staged_evidence reads feature_id from existing gate and propagates."""
+        import os
+        import sys
+        sys.path.insert(0, os.path.abspath("."))
+
+        from packages.orchestration.runtime_integration_gate import (
+            build_runtime_integration_gate,
+        )
+        repo_root = str(Path(__file__).resolve().parents[2])
+
+        gate = build_runtime_integration_gate(repo_root, feature_id="f146")
+        gate_path = tmp_path / "runtime_integration_gate.json"
+        gate_path.write_text(json.dumps(gate, indent=1, sort_keys=True))
+
+        from scripts.refresh_review_evidence import refresh_staged_evidence
+        report = refresh_staged_evidence(str(tmp_path), repo_root)
+
+        refreshed_gate = json.loads(gate_path.read_text())
+        assert refreshed_gate.get("feature_id") == "f146"
+        assert not report["issues"]
+
+    def test_refresh_without_feature_id(self, tmp_path):
+        """refresh_staged_evidence with no feature_id produces gate without it."""
+        from packages.orchestration.runtime_integration_gate import (
+            build_runtime_integration_gate,
+        )
+        repo_root = str(Path(__file__).resolve().parents[2])
+
+        gate = build_runtime_integration_gate(repo_root)
+        gate_path = tmp_path / "runtime_integration_gate.json"
+        gate_path.write_text(json.dumps(gate, indent=1, sort_keys=True))
+
+        from scripts.refresh_review_evidence import refresh_staged_evidence
+        report = refresh_staged_evidence(str(tmp_path), repo_root)
+
+        refreshed_gate = json.loads(gate_path.read_text())
+        assert "feature_id" not in refreshed_gate

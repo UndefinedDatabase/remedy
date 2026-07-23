@@ -44,9 +44,10 @@ def _make_verification_data(
             "tests/orchestration/test_budget_stop_integration.py",
             "tests/orchestration/test_project_resolution.py",
             "tests/cli/test_project_current.py",
+            "tests/test_project_registry.py",
         ]
     if passed_counts is None:
-        passed_counts = [95, 52, 76, 39, 83, 16]
+        passed_counts = [95, 52, 76, 39, 83, 16, 46]
 
     from packages.orchestration.runtime_integration_gate import TEST_EXECUTION_BINDINGS
     _binding_map = {b["test_file"]: b for b in TEST_EXECUTION_BINDINGS}
@@ -104,7 +105,7 @@ class TestGateProducerV110:
         )
         gate = build_runtime_integration_gate(
             ".", verification_data=_make_verification_data())
-        assert gate["checks_total"] == 34
+        assert gate["checks_total"] == 35
 
     def test_gate_28_static_6_binding(self, scratch):
         from packages.orchestration.runtime_integration_gate import (
@@ -116,7 +117,7 @@ class TestGateProducerV110:
         binding = [c for c in gate["checks"]
                    if c["check_type"] == "test_execution_binding"]
         assert len(static) == 28
-        assert len(binding) == 6
+        assert len(binding) == 7
 
     def test_gate_passes_with_all_bindings(self, scratch):
         from packages.orchestration.runtime_integration_gate import (
@@ -125,7 +126,7 @@ class TestGateProducerV110:
         gate = build_runtime_integration_gate(
             ".", verification_data=_make_verification_data())
         assert gate["verdict"] == "PASS"
-        assert gate["checks_passed"] == 34
+        assert gate["checks_passed"] == 35
 
     def test_gate_blocks_with_zero_checks(self, scratch):
         from packages.orchestration.runtime_integration_gate import (
@@ -188,8 +189,8 @@ class TestManualAttestationGate:
         with open(gate_path) as f:
             gate = json.loads(f.read())
         assert gate["schema_version"] == "1.1.0"
-        assert gate["checks_total"] == 34
-        assert gate["checks_passed"] == 34
+        assert gate["checks_total"] == 35
+        assert gate["checks_passed"] == 35
         assert gate["verdict"] == "PASS"
 
     def test_old_zero_check_gate_no_longer_produced(self, scratch):
@@ -329,12 +330,12 @@ class TestEvidenceRefresh:
         report = refresh_staged_evidence(scratch, ".")
         assert len(report["refreshed_gates"]) == 1
         assert report["refreshed_gates"][0]["new_schema_version"] == "1.1.0"
-        assert report["refreshed_gates"][0]["new_checks_total"] == 34
+        assert report["refreshed_gates"][0]["new_checks_total"] == 35
 
         with open(os.path.join(scratch, "runtime_integration_gate.json")) as f:
             gate = json.loads(f.read())
         assert gate["schema_version"] == "1.1.0"
-        assert gate["checks_total"] == 34
+        assert gate["checks_total"] == 35
 
     def test_already_v110_left_unchanged(self, scratch):
         from packages.orchestration.runtime_integration_gate import (
