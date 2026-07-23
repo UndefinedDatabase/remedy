@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 from pathlib import Path
@@ -50,13 +51,14 @@ def _make_and_save(tmp_path, monkeypatch, **kwargs):
 
 
 # ---------------------------------------------------------------------------
-# _cmd_project_current
+# _cmd_project_current — exact JSON schema
 # ---------------------------------------------------------------------------
 
 
 class TestProjectCurrentCommand:
     def test_shows_slug_and_id(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
         repo = tmp_path / "myrepo"
         _init_git(repo)
         p = _make_and_save(
@@ -74,8 +76,9 @@ class TestProjectCurrentCommand:
         assert "myrepo" in out
         assert str(p.id) in out
 
-    def test_json_output(self, tmp_path, monkeypatch, capsys):
+    def test_json_output_exact_schema(self, tmp_path, monkeypatch, capsys):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
         repo = tmp_path / "myrepo"
         _init_git(repo)
         p = _make_and_save(
@@ -83,6 +86,7 @@ class TestProjectCurrentCommand:
             monkeypatch,
             slug="myrepo",
             canonical_repo_path=str(repo.resolve()),
+            job_ids=["j1", "j2", "j3"],
         )
         monkeypatch.chdir(repo)
 
@@ -91,11 +95,16 @@ class TestProjectCurrentCommand:
         _cmd_project_current(json_output=True)
         out = capsys.readouterr().out
         data = json.loads(out)
+        assert data["project_id"] == str(p.id)
         assert data["slug"] == "myrepo"
-        assert data["id"] == str(p.id)
+        assert data["repo"] == str(repo.resolve())
+        assert data["job_count"] == 3
+        assert data["selection_source"] == "cwd"
+        assert set(data.keys()) == {"project_id", "slug", "repo", "job_count", "selection_source"}
 
     def test_exit_3_when_unresolved(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
         repo = tmp_path / "unknown"
         _init_git(repo)
         monkeypatch.chdir(repo)
@@ -105,6 +114,70 @@ class TestProjectCurrentCommand:
         with pytest.raises(SystemExit) as exc:
             _cmd_project_current()
         assert exc.value.code == 3
+
+    def test_project_flag_overrides_cwd(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        _make_and_save(
+            tmp_path, monkeypatch,
+            slug="cwd-proj",
+            canonical_repo_path=str(repo.resolve()),
+        )
+        p_flag = _make_and_save(
+            tmp_path, monkeypatch,
+            slug="flag-proj",
+        )
+        monkeypatch.chdir(repo)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        _cmd_project_current(project_flag="flag-proj", json_output=True)
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["project_id"] == str(p_flag.id)
+        assert data["selection_source"] == "flag"
+
+    def test_env_source_in_json(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        p = _make_and_save(
+            tmp_path, monkeypatch,
+            slug="env-proj",
+            canonical_repo_path=str(repo.resolve()),
+        )
+        monkeypatch.setenv("REMEDY_PROJECT", "env-proj")
+        monkeypatch.chdir(repo)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        _cmd_project_current(json_output=True)
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["selection_source"] == "environment"
+
+    def test_job_count_uses_job_ids_len(self, tmp_path, monkeypatch, capsys):
+        """job_count must be len(project.job_ids), not count of loadable jobs."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        _make_and_save(
+            tmp_path, monkeypatch,
+            slug="myrepo",
+            canonical_repo_path=str(repo.resolve()),
+            job_ids=["fake-job-1", "fake-job-2"],
+        )
+        monkeypatch.chdir(repo)
+
+        from apps.cli.commands.project import _cmd_project_current
+
+        _cmd_project_current(json_output=True)
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["job_count"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +199,101 @@ class TestListProjectsSlug:
 
 
 # ---------------------------------------------------------------------------
-# Workspace-key guard test
+# project attach — git validation, ownership, JSON output
+# ---------------------------------------------------------------------------
+
+
+class TestProjectAttachCommand:
+    def test_attach_rejects_non_git(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        _make_and_save(
+            tmp_path, monkeypatch,
+            slug="myrepo",
+            canonical_repo_path=str(repo.resolve()),
+        )
+        monkeypatch.chdir(repo)
+        not_git = tmp_path / "not-a-repo"
+        not_git.mkdir()
+
+        from apps.cli.commands.project import _cmd_project_attach_repo
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_project_attach_repo(str(not_git))
+        assert exc.value.code == 2
+
+    def test_attach_json_output(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo1 = tmp_path / "repo1"
+        _init_git(repo1)
+        p = _make_and_save(
+            tmp_path, monkeypatch,
+            slug="myproj",
+            canonical_repo_path=str(repo1.resolve()),
+            repo_paths=[str(repo1.resolve())],
+        )
+        monkeypatch.chdir(repo1)
+        repo2 = tmp_path / "repo2"
+        _init_git(repo2)
+
+        from apps.cli.commands.project import _cmd_project_attach_repo
+
+        _cmd_project_attach_repo(str(repo2))
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["project_id"] == str(p.id)
+        assert data["changed"] is True
+        assert data["new_repo"] == str(repo2.resolve())
+
+    def test_attach_same_path_idempotent(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        _make_and_save(
+            tmp_path, monkeypatch,
+            slug="myproj",
+            canonical_repo_path=str(repo.resolve()),
+            repo_paths=[str(repo.resolve())],
+        )
+        monkeypatch.chdir(repo)
+
+        from apps.cli.commands.project import _cmd_project_attach_repo
+
+        _cmd_project_attach_repo(str(repo))
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["changed"] is False
+
+    def test_attach_with_project_flag(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        repo1 = tmp_path / "repo1"
+        _init_git(repo1)
+        repo2 = tmp_path / "repo2"
+        _init_git(repo2)
+        p = _make_and_save(
+            tmp_path, monkeypatch,
+            slug="target",
+            canonical_repo_path=str(repo1.resolve()),
+            repo_paths=[str(repo1.resolve())],
+        )
+        monkeypatch.chdir(tmp_path)
+
+        from apps.cli.commands.project import _cmd_project_attach_repo
+
+        _cmd_project_attach_repo(str(repo2), project_flag="target")
+        out = capsys.readouterr().out
+        data = json.loads(out)
+        assert data["project_id"] == str(p.id)
+        assert data["changed"] is True
+
+
+# ---------------------------------------------------------------------------
+# Workspace-key guard test — AST-based
 # ---------------------------------------------------------------------------
 
 
@@ -137,20 +304,15 @@ _ALLOWED_FILES = {
 
 
 class TestWorkspaceKeyGuard:
-    """No production file outside the allowed set may import worktrees.project_id."""
+    """No production file outside the allowed set may import worktrees.project_id.
+
+    Uses AST parsing to avoid false positives from string search.
+    """
 
     def test_no_forbidden_imports(self):
-        from pathlib import Path
-
         root = Path(__file__).resolve().parents[2]
-        forbidden_patterns = [
-            "from packages.orchestration.worktrees import project_id",
-            "from packages.orchestration.worktrees import (\n"
-            "    project_id",
-            "worktrees.project_id(",
-        ]
-
         violations: list[str] = []
+
         for py in sorted(root.rglob("*.py")):
             rel = str(py.relative_to(root))
             if rel.startswith("tests/"):
@@ -160,12 +322,33 @@ class TestWorkspaceKeyGuard:
             if rel in _ALLOWED_FILES:
                 continue
             try:
-                text = py.read_text()
+                source = py.read_text()
             except OSError:
                 continue
-            for pattern in forbidden_patterns:
-                if pattern in text:
-                    violations.append(f"{rel}: {pattern!r}")
+            try:
+                tree = ast.parse(source, filename=rel)
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    if node.module and "worktrees" in node.module:
+                        for alias in node.names:
+                            if alias.name == "project_id":
+                                violations.append(
+                                    f"{rel}:{node.lineno}: "
+                                    f"imports project_id from {node.module}"
+                                )
+                if isinstance(node, ast.Attribute):
+                    if (
+                        node.attr == "project_id"
+                        and isinstance(node.value, ast.Name)
+                        and node.value.id == "worktrees"
+                    ):
+                        violations.append(
+                            f"{rel}:{node.lineno}: "
+                            f"uses worktrees.project_id"
+                        )
 
         assert not violations, (
             "Forbidden worktrees.project_id usage outside allowed files:\n"

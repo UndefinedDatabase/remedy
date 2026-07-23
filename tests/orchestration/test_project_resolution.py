@@ -1,4 +1,4 @@
-"""Tests for F146 — project slug, legacy migration, and cwd resolution."""
+"""Tests for F146 — project slug, legacy migration, cwd resolution, selection, and registry integrity."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from uuid import uuid4
 import pytest
 
 from packages.orchestration.project_registry import (
+    AmbiguousProjectError,
+    InvalidProjectSelectorError,
     ProjectNotFoundError,
     RemyProject,
     _managed_worktree_parent,
@@ -17,6 +19,7 @@ from packages.orchestration.project_registry import (
     find_project_by_repo,
     list_projects,
     load_project,
+    register_project_repo,
     require_project,
     resolve_project,
     save_project,
@@ -62,7 +65,7 @@ def _init_git(path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# slugify
+# 1. slugify
 # ---------------------------------------------------------------------------
 
 
@@ -99,7 +102,7 @@ class TestSlugify:
 
 
 # ---------------------------------------------------------------------------
-# New model fields
+# 2. New model fields
 # ---------------------------------------------------------------------------
 
 
@@ -130,7 +133,31 @@ class TestNewFields:
 
 
 # ---------------------------------------------------------------------------
-# Legacy migration
+# 3. Atomic save
+# ---------------------------------------------------------------------------
+
+
+class TestAtomicSave:
+    def test_save_uses_atomic_replace(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="atomic")
+        save_project(p)
+        target = tmp_path / "projects" / f"{p.id}.json"
+        assert target.exists()
+        data = json.loads(target.read_text())
+        assert data["slug"] == "atomic"
+
+    def test_no_partial_on_failure(self, tmp_path, monkeypatch):
+        """No .tmp files should linger after a successful save."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="partial-test")
+        save_project(p)
+        tmp_files = list((tmp_path / "projects").glob("*.tmp"))
+        assert tmp_files == []
+
+
+# ---------------------------------------------------------------------------
+# 4. Legacy migration
 # ---------------------------------------------------------------------------
 
 
@@ -207,7 +234,60 @@ class TestLegacyMigration:
 
 
 # ---------------------------------------------------------------------------
-# ProjectNotFoundError extended
+# 5. Read-only resolution proof (bytes/mtime)
+# ---------------------------------------------------------------------------
+
+
+class TestReadOnlyResolution:
+    def test_resolve_does_not_write(self, tmp_path, monkeypatch):
+        """resolve_project must not modify any project file on disk."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        p = _make_project(slug="myrepo", canonical_repo_path=str(repo.resolve()))
+        save_project(p)
+
+        proj_file = tmp_path / "projects" / f"{p.id}.json"
+        before_bytes = proj_file.read_bytes()
+        before_mtime = proj_file.stat().st_mtime_ns
+
+        found = resolve_project(repo)
+        assert found is not None
+        assert found.id == p.id
+
+        after_bytes = proj_file.read_bytes()
+        after_mtime = proj_file.stat().st_mtime_ns
+        assert before_bytes == after_bytes
+        assert before_mtime == after_mtime
+
+    def test_resolve_legacy_project_does_not_write(self, tmp_path, monkeypatch):
+        """resolve_project on a legacy record (no slug) must not persist migration."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+        p = _make_project(name="Legacy")
+        data = json.loads(p.model_dump_json(indent=2))
+        data.pop("slug", None)
+        data["canonical_repo_path"] = str(repo.resolve())
+        data["repo_paths"] = [str(repo.resolve())]
+        (d / f"{p.id}.json").write_text(json.dumps(data, indent=2))
+
+        before_bytes = (d / f"{p.id}.json").read_bytes()
+        before_mtime = (d / f"{p.id}.json").stat().st_mtime_ns
+
+        found = resolve_project(repo)
+        assert found is not None
+
+        after_bytes = (d / f"{p.id}.json").read_bytes()
+        after_mtime = (d / f"{p.id}.json").stat().st_mtime_ns
+        assert before_bytes == after_bytes
+        assert before_mtime == after_mtime
+
+
+# ---------------------------------------------------------------------------
+# 6. ProjectNotFoundError
 # ---------------------------------------------------------------------------
 
 
@@ -227,7 +307,26 @@ class TestProjectNotFoundErrorExtended:
 
 
 # ---------------------------------------------------------------------------
-# Managed worktree parent mapping
+# 7. AmbiguousProjectError
+# ---------------------------------------------------------------------------
+
+
+class TestAmbiguousProjectError:
+    def test_duplicate_slug_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p1 = _make_project(name="App", slug="app")
+        save_project(p1)
+        p2 = _make_project(name="App2", slug="app")
+        save_project(p2)
+        with pytest.raises(AmbiguousProjectError) as exc:
+            from packages.orchestration.project_registry import _lookup_by_slug_or_uuid
+            _lookup_by_slug_or_uuid("app")
+        assert exc.value.slug == "app"
+        assert len(exc.value.project_ids) == 2
+
+
+# ---------------------------------------------------------------------------
+# 8. Managed worktree parent mapping
 # ---------------------------------------------------------------------------
 
 
@@ -235,30 +334,23 @@ class TestManagedWorktreeParent:
     def test_normal_path_returns_none(self):
         assert _managed_worktree_parent(Path("/home/user/repo")) is None
 
-    def test_worktree_path_returns_parent(self):
-        parent = _managed_worktree_parent(
-            Path("/home/user/repo/.remedy-wt/job-123")
-        )
-        assert parent == Path("/home/user/repo")
-
-    def test_nested_path_returns_first_parent(self):
-        parent = _managed_worktree_parent(
-            Path("/repos/myproject/.remedy-wt/j1/subdir")
-        )
-        assert parent == Path("/repos/myproject")
+    def test_worktree_path_without_git_returns_none(self, tmp_path):
+        """A path with .remedy-wt component but no git common-dir is not trusted."""
+        wt = tmp_path / "repo" / ".remedy-wt" / "job-123"
+        wt.mkdir(parents=True)
+        result = _managed_worktree_parent(wt)
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
-# find_project_by_repo
+# 9. find_project_by_repo
 # ---------------------------------------------------------------------------
 
 
 class TestFindProjectByRepo:
     def test_match_by_canonical(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        p = _make_project(
-            slug="test", canonical_repo_path="/repos/test"
-        )
+        p = _make_project(slug="test", canonical_repo_path="/repos/test")
         save_project(p)
         found = find_project_by_repo("/repos/test")
         assert found is not None
@@ -297,7 +389,7 @@ class TestFindProjectByRepo:
 
 
 # ---------------------------------------------------------------------------
-# resolve_project
+# 10. resolve_project
 # ---------------------------------------------------------------------------
 
 
@@ -359,7 +451,7 @@ class TestResolveProject:
 
 
 # ---------------------------------------------------------------------------
-# require_project
+# 11. require_project
 # ---------------------------------------------------------------------------
 
 
@@ -395,7 +487,7 @@ class TestRequireProject:
 
 
 # ---------------------------------------------------------------------------
-# Same-dirname distinct slugs
+# 12. Same-dirname distinct slugs
 # ---------------------------------------------------------------------------
 
 
@@ -413,12 +505,12 @@ class TestSameDirnameDistinctSlugs:
 
 
 # ---------------------------------------------------------------------------
-# T002 — select_project precedence
+# 13. select_project precedence
 # ---------------------------------------------------------------------------
 
 
 class TestSelectProject:
-    """Full precedence matrix: flag > env > cwd > error."""
+    """Full precedence matrix: flag > environment > cwd > error."""
 
     def _setup_repo_and_project(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -448,14 +540,14 @@ class TestSelectProject:
         monkeypatch.setenv("REMEDY_PROJECT", str(p.id))
         found, source = select_project(None, repo)
         assert found.id == p.id
-        assert source == "env"
+        assert source == "environment"
 
     def test_env_slug(self, tmp_path, monkeypatch):
         repo, p = self._setup_repo_and_project(tmp_path, monkeypatch)
         monkeypatch.setenv("REMEDY_PROJECT", "myrepo")
         found, source = select_project(None, repo)
         assert found.id == p.id
-        assert source == "env"
+        assert source == "environment"
 
     def test_cwd_autodetection(self, tmp_path, monkeypatch):
         repo, p = self._setup_repo_and_project(tmp_path, monkeypatch)
@@ -500,7 +592,7 @@ class TestSelectProject:
         monkeypatch.setenv("REMEDY_PROJECT", "env-proj")
         found, source = select_project(None, repo)
         assert found.id == p_env.id
-        assert source == "env"
+        assert source == "environment"
 
     def test_flag_beats_env_and_cwd(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -521,17 +613,19 @@ class TestSelectProject:
         assert found.id == p_flag.id
         assert source == "flag"
 
-    def test_empty_flag_treated_as_absent(self, tmp_path, monkeypatch):
+    def test_empty_flag_raises_invalid(self, tmp_path, monkeypatch):
         repo, p = self._setup_repo_and_project(tmp_path, monkeypatch)
         monkeypatch.delenv("REMEDY_PROJECT", raising=False)
-        found, source = select_project("  ", repo)
-        assert source == "cwd"
+        with pytest.raises(InvalidProjectSelectorError) as exc:
+            select_project("  ", repo)
+        assert exc.value.source == "flag"
 
-    def test_empty_env_treated_as_absent(self, tmp_path, monkeypatch):
+    def test_empty_env_raises_invalid(self, tmp_path, monkeypatch):
         repo, p = self._setup_repo_and_project(tmp_path, monkeypatch)
         monkeypatch.setenv("REMEDY_PROJECT", "  ")
-        found, source = select_project(None, repo)
-        assert source == "cwd"
+        with pytest.raises(InvalidProjectSelectorError) as exc:
+            select_project(None, repo)
+        assert exc.value.source == "environment"
 
     def test_invalid_flag_raises(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
@@ -539,3 +633,42 @@ class TestSelectProject:
         d.mkdir()
         with pytest.raises(ProjectNotFoundError):
             select_project("nonexistent-slug", d)
+
+
+# ---------------------------------------------------------------------------
+# 14. Registration primitive
+# ---------------------------------------------------------------------------
+
+
+class TestRegisterProjectRepo:
+    def test_creates_with_slug_and_canonical(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        p = register_project_repo("My Repo", str(repo))
+        assert p.slug is not None
+        assert p.slug == "my-repo"
+        assert p.canonical_repo_path == str(repo.resolve())
+
+    def test_same_repo_returns_existing(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        p1 = register_project_repo("My Repo", str(repo))
+        p2 = register_project_repo("My Repo Again", str(repo))
+        assert p1.id == p2.id
+
+    def test_create_project_assigns_slug_immediately(self, tmp_path, monkeypatch):
+        """_cmd_create_project must assign slug immediately, not null."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from apps.cli.commands.project import _cmd_create_project
+        import io
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cmd_create_project("New App", None)
+        uid_str = buf.getvalue().strip()
+        from uuid import UUID
+        loaded = load_project(UUID(uid_str))
+        assert loaded.slug is not None
+        assert loaded.slug == "new-app"
