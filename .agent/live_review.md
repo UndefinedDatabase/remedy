@@ -206,3 +206,29 @@ feature's evidence zip.
 - **Expected fix (separate item)**: tighten _contains_local_path so a bare
   slash-command token in a commit subject is not treated as a filesystem path,
   without weakening real path/secret detection. File as its own roadmap/fix.
+
+### R-0084: _REAL_ROOT_DIRS incomplete — bare /snap and macOS root-dir tokens no longer flagged
+- **Status**: Open
+- **Severity**: Low
+- **Area**: packages/orchestration/run_manifest.py (_REAL_ROOT_DIRS / _neutralize_slash_commands)
+- **Details**: _REAL_ROOT_DIRS holds only the Linux-FHS set. The neutralizer
+  therefore strips the slash from bare tokens that ARE real root dirs on
+  common systems: /snap (Ubuntu), /Users, /Library, /System, /Volumes,
+  /Applications, /private, /cores (macOS). Old detector flagged these; new
+  one passes them (reviewer probe: old=True/new=False for '/Users',
+  '/snap' single-segment inputs). Multi-segment paths (/Users/alice/x)
+  remain caught, so no practical leak — but R-0083's fix bar was "without
+  weakening real path detection", and the constant's docstring claims
+  "real filesystem root dirs".
+- **Evidence**: reviewer probe old-vs-new over safe_text: WEAKENED for
+  '/Users', '/snap', '/workspace', '/data', '/secrets'; ok for all
+  multi-segment paths.
+- **Expected fix**: Extend _REAL_ROOT_DIRS by {"snap", "users",
+  "applications", "library", "system", "volumes", "private", "cores"}
+  (segment is lowercased before lookup — keep entries lowercase). Add a
+  comment noting the trade-off: slash-commands named like a root dir will
+  false-positive by design. Extend TestSlashCommandFalsePositive unsafe
+  cases with e.g. "ship to /Users", "mount /snap", "backup /Volumes".
+  Container-mount names like /workspace, /data stay neutralized (not
+  standard root dirs — accepted residual, note it in the test docstring).
+  Mark R-0084 "Done: R-0084" in live_review.md in the same commit.
