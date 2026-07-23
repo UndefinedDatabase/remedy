@@ -1,36 +1,35 @@
 # Handoff — latest worker state (rewrite, never append)
-Feature: split-workflow-v3-evidence-repair (infra repair, no feature ID)
-Round: 3 (final — all findings resolved)
-Branch: feature/split-workflow-v3-evidence-repair
-Base: 48952c7 (main after PR #136 merge)
-Last commits: e2a26bf, f5215a6, f4302ef, this commit
+Feature: F081 remedy init
+Round: T001 complete, T002–T003 pending
+Branch: feature/f081-remedy-init
+Base: ef1e2e9 (main after PR #138 merge)
+Last commits: 38be878 (bundle-0), 4aee255 (T001 impl)
 
-Changed files (full branch):
+Changed files (T001):
 | File | Change |
 |---|---|
-| docs/agents/planner_reviewer_prompt.md | v3 content |
-| docs/agents/split_workflow.md | v3 + zip-last ordering |
-| docs/roadmap/STATUS_closure_protocol.md | v3 + build-order rule + NO_EVIDENCE clause |
-| docs/README.md | v1→v3 description |
-| docs/system/agent-tooling-audit.md | R-0076 annotation |
-| scripts/make_review_zip.sh | stale plan cleanup, deprecated fallback→warning |
-| .agent/handoff.md | rewritten each handback |
-| .agent/review_protocol.md | zero-write reviewer model (R-0072) |
-| .agent/plan.md | full scope |
-| .agent/live_review.md | R-0071..R-0076 all Resolved |
-| .agent/decisions.md | /build-remedy + legacy subagent decisions |
-| .claude/commands/build-remedy.md | Window 1 bootstrap command |
-| .claude/README.md | updated contents |
-| AGENTS.md | Audience + handoff sections |
+| apps/cli/commands/init_cmd.py | NEW — handler with preflight + registry |
+| apps/cli/command_catalog.py | init group + init.run entry |
+| apps/cli/commands/__init__.py | init_cmd registered |
+| apps/cli/grouped.py | _DEFAULT_COMMAND + _ALWAYS_INJECT for init |
+| tests/cli/test_init_cmd.py | NEW — 5 tests (create, idempotent, exit 4, name flag, subdir) |
+| .agent/decisions.md | _DEFAULT_COMMAND pattern decision |
+| docs/roadmap/STATUS.md | F081 claimed [~] |
+| .agent/live_review.md | reset for F081 |
+| .agent/plan.md | F081 T001–T003 |
 
-Verification:
-  zip (round 3, clean tree): remedy-review-20260723-171817-NO_EVIDENCE.zip
-  SHA-256: 0031af3154c63e4e846404cefc1d4e76f835eac12db24b3ed0356e6172e78b5a
-  manifest dirty_file_count_total: 0
-  handoff in zip: round 3 (current)
+Verification (T001):
+  pytest tests/cli/test_init_cmd.py: 5/5 passed
+  ruff check: clean
+  Manual: fresh git repo → [created] exit=0; second run → [exists] exit=0
+  Manual: non-git dir → exit=4, exact message, dir untouched
+  CLI suite (tests/cli): same failure pattern as main (pre-existing doc tests)
 
-Open findings: 0
-Resolved: R-0071, R-0072, R-0073, R-0074, R-0075, R-0076
-Next expected: merge infra PR, then Part C (README redesign)
+Design note: _ALWAYS_INJECT set enables bare `remedy init` (no positional args
+required) while preserving `remedy ui` behavior (requires job_id, shows help
+when bare). See .agent/decisions.md.
+
+Open findings: 0 (no reviewer round yet)
+Next: T002 (config template + runtime detection) or reviewer round
 (Rules: rewritten at every handback; only the latest state lives here;
 git history is the archive; ≤60 lines.)
