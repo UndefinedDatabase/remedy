@@ -36,6 +36,7 @@ _F146_REGISTRY = "packages/orchestration/project_registry.py"
 _F146_CLI = "apps/cli/commands/project.py"
 _F146_RESOLUTION_TEST = "tests/orchestration/test_project_resolution.py"
 _F146_CLI_TEST = "tests/cli/test_project_current.py"
+_F146_REGISTRY_TEST = "tests/test_project_registry.py"
 
 INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
     # Gate-writer meta-checks
@@ -290,6 +291,19 @@ TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
             "TestWorkspaceKeyGuard::test_no_forbidden_imports",
         ],
     },
+    {
+        "check_id": "f146_test_registry_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F146_REGISTRY_TEST,
+        "min_passed": 40,
+        "critical_node_ids": [
+            "TestSaveLoadRoundtrip::test_roundtrip",
+            "TestReadOnlyProofs::test_load_readonly_no_write",
+            "TestReadOnlyProofs::test_list_readonly_no_write",
+            "TestAttachRepo::test_attach_sets_canonical",
+            "TestProjectNotFoundError::test_load_missing",
+        ],
+    },
 )
 
 
@@ -407,7 +421,7 @@ def build_runtime_integration_gate(
     all_passed = all(r["found"] for r in results)
     verdict = "PASS" if all_passed else "BLOCKED"
 
-    return {
+    gate: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "verdict": verdict,
         "checks": results,
@@ -415,6 +429,9 @@ def build_runtime_integration_gate(
         "checks_passed": sum(1 for r in results if r["found"]),
         "issues": issues,
     }
+    if feature_id is not None:
+        gate["feature_id"] = feature_id
+    return gate
 
 
 def _bind_test_execution(

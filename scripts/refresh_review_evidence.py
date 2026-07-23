@@ -67,12 +67,17 @@ def refresh_staged_evidence(staged_dir: str, repo_root: str) -> dict:
     else:
         refresh_reason = "always-rebuild: regenerated and compared against existing"
 
+    feature_id = None
+    if existing_gate is not None:
+        feature_id = existing_gate.get("feature_id")
+
     try:
         from packages.orchestration.runtime_integration_gate import (
             build_runtime_integration_gate,
         )
         new_gate = build_runtime_integration_gate(
-            repo_root, verification_data=verification_data)
+            repo_root, verification_data=verification_data,
+            feature_id=feature_id)
         existing_json = json.dumps(existing_gate, indent=1, sort_keys=True) if existing_gate else None
         new_json = json.dumps(new_gate, indent=1, sort_keys=True)
         if existing_json == new_json:
