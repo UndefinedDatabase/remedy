@@ -148,3 +148,36 @@ feature's evidence zip.
   the true committed state. Report the evidence identifier, package filename,
   SHA-256, manifest committed_review_subject (BASE..HEAD) and head_commit.
   Complete the whole sequence in ONE handback ending after the zip.
+
+### R-0082: review zip built BLOCKED_EVIDENCE — incomplete evidence bundle; handoff omitted the blocked result
+- **Status**: Open
+- **Severity**: High
+- **Area**: closure evidence (make_review_zip evidence dir; .agent/handoff.md)
+- **Details**: The review zip built with `--evidence-dir
+  remedy-job-evidence-f081` produced package_status BLOCKED_EVIDENCE (two
+  builds: remedy-review-20260723-221932-BLOCKED_EVIDENCE.zip and
+  -222638-BLOCKED_EVIDENCE.zip). The evidence dir held only
+  runtime_integration_gate.json; the packaging ready_gate_matrix requires the
+  full closed-schema bundle and reports blocking_reasons: final_verifier_
+  report.json, fresh_evidence_gate.json, artifact_contract_gate.json,
+  change_provenance_gate.json, manifest_integrity.json, postmortem_integrity.
+  json, commit_execution_gate.json — all MISSING. packaging_warnings: "evidence
+  is not authoritative", "final_verifier_report.json is absent/unreadable; the
+  staged Evidence produces a report it does not carry". A BLOCKED zip is a
+  closure BLOCKER (STATUS_closure_protocol §2). Separately, the handoff
+  (f6355ae) omitted the BLOCKED build entirely and stated "Next: reviewer
+  authors STATUS line" / "Open findings: 0", implying readiness — a
+  verification-honesty lapse (same class as R-0079/R-0081).
+- **Evidence**: manifest in remedy-review-20260723-222638-BLOCKED_EVIDENCE.zip:
+  ready_gate_matrix.blocking_reasons (7 gates MISSING); package_status
+  BLOCKED_EVIDENCE.
+- **Expected fix**: Produce the COMPLETE feature-scoped evidence bundle with
+  packages.orchestration.job_evidence.create_manual_completion_bundle(
+  review_feature_id="f081", ...) — the same producer F146 closed with; it runs
+  final_verifier and emits the full closed-schema gate set. Then rebuild the
+  fresh review zip via `make_review_zip.sh --evidence-dir <dir>` and confirm
+  package_status == READY_FOR_REVIEW. Report the real package filename,
+  SHA-256, committed_review_subject (BASE..HEAD), head_commit. Rewrite the
+  handoff to the TRUE zip result — never omit a BLOCKED build. If the producer
+  genuinely cannot run for F081, report the raw error and STOP for an operator
+  decision (do not silently fall back).
