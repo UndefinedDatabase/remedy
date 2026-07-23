@@ -149,6 +149,32 @@ class TestSecretAndPathCanaries:
         assert b"/home/alice" not in base.canonical_bytes()
 
 
+# --------------------------------------------------------------------------- slash-command false-positive (R-0083)
+
+
+class TestSlashCommandFalsePositive:
+    """_contains_local_path must not flag single-segment slash-command tokens
+    while still catching real absolute paths."""
+
+    @pytest.mark.parametrize("value", [
+        "chore(workflow): add /review-remedy command",
+        "add /build-remedy-large command",
+        "docs: /help mention",
+    ])
+    def test_slash_command_tokens_are_safe(self, value):
+        from packages.orchestration.run_manifest import _contains_local_path
+        assert not _contains_local_path(value), f"false positive on: {value!r}"
+
+    @pytest.mark.parametrize("value", [
+        "/home/user/x",
+        "touch /etc/passwd",
+        "log at /var/log/app.log",
+    ])
+    def test_real_paths_still_flagged(self, value):
+        from packages.orchestration.run_manifest import _contains_local_path
+        assert _contains_local_path(value), f"missed real path in: {value!r}"
+
+
 # --------------------------------------------------------------------------- bounds
 
 
