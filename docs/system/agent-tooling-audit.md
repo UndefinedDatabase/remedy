@@ -32,7 +32,7 @@ Added:
 - `.claude/skills/remedy-proof-chain/SKILL.md`
 - `.claude/skills/remedy-test-triage/SKILL.md`
 - `.claude/skills/remedy-agent-tooling/SKILL.md`
-- `.claude/agents/remedy-reviewer.md`
+- `.claude/agents/remedy-reviewer.md` (removed 2026-07-23 — superseded by docs/agents/split_workflow.md Window 1)
 
 Existing `.claude/settings.local.json` was inspected and preserved as local ignored state.
 

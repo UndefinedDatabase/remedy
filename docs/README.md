@@ -162,7 +162,7 @@ routing policy seeds F110.
 | [reviewer_conventions.md](agents/reviewer_conventions.md) | Reviewer role rules + block conditions (F105 conventions segment) |
 | [model_routing_policy.md](agents/model_routing_policy.md) | Class→tier seed map, promotion rule, hard rules (seeds F110) |
 | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | Window 1 bootstrap: planner & live reviewer prompt |
-| [split_workflow.md](agents/split_workflow.md) | Two-window feature lifecycle (v1), roles, round protocol |
+| [split_workflow.md](agents/split_workflow.md) | Two-window feature lifecycle (v3), roles, round protocol, handoff |
 
 ## Roadmap (`docs/roadmap/`)
 
