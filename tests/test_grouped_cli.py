@@ -22,7 +22,9 @@ from uuid import uuid4
 import pytest
 
 from apps.cli.command_catalog import GROUPS, get_commands_for_group
-from apps.cli.grouped import build_parser
+from apps.cli.grouped import _ALWAYS_INJECT, build_parser
+
+_HELP_CONTRACT_GROUPS = [g for g in GROUPS if g not in _ALWAYS_INJECT]
 from packages.core.models import Job, Task
 from packages.orchestration.storage import save_job
 
@@ -56,7 +58,7 @@ def _capture_grouped(argv: list[str]) -> tuple[str, str, int]:
 class TestGroupHelpExitsZero:
     """Typing a group name alone must show help and exit 0."""
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_group_help_exits_zero(self, group_id: str) -> None:
         stdout, stderr, rc = _capture_grouped([group_id])
         assert rc == 0, f"remedy {group_id} exited {rc}: {stderr}"
@@ -66,7 +68,7 @@ class TestGroupHelpExitsZero:
 class TestGroupHelpContent:
     """Group help must list expected subcommands."""
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_group_help_lists_subcommands(self, group_id: str) -> None:
         stdout, _, _ = _capture_grouped([group_id])
         cmds = get_commands_for_group(group_id)
@@ -85,7 +87,7 @@ class TestGroupHelpNoLeaks:
         "approval_reason", "Traceback",
     )
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_help_no_sensitive_leaks(self, group_id: str) -> None:
         stdout, stderr, _ = _capture_grouped([group_id])
         combined = stdout + stderr
@@ -236,7 +238,7 @@ class TestMainEntrypointDelegatesGroupHelp:
     The bridge in main() must detect group names and delegate to grouped CLI.
     """
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_main_entrypoint_delegates_group_help_to_grouped_cli(self, group_id: str) -> None:
         stdout, stderr, rc = _capture_main([group_id])
         assert rc == 0, f"remedy {group_id} via main exited {rc}: {stderr}"
@@ -321,24 +323,24 @@ class TestBootcampStyleRootHelp:
 class TestBootcampStyleGroupHelp:
     """Group help must have Usage, Options, Commands sections."""
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_group_help_has_usage(self, group_id: str) -> None:
         stdout, _, _ = _capture_grouped([group_id])
         assert "Usage:" in stdout
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_group_help_has_options(self, group_id: str) -> None:
         stdout, _, _ = _capture_grouped([group_id])
         assert "Options" in stdout
         assert "--help" in stdout
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_group_help_has_commands_box(self, group_id: str) -> None:
         stdout, _, _ = _capture_grouped([group_id])
         assert "Commands" in stdout
         assert "\u256d" in stdout
 
-    @pytest.mark.parametrize("group_id", list(GROUPS.keys()))
+    @pytest.mark.parametrize("group_id", _HELP_CONTRACT_GROUPS)
     def test_group_help_flag(self, group_id: str) -> None:
         stdout, _, rc = _capture_grouped([group_id, "--help"])
         assert rc == 0

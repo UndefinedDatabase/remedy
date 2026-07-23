@@ -6,7 +6,7 @@ across features (last used: R-0076). History lives in git and in each
 feature's evidence zip.
 
 ### R-0077: `remedy init` bare invocation breaks the group-help contract + real-registry side effects in tests
-- **Status**: Open
+- **Status**: Open → Done: R-0077
 - **Severity**: High
 - **Area**: apps/cli/grouped.py (_ALWAYS_INJECT), tests/test_grouped_cli.py
 - **Details**: `_ALWAYS_INJECT = {"init"}` makes `remedy init` with no

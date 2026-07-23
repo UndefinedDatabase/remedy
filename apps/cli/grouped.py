@@ -318,6 +318,10 @@ class _SilentParser(argparse.ArgumentParser):
         raise SystemExit(status)
 
 
+_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run"}
+_ALWAYS_INJECT: set[str] = {"init"}
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the full grouped CLI argument parser from the catalog."""
     root = _SilentParser(
@@ -463,14 +467,6 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     parser = build_parser()
-
-    # ---------------------------------------------------------------------------
-    # Default-command support: ``remedy ui <job_id>`` → ``remedy ui start <job_id>``
-    # If the token after a group name is NOT a known subcommand and does not
-    # start with '-', rewrite argv to inject the default subcommand.
-    # ---------------------------------------------------------------------------
-    _DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run"}
-    _ALWAYS_INJECT: set[str] = {"init"}
 
     raw = argv if argv is not None else sys.argv[1:]
     if raw and raw[0] in _DEFAULT_COMMAND:
