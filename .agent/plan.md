@@ -1,24 +1,24 @@
-# Plan — Split Workflow v3 + Evidence Pipeline Repair
+# Plan — F081 remedy init
 
 ## Goal
-Replace split-workflow docs with v3 content, fix evidence pipeline bugs,
-finalize with reviewer findings round.
+`remedy init` — non-interactive, idempotent command that registers a git
+repo as a Remedy project. Three task slices (T001–T003).
 
-## Status: FINISHING — zip-last ordering proven, final package pending
+## Status: IN PROGRESS — T001
 
-Completed:
-- v3 docs replaced (planner_reviewer_prompt, split_workflow, STATUS_closure_protocol)
-- .agent/handoff.md created + rewritten at handback (R-0071)
-- Evidence pipeline fixed (stale plan cleanup, deprecated fallback → warning)
-- Canonical zip build sequence documented + NO_EVIDENCE clause added
-- R-0072..R-0074 resolved by reviewer
-- R-0075 fix: zip-last ordering codified in protocol + workflow
-- R-0076 fix: audit-doc annotation
-- /build-remedy command created, AGENTS.md audience + handoff sections added
+## T001 (current): command skeleton + preflight + registry + idempotency
+- init_cmd.py: `remedy init [--project-name NAME]`
+- Preflight: non-git → exit 4, exact error message
+- Registry: resolve_project / register_project_repo from F146
+- Idempotency: second run → all `[exists]`, exit 0
+- Tests: tests/cli/test_init_cmd.py
 
-Remaining:
-- Handoff rewrite + commit (this round)
-- Clean-tree zip build (LAST action)
-- PART B: verify + resolve R-0071/R-0075/R-0076 if zip clean
-- PART C: README redesign (own PR)
-- PART D: Start F081
+## T002 (next): config template + runtime detection
+- One module constant for config template
+- Runtime detection wiring (confident → fill table, else skip)
+- Honest-skip path for no-marker repos
+
+## T003 (later): hygiene + summary + print-only/json
+- Ignore-file entries for data dir
+- Summary block with slug, uuid, config path, next command
+- --print-only, --json flags
