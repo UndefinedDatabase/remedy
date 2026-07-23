@@ -703,11 +703,11 @@ class TestRegisterProjectRepo:
 
 
 class TestSlugValidation:
-    def test_rejects_null_slug(self, tmp_path, monkeypatch):
+    def test_null_slug_auto_derives(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        p = _make_project(slug=None)
-        with pytest.raises(ValueError, match="must not be None"):
-            save_project(p)
+        p = _make_project(slug=None, name="Auto Derive")
+        save_project(p)
+        assert p.slug == "auto-derive"
 
     def test_rejects_empty_slug(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

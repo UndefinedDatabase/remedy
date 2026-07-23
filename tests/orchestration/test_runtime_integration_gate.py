@@ -272,3 +272,76 @@ def test_custom_checks_skip_execution_bindings(tmp_path):
 
     assert gate["checks_total"] == 2
     assert not any(c["check_type"] == "test_execution_binding" for c in gate["checks"])
+
+
+def test_feature_id_f146_excludes_f018_checks(tmp_path):
+    """feature_id='f146' excludes F018 checks, keeps generic + F146 (R3 additive)."""
+    _seed_all_static_checks(tmp_path)
+
+    gate_global = build_runtime_integration_gate(str(tmp_path))
+    gate_f146 = build_runtime_integration_gate(str(tmp_path), feature_id="f146")
+
+    global_ids = {c["check_id"] for c in gate_global["checks"]}
+    f146_ids = {c["check_id"] for c in gate_f146["checks"]}
+
+    f018_ids = {cid for cid in global_ids if cid.startswith("f018_")}
+    f146_specific = {cid for cid in global_ids if cid.startswith("f146_")}
+    generic_ids = global_ids - f018_ids - f146_specific
+
+    assert f018_ids, "F018 checks must exist in global gate"
+    assert f146_specific, "F146 checks must exist in global gate"
+    assert f018_ids.isdisjoint(f146_ids), "F018 checks must be excluded from F146 gate"
+    assert f146_specific <= f146_ids, "F146 checks must be in F146 gate"
+    assert generic_ids <= f146_ids, "generic checks must be in F146 gate"
+
+
+def test_feature_id_propagates_through_write(tmp_path):
+    """write_runtime_integration_gate passes feature_id to builder (R3 additive)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_all_static_checks(repo)
+
+    evidence = tmp_path / "evidence"
+    written: dict[str, str] = {}
+    write_runtime_integration_gate(
+        str(evidence), str(repo), written, feature_id="f146",
+    )
+
+    on_disk = json.loads((evidence / "runtime_integration_gate.json").read_text())
+    check_ids = {c["check_id"] for c in on_disk["checks"]}
+    assert not any(cid.startswith("f018_") for cid in check_ids)
+    assert any(cid.startswith("f146_") for cid in check_ids)
+
+
+def test_feature_id_propagates_through_manual_gates(tmp_path):
+    """build_manual_completion_gates passes feature_id to runtime gate (R3 E2E)."""
+    from packages.orchestration.manual_attestation import build_manual_completion_gates
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _seed_all_static_checks(repo)
+
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    build_manual_completion_gates(
+        str(evidence),
+        job_id="test-job-001",
+        authority=["file.py"],
+        file_hashes={"file.py": "a" * 64},
+        step="T001-T003",
+        total_passed=100,
+        verification_runs=[{
+            "run_id": "vr-0001", "command": "pytest", "exit_code": 0,
+            "passed": 100, "failed": 0, "skipped": 0, "selected": 100,
+            "deselected": 0, "test_files": ["tests/test_a.py"],
+            "node_ids": [], "stdout_summary": "100 passed",
+            "head_sha": "abc", "output_hash": "b" * 64, "duration_seconds": 1.0,
+        }],
+        repo_root=str(repo),
+        feature_id="f146",
+    )
+
+    gate = json.loads((evidence / "runtime_integration_gate.json").read_text())
+    check_ids = {c["check_id"] for c in gate["checks"]}
+    assert not any(cid.startswith("f018_") for cid in check_ids)
+    assert any(cid.startswith("f146_") for cid in check_ids)
