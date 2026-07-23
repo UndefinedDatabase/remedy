@@ -2,6 +2,14 @@
 
 /review-remedy command added — reviewer bootstraps review rounds from disk, operator no longer relays completion reports
 
+## 2026-07-23: Config template lives in init_cmd.py, written before registry (F081 T002)
+`_CORE_TEMPLATE`, `_RUNTIME_ACTIVE`, `_RUNTIME_SKIP` are module-level string constants
+in `apps/cli/commands/init_cmd.py`. Config file is written BEFORE project registry so
+that a registry failure still leaves a valid `remedy.toml`. Handler reports each step
+as `[created|exists|skipped]` with no early return. Runtime detection calls
+`detect_runtimes(root)` from `packages/runtimes/runtime_config.py` — exactly 1 result
+fills `[runtime]`, 0 or >1 produces commented-out section + `[skipped]` message.
+
 ## 2026-07-23: `remedy init` uses the _DEFAULT_COMMAND pattern (F081)
 No top-level command pattern exists in the CLI. `remedy init` is implemented
 as group "init" with subcommand "run", and `_DEFAULT_COMMAND["init"] = "run"`
