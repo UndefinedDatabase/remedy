@@ -1,5 +1,7 @@
 # Decisions
 
+/review-remedy command added — reviewer bootstraps review rounds from disk, operator no longer relays completion reports
+
 ## 2026-07-23: `remedy init` uses the _DEFAULT_COMMAND pattern (F081)
 No top-level command pattern exists in the CLI. `remedy init` is implemented
 as group "init" with subcommand "run", and `_DEFAULT_COMMAND["init"] = "run"`
