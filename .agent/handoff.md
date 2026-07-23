@@ -1,31 +1,27 @@
 # Handoff — latest worker state (rewrite, never append)
-Feature: roadmap learnings + closure-loop fixes (gap work after F081)
-Round: Part 1 DONE
-Branch: feature/roadmap-learnings-and-loop-fixes
-Base: 364e356 (main after PR #139 F081 merge)
-HEAD: f7f01af
+Feature: scanner false-positive fix (R-0083 + R-0084 gap work)
+Round: R-0084 DONE
+Branch: feature/fix-path-scanner-false-positive
+Base: 6dabdde (main after PR #140 merge)
+HEAD: 5686d3b
 
 Commits on branch:
-  b3c8971  docs(roadmap): enrich feature specs with F081 learnings (E1-E6)
-  622d59f  feat(workflow): add build-remedy-large and review-remedy-large commands (E7)
-  f7f01af  docs(workflow): close F081 communication holes (E8-E12)
+  e3ae4de  fix(scanner): stop _contains_local_path false-positive on slash-command tokens
+  d4e6764  chore: handoff rewrite for scanner fix Part 2
+  40b0065  chore(review): persist R-0084
+  5686d3b  fix(scanner): extend _REAL_ROOT_DIRS with macOS and Ubuntu root dirs
 
-Edits applied (E1-E12):
-  E1 F105 stale-fact (conventions v1 exists, not "extract")
-  E2 F075 host-state isolation criterion (earned F081)
-  E3 F053 milestone distance + momentum + capability lines
-  E4 F227 golden seed provenance (split-workflow prompts)
-  E5 F034 conditional answers (predicated resolutions)
-  E6 F070 split-workflow back-pointer
-  E7 build-remedy-large + review-remedy-large commands + decisions entry
-  E8 handoff carries OUTCOMES (split_workflow.md + bootstrap block)
-  E9 reviewer audits handoff as return channel (planner_reviewer_prompt)
-  E10 canonical producer + deadlock rule + zip outcome (closure protocol)
-  E11 commit-subject hygiene (AGENTS.md)
-  E12 history-rewrite safe sequence (split_workflow.md Session hygiene)
+Changes:
+  packages/orchestration/run_manifest.py — _neutralize_slash_commands() + _SLASH_CMD_RE + _REAL_ROOT_DIRS (extended: snap, applications, cores, library, private, system, users, volumes)
+  tests/orchestration/test_run_manifest_ledger_identity_safety.py — TestSlashCommandFalsePositive: 3 safe + 6 unsafe parametrized cases
+  .agent/live_review.md — R-0084 persisted and marked Done
 
-SKIPs: none (all 12 edits applied; no pre-existing coverage found)
+Test results (raw):
+  test_run_manifest_ledger_identity_safety.py — 77 passed (1.00s)
+  test_review_subject_resolution.py — 27 passed (included in 77 total, separate file)
+  ruff — 0 new findings (41 pre-existing UP037/I001/F401)
 
 Open findings: 0
-Next: PR create + operator-instructed merge, then Part 2 scanner fix
-(Rules: rewritten at every handback; ≤60 lines.)
+PR: draft, NOT merged (review-gated per operator instruction)
+Next: Window 1 reviews 6dabdde..5686d3b
+(Rules: rewritten at every handback; <=60 lines.)

@@ -3670,16 +3670,52 @@ def _contains_secret(value: str) -> bool:
         return False
 
 
+_SLASH_CMD_RE = re.compile(
+    r"""(?<!\S)          # preceded by whitespace or start-of-string
+    /([A-Za-z][\w-]*)    # slash + one word-like segment (no path separators)
+    (?!\S*/)             # NOT followed by another slash in the same token
+    """,
+    re.VERBOSE,
+)
+# Trade-off: a slash-command whose name collides with a root dir will still
+# false-positive — acceptable, because missing a real path is worse.
+_REAL_ROOT_DIRS = frozenset({
+    # Linux FHS
+    "bin", "boot", "dev", "etc", "home", "lib", "lib64", "media", "mnt",
+    "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp", "usr", "var",
+    # Ubuntu
+    "snap",
+    # macOS
+    "applications", "cores", "library", "private", "system", "users",
+    "volumes",
+})
+
+
+def _neutralize_slash_commands(value: str) -> str:
+    """Replace single-segment slash tokens that are NOT real filesystem root dirs
+    with a neutral form so the path scrubber does not false-positive on them."""
+    def _repl(m: re.Match) -> str:
+        segment = m.group(1).lower()
+        if segment in _REAL_ROOT_DIRS:
+            return m.group(0)
+        return m.group(1)
+    return _SLASH_CMD_RE.sub(_repl, value)
+
+
 def _contains_local_path(value: str) -> bool:
     """F5: reuse the ESTABLISHED path scrubber (F007's accepted detector, via ``safe_text``) —
     if scrubbing the marker-neutralised value changes it, a RAW local/home/temp path is still
     present. An already-redacted reference such as ``[runtime-data]/jobs/x`` is a reference and
-    stays safe."""
+    stays safe.
+
+    Single-segment slash tokens (e.g. ``/review-remedy``, ``/build-remedy-large``) that do not
+    name a real filesystem root directory are neutralized before probing — they are slash-command
+    names, not local paths."""
     if not isinstance(value, str) or not value:
         return False
     try:
         from packages.orchestration.failure_postmortem import safe_text
-        probe = _probe_text(value)
+        probe = _neutralize_slash_commands(_probe_text(value))
         return safe_text(probe) != probe
     except Exception:
         return value.startswith("/") or value.startswith("~/")
