@@ -1,26 +1,39 @@
-# Live Review — F146 Project Identity & Repo Autodetection
+# Live Review — F146 Project Identity & Repo Autodetection (REPAIRED)
 
 ## Status
-**BUILT** — all T001/T002/T003 code complete, 99 focused tests passing,
-1897 broad regression passing.
+**REPAIRED** — all 13 review findings fixed, tests green, ready for Evidence.
 
-Module:  `packages/orchestration/project_registry.py` — canonical identity
-Model:   `RemyProject` — slug + canonical_repo_path fields added
-Slug:    `slugify()` — kebab-case, collision suffix (-2, -3, ...)
-Migrate: `_migrate_legacy()` — derives slug/canonical_repo_path on first load
-Resolve: `resolve_project(cwd)` — git root → real path → registry match
-Require: `require_project(cwd)` — resolve or raise with fix-it
-Find:    `find_project_by_repo(real_path)` — newest wins on duplicate
-Select:  `select_project(flag, cwd)` — flag > env > cwd > error
-Worktree:`_managed_worktree_parent()` — .remedy-wt → parent repo mapping
-CLI:     `_cmd_project_current` — human + JSON, exit 3 on unresolved
-CLI:     `_cmd_project_attach_repo` — re-bind moved repos
-CLI:     `_cmd_list_projects` — slug column added
-Guard:   `TestWorkspaceKeyGuard` — no forbidden worktrees.project_id imports
-Docs:    worktrees.py + dev_server.py docstrings updated
+## What was fixed (13 reproductions)
+1. resolve_project writes via migration → read-only loading path
+2. project current ignores selection → uses select_project + --project flag
+3. project current wrong JSON → exact schema (project_id, slug, repo, job_count, selection_source)
+4. project attach can't reattach moved repo → --project flag for selection
+5. project attach accepts non-git → git-root validation
+6. project attach doesn't rebind canonical → full rebind
+7. project attach doesn't block ownership → RepoOwnershipConflictError
+8. Duplicate slugs arbitrary → AmbiguousProjectError
+9. Empty selectors silently ignored → InvalidProjectSelectorError
+10. Managed worktree trusts dir name → git common-dir verification
+11. New project slug=null → immediate slug assignment
+12. Same-repo idempotency missing → register_project_repo
+13. Non-atomic writes → temp file + os.replace
+
+## Module changes
+- `packages/orchestration/project_registry.py` — read-only loading, atomic save,
+  AmbiguousProjectError, InvalidProjectSelectorError, RepoOwnershipConflictError,
+  register_project_repo, git common-dir worktree validation, source "environment"
+- `apps/cli/commands/project.py` — select_project, --project flag, exact JSON,
+  git validation, ownership conflicts, attach JSON output
+- `apps/cli/command_catalog.py` — --project on current + attach
+- `packages/orchestration/runtime_integration_gate.py` — 7 F146 static checks,
+  2 F146 test execution bindings with 14 critical node IDs
 
 ## Test suites
-- test_project_resolution.py — 53 passed (T001+T002)
-- test_project_current.py — 5 passed (T003)
+- test_project_resolution.py — 60 passed
+- test_project_current.py — 12 passed
 - test_project_registry.py — 41 passed (regression)
-- Broad regression — 1897 passed, 2 skipped, 3 pre-existing failures
+- test_runtime_integration_gate.py — 14 passed
+- test_command_catalog.py — passed
+- test_worktrees.py — passed
+- test_manual_completion_bundle.py — passed
+- test_docs_consistency.py — 292 passed
