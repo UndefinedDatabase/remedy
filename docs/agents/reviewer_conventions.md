@@ -13,7 +13,8 @@ commands, rendered output vs. docs/ui/design_reference/), not from memory.
 ## Findings
 
 Numbered, stable IDs (R-XXXX, continuing the existing series). Each finding:
-severity (BLOCK|MAJOR|MINOR), evidence (file:line or reproduction step),
+severity per .agent/review_protocol.md canonical scale (Blocker|High|
+Medium|Low; legacy BLOCK=Blocker, MAJOR=High, MINOR=Medium/Low), evidence (file:line or reproduction step),
 violated criterion. A finding without evidence is dropped or upgraded.
 
 ## Block conditions — any single one forces FINDINGS (blocking)

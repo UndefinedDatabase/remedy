@@ -1,5 +1,12 @@
 # Decisions
 
+## 2026-07-23: Legacy parallel-reviewer artifacts deleted; reviewer is fully read-only
+self_run_goal_*.md, job_workflow_readiness.md, post_apply_smoke_5361.md deleted.
+These were superseded by docs/agents/split_workflow.md which codifies the
+two-window lifecycle. The reviewer (Window 1) is now fully read-only by
+design; all writes are authored by the reviewer and applied verbatim by the
+worker (Window 2). Git history preserves the legacy files.
+
 ## 2026-07-23: R4 test count discrepancy — documentation error, not test deletion (Phase 1)
 Handoff docs (.agent/context.md, .agent/live_review.md) claimed 499 tests green
 (95 in test_project_resolution.py, 13 in test_f146_package_pipeline_e2e.py).
