@@ -114,7 +114,13 @@ feature's evidence zip.
   after init on a single-marker repo, resolve_spec(root).source == "config".
 
 ### R-0081: closure-prep incomplete — mandatory review zip not built; evidence machinery falsely reported absent
-- **Status**: Open
+- **Status**: Resolved
+- **Reviewer**: independently verified build_runtime_integration_gate('.', feature_id='f081') → verdict PASS,
+  checks_passed 5/5, issues []; committed gate JSON (remedy-job-evidence-f081/runtime_integration_gate.json)
+  matches. Handoff corrected — no stale "uncommitted" claim. integrity check: 4/5 pass, sole fail =
+  high_blockers_open caused by THIS finding being Open (inherent gate deadlock: only the reviewer sets Resolved).
+  Resolved now; the mandatory review zip is the final mechanical closure action, built post-resolution once
+  integrity clears.
 - **Severity**: High
 - **Area**: closure evidence (.agent/handoff.md claim; missing review zip)
 - **Details**: The closure-prep handback reported "Evidence job: not
