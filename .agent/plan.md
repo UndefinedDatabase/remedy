@@ -1,10 +1,10 @@
-# Plan — F146 Project Identity & Repo Autodetection (CLOSED)
+# Plan — Split Workflow Documentation
 
 ## Goal
-Fix 8 blocking findings from R3 external review. Final F146 closure.
+Codify the two-window feature lifecycle, clean up legacy .agent/ files.
 
 ## Status: DONE
 
-All R4 repairs complete. External verdict PASS_WITH_RISKS — ACCEPTED.
-Evidence job f146_project_identity_r4_c5d6e32f7a84.
-495 tests green (verified). STATUS.md closed.
+Three docs created (planner_reviewer_prompt.md, split_workflow.md,
+STATUS_closure_protocol.md), integrated into docs/README.md, conventions
+updated, legacy files deleted, live_review.md reset.
