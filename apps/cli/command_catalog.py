@@ -171,6 +171,8 @@ CATALOG: tuple[CommandEntry, ...] = (
         action_class="write_metadata",
         args=(
             ArgDef("--project-name", "Project display name (default: directory name)", required=False, is_option=True),
+            ArgDef("--print-only", "Show what would happen without writing anything", required=False, is_option=True, is_flag=True),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
     ),
 

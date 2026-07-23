@@ -1,4 +1,4 @@
-"""Tests for ``remedy init`` (F081 T001 + T002)."""
+"""Tests for ``remedy init`` (F081 T001 + T002 + T003)."""
 
 from __future__ import annotations
 
@@ -59,6 +59,32 @@ def _sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _step_lines(stdout):
+    """Extract only [status] lines from output (before the summary block)."""
+    lines = []
+    for line in stdout.strip().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("["):
+            lines.append(stripped)
+        elif not stripped:
+            break
+    return lines
+
+
+def _repo_file_hashes(repo):
+    """Return {relpath: sha256} for all non-.git files in repo."""
+    hashes = {}
+    for dirpath, _dirnames, filenames in os.walk(str(repo)):
+        rel_dir = os.path.relpath(dirpath, str(repo))
+        if rel_dir == ".git" or rel_dir.startswith(".git" + os.sep):
+            continue
+        for fn in filenames:
+            full = os.path.join(dirpath, fn)
+            rel = os.path.relpath(full, str(repo))
+            hashes[rel] = hashlib.sha256(open(full, "rb").read()).hexdigest()
+    return hashes
+
+
 # ---------------------------------------------------------------------------
 # T001: Preflight + Registry + Idempotency
 # ---------------------------------------------------------------------------
@@ -87,8 +113,8 @@ class TestInitCmd:
         r2 = _run_init(repo, env)
         assert r2.returncode == 0, f"stderr: {r2.stderr}"
         assert "[exists] project " in r2.stdout
-        for line in r2.stdout.strip().splitlines():
-            assert line.strip().startswith("[exists]"), f"unexpected line: {line}"
+        for line in _step_lines(r2.stdout):
+            assert line.startswith("[exists]"), f"unexpected step: {line}"
 
         mtime_after = _snapshot_mtimes(projects)
         assert mtime_before == mtime_after, (
@@ -287,3 +313,137 @@ class TestInitConfig:
         assert config_idx < project_idx, (
             f"config should be reported before project: {lines}"
         )
+
+
+# ---------------------------------------------------------------------------
+# T003: Hygiene + Summary + --print-only + --json
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.subprocess
+class TestInitHygiene:
+
+    def test_ignore_entries_in_exclude(self, tmp_path):
+        """After init, data-dir pattern is in .git/info/exclude."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+        assert "[created] ignore " in r.stdout or "[exists] ignore " in r.stdout
+
+        exclude = (repo / ".git" / "info" / "exclude").read_text(encoding="utf-8")
+        assert ".remedy-wt/" in exclude
+
+    def test_no_gitignore_modified(self, tmp_path):
+        """Ignore entries use .git/info/exclude, not .gitignore."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        status = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in status.stdout.strip().splitlines():
+            assert ".gitignore" not in line, (
+                f".gitignore was modified by init: {status.stdout}"
+            )
+            assert ".remedy-wt" not in line, (
+                f".remedy-wt/ should be hidden by exclude: {status.stdout}"
+            )
+
+
+@pytest.mark.subprocess
+class TestInitSummary:
+
+    def test_summary_contains_fields(self, tmp_path):
+        """Summary block includes slug, uuid, config, runtime_config, data_root, next."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        assert "slug:" in r.stdout
+        assert "uuid:" in r.stdout
+        assert "config:" in r.stdout
+        assert "runtime_config:" in r.stdout
+        assert "data_root:" in r.stdout
+        assert 'Next: remedy do "<your first mission>"' in r.stdout
+
+
+@pytest.mark.subprocess
+class TestInitPrintOnly:
+
+    def test_print_only_no_disk_writes(self, tmp_path):
+        """--print-only leaves repo byte-identical (no files created)."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        hashes_before = _repo_file_hashes(repo)
+
+        r = _run_init(repo, env, ["--print-only"])
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        hashes_after = _repo_file_hashes(repo)
+        assert hashes_before == hashes_after, (
+            f"--print-only modified repo files: "
+            f"added={set(hashes_after) - set(hashes_before)}, "
+            f"removed={set(hashes_before) - set(hashes_after)}"
+        )
+
+    def test_print_only_shows_config_content(self, tmp_path):
+        """--print-only renders config content in output."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env, ["--print-only"])
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+        assert "[created] config remedy.toml" in r.stdout
+        assert "[remedy]" in r.stdout
+
+    def test_print_only_no_project_registered(self, tmp_path):
+        """--print-only does not register a project."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env, ["--print-only"])
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        projects = str(tmp_path / "data" / "projects")
+        assert not os.path.isdir(projects) or os.listdir(projects) == [], (
+            "project was registered despite --print-only"
+        )
+
+
+@pytest.mark.subprocess
+class TestInitJson:
+
+    def test_json_output_valid(self, tmp_path):
+        """--json emits valid JSON with steps and summary."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env, ["--json"])
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        data = json.loads(r.stdout)
+        assert "steps" in data
+        assert "summary" in data
+        assert isinstance(data["steps"], list)
+        assert len(data["steps"]) > 0
+        assert "slug" in data["summary"]
+        assert "uuid" in data["summary"]
+        assert "next" in data["summary"]
+
+    def test_json_print_only_combined(self, tmp_path):
+        """--json --print-only emits valid JSON without writing."""
+        repo = _make_git_repo(tmp_path / "repo")
+        env = _make_env(tmp_path)
+        hashes_before = _repo_file_hashes(repo)
+
+        r = _run_init(repo, env, ["--json", "--print-only"])
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        data = json.loads(r.stdout)
+        assert "steps" in data
+        assert data["summary"]["uuid"] == "(dry-run)"
+
+        hashes_after = _repo_file_hashes(repo)
+        assert hashes_before == hashes_after

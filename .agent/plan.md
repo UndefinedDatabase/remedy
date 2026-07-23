@@ -4,7 +4,7 @@
 `remedy init` — non-interactive, idempotent command that registers a git
 repo as a Remedy project. Three task slices (T001–T003).
 
-## Status: T002 COMPLETE, T003 pending
+## Status: T001–T003 COMPLETE (feature done)
 
 ## T001 (current): command skeleton + preflight + registry + idempotency
 - init_cmd.py: `remedy init [--project-name NAME]`

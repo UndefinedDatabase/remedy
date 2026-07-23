@@ -10,6 +10,13 @@ as `[created|exists|skipped]` with no early return. Runtime detection calls
 `detect_runtimes(root)` from `packages/runtimes/runtime_config.py` — exactly 1 result
 fills `[runtime]`, 0 or >1 produces commented-out section + `[skipped]` message.
 
+## 2026-07-23: Ignore hygiene reuses .git/info/exclude (no new mechanism) (F081 T003)
+`_ensure_ignore_entry` in init_cmd.py uses the same `.git/info/exclude`
+mechanism as `ensure_ignored` in worktrees.py. Inline implementation (not
+importing `_git` private helper) to avoid coupling. Entries added:
+`.remedy-wt/` (always), data-dir and workspaces (only if inside repo).
+Decision: reuse existing exclude pattern, not a sibling mechanism.
+
 ## 2026-07-23: Runtime table written to .remedy/config.toml, not remedy.toml (R-0080)
 Two config systems exist: `config.py` reads `remedy.toml` `[remedy]` table only;
 `runtime_config.py` reads `.remedy/config.toml` `[runtime]` section. init now writes
