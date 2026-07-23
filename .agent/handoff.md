@@ -1,28 +1,31 @@
 # Handoff — latest worker state (rewrite, never append)
-Feature: F081 remedy init
-Round: CLOSURE DONE
-Branch: feature/f081-remedy-init
-Base: ef1e2e9 (main after PR #138 merge)
-Accepted HEAD: 68a2df6 (68a2df68ed9873d71f1780d8402205d4cbb6f534)
+Feature: roadmap learnings + closure-loop fixes (gap work after F081)
+Round: Part 1 DONE
+Branch: feature/roadmap-learnings-and-loop-fixes
+Base: 364e356 (main after PR #139 F081 merge)
+HEAD: f7f01af
 
-STATUS: [x] F081 — remedy init (accepted 2026-07-23)
+Commits on branch:
+  b3c8971  docs(roadmap): enrich feature specs with F081 learnings (E1-E6)
+  622d59f  feat(workflow): add build-remedy-large and review-remedy-large commands (E7)
+  f7f01af  docs(workflow): close F081 communication holes (E8-E12)
 
-Review ZIP (READY_FOR_REVIEW):
-  File: remedy-review-20260723-231507-READY_FOR_REVIEW.zip
-  SHA-256: 79dc8682bba602d475b1aca212c52854f3cfb51a38471f5420a92b2fae758a87
-  package_status: READY_FOR_REVIEW
-  evidence_authoritative: true
-  Evidence job: f081-closure
-  Final verdict: PASS_WITH_RISKS (manual completion — expected)
+Edits applied (E1-E12):
+  E1 F105 stale-fact (conventions v1 exists, not "extract")
+  E2 F075 host-state isolation criterion (earned F081)
+  E3 F053 milestone distance + momentum + capability lines
+  E4 F227 golden seed provenance (split-workflow prompts)
+  E5 F034 conditional answers (predicated resolutions)
+  E6 F070 split-workflow back-pointer
+  E7 build-remedy-large + review-remedy-large commands + decisions entry
+  E8 handoff carries OUTCOMES (split_workflow.md + bootstrap block)
+  E9 reviewer audits handoff as return channel (planner_reviewer_prompt)
+  E10 canonical producer + deadlock rule + zip outcome (closure protocol)
+  E11 commit-subject hygiene (AGENTS.md)
+  E12 history-rewrite safe sequence (split_workflow.md Session hygiene)
+
+SKIPs: none (all 12 edits applied; no pre-existing coverage found)
 
 Open findings: 0
-  R-0077..R-0082: all Resolved
-  R-0083: documented Low risk (scanner false-positive on slash-command
-    tokens in commit subjects; separate fix, NOT F081 scope)
-
-Tests (at accepted HEAD): 497 passed (23 init + 471 grouped + 3 ruff)
-Integrity: 5/5 PASS
-
-Closure PR being created (not merged — merge at F147 start via Open PR Gate).
-(Rules: rewritten at every handback; only the latest state lives here;
-git history is the archive; ≤60 lines.)
+Next: PR create + operator-instructed merge, then Part 2 scanner fix
+(Rules: rewritten at every handback; ≤60 lines.)
