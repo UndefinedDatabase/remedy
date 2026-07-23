@@ -1,4 +1,4 @@
-# Parallel Review Protocol
+# Review Protocol
 
 Canonical severity scale: Blocker | High | Medium | Low. Canonical
 verdicts: PASS | PASS WITH RISKS | FAIL. Other convention files map to
@@ -30,7 +30,8 @@ Done: R-XXXX - <brief summary of what was done>
 
 ## Reviewer Resolution
 
-After verifying the fix, the reviewer updates the finding:
+After verifying the fix, the reviewer authors the status update and the
+worker applies it:
 
 ```
 - **Status**: Resolved
@@ -48,7 +49,9 @@ Only the reviewer may mark a finding Resolved.
 
 ## Process Rules
 
-1. Reviewer writes findings as soon as discovered — do not batch.
+1. The reviewer AUTHORS findings as soon as discovered — never
+   batched. The worker applies them verbatim to this ledger as the
+   FIRST commit of the repair round, before fixing anything.
 2. Builder reads `.agent/live_review.md` before every final response.
 3. Builder must not claim merge-ready PASS while latest verdict is PENDING or FAIL.
 4. Every open finding must have either a `Done: R-XXXX` marker or be listed as remaining risk.

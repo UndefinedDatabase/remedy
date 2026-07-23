@@ -1,5 +1,16 @@
 # Decisions
 
+## 2026-07-23: /build-remedy is a command, not a skill
+A command fires only on explicit `/build-remedy` invocation. A skill description
+could auto-trigger from the agent's skill-matching heuristic — deliberately
+avoided. The command bootstraps Window 1 (planner/reviewer) from
+docs/agents/planner_reviewer_prompt.md.
+
+## 2026-07-23: Legacy remedy-reviewer.md subagent deleted
+Superseded by split_workflow.md Window 1. The subagent from the retired
+parallel-review system risked a conflicting reviewer path. Git history
+preserves it.
+
 ## 2026-07-23: Legacy parallel-reviewer artifacts deleted; reviewer is fully read-only
 self_run_goal_*.md, job_workflow_readiness.md, post_apply_smoke_5361.md deleted.
 These were superseded by docs/agents/split_workflow.md which codifies the
