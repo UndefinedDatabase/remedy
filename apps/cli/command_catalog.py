@@ -87,6 +87,7 @@ class CommandEntry:
 
 GROUPS: dict[str, GroupDef] = {
     # -- User-facing primary commands --
+    "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "do": GroupDef("do", "Do", "Run, report, and promote Remedy tasks."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
@@ -161,6 +162,18 @@ _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id loo
 # ---------------------------------------------------------------------------
 
 CATALOG: tuple[CommandEntry, ...] = (
+    # ── init ─────────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="init.run",
+        group_id="init",
+        subcommand="run",
+        description="Initialize a Remedy project in the current git repo.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--project-name", "Project display name (default: directory name)", required=False, is_option=True),
+        ),
+    ),
+
     # ── job ──────────────────────────────────────────────────────────────
     CommandEntry(
         command_id="job.create",

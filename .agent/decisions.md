@@ -1,5 +1,11 @@
 # Decisions
 
+## 2026-07-23: `remedy init` uses the _DEFAULT_COMMAND pattern (F081)
+No top-level command pattern exists in the CLI. `remedy init` is implemented
+as group "init" with subcommand "run", and `_DEFAULT_COMMAND["init"] = "run"`
+in grouped.py so `remedy init --project-name foo` auto-maps to
+`remedy init run --project-name foo`. Matches the existing `do`/`ui` pattern.
+
 ## 2026-07-23: /build-remedy is a command, not a skill
 A command fires only on explicit `/build-remedy` invocation. A skill description
 could auto-trigger from the agent's skill-matching heuristic — deliberately
