@@ -1,5 +1,10 @@
 # Parallel Review Protocol
 
+Canonical severity scale: Blocker | High | Medium | Low. Canonical
+verdicts: PASS | PASS WITH RISKS | FAIL. Other convention files map to
+this scale. Findings are AUTHORED by the reviewer and APPLIED verbatim by
+the worker; only reviewer-authored text may set Status: Resolved.
+
 ## Finding Format
 
 Each finding is a numbered entry in `.agent/live_review.md`:

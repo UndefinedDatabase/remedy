@@ -8,6 +8,9 @@
 | Keyword | File | Category |
 |---------|------|----------|
 | agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md) | agents |
+| closure protocol | [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) | roadmap |
+| planner prompt | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | agents |
+| split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
@@ -158,6 +161,8 @@ routing policy seeds F110.
 | [worker_conventions.md](agents/worker_conventions.md) | Worker/builder role rules (F105 conventions segment) |
 | [reviewer_conventions.md](agents/reviewer_conventions.md) | Reviewer role rules + block conditions (F105 conventions segment) |
 | [model_routing_policy.md](agents/model_routing_policy.md) | Class→tier seed map, promotion rule, hard rules (seeds F110) |
+| [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | Window 1 bootstrap: planner & live reviewer prompt |
+| [split_workflow.md](agents/split_workflow.md) | Two-window feature lifecycle (v1), roles, round protocol |
 
 ## Roadmap (`docs/roadmap/`)
 
@@ -166,6 +171,7 @@ plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.
 Target design annexes live in `docs/roadmap/design/` (currently: [grounded-chat-spec.md](roadmap/design/grounded-chat-spec.md) for F038).
+Closure process: [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) — the only path from `[~]` to `[x]`.
 
 ## UI Reference (`docs/ui/`)
 
