@@ -318,6 +318,10 @@ class _SilentParser(argparse.ArgumentParser):
         raise SystemExit(status)
 
 
+_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run"}
+_ALWAYS_INJECT: set[str] = {"init"}
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the full grouped CLI argument parser from the catalog."""
     root = _SilentParser(
@@ -464,23 +468,17 @@ def main(argv: list[str] | None = None) -> None:
 
     parser = build_parser()
 
-    # ---------------------------------------------------------------------------
-    # Default-command support: ``remedy ui <job_id>`` → ``remedy ui start <job_id>``
-    # If the token after a group name is NOT a known subcommand and does not
-    # start with '-', rewrite argv to inject the default subcommand.
-    # ---------------------------------------------------------------------------
-    _DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run"}
-
     raw = argv if argv is not None else sys.argv[1:]
-    if (
-        len(raw) >= 2
-        and raw[0] in _DEFAULT_COMMAND
-        and raw[1] not in {c.subcommand for c in get_commands_for_group(raw[0])}
-        and not raw[1].startswith("-")
-    ):
-        default_sub = _DEFAULT_COMMAND[raw[0]]
-        raw = [raw[0], default_sub] + raw[1:]
-        argv = raw
+    if raw and raw[0] in _DEFAULT_COMMAND:
+        subcmds = {c.subcommand for c in get_commands_for_group(raw[0])}
+        has_subcmd = len(raw) >= 2 and raw[1] in subcmds
+        if not has_subcmd and (
+            raw[0] in _ALWAYS_INJECT
+            or (len(raw) >= 2 and not raw[1].startswith("-"))
+        ):
+            default_sub = _DEFAULT_COMMAND[raw[0]]
+            raw = [raw[0], default_sub] + raw[1:]
+            argv = raw
 
     # Intercept argparse errors for clean output
     try:

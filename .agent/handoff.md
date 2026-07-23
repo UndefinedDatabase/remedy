@@ -1,36 +1,28 @@
 # Handoff — latest worker state (rewrite, never append)
-Feature: split-workflow-v3-evidence-repair (infra repair, no feature ID)
-Round: 3 (final — all findings resolved)
-Branch: feature/split-workflow-v3-evidence-repair
-Base: 48952c7 (main after PR #136 merge)
-Last commits: e2a26bf, f5215a6, f4302ef, this commit
+Feature: F081 remedy init
+Round: CLOSURE DONE
+Branch: feature/f081-remedy-init
+Base: ef1e2e9 (main after PR #138 merge)
+Accepted HEAD: 68a2df6 (68a2df68ed9873d71f1780d8402205d4cbb6f534)
 
-Changed files (full branch):
-| File | Change |
-|---|---|
-| docs/agents/planner_reviewer_prompt.md | v3 content |
-| docs/agents/split_workflow.md | v3 + zip-last ordering |
-| docs/roadmap/STATUS_closure_protocol.md | v3 + build-order rule + NO_EVIDENCE clause |
-| docs/README.md | v1→v3 description |
-| docs/system/agent-tooling-audit.md | R-0076 annotation |
-| scripts/make_review_zip.sh | stale plan cleanup, deprecated fallback→warning |
-| .agent/handoff.md | rewritten each handback |
-| .agent/review_protocol.md | zero-write reviewer model (R-0072) |
-| .agent/plan.md | full scope |
-| .agent/live_review.md | R-0071..R-0076 all Resolved |
-| .agent/decisions.md | /build-remedy + legacy subagent decisions |
-| .claude/commands/build-remedy.md | Window 1 bootstrap command |
-| .claude/README.md | updated contents |
-| AGENTS.md | Audience + handoff sections |
+STATUS: [x] F081 — remedy init (accepted 2026-07-23)
 
-Verification:
-  zip (round 3, clean tree): remedy-review-20260723-171817-NO_EVIDENCE.zip
-  SHA-256: 0031af3154c63e4e846404cefc1d4e76f835eac12db24b3ed0356e6172e78b5a
-  manifest dirty_file_count_total: 0
-  handoff in zip: round 3 (current)
+Review ZIP (READY_FOR_REVIEW):
+  File: remedy-review-20260723-231507-READY_FOR_REVIEW.zip
+  SHA-256: 79dc8682bba602d475b1aca212c52854f3cfb51a38471f5420a92b2fae758a87
+  package_status: READY_FOR_REVIEW
+  evidence_authoritative: true
+  Evidence job: f081-closure
+  Final verdict: PASS_WITH_RISKS (manual completion — expected)
 
 Open findings: 0
-Resolved: R-0071, R-0072, R-0073, R-0074, R-0075, R-0076
-Next expected: merge infra PR, then Part C (README redesign)
+  R-0077..R-0082: all Resolved
+  R-0083: documented Low risk (scanner false-positive on slash-command
+    tokens in commit subjects; separate fix, NOT F081 scope)
+
+Tests (at accepted HEAD): 497 passed (23 init + 471 grouped + 3 ruff)
+Integrity: 5/5 PASS
+
+Closure PR being created (not merged — merge at F147 start via Open PR Gate).
 (Rules: rewritten at every handback; only the latest state lives here;
 git history is the archive; ≤60 lines.)

@@ -1,5 +1,42 @@
 # Decisions
 
+/review-remedy command added — reviewer bootstraps review rounds from disk, operator no longer relays completion reports
+
+## 2026-07-23: Config template lives in init_cmd.py, written before registry (F081 T002)
+`_CORE_TEMPLATE`, `_RUNTIME_ACTIVE`, `_RUNTIME_SKIP` are module-level string constants
+in `apps/cli/commands/init_cmd.py`. Config file is written BEFORE project registry so
+that a registry failure still leaves a valid `remedy.toml`. Handler reports each step
+as `[created|exists|skipped]` with no early return. Runtime detection calls
+`detect_runtimes(root)` from `packages/runtimes/runtime_config.py` — exactly 1 result
+fills `[runtime]`, 0 or >1 produces commented-out section + `[skipped]` message.
+
+## 2026-07-23: Ignore hygiene reuses .git/info/exclude (no new mechanism) (F081 T003)
+`_ensure_ignore_entry` in init_cmd.py uses the same `.git/info/exclude`
+mechanism as `ensure_ignored` in worktrees.py. Inline implementation (not
+importing `_git` private helper) to avoid coupling. Entries added:
+`.remedy-wt/` (always), data-dir and workspaces (only if inside repo).
+Decision: reuse existing exclude pattern, not a sibling mechanism.
+The `_ensure_ignore_entry` duplication vs worktrees.ensure_ignored is a
+deliberate low-risk scope tradeoff: refactoring F006-shared code inside
+F081 would widen the blast radius with no functional benefit. Both
+implementations use the identical `.git/info/exclude` append-if-absent
+pattern. If a shared helper is warranted later, it belongs in a dedicated
+refactor, not in a feature branch.
+
+## 2026-07-23: Runtime table written to .remedy/config.toml, not remedy.toml (R-0080)
+Two config systems exist: `config.py` reads `remedy.toml` `[remedy]` table only;
+`runtime_config.py` reads `.remedy/config.toml` `[runtime]` section. init now writes
+each table to the file its loader reads: `[remedy]` → `remedy.toml`, `[runtime]` →
+`.remedy/config.toml`. On no-marker repos, `.remedy/config.toml` gets the commented
+`[runtime]` example (not omitted) so users have a template to fill in. `.remedy/` is
+the project config directory, NOT the data root (which is do-not-touch).
+
+## 2026-07-23: `remedy init` uses the _DEFAULT_COMMAND pattern (F081)
+No top-level command pattern exists in the CLI. `remedy init` is implemented
+as group "init" with subcommand "run", and `_DEFAULT_COMMAND["init"] = "run"`
+in grouped.py so `remedy init --project-name foo` auto-maps to
+`remedy init run --project-name foo`. Matches the existing `do`/`ui` pattern.
+
 ## 2026-07-23: /build-remedy is a command, not a skill
 A command fires only on explicit `/build-remedy` invocation. A skill description
 could auto-trigger from the agent's skill-matching heuristic — deliberately
@@ -1103,3 +1140,9 @@ Both proven with fake executables and fake planners; zero provider calls.
   not implemented here.
 - F008 (SSE stream, hook, polling fallback) is Tier 5 and depends on F146: no
   endpoint, EventSource, hook or UI work belongs on this branch.
+
+## 2026-07-24: Reword commit 40a722a — scanner false-positive on "/review-remedy" (R-0083)
+Operator-approved reword via filter-branch: "add /review-remedy command" → "add
+review-remedy slash command". The _contains_local_path scanner in review_subject.py
+false-positives on slash-command names in commit subjects, blocking make_review_zip.
+Separate fix tracked as R-0083 (not F081 scope).

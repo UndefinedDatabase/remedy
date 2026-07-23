@@ -1,80 +1,208 @@
-# Live Review — split-workflow v3 finalization
+# Live Review — F081 remedy init
 
 Per-feature ledger. Findings are authored by the reviewer (Window 1) and
 applied here verbatim by the worker. R-XXXX IDs continue monotonically
-across features. History lives in git and in each feature's evidence zip.
+across features (last used: R-0076). History lives in git and in each
+feature's evidence zip.
 
-### R-0071: handoff.md not rewritten at handback
+### R-0077: `remedy init` bare invocation breaks the group-help contract + real-registry side effects in tests
 - **Status**: Resolved
-- **Reviewer**: conditional resolution authored 2026-07-23 — clean-tree package with current handoff verified mechanically (dirty:0).
-- Done: R-0071 — handoff.md rewritten to real state at this handback (final commit)
+- **Reviewer**: re-ran tests/test_grouped_cli.py (471 passed, 0 fail); grouped.py verified as a pure
+  constant hoist, inject-logic byte-identical; no real-registry side effects in help tests.
+- **Severity**: High
+- **Area**: apps/cli/grouped.py (_ALWAYS_INJECT), tests/test_grouped_cli.py
+- **Details**: `_ALWAYS_INJECT = {"init"}` makes `remedy init` with no
+  subcommand EXECUTE `init.run` instead of printing the group-help box. The
+  parametrized group-help contract tests in tests/test_grouped_cli.py iterate
+  over GROUPS.keys(), so init fails 6 cases (test_group_help_exits_zero,
+  test_group_help_lists_subcommands, test_main_entrypoint_delegates_group_help,
+  test_group_help_has_usage, test_group_help_has_options,
+  test_group_help_has_commands_box). Worse, those tests then run the real
+  command against the repo cwd — test_group_help_has_commands_box[init] output
+  was "[exists] project remedy", i.e. the help test read/wrote the real project
+  registry. On a fresh CI checkout this registers a project as a side effect.
+- **Evidence**: pytest tests/test_grouped_cli.py -q → 6 FAILED [init];
+  captured stdout for has_commands_box[init] = "[exists] project remedy\n".
+- **Expected fix**: `remedy init` running on bare invocation is the intended
+  UX (feature file: `remedy init [flags]` is the primary form). Do NOT change
+  the command to show help. Instead exempt always-inject single-command groups
+  from the bare-help contract: in tests/test_grouped_cli.py parametrize over
+  `[g for g in GROUPS if g not in grouped._ALWAYS_INJECT]` (or an equivalent
+  shared constant) for every group-help test class. After the fix, no test may
+  invoke bare `remedy init` against the real data dir. Re-verify:
+  pytest tests/test_grouped_cli.py -q → 0 failures.
+
+### R-0078: init tests are not data-dir-isolated; the idempotency mtime-proof is dead code
+- **Status**: Resolved
+- **Reviewer**: verified REMEDY_DATA_DIR per-test isolation + real before/after mtime compare with
+  first-run guard; real projects dir 312→312 across a full run.
 - **Severity**: Medium
+- **Area**: tests/cli/test_init_cmd.py
+- **Details**: `_ENV` sets PYTHONPATH but not REMEDY_DATA_DIR, so every init
+  subprocess writes into the REAL production data dir
+  (packages/orchestration/data_paths.projects_dir honours REMEDY_DATA_DIR;
+  unset → real dir). test_second_run_idempotent builds mtime_before from
+  os.path.join(os.environ.get("REMEDY_DATA_DIR",""), "projects"); with the var
+  unset this is the relative path "projects", os.path.isdir → False →
+  mtime_before = {}. Furthermore no mtime_after is ever computed and no equality
+  assertion exists, so the snapshot proves nothing. The feature done-condition
+  "zero writes proven by mtime snapshot" is unmet; idempotency is asserted only
+  via the "[exists]" stdout line. (Idempotency itself is sound by construction —
+  resolve_project short-circuits before any write — so this is test-integrity,
+  not a correctness bug.)
+- **Evidence**: test_init_cmd.py:54-59 (mtime_before built, never compared);
+  a manual `remedy init` run left "tmp-<rand>" in the real projects dir.
+- **Expected fix**: In _ENV (or per subprocess call) set REMEDY_DATA_DIR to a
+  per-test tmp dir under tmp_path so tests never touch the real registry. Then
+  in test_second_run_idempotent snapshot the projects-dir file mtimes BEFORE and
+  AFTER the second run and assert mtime_before == mtime_after, in addition to the
+  "[exists]" assertion. Confirm the real ~/.../projects dir is untouched by a
+  full run of the file.
+
+### R-0079: false verification claim in the handoff
+- **Status**: Resolved
+- **Reviewer**: handoff rewritten with numbers matching the reviewer's independent run (471 / 5 / 312 /
+  3 pre-existing).
+- **Severity**: Low
 - **Area**: .agent/handoff.md
-- **Details**: File still contains the initial template (Feature: none
-  active, Branch: main) although the v3 branch has commits and a handback
-  occurred. Violates the rewrite-at-every-handback rule on its first use.
-- **Evidence**: .agent/handoff.md in zip 20260723-161744 vs manifest
-  review_subject.branch = feature/split-workflow-v3-evidence-repair @ bd93397
-- **Expected fix**: Rewrite to real current state at THIS handback and every
-  future one.
+- **Details**: Handoff states 'CLI suite (tests/cli): same failure pattern as
+  main (pre-existing doc tests)' and 'remedy ui behavior preserved'. In fact 6
+  test_grouped_cli.py[init] cases are NEW regressions from this branch (they fail
+  on the init group only). The completion claim was not verified against a real
+  run of tests/test_grouped_cli.py. Block condition: unverified completion claims.
+- **Evidence**: pytest tests/test_grouped_cli.py -q run by the reviewer.
+- **Expected fix**: After R-0077/R-0078, re-run tests/test_grouped_cli.py and
+  tests/cli/test_init_cmd.py, paste real output, and rewrite the handoff
+  verification section to the true re-verified state. Explicitly distinguish the
+  3 genuinely pre-existing tests/test_command_catalog.py failures (job.budget,
+  do.job-evidence, do.repair-attest — NOT to be fixed in F081) from this
+  branch's results.
 
-### R-0072: review_protocol.md contradicts the zero-write reviewer model
+### R-0080: runtime table written to remedy.toml — read by neither loader (inert config)
 - **Status**: Resolved
-- **Reviewer**: verified in zip 20260723-165711 (lines 33/52).
-- Done: R-0072 — process rule 1 + reviewer resolution rewording applied verbatim
-- **Severity**: Medium
-- **Area**: .agent/review_protocol.md
-- **Details**: Header says findings are authored by the reviewer and applied
-  by the worker, but Process Rule 1 ("Reviewer writes findings...") and the
-  Reviewer Resolution section ("the reviewer updates the finding") still
-  describe a writing reviewer.
-- **Evidence**: .agent/review_protocol.md lines 33, 51 (zip 20260723-161744)
-- **Expected fix**: See Step 2.2 exact wording.
+- **Reviewer**: reproduced in an isolated fixture — [runtime] written to .remedy/config.toml,
+  resolve_spec(root).source == "config", port 5173.
+- **Severity**: High
+- **Area**: apps/cli/commands/init_cmd.py (_build_config / _handle_init)
+- **Details**: init writes the `[runtime]` table into the repo-root
+  `remedy.toml`. Two separate config systems exist and NEITHER consumes it
+  there: (1) packages/orchestration/config.py reads ONLY the `[remedy]` table
+  (parsed.get("remedy", {})) and registers no `runtime.*` keys, so
+  `remedy config list` cannot explain the runtime lines — violating the
+  feature's "init writes ONLY registered keys · remedy config explains every
+  line". (2) packages/runtimes/runtime_config.py — the runtime probe — reads
+  the `[runtime]` table from `.remedy/config.toml` (CONFIG_RELPATH; documented
+  as "the canonical runtime spec"), which init never writes. Result: the
+  persisted runtime config is inert. `resolve_spec` appears to work afterward
+  only because it FALLS BACK to live re-detection when no config file exists,
+  so T002's core deliverable (persist a confident runtime spec) is cosmetic.
+  The generated `[runtime]` schema (cmd/cwd/port) is correct — it is written to
+  the wrong file. test_config_parses_through_loader hid this: it asserts only
+  load_report.project_loaded (true from `[remedy]`) and never checks the
+  runtime table is consumed.
+- **Evidence**: runtime_config.py:78 (load_config_spec reads .remedy/config.toml),
+  :290 (resolve_spec → load_config_spec), config.py:318 (_project_table =
+  parsed["remedy"] only); grep: no `[runtime]` reader in config.py.
+- **Expected fix**: Split the two tables onto the files their loaders actually
+  read. Keep the `[remedy]` core table in remedy.toml (unchanged). Write the
+  `[runtime]` table (when detection is confident) to `.remedy/config.toml`
+  using packages.runtimes.runtime_config.config_path(root) as the target; on
+  honest-skip write the commented `[runtime]` example + skip line there (or
+  omit the file — worker's call, recorded in decisions.md). Report each file
+  separately as `[created|exists] ...`. Existing files are NEVER overwritten.
+  Add a test proving the probe uses the WRITTEN config, not live detection:
+  after init on a single-marker repo, resolve_spec(root).source == "config".
 
-### R-0073: plan.md stale — evidence-repair work not reflected
+### R-0081: closure-prep incomplete — mandatory review zip not built; evidence machinery falsely reported absent
 - **Status**: Resolved
-- **Reviewer**: plan.md verified current.
-- Done: R-0073 — plan.md rewritten to cover full branch scope
+- **Reviewer**: independently verified build_runtime_integration_gate('.', feature_id='f081') → verdict PASS,
+  checks_passed 5/5, issues []; committed gate JSON (remedy-job-evidence-f081/runtime_integration_gate.json)
+  matches. Handoff corrected — no stale "uncommitted" claim. integrity check: 4/5 pass, sole fail =
+  high_blockers_open caused by THIS finding being Open (inherent gate deadlock: only the reviewer sets Resolved).
+  Resolved now; the mandatory review zip is the final mechanical closure action, built post-resolution once
+  integrity clears.
+- **Severity**: High
+- **Area**: closure evidence (.agent/handoff.md claim; missing review zip)
+- **Details**: The closure-prep handback reported "Evidence job: not
+  applicable (F081 is CLI feature ... no feature-level evidence export
+  machinery exists)" and did NOT build the mandatory review zip
+  (STATUS_closure_protocol §2 — the zip is mandatory; its absence is a closure
+  BLOCKER). The machinery DOES exist and is the same feature-scoped gate F146
+  used at closure: packages/orchestration/runtime_integration_gate.py —
+  build_runtime_integration_gate(repo_root, feature_id="f081") /
+  write_runtime_integration_gate(evidence_dir, repo_root, feature_id="f081").
+  The reviewer executed it: verdict=PASS, checks_passed=5, checks_total=5,
+  issues=[]. Separately, the committed handoff (bd3c580) is stale: it states
+  the closure-prep changes are "uncommitted" and "Next: commit ... build ZIP"
+  although they were committed in bd3c580 — only the zip remained.
+- **Evidence**: reviewer ran build_runtime_integration_gate('.',
+  feature_id='f081') → {verdict: PASS, checks_passed: 5, checks_total: 5,
+  issues: []}; git log shows bd3c580 committed test + Built State + handoff;
+  no remedy-review-*.zip for this feature exists yet.
+- **Expected fix**: Produce the F081-scoped evidence bundle the same way F146's
+  closure did — write the f081 gate to an evidence dir via
+  write_runtime_integration_gate(evidence_dir, '.', feature_id='f081') (plus
+  whatever the F146 evidence bundle included). Then build the FRESH review zip
+  as the LAST action from a clean tree via
+  `bash scripts/make_review_zip.sh --evidence-dir <dir>`. Rewrite handoff to
+  the true committed state. Report the evidence identifier, package filename,
+  SHA-256, manifest committed_review_subject (BASE..HEAD) and head_commit.
+  Complete the whole sequence in ONE handback ending after the zip.
+
+### R-0082: review zip built BLOCKED_EVIDENCE — incomplete evidence bundle; handoff omitted the blocked result
+- **Status**: Resolved
+- **Reviewer**: independently verified remedy-job-evidence-f081/ contains the complete bundle — all 7 required
+  gates (final_verifier_report, fresh_evidence_gate, artifact_contract_gate, change_provenance_gate,
+  manifest_integrity, postmortem_integrity, commit_execution_gate) + runtime_integration_gate + task_runs/T001-T003
+  + token_truth + review_subject; final_verifier verdict PASS_WITH_RISKS. integrity 4/5, sole fail
+  high_blockers_open from THIS finding (inherent gate deadlock). Resolved; the READY zip is the final action, with
+  the bundle rebuilt FRESH at the post-resolution head so fresh_evidence_gate sees authoritative evidence.
+- **Severity**: High
+- **Area**: closure evidence (make_review_zip evidence dir; .agent/handoff.md)
+- **Details**: The review zip built with `--evidence-dir
+  remedy-job-evidence-f081` produced package_status BLOCKED_EVIDENCE (two
+  builds: remedy-review-20260723-221932-BLOCKED_EVIDENCE.zip and
+  -222638-BLOCKED_EVIDENCE.zip). The evidence dir held only
+  runtime_integration_gate.json; the packaging ready_gate_matrix requires the
+  full closed-schema bundle and reports blocking_reasons: final_verifier_
+  report.json, fresh_evidence_gate.json, artifact_contract_gate.json,
+  change_provenance_gate.json, manifest_integrity.json, postmortem_integrity.
+  json, commit_execution_gate.json — all MISSING. packaging_warnings: "evidence
+  is not authoritative", "final_verifier_report.json is absent/unreadable; the
+  staged Evidence produces a report it does not carry". A BLOCKED zip is a
+  closure BLOCKER (STATUS_closure_protocol §2). Separately, the handoff
+  (f6355ae) omitted the BLOCKED build entirely and stated "Next: reviewer
+  authors STATUS line" / "Open findings: 0", implying readiness — a
+  verification-honesty lapse (same class as R-0079/R-0081).
+- **Evidence**: manifest in remedy-review-20260723-222638-BLOCKED_EVIDENCE.zip:
+  ready_gate_matrix.blocking_reasons (7 gates MISSING); package_status
+  BLOCKED_EVIDENCE.
+- **Expected fix**: Produce the COMPLETE feature-scoped evidence bundle with
+  packages.orchestration.job_evidence.create_manual_completion_bundle(
+  review_feature_id="f081", ...) — the same producer F146 closed with; it runs
+  final_verifier and emits the full closed-schema gate set. Then rebuild the
+  fresh review zip via `make_review_zip.sh --evidence-dir <dir>` and confirm
+  package_status == READY_FOR_REVIEW. Report the real package filename,
+  SHA-256, committed_review_subject (BASE..HEAD), head_commit. Rewrite the
+  handoff to the TRUE zip result — never omit a BLOCKED build. If the producer
+  genuinely cannot run for F081, report the raw error and STOP for an operator
+  decision (do not silently fall back).
+
+### R-0083: review-subject scanner flags slash-command tokens in commit subjects as local paths (latent packaging hazard)
+- **Status**: Documented risk (Low) — routed to planning; separate fix, NOT F081 scope
 - **Severity**: Low
-- **Area**: .agent/plan.md
-- **Details**: Plan says DONE for the docs goal only; the evidence-pipeline
-  repair (Work Item C/D) is absent.
-- **Evidence**: .agent/plan.md (zip 20260723-161744)
-- **Expected fix**: Rewrite plan.md to cover the full branch scope incl.
-  this finalization round.
-
-### R-0074: legacy parallel-review subagent still present
-- **Status**: Resolved
-- **Reviewer**: deletion verified; audit-doc reference handled as R-0076.
-- Done: R-0074 — .claude/agents/remedy-reviewer.md deleted; decision recorded
-- **Severity**: Low
-- **Area**: .claude/agents/remedy-reviewer.md
-- **Details**: Subagent from the retired parallel-review system; risks a
-  second, conflicting reviewer path next to the split workflow.
-- **Evidence**: .claude/agents/remedy-reviewer.md exists (zip 20260723-161744)
-- **Expected fix**: See Step 2.5 (retire or align; deletion preferred).
-
-### R-0075: handback package built mid-round from dirty tree
-- **Status**: Resolved
-- **Reviewer**: zip-last ordering codified and proven by this package.
-- **Severity**: Medium
-- **Area**: packaging order (split_workflow.md, STATUS_closure_protocol.md)
-- **Details**: Zip 20260723-165711 was built before the final commits and
-  the handoff rewrite (manifest dirty:1; handoff.md shows prior-round state,
-  "Open findings: 0" contradicting 4 Open ledger entries). Partly caused by
-  the reviewer prompt listing zip-build before commits — the protocol lacked
-  an explicit ordering rule.
-- **Evidence**: .review_zip_manifest.json review_subject.dirty_file_count_total=1;
-  .agent/handoff.md content in that zip
-- **Expected fix**: Protocol amendment (Step 2.1) + rebuild as last action.
-
-### R-0076: stale subagent reference in agent-tooling audit
-- **Status**: Resolved
-- **Reviewer**: annotation verified present.
-- **Severity**: Low
-- **Area**: docs/system/agent-tooling-audit.md
-- **Details**: Line lists .claude/agents/remedy-reviewer.md, deleted this
-  branch.
-- **Evidence**: docs/system/agent-tooling-audit.md:35
-- **Expected fix**: Annotate that line: "(removed 2026-07-23 — superseded by
-  docs/agents/split_workflow.md Window 1)". No other edits to that file.
+- **Area**: packages/orchestration/review_subject.py (_metadata_is_safe → _contains_local_path)
+- **Details**: _metadata_is_safe() rejects any commit subject containing a
+  "/token" (e.g. a slash-command name like "/review-remedy"), so
+  make_review_zip aborts with ReviewSubjectError before any artifact is built.
+  This is a false positive (slash-command name, not a filesystem path) and will
+  block the closure zip of ANY feature branch whose history carries such a
+  subject. Hit at F081 closure on commit 40a722a; worked around by rewording
+  the subject (operator-approved). The heuristic itself is unchanged and
+  remains a latent hazard for future features.
+- **Evidence**: reviewer ran _metadata_is_safe over ef1e2e9..HEAD → exactly 1
+  unsafe subject (40a722a "chore(workflow): add /review-remedy command");
+  make_review_zip exit 2 ReviewSubjectError commit subject carries path.
+- **Expected fix (separate item)**: tighten _contains_local_path so a bare
+  slash-command token in a commit subject is not treated as a filesystem path,
+  without weakening real path/secret detection. File as its own roadmap/fix.
