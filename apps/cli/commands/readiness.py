@@ -61,12 +61,20 @@ def _cmd_readiness_project(project_id_str: str, *, json_output: bool = False) ->
         summarize_readiness,
     )
     from packages.orchestration.data_paths import resolve_data_root
-    from packages.orchestration.project_registry import ProjectNotFoundError, load_project
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        _load_project_readonly,
+        _projects_dir,
+    )
     from packages.orchestration.storage import load_job
     from packages.orchestration.timeline import load_run_events
 
     try:
-        project = load_project(UUID(project_id_str))
+        pid = UUID(project_id_str)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except (ValueError, ProjectNotFoundError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)

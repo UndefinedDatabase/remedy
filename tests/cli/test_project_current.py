@@ -303,11 +303,23 @@ _ALLOWED_FILES = {
 }
 
 
+def _resolve_attr_chain(node: ast.expr) -> str | None:
+    """Resolve an AST attribute chain to a dotted name string."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _resolve_attr_chain(node.value)
+        if parent is not None:
+            return f"{parent}.{node.attr}"
+    return None
+
+
 def _find_worktree_project_id_violations(root: Path) -> list[str]:
     """Detect all forms of worktrees.project_id usage outside allowed files.
 
-    Catches: from-import, aliased from-import, full module import,
-    aliased full module import, and attribute access on any resolved alias.
+    Catches: from-import, aliased from-import, from-import of module itself,
+    full module import, aliased full module import, and attribute access on
+    any resolved alias including full dotted chains.
     """
     violations: list[str] = []
 
@@ -332,25 +344,31 @@ def _find_worktree_project_id_violations(root: Path) -> list[str]:
 
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                if node.module and "worktrees" in node.module:
+                if node.module:
                     for alias in node.names:
-                        if alias.name == "project_id":
+                        if "worktrees" in node.module and alias.name == "project_id":
                             violations.append(
                                 f"{rel}:{node.lineno}: "
                                 f"imports project_id from {node.module}"
                             )
+                        if alias.name == "worktrees":
+                            local = alias.asname or "worktrees"
+                            worktree_aliases.add(local)
+
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     if "worktrees" in alias.name:
                         local = alias.asname or alias.name.split(".")[-1]
                         worktree_aliases.add(local)
 
-            if isinstance(node, ast.Attribute):
-                if node.attr == "project_id" and isinstance(node.value, ast.Name):
-                    if node.value.id == "worktrees" or node.value.id in worktree_aliases:
+            if isinstance(node, ast.Attribute) and node.attr == "project_id":
+                chain = _resolve_attr_chain(node.value)
+                if chain is not None:
+                    parts = chain.split(".")
+                    if parts[0] in worktree_aliases or "worktrees" in parts:
                         violations.append(
                             f"{rel}:{node.lineno}: "
-                            f"uses {node.value.id}.project_id"
+                            f"uses {chain}.project_id"
                         )
 
     return violations
@@ -386,6 +404,42 @@ class TestWorkspaceKeyGuard:
         allowed.mkdir(parents=True)
         (allowed / "worktrees.py").write_text(
             "def project_id(p): return 'x'\n"
+        )
+        violations = _find_worktree_project_id_violations(tmp_path)
+        assert not violations
+
+    def test_detects_from_import_worktrees_alias(self, tmp_path):
+        """from packages.orchestration import worktrees as wt; wt.project_id(...)"""
+        (tmp_path / "bad.py").write_text(
+            "from packages.orchestration import worktrees as wt\n"
+            "val = wt.project_id('/some/path')\n"
+        )
+        violations = _find_worktree_project_id_violations(tmp_path)
+        assert any("wt.project_id" in v for v in violations)
+
+    def test_detects_from_import_worktrees_no_alias(self, tmp_path):
+        """from packages.orchestration import worktrees; worktrees.project_id(...)"""
+        (tmp_path / "bad.py").write_text(
+            "from packages.orchestration import worktrees\n"
+            "val = worktrees.project_id('/some/path')\n"
+        )
+        violations = _find_worktree_project_id_violations(tmp_path)
+        assert any("worktrees.project_id" in v for v in violations)
+
+    def test_detects_full_dotted_chain(self, tmp_path):
+        """import packages.orchestration.worktrees; packages.orchestration.worktrees.project_id(...)"""
+        (tmp_path / "bad.py").write_text(
+            "import packages.orchestration.worktrees\n"
+            "val = packages.orchestration.worktrees.project_id('/some/path')\n"
+        )
+        violations = _find_worktree_project_id_violations(tmp_path)
+        assert any("packages.orchestration.worktrees.project_id" in v for v in violations)
+
+    def test_no_false_positive_unrelated_attr(self, tmp_path):
+        """project_id on unrelated module must not trigger."""
+        (tmp_path / "ok.py").write_text(
+            "import some_other_module\n"
+            "val = some_other_module.project_id('x')\n"
         )
         violations = _find_worktree_project_id_violations(tmp_path)
         assert not violations

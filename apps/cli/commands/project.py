@@ -144,9 +144,9 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
     )
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
-        load_project,
+        _load_project_readonly,
+        _projects_dir,
     )
-    from packages.orchestration.run_log import RunLogWriter
 
     try:
         pid = UUID(project_id_str)
@@ -154,7 +154,10 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -167,19 +170,6 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         print(_json.dumps(export_project_context_coverage_json(snapshot), sort_keys=True))
     else:
         print(summarize_project_context_coverage(snapshot))
-
-    if linked_jobs:
-        log = RunLogWriter(job_id=linked_jobs[0].id)
-        log.log(
-            "project_context_coverage_inspected",
-            outcome="inspected",
-            score=snapshot.score,
-            present_signal_count=snapshot.present_signal_count,
-            missing_signal_count=snapshot.missing_signal_count,
-            scope=snapshot.scope,
-            repo_count=snapshot.repo_count,
-            job_count=snapshot.job_count,
-        )
 
 
 def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> None:
@@ -194,7 +184,8 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
-        load_project,
+        _load_project_readonly,
+        _projects_dir,
     )
     from packages.orchestration.timeline import load_run_events
 
@@ -204,7 +195,10 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
         print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -239,7 +233,8 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
-        load_project,
+        _load_project_readonly,
+        _projects_dir,
     )
     from packages.orchestration.project_summary import (
         build_project_summary,
@@ -256,7 +251,10 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
         print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
