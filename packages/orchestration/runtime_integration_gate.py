@@ -6,8 +6,8 @@ confirm that the evidence-pipeline module actually *calls* each gate writer,
 and binds to executed test records when verification data is provided.
 
 Public API:
-    build_runtime_integration_gate(repo_root, checks=None, verification_data=None) -> dict
-    write_runtime_integration_gate(evidence_dir, repo_root, written=None, verification_data=None) -> None
+    build_runtime_integration_gate(repo_root, checks=None, verification_data=None, feature_id=None) -> dict
+    write_runtime_integration_gate(evidence_dir, repo_root, written=None, verification_data=None, feature_id=None) -> None
 """
 from __future__ import annotations
 
@@ -168,10 +168,46 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "pattern": "select_project",
     },
     {
-        "check_id": "f146_cli_is_git_repo",
+        "check_id": "f146_cli_not_a_git_repo_error",
         "source_file": _F146_CLI,
         "check_type": "call_exists",
-        "pattern": "is_git_repo",
+        "pattern": "NotAGitRepoError",
+    },
+    {
+        "check_id": "f146_cli_attach_canonical",
+        "source_file": _F146_CLI,
+        "check_type": "call_exists",
+        "pattern": "attach_repo_canonical",
+    },
+    {
+        "check_id": "f146_registry_not_a_git_repo_error",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "NotAGitRepoError",
+    },
+    {
+        "check_id": "f146_registry_attach_canonical",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "attach_repo_canonical",
+    },
+    {
+        "check_id": "f146_registry_slug_validation",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "_validate_slug",
+    },
+    {
+        "check_id": "f146_registry_lookup_readonly",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "_lookup_by_slug_or_uuid_readonly",
+    },
+    {
+        "check_id": "f146_registry_migrate_legacy",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "migrate_legacy_projects",
     },
 )
 
@@ -264,10 +300,43 @@ def _read_text(path: Path) -> str | None:
         return None
 
 
+def _select_checks_for_feature(
+    feature_id: str | None,
+) -> tuple[list[dict], list[dict]]:
+    """Select integration checks and test bindings by feature.
+
+    Returns (static_checks, test_bindings). When feature_id is None, returns
+    all (historical behavior). When set, returns generic pipeline checks plus
+    feature-specific checks only — other features' checks are excluded.
+    """
+    if feature_id is None:
+        return (
+            [dict(c) for c in INTEGRATION_CHECKS],
+            [dict(b) for b in TEST_EXECUTION_BINDINGS],
+        )
+
+    prefix = feature_id.lower() + "_"
+
+    static = []
+    for c in INTEGRATION_CHECKS:
+        cid = c["check_id"]
+        is_feature_specific = len(cid) > 4 and cid[0] == "f" and cid[1:4].isdigit()
+        if not is_feature_specific or cid.startswith(prefix):
+            static.append(dict(c))
+
+    bindings = []
+    for b in TEST_EXECUTION_BINDINGS:
+        if b["check_id"].startswith(prefix):
+            bindings.append(dict(b))
+
+    return static, bindings
+
+
 def build_runtime_integration_gate(
     repo_root: str,
     checks: list[dict[str, str]] | None = None,
     verification_data: dict[str, Any] | None = None,
+    feature_id: str | None = None,
 ) -> dict[str, Any]:
     """Verify integration via source-text checks and test execution bindings.
 
@@ -276,10 +345,18 @@ def build_runtime_integration_gate(
     ``pattern``. ``test_execution_binding`` checks validate against
     ``verification_data`` (the verification_tests.json payload).
 
+    ``feature_id`` (e.g. ``"f146"``) selects only generic pipeline checks
+    plus feature-specific checks.  When None, all checks run (historical).
+
     Gate never passes with zero checks.
     """
     root = Path(repo_root) if repo_root else Path(".")
-    active = list(checks) if checks is not None else [dict(c) for c in INTEGRATION_CHECKS]
+
+    if checks is not None:
+        active = list(checks)
+        selected_bindings = None
+    else:
+        active, selected_bindings = _select_checks_for_feature(feature_id)
 
     results: list[dict[str, Any]] = []
     issues: list[str] = []
@@ -312,7 +389,10 @@ def build_runtime_integration_gate(
                 )
 
     if checks is None:
-        _bind_test_execution(results, issues, verification_data)
+        _bind_test_execution(
+            results, issues, verification_data,
+            bindings_override=selected_bindings,
+        )
 
     if not results:
         return {
@@ -341,13 +421,18 @@ def _bind_test_execution(
     results: list[dict[str, Any]],
     issues: list[str],
     verification_data: dict[str, Any] | None,
+    bindings_override: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Validate TEST_EXECUTION_BINDINGS against verification run data."""
+    """Validate test execution bindings against verification run data.
+
+    Uses ``bindings_override`` when provided, otherwise ``TEST_EXECUTION_BINDINGS``.
+    """
     runs = []
     if isinstance(verification_data, dict):
         runs = verification_data.get("runs") or []
 
-    for binding in TEST_EXECUTION_BINDINGS:
+    active_bindings = bindings_override if bindings_override is not None else TEST_EXECUTION_BINDINGS
+    for binding in active_bindings:
         check_id = binding["check_id"]
         test_file = binding["test_file"]
         min_passed = int(binding.get("min_passed", 1))
@@ -415,6 +500,7 @@ def write_runtime_integration_gate(
     repo_root: str,
     written: dict[str, str] | None = None,
     verification_data: dict[str, Any] | None = None,
+    feature_id: str | None = None,
 ) -> None:
     """Build and write ``runtime_integration_gate.json`` into ``evidence_dir``.
 
@@ -426,6 +512,7 @@ def write_runtime_integration_gate(
 
     gate = build_runtime_integration_gate(
         repo_root, verification_data=verification_data,
+        feature_id=feature_id,
     )
 
     out_dir = Path(evidence_dir)
