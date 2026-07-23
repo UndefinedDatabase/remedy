@@ -18,6 +18,9 @@ Public API::
 
     RemyProject                                    -- Pydantic model
     ProjectNotFoundError                           -- raised on missing project
+    AmbiguousProjectError                          -- raised on duplicate slug
+    InvalidProjectSelectorError                    -- raised on empty selectors
+    RepoOwnershipConflictError                     -- raised on repo conflicts
     save_project(project) -> None
     load_project(project_id: UUID) -> RemyProject
     list_projects() -> list[RemyProject]
@@ -26,17 +29,20 @@ Public API::
     summarize_project(project, jobs) -> str
     export_project_json(project, jobs) -> dict
     slugify(name) -> str                            # F146: kebab-case slug
-    resolve_project(cwd) -> RemyProject | None      # F146: cwd → project
+    resolve_project(cwd) -> RemyProject | None      # F146: cwd → project (read-only)
     require_project(cwd) -> RemyProject             # F146: cwd → project or raise
     find_project_by_repo(real_path) -> RemyProject | None  # F146
     select_project(flag, cwd) -> (RemyProject, source)    # F146: precedence
+    register_project_repo(name, repo_path) -> RemyProject  # F146: explicit creation
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -77,7 +83,7 @@ class RemyProject(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Storage
+# Errors
 # ---------------------------------------------------------------------------
 
 
@@ -101,11 +107,75 @@ class ProjectNotFoundError(Exception):
         self.project_id = project_id
 
 
+class AmbiguousProjectError(Exception):
+    """Raised when a slug matches more than one project."""
+
+    def __init__(self, slug: str, project_ids: list[UUID]) -> None:
+        ids = ", ".join(str(p) for p in project_ids[:5])
+        super().__init__(
+            f"Ambiguous slug {slug!r}: matches projects {ids}. "
+            f"Use the full UUID to disambiguate."
+        )
+        self.slug = slug
+        self.project_ids = project_ids
+
+
+class InvalidProjectSelectorError(Exception):
+    """Raised when a project selector (flag or env) is empty/whitespace."""
+
+    def __init__(self, source: str, value: str) -> None:
+        super().__init__(
+            f"Invalid project selector from {source}: {value!r} "
+            f"(empty or whitespace-only)"
+        )
+        self.source = source
+        self.value = value
+
+
+class RepoOwnershipConflictError(Exception):
+    """Raised when a repo path is already owned by another project."""
+
+    def __init__(self, repo_path: str, owner_project: RemyProject) -> None:
+        super().__init__(
+            f"Repo {repo_path!r} is already owned by project "
+            f"{owner_project.slug} ({str(owner_project.id)[:8]})"
+        )
+        self.repo_path = repo_path
+        self.owner_project = owner_project
+
+
+# ---------------------------------------------------------------------------
+# Storage — atomic save
+# ---------------------------------------------------------------------------
+
+
 def save_project(project: RemyProject) -> None:
-    """Persist a RemyProject to disk as JSON."""
+    """Persist a RemyProject to disk as JSON (atomic: temp file + os.replace)."""
     d = _projects_dir()
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"{project.id}.json").write_text(project.model_dump_json(indent=2))
+    target = d / f"{project.id}.json"
+    fd, tmp_path = tempfile.mkstemp(dir=str(d), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(project.model_dump_json(indent=2))
+        os.replace(tmp_path, str(target))
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def _load_project_readonly(path: Path) -> RemyProject:
+    """Load a project file and derive slug/canonical in-memory without writing."""
+    project = RemyProject.model_validate_json(path.read_text())
+    if project.slug is None:
+        base = slugify(project.name)
+        project.slug = _unique_slug(base, exclude_id=project.id)
+    if project.canonical_repo_path is None and project.repo_paths:
+        project.canonical_repo_path = str(Path(project.repo_paths[0]).resolve())
+    return project
 
 
 def load_project(project_id: UUID) -> RemyProject:
@@ -138,6 +208,20 @@ def list_projects() -> list[RemyProject]:
             if _migrate_legacy(p):
                 save_project(p)
             projects.append(p)
+        except (ValueError, OSError):
+            pass
+    return sorted(projects, key=lambda p: p.created_at, reverse=True)
+
+
+def _list_projects_readonly() -> list[RemyProject]:
+    """Load all projects read-only — derive slug/canonical in-memory, never write."""
+    d = _projects_dir()
+    if not d.exists():
+        return []
+    projects: list[RemyProject] = []
+    for path in d.glob("*.json"):
+        try:
+            projects.append(_load_project_readonly(path))
         except (ValueError, OSError):
             pass
     return sorted(projects, key=lambda p: p.created_at, reverse=True)
@@ -208,14 +292,79 @@ def _migrate_legacy(project: RemyProject) -> bool:
 
 
 def _managed_worktree_parent(root: Path) -> Path | None:
-    """If *root* is inside a ``.remedy-wt/`` directory, return the parent repo."""
+    """If *root* is inside a managed Remedy worktree, return the parent repo.
+
+    Validates via git common-dir: a real managed worktree has its git
+    common directory pointing back to the parent repo's .git. Falls back
+    to path component detection only when git is unavailable.
+    """
+    import subprocess
+
     from packages.orchestration.worktrees import WORKTREE_DIRNAME
 
     parts = root.parts
+    wt_index = None
     for i, part in enumerate(parts):
         if part == WORKTREE_DIRNAME:
-            return Path(*parts[:i]) if i > 0 else None
+            wt_index = i
+            break
+    if wt_index is None:
+        return None
+
+    candidate_parent = Path(*parts[:wt_index]) if wt_index > 0 else None
+    if candidate_parent is None:
+        return None
+
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            common_dir = Path(result.stdout.strip())
+            if not common_dir.is_absolute():
+                common_dir = (root / common_dir).resolve()
+            else:
+                common_dir = common_dir.resolve()
+            parent_git = candidate_parent.resolve() / ".git"
+            if common_dir == parent_git or common_dir == parent_git.resolve():
+                return candidate_parent
+            return None
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+    # Fallback: check for Remedy worktree metadata
+    wt_meta = root / ".git"
+    if wt_meta.is_file():
+        try:
+            content = wt_meta.read_text().strip()
+            if content.startswith("gitdir:"):
+                return candidate_parent
+        except OSError:
+            pass
+
     return None
+
+
+def _find_project_by_repo_readonly(real_path: str) -> RemyProject | None:
+    """Read-only repo lookup — never triggers migration writes."""
+    matches: list[RemyProject] = []
+    for p in _list_projects_readonly():
+        if p.canonical_repo_path == real_path:
+            matches.append(p)
+        elif real_path in p.repo_paths:
+            matches.append(p)
+    if not matches:
+        return None
+    if len(matches) > 1:
+        ids = ", ".join(str(m.id) for m in matches[:5])
+        _log.warning(
+            "Multiple projects claim %s — using newest: %s", real_path, ids
+        )
+    return matches[0]
 
 
 def find_project_by_repo(real_path: str) -> RemyProject | None:
@@ -243,9 +392,10 @@ def find_project_by_repo(real_path: str) -> RemyProject | None:
 def resolve_project(cwd: str | Path) -> RemyProject | None:
     """Resolve the registered project for a working directory.
 
-    Never writes.  Git root → symlink resolve → real-path match against
-    registry.  Inside a managed worktree (``.remedy-wt/``), maps back to the
-    parent repo.  Returns ``None`` when *cwd* is not in a git repo or no
+    NEVER WRITES.  Git root → symlink resolve → real-path match against
+    registry using read-only loading.  Inside a managed worktree
+    (``.remedy-wt/``), maps back to the parent repo via git common-dir
+    validation.  Returns ``None`` when *cwd* is not in a git repo or no
     project is registered.
     """
     from packages.orchestration.worktrees import is_git_repo, repo_root
@@ -264,7 +414,7 @@ def resolve_project(cwd: str | Path) -> RemyProject | None:
     if parent is not None:
         real = str(parent.resolve())
 
-    return find_project_by_repo(real)
+    return _find_project_by_repo_readonly(real)
 
 
 def require_project(cwd: str | Path) -> RemyProject:
@@ -280,15 +430,24 @@ def require_project(cwd: str | Path) -> RemyProject:
 
 
 def _lookup_by_slug_or_uuid(value: str) -> RemyProject:
-    """Resolve *value* as UUID first, then as slug. Raises on failure."""
+    """Resolve *value* as UUID first, then as slug.
+
+    Raises AmbiguousProjectError when multiple projects share the slug.
+    Raises ProjectNotFoundError when nothing matches.
+    """
     try:
         uid = UUID(value)
         return load_project(uid)
     except (ValueError, ProjectNotFoundError):
         pass
+    matches: list[RemyProject] = []
     for p in list_projects():
         if p.slug == value:
-            return p
+            matches.append(p)
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise AmbiguousProjectError(value, [m.id for m in matches])
     raise ProjectNotFoundError()
 
 
@@ -305,23 +464,68 @@ def select_project(
       4. :class:`ProjectNotFoundError` with fix-it
 
     Returns ``(project, source)`` where *source* is one of
-    ``"flag"``, ``"env"``, ``"cwd"``.  Empty or whitespace-only
-    *flag* / env values are treated as absent.
-    """
-    import os
+    ``"flag"``, ``"environment"``, ``"cwd"``.
 
-    if flag and flag.strip():
+    Empty or whitespace-only *flag* / env values raise
+    :class:`InvalidProjectSelectorError`.
+    """
+    if flag is not None:
+        if not flag.strip():
+            raise InvalidProjectSelectorError("flag", flag)
         return _lookup_by_slug_or_uuid(flag.strip()), "flag"
 
-    env_val = os.environ.get("REMEDY_PROJECT", "").strip()
-    if env_val:
-        return _lookup_by_slug_or_uuid(env_val), "env"
+    env_val = os.environ.get("REMEDY_PROJECT")
+    if env_val is not None:
+        if not env_val.strip():
+            raise InvalidProjectSelectorError("environment", env_val)
+        return _lookup_by_slug_or_uuid(env_val.strip()), "environment"
 
     project = resolve_project(cwd)
     if project is not None:
         return project, "cwd"
 
     raise ProjectNotFoundError(cwd=cwd)
+
+
+# ---------------------------------------------------------------------------
+# Registration primitive
+# ---------------------------------------------------------------------------
+
+
+def register_project_repo(
+    name: str,
+    repo_path: str | Path,
+    *,
+    description: str | None = None,
+) -> RemyProject:
+    """Create or return a project for the given repository path.
+
+    Assigns slug and canonical_repo_path immediately. If a project already
+    owns this canonical path, returns that project (same-repo idempotency).
+    """
+    from packages.orchestration.worktrees import is_git_repo, repo_root
+
+    real = str(Path(repo_path).resolve())
+    if is_git_repo(repo_path):
+        try:
+            real = str(repo_root(repo_path).resolve())
+        except Exception:
+            pass
+
+    existing = find_project_by_repo(real)
+    if existing is not None:
+        return existing
+
+    slug = _unique_slug(slugify(name))
+    project = RemyProject(
+        name=name,
+        slug=slug,
+        canonical_repo_path=real,
+        description=description,
+        repo_paths=[real],
+    )
+    save_project(project)
+    return project
 
 
 # ---------------------------------------------------------------------------
