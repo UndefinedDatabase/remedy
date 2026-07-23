@@ -1,36 +1,33 @@
-# Context — F146 Project Identity & Repo Autodetection (REPAIR R2)
+# Context — F146 Project Identity & Repo Autodetection (REPAIR R3)
 
 ## Branch
 `feature/f146-project-identity-repo-autodetection`
 Base commit: `d750f65ca42065ee0583f8d0d115f8a591ce6a48`
 
 ## Current state
-All 13 R2 review reproductions fixed. 83 focused F146 resolution tests +
-16 CLI tests + 14 gate tests + 281 F018 regression tests green.
-Full compile check + bash syntax + git diff --check clean.
+All 4 R3 blocking findings fixed. 189 tests green across 5 suites.
+Commits pending, Evidence pending.
 
-## Changes (R2 repair — 13 new findings)
-1. `packages/orchestration/project_registry.py` — strict registration
-   (NotAGitRepoError, git root, slug from dir name), slug validation
-   (_validate_slug: non-null, kebab-case, unique), deterministic batch
-   migration (sorted created_at+UUID), read-only lookup
-   (_lookup_by_slug_or_uuid_readonly), canonical attach service
-   (attach_repo_canonical: git validate, ownership, dedup), selector
-   diagnostics (value+source in ProjectNotFoundError)
-2. `apps/cli/commands/project.py` — canonical attach delegates, typed
-   error handling, deterministic exit codes
-3. `packages/orchestration/runtime_integration_gate.py` — feature-aware
-   gate (_select_checks_for_feature, feature_id param), 13 F146 static
-   checks, 2 test execution bindings, _bind_test_execution bindings_override
-4. `tests/orchestration/test_project_resolution.py` — 83 tests (was 60):
-   non-Git rejection, slug-from-dir, slug validation (6), deterministic
-   migration (2), read-only lookup proof (2), selector diagnostics (2),
-   canonical attach (6), feature-aware gate (3)
-5. `tests/cli/test_project_current.py` — 16 tests (was 12), AST guard
-   with aliased module detection
-6. `docs/roadmap/features/T0_F146.md` — Built State updated for R2
+## Changes (R3 — 4 blocking findings)
+1. `packages/orchestration/project_registry.py` — save_project() auto-derives
+   slug when None (canonical_repo_path → repo_paths[0] → project.name)
+2. `apps/cli/commands/project.py` — list/show use _list_projects_readonly /
+   _load_project_readonly (read-only action-class truth)
+3. `packages/orchestration/manual_attestation.py` — feature_id param threaded
+   to write_runtime_integration_gate
+4. `packages/orchestration/job_evidence.py` — review_feature_id param threaded
+   to build_manual_completion_gates
+5. `tests/test_project_registry.py` — 5 additive tests (auto-derive, roundtrip,
+   unique, byte-proof, readonly-mtime)
+6. `tests/orchestration/test_runtime_integration_gate.py` — 3 additive tests
+   (F146 excludes F018, write propagation, manual-gates E2E)
+7. `tests/orchestration/test_f018_package_pipeline_e2e.py` — verification data
+   includes 6 test files, count assertions 19→34
+8. `tests/orchestration/test_project_resolution.py` — test_null_slug_auto_derives
+9. `docs/roadmap/features/T0_F146.md` — R3 Built State section
 
 ## Remaining
-- Commit in logical order
-- Generate Evidence and review ZIP
+- Commit in 5 logical commits
+- Generate Evidence with fresh job ID, feature_id=f146
+- Package ZIP
 - Produce handoff

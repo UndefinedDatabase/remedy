@@ -1,37 +1,29 @@
-# Plan — F146 Project Identity & Repo Autodetection (REPAIR R2)
+# Plan — F146 Project Identity & Repo Autodetection (REPAIR R3)
 
 ## Goal
-Fix 13 exact review reproductions from second external review while preserving all accepted work.
+Fix 4 exact blocking findings from R2 external review.
 
-## Status: COMMITTING
+## Status: COMPLETE
 
-## T001 — Strict registration, slug validation, deterministic migration
-- [x] register_project_repo requires Git repo (rejects plain dirs with typed error)
-- [x] register_project_repo resolves Git root
-- [x] register_project_repo derives slug from repo directory name, not display name
-- [x] save_project validates slug: non-null, kebab-case, unique
-- [x] Deterministic batch migration: sorted (created_at, UUID) before slug allocation
-- [x] _lookup_by_slug_or_uuid read-only (no migration writes)
-- [x] Unknown selector error includes value and source
-- [x] Tests: non-Git rejection, slug-from-repo-dir, slug validation, migration ordering
+## T001 — Additive Registry compatibility and truthful read-only commands
+- [x] Auto-derive slug in save_project() when slug is None
+- [x] Existing 5 registry tests pass without modification
+- [x] Add additive assertions: stored JSON contains non-null valid slug
+- [x] Add byte/mtime proof: save_project(slug=None) writes disk
+- [x] Fix read_only action-class truth: project list/show use readonly functions
+- [x] Add test: project list does not write (mtime guard)
 
-## T002 — Read-only selector and canonical attach authority
-- [x] select_project fully read-only for flag/env/cwd
-- [x] CLI catches AmbiguousProjectError (no traceback)
-- [x] CLI catches all typed errors with deterministic exit codes
-- [x] Unknown selector prints value and source
-- [x] Canonical attach service: shared by project.attach and project.attach-repo
-- [x] Attach service: git validate, resolve root, ownership check, canonical rebind, deduplicate repo_paths
-- [x] Legacy attach-repo delegates to canonical service
-- [x] Tests: duplicate slug CLI, unknown selector diagnostics, attach dedup, legacy attach
+## T002 — Review-feature propagation and exact F146 Runtime Evidence
+- [x] Add feature_id param to build_manual_completion_gates
+- [x] Add feature_id param to create_manual_completion_bundle
+- [x] Add E2E test: feature_id="f146" excludes F018 checks
+- [x] Verify refresh_review_evidence.py (global gate, acceptable)
 
-## T003 — Worktree proof, AST guard, feature-aware gate, final state
-- [x] Remove unsafe .git file fallback in _managed_worktree_parent
-- [x] AST guard detects aliased module imports (import X as Y; Y.project_id)
-- [x] Feature-aware Runtime Gate: F146 Evidence requires only F146 checks
-- [x] Update docs, STATUS.md, agent state files
-- [ ] Commits, Evidence, ZIP
-
-## Constraints
-No providers, no network, no Docker, no subagents.
-Do not amend/squash. Do not push/PR/merge/modify main.
+## T003 — Complete regression matrix, final tracked state, canonical ZIP
+- [x] Run full test matrix (189 tests passed)
+- [x] Update docs/roadmap/features/T0_F146.md Built State for R3
+- [x] Update agent state files
+- [ ] Commit in 5 logical commits
+- [ ] Generate fresh Evidence
+- [ ] Run scripts/make_review_zip.sh once
+- [ ] Produce mandatory handoff
