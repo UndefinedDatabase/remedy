@@ -10,6 +10,14 @@ as `[created|exists|skipped]` with no early return. Runtime detection calls
 `detect_runtimes(root)` from `packages/runtimes/runtime_config.py` — exactly 1 result
 fills `[runtime]`, 0 or >1 produces commented-out section + `[skipped]` message.
 
+## 2026-07-23: Runtime table written to .remedy/config.toml, not remedy.toml (R-0080)
+Two config systems exist: `config.py` reads `remedy.toml` `[remedy]` table only;
+`runtime_config.py` reads `.remedy/config.toml` `[runtime]` section. init now writes
+each table to the file its loader reads: `[remedy]` → `remedy.toml`, `[runtime]` →
+`.remedy/config.toml`. On no-marker repos, `.remedy/config.toml` gets the commented
+`[runtime]` example (not omitted) so users have a template to fill in. `.remedy/` is
+the project config directory, NOT the data root (which is do-not-touch).
+
 ## 2026-07-23: `remedy init` uses the _DEFAULT_COMMAND pattern (F081)
 No top-level command pattern exists in the CLI. `remedy init` is implemented
 as group "init" with subcommand "run", and `_DEFAULT_COMMAND["init"] = "run"`

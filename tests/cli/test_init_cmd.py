@@ -130,26 +130,32 @@ class TestInitCmd:
 # T002: Config template + Runtime detection
 # ---------------------------------------------------------------------------
 
+_RUNTIME_RELPATH = ".remedy/config.toml"
+
 
 @pytest.mark.subprocess
 class TestInitConfig:
 
     def test_no_marker_repo_skips_runtime(self, tmp_path):
-        """No framework markers → [runtime] commented out + skip line."""
+        """No framework markers → .remedy/config.toml has commented [runtime] + skip line."""
         repo = _make_git_repo(tmp_path / "repo")
         env = _make_env(tmp_path)
         r = _run_init(repo, env)
         assert r.returncode == 0, f"stderr: {r.stderr}"
         assert "[created] config remedy.toml" in r.stdout
+        assert f"[created] runtime {_RUNTIME_RELPATH}" in r.stdout
         assert "[skipped] skipped runtime autodetect" in r.stdout
 
         cfg = (repo / "remedy.toml").read_text(encoding="utf-8")
         assert "[remedy]" in cfg
-        assert "# [runtime]" in cfg
-        assert "\n[runtime]\n" not in cfg
+        assert "[runtime]" not in cfg
+
+        rt_cfg = (repo / _RUNTIME_RELPATH).read_text(encoding="utf-8")
+        assert "# [runtime]" in rt_cfg
+        assert "\n[runtime]\n" not in rt_cfg
 
     def test_vite_marker_fills_runtime(self, tmp_path):
-        """Vite in package.json → [runtime] filled with detected cmd/port."""
+        """Vite in package.json → .remedy/config.toml has [runtime] filled."""
         repo = _make_git_repo(tmp_path / "repo")
         (repo / "package.json").write_text(
             json.dumps({"devDependencies": {"vite": "^5"}, "scripts": {"dev": "vite"}}),
@@ -159,15 +165,20 @@ class TestInitConfig:
         r = _run_init(repo, env)
         assert r.returncode == 0, f"stderr: {r.stderr}"
         assert "[created] config remedy.toml" in r.stdout
+        assert f"[created] runtime {_RUNTIME_RELPATH}" in r.stdout
         assert "[skipped]" not in r.stdout
 
         cfg = (repo / "remedy.toml").read_text(encoding="utf-8")
-        assert "[runtime]\n" in cfg
-        assert "# [runtime]" not in cfg
-        assert "5173" in cfg
+        assert "[remedy]" in cfg
+        assert "[runtime]" not in cfg
+
+        rt_cfg = (repo / _RUNTIME_RELPATH).read_text(encoding="utf-8")
+        assert "[runtime]\n" in rt_cfg
+        assert "# [runtime]" not in rt_cfg
+        assert "5173" in rt_cfg
 
     def test_uvicorn_marker_fills_runtime(self, tmp_path):
-        """uvicorn in requirements + app/main.py → [runtime] filled."""
+        """uvicorn in requirements + app/main.py → .remedy/config.toml filled."""
         repo = _make_git_repo(tmp_path / "repo")
         (repo / "requirements.txt").write_text("uvicorn\nfastapi\n", encoding="utf-8")
         app_dir = repo / "app"
@@ -177,12 +188,13 @@ class TestInitConfig:
         r = _run_init(repo, env)
         assert r.returncode == 0, f"stderr: {r.stderr}"
         assert "[created] config remedy.toml" in r.stdout
+        assert f"[created] runtime {_RUNTIME_RELPATH}" in r.stdout
         assert "[skipped]" not in r.stdout
 
-        cfg = (repo / "remedy.toml").read_text(encoding="utf-8")
-        assert "[runtime]\n" in cfg
-        assert "uvicorn" in cfg
-        assert "8000" in cfg
+        rt_cfg = (repo / _RUNTIME_RELPATH).read_text(encoding="utf-8")
+        assert "[runtime]\n" in rt_cfg
+        assert "uvicorn" in rt_cfg
+        assert "8000" in rt_cfg
 
     def test_existing_config_untouched(self, tmp_path):
         """Handwritten remedy.toml is never overwritten."""
@@ -201,8 +213,25 @@ class TestInitConfig:
         hash_after = _sha256(cfg_path)
         assert hash_before == hash_after, "existing remedy.toml was modified"
 
+    def test_existing_runtime_config_untouched(self, tmp_path):
+        """Handwritten .remedy/config.toml is never overwritten."""
+        repo = _make_git_repo(tmp_path / "repo")
+        rt_path = repo / _RUNTIME_RELPATH
+        rt_path.parent.mkdir(parents=True, exist_ok=True)
+        handwritten = "[runtime]\ncmd = [\"custom\"]\nport = 9999\n"
+        rt_path.write_text(handwritten, encoding="utf-8")
+        hash_before = _sha256(rt_path)
+
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+        assert f"[exists] runtime {_RUNTIME_RELPATH}" in r.stdout
+
+        hash_after = _sha256(rt_path)
+        assert hash_before == hash_after, "existing .remedy/config.toml was modified"
+
     def test_config_parses_through_loader(self, tmp_path):
-        """Generated remedy.toml is valid for config.load_config."""
+        """Generated remedy.toml loads via config.load_config."""
         repo = _make_git_repo(tmp_path / "repo")
         env = _make_env(tmp_path)
         r = _run_init(repo, env)
@@ -212,9 +241,42 @@ class TestInitConfig:
         cfg = load_config(project_path=repo / "remedy.toml")
         assert cfg.load_report.project_loaded
 
+    def test_runtime_config_loads_via_runtime_loader(self, tmp_path):
+        """Confident runtime → .remedy/config.toml loads via load_config_spec."""
+        repo = _make_git_repo(tmp_path / "repo")
+        (repo / "package.json").write_text(
+            json.dumps({"devDependencies": {"vite": "^5"}, "scripts": {"dev": "vite"}}),
+            encoding="utf-8",
+        )
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        from packages.runtimes.runtime_config import load_config_spec
+        spec = load_config_spec(repo)
+        assert spec is not None, "load_config_spec returned None"
+        assert spec.source == "config"
+        assert spec.port == 5173
+
+    def test_resolve_spec_uses_written_config(self, tmp_path):
+        """After init on Vite repo, resolve_spec returns source='config'."""
+        repo = _make_git_repo(tmp_path / "repo")
+        (repo / "package.json").write_text(
+            json.dumps({"devDependencies": {"vite": "^5"}, "scripts": {"dev": "vite"}}),
+            encoding="utf-8",
+        )
+        env = _make_env(tmp_path)
+        r = _run_init(repo, env)
+        assert r.returncode == 0, f"stderr: {r.stderr}"
+
+        from packages.runtimes.runtime_config import resolve_spec
+        spec = resolve_spec(repo)
+        assert spec.source == "config", (
+            f"expected source='config' (from written file), got '{spec.source}'"
+        )
+
     def test_config_written_before_registry(self, tmp_path):
-        """Config file exists even if registry would fail — verified by
-        checking both are created in a single run."""
+        """Config files reported before project line in output."""
         repo = _make_git_repo(tmp_path / "repo")
         env = _make_env(tmp_path)
         r = _run_init(repo, env)

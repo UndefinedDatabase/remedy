@@ -20,7 +20,6 @@ _CORE_TEMPLATE = """\
 """
 
 _RUNTIME_ACTIVE = """\
-
 [runtime]
 cmd = {cmd}
 cwd = {cwd}
@@ -28,7 +27,6 @@ port = {port}
 """
 
 _RUNTIME_SKIP = """\
-
 # [runtime]
 # No known framework marker detected. Add a [runtime] section
 # manually or re-run after adding a supported framework.
@@ -41,22 +39,22 @@ def _format_toml_list(items: list[str]) -> str:
     return "[" + ", ".join(f'"{i}"' for i in items) + "]"
 
 
-def _build_config(root: Path) -> tuple[str, str | None]:
-    """Return (config_text, skip_message_or_None)."""
+def _build_runtime_config(root: Path) -> tuple[str, str | None]:
+    """Return (runtime_config_text, skip_message_or_None)."""
     from packages.runtimes.runtime_config import detect_runtimes
 
     found = detect_runtimes(root)
     if len(found) == 1:
         rt = found[0]
-        runtime_section = _RUNTIME_ACTIVE.format(
+        text = _RUNTIME_ACTIVE.format(
             cmd=_format_toml_list(rt.spec.cmd),
             cwd=f'"{Path(rt.spec.cwd).relative_to(root)}"'
             if Path(rt.spec.cwd) != root
             else '"."',
             port=rt.spec.port,
         )
-        return _CORE_TEMPLATE + runtime_section, None
-    return _CORE_TEMPLATE + _RUNTIME_SKIP, "skipped runtime autodetect (no known framework marker)"
+        return text, None
+    return _RUNTIME_SKIP, "skipped runtime autodetect (no known framework marker)"
 
 
 def _handle_init(args: argparse.Namespace) -> None:
@@ -65,6 +63,7 @@ def _handle_init(args: argparse.Namespace) -> None:
         resolve_project,
     )
     from packages.orchestration.worktrees import is_git_repo, repo_root
+    from packages.runtimes.runtime_config import CONFIG_RELPATH
 
     cwd = Path.cwd()
 
@@ -82,9 +81,17 @@ def _handle_init(args: argparse.Namespace) -> None:
     if config_file.is_file():
         print(f"[exists] config {_CONFIG_FILENAME}")
     else:
-        content, skip_msg = _build_config(root)
-        config_file.write_text(content, encoding="utf-8")
+        config_file.write_text(_CORE_TEMPLATE, encoding="utf-8")
         print(f"[created] config {_CONFIG_FILENAME}")
+
+    runtime_file = root / CONFIG_RELPATH
+    if runtime_file.is_file():
+        print(f"[exists] runtime {CONFIG_RELPATH}")
+    else:
+        runtime_file.parent.mkdir(parents=True, exist_ok=True)
+        content, skip_msg = _build_runtime_config(root)
+        runtime_file.write_text(content, encoding="utf-8")
+        print(f"[created] runtime {CONFIG_RELPATH}")
         if skip_msg:
             print(f"[skipped] {skip_msg}")
 

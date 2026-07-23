@@ -73,7 +73,7 @@ feature's evidence zip.
   branch's results.
 
 ### R-0080: runtime table written to remedy.toml — read by neither loader (inert config)
-- **Status**: Open
+- **Status**: Open → Done: R-0080
 - **Severity**: High
 - **Area**: apps/cli/commands/init_cmd.py (_build_config / _handle_init)
 - **Details**: init writes the `[runtime]` table into the repo-root
