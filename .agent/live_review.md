@@ -31,7 +31,7 @@ feature's evidence zip.
   pytest tests/test_grouped_cli.py -q → 0 failures.
 
 ### R-0078: init tests are not data-dir-isolated; the idempotency mtime-proof is dead code
-- **Status**: Open
+- **Status**: Open → Done: R-0078
 - **Severity**: Medium
 - **Area**: tests/cli/test_init_cmd.py
 - **Details**: `_ENV` sets PYTHONPATH but not REMEDY_DATA_DIR, so every init
