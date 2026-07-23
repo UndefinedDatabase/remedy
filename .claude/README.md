@@ -23,6 +23,7 @@ Claude Code project configuration is intentionally minimal and safety-focused.
 ## Contents
 - `settings.json` — shareable project safety settings.
 - `skills/` — task-specific project skills.
-- `agents/` — read-only reviewer-style subagent definitions.
+- `agents/` — subagent definitions (if any).
+- `commands/` — explicit-invocation slash commands (`/build-remedy`).
 
 Local settings such as `settings.local.json` remain gitignored.

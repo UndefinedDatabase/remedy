@@ -3,6 +3,15 @@
 > Source of truth for automated agents working in this repository.
 > This file defines mandatory behavior, workflow constraints, documentation boundaries, and runtime state rules.
 
+## Audience
+
+These rules bind the WORKER — any agent that writes, commits, or merges
+in this repository. The read-only planner/reviewer role (Window 1 of
+docs/agents/split_workflow.md) is governed by
+docs/agents/planner_reviewer_prompt.md; it writes nothing and therefore
+most sections below do not apply to it. On safety and scope discipline,
+this file binds every agent.
+
 ## 🔒 Mandatory Agent Rules
 
 These rules apply to any automated agent (Claude, AI assistants, scripts) working in this repository.
@@ -369,6 +378,18 @@ Rules:
 - keep entries concise
 - move durable architectural knowledge to `docs/`
 
+### handoff.md
+
+Location:
+
+    .agent/handoff.md
+
+Purpose: the fast-resume snapshot for the planner/reviewer. Rewritten
+(never appended) by the worker at every handback; only the latest state;
+≤60 lines; git history is the archive. Contents: feature + round, branch,
+last commit SHAs, changed-files table, verification results (real,
+trimmed), open findings count, next expected action.
+
 ### Documentation Updates
 
 The agent MUST update `docs/` when:
@@ -404,6 +425,8 @@ The agent MUST update `.agent/context.md`:
 2. when assumptions change
 3. when constraints change
 4. when the active branch context becomes relevant to the task
+
+The agent MUST rewrite `.agent/handoff.md` at every handback to Window 1.
 
 The agent MUST update `.agent/decisions.md`:
 1. when a meaningful technical decision is made

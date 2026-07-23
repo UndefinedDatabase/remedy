@@ -23,6 +23,9 @@
    BASE..HEAD and the zip import check passes. Record `package <filename>`
    and `SHA-256 <hash>`. **A failing zip build is a closure BLOCKER** —
    fix or go `[!]`; never close without the package.
+   Docs-only features without a runtime evidence job close with an honest
+   NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
+   Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
 3. **Runtime actuals (reviewer; observed only).** Rounds, wall clock,
    models, tokens/cost where the ledger has them; `not-measured` beats a
    guess. → PR description + final report.
