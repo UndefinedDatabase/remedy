@@ -111,6 +111,7 @@ class TestF146RegistryBinding:
         assert len(registry) == 1
         assert registry[0]["test_file"] == "tests/test_project_registry.py"
         assert registry[0]["min_passed"] >= 40
+        assert len(registry[0].get("critical_node_ids", [])) >= 3
 
     def test_registry_binding_selected_for_f146(self):
         from packages.orchestration.runtime_integration_gate import (

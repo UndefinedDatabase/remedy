@@ -297,11 +297,11 @@ TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
         "test_file": _F146_REGISTRY_TEST,
         "min_passed": 40,
         "critical_node_ids": [
-            "TestSaveLoadRoundtrip::test_roundtrip",
-            "TestReadOnlyProofs::test_load_readonly_no_write",
-            "TestReadOnlyProofs::test_list_readonly_no_write",
-            "TestAttachRepo::test_attach_sets_canonical",
-            "TestProjectNotFoundError::test_load_missing",
+            "TestSaveLoadRoundtrip::test_load_roundtrip",
+            "TestSaveLoadRoundtrip::test_save_creates_file",
+            "TestReadOnlyProofs::test_list_projects_readonly_does_not_write",
+            "TestAttachRepo::test_attach_adds_resolved_path",
+            "TestProjectNotFoundError::test_project_id_attribute",
         ],
     },
 )
