@@ -106,6 +106,9 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
 - Blocked: worker follows AGENTS.md If-Blocked; reviewer authors a finding
   routed to planning; feature may go `[!]` with reason — authored by
   Window 1, committed by Window 2.
+- Autonomous multi-part blocks contain exactly ONE handback instruction —
+  at the very end. Intermediate parts end with checkpoint notes inside the
+  final completion report, never with a handback.
 
 ## Sunset
 F070 replaces the operator-as-message-bus; F075 (10 flawless self-runs) is
