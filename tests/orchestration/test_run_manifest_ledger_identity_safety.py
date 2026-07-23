@@ -169,8 +169,13 @@ class TestSlashCommandFalsePositive:
         "/home/user/x",
         "touch /etc/passwd",
         "log at /var/log/app.log",
+        "ship to /Users",
+        "mount /snap",
+        "backup /Volumes",
     ])
     def test_real_paths_still_flagged(self, value):
+        """Container-mount names (/workspace, /data) stay neutralized — they are
+        not standard OS root dirs and the accepted residual from R-0083."""
         from packages.orchestration.run_manifest import _contains_local_path
         assert _contains_local_path(value), f"missed real path in: {value!r}"
 

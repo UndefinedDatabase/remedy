@@ -3677,9 +3677,17 @@ _SLASH_CMD_RE = re.compile(
     """,
     re.VERBOSE,
 )
+# Trade-off: a slash-command whose name collides with a root dir will still
+# false-positive — acceptable, because missing a real path is worse.
 _REAL_ROOT_DIRS = frozenset({
+    # Linux FHS
     "bin", "boot", "dev", "etc", "home", "lib", "lib64", "media", "mnt",
     "opt", "proc", "root", "run", "sbin", "srv", "sys", "tmp", "usr", "var",
+    # Ubuntu
+    "snap",
+    # macOS
+    "applications", "cores", "library", "private", "system", "users",
+    "volumes",
 })
 
 

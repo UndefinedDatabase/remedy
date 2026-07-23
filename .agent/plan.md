@@ -4,12 +4,12 @@
 Extend _REAL_ROOT_DIRS to cover macOS/Ubuntu root dirs so bare tokens
 like /Users, /snap, /Volumes are still flagged by _contains_local_path.
 
-## Current Step
-1. Persist R-0084 finding to live_review.md (own commit)
+## Status: COMPLETE
+- R-0084 persisted (40b0065)
+- _REAL_ROOT_DIRS extended: snap, applications, cores, library, private, system, users, volumes
+- 3 unsafe test cases added: /Users, /snap, /Volumes
+- R-0084 marked Done in live_review.md
+- 77 passed, 0 failures; ruff 41 (0 new)
 
-## Next Steps
-2. Extend _REAL_ROOT_DIRS in run_manifest.py + trade-off comment
-3. Add unsafe test cases (/Users, /snap, /Volumes) to TestSlashCommandFalsePositive
-4. Mark R-0084 Done in live_review.md
-5. Verify: pytest + ruff green
-6. Rewrite handoff.md
+## Next
+- Rewrite handoff.md
