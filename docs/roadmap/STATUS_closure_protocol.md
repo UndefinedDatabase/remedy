@@ -44,11 +44,33 @@
    session; Rule A5 selects it.
 
 ## Canonical zip build sequence
-<!-- PLACEHOLDER — filled by the worker in the evidence-pipeline repair:
-the exact, verified command sequence to stage feature-scoped evidence and
-build the review zip from the current committed state, including how to
-refresh a stale review_archive_plan and how explicit evidence selection is
-passed. No deprecated root-dir auto-selection. -->
+Explicit evidence selection is mandatory. Deprecated root-dir auto-selection
+(mtime-based `remedy-job-evidence-*` scanning) is disabled — the script
+hard-errors if legacy dirs exist and no `--evidence-dir` or `--job-id` is
+given.
+
+```bash
+# 1. Ensure tree is clean and branch is pushed.
+git status          # must be clean
+git push
+
+# 2. Build with explicit evidence dir (preferred):
+bash scripts/make_review_zip.sh --evidence-dir <path-to-evidence-dir>
+
+# Or by indexed job id:
+bash scripts/make_review_zip.sh --job-id <job-id>
+
+# 3. Without evidence (code-only snapshot, e.g. docs-only features):
+bash scripts/make_review_zip.sh
+```
+
+**Stale `review_archive_plan.json`:** The pipeline automatically deletes any
+plan copied from evidence staging before generating a fresh one. No manual
+step needed — `build_review_zip.py` always writes a new plan with current
+SHA-256 hashes.
+
+**Output:** The script prints the final zip filename and SHA-256. Record both
+in the STATUS line (`package <filename>` and `SHA-256 <hash>`).
 
 ## Failure honesty
 If any precondition fails, the feature does NOT close. In order: another

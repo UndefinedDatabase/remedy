@@ -173,134 +173,22 @@ if [[ -z "$EVIDENCE_DIR" ]]; then
 fi
 
 if [[ -z "$EVIDENCE_DIR" && -z "$REQUESTED_JOB_ID" ]]; then
-  # --- Deprecated fallback: legacy root-style evidence directories ---
-  CANDIDATES=()
-  while IFS= read -r -d '' dir; do
-    CANDIDATES+=("$dir")
-  done < <(find . -maxdepth 1 -type d -name 'remedy-job-evidence-*' -print0 2>/dev/null | sort -z)
-
-  CANDIDATE_COUNT=${#CANDIDATES[@]}
-
-  if [[ $CANDIDATE_COUNT -eq 0 ]]; then
-    echo "No matching review evidence exists for the current branch/worktree."
-    echo "This is a code snapshot, not a final review package."
-    SELECTION_MODE="none"
-    SELECTION_REASON="${SELECTION_REASON:-no_matching_evidence}"
-  else
-    echo "WARNING: falling back to deprecated repository-root evidence directories."
-    echo "         Export evidence with 'do job-evidence' (hidden .data/evidence_exports) instead."
-    ARTIFACT_NAMES=("job_flow.json" "command_transcript.json" "agent_run_trace.jsonl" "agent_run_trace_summary.json" "prompt_trace_summary.json" "manifest.json")
-
-    # Validate and rank all candidates
-    echo "Evidence candidate summary:"
-    printf "  %-45s %-12s %-12s %s\n" "PATH" "STATUS" "JOB_ID" "REASON"
-    printf "  %-45s %-12s %-12s %s\n" "----" "------" "------" "------"
-
-    ALL_DIRS=()
-    ALL_MTIMES=()
-    ALL_REASONS=()
-    ALL_STATUSES=()
-
-    for cdir in "${CANDIDATES[@]}"; do
-      VRESULT="$(validate_candidate "$cdir")"
-      VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
-      VJOB_ID="$(echo "$VRESULT" | cut -d'|' -f2)"
-      VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
-
-      rel="$(echo "$cdir" | sed 's#^\./##')"
-      printf "  %-45s %-12s %-12s %s\n" "$rel" "$VSTATUS" "${VJOB_ID:-(none)}" "$VREASON"
-
-      if [[ "$VSTATUS" != "valid" ]]; then
-        REJECTED_COUNT=$((REJECTED_COUNT + 1))
-      fi
-
-      # Compute mtime for ALL candidates (not just valid)
-      DIR_MTIME="0"
-      DIR_REASON=""
-
-      if [[ -f "$cdir/job_flow.json" ]]; then
-        JF_MTIME="$(stat -c '%Y' "$cdir/job_flow.json" 2>/dev/null || stat -f '%m' "$cdir/job_flow.json" 2>/dev/null || echo 0)"
-        if [[ "$JF_MTIME" -gt "$DIR_MTIME" ]]; then
-          DIR_MTIME="$JF_MTIME"
-          DIR_REASON="job_flow_json_mtime"
-        fi
-      fi
-
-      if [[ "$DIR_MTIME" == "0" ]]; then
-        for art in "${ARTIFACT_NAMES[@]}"; do
-          if [[ -f "$cdir/$art" ]]; then
-            ART_MTIME="$(stat -c '%Y' "$cdir/$art" 2>/dev/null || stat -f '%m' "$cdir/$art" 2>/dev/null || echo 0)"
-            if [[ "$ART_MTIME" -gt "$DIR_MTIME" ]]; then
-              DIR_MTIME="$ART_MTIME"
-              DIR_REASON="artifact_mtime"
-            fi
-          fi
-        done
-      fi
-
-      if [[ "$DIR_MTIME" == "0" ]]; then
-        DIR_MTIME="$(stat -c '%Y' "$cdir" 2>/dev/null || stat -f '%m' "$cdir" 2>/dev/null || echo 0)"
-        DIR_REASON="dir_mtime"
-      fi
-
-      ALL_DIRS+=("$cdir")
-      ALL_MTIMES+=("$DIR_MTIME")
-      ALL_REASONS+=("$DIR_REASON")
-      ALL_STATUSES+=("$VSTATUS")
-    done
-
-    echo ""
-
-    # Select newest candidate by mtime (validation is informational, not blocking)
-    BEST_DIR=""
-    BEST_MTIME="0"
-    BEST_REASON=""
-    TIE_WARNING=""
-
-    for i in "${!ALL_DIRS[@]}"; do
-      cdir="${ALL_DIRS[$i]}"
-      DIR_MTIME="${ALL_MTIMES[$i]}"
-      DIR_REASON="${ALL_REASONS[$i]}"
-
-      if [[ "$DIR_MTIME" -gt "$BEST_MTIME" ]]; then
-        BEST_DIR="$cdir"
-        BEST_MTIME="$DIR_MTIME"
-        BEST_REASON="$DIR_REASON"
-        TIE_WARNING=""
-      elif [[ "$DIR_MTIME" == "$BEST_MTIME" && "$DIR_MTIME" != "0" ]]; then
-        if [[ "$cdir" > "$BEST_DIR" ]]; then
-          BEST_DIR="$cdir"
-          BEST_REASON="$DIR_REASON"
-        fi
-        TIE_WARNING="Warning: timestamps tied between candidates. Used deterministic tie-breaker (lexicographic path order)."
-      fi
-    done
-
-    if [[ -z "$BEST_DIR" ]]; then
-      echo "No evidence dirs with readable artifacts among $CANDIDATE_COUNT candidate(s)."
-      echo "Building review zip without evidence."
-      SELECTION_MODE="none"
-      SELECTION_REASON="no_valid_candidates"
-    else
-      EVIDENCE_DIR="$BEST_DIR"
-      SELECTION_MODE="deprecated_root_fallback"
-      SELECTION_REASON="${BEST_REASON:-deprecated_root_evidence_dir}"
-      SELECTED_MTIME="$(date -d "@$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -r "$BEST_MTIME" -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$BEST_MTIME")"
-
-      echo "Auto-selected deprecated root evidence dir: $EVIDENCE_DIR"
-      if [[ -n "$TIE_WARNING" ]]; then
-        echo "$TIE_WARNING"
-      fi
-
-      # Warn if selected evidence is incomplete (but proceed)
-      VRESULT="$(validate_candidate "$EVIDENCE_DIR")"
-      VSTATUS="$(echo "$VRESULT" | cut -d'|' -f1)"
-      VREASON="$(echo "$VRESULT" | cut -d'|' -f3)"
-      if [[ "$VSTATUS" != "valid" ]]; then
-        echo "Note: selected evidence is incomplete ($VREASON). Manifest will reflect this."
-      fi
-    fi
+  # --- Deprecated root-style evidence directories: hard-refuse ---
+  # Legacy remedy-job-evidence-* dirs in the repo root are deprecated. Silently
+  # picking one by mtime risks selecting the wrong feature's evidence. Use
+  # --evidence-dir or --job-id for explicit selection.
+  LEGACY_COUNT="$(find . -maxdepth 1 -type d -name 'remedy-job-evidence-*' 2>/dev/null | wc -l)"
+  if [[ "$LEGACY_COUNT" -gt 0 ]]; then
+    echo "ERROR: $LEGACY_COUNT deprecated remedy-job-evidence-* dir(s) found in repo root." >&2
+    echo "Auto-selection from root dirs is disabled — it cannot distinguish features." >&2
+    echo "Use --evidence-dir <path> or --job-id <id> for explicit selection," >&2
+    echo "or export via 'do job-evidence' to the indexed .data/evidence_exports/." >&2
+    exit 2
   fi
+  echo "No matching review evidence exists for the current branch/worktree."
+  echo "This is a code snapshot, not a final review package."
+  SELECTION_MODE="none"
+  SELECTION_REASON="${SELECTION_REASON:-no_matching_evidence}"
 fi
 
 if [[ -n "$EVIDENCE_DIR" && ! -d "$EVIDENCE_DIR" ]]; then
@@ -556,6 +444,10 @@ if [[ -n "$EVIDENCE_DIR" && -f "$STAGED_CURRENT/current_change_content_proof.jso
 fi
 if [[ -n "$EV_ROOT_ARG" ]]; then
   PLAN_OUT_ARG="$STAGED_CURRENT/review_archive_plan.json"
+  # Stale plan from a prior zip build may have been copied during evidence
+  # staging. Delete it — build_review_zip.py generates a fresh one at this
+  # path. Reading a stale plan causes hash mismatches.
+  rm -f "$PLAN_OUT_ARG"
 fi
 
 # F6/F7 (round 21): capture build_review_zip's verified-model result (package_status,
