@@ -26,6 +26,9 @@
    Docs-only features without a runtime evidence job close with an honest
    NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
    Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
+   Build order: the closure zip is the LAST action after ALL commits
+   including the final .agent/ state and handoff rewrite; a package built
+   from a dirty tree is invalid.
 3. **Runtime actuals (reviewer; observed only).** Rounds, wall clock,
    models, tokens/cost where the ledger has them; `not-measured` beats a
    guess. → PR description + final report.

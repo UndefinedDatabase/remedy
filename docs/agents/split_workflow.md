@@ -45,8 +45,13 @@ recorded), and on demand mid-feature for external second opinions.
    small commits, .agent/plan.md updated, tree clean, push. Applies any
    reviewer-authored live_review/STATUS text verbatim — findings FIRST,
    as their own commit, before fixing them.
-3. Window 2 rewrites .agent/handoff.md (latest state only) and emits the
-   completion report + "Handing back for review of <sha..sha>".
+3. Window 2 finishes in this exact order: (a) final work commits,
+   (b) rewrite .agent/handoff.md to the true end-of-round state + commit,
+   (c) ONLY IF a package is requested this round: build the review zip
+   from the now-clean tree — the zip is always the LAST action, and
+   packaging from a dirty tree or before the handoff rewrite is a finding,
+   (d) emit the completion report + "Handing back for review of
+   <sha..sha>".
 4. Operator relays the report to Window 1.
 5. Window 1 reviews bottom-up, verdict, next block. On closure: banner,
    session ends, PR waits for the next feature's Open PR Gate.
@@ -80,9 +85,11 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
   apply VERBATIM. In repair rounds: persist the findings to
   .agent/live_review.md as the FIRST commit, then fix, marking
   `Done: R-XXXX`. Never set Resolved yourself.
-- At every handback: rewrite .agent/handoff.md (latest state only), then
-  emit the completion report (outcome ≤6 lines, changed-files table, real
-  verification output, assumption_log entries, deviations) ending with:
+- At every handback: rewrite .agent/handoff.md (latest state only), in
+  this order: commits → handoff rewrite + commit → (zip if requested) →
+  report. Emit the completion report (outcome ≤6 lines, changed-files
+  table, real verification output, assumption_log entries, deviations)
+  ending with:
   "Handing back to Window 1 for review of <LAST_SHA>..<HEAD>."
 - Never fabricate data, never imply live state over mocks, never claim
   green you did not observe. "Should work" is not a status.
