@@ -32,6 +32,10 @@ _CONFIG = "packages/orchestration/config.py"
 _DO_CMD = "apps/cli/commands/do_cmd.py"
 
 _F018_TEST = "tests/orchestration/test_f018_authority_integration.py"
+_F146_REGISTRY = "packages/orchestration/project_registry.py"
+_F146_CLI = "apps/cli/commands/project.py"
+_F146_RESOLUTION_TEST = "tests/orchestration/test_project_resolution.py"
+_F146_CLI_TEST = "tests/cli/test_project_current.py"
 
 INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
     # Gate-writer meta-checks
@@ -126,6 +130,49 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "check_type": "call_exists",
         "pattern": "BudgetCounterError",
     },
+    # F146: project identity production-path integration checks
+    {
+        "check_id": "f146_registry_atomic_save",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "os.replace",
+    },
+    {
+        "check_id": "f146_registry_read_only_resolution",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "_find_project_by_repo_readonly",
+    },
+    {
+        "check_id": "f146_registry_ambiguous_error",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "AmbiguousProjectError",
+    },
+    {
+        "check_id": "f146_registry_invalid_selector",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "InvalidProjectSelectorError",
+    },
+    {
+        "check_id": "f146_registry_register_primitive",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "register_project_repo",
+    },
+    {
+        "check_id": "f146_cli_select_project",
+        "source_file": _F146_CLI,
+        "check_type": "call_exists",
+        "pattern": "select_project",
+    },
+    {
+        "check_id": "f146_cli_is_git_repo",
+        "source_file": _F146_CLI,
+        "check_type": "call_exists",
+        "pattern": "is_git_repo",
+    },
 )
 
 TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
@@ -166,6 +213,46 @@ TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
         "check_type": "test_execution_binding",
         "test_file": "tests/orchestration/test_budget_stop_integration.py",
         "min_passed": 30,
+    },
+    # F146: project identity test execution bindings
+    {
+        "check_id": "f146_test_resolution_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F146_RESOLUTION_TEST,
+        "min_passed": 50,
+        "critical_node_ids": [
+            "TestReadOnlyResolution::test_resolve_does_not_write",
+            "TestReadOnlyResolution::test_resolve_legacy_project_does_not_write",
+            "TestAmbiguousProjectError::test_duplicate_slug_raises",
+            "TestSelectProject::test_empty_flag_raises_invalid",
+            "TestSelectProject::test_empty_env_raises_invalid",
+            "TestAtomicSave::test_save_uses_atomic_replace",
+            "TestRegisterProjectRepo::test_creates_with_slug_and_canonical",
+            "TestRegisterProjectRepo::test_same_repo_returns_existing",
+            "TestRegisterProjectRepo::test_create_project_assigns_slug_immediately",
+            "TestManagedWorktreeParent::test_worktree_path_without_git_returns_none",
+            "TestSelectProject::test_env_uuid",
+            "TestSelectProject::test_env_slug",
+            "TestSelectProject::test_env_beats_cwd",
+            "TestSelectProject::test_flag_beats_env_and_cwd",
+        ],
+    },
+    {
+        "check_id": "f146_test_cli_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F146_CLI_TEST,
+        "min_passed": 10,
+        "critical_node_ids": [
+            "TestProjectCurrentCommand::test_json_output_exact_schema",
+            "TestProjectCurrentCommand::test_project_flag_overrides_cwd",
+            "TestProjectCurrentCommand::test_env_source_in_json",
+            "TestProjectCurrentCommand::test_job_count_uses_job_ids_len",
+            "TestProjectAttachCommand::test_attach_rejects_non_git",
+            "TestProjectAttachCommand::test_attach_json_output",
+            "TestProjectAttachCommand::test_attach_same_path_idempotent",
+            "TestProjectAttachCommand::test_attach_with_project_flag",
+            "TestWorkspaceKeyGuard::test_no_forbidden_imports",
+        ],
     },
 )
 
