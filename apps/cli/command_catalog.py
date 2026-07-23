@@ -459,7 +459,10 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="current",
         description="Show the project resolved from the current directory.",
         action_class="read_only",
-        args=(_JSON_OPT,),
+        args=(
+            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
         related=("project.show", "project.list"),
     ),
@@ -469,7 +472,10 @@ CATALOG: tuple[CommandEntry, ...] = (
         subcommand="attach",
         description="Attach a repository path to the current project.",
         action_class="write_metadata",
-        args=(ArgDef("--repo", "Path to the repository", required=True, is_option=True),),
+        args=(
+            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--repo", "Path to the repository", required=True, is_option=True),
+        ),
         related=("project.current",),
     ),
 

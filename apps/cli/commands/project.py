@@ -15,8 +15,14 @@ if TYPE_CHECKING:
 
 
 def _cmd_create_project(name: str, description: str | None) -> None:
-    from packages.orchestration.project_registry import RemyProject, save_project
-    project = RemyProject(name=name, description=description)
+    from packages.orchestration.project_registry import (
+        RemyProject,
+        save_project,
+        slugify,
+        _unique_slug,
+    )
+    slug = _unique_slug(slugify(name))
+    project = RemyProject(name=name, slug=slug, description=description)
     save_project(project)
     print(project.id)
 
@@ -288,81 +294,130 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
             print(f"Command: {summary.next_command}")
 
 
-def _cmd_project_current(*, json_output: bool = False) -> None:
-    import os
-
+def _cmd_project_current(
+    *,
+    project_flag: str | None = None,
+    json_output: bool = False,
+) -> None:
     from packages.orchestration.project_registry import (
+        InvalidProjectSelectorError,
         ProjectNotFoundError,
-        resolve_project,
+        select_project,
     )
 
+    import os
     cwd = os.getcwd()
-    project = resolve_project(cwd)
-    if project is None:
-        print(
-            "No project registered for this repo. Run: remedy init",
-            file=sys.stderr,
-        )
+    try:
+        project, source = select_project(project_flag, cwd)
+    except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
+        print(str(exc), file=sys.stderr)
         sys.exit(3)
 
     if json_output:
-        all_jobs = list_jobs()
-        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
         print(_json.dumps({
+            "project_id": str(project.id),
             "slug": project.slug,
-            "id": str(project.id),
-            "name": project.name,
-            "canonical_repo_path": project.canonical_repo_path,
-            "repo_paths": list(project.repo_paths),
-            "job_count": len(linked_jobs),
+            "repo": project.canonical_repo_path,
+            "job_count": len(project.job_ids),
+            "selection_source": source,
         }, indent=2))
     else:
-        all_jobs = list_jobs()
-        linked_jobs = [j for j in all_jobs if str(j.id) in project.job_ids]
         print(f"slug  : {project.slug}")
         print(f"id    : {project.id}")
-        print(f"name  : {project.name}")
         print(f"repo  : {project.canonical_repo_path or '(none)'}")
-        print(f"jobs  : {len(linked_jobs)}")
+        print(f"jobs  : {len(project.job_ids)}")
+        print(f"source: {source}")
 
 
-def _cmd_project_attach_repo(repo_path_str: str) -> None:
+def _cmd_project_attach_repo(
+    repo_path_str: str,
+    *,
+    project_flag: str | None = None,
+) -> None:
     import os
     from pathlib import Path
 
     from packages.orchestration.project_registry import (
+        InvalidProjectSelectorError,
         ProjectNotFoundError,
-        attach_repo,
+        RepoOwnershipConflictError,
         find_project_by_repo,
-        load_project,
-        resolve_project,
         save_project,
+        select_project,
     )
+    from packages.orchestration.worktrees import is_git_repo, repo_root
 
     repo_real = str(Path(repo_path_str).resolve())
 
-    existing = find_project_by_repo(repo_real)
-    if existing is not None:
-        print(f"Repo already registered to project {existing.slug} ({str(existing.id)[:8]})")
-        return
-
-    cwd = os.getcwd()
-    project = resolve_project(cwd)
-    if project is None:
+    # Validate --repo is a git repository
+    if not is_git_repo(repo_path_str):
         print(
-            "No project registered for this repo. Run: remedy init",
+            f"ERROR: {repo_path_str!r} is not a git repository.",
             file=sys.stderr,
         )
+        sys.exit(2)
+
+    try:
+        repo_real = str(repo_root(repo_path_str).resolve())
+    except Exception:
+        pass
+
+    # Resolve project via selection precedence
+    cwd = os.getcwd()
+    try:
+        project, _source = select_project(project_flag, cwd)
+    except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
+        print(str(exc), file=sys.stderr)
         sys.exit(3)
 
-    added = attach_repo(project, repo_path_str)
-    if project.canonical_repo_path is None:
-        project.canonical_repo_path = repo_real
+    # Block ownership conflicts
+    existing = find_project_by_repo(repo_real)
+    if existing is not None and existing.id != project.id:
+        print(
+            f"ERROR: repo {repo_real!r} is already owned by project "
+            f"{existing.slug} ({str(existing.id)[:8]}). "
+            f"Detach it first or use --project to specify the target.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Same-path idempotent
+    if (
+        project.canonical_repo_path == repo_real
+        and repo_real in project.repo_paths
+    ):
+        print(_json.dumps({
+            "project_id": str(project.id),
+            "slug": project.slug,
+            "old_repo": project.canonical_repo_path,
+            "new_repo": repo_real,
+            "changed": False,
+        }, indent=2))
+        return
+
+    old_canonical = project.canonical_repo_path
+
+    # Rebind canonical_repo_path
+    project.canonical_repo_path = repo_real
+
+    # Replace old canonical in repo_paths, preserve secondary repos
+    if old_canonical and old_canonical in project.repo_paths:
+        project.repo_paths = [
+            repo_real if rp == old_canonical else rp
+            for rp in project.repo_paths
+        ]
+    if repo_real not in project.repo_paths:
+        project.repo_paths.append(repo_real)
+
     save_project(project)
-    if added:
-        print(f"Attached {repo_real} to project {project.slug} ({str(project.id)[:8]})")
-    else:
-        print(f"Repo already attached to project {project.slug} (no-op)")
+
+    print(_json.dumps({
+        "project_id": str(project.id),
+        "slug": project.slug,
+        "old_repo": old_canonical,
+        "new_repo": repo_real,
+        "changed": True,
+    }, indent=2))
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -374,6 +429,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.brain": lambda args: _cmd_project_brain(args.project_id, json_output=args.json),
     "project.context": lambda args: _cmd_project_context(args.project_id, json_output=args.json),
     "project.summary": lambda args: _cmd_project_summary(args.project_id, json_output=args.json),
-    "project.current": lambda args: _cmd_project_current(json_output=args.json),
-    "project.attach": lambda args: _cmd_project_attach_repo(args.repo),
+    "project.current": lambda args: _cmd_project_current(
+        project_flag=getattr(args, "project", None),
+        json_output=args.json,
+    ),
+    "project.attach": lambda args: _cmd_project_attach_repo(
+        args.repo,
+        project_flag=getattr(args, "project", None),
+    ),
 }
