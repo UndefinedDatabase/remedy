@@ -1,31 +1,27 @@
 # Handoff — latest worker state (rewrite, never append)
 Feature: F081 remedy init
-Round: T001 repair complete (R-0077, R-0078, R-0079 closed)
+Round: T002 complete (config template + runtime detection)
 Branch: feature/f081-remedy-init
 Base: ef1e2e9 (main after PR #138 merge)
-Last commits: 0be3b05 (persist findings), 996e1b5 (R-0077), 08ed03a (R-0078), this commit (R-0079)
+Last commit: e8daf18 (T002 implementation)
 
-Changed files (repair round):
+Changed files (T002):
 | File | Change |
 |---|---|
-| apps/cli/grouped.py | _DEFAULT_COMMAND + _ALWAYS_INJECT hoisted to module level |
-| tests/test_grouped_cli.py | group-help parametrizations exempt _ALWAYS_INJECT |
-| tests/cli/test_init_cmd.py | REMEDY_DATA_DIR isolation + mtime before/after proof |
-| .agent/live_review.md | R-0077..R-0079 persisted, all Done |
-| .agent/plan.md | T001 status updated |
-| .agent/handoff.md | rewritten |
+| apps/cli/commands/init_cmd.py | _CORE_TEMPLATE + _RUNTIME_ACTIVE + _RUNTIME_SKIP constants, _build_config(), handler restructured (config before registry, no early return) |
+| tests/cli/test_init_cmd.py | TestInitConfig class: 7 new tests (no-marker, vite, uvicorn, existing-untouched, loader round-trip, output ordering) + _sha256 helper |
+| .agent/decisions.md | T002 template-location + reorder decision recorded |
+| .agent/plan.md | Status updated to T002 COMPLETE |
 
-Verification (re-verified):
-  pytest tests/test_grouped_cli.py -q: 471 passed, 0 failures
-  pytest tests/cli/test_init_cmd.py -q: 5 passed
-  pytest tests/test_command_catalog.py -q: 3 failed, 15 passed
-    Pre-existing only: job.budget (read_metadata not in valid set),
-    do.job-evidence (mutates but classified read_only),
-    do.repair-attest (arg help substring match on "sk-"). NOT from F081.
+Verification (observed):
+  pytest tests/cli/test_init_cmd.py -q: 11 passed (5 T001 + 6 T002)
+  pytest tests/test_grouped_cli.py -q: 471 passed
+  pytest tests/test_command_catalog.py -q: 3 failed (pre-existing), 15 passed
   ruff check: All checks passed
   Registry clean: 312 projects before, 312 after full test_init_cmd.py run
+  Manual fixtures: Vite repo → [runtime] filled port 5173; bare repo → # [runtime] + [skipped]
 
 Open findings: 0
-Next: T002 (config template + runtime detection) or reviewer verdict
+Next: T003 (ignore-hygiene, summary block, --print-only, --json) or reviewer verdict
 (Rules: rewritten at every handback; only the latest state lives here;
 git history is the archive; ≤60 lines.)
