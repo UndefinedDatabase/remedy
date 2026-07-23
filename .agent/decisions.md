@@ -1,5 +1,16 @@
 # Decisions
 
+## 2026-07-23: R4 test count discrepancy — documentation error, not test deletion (Phase 1)
+Handoff docs (.agent/context.md, .agent/live_review.md) claimed 499 tests green
+(95 in test_project_resolution.py, 13 in test_f146_package_pipeline_e2e.py).
+Evidence run produced 495 (93 resolution, 11 f146_e2e). Investigation confirmed
+the committed test files always had 93 and 11 test methods — git log and method
+counts prove no tests were ever deleted. The 95/13 numbers were never real;
+they were documentation errors in .agent/ state files. Corrected to verified
+actuals: 93 + 11 = 104 (was claimed 95 + 13 = 108), total 495 (was 499).
+Evidence ZIP (remedy-review-20260723-141827-READY_FOR_REVIEW.zip) generated with
+correct 495 count. Commits: all R4 production code unchanged.
+
 ## 2026-06-13: UI `npm run lint` is pre-existing broken; rely on typecheck/vitest/build (Block 1180-1192)
 `apps/ui/eslint.config.js` (unchanged since the Steps 172-201 UI rebuild) registers no
 TypeScript parser, so eslint parses every `.ts/.tsx` with espree and fails with parse errors

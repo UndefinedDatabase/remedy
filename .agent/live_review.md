@@ -31,20 +31,20 @@
   f146_test_registry_execution binding
 - `scripts/refresh_review_evidence.py` — reads/propagates persisted feature_id
 - `tests/cli/test_project_current.py` — _resolve_attr_chain, 4 new AST guard tests (18 total)
-- `tests/orchestration/test_project_resolution.py` — 12 new R4 tests (95 total)
+- `tests/orchestration/test_project_resolution.py` — 12 new R4 tests (93 total)
 - `tests/orchestration/test_f018_package_pipeline_e2e.py` — count fixes 34→35, 6→7 bindings (29 total)
-- `tests/orchestration/test_f146_package_pipeline_e2e.py` — NEW, 13 tests
+- `tests/orchestration/test_f146_package_pipeline_e2e.py` — NEW, 11 tests
 - `docs/roadmap/features/T0_F146.md` — R4 Built State section
 
 ## Test suites (R4)
 - test_project_registry.py — 46 passed
-- test_project_resolution.py — 95 passed
+- test_project_resolution.py — 93 passed
 - test_project_current.py — 18 passed
 - test_runtime_integration_gate.py — 17 passed
 - test_f018_package_pipeline_e2e.py — 29 passed
-- test_f146_package_pipeline_e2e.py — 13 passed
+- test_f146_package_pipeline_e2e.py — 11 passed
 - test_budget_guard.py — passed
 - test_job_budgets.py — passed
 - test_budget_stop_integration.py — passed
 - test_f018_authority_integration.py — passed
-- Total focused: 218 F146 + 281 non-regression = 499 passed
+- Total focused: 214 F146 + 281 non-regression = 495 passed
