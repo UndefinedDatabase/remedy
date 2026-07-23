@@ -208,7 +208,10 @@ feature's evidence zip.
   without weakening real path/secret detection. File as its own roadmap/fix.
 
 ### R-0084: _REAL_ROOT_DIRS incomplete — bare /snap and macOS root-dir tokens no longer flagged
-- **Status**: Done: R-0084
+- **Status**: Resolved
+- **Reviewer**: re-ran both test files (50 + 27 passed); old-vs-new probe
+  shows /Users, /snap, /Volumes, /Library, /private flagged again; ruff
+  41 = base 41. PASS at a2accd2.
 - **Severity**: Low
 - **Area**: packages/orchestration/run_manifest.py (_REAL_ROOT_DIRS / _neutralize_slash_commands)
 - **Details**: _REAL_ROOT_DIRS holds only the Linux-FHS set. The neutralizer
