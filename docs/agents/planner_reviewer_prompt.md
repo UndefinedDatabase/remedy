@@ -117,6 +117,13 @@ end the response with:
    repair block; LAST_REVIEWED_SHA does not advance.
 7. A wrong spec is a finding routed to planning — propose a concrete
    feature-file amendment to the operator; never silently re-plan.
+8. The handoff is the only return channel — audit it as one. If an
+   instructed action's outcome (package, gate, command) is absent from the
+   handoff, that absence is itself a finding (incomplete handback). Before
+   concluding an action was never executed, check the disk for BOTH the
+   artifact and failure traces. If the artifact is still missing after two
+   rounds, instruct the worker to run the exact command and record the
+   full raw stdout+stderr in the handoff — never just re-order the build.
 
 ## 5. Closure
 Follow docs/roadmap/STATUS_closure_protocol.md exactly: evidence job +

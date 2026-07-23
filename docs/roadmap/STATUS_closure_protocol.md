@@ -18,6 +18,20 @@
 ## Algorithm
 1. **Evidence job (worker).** Final evidence run, fresh job id, feature-
    scoped (`feature_id=<fxxx>`). Record: `Evidence job <job_id>`.
+   Canonical producer: `packages.orchestration.job_evidence.
+   create_manual_completion_bundle(review_feature_id=<fxxx>, ...)` — it
+   emits the full closed-schema gate set (final_verifier_report,
+   fresh_evidence, artifact_contract, change_provenance, manifest_
+   integrity, postmortem_integrity, commit_execution, runtime_integration).
+   `write_runtime_integration_gate` alone is NOT a bundle and packages as
+   BLOCKED_EVIDENCE.
+   Packaging-deadlock rule: a High finding about closure packaging blocks
+   `remedy integrity check` (high_blockers_open) and thereby the zip
+   itself. The reviewer therefore attaches a CONDITIONAL resolution to
+   such findings at authoring time — a mechanically checkable predicate
+   (e.g. "Resolved when the complete bundle with all listed gates exists
+   on disk at the current head") that the worker applies verbatim once the
+   predicate holds — so persist → fix → resolve → package fits ONE relay.
 2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
    canonical sequence below. Verify committed_review_subject spans
    BASE..HEAD and the zip import check passes. Record `package <filename>`
@@ -28,7 +42,9 @@
    Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
    Build order: the closure zip is the LAST action after ALL commits
    including the final .agent/ state and handoff rewrite; a package built
-   from a dirty tree is invalid.
+   from a dirty tree is invalid. The zip attempt's outcome — package +
+   SHA-256, or the raw error — is recorded in the handoff BEFORE handback,
+   always.
 3. **Runtime actuals (reviewer; observed only).** Rounds, wall clock,
    models, tokens/cost where the ledger has them; `not-measured` beats a
    guess. → PR description + final report.

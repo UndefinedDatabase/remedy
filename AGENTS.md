@@ -194,6 +194,11 @@ Files must remain:
 - Target one step per commit. Do not bundle multiple unrelated steps.
 - If a diff exceeds 500 lines, stop and split before committing.
 - Never mix refactoring with new features in the same commit.
+- Commit subjects never contain leading-slash tokens ('/foo'), absolute
+  paths, or secret-like strings — the evidence-packaging metadata scanner
+  rejects such subjects and blocks closure. Write 'add review-remedy
+  slash command', never 'add /review-remedy command'. (Learned 2026-07-23:
+  one such subject blocked the F081 closure for several rounds.)
 
 If changes become too large:
 
