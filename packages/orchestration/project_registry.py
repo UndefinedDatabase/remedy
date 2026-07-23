@@ -34,6 +34,9 @@ Public API::
     find_project_by_repo(real_path) -> RemyProject | None  # F146
     select_project(flag, cwd) -> (RemyProject, source)    # F146: precedence
     register_project_repo(name, repo_path) -> RemyProject  # F146: explicit creation
+    NotAGitRepoError                           -- raised on non-Git repo
+    attach_repo_canonical(project, repo_path)  # F146: canonical attach service
+    migrate_legacy_projects() -> int           # F146: deterministic batch migration
 """
 
 from __future__ import annotations
@@ -95,16 +98,26 @@ class ProjectNotFoundError(Exception):
         project_id: UUID | None = None,
         *,
         cwd: str | Path | None = None,
+        selector_value: str | None = None,
+        selector_source: str | None = None,
     ) -> None:
         if cwd is not None:
             super().__init__(
                 "No project registered for this repo. Run: remedy init"
             )
             self.cwd: str | None = str(cwd)
+        elif selector_value is not None:
+            source_label = f" (from {selector_source})" if selector_source else ""
+            super().__init__(
+                f"Project not found: {selector_value!r}{source_label}"
+            )
+            self.cwd = None
         else:
             super().__init__(f"Project not found: {project_id}")
             self.cwd = None
         self.project_id = project_id
+        self.selector_value = selector_value
+        self.selector_source = selector_source
 
 
 class AmbiguousProjectError(Exception):
@@ -149,8 +162,30 @@ class RepoOwnershipConflictError(Exception):
 # ---------------------------------------------------------------------------
 
 
+_SLUG_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
+
+
+def _validate_slug(slug: str | None, project_id: UUID) -> None:
+    """Enforce the closed persisted slug contract before save."""
+    if slug is None:
+        raise ValueError("slug must not be None when saving a project")
+    if not slug:
+        raise ValueError("slug must not be empty")
+    if not _SLUG_RE.match(slug):
+        raise ValueError(f"slug {slug!r} is not valid kebab-case")
+    existing = _collect_slugs(exclude_id=project_id)
+    if slug in existing:
+        raise ValueError(
+            f"slug {slug!r} is already used by another project"
+        )
+
+
 def save_project(project: RemyProject) -> None:
-    """Persist a RemyProject to disk as JSON (atomic: temp file + os.replace)."""
+    """Persist a RemyProject to disk as JSON (atomic: temp file + os.replace).
+
+    Validates slug contract: non-null, kebab-case, unique among persisted records.
+    """
+    _validate_slug(project.slug, project.id)
     d = _projects_dir()
     d.mkdir(parents=True, exist_ok=True)
     target = d / f"{project.id}.json"
@@ -196,18 +231,18 @@ def load_project(project_id: UUID) -> RemyProject:
 def list_projects() -> list[RemyProject]:
     """Return all persisted projects sorted by created_at descending.
 
-    Legacy records without slug/canonical_repo_path are migrated on load.
+    Legacy records without slug/canonical_repo_path are migrated via
+    deterministic batch migration (sorted by created_at ascending, then
+    UUID as tie-breaker) before returning.
     """
     d = _projects_dir()
     if not d.exists():
         return []
+    migrate_legacy_projects()
     projects: list[RemyProject] = []
     for path in d.glob("*.json"):
         try:
-            p = RemyProject.model_validate_json(path.read_text())
-            if _migrate_legacy(p):
-                save_project(p)
-            projects.append(p)
+            projects.append(RemyProject.model_validate_json(path.read_text()))
         except (ValueError, OSError):
             pass
     return sorted(projects, key=lambda p: p.created_at, reverse=True)
@@ -291,6 +326,106 @@ def _migrate_legacy(project: RemyProject) -> bool:
     return changed
 
 
+def migrate_legacy_projects() -> int:
+    """Deterministic batch migration of legacy records without slug.
+
+    Reads all raw project files, sorts by (created_at ascending, UUID
+    ascending) for deterministic slug allocation, derives missing slugs
+    from that ordered set, and persists atomically. Returns the count
+    of migrated records.
+    """
+    d = _projects_dir()
+    if not d.exists():
+        return 0
+
+    raw: list[tuple[Path, RemyProject]] = []
+    for path in d.glob("*.json"):
+        try:
+            p = RemyProject.model_validate_json(path.read_text())
+            if p.slug is None or (p.canonical_repo_path is None and p.repo_paths):
+                raw.append((path, p))
+        except (ValueError, OSError):
+            pass
+
+    if not raw:
+        return 0
+
+    raw.sort(key=lambda t: (t[1].created_at, str(t[1].id)))
+
+    allocated_slugs = _collect_slugs()
+    count = 0
+    for _path, project in raw:
+        changed = False
+        if project.slug is None:
+            base = slugify(project.name)
+            candidate = base
+            idx = 2
+            while candidate in allocated_slugs:
+                candidate = f"{base}-{idx}"
+                idx += 1
+            project.slug = candidate
+            allocated_slugs.add(candidate)
+            changed = True
+        if project.canonical_repo_path is None and project.repo_paths:
+            project.canonical_repo_path = str(Path(project.repo_paths[0]).resolve())
+            changed = True
+        if changed:
+            save_project(project)
+            count += 1
+
+    return count
+
+
+def attach_repo_canonical(
+    project: RemyProject,
+    repo_path: str | Path,
+) -> tuple[bool, str]:
+    """Canonical repository attachment service.
+
+    Validates Git, resolves root, checks ownership, rebinds canonical,
+    deduplicates repo_paths, and persists atomically.
+
+    Returns (changed, repo_real). Raises RepoOwnershipConflictError or
+    NotAGitRepoError.
+    """
+    from packages.orchestration.worktrees import is_git_repo, repo_root
+
+    if not is_git_repo(repo_path):
+        raise NotAGitRepoError(str(Path(repo_path).resolve()))
+
+    repo_real = str(repo_root(repo_path).resolve())
+
+    existing = _find_project_by_repo_readonly(repo_real)
+    if existing is not None and existing.id != project.id:
+        raise RepoOwnershipConflictError(repo_real, existing)
+
+    needs_dedup = len(project.repo_paths) != len(set(project.repo_paths))
+
+    if (
+        project.canonical_repo_path == repo_real
+        and repo_real in project.repo_paths
+        and not needs_dedup
+    ):
+        return False, repo_real
+
+    old_canonical = project.canonical_repo_path
+    project.canonical_repo_path = repo_real
+
+    new_paths: list[str] = []
+    seen: set[str] = set()
+    for rp in project.repo_paths:
+        effective = repo_real if rp == old_canonical else rp
+        if effective not in seen:
+            new_paths.append(effective)
+            seen.add(effective)
+    if repo_real not in seen:
+        new_paths.append(repo_real)
+    project.repo_paths = new_paths
+
+    save_project(project)
+    return True, repo_real
+
+
 def _managed_worktree_parent(root: Path) -> Path | None:
     """If *root* is inside a managed Remedy worktree, return the parent repo.
 
@@ -335,16 +470,6 @@ def _managed_worktree_parent(root: Path) -> Path | None:
             return None
     except (OSError, subprocess.TimeoutExpired):
         pass
-
-    # Fallback: check for Remedy worktree metadata
-    wt_meta = root / ".git"
-    if wt_meta.is_file():
-        try:
-            content = wt_meta.read_text().strip()
-            if content.startswith("gitdir:"):
-                return candidate_parent
-        except OSError:
-            pass
 
     return None
 
@@ -429,26 +554,28 @@ def require_project(cwd: str | Path) -> RemyProject:
     return project
 
 
-def _lookup_by_slug_or_uuid(value: str) -> RemyProject:
-    """Resolve *value* as UUID first, then as slug.
+def _lookup_by_slug_or_uuid_readonly(value: str) -> RemyProject:
+    """Resolve *value* as UUID first, then as slug — read-only, never writes.
 
     Raises AmbiguousProjectError when multiple projects share the slug.
-    Raises ProjectNotFoundError when nothing matches.
+    Raises ProjectNotFoundError (with the value) when nothing matches.
     """
     try:
         uid = UUID(value)
-        return load_project(uid)
-    except (ValueError, ProjectNotFoundError):
+        path = _projects_dir() / f"{uid}.json"
+        if path.exists():
+            return _load_project_readonly(path)
+    except ValueError:
         pass
     matches: list[RemyProject] = []
-    for p in list_projects():
+    for p in _list_projects_readonly():
         if p.slug == value:
             matches.append(p)
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
         raise AmbiguousProjectError(value, [m.id for m in matches])
-    raise ProjectNotFoundError()
+    raise ProjectNotFoundError(project_id=None, selector_value=value)
 
 
 def select_project(
@@ -472,13 +599,23 @@ def select_project(
     if flag is not None:
         if not flag.strip():
             raise InvalidProjectSelectorError("flag", flag)
-        return _lookup_by_slug_or_uuid(flag.strip()), "flag"
+        try:
+            return _lookup_by_slug_or_uuid_readonly(flag.strip()), "flag"
+        except ProjectNotFoundError:
+            raise ProjectNotFoundError(
+                selector_value=flag.strip(), selector_source="flag"
+            ) from None
 
     env_val = os.environ.get("REMEDY_PROJECT")
     if env_val is not None:
         if not env_val.strip():
             raise InvalidProjectSelectorError("environment", env_val)
-        return _lookup_by_slug_or_uuid(env_val.strip()), "environment"
+        try:
+            return _lookup_by_slug_or_uuid_readonly(env_val.strip()), "environment"
+        except ProjectNotFoundError:
+            raise ProjectNotFoundError(
+                selector_value=env_val.strip(), selector_source="environment"
+            ) from None
 
     project = resolve_project(cwd)
     if project is not None:
@@ -492,6 +629,14 @@ def select_project(
 # ---------------------------------------------------------------------------
 
 
+class NotAGitRepoError(Exception):
+    """Raised when a path is not a Git repository but one is required."""
+
+    def __init__(self, path: str) -> None:
+        super().__init__(f"Not a git repository: {path!r}")
+        self.path = path
+
+
 def register_project_repo(
     name: str,
     repo_path: str | Path,
@@ -500,23 +645,23 @@ def register_project_repo(
 ) -> RemyProject:
     """Create or return a project for the given repository path.
 
-    Assigns slug and canonical_repo_path immediately. If a project already
-    owns this canonical path, returns that project (same-repo idempotency).
+    Requires a real Git repository — raises NotAGitRepoError for plain dirs.
+    Resolves the Git root and derives slug from the repository directory name
+    (not the display name). If a project already owns this canonical path,
+    returns that project (same-repo idempotency).
     """
     from packages.orchestration.worktrees import is_git_repo, repo_root
 
-    real = str(Path(repo_path).resolve())
-    if is_git_repo(repo_path):
-        try:
-            real = str(repo_root(repo_path).resolve())
-        except Exception:
-            pass
+    if not is_git_repo(repo_path):
+        raise NotAGitRepoError(str(Path(repo_path).resolve()))
 
-    existing = find_project_by_repo(real)
+    real = str(repo_root(repo_path).resolve())
+
+    existing = _find_project_by_repo_readonly(real)
     if existing is not None:
         return existing
 
-    slug = _unique_slug(slugify(name))
+    slug = _unique_slug(slugify(Path(real).name))
     project = RemyProject(
         name=name,
         slug=slug,

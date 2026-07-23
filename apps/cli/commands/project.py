@@ -67,10 +67,11 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
 
 def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
     from packages.orchestration.project_registry import (
+        NotAGitRepoError,
         ProjectNotFoundError,
-        attach_repo,
+        RepoOwnershipConflictError,
+        attach_repo_canonical,
         load_project,
-        save_project,
     )
 
     try:
@@ -83,9 +84,15 @@ def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
     except ProjectNotFoundError:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
-    added = attach_repo(project, repo_path_str)
-    save_project(project)
-    if added:
+    try:
+        changed, repo_real = attach_repo_canonical(project, repo_path_str)
+    except NotAGitRepoError:
+        print(f"ERROR: {repo_path_str!r} is not a git repository.", file=sys.stderr)
+        sys.exit(2)
+    except RepoOwnershipConflictError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if changed:
         print(f"Attached repo to project {str(pid)[:8]}")
     else:
         print(f"Repo already attached to project {str(pid)[:8]} (no-op)")
@@ -300,6 +307,7 @@ def _cmd_project_current(
     json_output: bool = False,
 ) -> None:
     from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
         InvalidProjectSelectorError,
         ProjectNotFoundError,
         select_project,
@@ -309,6 +317,9 @@ def _cmd_project_current(
     cwd = os.getcwd()
     try:
         project, source = select_project(project_flag, cwd)
+    except AmbiguousProjectError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
     except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(3)
@@ -335,88 +346,46 @@ def _cmd_project_attach_repo(
     project_flag: str | None = None,
 ) -> None:
     import os
-    from pathlib import Path
 
     from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
         InvalidProjectSelectorError,
+        NotAGitRepoError,
         ProjectNotFoundError,
         RepoOwnershipConflictError,
-        find_project_by_repo,
-        save_project,
+        attach_repo_canonical,
         select_project,
     )
-    from packages.orchestration.worktrees import is_git_repo, repo_root
 
-    repo_real = str(Path(repo_path_str).resolve())
+    cwd = os.getcwd()
+    try:
+        project, _source = select_project(project_flag, cwd)
+    except AmbiguousProjectError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(3)
 
-    # Validate --repo is a git repository
-    if not is_git_repo(repo_path_str):
+    old_canonical = project.canonical_repo_path
+    try:
+        changed, repo_real = attach_repo_canonical(project, repo_path_str)
+    except NotAGitRepoError:
         print(
             f"ERROR: {repo_path_str!r} is not a git repository.",
             file=sys.stderr,
         )
         sys.exit(2)
-
-    try:
-        repo_real = str(repo_root(repo_path_str).resolve())
-    except Exception:
-        pass
-
-    # Resolve project via selection precedence
-    cwd = os.getcwd()
-    try:
-        project, _source = select_project(project_flag, cwd)
-    except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
-        print(str(exc), file=sys.stderr)
-        sys.exit(3)
-
-    # Block ownership conflicts
-    existing = find_project_by_repo(repo_real)
-    if existing is not None and existing.id != project.id:
-        print(
-            f"ERROR: repo {repo_real!r} is already owned by project "
-            f"{existing.slug} ({str(existing.id)[:8]}). "
-            f"Detach it first or use --project to specify the target.",
-            file=sys.stderr,
-        )
+    except RepoOwnershipConflictError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    # Same-path idempotent
-    if (
-        project.canonical_repo_path == repo_real
-        and repo_real in project.repo_paths
-    ):
-        print(_json.dumps({
-            "project_id": str(project.id),
-            "slug": project.slug,
-            "old_repo": project.canonical_repo_path,
-            "new_repo": repo_real,
-            "changed": False,
-        }, indent=2))
-        return
-
-    old_canonical = project.canonical_repo_path
-
-    # Rebind canonical_repo_path
-    project.canonical_repo_path = repo_real
-
-    # Replace old canonical in repo_paths, preserve secondary repos
-    if old_canonical and old_canonical in project.repo_paths:
-        project.repo_paths = [
-            repo_real if rp == old_canonical else rp
-            for rp in project.repo_paths
-        ]
-    if repo_real not in project.repo_paths:
-        project.repo_paths.append(repo_real)
-
-    save_project(project)
 
     print(_json.dumps({
         "project_id": str(project.id),
         "slug": project.slug,
-        "old_repo": old_canonical,
+        "old_repo": old_canonical if changed else repo_real,
         "new_repo": repo_real,
-        "changed": True,
+        "changed": changed,
     }, indent=2))
 
 
