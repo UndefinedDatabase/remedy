@@ -179,11 +179,9 @@ if [[ -z "$EVIDENCE_DIR" && -z "$REQUESTED_JOB_ID" ]]; then
   # --evidence-dir or --job-id for explicit selection.
   LEGACY_COUNT="$(find . -maxdepth 1 -type d -name 'remedy-job-evidence-*' 2>/dev/null | wc -l)"
   if [[ "$LEGACY_COUNT" -gt 0 ]]; then
-    echo "ERROR: $LEGACY_COUNT deprecated remedy-job-evidence-* dir(s) found in repo root." >&2
-    echo "Auto-selection from root dirs is disabled — it cannot distinguish features." >&2
-    echo "Use --evidence-dir <path> or --job-id <id> for explicit selection," >&2
-    echo "or export via 'do job-evidence' to the indexed .data/evidence_exports/." >&2
-    exit 2
+    echo "WARNING: $LEGACY_COUNT deprecated remedy-job-evidence-* dir(s) in repo root — IGNORED." >&2
+    echo "Auto-selection from root dirs is disabled (cannot distinguish features)." >&2
+    echo "To use one: --evidence-dir <path>. To index: 'do job-evidence'." >&2
   fi
   echo "No matching review evidence exists for the current branch/worktree."
   echo "This is a code snapshot, not a final review package."
