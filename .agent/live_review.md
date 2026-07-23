@@ -5,8 +5,8 @@ applied here verbatim by the worker. R-XXXX IDs continue monotonically
 across features. History lives in git and in each feature's evidence zip.
 
 ### R-0071: handoff.md not rewritten at handback
-- **Status**: Open
-- **Reviewer**: rewrite occurred but the shipped package predates it — resolves together with R-0075 when a clean-tree package shows a current handoff.
+- **Status**: Resolved
+- **Reviewer**: conditional resolution authored 2026-07-23 — clean-tree package with current handoff verified mechanically (dirty:0).
 - Done: R-0071 — handoff.md rewritten to real state at this handback (final commit)
 - **Severity**: Medium
 - **Area**: .agent/handoff.md
@@ -55,7 +55,8 @@ across features. History lives in git and in each feature's evidence zip.
 - **Expected fix**: See Step 2.5 (retire or align; deletion preferred).
 
 ### R-0075: handback package built mid-round from dirty tree
-- **Status**: Open
+- **Status**: Resolved
+- **Reviewer**: zip-last ordering codified and proven by this package.
 - **Severity**: Medium
 - **Area**: packaging order (split_workflow.md, STATUS_closure_protocol.md)
 - **Details**: Zip 20260723-165711 was built before the final commits and
@@ -68,7 +69,8 @@ across features. History lives in git and in each feature's evidence zip.
 - **Expected fix**: Protocol amendment (Step 2.1) + rebuild as last action.
 
 ### R-0076: stale subagent reference in agent-tooling audit
-- **Status**: Open
+- **Status**: Resolved
+- **Reviewer**: annotation verified present.
 - **Severity**: Low
 - **Area**: docs/system/agent-tooling-audit.md
 - **Details**: Line lists .claude/agents/remedy-reviewer.md, deleted this
