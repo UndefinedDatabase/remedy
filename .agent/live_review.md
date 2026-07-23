@@ -150,7 +150,13 @@ feature's evidence zip.
   Complete the whole sequence in ONE handback ending after the zip.
 
 ### R-0082: review zip built BLOCKED_EVIDENCE — incomplete evidence bundle; handoff omitted the blocked result
-- **Status**: Open
+- **Status**: Resolved
+- **Reviewer**: independently verified remedy-job-evidence-f081/ contains the complete bundle — all 7 required
+  gates (final_verifier_report, fresh_evidence_gate, artifact_contract_gate, change_provenance_gate,
+  manifest_integrity, postmortem_integrity, commit_execution_gate) + runtime_integration_gate + task_runs/T001-T003
+  + token_truth + review_subject; final_verifier verdict PASS_WITH_RISKS. integrity 4/5, sole fail
+  high_blockers_open from THIS finding (inherent gate deadlock). Resolved; the READY zip is the final action, with
+  the bundle rebuilt FRESH at the post-resolution head so fresh_evidence_gate sees authoritative evidence.
 - **Severity**: High
 - **Area**: closure evidence (make_review_zip evidence dir; .agent/handoff.md)
 - **Details**: The review zip built with `--evidence-dir
