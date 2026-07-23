@@ -171,10 +171,12 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
                                   file_hashes: dict, step: str, total_passed: int,
                                   verification_runs: list,
                                   repo_root: str = ".",
-                                  verification_data: dict | None = None) -> None:
+                                  verification_data: dict | None = None,
+                                  feature_id: str | None = None) -> None:
     """Write the complete, semantically-consistent READY gate set + verification_tests for a manual
     completion. ``authority`` is the covered source-file list; ``file_hashes`` maps each to its sha.
-    ``repo_root`` and ``verification_data`` are forwarded to the production runtime-gate producer."""
+    ``repo_root``, ``verification_data`` and ``feature_id`` are forwarded to the production
+    runtime-gate producer."""
     covered = sorted(file_hashes)
     _w(os.path.join(evidence_dir, "fresh_evidence_gate.json"), {
         "schema_version": "1.0.0", "verdict": "PASS", "evidence_authoritative": True,
@@ -200,7 +202,8 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
     from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
     write_runtime_integration_gate(
         evidence_dir, repo_root=repo_root,
-        verification_data=verification_data)
+        verification_data=verification_data,
+        feature_id=feature_id)
     _w(os.path.join(evidence_dir, "manifest_integrity.json"),
        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),

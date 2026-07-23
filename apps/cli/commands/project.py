@@ -15,28 +15,36 @@ if TYPE_CHECKING:
 
 
 def _cmd_create_project(name: str, description: str | None) -> None:
-    from packages.orchestration.project_registry import RemyProject, save_project
-    project = RemyProject(name=name, description=description)
+    from packages.orchestration.project_registry import (
+        RemyProject,
+        save_project,
+        slugify,
+        _unique_slug,
+    )
+    slug = _unique_slug(slugify(name))
+    project = RemyProject(name=name, slug=slug, description=description)
     save_project(project)
     print(project.id)
 
 
 def _cmd_list_projects() -> None:
-    from packages.orchestration.project_registry import list_projects
-    projects = list_projects()
+    from packages.orchestration.project_registry import _list_projects_readonly
+    projects = _list_projects_readonly()
     if not projects:
         print("No projects found.")
         return
     for p in projects:
+        slug = p.slug or "-"
         desc = f"  {p.description}" if p.description else ""
-        print(f"{p.id}  {p.name}{desc}")
+        print(f"{p.id}  {slug:<20s}  {p.name}{desc}")
 
 
 def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None:
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
+        _load_project_readonly,
+        _projects_dir,
         export_project_json,
-        load_project,
         summarize_project,
     )
 
@@ -46,7 +54,10 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
         print(f"ERROR: invalid project UUID: {project_id_str}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -60,10 +71,11 @@ def _cmd_show_project(project_id_str: str, *, json_output: bool = False) -> None
 
 def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
     from packages.orchestration.project_registry import (
+        NotAGitRepoError,
         ProjectNotFoundError,
-        attach_repo,
+        RepoOwnershipConflictError,
+        attach_repo_canonical,
         load_project,
-        save_project,
     )
 
     try:
@@ -76,9 +88,15 @@ def _cmd_attach_project_repo(project_id_str: str, repo_path_str: str) -> None:
     except ProjectNotFoundError:
         print(f"ERROR: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
-    added = attach_repo(project, repo_path_str)
-    save_project(project)
-    if added:
+    try:
+        changed, repo_real = attach_repo_canonical(project, repo_path_str)
+    except NotAGitRepoError:
+        print(f"ERROR: {repo_path_str!r} is not a git repository.", file=sys.stderr)
+        sys.exit(2)
+    except RepoOwnershipConflictError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if changed:
         print(f"Attached repo to project {str(pid)[:8]}")
     else:
         print(f"Repo already attached to project {str(pid)[:8]} (no-op)")
@@ -126,9 +144,9 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
     )
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
-        load_project,
+        _load_project_readonly,
+        _projects_dir,
     )
-    from packages.orchestration.run_log import RunLogWriter
 
     try:
         pid = UUID(project_id_str)
@@ -136,7 +154,10 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -149,19 +170,6 @@ def _cmd_project_context(project_id_str: str, *, json_output: bool = False) -> N
         print(_json.dumps(export_project_context_coverage_json(snapshot), sort_keys=True))
     else:
         print(summarize_project_context_coverage(snapshot))
-
-    if linked_jobs:
-        log = RunLogWriter(job_id=linked_jobs[0].id)
-        log.log(
-            "project_context_coverage_inspected",
-            outcome="inspected",
-            score=snapshot.score,
-            present_signal_count=snapshot.present_signal_count,
-            missing_signal_count=snapshot.missing_signal_count,
-            scope=snapshot.scope,
-            repo_count=snapshot.repo_count,
-            job_count=snapshot.job_count,
-        )
 
 
 def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> None:
@@ -176,7 +184,8 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
     from packages.orchestration.project_constitution import load_project_constitution
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
-        load_project,
+        _load_project_readonly,
+        _projects_dir,
     )
     from packages.orchestration.timeline import load_run_events
 
@@ -186,7 +195,10 @@ def _cmd_project_brain(project_id_str: str, *, json_output: bool = False) -> Non
         print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -221,7 +233,8 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
     from packages.orchestration.data_paths import resolve_data_root
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
-        load_project,
+        _load_project_readonly,
+        _projects_dir,
     )
     from packages.orchestration.project_summary import (
         build_project_summary,
@@ -238,7 +251,10 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
         print(f"Error: invalid project ID: {project_id_str!r}", file=sys.stderr)
         sys.exit(1)
     try:
-        project = load_project(pid)
+        path = _projects_dir() / f"{pid}.json"
+        if not path.exists():
+            raise ProjectNotFoundError(pid)
+        project = _load_project_readonly(path)
     except ProjectNotFoundError:
         print(f"Error: project not found: {project_id_str}", file=sys.stderr)
         sys.exit(1)
@@ -287,6 +303,94 @@ def _cmd_project_summary(project_id_str: str, *, json_output: bool = False) -> N
             print(f"Command: {summary.next_command}")
 
 
+def _cmd_project_current(
+    *,
+    project_flag: str | None = None,
+    json_output: bool = False,
+) -> None:
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        ProjectNotFoundError,
+        select_project,
+    )
+
+    import os
+    cwd = os.getcwd()
+    try:
+        project, source = select_project(project_flag, cwd)
+    except AmbiguousProjectError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(3)
+
+    if json_output:
+        print(_json.dumps({
+            "project_id": str(project.id),
+            "slug": project.slug,
+            "repo": project.canonical_repo_path,
+            "job_count": len(project.job_ids),
+            "selection_source": source,
+        }, indent=2))
+    else:
+        print(f"slug  : {project.slug}")
+        print(f"id    : {project.id}")
+        print(f"repo  : {project.canonical_repo_path or '(none)'}")
+        print(f"jobs  : {len(project.job_ids)}")
+        print(f"source: {source}")
+
+
+def _cmd_project_attach_repo(
+    repo_path_str: str,
+    *,
+    project_flag: str | None = None,
+) -> None:
+    import os
+
+    from packages.orchestration.project_registry import (
+        AmbiguousProjectError,
+        InvalidProjectSelectorError,
+        NotAGitRepoError,
+        ProjectNotFoundError,
+        RepoOwnershipConflictError,
+        attach_repo_canonical,
+        select_project,
+    )
+
+    cwd = os.getcwd()
+    try:
+        project, _source = select_project(project_flag, cwd)
+    except AmbiguousProjectError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except (ProjectNotFoundError, InvalidProjectSelectorError) as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(3)
+
+    old_canonical = project.canonical_repo_path
+    try:
+        changed, repo_real = attach_repo_canonical(project, repo_path_str)
+    except NotAGitRepoError:
+        print(
+            f"ERROR: {repo_path_str!r} is not a git repository.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    except RepoOwnershipConflictError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(_json.dumps({
+        "project_id": str(project.id),
+        "slug": project.slug,
+        "old_repo": old_canonical if changed else repo_real,
+        "new_repo": repo_real,
+        "changed": changed,
+    }, indent=2))
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
     "project.list": lambda args: _cmd_list_projects(),
@@ -296,4 +400,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.brain": lambda args: _cmd_project_brain(args.project_id, json_output=args.json),
     "project.context": lambda args: _cmd_project_context(args.project_id, json_output=args.json),
     "project.summary": lambda args: _cmd_project_summary(args.project_id, json_output=args.json),
+    "project.current": lambda args: _cmd_project_current(
+        project_flag=getattr(args, "project", None),
+        json_output=args.json,
+    ),
+    "project.attach": lambda args: _cmd_project_attach_repo(
+        args.repo,
+        project_flag=getattr(args, "project", None),
+    ),
 }

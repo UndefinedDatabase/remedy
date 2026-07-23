@@ -6,8 +6,8 @@ confirm that the evidence-pipeline module actually *calls* each gate writer,
 and binds to executed test records when verification data is provided.
 
 Public API:
-    build_runtime_integration_gate(repo_root, checks=None, verification_data=None) -> dict
-    write_runtime_integration_gate(evidence_dir, repo_root, written=None, verification_data=None) -> None
+    build_runtime_integration_gate(repo_root, checks=None, verification_data=None, feature_id=None) -> dict
+    write_runtime_integration_gate(evidence_dir, repo_root, written=None, verification_data=None, feature_id=None) -> None
 """
 from __future__ import annotations
 
@@ -32,6 +32,11 @@ _CONFIG = "packages/orchestration/config.py"
 _DO_CMD = "apps/cli/commands/do_cmd.py"
 
 _F018_TEST = "tests/orchestration/test_f018_authority_integration.py"
+_F146_REGISTRY = "packages/orchestration/project_registry.py"
+_F146_CLI = "apps/cli/commands/project.py"
+_F146_RESOLUTION_TEST = "tests/orchestration/test_project_resolution.py"
+_F146_CLI_TEST = "tests/cli/test_project_current.py"
+_F146_REGISTRY_TEST = "tests/test_project_registry.py"
 
 INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
     # Gate-writer meta-checks
@@ -126,6 +131,85 @@ INTEGRATION_CHECKS: tuple[dict[str, str], ...] = (
         "check_type": "call_exists",
         "pattern": "BudgetCounterError",
     },
+    # F146: project identity production-path integration checks
+    {
+        "check_id": "f146_registry_atomic_save",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "os.replace",
+    },
+    {
+        "check_id": "f146_registry_read_only_resolution",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "_find_project_by_repo_readonly",
+    },
+    {
+        "check_id": "f146_registry_ambiguous_error",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "AmbiguousProjectError",
+    },
+    {
+        "check_id": "f146_registry_invalid_selector",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "InvalidProjectSelectorError",
+    },
+    {
+        "check_id": "f146_registry_register_primitive",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "register_project_repo",
+    },
+    {
+        "check_id": "f146_cli_select_project",
+        "source_file": _F146_CLI,
+        "check_type": "call_exists",
+        "pattern": "select_project",
+    },
+    {
+        "check_id": "f146_cli_not_a_git_repo_error",
+        "source_file": _F146_CLI,
+        "check_type": "call_exists",
+        "pattern": "NotAGitRepoError",
+    },
+    {
+        "check_id": "f146_cli_attach_canonical",
+        "source_file": _F146_CLI,
+        "check_type": "call_exists",
+        "pattern": "attach_repo_canonical",
+    },
+    {
+        "check_id": "f146_registry_not_a_git_repo_error",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "NotAGitRepoError",
+    },
+    {
+        "check_id": "f146_registry_attach_canonical",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "attach_repo_canonical",
+    },
+    {
+        "check_id": "f146_registry_slug_validation",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "_validate_slug",
+    },
+    {
+        "check_id": "f146_registry_lookup_readonly",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "_lookup_by_slug_or_uuid_readonly",
+    },
+    {
+        "check_id": "f146_registry_migrate_legacy",
+        "source_file": _F146_REGISTRY,
+        "check_type": "call_exists",
+        "pattern": "migrate_legacy_projects",
+    },
 )
 
 TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
@@ -167,6 +251,59 @@ TEST_EXECUTION_BINDINGS: tuple[dict[str, Any], ...] = (
         "test_file": "tests/orchestration/test_budget_stop_integration.py",
         "min_passed": 30,
     },
+    # F146: project identity test execution bindings
+    {
+        "check_id": "f146_test_resolution_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F146_RESOLUTION_TEST,
+        "min_passed": 50,
+        "critical_node_ids": [
+            "TestReadOnlyResolution::test_resolve_does_not_write",
+            "TestReadOnlyResolution::test_resolve_legacy_project_does_not_write",
+            "TestAmbiguousProjectError::test_duplicate_slug_raises",
+            "TestSelectProject::test_empty_flag_raises_invalid",
+            "TestSelectProject::test_empty_env_raises_invalid",
+            "TestAtomicSave::test_save_uses_atomic_replace",
+            "TestRegisterProjectRepo::test_creates_with_slug_and_canonical",
+            "TestRegisterProjectRepo::test_same_repo_returns_existing",
+            "TestRegisterProjectRepo::test_create_project_assigns_slug_immediately",
+            "TestManagedWorktreeParent::test_worktree_path_without_git_returns_none",
+            "TestSelectProject::test_env_uuid",
+            "TestSelectProject::test_env_slug",
+            "TestSelectProject::test_env_beats_cwd",
+            "TestSelectProject::test_flag_beats_env_and_cwd",
+        ],
+    },
+    {
+        "check_id": "f146_test_cli_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F146_CLI_TEST,
+        "min_passed": 10,
+        "critical_node_ids": [
+            "TestProjectCurrentCommand::test_json_output_exact_schema",
+            "TestProjectCurrentCommand::test_project_flag_overrides_cwd",
+            "TestProjectCurrentCommand::test_env_source_in_json",
+            "TestProjectCurrentCommand::test_job_count_uses_job_ids_len",
+            "TestProjectAttachCommand::test_attach_rejects_non_git",
+            "TestProjectAttachCommand::test_attach_json_output",
+            "TestProjectAttachCommand::test_attach_same_path_idempotent",
+            "TestProjectAttachCommand::test_attach_with_project_flag",
+            "TestWorkspaceKeyGuard::test_no_forbidden_imports",
+        ],
+    },
+    {
+        "check_id": "f146_test_registry_execution",
+        "check_type": "test_execution_binding",
+        "test_file": _F146_REGISTRY_TEST,
+        "min_passed": 40,
+        "critical_node_ids": [
+            "TestSaveLoadRoundtrip::test_load_roundtrip",
+            "TestSaveLoadRoundtrip::test_save_creates_file",
+            "TestReadOnlyProofs::test_list_projects_readonly_does_not_write",
+            "TestAttachRepo::test_attach_adds_resolved_path",
+            "TestProjectNotFoundError::test_project_id_attribute",
+        ],
+    },
 )
 
 
@@ -177,10 +314,43 @@ def _read_text(path: Path) -> str | None:
         return None
 
 
+def _select_checks_for_feature(
+    feature_id: str | None,
+) -> tuple[list[dict], list[dict]]:
+    """Select integration checks and test bindings by feature.
+
+    Returns (static_checks, test_bindings). When feature_id is None, returns
+    all (historical behavior). When set, returns generic pipeline checks plus
+    feature-specific checks only — other features' checks are excluded.
+    """
+    if feature_id is None:
+        return (
+            [dict(c) for c in INTEGRATION_CHECKS],
+            [dict(b) for b in TEST_EXECUTION_BINDINGS],
+        )
+
+    prefix = feature_id.lower() + "_"
+
+    static = []
+    for c in INTEGRATION_CHECKS:
+        cid = c["check_id"]
+        is_feature_specific = len(cid) > 4 and cid[0] == "f" and cid[1:4].isdigit()
+        if not is_feature_specific or cid.startswith(prefix):
+            static.append(dict(c))
+
+    bindings = []
+    for b in TEST_EXECUTION_BINDINGS:
+        if b["check_id"].startswith(prefix):
+            bindings.append(dict(b))
+
+    return static, bindings
+
+
 def build_runtime_integration_gate(
     repo_root: str,
     checks: list[dict[str, str]] | None = None,
     verification_data: dict[str, Any] | None = None,
+    feature_id: str | None = None,
 ) -> dict[str, Any]:
     """Verify integration via source-text checks and test execution bindings.
 
@@ -189,10 +359,18 @@ def build_runtime_integration_gate(
     ``pattern``. ``test_execution_binding`` checks validate against
     ``verification_data`` (the verification_tests.json payload).
 
+    ``feature_id`` (e.g. ``"f146"``) selects only generic pipeline checks
+    plus feature-specific checks.  When None, all checks run (historical).
+
     Gate never passes with zero checks.
     """
     root = Path(repo_root) if repo_root else Path(".")
-    active = list(checks) if checks is not None else [dict(c) for c in INTEGRATION_CHECKS]
+
+    if checks is not None:
+        active = list(checks)
+        selected_bindings = None
+    else:
+        active, selected_bindings = _select_checks_for_feature(feature_id)
 
     results: list[dict[str, Any]] = []
     issues: list[str] = []
@@ -225,7 +403,10 @@ def build_runtime_integration_gate(
                 )
 
     if checks is None:
-        _bind_test_execution(results, issues, verification_data)
+        _bind_test_execution(
+            results, issues, verification_data,
+            bindings_override=selected_bindings,
+        )
 
     if not results:
         return {
@@ -240,7 +421,7 @@ def build_runtime_integration_gate(
     all_passed = all(r["found"] for r in results)
     verdict = "PASS" if all_passed else "BLOCKED"
 
-    return {
+    gate: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "verdict": verdict,
         "checks": results,
@@ -248,19 +429,27 @@ def build_runtime_integration_gate(
         "checks_passed": sum(1 for r in results if r["found"]),
         "issues": issues,
     }
+    if feature_id is not None:
+        gate["feature_id"] = feature_id
+    return gate
 
 
 def _bind_test_execution(
     results: list[dict[str, Any]],
     issues: list[str],
     verification_data: dict[str, Any] | None,
+    bindings_override: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Validate TEST_EXECUTION_BINDINGS against verification run data."""
+    """Validate test execution bindings against verification run data.
+
+    Uses ``bindings_override`` when provided, otherwise ``TEST_EXECUTION_BINDINGS``.
+    """
     runs = []
     if isinstance(verification_data, dict):
         runs = verification_data.get("runs") or []
 
-    for binding in TEST_EXECUTION_BINDINGS:
+    active_bindings = bindings_override if bindings_override is not None else TEST_EXECUTION_BINDINGS
+    for binding in active_bindings:
         check_id = binding["check_id"]
         test_file = binding["test_file"]
         min_passed = int(binding.get("min_passed", 1))
@@ -328,6 +517,7 @@ def write_runtime_integration_gate(
     repo_root: str,
     written: dict[str, str] | None = None,
     verification_data: dict[str, Any] | None = None,
+    feature_id: str | None = None,
 ) -> None:
     """Build and write ``runtime_integration_gate.json`` into ``evidence_dir``.
 
@@ -339,6 +529,7 @@ def write_runtime_integration_gate(
 
     gate = build_runtime_integration_gate(
         repo_root, verification_data=verification_data,
+        feature_id=feature_id,
     )
 
     out_dir = Path(evidence_dir)

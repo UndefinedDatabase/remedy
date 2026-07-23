@@ -1410,7 +1410,8 @@ _GATE_ALLOWED_FIELDS = {
         "hash_mismatches", "issues", "schema_version", "source_files", "stale_apply_proofs",
         "uncovered_files", "verdict"}),
     "runtime_integration_gate.json": frozenset({
-        "checks", "checks_passed", "checks_total", "issues", "schema_version", "verdict"}),
+        "checks", "checks_passed", "checks_total", "feature_id", "issues", "schema_version",
+        "verdict"}),
     "manifest_integrity.json": frozenset({"failures", "notes", "ok", "schema_version"}),
     "postmortem_integrity.json": frozenset({"failures", "ok", "schema_version"}),
     "commit_execution_gate.json": frozenset({
@@ -1718,7 +1719,9 @@ _GATE_SCHEMA = {
                       optional={"deselected", "duration_seconds"}),
                   "critical_node_ids": _Arr(STR)},
                  optional={"bound_run", "critical_node_ids"}),
-        )), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR)}),
+        )), "checks_total": INT, "checks_passed": INT, "issues": _Arr(STR),
+        "feature_id": STR},
+        optional={"feature_id"}),
     "manifest_integrity.json": _Obj({
         "schema_version": STR, "ok": BOOL, "failures": _Arr(_FINDING), "notes": _Arr(STR)}),
     "postmortem_integrity.json": _Obj({

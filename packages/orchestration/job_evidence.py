@@ -2815,6 +2815,7 @@ def create_manual_completion_bundle(
     task_partition: "dict[str, list[str]] | None" = None,
     num_tasks: int = 3,
     note_prefix: str = "operator-attested manual completion",
+    review_feature_id: str | None = None,
 ) -> dict[str, Any]:
     """Round 33 F4 — the real, supported operator workflow that produces a COMPLETE manual-only
     (operator-attested, zero-provider) Evidence bundle end-to-end, reaching the canonical producer
@@ -2983,7 +2984,8 @@ def create_manual_completion_bundle(
     _ma.build_manual_completion_gates(
         evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
         step=step_range, total_passed=total_passed, verification_runs=verification_runs,
-        repo_root=repo_root, verification_data=_vt_data)
+        repo_root=repo_root, verification_data=_vt_data,
+        feature_id=review_feature_id)
     # change-provenance gate must carry the real covered/excluded sets and evidence sources.
     cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
     cp = json.loads(open(cp_path, encoding="utf-8").read())

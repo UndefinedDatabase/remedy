@@ -143,6 +143,72 @@ class TestSaveLoadRoundtrip:
         assert len(projects) == 1
         assert projects[0].name == "Valid"
 
+    def test_save_auto_derives_slug_from_name(self, tmp_path, monkeypatch):
+        """save_project auto-derives slug when slug is None (R3 additive)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(name="My Test Project")
+        assert p.slug is None
+        save_project(p)
+        stored = tmp_path / "projects" / f"{p.id}.json"
+        data = json.loads(stored.read_text())
+        assert data["slug"] is not None
+        assert data["slug"] == "my-test-project"
+        assert p.slug == "my-test-project"
+
+    def test_save_auto_derived_slug_roundtrips(self, tmp_path, monkeypatch):
+        """Stored record with auto-derived slug loads back correctly (R3 additive)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(name="Roundtrip Slug")
+        save_project(p)
+        loaded = load_project(p.id)
+        assert loaded.slug == "roundtrip-slug"
+        assert loaded.id == p.id
+
+    def test_save_auto_derives_unique_slug(self, tmp_path, monkeypatch):
+        """Two projects with same name get distinct auto-derived slugs (R3 additive)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p1 = _make_project(name="Dup Name")
+        p2 = _make_project(name="Dup Name")
+        save_project(p1)
+        save_project(p2)
+        assert p1.slug == "dup-name"
+        assert p2.slug == "dup-name-2"
+
+    def test_save_writes_disk_bytes(self, tmp_path, monkeypatch):
+        """save_project(slug=None) actually writes bytes to disk (R3 byte proof)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(name="Byte Proof")
+        save_project(p)
+        stored = tmp_path / "projects" / f"{p.id}.json"
+        assert stored.stat().st_size > 0
+        data = json.loads(stored.read_text())
+        assert data["slug"] == "byte-proof"
+
+
+# ---------------------------------------------------------------------------
+# Read-only proofs (R3)
+# ---------------------------------------------------------------------------
+
+
+class TestReadOnlyProofs:
+    def test_list_projects_readonly_does_not_write(self, tmp_path, monkeypatch):
+        """_list_projects_readonly never writes to disk (R3 mtime proof)."""
+        import os
+        from packages.orchestration.project_registry import _list_projects_readonly
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(name="RO Test")
+        save_project(p)
+        stored = tmp_path / "projects" / f"{p.id}.json"
+        mtime_before = os.path.getmtime(stored)
+        size_before = stored.stat().st_size
+        projects = _list_projects_readonly()
+        assert len(projects) == 1
+        assert projects[0].slug is not None
+        mtime_after = os.path.getmtime(stored)
+        size_after = stored.stat().st_size
+        assert mtime_before == mtime_after
+        assert size_before == size_after
+
 
 # ---------------------------------------------------------------------------
 # attach_repo

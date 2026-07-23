@@ -453,6 +453,31 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("project.show", "project.brain"),
     ),
+    CommandEntry(
+        command_id="project.current",
+        group_id="project",
+        subcommand="current",
+        description="Show the project resolved from the current directory.",
+        action_class="read_only",
+        args=(
+            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("project.show", "project.list"),
+    ),
+    CommandEntry(
+        command_id="project.attach",
+        group_id="project",
+        subcommand="attach",
+        description="Attach a repository path to the current project.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+            ArgDef("--repo", "Path to the repository", required=True, is_option=True),
+        ),
+        related=("project.current",),
+    ),
 
     # ── patch ────────────────────────────────────────────────────────────
     CommandEntry(
