@@ -12,13 +12,19 @@ import pytest
 from packages.orchestration.project_registry import (
     AmbiguousProjectError,
     InvalidProjectSelectorError,
+    NotAGitRepoError,
     ProjectNotFoundError,
     RemyProject,
+    RepoOwnershipConflictError,
+    _lookup_by_slug_or_uuid_readonly,
     _managed_worktree_parent,
     _migrate_legacy,
+    _validate_slug,
+    attach_repo_canonical,
     find_project_by_repo,
     list_projects,
     load_project,
+    migrate_legacy_projects,
     register_project_repo,
     require_project,
     resolve_project,
@@ -314,13 +320,14 @@ class TestProjectNotFoundErrorExtended:
 class TestAmbiguousProjectError:
     def test_duplicate_slug_raises(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
         p1 = _make_project(name="App", slug="app")
-        save_project(p1)
         p2 = _make_project(name="App2", slug="app")
-        save_project(p2)
+        (d / f"{p1.id}.json").write_text(p1.model_dump_json(indent=2))
+        (d / f"{p2.id}.json").write_text(p2.model_dump_json(indent=2))
         with pytest.raises(AmbiguousProjectError) as exc:
-            from packages.orchestration.project_registry import _lookup_by_slug_or_uuid
-            _lookup_by_slug_or_uuid("app")
+            _lookup_by_slug_or_uuid_readonly("app")
         assert exc.value.slug == "app"
         assert len(exc.value.project_ids) == 2
 
@@ -647,7 +654,7 @@ class TestRegisterProjectRepo:
         _init_git(repo)
         p = register_project_repo("My Repo", str(repo))
         assert p.slug is not None
-        assert p.slug == "my-repo"
+        assert p.slug == "myrepo"
         assert p.canonical_repo_path == str(repo.resolve())
 
     def test_same_repo_returns_existing(self, tmp_path, monkeypatch):
@@ -672,3 +679,329 @@ class TestRegisterProjectRepo:
         loaded = load_project(UUID(uid_str))
         assert loaded.slug is not None
         assert loaded.slug == "new-app"
+
+    def test_rejects_non_git_directory(self, tmp_path, monkeypatch):
+        """register_project_repo must raise NotAGitRepoError for a plain dir."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        plain = tmp_path / "not-a-repo"
+        plain.mkdir()
+        with pytest.raises(NotAGitRepoError):
+            register_project_repo("Test", str(plain))
+
+    def test_slug_from_repo_dir_name(self, tmp_path, monkeypatch):
+        """Slug must derive from the repository directory name, not display name."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "my-cool-repo"
+        _init_git(repo)
+        p = register_project_repo("Some Display Name", str(repo))
+        assert p.slug == "my-cool-repo"
+
+
+# ---------------------------------------------------------------------------
+# 15. Slug validation in save_project
+# ---------------------------------------------------------------------------
+
+
+class TestSlugValidation:
+    def test_rejects_null_slug(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug=None)
+        with pytest.raises(ValueError, match="must not be None"):
+            save_project(p)
+
+    def test_rejects_empty_slug(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="")
+        with pytest.raises(ValueError, match="must not be empty"):
+            save_project(p)
+
+    def test_rejects_non_kebab(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="Not Kebab Case")
+        with pytest.raises(ValueError, match="not valid kebab-case"):
+            save_project(p)
+
+    def test_rejects_uppercase(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="MyApp")
+        with pytest.raises(ValueError, match="not valid kebab-case"):
+            save_project(p)
+
+    def test_rejects_duplicate_slug(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p1 = _make_project(slug="taken")
+        save_project(p1)
+        p2 = _make_project(slug="taken")
+        with pytest.raises(ValueError, match="already used"):
+            save_project(p2)
+
+    def test_allows_same_project_resave(self, tmp_path, monkeypatch):
+        """Re-saving a project with its own slug must not raise duplicate."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="resave")
+        save_project(p)
+        p.name = "Updated Name"
+        save_project(p)
+        loaded = load_project(p.id)
+        assert loaded.name == "Updated Name"
+        assert loaded.slug == "resave"
+
+
+# ---------------------------------------------------------------------------
+# 16. Deterministic batch migration ordering
+# ---------------------------------------------------------------------------
+
+
+class TestDeterministicMigration:
+    def test_migration_order_by_created_at_then_uuid(self, tmp_path, monkeypatch):
+        """Batch migration must sort by (created_at asc, UUID asc) before allocating slugs."""
+        from datetime import datetime, timezone
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+
+        t1 = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        t2 = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+        id_a = uuid4()
+        id_b = uuid4()
+        earlier_id, later_id = sorted([id_a, id_b], key=str)
+
+        p_later = _make_project(name="App")
+        p_later.id = later_id
+        p_later.created_at = t1
+        raw_later = json.loads(p_later.model_dump_json())
+        raw_later.pop("slug", None)
+        (d / f"{later_id}.json").write_text(json.dumps(raw_later))
+
+        p_earlier = _make_project(name="App")
+        p_earlier.id = earlier_id
+        p_earlier.created_at = t1
+        raw_earlier = json.loads(p_earlier.model_dump_json())
+        raw_earlier.pop("slug", None)
+        (d / f"{earlier_id}.json").write_text(json.dumps(raw_earlier))
+
+        count = migrate_legacy_projects()
+        assert count == 2
+
+        loaded_earlier = load_project(earlier_id)
+        loaded_later = load_project(later_id)
+        assert loaded_earlier.slug == "app"
+        assert loaded_later.slug == "app-2"
+
+    def test_migration_skips_already_migrated(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="existing")
+        save_project(p)
+        count = migrate_legacy_projects()
+        assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# 17. Read-only lookup (flag/env)
+# ---------------------------------------------------------------------------
+
+
+class TestReadOnlyLookup:
+    def test_flag_lookup_does_not_write(self, tmp_path, monkeypatch):
+        """select_project(flag=...) must never write to disk."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+        p = _make_project(name="Legacy Flag")
+        raw = json.loads(p.model_dump_json())
+        raw.pop("slug", None)
+        raw["repo_paths"] = ["/some/repo"]
+        (d / f"{p.id}.json").write_text(json.dumps(raw))
+
+        before_bytes = (d / f"{p.id}.json").read_bytes()
+        before_mtime = (d / f"{p.id}.json").stat().st_mtime_ns
+
+        found, source = select_project(str(p.id), tmp_path)
+        assert found.id == p.id
+        assert source == "flag"
+
+        after_bytes = (d / f"{p.id}.json").read_bytes()
+        after_mtime = (d / f"{p.id}.json").stat().st_mtime_ns
+        assert before_bytes == after_bytes
+        assert before_mtime == after_mtime
+
+    def test_env_lookup_does_not_write(self, tmp_path, monkeypatch):
+        """select_project via REMEDY_PROJECT must never write to disk."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        d = tmp_path / "projects"
+        d.mkdir(parents=True, exist_ok=True)
+        p = _make_project(name="Legacy Env")
+        raw = json.loads(p.model_dump_json())
+        raw.pop("slug", None)
+        (d / f"{p.id}.json").write_text(json.dumps(raw))
+        monkeypatch.setenv("REMEDY_PROJECT", str(p.id))
+
+        before_bytes = (d / f"{p.id}.json").read_bytes()
+        before_mtime = (d / f"{p.id}.json").stat().st_mtime_ns
+
+        found, source = select_project(None, tmp_path)
+        assert found.id == p.id
+        assert source == "environment"
+
+        after_bytes = (d / f"{p.id}.json").read_bytes()
+        after_mtime = (d / f"{p.id}.json").stat().st_mtime_ns
+        assert before_bytes == after_bytes
+        assert before_mtime == after_mtime
+
+
+# ---------------------------------------------------------------------------
+# 18. Unknown selector diagnostics
+# ---------------------------------------------------------------------------
+
+
+class TestUnknownSelectorDiagnostics:
+    def test_flag_not_found_includes_value_and_source(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+        with pytest.raises(ProjectNotFoundError) as exc:
+            select_project("nonexistent-slug", tmp_path)
+        assert "nonexistent-slug" in str(exc.value)
+        assert "flag" in str(exc.value)
+        assert exc.value.selector_value == "nonexistent-slug"
+        assert exc.value.selector_source == "flag"
+
+    def test_env_not_found_includes_value_and_source(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setenv("REMEDY_PROJECT", "ghost-proj")
+        with pytest.raises(ProjectNotFoundError) as exc:
+            select_project(None, tmp_path)
+        assert "ghost-proj" in str(exc.value)
+        assert "environment" in str(exc.value)
+        assert exc.value.selector_value == "ghost-proj"
+        assert exc.value.selector_source == "environment"
+
+
+# ---------------------------------------------------------------------------
+# 19. Canonical attach service
+# ---------------------------------------------------------------------------
+
+
+class TestCanonicalAttach:
+    def test_attach_new_repo(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        p = _make_project(slug="proj", canonical_repo_path=str(repo.resolve()),
+                          repo_paths=[str(repo.resolve())])
+        save_project(p)
+        repo2 = tmp_path / "repo2"
+        _init_git(repo2)
+        changed, real = attach_repo_canonical(p, str(repo2))
+        assert changed is True
+        assert real == str(repo2.resolve())
+        loaded = load_project(p.id)
+        assert real in loaded.repo_paths
+
+    def test_attach_dedup_same_path(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        p = _make_project(slug="proj", canonical_repo_path=str(repo.resolve()),
+                          repo_paths=[str(repo.resolve())])
+        save_project(p)
+        changed, real = attach_repo_canonical(p, str(repo))
+        assert changed is False
+
+    def test_attach_rebinds_canonical(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo1 = tmp_path / "repo1"
+        _init_git(repo1)
+        repo2 = tmp_path / "repo2"
+        _init_git(repo2)
+        p = _make_project(slug="proj", canonical_repo_path=str(repo1.resolve()),
+                          repo_paths=[str(repo1.resolve())])
+        save_project(p)
+        changed, real = attach_repo_canonical(p, str(repo2))
+        assert changed is True
+        assert p.canonical_repo_path == str(repo2.resolve())
+
+    def test_attach_rejects_non_git(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        p = _make_project(slug="proj")
+        save_project(p)
+        plain = tmp_path / "not-git"
+        plain.mkdir()
+        with pytest.raises(NotAGitRepoError):
+            attach_repo_canonical(p, str(plain))
+
+    def test_attach_rejects_ownership_conflict(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "shared-repo"
+        _init_git(repo)
+        p1 = _make_project(slug="owner", canonical_repo_path=str(repo.resolve()),
+                           repo_paths=[str(repo.resolve())])
+        save_project(p1)
+        p2 = _make_project(slug="intruder")
+        save_project(p2)
+        with pytest.raises(RepoOwnershipConflictError):
+            attach_repo_canonical(p2, str(repo))
+
+    def test_attach_dedup_repo_paths(self, tmp_path, monkeypatch):
+        """After canonical rebind, repo_paths must have no duplicates."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        repo = tmp_path / "myrepo"
+        _init_git(repo)
+        real = str(repo.resolve())
+        p = _make_project(slug="proj", canonical_repo_path=real,
+                          repo_paths=[real, real])
+        save_project(p)
+        changed, _ = attach_repo_canonical(p, str(repo))
+        assert changed is True
+        loaded = load_project(p.id)
+        assert loaded.repo_paths.count(real) == 1
+
+
+# ---------------------------------------------------------------------------
+# 20. Feature-aware runtime integration gate
+# ---------------------------------------------------------------------------
+
+
+class TestFeatureAwareGate:
+    def test_f146_gate_excludes_f018_checks(self):
+        from packages.orchestration.runtime_integration_gate import (
+            _select_checks_for_feature,
+        )
+
+        static, bindings = _select_checks_for_feature("f146")
+        check_ids = [c["check_id"] for c in static]
+        binding_ids = [b["check_id"] for b in bindings]
+
+        assert all(not cid.startswith("f018_") for cid in check_ids)
+        assert all(cid.startswith("f146_") for cid in binding_ids)
+        assert any(cid.startswith("f146_") for cid in check_ids)
+        assert any(cid.startswith("job_evidence_") for cid in check_ids)
+
+    def test_none_feature_returns_all(self):
+        from packages.orchestration.runtime_integration_gate import (
+            INTEGRATION_CHECKS,
+            TEST_EXECUTION_BINDINGS,
+            _select_checks_for_feature,
+        )
+
+        static, bindings = _select_checks_for_feature(None)
+        assert len(static) == len(INTEGRATION_CHECKS)
+        assert len(bindings) == len(TEST_EXECUTION_BINDINGS)
+
+    def test_f146_gate_builds_successfully(self, tmp_path):
+        from packages.orchestration.runtime_integration_gate import (
+            build_runtime_integration_gate,
+        )
+
+        gate = build_runtime_integration_gate(
+            str(Path(__file__).resolve().parents[2]),
+            feature_id="f146",
+        )
+        assert gate["schema_version"] == "1.1.0"
+        assert "checks_total" in gate
+        f146_checks = [c for c in gate["checks"] if c["check_id"].startswith("f146_")]
+        assert len(f146_checks) > 0
+        f018_checks = [c for c in gate["checks"] if c["check_id"].startswith("f018_")]
+        assert len(f018_checks) == 0

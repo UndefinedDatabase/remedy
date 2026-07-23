@@ -303,54 +303,89 @@ _ALLOWED_FILES = {
 }
 
 
+def _find_worktree_project_id_violations(root: Path) -> list[str]:
+    """Detect all forms of worktrees.project_id usage outside allowed files.
+
+    Catches: from-import, aliased from-import, full module import,
+    aliased full module import, and attribute access on any resolved alias.
+    """
+    violations: list[str] = []
+
+    for py in sorted(root.rglob("*.py")):
+        rel = str(py.relative_to(root))
+        if rel.startswith("tests/"):
+            continue
+        if rel.startswith("."):
+            continue
+        if rel in _ALLOWED_FILES:
+            continue
+        try:
+            source = py.read_text()
+        except OSError:
+            continue
+        try:
+            tree = ast.parse(source, filename=rel)
+        except SyntaxError:
+            continue
+
+        worktree_aliases: set[str] = set()
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.module and "worktrees" in node.module:
+                    for alias in node.names:
+                        if alias.name == "project_id":
+                            violations.append(
+                                f"{rel}:{node.lineno}: "
+                                f"imports project_id from {node.module}"
+                            )
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if "worktrees" in alias.name:
+                        local = alias.asname or alias.name.split(".")[-1]
+                        worktree_aliases.add(local)
+
+            if isinstance(node, ast.Attribute):
+                if node.attr == "project_id" and isinstance(node.value, ast.Name):
+                    if node.value.id == "worktrees" or node.value.id in worktree_aliases:
+                        violations.append(
+                            f"{rel}:{node.lineno}: "
+                            f"uses {node.value.id}.project_id"
+                        )
+
+    return violations
+
+
 class TestWorkspaceKeyGuard:
     """No production file outside the allowed set may import worktrees.project_id.
 
-    Uses AST parsing to avoid false positives from string search.
+    Uses AST parsing to detect direct imports, aliased imports, full module
+    imports, and aliased full module imports.
     """
 
     def test_no_forbidden_imports(self):
         root = Path(__file__).resolve().parents[2]
-        violations: list[str] = []
-
-        for py in sorted(root.rglob("*.py")):
-            rel = str(py.relative_to(root))
-            if rel.startswith("tests/"):
-                continue
-            if rel.startswith("."):
-                continue
-            if rel in _ALLOWED_FILES:
-                continue
-            try:
-                source = py.read_text()
-            except OSError:
-                continue
-            try:
-                tree = ast.parse(source, filename=rel)
-            except SyntaxError:
-                continue
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom):
-                    if node.module and "worktrees" in node.module:
-                        for alias in node.names:
-                            if alias.name == "project_id":
-                                violations.append(
-                                    f"{rel}:{node.lineno}: "
-                                    f"imports project_id from {node.module}"
-                                )
-                if isinstance(node, ast.Attribute):
-                    if (
-                        node.attr == "project_id"
-                        and isinstance(node.value, ast.Name)
-                        and node.value.id == "worktrees"
-                    ):
-                        violations.append(
-                            f"{rel}:{node.lineno}: "
-                            f"uses worktrees.project_id"
-                        )
-
+        violations = _find_worktree_project_id_violations(root)
         assert not violations, (
             "Forbidden worktrees.project_id usage outside allowed files:\n"
             + "\n".join(violations)
         )
+
+    def test_detects_aliased_module_import(self, tmp_path):
+        """Synthetic test: aliased module import must be detected."""
+        (tmp_path / "fake_module.py").write_text(
+            "import packages.orchestration.worktrees as wt\n"
+            "val = wt.project_id('/some/path')\n"
+        )
+        violations = _find_worktree_project_id_violations(tmp_path)
+        assert any("wt.project_id" in v for v in violations)
+
+    def test_allows_legitimate_files(self, tmp_path):
+        """Synthetic test: allowed files are not flagged."""
+        allowed = tmp_path / "packages" / "orchestration"
+        allowed.mkdir(parents=True)
+        (allowed / "worktrees.py").write_text(
+            "def project_id(p): return 'x'\n"
+        )
+        violations = _find_worktree_project_id_violations(tmp_path)
+        assert not violations
