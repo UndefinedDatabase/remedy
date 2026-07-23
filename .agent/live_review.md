@@ -71,3 +71,36 @@ feature's evidence zip.
   3 genuinely pre-existing tests/test_command_catalog.py failures (job.budget,
   do.job-evidence, do.repair-attest — NOT to be fixed in F081) from this
   branch's results.
+
+### R-0080: runtime table written to remedy.toml — read by neither loader (inert config)
+- **Status**: Open
+- **Severity**: High
+- **Area**: apps/cli/commands/init_cmd.py (_build_config / _handle_init)
+- **Details**: init writes the `[runtime]` table into the repo-root
+  `remedy.toml`. Two separate config systems exist and NEITHER consumes it
+  there: (1) packages/orchestration/config.py reads ONLY the `[remedy]` table
+  (parsed.get("remedy", {})) and registers no `runtime.*` keys, so
+  `remedy config list` cannot explain the runtime lines — violating the
+  feature's "init writes ONLY registered keys · remedy config explains every
+  line". (2) packages/runtimes/runtime_config.py — the runtime probe — reads
+  the `[runtime]` table from `.remedy/config.toml` (CONFIG_RELPATH; documented
+  as "the canonical runtime spec"), which init never writes. Result: the
+  persisted runtime config is inert. `resolve_spec` appears to work afterward
+  only because it FALLS BACK to live re-detection when no config file exists,
+  so T002's core deliverable (persist a confident runtime spec) is cosmetic.
+  The generated `[runtime]` schema (cmd/cwd/port) is correct — it is written to
+  the wrong file. test_config_parses_through_loader hid this: it asserts only
+  load_report.project_loaded (true from `[remedy]`) and never checks the
+  runtime table is consumed.
+- **Evidence**: runtime_config.py:78 (load_config_spec reads .remedy/config.toml),
+  :290 (resolve_spec → load_config_spec), config.py:318 (_project_table =
+  parsed["remedy"] only); grep: no `[runtime]` reader in config.py.
+- **Expected fix**: Split the two tables onto the files their loaders actually
+  read. Keep the `[remedy]` core table in remedy.toml (unchanged). Write the
+  `[runtime]` table (when detection is confident) to `.remedy/config.toml`
+  using packages.runtimes.runtime_config.config_path(root) as the target; on
+  honest-skip write the commented `[runtime]` example + skip line there (or
+  omit the file — worker's call, recorded in decisions.md). Report each file
+  separately as `[created|exists] ...`. Existing files are NEVER overwritten.
+  Add a test proving the probe uses the WRITTEN config, not live detection:
+  after init on a single-marker repo, resolve_spec(root).source == "config".
