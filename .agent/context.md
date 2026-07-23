@@ -1,33 +1,34 @@
-# Context — F146 Project Identity & Repo Autodetection (REPAIR R3)
+# Context — F146 Project Identity & Repo Autodetection (REPAIR R4)
 
 ## Branch
 `feature/f146-project-identity-repo-autodetection`
 Base commit: `d750f65ca42065ee0583f8d0d115f8a591ce6a48`
 
 ## Current state
-All 4 R3 blocking findings fixed. 189 tests green across 5 suites.
-Commits pending, Evidence pending.
+All 8 R4 blocking findings fixed. 499 tests green across 10 suites.
+Commits, Evidence, and ZIP pending.
 
-## Changes (R3 — 4 blocking findings)
-1. `packages/orchestration/project_registry.py` — save_project() auto-derives
-   slug when None (canonical_repo_path → repo_paths[0] → project.name)
-2. `apps/cli/commands/project.py` — list/show use _list_projects_readonly /
-   _load_project_readonly (read-only action-class truth)
-3. `packages/orchestration/manual_attestation.py` — feature_id param threaded
-   to write_runtime_integration_gate
-4. `packages/orchestration/job_evidence.py` — review_feature_id param threaded
-   to build_manual_completion_gates
-5. `tests/test_project_registry.py` — 5 additive tests (auto-derive, roundtrip,
-   unique, byte-proof, readonly-mtime)
-6. `tests/orchestration/test_runtime_integration_gate.py` — 3 additive tests
-   (F146 excludes F018, write propagation, manual-gates E2E)
-7. `tests/orchestration/test_f018_package_pipeline_e2e.py` — verification data
-   includes 6 test files, count assertions 19→34
-8. `tests/orchestration/test_project_resolution.py` — test_null_slug_auto_derives
-9. `docs/roadmap/features/T0_F146.md` — R3 Built State section
+## Changes (R4 — 8 blocking findings)
+1. `packages/orchestration/project_registry.py` — _project_set_readonly() deterministic
+   read-only projection; _load_project_readonly uses full-set projection;
+   load_project calls batch migrate_legacy_projects
+2. `apps/cli/commands/project.py` — brain/context/summary use _load_project_readonly;
+   context RunLog event removed
+3. `apps/cli/commands/readiness.py` — readiness.project uses _load_project_readonly
+4. `packages/orchestration/runtime_integration_gate.py` — feature_id in gate output;
+   f146_test_registry_execution binding for tests/test_project_registry.py
+5. `scripts/refresh_review_evidence.py` — reads/propagates persisted feature_id
+6. `tests/cli/test_project_current.py` — _resolve_attr_chain + 4 AST guard tests (18 total)
+7. `tests/orchestration/test_project_resolution.py` — 12 R4 tests (95 total)
+8. `tests/orchestration/test_f018_package_pipeline_e2e.py` — count fixes (29 total)
+9. `tests/orchestration/test_f146_package_pipeline_e2e.py` — NEW (13 tests)
+10. `docs/roadmap/features/T0_F146.md` — R4 Built State
+11. `.agent/plan.md` — R4 plan
+12. `.agent/live_review.md` — R4 status
+13. `.agent/context.md` — R4 context
 
 ## Remaining
-- Commit in 5 logical commits
+- Commit in logical commits
 - Generate Evidence with fresh job ID, feature_id=f146
 - Package ZIP
 - Produce handoff
