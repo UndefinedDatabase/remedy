@@ -6,6 +6,7 @@ across features. History lives in git and in each feature's evidence zip.
 
 ### R-0071: handoff.md not rewritten at handback
 - **Status**: Open
+- Done: R-0071 — handoff.md rewritten to real state at this handback (final commit)
 - **Severity**: Medium
 - **Area**: .agent/handoff.md
 - **Details**: File still contains the initial template (Feature: none
@@ -18,6 +19,7 @@ across features. History lives in git and in each feature's evidence zip.
 
 ### R-0072: review_protocol.md contradicts the zero-write reviewer model
 - **Status**: Open
+- Done: R-0072 — process rule 1 + reviewer resolution rewording applied verbatim
 - **Severity**: Medium
 - **Area**: .agent/review_protocol.md
 - **Details**: Header says findings are authored by the reviewer and applied
@@ -29,6 +31,7 @@ across features. History lives in git and in each feature's evidence zip.
 
 ### R-0073: plan.md stale — evidence-repair work not reflected
 - **Status**: Open
+- Done: R-0073 — plan.md rewritten to cover full branch scope
 - **Severity**: Low
 - **Area**: .agent/plan.md
 - **Details**: Plan says DONE for the docs goal only; the evidence-pipeline
@@ -39,6 +42,7 @@ across features. History lives in git and in each feature's evidence zip.
 
 ### R-0074: legacy parallel-review subagent still present
 - **Status**: Open
+- Done: R-0074 — .claude/agents/remedy-reviewer.md deleted; decision recorded
 - **Severity**: Low
 - **Area**: .claude/agents/remedy-reviewer.md
 - **Details**: Subagent from the retired parallel-review system; risks a
