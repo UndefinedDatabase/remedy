@@ -45,13 +45,21 @@ recorded), and on demand mid-feature for external second opinions.
    small commits, .agent/plan.md updated, tree clean, push. Applies any
    reviewer-authored live_review/STATUS text verbatim — findings FIRST,
    as their own commit, before fixing them.
-3. Window 2 finishes in this exact order: (a) final work commits,
-   (b) rewrite .agent/handoff.md to the true end-of-round state + commit,
-   (c) ONLY IF a package is requested this round: build the review zip
-   from the now-clean tree — the zip is always the LAST action, and
-   packaging from a dirty tree or before the handoff rewrite is a finding,
-   (d) emit the completion report + "Handing back for review of
-   <sha..sha>".
+3. Window 2 finishes in this exact order: (a) final work commits;
+   (b) IF a package or gate run was instructed: attempt it NOW, from the
+   clean tree; (c) rewrite .agent/handoff.md so it records the OUTCOME of
+   every attempted action this round — on success the package filename +
+   SHA-256, on failure the RAW error text plus a root-cause note and
+   options — and commit it (for a successful package, the accepted HEAD
+   remains the zip's covered head; the handoff commit above it is
+   bookkeeping); (d) push; (e) completion report. A handoff that omits or
+   contradicts an attempted action's result (e.g. "Next: reviewer authors
+   STATUS line" after a failed build) is a block-condition violation:
+   false readiness claim. Recording a failure in the handoff overrides ANY
+   constraint of the round, including "no commits" — truth always wins.
+   At closure specifically, the outcome-handoff may stay uncommitted after
+   a successful zip and fold into the STATUS commit — the one bookkeeping
+   commit above the zip's covered head (validated at the F081 closure).
 4. Operator relays the report to Window 1.
 5. Window 1 reviews bottom-up, verdict, next block. On closure: banner,
    session ends, PR waits for the next feature's Open PR Gate.
@@ -85,11 +93,11 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
   apply VERBATIM. In repair rounds: persist the findings to
   .agent/live_review.md as the FIRST commit, then fix, marking
   `Done: R-XXXX`. Never set Resolved yourself.
-- At every handback: rewrite .agent/handoff.md (latest state only), in
-  this order: commits → handoff rewrite + commit → (zip if requested) →
-  report. Emit the completion report (outcome ≤6 lines, changed-files
-  table, real verification output, assumption_log entries, deviations)
-  ending with:
+- At every handback: in this order: commits → attempt instructed
+  package/gate → handoff records the real outcome incl. raw errors +
+  commit → push → report. Emit the completion report (outcome ≤6 lines,
+  changed-files table, real verification output, assumption_log entries,
+  deviations) ending with:
   "Handing back to Window 1 for review of <LAST_SHA>..<HEAD>."
 - Never fabricate data, never imply live state over mocks, never claim
   green you did not observe. "Should work" is not a status.
@@ -109,6 +117,20 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
 - Autonomous multi-part blocks contain exactly ONE handback instruction —
   at the very end. Intermediate parts end with checkpoint notes inside the
   final completion report, never with a handback.
+- History rewrite (rare, operator-approved only): when packaging/metadata
+  validation blocks on an immutable commit (e.g. a scanner-rejected
+  subject) and the operator approves a rewrite, the safe sequence is:
+  (1) persist the finding + record the approval in decisions.md, own
+  commit; (2) `git filter-branch --msg-filter` scoped to the exact range —
+  never interactive rebase, never content edits; (3) verify: trees
+  byte-identical (`git diff <old-head> HEAD` empty except intended doc
+  commits) AND a metadata re-scan comes back clean — any content delta is
+  a hard STOP; (4) `git push --force-with-lease`, allowed ONLY on an
+  unmerged solo feature branch, never on main or shared branches;
+  (5) rebuild the evidence bundle and package at the NEW head — all prior
+  SHAs in ledgers/handoff refer to pre-rewrite history and the accepted
+  HEAD becomes the new zip head. Content-identity means no re-review is
+  required; the verdict transfers.
 
 ## Sunset
 F070 replaces the operator-as-message-bus; F075 (10 flawless self-runs) is
