@@ -112,3 +112,33 @@ feature's evidence zip.
   separately as `[created|exists] ...`. Existing files are NEVER overwritten.
   Add a test proving the probe uses the WRITTEN config, not live detection:
   after init on a single-marker repo, resolve_spec(root).source == "config".
+
+### R-0081: closure-prep incomplete — mandatory review zip not built; evidence machinery falsely reported absent
+- **Status**: Open
+- **Severity**: High
+- **Area**: closure evidence (.agent/handoff.md claim; missing review zip)
+- **Details**: The closure-prep handback reported "Evidence job: not
+  applicable (F081 is CLI feature ... no feature-level evidence export
+  machinery exists)" and did NOT build the mandatory review zip
+  (STATUS_closure_protocol §2 — the zip is mandatory; its absence is a closure
+  BLOCKER). The machinery DOES exist and is the same feature-scoped gate F146
+  used at closure: packages/orchestration/runtime_integration_gate.py —
+  build_runtime_integration_gate(repo_root, feature_id="f081") /
+  write_runtime_integration_gate(evidence_dir, repo_root, feature_id="f081").
+  The reviewer executed it: verdict=PASS, checks_passed=5, checks_total=5,
+  issues=[]. Separately, the committed handoff (bd3c580) is stale: it states
+  the closure-prep changes are "uncommitted" and "Next: commit ... build ZIP"
+  although they were committed in bd3c580 — only the zip remained.
+- **Evidence**: reviewer ran build_runtime_integration_gate('.',
+  feature_id='f081') → {verdict: PASS, checks_passed: 5, checks_total: 5,
+  issues: []}; git log shows bd3c580 committed test + Built State + handoff;
+  no remedy-review-*.zip for this feature exists yet.
+- **Expected fix**: Produce the F081-scoped evidence bundle the same way F146's
+  closure did — write the f081 gate to an evidence dir via
+  write_runtime_integration_gate(evidence_dir, '.', feature_id='f081') (plus
+  whatever the F146 evidence bundle included). Then build the FRESH review zip
+  as the LAST action from a clean tree via
+  `bash scripts/make_review_zip.sh --evidence-dir <dir>`. Rewrite handoff to
+  the true committed state. Report the evidence identifier, package filename,
+  SHA-256, manifest committed_review_subject (BASE..HEAD) and head_commit.
+  Complete the whole sequence in ONE handback ending after the zip.
