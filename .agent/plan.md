@@ -1,50 +1,36 @@
-# Plan — F146 Project Identity & Repo Autodetection (REPAIR)
+# Plan — F146 Project Identity & Repo Autodetection (REPAIR R2)
 
 ## Goal
-Repair 13 exact review reproductions while preserving correct existing work.
+Fix 13 exact review reproductions from second external review while preserving all accepted work.
 
-## Status: COMMITTING — all repair code + tests complete, committing
+## Status: COMMITTING
 
-## T001 — Canonical registry identity, migration and read-only resolution
-- [x] AmbiguousProjectError for duplicate slug lookup
-- [x] Atomic save (temp file + os.replace)
-- [x] Read-only loading path (_load_project_readonly) — no migration writes
-- [x] resolve_project/require_project truly read-only (bytes/mtime proof)
-- [x] Deterministic legacy migration ordering (created_at then UUID)
-- [x] Managed worktree validation via git common-dir (not path component)
-- [x] Explicit registration primitive (register_project_repo)
-- [x] Same-repo idempotency in registration
-- [x] _cmd_create_project assigns slug immediately
+## T001 — Strict registration, slug validation, deterministic migration
+- [x] register_project_repo requires Git repo (rejects plain dirs with typed error)
+- [x] register_project_repo resolves Git root
+- [x] register_project_repo derives slug from repo directory name, not display name
+- [x] save_project validates slug: non-null, kebab-case, unique
+- [x] Deterministic batch migration: sorted (created_at, UUID) before slug allocation
+- [x] _lookup_by_slug_or_uuid read-only (no migration writes)
+- [x] Unknown selector error includes value and source
+- [x] Tests: non-Git rejection, slug-from-repo-dir, slug validation, migration ordering
 
-## T002 — Strict shared selection + CLI production paths
-- [x] Empty whitespace flag/env → InvalidProjectSelectorError (not fallback)
-- [x] select_project source values: "flag", "environment", "cwd"
-- [x] Duplicate slug → AmbiguousProjectError (not arbitrary selection)
-- [x] project current: --project flag, use select_project, exact JSON schema
-- [x] project current: job_count = len(project.job_ids)
-- [x] project attach: --project flag for selection when cwd fails
-- [x] project attach: validate --repo as git root
-- [x] project attach: rebind canonical_repo_path + replace old in repo_paths
-- [x] project attach: block ownership conflicts (RepoOwnershipConflictError)
-- [x] project attach: JSON output
-- [x] project attach: same-path idempotent
+## T002 — Read-only selector and canonical attach authority
+- [x] select_project fully read-only for flag/env/cwd
+- [x] CLI catches AmbiguousProjectError (no traceback)
+- [x] CLI catches all typed errors with deterministic exit codes
+- [x] Unknown selector prints value and source
+- [x] Canonical attach service: shared by project.attach and project.attach-repo
+- [x] Attach service: git validate, resolve root, ownership check, canonical rebind, deduplicate repo_paths
+- [x] Legacy attach-repo delegates to canonical service
+- [x] Tests: duplicate slug CLI, unknown selector diagnostics, attach dedup, legacy attach
 
-## T003 — Guard, runtime gate, Evidence, tests, docs
-- [x] AST-based workspace-key guard (replace string search)
-- [x] Feature-aware Runtime Gate with F146-specific execution bindings
-- [x] Replace tests pinning incorrect behavior with required cases
-- [x] Update T0_F146.md with Built State
-- [x] Update agent state files
-- [ ] 5 logical commits
-- [ ] Fresh Evidence generation
-- [ ] make_review_zip.sh → READY_FOR_REVIEW
-
-## Test counts
-- tests/orchestration/test_project_resolution.py — 60 passed
-- tests/cli/test_project_current.py — 12 passed
-- tests/test_project_registry.py — 41 passed (regression)
-- tests/orchestration/test_runtime_integration_gate.py — 14 passed
-- tests/docs/test_docs_consistency.py — 292 passed
+## T003 — Worktree proof, AST guard, feature-aware gate, final state
+- [x] Remove unsafe .git file fallback in _managed_worktree_parent
+- [x] AST guard detects aliased module imports (import X as Y; Y.project_id)
+- [x] Feature-aware Runtime Gate: F146 Evidence requires only F146 checks
+- [x] Update docs, STATUS.md, agent state files
+- [ ] Commits, Evidence, ZIP
 
 ## Constraints
 No providers, no network, no Docker, no subagents.

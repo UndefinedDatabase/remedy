@@ -1,39 +1,41 @@
-# Live Review — F146 Project Identity & Repo Autodetection (REPAIRED)
+# Live Review — F146 Project Identity & Repo Autodetection (REPAIR R2)
 
 ## Status
-**REPAIRED** — all 13 review findings fixed, tests green, ready for Evidence.
+**REPAIRED R2** — all 13 new review findings fixed, tests green, ready for Evidence.
 
-## What was fixed (13 reproductions)
-1. resolve_project writes via migration → read-only loading path
-2. project current ignores selection → uses select_project + --project flag
-3. project current wrong JSON → exact schema (project_id, slug, repo, job_count, selection_source)
-4. project attach can't reattach moved repo → --project flag for selection
-5. project attach accepts non-git → git-root validation
-6. project attach doesn't rebind canonical → full rebind
-7. project attach doesn't block ownership → RepoOwnershipConflictError
-8. Duplicate slugs arbitrary → AmbiguousProjectError
-9. Empty selectors silently ignored → InvalidProjectSelectorError
-10. Managed worktree trusts dir name → git common-dir verification
-11. New project slug=null → immediate slug assignment
-12. Same-repo idempotency missing → register_project_repo
-13. Non-atomic writes → temp file + os.replace
+## What was fixed (13 R2 reproductions)
+1. register_project_repo accepts plain dirs → NotAGitRepoError for non-Git
+2. register_project_repo slug from display name → derives from repo dir name
+3. save_project accepts null/invalid slugs → _validate_slug (non-null, kebab, unique)
+4. No deterministic migration order → migrate_legacy_projects sorted (created_at, UUID)
+5. _lookup_by_slug_or_uuid triggers writes → _lookup_by_slug_or_uuid_readonly
+6. Unknown selector: no value/source → ProjectNotFoundError includes both
+7. select_project flag/env paths can write → fully read-only via _load_project_readonly
+8. No shared attach service → attach_repo_canonical (git, ownership, dedup)
+9. Legacy attach-repo duplicates logic → delegates to attach_repo_canonical
+10. CLI ambiguous error shows traceback → catches AmbiguousProjectError, exit 1
+11. Unsafe .git file fallback in worktree → removed, git common-dir only
+12. AST guard misses aliased module imports → ast.Import node detection
+13. Runtime gate requires all features → feature-aware _select_checks_for_feature
 
 ## Module changes
-- `packages/orchestration/project_registry.py` — read-only loading, atomic save,
-  AmbiguousProjectError, InvalidProjectSelectorError, RepoOwnershipConflictError,
-  register_project_repo, git common-dir worktree validation, source "environment"
-- `apps/cli/commands/project.py` — select_project, --project flag, exact JSON,
-  git validation, ownership conflicts, attach JSON output
-- `apps/cli/command_catalog.py` — --project on current + attach
-- `packages/orchestration/runtime_integration_gate.py` — 7 F146 static checks,
-  2 F146 test execution bindings with 14 critical node IDs
+- `packages/orchestration/project_registry.py` — NotAGitRepoError, _validate_slug,
+  migrate_legacy_projects, _lookup_by_slug_or_uuid_readonly, attach_repo_canonical,
+  selector_value/selector_source diagnostics, attach dedup fix
+- `apps/cli/commands/project.py` — canonical attach delegates, typed error handling
+- `packages/orchestration/runtime_integration_gate.py` — _select_checks_for_feature,
+  feature_id param, 13 F146 static checks, 2 test execution bindings, bindings_override
+- `tests/orchestration/test_project_resolution.py` — 83 tests (6 slug validation,
+  2 deterministic migration, 2 read-only lookup, 2 selector diagnostics, 6 canonical attach,
+  3 feature-aware gate, 2 register non-Git/dir-name)
+- `tests/cli/test_project_current.py` — 16 tests, aliased module AST guard
+- `docs/roadmap/features/T0_F146.md` — Built State updated
 
-## Test suites
-- test_project_resolution.py — 60 passed
-- test_project_current.py — 12 passed
-- test_project_registry.py — 41 passed (regression)
+## Test suites (R2)
+- test_project_resolution.py — 83 passed
+- test_project_current.py — 16 passed
 - test_runtime_integration_gate.py — 14 passed
-- test_command_catalog.py — passed
-- test_worktrees.py — passed
-- test_manual_completion_bundle.py — passed
-- test_docs_consistency.py — 292 passed
+- test_f018_authority_integration.py — passed (regression)
+- test_budget_guard.py — passed (regression)
+- test_job_budgets.py — passed (regression)
+- test_budget_stop_integration.py — passed (regression)
