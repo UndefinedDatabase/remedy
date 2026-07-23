@@ -183,8 +183,18 @@ def _validate_slug(slug: str | None, project_id: UUID) -> None:
 def save_project(project: RemyProject) -> None:
     """Persist a RemyProject to disk as JSON (atomic: temp file + os.replace).
 
-    Validates slug contract: non-null, kebab-case, unique among persisted records.
+    When slug is None, auto-derives one from: canonical_repo_path dir name,
+    then repo_paths[0] dir name, then project.name. Validates slug contract:
+    non-null, kebab-case, unique among persisted records.
     """
+    if project.slug is None:
+        if project.canonical_repo_path:
+            base = slugify(Path(project.canonical_repo_path).name)
+        elif project.repo_paths:
+            base = slugify(Path(project.repo_paths[0]).name)
+        else:
+            base = slugify(project.name)
+        project.slug = _unique_slug(base, exclude_id=project.id)
     _validate_slug(project.slug, project.id)
     d = _projects_dir()
     d.mkdir(parents=True, exist_ok=True)
