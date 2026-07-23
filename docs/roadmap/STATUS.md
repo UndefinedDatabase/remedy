@@ -18,7 +18,7 @@
 - [x] F017 — Scope fences (T001–T003 built + repaired + cleanup; accepted 2026-07-21 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job da34f448-ad80-49ae-b8eb-8c4e7ec46645 · package remedy-review-20260721-132745-READY_FOR_REVIEW.zip · SHA-256 a6fab50307b1db62fc7491943ba68975757f4177d2f1f1047c9528c9e30b81c4 · accepted HEAD c8c72f5370249ad3239ebd9eecbd65dd252a9d5c)
 - [x] F018 — Budgets & stop conditions (T001–T004 complete; accepted 2026-07-22 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job f018_final_closure_684c4eaf027e · package remedy-review-20260722-175112-READY_FOR_REVIEW.zip · SHA-256 41a77d46e5f48c1120937061d33e2c505cee00633f0f31147c14a054fc4aeaad · accepted HEAD 30dd4a8107bf6346e046d2faa098ee8a23f4191a)
 - [x] F146 — Project identity & repo autodetection (T001–T003 complete; accepted 2026-07-23 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job f146_project_identity_r4_c5d6e32f7a84 · package remedy-review-20260723-141827-READY_FOR_REVIEW.zip · SHA-256 7d5da77ca555e55f5a969e03340e3cdcd9292f413eedd0490eb53d2d739df16a · accepted HEAD c4d4e476e6057c9ebaf30dad5ce48eb158fbc6f7)
-- [~] F081 — remedy init
+- [x] F081 — remedy init (T001–T003 complete; accepted 2026-07-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f081-closure · package remedy-review-20260723-231507-READY_FOR_REVIEW.zip · SHA-256 79dc8682bba602d475b1aca212c52854f3cfb51a38471f5420a92b2fae758a87 · accepted HEAD 68a2df68ed9873d71f1780d8402205d4cbb6f534)
 - [ ] F147 — Golden-path CLI
 - [ ] F148 — Project scoping everywhere
 
