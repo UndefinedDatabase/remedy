@@ -212,8 +212,70 @@ def save_project(project: RemyProject) -> None:
         raise
 
 
+def _project_set_readonly() -> list[RemyProject]:
+    """Deterministic read-only projection of the full project set.
+
+    Loads all valid raw records without writing, reserves every persisted
+    slug, orders legacy missing-slug records by (created_at asc, UUID asc),
+    allocates unique effective slugs across the full set, and derives
+    canonical_repo_path in memory. Produces the same slug for a project
+    regardless of which API accesses it first.
+    """
+    d = _projects_dir()
+    if not d.exists():
+        return []
+
+    raw: list[tuple[Path, RemyProject]] = []
+    for path in d.glob("*.json"):
+        try:
+            raw.append((path, RemyProject.model_validate_json(path.read_text())))
+        except (ValueError, OSError):
+            pass
+
+    reserved: set[str] = set()
+    needs_slug: list[RemyProject] = []
+    for _path, p in raw:
+        if p.slug is not None:
+            reserved.add(p.slug)
+        else:
+            needs_slug.append(p)
+
+    needs_slug.sort(key=lambda p: (p.created_at, str(p.id)))
+
+    for p in needs_slug:
+        base = slugify(p.name)
+        candidate = base
+        idx = 2
+        while candidate in reserved:
+            candidate = f"{base}-{idx}"
+            idx += 1
+        p.slug = candidate
+        reserved.add(candidate)
+
+    for _path, p in raw:
+        if p.canonical_repo_path is None and p.repo_paths:
+            p.canonical_repo_path = str(Path(p.repo_paths[0]).resolve())
+
+    return [p for _path, p in raw]
+
+
 def _load_project_readonly(path: Path) -> RemyProject:
-    """Load a project file and derive slug/canonical in-memory without writing."""
+    """Load one project from the deterministic read-only projection.
+
+    Uses the full-set projection to guarantee slug uniqueness even for
+    legacy records. Never writes.
+    """
+    target_id = None
+    try:
+        stem = path.stem
+        target_id = UUID(stem)
+    except ValueError:
+        pass
+
+    for p in _project_set_readonly():
+        if target_id is not None and p.id == target_id:
+            return p
+
     project = RemyProject.model_validate_json(path.read_text())
     if project.slug is None:
         base = slugify(project.name)
@@ -227,14 +289,15 @@ def load_project(project_id: UUID) -> RemyProject:
     """Load a RemyProject from disk by ID.
 
     Raises ProjectNotFoundError if the project does not exist.
-    Legacy records without slug/canonical_repo_path are migrated on load.
+    Legacy records without slug/canonical_repo_path are migrated via
+    deterministic batch migration (not per-record) so slug allocation
+    is independent of access order.
     """
     path = _projects_dir() / f"{project_id}.json"
     if not path.exists():
         raise ProjectNotFoundError(project_id)
+    migrate_legacy_projects()
     project = RemyProject.model_validate_json(path.read_text())
-    if _migrate_legacy(project):
-        save_project(project)
     return project
 
 
@@ -259,17 +322,8 @@ def list_projects() -> list[RemyProject]:
 
 
 def _list_projects_readonly() -> list[RemyProject]:
-    """Load all projects read-only — derive slug/canonical in-memory, never write."""
-    d = _projects_dir()
-    if not d.exists():
-        return []
-    projects: list[RemyProject] = []
-    for path in d.glob("*.json"):
-        try:
-            projects.append(_load_project_readonly(path))
-        except (ValueError, OSError):
-            pass
-    return sorted(projects, key=lambda p: p.created_at, reverse=True)
+    """Load all projects read-only via deterministic projection, never write."""
+    return sorted(_project_set_readonly(), key=lambda p: p.created_at, reverse=True)
 
 
 # ---------------------------------------------------------------------------
