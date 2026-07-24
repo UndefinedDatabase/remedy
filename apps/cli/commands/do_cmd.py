@@ -186,9 +186,16 @@ def _cmd_do_mission(
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
-    job = Job(name=mission[:80], mission=mission, user_prompt=mission)
+    job = Job(
+        name=mission[:80], mission=mission, user_prompt=mission,
+        project_id=str(project.id),
+    )
     result = plan_job(job)
     save_job(result.job)
+
+    from packages.orchestration.project_registry import attach_job, save_project
+    attach_job(project, str(result.job.id))
+    save_project(project)
 
     short_id = str(result.job.id)[:8]
     display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
@@ -396,6 +403,20 @@ def _cmd_do(
         run_do,
         summarize_do_run,
     )
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError as _PNF,
+        select_project,
+    )
+
+    _resolved_project_id: str | None = None
+    try:
+        _proj, _src = select_project(project, repo)
+        _resolved_project_id = str(_proj.id)
+    except _PNF:
+        if project is not None:
+            print(f"Error: project not found: {project}", file=sys.stderr)
+            sys.exit(3)
+
     try:
         result = run_do(
             goal, repo,
@@ -403,6 +424,7 @@ def _cmd_do(
             max_loops=max_cycles,
             stop_before_apply=True,
             budgets=budgets,
+            project_id=_resolved_project_id,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)

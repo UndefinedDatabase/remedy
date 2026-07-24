@@ -149,7 +149,7 @@ def run_autorun(
 
     # Phase 1: Create job
     from packages.core.models import Job
-    job = Job(name=goal[:80])
+    job = Job(name=goal[:80], project_id=project_id)
     save_job(job)
     result.job_id = str(job.id)
 

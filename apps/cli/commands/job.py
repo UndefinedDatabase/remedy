@@ -96,6 +96,7 @@ def _cmd_create_job(
         tasks=tasks,
         metadata=metadata,
         budgets=budgets,
+        project_id=project_id,
     )
     save_job(job)
     print(job.id)
