@@ -112,6 +112,12 @@ def _cmd_create_job(
         save_project(project)
 
 
+def _known_project_ids() -> set[str]:
+    """Build set of existing project IDs (one registry read)."""
+    from packages.orchestration.project_registry import _list_projects_readonly
+    return {str(p.id) for p in _list_projects_readonly()}
+
+
 def _cmd_list_jobs(
     *,
     project: str | None = None,
@@ -124,20 +130,21 @@ def _cmd_list_jobs(
     if not jobs:
         print("No jobs found.")
         return
+    known = _known_project_ids()
     for job in jobs:
-        label = _scope_label(job, scope)
+        label = _scope_label(job, scope, known)
         print(f"{job.id}  {job.state.value:<12}  {job.created_at.isoformat()}  {job.name}{label}")
     if skipped:
         print(f"  ({len(skipped)} unreadable job file(s) skipped)", file=sys.stderr)
 
 
-def _scope_label(job: Job, scope: ProjectScope) -> str:
+def _scope_label(job: Job, scope: ProjectScope, known_ids: set[str]) -> str:
     """Return display suffix for scoped listings."""
-    if not scope.all_projects:
-        return ""
     if job.project_id is None:
         return "  (unscoped)"
-    if scope.project_id and job.project_id != scope.project_id:
+    if job.project_id not in known_ids:
+        return f"  (orphaned: {job.project_id[:8]})"
+    if scope.all_projects and scope.project_id and job.project_id != scope.project_id:
         return f"  (project: {job.project_id[:8]})"
     return ""
 

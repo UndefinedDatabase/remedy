@@ -179,7 +179,7 @@ History lives in git and in each feature's evidence zip.
   scope. Tests for both flags.
 
 ### R-0107: display rules incomplete — no orphaned label, unscoped label only under --all
-- **Status**: Open
+- **Status**: Done: R-0107
 - **Severity**: Medium
 - **Area**: apps/cli/commands/job.py (_scope_label), listing display paths
 - **Details**: "(orphaned: <id>)" for jobs whose project was deleted
