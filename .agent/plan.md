@@ -1,15 +1,11 @@
-# Plan — scanner-fix gap work (R-0084)
+# Plan — F147 Golden-path CLI
 
 ## Goal
-Extend _REAL_ROOT_DIRS to cover macOS/Ubuntu root dirs so bare tokens
-like /Users, /snap, /Volumes are still flagged by _contains_local_path.
+Three-command mental model: `remedy do "<mission>"` → planned job;
+`remedy status` → honest overview; help pins the golden path.
 
-## Status: COMPLETE
-- R-0084 persisted (40b0065)
-- _REAL_ROOT_DIRS extended: snap, applications, cores, library, private, system, users, volumes
-- 3 unsafe test cases added: /Users, /snap, /Volumes
-- R-0084 marked Done in live_review.md
-- 77 passed, 0 failures; ruff 41 (0 new)
+## Status: IN PROGRESS — T001
 
-## Next
-- Rewrite handoff.md
+- [ ] T001 — do path (mission → planned job)
+- [ ] T002 — remedy status
+- [ ] T003 — help pinning + golden-path smoke
