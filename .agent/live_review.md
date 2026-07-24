@@ -121,7 +121,7 @@ History lives in git and in each feature's evidence zip.
   to pick the target project (default: resolved current project).
 
 ### R-0104: acceptance fixture test missing — unit mocks instead of real CLI
-- **Status**: Open
+- **Status**: Done: R-0104
 - **Severity**: High
 - **Area**: tests/cli/test_scoped_listings.py
 - **Details**: The instructed test was: two FIXTURE projects, two jobs
