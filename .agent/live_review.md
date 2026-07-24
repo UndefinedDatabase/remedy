@@ -102,7 +102,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: pending
 
 ### R-0115: handoff ruff claim excluded a touched file
-- **Status**: Open
+- **Status**: Done: R-0115
 - **Severity**: Low
 - **Area**: .agent/handoff.md (verification section)
 - **Details**: "ruff (touched files): All checks passed!" but

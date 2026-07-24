@@ -166,7 +166,9 @@ def _cmd_show_job(job_id_str: str) -> None:
 
 
 def _print_intake_block(intake: dict) -> None:
-    p = lambda s: print(s, file=sys.stderr)
+    def p(s: str) -> None:
+        print(s, file=sys.stderr)
+
     p("\n--- Intake ---")
     p(f"  Goal: {intake.get('goal', '')}")
     refs = intake.get("context_refs", [])
