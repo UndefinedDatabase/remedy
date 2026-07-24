@@ -403,19 +403,19 @@ def _cmd_do(
         run_do,
         summarize_do_run,
     )
-    from packages.orchestration.project_registry import (
-        ProjectNotFoundError as _PNF,
-        select_project,
-    )
+    from packages.orchestration.project_registry import ProjectNotFoundError, select_project
 
-    _resolved_project_id: str | None = None
+    _resolved_project = None
     try:
-        _proj, _src = select_project(project, repo)
-        _resolved_project_id = str(_proj.id)
-    except _PNF:
-        if project is not None:
-            print(f"Error: project not found: {project}", file=sys.stderr)
-            sys.exit(3)
+        _resolved_project, _src = select_project(project, repo)
+        _resolved_project_id = str(_resolved_project.id)
+    except ProjectNotFoundError:
+        print(
+            "Error: no project found. Run: remedy init\n"
+            "  or pass --project <slug-or-id>",
+            file=sys.stderr,
+        )
+        sys.exit(3)
 
     try:
         result = run_do(
@@ -429,6 +429,11 @@ def _cmd_do(
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
+
+    if _resolved_project is not None and result.job_id:
+        from packages.orchestration.project_registry import attach_job, save_project
+        attach_job(_resolved_project, result.job_id)
+        save_project(_resolved_project)
 
     if json_output:
         print(json.dumps(export_do_run_json(result, contract=result._contract), indent=2))

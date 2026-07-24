@@ -69,16 +69,26 @@ def _project_count() -> int:
     return len(_list_projects_readonly())
 
 
-def job_in_scope(job: Job, scope: ProjectScope) -> bool:
+def job_in_scope(
+    job: Job,
+    scope: ProjectScope,
+    *,
+    _legacy_visible: bool | None = None,
+) -> bool:
     """Return True if *job* is visible under *scope*.
 
     Legacy rule: jobs with project_id=None are in scope only under
     --all-projects OR when exactly one project exists on the machine.
+
+    ``_legacy_visible`` is a precomputed override for the legacy check,
+    used by :func:`scoped_jobs` to avoid per-job registry reads.
     """
     if scope.all_projects:
         return True
 
     if job.project_id is None:
+        if _legacy_visible is not None:
+            return _legacy_visible
         return _project_count() <= 1
 
     if scope.project_id is None:
@@ -101,5 +111,9 @@ def scoped_jobs(
     from packages.orchestration.storage import list_jobs_safe
 
     all_jobs, degraded, skipped = list_jobs_safe(root)
-    filtered = [j for j in all_jobs if job_in_scope(j, scope)]
+    legacy_visible = scope.all_projects or _project_count() <= 1
+    filtered = [
+        j for j in all_jobs
+        if job_in_scope(j, scope, _legacy_visible=legacy_visible)
+    ]
     return filtered, degraded, skipped

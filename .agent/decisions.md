@@ -1,5 +1,14 @@
 # Decisions
 
+## 2026-07-24: Creation guard wired at CLI layer only (F148 R-0099)
+Both `_cmd_create_job` (job.py) and `_cmd_do` (do_cmd.py) now resolve via
+`select_project(flag, cwd)` with full precedence (flag/env/cwd). No
+resolvable project → error exit 3 with fix-it hint. Library functions
+(`run_do`, `run_autorun`) keep permissive `project_id: str | None = None`
+parameters — test harnesses and internal callers pass project_id directly
+without going through select_project. Existing subprocess tests updated
+with fixture project registration (14 tests in test_do_runtime.py).
+
 ## 2026-07-24: project_id field placement on Job model (F148 T001)
 `project_id: str | None = None` added to Job model between `metadata` and
 `fences`. Type is `str` (not UUID) to match project registry's string-based

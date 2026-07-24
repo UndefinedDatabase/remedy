@@ -50,21 +50,22 @@ def _cmd_create_job(
             )
             sys.exit(1)
 
+    from packages.orchestration.project_registry import ProjectNotFoundError, select_project
+
     project = None
-    if project_id:
-        from packages.orchestration.project_registry import (
-            ProjectNotFoundError,
-            load_project,
+    try:
+        project, _src = select_project(project_id, ".")
+        project_id = str(project.id)
+    except ProjectNotFoundError:
+        print(
+            "Error: no project found. Run: remedy init\n"
+            "  or pass --project <slug-or-id>",
+            file=sys.stderr,
         )
-        try:
-            project = load_project(UUID(project_id))
-        except (ProjectNotFoundError, ValueError):
-            print("Warning: project unavailable; job created without project link.", file=sys.stderr)
-            project_id = None
+        sys.exit(3)
 
     metadata: dict = {}
-    if project_id:
-        metadata["project_id"] = project_id
+    metadata["project_id"] = project_id
 
     tasks: list[Task] = []
     state = RunState.PENDING

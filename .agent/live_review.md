@@ -6,7 +6,7 @@ continue monotonically across features (last used: R-0097).
 History lives in git and in each feature's evidence zip.
 
 ### R-0098: new ruff I001 introduced; red verification crossed against stop rule
-- **Status**: Open
+- **Status**: Done: R-0098
 - **Severity**: Medium
 - **Area**: apps/cli/commands/do_cmd.py:401 (F148-inserted import block)
 - **Details**: Branch adds an I001 at the import block inserted in
@@ -21,7 +21,7 @@ History lives in git and in each feature's evidence zip.
   scope creep). Acceptance: ruff-diff vs main shows zero NEW errors.
 
 ### R-0099: creation guard not wired — jobs still creatable without resolvable project
-- **Status**: Open
+- **Status**: Done: R-0099
 - **Severity**: Medium
 - **Area**: apps/cli/commands/job.py (_cmd_create_job), apps/cli/commands/do_cmd.py (_cmd_do)
 - **Details**: Feature rule "creation without a resolvable project is
@@ -48,7 +48,7 @@ History lives in git and in each feature's evidence zip.
   updated tests in the handoff.
 
 ### R-0100: legacy do path never attaches job to the registry
-- **Status**: Open
+- **Status**: Done: R-0100
 - **Severity**: Medium
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do), packages/orchestration/project_registry.py usage
 - **Details**: The legacy do path sets project_id on the Job but never
@@ -64,7 +64,7 @@ History lives in git and in each feature's evidence zip.
   fixture project → registry lists the created job id.
 
 ### R-0101: per-job registry read in the scope filter
-- **Status**: Open
+- **Status**: Done: R-0101
 - **Severity**: Low
 - **Area**: packages/orchestration/project_scope.py (job_in_scope/_project_count)
 - **Details**: job_in_scope calls _project_count() for every legacy

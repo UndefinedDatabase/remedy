@@ -7,9 +7,10 @@ Every job is attributable to exactly one project via an additive
 
 ## Checklist
 - [x] T001 — model field + creation-path audit + backward-compat fixture
-- [ ] T002 — project_scope module + legacy rule + unit tests
+- [x] T002 — project_scope module + legacy rule + unit tests
+- [x] R-0098..R-0101 — reviewer repairs (ruff fix, creation guard, attach_job, precomputed legacy)
 - [ ] T003 — CLI integration across all listed commands + adopt + fixture
 - [ ] T004 — docs + status view scoped label
 
 ## Current Step
-T002 — scope module + legacy rule + unit tests.
+T003 — CLI integration (--project/--all-projects on listing commands, adopt, isolation test).
