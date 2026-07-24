@@ -1,94 +1,116 @@
-# Handoff — F148 Closure (final)
+# Handoff — F013 T001 (Job intake schema)
 
-## PR
-- **#145**: https://github.com/UndefinedDatabase/remedy/pull/145
-- Branch: `feature/f148-project-scoping`
-- Status: open, not merged (per closure protocol step 6)
+## State
+- Branch: `feature/f013-job-intake`
+- Status: T001 complete, not pushed, no PR
+- Total commits on branch: 2
 
-## Evidence Job
-- ID: `cf7ca6e8-8d5a-4b0a-ab4b-8f946bcdd42a`
-- Dir: `remedy-job-evidence-f148/`
-- Gates: 8/8 (final_verifier_report, fresh_evidence, artifact_contract,
-  change_provenance, manifest_integrity, postmortem_integrity,
-  commit_execution, runtime_integration)
-- Verdict: PASS_WITH_RISKS
+## Commits
 
-## Zip Attempts
+### `d7e9bc0` chore(f013): claim + session reset
+| File | Change |
+|------|--------|
+| docs/roadmap/STATUS.md | `[ ]` → `[~]` for F013 |
+| .agent/live_review.md | Reset for F013 |
+| .agent/plan.md | Reset for F013 |
 
-### Attempt 1 (BLOCKED)
-- File: `remedy-review-20260724-180231-BLOCKED_EVIDENCE.zip`
-- SHA-256: `93d24c4fc5bf290946d6c307e4a8e1f9ea5c36f2058be2693a1f2136a9017a5b`
-- Status: BLOCKED_EVIDENCE — `is_valid_current_run=false`
-- Cause: verification_tests.json runs had wrong field set (missing v1.1
-  fields: run_id, stdout_summary, head_sha, selected, deselected, skipped,
-  node_ids, duration_seconds). Also output_hash != sha256(stdout_summary).
+### `0ab5496` feat(f013): JobIntake schema + job field + tests (T001)
+| File | Change |
+|------|--------|
+| packages/orchestration/schemas/models.py | +JOB_INTAKE_SCHEMA_V, +IntakeClarification, +JobIntake, registry entry |
+| packages/orchestration/schemas/__init__.py | Re-export JOB_INTAKE_SCHEMA_V, IntakeClarification, JobIntake |
+| packages/core/models.py | +intake: dict[str, Any] \| None = None on Job |
+| tests/schemas/__init__.py | New package init |
+| tests/schemas/test_job_intake.py | 25 tests (round-trip, rejection, registry, schema size) |
+| tests/test_storage.py | +2 tests (backward-compat without intake, roundtrip with intake) |
 
-### Attempt 2 (BLOCKED — pre-attempt-3, same root cause)
-- Commit subject `(unscoped)/(orphaned: id)` triggered `_contains_local_path`
-  in review_subject validator. Rewrote via git filter-branch to
-  `unscoped and orphaned`. Evidence rebuilt with new HEAD after rewrite.
+## Schema Fields (as implemented)
 
-### Attempt 3 (READY)
-- File: `remedy-review-20260724-180532-READY_FOR_REVIEW.zip`
-- SHA-256: `d81e54b4ea5716ab3f2c00593a3911457fff79121532bf63e3231c142496e7a9`
-- Status: READY_FOR_REVIEW
-- review_subject_alignment: PASS
-- evidence_authoritative: true
+**JobIntake** (`_Structured`, version `ji1`):
+| Field | Type | Default |
+|-------|------|---------|
+| schema_v | Literal["ji1"] | (required) |
+| goal | str | (required) |
+| context_refs | list[str] | [] |
+| constraints | list[str] | [] |
+| acceptance_hints | list[str] | [] |
+| truncated_input | bool | False |
+| clarifications | list[IntakeClarification] | [] (max 5) |
 
-## Integrity Gate
-```json
-{
-  "version": 1,
-  "passed": true,
-  "fail_count": 0,
-  "check_count": 5,
-  "checks": [
-    {"name": "handler_import", "status": "pass", "message": "handlers=305"},
-    {"name": "live_review_verdict", "status": "pass", "message": "PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109"},
-    {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
-    {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
-    {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
-  ]
-}
+**IntakeClarification** (`_Strict`):
+| Field | Type |
+|-------|------|
+| question | str |
+| default_answer | str |
+| impact | str |
+
+**Job.intake**: `dict[str, Any] | None = None` — stored as serialized dict,
+not as a typed model (core layer stays independent of orchestration schemas).
+
+## Verification
+
+### tests/schemas/test_job_intake.py
+```
+$ python3 -m pytest tests/schemas/test_job_intake.py -q
+.........................                                                [100%]
+25 passed in 0.12s
 ```
 
-## Grep Proof — Byte-Identical Applied Text
-
-### STATUS line
+### tests/test_storage.py
 ```
-$ grep -F "Project scoping everywhere (T001–T004 complete; accepted 2026-07-24" docs/roadmap/STATUS.md
-- [x] F148 — Project scoping everywhere (T001–T004 complete; accepted 2026-07-24 · live review PASS — ACCEPTED · Evidence job cf7ca6e8-8d5a-4b0a-ab4b-8f946bcdd42a · package remedy-review-20260724-180532-READY_FOR_REVIEW.zip · SHA-256 d81e54b4ea5716ab3f2c00593a3911457fff79121532bf63e3231c142496e7a9 · accepted HEAD 6799d12ed2b9f2c96b3410b150b09695c551691e)
-```
-
-### R-0108 resolution
-```
-$ grep -F "independently verified — scoped slug loaded via" .agent/live_review.md
-- **Reviewer**: independently verified — scoped slug loaded via
+$ python3 -m pytest tests/test_storage.py -q
+............                                                             [100%]
+12 passed in 0.13s (was 10, +2 new)
 ```
 
-### R-0109 resolution
+### tests/orchestration/schemas/test_schemas.py
 ```
-$ grep -F "independently verified — unit test proves the" .agent/live_review.md
-- **Reviewer**: independently verified — unit test proves the
-```
-
-### Verdict
-```
-$ grep -F "PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109" .agent/live_review.md
-PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109
+$ python3 -m pytest tests/orchestration/schemas/test_schemas.py -q
+............................................                             [100%]
+44 passed in 0.15s
 ```
 
-## Closure Commits
-| Hash | Message |
-|------|---------|
-| `97ae61a` → `8283cf9` | chore(f148): resolve R-0108..R-0109, verdict, built state |
-| `1170b9d` → `b0259d3` | chore(f148): closure handoff |
-| `c7823e1` → `6799d12` | chore(f148): STATUS [x] — closure (fills pending zip) |
-| `32cdd3e` | chore(f148): closure evidence + STATUS fills |
+### ruff (touched files)
+```
+$ python3 -m ruff check (all touched files)
+All checks passed!
+```
 
-(Pre-rewrite hashes → post-rewrite hashes shown for commits affected
-by the filter-branch that fixed the path-in-subject blocker.)
+## Recon: Single-Shot Call Surface
+
+**Function**: `run_structured_call` in `packages/orchestration/structured_outputs.py`
+
+**Signature**:
+```python
+def run_structured_call(
+    model_cls: type[BaseModel],
+    base_prompt: str,
+    call_fn: Callable[[str, int], str],
+    *,
+    on_call: Callable[[int, str, bool, str], None] | None = None,
+    allow_parse_retry: bool = True,
+    native_schema: bool = False,
+) -> StructuredOutcome
+```
+
+**What it handles**:
+- Schema instruction injection (prompt-embedded or native)
+- Pydantic response validation
+- One bounded parse retry (max 2 calls)
+- Per-call evidence hook (`on_call`)
+- Returns `StructuredOutcome` (ok, value, error_class, hint, calls, parse_retried)
+
+**What it does NOT handle**:
+- Provider transport (timeouts, subprocess — delegated to injected `call_fn`)
+- Transport-level retries with backoff (handled by `_call_with_retry` in
+  `pingpong_loop.py`, currently private)
+
+**T002 verdict**: `run_structured_call` is directly importable. T002 needs
+to supply its own `call_fn` wrapping the provider. If transport retry
+with backoff is needed, `_call_with_retry` would need extraction from
+`pingpong_loop.py` — or T002 can wrap a single provider call without
+transport retry (intake is low-stakes, a single timeout falls through
+to the heuristic path).
 
 ## Next expected action
-Reviewer reviews PR #145. Merge deferred to next feature start per
-closure protocol step 6.
+Reviewer reviews T001 bundle.

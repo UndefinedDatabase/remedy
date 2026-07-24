@@ -7,7 +7,7 @@ persisted on the job before planning. Schema-gated, never raw LLM
 text; deterministic labeled heuristic fallback without a provider.
 
 ## Checklist
-- [ ] T001 — JobIntake schema + validation round-trip tests + job
+- [x] T001 — JobIntake schema + validation round-trip tests + job
       field + backward-compat fixture
 - [ ] T002 — intake module + prompt builder + shared single-shot
       call + fake-provider tests
