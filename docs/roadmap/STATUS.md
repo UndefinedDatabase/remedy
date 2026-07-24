@@ -24,7 +24,7 @@
 
 ## Tier 1 — Self-Build Bootstrap
 
-- [ ] F013 — Job intake
+- [~] F013 — Job intake
 - [ ] F014 — Flight Plan
 - [ ] F016 — Scaling task granularity
 - [ ] F034 — Bundled clarification in the Flight Plan (never at runtime)
