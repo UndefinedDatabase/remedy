@@ -279,7 +279,7 @@ def _cmd_do_mission(
     elif intake_fallback_reason == "provider_unavailable":
         intake_label = "intake: heuristic fallback (provider unavailable)"
     elif intake_fallback_reason == "provider_error":
-        intake_label = "intake: heuristic fallback (provider unavailable)"
+        intake_label = "intake: heuristic fallback (provider error)"
     else:
         intake_label = f"intake: {intake_result.source}"
     print(intake_label)

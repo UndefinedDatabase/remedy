@@ -156,7 +156,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: pending
 
 ### R-0117: provider-error fallback mislabeled as provider unavailable
-- **Status**: Open
+- **Status**: Done: R-0117
 - **Severity**: Low
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission label
   logic)

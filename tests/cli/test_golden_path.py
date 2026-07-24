@@ -385,6 +385,32 @@ class TestLLMIntakeWiring:
         assert data["intake"]["fallback_reason"] == "forced"
         assert len(provider_called) == 0, "provider must not be called with --no-llm"
 
+    def test_provider_error_label_distinct_from_unavailable(self, tmp_path, monkeypatch):
+        """Provider reachable but returns bad output → 'provider error', not 'unavailable'."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        def _bad_call_fn(prompt: str, attempt: int) -> str:
+            return "not valid json"
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn",
+            lambda: _bad_call_fn,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.chdir(str(repo))
+
+        from io import StringIO
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("build a readme", repo=str(repo))
+
+        stdout_text = captured.getvalue()
+        assert "intake: heuristic fallback (provider error)" in stdout_text
+
 
 # ── T002: remedy status ───────────────────────────────────────────────
 
