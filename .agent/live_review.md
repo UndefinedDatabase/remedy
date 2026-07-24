@@ -236,3 +236,26 @@ git and in each feature's evidence zip.
   reviewable outside the zip.
 - **Evidence**: git status showed the dir untracked at closure handback.
 - **Expected fix**: `git add remedy-job-evidence-f147/` in commit 2.
+
+### R-0097: `remedy job stop` does not resolve short IDs — human golden path breaks at stop
+- **Status**: Open
+- **Severity**: Medium
+- **Area**: apps/cli/commands/job_stop_cmd.py (validate/lookup order, Core-store fallback)
+- **Details**: do/status text UI display ONLY 8-char short IDs; job stop
+  requires the full UUID (short id dies at validate_job_id or lookup →
+  "job not found"). Full UUID reachable only via --json, so the on-screen
+  golden path init → do → status → stop fails for a human. Found by the
+  operator's meta-review; reviewer probes had used --json UUIDs — probe
+  rule updated (text-UI values only).
+- **Evidence**: operator live probe: `remedy job stop <short-id-from-
+  status>` → error; text output of do/status carries no full UUID.
+- **Expected fix**: Before UUID validation, if the input is a 4–32 char
+  hex prefix and no exact pingpong/Core match exists, resolve it against
+  the Core store (data/jobs/*.json filenames): unique prefix match →
+  full UUID proceeds through the existing path; ambiguous → exit 2
+  listing the candidate short ids; no match → existing not-found path
+  (exit 3). Exact full-ID behavior for both stores unchanged. Test that
+  uses EXCLUSIVELY the screen-displayed ID: parse "Job: <short>" from
+  `remedy do` TEXT output, run `remedy job stop <short>`, assert exit 0
+  + status text shows the pending stop; plus an ambiguity test (two jobs
+  sharing a prefix → exit 2) and unknown-prefix → exit 3.
