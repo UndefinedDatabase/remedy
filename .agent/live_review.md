@@ -6,7 +6,7 @@ continue monotonically across features (last used: R-0109).
 History lives in git and in each feature's evidence zip.
 
 ### R-0110: schema-level clarifications cap defeats the A9 truncate-and-record rule
-- **Status**: Open
+- **Status**: Done: R-0110
 - **Severity**: Medium
 - **Area**: packages/orchestration/schemas/models.py (JobIntake.clarifications), tests/schemas/test_job_intake.py
 (test_clarifications_over_max_rejected)

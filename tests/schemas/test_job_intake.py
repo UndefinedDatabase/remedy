@@ -129,13 +129,14 @@ class TestJobIntakeRejection:
         res = validate_response(JobIntake, json.dumps({**_VALID, "truncated_input": [1, 2]}))
         assert not res.ok and res.error_class == PARSE_ERROR_CLASS
 
-    def test_clarifications_over_max_rejected(self):
+    def test_many_clarifications_accepted_at_schema_level(self):
         clarifications = [
             {"question": f"q{i}", "default_answer": f"a{i}", "impact": f"i{i}"}
-            for i in range(6)
+            for i in range(8)
         ]
         res = validate_response(JobIntake, json.dumps({**_VALID, "clarifications": clarifications}))
-        assert not res.ok and res.error_class == PARSE_ERROR_CLASS
+        assert res.ok, res.hint
+        assert len(res.value.clarifications) == 8
 
     def test_not_json_is_parse_failure(self):
         res = validate_response(JobIntake, "just a plain text mission")
@@ -149,7 +150,7 @@ class TestJobIntakeSchemaSize:
 
     @pytest.mark.parametrize("field", [
         "goal", "context_refs", "constraints", "acceptance_hints",
-        "truncated_input", "clarifications",
+        "truncated_input", "clarifications", "dropped_clarifications",
     ])
     def test_expected_fields_in_schema(self, field):
         props = to_json_schema(JobIntake)["properties"]

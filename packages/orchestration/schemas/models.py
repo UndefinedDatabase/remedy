@@ -119,9 +119,8 @@ class JobIntake(_Structured):
     constraints: list[str] = Field(default_factory=list)
     acceptance_hints: list[str] = Field(default_factory=list)
     truncated_input: bool = False
-    clarifications: list[IntakeClarification] = Field(
-        default_factory=list, max_length=5,
-    )
+    clarifications: list[IntakeClarification] = Field(default_factory=list)
+    dropped_clarifications: int = 0
 
 
 #: schema_v -> model. The single source of truth for which contract a tag means.
