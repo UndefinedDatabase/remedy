@@ -97,7 +97,7 @@ git and in each feature's evidence zip.
   command). Assert label + at least one next-command line in tests.
 
 ### R-0090: golden-path smoke lacks the stop leg
-- **Status**: Open
+- **Status**: Done: R-0090
 - **Severity**: Medium
 - **Area**: tests/cli/test_golden_path.py (TestGoldenPathSmoke)
 - **Details**: Feature T003 smoke = init → do → status → STOP → status

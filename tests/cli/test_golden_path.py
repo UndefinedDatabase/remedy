@@ -399,8 +399,8 @@ class TestHelpPinning:
 
 
 class TestGoldenPathSmoke:
-    def test_init_do_status_flow(self, tmp_path):
-        """Golden path: init → do → status shows planned job."""
+    def test_init_do_status_stop_flow(self, tmp_path, monkeypatch):
+        """Golden path: init → do → status → stop → status shows stop."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
 
@@ -424,3 +424,12 @@ class TestGoldenPathSmoke:
         assert text_status.returncode == 0
         assert short_id in text_status.stdout
         assert "planned" in text_status.stdout
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.safe_points import request_stop
+        request_stop(job_id)
+
+        status2 = _run_status(repo, env, ["--json"])
+        assert status2.returncode == 0
+        status2_data = json.loads(status2.stdout)
+        assert status2_data["stops_pending"] >= 1
