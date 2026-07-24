@@ -136,3 +136,52 @@ def test_job_with_project_id_roundtrip(storage):
     save_job(job)
     loaded = load_job(job.id)
     assert loaded.project_id == "abc-123-project"
+
+
+def test_backward_compat_job_without_intake(storage):
+    """Old job JSON without intake loads with intake=None (F013)."""
+    import json
+    from pathlib import Path
+    from uuid import uuid4
+
+    job_id = uuid4()
+    old_json = {
+        "id": str(job_id),
+        "name": "pre-intake-job",
+        "user_prompt": "old prompt",
+        "created_at": "2026-01-01T00:00:00Z",
+        "tasks": [],
+        "state": "pending",
+        "artifacts": [],
+        "budget": {"max_tokens": None, "max_cost_usd": None},
+        "metadata": {},
+        "project_id": None,
+        "fences": None,
+        "budgets": None,
+    }
+    jobs_dir = Path(storage._DATA_DIR)
+    jobs_dir.mkdir(parents=True, exist_ok=True)
+    (jobs_dir / f"{job_id}.json").write_text(json.dumps(old_json))
+
+    loaded = load_job(job_id)
+    assert loaded.id == job_id
+    assert loaded.name == "pre-intake-job"
+    assert loaded.intake is None
+
+
+def test_job_with_intake_roundtrip(storage):
+    """Job with intake dict persists and loads correctly (F013)."""
+    intake_data = {
+        "schema_v": "ji1",
+        "goal": "Add pagination.",
+        "context_refs": [],
+        "constraints": [],
+        "acceptance_hints": [],
+        "truncated_input": False,
+        "clarifications": [],
+    }
+    job = Job(name="intake-job", intake=intake_data)
+    save_job(job)
+    loaded = load_job(job.id)
+    assert loaded.intake == intake_data
+    assert loaded.intake["schema_v"] == "ji1"
