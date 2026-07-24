@@ -1,77 +1,74 @@
-# Handoff — F013 Job intake (repair round: R-0111–R-0115)
+# Handoff — F013 Job intake (repair round: R-0116..R-0117)
 
 ## State
 - Branch: `feature/f013-job-intake`
-- Last commit: `e245edb` (R-0115)
-- Total commits on branch: 14
-- All 5 findings fixed: R-0112, R-0114, R-0113, R-0111, R-0115
+- Last commit: `e97baf1` (R-0117)
+- Total commits on branch: 18
+- Both findings fixed: R-0116, R-0117
 
 ## Repair Commits — changed-files tables
 
-### `8cb5a28` fix(f013): wire LLM intake attempt with provider fallback + evidence (R-0112)
+### `693fb23` fix(f013): deduplicate intake provider onto OllamaPlanner.raw_call (R-0116)
 | File | Change |
 |------|--------|
-| apps/cli/commands/do_cmd.py | Wire `make_provider_call_fn()` → `run_intake()`, evidence via `write_trace_jsonl` |
-| packages/orchestration/intake.py | +`make_provider_call_fn()`: Ollama-backed call_fn, `timeout=15.0`, `client.list()` health check |
-| tests/cli/test_golden_path.py | +3 tests (TestLLMIntakeWiring), `_run_do` default `--no-llm`; 38 golden-path tests |
-| tests/orchestration/test_intake.py | +2 tests (TestMakeProviderCallFn); 36 intake tests |
+| packages/providers/ollama_planner/provider.py | +`raw_call(prompt, *, schema, system=None)` — single config surface; `plan_raw` delegates to it |
+| packages/orchestration/intake.py | `make_provider_call_fn` rewritten: instantiates OllamaPlanner, closes over `raw_call`; deleted duplicated host/model/timeout/fallback resolution |
+| tests/test_ollama_provider.py | +7 tests (TestRawCall: delegation, system passthrough, options, env model) |
+| tests/orchestration/test_intake.py | +1 test (env model reaches chat via make_provider_call_fn); refactored fake helper |
+| .agent/decisions.md | Timeout removal decision recorded |
 
-### `63261e3` fix(f013): force truncated_input=True when prompt was truncated (R-0114)
+### `e97baf1` fix(f013): provider_error label says "provider error" not "unavailable" (R-0117)
 | File | Change |
 |------|--------|
-| packages/orchestration/intake.py | Post-parse override: force `truncated_input=True` when `_truncate_mission` truncated |
-| tests/orchestration/test_intake.py | +3 tests (TestTruncatedInputOverride); 36 intake tests |
-
-### `8db3162` fix(f013): use specified P6 intake labels + JSON fallback_reason (R-0113)
-| File | Change |
-|------|--------|
-| apps/cli/commands/do_cmd.py | Labels: "intake: llm", "intake: heuristic (forced by --no-llm)", "intake: heuristic fallback (provider unavailable)"; JSON `intake.fallback_reason` |
-| tests/cli/test_golden_path.py | Update probes to match P6 labels |
-
-### `9c152e8` fix(f013): add human-readable intake block to job show (R-0111)
-| File | Change |
-|------|--------|
-| apps/cli/commands/job.py | +`_print_intake_block()`: goal, context_refs, constraints, acceptance, clarifications, schema_v, truncated/dropped when nonzero |
-| tests/cli/test_golden_path.py | +2 tests (intake block display, legacy silent); 38 golden-path tests |
-
-### `e245edb` fix(f013): E731 lambda→def in job.py + ruff parity verified (R-0115)
-| File | Change |
-|------|--------|
-| apps/cli/commands/job.py | `lambda s: print(s, …)` → `def p(s)` |
+| apps/cli/commands/do_cmd.py | Line 282: `"provider unavailable"` → `"provider error"` for `fallback_reason == "provider_error"` |
+| tests/cli/test_golden_path.py | +1 test (`test_provider_error_label_distinct_from_unavailable`) |
 
 ## Verification
 
-### Final test run (all touched suites)
+### R-0116 — post-commit test run
 ```
-$ python3 -m pytest tests/orchestration/test_intake.py tests/cli/test_golden_path.py \
-    tests/schemas/test_job_intake.py tests/test_storage.py -v --tb=short
-112 passed in 19.18s
+$ python3 -m pytest tests/test_ollama_provider.py tests/orchestration/test_intake.py \
+    tests/cli/test_golden_path.py tests/schemas/test_job_intake.py tests/test_storage.py -q
+1 failed, 131 passed in 16.49s
 ```
+1 failure = pre-existing `test_fallback_to_default_when_no_env_vars` (env var bleed in test ordering — same on main, passes in isolation).
 
-Test counts before/after repair round:
+### R-0117 — post-commit test run (final)
+```
+$ python3 -m pytest tests/test_ollama_provider.py tests/orchestration/test_intake.py \
+    tests/cli/test_golden_path.py tests/schemas/test_job_intake.py tests/test_storage.py -q
+1 failed, 132 passed in 16.63s
+```
+Same 1 pre-existing failure.
+
+### Test counts before/after this round
 | Suite | Before | After |
 |-------|--------|-------|
-| test_intake.py | 31 | 36 (+5) |
-| test_golden_path.py | 36 | 38 (+2) |
+| test_ollama_provider.py | 12 | 19 (+7) |
+| test_intake.py | 36 | 37 (+1) |
+| test_golden_path.py | 38 | 39 (+1) |
 | test_job_intake.py | 26 | 26 |
 | test_storage.py | 12 | 12 |
-| **Total** | **105** | **112** |
+| **Total** | **124** | **133** |
 
-### Ruff — all 18 touched files
+Note: prior round ended at 112 across 4 suites (did not include test_ollama_provider.py). This round adds test_ollama_provider.py to the verification set, hence 124 baseline (112 + 12).
+
+### Ruff — touched files
 ```
-$ python3 -m ruff check apps/cli/command_catalog.py apps/cli/commands/do_cmd.py \
-    apps/cli/commands/job.py apps/cli/grouped.py packages/core/models.py \
-    packages/orchestration/intake.py packages/orchestration/schemas/__init__.py \
-    packages/orchestration/schemas/models.py tests/cli/test_golden_path.py \
-    tests/orchestration/test_intake.py tests/schemas/__init__.py \
-    tests/schemas/test_job_intake.py tests/test_storage.py
-Exit 1 — 6 errors, ALL in do_cmd.py (main parity: 6=6, zero new)
+$ python3 -m ruff check packages/providers/ollama_planner/provider.py \
+    packages/orchestration/intake.py tests/test_ollama_provider.py \
+    tests/orchestration/test_intake.py apps/cli/commands/do_cmd.py \
+    tests/cli/test_golden_path.py
+Exit 1 — 6 errors, ALL in do_cmd.py (main parity 6=6, zero new)
 ```
-do_cmd.py pre-existing (verified on main): I001@3, I001@611, UP037@1157, UP037@1334, UP037@2329, I001@2475.
 
 ## Reused functions
-- **Provider call**: `make_provider_call_fn()` in `packages/orchestration/intake.py`
+- **Provider call**: `OllamaPlanner.raw_call()` in `packages/providers/ollama_planner/provider.py`
+- **Intake provider factory**: `make_provider_call_fn()` in `packages/orchestration/intake.py` (now delegates to OllamaPlanner)
 - **Evidence writer**: `build_trace_entry()` + `write_trace_jsonl()` from `packages/orchestration/prompt_trace.py`; `RunLogWriter` from `packages/orchestration/run_log.py`
 
+## decisions.md entry
+Added: "R-0116 — intake timeout removed; OllamaPlanner.raw_call is the single config surface" — timeout no longer hardcoded, Ollama default applies; if needed, use config (env var or toml) same as temperature/num_predict.
+
 ## Next Expected Action
-Reviewer reviews repair round (R-0111–R-0115).
+Reviewer reviews repair round (R-0116..R-0117).
