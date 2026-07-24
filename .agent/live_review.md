@@ -203,7 +203,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
 
 ### R-0108: status --project label shows cwd project, not selected one
-- **Status**: Done: R-0108
+- **Status**: Resolved
 - **Severity**: Low
 - **Area**: apps/cli/commands/status_cmd.py (_cmd_status)
 - **Details**: `remedy status --project B` while cwd is inside project A
@@ -217,9 +217,13 @@ History lives in git and in each feature's evidence zip.
   cwd project, look up the scoped project's slug for display. JSON
   "project" key and text "Project:" line must both reflect the scoped
   project. "scope" key already correct.
+- **Reviewer**: independently verified — scoped slug loaded via
+  load_project(scope.project_id), fallback to id prefix; test
+  asserts --project B from cwd A shows B in json project+scope.
+  Resolved at 36193e6.
 
 ### R-0109: stats-failures scoping untested
-- **Status**: Done: R-0109
+- **Status**: Resolved
 - **Severity**: Low
 - **Area**: packages/orchestration/failure_stats.py (collect_failures),
   tests/cli/test_scoped_listings.py
@@ -234,3 +238,13 @@ History lives in git and in each feature's evidence zip.
   (b) CLI subprocess test in test_scoped_listings: two-project fixture,
   `remedy stats failures --project B` returns only B's data (or empty
   if B has no failures, but must not include A's).
+- **Reviewer**: independently verified — unit test proves the
+  job_ids filter (2 jobs → 1 → 0 with empty set); CLI test
+  proves flag plumbing. Documented residual (Low): the CLI test
+  asserts exit/shape, not post-mortem counts; the unit test
+  carries the filter proof. Resolved at 36193e6.
+
+## Verdict — F148 live review
+PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109
+all Resolved. One documented Low residual on R-0109 (CLI
+stats-test depth). Authored by reviewer, round 5.
