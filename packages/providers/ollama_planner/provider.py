@@ -162,14 +162,12 @@ class OllamaPlanner:
 
         return PlannerOutput.model_validate_json(response.message.content)
 
-    def plan_raw(self, prompt: str, *, schema: dict) -> str:
-        """F005 native structured call: return the raw Ollama response text.
+    def raw_call(self, prompt: str, *, schema: dict, system: str | None = None) -> str:
+        """Send a prompt to Ollama with native schema enforcement, return raw text.
 
-        The caller supplies the JSON schema (the F005 ``PlannerPlan`` schema) which
-        is enforced NATIVELY through Ollama's ``format=<schema>``; the raw text is
-        returned unvalidated so the F005 structured-call engine performs the
-        schema validation and its single parse retry. The legacy ``plan()`` method
-        is preserved for compatibility mode.
+        No validation — caller is responsible for parsing.  Uses the planner's
+        resolved host, model, temperature, and num_predict so there is a single
+        configuration surface for all Ollama calls.
         """
         try:
             import ollama
@@ -186,13 +184,27 @@ class OllamaPlanner:
         if self.num_predict is not None:
             options["num_predict"] = self.num_predict
 
+        messages: list[dict[str, str]] = []
+        if system is not None:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
         response = client.chat(
             model=self.model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": f"Plan this job:\n\n{prompt}"},
-            ],
+            messages=messages,
             format=schema,
             **({"options": options} if options else {}),
         )
         return response.message.content
+
+    def plan_raw(self, prompt: str, *, schema: dict) -> str:
+        """F005 native structured call: return the raw Ollama response text.
+
+        Delegates to raw_call with the planner system prompt and "Plan this job:"
+        wrapping.
+        """
+        return self.raw_call(
+            f"Plan this job:\n\n{prompt}",
+            schema=schema,
+            system=_SYSTEM_PROMPT,
+        )

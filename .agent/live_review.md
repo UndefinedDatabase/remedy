@@ -126,7 +126,7 @@ History lives in git and in each feature's evidence zip.
   Resolved.
 
 ### R-0116: intake duplicates the Ollama provider configuration surface
-- **Status**: Open
+- **Status**: Done: R-0116
 - **Severity**: Medium
 - **Area**: packages/orchestration/intake.py
   (make_provider_call_fn), packages/providers/ollama_planner/

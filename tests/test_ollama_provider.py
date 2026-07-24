@@ -106,3 +106,81 @@ def test_constructor_temperature_overrides_env(monkeypatch):
     from packages.providers.ollama_planner.provider import OllamaPlanner
     planner = OllamaPlanner(temperature=0.1)
     assert planner.temperature == pytest.approx(0.1)
+
+
+# ---------------------------------------------------------------------------
+# raw_call delegation + option passthrough
+# ---------------------------------------------------------------------------
+
+class TestRawCall:
+    def _make_planner_with_fake(self, monkeypatch, **kwargs):
+        import sys
+        import types
+
+        fake_ollama = types.ModuleType("ollama")
+        captured = {}
+
+        class FakeClient:
+            def __init__(self, host=None):
+                captured["host"] = host
+
+            def chat(self, **kw):
+                captured["chat_kwargs"] = kw
+                msg = types.SimpleNamespace(content='{"result":"ok"}')
+                return types.SimpleNamespace(message=msg)
+
+        fake_ollama.Client = FakeClient
+        monkeypatch.setitem(sys.modules, "ollama", fake_ollama)
+        from packages.providers.ollama_planner.provider import OllamaPlanner
+        return OllamaPlanner(**kwargs), captured
+
+    def test_raw_call_passes_schema_and_prompt(self, monkeypatch):
+        planner, cap = self._make_planner_with_fake(monkeypatch)
+        result = planner.raw_call("hello", schema={"type": "object"})
+        assert result == '{"result":"ok"}'
+        assert cap["chat_kwargs"]["format"] == {"type": "object"}
+        msgs = cap["chat_kwargs"]["messages"]
+        assert len(msgs) == 1
+        assert msgs[0]["role"] == "user"
+        assert msgs[0]["content"] == "hello"
+
+    def test_raw_call_includes_system_when_given(self, monkeypatch):
+        planner, cap = self._make_planner_with_fake(monkeypatch)
+        planner.raw_call("hello", schema={}, system="be brief")
+        msgs = cap["chat_kwargs"]["messages"]
+        assert len(msgs) == 2
+        assert msgs[0] == {"role": "system", "content": "be brief"}
+        assert msgs[1] == {"role": "user", "content": "hello"}
+
+    def test_raw_call_no_system_omits_system_message(self, monkeypatch):
+        planner, cap = self._make_planner_with_fake(monkeypatch)
+        planner.raw_call("hello", schema={})
+        msgs = cap["chat_kwargs"]["messages"]
+        assert all(m["role"] != "system" for m in msgs)
+
+    def test_raw_call_passes_temperature_and_num_predict(self, monkeypatch):
+        planner, cap = self._make_planner_with_fake(
+            monkeypatch, temperature=0.5, num_predict=256,
+        )
+        planner.raw_call("hello", schema={})
+        opts = cap["chat_kwargs"].get("options", {})
+        assert opts["temperature"] == pytest.approx(0.5)
+        assert opts["num_predict"] == 256
+
+    def test_raw_call_omits_options_when_none(self, monkeypatch):
+        planner, cap = self._make_planner_with_fake(monkeypatch)
+        planner.raw_call("hello", schema={})
+        assert "options" not in cap["chat_kwargs"]
+
+    def test_plan_raw_delegates_to_raw_call(self, monkeypatch):
+        planner, cap = self._make_planner_with_fake(monkeypatch)
+        planner.plan_raw("build a CLI", schema={"type": "object"})
+        msgs = cap["chat_kwargs"]["messages"]
+        assert msgs[0]["role"] == "system"
+        assert msgs[1]["content"] == "Plan this job:\n\nbuild a CLI"
+
+    def test_raw_call_uses_env_model(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_OLLAMA_PLANNER_MODEL", "test-model-77")
+        planner, cap = self._make_planner_with_fake(monkeypatch)
+        planner.raw_call("hello", schema={})
+        assert cap["chat_kwargs"]["model"] == "test-model-77"

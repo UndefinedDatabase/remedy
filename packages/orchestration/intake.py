@@ -164,45 +164,24 @@ def run_intake(
 def make_provider_call_fn() -> Callable[[str, int], str] | None:
     """Build an Ollama-backed call_fn for intake, or None if unavailable.
 
-    Reuses the same host/model config surface as OllamaPlanner (env vars,
-    config file) but sends the intake prompt directly — no planner-specific
-    system prompt wrapping. Uses Ollama's native ``format=`` for schema
-    enforcement.
+    Delegates to OllamaPlanner.raw_call so all Ollama config (host, model,
+    temperature, num_predict) is resolved in one place.
     """
     try:
-        import ollama
-    except ImportError:
-        return None
-
-    try:
-        import os
-
-        from packages.orchestration.config import get_config
-
-        cfg = get_config()
-        host = (
-            os.environ.get("REMEDY_OLLAMA_HOST")
-            or cfg.get("ollama.host")
-            or "http://localhost:11434"
-        )
-        model = (
-            os.environ.get("REMEDY_OLLAMA_PLANNER_MODEL")
-            or os.environ.get("REMEDY_OLLAMA_MODEL")
-            or cfg.get("ollama.planner.model")
-            or "qwen3-coder-next"
-        )
-        client = ollama.Client(host=host, timeout=15.0)
-        schema = to_json_schema(JobIntake)
-        client.list()
+        from packages.providers.ollama_planner.provider import OllamaPlanner
+        planner = OllamaPlanner()
     except Exception:
         return None
 
+    try:
+        import ollama
+        ollama.Client(host=planner.host).list()
+    except Exception:
+        return None
+
+    schema = to_json_schema(JobIntake)
+
     def _call(prompt: str, attempt: int) -> str:
-        response = client.chat(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            format=schema,
-        )
-        return response.message.content
+        return planner.raw_call(prompt, schema=schema)
 
     return _call

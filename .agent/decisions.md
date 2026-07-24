@@ -1,5 +1,17 @@
 # Decisions
 
+## 2026-07-25: R-0116 — intake timeout removed; OllamaPlanner.raw_call is the single config surface
+make_provider_call_fn previously hardcoded `timeout=15.0` on the Ollama client.
+After R-0116, the function delegates to OllamaPlanner.raw_call, which builds
+the client from `self.host` with NO explicit timeout — Ollama's default applies.
+The `client.list()` health check in make_provider_call_fn still constructs its
+own client (bare `ollama.Client(host=planner.host)`) for the availability probe,
+also without a hardcoded timeout. Rationale: the original 15s literal was a
+one-off workaround for subprocess test speed (resolved by --no-llm in _run_do);
+forcing a timeout that differs from the planner's own timeout would create a
+second configuration surface. If a timeout is needed, it should come through
+config (env var or toml), same as temperature/num_predict.
+
 ## 2026-07-24: T002a transport extraction skipped — run_structured_call is importable (F013)
 `_call_with_retry` in pingpong_loop.py is deeply coupled to `PingPongResult` and
 `_record_attempt` (private helper). Extracting it creates circular imports

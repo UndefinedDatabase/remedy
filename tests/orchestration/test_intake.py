@@ -255,25 +255,40 @@ class TestMakeProviderCallFn:
         monkeypatch.setattr(builtins, "__import__", _block_ollama)
         assert make_provider_call_fn() is None
 
-    def test_returns_callable_with_ollama(self, monkeypatch):
+    def _install_fake_ollama(self, monkeypatch):
+        import sys
         import types
 
         fake_ollama = types.ModuleType("ollama")
+        captured = {}
 
         class FakeClient:
-            def __init__(self, host=None, timeout=None):
-                pass
+            def __init__(self, host=None):
+                captured["host"] = host
 
             def list(self):
                 return []
 
             def chat(self, **kwargs):
+                captured["chat_kwargs"] = kwargs
                 msg = types.SimpleNamespace(content='{"schema_v":"ji1","goal":"g"}')
                 return types.SimpleNamespace(message=msg)
 
         fake_ollama.Client = FakeClient
-        monkeypatch.setitem(__import__("sys").modules, "ollama", fake_ollama)
+        monkeypatch.setitem(sys.modules, "ollama", fake_ollama)
+        return captured
+
+    def test_returns_callable_with_ollama(self, monkeypatch):
+        self._install_fake_ollama(monkeypatch)
         fn = make_provider_call_fn()
         assert fn is not None
         result = fn("test prompt", 0)
         assert "goal" in result
+
+    def test_env_model_reaches_chat_call(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_OLLAMA_PLANNER_MODEL", "intake-test-model")
+        captured = self._install_fake_ollama(monkeypatch)
+        fn = make_provider_call_fn()
+        assert fn is not None
+        fn("test prompt", 0)
+        assert captured["chat_kwargs"]["model"] == "intake-test-model"
