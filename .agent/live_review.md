@@ -28,7 +28,7 @@ History lives in git and in each feature's evidence zip.
   tested; suites rerun by reviewer (147 green). Resolved.
 
 ### R-0111: job show intake rendering missing (ordered in T003, absent, unreported)
-- **Status**: Done: R-0111
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: apps/cli/commands/job.py (_cmd_show_job)
 - **Details**: T003 ordered "remedy job show renders the intake
@@ -41,10 +41,12 @@ History lives in git and in each feature's evidence zip.
   No block when intake is None (legacy jobs). Tests: shows block
   for job with intake; silent for legacy job; probes use only
   text-UI-displayed values.
-- **Reviewer**: pending
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
 ### R-0112: do path never attempts LLM intake; no per-call evidence
-- **Status**: Done: R-0112
+- **Status**: Resolved
 - **Severity**: High
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission),
   packages/orchestration/intake.py
@@ -68,10 +70,12 @@ History lives in git and in each feature's evidence zip.
   exact fake goal + evidence dir exists; no-provider run asserts
   heuristic label + exit 0; --no-llm asserts zero provider
   attempts.
-- **Reviewer**: pending
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
 ### R-0113: degraded-mode label deviates from specified P6 wording
-- **Status**: Done: R-0113
+- **Status**: Resolved
 - **Severity**: Medium
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission output)
 - **Details**: Prints "Intake: heuristic". Feature specifies the
@@ -84,10 +88,12 @@ History lives in git and in each feature's evidence zip.
   intake: heuristic (forced by --no-llm). JSON output carries
   source + fallback reason. Update golden-path probes to the
   displayed strings.
-- **Reviewer**: pending
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
 ### R-0114: LLM path drops the deterministic truncated_input flag
-- **Status**: Done: R-0114
+- **Status**: Resolved
 - **Severity**: Medium
 - **Area**: packages/orchestration/intake.py (run_intake)
 - **Details**: run_intake truncates the prompt but discards the
@@ -99,10 +105,12 @@ History lives in git and in each feature's evidence zip.
   override, like _truncate_clarifications). Test: oversized
   mission + fake provider returning truncated_input=false →
   stored intake has truncated_input=true.
-- **Reviewer**: pending
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
 ### R-0115: handoff ruff claim excluded a touched file
-- **Status**: Done: R-0115
+- **Status**: Resolved
 - **Severity**: Low
 - **Area**: .agent/handoff.md (verification section)
 - **Details**: "ruff (touched files): All checks passed!" but
@@ -113,4 +121,51 @@ History lives in git and in each feature's evidence zip.
   do_cmd.py main-parity explicitly (pre-existing count vs branch
   count). Process rule going forward: the ruff command in a
   handoff lists every touched file.
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
+
+### R-0116: intake duplicates the Ollama provider configuration surface
+- **Status**: Open
+- **Severity**: Medium
+- **Area**: packages/orchestration/intake.py
+  (make_provider_call_fn), packages/providers/ollama_planner/
+  provider.py
+- **Details**: make_provider_call_fn re-implements host/model
+  resolution copied from OllamaPlanner, hardcodes the model
+  fallback "qwen3-coder-next" and timeout=15.0, and ignores the
+  temperature/num_predict options the planner surface resolves.
+  Second config surface = drift risk; the order required reusing
+  the existing provider invocation surface.
+- **Expected fix**: (a) OllamaPlanner gains a neutral
+  raw_call(prompt, *, schema, system=None) that builds the client
+  from self.host and applies self.temperature/self.num_predict;
+  plan_raw delegates to it with UNCHANGED behavior (same system
+  prompt + "Plan this job:" wrapping). Unit tests with a fake
+  ollama module prove delegation and option passthrough.
+  (b) make_provider_call_fn instantiates OllamaPlanner() and
+  returns a closure over raw_call(prompt, schema=JobIntake
+  schema) — delete the duplicated host/model resolution, the
+  hardcoded model fallback, and the hardcoded timeout. The
+  client.list() availability probe may stay, built from the
+  planner's host. Any timeout goes through config, not a literal;
+  record the choice in .agent/decisions.md.
+  (c) Update TestMakeProviderCallFn: env-var model override
+  (REMEDY_OLLAMA_PLANNER_MODEL) reaches the chat call; ollama
+  missing → None. All existing suites stay green.
+- **Reviewer**: pending
+
+### R-0117: provider-error fallback mislabeled as provider unavailable
+- **Status**: Open
+- **Severity**: Low
+- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission label
+  logic)
+- **Details**: fallback_reason == "provider_error" prints
+  "intake: heuristic fallback (provider unavailable)" — the
+  provider WAS reachable; its output failed the schema gate or
+  transport errored mid-call. Label contradicts the JSON reason.
+- **Expected fix**: provider_error prints exactly
+  intake: heuristic fallback (provider error)
+  provider_unavailable keeps the spec string. Golden-path probes
+  updated to the displayed strings.
 - **Reviewer**: pending
