@@ -147,6 +147,41 @@ class TestDoMission:
         data = json.loads(result.stdout)
         assert data["mission"] == long_mission
 
+    def test_explicit_do_run_skips_golden_path(self, tmp_path):
+        """Explicit `remedy do run "goal"` → legacy path, not golden path."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = subprocess.run(
+            [*_CLI, "do", "run", "build a readme"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        # Legacy path runs (may fail due to no builder, but NOT golden-path output)
+        assert "Next: remedy status" not in result.stdout
+
+    def test_budget_flag_skips_golden_path(self, tmp_path):
+        """Mission + --max-total-tokens → legacy path (budgets honored)."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_do(repo, env, "build a readme", ["--max-total-tokens", "500"])
+        # Legacy path — golden-path marker absent
+        assert "Next: remedy status" not in result.stdout
+
+    def test_bare_mission_with_json_uses_golden_path(self, tmp_path):
+        """Bare mission + --json → golden path (--json allowed)."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_do(repo, env, "build a readme", ["--json"])
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["next_command"] == "remedy status"
+
 
 # ── T002: remedy status ───────────────────────────────────────────────
 

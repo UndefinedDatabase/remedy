@@ -1150,3 +1150,13 @@ Operator-approved reword via filter-branch: "add /review-remedy command" → "ad
 review-remedy slash command". The _contains_local_path scanner in review_subject.py
 false-positives on slash-command names in commit subjects, blocking make_review_zip.
 Separate fix tracked as R-0083 (not F081 scope).
+
+## 2026-07-24: R-0085 — injection marker approach for bare-mission detection (F147)
+grouped.py sets `args._injected_default = True` when the `run` subcommand was
+auto-injected by `_DEFAULT_COMMAND`. `_cmd_do` checks `injected_default` first:
+bare `remedy do "x"` → golden path; explicit `remedy do run "x"` or any non-default
+flag → legacy path. This is robust because the marker tracks what actually happened
+at parse time, not what flag combinations look like after defaults are applied.
+Alternative considered: argparse None-sentinel defaults for every flag — fragile
+because it requires maintaining sentinels across 20+ parameters and any new flag
+would silently break detection. Injection marker is one bit, set once.

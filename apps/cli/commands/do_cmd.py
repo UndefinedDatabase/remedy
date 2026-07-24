@@ -254,12 +254,17 @@ def _cmd_do(
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
     deadline: str | None = None,
+    injected_default: bool = False,
 ) -> None:
     # --- Bare-mission golden path (F147) ---
-    # Intercept only the truly bare case: mission + defaults. Any explicit
-    # flag beyond --repo/--json falls through to the v1/pingpong paths.
+    # Fires ONLY when `run` was injected by grouped.py (bare `remedy do "x"`)
+    # AND no explicit flags were passed. Explicit `remedy do run "x"` or any
+    # flag beyond --repo/--json → legacy path unchanged.
     _is_bare_mission = (
-        goal
+        injected_default
+        and goal
+        and autonomy_level == 1
+        and max_cycles == 3
         and builder == "none"
         and reviewer == "none"
         and builder_provider == "none"
@@ -270,8 +275,17 @@ def _cmd_do(
         and not enable_ui
         and not scope_file
         and not approve_scope
-        and autonomy_level <= 2
-        and max_cycles == 3
+        and not keep_staging
+        and not stream_evidence
+        and mode == "staged"
+        and test_command == ""
+        and claude_cli_write_mode == "none"
+        and max_rounds == 3
+        and repair_rounds is None
+        and max_total_tokens is None
+        and max_provider_calls is None
+        and max_wall_clock_minutes is None
+        and deadline is None
     )
     if _is_bare_mission:
         _cmd_do_mission(goal, repo=repo, json_output=json_output)
@@ -2604,6 +2618,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project=getattr(args, "project", None),
         autonomy_level=int(getattr(args, "autonomy_level", None) or 2),
         max_cycles=int(getattr(args, "max_cycles", None) or 3),
+        injected_default=getattr(args, "_injected_default", False),
         enable_ui=(
             bool(getattr(args, "ui", False))
             and not getattr(args, "no_ui", False)
