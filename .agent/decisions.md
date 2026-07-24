@@ -1,5 +1,11 @@
 # Decisions
 
+## 2026-07-24: project adopt takes explicit job_id, not bulk (F148 R-0103)
+`remedy project adopt <job_id>` adopts exactly one job. Short 8-char IDs
+resolved via Core store filename prefix match (same pattern as job stop
+R-0097). Already-scoped jobs rejected with exit 2 naming current owner.
+No bulk/--all path — spec forbids automatic mass claiming.
+
 ## 2026-07-24: Creation guard wired at CLI layer only (F148 R-0099)
 Both `_cmd_create_job` (job.py) and `_cmd_do` (do_cmd.py) now resolve via
 `select_project(flag, cwd)` with full precedence (flag/env/cwd). No

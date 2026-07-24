@@ -391,10 +391,39 @@ def _cmd_project_attach_repo(
     }, indent=2))
 
 
+def _resolve_short_job_id(prefix: str) -> str | None:
+    """Resolve short hex prefix to full job id. Exit 2 on ambiguous."""
+    import re
+
+    if not re.fullmatch(r"[0-9a-fA-F]{4,32}", prefix):
+        return None
+
+    from packages.orchestration.data_paths import jobs_dir
+
+    jdir = jobs_dir()
+    if not jdir.exists():
+        return None
+
+    lower = prefix.lower()
+    matches = [
+        p.stem for p in jdir.glob("*.json")
+        if p.stem.lower().startswith(lower)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        print(f"Error: ambiguous job id prefix '{prefix}' matches "
+              f"{len(matches)} jobs:", file=sys.stderr)
+        for m in sorted(matches):
+            print(f"  {m[:8]}", file=sys.stderr)
+        sys.exit(2)
+    return None
+
+
 def _cmd_project_adopt(
+    job_id_str: str,
     *,
     project_flag: str | None = None,
-    adopt_all: bool = False,
 ) -> None:
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
@@ -413,21 +442,33 @@ def _cmd_project_adopt(
         )
         sys.exit(3)
 
-    all_jobs = list_jobs()
-    unscoped = [j for j in all_jobs if j.project_id is None]
-    if not unscoped:
-        print("No unscoped jobs to adopt.")
-        return
+    resolved_id = _resolve_short_job_id(job_id_str)
+    if resolved_id is None:
+        try:
+            UUID(job_id_str)
+            resolved_id = job_id_str
+        except ValueError:
+            print(f"Error: unknown job id: {job_id_str!r}", file=sys.stderr)
+            sys.exit(3)
 
-    adopted = 0
-    for job in unscoped:
-        job.project_id = str(project.id)
-        save_job(job)
-        attach_job(project, str(job.id))
-        adopted += 1
+    try:
+        job = load_job(UUID(resolved_id))
+    except JobNotFoundError:
+        print(f"Error: job not found: {resolved_id[:8]}", file=sys.stderr)
+        sys.exit(3)
 
+    if job.project_id is not None:
+        print(
+            f"Error: job {resolved_id[:8]} already belongs to project {job.project_id[:8]}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    job.project_id = str(project.id)
+    save_job(job)
+    attach_job(project, str(job.id))
     save_project(project)
-    print(f"Adopted {adopted} job(s) into project {project.slug or project.id}.")
+    print(f"Adopted {resolved_id[:8]} into project {project.slug or project.id}.")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
@@ -448,7 +489,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         project_flag=getattr(args, "project", None),
     ),
     "project.adopt": lambda args: _cmd_project_adopt(
+        args.job_id,
         project_flag=getattr(args, "project", None),
-        adopt_all=getattr(args, "all", False),
     ),
 }

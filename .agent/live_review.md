@@ -100,7 +100,7 @@ History lives in git and in each feature's evidence zip.
   reviewer in the closure round, never by the worker.
 
 ### R-0103: adopt is bulk instead of explicit per-job; dead --all flag
-- **Status**: Open
+- **Status**: Done: R-0103
 - **Severity**: High
 - **Area**: apps/cli/commands/project.py (_cmd_project_adopt), apps/cli/command_catalog.py (project.adopt)
 - **Details**: Feature: "`remedy project adopt <job_id>` claims one

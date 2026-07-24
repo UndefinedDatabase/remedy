@@ -515,11 +515,11 @@ CATALOG: tuple[CommandEntry, ...] = (
         command_id="project.adopt",
         group_id="project",
         subcommand="adopt",
-        description="Adopt unscoped jobs into the current project.",
+        description="Adopt a single unscoped job into the current project.",
         action_class="write_metadata",
         args=(
+            _JOB_ID,
             ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
-            ArgDef("--all", "Adopt all unscoped jobs (not just cwd-related)", required=False, is_option=True, is_flag=True),
         ),
         related=("project.attach-job", "job.list"),
     ),
