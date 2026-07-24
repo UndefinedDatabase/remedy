@@ -328,8 +328,8 @@ class TestStatus:
         data = json.loads(result.stdout)
         assert data["scope"] == "all projects"
 
-    def test_status_stop_pending(self, tmp_path, monkeypatch):
-        """F011 stop request → stops_pending counts it."""
+    def test_status_stop_pending(self, tmp_path):
+        """F011 stop request via CLI → stops_pending counts it."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
@@ -338,9 +338,12 @@ class TestStatus:
         assert do_result.returncode == 0
         job_id = json.loads(do_result.stdout)["job_id"]
 
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.safe_points import request_stop
-        request_stop(job_id)
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", job_id],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 0, stop.stderr
 
         result = _run_status(repo, env, ["--json"])
         assert result.returncode == 0
@@ -375,6 +378,40 @@ class TestStatus:
         data = json.loads(result.stdout)
         assert data["decisions_open"] >= 1
 
+    def test_job_stop_golden_path_job(self, tmp_path):
+        """remedy job stop <golden-path id> exits 0 and records request."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do_result = _run_do(repo, env, "build a readme", ["--json"])
+        assert do_result.returncode == 0
+        job_id = json.loads(do_result.stdout)["job_id"]
+
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", job_id, "--json"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 0, stop.stderr
+        data = json.loads(stop.stdout)
+        assert data["ok"] is True
+        assert data["job_id"] == job_id
+        assert "stop" in data
+
+    def test_job_stop_unknown_id(self, tmp_path):
+        """remedy job stop <unknown> exits 3."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", "00000000-0000-0000-0000-000000000099"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 3
+
 
 # ── T003: help pinning + golden-path smoke ────────────────────────────
 
@@ -399,7 +436,7 @@ class TestHelpPinning:
 
 
 class TestGoldenPathSmoke:
-    def test_init_do_status_stop_flow(self, tmp_path, monkeypatch):
+    def test_init_do_status_stop_flow(self, tmp_path):
         """Golden path: init → do → status → stop → status shows stop."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
@@ -425,9 +462,12 @@ class TestGoldenPathSmoke:
         assert short_id in text_status.stdout
         assert "planned" in text_status.stdout
 
-        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.safe_points import request_stop
-        request_stop(job_id)
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", job_id],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 0, stop.stderr
 
         status2 = _run_status(repo, env, ["--json"])
         assert status2.returncode == 0

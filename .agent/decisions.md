@@ -1151,6 +1151,17 @@ review-remedy slash command". The _contains_local_path scanner in review_subject
 false-positives on slash-command names in commit subjects, blocking make_review_zip.
 Separate fix tracked as R-0083 (not F081 scope).
 
+## 2026-07-24: R-0092 — job_stop_cmd falls back to Core Job store (F147)
+Two job stores exist: pingpong_job (task_jobs/) for v1 executor jobs, and
+storage (jobs/) for Core Jobs created by the golden-path `remedy do "<mission>"`.
+`_load_job` in job_stop_cmd.py previously only queried pingpong_job.load_job_plan,
+making golden-path jobs invisible to the kill switch. Fix: fallback to
+storage.load_job on pingpong miss, with _CoreJobAdapter mapping state.value →
+.status and providing empty stop_* fields (golden-path jobs have no stop
+metadata yet). Exit codes and output contract identical for both stores.
+The split is structural: merging stores would require a schema migration
+across persisted jobs — not in scope for F147.
+
 ## 2026-07-24: R-0085 — injection marker approach for bare-mission detection (F147)
 grouped.py sets `args._injected_default = True` when the `run` subcommand was
 auto-injected by `_DEFAULT_COMMAND`. `_cmd_do` checks `injected_default` first:

@@ -127,7 +127,7 @@ git and in each feature's evidence zip.
   itself; mark Done when delivered.
 
 ### R-0092: `remedy job stop` cannot find golden-path jobs; smoke silently bypassed the broken CLI
-- **Status**: Open
+- **Status**: Done: R-0092
 - **Severity**: High
 - **Area**: apps/cli/commands/job_stop_cmd.py (_load_job), tests/cli/test_golden_path.py (smoke),
 .agent/decisions.md
