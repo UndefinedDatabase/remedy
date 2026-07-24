@@ -395,6 +395,10 @@ Purpose: the fast-resume snapshot for the planner/reviewer. Rewritten
 last commit SHAs, changed-files table, verification results (real,
 trimmed), open findings count, next expected action.
 
+- Every artifact-build attempt (evidence bundle, review zip)
+  appears in the handoff with its status, including failed
+  attempts with blocking reasons.
+
 ### Documentation Updates
 
 The agent MUST update `docs/` when:

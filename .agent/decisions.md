@@ -1186,3 +1186,19 @@ at parse time, not what flag combinations look like after defaults are applied.
 Alternative considered: argparse None-sentinel defaults for every flag — fragile
 because it requires maintaining sentinels across 20+ parameters and any new flag
 would silently break detection. Injection marker is one bit, set once.
+
+## 2026-07-24: operator decisions (post-F147 meta-review)
+Amendment approved: bootstrap-block rules do not bind long-lived worker
+sessions; AGENTS.md is the only auto-loaded surface — adding the
+artifact-build-attempt honesty rule there ensures all future sessions
+inherit it without needing to read closure-protocol docs first.
+R-0097 accepted as a gap fix (not part of F148): short-id resolution in
+`remedy job stop` is a golden-path usability defect found by the
+operator's live probe; fixing it before F148 starts avoids carrying a
+known break into the next feature's smoke tests.
+Closure-protocol additions: evidence-dir commit ordering (F147 attempt-2
+lesson), producer pitfalls (output_hash / base_commit SHA), and
+byte-identical self-check duty for reviewer-authored text.
+Hygiene chore scheduled as its OWN gap item: 3 catalog-classification
+test failures, 2 job_stop_integration failures, ruff-432 backlog —
+explicitly NOT part of F148.
