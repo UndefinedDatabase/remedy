@@ -207,6 +207,7 @@ class Job(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str
+    mission: str | None = None
     user_prompt: str | None = None
     created_at: datetime = Field(default_factory=_utcnow)
     tasks: list[Task] = Field(default_factory=list)

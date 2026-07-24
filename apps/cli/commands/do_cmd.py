@@ -159,6 +159,69 @@ def _resolve_cli_role_configs(
     return resolved
 
 
+_MISSION_DISPLAY_MAX = 120
+
+
+def _cmd_do_mission(
+    mission: str,
+    *,
+    repo: str = ".",
+    json_output: bool = False,
+) -> None:
+    """Golden-path: mission string → planned job (F147 T001)."""
+    if not mission or not mission.strip():
+        print("Error: mission must not be empty.", file=sys.stderr)
+        sys.exit(2)
+
+    from packages.orchestration.project_registry import resolve_project
+    project = resolve_project(repo)
+    if project is None:
+        print(
+            "No project registered for this repo. Run: remedy init",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+    from packages.core.models import Job
+    from packages.orchestration.job_runner import plan_job
+    from packages.orchestration.storage import save_job
+
+    job = Job(name=mission[:80], mission=mission, user_prompt=mission)
+    result = plan_job(job)
+    save_job(result.job)
+
+    short_id = str(result.job.id)[:8]
+    display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
+
+    if json_output:
+        import json as _json
+        print(_json.dumps({
+            "job_id": str(result.job.id),
+            "short_id": short_id,
+            "project_slug": project.slug,
+            "state": result.job.state.value,
+            "mission": mission,
+            "tasks": [
+                {"task_id": str(t.id), "description": t.description}
+                for t in result.job.tasks
+            ],
+            "plan_label": "deterministic skeleton (LLM Flight Plan lands with F013/F014)",
+            "next_command": "remedy status",
+        }, indent=2))
+        return
+
+    print(f"Job: {short_id}")
+    print(f"Project: {project.slug}")
+    print(f"Mission: {display_mission}")
+    print(f"State: {result.job.state.value}")
+    print("Tasks:")
+    for t in result.job.tasks:
+        task_type = t.inputs.get("task_type", "")
+        print(f"  - {task_type}: {t.description}")
+    print("plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)")
+    print("Next: remedy status")
+
+
 def _cmd_do(
     goal: str,
     *,
@@ -192,6 +255,28 @@ def _cmd_do(
     max_wall_clock_minutes: str | None = None,
     deadline: str | None = None,
 ) -> None:
+    # --- Bare-mission golden path (F147) ---
+    # Intercept only the truly bare case: mission + defaults. Any explicit
+    # flag beyond --repo/--json falls through to the v1/pingpong paths.
+    _is_bare_mission = (
+        goal
+        and builder == "none"
+        and reviewer == "none"
+        and builder_provider == "none"
+        and not task_file
+        and not task_stdin
+        and not dry_run
+        and not fixture_builder
+        and not enable_ui
+        and not scope_file
+        and not approve_scope
+        and autonomy_level <= 2
+        and max_cycles == 3
+    )
+    if _is_bare_mission:
+        _cmd_do_mission(goal, repo=repo, json_output=json_output)
+        return
+
     # --- Budget resolution (always runs — catches config-only budgets) ---
     from packages.orchestration.budget_resolution import BudgetConfigError, resolve_job_budgets
     try:
