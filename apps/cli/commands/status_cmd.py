@@ -89,9 +89,28 @@ def _cmd_status(
     except Exception:
         pass
 
+    first_active_short = None
+    for s in ("running", "planned", "pending", "paused"):
+        group = by_state.get(s, [])
+        if group:
+            first_active_short = group[0]["short_id"]
+            break
+
+    jobs_next = 'remedy do "<mission>"'
+    if first_active_short:
+        jobs_next = f"remedy decision list {first_active_short}"
+    decisions_next = 'remedy do "<mission>"'
+    if decisions_open and first_active_short:
+        decisions_next = f"remedy decision list {first_active_short}"
+    stops_next = "remedy status"
+    if stops_pending and first_active_short:
+        stops_next = f"remedy job stop --status {first_active_short}"
+    runtime_next = 'remedy do "<mission>"'
+
     if json_output:
         result = {
             "project": project_slug,
+            "scope": "all projects",
             "jobs": dict(by_state),
             "decisions_open": decisions_open,
             "runtime": runtime_status,
@@ -109,36 +128,41 @@ def _cmd_status(
         print(f"Project: {project_slug}")
     print()
 
+    print("Jobs (all projects):")
     if not jobs and not degraded:
-        print("No jobs.")
+        print("  No jobs.")
     else:
         state_order = ["running", "planned", "pending", "paused", "completed", "failed", "cancelled"]
         printed = False
         for s in state_order:
             group = by_state.get(s, [])
             if group:
-                print(f"{s} ({len(group)}):")
+                print(f"  {s} ({len(group)}):")
                 for entry in group:
-                    print(f"  {entry['short_id']}  {entry['name']}")
+                    print(f"    {entry['short_id']}  {entry['name']}")
                 printed = True
         for s in sorted(by_state.keys()):
             if s not in state_order:
                 group = by_state[s]
-                print(f"{s} ({len(group)}):")
+                print(f"  {s} ({len(group)}):")
                 for entry in group:
-                    print(f"  {entry['short_id']}  {entry['name']}")
+                    print(f"    {entry['short_id']}  {entry['name']}")
                 printed = True
         if not printed:
-            print("No jobs.")
+            print("  No jobs.")
 
     if degraded:
-        print(f"\nWarning: {len(skipped_files)} corrupt job file(s) skipped.")
+        print(f"  Warning: {len(skipped_files)} corrupt job file(s) skipped.")
+    print(f"  Next: {jobs_next}")
 
     print(f"\nDecisions: {decisions_open} open")
+    print(f"  Next: {decisions_next}")
     print(f"Runtime: {runtime_status}")
     if runtime_warning:
         print(f"  Warning: {runtime_warning}")
+    print(f"  Next: {runtime_next}")
     print(f"Stops: {stops_pending} pending")
+    print(f"  Next: {stops_next}")
 
 
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {

@@ -312,9 +312,21 @@ class TestStatus:
 
         result = _run_status(repo, env)
         assert result.returncode == 0
+        assert "Jobs (all projects):" in result.stdout
         assert "Decisions:" in result.stdout
         assert "Runtime:" in result.stdout
         assert "Stops:" in result.stdout
+        assert "Next:" in result.stdout
+
+    def test_status_json_scope(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["scope"] == "all projects"
 
     def test_status_stop_pending(self, tmp_path, monkeypatch):
         """F011 stop request → stops_pending counts it."""

@@ -81,7 +81,7 @@ git and in each feature's evidence zip.
   `remedy decision list` must yield decisions_open >= 1 in status.
 
 ### R-0089: status omits the "all projects" label and per-section next-command lines
-- **Status**: Open
+- **Status**: Done: R-0089
 - **Severity**: Medium
 - **Area**: apps/cli/commands/status_cmd.py
 - **Details**: Feature spec: until scoping lands, status shows all jobs
