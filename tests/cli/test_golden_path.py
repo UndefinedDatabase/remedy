@@ -44,8 +44,11 @@ def _init_project(repo, env):
 
 
 def _run_do(repo, env, mission, extra_args=None):
+    args = list(extra_args or [])
+    if "--no-llm" not in args:
+        args.append("--no-llm")
     return subprocess.run(
-        [*_CLI, "do", mission, *(extra_args or [])],
+        [*_CLI, "do", mission, *args],
         capture_output=True, text=True, timeout=30,
         cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
     )
@@ -60,7 +63,7 @@ class TestDoMission:
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        result = _run_do(repo, env, "build a readme")
+        result = _run_do(repo, env, "build a readme", ["--no-llm"])
         assert result.returncode == 0, result.stderr
 
         out = result.stdout
@@ -76,7 +79,7 @@ class TestDoMission:
         env = _env(tmp_path)
         _init_project(repo, env)
 
-        result = _run_do(repo, env, "build a readme", ["--json"])
+        result = _run_do(repo, env, "build a readme", ["--no-llm", "--json"])
         assert result.returncode == 0, result.stderr
 
         data = json.loads(result.stdout)
@@ -239,6 +242,118 @@ class TestDoMission:
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert data["next_command"] == "remedy status"
+
+
+# ── R-0112: LLM intake wiring + evidence ─────────────────────────────
+
+
+_FAKE_INTAKE_JSON = json.dumps({
+    "schema_v": "ji1",
+    "goal": "Fake-provider goal for R-0112.",
+    "context_refs": [],
+    "constraints": [],
+    "acceptance_hints": [],
+    "truncated_input": False,
+    "clarifications": [],
+})
+
+
+class TestLLMIntakeWiring:
+    def test_fake_provider_stores_llm_intake_with_evidence(self, tmp_path, monkeypatch):
+        """Fake provider → intake.source='llm', goal matches, evidence dir exists."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        def _fake_call_fn(prompt: str, attempt: int) -> str:
+            return _FAKE_INTAKE_JSON
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn",
+            lambda: _fake_call_fn,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.chdir(str(repo))
+
+        from io import StringIO
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("build a readme", repo=str(repo), json_output=True)
+
+        data = json.loads(captured.getvalue())
+        assert data["intake"]["source"] == "llm"
+        assert data["intake"]["goal"] == "Fake-provider goal for R-0112."
+
+        job_id = data["job_id"]
+        runs_dir = tmp_path / "data" / "runs" / job_id
+        assert runs_dir.exists(), "evidence directory must exist"
+        trace_files = list(runs_dir.glob("prompt_trace.jsonl"))
+        assert trace_files, "prompt_trace.jsonl must exist in evidence dir"
+
+        show = subprocess.run(
+            [*_CLI, "job", "show", job_id],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert show.returncode == 0
+        job_data = json.loads(show.stdout)
+        assert job_data["intake"]["schema_v"] == "ji1"
+        assert job_data["intake"]["goal"] == "Fake-provider goal for R-0112."
+
+    def test_no_provider_heuristic_fallback_exit_0(self, tmp_path, monkeypatch):
+        """Provider unavailable → heuristic fallback, exit 0."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn",
+            lambda: None,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.chdir(str(repo))
+
+        from io import StringIO
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("build a readme", repo=str(repo), json_output=True)
+
+        data = json.loads(captured.getvalue())
+        assert data["intake"]["source"] == "heuristic"
+
+    def test_no_llm_skips_provider(self, tmp_path, monkeypatch):
+        """--no-llm → zero provider attempts even if provider available."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        provider_called = []
+
+        def _tracking_call_fn(prompt: str, attempt: int) -> str:
+            provider_called.append(1)
+            return _FAKE_INTAKE_JSON
+
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn",
+            lambda: _tracking_call_fn,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.chdir(str(repo))
+
+        from io import StringIO
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("build a readme", repo=str(repo), json_output=True, no_llm=True)
+
+        data = json.loads(captured.getvalue())
+        assert data["intake"]["source"] == "heuristic"
+        assert len(provider_called) == 0, "provider must not be called with --no-llm"
 
 
 # ── T002: remedy status ───────────────────────────────────────────────

@@ -9,6 +9,7 @@ from packages.orchestration.intake import (
     _extract_context_refs,
     _first_sentence,
     heuristic_intake,
+    make_provider_call_fn,
     run_intake,
 )
 from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V
@@ -217,3 +218,41 @@ class TestExtractContextRefs:
     def test_multiple_refs(self):
         refs = _extract_context_refs("fix src/a.py and lib/b.ts")
         assert len(refs) == 2
+
+
+class TestMakeProviderCallFn:
+    def test_returns_none_when_ollama_missing(self, monkeypatch):
+        import builtins
+
+        _real_import = builtins.__import__
+
+        def _block_ollama(name, *args, **kwargs):
+            if name == "ollama":
+                raise ImportError("no ollama")
+            return _real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _block_ollama)
+        assert make_provider_call_fn() is None
+
+    def test_returns_callable_with_ollama(self, monkeypatch):
+        import types
+
+        fake_ollama = types.ModuleType("ollama")
+
+        class FakeClient:
+            def __init__(self, host=None, timeout=None):
+                pass
+
+            def list(self):
+                return []
+
+            def chat(self, **kwargs):
+                msg = types.SimpleNamespace(content='{"schema_v":"ji1","goal":"g"}')
+                return types.SimpleNamespace(message=msg)
+
+        fake_ollama.Client = FakeClient
+        monkeypatch.setitem(__import__("sys").modules, "ollama", fake_ollama)
+        fn = make_provider_call_fn()
+        assert fn is not None
+        result = fn("test prompt", 0)
+        assert "goal" in result

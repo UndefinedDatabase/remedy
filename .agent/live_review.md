@@ -44,7 +44,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: pending
 
 ### R-0112: do path never attempts LLM intake; no per-call evidence
-- **Status**: Open
+- **Status**: Done: R-0112
 - **Severity**: High
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission),
   packages/orchestration/intake.py

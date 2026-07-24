@@ -17,7 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake
+from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake, to_json_schema
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 MAX_CLARIFICATIONS = 5
@@ -154,3 +154,50 @@ def run_intake(
         schema_v=outcome.schema_v,
         call_log=outcome.call_log,
     )
+
+
+def make_provider_call_fn() -> Callable[[str, int], str] | None:
+    """Build an Ollama-backed call_fn for intake, or None if unavailable.
+
+    Reuses the same host/model config surface as OllamaPlanner (env vars,
+    config file) but sends the intake prompt directly — no planner-specific
+    system prompt wrapping. Uses Ollama's native ``format=`` for schema
+    enforcement.
+    """
+    try:
+        import ollama
+    except ImportError:
+        return None
+
+    try:
+        import os
+
+        from packages.orchestration.config import get_config
+
+        cfg = get_config()
+        host = (
+            os.environ.get("REMEDY_OLLAMA_HOST")
+            or cfg.get("ollama.host")
+            or "http://localhost:11434"
+        )
+        model = (
+            os.environ.get("REMEDY_OLLAMA_PLANNER_MODEL")
+            or os.environ.get("REMEDY_OLLAMA_MODEL")
+            or cfg.get("ollama.planner.model")
+            or "qwen3-coder-next"
+        )
+        client = ollama.Client(host=host, timeout=15.0)
+        schema = to_json_schema(JobIntake)
+        client.list()
+    except Exception:
+        return None
+
+    def _call(prompt: str, attempt: int) -> str:
+        response = client.chat(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            format=schema,
+        )
+        return response.message.content
+
+    return _call

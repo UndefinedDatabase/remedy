@@ -184,11 +184,36 @@ def _cmd_do_mission(
         sys.exit(3)
 
     from packages.core.models import Job
-    from packages.orchestration.intake import heuristic_intake
+    from packages.orchestration.intake import heuristic_intake, make_provider_call_fn, run_intake
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
-    intake_result = heuristic_intake(mission)
+    intake_result = None
+    intake_traces: list = []
+    if not no_llm:
+        call_fn = make_provider_call_fn()
+        if call_fn is not None:
+            from packages.orchestration.prompt_trace import build_trace_entry
+
+            def _record_intake_call(
+                attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+            ) -> None:
+                intake_traces.append(build_trace_entry(
+                    prompt_text=effective_prompt,
+                    role="intake",
+                    provider="ollama",
+                    provider_kind="ollama",
+                    prompt_kind="intake-retry" if is_parse_retry else "intake",
+                    schema_v=schema_v,
+                    phase="intake-retry" if is_parse_retry else "intake",
+                    transport_attempt=attempt,
+                    is_transport_retry=False,
+                ))
+
+            intake_result = run_intake(mission, call_fn, on_call=_record_intake_call)
+
+    if intake_result is None:
+        intake_result = heuristic_intake(mission)
 
     job = Job(
         name=mission[:80], mission=mission, user_prompt=mission,
@@ -197,6 +222,15 @@ def _cmd_do_mission(
     )
     result = plan_job(job)
     save_job(result.job)
+
+    if intake_traces:
+        from packages.orchestration.prompt_trace import write_trace_jsonl
+        from packages.orchestration.run_log import RunLogWriter
+        log = RunLogWriter(job_id=result.job.id)
+        try:
+            write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
+        except OSError:
+            pass
 
     from packages.orchestration.project_registry import attach_job, save_project
     attach_job(project, str(result.job.id))
