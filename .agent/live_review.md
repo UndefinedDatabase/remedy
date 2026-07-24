@@ -6,7 +6,7 @@ monotonically across features (last used: R-0084). History lives in
 git and in each feature's evidence zip.
 
 ### R-0085: bare-mission intercept silently drops explicit flags; legacy do-run path unreachable for bare form
-- **Status**: Open
+- **Status**: Done: R-0085
 - **Severity**: High
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do / _is_bare_mission), apps/cli/grouped.py
 - **Details**: _is_bare_mission checks only a subset of do.run flags. Any
@@ -34,7 +34,7 @@ git and in each feature's evidence zip.
   golden path.
 
 ### R-0086: corrupt runtime state reported as "stopped" — spec demands "unknown" + warning
-- **Status**: Open
+- **Status**: Done: R-0086
 - **Severity**: Medium
 - **Area**: apps/cli/commands/status_cmd.py (runtime section)
 - **Details**: load_state() returns None for BOTH absent and unreadable

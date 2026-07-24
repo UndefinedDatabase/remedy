@@ -281,6 +281,29 @@ class TestStatus:
         assert data.get("degraded") is True
         assert len(data.get("skipped_files", [])) >= 1
 
+    def test_status_corrupt_runtime_state(self, tmp_path):
+        """Corrupt runtime.json → runtime 'unknown' + warning, exit 0."""
+        import hashlib
+
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        digest = hashlib.sha256(str(repo.resolve()).encode()).hexdigest()[:16]
+        rt_dir = tmp_path / "data" / "projects" / digest
+        rt_dir.mkdir(parents=True, exist_ok=True)
+        (rt_dir / "runtime.json").write_text("{corrupt")
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["runtime"] == "unknown"
+        assert "runtime_warning" in data
+
+        text = _run_status(repo, env)
+        assert text.returncode == 0
+        assert "Warning:" in text.stdout
+
     def test_status_text_sections(self, tmp_path):
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)

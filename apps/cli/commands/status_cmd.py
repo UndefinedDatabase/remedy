@@ -64,13 +64,21 @@ def _cmd_status(
             pass
 
     runtime_status = "unknown"
+    runtime_warning = None
     try:
-        from packages.runtimes.dev_server import load_state
-        state = load_state(repo)
-        if state is not None:
-            runtime_status = state.status
-        else:
+        from packages.runtimes.dev_server import (
+            STATE_ABSENT,
+            STATE_VALID,
+            load_state_result,
+        )
+        load = load_state_result(repo)
+        if load.kind == STATE_ABSENT:
             runtime_status = "stopped"
+        elif load.kind == STATE_VALID and load.state is not None:
+            runtime_status = load.state.status
+        else:
+            runtime_status = "unknown"
+            runtime_warning = f"runtime state unreadable: {load.error or load.kind}"
     except Exception:
         pass
 
@@ -82,6 +90,8 @@ def _cmd_status(
             "runtime": runtime_status,
             "stops_pending": stops_pending,
         }
+        if runtime_warning:
+            result["runtime_warning"] = runtime_warning
         if degraded:
             result["degraded"] = True
             result["skipped_files"] = skipped_files
@@ -119,6 +129,8 @@ def _cmd_status(
 
     print(f"\nDecisions: {decisions_open} open")
     print(f"Runtime: {runtime_status}")
+    if runtime_warning:
+        print(f"  Warning: {runtime_warning}")
     print(f"Stops: {stops_pending} pending")
 
 
