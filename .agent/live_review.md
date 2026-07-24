@@ -192,3 +192,47 @@ git and in each feature's evidence zip.
   the handler fallback, and reality agree (document in decisions.md which
   one is authoritative). Tests: `do "x" --autonomy-level 1` → legacy;
   `do "x" --json` → golden; `do "x" --repo .` → golden.
+
+### R-0094: closure handback omitted two BLOCKED_EVIDENCE zip builds
+- **Status**: Open
+- **Severity**: Medium
+- **Area**: .agent/handoff.md (closure handback honesty)
+- **Details**: remedy-review-20260724-120731-BLOCKED_EVIDENCE.zip
+  (blocking: final_verifier VerificationTests total missing/invalid;
+  verification_tests.json runs[0].output_hash not sha256 hex) and
+  remedy-review-20260724-121236-BLOCKED_EVIDENCE.zip (evidence not
+  authoritative) exist on disk; the handoff reports only the READY
+  build. STATUS_closure_protocol §2: the zip attempt's outcome is
+  recorded in the handoff BEFORE handback, always. Repeat of the
+  R-0082/R-0091 class — second handback-honesty lapse within F147.
+- **Evidence**: reviewer read .review_zip_manifest.json of both BLOCKED
+  zips; handoff Evidence section lists only 121604-READY.
+- **Expected fix**: Handoff rewrite lists ALL three build attempts with
+  status and blocking reasons, plus what changed between attempts
+  (bundle regenerated). Covered by commit 2 below.
+
+### R-0095: STATUS line applied non-verbatim — live-review verdict misstated
+- **Status**: Open
+- **Severity**: Low
+- **Area**: docs/roadmap/STATUS.md (F147 line)
+- **Details**: Authored text said `live review PASS — ACCEPTED`; applied
+  line says `live review PASS_WITH_RISKS — ACCEPTED`. The live-review
+  verdict is PASS (all 9 findings Resolved, no documented risks);
+  PASS_WITH_RISKS is the final_verifier verdict inside the package.
+  Worker edit outside the four authorized fill slots — only reviewer-
+  authored text sets verdicts.
+- **Evidence**: STATUS.md F147 line vs the closure-round paste block.
+- **Expected fix**: Replace the segment `live review PASS_WITH_RISKS —
+  ACCEPTED` with `live review PASS — ACCEPTED`. Touch nothing else on
+  the line. Covered by commit 2.
+
+### R-0096: evidence dir not committed as instructed; deviation without decisions.md rationale
+- **Status**: Open
+- **Severity**: Low
+- **Area**: remedy-job-evidence-f147/ (branch provenance)
+- **Details**: Closure step 3 instructed committing the evidence dir
+  (F081 precedent). Handoff discloses "on disk, not committed" but no
+  rationale was recorded. Branch-committed evidence keeps gate JSONs
+  reviewable outside the zip.
+- **Evidence**: git status showed the dir untracked at closure handback.
+- **Expected fix**: `git add remedy-job-evidence-f147/` in commit 2.
