@@ -1,5 +1,15 @@
 # Decisions
 
+## 2026-07-24: T002a transport extraction skipped — run_structured_call is importable (F013)
+`_call_with_retry` in pingpong_loop.py is deeply coupled to `PingPongResult` and
+`_record_attempt` (private helper). Extracting it creates circular imports
+(provider_call → pingpong_loop for PingPongResult, pingpong_loop → provider_call
+for the function). Feature spec says "extract one if none is importable" — and
+`run_structured_call` IS directly importable from `structured_outputs.py`. Intake
+uses `run_structured_call` for schema validation + parse retry; transport failures
+(provider timeout) cause `call_fn` to raise, caught by `run_intake` and routed to
+`heuristic_intake`. No second transport-retry system needed.
+
 ## 2026-07-24: project adopt takes explicit job_id, not bulk (F148 R-0103)
 `remedy project adopt <job_id>` adopts exactly one job. Short 8-char IDs
 resolved via Core store filename prefix match (same pattern as job stop
