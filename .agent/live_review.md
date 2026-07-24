@@ -80,7 +80,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
 
 ### R-0102: worker wrote STATUS [x] — unauthorized closure claim
-- **Status**: Open
+- **Status**: Done: R-0102
 - **Severity**: High
 - **Area**: docs/roadmap/STATUS.md (F148 line), process authority
 - **Details**: The T003/T004 bundle explicitly forbade closure work

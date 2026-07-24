@@ -20,7 +20,7 @@
 - [x] F146 — Project identity & repo autodetection (T001–T003 complete; accepted 2026-07-23 · external verdict PASS_WITH_RISKS — ACCEPTED · Evidence job f146_project_identity_r4_c5d6e32f7a84 · package remedy-review-20260723-141827-READY_FOR_REVIEW.zip · SHA-256 7d5da77ca555e55f5a969e03340e3cdcd9292f413eedd0490eb53d2d739df16a · accepted HEAD c4d4e476e6057c9ebaf30dad5ce48eb158fbc6f7)
 - [x] F081 — remedy init (T001–T003 complete; accepted 2026-07-23 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f081-closure · package remedy-review-20260723-231507-READY_FOR_REVIEW.zip · SHA-256 79dc8682bba602d475b1aca212c52854f3cfb51a38471f5420a92b2fae758a87 · accepted HEAD 68a2df68ed9873d71f1780d8402205d4cbb6f534)
 - [x] F147 — Golden-path CLI (T001–T003 complete; accepted 2026-07-24 · live review PASS — ACCEPTED · Evidence job f147-closure · package remedy-review-20260724-121604-READY_FOR_REVIEW.zip · SHA-256 953410ab4c6aa0d4b639f96d797b7e66e93e36378338a6f9885e736d0e26ea17 · accepted HEAD 6869d82ffb68385d563f1c17d6f86c6590698ea9)
-- [x] F148 — Project scoping everywhere
+- [~] F148 — Project scoping everywhere
 
 ## Tier 1 — Self-Build Bootstrap
 
