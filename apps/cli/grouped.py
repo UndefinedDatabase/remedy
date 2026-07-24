@@ -318,8 +318,8 @@ class _SilentParser(argparse.ArgumentParser):
         raise SystemExit(status)
 
 
-_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run"}
-_ALWAYS_INJECT: set[str] = {"init"}
+_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run", "status": "run"}
+_ALWAYS_INJECT: set[str] = {"init", "status"}
 
 
 def build_parser() -> argparse.ArgumentParser:

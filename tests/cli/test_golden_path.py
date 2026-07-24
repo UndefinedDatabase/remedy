@@ -146,3 +146,114 @@ class TestDoMission:
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert data["mission"] == long_mission
+
+
+# ── T002: remedy status ───────────────────────────────────────────────
+
+
+def _run_status(repo, env, extra_args=None):
+    return subprocess.run(
+        [*_CLI, "status", *(extra_args or [])],
+        capture_output=True, text=True, timeout=30,
+        cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+    )
+
+
+class TestStatus:
+    def test_status_no_project_exits_0(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+
+        result = _run_status(repo, env)
+        assert result.returncode == 0
+        assert "No project registered" in result.stderr
+
+    def test_status_empty_project_exits_0(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_status(repo, env)
+        assert result.returncode == 0
+        assert "No jobs." in result.stdout
+
+    def test_status_shows_planned_job(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+        _run_do(repo, env, "build a readme")
+
+        result = _run_status(repo, env)
+        assert result.returncode == 0
+        assert "planned" in result.stdout
+
+    def test_status_json_schema(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+        _run_do(repo, env, "build a readme")
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+
+        data = json.loads(result.stdout)
+        assert "jobs" in data
+        assert "decisions_open" in data
+        assert isinstance(data["decisions_open"], int)
+        assert "runtime" in data
+        assert "stops_pending" in data
+        assert isinstance(data["stops_pending"], int)
+        assert data["project"] is not None
+
+    def test_status_json_no_project(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+
+        data = json.loads(result.stdout)
+        assert data["project"] is None
+        assert data["jobs"] == {}
+
+    def test_status_shows_multiple_jobs(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+        _run_do(repo, env, "first task")
+        _run_do(repo, env, "second task")
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+
+        data = json.loads(result.stdout)
+        planned_jobs = data["jobs"].get("planned", [])
+        assert len(planned_jobs) >= 2
+
+    def test_status_corrupt_file_handled(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        jobs_dir = tmp_path / "data" / "jobs"
+        jobs_dir.mkdir(parents=True, exist_ok=True)
+        (jobs_dir / "bad.json").write_text("{corrupt")
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+
+        data = json.loads(result.stdout)
+        assert data.get("degraded") is True
+        assert len(data.get("skipped_files", [])) >= 1
+
+    def test_status_text_sections(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+        _run_do(repo, env, "build a readme")
+
+        result = _run_status(repo, env)
+        assert result.returncode == 0
+        assert "Decisions:" in result.stdout
+        assert "Runtime:" in result.stdout
+        assert "Stops:" in result.stdout

@@ -89,6 +89,7 @@ GROUPS: dict[str, GroupDef] = {
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "do": GroupDef("do", "Do", "Run, report, and promote Remedy tasks."),
+    "status": GroupDef("status", "Status", "Project status overview."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
@@ -174,6 +175,19 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--print-only", "Show what would happen without writing anything", required=False, is_option=True, is_flag=True),
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
+    ),
+
+    # ── status ──────────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="status.run",
+        group_id="status",
+        subcommand="run",
+        description="Show project status overview.",
+        action_class="read_only",
+        args=(
+            ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
+        ),
+        supports_json=True,
     ),
 
     # ── job ──────────────────────────────────────────────────────────────
