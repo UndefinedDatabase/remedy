@@ -9,10 +9,10 @@ text; deterministic labeled heuristic fallback without a provider.
 ## Checklist
 - [x] T001 — JobIntake schema + validation round-trip tests + job
       field + backward-compat fixture
-- [ ] T002 — intake module + prompt builder + shared single-shot
-      call + fake-provider tests
-- [ ] T003 — do-path integration + job show rendering + golden-path
-      smoke update
+- [x] T002 — intake module (run_intake + heuristic_intake) using
+      run_structured_call + fake-provider tests (31 tests)
+- [x] T003 — do-path integration (intake before planning, --no-llm
+      flag) + job show rendering + golden-path smoke (36 tests)
 
 ## Current Step
-T001.
+All tasks complete. Ready for handback.

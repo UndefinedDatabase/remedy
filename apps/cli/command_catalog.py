@@ -2408,6 +2408,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--max-provider-calls", "Maximum provider calls for this job (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--max-wall-clock-minutes", "Maximum wall-clock minutes for this job (F018 budget)", required=False, is_option=True, default=None),
             ArgDef("--deadline", "UTC deadline for this job as ISO 8601 string (F018 budget)", required=False, is_option=True, default=None),
+            ArgDef("--no-llm", "Force heuristic intake (no LLM provider call)", required=False, is_option=True, is_flag=True),
         ),
         may_mutate_repo=False,
         may_execute_commands=False,

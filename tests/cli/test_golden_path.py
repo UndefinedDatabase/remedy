@@ -66,6 +66,7 @@ class TestDoMission:
         out = result.stdout
         assert "Job:" in out
         assert "State: planned" in out
+        assert "Intake: heuristic" in out
         assert "analyze_requirements" in out
         assert "Next: remedy status" in out
         assert "plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)" in out
@@ -81,6 +82,8 @@ class TestDoMission:
         data = json.loads(result.stdout)
         assert data["state"] == "planned"
         assert data["mission"] == "build a readme"
+        assert data["intake"]["source"] == "heuristic"
+        assert data["intake"]["goal"]
         assert len(data["tasks"]) == 3
         assert data["next_command"] == "remedy status"
         assert "plan_label" in data
@@ -147,6 +150,40 @@ class TestDoMission:
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert data["mission"] == long_mission
+
+    def test_no_llm_flag_uses_golden_path(self, tmp_path):
+        """--no-llm is allowed on the golden path (forces heuristic intake)."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_do(repo, env, "build a readme", ["--no-llm", "--json"])
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        assert data["intake"]["source"] == "heuristic"
+        assert data["next_command"] == "remedy status"
+
+    def test_intake_persisted_on_job(self, tmp_path):
+        """Intake dict is persisted on the saved job."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_do(repo, env, "fix src/main.py and update README.md", ["--json"])
+        assert result.returncode == 0, result.stderr
+        job_id = json.loads(result.stdout)["job_id"]
+
+        show = subprocess.run(
+            [*_CLI, "job", "show", job_id],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert show.returncode == 0, show.stderr
+        job_data = json.loads(show.stdout)
+        assert job_data["intake"] is not None
+        assert job_data["intake"]["schema_v"] == "ji1"
+        assert job_data["intake"]["goal"]
+        assert "src/main.py" in job_data["intake"]["context_refs"]
 
     def test_explicit_do_run_skips_golden_path(self, tmp_path):
         """Explicit `remedy do run "goal"` → legacy path, not golden path."""

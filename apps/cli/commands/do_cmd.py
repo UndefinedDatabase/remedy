@@ -167,6 +167,7 @@ def _cmd_do_mission(
     *,
     repo: str = ".",
     json_output: bool = False,
+    no_llm: bool = False,
 ) -> None:
     """Golden-path: mission string → planned job (F147 T001)."""
     if not mission or not mission.strip():
@@ -183,12 +184,16 @@ def _cmd_do_mission(
         sys.exit(3)
 
     from packages.core.models import Job
+    from packages.orchestration.intake import heuristic_intake
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
+
+    intake_result = heuristic_intake(mission)
 
     job = Job(
         name=mission[:80], mission=mission, user_prompt=mission,
         project_id=str(project.id),
+        intake=intake_result.value.model_dump(),
     )
     result = plan_job(job)
     save_job(result.job)
@@ -208,6 +213,10 @@ def _cmd_do_mission(
             "project_slug": project.slug,
             "state": result.job.state.value,
             "mission": mission,
+            "intake": {
+                "source": intake_result.source,
+                "goal": intake_result.value.goal,
+            },
             "tasks": [
                 {"task_id": str(t.id), "description": t.description}
                 for t in result.job.tasks
@@ -221,6 +230,7 @@ def _cmd_do_mission(
     print(f"Project: {project.slug}")
     print(f"Mission: {display_mission}")
     print(f"State: {result.job.state.value}")
+    print(f"Intake: {intake_result.source}")
     print("Tasks:")
     for t in result.job.tasks:
         task_type = t.inputs.get("task_type", "")
@@ -263,14 +273,16 @@ def _cmd_do(
     deadline: str | None = None,
     injected_default: bool = False,
     truly_bare: bool = False,
+    no_llm: bool = False,
 ) -> None:
     # --- Bare-mission golden path (F147) ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides --json/--repo appeared
-    # in the raw argv. This catches `do "x" --autonomy-level 1` (explicit
-    # flag at default value) which value-equality checks cannot distinguish.
+    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm
+    # appeared in the raw argv. This catches `do "x" --autonomy-level 1`
+    # (explicit flag at default value) which value-equality checks cannot
+    # distinguish.
     if truly_bare and goal:
-        _cmd_do_mission(goal, repo=repo, json_output=json_output)
+        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm)
         return
 
     # --- Budget resolution (always runs — catches config-only budgets) ---
@@ -2650,6 +2662,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         deadline=getattr(args, "deadline", None),
+        no_llm=getattr(args, "no_llm", False),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",
