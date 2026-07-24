@@ -162,6 +162,27 @@ class TestClarificationTruncation:
         assert questions == [f"q{i}" for i in range(MAX_CLARIFICATIONS)]
 
 
+class TestTruncatedInputOverride:
+    def test_llm_false_overridden_when_prompt_truncated(self):
+        """R-0114: oversized mission + LLM returns truncated_input=false → true."""
+        oversized = "x" * (_MAX_PROMPT_MISSION_CHARS + 500)
+        payload = {**_VALID_INTAKE, "truncated_input": False}
+        r = run_intake(oversized, _make_call_fn(json.dumps(payload)))
+        assert r.source == "llm"
+        assert r.value.truncated_input is True
+
+    def test_llm_true_preserved_when_prompt_truncated(self):
+        oversized = "x" * (_MAX_PROMPT_MISSION_CHARS + 500)
+        payload = {**_VALID_INTAKE, "truncated_input": True}
+        r = run_intake(oversized, _make_call_fn(json.dumps(payload)))
+        assert r.value.truncated_input is True
+
+    def test_short_mission_not_forced(self):
+        payload = {**_VALID_INTAKE, "truncated_input": False}
+        r = run_intake("short mission", _make_call_fn(json.dumps(payload)))
+        assert r.value.truncated_input is False
+
+
 class TestOnCallHook:
     def test_hook_fires(self):
         calls = []

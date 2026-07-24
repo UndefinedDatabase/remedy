@@ -87,7 +87,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: pending
 
 ### R-0114: LLM path drops the deterministic truncated_input flag
-- **Status**: Open
+- **Status**: Done: R-0114
 - **Severity**: Medium
 - **Area**: packages/orchestration/intake.py (run_intake)
 - **Details**: run_intake truncates the prompt but discards the

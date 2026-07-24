@@ -147,6 +147,11 @@ def run_intake(
 
     assert isinstance(outcome.value, JobIntake)
     value = _truncate_clarifications(outcome.value)
+    _, was_truncated = _truncate_mission(mission)
+    if was_truncated and not value.truncated_input:
+        data = value.model_dump()
+        data["truncated_input"] = True
+        value = JobIntake.model_validate(data)
     return IntakeResult(
         value=value,
         source="llm",
