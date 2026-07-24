@@ -188,6 +188,32 @@ class TestDoMission:
         assert job_data["intake"]["schema_v"] == "ji1"
         assert job_data["intake"]["goal"]
         assert "src/main.py" in job_data["intake"]["context_refs"]
+        assert "--- Intake ---" in show.stderr
+        assert "Goal:" in show.stderr
+        assert "src/main.py" in show.stderr
+
+    def test_job_show_silent_for_legacy_job(self, tmp_path, monkeypatch):
+        """Legacy job without intake → no Intake block."""
+        from packages.core.models import Job
+        from packages.orchestration.storage import save_job
+
+        env = _env(tmp_path)
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        legacy = Job(
+            name="legacy",
+            user_prompt="do something",
+            state="pending",
+        )
+        save_job(legacy)
+        repo = _git_repo(tmp_path)
+
+        show = subprocess.run(
+            [*_CLI, "job", "show", str(legacy.id)],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert show.returncode == 0
+        assert "--- Intake ---" not in show.stderr
 
     def test_explicit_do_run_skips_golden_path(self, tmp_path):
         """Explicit `remedy do run "goal"` → legacy path, not golden path."""

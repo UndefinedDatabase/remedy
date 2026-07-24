@@ -28,7 +28,7 @@ History lives in git and in each feature's evidence zip.
   tested; suites rerun by reviewer (147 green). Resolved.
 
 ### R-0111: job show intake rendering missing (ordered in T003, absent, unreported)
-- **Status**: Open
+- **Status**: Done: R-0111
 - **Severity**: High
 - **Area**: apps/cli/commands/job.py (_cmd_show_job)
 - **Details**: T003 ordered "remedy job show renders the intake
