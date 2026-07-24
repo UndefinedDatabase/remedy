@@ -40,6 +40,16 @@ def _cmd_status(
         all_projects=all_projects,
         cwd=repo,
     )
+
+    if scope.project_id and scope.project_id != (str(project.id) if project else None):
+        from uuid import UUID
+
+        from packages.orchestration.project_registry import load_project
+        try:
+            project_slug = load_project(UUID(scope.project_id)).slug
+        except Exception:
+            project_slug = scope.project_id[:8]
+
     jobs, degraded, skipped_files = scoped_jobs(scope)
 
     by_state: dict[str, list[dict]] = defaultdict(list)

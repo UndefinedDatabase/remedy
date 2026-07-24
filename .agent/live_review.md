@@ -203,7 +203,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
 
 ### R-0108: status --project label shows cwd project, not selected one
-- **Status**: Open
+- **Status**: Done: R-0108
 - **Severity**: Low
 - **Area**: apps/cli/commands/status_cmd.py (_cmd_status)
 - **Details**: `remedy status --project B` while cwd is inside project A

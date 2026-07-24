@@ -232,6 +232,7 @@ class TestScopedListingsCLI:
         _init_project(repo_a, env)
         _init_project(repo_b, env)
         slug_a = _get_project_slug(repo_a, env)
+        slug_b = _get_project_slug(repo_b, env)
 
         _create_job(repo_a, env, "alpha status job")
         _create_job(repo_b, env, "beta status job")
@@ -241,6 +242,15 @@ class TestScopedListingsCLI:
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert data["scope"] == slug_a
+
+        # --project B from cwd=A: project slug shows B, not A (R-0108)
+        result = _run_cli(
+            ["status", "--project", slug_b, "--json"], env, cwd=str(repo_a),
+        )
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["project"] == slug_b
+        assert data["scope"] == slug_b
 
         # --all-projects
         result = _run_cli(["status", "--all-projects", "--json"], env, cwd=str(repo_a))
