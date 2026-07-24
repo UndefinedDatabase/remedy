@@ -110,7 +110,7 @@ git and in each feature's evidence zip.
   produces, honestly.
 
 ### R-0091: handback without raw verification transcripts; baseline mischaracterized
-- **Status**: Open
+- **Status**: Done: R-0091
 - **Severity**: Low
 - **Area**: .agent/handoff.md
 - **Details**: Instructed handback format (raw command/exit/output
