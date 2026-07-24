@@ -32,6 +32,10 @@
    (e.g. "Resolved when the complete bundle with all listed gates exists
    on disk at the current head") that the worker applies verbatim once the
    predicate holds — so persist → fix → resolve → package fits ONE relay.
+   Producer pitfalls that block packaging: verification_runs
+   entries need a sha256-hex output_hash, valid VerificationTests
+   totals, and the full-length base_commit SHA — abbreviated or
+   missing values surface only at zip time.
 2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
    canonical sequence below. Verify committed_review_subject spans
    BASE..HEAD and the zip import check passes. Record `package <filename>`
@@ -58,6 +62,9 @@
    and Built State touch-up. Then the AGENTS.md PR workflow; description
    carries what/why, key decisions, how to review, changed-files table,
    latest verdict, open-findings count, runtime actuals.
+   The closure handback includes grep proof that every piece of
+   reviewer-authored applied text (STATUS line, resolution
+   entries) is byte-identical to the authored paste block.
 6. **Merge — deferred to the next feature.** The closure PR is NOT merged
    in this session. It merges at the next feature's start via the Open PR
    Gate on Window 1's instruction; the gap is the operator's manual-review
@@ -93,6 +100,12 @@ SHA-256 hashes.
 
 **Output:** The script prints the final zip filename and SHA-256. Record both
 in the STATUS line (`package <filename>` and `SHA-256 <hash>`).
+
+**Evidence-dir commit ordering:** the evidence dir is committed
+AFTER the READY zip exists, never before. A pre-committed
+evidence dir puts evidence files into the base..HEAD review
+subject and the package builds BLOCKED_EVIDENCE ("evidence is
+not authoritative") — F147 attempt-2 lesson.
 
 ## Failure honesty
 If any precondition fails, the feature does NOT close. In order: another
