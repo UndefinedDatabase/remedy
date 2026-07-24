@@ -161,7 +161,7 @@ git and in each feature's evidence zip.
   `remedy job stop <unknown id>` still exits with job-not-found.
 
 ### R-0093: explicitly typed flags at default values still enter the golden path
-- **Status**: Open
+- **Status**: Done: R-0093
 - **Severity**: Low
 - **Area**: apps/cli/grouped.py (injection site), apps/cli/commands/do_cmd.py (_is_bare_mission)
 - **Details**: The value-equality guard cannot distinguish "flag not

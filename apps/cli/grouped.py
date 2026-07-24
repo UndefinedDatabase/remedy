@@ -538,7 +538,24 @@ def main(argv: list[str] | None = None) -> None:
         print(render_error(f"remedy {args._group} {args._subcmd}", f"Unrecognized arguments: {' '.join(unknown)}"), file=sys.stderr)
         sys.exit(2)
 
+    _truly_bare = False
+    if _did_inject and raw and raw[0] == "do" and len(raw) >= 3:
+        _BARE_ALLOWED = {"--json", "--repo"}
+        tail = raw[3:]
+        _truly_bare = True
+        i = 0
+        while i < len(tail):
+            tok = tail[i]
+            if tok.startswith("-"):
+                if tok in _BARE_ALLOWED:
+                    if tok == "--repo" and i + 1 < len(tail):
+                        i += 1
+                else:
+                    _truly_bare = False
+                    break
+            i += 1
     args._injected_default = _did_inject
+    args._truly_bare = _truly_bare
 
     command_id = getattr(args, "_command_id", None)
     if command_id is None:

@@ -182,6 +182,26 @@ class TestDoMission:
         data = json.loads(result.stdout)
         assert data["next_command"] == "remedy status"
 
+    def test_explicit_default_flag_skips_golden_path(self, tmp_path):
+        """Mission + --autonomy-level 1 (default value) → legacy path."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_do(repo, env, "build a readme", ["--autonomy-level", "1"])
+        assert "Next: remedy status" not in result.stdout
+
+    def test_bare_mission_with_repo_uses_golden_path(self, tmp_path):
+        """Bare mission + --repo . → golden path (--repo allowed)."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        result = _run_do(repo, env, "build a readme", ["--repo", str(repo), "--json"])
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["next_command"] == "remedy status"
+
 
 # ── T002: remedy status ───────────────────────────────────────────────
 

@@ -1151,6 +1151,21 @@ review-remedy slash command". The _contains_local_path scanner in review_subject
 false-positives on slash-command names in commit subjects, blocking make_review_zip.
 Separate fix tracked as R-0083 (not F081 scope).
 
+## 2026-07-24: R-0093 — argv-level bare detection replaces value-equality guard (F147)
+Golden-path detection moved from value-equality checks in _cmd_do to
+argv scanning in grouped.py. After the mission token, any arg starting
+with "-" that is not --json or --repo (+ its value) makes the
+invocation non-bare. Passed as `args._truly_bare`. This is immune to
+the "flag typed at its default value" problem: `do "x" --autonomy-level 1`
+has a "-"-starting token → legacy path.
+
+Default reconciliation: the catalog ArgDef for do.run --autonomy-level
+says default="2", the handler fallback says `or 2`, the old _is_bare_mission
+guard said `== 1` (wrong). With argv-level detection, the check is gone
+and the catalog default="2" is authoritative. The handler fallback `or 2`
+matches. No code change needed — the three-source conflict is resolved by
+removing the value from the detection path entirely.
+
 ## 2026-07-24: R-0092 — job_stop_cmd falls back to Core Job store (F147)
 Two job stores exist: pingpong_job (task_jobs/) for v1 executor jobs, and
 storage (jobs/) for Core Jobs created by the golden-path `remedy do "<mission>"`.
