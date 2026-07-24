@@ -2594,6 +2594,8 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--job", "Only this job's evidence export", required=False, is_option=True),
             ArgDef("--since", "Only post-mortems at or after this ISO-8601 timestamp", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
             _JSON_OPT,
         ),
         may_mutate_repo=False,

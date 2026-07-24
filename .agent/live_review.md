@@ -147,7 +147,7 @@ History lives in git and in each feature's evidence zip.
   deliverable.
 
 ### R-0105: stats failures unscoped and missing from the listing audit
-- **Status**: Open
+- **Status**: Done: R-0105
 - **Severity**: Medium
 - **Area**: stats.failures command, .agent/handoff.md audit table
 - **Details**: Feature names "failure stats" as a consumer to scope.
