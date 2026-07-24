@@ -69,7 +69,7 @@ class TestDoMission:
         out = result.stdout
         assert "Job:" in out
         assert "State: planned" in out
-        assert "Intake: heuristic" in out
+        assert "intake: heuristic (forced by --no-llm)" in out
         assert "analyze_requirements" in out
         assert "Next: remedy status" in out
         assert "plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)" in out
@@ -86,6 +86,7 @@ class TestDoMission:
         assert data["state"] == "planned"
         assert data["mission"] == "build a readme"
         assert data["intake"]["source"] == "heuristic"
+        assert data["intake"]["fallback_reason"] == "forced"
         assert data["intake"]["goal"]
         assert len(data["tasks"]) == 3
         assert data["next_command"] == "remedy status"
@@ -284,6 +285,7 @@ class TestLLMIntakeWiring:
 
         data = json.loads(captured.getvalue())
         assert data["intake"]["source"] == "llm"
+        assert data["intake"]["fallback_reason"] == ""
         assert data["intake"]["goal"] == "Fake-provider goal for R-0112."
 
         job_id = data["job_id"]
@@ -324,6 +326,7 @@ class TestLLMIntakeWiring:
 
         data = json.loads(captured.getvalue())
         assert data["intake"]["source"] == "heuristic"
+        assert data["intake"]["fallback_reason"] == "provider_unavailable"
 
     def test_no_llm_skips_provider(self, tmp_path, monkeypatch):
         """--no-llm → zero provider attempts even if provider available."""
@@ -353,6 +356,7 @@ class TestLLMIntakeWiring:
 
         data = json.loads(captured.getvalue())
         assert data["intake"]["source"] == "heuristic"
+        assert data["intake"]["fallback_reason"] == "forced"
         assert len(provider_called) == 0, "provider must not be called with --no-llm"
 
 

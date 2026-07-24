@@ -71,7 +71,7 @@ History lives in git and in each feature's evidence zip.
 - **Reviewer**: pending
 
 ### R-0113: degraded-mode label deviates from specified P6 wording
-- **Status**: Open
+- **Status**: Done: R-0113
 - **Severity**: Medium
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission output)
 - **Details**: Prints "Intake: heuristic". Feature specifies the

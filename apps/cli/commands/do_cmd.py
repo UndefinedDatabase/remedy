@@ -190,7 +190,11 @@ def _cmd_do_mission(
 
     intake_result = None
     intake_traces: list = []
-    if not no_llm:
+    intake_fallback_reason = ""
+    if no_llm:
+        intake_result = heuristic_intake(mission)
+        intake_fallback_reason = "forced"
+    else:
         call_fn = make_provider_call_fn()
         if call_fn is not None:
             from packages.orchestration.prompt_trace import build_trace_entry
@@ -211,9 +215,12 @@ def _cmd_do_mission(
                 ))
 
             intake_result = run_intake(mission, call_fn, on_call=_record_intake_call)
+            if intake_result.source == "heuristic":
+                intake_fallback_reason = "provider_error"
 
-    if intake_result is None:
-        intake_result = heuristic_intake(mission)
+        if intake_result is None:
+            intake_result = heuristic_intake(mission)
+            intake_fallback_reason = "provider_unavailable"
 
     job = Job(
         name=mission[:80], mission=mission, user_prompt=mission,
@@ -250,6 +257,7 @@ def _cmd_do_mission(
             "intake": {
                 "source": intake_result.source,
                 "goal": intake_result.value.goal,
+                "fallback_reason": intake_fallback_reason,
             },
             "tasks": [
                 {"task_id": str(t.id), "description": t.description}
@@ -264,7 +272,17 @@ def _cmd_do_mission(
     print(f"Project: {project.slug}")
     print(f"Mission: {display_mission}")
     print(f"State: {result.job.state.value}")
-    print(f"Intake: {intake_result.source}")
+    if intake_result.source == "llm":
+        intake_label = "intake: llm"
+    elif intake_fallback_reason == "forced":
+        intake_label = "intake: heuristic (forced by --no-llm)"
+    elif intake_fallback_reason == "provider_unavailable":
+        intake_label = "intake: heuristic fallback (provider unavailable)"
+    elif intake_fallback_reason == "provider_error":
+        intake_label = "intake: heuristic fallback (provider unavailable)"
+    else:
+        intake_label = f"intake: {intake_result.source}"
+    print(intake_label)
     print("Tasks:")
     for t in result.job.tasks:
         task_type = t.inputs.get("task_type", "")
