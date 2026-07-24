@@ -4,7 +4,7 @@
 Three-command mental model: `remedy do "<mission>"` → planned job;
 `remedy status` → honest overview; help pins the golden path.
 
-## Status: DONE
+## Status: CLOSURE
 
 - [x] T001 — do path (mission → planned job)
 - [x] T002 — remedy status
