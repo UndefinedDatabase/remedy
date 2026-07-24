@@ -67,7 +67,7 @@ git and in each feature's evidence zip.
   request stop via the F011 path → status shows stops_pending == 1.
 
 ### R-0088: decisions_open computed with empty events — event-derived decisions never counted
-- **Status**: Open
+- **Status**: Done: R-0088
 - **Severity**: Medium
 - **Area**: apps/cli/commands/status_cmd.py (decisions section)
 - **Details**: list_decisions(j, []) passes an empty event list; all

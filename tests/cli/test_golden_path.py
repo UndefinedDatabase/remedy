@@ -335,6 +335,34 @@ class TestStatus:
         data = json.loads(result.stdout)
         assert data["stops_pending"] >= 1
 
+    def test_status_decisions_with_events(self, tmp_path):
+        """Event-derived decisions counted when events exist."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do_result = _run_do(repo, env, "build a readme", ["--json"])
+        assert do_result.returncode == 0
+        job_id = json.loads(do_result.stdout)["job_id"]
+
+        runs_dir = tmp_path / "data" / "runs" / job_id
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        event = json.dumps({
+            "event": "test_run_completed",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "metadata": {
+                "status": "failed",
+                "command": "pytest",
+                "test_run_id": "tr-001",
+            },
+        })
+        (runs_dir / "run.jsonl").write_text(event + "\n")
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["decisions_open"] >= 1
+
 
 # ── T003: help pinning + golden-path smoke ────────────────────────────
 

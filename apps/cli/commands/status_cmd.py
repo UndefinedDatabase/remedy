@@ -48,8 +48,12 @@ def _cmd_status(
     decisions_open = 0
     for j in jobs:
         try:
+            from packages.orchestration.data_paths import resolve_data_root
             from packages.orchestration.decision_queue import list_decisions
-            decs = list_decisions(j, [])
+            from packages.orchestration.timeline import load_run_events
+
+            events = load_run_events(resolve_data_root(), j.id)
+            decs = list_decisions(j, events)
             decisions_open += sum(1 for d in decs if d.status == "open")
         except Exception:
             pass
