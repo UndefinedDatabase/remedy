@@ -238,7 +238,7 @@ git and in each feature's evidence zip.
 - **Expected fix**: `git add remedy-job-evidence-f147/` in commit 2.
 
 ### R-0097: `remedy job stop` does not resolve short IDs — human golden path breaks at stop
-- **Status**: Open
+- **Status**: Done: R-0097
 - **Severity**: Medium
 - **Area**: apps/cli/commands/job_stop_cmd.py (validate/lookup order, Core-store fallback)
 - **Details**: do/status text UI display ONLY 8-char short IDs; job stop
