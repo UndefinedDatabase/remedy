@@ -27,6 +27,7 @@
 | external builder | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | system |
 | external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
 | model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
+| project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | proof chain | [proof-chain.md](system/proof-chain.md) | system |
 | provider trust | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | system |
 | provider trust | [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | system |
@@ -87,6 +88,7 @@ Specifications and design documents for the built system.
 | [overnight-mission-contract-review-repair-spine-v0.md](system/overnight-mission-contract-review-repair-spine-v0.md) | Overnight mission contract + review/repair *(overnight superseded)* |
 | [progress-ledger-v1.md](system/progress-ledger-v1.md) | Progress ledger for tracking feature/task state |
 | [project-brain.md](system/project-brain.md) | Project brain knowledge graph |
+| [project-scoping-v0.md](system/project-scoping-v0.md) | Project-scoped job listings and creation guard |
 | [proof-chain.md](system/proof-chain.md) | Proof chain for file provenance |
 | [provider-patch-materialization-v0.md](system/provider-patch-materialization-v0.md) | Materializing accepted provider patches into intents |
 | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | Provider trust gate + external repair intake |

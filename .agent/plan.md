@@ -10,7 +10,7 @@ Every job is attributable to exactly one project via an additive
 - [x] T002 — project_scope module + legacy rule + unit tests
 - [x] R-0098..R-0101 — reviewer repairs (ruff fix, creation guard, attach_job, precomputed legacy)
 - [x] T003 — CLI integration across all listed commands + adopt + fixture
-- [ ] T004 — docs + status view scoped label
+- [x] T004 — docs + status view scoped label
 
 ## Current Step
-T004 — docs + status view scoped label.
+All tasks complete. Ready for handback.
