@@ -1,261 +1,250 @@
-# Live Review — F147 Golden-path CLI
+# Live Review — F148 Project scoping everywhere
 
-Per-feature ledger. Findings are authored by the reviewer (Window 1)
-and applied here verbatim by the worker. R-XXXX IDs continue
-monotonically across features (last used: R-0084). History lives in
-git and in each feature's evidence zip.
+Per-feature ledger. Findings are authored by the reviewer
+(Window 1) and applied here verbatim by the worker. R-XXXX IDs
+continue monotonically across features (last used: R-0097).
+History lives in git and in each feature's evidence zip.
 
-### R-0085: bare-mission intercept silently drops explicit flags; legacy do-run path unreachable for bare form
+### R-0098: new ruff I001 introduced; red verification crossed against stop rule
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: apps/cli/commands/do_cmd.py:401 (F148-inserted import block)
+- **Details**: Branch adds an I001 at the import block inserted in
+  _cmd_do (main: 6 ruff errors in do_cmd.py, branch: 7 — confirmed by
+  reviewer ruff-diff). The T001 verification required ruff green on
+  touched files; worker reported the new error honestly but continued
+  into T002 against the instructed stop-on-red rule.
+- **Evidence**: reviewer ran ruff on branch and main-baseline worktree;
+  only new item: do_cmd.py:401:5 I001.
+- **Expected fix**: Sort/format ONLY the F148-inserted import block at
+  do_cmd.py:401. Pre-existing 6 errors stay untouched (main parity, no
+  scope creep). Acceptance: ruff-diff vs main shows zero NEW errors.
+- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
+
+### R-0099: creation guard not wired — jobs still creatable without resolvable project
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: apps/cli/commands/job.py (_cmd_create_job), apps/cli/commands/do_cmd.py (_cmd_do)
+- **Details**: Feature rule "creation without a resolvable project is
+  only legal with an explicit --project" is enforced nowhere:
+  (a) `remedy job create` resolves from the --project flag ONLY — no
+  env/cwd precedence — and with no flag creates an unscoped job
+  silently; (b) flag given but project unloadable → prints a warning
+  and STILL creates the job unscoped; (c) `remedy do run` with no flag
+  and no resolvable project proceeds with project_id=None. Deviation
+  was recorded in decisions.md (not silent), but the spec stands.
+- **Evidence**: job.py:53-63 (load only when project_id flag truthy;
+  warning path sets project_id=None and proceeds); do_cmd.py:410-417.
+- **Expected fix**: (a) job create resolves via the full
+  select_project(--project, cwd) precedence (flag/env/cwd) like do;
+  (b) both entry points: no resolvable project AND no --project flag →
+  error exit 3 with hint naming `remedy init` and `--project`;
+  (c) --project given but not found/unloadable → error exit 3 (never
+  warn-and-create-unscoped); (d) library funcs run_do/run_autorun keep
+  permissive optional params (fixture/test paths) — record that scoping
+  decision in decisions.md. Tests: each entry point × (resolvable,
+  unresolvable+no-flag → exit 3, bad flag → exit 3). Existing tests
+  that created jobs without any project must be updated (register a
+  fixture project or pass --project); report the honest count of
+  updated tests in the handoff.
+- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
+
+### R-0100: legacy do path never attaches job to the registry
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: apps/cli/commands/do_cmd.py (_cmd_do), packages/orchestration/project_registry.py usage
+- **Details**: The legacy do path sets project_id on the Job but never
+  calls attach_job — registry attachment is one-directional, violating
+  the feature edge case "Registry job attachment stays consistent in
+  both directions (creation path calls it)". Golden path and job create
+  attach; legacy do does not.
+- **Evidence**: grep attach_job — do_cmd.py:197 (golden), job.py:108;
+  nothing on the run_do path.
+- **Expected fix**: _cmd_do keeps the resolved project object; after a
+  successful run_do with a resolved project, attach_job(project,
+  <result job id>) + save_project. Test: `remedy do run` inside a
+  fixture project → registry lists the created job id.
+- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
+
+### R-0101: per-job registry read in the scope filter
+- **Status**: Resolved
+- **Severity**: Low
+- **Area**: packages/orchestration/project_scope.py (job_in_scope/_project_count)
+- **Details**: job_in_scope calls _project_count() for every legacy
+  job, so one listing triggers one registry read per legacy job.
+- **Evidence**: project_scope.py:80-84 with scoped_jobs filter loop.
+- **Expected fix**: Resolve the single-project condition ONCE per
+  scoped_jobs call (precompute count or visibility flag; optional
+  parameter on job_in_scope keeping the current signature working).
+  Existing tests keep passing; no behavior change.
+- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
+
+### R-0102: worker wrote STATUS [x] — unauthorized closure claim
 - **Status**: Resolved
 - **Severity**: High
-- **Area**: apps/cli/commands/do_cmd.py (_cmd_do / _is_bare_mission), apps/cli/grouped.py
-- **Details**: _is_bare_mission checks only a subset of do.run flags. Any
-  invocation carrying unchecked flags — --max-total-tokens,
-  --max-provider-calls, --max-wall-clock-minutes, --deadline, --mode,
-  --max-rounds, --test-command, --timeout-profile, --provider-timeout-sec,
-  --repair-rounds, --keep-staging, --stream-evidence,
-  --claude-cli-write-mode, --max-output-chars, or explicit
-  --autonomy-level 0/1/2 / --max-cycles 3 — still matches and is rerouted
-  to the plan-only golden path; those flags are SILENTLY IGNORED (F018
-  budget flags dropped without error). Explicit `remedy do run "<goal>"`
-  is indistinguishable from bare `remedy do "<goal>"`, so the legacy v1
-  executor path is unreachable for a bare goal. Silent-scope-change class.
-- **Evidence**: diff 2e4a8c3 — _is_bare_mission omits the flags above;
-  reviewer traced `remedy do "x" --max-total-tokens 500` → intercept True.
-- **Expected fix**: Golden path triggers ONLY when the invocation is truly
-  bare: mission plus at most --json/--repo, and the `run` subcommand was
-  injected (not typed). Detect explicitness robustly (injection marker set
-  in grouped.py at the _DEFAULT_COMMAND injection site, or argparse None-
-  sentinel defaults for the intercept-relevant flags) — worker's choice,
-  recorded in .agent/decisions.md. ANY other explicit flag or explicit
-  `run` → legacy path unchanged. Tests: bare mission → golden path;
-  mission + --max-total-tokens → legacy path (budgets honored, not
-  dropped); explicit `do run "goal"` → legacy path; bare + --json →
-  golden path.
+- **Area**: docs/roadmap/STATUS.md (F148 line), process authority
+- **Details**: The T003/T004 bundle explicitly forbade closure work
+  ("no STATUS [x]"). Worker committed `[~]` → `[x]` in 9198d27 with no
+  evidence ref — violating the STATUS grammar ([x] REQUIRES PR/
+  evidence ref), the closure protocol (evidence job + fresh zip are
+  closure preconditions), and the rule that only reviewer-authored
+  text sets verdicts/STATUS states. Disclosed in the handoff table,
+  so not silent — but it is an unverified completion claim (block
+  condition). Second occurrence of the R-0095 class within two
+  features.
+- **Evidence**: git diff 9198d27 STATUS.md hunk; block text of the
+  repair+T003+T004 round.
+- **Expected fix**: Revert the line to EXACTLY:
+  `- [~] F148 — Project scoping everywhere`
+  Touch nothing else in the file. The [x] line will be authored by the
+  reviewer in the closure round, never by the worker.
+- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
 
-### R-0086: corrupt runtime state reported as "stopped" — spec demands "unknown" + warning
+### R-0103: adopt is bulk instead of explicit per-job; dead --all flag
 - **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/status_cmd.py (runtime section)
-- **Details**: load_state() returns None for BOTH absent and unreadable
-  state files; status maps None → "stopped". An unreadable/corrupt
-  runtime.json therefore reports "stopped" with no warning. Feature spec:
-  degrade to "unknown" WITH a warning, never a crash. Acceptance case
-  "corrupt runtime state file" has no test.
-- **Evidence**: dev_server.py:700-722 (load_state_result distinguishes
-  STATE_ABSENT / STATE_UNREADABLE; load_state discards it);
-  status_cmd.py maps None → "stopped".
-- **Expected fix**: Use load_state_result(repo): STATE_ABSENT → "stopped";
-  STATE_UNREADABLE (or any parse error) → "unknown" + warning line (text)
-  and a warning field (json). Test: write garbage runtime.json into the
-  runtime state path → status exit 0, runtime "unknown", warning present.
-
-### R-0087: stops_pending counts blocker stop-reasons, not F011 kill-switch stop requests
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/status_cmd.py (stops section)
-- **Details**: Counts stop_reasons.list_stop_reasons(job_id) with
-  status=="active" — the blocker/sr:* subsystem. "Pending stop requests"
-  in the feature = F011 kill-switch requests
-  (packages/orchestration/safe_points.stop_requested, control/jobs/<id>/
-  stop.json). A pending `remedy job stop` is invisible; blocker reasons
-  are miscounted as stops.
-- **Evidence**: status_cmd.py stops loop; safe_points.py:389
-  (stop_requested — "is a stop pending?").
-- **Expected fix**: stops_pending = count of non-terminal jobs where
-  safe_points.stop_requested(str(job.id)) is not None. Test: create job →
-  request stop via the F011 path → status shows stops_pending == 1.
-
-### R-0088: decisions_open computed with empty events — event-derived decisions never counted
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/status_cmd.py (decisions section)
-- **Details**: list_decisions(j, []) passes an empty event list; all
-  event-derived decision classes are structurally invisible, so
-  decisions_open undercounts. Canonical pattern exists in decision.py:
-  load_run_events(resolve_data_root(), job_id) → list_decisions(job,
-  events).
-- **Evidence**: decision.py:32-41 vs status_cmd.py decisions loop.
-- **Expected fix**: Reuse the decision.py pattern per job (import, no
-  copy). Test: fixture producing at least one open decision visible via
-  `remedy decision list` must yield decisions_open >= 1 in status.
-
-### R-0089: status omits the "all projects" label and per-section next-command lines
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/status_cmd.py
-- **Details**: Feature spec: until scoping lands, status shows all jobs
-  and SAYS "all projects" (label now, filter later) — label absent in
-  text and json. Spec also: "Each section ends with the single most
-  useful next command" — no section prints one.
-- **Evidence**: status_cmd.py full read — no "all projects", no next-
-  command lines.
-- **Expected fix**: Jobs section labeled "all projects" (text header +
-  json field, e.g. scope: "all projects"). Each section ends with one
-  next command (jobs → remedy do/decision list <id> as fits; decisions →
-  remedy decision list <id>; runtime/stops → the most useful existing
-  command). Assert label + at least one next-command line in tests.
-
-### R-0090: golden-path smoke lacks the stop leg
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: tests/cli/test_golden_path.py (TestGoldenPathSmoke)
-- **Details**: Feature T003 smoke = init → do → status → STOP → status
-  shows the stopped job. Implemented smoke ends at the first status; the
-  kill-switch leg is untested.
-- **Evidence**: test_golden_path.py:284-309.
-- **Expected fix**: Extend the smoke: `remedy job stop <id>` (F011) →
-  second status run shows the job's stop as pending (stops_pending >= 1
-  after R-0087) or the stopped state — assert whichever the machinery
-  produces, honestly.
-
-### R-0091: handback without raw verification transcripts; baseline mischaracterized
-- **Status**: Resolved
-- **Severity**: Low
-- **Area**: .agent/handoff.md
-- **Details**: Instructed handback format (raw command/exit/output
-  transcripts, baseline vs final) was not delivered; baseline stated as
-  "21 failed (all docs/missing-file; unrelated)" — the real main baseline
-  is 20 failed incl. catalog-classification and runtime-timeout tests.
-  Numbers were honest in aggregate (reviewer verified zero new failures)
-  but the handoff must carry the evidence, not characterizations.
-- **Evidence**: handoff.md "Test baseline" section vs reviewer's
-  main-worktree run (20 failed / 962 passed; identical ruff 432).
-- **Expected fix**: Next handback includes raw transcripts: exact
-  commands, exit codes, tail output for golden-path run, full-gate run on
-  branch AND the stated main baseline comparison. Fixed by the handback
-  itself; mark Done when delivered.
-
-### R-0092: `remedy job stop` cannot find golden-path jobs; smoke silently bypassed the broken CLI
-- **Status**: Resolved
-- **Reviewer**: independently verified — `remedy job stop <golden-path job>` exit 0 +
-  request recorded, status stops_pending 1, unknown id exit 3; smoke runs the real CLI;
-  pingpong contract untouched (tests/cli/test_job_stop.py green); kill-switch suites' only
-  2 failures are byte-identical on main (pre-existing). Resolved at adf25b5.
 - **Severity**: High
-- **Area**: apps/cli/commands/job_stop_cmd.py (_load_job), tests/cli/test_golden_path.py (smoke),
-.agent/decisions.md
-- **Details**: _load_job() reads only pingpong_job.load_job_plan — the
-  pingpong store. Golden-path jobs are saved via storage.save_job into
-  data/jobs/ and are invisible to the kill-switch CLI:
-  `remedy job stop <id>` exits with "Error: job not found" for every job
-  `remedy do "<mission>"` creates, while `remedy status` lists the same
-  job. Feature T003 explicitly gates on the kill switch; the specified
-  smoke (init → do → status → stop → status) was designed to catch this.
-  The delivered smoke instead calls safe_points.request_stop() in-process
-  — a silent workaround of a real defect, unrecorded in decisions.md and
-  absent from the handoff. Deviation from the authored R-0090 fix
-  ("`remedy job stop <id>`") without report.
-- **Evidence**: reviewer probe: do "stop probe" → job saved in
-  data/jobs/, status lists it; `remedy job stop <uuid>` → "Error: job not
-  found", stops_pending stays 0. job_stop_cmd.py:26-29 (pingpong-only
-  lookup); test_golden_path.py smoke uses request_stop(job_id) library
-  call.
-- **Expected fix**: (a) job_stop_cmd._load_job falls back: pingpong
-  load_job_plan miss → storage.load_job (map Core Job onto what the
-  handler needs: state.value for the stopped/terminal checks; keep exit
-  codes and output contract identical for pingpong jobs). A stop request
-  on a planned/pending golden-path job must succeed via request_stop and
-  report ok. (b) Smoke test replaced: the stop leg runs the REAL CLI
-  `remedy job stop <job_id>` (subprocess, like every other leg), asserts
-  exit 0, then asserts status stops_pending >= 1. The in-process
-  request_stop call is removed. (c) decisions.md entry documenting the
-  store-split discovery and the fallback design. (d) Direct test:
-  `remedy job stop <golden-path job>` exits 0 and records the request;
-  `remedy job stop <unknown id>` still exits with job-not-found.
+- **Area**: apps/cli/commands/project.py (_cmd_project_adopt), apps/cli/command_catalog.py (project.adopt)
+- **Details**: Feature: "`remedy project adopt <job_id>` claims one
+  explicitly — never automatically (P2)." Delivered command takes NO
+  job_id and adopts EVERY unscoped job in one sweep — mass claiming is
+  exactly the automatism the spec forbids. The catalog's `--all` flag
+  is dead: the handler's adopt_all parameter is never read, so the
+  flag changes nothing.
+- **Evidence**: project.py:394-427 (loop over all unscoped, adopt_all
+  unused); catalog project.adopt entry.
+- **Expected fix**: `remedy project adopt <job_id>` — positional,
+  required. Accept the displayed 8-char short ID (reuse the R-0097
+  resolution approach against the Core store). Exactly one job:
+  unknown id → exit 3; already-scoped job → error exit 2 naming its
+  project; success → set job.project_id, save_job, attach_job,
+  save_project, print confirmation. Remove the bulk path and the
+  dead --all flag from handler and catalog. --project flag may stay
+  to pick the target project (default: resolved current project).
+- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
 
-### R-0093: explicitly typed flags at default values still enter the golden path
+### R-0104: acceptance fixture test missing — unit mocks instead of real CLI
 - **Status**: Resolved
-- **Reviewer**: probed `do "x" --autonomy-level 1` → legacy executor; `do --json "x"` /
-  flag-before-mission → group help (injection never fires — no silent drop); bare + --json /
-  --repo → golden path. Default-of-record reconciliation noted in decisions.md. Resolved at adf25b5.
-- **Severity**: Low
-- **Area**: apps/cli/grouped.py (injection site), apps/cli/commands/do_cmd.py (_is_bare_mission)
-- **Details**: The value-equality guard cannot distinguish "flag not
-  given" from "flag given at its default": `remedy do "x"
-  --autonomy-level 1` (runtime default) routes to the plan-only golden
-  path although the user explicitly configured an executor run. Same for
-  --max-cycles 3, --mode staged, etc. Non-default values route legacy
-  correctly (verified). Related fragility: the guard hard-codes
-  autonomy_level == 1 while the catalog ArgDef claims default "2" and the
-  handler fallback says `or 2` — three sources of truth for one default.
-- **Evidence**: reviewer probe: `do "probe" --autonomy-level 1` → golden
-  path output; `do run "probe"` → legacy (marker works); catalog line
-  2368 default="2" vs runtime autonomy 1.
-- **Expected fix**: Decide bareness at the injection site where raw argv
-  is visible: golden path ONLY if, after the mission token, no argument
-  token starts with "-" except --json/--repo (and their values). Pass
-  that single boolean through (extend the existing _injected_default
-  marker or a second marker); the value-equality checks in _cmd_do may
-  stay as a defensive belt or be dropped — worker's call, noted in
-  decisions.md. Reconcile the default-of-record: make the catalog ArgDef,
-  the handler fallback, and reality agree (document in decisions.md which
-  one is authoritative). Tests: `do "x" --autonomy-level 1` → legacy;
-  `do "x" --json` → golden; `do "x" --repo .` → golden.
+- **Severity**: High
+- **Area**: tests/cli/test_scoped_listings.py
+- **Details**: The instructed test was: two FIXTURE projects, two jobs
+  each, ONE looped test running every audited command as a real CLI
+  subprocess, asserting default isolation, --all-projects showing all
+  four, --project B from anywhere; plus adopt persistence and orphaned
+  rendering. Delivered file re-tests job_in_scope/scoped_jobs with
+  in-process mocks — T002 coverage duplicated, CLI layer (flag
+  parsing, catalog wiring, output labels) untested. Feature acceptance
+  is unverified.
+- **Evidence**: test_scoped_listings.py:1-130 — no subprocess, no
+  fixture projects, no adopt/orphaned tests.
+- **Expected fix**: Rewrite as real-CLI tests (subprocess pattern from
+  test_golden_path.py, isolated data root/env): register two fixture
+  projects A/B with two jobs each; loop over the audited scoped
+  commands (job list, status, stats failures after R-0105) asserting:
+  from inside A only A's jobs; --all-projects shows all four;
+  --project B from anywhere shows B's. Plus: legacy job hidden in the
+  two-project case, visible under --all with "(unscoped)"; `project
+  adopt <short-id>` persists across a second listing; a job whose
+  project file was deleted renders "(orphaned: <id>)" and the listing
+  exits 0. Keep the unit tests if you wish, but the CLI tests are the
+  deliverable.
+- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
 
-### R-0094: closure handback omitted two BLOCKED_EVIDENCE zip builds
-- **Status**: Done: R-0094
+### R-0105: stats failures unscoped and missing from the listing audit
+- **Status**: Resolved
 - **Severity**: Medium
-- **Area**: .agent/handoff.md (closure handback honesty)
-- **Details**: remedy-review-20260724-120731-BLOCKED_EVIDENCE.zip
-  (blocking: final_verifier VerificationTests total missing/invalid;
-  verification_tests.json runs[0].output_hash not sha256 hex) and
-  remedy-review-20260724-121236-BLOCKED_EVIDENCE.zip (evidence not
-  authoritative) exist on disk; the handoff reports only the READY
-  build. STATUS_closure_protocol §2: the zip attempt's outcome is
-  recorded in the handoff BEFORE handback, always. Repeat of the
-  R-0082/R-0091 class — second handback-honesty lapse within F147.
-- **Evidence**: reviewer read .review_zip_manifest.json of both BLOCKED
-  zips; handoff Evidence section lists only 121604-READY.
-- **Expected fix**: Handoff rewrite lists ALL three build attempts with
-  status and blocking reasons, plus what changed between attempts
-  (bundle regenerated). Covered by commit 2 below.
+- **Area**: stats.failures command, .agent/handoff.md audit table
+- **Details**: Feature names "failure stats" as a consumer to scope.
+  `remedy stats failures` aggregates across all jobs' post-mortems and
+  got no scope flags; the listing-command audit table omits the stats
+  group entirely (and the token.* commands, which ARE per-job and
+  belong in the table as honest N/A rows).
+- **Evidence**: catalog stats.failures entry (--job/--since only);
+  handoff audit table.
+- **Expected fix**: Add --project/--all-projects to stats.failures;
+  select contributing jobs through scoped_jobs (derived post-mortem
+  data joins via job id — schema unchanged). Default: current-project
+  scope, same legacy rule. Update the audit table with stats.* and
+  token.* rows in the next handoff.
+- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
 
-### R-0095: STATUS line applied non-verbatim — live-review verdict misstated
-- **Status**: Done: R-0095
-- **Severity**: Low
-- **Area**: docs/roadmap/STATUS.md (F147 line)
-- **Details**: Authored text said `live review PASS — ACCEPTED`; applied
-  line says `live review PASS_WITH_RISKS — ACCEPTED`. The live-review
-  verdict is PASS (all 9 findings Resolved, no documented risks);
-  PASS_WITH_RISKS is the final_verifier verdict inside the package.
-  Worker edit outside the four authorized fill slots — only reviewer-
-  authored text sets verdicts.
-- **Evidence**: STATUS.md F147 line vs the closure-round paste block.
-- **Expected fix**: Replace the segment `live review PASS_WITH_RISKS —
-  ACCEPTED` with `live review PASS — ACCEPTED`. Touch nothing else on
-  the line. Covered by commit 2.
-
-### R-0096: evidence dir not committed as instructed; deviation without decisions.md rationale
-- **Status**: Done: R-0096
-- **Severity**: Low
-- **Area**: remedy-job-evidence-f147/ (branch provenance)
-- **Details**: Closure step 3 instructed committing the evidence dir
-  (F081 precedent). Handoff discloses "on disk, not committed" but no
-  rationale was recorded. Branch-committed evidence keeps gate JSONs
-  reviewable outside the zip.
-- **Evidence**: git status showed the dir untracked at closure handback.
-- **Expected fix**: `git add remedy-job-evidence-f147/` in commit 2.
-
-### R-0097: `remedy job stop` does not resolve short IDs — human golden path breaks at stop
-- **Status**: Done: R-0097
+### R-0106: status has no scope flags — escape hatch missing
+- **Status**: Resolved
 - **Severity**: Medium
-- **Area**: apps/cli/commands/job_stop_cmd.py (validate/lookup order, Core-store fallback)
-- **Details**: do/status text UI display ONLY 8-char short IDs; job stop
-  requires the full UUID (short id dies at validate_job_id or lookup →
-  "job not found"). Full UUID reachable only via --json, so the on-screen
-  golden path init → do → status → stop fails for a human. Found by the
-  operator's meta-review; reviewer probes had used --json UUIDs — probe
-  rule updated (text-UI values only).
-- **Evidence**: operator live probe: `remedy job stop <short-id-from-
-  status>` → error; text output of do/status carries no full UUID.
-- **Expected fix**: Before UUID validation, if the input is a 4–32 char
-  hex prefix and no exact pingpong/Core match exists, resolve it against
-  the Core store (data/jobs/*.json filenames): unique prefix match →
-  full UUID proceeds through the existing path; ambiguous → exit 2
-  listing the candidate short ids; no match → existing not-found path
-  (exit 3). Exact full-ID behavior for both stores unchanged. Test that
-  uses EXCLUSIVELY the screen-displayed ID: parse "Job: <short>" from
-  `remedy do` TEXT output, run `remedy job stop <short>`, assert exit 0
-  + status text shows the pending stop; plus an ambiguity test (two jobs
-  sharing a prefix → exit 2) and unknown-prefix → exit 3.
+- **Area**: apps/cli/commands/status_cmd.py, command catalog (status entry)
+- **Details**: Feature: every listing command defaults to the current
+  project WITH an explicit --all-projects escape hatch. status is
+  auto-scoped only; `remedy status --all-projects` and
+  `remedy status --project B` do not exist.
+- **Evidence**: status_cmd.py:34 resolve_scope(cwd=repo) — no flags;
+  catalog status entry unchanged.
+- **Expected fix**: Add the shared --project/--all-projects fragment
+  to status (catalog + handler → resolve_scope(project_flag=...,
+  all_projects=...)); text and json scope labels follow the chosen
+  scope. Tests for both flags.
+- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
+
+### R-0107: display rules incomplete — no orphaned label, unscoped label only under --all
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: apps/cli/commands/job.py (_scope_label), listing display paths
+- **Details**: "(orphaned: <id>)" for jobs whose project was deleted
+  is implemented nowhere — such jobs render unlabeled or with the
+  generic "(project: xxxxxxxx)" suffix under --all. "(unscoped)" is
+  shown only under --all-projects; in the single-project scoped view
+  legacy jobs appear with no label. Feature requires both labels and
+  crash-free listings.
+- **Evidence**: _scope_label (job.py:126-135) — no registry existence
+  check; early return "" when not all_projects.
+- **Expected fix**: Build the known-project-id set ONCE per listing
+  (one registry read); label rules: project_id None → "(unscoped)"
+  wherever the job is listed; project_id not in known set →
+  "(orphaned: <first 8 chars>)"; listing never crashes. Covered by
+  the R-0104 CLI tests.
+- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
+
+### R-0108: status --project label shows cwd project, not selected one
+- **Status**: Resolved
+- **Severity**: Low
+- **Area**: apps/cli/commands/status_cmd.py (_cmd_status)
+- **Details**: `remedy status --project B` while cwd is inside project A
+  prints "Project: A" and "Jobs (A):" because the slug display comes from
+  resolve_project(repo) (cwd-based), not from the scoped project. JSON
+  output has the same bug: "project" key shows A's slug. Functional
+  filtering is correct — only B's jobs appear — but the label misleads.
+- **Evidence**: status_cmd.py:25 (resolve_project(repo) before scope) vs
+  line 38 (resolve_scope with project_flag).
+- **Expected fix**: When scope.project_id is set and differs from the
+  cwd project, look up the scoped project's slug for display. JSON
+  "project" key and text "Project:" line must both reflect the scoped
+  project. "scope" key already correct.
+- **Reviewer**: independently verified — scoped slug loaded via
+  load_project(scope.project_id), fallback to id prefix; test
+  asserts --project B from cwd A shows B in json project+scope.
+  Resolved at 36193e6.
+
+### R-0109: stats-failures scoping untested
+- **Status**: Resolved
+- **Severity**: Low
+- **Area**: packages/orchestration/failure_stats.py (collect_failures),
+  tests/cli/test_scoped_listings.py
+- **Details**: R-0105 wired --project/--all-projects to stats failures
+  and added the job_ids filter to collect_failures, but no test covers
+  either path — the filter or the CLI flag parsing. A regression in the
+  filter logic would pass CI silently.
+- **Evidence**: grep -r "collect_failures" tests/ returns zero hits; grep
+  -r "stats.*failures" tests/cli/test_scoped_listings.py returns zero.
+- **Expected fix**: (a) Unit test: call collect_failures(job_ids={…})
+  with fixture data confirming jobs outside the set are excluded.
+  (b) CLI subprocess test in test_scoped_listings: two-project fixture,
+  `remedy stats failures --project B` returns only B's data (or empty
+  if B has no failures, but must not include A's).
+- **Reviewer**: independently verified — unit test proves the
+  job_ids filter (2 jobs → 1 → 0 with empty set); CLI test
+  proves flag plumbing. Documented residual (Low): the CLI test
+  asserts exit/shape, not post-mortem counts; the unit test
+  carries the filter proof. Resolved at 36193e6.
+
+## Verdict — F148 live review
+PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109
+all Resolved. One documented Low residual on R-0109 (CLI
+stats-test depth). Authored by reviewer, round 5.

@@ -1,5 +1,50 @@
 # Decisions
 
+## 2026-07-24: project adopt takes explicit job_id, not bulk (F148 R-0103)
+`remedy project adopt <job_id>` adopts exactly one job. Short 8-char IDs
+resolved via Core store filename prefix match (same pattern as job stop
+R-0097). Already-scoped jobs rejected with exit 2 naming current owner.
+No bulk/--all path — spec forbids automatic mass claiming.
+
+## 2026-07-24: Creation guard wired at CLI layer only (F148 R-0099)
+Both `_cmd_create_job` (job.py) and `_cmd_do` (do_cmd.py) now resolve via
+`select_project(flag, cwd)` with full precedence (flag/env/cwd). No
+resolvable project → error exit 3 with fix-it hint. Library functions
+(`run_do`, `run_autorun`) keep permissive `project_id: str | None = None`
+parameters — test harnesses and internal callers pass project_id directly
+without going through select_project. Existing subprocess tests updated
+with fixture project registration (14 tests in test_do_runtime.py).
+
+## 2026-07-24: project_id field placement on Job model (F148 T001)
+`project_id: str | None = None` added to Job model between `metadata` and
+`fences`. Type is `str` (not UUID) to match project registry's string-based
+job_ids list and avoid cross-package UUID import coupling. `None` means
+legacy (no project attribution). Pydantic default handles backward compat:
+old JSON without the field loads with `project_id=None`.
+
+## 2026-07-24: Legacy do_run path gets optional project_id (F148 T001)
+The v1 `run_do` path (called from `_cmd_do` when not in golden-path mode)
+previously had no project context. Added `project_id: str | None = None`
+parameter. The CLI resolves project via `select_project(flag, repo)` before
+calling `run_do`. If no project is resolvable and no `--project` flag was
+given, `project_id` is None — the legacy path permits this because it
+predates project identity. The golden path (`_cmd_do_mission`) continues
+to require a project (exits 3 if missing).
+
+## 2026-07-24: continue_from_node prefers Job.project_id over metadata (F148 T001)
+Changed `parent_project_id` resolution from `parent_job.metadata.get("project_id")`
+to `parent_job.project_id or parent_job.metadata.get("project_id")`.
+The model field is authoritative; metadata fallback covers pre-F148 jobs
+that stored project_id only in metadata.
+
+## 2026-07-24: project_scope.py placement — packages/orchestration/ (F148 T002)
+Module placed beside storage.py and project_registry.py in
+`packages/orchestration/`. Exports: `ProjectScope` (scope dataclass),
+`resolve_scope` (CLI flag/env/cwd precedence), `job_in_scope` (predicate),
+`scoped_jobs` (THE single listing helper). Legacy rule implemented per
+spec: None-project jobs visible only under --all-projects or when
+exactly one project exists.
+
 /review-remedy command added — reviewer bootstraps review rounds from disk, operator no longer relays completion reports
 
 ## 2026-07-23: Config template lives in init_cmd.py, written before registry (F081 T002)

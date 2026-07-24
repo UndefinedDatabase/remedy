@@ -157,6 +157,8 @@ _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
+_PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
+_ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +188,8 @@ CATALOG: tuple[CommandEntry, ...] = (
         description="Show project status overview.",
         action_class="read_only",
         args=(
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
         supports_json=True,
@@ -214,8 +218,9 @@ CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.list",
         group_id="job",
         subcommand="list",
-        description="List all jobs.",
+        description="List jobs (scoped to current project by default).",
         action_class="read_only",
+        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
     ),
     CommandEntry(
         command_id="job.show",
@@ -507,6 +512,18 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--repo", "Path to the repository", required=True, is_option=True),
         ),
         related=("project.current",),
+    ),
+    CommandEntry(
+        command_id="project.adopt",
+        group_id="project",
+        subcommand="adopt",
+        description="Adopt a single unscoped job into the current project.",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--project", "Project slug or UUID", required=False, is_option=True),
+        ),
+        related=("project.attach-job", "job.list"),
     ),
 
     # ── patch ────────────────────────────────────────────────────────────
@@ -2579,6 +2596,8 @@ CATALOG: tuple[CommandEntry, ...] = (
         args=(
             ArgDef("--job", "Only this job's evidence export", required=False, is_option=True),
             ArgDef("--since", "Only post-mortems at or after this ISO-8601 timestamp", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
             _JSON_OPT,
         ),
         may_mutate_repo=False,

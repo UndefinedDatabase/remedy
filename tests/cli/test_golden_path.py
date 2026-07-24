@@ -333,7 +333,7 @@ class TestStatus:
 
         result = _run_status(repo, env)
         assert result.returncode == 0
-        assert "Jobs (all projects):" in result.stdout
+        assert "Jobs (" in result.stdout
         assert "Decisions:" in result.stdout
         assert "Runtime:" in result.stdout
         assert "Stops:" in result.stdout
@@ -347,7 +347,7 @@ class TestStatus:
         result = _run_status(repo, env, ["--json"])
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        assert data["scope"] == "all projects"
+        assert data["scope"] in ("all projects", data.get("project", "current"))
 
     def test_status_stop_pending(self, tmp_path):
         """F011 stop request via CLI → stops_pending counts it."""

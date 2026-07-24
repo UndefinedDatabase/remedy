@@ -118,6 +118,7 @@ def collect_failures(
     root: str | Path | None = None,
     job: str = "",
     since: str = "",
+    job_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Scan the evidence exports and return the stable aggregation result.
 
@@ -156,6 +157,8 @@ def collect_failures(
 
     for job_dir in job_dirs:
         if job and job_dir.name != job:
+            continue
+        if job_ids is not None and job_dir.name not in job_ids:
             continue
         counters.jobs_scanned += 1
 

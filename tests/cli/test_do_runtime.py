@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,6 +44,22 @@ def _create_temp_repo(tmp_path: Path) -> Path:
              "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "t@t"},
     )
     return repo
+
+
+def _register_fixture_project(data_dir: Path, repo: Path) -> None:
+    """Write a minimal project JSON so select_project resolves for repo."""
+    projects = data_dir / "projects"
+    projects.mkdir(parents=True, exist_ok=True)
+    pid = str(uuid4())
+    real_repo = str(repo.resolve())
+    (projects / f"{pid}.json").write_text(json.dumps({
+        "id": pid,
+        "name": "test-project",
+        "slug": "test-project",
+        "repo_paths": [real_repo],
+        "canonical_repo_path": real_repo,
+        "job_ids": [],
+    }))
 
 
 def _run_grouped_cli(
@@ -77,6 +94,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -91,6 +109,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -106,6 +125,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -127,6 +147,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -143,6 +164,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -161,6 +183,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -176,6 +199,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -191,6 +215,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -207,6 +232,7 @@ class TestDoRuntime:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -227,6 +253,7 @@ class TestDoRuntimeText:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -253,6 +280,7 @@ class TestDoRuntimeTruth:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -271,6 +299,7 @@ class TestDoRuntimeTruth:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -289,6 +318,7 @@ class TestDoRuntimeTruth:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),
@@ -306,6 +336,7 @@ class TestDoRuntimeTruth:
         repo = _create_temp_repo(tmp_path)
         data_dir = tmp_path / "data"
         data_dir.mkdir()
+        _register_fixture_project(data_dir, repo)
 
         result = _run_grouped_cli(
             ["do", "safe docs change", "--repo", str(repo),

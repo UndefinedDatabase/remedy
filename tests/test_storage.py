@@ -98,3 +98,41 @@ def test_data_dir_root_param_or_legacy_compat():
     src = Path(_storage_mod.__file__).read_text()
     assert "root" in src, "storage.py must support root= parameter"
     assert "_DATA_DIR" in src, "storage.py must have legacy _DATA_DIR compat"
+
+
+def test_backward_compat_job_without_project_id(storage):
+    """Old job JSON without project_id loads with project_id=None (F148)."""
+    import json
+    from pathlib import Path
+    from uuid import uuid4
+
+    job_id = uuid4()
+    old_json = {
+        "id": str(job_id),
+        "name": "legacy-job",
+        "user_prompt": "old prompt",
+        "created_at": "2026-01-01T00:00:00Z",
+        "tasks": [],
+        "state": "pending",
+        "artifacts": [],
+        "budget": {"max_tokens": None, "max_cost_usd": None},
+        "metadata": {},
+        "fences": None,
+        "budgets": None,
+    }
+    jobs_dir = Path(storage._DATA_DIR)
+    jobs_dir.mkdir(parents=True, exist_ok=True)
+    (jobs_dir / f"{job_id}.json").write_text(json.dumps(old_json))
+
+    loaded = load_job(job_id)
+    assert loaded.id == job_id
+    assert loaded.name == "legacy-job"
+    assert loaded.project_id is None
+
+
+def test_job_with_project_id_roundtrip(storage):
+    """Job with project_id persists and loads correctly (F148)."""
+    job = Job(name="scoped-job", project_id="abc-123-project")
+    save_job(job)
+    loaded = load_job(job.id)
+    assert loaded.project_id == "abc-123-project"

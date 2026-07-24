@@ -215,5 +215,6 @@ class Job(BaseModel):
     artifacts: list[Artifact] = Field(default_factory=list)
     budget: Budget = Field(default_factory=Budget)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    project_id: str | None = None
     fences: JobFences | None = None
     budgets: JobBudgets | None = None

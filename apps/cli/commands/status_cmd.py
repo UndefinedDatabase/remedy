@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 def _cmd_status(
     *,
     repo: str = ".",
+    project_flag: str | None = None,
+    all_projects: bool = False,
     json_output: bool = False,
 ) -> None:
     """Golden-path: project status overview. Always exits 0."""
@@ -31,9 +33,24 @@ def _cmd_status(
     else:
         project_slug = project.slug
 
-    from packages.orchestration.storage import list_jobs_safe
+    from packages.orchestration.project_scope import resolve_scope, scoped_jobs
 
-    jobs, degraded, skipped_files = list_jobs_safe()
+    scope = resolve_scope(
+        project_flag=project_flag,
+        all_projects=all_projects,
+        cwd=repo,
+    )
+
+    if scope.project_id and scope.project_id != (str(project.id) if project else None):
+        from uuid import UUID
+
+        from packages.orchestration.project_registry import load_project
+        try:
+            project_slug = load_project(UUID(scope.project_id)).slug
+        except Exception:
+            project_slug = scope.project_id[:8]
+
+    jobs, degraded, skipped_files = scoped_jobs(scope)
 
     by_state: dict[str, list[dict]] = defaultdict(list)
     for j in jobs:
@@ -110,7 +127,7 @@ def _cmd_status(
     if json_output:
         result = {
             "project": project_slug,
-            "scope": "all projects",
+            "scope": "all projects" if scope.all_projects else (project_slug or "current"),
             "jobs": dict(by_state),
             "decisions_open": decisions_open,
             "runtime": runtime_status,
@@ -128,7 +145,8 @@ def _cmd_status(
         print(f"Project: {project_slug}")
     print()
 
-    print("Jobs (all projects):")
+    scope_label = "all projects" if scope.all_projects else (project_slug or "current project")
+    print(f"Jobs ({scope_label}):")
     if not jobs and not degraded:
         print("  No jobs.")
     else:
@@ -168,6 +186,8 @@ def _cmd_status(
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "status.run": lambda args: _cmd_status(
         repo=getattr(args, "repo", None) or ".",
+        project_flag=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
     ),
 }

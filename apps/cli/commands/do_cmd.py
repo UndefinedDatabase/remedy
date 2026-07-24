@@ -186,9 +186,16 @@ def _cmd_do_mission(
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
-    job = Job(name=mission[:80], mission=mission, user_prompt=mission)
+    job = Job(
+        name=mission[:80], mission=mission, user_prompt=mission,
+        project_id=str(project.id),
+    )
     result = plan_job(job)
     save_job(result.job)
+
+    from packages.orchestration.project_registry import attach_job, save_project
+    attach_job(project, str(result.job.id))
+    save_project(project)
 
     short_id = str(result.job.id)[:8]
     display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
@@ -396,6 +403,20 @@ def _cmd_do(
         run_do,
         summarize_do_run,
     )
+    from packages.orchestration.project_registry import ProjectNotFoundError, select_project
+
+    _resolved_project = None
+    try:
+        _resolved_project, _src = select_project(project, repo)
+        _resolved_project_id = str(_resolved_project.id)
+    except ProjectNotFoundError:
+        print(
+            "Error: no project found. Run: remedy init\n"
+            "  or pass --project <slug-or-id>",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
     try:
         result = run_do(
             goal, repo,
@@ -403,10 +424,16 @@ def _cmd_do(
             max_loops=max_cycles,
             stop_before_apply=True,
             budgets=budgets,
+            project_id=_resolved_project_id,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
+
+    if _resolved_project is not None and result.job_id:
+        from packages.orchestration.project_registry import attach_job, save_project
+        attach_job(_resolved_project, result.job_id)
+        save_project(_resolved_project)
 
     if json_output:
         print(json.dumps(export_do_run_json(result, contract=result._contract), indent=2))

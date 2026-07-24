@@ -33,6 +33,8 @@ def _validate_since(raw: str) -> str:
 
 
 def _cmd_stats_failures(*, job: str = "", since: str = "",
+                        project: str | None = None,
+                        all_projects: bool = False,
                         json_output: bool = False) -> None:
     from packages.orchestration.failure_stats import (
         FailureStatsError,
@@ -42,8 +44,16 @@ def _cmd_stats_failures(*, job: str = "", since: str = "",
 
     since = _validate_since(since)
 
+    scoped_ids = None
+    if not job:
+        from packages.orchestration.project_scope import resolve_scope, scoped_jobs
+        scope = resolve_scope(project_flag=project, all_projects=all_projects)
+        if not scope.all_projects:
+            jobs, _degraded, _skipped = scoped_jobs(scope)
+            scoped_ids = {str(j.id) for j in jobs}
+
     try:
-        result = collect_failures(job=job or "", since=since)
+        result = collect_failures(job=job or "", since=since, job_ids=scoped_ids)
     except FailureStatsError as exc:
         # An unreadable evidence root is not "no failures". Saying so would be the exact
         # lie this feature exists to prevent.
@@ -63,6 +73,8 @@ COMMAND_HANDLERS = {
     "stats.failures": lambda args: _cmd_stats_failures(
         job=getattr(args, "job", "") or "",
         since=getattr(args, "since", "") or "",
+        project=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
     ),
 }

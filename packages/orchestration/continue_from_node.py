@@ -57,7 +57,7 @@ def continue_from_node(
         raise ValueError(f"node not found in parent brain graph: {safe_id!r}")
 
     # Determine inherited metadata
-    parent_project_id = parent_job.metadata.get("project_id")
+    parent_project_id = parent_job.project_id or parent_job.metadata.get("project_id")
     parent_repo = parent_job.metadata.get("target_repo")
 
     # Build child job
@@ -94,6 +94,7 @@ def continue_from_node(
         tasks=tasks,
         artifacts=[],
         metadata=child_meta,
+        project_id=parent_project_id,
     )
 
     save_job(child_job)
