@@ -12,10 +12,12 @@ from uuid import UUID
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.data_paths import resolve_data_root
 from packages.orchestration.job_runner import PlanJobResult
-from packages.orchestration.storage import JobNotFoundError, list_jobs, load_job, save_job
+from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
 if TYPE_CHECKING:
     import argparse
+
+    from packages.orchestration.project_scope import ProjectScope
 
 _SAFE_TASK_TYPE_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 
@@ -110,13 +112,34 @@ def _cmd_create_job(
         save_project(project)
 
 
-def _cmd_list_jobs() -> None:
-    jobs = list_jobs()
+def _cmd_list_jobs(
+    *,
+    project: str | None = None,
+    all_projects: bool = False,
+) -> None:
+    from packages.orchestration.project_scope import resolve_scope, scoped_jobs
+
+    scope = resolve_scope(project_flag=project, all_projects=all_projects)
+    jobs, degraded, skipped = scoped_jobs(scope)
     if not jobs:
         print("No jobs found.")
         return
     for job in jobs:
-        print(f"{job.id}  {job.state.value:<12}  {job.created_at.isoformat()}  {job.name}")
+        label = _scope_label(job, scope)
+        print(f"{job.id}  {job.state.value:<12}  {job.created_at.isoformat()}  {job.name}{label}")
+    if skipped:
+        print(f"  ({len(skipped)} unreadable job file(s) skipped)", file=sys.stderr)
+
+
+def _scope_label(job: Job, scope: ProjectScope) -> str:
+    """Return display suffix for scoped listings."""
+    if not scope.all_projects:
+        return ""
+    if job.project_id is None:
+        return "  (unscoped)"
+    if scope.project_id and job.project_id != scope.project_id:
+        return f"  (project: {job.project_id[:8]})"
+    return ""
 
 
 def _cmd_show_job(job_id_str: str) -> None:
@@ -1542,7 +1565,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         deadline=getattr(args, "deadline", None),
     ),
-    "job.list": lambda args: _cmd_list_jobs(),
+    "job.list": lambda args: _cmd_list_jobs(
+        project=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
+    ),
     "job.show": lambda args: _cmd_show_job(args.job_id),
     "job.attach-repo": lambda args: _cmd_attach_repo(args.job_id, args.repo_path),
     "job.permit": lambda args: _cmd_set_permission(args.job_id, args.action, args.permission),

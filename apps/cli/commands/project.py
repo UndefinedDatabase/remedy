@@ -391,6 +391,45 @@ def _cmd_project_attach_repo(
     }, indent=2))
 
 
+def _cmd_project_adopt(
+    *,
+    project_flag: str | None = None,
+    adopt_all: bool = False,
+) -> None:
+    from packages.orchestration.project_registry import (
+        ProjectNotFoundError,
+        attach_job,
+        save_project,
+        select_project,
+    )
+
+    try:
+        project, _src = select_project(project_flag, ".")
+    except ProjectNotFoundError:
+        print(
+            "Error: no project found. Run: remedy init\n"
+            "  or pass --project <slug-or-id>",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+    all_jobs = list_jobs()
+    unscoped = [j for j in all_jobs if j.project_id is None]
+    if not unscoped:
+        print("No unscoped jobs to adopt.")
+        return
+
+    adopted = 0
+    for job in unscoped:
+        job.project_id = str(project.id)
+        save_job(job)
+        attach_job(project, str(job.id))
+        adopted += 1
+
+    save_project(project)
+    print(f"Adopted {adopted} job(s) into project {project.slug or project.id}.")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.create": lambda args: _cmd_create_project(args.name, getattr(args, "description", None)),
     "project.list": lambda args: _cmd_list_projects(),
@@ -407,5 +446,9 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "project.attach": lambda args: _cmd_project_attach_repo(
         args.repo,
         project_flag=getattr(args, "project", None),
+    ),
+    "project.adopt": lambda args: _cmd_project_adopt(
+        project_flag=getattr(args, "project", None),
+        adopt_all=getattr(args, "all", False),
     ),
 }
