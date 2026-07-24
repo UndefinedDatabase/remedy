@@ -316,6 +316,25 @@ class TestStatus:
         assert "Runtime:" in result.stdout
         assert "Stops:" in result.stdout
 
+    def test_status_stop_pending(self, tmp_path, monkeypatch):
+        """F011 stop request → stops_pending counts it."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do_result = _run_do(repo, env, "build a readme", ["--json"])
+        assert do_result.returncode == 0
+        job_id = json.loads(do_result.stdout)["job_id"]
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        from packages.orchestration.safe_points import request_stop
+        request_stop(job_id)
+
+        result = _run_status(repo, env, ["--json"])
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["stops_pending"] >= 1
+
 
 # ── T003: help pinning + golden-path smoke ────────────────────────────
 

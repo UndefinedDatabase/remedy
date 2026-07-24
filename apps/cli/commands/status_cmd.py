@@ -54,12 +54,15 @@ def _cmd_status(
         except Exception:
             pass
 
+    _TERMINAL = {"completed", "failed", "cancelled"}
     stops_pending = 0
     for j in jobs:
+        if j.state.value in _TERMINAL:
+            continue
         try:
-            from packages.orchestration.stop_reasons import list_stop_reasons
-            stops = list_stop_reasons(str(j.id))
-            stops_pending += sum(1 for s in stops if s.status == "active")
+            from packages.orchestration.safe_points import stop_requested
+            if stop_requested(str(j.id)) is not None:
+                stops_pending += 1
         except Exception:
             pass
 

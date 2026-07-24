@@ -51,7 +51,7 @@ git and in each feature's evidence zip.
   runtime state path → status exit 0, runtime "unknown", warning present.
 
 ### R-0087: stops_pending counts blocker stop-reasons, not F011 kill-switch stop requests
-- **Status**: Open
+- **Status**: Done: R-0087
 - **Severity**: Medium
 - **Area**: apps/cli/commands/status_cmd.py (stops section)
 - **Details**: Counts stop_reasons.list_stop_reasons(job_id) with
