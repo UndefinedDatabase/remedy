@@ -1,84 +1,44 @@
-# Handoff — F148 repair-3 (R-0108..R-0109)
+# Handoff — F148 Closure
 
 ## State
 - Branch: `feature/f148-project-scoping`
-- Status: all repairs complete, not pushed, no PR
-- Total commits on branch: 20
+- Status: closure in progress
+- Evidence job: `cf7ca6e8-8d5a-4b0a-ab4b-8f946bcdd42a`
 
-## Repair Commits (this round)
-
-### `2935653` chore: persist R-0108..R-0109, resolve R-0102..R-0107
-| File | Change |
-|------|--------|
-| .agent/live_review.md | R-0102..R-0107 → Resolved + reviewer lines; R-0108..R-0109 appended verbatim |
-
-### `a532c43` fix: status --project displays scoped project slug (R-0108)
-| File | Change |
-|------|--------|
-| apps/cli/commands/status_cmd.py | When scope.project_id differs from cwd project, load scoped project for slug display |
-| tests/cli/test_scoped_listings.py | New assertion in test_status_scoped: --project B from cwd=A shows slug_b in JSON |
-| .agent/live_review.md | R-0108 Done |
-
-### `b175903` test: stats-failures scoping tests (R-0109)
-| File | Change |
-|------|--------|
-| tests/cli/test_scoped_listings.py | +TestCollectFailuresJobIds (unit: job_ids filter), +TestStatsFailuresScopedCLI (CLI: --project flag) |
-| .agent/live_review.md | R-0109 Done |
-
-## Listing-Command Audit Table (unchanged from repair-2)
-
-| Command | Scope support | Method |
-|---------|--------------|--------|
-| `job list` | `--project`, `--all-projects` | `scoped_jobs()` |
-| `status` | `--project`, `--all-projects` | `resolve_scope()` → `scoped_jobs()` |
-| `stats failures` | `--project`, `--all-projects` | `job_ids` filter on `collect_failures` |
-| `job show/status/summary/report/budget/fences/checkpoints` | N/A (takes job_id) | `load_job()` |
-| `job stop --status` | N/A (takes job_id) | `load_job()` |
-| `job rerun` | N/A (takes job_id) | `load_job_plan()` |
-| `brain.graph/node/context/trust/timeline/cockpit/constitution` | N/A (takes job_id) | `load_job()` |
-| `decision.list/show` | N/A (takes job_id) | `load_job()` |
-| `blocker.list/show` | N/A (takes job_id) | `list_stop_reasons()`/`get_stop_reason()` |
-| `dashboard.job` | N/A (takes job_id) | `load_job()` |
-| `token.usage/budget` | N/A (takes job_id) | `load_job()` |
-
-## Updated Tests Count (this round)
-- **1** test_scoped_listings.py test_status_scoped: added --project B assertion (+1 assertion block)
-- **2** test_scoped_listings.py: new test classes TestCollectFailuresJobIds (1 test) + TestStatsFailuresScopedCLI (1 test)
-- **Total: 18 tests in test_scoped_listings.py** (was 16, now +2)
-
-## Verification Transcripts
-
-### tests/cli/test_scoped_listings.py
-```
-$ python3 -m pytest tests/cli/test_scoped_listings.py -q
-..................                                                       [100%]
-18 passed in 5.28s
+## Integrity Gate
+```json
+{
+  "version": 1,
+  "passed": true,
+  "fail_count": 0,
+  "check_count": 5,
+  "checks": [
+    {"name": "handler_import", "status": "pass", "message": "handlers=305"},
+    {"name": "live_review_verdict", "status": "pass", "message": "PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109"},
+    {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
+    {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
+    {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
+  ]
+}
 ```
 
-### tests/orchestration/test_project_scope.py + tests/test_storage.py
-```
-$ python3 -m pytest tests/orchestration/test_project_scope.py tests/test_storage.py -q
-.......................                                                  [100%]
-23 passed in 0.10s
-```
+## Evidence Job
+- ID: `cf7ca6e8-8d5a-4b0a-ab4b-8f946bcdd42a`
+- Dir: `remedy-job-evidence-f148/`
+- Gates: final_verifier_report, fresh_evidence, artifact_contract,
+  change_provenance, manifest_integrity, postmortem_integrity,
+  commit_execution, runtime_integration (8/8)
+- Verdict: PASS_WITH_RISKS
+- Authority: 21 files, 22 commits, 53 tests passed
 
-### tests/cli (full suite)
-```
-$ python3 -m pytest tests/cli -q --tb=no
-18 failed, 1014 passed in 160.75s
+## Zip Attempts
+(to be filled after step 7)
 
-Known 18 pre-existing failures (test_do_cmd_summary 11, test_product_spine 7).
-Zero NEW failures. 1014 passed (up from 1012 = +2 new tests this round).
-```
+## Closure Commits
+- `97ae61a` chore(f148): resolve R-0108..R-0109, verdict, built state (Commit A)
+- (Commit B: this handoff + plan)
+- (Commit C: STATUS [x])
+- (Commit D: evidence dir after READY zip)
 
-### ruff (touched files)
-```
-$ python3 -m ruff check apps/cli/commands/status_cmd.py apps/cli/commands/failure_stats_cmd.py packages/orchestration/failure_stats.py tests/cli/test_scoped_listings.py
-All checks passed!
-```
-
-## Findings
-R-0108..R-0109 both Done (see live_review.md).
-
-## Next expected action
-Reviewer reviews repair-3 bundle.
+## Next
+Push, build zip, commit evidence, create PR.

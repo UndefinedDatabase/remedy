@@ -12,5 +12,9 @@ Every job is attributable to exactly one project via an additive
 - [x] T003 — CLI integration across all listed commands + adopt + fixture
 - [x] T004 — docs + status view scoped label
 
+- [x] R-0102..R-0107 — reviewer repairs round 2
+- [x] R-0108..R-0109 — reviewer repairs round 3
+- [x] Closure — verdict PASS, evidence job, STATUS [x], PR
+
 ## Current Step
-All tasks complete. Ready for handback.
+Closure complete.
