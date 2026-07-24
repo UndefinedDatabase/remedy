@@ -1,16 +1,16 @@
-# Plan — R-0097 short-ID resolution fix
+# Plan — F148 Project scoping everywhere
 
 ## Goal
-`remedy job stop` resolves screen-displayed 8-char short IDs against
-the Core store so the human golden path (do → status → stop) works
-without --json.
+Every job is attributable to exactly one project via an additive
+`project_id` field. Listing commands default to current project with
+`--all-projects` escape. Legacy data loads with project_id=None.
+
+## Checklist
+- [ ] T001 — model field + creation-path audit + backward-compat fixture
+- [ ] T002 — project_scope module + legacy rule + unit tests
+- [ ] T003 — CLI integration across all listed commands + adopt + fixture
+- [ ] T004 — docs + status view scoped label
 
 ## Current Step
-Commit fix + tests, push, create PR.
-
-## Done
-- [x] Persist R-0097 to live_review.md
-- [x] Implement _resolve_short_id in job_stop_cmd.py
-- [x] Add tests: short-ID stop, ambiguity exit 2, unknown exit 3
-- [x] Mark R-0097 Done in live_review.md
-- [x] Verify: golden_path + job_stop green, ruff clean, no new CLI failures
+T001 — add project_id to Job model, audit and wire all creation paths,
+backward-compat fixture for old JSON without the field.
