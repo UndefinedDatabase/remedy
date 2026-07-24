@@ -257,3 +257,53 @@ class TestStatus:
         assert "Decisions:" in result.stdout
         assert "Runtime:" in result.stdout
         assert "Stops:" in result.stdout
+
+
+# ── T003: help pinning + golden-path smoke ────────────────────────────
+
+
+class TestHelpPinning:
+    def test_do_status_decision_pinned_first(self, tmp_path):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+
+        result = subprocess.run(
+            [*_CLI, "--help"],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert result.returncode == 0
+        out = result.stdout
+        do_pos = out.index("do ")
+        status_pos = out.index("status ")
+        decision_pos = out.index("decision ")
+        init_pos = out.index("init ")
+        assert do_pos < status_pos < decision_pos < init_pos
+
+
+class TestGoldenPathSmoke:
+    def test_init_do_status_flow(self, tmp_path):
+        """Golden path: init → do → status shows planned job."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+
+        init = _init_project(repo, env)
+        assert init.returncode == 0, init.stderr
+
+        do = _run_do(repo, env, "build a readme", ["--json"])
+        assert do.returncode == 0, do.stderr
+        do_data = json.loads(do.stdout)
+        job_id = do_data["job_id"]
+        short_id = do_data["short_id"]
+
+        status = _run_status(repo, env, ["--json"])
+        assert status.returncode == 0, status.stderr
+        status_data = json.loads(status.stdout)
+
+        planned_ids = [j["job_id"] for j in status_data["jobs"].get("planned", [])]
+        assert job_id in planned_ids
+
+        text_status = _run_status(repo, env)
+        assert text_status.returncode == 0
+        assert short_id in text_status.stdout
+        assert "planned" in text_status.stdout

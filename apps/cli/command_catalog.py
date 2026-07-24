@@ -86,10 +86,12 @@ class CommandEntry:
 # ---------------------------------------------------------------------------
 
 GROUPS: dict[str, GroupDef] = {
-    # -- User-facing primary commands --
-    "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
+    # -- Golden path (pinned first in help) --
     "do": GroupDef("do", "Do", "Run, report, and promote Remedy tasks."),
     "status": GroupDef("status", "Status", "Project status overview."),
+    "decision": GroupDef("decision", "Decision", "Human decision queue."),
+    # -- User-facing primary commands --
+    "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
@@ -113,7 +115,6 @@ GROUPS: dict[str, GroupDef] = {
     "repo": GroupDef("repo", "Repo", "Read-only repository inspection.", user_facing=False),
     "event": GroupDef("event", "Event", "Query the audit event ledger.", user_facing=False),
     "blocker": GroupDef("blocker", "Blocker", "View and resolve stop reasons.", user_facing=False),
-    "decision": GroupDef("decision", "Decision", "Human decision queue.", user_facing=False),
     "dashboard": GroupDef("dashboard", "Dashboard", "Project and job dashboards.", user_facing=False),
     "guide": GroupDef("guide", "Guide", "Human guidance rail — next safe actions.", user_facing=False),
     "repair": GroupDef("repair", "Repair", "Test failure repair.", user_facing=False),
