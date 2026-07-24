@@ -219,7 +219,7 @@ History lives in git and in each feature's evidence zip.
   project. "scope" key already correct.
 
 ### R-0109: stats-failures scoping untested
-- **Status**: Open
+- **Status**: Done: R-0109
 - **Severity**: Low
 - **Area**: packages/orchestration/failure_stats.py (collect_failures),
   tests/cli/test_scoped_listings.py
