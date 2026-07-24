@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 def _cmd_status(
     *,
     repo: str = ".",
+    project_flag: str | None = None,
+    all_projects: bool = False,
     json_output: bool = False,
 ) -> None:
     """Golden-path: project status overview. Always exits 0."""
@@ -33,7 +35,11 @@ def _cmd_status(
 
     from packages.orchestration.project_scope import resolve_scope, scoped_jobs
 
-    scope = resolve_scope(cwd=repo)
+    scope = resolve_scope(
+        project_flag=project_flag,
+        all_projects=all_projects,
+        cwd=repo,
+    )
     jobs, degraded, skipped_files = scoped_jobs(scope)
 
     by_state: dict[str, list[dict]] = defaultdict(list)
@@ -170,6 +176,8 @@ def _cmd_status(
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "status.run": lambda args: _cmd_status(
         repo=getattr(args, "repo", None) or ".",
+        project_flag=getattr(args, "project", None),
+        all_projects=getattr(args, "all_projects", False),
         json_output=getattr(args, "json", False),
     ),
 }

@@ -188,6 +188,8 @@ CATALOG: tuple[CommandEntry, ...] = (
         description="Show project status overview.",
         action_class="read_only",
         args=(
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
             ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false"),
         ),
         supports_json=True,

@@ -164,7 +164,7 @@ History lives in git and in each feature's evidence zip.
   token.* rows in the next handoff.
 
 ### R-0106: status has no scope flags — escape hatch missing
-- **Status**: Open
+- **Status**: Done: R-0106
 - **Severity**: Medium
 - **Area**: apps/cli/commands/status_cmd.py, command catalog (status entry)
 - **Details**: Feature: every listing command defaults to the current
