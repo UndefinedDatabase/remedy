@@ -194,7 +194,7 @@ git and in each feature's evidence zip.
   `do "x" --json` → golden; `do "x" --repo .` → golden.
 
 ### R-0094: closure handback omitted two BLOCKED_EVIDENCE zip builds
-- **Status**: Open
+- **Status**: Done: R-0094
 - **Severity**: Medium
 - **Area**: .agent/handoff.md (closure handback honesty)
 - **Details**: remedy-review-20260724-120731-BLOCKED_EVIDENCE.zip
@@ -212,7 +212,7 @@ git and in each feature's evidence zip.
   (bundle regenerated). Covered by commit 2 below.
 
 ### R-0095: STATUS line applied non-verbatim — live-review verdict misstated
-- **Status**: Open
+- **Status**: Done: R-0095
 - **Severity**: Low
 - **Area**: docs/roadmap/STATUS.md (F147 line)
 - **Details**: Authored text said `live review PASS — ACCEPTED`; applied
@@ -227,7 +227,7 @@ git and in each feature's evidence zip.
   the line. Covered by commit 2.
 
 ### R-0096: evidence dir not committed as instructed; deviation without decisions.md rationale
-- **Status**: Open
+- **Status**: Done: R-0096
 - **Severity**: Low
 - **Area**: remedy-job-evidence-f147/ (branch provenance)
 - **Details**: Closure step 3 instructed committing the evidence dir
