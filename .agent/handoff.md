@@ -1,9 +1,9 @@
-# Handoff — F013 T001 (Job intake schema)
+# Handoff — F013 Job intake (T001–T003)
 
 ## State
 - Branch: `feature/f013-job-intake`
-- Status: T001 complete, not pushed, no PR
-- Total commits on branch: 2
+- Status: T001–T003 complete, pushed, no PR yet
+- Total commits on branch: 7
 
 ## Commits
 
@@ -24,93 +24,92 @@
 | tests/schemas/test_job_intake.py | 25 tests (round-trip, rejection, registry, schema size) |
 | tests/test_storage.py | +2 tests (backward-compat without intake, roundtrip with intake) |
 
-## Schema Fields (as implemented)
+### `ebd54e8` chore(f013): T001 handoff with recon report
+| File | Change |
+|------|--------|
+| .agent/handoff.md | T001 handoff with recon |
 
-**JobIntake** (`_Structured`, version `ji1`):
-| Field | Type | Default |
-|-------|------|---------|
-| schema_v | Literal["ji1"] | (required) |
-| goal | str | (required) |
-| context_refs | list[str] | [] |
-| constraints | list[str] | [] |
-| acceptance_hints | list[str] | [] |
-| truncated_input | bool | False |
-| clarifications | list[IntakeClarification] | [] (max 5) |
+### `794d500` chore(f013): persist R-0110
+| File | Change |
+|------|--------|
+| .agent/live_review.md | R-0110 finding persisted |
 
-**IntakeClarification** (`_Strict`):
-| Field | Type |
-|-------|------|
-| question | str |
-| default_answer | str |
-| impact | str |
+### `5739cf0` fix(f013): remove schema-level clarifications cap, add dropped count (R-0110)
+| File | Change |
+|------|--------|
+| packages/orchestration/schemas/models.py | Remove max_length=5 from clarifications, +dropped_clarifications field |
+| tests/schemas/test_job_intake.py | Replace rejection test with acceptance test for >5 clarifications (+1 test, 26 total) |
 
-**Job.intake**: `dict[str, Any] | None = None` — stored as serialized dict,
-not as a typed model (core layer stays independent of orchestration schemas).
+### `5121250` feat(f013): intake module with LLM + heuristic paths (T002)
+| File | Change |
+|------|--------|
+| packages/orchestration/intake.py | New: run_intake, heuristic_intake, IntakeResult, truncation |
+| tests/orchestration/test_intake.py | 31 tests (heuristic, LLM valid/retry/failure, truncation, hooks) |
+| .agent/decisions.md | T002a extraction skip decision |
+
+### `863f8c7` feat(f013): wire intake in do path + golden-path smoke (T003)
+| File | Change |
+|------|--------|
+| apps/cli/commands/do_cmd.py | Wire heuristic_intake before plan_job, +no_llm param, intake in output |
+| apps/cli/command_catalog.py | +--no-llm flag on do.run |
+| apps/cli/grouped.py | --no-llm added to bare-allowed set |
+| tests/cli/test_golden_path.py | +3 tests (--no-llm, intake persistence, context_refs), +2 assertions |
+| .agent/plan.md | T001–T003 checked |
 
 ## Verification
 
-### tests/schemas/test_job_intake.py
+### tests/orchestration/test_intake.py (31 tests — new)
 ```
-$ python3 -m pytest tests/schemas/test_job_intake.py -q
-.........................                                                [100%]
-25 passed in 0.12s
+python3 -m pytest tests/orchestration/test_intake.py -q
+...............................                                          [100%]
+31 passed
 ```
 
-### tests/test_storage.py
+### tests/schemas/test_job_intake.py (26 tests)
 ```
-$ python3 -m pytest tests/test_storage.py -q
+python3 -m pytest tests/schemas/test_job_intake.py -q
+..........................                                               [100%]
+26 passed
+```
+
+### tests/test_storage.py (12 tests)
+```
+python3 -m pytest tests/test_storage.py -q
 ............                                                             [100%]
-12 passed in 0.13s (was 10, +2 new)
+12 passed
 ```
 
-### tests/orchestration/schemas/test_schemas.py
+### tests/orchestration/schemas/test_schemas.py (44 tests)
 ```
-$ python3 -m pytest tests/orchestration/schemas/test_schemas.py -q
+python3 -m pytest tests/orchestration/schemas/test_schemas.py -q
 ............................................                             [100%]
-44 passed in 0.15s
+44 passed
+```
+
+### tests/cli/test_golden_path.py (36 tests — was 31, +5 assertions +3 new)
+```
+python3 -m pytest tests/cli/test_golden_path.py -q
+....................................                                      [100%]
+36 passed
 ```
 
 ### ruff (touched files)
 ```
-$ python3 -m ruff check (all touched files)
+python3 -m ruff check packages/orchestration/intake.py tests/orchestration/test_intake.py \
+  apps/cli/grouped.py apps/cli/command_catalog.py tests/cli/test_golden_path.py
 All checks passed!
 ```
 
-## Recon: Single-Shot Call Surface
+## Key Decisions
+- T002a (transport extraction of `_call_with_retry`) skipped: deeply coupled
+  to PingPongResult/private helpers; `run_structured_call` is already importable
+  and sufficient for intake. Decision in `.agent/decisions.md`.
+- `--no-llm` flag whitelisted in bare-detection (grouped.py) so it stays on the
+  golden path. Currently a no-op (heuristic is already the default with no LLM
+  provider); ready for when LLM intake provider is wired.
 
-**Function**: `run_structured_call` in `packages/orchestration/structured_outputs.py`
+## Open Findings
+R-0110 persisted (status: Done: R-0110, reviewer pending).
 
-**Signature**:
-```python
-def run_structured_call(
-    model_cls: type[BaseModel],
-    base_prompt: str,
-    call_fn: Callable[[str, int], str],
-    *,
-    on_call: Callable[[int, str, bool, str], None] | None = None,
-    allow_parse_retry: bool = True,
-    native_schema: bool = False,
-) -> StructuredOutcome
-```
-
-**What it handles**:
-- Schema instruction injection (prompt-embedded or native)
-- Pydantic response validation
-- One bounded parse retry (max 2 calls)
-- Per-call evidence hook (`on_call`)
-- Returns `StructuredOutcome` (ok, value, error_class, hint, calls, parse_retried)
-
-**What it does NOT handle**:
-- Provider transport (timeouts, subprocess — delegated to injected `call_fn`)
-- Transport-level retries with backoff (handled by `_call_with_retry` in
-  `pingpong_loop.py`, currently private)
-
-**T002 verdict**: `run_structured_call` is directly importable. T002 needs
-to supply its own `call_fn` wrapping the provider. If transport retry
-with backoff is needed, `_call_with_retry` would need extraction from
-`pingpong_loop.py` — or T002 can wrap a single provider call without
-transport retry (intake is low-stakes, a single timeout falls through
-to the heuristic path).
-
-## Next expected action
-Reviewer reviews T001 bundle.
+## Next Expected Action
+Reviewer reviews T001–T003 bundle.
