@@ -318,8 +318,8 @@ class _SilentParser(argparse.ArgumentParser):
         raise SystemExit(status)
 
 
-_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run"}
-_ALWAYS_INJECT: set[str] = {"init"}
+_DEFAULT_COMMAND: dict[str, str] = {"ui": "start", "do": "run", "init": "run", "status": "run"}
+_ALWAYS_INJECT: set[str] = {"init", "status"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -469,6 +469,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
 
     raw = argv if argv is not None else sys.argv[1:]
+    _did_inject = False
     if raw and raw[0] in _DEFAULT_COMMAND:
         subcmds = {c.subcommand for c in get_commands_for_group(raw[0])}
         has_subcmd = len(raw) >= 2 and raw[1] in subcmds
@@ -479,6 +480,7 @@ def main(argv: list[str] | None = None) -> None:
             default_sub = _DEFAULT_COMMAND[raw[0]]
             raw = [raw[0], default_sub] + raw[1:]
             argv = raw
+            _did_inject = True
 
     # Intercept argparse errors for clean output
     try:
@@ -535,6 +537,25 @@ def main(argv: list[str] | None = None) -> None:
     if unknown:
         print(render_error(f"remedy {args._group} {args._subcmd}", f"Unrecognized arguments: {' '.join(unknown)}"), file=sys.stderr)
         sys.exit(2)
+
+    _truly_bare = False
+    if _did_inject and raw and raw[0] == "do" and len(raw) >= 3:
+        _BARE_ALLOWED = {"--json", "--repo"}
+        tail = raw[3:]
+        _truly_bare = True
+        i = 0
+        while i < len(tail):
+            tok = tail[i]
+            if tok.startswith("-"):
+                if tok in _BARE_ALLOWED:
+                    if tok == "--repo" and i + 1 < len(tail):
+                        i += 1
+                else:
+                    _truly_bare = False
+                    break
+            i += 1
+    args._injected_default = _did_inject
+    args._truly_bare = _truly_bare
 
     command_id = getattr(args, "_command_id", None)
     if command_id is None:

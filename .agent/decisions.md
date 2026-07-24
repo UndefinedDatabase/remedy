@@ -1150,3 +1150,39 @@ Operator-approved reword via filter-branch: "add /review-remedy command" → "ad
 review-remedy slash command". The _contains_local_path scanner in review_subject.py
 false-positives on slash-command names in commit subjects, blocking make_review_zip.
 Separate fix tracked as R-0083 (not F081 scope).
+
+## 2026-07-24: R-0093 — argv-level bare detection replaces value-equality guard (F147)
+Golden-path detection moved from value-equality checks in _cmd_do to
+argv scanning in grouped.py. After the mission token, any arg starting
+with "-" that is not --json or --repo (+ its value) makes the
+invocation non-bare. Passed as `args._truly_bare`. This is immune to
+the "flag typed at its default value" problem: `do "x" --autonomy-level 1`
+has a "-"-starting token → legacy path.
+
+Default reconciliation: the catalog ArgDef for do.run --autonomy-level
+says default="2", the handler fallback says `or 2`, the old _is_bare_mission
+guard said `== 1` (wrong). With argv-level detection, the check is gone
+and the catalog default="2" is authoritative. The handler fallback `or 2`
+matches. No code change needed — the three-source conflict is resolved by
+removing the value from the detection path entirely.
+
+## 2026-07-24: R-0092 — job_stop_cmd falls back to Core Job store (F147)
+Two job stores exist: pingpong_job (task_jobs/) for v1 executor jobs, and
+storage (jobs/) for Core Jobs created by the golden-path `remedy do "<mission>"`.
+`_load_job` in job_stop_cmd.py previously only queried pingpong_job.load_job_plan,
+making golden-path jobs invisible to the kill switch. Fix: fallback to
+storage.load_job on pingpong miss, with _CoreJobAdapter mapping state.value →
+.status and providing empty stop_* fields (golden-path jobs have no stop
+metadata yet). Exit codes and output contract identical for both stores.
+The split is structural: merging stores would require a schema migration
+across persisted jobs — not in scope for F147.
+
+## 2026-07-24: R-0085 — injection marker approach for bare-mission detection (F147)
+grouped.py sets `args._injected_default = True` when the `run` subcommand was
+auto-injected by `_DEFAULT_COMMAND`. `_cmd_do` checks `injected_default` first:
+bare `remedy do "x"` → golden path; explicit `remedy do run "x"` or any non-default
+flag → legacy path. This is robust because the marker tracks what actually happened
+at parse time, not what flag combinations look like after defaults are applied.
+Alternative considered: argparse None-sentinel defaults for every flag — fragile
+because it requires maintaining sentinels across 20+ parameters and any new flag
+would silently break detection. Injection marker is one bit, set once.
