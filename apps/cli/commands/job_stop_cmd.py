@@ -36,6 +36,39 @@ class _CoreJobAdapter:
         self.stopped_at = ""
 
 
+def _resolve_short_id(prefix: str) -> str | None:
+    """Resolve a short hex prefix against Core store filenames.
+
+    Returns the full job id string on unique match, raises SystemExit(2) on
+    ambiguous match (listing candidates), returns None on no match.
+    """
+    import re
+
+    if not re.fullmatch(r"[0-9a-fA-F]{4,32}", prefix):
+        return None
+
+    from packages.orchestration.data_paths import jobs_dir
+
+    jdir = jobs_dir()
+    if not jdir.exists():
+        return None
+
+    lower = prefix.lower()
+    matches = [
+        p.stem for p in jdir.glob("*.json")
+        if p.stem.lower().startswith(lower)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        print(f"Error: ambiguous job id prefix '{prefix}' matches "
+              f"{len(matches)} jobs:", file=sys.stderr)
+        for m in sorted(matches):
+            print(f"  {m[:8]}", file=sys.stderr)
+        raise SystemExit(EXIT_USAGE)
+    return None
+
+
 def _load_job(job_id: str):
     from packages.orchestration.pingpong_job import load_job_plan
 
@@ -111,6 +144,11 @@ def _cmd_job_stop(job_id: str, *, reason: str = "", source: str = "cli",
         else:
             print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(EXIT_USAGE) from None
+
+    if _load_job(job_id) is None:
+        resolved = _resolve_short_id(job_id)
+        if resolved is not None:
+            job_id = resolved
 
     if status:
         _print_status(job_id, json_output=json_output)

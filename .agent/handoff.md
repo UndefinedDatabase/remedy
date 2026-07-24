@@ -1,28 +1,62 @@
-# Handoff — F147 Golden-path CLI — CLOSURE REPAIR COMPLETE
+# Handoff — Gap round (pre-F148)
 
-Branch: `feature/f147-golden-path-cli`
-PR: https://github.com/UndefinedDatabase/remedy/pull/142
-Accepted HEAD: `6869d82ffb68385d563f1c17d6f86c6590698ea9`
-Evidence job: `f147-closure` (29 passed, PASS_WITH_RISKS)
-Package: `remedy-review-20260724-121604-READY_FOR_REVIEW.zip`
-SHA-256: `953410ab4c6aa0d4b639f96d797b7e66e93e36378338a6f9885e736d0e26ea17`
-Integrity: PASS (5/5)
+## State
+- PR #142 (F147 closure): **merged** to main at `0741f04`
+- PR #143 (`chore/handback-honesty-closure-rules`): open, NOT merged
+- PR #144 (`fix/f147-job-stop-short-id`): open, NOT merged
 
-## Zip build attempts (all three)
+## PR #143 — chore: handback honesty + closure rules
+Branch: `chore/handback-honesty-closure-rules`
+Commit: `3646553`
 
-| # | File | Status | Blocking reasons |
-|---|------|--------|------------------|
-| 1 | remedy-review-20260724-120731-BLOCKED_EVIDENCE.zip | BLOCKED_EVIDENCE | final_verifier VerificationTests total missing/invalid; runs[0].output_hash not sha256 hex |
-| 2 | remedy-review-20260724-121236-BLOCKED_EVIDENCE.zip | BLOCKED_EVIDENCE | evidence not authoritative (review_subject recorded evidence files as deleted after amend) |
-| 3 | remedy-review-20260724-121604-READY_FOR_REVIEW.zip | READY_FOR_REVIEW | — |
+| File | Change |
+|------|--------|
+| AGENTS.md | Artifact-build-attempt honesty bullet in handoff.md section |
+| docs/roadmap/STATUS_closure_protocol.md | Evidence-dir commit ordering, producer pitfalls, byte-identical self-check duty |
+| .agent/decisions.md | 2026-07-24 operator decisions entry |
 
-**What changed between attempts:**
-- Attempt 1→2: rebuilt evidence bundle with correct `output_hash` (sha256 of stdout_summary) and full base_commit SHA (was abbreviated). Gate matrix passed locally but `is_valid_current_run=false` because evidence dir was committed to git, causing review_subject to include evidence files in the diff.
-- Attempt 2→3: removed evidence from git tracking (evidence dir should stay on disk, not committed — the review_subject resolves base..HEAD diff, and committed evidence creates a chicken-and-egg mismatch). Soft-reset, recommitted handoff without evidence, rebuilt bundle against clean HEAD. All gates passed, `is_valid_current_run=true`.
+## PR #144 — fix(f147): job stop resolves displayed short IDs (R-0097)
+Branch: `fix/f147-job-stop-short-id`
+Commits: `c9604cd` (persist R-0097), `af778c8` (fix + tests)
 
-## Closure repair (R-0094..R-0096)
-- R-0094: handoff now lists all three zip attempts (this file)
-- R-0095: STATUS.md F147 line corrected to `live review PASS — ACCEPTED`
-- R-0096: evidence dir committed via `git add -f`
+| File | Change |
+|------|--------|
+| apps/cli/commands/job_stop_cmd.py | `_resolve_short_id()` + resolution hook |
+| tests/cli/test_golden_path.py | 3 new tests: short-ID stop, ambiguity, unknown |
+| .agent/live_review.md | R-0097 Done |
+| .agent/plan.md | Updated |
 
-## Findings: R-0085..R-0096 — all Resolved/Done
+## R-0097 status: Done
+Implementation: 4–32 char hex prefix resolution against Core store
+filenames. Unique → full UUID; ambiguous → exit 2; no match → exit 3.
+
+## Verification results
+
+### golden_path + job_stop (branch)
+```
+$ python3 -m pytest tests/cli/test_golden_path.py tests/cli/test_job_stop.py -q
+58 passed in 11.20s
+```
+
+### Full CLI suite (branch)
+```
+$ python3 -m pytest tests/cli -q
+996 passed, 18 failed in 154.55s
+```
+18 failures all pre-existing (missing doc files: autocoder-usage.md,
+core-product-spine-v0.md, simple-operator-quickstart-v0.md).
+
+### Main baseline (same 18)
+```
+$ python3 -m pytest tests/cli/test_do_cmd_summary.py tests/cli/test_product_spine.py -q
+18 failed, 71 passed in 0.12s
+```
+
+### ruff
+```
+$ python3 -m ruff check apps/cli/commands/job_stop_cmd.py tests/cli/test_golden_path.py
+All checks passed!
+```
+
+## Findings: R-0085..R-0097 — all Resolved/Done
+## Next expected action: reviewer reviews PRs #143 and #144

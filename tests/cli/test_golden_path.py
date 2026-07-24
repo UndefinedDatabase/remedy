@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -493,3 +494,87 @@ class TestGoldenPathSmoke:
         assert status2.returncode == 0
         status2_data = json.loads(status2.stdout)
         assert status2_data["stops_pending"] >= 1
+
+
+# ── Short-ID resolution (R-0097) ─────────────────────────────────────
+
+
+class TestShortIdResolution:
+    def test_stop_with_screen_displayed_short_id(self, tmp_path):
+        """Parse short ID from TEXT output of `remedy do`, stop with it."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do = _run_do(repo, env, "build a readme")
+        assert do.returncode == 0, do.stderr
+        m = re.search(r"Job:\s+([0-9a-f]{8})", do.stdout)
+        assert m, f"no short id in do output: {do.stdout!r}"
+        short_id = m.group(1)
+
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", short_id],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 0, (stop.stderr, stop.stdout)
+        assert "Stop requested" in stop.stdout
+
+        status = _run_status(repo, env, ["--json"])
+        assert status.returncode == 0
+        assert json.loads(status.stdout)["stops_pending"] >= 1
+
+    def test_ambiguous_short_id_exits_2(self, tmp_path):
+        """Two jobs sharing a prefix → exit 2 with candidates listed."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do1 = _run_do(repo, env, "first job", ["--json"])
+        assert do1.returncode == 0
+        id1 = json.loads(do1.stdout)["job_id"]
+        do2 = _run_do(repo, env, "second job", ["--json"])
+        assert do2.returncode == 0
+        id2 = json.loads(do2.stdout)["job_id"]
+
+        # Find shortest common prefix (at least 4 chars).
+        common = 0
+        for a, b in zip(id1, id2):
+            if a == b:
+                common += 1
+            else:
+                break
+        if common < 4:
+            jobs_dir = tmp_path / "data" / "jobs"
+            src = jobs_dir / f"{id2}.json"
+            forced_id = id1[:8] + id2[8:]
+            dst = jobs_dir / f"{forced_id}.json"
+            data = src.read_text().replace(str(id2), forced_id)
+            dst.write_text(data)
+            src.unlink()
+            prefix = id1[:8]
+        else:
+            prefix = id1[:common]
+            if len(prefix) < 4:
+                prefix = id1[:4]
+
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", prefix],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 2, (stop.returncode, stop.stderr, stop.stdout)
+        assert "ambiguous" in stop.stderr
+
+    def test_unknown_short_id_exits_3(self, tmp_path):
+        """Unknown hex prefix → exit 3 (not found)."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        stop = subprocess.run(
+            [*_CLI, "job", "stop", "deadbeef"],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert stop.returncode == 3
