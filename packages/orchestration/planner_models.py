@@ -12,7 +12,13 @@ from pydantic import BaseModel, Field
 
 
 class ProposedTask(BaseModel):
-    """A task proposed by the planner."""
+    """A task proposed by the planner.
+
+    .. deprecated:: F014
+        Superseded by PlannedTask (flight_plan_v1). Retained for
+        --no-llm/fallback deterministic planner path.
+        See docs/roadmap/features/T1_F014.md.
+    """
 
     task_type: str
     description: str
@@ -25,6 +31,11 @@ class PlannerOutput(BaseModel):
     proposed_tasks:    ordered list of tasks to execute.
     acceptance_checks: optional job-level criteria for a successful outcome.
     notes:             optional assumptions or caveats from the planner.
+
+    .. deprecated:: F014
+        Superseded by FlightPlan (flight_plan_v1). Retained for
+        --no-llm/fallback deterministic planner path.
+        See docs/roadmap/features/T1_F014.md.
     """
 
     summary: str

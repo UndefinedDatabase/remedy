@@ -13,13 +13,14 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 #: Compact schema version tags. Keep these short — they travel in every prompt.
 REVIEW_VERDICT_SCHEMA_V = "rv1"
 PLANNER_PLAN_SCHEMA_V = "pp1"
 DESIGN_SPEC_SCHEMA_V = "ds1"
 JOB_INTAKE_SCHEMA_V = "ji1"
+FLIGHT_PLAN_SCHEMA_V = "fp1"
 
 Verdict = Literal["pass", "fail", "needs_repair", "blocked"]
 Severity = Literal["blocker", "high", "medium", "low"]
@@ -74,7 +75,13 @@ class ProposedTask(_Strict):
 
 
 class PlannerPlan(_Structured):
-    """Structured planner output (schema ``pp1``)."""
+    """Structured planner output (schema ``pp1``).
+
+    .. deprecated:: F014
+        Superseded by FlightPlan (flight_plan_v1). Retained for
+        --no-llm/fallback deterministic planner path.
+        See docs/roadmap/features/T1_F014.md.
+    """
 
     SCHEMA_V: ClassVar[str] = PLANNER_PLAN_SCHEMA_V
     schema_v: Literal["pp1"]  # required: no default
@@ -123,12 +130,111 @@ class JobIntake(_Structured):
     dropped_clarifications: int = 0
 
 
+TokenBand = Literal["S", "M", "L", "XL"]
+
+_MAX_FLIGHT_PLAN_TASKS = 25
+_LARGE_PLAN_THRESHOLD = 12
+
+
+class PlannedTask(_Strict):
+    """One task in a FlightPlan DAG."""
+
+    id: str
+    title: str
+    goal: str
+    acceptance: list[str] = Field(min_length=1)
+    depends_on: list[str] = Field(default_factory=list)
+    est_tokens_band: TokenBand
+    files_hint: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_acceptance_entries(self) -> PlannedTask:
+        for i, entry in enumerate(self.acceptance):
+            if not entry.strip():
+                raise ValueError(
+                    f"PlannedTask.acceptance[{i}] must not be empty")
+        return self
+
+
+class FlightPlanClarification(_Strict):
+    """A resolved clarification carried in the flight plan."""
+
+    question: str
+    default_answer: str
+    impact: str
+    answer: str
+
+
+class FlightPlan(_Structured):
+    """LLM-generated flight plan (schema ``fp1``).
+
+    A DAG of PlannedTasks with goals, acceptance criteria, dependency
+    edges, and token-band estimates. Validated on construction: no
+    duplicate ids, no unknown dependencies, no cycles, hard task cap.
+    """
+
+    SCHEMA_V: ClassVar[str] = FLIGHT_PLAN_SCHEMA_V
+    schema_v: Literal["flight_plan_v1"]  # required: no default
+    tasks: list[PlannedTask] = Field(min_length=1)
+    risks: list[str] = Field(default_factory=list)
+    clarifications_resolved: list[FlightPlanClarification] = Field(
+        default_factory=list)
+    budgets: dict[str, int | str | None] | None = None
+    fences: dict[str, list[str]] | None = None
+
+    large_plan: bool = False
+
+    @model_validator(mode="after")
+    def _validate_dag(self) -> FlightPlan:
+        if len(self.tasks) > _MAX_FLIGHT_PLAN_TASKS:
+            raise ValueError(
+                f"FlightPlan exceeds {_MAX_FLIGHT_PLAN_TASKS}-task cap "
+                f"(got {len(self.tasks)})")
+
+        ids: set[str] = set()
+        for t in self.tasks:
+            if t.id in ids:
+                raise ValueError(f"duplicate task id: {t.id!r}")
+            ids.add(t.id)
+
+        for t in self.tasks:
+            for dep in t.depends_on:
+                if dep not in ids:
+                    raise ValueError(
+                        f"task {t.id!r} depends on unknown id {dep!r}")
+
+        visited: set[str] = set()
+        path: set[str] = set()
+
+        def _visit(tid: str) -> None:
+            if tid in path:
+                raise ValueError(
+                    f"dependency cycle detected involving {tid!r}")
+            if tid in visited:
+                return
+            path.add(tid)
+            task_map = {t.id: t for t in self.tasks}
+            for dep in task_map[tid].depends_on:
+                _visit(dep)
+            path.discard(tid)
+            visited.add(tid)
+
+        for t in self.tasks:
+            _visit(t.id)
+
+        object.__setattr__(
+            self, "large_plan", len(self.tasks) > _LARGE_PLAN_THRESHOLD)
+
+        return self
+
+
 #: schema_v -> model. The single source of truth for which contract a tag means.
 SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     REVIEW_VERDICT_SCHEMA_V: ReviewVerdict,
     PLANNER_PLAN_SCHEMA_V: PlannerPlan,
     DESIGN_SPEC_SCHEMA_V: DesignSpec,
     JOB_INTAKE_SCHEMA_V: JobIntake,
+    FLIGHT_PLAN_SCHEMA_V: FlightPlan,
 }
 
 
