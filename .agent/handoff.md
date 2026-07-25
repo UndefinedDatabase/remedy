@@ -1,12 +1,15 @@
-# Handoff — F014 Flight Plan — Closure
+# Handoff — F014 Flight Plan — Closure (FINAL)
 
-Review of cb96022..1215b3b (closure state commit)
+Review of cb96022..fdb63d0
 
 ## State
 - Branch: `feature/f014-flight-plan`
 - Verdict: PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
 - Evidence job: `6f51a894-5cf8-4fa7-90de-2808008693eb`
 - Evidence dir: `.data/evidence_exports/6f51a894-5cf8-4fa7-90de-2808008693eb`
+- Zip: `remedy-review-20260726-001139-READY_FOR_REVIEW.zip`
+- Zip SHA-256: `26abcdfe4859c7becce77cc07d89d8c54e2e5372734c06fa088231c2e8c23705`
+- PR: https://github.com/UndefinedDatabase/remedy/pull/148
 
 ## Per-Commit Changed Files (closure round)
 
@@ -25,20 +28,29 @@ Review of cb96022..1215b3b (closure state commit)
 - .agent/plan.md
 - docs/roadmap/features/T1_F014.md
 
+### 162553a chore(f014): STATUS [x] with pending fills, handoff rewrite
+- docs/roadmap/STATUS.md
+- .agent/handoff.md
+
+### fdb63d0 chore(f014): STATUS fills + zip evidence (READY_FOR_REVIEW)
+- docs/roadmap/STATUS.md
+- .data/evidence_exports/6f51a894-5cf8-4fa7-90de-2808008693eb/* (84 files)
+- remedy-review-20260726-001139-READY_FOR_REVIEW.zip
+
 ## STEP B — Evidence Job (raw)
 
 ```
 $ python3 -c "from packages.orchestration.job_evidence import create_manual_completion_bundle; ..."
 {
   "job_id": "6f51a894-5cf8-4fa7-90de-2808008693eb",
-  "head_commit": "1215b3baa9d0cdb477effe7c60de10fcf7f7b71f",
+  "head_commit": "162553a5f175965aa0c51baa6769efc8f9b727f1",
   "authority_count": 18,
   "partition": {
     "T001": 6,
     "T002": 6,
     "T003": 6
   },
-  "commit_count": 23,
+  "commit_count": 24,
   "verdict": "PASS_WITH_RISKS",
   "manual_completion": true,
   "operator_attested_tasks": [
@@ -100,8 +112,38 @@ $ python3 -m pytest tests/orchestration/test_intake.py tests/cli/test_golden_pat
 221 passed in 22.84s
 ```
 
+## STEP E — Review Zip (raw)
+
+```
+$ bash scripts/make_review_zip.sh --evidence-dir .data/evidence_exports/6f51a894-5cf8-4fa7-90de-2808008693eb
+UNCHANGED: runtime_integration_gate.json — rebuilt from source; identical to existing
+Evidence refresh completed for staged copy.
+Observability index generated from staged bytes: evidence/current/self_run_observability_index.json
+{"member_count": 1464, "authoritative_count": 18, "symlink_count": 0, "tombstone_count": 0, "final_path": "remedy-review-20260726-001139-READY_FOR_REVIEW.zip", "final_sha256": "26abcdfe4859c7becce77cc07d89d8c54e2e5372734c06fa088231c2e8c23705", "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256": "ad5681832aadada8e2bc17aa538ddef2c804c99acc98e69c4cf89f9040a8d44d"}
+REVIEW_PACKAGE_CREATED=true
+PACKAGE_STATUS=READY_FOR_REVIEW
+REVIEW_SUBJECT_ALIGNMENT=PASS
+EVIDENCE_AUTHORITATIVE=true
+ZIP_PATH=/home/decodeux/Repos/remedy/remedy-review-20260726-001139-READY_FOR_REVIEW.zip
+```
+
+## STEP F.3 — Grep Proof
+
+### STATUS line
+```
+$ grep "F014" docs/roadmap/STATUS.md
+- [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 6f51a894-5cf8-4fa7-90de-2808008693eb · package remedy-review-20260726-001139-READY_FOR_REVIEW.zip · SHA-256 26abcdfe4859c7becce77cc07d89d8c54e2e5372734c06fa088231c2e8c23705 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+```
+
+### Verdict block
+```
+$ grep "PASS_WITH_RISKS" .agent/live_review.md
+PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
+```
+
 ## Open Findings
 0
 
-## Next Expected Action
-STEP D/E/F: STATUS fill, review zip, PR ready.
+## Closure Complete
+- PR: https://github.com/UndefinedDatabase/remedy/pull/148 (ready for review, not merged)
+- Next: merge gated by Open PR Gate at next feature's start
