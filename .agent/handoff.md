@@ -2,7 +2,7 @@
 
 ## State
 - Branch: `feature/f013-job-intake`
-- Last commit: pending (STATUS + evidence commit)
+- Last commit: `628922d` chore(f013): STATUS fills + zip evidence (READY_FOR_REVIEW)
 - Total commits on branch: 21+
 - Verdict: PASS_WITH_RISKS
 - Evidence job: `f013_job_intake_closure`
@@ -63,4 +63,6 @@ Pre-existing flake: `test_fallback_to_default_when_no_env_vars` in test_ollama_p
 - Evidence authoritative: true
 
 ## PR
-Pending — create after commit + push.
+- PR #146: https://github.com/UndefinedDatabase/remedy/pull/146
+- Title: F013 — Job intake
+- Status: OPEN (do NOT merge — protocol step 6)
