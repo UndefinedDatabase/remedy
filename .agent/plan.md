@@ -1,19 +1,16 @@
-# Plan — F014 Repair Round 2 (R-0130..R-0136)
+# Plan — F014 Flight Plan
 
 ## Goal
-Fix 7 review findings from FAIL verdict on repair round 1.
+Deliver LLM-generated, schema-validated flight plans with approval gate.
 
 ## Checklist
-- [x] STEP A — persist findings
-- [ ] R-0130 — rejected flight plan blocks execution
-- [ ] R-0134 — reject hint names real replan command
-- [ ] R-0132 — --yes audit surfaces as RESOLVED decision
-- [ ] R-0133 — config-budget precedence at CLI
-- [ ] R-0135 — restore schema-tag guard
-- [ ] R-0136 — parse-failure test strengthened
-- [ ] R-0131 — rewrite smoke 12r in scripts/remedy_smoke.sh
-- [ ] STEP C — verification
-- [ ] STEP D — handback
+- [x] T001 — schemas + DAG validator + tests
+- [x] T002 — plan generation + task mapping + budget/fence precedence
+- [x] T003 — plan.md renderer + replan versioning
+- [x] T004 — approval gate + --yes audit + execution-refusal + smoke
+- [x] R-0118..R-0129 — repair round 1
+- [x] R-0130..R-0136 — repair round 2
+- [x] R-0137..R-0139 — repair round 3 + hygiene
 
 ## Current Step
-Persisting findings. Next: R-0130.
+Closure in progress.

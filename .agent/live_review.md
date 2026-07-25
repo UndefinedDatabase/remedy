@@ -149,4 +149,15 @@ a unique id.
 Fix: renamed F014 section to _SMOKE_SECTION="14a".
 
 ## Verdict
-(pending)
+PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
+All findings R-0118..R-0139 Resolved/Done. Residual risks
+(documented, outside F014 scope or Low):
+1. Full smoke run halts at pre-existing section 6j
+   (max_test_runs=0 default, run_contract.py:284). F014 section
+   14a proven standalone (reviewer-executed, rounds 5-6).
+2. scripts/remedy_smoke.sh masks its exit code
+   (`remedy_smoke "$@" | tee` — FAILED banner, exit 0);
+   pre-existing, gap-backlog candidate.
+3. Fences have no config source today; plan fences apply only
+   when job fences are unset. Budget precedence is CLI-tested.
+LAST_REVIEWED_SHA: 6faf90f7ab2ed85fa653c95fc5fca239915d5ce6
