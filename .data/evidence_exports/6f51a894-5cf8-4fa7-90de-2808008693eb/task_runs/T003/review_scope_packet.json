@@ -1,0 +1,13 @@
+{
+ "changed_files": [
+  "scripts/remedy_smoke.sh",
+  "tests/cli/test_golden_path.py",
+  "tests/cli/test_plan_approval.py",
+  "tests/orchestration/schemas/test_schemas.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/schemas/test_flight_plan_schema.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_title": "Task T003"
+}

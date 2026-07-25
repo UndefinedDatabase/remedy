@@ -1,0 +1,256 @@
+0b690c890d53f34d3920ab15b41d361d22547168
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index 5f32e7e..fb806cf 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -9,10 +9,11 @@ from __future__ import annotations
+ import json
+ from collections.abc import Callable
+ from dataclasses import dataclass
++from pathlib import Path
+ from typing import Any
+ 
+ from packages.core.models import AcceptanceCheck, RunState, Task
+-from packages.orchestration.schemas.models import FlightPlan
++from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+ 
+ 
+@@ -166,3 +167,123 @@ def apply_plan_fences(
+         if key not in merged or not merged[key]:
+             merged[key] = val
+     return merged
++
++
++# ---------------------------------------------------------------------------
++# Renderer (T003)
++# ---------------------------------------------------------------------------
++
++def render_plan_md(plan: FlightPlan) -> str:
++    """Render a FlightPlan to deterministic, stably ordered markdown."""
++    lines: list[str] = []
++    lines.append("# Flight Plan")
++    lines.append("")
++    lines.append(f"Schema: {plan.schema_v}")
++    lines.append(f"Tasks: {len(plan.tasks)}")
++    lines.append("")
++
++    if plan.large_plan:
++        lines.append(
++            f"> **Note:** This plan has {len(plan.tasks)} tasks "
++            f"(threshold {_LARGE_PLAN_THRESHOLD}). "
++            "Consider splitting the mission into smaller units.")
++        lines.append("")
++
++    lines.append("## Tasks")
++    lines.append("")
++
++    for i, t in enumerate(plan.tasks, 1):
++        deps = ", ".join(t.depends_on) if t.depends_on else "none"
++        lines.append(f"### {i}. {t.id} — {t.title}")
++        lines.append("")
++        lines.append(f"**Goal:** {t.goal}")
++        lines.append(f"**Band:** {t.est_tokens_band} | **Depends on:** {deps}")
++        lines.append("")
++        lines.append("**Acceptance:**")
++        for ac in t.acceptance:
++            lines.append(f"- {ac}")
++        if t.files_hint:
++            lines.append("")
++            lines.append("**Files hint:**")
++            for f in t.files_hint:
++                lines.append(f"- `{f}`")
++        lines.append("")
++
++    if plan.risks:
++        lines.append("## Risks")
++        lines.append("")
++        for r in plan.risks:
++            lines.append(f"- {r}")
++        lines.append("")
++
++    if plan.clarifications_resolved:
++        lines.append("## Clarifications Resolved")
++        lines.append("")
++        for c in plan.clarifications_resolved:
++            lines.append(f"**Q:** {c.question}")
++            lines.append(f"**A:** {c.answer} (default: {c.default_answer})")
++            lines.append(f"**Impact:** {c.impact}")
++            lines.append("")
++
++    if plan.budgets:
++        lines.append("## Budgets")
++        lines.append("")
++        for k, v in sorted(plan.budgets.items()):
++            lines.append(f"- {k}: {v}")
++        lines.append("")
++
++    if plan.fences:
++        lines.append("## Fences")
++        lines.append("")
++        for k, v in sorted(plan.fences.items()):
++            lines.append(f"- {k}: {', '.join(v) if isinstance(v, list) else v}")
++        lines.append("")
++
++    return "\n".join(lines)
++
++
++def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Path:
++    """Write rendered plan to evidence dir. Returns the written path."""
++    evidence_dir.mkdir(parents=True, exist_ok=True)
++    filename = "plan.md" if version == 1 else f"plan_v{version}.md"
++    path = evidence_dir / filename
++    path.write_text(render_plan_md(plan), encoding="utf-8")
++    return path
++
++
++# ---------------------------------------------------------------------------
++# Replan versioning (T003)
++# ---------------------------------------------------------------------------
++
++class ReplanRejectedError(Exception):
++    """Raised when replanning is rejected (e.g. after task completion)."""
++
++
++def replan(
++    job_flight_plan: dict[str, Any],
++    new_plan: FlightPlan,
++    evidence_dir: Path,
++    *,
++    any_task_completed: bool = False,
++) -> tuple[dict[str, Any], int]:
++    """Apply a new flight plan version.
++
++    Returns (updated flight_plan dict for Job, new version number).
++    Raises ReplanRejectedError if any task has already completed.
++    Old plan.md files are kept (plan.md, plan_v2.md, plan_v3.md, ...).
++    """
++    if any_task_completed:
++        raise ReplanRejectedError(
++            "Cannot replan after a task has completed. "
++            "This limitation will be lifted in a future feature.")
++
++    versions = job_flight_plan.get("_versions", [])
++    current_version = len(versions) + 1
++    new_version = current_version + 1
++
++    new_plan_dict = new_plan.model_dump()
++    new_plan_dict["_versions"] = versions + [job_flight_plan]
++    new_plan_dict["_version"] = new_version
++
++    write_plan_md(new_plan, evidence_dir, version=new_version)
++    return new_plan_dict, new_version
+diff --git a/tests/orchestration/test_flight_plan.py b/tests/orchestration/test_flight_plan.py
+index 7002de0..2de66d6 100644
+--- a/tests/orchestration/test_flight_plan.py
++++ b/tests/orchestration/test_flight_plan.py
+@@ -163,3 +163,109 @@ class TestFencePrecedence:
+ 
+     def test_no_fences_returns_none(self):
+         assert apply_plan_fences(None, None) is None
++
++
++class TestRenderPlanMd:
++
++    def test_deterministic_output(self):
++        from packages.orchestration.flight_plan import render_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(3)))
++        r1 = render_plan_md(fp)
++        r2 = render_plan_md(fp)
++        assert r1 == r2
++        assert "# Flight Plan" in r1
++        assert "T001" in r1
++        assert "T002" in r1
++        assert "T003" in r1
++
++    def test_contains_acceptance_and_bands(self):
++        from packages.orchestration.flight_plan import render_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        md = render_plan_md(fp)
++        assert "Thing 1 done" in md
++        assert "**Band:** M" in md
++
++    def test_large_plan_note(self):
++        from packages.orchestration.flight_plan import render_plan_md
++        from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD
++
++        n = _LARGE_PLAN_THRESHOLD + 1
++        tasks = []
++        for i in range(n):
++            tasks.append({
++                "id": f"T{i:03d}", "title": f"T{i}", "goal": f"G{i}",
++                "acceptance": ["ok"], "depends_on": [],
++                "est_tokens_band": "S", "files_hint": [],
++            })
++        fp = FlightPlan(schema_v="flight_plan_v1", tasks=tasks, risks=[])
++        md = render_plan_md(fp)
++        assert "Consider splitting" in md
++
++    def test_risks_rendered(self):
++        from packages.orchestration.flight_plan import render_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        md = render_plan_md(fp)
++        assert "timeline risk" in md
++
++    def test_write_plan_md(self, tmp_path):
++        from packages.orchestration.flight_plan import write_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        path = write_plan_md(fp, tmp_path)
++        assert path.name == "plan.md"
++        assert path.exists()
++        assert "Flight Plan" in path.read_text()
++
++    def test_write_plan_md_versioned(self, tmp_path):
++        from packages.orchestration.flight_plan import write_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        p1 = write_plan_md(fp, tmp_path, version=1)
++        p2 = write_plan_md(fp, tmp_path, version=2)
++        assert p1.name == "plan.md"
++        assert p2.name == "plan_v2.md"
++        assert p1.exists()
++        assert p2.exists()
++
++
++class TestReplan:
++
++    def test_replan_appends_version(self, tmp_path):
++        from packages.orchestration.flight_plan import replan
++
++        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp1_dict = fp1.model_dump()
++        fp2 = FlightPlan(**json.loads(_valid_plan_json(3)))
++
++        updated, version = replan(fp1_dict, fp2, tmp_path)
++        assert version == 2
++        assert updated["_version"] == 2
++        assert len(updated["_versions"]) == 1
++        assert (tmp_path / "plan_v2.md").exists()
++
++    def test_replan_keeps_old_file(self, tmp_path):
++        from packages.orchestration.flight_plan import replan, write_plan_md
++
++        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
++        write_plan_md(fp1, tmp_path, version=1)
++        fp1_dict = fp1.model_dump()
++
++        fp2 = FlightPlan(**json.loads(_valid_plan_json(3)))
++        replan(fp1_dict, fp2, tmp_path)
++
++        assert (tmp_path / "plan.md").exists()
++        assert (tmp_path / "plan_v2.md").exists()
++
++    def test_replan_after_completed_task_rejected(self, tmp_path):
++        import pytest
++
++        from packages.orchestration.flight_plan import ReplanRejectedError, replan
++
++        fp1 = FlightPlan(**json.loads(_valid_plan_json(2)))
++        fp2 = FlightPlan(**json.loads(_valid_plan_json(1)))
++
++        with pytest.raises(ReplanRejectedError, match="Cannot replan"):
++            replan(fp1.model_dump(), fp2, tmp_path, any_task_completed=True)

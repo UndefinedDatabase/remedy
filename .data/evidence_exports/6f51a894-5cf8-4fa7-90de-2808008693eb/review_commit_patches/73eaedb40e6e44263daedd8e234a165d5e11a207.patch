@@ -1,0 +1,94 @@
+73eaedb40e6e44263daedd8e234a165d5e11a207
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index a20bd7a..d69b85a 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -24,7 +24,7 @@ non-"sr:" ids, and decision_queue next_actions reference a
+ nonexistent command "remedy decision answer". The gate can never be
+ approved through the product.
+ 
+-### R-0121 [blocker] Red regression suite reported as green — Open
++### R-0121 [blocker] Red regression suite reported as green — Done: R-0121
+ tests/orchestration/schemas/test_schemas.py::TestSchemaSize::
+ test_schema_size_matches_snapshot[PlannerPlan] FAILS on the branch:
+ schema size 1088 vs snapshot 909 — the F014 deprecation docstring on
+@@ -50,7 +50,7 @@ remedy do --yes neither approves the plan nor records an
+ auto-approval audit entry. Spec: --yes records an auto-approval
+ decision (audit trail, not a silent skip).
+ 
+-### R-0125 [medium] Schema tag mismatch — Open
++### R-0125 [medium] Schema tag mismatch — Done: R-0125
+ FLIGHT_PLAN_SCHEMA_V = "fp1" but schema_v is
+ Literal["flight_plan_v1"]. Every other model has tag == literal;
+ SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry
+diff --git a/packages/orchestration/planner_models.py b/packages/orchestration/planner_models.py
+index 18839c7..9e2aba2 100644
+--- a/packages/orchestration/planner_models.py
++++ b/packages/orchestration/planner_models.py
+@@ -11,32 +11,17 @@ from __future__ import annotations
+ from pydantic import BaseModel, Field
+ 
+ 
++# Deprecated by F014: superseded by PlannedTask. Retained for --no-llm/fallback.
+ class ProposedTask(BaseModel):
+-    """A task proposed by the planner.
+-
+-    .. deprecated:: F014
+-        Superseded by PlannedTask (flight_plan_v1). Retained for
+-        --no-llm/fallback deterministic planner path.
+-        See docs/roadmap/features/T1_F014.md.
+-    """
++    """A task proposed by the planner."""
+ 
+     task_type: str
+     description: str
+ 
+ 
++# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
+ class PlannerOutput(BaseModel):
+-    """Structured planning result returned by a planner provider.
+-
+-    summary:           short overview of the overall plan.
+-    proposed_tasks:    ordered list of tasks to execute.
+-    acceptance_checks: optional job-level criteria for a successful outcome.
+-    notes:             optional assumptions or caveats from the planner.
+-
+-    .. deprecated:: F014
+-        Superseded by FlightPlan (flight_plan_v1). Retained for
+-        --no-llm/fallback deterministic planner path.
+-        See docs/roadmap/features/T1_F014.md.
+-    """
++    """Structured planning result returned by a planner provider."""
+ 
+     summary: str
+     proposed_tasks: list[ProposedTask] = Field(min_length=1)
+diff --git a/packages/orchestration/schemas/models.py b/packages/orchestration/schemas/models.py
+index 974841b..c9d0aa7 100644
+--- a/packages/orchestration/schemas/models.py
++++ b/packages/orchestration/schemas/models.py
+@@ -20,7 +20,7 @@ REVIEW_VERDICT_SCHEMA_V = "rv1"
+ PLANNER_PLAN_SCHEMA_V = "pp1"
+ DESIGN_SPEC_SCHEMA_V = "ds1"
+ JOB_INTAKE_SCHEMA_V = "ji1"
+-FLIGHT_PLAN_SCHEMA_V = "fp1"
++FLIGHT_PLAN_SCHEMA_V = "flight_plan_v1"
+ 
+ Verdict = Literal["pass", "fail", "needs_repair", "blocked"]
+ Severity = Literal["blocker", "high", "medium", "low"]
+@@ -74,14 +74,9 @@ class ProposedTask(_Strict):
+     description: str
+ 
+ 
++# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
+ class PlannerPlan(_Structured):
+-    """Structured planner output (schema ``pp1``).
+-
+-    .. deprecated:: F014
+-        Superseded by FlightPlan (flight_plan_v1). Retained for
+-        --no-llm/fallback deterministic planner path.
+-        See docs/roadmap/features/T1_F014.md.
+-    """
++    """Structured planner output (schema ``pp1``)."""
+ 
+     SCHEMA_V: ClassVar[str] = PLANNER_PLAN_SCHEMA_V
+     schema_v: Literal["pp1"]  # required: no default

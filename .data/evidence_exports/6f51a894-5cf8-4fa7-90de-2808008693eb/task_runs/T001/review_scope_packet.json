@@ -1,0 +1,13 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/commands/job.py",
+  "apps/cli/grouped.py",
+  "docs/roadmap/STATUS.md"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_title": "Task T001"
+}

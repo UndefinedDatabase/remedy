@@ -1,0 +1,32 @@
+{
+ "changed_files": [
+  "docs/roadmap/features/T1_F014.md",
+  "packages/core/models.py",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/planner_models.py",
+  "packages/orchestration/schemas/models.py"
+ ],
+ "diff_sha256": "88664652be85aa0e744dfd2bea39b2dac420c6a081227435e0500f67941bef3f",
+ "job_id": "6f51a894-5cf8-4fa7-90de-2808008693eb",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "88664652be85aa0e744dfd2bea39b2dac420c6a081227435e0500f67941bef3f",
+ "safe_diff_sha256": "4d95aa6900bf3e87cdab50c87187cb5e0630ea5c86e3fca5329266c807e400ff",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "docs/roadmap/features/T1_F014.md",
+  "packages/core/models.py",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/planner_models.py",
+  "packages/orchestration/schemas/models.py"
+ ],
+ "timestamp": "2026-07-26T00:00:00Z",
+ "tracked_diff_sha256": "4d95aa6900bf3e87cdab50c87187cb5e0630ea5c86e3fca5329266c807e400ff",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

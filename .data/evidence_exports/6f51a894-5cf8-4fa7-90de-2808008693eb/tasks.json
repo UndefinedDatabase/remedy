@@ -1,0 +1,41 @@
+[
+ {
+  "safe_diff_files": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/decision.py",
+   "apps/cli/commands/do_cmd.py",
+   "apps/cli/commands/job.py",
+   "apps/cli/grouped.py",
+   "docs/roadmap/STATUS.md"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "docs/roadmap/features/T1_F014.md",
+   "packages/core/models.py",
+   "packages/orchestration/decision_queue.py",
+   "packages/orchestration/flight_plan.py",
+   "packages/orchestration/planner_models.py",
+   "packages/orchestration/schemas/models.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "scripts/remedy_smoke.sh",
+   "tests/cli/test_golden_path.py",
+   "tests/cli/test_plan_approval.py",
+   "tests/orchestration/schemas/test_schemas.py",
+   "tests/orchestration/test_flight_plan.py",
+   "tests/schemas/test_flight_plan_schema.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]
