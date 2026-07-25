@@ -173,7 +173,8 @@ class _StagedArtifacts:
 def _decode_subject(raw: bytes | None):
     """Fail closed. No bytes -> legacy empty subject. Invalid JSON or schema failure BLOCKS."""
     from packages.orchestration.review_subject import (
-        ReviewSubjectV1, decode_review_subject_from_json,
+        ReviewSubjectV1,
+        decode_review_subject_from_json,
     )
     if raw is None:
         return ReviewSubjectV1()
@@ -520,10 +521,13 @@ def main() -> int:
         # then-write, no rename, no second publication. The atomic link is the race boundary, so exactly
         # one concurrent invocation wins and no existing destination is ever truncated.
         import tempfile as _tempfile
+
         from packages.orchestration.safe_publish import (
             CAPABILITY_SUPPORTED,
-            PublishCollisionError, PublishSourceError,
-            probe_anonymous_publication_capability, publish_atomically,
+            PublishCollisionError,
+            PublishSourceError,
+            probe_anonymous_publication_capability,
+            publish_atomically,
         )
         final_status = str(verified_status.get("package_status") or "UNKNOWN")
         final_path = _final_path_for(args.final_template, final_status)

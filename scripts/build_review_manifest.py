@@ -26,8 +26,14 @@ if _REPO_ROOT not in sys.path:
 try:
     from packages.orchestration.repair_attest import (
         build_safe_diff_text as _canon_safe_diff_text,
+    )
+    from packages.orchestration.repair_attest import (
         canonical_provenance_sha256 as _canon_provenance_sha256,
+    )
+    from packages.orchestration.repair_attest import (
         parse_safe_diff_paths as _canon_parse_safe_diff_paths,
+    )
+    from packages.orchestration.repair_attest import (
         sha256_text as _canon_sha256_text,
     )
     _CANON_AVAILABLE = True
@@ -787,7 +793,8 @@ def _verify_review_subject_records(ev: _EvidenceView, subject: dict, base: str) 
     errors: list = []
     try:
         from packages.orchestration.review_subject import (
-            resolve_review_subject, validate_review_subject_schema,
+            resolve_review_subject,
+            validate_review_subject_schema,
             validate_subject_path_kinds,
         )
     except Exception as exc:
@@ -876,7 +883,9 @@ def _verify_commit_patches(ev: _EvidenceView, actual: list) -> list:
     errors: list = []
     try:
         from packages.orchestration.review_subject import (
-            COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+            COMMIT_PATCH_DIRNAME,
+            commit_patch_bytes,
+            commit_patch_filename,
         )
     except Exception as exc:
         return [f"cannot verify commit patches: {str(exc)[:120]}"]
@@ -2992,7 +3001,6 @@ def _check_bundle_integrity(
     # with `lstat` and hashed by its declared kind: a regular file its own bytes, a symlink its
     # literal target text — never the target.
     import hashlib as _hashlib
-    import stat as _stat
 
     kinds: dict[str, str] = {}
     link_targets: dict[str, str] = {}

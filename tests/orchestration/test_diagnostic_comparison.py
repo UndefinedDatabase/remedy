@@ -14,7 +14,6 @@ from packages.orchestration.diagnostic_comparison import (
     validate_diagnostic_comparison,
 )
 
-
 _BASE = "afe8394abc"
 _HEAD = "f3ed24fdef"
 _CMD = "python3 -m pytest tests/orchestration/ --tb=no -q"

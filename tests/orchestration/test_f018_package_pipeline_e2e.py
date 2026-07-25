@@ -10,7 +10,6 @@ import json
 import os
 import shutil
 import sys
-from typing import Any
 
 import pytest
 
@@ -381,6 +380,7 @@ class TestEvidenceRefresh:
 
     def test_inventory_updated_after_refresh(self, scratch):
         import hashlib
+
         from scripts.refresh_review_evidence import refresh_staged_evidence
 
         stale = {"schema_version": "1.0.0", "verdict": "PASS",
@@ -452,8 +452,9 @@ class TestEvidenceRefresh:
 
 class TestStoppedJobGuard:
     def test_stopped_job_with_pending_stop_blocks(self, scratch, monkeypatch):
-        from packages.orchestration import pingpong_job as pj
         from types import SimpleNamespace
+
+        from packages.orchestration import pingpong_job as pj
 
         fake_job = pj.JobPlan(
             job_id="test-stopped-guard",
@@ -538,8 +539,6 @@ class TestFirstRunningAtTiming:
 
 class TestPersistedActualsSchema:
     def test_actuals_include_schema_version(self):
-        from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration import pingpong_job as pj
 
         actuals = {
             "schema_version": "1.0.0",
@@ -557,7 +556,6 @@ class TestPersistedActualsSchema:
             assert isinstance(_aval, int) and _aval >= 0
 
     def test_unknown_key_rejected(self):
-        from packages.orchestration.budget_guard import BudgetCounterError
 
         actuals = {
             "provider_call_count": 5,
@@ -574,7 +572,6 @@ class TestPersistedActualsSchema:
         assert extra == {"EXTRA_KEY"}
 
     def test_unmeasured_mismatch_rejected(self):
-        from packages.orchestration.budget_guard import BudgetCounterError
 
         actuals = {
             "provider_call_count": 5,

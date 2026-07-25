@@ -14,16 +14,14 @@ import pytest
 
 from packages.orchestration.pingpong_job import (
     JOB_COMPLETED,
+    _jobs_dir,
     parse_job_file,
     run_job,
-    _jobs_dir,
 )
 from packages.orchestration.pingpong_loop import (
-    PingPongResult,
     run_pingpong,
 )
 from packages.orchestration.pingpong_provider import FakeProvider
-
 
 _TWO_TASK_JOB = """\
 # Job: Integration Test
@@ -223,8 +221,9 @@ class TestFinalAuditWiring:
 
     def test_final_audit_reads_final_job_review(self, tmp_path):
         """_build_final_audit should include final_job_review data when present."""
-        from apps.cli.commands.do_cmd import _build_final_audit
         from dataclasses import dataclass, field
+
+        from apps.cli.commands.do_cmd import _build_final_audit
 
         @dataclass
         class FakeTask:

@@ -30,7 +30,6 @@ from packages.orchestration.run_manifest import (
     EXPECT_DISPATCHED_NO_CALLS,
     EXPECT_EXECUTED,
     EXPECT_NOT_DISPATCHED,
-    EXPECT_PRIOR_EPISODE,
     EXPECT_SKIPPED,
     MODE_PUBLISHED_REFERENCE,
     PHASE_EPISODE_START,
@@ -78,7 +77,9 @@ def _manifest(*, status, capture, phase, task_expectation, calls=(), stop="",
               run_id="", seal="", expected=0, observed=0, dispatch=None, ledger_ref=None,
               task_status=None):
     from packages.orchestration.run_manifest import (
-        DISPATCH_NEVER, DISPATCH_PRIOR_EPISODE, DISPATCH_THIS_EPISODE,
+        DISPATCH_NEVER,
+        DISPATCH_PRIOR_EPISODE,
+        DISPATCH_THIS_EPISODE,
     )
     snap = T._snap()
     wrapper = T._wrap(snap, episode_id="ep1", phase=capture)
@@ -310,7 +311,9 @@ class TestProductionProducesOnlyValidLifecycles:
 
     def test_a_real_pre_work_stop(self, data_root, repo):
         from packages.orchestration.pingpong_job import (
-            job_evidence_dir, parse_job_file, run_job,
+            job_evidence_dir,
+            parse_job_file,
+            run_job,
         )
         from packages.orchestration.run_manifest import load_latest_manifest_verified
         from packages.orchestration.safe_points import request_stop

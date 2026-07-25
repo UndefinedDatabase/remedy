@@ -1372,9 +1372,10 @@ class TestEvidenceHygiene:
         assert isinstance(data["file_hashes"], dict)
 
     def test_bundle_integrity_stays_packaging_layer(self):
-        from scripts.build_review_manifest import build_manifest_from_snapshot
-        from packages.orchestration.final_verifier import build_final_verifier_report
         import inspect
+
+        from packages.orchestration.final_verifier import build_final_verifier_report
+        from scripts.build_review_manifest import build_manifest_from_snapshot
         fv_src = inspect.getsource(build_final_verifier_report)
         assert "review_bundle_integrity" not in fv_src
         # Round 24 (F6): the manifest is assembled by build_manifest_from_snapshot from the
@@ -1464,6 +1465,7 @@ class TestEvidenceBundleConsistency:
     def test_bundle_integrity_checked_when_proof_matches(self, tmp_path):
         """_check_bundle_integrity returns hash_checked=true on matching hashes."""
         import hashlib
+
         from scripts.build_review_manifest import _check_bundle_integrity
 
         ev_dir = tmp_path / "evidence"
@@ -1626,10 +1628,9 @@ class TestManualCompletionFinalizeActuallyRuns:
                                                     tmp_path):
         """End to end into the packager's own predicate — the one whose False reintroduced the
         missing-root-artifact block."""
-        from scripts.build_review_manifest import _is_manual_completion
-
         from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.repair_attest import attest_operator_repair
+        from scripts.build_review_manifest import _is_manual_completion
 
         job = _run_completed_job(demo_repo)
         # ALL task runs must be manual for the packager to treat the job as manual completion.

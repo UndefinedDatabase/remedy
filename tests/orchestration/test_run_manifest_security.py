@@ -18,18 +18,16 @@ import subprocess
 import pytest
 
 import tests.orchestration.test_run_manifest as T
+from packages.common import secure_fs as _fs
 from packages.orchestration.run_manifest import (
     CALLS_SUBDIR,
-    GIT_OK,
-    MANIFESTS_SUBDIR,
     MANIFEST_FILENAME,
+    MANIFESTS_SUBDIR,
     read_manifest_tree_bytes_anchored,
-    validate_episode_artifacts_anchored,
     validate_index_and_tree,
     worktree_identity,
     write_run_manifest,
 )
-from packages.common import secure_fs as _fs
 
 
 def _git(path, cmd):
@@ -89,9 +87,9 @@ class TestUntrackedReaderSafety:
         # a FIFO must raise (not open → cannot hang), and a symlink must raise carrying only
         # its LINK TEXT, never following it.
         from packages.orchestration.run_manifest import (
+            _read_untracked_verified,
             _UntrackedSpecial,
             _UntrackedSymlink,
-            _read_untracked_verified,
         )
         os.mkfifo(str(tmp_path / "pipe"))
         outside = tmp_path / "secret"
@@ -110,11 +108,12 @@ class TestUntrackedReaderSafety:
     def test_same_size_in_place_mutation_during_read_is_a_race(self, tmp_path, monkeypatch):
         # F7: a SAME-SIZE in-place rewrite while the reader is hashing must be detected — the
         # bytes are mixed, so the read is refused, never returned as a stable ok read.
-        from packages.orchestration.run_manifest import (
-            _UntrackedRace,
-            _read_untracked_verified,
-        )
         import os as _os
+
+        from packages.orchestration.run_manifest import (
+            _read_untracked_verified,
+            _UntrackedRace,
+        )
 
         target = tmp_path / "u.txt"
         target.write_bytes(b"A" * (2 << 20))          # 2 MiB, read in >1 chunk

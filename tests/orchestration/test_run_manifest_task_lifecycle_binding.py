@@ -136,7 +136,8 @@ class TestPersistedContradictionsAreReportedNotNormalized:
 
         import tests.orchestration.test_run_manifest as T
         from packages.orchestration.run_manifest import (
-            CallExpectationV1, TaskCallExpectationV1,
+            CallExpectationV1,
+            TaskCallExpectationV1,
         )
         m = T._mk(episode_id="ep1", calls=())
         forged = dataclasses.replace(m, call_expectation=CallExpectationV1(

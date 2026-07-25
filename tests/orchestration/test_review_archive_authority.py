@@ -7,7 +7,6 @@ classified operator-context, non-authoritative, regardless of subject membership
 """
 from __future__ import annotations
 
-import os
 import subprocess
 
 import pytest

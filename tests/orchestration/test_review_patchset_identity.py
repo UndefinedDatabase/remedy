@@ -4,7 +4,6 @@ evidence/current/review_commit_patches/<sha>.patch count; an ordinary source/tes
 contains 'commit_patch' can never enter the identity; a missing or extra patch blocks."""
 from __future__ import annotations
 
-import hashlib
 import json
 
 from packages.orchestration.review_subject import commit_patchset_identity

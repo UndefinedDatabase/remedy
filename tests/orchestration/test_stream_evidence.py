@@ -25,8 +25,8 @@ from packages.orchestration.stream_evidence import (
     capture_stream_evidence,
     read_run_events,
     redact_stream_line,
-    summarize_tool_input,
     sum_token_deltas,
+    summarize_tool_input,
 )
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "stream"

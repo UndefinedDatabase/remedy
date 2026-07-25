@@ -23,10 +23,6 @@ import pytest
 
 from apps.cli.commands import runtime_cmd
 from packages.runtimes import dev_server as DS
-from tests.runtimes.runtime_cleanup import (
-    RuntimeRegistry,
-    basetemp_survivors,
-)
 from packages.runtimes import runtime_supervisor as SUP
 from packages.runtimes.dev_server import (
     IDENTITY_MISMATCH,
@@ -40,7 +36,10 @@ from packages.runtimes.dev_server import (
     new_instance_id,
     project_digest,
     save_state,
-    state_path,
+)
+from tests.runtimes.runtime_cleanup import (
+    RuntimeRegistry,
+    basetemp_survivors,
 )
 
 pytestmark = pytest.mark.subprocess

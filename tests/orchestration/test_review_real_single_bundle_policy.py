@@ -9,8 +9,6 @@ import os
 import zipfile
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _e2e = importlib.util.spec_from_file_location(
     "_e2e_bp", REPO_ROOT / "tests" / "orchestration" / "test_review_authoritative_e2e.py")

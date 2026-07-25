@@ -180,12 +180,16 @@ def data_root(tmp_path, monkeypatch):
 class TestProductionBuildsTheStateFromTheRun:
     def test_a_real_run_ledger_takes_its_state_from_its_run_record(self, data_root, repo):
         from packages.orchestration.pingpong_job import (
-            load_job_plan, parse_job_file, run_job,
+            load_job_plan,
+            parse_job_file,
+            run_job,
         )
         from packages.orchestration.pingpong_loop import load_run
         from packages.orchestration.pingpong_provider import FakeProvider
         from packages.orchestration.run_manifest import (
-            EpisodeInputSnapshotV1, build_input_snapshot, build_run_manifest,
+            EpisodeInputSnapshotV1,
+            build_input_snapshot,
+            build_run_manifest,
         )
 
         def prov():
@@ -212,12 +216,16 @@ class TestProductionBuildsTheStateFromTheRun:
     def test_an_unreadable_run_outcome_is_incomplete_never_a_default(self, data_root, repo):
         """The old code defaulted an unknown status to "stopped" and sealed it as complete."""
         from packages.orchestration.pingpong_job import (
-            load_job_plan, parse_job_file, run_job,
+            load_job_plan,
+            parse_job_file,
+            run_job,
         )
         from packages.orchestration.pingpong_loop import _pingpong_runs_dir
         from packages.orchestration.pingpong_provider import FakeProvider
         from packages.orchestration.run_manifest import (
-            EpisodeInputSnapshotV1, build_input_snapshot, build_run_manifest,
+            EpisodeInputSnapshotV1,
+            build_input_snapshot,
+            build_run_manifest,
         )
 
         def prov():

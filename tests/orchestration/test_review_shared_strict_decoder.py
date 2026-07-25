@@ -2,14 +2,13 @@
 packages.common.strict_json; neither carries its own object_pairs_hook copy."""
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-from packages.common.strict_json import StrictJsonError, strict_loads
+from packages.common.strict_json import StrictJsonError, strict_loads  # noqa: E402
 
 
 class TestSharedDecoder:

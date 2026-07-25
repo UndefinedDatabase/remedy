@@ -221,7 +221,8 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
     _vt_runs = [{k: r[k] for k in _VT_V11_FIELDS if k in r} for r in verification_runs]
     dc = " && ".join(r["command"] for r in verification_runs)
     de = 0 if all(r["exit_code"] == 0 for r in verification_runs) else 1
-    from datetime import datetime as _dt, timezone as _tz
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
     _vt_ts = _dt.now(_tz.utc).isoformat()
     _w(os.path.join(evidence_dir, "verification_tests.json"), {
         "schema_version": "1.1.0", "verification_type": "explicit_commands", "runs": _vt_runs,

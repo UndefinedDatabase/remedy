@@ -8,9 +8,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import os
-from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -23,7 +21,6 @@ from packages.core.models import (
     Task,
 )
 from packages.orchestration.storage import save_job
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Shared fixtures
@@ -119,11 +116,11 @@ class TestDoContinueFenceEnforcement:
     """run_do_continue(): fence violation → FENCE_VIOLATION stop, no apply."""
 
     def _make_continue_job(self, data_dir, repo, *, deny=None, target_path="docs/CHANGES.md"):
+        import dataclasses
+
         from packages.orchestration.approval_queue import make_intent_id, set_approval_state
         from packages.orchestration.permissions import Capability, set_permission
-        from packages.orchestration.run_contract import build_default_run_contract, save_contract
-        import dataclasses
-        from packages.orchestration.run_contract import ContractAction
+        from packages.orchestration.run_contract import ContractAction, build_default_run_contract, save_contract
 
         fences = JobFences(deny=deny) if deny else None
         task = Task(description="Continue task")

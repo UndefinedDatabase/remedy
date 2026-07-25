@@ -41,7 +41,10 @@ def _chain():
     """Production's shape: ep1 finishes a run; ep2 REPEATS that terminal ledger byte-for-byte as
     prior history (and would carry any new work under a new run id)."""
     from packages.orchestration.run_manifest import (
-        DISPATCH_PRIOR_EPISODE, EXPECT_PRIOR_EPISODE, CallExpectationV1, TaskCallExpectationV1,
+        DISPATCH_PRIOR_EPISODE,
+        EXPECT_PRIOR_EPISODE,
+        CallExpectationV1,
+        TaskCallExpectationV1,
     )
     ep1 = _bind_artifact_refs(T._mk(episode_id="ep1", calls=(T._call(seq=1),)))
     lg = ep1.call_ledgers[0]

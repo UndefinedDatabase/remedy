@@ -173,8 +173,9 @@ class TestTheCanonicalTreeRefusesAnAlias:
 class TestOnePhysicalFileCannotBackTwoLedgers:
     def test_the_loader_refuses_two_declarations_of_one_artifact(self, tmp_path):
         """The exact shape the old dict-by-filename comprehension swallowed."""
-        from packages.orchestration.run_manifest import _validate_episode_ledgers_anchored
         import os
+
+        from packages.orchestration.run_manifest import _validate_episode_ledgers_anchored
 
         base = _bind_artifact_refs(T._mk(episode_id="ep1", calls=(T._call(seq=1),)))
         lg = base.call_ledgers[0]

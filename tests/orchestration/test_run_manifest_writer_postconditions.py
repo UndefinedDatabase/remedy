@@ -19,11 +19,11 @@ import pytest
 import tests.orchestration.test_run_manifest as T
 from packages.orchestration.run_manifest import (
     COVERAGE_COMPLETE,
-    STAGING_SUBDIR,
     MANIFEST_FILENAME,
     MANIFEST_INDEX_FILENAME,
     MANIFESTS_SUBDIR,
     MODE_PUBLISHED_REFERENCE,
+    STAGING_SUBDIR,
     ManifestConflictError,
     ManifestError,
     build_verified_manifest_tree,
@@ -36,6 +36,7 @@ from packages.orchestration.run_manifest import (
     validate_run_manifest,
     write_run_manifest,
 )
+
 
 @contextlib.contextmanager
 def _publish_winner_at_rename(ev, winner):

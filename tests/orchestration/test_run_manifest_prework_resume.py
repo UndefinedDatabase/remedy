@@ -143,7 +143,9 @@ class TestPreWorkStopOnAResumedJob:
         """A pre-work stop did no work by definition — an executed task in one would mean the
         stop did not happen before work."""
         from packages.orchestration.run_manifest import (
-            CallExpectationV1, EXPECT_EXECUTED, TaskCallExpectationV1,
+            EXPECT_EXECUTED,
+            CallExpectationV1,
+            TaskCallExpectationV1,
         )
         job = _ran(repo)
         ep1 = job.active_episode_id

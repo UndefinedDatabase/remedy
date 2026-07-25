@@ -737,6 +737,7 @@ def test_actual_call_count_exceeding_provider_is_a_producer_error(tmp_path: Path
     into a plausible value — the producer raises a bounded TokenEvidenceError so the packaging
     authority reports PRODUCER_ERROR and BLOCKED_EVIDENCE."""
     import pytest
+
     from packages.orchestration.token_truth import TokenEvidenceError
     _seed_task(tmp_path, "T001", builder=100, reviewer=50, repair=0,
                provider_evidence={

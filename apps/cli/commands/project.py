@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 def _cmd_create_project(name: str, description: str | None) -> None:
     from packages.orchestration.project_registry import (
         RemyProject,
+        _unique_slug,
         save_project,
         slugify,
-        _unique_slug,
     )
     slug = _unique_slug(slugify(name))
     project = RemyProject(name=name, slug=slug, description=description)
@@ -308,14 +308,14 @@ def _cmd_project_current(
     project_flag: str | None = None,
     json_output: bool = False,
 ) -> None:
+    import os
+
     from packages.orchestration.project_registry import (
         AmbiguousProjectError,
         InvalidProjectSelectorError,
         ProjectNotFoundError,
         select_project,
     )
-
-    import os
     cwd = os.getcwd()
     try:
         project, source = select_project(project_flag, cwd)

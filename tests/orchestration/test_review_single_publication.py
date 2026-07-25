@@ -20,7 +20,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_review_authoritative_e2e import _build_repo, _git  # noqa: E402
+from test_review_authoritative_e2e import _build_repo  # noqa: E402
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git required")
 

@@ -25,7 +25,6 @@ import fcntl
 import hashlib
 import json
 import os
-import re
 import shlex
 import signal
 import socket
@@ -443,22 +442,10 @@ def resolved_fingerprint(argv: list[str], cwd: str | Path, project_id: str) -> s
 # this module's shareable runtime state cannot drift apart. The behaviour is unchanged —
 # these names are the same objects the accepted tests already exercise.
 from packages.common.path_redaction import (  # noqa: E402
-    ABS_PATH_RE as _ABS_PATH_RE,
-)
-from packages.common.path_redaction import (  # noqa: E402
     ABS_PREFIX_RE as _ABS_PREFIX_RE,
 )
 from packages.common.path_redaction import (  # noqa: E402
-    FILE_URI_RE as _FILE_URI_RE,
-)
-from packages.common.path_redaction import (  # noqa: E402
-    QUOTED_PATH_RE as _QUOTED_PATH_RE,
-)
-from packages.common.path_redaction import (  # noqa: E402
     basename as _basename,
-)
-from packages.common.path_redaction import (  # noqa: E402
-    file_uri_basename as _file_uri_basename,
 )
 from packages.common.path_redaction import (  # noqa: E402
     scrub_paths as _scrub_paths,

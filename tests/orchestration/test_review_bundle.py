@@ -363,7 +363,8 @@ class TestReviewZipHygiene:
         text = script.read_text()
         assert "\\.env" in text          # post-build BAD-file guard still refuses a leaked .env
         from packages.orchestration.archive_plan import (
-            DISP_EXCLUDE_SAFE_CONTEXT, classify_bundle_path,
+            DISP_EXCLUDE_SAFE_CONTEXT,
+            classify_bundle_path,
         )
         assert classify_bundle_path(".env", changed=False) == DISP_EXCLUDE_SAFE_CONTEXT
 

@@ -10,10 +10,11 @@ import importlib.util
 import json
 from pathlib import Path
 
-from packages.orchestration.token_truth import (
-    MEASUREMENT_SOURCES, build_token_truth,
-)
 from packages.orchestration.token_authority import validate_token_truth
+from packages.orchestration.token_truth import (
+    MEASUREMENT_SOURCES,
+    build_token_truth,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _tt = importlib.util.spec_from_file_location(

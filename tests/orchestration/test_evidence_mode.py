@@ -9,7 +9,6 @@ from packages.orchestration.evidence_mode import (
     classify_execution_mode,
 )
 
-
 # --- Enum shape ------------------------------------------------------------
 
 def test_enum_has_five_values():

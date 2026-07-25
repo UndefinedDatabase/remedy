@@ -7,8 +7,6 @@ paths, lowercase hashes, `link_target` required for symlinks and forbidden elsew
 """
 from __future__ import annotations
 
-import pytest
-
 from packages.orchestration.review_subject import (
     validate_review_file_schema,
     validate_review_subject_schema,

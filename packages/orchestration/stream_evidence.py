@@ -27,11 +27,12 @@ No provider is invoked by this module: it consumes an iterable of lines.
 from __future__ import annotations
 
 import hashlib
-import re
 import json
+import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any
 
 from packages.orchestration.prompt_trace import redact_prompt_text
 from packages.orchestration.token_actuals import STRUCTURED_RETRY_EXHAUSTED_SUBTYPE
@@ -488,8 +489,7 @@ def capture_stream_evidence(
 
 def iter_process_lines(stdout: Iterable[str]) -> Iterator[str]:
     """Yield lines from a subprocess stdout without buffering the whole stream."""
-    for line in stdout:
-        yield line
+    yield from stdout
 
 
 class StreamCapReached(RuntimeError):

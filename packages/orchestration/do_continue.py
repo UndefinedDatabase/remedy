@@ -609,7 +609,11 @@ def run_do_continue(
             # F017: fence preflight via shared enforcement boundary
             from packages.orchestration.scope_fences import (
                 FenceViolationError as _FVE,
+            )
+            from packages.orchestration.scope_fences import (
                 TouchedPath as _FTP,
+            )
+            from packages.orchestration.scope_fences import (
                 enforce_change_set as _f_enforce,
             )
             _f_intent = get_patch_intent(job, iid)

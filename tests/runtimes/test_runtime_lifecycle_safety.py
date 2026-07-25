@@ -7,7 +7,6 @@ no network install, no F008/F146 code.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 import threading
@@ -20,7 +19,6 @@ import pytest
 from apps.cli.commands import runtime_cmd
 from packages.runtimes import dev_server as DS
 from packages.runtimes.dev_server import (
-    MAX_LOG_BYTES,
     DevServer,
     RuntimeConfigError,
     RuntimeSpec,

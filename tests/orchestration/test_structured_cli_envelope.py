@@ -7,13 +7,11 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
+from packages.orchestration.pingpong_provider import ClaudeCliProvider
 from packages.orchestration.token_actuals import (
     STRUCTURED_RETRY_EXHAUSTED_SUBTYPE,
     parse_cli_envelope,
 )
-from packages.orchestration.pingpong_provider import ClaudeCliProvider
 
 _SO = {"schema_v": "rv1", "verdict": "pass", "findings": [],
        "confidence": "high", "summary": "ok"}

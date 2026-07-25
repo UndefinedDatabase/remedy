@@ -7,7 +7,6 @@ import sys
 import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id

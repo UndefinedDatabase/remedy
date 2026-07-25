@@ -391,7 +391,7 @@ class TestWallClockFirstRunningAt:
         assert job.first_running_at == ""
 
     def test_first_running_at_serialized(self):
-        from packages.orchestration.pingpong_job import _export_job, _import_job, JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
 
         job = JobPlan(first_running_at="2026-07-01T12:00:00+00:00")
         exported = _export_job(job)
@@ -487,7 +487,7 @@ class TestBudgetActualsPersistence:
     """Budget_actuals field round-trips through export/import."""
 
     def test_budget_actuals_serialized(self):
-        from packages.orchestration.pingpong_job import _export_job, _import_job, JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
 
         actuals = {
             "provider_call_count": 5,
@@ -517,7 +517,7 @@ class TestJobRunRetainsBudget:
 
     def test_job_run_retains_persisted_budget(self):
         """JobPlan with budgets dict persists and round-trips unchanged."""
-        from packages.orchestration.pingpong_job import _export_job, _import_job, JobPlan
+        from packages.orchestration.pingpong_job import JobPlan, _export_job, _import_job
 
         budgets = {"max_total_tokens": 100000, "max_provider_calls": 20}
         job = JobPlan(job_id="retain_budget_01", budgets=budgets)
@@ -832,7 +832,7 @@ class TestCorruptPersistedBudgetsBlock:
     """Finding 6: malformed persisted JobPlan budgets must block, never unlimited."""
 
     def test_zero_limit_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"max_provider_calls": 0})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -840,7 +840,7 @@ class TestCorruptPersistedBudgetsBlock:
         assert "corrupt_budget_state" in result.error
 
     def test_negative_limit_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"max_provider_calls": -5})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -848,7 +848,7 @@ class TestCorruptPersistedBudgetsBlock:
         assert "corrupt_budget_state" in result.error
 
     def test_boolean_limit_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"max_provider_calls": True})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -856,7 +856,7 @@ class TestCorruptPersistedBudgetsBlock:
         assert "corrupt_budget_state" in result.error
 
     def test_string_limit_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"max_provider_calls": "10"})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -864,7 +864,7 @@ class TestCorruptPersistedBudgetsBlock:
         assert "corrupt_budget_state" in result.error
 
     def test_float_limit_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"max_provider_calls": 3.5})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -872,7 +872,7 @@ class TestCorruptPersistedBudgetsBlock:
         assert "corrupt_budget_state" in result.error
 
     def test_unknown_field_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"max_provider_calls": 5, "unknown_key": 42})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -880,7 +880,7 @@ class TestCorruptPersistedBudgetsBlock:
         assert "corrupt_budget_state" in result.error
 
     def test_naive_deadline_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budgets={"deadline": "2026-12-31T00:00:00"})
         _persist_job(job)
         result = run_job(job.job_id)
@@ -899,7 +899,7 @@ class TestStrictResumedActuals:
 
     def test_bool_provider_calls_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0", "provider_call_count": True,
             "actual_call_count": 0, "unmeasured_call_count": 0,
@@ -912,7 +912,7 @@ class TestStrictResumedActuals:
 
     def test_float_total_tokens_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0", "provider_call_count": 0,
             "actual_call_count": 0, "unmeasured_call_count": 0,
@@ -925,7 +925,7 @@ class TestStrictResumedActuals:
 
     def test_string_actual_count_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0", "provider_call_count": 0,
             "actual_call_count": "3", "unmeasured_call_count": 0,
@@ -938,7 +938,7 @@ class TestStrictResumedActuals:
 
     def test_negative_counter_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0", "provider_call_count": -1,
             "actual_call_count": 0, "unmeasured_call_count": 0,
@@ -951,7 +951,7 @@ class TestStrictResumedActuals:
 
     def test_measured_exceeds_provider_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0",
             "provider_call_count": 2,
@@ -1015,7 +1015,7 @@ class TestRealJobPlanDecision:
 
     def test_jobplan_budget_stop_creates_decision(self):
         from packages.orchestration.decision_queue import list_decisions
-        from packages.orchestration.pingpong_job import JobPlan, JOB_STOPPED
+        from packages.orchestration.pingpong_job import JOB_STOPPED, JobPlan
 
         job = JobPlan(
             status=JOB_STOPPED,
@@ -1053,7 +1053,7 @@ class TestRealJobPlanDecision:
 
     def test_repeated_list_no_duplicates(self):
         from packages.orchestration.decision_queue import list_decisions
-        from packages.orchestration.pingpong_job import JobPlan, JOB_STOPPED
+        from packages.orchestration.pingpong_job import JOB_STOPPED, JobPlan
 
         job = JobPlan(
             status=JOB_STOPPED,
@@ -1083,7 +1083,9 @@ class TestStoppedJobBudgetOverrideBlocked:
 
     def test_stopped_job_refuses_budget_flags(self):
         from packages.orchestration.pingpong_job import (
-            JobPlan, JOB_STOPPED, _persist_job,
+            JOB_STOPPED,
+            JobPlan,
+            _persist_job,
         )
 
         job = JobPlan(status=JOB_STOPPED, stop_source="budget")
@@ -1097,7 +1099,10 @@ class TestStoppedJobBudgetOverrideBlocked:
     def test_run_job_rejects_budget_on_stopped(self):
         """Repro 1: direct run_job budget override blocked on stopped job."""
         from packages.orchestration.pingpong_job import (
-            JobPlan, JOB_STOPPED, _persist_job, run_job,
+            JOB_STOPPED,
+            JobPlan,
+            _persist_job,
+            run_job,
         )
 
         job = JobPlan(status=JOB_STOPPED, stop_source="budget")
@@ -1110,7 +1115,9 @@ class TestStoppedJobBudgetOverrideBlocked:
     def test_run_job_accepts_budget_on_non_stopped(self):
         """Non-stopped jobs accept budget override."""
         from packages.orchestration.pingpong_job import (
-            JobPlan, _persist_job, run_job,
+            JobPlan,
+            _persist_job,
+            run_job,
         )
 
         job = JobPlan(status="pending")
@@ -1128,7 +1135,7 @@ class TestActualsSourcePreservation:
         assert "persisted_resume" not in VALID_ACTUAL_SOURCES
 
     def test_persisted_resume_rejected_by_counters(self):
-        from packages.orchestration.budget_guard import BudgetCounters, BudgetCounterError
+        from packages.orchestration.budget_guard import BudgetCounterError, BudgetCounters
         with pytest.raises(BudgetCounterError, match="unknown source"):
             BudgetCounters(
                 provider_calls=1, measured_call_count=1,
@@ -1211,7 +1218,7 @@ class TestVTv11FieldsRetained:
         vt = json.loads(Path(ev, "verification_tests.json").read_text())
         ts = vt["timestamp"]
         assert "2026-07-19T00:00:00" not in ts
-        from datetime import datetime as dt, timezone as tz
+        from datetime import datetime as dt
         parsed = dt.fromisoformat(ts)
         assert parsed.tzinfo is not None
 
@@ -1387,7 +1394,6 @@ class TestCriticalNodeBindings:
             "min_passed": 1,
             "critical_node_ids": ["TestMissing::test_not_there"],
         }]
-        from packages.orchestration.runtime_integration_gate import TEST_EXECUTION_BINDINGS
         import packages.orchestration.runtime_integration_gate as rig
         orig = rig.TEST_EXECUTION_BINDINGS
         try:
@@ -1399,8 +1405,8 @@ class TestCriticalNodeBindings:
         assert any("critical" in i.lower() for i in issues)
 
     def test_present_critical_node_passes(self):
-        from packages.orchestration.runtime_integration_gate import _bind_test_execution
         import packages.orchestration.runtime_integration_gate as rig
+        from packages.orchestration.runtime_integration_gate import _bind_test_execution
         results = []
         issues = []
         vd = {"runs": [{
@@ -1432,7 +1438,7 @@ class TestPersistedActualsSchemaVersion:
 
     def test_missing_schema_version_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={"provider_call_count": 0})
         _persist_job(job)
         with pytest.raises(BudgetCounterError, match="schema_version"):
@@ -1440,7 +1446,7 @@ class TestPersistedActualsSchemaVersion:
 
     def test_wrong_schema_version_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "banana", "provider_call_count": 0,
             "actual_call_count": 0, "unmeasured_call_count": 0,
@@ -1452,8 +1458,7 @@ class TestPersistedActualsSchemaVersion:
             run_job(job.job_id)
 
     def test_valid_schema_version_passes(self):
-        from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0", "provider_call_count": 0,
             "actual_call_count": 0, "unmeasured_call_count": 0,
@@ -1470,7 +1475,7 @@ class TestPersistedActualsMissingSources:
 
     def test_positive_count_missing_sources_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0",
             "provider_call_count": 1,
@@ -1485,7 +1490,7 @@ class TestPersistedActualsMissingSources:
 
     def test_positive_count_empty_sources_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0",
             "provider_call_count": 1,
@@ -1500,7 +1505,7 @@ class TestPersistedActualsMissingSources:
             run_job(job.job_id)
 
     def test_zero_count_no_sources_passes(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(budget_actuals={
             "schema_version": "1.0.0",
             "provider_call_count": 0,
@@ -1519,7 +1524,7 @@ class TestCorruptFirstRunningAt:
     """Repro 9: corrupt persisted first_running_at must block, not fail open."""
 
     def test_unparseable_value_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job, JOB_BLOCKED
+        from packages.orchestration.pingpong_job import JOB_BLOCKED, JobPlan, _persist_job, run_job
         job = JobPlan(first_running_at="not-a-date")
         job.status = "running"
         _persist_job(job)
@@ -1528,7 +1533,7 @@ class TestCorruptFirstRunningAt:
         assert "corrupt_first_running_at" in (result.error or "")
 
     def test_naive_datetime_blocks(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job, JOB_BLOCKED
+        from packages.orchestration.pingpong_job import JOB_BLOCKED, JobPlan, _persist_job, run_job
         job = JobPlan(first_running_at="2026-07-01T12:00:00")
         job.status = "running"
         _persist_job(job)
@@ -1537,7 +1542,7 @@ class TestCorruptFirstRunningAt:
         assert "timezone-naive" in (result.error or "")
 
     def test_valid_iso_utc_passes(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job, JOB_BLOCKED
+        from packages.orchestration.pingpong_job import JOB_BLOCKED, JobPlan, _persist_job, run_job
         job = JobPlan(first_running_at="2026-07-01T12:00:00+00:00")
         job.status = "running"
         _persist_job(job)
@@ -1550,7 +1555,7 @@ class TestWallClockSplit:
 
     def test_mismatched_timestamps_raises(self):
         from packages.orchestration.budget_guard import BudgetCounterError
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         job = JobPlan(
             first_running_at="2026-07-01T12:00:00+00:00",
             budget_actuals={
@@ -1568,7 +1573,7 @@ class TestWallClockSplit:
             run_job(job.job_id)
 
     def test_matching_timestamps_passes(self):
-        from packages.orchestration.pingpong_job import JobPlan, run_job, _persist_job
+        from packages.orchestration.pingpong_job import JobPlan, _persist_job, run_job
         ts = "2026-07-01T12:00:00+00:00"
         job = JobPlan(
             first_running_at=ts,
@@ -1587,8 +1592,9 @@ class TestWallClockSplit:
         assert result.error is None or "wall-clock" not in (result.error or "")
 
     def test_cli_reports_corrupt_on_mismatch(self, monkeypatch):
-        from packages.orchestration.pingpong_job import JobPlan
         import io
+
+        from packages.orchestration.pingpong_job import JobPlan
         job = JobPlan(
             job_id="wallclock1",
             first_running_at="2026-07-01T12:00:00+00:00",

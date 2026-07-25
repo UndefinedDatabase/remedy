@@ -74,7 +74,7 @@ def _valid() -> dict:
     }
 
 
-def _view(objs: dict, extra_files: dict | None = None) -> "._brm._EvidenceView":  # type: ignore
+def _view(objs: dict, extra_files: dict | None = None) -> "._brm._EvidenceView":  # type: ignore  # noqa: F722
     files = {rel: json.dumps(o).encode() for rel, o in objs.items()}
     files["task_runs/T001/safe.diff"] = b"--- a/src/a.py\n+++ b/src/a.py\n"
     for k, v in (extra_files or {}).items():
@@ -243,8 +243,9 @@ class TestLinkedPriorAndProductionIntegration:
         prod = [p for p in out if "/tests/" not in p.replace(os.sep, "/")
                 and not p.rsplit("/", 1)[-1].startswith("test_")]
         assert any(p.endswith("job_evidence.py") for p in prod), out
-        from packages.orchestration.job_evidence import create_manual_completion_bundle
         import inspect
+
+        from packages.orchestration.job_evidence import create_manual_completion_bundle
         assert "write_manual_completion_evidence(" in inspect.getsource(
             create_manual_completion_bundle)
 

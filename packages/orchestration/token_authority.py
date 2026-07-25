@@ -18,9 +18,13 @@ from typing import Any
 # the producer's own output always validates and the enums cannot drift.
 from packages.orchestration.token_truth import (
     CONFIDENCE_SOURCE_PAIRS,
-    MEASUREMENT_CONFIDENCES as MEASUREMENT_CONFIDENCE,
-    MEASUREMENT_SOURCES as MEASUREMENT_SOURCE,
     TOKEN_TRUTH_SCHEMA_VERSION,
+)
+from packages.orchestration.token_truth import (
+    MEASUREMENT_CONFIDENCES as MEASUREMENT_CONFIDENCE,
+)
+from packages.orchestration.token_truth import (
+    MEASUREMENT_SOURCES as MEASUREMENT_SOURCE,
 )
 
 #: The only token-truth schema version this build reads (shared with the producer).

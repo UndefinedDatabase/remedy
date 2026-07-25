@@ -12,17 +12,16 @@ from __future__ import annotations
 
 import pytest
 
+from packages.orchestration import pingpong_loop as PL
 from packages.orchestration.pingpong_job import (
-    ExecutionConfig,
     JOB_COMPLETED,
+    ExecutionConfig,
     job_evidence_dir,
     load_job_plan,
     parse_job_file,
     run_job,
 )
-from packages.orchestration import pingpong_loop as PL
 from packages.orchestration.run_manifest import load_latest_manifest_verified
-
 
 _TWO_TASK_JOB = (
     "# Job: runtime truth\n\n"

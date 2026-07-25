@@ -5,12 +5,12 @@ from __future__ import annotations
 import hashlib
 
 from packages.orchestration.archive_plan import (
-    ArchiveMemberV1,
-    ArchivePlanV1,
     MEMBER_REGULAR,
     MODE_REGULAR,
     SOURCE_EVIDENCE,
     SOURCE_GENERATED_MANIFEST,
+    ArchiveMemberV1,
+    ArchivePlanV1,
 )
 from packages.orchestration.evidence_inventory import (
     INVENTORY_BOUNDARY,

@@ -7,7 +7,6 @@ HEAD blob it removed, a rename records old path + both hashes + both kinds.
 """
 from __future__ import annotations
 
-import os
 import subprocess
 
 import pytest

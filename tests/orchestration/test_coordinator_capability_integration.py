@@ -7,12 +7,8 @@ capability returns exit code 4 with a typed status in the JSON.
 from __future__ import annotations
 
 import importlib.util
-import json
-import os
 from pathlib import Path
 from unittest import mock
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _spec = importlib.util.spec_from_file_location(
@@ -20,7 +16,7 @@ _spec = importlib.util.spec_from_file_location(
 _brz = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_brz)
 
-from packages.orchestration.safe_publish import (
+from packages.orchestration.safe_publish import (  # noqa: E402
     CAPABILITY_SUPPORTED,
     CAPABILITY_UNSUPPORTED_FILESYSTEM,
     CAPABILITY_UNSUPPORTED_OS,

@@ -79,7 +79,7 @@ def parse_cli_result_detailed(stdout: str) -> tuple[UsageActuals | None, str]:
 STRUCTURED_RETRY_EXHAUSTED_SUBTYPE = "error_max_structured_output_retries"
 
 
-def _usage_from_payload(payload: dict) -> tuple["UsageActuals | None", str]:
+def _usage_from_payload(payload: dict) -> tuple[UsageActuals | None, str]:
     """Extract UsageActuals from an envelope dict, independent of is_error.
 
     Returns ``(UsageActuals, "ok")`` or ``(None, reason)``. A failed structured
@@ -136,7 +136,7 @@ class CliEnvelope:
     has_structured_output: bool = False
     #: Legacy string ``result`` field ("" if absent / non-string).
     result_text: str = ""
-    usage_actuals: "UsageActuals | None" = None
+    usage_actuals: UsageActuals | None = None
     usage_reason: str = "usage_missing"
     errors: list = field(default_factory=list)
 

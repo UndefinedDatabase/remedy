@@ -32,8 +32,9 @@ import os
 import secrets
 import stat
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 __all__ = [
     "SecureFsError",
@@ -384,7 +385,7 @@ class VerifiedFile:
 def read_verified_file_at(parent_fd: int, name: str, *, expected_kind: str,
                           max_bytes: int = 0, expected_mode: int | None = None,
                           error_cls: ErrorCls = SecureFsError,
-                          noun: str = "file") -> "VerifiedFile":
+                          noun: str = "file") -> VerifiedFile:
     """Read ONE component ``name`` relative to a HELD, anchored ``parent_fd`` — atomically typed.
 
     F3 (round 18): the vulnerable shape was ``lstat(path)`` then ``open(path)``/``read_bytes(path)``
@@ -517,7 +518,7 @@ def open_anchored_parent(root: Path | str, rel: str, *, error_cls: ErrorCls = Se
 def read_verified_relative(root: Path | str, rel: str, *, expected_kind: str,
                            max_bytes: int = 0, expected_mode: int | None = None,
                            error_cls: ErrorCls = SecureFsError,
-                           noun: str = "file") -> "VerifiedFile":
+                           noun: str = "file") -> VerifiedFile:
     """The whole anchored no-follow read of a repo-relative path — traverse, read, close."""
     parent_fd, base = open_anchored_parent(root, rel, error_cls=error_cls, noun=noun)
     try:

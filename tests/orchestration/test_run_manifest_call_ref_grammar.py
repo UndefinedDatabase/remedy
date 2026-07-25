@@ -161,9 +161,11 @@ class TestOneValidatorForIdentityAndLedger:
 
     def test_the_ledger_entry_uses_the_same_grammar(self):
         import dataclasses
+
         import tests.orchestration.test_run_manifest as T
         from packages.orchestration.run_manifest import (
-            _bind_artifact_refs, validate_run_call_ledger,
+            _bind_artifact_refs,
+            validate_run_call_ledger,
         )
         base = _bind_artifact_refs(T._mk(calls=(T._call(seq=1),)))
         lg = base.call_ledgers[0]

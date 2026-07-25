@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import dataclasses
 
-import pytest
-
 import tests.orchestration.test_run_manifest as T
 from packages.orchestration.job_evidence import _crosscheck_terminal_jobplan_manifest
 from packages.orchestration.pingpong_job import JOB_COMPLETED, JOB_STOPPED

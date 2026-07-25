@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 
 class TestResolveDataRoot:
@@ -145,8 +145,9 @@ class TestResolveJobId:
 
     def test_invalid_string_exits_1(self, monkeypatch, tmp_path):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from packages.orchestration.data_paths import resolve_job_id
         import pytest
+
+        from packages.orchestration.data_paths import resolve_job_id
         with pytest.raises(SystemExit) as exc_info:
             resolve_job_id("not-a-hex")
         assert exc_info.value.code == 1

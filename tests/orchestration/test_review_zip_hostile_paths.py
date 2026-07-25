@@ -20,7 +20,6 @@ from packages.orchestration.review_zip import (
     verify_review_zip,
 )
 
-
 # --------------------------------------------------------------------------- names
 
 
@@ -81,7 +80,8 @@ class TestTheBuilderPreservesHostileNames:
         """Round 18: the plan dedups identical context paths, so a duplicate is forced at the
         member level — the builder\'s claim must still refuse two members with one name."""
         from packages.orchestration.archive_plan import (
-            ArchiveMemberV1, ArchivePlanV1,
+            ArchiveMemberV1,
+            ArchivePlanV1,
         )
         from packages.orchestration.review_zip import build_review_zip_from_plan
 

@@ -45,7 +45,9 @@ def repo(tmp_path):
 
 def _export(ev, subject, repo):
     from packages.orchestration.review_subject import (
-        COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+        COMMIT_PATCH_DIRNAME,
+        commit_patch_bytes,
+        commit_patch_filename,
     )
     ev.mkdir(parents=True, exist_ok=True)
     (ev / "review_subject.json").write_text(json.dumps(subject.to_json()))
@@ -178,9 +180,10 @@ class TestForgedPatchBytesBlock:
 
     def test_forged_patch_bytes_block(self, monkeypatch):
         from packages.orchestration.review_subject import (
-            COMMIT_PATCH_DIRNAME, commit_patch_filename,
+            COMMIT_PATCH_DIRNAME,
+            commit_patch_filename,
         )
-        from scripts.build_review_manifest import _verify_commit_patches, _as_view
+        from scripts.build_review_manifest import _as_view, _verify_commit_patches
         monkeypatch.chdir(self.r)
         c = self.subject.commits[0]
         patch_path = self.ev / COMMIT_PATCH_DIRNAME / commit_patch_filename(c.commit)
@@ -190,7 +193,7 @@ class TestForgedPatchBytesBlock:
         assert any("not the repository" in p for p in probs), probs
 
     def test_honest_patches_pass(self, monkeypatch):
-        from scripts.build_review_manifest import _verify_commit_patches, _as_view
+        from scripts.build_review_manifest import _as_view, _verify_commit_patches
         monkeypatch.chdir(self.r)
         ev = _as_view(str(self.ev))
         assert _verify_commit_patches(ev, self.subject.commits) == []

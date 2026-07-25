@@ -13,7 +13,6 @@ from packages.orchestration.spec_compliance import (
     write_spec_compliance_check,
 )
 
-
 GOAL_WITH_EXPLICIT_ARRAYS = """
 # Job: Spec Compliance
 

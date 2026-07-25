@@ -139,7 +139,7 @@ class FinalizedCall:
         }
 
     @classmethod
-    def from_trusted_json(cls, d: dict[str, Any]) -> "FinalizedCall":
+    def from_trusted_json(cls, d: dict[str, Any]) -> FinalizedCall:
         """F14: TRUSTED in-memory canonical data ONLY. Untrusted disk records MUST use
         ``decode_finalized_call_v1``."""
         return cls(
@@ -262,7 +262,7 @@ class WorktreeIdentity:
                 "problems": list(self.problems), "dirty": self.dirty}
 
     @classmethod
-    def from_json(cls, d: dict[str, Any]) -> "WorktreeIdentity":
+    def from_json(cls, d: dict[str, Any]) -> WorktreeIdentity:
         return cls(status=str(d.get("status", GIT_UNAVAILABLE)),
                    head=str(d.get("head", "")), digest=str(d.get("digest", "")),
                    problems=tuple(d.get("problems") or []), dirty=d.get("dirty"))
@@ -380,7 +380,7 @@ def inspect_contained_workspace_identity(canonical_root: str | Path,
 
     Fails CLOSED where an fd-bound cwd cannot be guaranteed.
     """
-    from packages.orchestration import worktrees as _wt      # noqa: F401  (import symmetry)
+    from packages.orchestration import worktrees as _wt  # noqa: F401  (import symmetry)
 
     if not hasattr(os, "O_DIRECTORY") or not Path("/proc/self/fd").is_dir():
         # No fd-bound cwd available: refuse rather than fall back to a name-based inspection.
@@ -472,7 +472,6 @@ def worktree_identity(repo_path: str, *, root_dir_fd: int | None = None
         return WorktreeIdentity(GIT_UNAVAILABLE, UNAVAILABLE, "",
                                 (head_problem or "no HEAD commit",))
 
-    import stat as _stat
 
     problems: list[str] = []
     dirty = False                        # F4: any real change flips this
@@ -798,7 +797,7 @@ class InputSnapshot:
         }
 
     @classmethod
-    def from_trusted_json(cls, d: dict[str, Any]) -> "InputSnapshot":
+    def from_trusted_json(cls, d: dict[str, Any]) -> InputSnapshot:
         """F14: TRUSTED in-memory data ONLY — untrusted records use ``decode_input_snapshot_v1``."""
         return cls(
             remedy_git_sha=str(d.get("remedy_git_sha", "")),
@@ -1035,7 +1034,7 @@ class EpisodeInputSnapshotV1:
         }
 
     @classmethod
-    def from_trusted_json(cls, d: dict[str, Any]) -> "EpisodeInputSnapshotV1":
+    def from_trusted_json(cls, d: dict[str, Any]) -> EpisodeInputSnapshotV1:
         """F14: TRUSTED in-memory data ONLY — untrusted records use
         ``decode_episode_snapshot_v1``."""
         if not isinstance(d, dict):
@@ -1052,7 +1051,7 @@ class EpisodeInputSnapshotV1:
         )
 
 
-def validate_episode_input_snapshot(w: "EpisodeInputSnapshotV1", *,
+def validate_episode_input_snapshot(w: EpisodeInputSnapshotV1, *,
                                     expected_episode_id: str = "") -> list[str]:
     """F6: the ONE strict validator for a typed episode snapshot. Returns problems (empty ==
     valid). No normalization: an unsupported version, garbage phase, contradictory ok/failed
@@ -1441,7 +1440,7 @@ _EXPECTATIONS_WITHOUT_RUN = frozenset({EXPECT_SKIPPED, EXPECT_NOT_DISPATCHED,
                                        EXPECT_FAILED_PRE_DISPATCH})
 
 
-def validate_task_expectation_truth(te: "TaskCallExpectationV1", *, episode_status: str = "",
+def validate_task_expectation_truth(te: TaskCallExpectationV1, *, episode_status: str = "",
                                     episode_phase: str = "") -> list[str]:
     """ONE closed truth table binding a task's expectation, its persisted status and its dispatch.
 
@@ -1659,7 +1658,7 @@ def canonical_ledger_ref(task_id: str, run_id: str) -> str:
     return f"{LEDGERS_SUBDIR}/{digest}.json"
 
 
-def decode_run_call_ledger_v1(raw: Any) -> "RunCallLedgerV1":
+def decode_run_call_ledger_v1(raw: Any) -> RunCallLedgerV1:
     """F1: THE strict decoder for a stored ledger — exact schema, real types, no unknown field."""
     if isinstance(raw, (bytes, bytearray)):
         try:
@@ -1701,7 +1700,7 @@ def decode_run_call_ledger_v1(raw: Any) -> "RunCallLedgerV1":
         entries=tuple(entries))
 
 
-def validate_run_call_ledger(ledger: "RunCallLedgerV1", *,
+def validate_run_call_ledger(ledger: RunCallLedgerV1, *,
                              mode: str = MODE_PUBLISHED_REFERENCE) -> list[str]:
     """The ledger's OWN coherence — the innermost layer of the one closed ledger contract (F8).
 
@@ -1866,7 +1865,7 @@ def _finalized_calls_seal(entries: Any) -> str:
         return ""
 
 
-def _ledger_entry(ident: CallIdentity, fc: FinalizedCall) -> "CallLedgerEntryV1":
+def _ledger_entry(ident: CallIdentity, fc: FinalizedCall) -> CallLedgerEntryV1:
     """One verified finalized call, as the run's ledger records it (its STORED per-run position,
     never the manifest's derived job-wide one)."""
     return CallLedgerEntryV1(
@@ -1876,7 +1875,7 @@ def _ledger_entry(ident: CallIdentity, fc: FinalizedCall) -> "CallLedgerEntryV1"
 
 
 def _build_run_ledger(job_id: str, task_id: str, run_id: str, run: dict,
-                      entries: list["CallLedgerEntryV1"]) -> tuple["RunCallLedgerV1", list[str]]:
+                      entries: list[CallLedgerEntryV1]) -> tuple[RunCallLedgerV1, list[str]]:
     """F2 (round 13): the ledger describes a RUN, so it is built from the RUN's own record.
 
     It used to be built from the surrounding TASK's status (`_LEDGER_STATE_OF[task_status]`, with
@@ -1930,11 +1929,15 @@ def _collect_calls(job: Any, owned_episode_id: str = "",
     F6 (round 10): the returned ``CallExpectationV1`` is the self-contained proof of how many
     calls this episode expected, decided HERE, while the JobPlan and run records are in hand.
     """
-    from packages.orchestration.pingpong_loop import load_run
     from packages.orchestration.pingpong_job import (
-        TASK_APPLIED, TASK_BLOCKED, TASK_FAILED, TASK_PASSED, TASK_PENDING, TASK_RUNNING,
+        TASK_APPLIED,
+        TASK_BLOCKED,
+        TASK_FAILED,
+        TASK_PASSED,
+        TASK_RUNNING,
         TASK_SKIPPED,
     )
+    from packages.orchestration.pingpong_loop import load_run
 
     #: Statuses that PROVE this task reached at least one finalized provider call. A failed or
     #: blocked task may honestly have none (it can die before its first call), so it is recorded
@@ -2361,7 +2364,7 @@ class RunManifestV1:
         return [c.identity.key() for c in self.calls]
 
     @classmethod
-    def from_trusted_json(cls, d: dict[str, Any]) -> "RunManifestV1":
+    def from_trusted_json(cls, d: dict[str, Any]) -> RunManifestV1:
         """F14: TRUSTED in-memory canonical data ONLY. Every untrusted disk record — root
         mirror, episode, recovery, export — MUST use ``decode_run_manifest_v1``."""
         if not isinstance(d, dict):
@@ -2480,7 +2483,7 @@ _WORKED_REQUIRED_IDENTITIES = (
 )
 
 
-def validate_snapshot_phase_identities(snap: "InputSnapshot", *, capture_phase: str
+def validate_snapshot_phase_identities(snap: InputSnapshot, *, capture_phase: str
                                        ) -> list[str]:
     """F10 (round 11): what a snapshot must carry depends on HOW it was captured.
 
@@ -2536,7 +2539,7 @@ LEDGER_CALL_BIJECTION_FIELDS = ("call_id", "episode_id", "role", "round", "kind"
                                 "prepared_input_fingerprint", "ok")
 
 
-def declared_job_input_task_ids(manifest: "RunManifestV1") -> list[str]:
+def declared_job_input_task_ids(manifest: RunManifestV1) -> list[str]:
     """The task ids the EMBEDDED, immutable JobInputDefinition declares."""
     out: list[str] = []
     ji = getattr(getattr(manifest.episode_snapshot, "input", None), "job_input", None)
@@ -2547,7 +2550,7 @@ def declared_job_input_task_ids(manifest: "RunManifestV1") -> list[str]:
     return out
 
 
-def validate_ledger_set(manifest: "RunManifestV1") -> list[str]:
+def validate_ledger_set(manifest: RunManifestV1) -> list[str]:
     """F2/F5 (round 14): the ledger SET is exactly the set the expectation accounts for.
 
     Every individual ledger could be perfectly formed while the SET carried a passenger. A
@@ -2632,14 +2635,14 @@ def _ledger_state_for_run(run: dict, *, where: str) -> tuple[str, list[str]]:
     return state, []
 
 
-def _ordered_manifest_entries_for_run(manifest: "RunManifestV1", task_id: str,
+def _ordered_manifest_entries_for_run(manifest: RunManifestV1, task_id: str,
                                       run_id: str) -> list:
     """This run's current-episode manifest calls, in the manifest's canonical job-wide order."""
     return [c for c in sorted(manifest.calls, key=lambda c: c.sort_key())
             if c.identity.task_id == task_id and c.identity.run_id == run_id]
 
 
-def validate_call_ledgers(manifest: "RunManifestV1", *,
+def validate_call_ledgers(manifest: RunManifestV1, *,
                           mode: str = MODE_PUBLISHED_REFERENCE) -> list[str]:
     """F1 (round 12): the Manifest's calls and its LEDGERS must be the same account.
 
@@ -2776,7 +2779,7 @@ def validate_call_ledgers(manifest: "RunManifestV1", *,
     return problems
 
 
-def validate_call_expectation(exp: "CallExpectationV1", *, status: str, capture_phase: str,
+def validate_call_expectation(exp: CallExpectationV1, *, status: str, capture_phase: str,
                               stop_request_id: str, calls: tuple | list,
                               declared_task_ids: list[str],
                               require_exact_tasks: bool = True) -> list[str]:
@@ -2915,7 +2918,7 @@ def validate_call_expectation(exp: "CallExpectationV1", *, status: str, capture_
     return problems
 
 
-def validate_run_manifest(manifest: "RunManifestV1", *, published: bool = True,
+def validate_run_manifest(manifest: RunManifestV1, *, published: bool = True,
                           mode: str | None = None) -> list[str]:
     """One strict validator used at every read/write/diff/export boundary (F7). Returns the
     list of problems (empty == valid). Never normalizes silently."""
@@ -3157,7 +3160,7 @@ def validate_run_manifest(manifest: "RunManifestV1", *, published: bool = True,
 # ---------------------------------------------------------------------------
 
 
-def decode_prepared_call_input_v1(raw: Any) -> "PreparedCallInput":
+def decode_prepared_call_input_v1(raw: Any) -> "PreparedCallInput":  # noqa: F821, UP037
     """F4/F7: strictly decode a PreparedCallInput. Real JSON types only; bounded."""
     from packages.orchestration.call_identity import PreparedCallInput
 
@@ -3339,7 +3342,7 @@ INPUT_SNAPSHOT_FIELDS = frozenset({
 WORKTREE_FIELDS = frozenset({"status", "head", "digest", "problems", "dirty"})
 
 
-def decode_input_snapshot_v1(raw: Any) -> "InputSnapshot":
+def decode_input_snapshot_v1(raw: Any) -> InputSnapshot:
     """F4/F6: strictly decode an InputSnapshot as an EXACT RECURSIVE schema.
 
     No Boolean/integer coercion, bounded lists, and — critically — NO unknown field at any
@@ -3423,7 +3426,7 @@ def decode_input_snapshot_v1(raw: Any) -> "InputSnapshot":
     )
 
 
-def decode_episode_snapshot_v1(raw: Any) -> "EpisodeInputSnapshotV1":
+def decode_episode_snapshot_v1(raw: Any) -> EpisodeInputSnapshotV1:
     """F4: strictly decode the episode-snapshot wrapper."""
     d = _S.req_map(raw, "episode_snapshot")
     _S.no_unknown_keys(d, {"snapshot_v", "episode_id", "captured_at", "capture_phase",
@@ -3441,7 +3444,7 @@ def decode_episode_snapshot_v1(raw: Any) -> "EpisodeInputSnapshotV1":
     )
 
 
-def decode_call_expectation_v1(raw: Any) -> "CallExpectationV1":
+def decode_call_expectation_v1(raw: Any) -> CallExpectationV1:
     """F6 (round 10): strictly decode the embedded call-expectation proof.
 
     The proof is only worth as much as its own schema: a vague or unknown expectation value
@@ -3526,7 +3529,8 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
     if dl is not None:
         if not isinstance(dl, str):
             raise ManifestError(f"manifest.budgets.deadline must be str or null, got {type(dl).__name__}")
-        from datetime import datetime as _dt, timezone as _tz
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
         try:
             parsed = _dt.fromisoformat(dl)
         except (ValueError, TypeError):
@@ -3540,7 +3544,7 @@ def _decode_budgets_field(raw: Any) -> dict[str, Any] | None:
     return raw
 
 
-def decode_run_manifest_v1(raw: Any) -> "RunManifestV1":
+def decode_run_manifest_v1(raw: Any) -> RunManifestV1:
     """F4: THE strict decoder for an untrusted run-manifest record (bytes or parsed dict).
 
     Applies the size limit before parsing, requires real JSON types for every field, and
@@ -3911,7 +3915,7 @@ def parse_call_ref(cid: str) -> tuple[dict | None, list[str]]:
     if problems:
         return None, problems
     if round_no > MAX_LEDGER_ROUND or (index is not None and index > MAX_LEDGER_SEQUENCE):
-        return None, [f"call ref round/index is outside the configured bounds"]
+        return None, ["call ref round/index is outside the configured bounds"]
     # THE canonicality test: the ref must be exactly what its own parts rebuild. Anything that
     # merely parses to the same numbers — a different padding, a stray form — is a different
     # string claiming to be this call, and is refused here rather than somewhere downstream.
@@ -4037,7 +4041,7 @@ def _valid_pythonhashseed(value: Any) -> bool:
     return value.isdigit() and 0 <= int(value) <= 4294967295
 
 
-def validate_input_snapshot(snap: "InputSnapshot") -> list[str]:
+def validate_input_snapshot(snap: InputSnapshot) -> list[str]:
     """F5/F7: strict typed validation of the InputSnapshot payload. No normalization.
 
     Enforces what the schema CLAIMS: both worktree records carry every required field with an
@@ -4278,7 +4282,7 @@ def validate_models(models: Any, ex: dict[str, Any]) -> list[str]:
     return problems
 
 
-def _require_valid_manifest(manifest: "RunManifestV1", where: str, *,
+def _require_valid_manifest(manifest: RunManifestV1, where: str, *,
                             published: bool = True, mode: str | None = None) -> None:
     probs = validate_run_manifest(manifest, published=published, mode=mode)
     if probs:
@@ -4295,7 +4299,7 @@ def _assert_unique_calls(calls: list[FinalizedCall]) -> None:
 
 
 def build_run_manifest(job: Any, *, status: str, episode_id: str, created_at: str,
-                       episode_snapshot: "EpisodeInputSnapshotV1 | None" = None,
+                       episode_snapshot: EpisodeInputSnapshotV1 | None = None,
                        prior_episode_ids: tuple[str, ...] = (),
                        owned_episode_id: str = "",
                        prior_episode_ordinals: dict[str, int] | None = None,
@@ -4495,7 +4499,7 @@ class VerifiedCanonicalChain:
 TERMINAL_TASK_STATES = frozenset({"applied_to_job_workspace", "passed", "skipped"})
 
 
-def validate_task_lifecycle_chain(ordered_manifests: list["RunManifestV1"]) -> list[str]:
+def validate_task_lifecycle_chain(ordered_manifests: list[RunManifestV1]) -> list[str]:
     """F1 (round 15): a task's history is MONOTONIC across the episode chain.
 
     Round 14 froze a run's ledger, so a later episode could no longer rewrite work it admitted to.
@@ -4598,7 +4602,7 @@ def validate_task_lifecycle_chain(ordered_manifests: list["RunManifestV1"]) -> l
     return problems
 
 
-def validate_ledger_chain(ordered_manifests: list["RunManifestV1"]) -> list[str]:
+def validate_ledger_chain(ordered_manifests: list[RunManifestV1]) -> list[str]:
     """F5 (round 13): a run's ledger history is CONTINUOUS across the episodes that carry it.
 
     No single manifest can prove this, and that is exactly where the hole was. Episode 2's ledger
@@ -5608,7 +5612,7 @@ def _read_episode_manifest_anchored(root_fd: int, episode_id: str) -> RunManifes
     return manifest
 
 
-def _validate_episode_graph(by_id: dict[str, "RunManifestV1"]) -> list[str]:
+def _validate_episode_graph(by_id: dict[str, RunManifestV1]) -> list[str]:
     """F6/F8: prove the prior-episode references form the CANONICAL linear history.
 
     F6: every edge (episode -> a prior_episode_id) must point at a KNOWN episode with a STRICTLY
@@ -5686,7 +5690,7 @@ def _validate_episode_graph(by_id: dict[str, "RunManifestV1"]) -> list[str]:
 
 
 def validate_episode_artifacts_anchored(root_fd: int, episode_id: str,
-                                        manifest: "RunManifestV1") -> list[str]:
+                                        manifest: RunManifestV1) -> list[str]:
     """F7: verify an episode's per-call artifacts through the CANONICAL anchored trust chain.
 
     Reads each ``calls/<artifact>`` ONLY through held, symlink-refusing directory fds; every
@@ -5753,7 +5757,7 @@ def validate_episode_artifacts_anchored(root_fd: int, episode_id: str,
 
 
 def _validate_episode_ledgers_anchored(ep_fd: int, episode_id: str,
-                                       manifest: "RunManifestV1") -> list[str]:
+                                       manifest: RunManifestV1) -> list[str]:
     problems: list[str] = []
     # F3 (round 14): duplicate refs are detected BEFORE any dict is keyed by them. The old
     # comprehension silently dropped a declaration when two ledgers mapped to one filename, so a
@@ -5949,7 +5953,7 @@ class CanonicalLoadResult:
     at all — a legacy/uncovered job), or ``integrity_error`` (manifest artifacts exist but the
     trust chain is inconsistent/partial — exit 1, never mistaken for a missing manifest)."""
     kind: str
-    manifest: "RunManifestV1 | None" = None
+    manifest: RunManifestV1 | None = None
     detail: str = ""
 
 

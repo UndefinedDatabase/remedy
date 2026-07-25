@@ -25,7 +25,10 @@ from packages.orchestration.run_manifest import (
 
 def _ep(episode_id, ordinal, *, prev="", prior=(), status="completed"):
     from packages.orchestration.run_manifest import (
-        CallCoverage, COVERAGE_COMPLETE, RunManifestV1, job_input_definition_sha256,
+        COVERAGE_COMPLETE,
+        CallCoverage,
+        RunManifestV1,
+        job_input_definition_sha256,
     )
     return RunManifestV1(
         job_id="j", episode_id=episode_id, created_at=f"2026-07-15T00:0{ordinal}:00+00:00",

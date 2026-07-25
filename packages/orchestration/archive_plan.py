@@ -15,10 +15,9 @@ rediscovers an authoritative path.
 from __future__ import annotations
 
 import stat
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
-from packages.common import secure_fs as _fs
 from packages.orchestration.review_subject import (
     KIND_DELETED,
     KIND_DIRECTORY,

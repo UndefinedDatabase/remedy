@@ -27,7 +27,6 @@ from scripts.build_observability_index import (
     build_observability_index,
 )
 
-
 # ---------------------------------------------------------------------------
 # Synthetic evidence directory builder
 # ---------------------------------------------------------------------------
@@ -324,7 +323,9 @@ class TestIndexInReviewZip:
 class TestReviewerVerdictNormalization:
     def test_pass_with_findings_normalized_to_needs_repair(self):
         from packages.orchestration.pingpong_provider import (
-            ReviewFinding, ReviewerOutput, normalize_reviewer_verdict,
+            ReviewerOutput,
+            ReviewFinding,
+            normalize_reviewer_verdict,
         )
         out = ReviewerOutput(
             verdict="pass",
@@ -340,7 +341,8 @@ class TestReviewerVerdictNormalization:
 
     def test_pass_without_findings_not_normalized(self):
         from packages.orchestration.pingpong_provider import (
-            ReviewerOutput, normalize_reviewer_verdict,
+            ReviewerOutput,
+            normalize_reviewer_verdict,
         )
         out = ReviewerOutput(verdict="pass", findings=[], summary="clean")
         result = normalize_reviewer_verdict(out)
@@ -359,7 +361,9 @@ class TestTranscriptTargetGuardConsistency:
         # The guard classifier and the transcript must agree: cache-only churn
         # is noise, never a target mutation.
         from packages.orchestration.pingpong_loop import (
-            _check_target_mutation, _is_target_noise, _snapshot_target,
+            _check_target_mutation,
+            _is_target_noise,
+            _snapshot_target,
         )
 
         repo = tmp_path / "repo"
@@ -410,8 +414,10 @@ class TestTranscriptTargetGuardConsistency:
         # in the target repo must be classified as operational, never as a content
         # mutation. The guard and the three-way classifier must agree.
         from packages.orchestration.pingpong_loop import (
-            _check_target_mutation, _classify_target_changes,
-            _is_operational_artifact, _snapshot_target,
+            _check_target_mutation,
+            _classify_target_changes,
+            _is_operational_artifact,
+            _snapshot_target,
         )
 
         repo = tmp_path / "repo"
@@ -467,7 +473,9 @@ class TestTranscriptTargetGuardConsistency:
         # A genuine source file change must be classified as content (meaningful),
         # never swallowed as operational or noise — the guard must still block.
         from packages.orchestration.pingpong_loop import (
-            _check_target_mutation, _classify_target_changes, _snapshot_target,
+            _check_target_mutation,
+            _classify_target_changes,
+            _snapshot_target,
         )
 
         repo = tmp_path / "repo"

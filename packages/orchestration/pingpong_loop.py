@@ -23,10 +23,11 @@ import shlex
 import shutil
 import subprocess
 import time as _time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 from packages.orchestration.pingpong_provider import (
@@ -41,6 +42,8 @@ from packages.orchestration.pingpong_provider import (
 )
 from packages.orchestration.provider_timeouts import (
     PROFILES as TIMEOUT_PROFILES,
+)
+from packages.orchestration.provider_timeouts import (
     compute_timeout,
     is_nonzero_exit_error,
     is_timeout_error,
@@ -4092,11 +4095,11 @@ def export_pingpong_json(result: PingPongResult) -> dict[str, Any]:
 def _build_stop_info(result: PingPongResult) -> dict[str, Any]:
     """The safe, versioned stop block. The run record carried the signal in memory and threw
     it away on export, so the one artifact a reader opens first said only `stopped`."""
+    from packages.orchestration.failure_postmortem import safe_text
     from packages.orchestration.safe_points import (
         STOP_SIGNAL_VERSION,
         normalize_timestamp,
     )
-    from packages.orchestration.failure_postmortem import safe_text
 
     return {
         "stop_signal_v": STOP_SIGNAL_VERSION,

@@ -21,8 +21,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import posixpath
-import stat
 import zipfile
 from pathlib import Path
 
@@ -186,7 +184,9 @@ def snapshot_plan_members(plan) -> dict:
     """
     from packages.common import secure_fs as _fs
     from packages.orchestration.archive_plan import (
-        MAX_MEMBER_BYTES, MAX_SYMLINK_TARGET_BYTES, MAX_TOTAL_UNCOMPRESSED_BYTES,
+        MAX_MEMBER_BYTES,
+        MAX_SYMLINK_TARGET_BYTES,
+        MAX_TOTAL_UNCOMPRESSED_BYTES,
     )
     from packages.orchestration.review_subject import symlink_escapes_repository
 
@@ -335,7 +335,9 @@ def verify_review_zip(out_path: str | Path, expected: dict) -> list[str]:
     mode must match what was actually written.
     """
     from packages.orchestration.archive_plan import (
-        MAX_COMPRESSION_RATIO, MAX_MEMBER_BYTES, MAX_TOTAL_UNCOMPRESSED_BYTES,
+        MAX_COMPRESSION_RATIO,
+        MAX_MEMBER_BYTES,
+        MAX_TOTAL_UNCOMPRESSED_BYTES,
     )
     problems: list[str] = []
     model: dict[str, dict] = expected["model"]

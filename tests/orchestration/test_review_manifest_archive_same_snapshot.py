@@ -2,7 +2,6 @@
 status is decided from exactly the packaged gate bytes, and a gate mutation blocks."""
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import json
 import zipfile
@@ -21,7 +20,11 @@ _bz = importlib.util.module_from_spec(_bzs)
 _bzs.loader.exec_module(_bz)
 
 from packages.orchestration.archive_plan import (  # noqa: E402
-    ArchiveMemberV1, ArchivePlanV1, MEMBER_REGULAR, MODE_REGULAR, SOURCE_EVIDENCE,
+    MEMBER_REGULAR,
+    MODE_REGULAR,
+    SOURCE_EVIDENCE,
+    ArchiveMemberV1,
+    ArchivePlanV1,
 )
 from packages.orchestration.review_zip import ReviewZipError, snapshot_plan_members  # noqa: E402
 

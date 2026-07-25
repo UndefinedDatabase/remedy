@@ -34,7 +34,7 @@ from packages.runtimes.dev_server import (
 try:                                   # Python >= 3.11
     import tomllib
 except ModuleNotFoundError:            # Python 3.10 with the tomli backport
-    import tomli as tomllib            # type: ignore[no-redef]
+    import tomli as tomllib  # type: ignore[no-redef]
 
 CONFIG_RELPATH = Path(".remedy") / "config.toml"
 

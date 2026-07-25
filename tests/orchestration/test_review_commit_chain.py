@@ -159,7 +159,9 @@ class TestThePackagerVerifiesTheArtifact:
         import json
 
         from packages.orchestration.review_subject import (
-            COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+            COMMIT_PATCH_DIRNAME,
+            commit_patch_bytes,
+            commit_patch_filename,
         )
         ev.mkdir(parents=True, exist_ok=True)
         (ev / "review_subject.json").write_text(json.dumps(subject.to_json()))

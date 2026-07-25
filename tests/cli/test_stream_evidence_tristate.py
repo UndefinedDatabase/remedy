@@ -57,6 +57,7 @@ class TestMutuallyExclusive:
     @pytest.mark.parametrize("base", _CMDS)
     def test_cli_explains_the_conflict_in_json_mode(self, base):
         import json
+
         from apps.cli.grouped import main
         out = io.StringIO()
         with pytest.raises(SystemExit) as exc:

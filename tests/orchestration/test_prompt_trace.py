@@ -6,19 +6,14 @@ complete builder/reviewer metadata.
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 from packages.orchestration.prompt_trace import (
-    PromptTraceEntry,
     build_trace_entry,
     build_trace_summary,
     redact_prompt_text,
     trace_entry_to_dict,
     write_trace_jsonl,
 )
-
 
 # ---------------------------------------------------------------------------
 # Step 5085: Prompt trace redaction

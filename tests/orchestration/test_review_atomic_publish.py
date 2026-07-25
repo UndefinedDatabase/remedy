@@ -13,11 +13,16 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.safe_publish import (
-    CAPABILITY_LINKAT_UNAVAILABLE, CAPABILITY_SUPPORTED, CAPABILITY_UNSUPPORTED_FILESYSTEM,
+    CAPABILITY_LINKAT_UNAVAILABLE,
+    CAPABILITY_SUPPORTED,
+    CAPABILITY_UNSUPPORTED_FILESYSTEM,
     CAPABILITY_UNSUPPORTED_OS,
-    PublishCollisionError, PublishSourceError, git_tracked_status,
-    probe_anonymous_publication_capability, publish_atomically,
-    verify_published_identity, verify_source_identity,
+    PublishCollisionError,
+    PublishSourceError,
+    git_tracked_status,
+    probe_anonymous_publication_capability,
+    publish_atomically,
+    verify_source_identity,
 )
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git required")
@@ -106,6 +111,7 @@ class TestAtomicPublish:
 
     def test_builder_no_longer_unlinks_out_path(self):
         import inspect
+
         from packages.orchestration import review_zip
         src = inspect.getsource(review_zip.build_review_zip_from_snapshot)
         assert "out_path.unlink()" not in src
@@ -180,6 +186,7 @@ class TestAnonymousInodePublication:
     def test_no_named_source_link_in_publish(self):
         """The publish_atomically function does not call os.link(source_path, final)."""
         import inspect
+
         from packages.orchestration import safe_publish as sp
         src = inspect.getsource(sp.publish_atomically)
         assert "os.link(source_path" not in src
