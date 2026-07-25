@@ -39,7 +39,7 @@ planned. Skeleton fallback is only for --no-llm/provider-down.
 tests/cli/test_plan_approval.py::test_flight_plan_failure_falls_back
 enshrines the wrong behavior.
 
-### R-0123 [high] T002/T003 dead code, unwired — Open
+### R-0123 [high] T002/T003 dead code, unwired — Done: R-0123
 apply_plan_budgets, apply_plan_fences, write_plan_md, replan have
 zero callers outside tests. No plan.md is written to the evidence
 area, plan budgets/fences are never copied onto the job, no replan

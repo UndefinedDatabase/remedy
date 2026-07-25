@@ -232,6 +232,8 @@ def _cmd_do_mission(
 
     if call_fn is not None and not no_llm:
         from packages.orchestration.flight_plan import (
+            apply_plan_budgets,
+            apply_plan_fences,
             map_flight_plan_to_tasks,
             plan_job_llm,
             write_plan_md,
@@ -241,6 +243,25 @@ def _cmd_do_mission(
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
             tasks = map_flight_plan_to_tasks(fp_result.plan)
+            from packages.core.models import JobBudgets, JobFences
+            merged_budgets = apply_plan_budgets(None, fp_result.plan.budgets)
+            merged_fences = apply_plan_fences(None, fp_result.plan.fences)
+            job_budgets = None
+            if merged_budgets:
+                try:
+                    job_budgets = JobBudgets(**{
+                        k: v for k, v in merged_budgets.items()
+                        if k in JobBudgets.model_fields})
+                except Exception:
+                    pass
+            job_fences = None
+            if merged_fences:
+                try:
+                    job_fences = JobFences(**{
+                        k: v for k, v in merged_fences.items()
+                        if k in JobFences.model_fields})
+                except Exception:
+                    pass
             job = Job(
                 name=mission[:80], mission=mission, user_prompt=mission,
                 project_id=str(project.id),
@@ -248,6 +269,8 @@ def _cmd_do_mission(
                 flight_plan=fp_dict,
                 tasks=tasks,
                 state=RunState.PLANNED,
+                budgets=job_budgets,
+                fences=job_fences,
             )
             save_job(job)
             from packages.orchestration.data_paths import job_evidence_export_dir
