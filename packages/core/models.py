@@ -216,5 +216,6 @@ class Job(BaseModel):
     budget: Budget = Field(default_factory=Budget)
     metadata: dict[str, Any] = Field(default_factory=dict)
     project_id: str | None = None
+    intake: dict[str, Any] | None = None
     fences: JobFences | None = None
     budgets: JobBudgets | None = None

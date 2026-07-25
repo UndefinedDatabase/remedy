@@ -161,6 +161,42 @@ def _cmd_show_job(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
     print(job.model_dump_json(indent=2))
+    if job.intake:
+        _print_intake_block(job.intake)
+
+
+def _print_intake_block(intake: dict) -> None:
+    def p(s: str) -> None:
+        print(s, file=sys.stderr)
+
+    p("\n--- Intake ---")
+    p(f"  Goal: {intake.get('goal', '')}")
+    refs = intake.get("context_refs", [])
+    if refs:
+        p(f"  Context refs: {', '.join(refs)}")
+    constraints = intake.get("constraints", [])
+    if constraints:
+        for c in constraints:
+            p(f"  Constraint: {c}")
+    hints = intake.get("acceptance_hints", [])
+    if hints:
+        for h in hints:
+            p(f"  Acceptance: {h}")
+    clarifications = intake.get("clarifications", [])
+    if clarifications:
+        p("  Clarifications:")
+        for cl in clarifications:
+            q = cl.get("question", "")
+            d = cl.get("default_answer", "")
+            p(f"    - {q} (default: {d})")
+    sv = intake.get("schema_v", "")
+    if sv:
+        p(f"  Schema: {sv}")
+    if intake.get("truncated_input"):
+        p("  Truncated input: yes")
+    dropped = intake.get("dropped_clarifications", 0)
+    if dropped:
+        p(f"  Dropped clarifications: {dropped}")
 
 
 def _cmd_plan_job_local(job_id_str: str) -> None:

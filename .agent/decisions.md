@@ -1,5 +1,27 @@
 # Decisions
 
+## 2026-07-25: R-0116 — intake timeout removed; OllamaPlanner.raw_call is the single config surface
+make_provider_call_fn previously hardcoded `timeout=15.0` on the Ollama client.
+After R-0116, the function delegates to OllamaPlanner.raw_call, which builds
+the client from `self.host` with NO explicit timeout — Ollama's default applies.
+The `client.list()` health check in make_provider_call_fn still constructs its
+own client (bare `ollama.Client(host=planner.host)`) for the availability probe,
+also without a hardcoded timeout. Rationale: the original 15s literal was a
+one-off workaround for subprocess test speed (resolved by --no-llm in _run_do);
+forcing a timeout that differs from the planner's own timeout would create a
+second configuration surface. If a timeout is needed, it should come through
+config (env var or toml), same as temperature/num_predict.
+
+## 2026-07-24: T002a transport extraction skipped — run_structured_call is importable (F013)
+`_call_with_retry` in pingpong_loop.py is deeply coupled to `PingPongResult` and
+`_record_attempt` (private helper). Extracting it creates circular imports
+(provider_call → pingpong_loop for PingPongResult, pingpong_loop → provider_call
+for the function). Feature spec says "extract one if none is importable" — and
+`run_structured_call` IS directly importable from `structured_outputs.py`. Intake
+uses `run_structured_call` for schema validation + parse retry; transport failures
+(provider timeout) cause `call_fn` to raise, caught by `run_intake` and routed to
+`heuristic_intake`. No second transport-retry system needed.
+
 ## 2026-07-24: project adopt takes explicit job_id, not bulk (F148 R-0103)
 `remedy project adopt <job_id>` adopts exactly one job. Short 8-char IDs
 resolved via Core store filename prefix match (same pattern as job stop

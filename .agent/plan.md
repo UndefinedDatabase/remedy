@@ -1,20 +1,22 @@
-# Plan — F148 Project scoping everywhere
+# Plan — F013 Job intake
 
 ## Goal
-Every job is attributable to exactly one project via an additive
-`project_id` field. Listing commands default to current project with
-`--all-projects` escape. Legacy data loads with project_id=None.
+A free-text mission becomes a structured, validated JobIntake —
+goal, context refs, constraints, acceptance hints, clarifications —
+persisted on the job before planning. Schema-gated, never raw LLM
+text; deterministic labeled heuristic fallback without a provider.
 
 ## Checklist
-- [x] T001 — model field + creation-path audit + backward-compat fixture
-- [x] T002 — project_scope module + legacy rule + unit tests
-- [x] R-0098..R-0101 — reviewer repairs (ruff fix, creation guard, attach_job, precomputed legacy)
-- [x] T003 — CLI integration across all listed commands + adopt + fixture
-- [x] T004 — docs + status view scoped label
+- [x] T001 — JobIntake schema + validation round-trip tests + job
+      field + backward-compat fixture
+- [x] T002 — intake module (run_intake + heuristic_intake) using
+      run_structured_call + fake-provider tests (31 tests)
+- [x] T003 — do-path integration (intake before planning, --no-llm
+      flag) + job show rendering + golden-path smoke (36 tests)
 
-- [x] R-0102..R-0107 — reviewer repairs round 2
-- [x] R-0108..R-0109 — reviewer repairs round 3
-- [x] Closure — verdict PASS, evidence job, STATUS [x], PR
+- [x] R-0110..R-0117 — reviewer repairs
+- [x] Closure — verdict PASS_WITH_RISKS, evidence job,
+      STATUS [x], PR
 
 ## Current Step
 Closure complete.

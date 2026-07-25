@@ -1,41 +1,27 @@
-# Handoff — F148 Closure (final)
+# Handoff — F013 Job intake (closure)
 
-## PR
-- **#145**: https://github.com/UndefinedDatabase/remedy/pull/145
-- Branch: `feature/f148-project-scoping`
-- Status: open, not merged (per closure protocol step 6)
-
-## Evidence Job
-- ID: `cf7ca6e8-8d5a-4b0a-ab4b-8f946bcdd42a`
-- Dir: `remedy-job-evidence-f148/`
-- Gates: 8/8 (final_verifier_report, fresh_evidence, artifact_contract,
-  change_provenance, manifest_integrity, postmortem_integrity,
-  commit_execution, runtime_integration)
+## State
+- Branch: `feature/f013-job-intake`
+- Last commit: `628922d` chore(f013): STATUS fills + zip evidence (READY_FOR_REVIEW)
+- Total commits on branch: 21+
 - Verdict: PASS_WITH_RISKS
+- Evidence job: `f013_job_intake_closure`
 
-## Zip Attempts
+## Closure Commits
 
-### Attempt 1 (BLOCKED)
-- File: `remedy-review-20260724-180231-BLOCKED_EVIDENCE.zip`
-- SHA-256: `93d24c4fc5bf290946d6c307e4a8e1f9ea5c36f2058be2693a1f2136a9017a5b`
-- Status: BLOCKED_EVIDENCE — `is_valid_current_run=false`
-- Cause: verification_tests.json runs had wrong field set (missing v1.1
-  fields: run_id, stdout_summary, head_sha, selected, deselected, skipped,
-  node_ids, duration_seconds). Also output_hash != sha256(stdout_summary).
+### `1c46855` chore(f013): resolve R-0116..R-0117, verdict, built state
+| File | Change |
+|------|--------|
+| .agent/live_review.md | R-0116, R-0117 → Resolved; verdict block appended |
+| .agent/plan.md | +closure checklist items, Current Step → "Closure complete." |
+| docs/roadmap/features/T1_F013.md | Built State section added |
 
-### Attempt 2 (BLOCKED — pre-attempt-3, same root cause)
-- Commit subject `(unscoped)/(orphaned: id)` triggered `_contains_local_path`
-  in review_subject validator. Rewrote via git filter-branch to
-  `unscoped and orphaned`. Evidence rebuilt with new HEAD after rewrite.
+### `dda7662` chore(f013): add newline to empty test package init
+| File | Change |
+|------|--------|
+| tests/schemas/__init__.py | Empty → newline (evidence safe-diff parseable) |
 
-### Attempt 3 (READY)
-- File: `remedy-review-20260724-180532-READY_FOR_REVIEW.zip`
-- SHA-256: `d81e54b4ea5716ab3f2c00593a3911457fff79121532bf63e3231c142496e7a9`
-- Status: READY_FOR_REVIEW
-- review_subject_alignment: PASS
-- evidence_authoritative: true
-
-## Integrity Gate
+## Integrity Check
 ```json
 {
   "version": 1,
@@ -44,51 +30,39 @@
   "check_count": 5,
   "checks": [
     {"name": "handler_import", "status": "pass", "message": "handlers=305"},
-    {"name": "live_review_verdict", "status": "pass", "message": "PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109"},
-    {"name": "plan_consistency", "status": "pass", "message": "unchecked=0, context_complete=False"},
+    {"name": "live_review_verdict", "status": "pass", "message": "PASS_WITH_RISKS"},
+    {"name": "plan_consistency", "status": "pass", "message": "unchecked=0"},
     {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
     {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
   ]
 }
 ```
 
-## Grep Proof — Byte-Identical Applied Text
+## Test Counts (full verification)
+```
+$ python3 -m pytest tests/orchestration/test_intake.py tests/cli/test_golden_path.py \
+    tests/schemas/test_job_intake.py tests/test_storage.py tests/test_ollama_provider.py \
+    tests/orchestration/schemas/test_schemas.py -q --tb=no
+177 passed in 16.65s
+```
+Pre-existing flake: `test_fallback_to_default_when_no_env_vars` in test_ollama_provider.py
+(env-capture test isolation — fails at file level, passes isolated; same on main at eafcade).
 
-### STATUS line
-```
-$ grep -F "Project scoping everywhere (T001–T004 complete; accepted 2026-07-24" docs/roadmap/STATUS.md
-- [x] F148 — Project scoping everywhere (T001–T004 complete; accepted 2026-07-24 · live review PASS — ACCEPTED · Evidence job cf7ca6e8-8d5a-4b0a-ab4b-8f946bcdd42a · package remedy-review-20260724-180532-READY_FOR_REVIEW.zip · SHA-256 d81e54b4ea5716ab3f2c00593a3911457fff79121532bf63e3231c142496e7a9 · accepted HEAD 6799d12ed2b9f2c96b3410b150b09695c551691e)
-```
+## Evidence Job
+- Job ID: `f013_job_intake_closure`
+- Evidence dir: `.data/remedy-job-evidence-f013_job_intake_closure`
+- Verdict: PASS_WITH_RISKS
+- Authority: 17 files, 3 tasks, 21 commits
+- Total passed: 177
 
-### R-0108 resolution
-```
-$ grep -F "independently verified — scoped slug loaded via" .agent/live_review.md
-- **Reviewer**: independently verified — scoped slug loaded via
-```
+## Zip
+- File: `remedy-review-20260725-184236-READY_FOR_REVIEW.zip`
+- SHA-256: `098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1`
+- Status: READY_FOR_REVIEW
+- Members: 1458
+- Evidence authoritative: true
 
-### R-0109 resolution
-```
-$ grep -F "independently verified — unit test proves the" .agent/live_review.md
-- **Reviewer**: independently verified — unit test proves the
-```
-
-### Verdict
-```
-$ grep -F "PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109" .agent/live_review.md
-PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109
-```
-
-## Closure Commits
-| Hash | Message |
-|------|---------|
-| `97ae61a` → `8283cf9` | chore(f148): resolve R-0108..R-0109, verdict, built state |
-| `1170b9d` → `b0259d3` | chore(f148): closure handoff |
-| `c7823e1` → `6799d12` | chore(f148): STATUS [x] — closure (fills pending zip) |
-| `32cdd3e` | chore(f148): closure evidence + STATUS fills |
-
-(Pre-rewrite hashes → post-rewrite hashes shown for commits affected
-by the filter-branch that fixed the path-in-subject blocker.)
-
-## Next expected action
-Reviewer reviews PR #145. Merge deferred to next feature start per
-closure protocol step 6.
+## PR
+- PR #146: https://github.com/UndefinedDatabase/remedy/pull/146
+- Title: F013 — Job intake
+- Status: OPEN (do NOT merge — protocol step 6)

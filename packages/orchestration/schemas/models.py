@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 REVIEW_VERDICT_SCHEMA_V = "rv1"
 PLANNER_PLAN_SCHEMA_V = "pp1"
 DESIGN_SPEC_SCHEMA_V = "ds1"
+JOB_INTAKE_SCHEMA_V = "ji1"
 
 Verdict = Literal["pass", "fail", "needs_repair", "blocked"]
 Severity = Literal["blocker", "high", "medium", "low"]
@@ -96,11 +97,38 @@ class DesignSpec(_Structured):
     summary: str
 
 
+class IntakeClarification(_Strict):
+    """One open clarification the intake identified."""
+
+    question: str
+    default_answer: str
+    impact: str
+
+
+class JobIntake(_Structured):
+    """Structured job intake (schema ``ji1``).
+
+    Turns a free-text mission into a validated contract the planner
+    can consume without re-reading the raw mission text.
+    """
+
+    SCHEMA_V: ClassVar[str] = JOB_INTAKE_SCHEMA_V
+    schema_v: Literal["ji1"]  # required: no default
+    goal: str
+    context_refs: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    acceptance_hints: list[str] = Field(default_factory=list)
+    truncated_input: bool = False
+    clarifications: list[IntakeClarification] = Field(default_factory=list)
+    dropped_clarifications: int = 0
+
+
 #: schema_v -> model. The single source of truth for which contract a tag means.
 SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     REVIEW_VERDICT_SCHEMA_V: ReviewVerdict,
     PLANNER_PLAN_SCHEMA_V: PlannerPlan,
     DESIGN_SPEC_SCHEMA_V: DesignSpec,
+    JOB_INTAKE_SCHEMA_V: JobIntake,
 }
 
 

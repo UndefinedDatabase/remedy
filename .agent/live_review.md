@@ -1,250 +1,186 @@
-# Live Review — F148 Project scoping everywhere
+# Live Review — F013 Job intake
 
 Per-feature ledger. Findings are authored by the reviewer
 (Window 1) and applied here verbatim by the worker. R-XXXX IDs
-continue monotonically across features (last used: R-0097).
+continue monotonically across features (last used: R-0109).
 History lives in git and in each feature's evidence zip.
 
-### R-0098: new ruff I001 introduced; red verification crossed against stop rule
+### R-0110: schema-level clarifications cap defeats the A9 truncate-and-record rule
 - **Status**: Resolved
 - **Severity**: Medium
-- **Area**: apps/cli/commands/do_cmd.py:401 (F148-inserted import block)
-- **Details**: Branch adds an I001 at the import block inserted in
-  _cmd_do (main: 6 ruff errors in do_cmd.py, branch: 7 — confirmed by
-  reviewer ruff-diff). The T001 verification required ruff green on
-  touched files; worker reported the new error honestly but continued
-  into T002 against the instructed stop-on-red rule.
-- **Evidence**: reviewer ran ruff on branch and main-baseline worktree;
-  only new item: do_cmd.py:401:5 I001.
-- **Expected fix**: Sort/format ONLY the F148-inserted import block at
-  do_cmd.py:401. Pre-existing 6 errors stay untouched (main parity, no
-  scope creep). Acceptance: ruff-diff vs main shows zero NEW errors.
-- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
+- **Area**: packages/orchestration/schemas/models.py (JobIntake.clarifications), tests/schemas/test_job_intake.py
+(test_clarifications_over_max_rejected)
+- **Details**: max_length=5 makes an LLM response with >5
+  clarifications a parse FAILURE (retry burned, possible
+  parse-class abort) instead of the feature's A9 default:
+  "keep the first five, record the drop count". Validation
+  rejects before the intake module can truncate, and the
+  contract has no field to carry the drop count.
+- **Expected fix**: (a) remove max_length from clarifications;
+  (b) add `dropped_clarifications: int = 0` to JobIntake —
+  set by the intake module after truncating to 5, default 0;
+  (c) replace test_clarifications_over_max_rejected with a test
+  that >5 clarifications VALIDATE at schema level (truncation
+  is module behavior, tested in T002); (d) schema-size ceiling
+  test stays green.
+- **Reviewer**: independently verified — cap removed,
+  dropped_clarifications contract added, module truncation
+  tested; suites rerun by reviewer (147 green). Resolved.
 
-### R-0099: creation guard not wired — jobs still creatable without resolvable project
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/job.py (_cmd_create_job), apps/cli/commands/do_cmd.py (_cmd_do)
-- **Details**: Feature rule "creation without a resolvable project is
-  only legal with an explicit --project" is enforced nowhere:
-  (a) `remedy job create` resolves from the --project flag ONLY — no
-  env/cwd precedence — and with no flag creates an unscoped job
-  silently; (b) flag given but project unloadable → prints a warning
-  and STILL creates the job unscoped; (c) `remedy do run` with no flag
-  and no resolvable project proceeds with project_id=None. Deviation
-  was recorded in decisions.md (not silent), but the spec stands.
-- **Evidence**: job.py:53-63 (load only when project_id flag truthy;
-  warning path sets project_id=None and proceeds); do_cmd.py:410-417.
-- **Expected fix**: (a) job create resolves via the full
-  select_project(--project, cwd) precedence (flag/env/cwd) like do;
-  (b) both entry points: no resolvable project AND no --project flag →
-  error exit 3 with hint naming `remedy init` and `--project`;
-  (c) --project given but not found/unloadable → error exit 3 (never
-  warn-and-create-unscoped); (d) library funcs run_do/run_autorun keep
-  permissive optional params (fixture/test paths) — record that scoping
-  decision in decisions.md. Tests: each entry point × (resolvable,
-  unresolvable+no-flag → exit 3, bad flag → exit 3). Existing tests
-  that created jobs without any project must be updated (register a
-  fixture project or pass --project); report the honest count of
-  updated tests in the handoff.
-- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
-
-### R-0100: legacy do path never attaches job to the registry
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/do_cmd.py (_cmd_do), packages/orchestration/project_registry.py usage
-- **Details**: The legacy do path sets project_id on the Job but never
-  calls attach_job — registry attachment is one-directional, violating
-  the feature edge case "Registry job attachment stays consistent in
-  both directions (creation path calls it)". Golden path and job create
-  attach; legacy do does not.
-- **Evidence**: grep attach_job — do_cmd.py:197 (golden), job.py:108;
-  nothing on the run_do path.
-- **Expected fix**: _cmd_do keeps the resolved project object; after a
-  successful run_do with a resolved project, attach_job(project,
-  <result job id>) + save_project. Test: `remedy do run` inside a
-  fixture project → registry lists the created job id.
-- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
-
-### R-0101: per-job registry read in the scope filter
-- **Status**: Resolved
-- **Severity**: Low
-- **Area**: packages/orchestration/project_scope.py (job_in_scope/_project_count)
-- **Details**: job_in_scope calls _project_count() for every legacy
-  job, so one listing triggers one registry read per legacy job.
-- **Evidence**: project_scope.py:80-84 with scoped_jobs filter loop.
-- **Expected fix**: Resolve the single-project condition ONCE per
-  scoped_jobs call (precompute count or visibility flag; optional
-  parameter on job_in_scope keeping the current signature working).
-  Existing tests keep passing; no behavior change.
-- **Reviewer**: independently verified (ruff parity main=branch, diff read, suites rerun by reviewer). Resolved at 82d4c1d.
-
-### R-0102: worker wrote STATUS [x] — unauthorized closure claim
+### R-0111: job show intake rendering missing (ordered in T003, absent, unreported)
 - **Status**: Resolved
 - **Severity**: High
-- **Area**: docs/roadmap/STATUS.md (F148 line), process authority
-- **Details**: The T003/T004 bundle explicitly forbade closure work
-  ("no STATUS [x]"). Worker committed `[~]` → `[x]` in 9198d27 with no
-  evidence ref — violating the STATUS grammar ([x] REQUIRES PR/
-  evidence ref), the closure protocol (evidence job + fresh zip are
-  closure preconditions), and the rule that only reviewer-authored
-  text sets verdicts/STATUS states. Disclosed in the handoff table,
-  so not silent — but it is an unverified completion claim (block
-  condition). Second occurrence of the R-0095 class within two
-  features.
-- **Evidence**: git diff 9198d27 STATUS.md hunk; block text of the
-  repair+T003+T004 round.
-- **Expected fix**: Revert the line to EXACTLY:
-  `- [~] F148 — Project scoping everywhere`
-  Touch nothing else in the file. The [x] line will be authored by the
-  reviewer in the closure round, never by the worker.
-- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
+- **Area**: apps/cli/commands/job.py (_cmd_show_job)
+- **Details**: T003 ordered "remedy job show renders the intake
+  block". Not built; absent from the handoff changed-files and
+  prose — incomplete handback per review protocol.
+- **Expected fix**: _cmd_show_job renders an Intake block when
+  job.intake is set: goal, context_refs, constraints,
+  acceptance_hints, clarifications (question + default), source
+  label, truncated_input / dropped_clarifications when nonzero.
+  No block when intake is None (legacy jobs). Tests: shows block
+  for job with intake; silent for legacy job; probes use only
+  text-UI-displayed values.
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
-### R-0103: adopt is bulk instead of explicit per-job; dead --all flag
+### R-0112: do path never attempts LLM intake; no per-call evidence
 - **Status**: Resolved
 - **Severity**: High
-- **Area**: apps/cli/commands/project.py (_cmd_project_adopt), apps/cli/command_catalog.py (project.adopt)
-- **Details**: Feature: "`remedy project adopt <job_id>` claims one
-  explicitly — never automatically (P2)." Delivered command takes NO
-  job_id and adopts EVERY unscoped job in one sweep — mass claiming is
-  exactly the automatism the spec forbids. The catalog's `--all` flag
-  is dead: the handler's adopt_all parameter is never read, so the
-  flag changes nothing.
-- **Evidence**: project.py:394-427 (loop over all unscoped, adopt_all
-  unused); catalog project.adopt entry.
-- **Expected fix**: `remedy project adopt <job_id>` — positional,
-  required. Accept the displayed 8-char short ID (reuse the R-0097
-  resolution approach against the Core store). Exactly one job:
-  unknown id → exit 3; already-scoped job → error exit 2 naming its
-  project; success → set job.project_id, save_job, attach_job,
-  save_project, print confirmation. Remove the bulk path and the
-  dead --all flag from handler and catalog. --project flag may stay
-  to pick the target project (default: resolved current project).
-- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
+- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission),
+  packages/orchestration/intake.py
+- **Details**: heuristic_intake is hardwired; run_intake is dead
+  code from the CLI; the no_llm parameter changes nothing; no
+  intake call ever writes a per-call evidence directory. Feature
+  acceptance requires: fake-provider run stores the fake's exact
+  goal AND its evidence directory exists; no-provider run falls
+  back with label, exit 0.
+- **Expected fix**: (a) _cmd_do_mission: unless --no-llm, attempt
+  run_intake with a call_fn built ONLY on the loop's existing
+  provider invocation surface (A6 — no new subprocess/timeout
+  code; if a minimal helper extraction is unavoidable, extract
+  with unchanged behavior + its own tests). Provider missing/
+  unconfigured/error → heuristic fallback. --no-llm skips the
+  attempt. (b) Per-call evidence: wire on_call to the same
+  per-call evidence writer the loop uses (F004/F005 infra) so
+  each real intake call gets a normal evidence directory. Name
+  the exact reused functions in the handoff. (c) Tests: CLI-level
+  fake-provider run asserts stored intake carries schema_v +
+  exact fake goal + evidence dir exists; no-provider run asserts
+  heuristic label + exit 0; --no-llm asserts zero provider
+  attempts.
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
-### R-0104: acceptance fixture test missing — unit mocks instead of real CLI
-- **Status**: Resolved
-- **Severity**: High
-- **Area**: tests/cli/test_scoped_listings.py
-- **Details**: The instructed test was: two FIXTURE projects, two jobs
-  each, ONE looped test running every audited command as a real CLI
-  subprocess, asserting default isolation, --all-projects showing all
-  four, --project B from anywhere; plus adopt persistence and orphaned
-  rendering. Delivered file re-tests job_in_scope/scoped_jobs with
-  in-process mocks — T002 coverage duplicated, CLI layer (flag
-  parsing, catalog wiring, output labels) untested. Feature acceptance
-  is unverified.
-- **Evidence**: test_scoped_listings.py:1-130 — no subprocess, no
-  fixture projects, no adopt/orphaned tests.
-- **Expected fix**: Rewrite as real-CLI tests (subprocess pattern from
-  test_golden_path.py, isolated data root/env): register two fixture
-  projects A/B with two jobs each; loop over the audited scoped
-  commands (job list, status, stats failures after R-0105) asserting:
-  from inside A only A's jobs; --all-projects shows all four;
-  --project B from anywhere shows B's. Plus: legacy job hidden in the
-  two-project case, visible under --all with "(unscoped)"; `project
-  adopt <short-id>` persists across a second listing; a job whose
-  project file was deleted renders "(orphaned: <id>)" and the listing
-  exits 0. Keep the unit tests if you wish, but the CLI tests are the
-  deliverable.
-- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
-
-### R-0105: stats failures unscoped and missing from the listing audit
+### R-0113: degraded-mode label deviates from specified P6 wording
 - **Status**: Resolved
 - **Severity**: Medium
-- **Area**: stats.failures command, .agent/handoff.md audit table
-- **Details**: Feature names "failure stats" as a consumer to scope.
-  `remedy stats failures` aggregates across all jobs' post-mortems and
-  got no scope flags; the listing-command audit table omits the stats
-  group entirely (and the token.* commands, which ARE per-job and
-  belong in the table as honest N/A rows).
-- **Evidence**: catalog stats.failures entry (--job/--since only);
-  handoff audit table.
-- **Expected fix**: Add --project/--all-projects to stats.failures;
-  select contributing jobs through scoped_jobs (derived post-mortem
-  data joins via job id — schema unchanged). Default: current-project
-  scope, same legacy rule. Update the audit table with stats.* and
-  token.* rows in the next handoff.
-- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
+- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission output)
+- **Details**: Prints "Intake: heuristic". Feature specifies the
+  fallback line "intake: heuristic fallback (provider
+  unavailable)" whenever the heuristic path served an LLM-capable
+  invocation.
+- **Expected fix**: fallback path prints exactly
+  intake: heuristic fallback (provider unavailable)
+  LLM success prints intake: llm. --no-llm prints
+  intake: heuristic (forced by --no-llm). JSON output carries
+  source + fallback reason. Update golden-path probes to the
+  displayed strings.
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
-### R-0106: status has no scope flags — escape hatch missing
+### R-0114: LLM path drops the deterministic truncated_input flag
 - **Status**: Resolved
 - **Severity**: Medium
-- **Area**: apps/cli/commands/status_cmd.py, command catalog (status entry)
-- **Details**: Feature: every listing command defaults to the current
-  project WITH an explicit --all-projects escape hatch. status is
-  auto-scoped only; `remedy status --all-projects` and
-  `remedy status --project B` do not exist.
-- **Evidence**: status_cmd.py:34 resolve_scope(cwd=repo) — no flags;
-  catalog status entry unchanged.
-- **Expected fix**: Add the shared --project/--all-projects fragment
-  to status (catalog + handler → resolve_scope(project_flag=...,
-  all_projects=...)); text and json scope labels follow the chosen
-  scope. Tests for both flags.
-- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
+- **Area**: packages/orchestration/intake.py (run_intake)
+- **Details**: run_intake truncates the prompt but discards the
+  was_truncated bit; the stored flag then depends on LLM
+  self-report, violating A9 ("truncated in the PROMPT at a
+  documented marker … and flagged truncated_input").
+- **Expected fix**: run_intake forces truncated_input=True on the
+  validated result whenever the prompt was truncated (post-parse
+  override, like _truncate_clarifications). Test: oversized
+  mission + fake provider returning truncated_input=false →
+  stored intake has truncated_input=true.
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
-### R-0107: display rules incomplete — no orphaned label, unscoped label only under --all
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/job.py (_scope_label), listing display paths
-- **Details**: "(orphaned: <id>)" for jobs whose project was deleted
-  is implemented nowhere — such jobs render unlabeled or with the
-  generic "(project: xxxxxxxx)" suffix under --all. "(unscoped)" is
-  shown only under --all-projects; in the single-project scoped view
-  legacy jobs appear with no label. Feature requires both labels and
-  crash-free listings.
-- **Evidence**: _scope_label (job.py:126-135) — no registry existence
-  check; early return "" when not all_projects.
-- **Expected fix**: Build the known-project-id set ONCE per listing
-  (one registry read); label rules: project_id None → "(unscoped)"
-  wherever the job is listed; project_id not in known set →
-  "(orphaned: <first 8 chars>)"; listing never crashes. Covered by
-  the R-0104 CLI tests.
-- **Reviewer**: independently verified (diff read, subprocess tests rerun, ruff parity, full tests/cli 18/1012 identical to main). Resolved at be5aa8a.
-
-### R-0108: status --project label shows cwd project, not selected one
+### R-0115: handoff ruff claim excluded a touched file
 - **Status**: Resolved
 - **Severity**: Low
-- **Area**: apps/cli/commands/status_cmd.py (_cmd_status)
-- **Details**: `remedy status --project B` while cwd is inside project A
-  prints "Project: A" and "Jobs (A):" because the slug display comes from
-  resolve_project(repo) (cwd-based), not from the scoped project. JSON
-  output has the same bug: "project" key shows A's slug. Functional
-  filtering is correct — only B's jobs appear — but the label misleads.
-- **Evidence**: status_cmd.py:25 (resolve_project(repo) before scope) vs
-  line 38 (resolve_scope with project_flag).
-- **Expected fix**: When scope.project_id is set and differs from the
-  cwd project, look up the scoped project's slug for display. JSON
-  "project" key and text "Project:" line must both reflect the scoped
-  project. "scope" key already correct.
-- **Reviewer**: independently verified — scoped slug loaded via
-  load_project(scope.project_id), fallback to id prefix; test
-  asserts --project B from cwd A shows B in json project+scope.
-  Resolved at 36193e6.
+- **Area**: .agent/handoff.md (verification section)
+- **Details**: "ruff (touched files): All checks passed!" but
+  touched do_cmd.py was omitted from the command. (Reviewer
+  checked: main parity 6=6, zero NEW — outcome fine, claim
+  incomplete.)
+- **Expected fix**: rerun ruff over ALL touched files; report
+  do_cmd.py main-parity explicitly (pre-existing count vs branch
+  count). Process rule going forward: the ruff command in a
+  handoff lists every touched file.
+- **Reviewer**: independently verified — diff read, 156 tests
+  rerun green by reviewer, ruff main-parity 6=6 confirmed.
+  Resolved.
 
-### R-0109: stats-failures scoping untested
+### R-0116: intake duplicates the Ollama provider configuration surface
+- **Status**: Resolved
+- **Severity**: Medium
+- **Area**: packages/orchestration/intake.py
+  (make_provider_call_fn), packages/providers/ollama_planner/
+  provider.py
+- **Details**: make_provider_call_fn re-implements host/model
+  resolution copied from OllamaPlanner, hardcodes the model
+  fallback "qwen3-coder-next" and timeout=15.0, and ignores the
+  temperature/num_predict options the planner surface resolves.
+  Second config surface = drift risk; the order required reusing
+  the existing provider invocation surface.
+- **Expected fix**: (a) OllamaPlanner gains a neutral
+  raw_call(prompt, *, schema, system=None) that builds the client
+  from self.host and applies self.temperature/self.num_predict;
+  plan_raw delegates to it with UNCHANGED behavior (same system
+  prompt + "Plan this job:" wrapping). Unit tests with a fake
+  ollama module prove delegation and option passthrough.
+  (b) make_provider_call_fn instantiates OllamaPlanner() and
+  returns a closure over raw_call(prompt, schema=JobIntake
+  schema) — delete the duplicated host/model resolution, the
+  hardcoded model fallback, and the hardcoded timeout. The
+  client.list() availability probe may stay, built from the
+  planner's host. Any timeout goes through config, not a literal;
+  record the choice in .agent/decisions.md.
+  (c) Update TestMakeProviderCallFn: env-var model override
+  (REMEDY_OLLAMA_PLANNER_MODEL) reaches the chat call; ollama
+  missing → None. All existing suites stay green.
+- **Reviewer**: independently verified — diff read (raw_call
+  single surface, plan_raw delegation byte-identical; label
+  exact), suites rerun green by reviewer, flake confirmed
+  pre-existing on main worktree. Resolved.
+
+### R-0117: provider-error fallback mislabeled as provider unavailable
 - **Status**: Resolved
 - **Severity**: Low
-- **Area**: packages/orchestration/failure_stats.py (collect_failures),
-  tests/cli/test_scoped_listings.py
-- **Details**: R-0105 wired --project/--all-projects to stats failures
-  and added the job_ids filter to collect_failures, but no test covers
-  either path — the filter or the CLI flag parsing. A regression in the
-  filter logic would pass CI silently.
-- **Evidence**: grep -r "collect_failures" tests/ returns zero hits; grep
-  -r "stats.*failures" tests/cli/test_scoped_listings.py returns zero.
-- **Expected fix**: (a) Unit test: call collect_failures(job_ids={…})
-  with fixture data confirming jobs outside the set are excluded.
-  (b) CLI subprocess test in test_scoped_listings: two-project fixture,
-  `remedy stats failures --project B` returns only B's data (or empty
-  if B has no failures, but must not include A's).
-- **Reviewer**: independently verified — unit test proves the
-  job_ids filter (2 jobs → 1 → 0 with empty set); CLI test
-  proves flag plumbing. Documented residual (Low): the CLI test
-  asserts exit/shape, not post-mortem counts; the unit test
-  carries the filter proof. Resolved at 36193e6.
+- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission label
+  logic)
+- **Details**: fallback_reason == "provider_error" prints
+  "intake: heuristic fallback (provider unavailable)" — the
+  provider WAS reachable; its output failed the schema gate or
+  transport errored mid-call. Label contradicts the JSON reason.
+- **Expected fix**: provider_error prints exactly
+  intake: heuristic fallback (provider error)
+  provider_unavailable keeps the spec string. Golden-path probes
+  updated to the displayed strings.
+- **Reviewer**: independently verified — diff read (raw_call
+  single surface, plan_raw delegation byte-identical; label
+  exact), suites rerun green by reviewer, flake confirmed
+  pre-existing on main worktree. Resolved.
 
-## Verdict — F148 live review
-PASS — R-0085-series n/a (F147); F148 findings R-0098..R-0109
-all Resolved. One documented Low residual on R-0109 (CLI
-stats-test depth). Authored by reviewer, round 5.
+## Verdict (Runde 5)
+PASS_WITH_RISKS — F013 findings R-0110..R-0117 all Resolved.
+Risks: (1) pre-existing test_ollama_provider.py env-capture
+flake — file-level run fails on main too (reviewer-verified at
+eafcade); out of F013 scope. (2) intake evidence is prompt-trace
+JSONL in the job runs dir (F005 parity with plan-job-local);
+raw-stream/postmortem integration deferred until intake becomes
+a first-class run.

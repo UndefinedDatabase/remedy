@@ -167,6 +167,7 @@ def _cmd_do_mission(
     *,
     repo: str = ".",
     json_output: bool = False,
+    no_llm: bool = False,
 ) -> None:
     """Golden-path: mission string → planned job (F147 T001)."""
     if not mission or not mission.strip():
@@ -183,15 +184,60 @@ def _cmd_do_mission(
         sys.exit(3)
 
     from packages.core.models import Job
+    from packages.orchestration.intake import heuristic_intake, make_provider_call_fn, run_intake
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
+
+    intake_result = None
+    intake_traces: list = []
+    intake_fallback_reason = ""
+    if no_llm:
+        intake_result = heuristic_intake(mission)
+        intake_fallback_reason = "forced"
+    else:
+        call_fn = make_provider_call_fn()
+        if call_fn is not None:
+            from packages.orchestration.prompt_trace import build_trace_entry
+
+            def _record_intake_call(
+                attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+            ) -> None:
+                intake_traces.append(build_trace_entry(
+                    prompt_text=effective_prompt,
+                    role="intake",
+                    provider="ollama",
+                    provider_kind="ollama",
+                    prompt_kind="intake-retry" if is_parse_retry else "intake",
+                    schema_v=schema_v,
+                    phase="intake-retry" if is_parse_retry else "intake",
+                    transport_attempt=attempt,
+                    is_transport_retry=False,
+                ))
+
+            intake_result = run_intake(mission, call_fn, on_call=_record_intake_call)
+            if intake_result.source == "heuristic":
+                intake_fallback_reason = "provider_error"
+
+        if intake_result is None:
+            intake_result = heuristic_intake(mission)
+            intake_fallback_reason = "provider_unavailable"
 
     job = Job(
         name=mission[:80], mission=mission, user_prompt=mission,
         project_id=str(project.id),
+        intake=intake_result.value.model_dump(),
     )
     result = plan_job(job)
     save_job(result.job)
+
+    if intake_traces:
+        from packages.orchestration.prompt_trace import write_trace_jsonl
+        from packages.orchestration.run_log import RunLogWriter
+        log = RunLogWriter(job_id=result.job.id)
+        try:
+            write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
+        except OSError:
+            pass
 
     from packages.orchestration.project_registry import attach_job, save_project
     attach_job(project, str(result.job.id))
@@ -208,6 +254,11 @@ def _cmd_do_mission(
             "project_slug": project.slug,
             "state": result.job.state.value,
             "mission": mission,
+            "intake": {
+                "source": intake_result.source,
+                "goal": intake_result.value.goal,
+                "fallback_reason": intake_fallback_reason,
+            },
             "tasks": [
                 {"task_id": str(t.id), "description": t.description}
                 for t in result.job.tasks
@@ -221,6 +272,17 @@ def _cmd_do_mission(
     print(f"Project: {project.slug}")
     print(f"Mission: {display_mission}")
     print(f"State: {result.job.state.value}")
+    if intake_result.source == "llm":
+        intake_label = "intake: llm"
+    elif intake_fallback_reason == "forced":
+        intake_label = "intake: heuristic (forced by --no-llm)"
+    elif intake_fallback_reason == "provider_unavailable":
+        intake_label = "intake: heuristic fallback (provider unavailable)"
+    elif intake_fallback_reason == "provider_error":
+        intake_label = "intake: heuristic fallback (provider error)"
+    else:
+        intake_label = f"intake: {intake_result.source}"
+    print(intake_label)
     print("Tasks:")
     for t in result.job.tasks:
         task_type = t.inputs.get("task_type", "")
@@ -263,14 +325,16 @@ def _cmd_do(
     deadline: str | None = None,
     injected_default: bool = False,
     truly_bare: bool = False,
+    no_llm: bool = False,
 ) -> None:
     # --- Bare-mission golden path (F147) ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides --json/--repo appeared
-    # in the raw argv. This catches `do "x" --autonomy-level 1` (explicit
-    # flag at default value) which value-equality checks cannot distinguish.
+    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm
+    # appeared in the raw argv. This catches `do "x" --autonomy-level 1`
+    # (explicit flag at default value) which value-equality checks cannot
+    # distinguish.
     if truly_bare and goal:
-        _cmd_do_mission(goal, repo=repo, json_output=json_output)
+        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm)
         return
 
     # --- Budget resolution (always runs — catches config-only budgets) ---
@@ -2650,6 +2714,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         deadline=getattr(args, "deadline", None),
+        no_llm=getattr(args, "no_llm", False),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",
