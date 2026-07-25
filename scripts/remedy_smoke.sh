@@ -2736,23 +2736,61 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 "
 
     # -------------------------------------------------------------------------
-    # 12r. Flight plan approval type registered (F014 T004)
+    # 12r. Flight plan approval gate — real CLI sequence (F014 T004)
+    # Provider stand-in: inline save_job seeds job with pending flight plan.
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="12r"
-    echo "--- 12r. Flight plan approval decision type"
+    echo "--- 12r. Flight plan approval gate (CLI sequence)"
+
+    # Seed a job with a pending flight plan (provider stand-in)
+    FP_JOB_ID="$(python3 -c "
+import json
+from packages.core.models import Job, Task, RunState
+from packages.orchestration.storage import save_job
+job = Job(
+    name='smoke-approval',
+    state=RunState.PLANNED,
+    flight_plan={
+        'schema_v': 'flight_plan_v1',
+        'tasks': [{'id': 'T001', 'title': 'Smoke task', 'goal': 'G',
+                    'acceptance': ['done'], 'depends_on': [],
+                    'est_tokens_band': 'M', 'files_hint': []}],
+        'risks': [],
+        '_approval': 'pending',
+    },
+    tasks=[Task(description='Smoke task')],
+)
+save_job(job)
+print(str(job.id)[:8])
+")"
+    echo "    seeded job: ${FP_JOB_ID}"
+
+    # Run attempt -> expect exit 3 + "plan awaiting approval"
+    set +e
+    RUN_OUT="$(remedy job run-next "${FP_JOB_ID}" 2>&1)"
+    RUN_EXIT=$?
+    set -e
+    if [ "$RUN_EXIT" -ne 3 ]; then
+        echo "ERROR: expected exit 3, got ${RUN_EXIT}" >&2
+        exit 1
+    fi
+    echo "$RUN_OUT" | grep -q "plan awaiting approval" || {
+        echo "ERROR: missing 'plan awaiting approval' in output" >&2; exit 1; }
+    echo "    run-next blocked: exit 3 (OK)"
+
+    # Approve via decision resolve
+    remedy decision resolve "${FP_JOB_ID}" fp:approval --reason approve
+    echo "    approved: OK"
+
+    # Status shows the job
+    STATUS_JSON="$(remedy job status "${FP_JOB_ID}" --json)"
     python3 -c "
-from packages.orchestration.decision_queue import DECISION_TYPES
-assert 'flight_plan_approval' in DECISION_TYPES, 'flight_plan_approval missing from DECISION_TYPES'
-from packages.core.models import Job
-from packages.orchestration.decision_queue import list_decisions
-job = Job(name='smoke', flight_plan={'_approval': 'pending'})
-decs = [d for d in list_decisions(job, []) if d.type == 'flight_plan_approval']
-assert len(decs) == 1, 'expected 1 flight_plan_approval decision, got ' + str(len(decs))
-assert decs[0].severity == 'blocker', 'severity must be blocker'
-job2 = Job(name='smoke', flight_plan={'_approval': 'approved'})
-decs2 = [d for d in list_decisions(job2, []) if d.type == 'flight_plan_approval']
-assert len(decs2) == 0, 'approved plan must not create decision'
-print('    flight_plan_approval: OK (pending=blocker, approved=none)')
+import json, sys
+st = json.loads('''${STATUS_JSON}''')
+assert st['name'] == 'smoke-approval', 'wrong name: ' + st['name']
+assert st['state'] == 'planned', 'wrong state: ' + st['state']
+assert st['pending_count'] == 1, 'wrong pending: ' + str(st['pending_count'])
+print('    status: OK (name=smoke-approval, state=planned, pending=1)')
 "
 
     # -------------------------------------------------------------------------

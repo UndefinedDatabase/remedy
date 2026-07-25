@@ -125,7 +125,7 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
             job.flight_plan = fp
             save_job(job)
             print(f"Flight plan rejected for job {job_id_str}.")
-            print("Hint: use --replan to generate a new flight plan.")
+            print(f"Run: remedy do replan {job_id_str}")
     else:
         print(f"Decision '{decision_id}' is derived and cannot be directly resolved.", file=sys.stderr)
         print("Resolve the underlying record (patch intent, test, etc.) instead.", file=sys.stderr)

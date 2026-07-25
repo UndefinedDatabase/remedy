@@ -244,7 +244,10 @@ def _cmd_do_mission(
             fp_dict["_approval"] = "pending"
             tasks = map_flight_plan_to_tasks(fp_result.plan)
             from packages.core.models import JobBudgets, JobFences
-            merged_budgets = apply_plan_budgets(None, fp_result.plan.budgets)
+            from packages.orchestration.budget_resolution import resolve_job_budgets
+            config_budgets = resolve_job_budgets(project_root=repo)
+            config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
+            merged_budgets = apply_plan_budgets(config_budgets_dict, fp_result.plan.budgets)
             merged_fences = apply_plan_fences(None, fp_result.plan.fences)
             job_budgets = None
             if merged_budgets:
@@ -310,10 +313,11 @@ def _cmd_do_mission(
             )
             pm = build_job_rollup(job_id=str(job.id), signals=signals)
             ev_dir = job_evidence_export_dir(str(job.id))
+            ev_dir.mkdir(parents=True, exist_ok=True)
             try:
                 write_postmortem(ev_dir, pm, root=ev_dir)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
             print(
                 f"Error: flight plan generation failed: "
                 f"{fp_result.error_hint or 'parse failure'}",

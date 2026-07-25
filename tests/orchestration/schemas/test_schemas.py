@@ -50,8 +50,14 @@ class TestSchemaVersioning:
         assert SCHEMA_REGISTRY[DESIGN_SPEC_SCHEMA_V] is DesignSpec
 
     def test_tags_are_compact(self):
+        # flight_plan_v1 (14 chars) deliberately uses a descriptive tag;
+        # all other tags must stay <= 6 chars (original compact guard).
+        _LONG_TAG_EXEMPTIONS = {"flight_plan_v1"}
         for tag in SCHEMA_REGISTRY:
-            assert 2 <= len(tag) <= 20, f"schema_v {tag!r} is not compact"
+            if tag in _LONG_TAG_EXEMPTIONS:
+                assert len(tag) <= 14, f"exempted tag {tag!r} exceeds 14"
+            else:
+                assert 2 <= len(tag) <= 6, f"schema_v {tag!r} is not compact"
 
 
 class TestSchemaVMandatory:

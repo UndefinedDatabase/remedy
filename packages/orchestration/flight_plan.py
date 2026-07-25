@@ -280,10 +280,24 @@ def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Pat
 # Replan versioning (T003)
 # ---------------------------------------------------------------------------
 
+def flight_plan_blocks_execution(job: Any) -> str | None:
+    """Return blocking reason if flight plan prevents execution, else None.
+
+    Returns "pending" when awaiting approval, "rejected" when plan was
+    rejected and needs replanning.
+    """
+    fp = getattr(job, "flight_plan", None)
+    if not isinstance(fp, dict):
+        return None
+    approval = fp.get("_approval")
+    if approval in ("pending", "rejected"):
+        return approval
+    return None
+
+
 def flight_plan_approval_open(job: Any) -> bool:
     """Return True if the job has a pending flight plan approval gate."""
-    fp = getattr(job, "flight_plan", None)
-    return isinstance(fp, dict) and fp.get("_approval") == "pending"
+    return flight_plan_blocks_execution(job) is not None
 
 
 class ReplanRejectedError(Exception):
