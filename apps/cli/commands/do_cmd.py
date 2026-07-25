@@ -185,11 +185,12 @@ def _cmd_do_mission(
         )
         sys.exit(3)
 
-    from packages.core.models import Job
+    from packages.core.models import Job, RunState
     from packages.orchestration.intake import heuristic_intake, make_provider_call_fn, run_intake
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
+    call_fn = None
     intake_result = None
     intake_traces: list = []
     intake_fallback_reason = ""
@@ -224,37 +225,66 @@ def _cmd_do_mission(
             intake_result = heuristic_intake(mission)
             intake_fallback_reason = "provider_unavailable"
 
-    job = Job(
-        name=mission[:80], mission=mission, user_prompt=mission,
-        project_id=str(project.id),
-        intake=intake_result.value.model_dump(),
-    )
-    result = plan_job(job)
-    save_job(result.job)
+    # --- Flight Plan (LLM) or deterministic fallback ---
+    job = None
+    plan_label = "deterministic skeleton"
+
+    if call_fn is not None and not no_llm:
+        from packages.orchestration.flight_plan import (
+            map_flight_plan_to_tasks,
+            plan_job_llm,
+        )
+        fp_result = plan_job_llm(intake_result.value.model_dump(), call_fn)
+        if fp_result.plan is not None:
+            fp_dict = fp_result.plan.model_dump()
+            fp_dict["_approval"] = "pending"
+            tasks = map_flight_plan_to_tasks(fp_result.plan)
+            job = Job(
+                name=mission[:80], mission=mission, user_prompt=mission,
+                project_id=str(project.id),
+                intake=intake_result.value.model_dump(),
+                flight_plan=fp_dict,
+                tasks=tasks,
+                state=RunState.PLANNED,
+            )
+            save_job(job)
+            plan_label = (
+                f"flight plan {fp_result.plan.schema_v} (awaiting approval)"
+            )
+
+    if job is None:
+        job = Job(
+            name=mission[:80], mission=mission, user_prompt=mission,
+            project_id=str(project.id),
+            intake=intake_result.value.model_dump(),
+        )
+        plan_result = plan_job(job)
+        job = plan_result.job
+        save_job(job)
 
     if intake_traces:
         from packages.orchestration.prompt_trace import write_trace_jsonl
         from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=result.job.id)
+        log = RunLogWriter(job_id=job.id)
         try:
             write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
         except OSError:
             pass
 
     from packages.orchestration.project_registry import attach_job, save_project
-    attach_job(project, str(result.job.id))
+    attach_job(project, str(job.id))
     save_project(project)
 
-    short_id = str(result.job.id)[:8]
+    short_id = str(job.id)[:8]
     display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
 
     if json_output:
         import json as _json
         print(_json.dumps({
-            "job_id": str(result.job.id),
+            "job_id": str(job.id),
             "short_id": short_id,
             "project_slug": project.slug,
-            "state": result.job.state.value,
+            "state": job.state.value,
             "mission": mission,
             "intake": {
                 "source": intake_result.source,
@@ -263,9 +293,9 @@ def _cmd_do_mission(
             },
             "tasks": [
                 {"task_id": str(t.id), "description": t.description}
-                for t in result.job.tasks
+                for t in job.tasks
             ],
-            "plan_label": "deterministic skeleton (LLM Flight Plan lands with F013/F014)",
+            "plan_label": plan_label,
             "next_command": "remedy status",
         }, indent=2))
         return
@@ -273,7 +303,7 @@ def _cmd_do_mission(
     print(f"Job: {short_id}")
     print(f"Project: {project.slug}")
     print(f"Mission: {display_mission}")
-    print(f"State: {result.job.state.value}")
+    print(f"State: {job.state.value}")
     if intake_result.source == "llm":
         intake_label = "intake: llm"
     elif intake_fallback_reason == "forced":
@@ -286,10 +316,10 @@ def _cmd_do_mission(
         intake_label = f"intake: {intake_result.source}"
     print(intake_label)
     print("Tasks:")
-    for t in result.job.tasks:
+    for t in job.tasks:
         task_type = t.inputs.get("task_type", "")
         print(f"  - {task_type}: {t.description}")
-    print("plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)")
+    print(f"plan: {plan_label}")
     print("Next: remedy status")
 
 

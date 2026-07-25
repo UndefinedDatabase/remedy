@@ -72,7 +72,7 @@ class TestDoMission:
         assert "intake: heuristic (forced by --no-llm)" in out
         assert "analyze_requirements" in out
         assert "Next: remedy status" in out
-        assert "plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)" in out
+        assert "plan: deterministic skeleton" in out
 
     def test_do_mission_json(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -123,7 +123,7 @@ class TestDoMission:
 
         result = _run_do(repo, env, "ship it")
         assert result.returncode == 0
-        assert "plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)" in result.stdout
+        assert "plan: deterministic skeleton" in result.stdout
 
     def test_old_job_json_without_mission_loads(self, tmp_path):
         """Pre-F147 job JSON without mission field must still load."""

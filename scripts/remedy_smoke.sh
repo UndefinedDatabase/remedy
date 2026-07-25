@@ -2736,6 +2736,26 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 "
 
     # -------------------------------------------------------------------------
+    # 12r. Flight plan approval type registered (F014 T004)
+    # -------------------------------------------------------------------------
+    _SMOKE_SECTION="12r"
+    echo "--- 12r. Flight plan approval decision type"
+    python3 -c "
+from packages.orchestration.decision_queue import DECISION_TYPES
+assert 'flight_plan_approval' in DECISION_TYPES, 'flight_plan_approval missing from DECISION_TYPES'
+from packages.core.models import Job
+from packages.orchestration.decision_queue import list_decisions
+job = Job(name='smoke', flight_plan={'_approval': 'pending'})
+decs = [d for d in list_decisions(job, []) if d.type == 'flight_plan_approval']
+assert len(decs) == 1, 'expected 1 flight_plan_approval decision, got ' + str(len(decs))
+assert decs[0].severity == 'blocker', 'severity must be blocker'
+job2 = Job(name='smoke', flight_plan={'_approval': 'approved'})
+decs2 = [d for d in list_decisions(job2, []) if d.type == 'flight_plan_approval']
+assert len(decs2) == 0, 'approved plan must not create decision'
+print('    flight_plan_approval: OK (pending=blocker, approved=none)')
+"
+
+    # -------------------------------------------------------------------------
     # 13. Summary
     # -------------------------------------------------------------------------
     _SMOKE_SECTION="summary"

@@ -25,7 +25,7 @@
 ## Tier 1 — Self-Build Bootstrap
 
 - [x] F013 — Job intake (T001–T003 complete; accepted 2026-07-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f013_job_intake_closure · package remedy-review-20260725-184236-READY_FOR_REVIEW.zip · SHA-256 098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1 · accepted HEAD ba6e6fe6d05e97197ca45c201a7914dc4ef20396)
-- [~] F014 — Flight Plan
+- [x] F014 — Flight Plan
 - [ ] F016 — Scaling task granularity
 - [ ] F034 — Bundled clarification in the Flight Plan (never at runtime)
 - [ ] F046 — Multi-cycle loop

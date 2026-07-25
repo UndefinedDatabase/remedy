@@ -44,6 +44,7 @@ class HumanDecision:
 DECISION_TYPES = frozenset({
     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
     "token_budget", "worker_approval", "memory_review", "revert_missing",
+    "flight_plan_approval",
 })
 
 
@@ -226,6 +227,27 @@ def list_decisions(
             ))
     except (ImportError, ValueError, OSError):
         pass
+
+    # 7. Flight plan approval
+    _flight_plan = getattr(job, "flight_plan", None)
+    if isinstance(_flight_plan, dict) and _flight_plan.get("_approval") == "pending":
+        decisions.append(HumanDecision(
+            id="fp:approval",
+            type="flight_plan_approval",
+            status="open",
+            severity="blocker",
+            source="flight_plan",
+            related_node_id="",
+            related_intent_id="",
+            related_file="",
+            safe_summary="Flight plan awaiting approval.",
+            next_actions=(
+                f"remedy decision answer {job_id[:8]} fp:approval approve",
+                f"remedy decision answer {job_id[:8]} fp:approval reject",
+            ),
+            created_at="",
+            resolved_at=None,
+        ))
 
     return decisions
 
