@@ -20,7 +20,7 @@ REVIEW_VERDICT_SCHEMA_V = "rv1"
 PLANNER_PLAN_SCHEMA_V = "pp1"
 DESIGN_SPEC_SCHEMA_V = "ds1"
 JOB_INTAKE_SCHEMA_V = "ji1"
-FLIGHT_PLAN_SCHEMA_V = "fp1"
+FLIGHT_PLAN_SCHEMA_V = "flight_plan_v1"
 
 Verdict = Literal["pass", "fail", "needs_repair", "blocked"]
 Severity = Literal["blocker", "high", "medium", "low"]
@@ -74,14 +74,9 @@ class ProposedTask(_Strict):
     description: str
 
 
+# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
 class PlannerPlan(_Structured):
-    """Structured planner output (schema ``pp1``).
-
-    .. deprecated:: F014
-        Superseded by FlightPlan (flight_plan_v1). Retained for
-        --no-llm/fallback deterministic planner path.
-        See docs/roadmap/features/T1_F014.md.
-    """
+    """Structured planner output (schema ``pp1``)."""
 
     SCHEMA_V: ClassVar[str] = PLANNER_PLAN_SCHEMA_V
     schema_v: Literal["pp1"]  # required: no default

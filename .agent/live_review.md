@@ -24,7 +24,7 @@ non-"sr:" ids, and decision_queue next_actions reference a
 nonexistent command "remedy decision answer". The gate can never be
 approved through the product.
 
-### R-0121 [blocker] Red regression suite reported as green — Open
+### R-0121 [blocker] Red regression suite reported as green — Done: R-0121
 tests/orchestration/schemas/test_schemas.py::TestSchemaSize::
 test_schema_size_matches_snapshot[PlannerPlan] FAILS on the branch:
 schema size 1088 vs snapshot 909 — the F014 deprecation docstring on
@@ -50,7 +50,7 @@ remedy do --yes neither approves the plan nor records an
 auto-approval audit entry. Spec: --yes records an auto-approval
 decision (audit trail, not a silent skip).
 
-### R-0125 [medium] Schema tag mismatch — Open
+### R-0125 [medium] Schema tag mismatch — Done: R-0125
 FLIGHT_PLAN_SCHEMA_V = "fp1" but schema_v is
 Literal["flight_plan_v1"]. Every other model has tag == literal;
 SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry

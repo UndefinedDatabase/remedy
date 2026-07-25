@@ -11,32 +11,17 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+# Deprecated by F014: superseded by PlannedTask. Retained for --no-llm/fallback.
 class ProposedTask(BaseModel):
-    """A task proposed by the planner.
-
-    .. deprecated:: F014
-        Superseded by PlannedTask (flight_plan_v1). Retained for
-        --no-llm/fallback deterministic planner path.
-        See docs/roadmap/features/T1_F014.md.
-    """
+    """A task proposed by the planner."""
 
     task_type: str
     description: str
 
 
+# Deprecated by F014: superseded by FlightPlan. Retained for --no-llm/fallback.
 class PlannerOutput(BaseModel):
-    """Structured planning result returned by a planner provider.
-
-    summary:           short overview of the overall plan.
-    proposed_tasks:    ordered list of tasks to execute.
-    acceptance_checks: optional job-level criteria for a successful outcome.
-    notes:             optional assumptions or caveats from the planner.
-
-    .. deprecated:: F014
-        Superseded by FlightPlan (flight_plan_v1). Retained for
-        --no-llm/fallback deterministic planner path.
-        See docs/roadmap/features/T1_F014.md.
-    """
+    """Structured planning result returned by a planner provider."""
 
     summary: str
     proposed_tasks: list[ProposedTask] = Field(min_length=1)
