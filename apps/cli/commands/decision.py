@@ -6,7 +6,7 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
+from packages.orchestration.data_paths import resolve_job_id
 
 if TYPE_CHECKING:
     import argparse
@@ -18,11 +18,7 @@ def _load_job_events(job_id_str: str):
     from packages.orchestration.storage import JobNotFoundError, load_job
     from packages.orchestration.timeline import load_run_events
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:

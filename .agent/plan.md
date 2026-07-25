@@ -1,22 +1,15 @@
-# Plan — F013 Job intake
+# Plan — Gap: short-ID resolver + protocol + hygiene
 
 ## Goal
-A free-text mission becomes a structured, validated JobIntake —
-goal, context refs, constraints, acceptance hints, clarifications —
-persisted on the job before planning. Schema-gated, never raw LLM
-text; deterministic labeled heuristic fallback without a provider.
+Central short-ID resolver, completion-report protocol, hygiene fixes.
 
 ## Checklist
-- [x] T001 — JobIntake schema + validation round-trip tests + job
-      field + backward-compat fixture
-- [x] T002 — intake module (run_intake + heuristic_intake) using
-      run_structured_call + fake-provider tests (31 tests)
-- [x] T003 — do-path integration (intake before planning, --no-llm
-      flag) + job show rendering + golden-path smoke (36 tests)
-
-- [x] R-0110..R-0117 — reviewer repairs
-- [x] Closure — verdict PASS_WITH_RISKS, evidence job,
-      STATUS [x], PR
+- [ ] Central `resolve_job_id` in data_paths.py
+- [ ] Wire into all 22+ command sites (job, decision, change, patch)
+- [ ] Delete duplicate resolvers (job_stop_cmd, project)
+- [ ] Tests: short-ID resolution + verbatim Next-line
+- [ ] AGENTS.md: item-status-table rule in completion reports
+- [ ] Hygiene: 2 job_stop_integration failures + ruff --fix
 
 ## Current Step
-Closure complete.
+Central resolver function.

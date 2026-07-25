@@ -786,3 +786,68 @@ class TestShortIdResolution:
             cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
         )
         assert stop.returncode == 3
+
+    def test_status_next_line_runs_verbatim(self, tmp_path):
+        """Every Next: line printed by `remedy status` runs verbatim as a command."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+        _run_do(repo, env, "build a readme")
+
+        status = _run_status(repo, env)
+        assert status.returncode == 0
+
+        for line in status.stdout.splitlines():
+            if "Next:" not in line:
+                continue
+            cmd_text = line.split("Next:", 1)[1].strip()
+            if cmd_text.startswith("remedy do"):
+                continue
+            parts = cmd_text.replace("remedy ", "").split()
+            result = subprocess.run(
+                [*_CLI, *parts],
+                capture_output=True, text=True, timeout=30,
+                cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+            )
+            assert result.returncode == 0, (
+                f"Next-line command failed: {cmd_text!r}\n"
+                f"exit={result.returncode}\nstderr={result.stderr}"
+            )
+
+    def test_job_show_accepts_short_id(self, tmp_path):
+        """remedy job show <short> resolves to full UUID."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do = _run_do(repo, env, "build a readme", ["--json"])
+        assert do.returncode == 0
+        job_id = json.loads(do.stdout)["job_id"]
+        short = job_id[:8]
+
+        result = subprocess.run(
+            [*_CLI, "job", "show", short],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        assert data["id"] == job_id
+
+    def test_decision_list_accepts_short_id(self, tmp_path):
+        """remedy decision list <short> resolves to full UUID."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        _init_project(repo, env)
+
+        do = _run_do(repo, env, "build a readme", ["--json"])
+        assert do.returncode == 0
+        job_id = json.loads(do.stdout)["job_id"]
+        short = job_id[:8]
+
+        result = subprocess.run(
+            [*_CLI, "decision", "list", short],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        assert result.returncode == 0, result.stderr

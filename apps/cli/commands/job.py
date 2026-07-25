@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from packages.core.models import Job, RunState, Task
-from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
 from packages.orchestration.job_runner import PlanJobResult
 from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
@@ -150,11 +150,7 @@ def _scope_label(job: Job, scope: ProjectScope, known_ids: set[str]) -> str:
 
 
 def _cmd_show_job(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -200,11 +196,7 @@ def _print_intake_block(intake: dict) -> None:
 
 
 def _cmd_plan_job_local(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -332,11 +324,7 @@ def _cmd_plan_job_local(job_id_str: str) -> None:
 
 
 def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -359,11 +347,7 @@ def _cmd_attach_repo(job_id_str: str, repo_path_str: str) -> None:
 
 
 def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -393,11 +377,7 @@ def _cmd_set_permission(job_id_str: str, action: str, capability_str: str) -> No
 
 
 def _cmd_show_permissions(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -412,11 +392,7 @@ def _cmd_show_permissions(job_id_str: str) -> None:
 
 
 def _cmd_run_next_task_local(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -653,11 +629,7 @@ def _cmd_run_loop(
 ) -> None:
     import json as _json
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -713,11 +685,7 @@ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
     """Print an honest summary of job state — truth contract."""
     import json as _json
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -806,11 +774,7 @@ def _cmd_resume(
         resume_dry_run,
     )
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -1122,14 +1086,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     """Job status -- safe read-only view of current job state."""
     import json as _json
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        if json_output:
-            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
-        else:
-            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError:
@@ -1211,14 +1168,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
     """Job report -- safe read-only report of job progress and evidence."""
     import json as _json
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        if json_output:
-            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
-        else:
-            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError:
@@ -1314,14 +1264,7 @@ def _cmd_job_fulfill(
     """Run job fulfillment spine — fixture-demo mode only in v0."""
     import json as _json
 
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        if json_output:
-            print(_json.dumps({'error': 'invalid_job_id', 'job_id': job_id_str}))
-        else:
-            print(f'Error: invalid job ID: {job_id_str!r}', file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
 
     if not fixture_demo:
         if json_output:
@@ -1377,8 +1320,8 @@ def _cmd_job_fences(job_id_str: str, *, json_output: bool = False) -> None:
     )
 
     try:
-        job = load_job(UUID(job_id_str))
-    except (ValueError, JobNotFoundError):
+        job = load_job(resolve_job_id(job_id_str))
+    except JobNotFoundError:
         print(f"Job not found: {job_id_str}", file=sys.stderr)
         sys.exit(1)
 

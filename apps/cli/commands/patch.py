@@ -6,8 +6,7 @@ import json as _json
 import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING
-from uuid import UUID
-
+from packages.orchestration.data_paths import resolve_job_id
 from packages.orchestration.storage import JobNotFoundError, load_job, save_job
 
 if TYPE_CHECKING:
@@ -15,11 +14,7 @@ if TYPE_CHECKING:
 
 
 def _cmd_list_patch_intents(job_id_str: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -32,11 +27,7 @@ def _cmd_list_patch_intents(job_id_str: str) -> None:
 
 
 def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -65,11 +56,7 @@ def _cmd_show_patch_intent(job_id_str: str, intent_id: str) -> None:
 
 
 def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -98,11 +85,7 @@ def _cmd_approve_patch_intent(job_id_str: str, intent_id: str, reason: str | Non
 
 
 def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -131,11 +114,7 @@ def _cmd_reject_patch_intent(job_id_str: str, intent_id: str, reason: str | None
 
 
 def _cmd_apply_patch_intent(job_id_str: str, intent_id: str, *, json_output: bool = False) -> None:
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         job = load_job(job_id)
     except JobNotFoundError as exc:
@@ -172,11 +151,7 @@ def _cmd_revert_patch_intent(
     apply_id is canonical. intent_id is used as apply_id fallback (patch_apply.py
     stores apply_id == intent_id for markdown applies).
     """
-    try:
-        job_id = UUID(job_id_str)
-    except ValueError:
-        print(f"Error: invalid job ID: {job_id_str!r}", file=sys.stderr)
-        sys.exit(1)
+    job_id = resolve_job_id(job_id_str)
     try:
         load_job(job_id)
     except JobNotFoundError as exc:
