@@ -1,20 +1,18 @@
-# Plan — Gap: short-ID resolver + protocol + hygiene
+# Plan — F014 Flight Plan
 
 ## Goal
-Central short-ID resolver, completion-report protocol, hygiene fixes.
+LLM-generated, schema-validated Flight Plan (DAG of tasks with
+goals, acceptance, depends_on, token bands) carrying budgets and
+fences; rendered plan.md; human approval gate before execution;
+deterministic planner stays as --no-llm/provider-down fallback.
 
 ## Checklist
-- [x] Central `resolve_job_id` in data_paths.py
-- [x] Wire into all 22+ command sites (job, decision, change, patch)
-- [x] Delete duplicate resolvers (job_stop_cmd, project)
-- [x] Tests: short-ID resolution + verbatim Next-line
-- [x] AGENTS.md: item-status-table rule in completion reports
-- [x] Hygiene: 2 job_stop_integration failures + ruff --fix
+- [ ] T001 — schemas + DAG validator + tests + deprecation notes
+- [ ] T002 — plan_job_llm + task mapping + budget/fence
+      precedence + fake-provider tests
+- [ ] T003 — plan.md renderer (golden file) + replan versioning
+- [ ] T004 — approval gate + --yes audit + execution refusal +
+      golden-path label flip + smoke update
 
 ## Current Step
-All items done. Commit hygiene, push, create PR.
-
-## Notes
-- Catalog/doc test failures (31 tests in test_product_spine + test_do_cmd_summary) are pre-existing on main — missing docs/autocoder-usage.md and docs/core-product-spine-v0.md.
-- ruff 10 remaining violations all suppressed with noqa (E402 after bootstrap, F821 forward ref, F722 quirky annotation).
-- job_stop_integration fix: runner now acknowledges pending stop signal when job already stopped with matching request_id (crash-at-step-6 recovery path).
+T001 in progress.
