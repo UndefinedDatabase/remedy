@@ -16,7 +16,6 @@ task completed under is part of what completed.
 from __future__ import annotations
 
 import dataclasses
-import itertools
 
 import pytest
 
@@ -27,7 +26,6 @@ from packages.orchestration.run_manifest import (
     EXPECT_EXECUTED,
     EXPECT_PRIOR_EPISODE,
     MODE_PUBLISHED_REFERENCE,
-    PHASE_PRE_WORK_STOP,
     PHASE_WORKED,
     CallExpectationV1,
     TaskCallExpectationV1,

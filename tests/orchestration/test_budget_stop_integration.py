@@ -5,11 +5,7 @@ decision queue entries, and deadline-at-start refusal.
 """
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pytest
 
@@ -17,16 +13,11 @@ from packages.core.models import JobBudgets
 from packages.orchestration.budget_guard import (
     BudgetCounterError,
     BudgetCounters,
-    BudgetEvaluation,
-    collect_counters_from_actuals,
     evaluate_budget,
 )
 from packages.orchestration.safe_points import (
-    ShouldStopResult,
-    StopSignal,
     request_stop,
     should_stop,
-    stop_requested,
 )
 
 UTC = timezone.utc
@@ -382,10 +373,10 @@ class TestBudgetPostmortemClassification:
 
     def test_budget_exhausted_classified_correctly(self):
         from packages.orchestration.failure_postmortem import (
-            FailureClass,
             TERMINAL_STATUS_CLASSES,
-            classify,
+            FailureClass,
             FailureSignals,
+            classify,
         )
         assert TERMINAL_STATUS_CLASSES["budget_exhausted"] == FailureClass.BUDGET_EXHAUSTED
         result = classify(FailureSignals(terminal_status="budget_exhausted"))
@@ -394,8 +385,8 @@ class TestBudgetPostmortemClassification:
     def test_stopped_classified_differently(self):
         from packages.orchestration.failure_postmortem import (
             FailureClass,
-            classify,
             FailureSignals,
+            classify,
         )
         result = classify(FailureSignals(terminal_status="stopped"))
         assert result.failure_class != FailureClass.BUDGET_EXHAUSTED
@@ -449,7 +440,7 @@ class TestPreCallBudgetCheck:
             raw_text: str = ""
             stream_cap_reached: bool = False
 
-        from packages.orchestration.pingpong_loop import _call_with_retry, _record_attempt
+        from packages.orchestration.pingpong_loop import _call_with_retry
 
         call_count = 0
         def fake_call():

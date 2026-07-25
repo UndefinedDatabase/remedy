@@ -48,7 +48,7 @@ DECISION_TYPES = frozenset({
 
 
 def list_decisions(
-    job: "Job | Any",
+    job: Job | Any,
     events: list[dict[str, Any]],
 ) -> list[HumanDecision]:
     """Derive all pending human decisions from existing state.

@@ -1,8 +1,6 @@
 """F12 — the writer strictly round-trips and enforces aggregate limits BEFORE publishing."""
 from __future__ import annotations
 
-import dataclasses
-
 import pytest
 
 import tests.orchestration.test_run_manifest as T

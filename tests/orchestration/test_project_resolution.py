@@ -22,8 +22,6 @@ from packages.orchestration.project_registry import (
     _managed_worktree_parent,
     _migrate_legacy,
     _project_set_readonly,
-    _projects_dir,
-    _validate_slug,
     attach_repo_canonical,
     find_project_by_repo,
     list_projects,
@@ -36,7 +34,6 @@ from packages.orchestration.project_registry import (
     select_project,
     slugify,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -672,9 +669,10 @@ class TestRegisterProjectRepo:
     def test_create_project_assigns_slug_immediately(self, tmp_path, monkeypatch):
         """_cmd_create_project must assign slug immediately, not null."""
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
-        from apps.cli.commands.project import _cmd_create_project
-        import io
         import contextlib
+        import io
+
+        from apps.cli.commands.project import _cmd_create_project
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             _cmd_create_project("New App", None)

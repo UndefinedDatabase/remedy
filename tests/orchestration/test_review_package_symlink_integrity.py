@@ -13,8 +13,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
-
 import scripts.build_review_manifest as brm
 
 

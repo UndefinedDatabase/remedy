@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 def _cmd_create_project(name: str, description: str | None) -> None:
     from packages.orchestration.project_registry import (
         RemyProject,
+        _unique_slug,
         save_project,
         slugify,
-        _unique_slug,
     )
     slug = _unique_slug(slugify(name))
     project = RemyProject(name=name, slug=slug, description=description)
@@ -308,14 +308,14 @@ def _cmd_project_current(
     project_flag: str | None = None,
     json_output: bool = False,
 ) -> None:
+    import os
+
     from packages.orchestration.project_registry import (
         AmbiguousProjectError,
         InvalidProjectSelectorError,
         ProjectNotFoundError,
         select_project,
     )
-
-    import os
     cwd = os.getcwd()
     try:
         project, source = select_project(project_flag, cwd)
@@ -391,40 +391,12 @@ def _cmd_project_attach_repo(
     }, indent=2))
 
 
-def _resolve_short_job_id(prefix: str) -> str | None:
-    """Resolve short hex prefix to full job id. Exit 2 on ambiguous."""
-    import re
-
-    if not re.fullmatch(r"[0-9a-fA-F]{4,32}", prefix):
-        return None
-
-    from packages.orchestration.data_paths import jobs_dir
-
-    jdir = jobs_dir()
-    if not jdir.exists():
-        return None
-
-    lower = prefix.lower()
-    matches = [
-        p.stem for p in jdir.glob("*.json")
-        if p.stem.lower().startswith(lower)
-    ]
-    if len(matches) == 1:
-        return matches[0]
-    if len(matches) > 1:
-        print(f"Error: ambiguous job id prefix '{prefix}' matches "
-              f"{len(matches)} jobs:", file=sys.stderr)
-        for m in sorted(matches):
-            print(f"  {m[:8]}", file=sys.stderr)
-        sys.exit(2)
-    return None
-
-
 def _cmd_project_adopt(
     job_id_str: str,
     *,
     project_flag: str | None = None,
 ) -> None:
+    from packages.orchestration.data_paths import resolve_job_id
     from packages.orchestration.project_registry import (
         ProjectNotFoundError,
         attach_job,
@@ -442,14 +414,7 @@ def _cmd_project_adopt(
         )
         sys.exit(3)
 
-    resolved_id = _resolve_short_job_id(job_id_str)
-    if resolved_id is None:
-        try:
-            UUID(job_id_str)
-            resolved_id = job_id_str
-        except ValueError:
-            print(f"Error: unknown job id: {job_id_str!r}", file=sys.stderr)
-            sys.exit(3)
+    resolved_id = str(resolve_job_id(job_id_str))
 
     try:
         job = load_job(UUID(resolved_id))

@@ -89,8 +89,8 @@ class TestTheCallIdRule:
     def test_the_rule_is_shared_with_the_call_identity(self):
         """F8: one rule, one definition — the identity validator and the ledger ask the same
         question, so they can never drift apart."""
-        from packages.orchestration.run_manifest import validate_call_identity
         from packages.orchestration.call_identity import CallIdentity
+        from packages.orchestration.run_manifest import validate_call_identity
         ident = CallIdentity(job_id="j", task_id="T001", run_id="r1", sequence=1,
                              role="builder", round=1, kind="attempt",
                              call_id="/home/alice/SUPERSECRET", episode_id="ep")

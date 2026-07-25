@@ -15,16 +15,16 @@ import pytest
 
 import tests.orchestration.test_run_manifest as T
 from packages.orchestration.run_manifest import (
-    CallCoverage,
     COVERAGE_COMPLETE,
-    EpisodeInputSnapshotV1,
-    ManifestError,
-    decode_episode_snapshot_v1,
     MANIFEST_FILENAME,
     MANIFEST_INDEX_FILENAME,
+    CallCoverage,
+    EpisodeInputSnapshotV1,
+    ManifestError,
     RunManifestV1,
     _validate_episode_graph,
     build_run_manifest,
+    decode_episode_snapshot_v1,
     load_latest_manifest_verified,
     validate_index_and_tree,
     validate_run_manifest,
@@ -57,9 +57,10 @@ def _plant_episode(ev, m):
     to prove the READER also rejects one has to be a stronger adversary than the writer — it
     plants the bytes itself and re-derives the index by hand.
     """
-    import json as _json
     from packages.orchestration.run_manifest import (
-        MANIFESTS_SUBDIR, canonical_index_bytes, decode_run_manifest_v1,
+        MANIFESTS_SUBDIR,
+        canonical_index_bytes,
+        decode_run_manifest_v1,
     )
     ep = ev / MANIFESTS_SUBDIR / m.episode_id
     (ep / "calls").mkdir(parents=True, exist_ok=True)

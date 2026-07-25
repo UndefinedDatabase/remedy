@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
-import stat
 import os
+import stat
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -454,7 +454,7 @@ def _dirty_records(repo_root: str | Path, head: str = "HEAD") -> list[ReviewFile
     return out
 
 
-def validate_subject_path_kinds(subject: "ReviewSubjectV1",
+def validate_subject_path_kinds(subject: ReviewSubjectV1,
                                 repo_root: str | Path) -> list[str]:
     """F5: which path kinds may appear in an AUTHORITATIVE review subject.
 
@@ -509,7 +509,7 @@ def commit_patch_filename(sha: str) -> str:
     return f"{sha}.patch"
 
 
-def commit_patchset_identity(chain: dict, member_sha: "dict|callable", prefix: str) -> dict:
+def commit_patchset_identity(chain: dict, member_sha: dict|callable, prefix: str) -> dict:
     """Round 32 F6 — the EXACT, ORDERED patchset identity, bound to (commit, archive path, patch sha).
 
     ``chain`` is the decoded ``review_commit_chain.json``; ``member_sha`` maps an archive path to its
@@ -629,7 +629,8 @@ def _metadata_is_safe(v: Any) -> bool:
         return True
     try:
         from packages.orchestration.run_manifest import (
-            _contains_local_path, _contains_secret,
+            _contains_local_path,
+            _contains_secret,
         )
         if _contains_secret(v) or _contains_local_path(v):
             return False
@@ -851,7 +852,7 @@ def validate_review_subject_schema(d: Any) -> list[str]:
     return problems
 
 
-def decode_review_subject_from_json(d: Any) -> "ReviewSubjectV1":
+def decode_review_subject_from_json(d: Any) -> ReviewSubjectV1:
     """Strict-decode a serialized `review_subject.json` into a typed ReviewSubjectV1.
 
     The strict schema is the ONLY untrusted entry (F4): a record that fails it never becomes a
@@ -915,7 +916,8 @@ def validate_content_proof_schema(d: Any) -> list[str]:
     lowercase sha256 values, counts that match the contents, no path in both maps, no operator-state
     or non-attestable path, no duplicate normalized path."""
     from packages.orchestration.archive_plan import (
-        DISP_BLOCK_SENSITIVE, classify_bundle_path,
+        DISP_BLOCK_SENSITIVE,
+        classify_bundle_path,
     )
     from packages.orchestration.repair_attest import is_attestable_source
     problems: list[str] = []
@@ -973,7 +975,7 @@ def validate_content_proof_schema(d: Any) -> list[str]:
     return problems
 
 
-def decode_content_proof_v1(d: Any) -> "ContentProofV1":
+def decode_content_proof_v1(d: Any) -> ContentProofV1:
     """Strict-decode the authority proof. Raises ContentProofError on any schema failure — the
     authority set is never derived from an un-validated or partially-valid proof."""
     problems = validate_content_proof_schema(d)

@@ -9,8 +9,6 @@ Covers:
 """
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import patch
 
@@ -28,9 +26,7 @@ from packages.orchestration.pingpong_provider import (
 )
 from packages.orchestration.provider_timeouts import (
     PROFILES,
-    compute_timeout,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers: providers that fail once then succeed

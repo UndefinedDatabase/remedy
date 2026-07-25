@@ -26,7 +26,6 @@ import json
 import os
 import secrets
 import stat
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path, PurePath

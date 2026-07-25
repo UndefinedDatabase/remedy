@@ -196,8 +196,14 @@ def _expectation(calls, *, job_input, phase=None, override=None, status="complet
     the same facts production does — the embedded task list and the calls this episode carries —
     so it cannot drift into proving something production wouldn't."""
     from packages.orchestration.run_manifest import (
-        DISPATCH_NEVER, DISPATCH_THIS_EPISODE, EXPECT_EXECUTED, EXPECT_NOT_DISPATCHED,
-        EXPECT_SKIPPED, PHASE_WORKED, CallExpectationV1, TaskCallExpectationV1,
+        DISPATCH_NEVER,
+        DISPATCH_THIS_EPISODE,
+        EXPECT_EXECUTED,
+        EXPECT_NOT_DISPATCHED,
+        EXPECT_SKIPPED,
+        PHASE_WORKED,
+        CallExpectationV1,
+        TaskCallExpectationV1,
     )
     if override is not None:
         return override
@@ -245,7 +251,10 @@ def _zero_call_proof(job_input=None):
     This is the contract's valid zero-call job ("a genuine zero-call (all-skipped) job ...
     stays valid and complete")."""
     from packages.orchestration.run_manifest import (
-        EXPECT_SKIPPED, PHASE_WORKED, CallExpectationV1, TaskCallExpectationV1,
+        EXPECT_SKIPPED,
+        PHASE_WORKED,
+        CallExpectationV1,
+        TaskCallExpectationV1,
     )
     ji = job_input if job_input is not None else _job_input()
     # F2 (round 16): a skipped expectation must carry the status the JobPlan actually recorded —
@@ -617,7 +626,7 @@ class TestSharedCallIdentity:
 # Hardening round 2 — content digest, idempotent consistency, artifact/episode integrity
 # ---------------------------------------------------------------------------
 
-from packages.orchestration.run_manifest import (              # noqa: E402
+from packages.orchestration.run_manifest import (  # noqa: E402
     MANIFEST_INDEX_FILENAME,
     MANIFESTS_SUBDIR,
     read_index,

@@ -9,15 +9,20 @@ import tests.orchestration.test_run_manifest as T
 from packages.orchestration.run_manifest import (
     MANIFEST_INDEX_FILENAME,
     ManifestError,
-    rebuild_manifest_mirror_and_index_from_canonical_episodes as _rebuild,
     write_run_manifest,
+)
+from packages.orchestration.run_manifest import (
+    rebuild_manifest_mirror_and_index_from_canonical_episodes as _rebuild,
 )
 
 
 def _rebuildable_tree(ev):
     ev.mkdir(parents=True, exist_ok=True)
     from packages.orchestration.run_manifest import (
-        CallCoverage, COVERAGE_COMPLETE, RunManifestV1, job_input_definition_sha256,
+        COVERAGE_COMPLETE,
+        CallCoverage,
+        RunManifestV1,
+        job_input_definition_sha256,
     )
     m = RunManifestV1(
         job_id="j", episode_id="ep1", created_at="2026-07-15T00:01:00+00:00",

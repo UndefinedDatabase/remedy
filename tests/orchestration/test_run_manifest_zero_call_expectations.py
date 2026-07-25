@@ -22,6 +22,7 @@ import subprocess
 import pytest
 
 import tests.orchestration.test_run_manifest as T
+from packages.orchestration import manifest_schema as _S
 from packages.orchestration.run_manifest import (
     COVERAGE_COMPLETE,
     COVERAGE_INCOMPLETE,
@@ -45,7 +46,6 @@ from packages.orchestration.run_manifest import (
     validate_run_manifest,
     write_run_manifest,
 )
-from packages.orchestration import manifest_schema as _S
 
 
 @pytest.fixture
@@ -199,7 +199,10 @@ class TestGenuineZeroCallReferencesStayValid:
     def test_a_pre_work_stop_is_a_valid_zero_call_reference(self, data_root, repo):
         """The contract's genuine case: the job stopped before any work began."""
         from packages.orchestration.pingpong_job import (
-            JOB_STOPPED, job_evidence_dir, parse_job_file, run_job,
+            JOB_STOPPED,
+            job_evidence_dir,
+            parse_job_file,
+            run_job,
         )
         from packages.orchestration.safe_points import request_stop
 

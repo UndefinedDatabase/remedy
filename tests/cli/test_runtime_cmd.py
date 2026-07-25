@@ -12,8 +12,7 @@ import psutil
 import pytest
 
 from apps.cli.command_catalog import CATALOG, GROUPS, get_commands_for_group
-from apps.cli.commands import collect_all_handlers
-from apps.cli.commands import runtime_cmd
+from apps.cli.commands import collect_all_handlers, runtime_cmd
 from packages.runtimes.dev_server import load_state
 
 SERVER = """

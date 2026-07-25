@@ -16,13 +16,11 @@ import pytest
 
 from packages.orchestration.scope_fences import (
     BUILTIN_DENY,
-    FenceCheckResult,
     FenceConfigError,
     FenceSpec,
     check_path,
     load_fence_spec,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Default allow

@@ -14,7 +14,7 @@ five deterministic green planner runs are recorded.
 """
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from packages.orchestration.planner_models import PlannerOutput, ProposedTask
 from packages.orchestration.schemas import PARSE_ERROR_CLASS, PlannerPlan

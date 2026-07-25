@@ -799,11 +799,17 @@ def run_job_fulfill(
         # F017: batch fence preflight — ALL intent targets before first apply
         from packages.orchestration.approval_queue import (
             get_patch_intent as _gpi,
+        )
+        from packages.orchestration.approval_queue import (
             make_intent_id as _mii,
         )
         from packages.orchestration.scope_fences import (
             FenceViolationError,
+        )
+        from packages.orchestration.scope_fences import (
             TouchedPath as _TP,
+        )
+        from packages.orchestration.scope_fences import (
             enforce_change_set as _enforce,
         )
 

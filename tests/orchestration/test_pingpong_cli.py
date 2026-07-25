@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.pingpong_loop import (
+    _STAGING_NOISE_DIRS,
     _build_builder_prompt,
     _build_reviewer_prompt,
     _compute_safe_diff,
@@ -21,7 +22,6 @@ from packages.orchestration.pingpong_loop import (
     _estimate_full_repo_tokens,
     _find_staging_changes,
     _is_safe_repo_path,
-    _STAGING_NOISE_DIRS,
     _is_safe_staged_path,
     _is_target_noise,
     _snapshot_target,

@@ -11,8 +11,10 @@ Verifies:
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
+from uuid import uuid4
 
 
 class TestResolveDataRoot:
@@ -96,6 +98,67 @@ class TestDirectoryHelpers:
         assert jobs_dir() == tmp_path / "jobs"
         assert runs_dir() == tmp_path / "runs"
         assert projects_dir() == tmp_path / "projects"
+
+
+class TestResolveJobId:
+    """Test the central short-ID resolver."""
+
+    def _make_job_file(self, jobs_path: Path, job_id: str) -> None:
+        jobs_path.mkdir(parents=True, exist_ok=True)
+        (jobs_path / f"{job_id}.json").write_text(json.dumps({"id": job_id}))
+
+    def test_full_uuid_returns_uuid(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        uid = uuid4()
+        self._make_job_file(tmp_path / "jobs", str(uid))
+        assert resolve_job_id(str(uid)) == uid
+
+    def test_short_prefix_resolves(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        uid = uuid4()
+        self._make_job_file(tmp_path / "jobs", str(uid))
+        short = str(uid)[:8]
+        assert resolve_job_id(short) == uid
+
+    def test_ambiguous_prefix_exits_2(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        uid1 = "aaaa1111-0000-0000-0000-000000000001"
+        uid2 = "aaaa1111-0000-0000-0000-000000000002"
+        self._make_job_file(tmp_path / "jobs", uid1)
+        self._make_job_file(tmp_path / "jobs", uid2)
+        import pytest
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("aaaa1111")
+        assert exc_info.value.code == 2
+
+    def test_no_match_exits_1(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        (tmp_path / "jobs").mkdir(parents=True)
+        import pytest
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("deadbeef")
+        assert exc_info.value.code == 1
+
+    def test_invalid_string_exits_1(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        import pytest
+
+        from packages.orchestration.data_paths import resolve_job_id
+        with pytest.raises(SystemExit) as exc_info:
+            resolve_job_id("not-a-hex")
+        assert exc_info.value.code == 1
+
+    def test_full_uuid_works_without_job_file(self, monkeypatch, tmp_path):
+        """Full UUID parses even if no job file exists (load_job handles NotFound)."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.data_paths import resolve_job_id
+        uid = uuid4()
+        result = resolve_job_id(str(uid))
+        assert result == uid
 
 
 class TestSingleReaderInvariant:

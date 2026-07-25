@@ -17,7 +17,7 @@ _z = importlib.util.spec_from_file_location(
     "_brz_budget", REPO_ROOT / "scripts" / "build_review_zip.py")
 _brz = importlib.util.module_from_spec(_z); _z.loader.exec_module(_brz)
 
-from packages.common.acquisition_budget import AcquisitionBudget, AcquisitionBudgetError
+from packages.common.acquisition_budget import AcquisitionBudget, AcquisitionBudgetError  # noqa: E402
 
 
 class TestBudgetObject:

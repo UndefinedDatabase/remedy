@@ -17,11 +17,9 @@ from packages.orchestration import pingpong_loop as PL
 from packages.orchestration.pingpong_job import (
     ExecutionConfig,
     _persist_job,
-    job_evidence_dir,
     load_job_plan,
     parse_job_file,
 )
-
 
 _TWO_TASK_JOB = (
     "# Job: cli truth\n\n"

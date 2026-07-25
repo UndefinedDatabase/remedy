@@ -26,13 +26,12 @@ import tests.orchestration.test_run_manifest as T
 from packages.orchestration.run_manifest import (
     MANIFEST_FILENAME,
     MANIFEST_INDEX_FILENAME,
-    ManifestError,
     MANIFESTS_SUBDIR,
     STAGING_SUBDIR,
     ManifestConflictError,
+    ManifestError,
     canonical_artifact_ref,
     load_latest_manifest_verified,
-    read_index,
     validate_index_and_tree,
     write_run_manifest,
 )

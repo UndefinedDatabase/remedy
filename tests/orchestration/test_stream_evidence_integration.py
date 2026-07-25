@@ -26,8 +26,8 @@ from packages.orchestration.pingpong_provider import (
 )
 from packages.orchestration.stream_evidence import (
     RAW_STREAM_FILENAME,
-    STDERR_TAIL_BYTES,
     RUN_EVENTS_FILENAME,
+    STDERR_TAIL_BYTES,
     read_run_events,
     run_streamed_command,
     usage_actuals_from_events,
@@ -521,7 +521,9 @@ class TestPerAttemptStreamLayout:
 
     def test_provider_attempts_record_ids_and_refs(self, monkeypatch, tmp_path):
         from packages.orchestration.pingpong_loop import (
-            PingPongResult, _build_provider_evidence, _record_attempt,
+            PingPongResult,
+            _build_provider_evidence,
+            _record_attempt,
         )
         prov, _ = self._prov(tmp_path, monkeypatch)
         result = PingPongResult(builder_provider="claude-cli", reviewer_provider="claude-cli")
@@ -544,7 +546,9 @@ class TestPerAttemptStreamLayout:
 
     def test_fake_and_manual_attempts_produce_no_stream_refs(self):
         from packages.orchestration.pingpong_loop import (
-            PingPongResult, _build_provider_evidence, _record_attempt,
+            PingPongResult,
+            _build_provider_evidence,
+            _record_attempt,
         )
         from packages.orchestration.pingpong_provider import BuilderOutput
         result = PingPongResult(builder_provider="fake", reviewer_provider="fake")
@@ -587,9 +591,9 @@ class TestProductionTraceIntegration:
         data_root = tmp_path / "data"
         monkeypatch.setenv("REMEDY_DATA_DIR", str(data_root))
 
+        from apps.cli.commands.do_cmd import _build_agent_run_trace
         from packages.orchestration.data_paths import jobs_dir
         from packages.orchestration.pingpong_job import parse_job_file
-        from apps.cli.commands.do_cmd import _build_agent_run_trace
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -632,8 +636,8 @@ class TestProductionTraceIntegration:
 
     def test_no_stream_artifacts_keeps_pure_reconstruction(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
-        from packages.orchestration.pingpong_job import parse_job_file
         from apps.cli.commands.do_cmd import _build_agent_run_trace
+        from packages.orchestration.pingpong_job import parse_job_file
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -745,7 +749,9 @@ class TestFailedAttemptStillReferencesItsArtifacts:
 class TestStreamStructuredOutput:
     def _capture(self, tmp_path):
         from packages.orchestration.stream_evidence import (
-            capture_stream_evidence, read_run_events, final_result_text,
+            capture_stream_evidence,
+            final_result_text,
+            read_run_events,
         )
         fixture = Path(__file__).parent / "fixtures" / "stream" / "structured_output.jsonl"
         lines = [l for l in fixture.read_text().splitlines() if l.strip()]
@@ -774,7 +780,9 @@ class TestStreamStructuredOutput:
 
     def test_legacy_result_string_still_extracted(self, tmp_path):
         from packages.orchestration.stream_evidence import (
-            capture_stream_evidence, read_run_events, final_result_text,
+            capture_stream_evidence,
+            final_result_text,
+            read_run_events,
         )
         lines = [
             '{"type":"system","subtype":"init"}',
@@ -811,6 +819,7 @@ def _final_line(**kw) -> str:
 def _stream_review(tmp_path, monkeypatch, final_line: str):
     """Run a structured streamed reviewer against a fake CLI emitting final_line."""
     import os
+
     from packages.orchestration.pingpong_provider import ClaudeCliProvider
     monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
     lines = [json.dumps({"type": "system", "subtype": "init"}), final_line]
@@ -866,7 +875,8 @@ class TestStreamStructuredClassification:
 
     def test_7_raw_offsets_remain_valid(self, tmp_path, monkeypatch):
         from packages.orchestration.stream_evidence import (
-            final_result_envelope, read_run_events,
+            final_result_envelope,
+            read_run_events,
         )
         prov, _out = _stream_review(tmp_path, monkeypatch,
                                     _final_line(structured_output=_SO_REVIEW))
@@ -928,6 +938,7 @@ _SUCCESS = _final_line(structured_output=_SO_REVIEW)
 def _review_exit(tmp_path, monkeypatch, final_line, exit_code):
     """One structured streamed reviewer call against a fake CLI with an exit code."""
     import os
+
     from packages.orchestration.pingpong_provider import ClaudeCliProvider
     monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
     lines = [json.dumps({"type": "system", "subtype": "init"}), final_line]
@@ -985,6 +996,7 @@ class TestStreamExitCodeClassification:
 
     def test_7_nonzero_exit_with_no_final_result_is_provider_error(self, tmp_path, monkeypatch):
         import os
+
         from packages.orchestration.pingpong_provider import ClaudeCliProvider
         monkeypatch.delenv("REMEDY_REVIEWER_FREETEXT", raising=False)
         lines = [json.dumps({"type": "system", "subtype": "init"})]  # no result line
@@ -1004,6 +1016,7 @@ class TestStreamExitCodeClassification:
 class TestStreamExhaustionThenValidRetryReconciles:
     def test_8_exhaustion_exit1_then_valid_retry(self, tmp_path, monkeypatch):
         import os
+
         from packages.orchestration.pingpong_loop import run_pingpong
         from packages.orchestration.pingpong_provider import ClaudeCliProvider
 

@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any
 
 from apps.cli.commands.run_invocation import (
     RunInvocation,
+)
+from apps.cli.commands.run_invocation import (
     invocation_from_args as _invocation_from_args,
 )
 
@@ -608,7 +610,9 @@ def _cmd_do_pingpong(
     _stop_check = None
     _on_provider_call = None
     if budgets is not None:
-        from datetime import datetime as _dt, timezone as _tz
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
         from packages.orchestration.budget_guard import BudgetCounters as _BC
         from packages.orchestration.safe_points import should_stop as _should_stop
 
@@ -1154,7 +1158,7 @@ def _cmd_do_job_run(
     repair_rounds: int | None = None,
     test_command: str | None = None,
     claude_cli_write_mode: str | None = None,
-    invocation: "RunInvocation | None" = None,
+    invocation: RunInvocation | None = None,
     json_output: bool = False,
     builder_provider: str | None = None,
     builder_model: str | None = None,
@@ -1331,7 +1335,7 @@ def _cmd_do_job_resume(
     max_rounds: int | None = None,
     repair_rounds: int | None = None,
     test_command: str | None = None,
-    invocation: "RunInvocation | None" = None,
+    invocation: RunInvocation | None = None,
     json_output: bool = False,
 ) -> None:
     """Resume an interrupted JobPlan in its own job-owned worktree.
@@ -2326,7 +2330,7 @@ def _cmd_do_job_flow(
     repair_rounds: int | None = None,
     test_command: str | None = None,
     claude_cli_write_mode: str | None = None,
-    invocation: "RunInvocation | None" = None,
+    invocation: RunInvocation | None = None,
     out: str = "",
     json_output: bool = False,
     builder_provider: str | None = None,
@@ -2472,8 +2476,8 @@ def _cmd_do_job_flow(
     report_data = export_job_report(report_job)
 
     # --- 4. job-evidence ---
-    from packages.orchestration.job_evidence import export_job_evidence
     from packages.orchestration.data_paths import job_evidence_export_dir as _jeed
+    from packages.orchestration.job_evidence import export_job_evidence
     from packages.orchestration.review_subject import read_declared_base
     evidence_out = out or str(_jeed(job_id))
     # F6 (round 17): forward the operator's declared review base, read ONCE here at the top level.

@@ -1534,12 +1534,18 @@ class TestReviewZipPackageStatus:
             (ev / art).write_text("{}")
         # Round 31 F1: a single real operator attestation whose final_verifier_report is produced by
         # the actual producer (regenerated at the end of this method), not a hand-written report.
+        import hashlib as _hl
+
         from packages.orchestration import manual_attestation as _MA
         from packages.orchestration.repair_attest import (
-            build_safe_diff_text as _bsd, canonical_provenance_sha256 as _cps,
+            build_safe_diff_text as _bsd,
+        )
+        from packages.orchestration.repair_attest import (
+            canonical_provenance_sha256 as _cps,
+        )
+        from packages.orchestration.repair_attest import (
             sha256_text as _sht,
         )
-        import hashlib as _hl
         if file_hashes is None:
             # Materialize a real authority file in the repo root (ev.parent) so the content proof and
             # bundle-integrity verify against real bytes, and compute its true hash.
@@ -1999,7 +2005,6 @@ class TestReviewBundleIntegrity:
     @staticmethod
     def _seed_with_proof(tmp_path, file_contents, proof_hashes):
         """Create evidence dir with content proof and source files."""
-        import hashlib
         ev = tmp_path / "evidence"
         ev.mkdir(parents=True, exist_ok=True)
         # Seed valid evidence base — bind the change-provenance hash maps to the same proof hashes.
@@ -2024,8 +2029,9 @@ class TestReviewBundleIntegrity:
 
     def test_matching_proof_ready_for_review(self, tmp_path, monkeypatch):
         """Matching hashes → PASS → READY_FOR_REVIEW."""
-        from scripts.build_review_manifest import build_manifest
         import hashlib
+
+        from scripts.build_review_manifest import build_manifest
         content = "x = 1\n"
         h = hashlib.sha256(content.encode()).hexdigest()
         ev = self._seed_with_proof(
@@ -2067,8 +2073,9 @@ class TestReviewBundleIntegrity:
 
     def test_mismatch_includes_both_hashes(self, tmp_path, monkeypatch):
         """Mismatch entries include expected and actual SHA256."""
-        from scripts.build_review_manifest import build_manifest
         import hashlib
+
+        from scripts.build_review_manifest import build_manifest
         content = "x = 2\n"
         actual_h = hashlib.sha256(content.encode()).hexdigest()
         wrong_h = "a" * 64
@@ -2116,8 +2123,9 @@ class TestReviewBundleIntegrity:
 
     def test_filename_status_matches_manifest(self, tmp_path, monkeypatch):
         """Package filename suffix must match manifest package_status."""
-        from scripts.build_review_manifest import build_manifest
         import hashlib
+
+        from scripts.build_review_manifest import build_manifest
         content = "z = 3\n"
         h = hashlib.sha256(content.encode()).hexdigest()
         ev = self._seed_with_proof(
@@ -2504,6 +2512,7 @@ class TestJobFlowStreamFlagsStayExclusive:
 
     def test_both_stream_flags_is_a_usage_error(self) -> None:
         import pytest as _pytest
+
         from apps.cli.grouped import _UsageError
 
         with _pytest.raises((_UsageError, SystemExit)):

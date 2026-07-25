@@ -55,7 +55,7 @@ import json
 import logging
 import os
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -642,7 +642,7 @@ def _redact_path(path_str: str) -> str:
     return path_str
 
 
-import re as _re
+import re as _re  # noqa: E402
 
 _POSIX_ABS_RE = _re.compile(r"/[a-zA-Z0-9_.\-][^\s:;,\"')\]}>]*")
 _WIN_DRIVE_RE = _re.compile(r"[A-Za-z]:\\[^\s:;,\"')\]}>]+")

@@ -9,7 +9,6 @@ BEFORE decode, exact schema, no unknown fields.
 from __future__ import annotations
 
 import dataclasses
-
 import json
 
 import pytest

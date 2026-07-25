@@ -588,14 +588,11 @@ class TestALiveRunnerStopsCleanly:
 # Hardening round 1 — the durable stop transaction
 # ---------------------------------------------------------------------------
 
-from packages.orchestration.pingpong_job import (          # noqa: E402
+from packages.orchestration.pingpong_job import (  # noqa: E402
     JOB_BLOCKED,
-    StopFinalizationError,
-    _stop_job,
 )
-from packages.orchestration.safe_points import (           # noqa: E402
+from packages.orchestration.safe_points import (  # noqa: E402
     archived_signals,
-    consume_stop,
 )
 
 

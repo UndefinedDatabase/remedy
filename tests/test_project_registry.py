@@ -194,6 +194,7 @@ class TestReadOnlyProofs:
     def test_list_projects_readonly_does_not_write(self, tmp_path, monkeypatch):
         """_list_projects_readonly never writes to disk (R3 mtime proof)."""
         import os
+
         from packages.orchestration.project_registry import _list_projects_readonly
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
         p = _make_project(name="RO Test")

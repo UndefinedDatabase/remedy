@@ -8,14 +8,13 @@ internally-incoherent output the reproductions describe is blocked.
 """
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
 import pytest
 
-from packages.orchestration.token_truth import TokenEvidenceError, build_token_truth
 from packages.orchestration.token_authority import validate_token_truth
+from packages.orchestration.token_truth import TokenEvidenceError, build_token_truth
 
 
 def _seed(base: Path, tid: str, acc: dict, pe: dict) -> None:

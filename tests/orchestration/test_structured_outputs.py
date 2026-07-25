@@ -9,6 +9,7 @@ import json
 
 import pytest
 
+from packages.orchestration.pingpong_provider import _parse_reviewer_structured
 from packages.orchestration.schemas import (
     PARSE_ERROR_CLASS,
     PlannerPlan,
@@ -24,7 +25,6 @@ from packages.orchestration.structured_planner import (
     StructuredParseError,
     make_structured_planner,
 )
-from packages.orchestration.pingpong_provider import _parse_reviewer_structured
 
 VALID_REVIEW = json.dumps({
     "schema_v": "rv1", "verdict": "pass", "findings": [],

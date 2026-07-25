@@ -20,14 +20,10 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
 import pytest
 
 from packages.orchestration.scope_fences import (
-    BUILTIN_DENY,
-    ChangeSetFenceResult,
     FenceSpec,
     FenceViolation,
     FenceViolationError,
@@ -38,7 +34,6 @@ from packages.orchestration.scope_fences import (
     resolve_effective_builtins,
     write_fence_violations_artifact,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Scope 1: T001 builtin-boundary repairs
@@ -383,9 +378,9 @@ class TestPostmortemClassification:
 
     def test_fence_violation_terminal_status(self):
         from packages.orchestration.failure_postmortem import (
+            TERMINAL_STATUS_CLASSES,
             FailureClass,
             FailureSignals,
-            TERMINAL_STATUS_CLASSES,
             classify,
         )
 

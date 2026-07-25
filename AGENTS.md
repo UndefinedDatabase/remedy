@@ -399,6 +399,21 @@ trimmed), open findings count, next expected action.
   appears in the handoff with its status, including failed
   attempts with blocking reasons.
 
+### Completion Report — Item-Status Table
+
+Every completion report (handoff, handback, round close) that covers
+an ordered bundle of items MUST include an item-status table:
+
+    | Item   | Status   | Reason                       |
+    |--------|----------|------------------------------|
+    | R-0110 | done     |                              |
+    | R-0111 | done     |                              |
+    | R-0112 | skipped  | blocked by upstream API      |
+    | R-0113 | deviated | merged into R-0111 fix       |
+
+Status values: `done`, `skipped` (with reason), `deviated` (with reason).
+Every ordered item appears exactly once. No item may be silently absent.
+
 ### Documentation Updates
 
 The agent MUST update `docs/` when:

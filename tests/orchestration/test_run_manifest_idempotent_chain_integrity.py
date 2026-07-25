@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
-import json
 
 import pytest
 
@@ -22,7 +21,6 @@ from packages.orchestration.run_manifest import (
     MANIFEST_FILENAME,
     MANIFEST_INDEX_FILENAME,
     MANIFESTS_SUBDIR,
-    ManifestConflictError,
     ManifestError,
     VerifiedCanonicalChain,
     _mirror_and_index,

@@ -1,7 +1,7 @@
 """F018 T001 — JobBudgets model, config, CLI precedence, RunManifest snapshot."""
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -417,7 +417,7 @@ class TestRunManifestBudgetIdentity:
     """F018: budgets in RunManifest logical_input_projection and from_trusted_json."""
 
     def _make_manifest_with_budgets(self, budgets_dict):
-        from packages.orchestration.run_manifest import RunManifestV1, EpisodeInputSnapshotV1
+        from packages.orchestration.run_manifest import EpisodeInputSnapshotV1, RunManifestV1
         snap = EpisodeInputSnapshotV1.__new__(EpisodeInputSnapshotV1)
         object.__setattr__(snap, "status", "ok")
         object.__setattr__(snap, "version", 1)
@@ -471,7 +471,7 @@ class TestRunManifestBudgetIdentity:
         assert m1.logical_input_sha256() != m2.logical_input_sha256()
 
     def test_from_trusted_json_preserves_budgets(self):
-        from packages.orchestration.run_manifest import RunManifestV1, MANIFEST_VERSION
+        from packages.orchestration.run_manifest import MANIFEST_VERSION, RunManifestV1
         b = {"max_total_tokens": 50000, "max_provider_calls": 5,
              "max_wall_clock_minutes": None, "deadline": None}
         m = self._make_manifest_with_budgets(b)
@@ -560,7 +560,7 @@ class TestOnProviderAttemptCallback:
         )
 
     def test_callback_fires_on_success(self):
-        from packages.orchestration.pingpong_loop import _call_with_retry, ProviderAttempt
+        from packages.orchestration.pingpong_loop import ProviderAttempt, _call_with_retry
         result = self._make_result()
         out = self._make_output()
         captured = []
@@ -615,6 +615,7 @@ class TestOnProviderAttemptCallback:
 
     def test_callback_receives_usage_actuals(self):
         from types import SimpleNamespace
+
         from packages.orchestration.pingpong_loop import _call_with_retry
         result = self._make_result()
         ua = SimpleNamespace(input_tokens=100, output_tokens=50)
@@ -708,8 +709,8 @@ class TestBudgetStopSignal:
     """F018: budget exhaustion creates StopSignal with source='budget'."""
 
     def test_budget_stop_returns_stop_signal(self):
-        from packages.orchestration.safe_points import should_stop, StopSignal
         from packages.orchestration.budget_guard import BudgetCounters
+        from packages.orchestration.safe_points import should_stop
         budgets = JobBudgets(max_provider_calls=3)
         counters = BudgetCounters(
             provider_calls=3, measured_call_count=3,
@@ -735,7 +736,7 @@ class TestBudgetStopSignal:
         assert j["source"] == "budget"
 
     def test_deadline_stop_returns_exhausted(self):
-        from packages.orchestration.budget_guard import evaluate_budget, BudgetCounters
+        from packages.orchestration.budget_guard import BudgetCounters, evaluate_budget
         past = datetime(2020, 1, 1, tzinfo=timezone.utc)
         budgets = JobBudgets(deadline=past)
         counters = BudgetCounters()
@@ -744,8 +745,8 @@ class TestBudgetStopSignal:
         assert result.first_exhausted_limit == "deadline"
 
     def test_past_deadline_blocks_before_first_call(self):
-        from packages.orchestration.safe_points import should_stop
         from packages.orchestration.budget_guard import BudgetCounters
+        from packages.orchestration.safe_points import should_stop
         past = datetime(2020, 1, 1, tzinfo=timezone.utc)
         budgets = JobBudgets(deadline=past)
         counters = BudgetCounters()

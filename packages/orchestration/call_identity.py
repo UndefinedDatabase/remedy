@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -61,7 +61,7 @@ class PreparedCallInput:
         }
 
     @classmethod
-    def from_trusted_json(cls, d: dict[str, Any]) -> "PreparedCallInput":
+    def from_trusted_json(cls, d: dict[str, Any]) -> PreparedCallInput:
         """F14: TRUSTED, in-memory canonical data ONLY. Never call this on bytes read back from
         disk — untrusted records go through ``run_manifest.decode_prepared_call_input_v1``."""
         return cls(
@@ -155,7 +155,7 @@ class CallIdentity:
         }
 
     @classmethod
-    def from_trusted_json(cls, d: dict[str, Any]) -> "CallIdentity":
+    def from_trusted_json(cls, d: dict[str, Any]) -> CallIdentity:
         """F14: TRUSTED in-memory data ONLY — untrusted records use
         ``run_manifest.decode_call_identity_v1``."""
         return cls(

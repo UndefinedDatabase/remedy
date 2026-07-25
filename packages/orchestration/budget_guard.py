@@ -12,7 +12,6 @@ from typing import Any
 
 from packages.core.models import JobBudgets
 
-
 VALID_ACTUAL_SOURCES = frozenset({
     "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
     "token_actuals", "aggregate_actuals",
@@ -47,7 +46,7 @@ class BudgetCounters:
                     f"{name} must be a non-negative integer, got {val!r}")
         if isinstance(self.elapsed_seconds, bool):
             raise BudgetCounterError(
-                f"elapsed_seconds must be a number, got bool")
+                "elapsed_seconds must be a number, got bool")
         if not isinstance(self.elapsed_seconds, (int, float)) or self.elapsed_seconds < 0:
             raise BudgetCounterError(
                 f"elapsed_seconds must be non-negative, got {self.elapsed_seconds!r}")

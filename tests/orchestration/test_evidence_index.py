@@ -6,7 +6,6 @@ NO_EVIDENCE honesty, history separation, and the deprecated root-style fallback.
 """
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
@@ -268,8 +267,9 @@ class TestDirtyFileEnumeration:
         import sys
         root = Path(__file__).resolve().parents[2]
         sys.path.insert(0, str(root / "scripts"))
-        import build_review_manifest as brm
         import inspect
+
+        import build_review_manifest as brm
         # Round 32 F5: the single git-status acquisition lives in _git_status_snapshot
         # (NUL-safe porcelain=v1 -z); -u still enumerates untracked files individually there.
         src = inspect.getsource(brm._git_status_snapshot)

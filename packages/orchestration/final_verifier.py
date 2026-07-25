@@ -602,7 +602,6 @@ def _token_status(base: Path, task_ids: list[str]) -> dict[str, Any]:
 # Round 29 F1: the pure token-measurement derivation is the SINGLE source of truth, shared with the
 # review gate so the two can never drift. This module keeps a thin back-compatible alias.
 from packages.orchestration.token_measurement import (  # noqa: E402
-    LOW_CONFIDENCE_TOKEN_NOTE as _LOW_CONFIDENCE_TOKEN_NOTE,
     token_measurement_summary as _token_measurement_summary,
 )
 

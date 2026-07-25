@@ -134,7 +134,8 @@ class TestTheLifecycleStatesThatLegitimatelyOwnLedgers:
 
     def test_a_prior_episode_expectation_ledger_passes(self, base):
         from packages.orchestration.run_manifest import (
-            DISPATCH_PRIOR_EPISODE, EXPECT_PRIOR_EPISODE,
+            DISPATCH_PRIOR_EPISODE,
+            EXPECT_PRIOR_EPISODE,
         )
         lg = base.call_ledgers[0]
         m = dataclasses.replace(

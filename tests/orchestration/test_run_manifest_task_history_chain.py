@@ -274,7 +274,8 @@ class TestEverySeamEnforcesTheHistory:
 
     def test_a_faithful_chain_still_publishes_and_reads_back(self, ep1, tmp_path):
         from packages.orchestration.run_manifest import (
-            load_latest_manifest_verified, validate_index_and_tree,
+            load_latest_manifest_verified,
+            validate_index_and_tree,
         )
         ev = tmp_path / "ev"
         ev.mkdir()

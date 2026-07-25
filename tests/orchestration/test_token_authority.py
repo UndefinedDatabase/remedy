@@ -3,10 +3,8 @@ wrong-root / enum-violating / incoherent token truth is rejected; the determinis
 manual token truth is accepted and drives the producer's token_status."""
 from __future__ import annotations
 
-import copy
-
-from packages.orchestration.token_authority import validate_token_truth
 from packages.orchestration.manual_attestation import MANUAL_TOKEN_TRUTH
+from packages.orchestration.token_authority import validate_token_truth
 from packages.orchestration.token_measurement import token_measurement_summary
 
 

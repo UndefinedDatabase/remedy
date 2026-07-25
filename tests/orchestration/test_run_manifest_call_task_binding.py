@@ -115,7 +115,9 @@ def _real(repo, text=_JOB):
 
 def _finalize(job):
     from packages.orchestration.run_manifest import (
-        EpisodeInputSnapshotV1, build_input_snapshot, build_run_manifest,
+        EpisodeInputSnapshotV1,
+        build_input_snapshot,
+        build_run_manifest,
     )
     snap = build_input_snapshot(job, inspect_target=False, probe_versions=False)
     wrapper = EpisodeInputSnapshotV1(

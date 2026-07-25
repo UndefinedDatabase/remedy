@@ -25,7 +25,10 @@ Public API::
 from __future__ import annotations
 
 import os
+import re
+import sys
 from pathlib import Path
+from uuid import UUID
 
 
 def resolve_data_root() -> Path:
@@ -106,3 +109,43 @@ def control_dir(root: Path | None = None) -> Path:
     ``packages/orchestration/safe_points.py``.
     """
     return (root if root is not None else resolve_data_root()) / "control"
+
+
+_SHORT_HEX_RE = re.compile(r"[0-9a-fA-F]{4,32}")
+
+
+def resolve_job_id(raw: str) -> UUID:
+    """Parse a full UUID or resolve a short hex prefix to a unique job UUID.
+
+    Exits with code 1 on invalid input, code 2 on ambiguous prefix.
+    """
+    try:
+        return UUID(raw)
+    except ValueError:
+        pass
+
+    if not _SHORT_HEX_RE.fullmatch(raw):
+        print(f"Error: invalid job ID: {raw!r}", file=sys.stderr)
+        sys.exit(1)
+
+    jdir = jobs_dir()
+    if not jdir.exists():
+        print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
+        sys.exit(1)
+
+    lower = raw.lower()
+    matches = [
+        p.stem for p in jdir.glob("*.json")
+        if p.stem.lower().startswith(lower)
+    ]
+    if len(matches) == 1:
+        return UUID(matches[0])
+    if len(matches) > 1:
+        print(f"Error: ambiguous job id prefix '{raw}' matches "
+              f"{len(matches)} jobs:", file=sys.stderr)
+        for m in sorted(matches):
+            print(f"  {m[:8]}", file=sys.stderr)
+        sys.exit(2)
+
+    print(f"Error: no job matches prefix {raw!r}", file=sys.stderr)
+    sys.exit(1)

@@ -159,7 +159,9 @@ class TestProductionCapturesTheIdentity:
 
     def test_a_pre_work_stop_states_its_missing_workspace_explicitly(self, data_root, repo):
         from packages.orchestration.pingpong_job import (
-            job_evidence_dir, parse_job_file, run_job,
+            job_evidence_dir,
+            parse_job_file,
+            run_job,
         )
         from packages.orchestration.run_manifest import load_latest_manifest_verified
         from packages.orchestration.safe_points import request_stop

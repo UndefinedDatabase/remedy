@@ -6,10 +6,9 @@ import dataclasses
 import pytest
 
 import tests.orchestration.test_run_manifest as T
-from packages.orchestration.call_identity import CallIdentity, prepare_call_input
+from packages.orchestration.call_identity import prepare_call_input
 from packages.orchestration.run_manifest import (
     CallCoverage,
-    FinalizedCall,
     validate_input_snapshot,
     validate_run_manifest,
 )

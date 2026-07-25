@@ -15,7 +15,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -223,8 +222,8 @@ def export_job_evidence(
             written[rel] = str(err_path)
         try:
             from packages.orchestration.missing_tests_gate import (
-        _relevant_suites_for_source, write_missing_tests_gate,
-    )
+                write_missing_tests_gate,
+            )
             write_missing_tests_gate(task, str(out_path), written)
         except Exception as exc:
             rel = f"task_runs/{task.task_id}/missing_tests_gate.error.txt"
@@ -566,7 +565,9 @@ def export_job_evidence(
     try:
         from packages.orchestration.change_provenance_gate import _is_source_file, _normalize
         from packages.orchestration.review_subject import (
-            STATUS_DELETED, ReviewSubjectError, resolve_review_subject,
+            STATUS_DELETED,
+            ReviewSubjectError,
+            resolve_review_subject,
             validate_subject_path_kinds,
         )
 
@@ -638,7 +639,9 @@ def export_job_evidence(
         # package that requires the repository is not self-contained evidence.
         if _subject.commits:
             from packages.orchestration.review_subject import (
-                COMMIT_PATCH_DIRNAME, commit_patch_bytes, commit_patch_filename,
+                COMMIT_PATCH_DIRNAME,
+                commit_patch_bytes,
+                commit_patch_filename,
             )
             _pdir = _validate_output_path(str(out_path), COMMIT_PATCH_DIRNAME)
             _pdir.mkdir(parents=True, exist_ok=True)
@@ -1542,6 +1545,7 @@ def _default_verification_runner(command: str, repo: str) -> dict[str, Any]:
     import hashlib
     import shlex
     import subprocess as _sp
+
     from packages.orchestration.review_subject import child_env_without_declaration
 
     try:
@@ -1604,7 +1608,8 @@ def _run_verifications(
     if not commands and runner is None:
         return None
     import subprocess as _sp_head
-    from datetime import datetime as _dt, timezone as _tz
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
     cmds = [c for c in (commands or []) if c and c.strip()]
     runs: list[dict[str, Any]] = []
     _head_sha_default = ""
@@ -1739,10 +1744,11 @@ def _finalize_manual_completion(
     if not attest_snap:
         return
 
-    from packages.orchestration.review_scope import write_review_scope_packet
     from packages.orchestration.missing_tests_gate import (
-        _relevant_suites_for_source, write_missing_tests_gate,
+        _relevant_suites_for_source,
+        write_missing_tests_gate,
     )
+    from packages.orchestration.review_scope import write_review_scope_packet
 
     out_path = Path(out_base)
     rv = _root_verification_summary(out_base)
@@ -1976,7 +1982,7 @@ TERMINAL_TASK_STATUSES = frozenset({"failed", "blocked"})
 POSTMORTEM_INTEGRITY_FILE = "postmortem_integrity.json"
 
 #: F012: the run-input manifest and its integrity artifact in the exported bundle.
-from packages.orchestration.run_manifest import (
+from packages.orchestration.run_manifest import (  # noqa: E402
     MANIFEST_FILENAME as _RUN_MANIFEST_FILENAME,
 )
 
@@ -2775,7 +2781,7 @@ def write_manual_completion_evidence(
     evidence_dir: str,
     *,
     job_id: str,
-    tasks: "list[dict]",
+    tasks: list[dict],
 ) -> None:
     """Create an operator-attested manual-completion Evidence tree under ``evidence_dir``.
 
@@ -2807,12 +2813,12 @@ def create_manual_completion_bundle(
     job_id: str,
     job_title: str,
     step_range: str,
-    prior_job_ids: "list[str]",
-    verification_runs: "list[dict]",
+    prior_job_ids: list[str],
+    verification_runs: list[dict],
     timestamp: str,
     generated_at: str,
     head_commit: str | None = None,
-    task_partition: "dict[str, list[str]] | None" = None,
+    task_partition: dict[str, list[str]] | None = None,
     num_tasks: int = 3,
     note_prefix: str = "operator-attested manual completion",
     review_feature_id: str | None = None,
@@ -2832,15 +2838,22 @@ def create_manual_completion_bundle(
     Returns a small summary dict (job_id, head, authority count, partition sizes, final verdict).
     """
     import subprocess
+
+    from packages.orchestration import manual_attestation as _ma
+    from packages.orchestration.final_verifier import build_final_verifier_report
     from packages.orchestration.repair_attest import (
-        build_safe_diff_text, canonical_provenance_sha256, is_attestable_source,
-        parse_safe_diff_paths, sha256_text,
+        build_safe_diff_text,
+        canonical_provenance_sha256,
+        is_attestable_source,
+        parse_safe_diff_paths,
+        sha256_text,
     )
     from packages.orchestration.review_subject import (
-        commit_patch_bytes, commit_patch_filename, resolve_commit_chain, resolve_review_subject,
+        commit_patch_bytes,
+        commit_patch_filename,
+        resolve_commit_chain,
+        resolve_review_subject,
     )
-    from packages.orchestration.final_verifier import build_final_verifier_report
-    from packages.orchestration import manual_attestation as _ma
 
     os.makedirs(evidence_dir, exist_ok=True)
 

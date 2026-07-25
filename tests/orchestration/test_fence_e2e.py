@@ -15,8 +15,6 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -24,7 +22,6 @@ import pytest
 from packages.core.models import Artifact, ArtifactKind, Job
 from packages.orchestration.scope_fences import (
     BuiltinResolutionResult,
-    ChangeSetFenceResult,
     EnforceResult,
     FenceConfigError,
     FenceSpec,
@@ -38,7 +35,6 @@ from packages.orchestration.scope_fences import (
     resolve_fence_spec,
     write_fence_violations_artifact,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # resolve_fence_spec — shared effective-spec resolver
@@ -471,14 +467,16 @@ class TestJobFencesField:
         assert not hasattr(fences, "extra_field")
 
     def test_no_str_coercion(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError):
             JobFences(allow="not-a-list", deny=[])
 
     def test_malformed_fails_closed(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError):
             JobFences(allow=[123], deny=[])
 
@@ -621,8 +619,9 @@ class TestClosedJobFences:
     """Finding #3: JobFences must reject unknown fields."""
 
     def test_extra_field_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError, match="extra_forbidden"):
             JobFences(allow=["src/**"], deny=[], sneaky="hack")
 
@@ -731,7 +730,6 @@ class TestRepoApplicatorJobFences:
     """Finding #8: repo_applicator must propagate job_fences."""
 
     def test_apply_with_job_fences_deny(self, tmp_path, monkeypatch):
-        from packages.core.models import JobFences
         from packages.orchestration.repo_applicator import apply_task_output_to_repo
 
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
@@ -1195,38 +1193,44 @@ class TestJobFencesStrictValidation:
         assert f.deny == ["vendor/**"]
 
     def test_empty_after_trim_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError, match="empty"):
             JobFences(allow=["  "])
 
     def test_tab_only_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError, match="empty"):
             JobFences(deny=["\t"])
 
     def test_int_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError):
             JobFences(allow=[42])
 
     def test_bool_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError):
             JobFences(deny=[True])
 
     def test_nested_list_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError):
             JobFences(allow=[["nested"]])
 
     def test_dict_rejected(self):
-        from packages.core.models import JobFences
         from pydantic import ValidationError
+
+        from packages.core.models import JobFences
         with pytest.raises(ValidationError):
             JobFences(deny=[{"pattern": "x"}])
 

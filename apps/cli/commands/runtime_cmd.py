@@ -22,7 +22,6 @@ import json as _json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 EXIT_CONFIG = 2
 EXIT_START = 3

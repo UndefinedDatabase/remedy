@@ -589,7 +589,6 @@ class TestWriterValidatesBeforeItCreates:
         assert list(outside.iterdir()) == [], "publication followed the swapped symlink"
 
     def test_no_file_descriptor_leaks_on_success_or_failure(self, tmp_path):
-        import resource
 
         def open_fds() -> int:
             return len(os.listdir("/proc/self/fd"))

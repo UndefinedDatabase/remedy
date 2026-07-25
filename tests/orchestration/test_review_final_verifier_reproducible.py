@@ -5,11 +5,9 @@ commit-execution status / recommended action makes the package non-reproducible 
 """
 from __future__ import annotations
 
-import copy
 import importlib.util
 import json
 import os
-import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,7 +18,7 @@ _e = importlib.util.spec_from_file_location(
     "_e2e_fvr", REPO_ROOT / "tests" / "orchestration" / "test_review_authoritative_e2e.py")
 _E2E = importlib.util.module_from_spec(_e); _e.loader.exec_module(_E2E)
 
-import pytest
+import pytest  # noqa: E402
 
 pytestmark = pytest.mark.skipif(
     __import__("shutil").which("git") is None, reason="git required")

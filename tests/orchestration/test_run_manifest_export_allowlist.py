@@ -14,8 +14,8 @@ import pytest
 import tests.orchestration.test_run_manifest as T
 from packages.orchestration.run_manifest import (
     CALLS_SUBDIR,
-    MANIFESTS_SUBDIR,
     MANIFEST_FILENAME,
+    MANIFESTS_SUBDIR,
     build_verified_manifest_tree,
     write_run_manifest,
 )

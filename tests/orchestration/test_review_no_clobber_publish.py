@@ -7,12 +7,13 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 
 from packages.orchestration.safe_publish import (
-    PublishCollisionError, assert_publishable, atomic_reserve,
+    PublishCollisionError,
+    assert_publishable,
+    atomic_reserve,
 )
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git required")

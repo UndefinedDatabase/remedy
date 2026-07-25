@@ -184,7 +184,11 @@ def apply_patch_intent(
     # ── 7b. F017: fence check via shared enforcement boundary ──────────────
     from packages.orchestration.scope_fences import (
         FenceViolationError as _FVE,
+    )
+    from packages.orchestration.scope_fences import (
         TouchedPath as _TouchedPath,
+    )
+    from packages.orchestration.scope_fences import (
         enforce_change_set as _enforce,
     )
 

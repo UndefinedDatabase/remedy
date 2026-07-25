@@ -9,7 +9,6 @@ from packages.core.models import Job, JobBudgets
 from packages.orchestration.budget_guard import (
     BudgetCounterError,
     BudgetCounters,
-    BudgetEvaluation,
     collect_counters_from_actuals,
     evaluate_budget,
 )
@@ -420,7 +419,7 @@ class TestRunContractConsolidation:
         assert c.max_runtime_seconds == 600
 
     def test_no_contradictory_evaluation(self):
-        from packages.orchestration.run_contract import build_default_run_contract, check_budget, RunUsage
+        from packages.orchestration.run_contract import RunUsage, build_default_run_contract, check_budget
         job = Job(name="test", budgets=JobBudgets(max_total_tokens=10000))
         c = build_default_run_contract(job)
         assert c.max_tokens == 10000

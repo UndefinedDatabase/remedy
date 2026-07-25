@@ -48,7 +48,10 @@ def chain():
     happened earlier: it still names the run and seals its ledger, but owes this episode no calls.
     """
     from packages.orchestration.run_manifest import (
-        DISPATCH_PRIOR_EPISODE, EXPECT_PRIOR_EPISODE, CallExpectationV1, TaskCallExpectationV1,
+        DISPATCH_PRIOR_EPISODE,
+        EXPECT_PRIOR_EPISODE,
+        CallExpectationV1,
+        TaskCallExpectationV1,
     )
     ep1 = _bind_artifact_refs(T._mk(episode_id="ep1", calls=(T._call(seq=1),)))
     lg = ep1.call_ledgers[0]
@@ -213,7 +216,8 @@ class TestProductionUsesTheNewRunIdModel:
         from packages.orchestration.pingpong_job import job_evidence_dir, parse_job_file, run_job
         from packages.orchestration.pingpong_provider import FakeProvider
         from packages.orchestration.run_manifest import (
-            load_episode_manifest_verified, read_canonical_episode_order,
+            load_episode_manifest_verified,
+            read_canonical_episode_order,
         )
         from packages.orchestration.safe_points import request_stop
 

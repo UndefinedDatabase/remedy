@@ -1,10 +1,7 @@
 """Tests for the task plan evidence module."""
 from __future__ import annotations
 
-import pytest
-
 from packages.orchestration.task_plan_evidence import build_task_plan_evidence
-
 
 SAMPLE_TASKS = [
     {"id": "T001", "summary": "Add role config", "dependencies": [], "expected_files": ["role_config.py"], "expected_tests": ["test defaults"]},

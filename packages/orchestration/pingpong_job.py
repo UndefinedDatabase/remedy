@@ -1598,15 +1598,27 @@ def run_job(
     # so the guard lives in the run_job boundary, not only in the CLI.
     if job.status == JOB_STOPPED:
         from packages.orchestration.safe_points import (
+            acknowledge_stop as _ack_guard,
+        )
+        from packages.orchestration.safe_points import (
             control_root as _cr_guard,
+        )
+        from packages.orchestration.safe_points import (
             stop_requested as _sr_guard,
         )
         _pending_guard = _sr_guard(job.job_id, control_root_path=_cr_guard())
         if _pending_guard is not None:
-            job.error = (
-                f"stopped_job_has_pending_stop: {_pending_guard.reason} "
-                f"(request_id={_pending_guard.request_id})")
-            _persist_job(job)
+            if job.stop_request_id == _pending_guard.request_id:
+                try:
+                    _ack_guard(job.job_id, _pending_guard,
+                               control_root_path=_cr_guard())
+                except Exception:
+                    pass
+            else:
+                job.error = (
+                    f"stopped_job_has_pending_stop: {_pending_guard.reason} "
+                    f"(request_id={_pending_guard.request_id})")
+                _persist_job(job)
             return job
 
     if budgets is not None and job.status == JOB_STOPPED:
@@ -1735,8 +1747,9 @@ def run_job(
     #
     # Binding the control root resolves a path. It creates nothing, and it touches neither
     # the repository nor the workspace.
+    from packages.orchestration.safe_points import StopSignal as _StopSignal
     from packages.orchestration.safe_points import control_root as _control_root
-    from packages.orchestration.safe_points import should_stop as _should_stop, StopSignal as _StopSignal
+    from packages.orchestration.safe_points import should_stop as _should_stop
     _control = _control_root()
 
     # F018: seed accumulators from persisted budget_actuals on resume.
@@ -1746,7 +1759,6 @@ def run_job(
     _prior_validated: dict[str, Any] = {}
     if _prior_raw:
         from packages.orchestration.budget_guard import (
-            BudgetCounterError as _BCError,
             decode_persisted_budget_actuals as _decode_actuals,
         )
         _fra_for_check = getattr(job, "first_running_at", "") or None
@@ -2877,7 +2889,7 @@ def _mark_manifest_required(job: JobPlan) -> None:
 
 
 def _capture_input_snapshot(job: JobPlan, *, phase: str,
-                            extra_problems: tuple[str, ...] = ()) -> "Any":
+                            extra_problems: tuple[str, ...] = ()) -> Any:
     """F1/F11/F12: capture the typed, EPISODE-OWNED input snapshot at episode START, bound to
     the active episode and a named ``phase``. The result is stored as an
     ``EpisodeInputSnapshotV1`` wrapper (status ok|failed) — a capture FAILURE (including a
@@ -2894,7 +2906,7 @@ def _capture_input_snapshot(job: JobPlan, *, phase: str,
     return wrapper
 
 
-def _snapshot_block_reason(job: JobPlan, wrapper: "Any", *, phase: str) -> str:
+def _snapshot_block_reason(job: JobPlan, wrapper: Any, *, phase: str) -> str:
     """Return a non-empty reason string when the mandatory episode snapshot is NOT usable
     (capture failed or the wrapper is invalid / foreign to the active episode), else ''.
     Used to HARD-BLOCK the job before any task or provider call (F1/F6/F12)."""

@@ -28,7 +28,6 @@ from packages.orchestration.run_manifest import (
     load_latest_manifest_verified,
 )
 
-
 _JOB = "# Job: snap lifecycle\n\n## Task 1\nDo a thing.\n\nAcceptance:\n- done\n"
 
 

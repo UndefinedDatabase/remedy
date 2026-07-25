@@ -10,13 +10,11 @@ from __future__ import annotations
 import os
 import zipfile
 
-import pytest
-
 from packages.orchestration.archive_plan import (
-    ArchiveMemberV1,
-    ArchivePlanV1,
     MODE_EXECUTABLE,
     MODE_REGULAR,
+    ArchiveMemberV1,
+    ArchivePlanV1,
 )
 from packages.orchestration.review_zip import (
     build_review_zip_from_plan,

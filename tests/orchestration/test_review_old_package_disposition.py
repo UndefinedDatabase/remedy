@@ -13,7 +13,8 @@ _e = importlib.util.spec_from_file_location("_e2e_op", REPO_ROOT / "tests" / "or
 _E2E = importlib.util.module_from_spec(_e); _e.loader.exec_module(_E2E)
 
 from packages.orchestration.archive_plan import (  # noqa: E402
-    DISP_EXCLUDE_SAFE_CONTEXT, classify_bundle_path,
+    DISP_EXCLUDE_SAFE_CONTEXT,
+    classify_bundle_path,
 )
 
 

@@ -10,7 +10,6 @@ hash. A field NOT covered here that becomes material must be added — the test 
 """
 from __future__ import annotations
 
-import copy
 import dataclasses
 
 import pytest

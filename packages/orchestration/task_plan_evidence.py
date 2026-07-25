@@ -7,8 +7,6 @@ Public API:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 _DEFAULT_COMPLETION_CRITERIA = [
     "all tasks pass review",
     "all tests pass",

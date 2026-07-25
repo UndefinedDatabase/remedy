@@ -318,7 +318,7 @@ class TestTheSignalIsBounded:
 # Hardening round 1 — what the external review found
 # ---------------------------------------------------------------------------
 
-from packages.orchestration.safe_points import (            # noqa: E402
+from packages.orchestration.safe_points import (  # noqa: E402
     acknowledge_stop,
     archive_stop,
     archived_signals,

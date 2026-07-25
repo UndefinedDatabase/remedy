@@ -258,12 +258,12 @@ class TestStopTransaction:
 class TestLegacyMarker:
     def test_pre_f012_completed_job_is_legacy_not_corrupt(self, data_root, repo):
         # simulate an old completed job: no F012 marker, no manifest.
+        from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.pingpong_job import (
             JOB_COMPLETED,
             _persist_job,
             parse_job_file,
         )
-        from packages.orchestration.job_evidence import export_job_evidence
         job = parse_job_file(_JOB, str(repo))
         job.status = JOB_COMPLETED
         job.tasks[0].status = "applied_to_job_workspace"
@@ -275,12 +275,12 @@ class TestLegacyMarker:
         assert any("legacy" in n for n in mi.get("notes", []))
 
     def test_marked_completed_job_without_manifest_is_blocking(self, data_root, repo):
+        from packages.orchestration.job_evidence import export_job_evidence
         from packages.orchestration.pingpong_job import (
             JOB_COMPLETED,
             _persist_job,
             parse_job_file,
         )
-        from packages.orchestration.job_evidence import export_job_evidence
         job = parse_job_file(_JOB, str(repo))
         job.status = JOB_COMPLETED
         job.tasks[0].status = "applied_to_job_workspace"
@@ -349,16 +349,16 @@ class TestContentDriftThroughCli:
 
 class TestCompleteVerificationPath:
     def test_pure_diff_equal_calls_is_same_inputs(self):
-        from packages.orchestration.run_manifest import diff_manifests
         import tests.orchestration.test_run_manifest as T
+        from packages.orchestration.run_manifest import diff_manifests
         a = T._mk()
         b = T._mk()
         d = diff_manifests(a, b)
         assert d["same_inputs"] is True and d["verification_complete"] is True
 
     def test_pure_diff_call_change_is_blocking(self):
-        from packages.orchestration.run_manifest import diff_manifests
         import tests.orchestration.test_run_manifest as T
+        from packages.orchestration.run_manifest import diff_manifests
         a = T._mk(calls=(T._call("T001", 1, fp="h1"),))
         b = T._mk(calls=(T._call("T001", 1, fp="CHANGED"),))
         d = diff_manifests(a, b)
@@ -500,9 +500,10 @@ class TestCompleteJobInputDrift:
 
 class TestRemedyContentDrift:
     def test_remedy_worktree_digest_change_blocks(self):
-        from packages.orchestration.run_manifest import diff_manifests
-        import tests.orchestration.test_run_manifest as T
         import dataclasses
+
+        import tests.orchestration.test_run_manifest as T
+        from packages.orchestration.run_manifest import diff_manifests
         a = T._mk()
         b_snap = dataclasses.replace(
             a.snapshot, remedy_worktree={"status": "ok", "head": "a" * 40,

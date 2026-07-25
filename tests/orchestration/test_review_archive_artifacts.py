@@ -15,8 +15,6 @@ import subprocess
 import zipfile
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _SPEC = importlib.util.spec_from_file_location(
@@ -24,15 +22,6 @@ _SPEC = importlib.util.spec_from_file_location(
 _bz = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_bz)
 
-from packages.orchestration.archive_plan import (  # noqa: E402
-    ArchiveMemberV1,
-    ArchivePlanV1,
-    MEMBER_REGULAR,
-    MEMBER_SYMLINK,
-    MODE_REGULAR,
-    MODE_SYMLINK,
-    SOURCE_REPOSITORY,
-)
 
 _REQUIRED_SCRIPTS = ("make_review_zip.sh", "build_review_manifest.py", "build_review_zip.py",
                      "build_observability_index.py", "select_review_evidence.py",
