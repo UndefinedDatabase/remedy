@@ -9,10 +9,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from packages.core.models import AcceptanceCheck, RunState, Task
-from packages.orchestration.schemas.models import FlightPlan
+from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 
@@ -166,3 +167,123 @@ def apply_plan_fences(
         if key not in merged or not merged[key]:
             merged[key] = val
     return merged
+
+
+# ---------------------------------------------------------------------------
+# Renderer (T003)
+# ---------------------------------------------------------------------------
+
+def render_plan_md(plan: FlightPlan) -> str:
+    """Render a FlightPlan to deterministic, stably ordered markdown."""
+    lines: list[str] = []
+    lines.append("# Flight Plan")
+    lines.append("")
+    lines.append(f"Schema: {plan.schema_v}")
+    lines.append(f"Tasks: {len(plan.tasks)}")
+    lines.append("")
+
+    if plan.large_plan:
+        lines.append(
+            f"> **Note:** This plan has {len(plan.tasks)} tasks "
+            f"(threshold {_LARGE_PLAN_THRESHOLD}). "
+            "Consider splitting the mission into smaller units.")
+        lines.append("")
+
+    lines.append("## Tasks")
+    lines.append("")
+
+    for i, t in enumerate(plan.tasks, 1):
+        deps = ", ".join(t.depends_on) if t.depends_on else "none"
+        lines.append(f"### {i}. {t.id} — {t.title}")
+        lines.append("")
+        lines.append(f"**Goal:** {t.goal}")
+        lines.append(f"**Band:** {t.est_tokens_band} | **Depends on:** {deps}")
+        lines.append("")
+        lines.append("**Acceptance:**")
+        for ac in t.acceptance:
+            lines.append(f"- {ac}")
+        if t.files_hint:
+            lines.append("")
+            lines.append("**Files hint:**")
+            for f in t.files_hint:
+                lines.append(f"- `{f}`")
+        lines.append("")
+
+    if plan.risks:
+        lines.append("## Risks")
+        lines.append("")
+        for r in plan.risks:
+            lines.append(f"- {r}")
+        lines.append("")
+
+    if plan.clarifications_resolved:
+        lines.append("## Clarifications Resolved")
+        lines.append("")
+        for c in plan.clarifications_resolved:
+            lines.append(f"**Q:** {c.question}")
+            lines.append(f"**A:** {c.answer} (default: {c.default_answer})")
+            lines.append(f"**Impact:** {c.impact}")
+            lines.append("")
+
+    if plan.budgets:
+        lines.append("## Budgets")
+        lines.append("")
+        for k, v in sorted(plan.budgets.items()):
+            lines.append(f"- {k}: {v}")
+        lines.append("")
+
+    if plan.fences:
+        lines.append("## Fences")
+        lines.append("")
+        for k, v in sorted(plan.fences.items()):
+            lines.append(f"- {k}: {', '.join(v) if isinstance(v, list) else v}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Path:
+    """Write rendered plan to evidence dir. Returns the written path."""
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    filename = "plan.md" if version == 1 else f"plan_v{version}.md"
+    path = evidence_dir / filename
+    path.write_text(render_plan_md(plan), encoding="utf-8")
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Replan versioning (T003)
+# ---------------------------------------------------------------------------
+
+class ReplanRejectedError(Exception):
+    """Raised when replanning is rejected (e.g. after task completion)."""
+
+
+def replan(
+    job_flight_plan: dict[str, Any],
+    new_plan: FlightPlan,
+    evidence_dir: Path,
+    *,
+    any_task_completed: bool = False,
+) -> tuple[dict[str, Any], int]:
+    """Apply a new flight plan version.
+
+    Returns (updated flight_plan dict for Job, new version number).
+    Raises ReplanRejectedError if any task has already completed.
+    Old plan.md files are kept (plan.md, plan_v2.md, plan_v3.md, ...).
+    """
+    if any_task_completed:
+        raise ReplanRejectedError(
+            "Cannot replan after a task has completed. "
+            "This limitation will be lifted in a future feature.")
+
+    versions = job_flight_plan.get("_versions", [])
+    current_version = len(versions) + 1
+    new_version = current_version + 1
+
+    new_plan_dict = new_plan.model_dump()
+    new_plan_dict["_versions"] = versions + [job_flight_plan]
+    new_plan_dict["_version"] = new_version
+
+    write_plan_md(new_plan, evidence_dir, version=new_version)
+    return new_plan_dict, new_version
