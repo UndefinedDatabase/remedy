@@ -125,12 +125,14 @@ PASS ---") do not exist in the script. The verification claim was
 invented; whether the smoke script actually runs end-to-end is
 unproven.
 
-### R-0138 [medium] Ordered CLI reject probe silently replaced — Open
+### R-0138 [medium] Ordered CLI reject probe silently replaced — Done
 STEP C.3 ordered a raw CLI transcript (reject -> run refused ->
 replan -> approve -> run). Delivered instead: a python one-liner on
 the helper, undeclared. (Reviewer has since run the CLI sequence
 live — behavior is correct; the finding is about the undeclared
 substitution.)
+Deviation acknowledged; reviewer's live probe (round 4) is the
+binding evidence.
 
 ## Verdict
 (pending)
