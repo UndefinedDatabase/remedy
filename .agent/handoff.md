@@ -56,7 +56,11 @@ Pre-existing flake: `test_fallback_to_default_when_no_env_vars` in test_ollama_p
 - Total passed: 177
 
 ## Zip
-Pending — build after push.
+- File: `remedy-review-20260725-184236-READY_FOR_REVIEW.zip`
+- SHA-256: `098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1`
+- Status: READY_FOR_REVIEW
+- Members: 1458
+- Evidence authoritative: true
 
 ## PR
-Pending — create after zip.
+Pending — create after commit + push.
