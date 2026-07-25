@@ -29,12 +29,15 @@ class FlightPlanResult:
 
 
 _PLAN_PROMPT_TEMPLATE = """\
-You are a project planner. Given the intake below, produce a flight plan:
-a DAG of tasks with goals, acceptance criteria, dependencies, and token
-band estimates.
+You are a project planner. Given the intake and repo facts below, produce
+a flight plan: a DAG of tasks with goals, acceptance criteria, dependencies,
+and token band estimates.
 
 ## Intake
 {intake_json}
+
+## Repo Facts
+{repo_facts}
 
 ## Rules
 - Each task needs a unique id (e.g. "T001", "T002").
@@ -50,9 +53,31 @@ Return ONLY a JSON object matching the flight_plan_v1 schema.
 """
 
 
+def _cheap_repo_facts() -> str:
+    """Gather minimal repo context for the planner prompt."""
+    import os
+    lines: list[str] = []
+    cwd = os.getcwd()
+    try:
+        entries = sorted(os.listdir(cwd))
+        dirs = [e for e in entries if os.path.isdir(os.path.join(cwd, e))
+                and not e.startswith(".")]
+        files = [e for e in entries if os.path.isfile(os.path.join(cwd, e))
+                 and not e.startswith(".")]
+        if dirs:
+            lines.append(f"Top-level dirs: {', '.join(dirs[:20])}")
+        if files:
+            lines.append(f"Top-level files: {', '.join(files[:20])}")
+    except OSError:
+        lines.append("(repo listing unavailable)")
+    return "\n".join(lines) if lines else "(no repo facts available)"
+
+
 def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
     return _PLAN_PROMPT_TEMPLATE.format(
-        intake_json=json.dumps(intake_dict, indent=2))
+        intake_json=json.dumps(intake_dict, indent=2),
+        repo_facts=_cheap_repo_facts(),
+    )
 
 
 def plan_job_llm(
@@ -255,6 +280,12 @@ def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Pat
 # Replan versioning (T003)
 # ---------------------------------------------------------------------------
 
+def flight_plan_approval_open(job: Any) -> bool:
+    """Return True if the job has a pending flight plan approval gate."""
+    fp = getattr(job, "flight_plan", None)
+    return isinstance(fp, dict) and fp.get("_approval") == "pending"
+
+
 class ReplanRejectedError(Exception):
     """Raised when replanning is rejected (e.g. after task completion)."""
 
@@ -284,6 +315,7 @@ def replan(
     new_plan_dict = new_plan.model_dump()
     new_plan_dict["_versions"] = versions + [job_flight_plan]
     new_plan_dict["_version"] = new_version
+    new_plan_dict["_approval"] = "pending"
 
     write_plan_md(new_plan, evidence_dir, version=new_version)
     return new_plan_dict, new_version

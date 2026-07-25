@@ -170,6 +170,7 @@ def _cmd_do_mission(
     repo: str = ".",
     json_output: bool = False,
     no_llm: bool = False,
+    yes: bool = False,
 ) -> None:
     """Golden-path: mission string → planned job (F147 T001)."""
     if not mission or not mission.strip():
@@ -233,6 +234,7 @@ def _cmd_do_mission(
         from packages.orchestration.flight_plan import (
             map_flight_plan_to_tasks,
             plan_job_llm,
+            write_plan_md,
         )
         fp_result = plan_job_llm(intake_result.value.model_dump(), call_fn)
         if fp_result.plan is not None:
@@ -248,9 +250,53 @@ def _cmd_do_mission(
                 state=RunState.PLANNED,
             )
             save_job(job)
-            plan_label = (
-                f"flight plan {fp_result.plan.schema_v} (awaiting approval)"
+            from packages.orchestration.data_paths import job_evidence_export_dir
+            write_plan_md(fp_result.plan, job_evidence_export_dir(str(job.id)))
+            if yes:
+                fp_dict["_approval"] = "approved"
+                fp_dict["_approval_audit"] = {
+                    "mode": "auto_yes",
+                    "reason": "auto-approved via --yes",
+                }
+                job.flight_plan = fp_dict
+                save_job(job)
+                plan_label = (
+                    f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
+                )
+            else:
+                plan_label = (
+                    f"flight plan {fp_result.plan.schema_v} (awaiting approval)"
+                )
+        else:
+            job = Job(
+                name=mission[:80], mission=mission, user_prompt=mission,
+                project_id=str(project.id),
+                intake=intake_result.value.model_dump(),
+                state=RunState.PENDING,
             )
+            save_job(job)
+            from packages.orchestration.data_paths import job_evidence_export_dir
+            from packages.orchestration.failure_postmortem import (
+                FailureSignals,
+                build_job_rollup,
+                write_postmortem,
+            )
+            signals = FailureSignals(
+                error_class="parse",
+                error_text=fp_result.error_hint or "flight plan parse failure",
+            )
+            pm = build_job_rollup(job_id=str(job.id), signals=signals)
+            ev_dir = job_evidence_export_dir(str(job.id))
+            try:
+                write_postmortem(ev_dir, pm, root=ev_dir)
+            except Exception:
+                pass
+            print(
+                f"Error: flight plan generation failed: "
+                f"{fp_result.error_hint or 'parse failure'}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     if job is None:
         job = Job(
@@ -358,15 +404,16 @@ def _cmd_do(
     injected_default: bool = False,
     truly_bare: bool = False,
     no_llm: bool = False,
+    yes: bool = False,
 ) -> None:
     # --- Bare-mission golden path (F147) ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm
+    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm/--yes
     # appeared in the raw argv. This catches `do "x" --autonomy-level 1`
     # (explicit flag at default value) which value-equality checks cannot
     # distinguish.
     if truly_bare and goal:
-        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm)
+        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm, yes=yes)
         return
 
     # --- Budget resolution (always runs — catches config-only budgets) ---
@@ -2749,6 +2796,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
+        yes=getattr(args, "yes", False),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",

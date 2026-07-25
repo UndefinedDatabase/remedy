@@ -90,6 +90,42 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
             print(f"Error: stop reason not found: {stop_id}", file=sys.stderr)
             sys.exit(1)
         print(f"Resolved stop reason: {sr.id[:8]} ({sr.reason_code})")
+    elif decision_id.startswith("fp:"):
+        from packages.orchestration.data_paths import resolve_job_id as _rji
+        from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+
+        job_id = _rji(job_id_str)
+        try:
+            job = load_job(job_id)
+        except JobNotFoundError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+        fp = getattr(job, "flight_plan", None)
+        if not isinstance(fp, dict) or fp.get("_approval") != "pending":
+            print("Error: no pending flight plan approval for this job.", file=sys.stderr)
+            sys.exit(1)
+
+        if reason not in ("approve", "reject"):
+            print(
+                "Error: --reason must be 'approve' or 'reject'.\n"
+                f"  remedy decision resolve {job_id_str} fp:approval --reason approve\n"
+                f"  remedy decision resolve {job_id_str} fp:approval --reason reject",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        if reason == "approve":
+            fp["_approval"] = "approved"
+            job.flight_plan = fp
+            save_job(job)
+            print(f"Flight plan approved for job {job_id_str}.")
+        else:
+            fp["_approval"] = "rejected"
+            job.flight_plan = fp
+            save_job(job)
+            print(f"Flight plan rejected for job {job_id_str}.")
+            print("Hint: use --replan to generate a new flight plan.")
     else:
         print(f"Decision '{decision_id}' is derived and cannot be directly resolved.", file=sys.stderr)
         print("Resolve the underlying record (patch intent, test, etc.) instead.", file=sys.stderr)

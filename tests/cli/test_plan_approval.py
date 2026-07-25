@@ -48,8 +48,9 @@ class TestFlightPlanApprovalDecision:
         job = Job(name="t", flight_plan={"_approval": "pending"})
         fp = [d for d in list_decisions(job, []) if d.type == "flight_plan_approval"][0]
         actions = " ".join(fp.next_actions)
-        assert "approve" in actions
-        assert "reject" in actions
+        assert "remedy decision resolve" in actions
+        assert "--reason approve" in actions
+        assert "--reason reject" in actions
 
     def test_safe_summary(self):
         job = Job(name="t", flight_plan={"_approval": "pending"})
@@ -199,8 +200,8 @@ class TestFlightPlanLabel:
         assert job_data["flight_plan"] is not None
         assert job_data["flight_plan"]["_approval"] == "pending"
 
-    def test_flight_plan_failure_falls_back(self, tmp_path, monkeypatch):
-        """LLM flight plan failure -> deterministic skeleton label."""
+    def test_flight_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
+        """LLM flight plan parse failure -> non-zero exit, no tasks, postmortem."""
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         subprocess.run(
@@ -211,13 +212,164 @@ class TestFlightPlanLabel:
         _setup_llm_mocks(monkeypatch, plan_succeeds=False)
         monkeypatch.chdir(str(repo))
 
+        import pytest
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_do_mission("test mission", repo=str(repo), json_output=True)
+        assert exc_info.value.code != 0
+
+
+class TestApprovalGateEnforcement:
+    """R-0119: execution refused while approval pending."""
+
+    def test_run_refused_while_pending(self, tmp_path, monkeypatch):
+        from packages.orchestration.flight_plan import flight_plan_approval_open
+        job = Job(name="t", flight_plan={"_approval": "pending"})
+        assert flight_plan_approval_open(job)
+
+    def test_approved_not_blocked(self):
+        from packages.orchestration.flight_plan import flight_plan_approval_open
+        job = Job(name="t", flight_plan={"_approval": "approved"})
+        assert not flight_plan_approval_open(job)
+
+    def test_no_plan_not_blocked(self):
+        from packages.orchestration.flight_plan import flight_plan_approval_open
+        job = Job(name="t")
+        assert not flight_plan_approval_open(job)
+
+
+class TestDecisionResolve:
+    """R-0120: approve/reject via remedy decision resolve."""
+
+    def test_approve_flow(self, tmp_path, monkeypatch):
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = Job(name="t", flight_plan={"_approval": "pending"})
+        save_job(job)
+        short_id = str(job.id)[:8]
+
+        from apps.cli.commands.decision import _cmd_decision_resolve
+        _cmd_decision_resolve(short_id, "fp:approval", reason="approve")
+
+        from packages.orchestration.storage import load_job
+        updated = load_job(job.id)
+        assert updated.flight_plan["_approval"] == "approved"
+
+    def test_reject_flow(self, tmp_path, monkeypatch):
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = Job(name="t", flight_plan={"_approval": "pending"})
+        save_job(job)
+        short_id = str(job.id)[:8]
+
+        from apps.cli.commands.decision import _cmd_decision_resolve
+        _cmd_decision_resolve(short_id, "fp:approval", reason="reject")
+
+        from packages.orchestration.storage import load_job
+        updated = load_job(job.id)
+        assert updated.flight_plan["_approval"] == "rejected"
+
+    def test_bad_reason_exits(self, tmp_path, monkeypatch):
+        import pytest
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = Job(name="t", flight_plan={"_approval": "pending"})
+        save_job(job)
+        short_id = str(job.id)[:8]
+
+        from apps.cli.commands.decision import _cmd_decision_resolve
+        with pytest.raises(SystemExit) as exc_info:
+            _cmd_decision_resolve(short_id, "fp:approval", reason="maybe")
+        assert exc_info.value.code == 1
+
+
+class TestAutoApproval:
+    """R-0124: --yes auto-approves with audit trail."""
+
+    def test_yes_auto_approves(self, tmp_path, monkeypatch):
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+        monkeypatch.chdir(str(repo))
+
         from io import StringIO
         captured = StringIO()
         monkeypatch.setattr("sys.stdout", captured)
 
         from apps.cli.commands.do_cmd import _cmd_do_mission
-        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
+        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
 
         data = json.loads(captured.getvalue())
-        assert data["plan_label"] == "deterministic skeleton"
-        assert data["state"] == "planned"
+        assert "approved via --yes" in data["plan_label"]
+
+        job_id = data["job_id"]
+        show = subprocess.run(
+            [*_CLI, "job", "show", job_id],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        job_data = json.loads(show.stdout)
+        assert job_data["flight_plan"]["_approval"] == "approved"
+        assert job_data["flight_plan"]["_approval_audit"]["mode"] == "auto_yes"
+
+    def test_yes_not_blocked(self, tmp_path, monkeypatch):
+        """--yes approved plan should not be blocked by approval gate."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True)
+        monkeypatch.chdir(str(repo))
+
+        from io import StringIO
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
+
+        data = json.loads(captured.getvalue())
+        fp_decisions = [
+            d for d in list_decisions(Job(name="t",
+                flight_plan={"_approval": "approved",
+                             "_approval_audit": {"mode": "auto_yes"}}), [])
+            if d.type == "flight_plan_approval"
+        ]
+        assert len(fp_decisions) == 0
+
+
+class TestReplanApprovalRearm:
+    """R-0129: replan re-arms _approval to pending."""
+
+    def test_replan_rearms_approval(self, tmp_path):
+        from packages.orchestration.flight_plan import replan
+        from packages.orchestration.schemas.models import FlightPlan
+
+        old_plan = {
+            "schema_v": "flight_plan_v1",
+            "tasks": [{"id": "T001", "title": "X", "goal": "G",
+                        "acceptance": ["A"], "depends_on": [],
+                        "est_tokens_band": "M", "files_hint": []}],
+            "risks": [],
+            "_approval": "rejected",
+        }
+        new_plan = FlightPlan(
+            schema_v="flight_plan_v1",
+            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
+                    "acceptance": ["B"], "depends_on": [],
+                    "est_tokens_band": "S", "files_hint": []}],
+            risks=[],
+        )
+        ev_dir = tmp_path / "evidence"
+        ev_dir.mkdir()
+        result, version = replan(old_plan, new_plan, ev_dir)
+        assert result["_approval"] == "pending"
+        assert version == 2

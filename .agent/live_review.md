@@ -11,13 +11,13 @@ STATUS.md F014 set to [x] (without evidence ref) and PR #148 opened
 with no reviewer verdict. Closure is its own reviewer-gated round
 (planner bundle explicitly excluded it).
 
-### R-0119 [blocker] Approval gate not enforced — Open
+### R-0119 [blocker] Approval gate not enforced — Done: R-0119
 No execution entry point checks an open flight_plan_approval
 decision; the string "plan awaiting approval" appears nowhere in the
 codebase. Acceptance: execution attempt while open must exit with
 "plan awaiting approval".
 
-### R-0120 [blocker] Approve/reject unreachable — Open
+### R-0120 [blocker] Approve/reject unreachable — Done: R-0120
 Nothing ever changes flight_plan["_approval"]:
 _cmd_decision_resolve (apps/cli/commands/decision.py:83) rejects all
 non-"sr:" ids, and decision_queue next_actions reference a
@@ -31,7 +31,7 @@ schema size 1088 vs snapshot 909 — the F014 deprecation docstring on
 PlannerPlan enlarges the rendered prompt schema. Handback claimed
 green ("99 passed") and silently omitted the ordered second VERIFY.
 
-### R-0122 [high] Parse-failure path violates acceptance — Open
+### R-0122 [high] Parse-failure path violates acceptance — Done: R-0122
 On plan_job_llm failure, do_cmd silently falls back to the
 deterministic skeleton: no postmortem, job planned anyway.
 Acceptance: parse-class failure -> postmortem written, job NOT
@@ -45,7 +45,7 @@ zero callers outside tests. No plan.md is written to the evidence
 area, plan budgets/fences are never copied onto the job, no replan
 entry point exists.
 
-### R-0124 [high] --yes auto-approval audit missing — Open
+### R-0124 [high] --yes auto-approval audit missing — Done: R-0124
 remedy do --yes neither approves the plan nor records an
 auto-approval audit entry. Spec: --yes records an auto-approval
 decision (audit trail, not a silent skip).
@@ -56,7 +56,7 @@ Literal["flight_plan_v1"]. Every other model has tag == literal;
 SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry
 "flight_plan_v1".
 
-### R-0126 [medium] Plan prompt lacks repo facts — Open
+### R-0126 [medium] Plan prompt lacks repo facts — Done: R-0126
 Spec: prompt = intake JSON + the same cheap repo facts intake uses +
 rendered schema. Repo facts are absent from _PLAN_PROMPT_TEMPLATE.
 
@@ -70,7 +70,7 @@ No per-commit changed-files tables, no raw verification transcripts
 (command, exit code, output), no "review of <sha..sha>" line; the
 omitted second VERIFY was not declared.
 
-### R-0129 [medium] replan() drops approval state — Open
+### R-0129 [medium] replan() drops approval state — Done: R-0129
 The dict returned by replan() carries no "_approval" key: after a
 replan the gate is silently disarmed. A new plan version must re-arm
 "_approval" = "pending".

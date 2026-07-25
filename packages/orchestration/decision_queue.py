@@ -242,8 +242,8 @@ def list_decisions(
             related_file="",
             safe_summary="Flight plan awaiting approval.",
             next_actions=(
-                f"remedy decision answer {job_id[:8]} fp:approval approve",
-                f"remedy decision answer {job_id[:8]} fp:approval reject",
+                f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
+                f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
             ),
             created_at="",
             resolved_at=None,

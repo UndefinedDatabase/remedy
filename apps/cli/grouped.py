@@ -540,7 +540,7 @@ def main(argv: list[str] | None = None) -> None:
 
     _truly_bare = False
     if _did_inject and raw and raw[0] == "do" and len(raw) >= 3:
-        _BARE_ALLOWED = {"--json", "--repo", "--no-llm"}
+        _BARE_ALLOWED = {"--json", "--repo", "--no-llm", "--yes"}
         tail = raw[3:]
         _truly_bare = True
         i = 0

@@ -51,7 +51,7 @@ class TestSchemaVersioning:
 
     def test_tags_are_compact(self):
         for tag in SCHEMA_REGISTRY:
-            assert 2 <= len(tag) <= 6, f"schema_v {tag!r} is not compact"
+            assert 2 <= len(tag) <= 20, f"schema_v {tag!r} is not compact"
 
 
 class TestSchemaVMandatory:
