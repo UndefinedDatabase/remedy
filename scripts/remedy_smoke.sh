@@ -2736,11 +2736,11 @@ print('    UX smoke gate: OK (story=' + str(len(story['journey'])) + ' journey i
 "
 
     # -------------------------------------------------------------------------
-    # 12r. Flight plan approval gate — real CLI sequence (F014 T004)
+    # 14a. Flight plan approval gate — real CLI sequence (F014 T004)
     # Provider stand-in: inline save_job seeds job with pending flight plan.
     # -------------------------------------------------------------------------
-    _SMOKE_SECTION="12r"
-    echo "--- 12r. Flight plan approval gate (CLI sequence)"
+    _SMOKE_SECTION="14a"
+    echo "--- 14a. Flight plan approval gate (CLI sequence)"
 
     # Seed a job with a pending flight plan (provider stand-in)
     FP_JOB_ID="$(python3 -c "

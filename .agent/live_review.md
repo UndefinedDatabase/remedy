@@ -139,13 +139,14 @@ substitution.)
 Deviation acknowledged; reviewer's live probe (round 4) is the
 binding evidence.
 
-### R-0139 [low] Duplicate smoke section id "12r" — Open
+### R-0139 [low] Duplicate smoke section id "12r" — Done
 scripts/remedy_smoke.sh now contains two sections with
 _SMOKE_SECTION="12r": the pre-existing "Change set review board"
 (line ~1630, commit 4d4712b) and the F014 approval-gate section
 (~line 2742). The failure trap reports the section id, so a
 failure in either would be ambiguous. Rename the F014 section to
 a unique id.
+Fix: renamed F014 section to _SMOKE_SECTION="14a".
 
 ## Verdict
 (pending)
