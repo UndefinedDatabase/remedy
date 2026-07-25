@@ -75,46 +75,62 @@ The dict returned by replan() carries no "_approval" key: after a
 replan the gate is silently disarmed. A new plan version must re-arm
 "_approval" = "pending".
 
-### R-0130 [high] Rejected flight plan still executes — Open
+### R-0130 [high] Rejected flight plan still executes — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 flight_plan_approval_open() checks only _approval == "pending".
 After `remedy decision resolve ... --reason reject`, run-next,
 run-loop and resume all proceed with the rejected plan's tasks.
 The ordered test "rejected also refuses execution" was omitted.
 
-### R-0131 [medium] R-0127 falsely reported done — Open
+### R-0131 [medium] R-0127 falsely reported done — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 Item-status table says "done: real CLI sequence test", but
 scripts/remedy_smoke.sh section 12r is byte-identical to before:
 the ordered smoke rewrite never happened; a pytest was added
 instead. A deviation must be declared, not relabeled as done.
 
-### R-0132 [medium] --yes audit invisible in decision list — Open
+### R-0132 [medium] --yes audit invisible in decision list — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 Ordered: derivation surfaces a RESOLVED flight_plan_approval entry
 when _approval_audit is present. Not implemented — audit exists
 only in the job JSON; test_yes_not_blocked asserts zero entries,
 the opposite of the ordered behavior.
 
-### R-0133 [medium] Config-budget precedence unproven at CLI — Open
+### R-0133 [medium] Config-budget precedence unproven at CLI — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 _cmd_do_mission passes None as the job side of
 apply_plan_budgets/apply_plan_fences: config-set budgets are never
 consulted on the bare path, so a plan suggestion would win over
 config. The ordered CLI-level test "config-set budget survives a
 plan that suggests another" is missing.
 
-### R-0134 [low] Reject hint names a nonexistent flag — Open
+### R-0134 [low] Reject hint names a nonexistent flag — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 Reject path prints "use --replan", but the implemented command is
 `remedy do replan <job_id>`. Same defect class as R-0120's dead
 command reference.
 
-### R-0135 [low] Schema-tag guard silently relaxed — Open
+### R-0135 [low] Schema-tag guard silently relaxed — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 test_tags_are_compact loosened 6 -> 20 for all future tags to admit
 "flight_plan_v1" (14 chars), without declaring the guard change.
 
-### R-0136 [low] Parse-failure test under-asserts — Open
+### R-0136 [low] Parse-failure test under-asserts — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
 test_flight_plan_parse_failure_not_planned asserts only exit != 0;
 postmortem existence, job-state-not-planned and empty tasks are
 unasserted, while write_postmortem is wrapped in `except: pass` —
 a silent regression would be invisible. (Reviewer probed the path:
 it currently works.)
+
+### R-0137 [blocker] Fabricated smoke transcript — Open
+Handback shows `bash scripts/remedy_smoke.sh 12r` producing
+12r-only output. The script accepts no section argument
+(remedy_smoke ignores "$@") and always runs all sections; the
+transcript lines ("[seed] created job...", "--- section 12r:
+PASS ---") do not exist in the script. The verification claim was
+invented; whether the smoke script actually runs end-to-end is
+unproven.
+
+### R-0138 [medium] Ordered CLI reject probe silently replaced — Open
+STEP C.3 ordered a raw CLI transcript (reject -> run refused ->
+replan -> approve -> run). Delivered instead: a python one-liner on
+the helper, undeclared. (Reviewer has since run the CLI sequence
+live — behavior is correct; the finding is about the undeclared
+substitution.)
 
 ## Verdict
 (pending)
