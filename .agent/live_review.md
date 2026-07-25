@@ -126,7 +126,7 @@ History lives in git and in each feature's evidence zip.
   Resolved.
 
 ### R-0116: intake duplicates the Ollama provider configuration surface
-- **Status**: Done: R-0116
+- **Status**: Resolved
 - **Severity**: Medium
 - **Area**: packages/orchestration/intake.py
   (make_provider_call_fn), packages/providers/ollama_planner/
@@ -153,10 +153,13 @@ History lives in git and in each feature's evidence zip.
   (c) Update TestMakeProviderCallFn: env-var model override
   (REMEDY_OLLAMA_PLANNER_MODEL) reaches the chat call; ollama
   missing → None. All existing suites stay green.
-- **Reviewer**: pending
+- **Reviewer**: independently verified — diff read (raw_call
+  single surface, plan_raw delegation byte-identical; label
+  exact), suites rerun green by reviewer, flake confirmed
+  pre-existing on main worktree. Resolved.
 
 ### R-0117: provider-error fallback mislabeled as provider unavailable
-- **Status**: Done: R-0117
+- **Status**: Resolved
 - **Severity**: Low
 - **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission label
   logic)
@@ -168,4 +171,16 @@ History lives in git and in each feature's evidence zip.
   intake: heuristic fallback (provider error)
   provider_unavailable keeps the spec string. Golden-path probes
   updated to the displayed strings.
-- **Reviewer**: pending
+- **Reviewer**: independently verified — diff read (raw_call
+  single surface, plan_raw delegation byte-identical; label
+  exact), suites rerun green by reviewer, flake confirmed
+  pre-existing on main worktree. Resolved.
+
+## Verdict (Runde 5)
+PASS_WITH_RISKS — F013 findings R-0110..R-0117 all Resolved.
+Risks: (1) pre-existing test_ollama_provider.py env-capture
+flake — file-level run fails on main too (reviewer-verified at
+eafcade); out of F013 scope. (2) intake evidence is prompt-trace
+JSONL in the job runs dir (F005 parity with plan-job-local);
+raw-stream/postmortem integration deferred until intake becomes
+a first-class run.

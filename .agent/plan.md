@@ -14,5 +14,9 @@ text; deterministic labeled heuristic fallback without a provider.
 - [x] T003 — do-path integration (intake before planning, --no-llm
       flag) + job show rendering + golden-path smoke (36 tests)
 
+- [x] R-0110..R-0117 — reviewer repairs
+- [x] Closure — verdict PASS_WITH_RISKS, evidence job,
+      STATUS [x], PR
+
 ## Current Step
-All tasks complete. Ready for handback.
+Closure complete.
