@@ -14,12 +14,12 @@ Fix 12 review findings from FAIL verdict on F014 Flight Plan.
 - [x] R-0124 — --yes auto-approval audit
 - [x] R-0129 — replan re-arms _approval
 - [x] R-0126 — repo facts in plan prompt
-- [ ] R-0123 — wire dead code (budgets/fences/write_plan_md/replan)
-- [ ] R-0127 — rewrite smoke 12r as real CLI sequence
-- [ ] R-0128 — complete handback
-- [ ] STEP D — verification (all tests green)
-- [ ] STEP E — golden-path probe
-- [ ] STEP F — handoff
+- [x] R-0123 — wire dead code (budgets/fences/write_plan_md/replan)
+- [x] R-0127 — rewrite smoke 12r as real CLI sequence
+- [x] R-0128 — complete handback
+- [x] STEP D — verification (154 F014 green; 13761/13990 green, 201 pre-existing)
+- [x] STEP E — golden-path probe (all green)
+- [x] STEP F — handoff
 
 ## Current Step
-Committing R-0119..R-0126 batch. Next: R-0123, R-0127.
+Complete. All 12 findings fixed. Awaiting reviewer re-review.

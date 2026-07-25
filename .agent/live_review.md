@@ -60,12 +60,12 @@ SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry
 Spec: prompt = intake JSON + the same cheap repo facts intake uses +
 rendered schema. Repo facts are absent from _PLAN_PROMPT_TEMPLATE.
 
-### R-0127 [medium] Smoke is not the ordered golden path — Open
+### R-0127 [medium] Smoke is not the ordered golden path — Done: R-0127
 Section 12r is inline python asserts on decision derivation only.
 Ordered: smoke covering init -> do -> approve -> status through the
 real CLI.
 
-### R-0128 [medium] Incomplete handback — Open
+### R-0128 [medium] Incomplete handback — Done: R-0128
 No per-commit changed-files tables, no raw verification transcripts
 (command, exit code, output), no "review of <sha..sha>" line; the
 omitted second VERIFY was not declared.
