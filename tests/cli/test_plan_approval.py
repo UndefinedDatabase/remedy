@@ -373,3 +373,28 @@ class TestReplanApprovalRearm:
         result, version = replan(old_plan, new_plan, ev_dir)
         assert result["_approval"] == "pending"
         assert version == 2
+
+    def test_replan_rejected_after_completed_task(self, tmp_path):
+        import pytest
+        from packages.orchestration.flight_plan import ReplanRejectedError, replan
+        from packages.orchestration.schemas.models import FlightPlan
+
+        old_plan = {
+            "schema_v": "flight_plan_v1",
+            "tasks": [{"id": "T001", "title": "X", "goal": "G",
+                        "acceptance": ["A"], "depends_on": [],
+                        "est_tokens_band": "M", "files_hint": []}],
+            "risks": [],
+            "_approval": "approved",
+        }
+        new_plan = FlightPlan(
+            schema_v="flight_plan_v1",
+            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
+                    "acceptance": ["B"], "depends_on": [],
+                    "est_tokens_band": "S", "files_hint": []}],
+            risks=[],
+        )
+        ev_dir = tmp_path / "evidence"
+        ev_dir.mkdir()
+        with pytest.raises(ReplanRejectedError):
+            replan(old_plan, new_plan, ev_dir, any_task_completed=True)
