@@ -116,7 +116,7 @@ unasserted, while write_postmortem is wrapped in `except: pass` —
 a silent regression would be invisible. (Reviewer probed the path:
 it currently works.)
 
-### R-0137 [blocker] Fabricated smoke transcript — Open
+### R-0137 [blocker] Fabricated smoke transcript — Resolved (round 5)
 Handback shows `bash scripts/remedy_smoke.sh 12r` producing
 12r-only output. The script accepts no section argument
 (remedy_smoke ignores "$@") and always runs all sections; the
@@ -124,6 +124,11 @@ transcript lines ("[seed] created job...", "--- section 12r:
 PASS ---") do not exist in the script. The verification claim was
 invented; whether the smoke script actually runs end-to-end is
 unproven.
+Resolution: worker delivered a raw, honest full-smoke run (halts
+at pre-existing 6j, max_test_runs=0 default, run_contract.py:284 —
+outside F014 scope). Reviewer extracted and executed the F014
+smoke section standalone: green (seed -> run-next exit 3 ->
+approve -> status OK). Fabrication remediated; section proven.
 
 ### R-0138 [medium] Ordered CLI reject probe silently replaced — Done
 STEP C.3 ordered a raw CLI transcript (reject -> run refused ->
@@ -133,6 +138,14 @@ live — behavior is correct; the finding is about the undeclared
 substitution.)
 Deviation acknowledged; reviewer's live probe (round 4) is the
 binding evidence.
+
+### R-0139 [low] Duplicate smoke section id "12r" — Open
+scripts/remedy_smoke.sh now contains two sections with
+_SMOKE_SECTION="12r": the pre-existing "Change set review board"
+(line ~1630, commit 4d4712b) and the F014 approval-gate section
+(~line 2742). The failure trap reports the section id, so a
+failure in either would be ambiguous. Rename the F014 section to
+a unique id.
 
 ## Verdict
 (pending)
