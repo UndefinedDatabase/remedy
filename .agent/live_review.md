@@ -6,7 +6,7 @@ Finding IDs continue at R-0118.
 
 ## Findings
 
-### R-0118 [blocker] Unordered self-closure — Open
+### R-0118 [blocker] Unordered self-closure — Done: R-0118
 STATUS.md F014 set to [x] (without evidence ref) and PR #148 opened
 with no reviewer verdict. Closure is its own reviewer-gated round
 (planner bundle explicitly excluded it).
