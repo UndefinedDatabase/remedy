@@ -6,32 +6,32 @@ Finding IDs continue at R-0118.
 
 ## Findings
 
-### R-0118 [blocker] Unordered self-closure — Done: R-0118
+### R-0118 [blocker] Unordered self-closure — Resolved (verified by reviewer, round 3)
 STATUS.md F014 set to [x] (without evidence ref) and PR #148 opened
 with no reviewer verdict. Closure is its own reviewer-gated round
 (planner bundle explicitly excluded it).
 
-### R-0119 [blocker] Approval gate not enforced — Done: R-0119
+### R-0119 [blocker] Approval gate not enforced — Resolved (verified by reviewer, round 3)
 No execution entry point checks an open flight_plan_approval
 decision; the string "plan awaiting approval" appears nowhere in the
 codebase. Acceptance: execution attempt while open must exit with
 "plan awaiting approval".
 
-### R-0120 [blocker] Approve/reject unreachable — Done: R-0120
+### R-0120 [blocker] Approve/reject unreachable — Resolved (verified by reviewer, round 3)
 Nothing ever changes flight_plan["_approval"]:
 _cmd_decision_resolve (apps/cli/commands/decision.py:83) rejects all
 non-"sr:" ids, and decision_queue next_actions reference a
 nonexistent command "remedy decision answer". The gate can never be
 approved through the product.
 
-### R-0121 [blocker] Red regression suite reported as green — Done: R-0121
+### R-0121 [blocker] Red regression suite reported as green — Resolved (verified by reviewer, round 3)
 tests/orchestration/schemas/test_schemas.py::TestSchemaSize::
 test_schema_size_matches_snapshot[PlannerPlan] FAILS on the branch:
 schema size 1088 vs snapshot 909 — the F014 deprecation docstring on
 PlannerPlan enlarges the rendered prompt schema. Handback claimed
 green ("99 passed") and silently omitted the ordered second VERIFY.
 
-### R-0122 [high] Parse-failure path violates acceptance — Done: R-0122
+### R-0122 [high] Parse-failure path violates acceptance — Resolved (verified by reviewer, round 3)
 On plan_job_llm failure, do_cmd silently falls back to the
 deterministic skeleton: no postmortem, job planned anyway.
 Acceptance: parse-class failure -> postmortem written, job NOT
@@ -39,41 +39,82 @@ planned. Skeleton fallback is only for --no-llm/provider-down.
 tests/cli/test_plan_approval.py::test_flight_plan_failure_falls_back
 enshrines the wrong behavior.
 
-### R-0123 [high] T002/T003 dead code, unwired — Done: R-0123
+### R-0123 [high] T002/T003 dead code, unwired — Resolved (verified by reviewer, round 3)
 apply_plan_budgets, apply_plan_fences, write_plan_md, replan have
 zero callers outside tests. No plan.md is written to the evidence
 area, plan budgets/fences are never copied onto the job, no replan
 entry point exists.
 
-### R-0124 [high] --yes auto-approval audit missing — Done: R-0124
+### R-0124 [high] --yes auto-approval audit missing — Resolved (verified by reviewer, round 3)
 remedy do --yes neither approves the plan nor records an
 auto-approval audit entry. Spec: --yes records an auto-approval
 decision (audit trail, not a silent skip).
 
-### R-0125 [medium] Schema tag mismatch — Done: R-0125
+### R-0125 [medium] Schema tag mismatch — Resolved (verified by reviewer, round 3)
 FLIGHT_PLAN_SCHEMA_V = "fp1" but schema_v is
 Literal["flight_plan_v1"]. Every other model has tag == literal;
 SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry
 "flight_plan_v1".
 
-### R-0126 [medium] Plan prompt lacks repo facts — Done: R-0126
+### R-0126 [medium] Plan prompt lacks repo facts — Resolved (verified by reviewer, round 3)
 Spec: prompt = intake JSON + the same cheap repo facts intake uses +
 rendered schema. Repo facts are absent from _PLAN_PROMPT_TEMPLATE.
 
-### R-0127 [medium] Smoke is not the ordered golden path — Done: R-0127
+### R-0127 [medium] Smoke is not the ordered golden path — REOPENED — see R-0131
 Section 12r is inline python asserts on decision derivation only.
 Ordered: smoke covering init -> do -> approve -> status through the
 real CLI.
 
-### R-0128 [medium] Incomplete handback — Done: R-0128
+### R-0128 [medium] Incomplete handback — Resolved (verified by reviewer, round 3)
 No per-commit changed-files tables, no raw verification transcripts
 (command, exit code, output), no "review of <sha..sha>" line; the
 omitted second VERIFY was not declared.
 
-### R-0129 [medium] replan() drops approval state — Done: R-0129
+### R-0129 [medium] replan() drops approval state — Resolved (verified by reviewer, round 3)
 The dict returned by replan() carries no "_approval" key: after a
 replan the gate is silently disarmed. A new plan version must re-arm
 "_approval" = "pending".
+
+### R-0130 [high] Rejected flight plan still executes — Open
+flight_plan_approval_open() checks only _approval == "pending".
+After `remedy decision resolve ... --reason reject`, run-next,
+run-loop and resume all proceed with the rejected plan's tasks.
+The ordered test "rejected also refuses execution" was omitted.
+
+### R-0131 [medium] R-0127 falsely reported done — Open
+Item-status table says "done: real CLI sequence test", but
+scripts/remedy_smoke.sh section 12r is byte-identical to before:
+the ordered smoke rewrite never happened; a pytest was added
+instead. A deviation must be declared, not relabeled as done.
+
+### R-0132 [medium] --yes audit invisible in decision list — Open
+Ordered: derivation surfaces a RESOLVED flight_plan_approval entry
+when _approval_audit is present. Not implemented — audit exists
+only in the job JSON; test_yes_not_blocked asserts zero entries,
+the opposite of the ordered behavior.
+
+### R-0133 [medium] Config-budget precedence unproven at CLI — Open
+_cmd_do_mission passes None as the job side of
+apply_plan_budgets/apply_plan_fences: config-set budgets are never
+consulted on the bare path, so a plan suggestion would win over
+config. The ordered CLI-level test "config-set budget survives a
+plan that suggests another" is missing.
+
+### R-0134 [low] Reject hint names a nonexistent flag — Open
+Reject path prints "use --replan", but the implemented command is
+`remedy do replan <job_id>`. Same defect class as R-0120's dead
+command reference.
+
+### R-0135 [low] Schema-tag guard silently relaxed — Open
+test_tags_are_compact loosened 6 -> 20 for all future tags to admit
+"flight_plan_v1" (14 chars), without declaring the guard change.
+
+### R-0136 [low] Parse-failure test under-asserts — Open
+test_flight_plan_parse_failure_not_planned asserts only exit != 0;
+postmortem existence, job-state-not-planned and empty tasks are
+unasserted, while write_postmortem is wrapped in `except: pass` —
+a silent regression would be invisible. (Reviewer probed the path:
+it currently works.)
 
 ## Verdict
 (pending)

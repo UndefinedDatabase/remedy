@@ -1,25 +1,19 @@
-# Plan — F014 Repair Round 1 (R-0118..R-0129)
+# Plan — F014 Repair Round 2 (R-0130..R-0136)
 
 ## Goal
-Fix 12 review findings from FAIL verdict on F014 Flight Plan.
+Fix 7 review findings from FAIL verdict on repair round 1.
 
 ## Checklist
 - [x] STEP A — persist findings
-- [x] STEP B — roll back closure (R-0118)
-- [x] R-0121 — deprecation notes out of docstrings
-- [x] R-0125 — schema tag mismatch
-- [x] R-0122 — parse-failure path: postmortem, not fallback
-- [x] R-0120 — fp: branch in decision resolve + fix next_actions
-- [x] R-0119 — approval gate enforcement at execution entry points
-- [x] R-0124 — --yes auto-approval audit
-- [x] R-0129 — replan re-arms _approval
-- [x] R-0126 — repo facts in plan prompt
-- [x] R-0123 — wire dead code (budgets/fences/write_plan_md/replan)
-- [x] R-0127 — rewrite smoke 12r as real CLI sequence
-- [x] R-0128 — complete handback
-- [x] STEP D — verification (154 F014 green; 13761/13990 green, 201 pre-existing)
-- [x] STEP E — golden-path probe (all green)
-- [x] STEP F — handoff
+- [ ] R-0130 — rejected flight plan blocks execution
+- [ ] R-0134 — reject hint names real replan command
+- [ ] R-0132 — --yes audit surfaces as RESOLVED decision
+- [ ] R-0133 — config-budget precedence at CLI
+- [ ] R-0135 — restore schema-tag guard
+- [ ] R-0136 — parse-failure test strengthened
+- [ ] R-0131 — rewrite smoke 12r in scripts/remedy_smoke.sh
+- [ ] STEP C — verification
+- [ ] STEP D — handback
 
 ## Current Step
-Complete. All 12 findings fixed. Awaiting reviewer re-review.
+Persisting findings. Next: R-0130.
