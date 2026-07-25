@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "packages/orchestration/planner_models.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/schemas/test_flight_plan_schema.py"
+ ],
+ "diff_sha256": "95f48e5f692e96c0db126ef642fd12321079e9eb974ba1c0d29a911b8aa86a7c",
+ "job_id": "9b0a8b6d-f03f-46d2-9dba-7584da178cd9",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "95f48e5f692e96c0db126ef642fd12321079e9eb974ba1c0d29a911b8aa86a7c",
+ "safe_diff_sha256": "5b4c5b84129b090bae8f20da27e2c0aac02a18fcdd831f82c3660c083d34ba2b",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "packages/orchestration/planner_models.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/schemas/test_flight_plan_schema.py"
+ ],
+ "timestamp": "2026-07-26T00:30:00Z",
+ "tracked_diff_sha256": "5b4c5b84129b090bae8f20da27e2c0aac02a18fcdd831f82c3660c083d34ba2b",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

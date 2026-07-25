@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F014.md",
+  "tests/orchestration/schemas/test_schemas.py"
+ ],
+ "diff_sha256": "3083cc60e2a39f5224a94e52c39a1083573760fdc9630e86c8c38dfd8cdad54b",
+ "job_id": "9b0a8b6d-f03f-46d2-9dba-7584da178cd9",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "3083cc60e2a39f5224a94e52c39a1083573760fdc9630e86c8c38dfd8cdad54b",
+ "safe_diff_sha256": "fa0ca6989df8ccbc720b7a4f6c66ff106a9b1c54d1b9175196bea48d0ff79cf6",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F014.md",
+  "tests/orchestration/schemas/test_schemas.py"
+ ],
+ "timestamp": "2026-07-26T00:30:00Z",
+ "tracked_diff_sha256": "fa0ca6989df8ccbc720b7a4f6c66ff106a9b1c54d1b9175196bea48d0ff79cf6",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

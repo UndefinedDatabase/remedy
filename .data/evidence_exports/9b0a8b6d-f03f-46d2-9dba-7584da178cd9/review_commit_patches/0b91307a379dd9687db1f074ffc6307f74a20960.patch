@@ -1,0 +1,158 @@
+0b91307a379dd9687db1f074ffc6307f74a20960
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index d400fbf..eae5431 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -2447,6 +2447,21 @@ CATALOG: tuple[CommandEntry, ...] = (
+         may_execute_commands=True,
+     ),
+ 
++    CommandEntry(
++        command_id="do.replan",
++        group_id="do",
++        subcommand="replan",
++        description="Regenerate the flight plan for an existing job.",
++        action_class="write_metadata",
++        supports_json=True,
++        related=("do.run",),
++        args=(
++            _JOB_ID,
++            _JSON_OPT,
++        ),
++        may_mutate_repo=False,
++        may_execute_commands=False,
++    ),
+     CommandEntry(
+         command_id="do.repair-attest",
+         group_id="do",
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index a15cd59..6d7b1bd 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -2781,6 +2781,82 @@ def _cmd_do_job_flow(
+     _print_final_audit(final_audit)
+ 
+ 
++def _cmd_do_replan(
++    job_id_str: str,
++    *,
++    json_output: bool = False,
++) -> None:
++    """Regenerate the flight plan for an existing job."""
++    from packages.orchestration.data_paths import job_evidence_export_dir, resolve_job_id
++    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
++
++    job_id = resolve_job_id(job_id_str)
++    try:
++        job = load_job(job_id)
++    except JobNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    fp = getattr(job, "flight_plan", None)
++    if not isinstance(fp, dict):
++        print("Error: job has no flight plan to replan.", file=sys.stderr)
++        sys.exit(1)
++
++    intake = getattr(job, "intake", None)
++    if not isinstance(intake, dict):
++        print("Error: job has no intake data.", file=sys.stderr)
++        sys.exit(1)
++
++    from packages.orchestration.intake import make_provider_call_fn
++    call_fn = make_provider_call_fn()
++    if call_fn is None:
++        print("Error: no provider available for replan.", file=sys.stderr)
++        sys.exit(1)
++
++    any_completed = any(
++        getattr(t, "status", None) in ("completed", "passed")
++        for t in getattr(job, "tasks", [])
++    )
++
++    from packages.orchestration.flight_plan import (
++        ReplanRejectedError,
++        map_flight_plan_to_tasks,
++        plan_job_llm,
++        replan,
++    )
++
++    fp_result = plan_job_llm(intake, call_fn)
++    if fp_result.plan is None:
++        print(
++            f"Error: replan failed: {fp_result.error_hint or 'parse failure'}",
++            file=sys.stderr,
++        )
++        sys.exit(1)
++
++    ev_dir = job_evidence_export_dir(str(job.id))
++    try:
++        new_fp_dict, version = replan(
++            fp, fp_result.plan, ev_dir,
++            any_task_completed=any_completed,
++        )
++    except ReplanRejectedError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    job.flight_plan = new_fp_dict
++    job.tasks = map_flight_plan_to_tasks(fp_result.plan)
++    save_job(job)
++
++    if json_output:
++        print(json.dumps({
++            "job_id": str(job.id),
++            "version": version,
++            "approval": new_fp_dict.get("_approval", "pending"),
++        }, indent=2))
++    else:
++        print(f"Replanned job {str(job.id)[:8]} → version {version} (awaiting approval)")
++
++
+ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+     "do.run": lambda args: _cmd_do(
+         getattr(args, "goal", None) or "",
+@@ -2821,6 +2897,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         no_llm=getattr(args, "no_llm", False),
+         yes=getattr(args, "yes", False),
+     ),
++    "do.replan": lambda args: _cmd_do_replan(
++        args.job_id,
++        json_output=getattr(args, "json", False),
++    ),
+     "do.plan": lambda args: _cmd_do_plan(
+         task_file=getattr(args, "task_file", None) or "",
+         repo=getattr(args, "repo", None) or ".",
+diff --git a/tests/cli/test_plan_approval.py b/tests/cli/test_plan_approval.py
+index e04b2c3..a56aeb2 100644
+--- a/tests/cli/test_plan_approval.py
++++ b/tests/cli/test_plan_approval.py
+@@ -373,3 +373,28 @@ class TestReplanApprovalRearm:
+         result, version = replan(old_plan, new_plan, ev_dir)
+         assert result["_approval"] == "pending"
+         assert version == 2
++
++    def test_replan_rejected_after_completed_task(self, tmp_path):
++        import pytest
++        from packages.orchestration.flight_plan import ReplanRejectedError, replan
++        from packages.orchestration.schemas.models import FlightPlan
++
++        old_plan = {
++            "schema_v": "flight_plan_v1",
++            "tasks": [{"id": "T001", "title": "X", "goal": "G",
++                        "acceptance": ["A"], "depends_on": [],
++                        "est_tokens_band": "M", "files_hint": []}],
++            "risks": [],
++            "_approval": "approved",
++        }
++        new_plan = FlightPlan(
++            schema_v="flight_plan_v1",
++            tasks=[{"id": "T001", "title": "Y", "goal": "G2",
++                    "acceptance": ["B"], "depends_on": [],
++                    "est_tokens_band": "S", "files_hint": []}],
++            risks=[],
++        )
++        ev_dir = tmp_path / "evidence"
++        ev_dir.mkdir()
++        with pytest.raises(ReplanRejectedError):
++            replan(old_plan, new_plan, ev_dir, any_task_completed=True)

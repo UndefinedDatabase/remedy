@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/grouped.py",
+  "packages/core/models.py",
+  "packages/orchestration/flight_plan.py"
+ ],
+ "diff_sha256": "05377cab37c39034a3ee43effdb225c39e6dfbb74e413fd66cea39574c060ae8",
+ "job_id": "9b0a8b6d-f03f-46d2-9dba-7584da178cd9",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "05377cab37c39034a3ee43effdb225c39e6dfbb74e413fd66cea39574c060ae8",
+ "safe_diff_sha256": "5842369f018dbcf9e8173189f81a42bbe5b0d00d205993fae0ff0866e91f5a51",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/grouped.py",
+  "packages/core/models.py",
+  "packages/orchestration/flight_plan.py"
+ ],
+ "timestamp": "2026-07-26T00:30:00Z",
+ "tracked_diff_sha256": "5842369f018dbcf9e8173189f81a42bbe5b0d00d205993fae0ff0866e91f5a51",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

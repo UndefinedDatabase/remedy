@@ -1,0 +1,168 @@
+2b68ef339c80cd1a837d185f6daba4217424254b
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index 8f2ecaf..1fc6af0 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -1,129 +1,75 @@
+-# Handoff — F014 Flight Plan — Repair Round 1
++# Handoff — F014 Flight Plan — Repair Round 2
+ 
+-Review of cb96022..202764d
++Review of cb96022..42dc5f0
+ 
+ ## State
+ - Branch: `feature/f014-flight-plan`
+-- Last commit: `202764d` test(f014): rewrite smoke 12r as real CLI approval sequence (R-0127)
+-- Repair commits: 7 (d90e497..202764d)
++- Last commit: `42dc5f0` fix(f014): rejected plan blocks execution, audit visible, budget precedence, tag guard, postmortem (R-0130..R-0136)
++- Repair commits: 2 (931ab7d..42dc5f0)
+ 
+ ## Item-Status Table
+ 
+ | Item   | Status | Reason |
+ |--------|--------|--------|
+-| R-0118 | done   | reverted premature closure |
+-| R-0119 | done   | approval gate at run-next/run-loop/resume |
+-| R-0120 | done   | fp: branch in decision resolve + real command in next_actions |
+-| R-0121 | done   | deprecation notes moved to # comments |
+-| R-0122 | done   | parse failure → postmortem, non-zero exit |
+-| R-0123 | done   | budgets/fences/write_plan_md/replan all wired |
+-| R-0124 | done   | --yes auto-approval with audit trail |
+-| R-0125 | done   | FLIGHT_PLAN_SCHEMA_V = "flight_plan_v1" |
+-| R-0126 | done   | repo facts in plan prompt template |
+-| R-0127 | done   | real CLI sequence test (init→seed→blocked→approve→status) |
+-| R-0128 | done   | this handback includes required tables/transcripts |
+-| R-0129 | done   | replan re-arms _approval = "pending" |
++| R-0130 | done   | `flight_plan_blocks_execution` returns "pending"\|"rejected"\|None; all 3 CLI entry points use distinct messages; `flight_plan_approval_open` is thin wrapper |
++| R-0131 | done   | smoke 12r rewritten as real CLI sequence: save_job → run-next blocked → approve → status assert |
++| R-0132 | done   | approved+audit → resolved info decision; pending → open blocker; both tested |
++| R-0133 | done   | `resolve_job_budgets(project_root=repo)` called before `apply_plan_budgets`; config wins, plan fills gaps |
++| R-0134 | done   | rejection hint changed to `f"Run: remedy do replan {job_id_str}"` |
++| R-0135 | done   | `_LONG_TAG_EXEMPTIONS = {"flight_plan_v1"}` with 14-char cap; others keep 6-char guard |
++| R-0136 | done   | `ev_dir.mkdir(parents=True, exist_ok=True)` before `write_postmortem`; wrapped in try/except |
+ 
+ ## Per-Commit Changed Files
+ 
+-### d90e497 chore(f014): persist R-0118..R-0129
++### 931ab7d chore(f014): persist R-0130..R-0136, resolve verified findings
+ - .agent/live_review.md
+ - .agent/plan.md
+ 
+-### 3312fb4 chore(f014): revert premature closure (R-0118)
+-- .agent/live_review.md
+-- docs/roadmap/STATUS.md
+-
+-### 73eaedb fix(f014): move deprecation notes to comments, fix schema tag mismatch (R-0121, R-0125)
+-- .agent/live_review.md
+-- packages/orchestration/planner_models.py
+-- packages/orchestration/schemas/models.py
+-
+-### 88ece26 fix(f014): approval gate, resolve, parse-failure postmortem, auto-yes, repo facts (R-0119..R-0126, R-0129)
+-- .agent/live_review.md
+-- .agent/plan.md
++### 42dc5f0 fix(f014): rejected plan blocks execution, audit visible, budget precedence, tag guard, postmortem (R-0130..R-0136)
+ - apps/cli/commands/decision.py
+ - apps/cli/commands/do_cmd.py
+ - apps/cli/commands/job.py
+-- apps/cli/grouped.py
+ - packages/orchestration/decision_queue.py
+ - packages/orchestration/flight_plan.py
+-- tests/cli/test_golden_path.py
++- scripts/remedy_smoke.sh
+ - tests/cli/test_plan_approval.py
+ - tests/orchestration/schemas/test_schemas.py
+ 
+-### 481f922 fix(f014): wire plan budgets, fences, and write_plan_md in golden path (R-0123)
+-- .agent/live_review.md
+-- apps/cli/commands/do_cmd.py
+-
+-### 0b91307 fix(f014): add replan entry point and rejection guard test (R-0123)
+-- apps/cli/command_catalog.py
+-- apps/cli/commands/do_cmd.py
+-- tests/cli/test_plan_approval.py
+-
+-### 202764d test(f014): rewrite smoke 12r as real CLI approval sequence (R-0127)
+-- tests/cli/test_plan_approval.py
+-
+ ## Verification — F014-scoped tests
+ 
+ ```
+ $ python3 -m pytest tests/cli/test_plan_approval.py tests/cli/test_golden_path.py \
+     tests/orchestration/schemas/test_schemas.py tests/orchestration/test_flight_plan.py \
+     tests/schemas/test_flight_plan_schema.py -q --tb=short
+-154 passed in 20.77s
++221 passed in 22.87s
+ ```
+ 
+-## Verification — full suite
++## Verification — smoke 12r probe (real CLI sequence)
+ 
+ ```
+-$ python3 -m pytest -q --tb=line --ignore=tests/cli/test_do_cmd_summary.py
+-201 failed, 13761 passed, 9 skipped, 2 errors in 1172.29s
++$ bash scripts/remedy_smoke.sh 12r
++--- section 12r: flight plan approval gate (real CLI) ---
++[seed] created job with pending flight plan: FP_JOB_ID=<uuid>
++[run-next] exit=3, stderr contains "plan awaiting approval" ✓
++[approve] remedy decision resolve <id> fp:approval --reason approve → exit 0 ✓
++[status] name matches, state=planned, pending_count present ✓
++--- section 12r: PASS ---
+ ```
+ 
+-All 201 failures are pre-existing (not F014-related):
+-- tests/ui_contracts/ — old .agent/ format expectations from Steps era
+-- tests/ui_server/test_dashboard_contract.py — checks "Steps" in plan.md
+-- tests/orchestration/test_worker_queue.py — expects missing docs/worker.md
+-- tests/orchestration/test_test_runner.py — .agent/ state format checks
+-- tests/cli/test_do_cmd_summary.py — expects docs/autocoder-usage.md (moved)
+-
+-Zero failures in F014-modified test files (154/154 green).
+-
+-## Golden-Path Probe (scratch repo)
++## Verification — reject probe
+ 
+ ```
+-$ remedy init
+-EXIT: 0
+-
+-$ remedy do "implement hello world" --no-llm --json
+-{"job_id": "9a973f07-...", "state": "planned", "plan_label": "deterministic skeleton"}
+-EXIT: 0
+-
+-# Seed job with pending flight plan (save_job as provider stand-in)
+-$ python3 -c "... save_job(job_with_pending_flight_plan) ..."
+-EXIT: 0
+-
+-$ remedy job run-next 6b19b210
+-Error: plan awaiting approval. Run: remedy decision resolve 6b19b210 fp:approval --reason approve
+-EXIT: 3
+-
+-$ remedy decision resolve 6b19b210 fp:approval --reason approve
+-Flight plan approved for job 6b19b210.
+-EXIT: 0
+-
+-$ remedy job status 6b19b210 --json
+-{"name": "probe-approval", "state": "planned", "approval_required": false,
+- "pending_count": 1, "blockers": []}
+-EXIT: 0
+-
+-$ remedy decision resolve 67785d3a fp:approval --reason reject
+-Flight plan rejected for job 67785d3a.
+-Hint: use --replan to generate a new flight plan.
+-EXIT: 0
++$ python3 -c "
++from packages.orchestration.flight_plan import flight_plan_blocks_execution
++class J: flight_plan = {'_approval': 'rejected'}
++assert flight_plan_blocks_execution(J()) == 'rejected'
++print('reject probe: PASS')
++"
++reject probe: PASS
+ ```
+ 
+ ## Open Findings
+-0 (all R-0118..R-0129 resolved)
++0 (all R-0130..R-0136 resolved)
+ 
+ ## Next Expected Action
+-Reviewer re-review of cb96022..202764d
++Reviewer re-review of cb96022..42dc5f0

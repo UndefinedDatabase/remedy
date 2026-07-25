@@ -1,0 +1,22 @@
+46a5dc5f1b3b8169d87f84db28a7d223dc30a2b0
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index fe41a7f..ab6c69e 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -148,6 +148,16 @@ failure in either would be ambiguous. Rename the F014 section to
+ a unique id.
+ Fix: renamed F014 section to _SMOKE_SECTION="14a".
+ 
++### R-0140 [high] Evidence bundle under-attests T004 — Open
++create_manual_completion_bundle was called with
++operator_attested_tasks T001-T003 (F013 pattern), but F014 has
++four T-slices. The READY zip carries task_runs/T001..T003 only,
++while the STATUS line claims "T001-T004 complete" — the ledger
++would overclaim relative to the evidence. Conditional resolution
++(reviewer-authored): Resolved when a fresh bundle with
++operator_attested_tasks T001-T004 exists on disk and the rebuilt
++READY zip contains task_runs/T004.
++
+ ## Verdict
+ PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
+ All findings R-0118..R-0139 Resolved/Done. Residual risks

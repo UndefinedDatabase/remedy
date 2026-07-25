@@ -148,7 +148,7 @@ failure in either would be ambiguous. Rename the F014 section to
 a unique id.
 Fix: renamed F014 section to _SMOKE_SECTION="14a".
 
-### R-0140 [high] Evidence bundle under-attests T004 — Open
+### R-0140 [high] Evidence bundle under-attests T004 — Resolved (conditional predicate met)
 create_manual_completion_bundle was called with
 operator_attested_tasks T001-T003 (F013 pattern), but F014 has
 four T-slices. The READY zip carries task_runs/T001..T003 only,
