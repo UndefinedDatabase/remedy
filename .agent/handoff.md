@@ -1,68 +1,117 @@
-# Handoff — F013 Job intake (closure)
+# Handoff — F014 Flight Plan — Closure Repair (R-0140)
+
+Review of cb96022..785f4d4
 
 ## State
-- Branch: `feature/f013-job-intake`
-- Last commit: `628922d` chore(f013): STATUS fills + zip evidence (READY_FOR_REVIEW)
-- Total commits on branch: 21+
-- Verdict: PASS_WITH_RISKS
-- Evidence job: `f013_job_intake_closure`
+- Branch: `feature/f014-flight-plan`
+- Verdict: PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
+- Evidence job: `9b0a8b6d-f03f-46d2-9dba-7584da178cd9`
+- Evidence dir: `.data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9`
+- Zip: `remedy-review-20260726-001936-READY_FOR_REVIEW.zip`
+- Zip SHA-256: `bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7`
+- PR: https://github.com/UndefinedDatabase/remedy/pull/148
 
-## Closure Commits
+## Item-Status Table
 
-### `1c46855` chore(f013): resolve R-0116..R-0117, verdict, built state
-| File | Change |
-|------|--------|
-| .agent/live_review.md | R-0116, R-0117 → Resolved; verdict block appended |
-| .agent/plan.md | +closure checklist items, Current Step → "Closure complete." |
-| docs/roadmap/features/T1_F013.md | Built State section added |
+| Item   | Status | Reason |
+|--------|--------|--------|
+| R-0140 | done   | fresh 4-task bundle (T001-T004), READY zip contains task_runs/T004 |
 
-### `dda7662` chore(f013): add newline to empty test package init
-| File | Change |
-|------|--------|
-| tests/schemas/__init__.py | Empty → newline (evidence safe-diff parseable) |
+## Per-Commit Changed Files
 
-## Integrity Check
-```json
+### 46a5dc5 chore(f014): persist R-0140
+- .agent/live_review.md
+
+### 3bc8751 chore(f014): remove superseded 3-task evidence bundle and zip
+- .data/evidence_exports/6f51a894-*/* (deleted)
+- remedy-review-20260726-001139-READY_FOR_REVIEW.zip (deleted)
+
+### 785f4d4 chore(f014): closure repair — T004 attestation, fresh zip (R-0140)
+- docs/roadmap/STATUS.md
+- .agent/live_review.md
+- .data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9/* (100 files)
+- remedy-review-20260726-001936-READY_FOR_REVIEW.zip
+
+## STEP B — Fresh Evidence Job (raw)
+
+```
+$ python3 -c "from packages.orchestration.job_evidence import create_manual_completion_bundle; ..."
 {
-  "version": 1,
-  "passed": true,
-  "fail_count": 0,
-  "check_count": 5,
-  "checks": [
-    {"name": "handler_import", "status": "pass", "message": "handlers=305"},
-    {"name": "live_review_verdict", "status": "pass", "message": "PASS_WITH_RISKS"},
-    {"name": "plan_consistency", "status": "pass", "message": "unchecked=0"},
-    {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
-    {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
-  ]
+  "job_id": "9b0a8b6d-f03f-46d2-9dba-7584da178cd9",
+  "head_commit": "3bc8751fc70199f9cb6e49d6056181ed6f5855a3",
+  "authority_count": 18,
+  "partition": {
+    "T001": 4,
+    "T002": 4,
+    "T003": 4,
+    "T004": 6
+  },
+  "commit_count": 28,
+  "verdict": "PASS_WITH_RISKS",
+  "manual_completion": true,
+  "operator_attested_tasks": [
+    "T001",
+    "T002",
+    "T003",
+    "T004"
+  ],
+  "total_passed": 221
 }
 ```
 
-## Test Counts (full verification)
+## STEP C — Fresh Zip (raw)
+
 ```
-$ python3 -m pytest tests/orchestration/test_intake.py tests/cli/test_golden_path.py \
-    tests/schemas/test_job_intake.py tests/test_storage.py tests/test_ollama_provider.py \
-    tests/orchestration/schemas/test_schemas.py -q --tb=no
-177 passed in 16.65s
+$ bash scripts/make_review_zip.sh --evidence-dir .data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9
+UNCHANGED: runtime_integration_gate.json — rebuilt from source; identical to existing
+Evidence refresh completed for staged copy.
+Observability index generated from staged bytes: evidence/current/self_run_observability_index.json
+{"member_count": 1479, "authoritative_count": 18, "symlink_count": 0, "tombstone_count": 0, "final_path": "remedy-review-20260726-001936-READY_FOR_REVIEW.zip", "final_sha256": "bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7", "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256": "d92179bf6409d72678545e69c186d122ae44ed2a884aadb21227fe31e1fcf419"}
+
+============================================
+REVIEW_PACKAGE_CREATED=true
+PACKAGE_STATUS=READY_FOR_REVIEW
+PACKAGING_CWD=/home/decodeux/Repos/remedy
+EVIDENCE_DIR=.data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9
+REVIEW_SUBJECT_ALIGNMENT=PASS
+EVIDENCE_AUTHORITATIVE=true
+ZIP_PATH=/home/decodeux/Repos/remedy/remedy-review-20260726-001936-READY_FOR_REVIEW.zip
+============================================
+
+ZIP CREATED AND READY FOR FINAL REVIEW
+
+8.2M	remedy-review-20260726-001936-READY_FOR_REVIEW.zip
+Included files: 1479
+Branch: feature/f014-flight-plan
+Commit: 3bc8751fc70199f9cb6e49d6056181ed6f5855a3
+Evidence: evidence/current/
 ```
-Pre-existing flake: `test_fallback_to_default_when_no_env_vars` in test_ollama_provider.py
-(env-capture test isolation — fails at file level, passes isolated; same on main at eafcade).
 
-## Evidence Job
-- Job ID: `f013_job_intake_closure`
-- Evidence dir: `.data/remedy-job-evidence-f013_job_intake_closure`
-- Verdict: PASS_WITH_RISKS
-- Authority: 17 files, 3 tasks, 21 commits
-- Total passed: 177
+### T004 grep verification
+```
+$ unzip -l remedy-review-20260726-001936-READY_FOR_REVIEW.zip | grep "task_runs/T004"
+      330  1980-01-01 00:00   evidence/current/task_runs/T004/manifest.json
+     1169  1980-01-01 00:00   evidence/current/task_runs/T004/manual_repair_provenance.json
+       62  1980-01-01 00:00   evidence/current/task_runs/T004/missing_tests_gate.json
+      474  1980-01-01 00:00   evidence/current/task_runs/T004/provider_evidence.json
+      625  1980-01-01 00:00   evidence/current/task_runs/T004/review.json
+      313  1980-01-01 00:00   evidence/current/task_runs/T004/review_scope_packet.json
+    40400  1980-01-01 00:00   evidence/current/task_runs/T004/safe.diff
+       63  1980-01-01 00:00   evidence/current/task_runs/T004/scratch_file_guard.json
+       59  1980-01-01 00:00   evidence/current/task_runs/T004/spec_compliance_check.json
+      149  1980-01-01 00:00   evidence/current/task_runs/T004/tests.txt
+      299  1980-01-01 00:00   evidence/current/task_runs/T004/token_accounting.json
+```
 
-## Zip
-- File: `remedy-review-20260725-184236-READY_FOR_REVIEW.zip`
-- SHA-256: `098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1`
-- Status: READY_FOR_REVIEW
-- Members: 1458
-- Evidence authoritative: true
+## Final STATUS Line (raw grep)
 
-## PR
-- PR #146: https://github.com/UndefinedDatabase/remedy/pull/146
-- Title: F013 — Job intake
-- Status: OPEN (do NOT merge — protocol step 6)
+```
+$ grep "F014" docs/roadmap/STATUS.md
+- [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+```
+
+## Open Findings
+0
+
+## Next Expected Action
+Merge gated by Open PR Gate at next feature's start.

@@ -170,6 +170,7 @@ def _cmd_do_mission(
     repo: str = ".",
     json_output: bool = False,
     no_llm: bool = False,
+    yes: bool = False,
 ) -> None:
     """Golden-path: mission string → planned job (F147 T001)."""
     if not mission or not mission.strip():
@@ -185,11 +186,12 @@ def _cmd_do_mission(
         )
         sys.exit(3)
 
-    from packages.core.models import Job
+    from packages.core.models import Job, RunState
     from packages.orchestration.intake import heuristic_intake, make_provider_call_fn, run_intake
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
+    call_fn = None
     intake_result = None
     intake_traces: list = []
     intake_fallback_reason = ""
@@ -224,37 +226,138 @@ def _cmd_do_mission(
             intake_result = heuristic_intake(mission)
             intake_fallback_reason = "provider_unavailable"
 
-    job = Job(
-        name=mission[:80], mission=mission, user_prompt=mission,
-        project_id=str(project.id),
-        intake=intake_result.value.model_dump(),
-    )
-    result = plan_job(job)
-    save_job(result.job)
+    # --- Flight Plan (LLM) or deterministic fallback ---
+    job = None
+    plan_label = "deterministic skeleton"
+
+    if call_fn is not None and not no_llm:
+        from packages.orchestration.flight_plan import (
+            apply_plan_budgets,
+            apply_plan_fences,
+            map_flight_plan_to_tasks,
+            plan_job_llm,
+            write_plan_md,
+        )
+        fp_result = plan_job_llm(intake_result.value.model_dump(), call_fn)
+        if fp_result.plan is not None:
+            fp_dict = fp_result.plan.model_dump()
+            fp_dict["_approval"] = "pending"
+            tasks = map_flight_plan_to_tasks(fp_result.plan)
+            from packages.core.models import JobBudgets, JobFences
+            from packages.orchestration.budget_resolution import resolve_job_budgets
+            config_budgets = resolve_job_budgets(project_root=repo)
+            config_budgets_dict = config_budgets.model_dump(exclude_none=True) if config_budgets else None
+            merged_budgets = apply_plan_budgets(config_budgets_dict, fp_result.plan.budgets)
+            merged_fences = apply_plan_fences(None, fp_result.plan.fences)
+            job_budgets = None
+            if merged_budgets:
+                try:
+                    job_budgets = JobBudgets(**{
+                        k: v for k, v in merged_budgets.items()
+                        if k in JobBudgets.model_fields})
+                except Exception:
+                    pass
+            job_fences = None
+            if merged_fences:
+                try:
+                    job_fences = JobFences(**{
+                        k: v for k, v in merged_fences.items()
+                        if k in JobFences.model_fields})
+                except Exception:
+                    pass
+            job = Job(
+                name=mission[:80], mission=mission, user_prompt=mission,
+                project_id=str(project.id),
+                intake=intake_result.value.model_dump(),
+                flight_plan=fp_dict,
+                tasks=tasks,
+                state=RunState.PLANNED,
+                budgets=job_budgets,
+                fences=job_fences,
+            )
+            save_job(job)
+            from packages.orchestration.data_paths import job_evidence_export_dir
+            write_plan_md(fp_result.plan, job_evidence_export_dir(str(job.id)))
+            if yes:
+                fp_dict["_approval"] = "approved"
+                fp_dict["_approval_audit"] = {
+                    "mode": "auto_yes",
+                    "reason": "auto-approved via --yes",
+                }
+                job.flight_plan = fp_dict
+                save_job(job)
+                plan_label = (
+                    f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
+                )
+            else:
+                plan_label = (
+                    f"flight plan {fp_result.plan.schema_v} (awaiting approval)"
+                )
+        else:
+            job = Job(
+                name=mission[:80], mission=mission, user_prompt=mission,
+                project_id=str(project.id),
+                intake=intake_result.value.model_dump(),
+                state=RunState.PENDING,
+            )
+            save_job(job)
+            from packages.orchestration.data_paths import job_evidence_export_dir
+            from packages.orchestration.failure_postmortem import (
+                FailureSignals,
+                build_job_rollup,
+                write_postmortem,
+            )
+            signals = FailureSignals(
+                error_class="parse",
+                error_text=fp_result.error_hint or "flight plan parse failure",
+            )
+            pm = build_job_rollup(job_id=str(job.id), signals=signals)
+            ev_dir = job_evidence_export_dir(str(job.id))
+            ev_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                write_postmortem(ev_dir, pm, root=ev_dir)
+            except Exception as exc:
+                print(f"Warning: postmortem write failed: {exc}", file=sys.stderr)
+            print(
+                f"Error: flight plan generation failed: "
+                f"{fp_result.error_hint or 'parse failure'}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    if job is None:
+        job = Job(
+            name=mission[:80], mission=mission, user_prompt=mission,
+            project_id=str(project.id),
+            intake=intake_result.value.model_dump(),
+        )
+        plan_result = plan_job(job)
+        job = plan_result.job
+        save_job(job)
 
     if intake_traces:
         from packages.orchestration.prompt_trace import write_trace_jsonl
         from packages.orchestration.run_log import RunLogWriter
-        log = RunLogWriter(job_id=result.job.id)
+        log = RunLogWriter(job_id=job.id)
         try:
             write_trace_jsonl(intake_traces, log.path.parent / "prompt_trace.jsonl")
         except OSError:
             pass
 
     from packages.orchestration.project_registry import attach_job, save_project
-    attach_job(project, str(result.job.id))
+    attach_job(project, str(job.id))
     save_project(project)
 
-    short_id = str(result.job.id)[:8]
+    short_id = str(job.id)[:8]
     display_mission = mission if len(mission) <= _MISSION_DISPLAY_MAX else mission[:_MISSION_DISPLAY_MAX] + "…"
 
     if json_output:
         import json as _json
         print(_json.dumps({
-            "job_id": str(result.job.id),
+            "job_id": str(job.id),
             "short_id": short_id,
             "project_slug": project.slug,
-            "state": result.job.state.value,
+            "state": job.state.value,
             "mission": mission,
             "intake": {
                 "source": intake_result.source,
@@ -263,9 +366,9 @@ def _cmd_do_mission(
             },
             "tasks": [
                 {"task_id": str(t.id), "description": t.description}
-                for t in result.job.tasks
+                for t in job.tasks
             ],
-            "plan_label": "deterministic skeleton (LLM Flight Plan lands with F013/F014)",
+            "plan_label": plan_label,
             "next_command": "remedy status",
         }, indent=2))
         return
@@ -273,7 +376,7 @@ def _cmd_do_mission(
     print(f"Job: {short_id}")
     print(f"Project: {project.slug}")
     print(f"Mission: {display_mission}")
-    print(f"State: {result.job.state.value}")
+    print(f"State: {job.state.value}")
     if intake_result.source == "llm":
         intake_label = "intake: llm"
     elif intake_fallback_reason == "forced":
@@ -286,10 +389,10 @@ def _cmd_do_mission(
         intake_label = f"intake: {intake_result.source}"
     print(intake_label)
     print("Tasks:")
-    for t in result.job.tasks:
+    for t in job.tasks:
         task_type = t.inputs.get("task_type", "")
         print(f"  - {task_type}: {t.description}")
-    print("plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)")
+    print(f"plan: {plan_label}")
     print("Next: remedy status")
 
 
@@ -328,15 +431,16 @@ def _cmd_do(
     injected_default: bool = False,
     truly_bare: bool = False,
     no_llm: bool = False,
+    yes: bool = False,
 ) -> None:
     # --- Bare-mission golden path (F147) ---
     # Fires ONLY when grouped.py determined the invocation is truly bare:
-    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm
+    # `run` was injected AND no flag tokens besides --json/--repo/--no-llm/--yes
     # appeared in the raw argv. This catches `do "x" --autonomy-level 1`
     # (explicit flag at default value) which value-equality checks cannot
     # distinguish.
     if truly_bare and goal:
-        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm)
+        _cmd_do_mission(goal, repo=repo, json_output=json_output, no_llm=no_llm, yes=yes)
         return
 
     # --- Budget resolution (always runs — catches config-only budgets) ---
@@ -2681,6 +2785,82 @@ def _cmd_do_job_flow(
     _print_final_audit(final_audit)
 
 
+def _cmd_do_replan(
+    job_id_str: str,
+    *,
+    json_output: bool = False,
+) -> None:
+    """Regenerate the flight plan for an existing job."""
+    from packages.orchestration.data_paths import job_evidence_export_dir, resolve_job_id
+    from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+
+    job_id = resolve_job_id(job_id_str)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    fp = getattr(job, "flight_plan", None)
+    if not isinstance(fp, dict):
+        print("Error: job has no flight plan to replan.", file=sys.stderr)
+        sys.exit(1)
+
+    intake = getattr(job, "intake", None)
+    if not isinstance(intake, dict):
+        print("Error: job has no intake data.", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.intake import make_provider_call_fn
+    call_fn = make_provider_call_fn()
+    if call_fn is None:
+        print("Error: no provider available for replan.", file=sys.stderr)
+        sys.exit(1)
+
+    any_completed = any(
+        getattr(t, "status", None) in ("completed", "passed")
+        for t in getattr(job, "tasks", [])
+    )
+
+    from packages.orchestration.flight_plan import (
+        ReplanRejectedError,
+        map_flight_plan_to_tasks,
+        plan_job_llm,
+        replan,
+    )
+
+    fp_result = plan_job_llm(intake, call_fn)
+    if fp_result.plan is None:
+        print(
+            f"Error: replan failed: {fp_result.error_hint or 'parse failure'}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    ev_dir = job_evidence_export_dir(str(job.id))
+    try:
+        new_fp_dict, version = replan(
+            fp, fp_result.plan, ev_dir,
+            any_task_completed=any_completed,
+        )
+    except ReplanRejectedError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    job.flight_plan = new_fp_dict
+    job.tasks = map_flight_plan_to_tasks(fp_result.plan)
+    save_job(job)
+
+    if json_output:
+        print(json.dumps({
+            "job_id": str(job.id),
+            "version": version,
+            "approval": new_fp_dict.get("_approval", "pending"),
+        }, indent=2))
+    else:
+        print(f"Replanned job {str(job.id)[:8]} → version {version} (awaiting approval)")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "do.run": lambda args: _cmd_do(
         getattr(args, "goal", None) or "",
@@ -2719,6 +2899,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
         deadline=getattr(args, "deadline", None),
         no_llm=getattr(args, "no_llm", False),
+        yes=getattr(args, "yes", False),
+    ),
+    "do.replan": lambda args: _cmd_do_replan(
+        args.job_id,
+        json_output=getattr(args, "json", False),
     ),
     "do.plan": lambda args: _cmd_do_plan(
         task_file=getattr(args, "task_file", None) or "",

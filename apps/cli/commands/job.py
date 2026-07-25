@@ -398,6 +398,23 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    block_reason = flight_plan_blocks_execution(job)
+    if block_reason == "pending":
+        print(
+            f"Error: plan awaiting approval. "
+            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+    elif block_reason == "rejected":
+        print(
+            f"Error: flight plan rejected. "
+            f"Run: remedy do replan {job_id_str[:8]}",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
     from pathlib import Path
 
     from pydantic import ValidationError
@@ -635,6 +652,23 @@ def _cmd_run_loop(
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    block_reason = flight_plan_blocks_execution(job)
+    if block_reason == "pending":
+        print(
+            f"Error: plan awaiting approval. "
+            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+    elif block_reason == "rejected":
+        print(
+            f"Error: flight plan rejected. "
+            f"Run: remedy do replan {job_id_str[:8]}",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
     from packages.orchestration.autonomy_loop import (
         export_loop_result_json,
         run_autonomy_loop,
@@ -779,6 +813,23 @@ def _cmd_resume(
     except JobNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
+
+    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    block_reason = flight_plan_blocks_execution(job)
+    if block_reason == "pending":
+        print(
+            f"Error: plan awaiting approval. "
+            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+    elif block_reason == "rejected":
+        print(
+            f"Error: flight plan rejected. "
+            f"Run: remedy do replan {job_id_str[:8]}",
+            file=sys.stderr,
+        )
+        sys.exit(3)
 
     data_dir = resolve_data_root()
 

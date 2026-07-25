@@ -44,6 +44,7 @@ class HumanDecision:
 DECISION_TYPES = frozenset({
     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
     "token_budget", "worker_approval", "memory_review", "revert_missing",
+    "flight_plan_approval",
 })
 
 
@@ -226,6 +227,46 @@ def list_decisions(
             ))
     except (ImportError, ValueError, OSError):
         pass
+
+    # 7. Flight plan approval
+    _flight_plan = getattr(job, "flight_plan", None)
+    if isinstance(_flight_plan, dict):
+        _fp_approval = _flight_plan.get("_approval")
+        if _fp_approval == "pending":
+            decisions.append(HumanDecision(
+                id="fp:approval",
+                type="flight_plan_approval",
+                status="open",
+                severity="blocker",
+                source="flight_plan",
+                related_node_id="",
+                related_intent_id="",
+                related_file="",
+                safe_summary="Flight plan awaiting approval.",
+                next_actions=(
+                    f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
+                    f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
+                ),
+                created_at="",
+                resolved_at=None,
+            ))
+        elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
+            audit = _flight_plan["_approval_audit"]
+            reason = audit.get("reason", "auto-approved")
+            decisions.append(HumanDecision(
+                id="fp:approval",
+                type="flight_plan_approval",
+                status="resolved",
+                severity="info",
+                source="flight_plan",
+                related_node_id="",
+                related_intent_id="",
+                related_file="",
+                safe_summary=f"Flight plan {reason}.",
+                next_actions=(),
+                created_at="",
+                resolved_at="",
+            ))
 
     return decisions
 

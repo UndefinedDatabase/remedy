@@ -1,0 +1,91 @@
+1215b3baa9d0cdb477effe7c60de10fcf7f7b71f
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 97e9ef9..fe41a7f 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -149,4 +149,15 @@ a unique id.
+ Fix: renamed F014 section to _SMOKE_SECTION="14a".
+ 
+ ## Verdict
+-(pending)
++PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
++All findings R-0118..R-0139 Resolved/Done. Residual risks
++(documented, outside F014 scope or Low):
++1. Full smoke run halts at pre-existing section 6j
++   (max_test_runs=0 default, run_contract.py:284). F014 section
++   14a proven standalone (reviewer-executed, rounds 5-6).
++2. scripts/remedy_smoke.sh masks its exit code
++   (`remedy_smoke "$@" | tee` — FAILED banner, exit 0);
++   pre-existing, gap-backlog candidate.
++3. Fences have no config source today; plan fences apply only
++   when job fences are unset. Budget precedence is CLI-tested.
++LAST_REVIEWED_SHA: 6faf90f7ab2ed85fa653c95fc5fca239915d5ce6
+diff --git a/.agent/plan.md b/.agent/plan.md
+index aa775b1..42242cd 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,19 +1,16 @@
+-# Plan — F014 Repair Round 2 (R-0130..R-0136)
++# Plan — F014 Flight Plan
+ 
+ ## Goal
+-Fix 7 review findings from FAIL verdict on repair round 1.
++Deliver LLM-generated, schema-validated flight plans with approval gate.
+ 
+ ## Checklist
+-- [x] STEP A — persist findings
+-- [ ] R-0130 — rejected flight plan blocks execution
+-- [ ] R-0134 — reject hint names real replan command
+-- [ ] R-0132 — --yes audit surfaces as RESOLVED decision
+-- [ ] R-0133 — config-budget precedence at CLI
+-- [ ] R-0135 — restore schema-tag guard
+-- [ ] R-0136 — parse-failure test strengthened
+-- [ ] R-0131 — rewrite smoke 12r in scripts/remedy_smoke.sh
+-- [ ] STEP C — verification
+-- [ ] STEP D — handback
++- [x] T001 — schemas + DAG validator + tests
++- [x] T002 — plan generation + task mapping + budget/fence precedence
++- [x] T003 — plan.md renderer + replan versioning
++- [x] T004 — approval gate + --yes audit + execution-refusal + smoke
++- [x] R-0118..R-0129 — repair round 1
++- [x] R-0130..R-0136 — repair round 2
++- [x] R-0137..R-0139 — repair round 3 + hygiene
+ 
+ ## Current Step
+-Persisting findings. Next: R-0130.
++Closure in progress.
+diff --git a/docs/roadmap/features/T1_F014.md b/docs/roadmap/features/T1_F014.md
+index e95fea3..b5d6b2f 100644
+--- a/docs/roadmap/features/T1_F014.md
++++ b/docs/roadmap/features/T1_F014.md
+@@ -77,3 +77,30 @@ Task execution semantics (the runner's contract stays), decision-answer
+ UX, granularity heuristics (next feature), persona routing. Suggested
+ tests: tests/orchestration/test_flight_plan.py,
+ tests/schemas/test_flight_plan_schema.py, tests/cli/test_plan_approval.py.
++
++## Built State (2026-07-26)
++- Schemas: PlannedTask + FlightPlan ("flight_plan_v1") in
++  packages/orchestration/schemas/models.py — DAG-validated
++  (duplicate ids, unknown deps, cycles, 25-task cap, >12 flag);
++  legacy PlannerOutput/PlannerPlan carry deprecation comments.
++- packages/orchestration/flight_plan.py: plan_job_llm (intake JSON
++  + cheap repo facts + rendered schema via run_structured_call,
++  one parse retry), map_flight_plan_to_tasks (metadata in
++  task.inputs["flight"]), apply_plan_budgets/fences (user config
++  wins — resolve_job_budgets consulted on the bare path),
++  render_plan_md/write_plan_md (deterministic, into
++  evidence_exports/<job_id>/), replan versioning (re-arms
++  pending; rejected after any completed task).
++- Gate: flight_plan_blocks_execution enforced in job run-next /
++  run-loop / resume (exit 3; pending and rejected variants);
++  approve/reject via `remedy decision resolve <id> fp:approval
++  --reason approve|reject`; `remedy do --yes` records a visible
++  auto-approval audit decision; `remedy do replan <job_id>`.
++- Parse failure: postmortem written, job saved unplanned without
++  tasks, non-zero exit; deterministic skeleton only for
++  --no-llm/provider-down (golden-path label flipped accordingly).
++- Smoke section 14a: real CLI approval sequence.
++- Tests: tests/schemas/test_flight_plan_schema.py,
++  tests/orchestration/test_flight_plan.py,
++  tests/cli/test_plan_approval.py (+ golden-path updates);
++  221 in the F014 verification set.

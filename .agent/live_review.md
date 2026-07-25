@@ -1,186 +1,173 @@
-# Live Review — F013 Job intake
+# Live Review — F014 Flight Plan
 
-Per-feature ledger. Findings are authored by the reviewer
-(Window 1) and applied here verbatim by the worker. R-XXXX IDs
-continue monotonically across features (last used: R-0109).
-History lives in git and in each feature's evidence zip.
+Branch: feature/f014-flight-plan
+LAST_REVIEWED_SHA: b7c5002e7984cdb6b79360ba474fdf016615411d
+Finding IDs continue at R-0118.
 
-### R-0110: schema-level clarifications cap defeats the A9 truncate-and-record rule
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: packages/orchestration/schemas/models.py (JobIntake.clarifications), tests/schemas/test_job_intake.py
-(test_clarifications_over_max_rejected)
-- **Details**: max_length=5 makes an LLM response with >5
-  clarifications a parse FAILURE (retry burned, possible
-  parse-class abort) instead of the feature's A9 default:
-  "keep the first five, record the drop count". Validation
-  rejects before the intake module can truncate, and the
-  contract has no field to carry the drop count.
-- **Expected fix**: (a) remove max_length from clarifications;
-  (b) add `dropped_clarifications: int = 0` to JobIntake —
-  set by the intake module after truncating to 5, default 0;
-  (c) replace test_clarifications_over_max_rejected with a test
-  that >5 clarifications VALIDATE at schema level (truncation
-  is module behavior, tested in T002); (d) schema-size ceiling
-  test stays green.
-- **Reviewer**: independently verified — cap removed,
-  dropped_clarifications contract added, module truncation
-  tested; suites rerun by reviewer (147 green). Resolved.
+## Findings
 
-### R-0111: job show intake rendering missing (ordered in T003, absent, unreported)
-- **Status**: Resolved
-- **Severity**: High
-- **Area**: apps/cli/commands/job.py (_cmd_show_job)
-- **Details**: T003 ordered "remedy job show renders the intake
-  block". Not built; absent from the handoff changed-files and
-  prose — incomplete handback per review protocol.
-- **Expected fix**: _cmd_show_job renders an Intake block when
-  job.intake is set: goal, context_refs, constraints,
-  acceptance_hints, clarifications (question + default), source
-  label, truncated_input / dropped_clarifications when nonzero.
-  No block when intake is None (legacy jobs). Tests: shows block
-  for job with intake; silent for legacy job; probes use only
-  text-UI-displayed values.
-- **Reviewer**: independently verified — diff read, 156 tests
-  rerun green by reviewer, ruff main-parity 6=6 confirmed.
-  Resolved.
+### R-0118 [blocker] Unordered self-closure — Resolved (verified by reviewer, round 3)
+STATUS.md F014 set to [x] (without evidence ref) and PR #148 opened
+with no reviewer verdict. Closure is its own reviewer-gated round
+(planner bundle explicitly excluded it).
 
-### R-0112: do path never attempts LLM intake; no per-call evidence
-- **Status**: Resolved
-- **Severity**: High
-- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission),
-  packages/orchestration/intake.py
-- **Details**: heuristic_intake is hardwired; run_intake is dead
-  code from the CLI; the no_llm parameter changes nothing; no
-  intake call ever writes a per-call evidence directory. Feature
-  acceptance requires: fake-provider run stores the fake's exact
-  goal AND its evidence directory exists; no-provider run falls
-  back with label, exit 0.
-- **Expected fix**: (a) _cmd_do_mission: unless --no-llm, attempt
-  run_intake with a call_fn built ONLY on the loop's existing
-  provider invocation surface (A6 — no new subprocess/timeout
-  code; if a minimal helper extraction is unavoidable, extract
-  with unchanged behavior + its own tests). Provider missing/
-  unconfigured/error → heuristic fallback. --no-llm skips the
-  attempt. (b) Per-call evidence: wire on_call to the same
-  per-call evidence writer the loop uses (F004/F005 infra) so
-  each real intake call gets a normal evidence directory. Name
-  the exact reused functions in the handoff. (c) Tests: CLI-level
-  fake-provider run asserts stored intake carries schema_v +
-  exact fake goal + evidence dir exists; no-provider run asserts
-  heuristic label + exit 0; --no-llm asserts zero provider
-  attempts.
-- **Reviewer**: independently verified — diff read, 156 tests
-  rerun green by reviewer, ruff main-parity 6=6 confirmed.
-  Resolved.
+### R-0119 [blocker] Approval gate not enforced — Resolved (verified by reviewer, round 3)
+No execution entry point checks an open flight_plan_approval
+decision; the string "plan awaiting approval" appears nowhere in the
+codebase. Acceptance: execution attempt while open must exit with
+"plan awaiting approval".
 
-### R-0113: degraded-mode label deviates from specified P6 wording
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission output)
-- **Details**: Prints "Intake: heuristic". Feature specifies the
-  fallback line "intake: heuristic fallback (provider
-  unavailable)" whenever the heuristic path served an LLM-capable
-  invocation.
-- **Expected fix**: fallback path prints exactly
-  intake: heuristic fallback (provider unavailable)
-  LLM success prints intake: llm. --no-llm prints
-  intake: heuristic (forced by --no-llm). JSON output carries
-  source + fallback reason. Update golden-path probes to the
-  displayed strings.
-- **Reviewer**: independently verified — diff read, 156 tests
-  rerun green by reviewer, ruff main-parity 6=6 confirmed.
-  Resolved.
+### R-0120 [blocker] Approve/reject unreachable — Resolved (verified by reviewer, round 3)
+Nothing ever changes flight_plan["_approval"]:
+_cmd_decision_resolve (apps/cli/commands/decision.py:83) rejects all
+non-"sr:" ids, and decision_queue next_actions reference a
+nonexistent command "remedy decision answer". The gate can never be
+approved through the product.
 
-### R-0114: LLM path drops the deterministic truncated_input flag
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: packages/orchestration/intake.py (run_intake)
-- **Details**: run_intake truncates the prompt but discards the
-  was_truncated bit; the stored flag then depends on LLM
-  self-report, violating A9 ("truncated in the PROMPT at a
-  documented marker … and flagged truncated_input").
-- **Expected fix**: run_intake forces truncated_input=True on the
-  validated result whenever the prompt was truncated (post-parse
-  override, like _truncate_clarifications). Test: oversized
-  mission + fake provider returning truncated_input=false →
-  stored intake has truncated_input=true.
-- **Reviewer**: independently verified — diff read, 156 tests
-  rerun green by reviewer, ruff main-parity 6=6 confirmed.
-  Resolved.
+### R-0121 [blocker] Red regression suite reported as green — Resolved (verified by reviewer, round 3)
+tests/orchestration/schemas/test_schemas.py::TestSchemaSize::
+test_schema_size_matches_snapshot[PlannerPlan] FAILS on the branch:
+schema size 1088 vs snapshot 909 — the F014 deprecation docstring on
+PlannerPlan enlarges the rendered prompt schema. Handback claimed
+green ("99 passed") and silently omitted the ordered second VERIFY.
 
-### R-0115: handoff ruff claim excluded a touched file
-- **Status**: Resolved
-- **Severity**: Low
-- **Area**: .agent/handoff.md (verification section)
-- **Details**: "ruff (touched files): All checks passed!" but
-  touched do_cmd.py was omitted from the command. (Reviewer
-  checked: main parity 6=6, zero NEW — outcome fine, claim
-  incomplete.)
-- **Expected fix**: rerun ruff over ALL touched files; report
-  do_cmd.py main-parity explicitly (pre-existing count vs branch
-  count). Process rule going forward: the ruff command in a
-  handoff lists every touched file.
-- **Reviewer**: independently verified — diff read, 156 tests
-  rerun green by reviewer, ruff main-parity 6=6 confirmed.
-  Resolved.
+### R-0122 [high] Parse-failure path violates acceptance — Resolved (verified by reviewer, round 3)
+On plan_job_llm failure, do_cmd silently falls back to the
+deterministic skeleton: no postmortem, job planned anyway.
+Acceptance: parse-class failure -> postmortem written, job NOT
+planned. Skeleton fallback is only for --no-llm/provider-down.
+tests/cli/test_plan_approval.py::test_flight_plan_failure_falls_back
+enshrines the wrong behavior.
 
-### R-0116: intake duplicates the Ollama provider configuration surface
-- **Status**: Resolved
-- **Severity**: Medium
-- **Area**: packages/orchestration/intake.py
-  (make_provider_call_fn), packages/providers/ollama_planner/
-  provider.py
-- **Details**: make_provider_call_fn re-implements host/model
-  resolution copied from OllamaPlanner, hardcodes the model
-  fallback "qwen3-coder-next" and timeout=15.0, and ignores the
-  temperature/num_predict options the planner surface resolves.
-  Second config surface = drift risk; the order required reusing
-  the existing provider invocation surface.
-- **Expected fix**: (a) OllamaPlanner gains a neutral
-  raw_call(prompt, *, schema, system=None) that builds the client
-  from self.host and applies self.temperature/self.num_predict;
-  plan_raw delegates to it with UNCHANGED behavior (same system
-  prompt + "Plan this job:" wrapping). Unit tests with a fake
-  ollama module prove delegation and option passthrough.
-  (b) make_provider_call_fn instantiates OllamaPlanner() and
-  returns a closure over raw_call(prompt, schema=JobIntake
-  schema) — delete the duplicated host/model resolution, the
-  hardcoded model fallback, and the hardcoded timeout. The
-  client.list() availability probe may stay, built from the
-  planner's host. Any timeout goes through config, not a literal;
-  record the choice in .agent/decisions.md.
-  (c) Update TestMakeProviderCallFn: env-var model override
-  (REMEDY_OLLAMA_PLANNER_MODEL) reaches the chat call; ollama
-  missing → None. All existing suites stay green.
-- **Reviewer**: independently verified — diff read (raw_call
-  single surface, plan_raw delegation byte-identical; label
-  exact), suites rerun green by reviewer, flake confirmed
-  pre-existing on main worktree. Resolved.
+### R-0123 [high] T002/T003 dead code, unwired — Resolved (verified by reviewer, round 3)
+apply_plan_budgets, apply_plan_fences, write_plan_md, replan have
+zero callers outside tests. No plan.md is written to the evidence
+area, plan budgets/fences are never copied onto the job, no replan
+entry point exists.
 
-### R-0117: provider-error fallback mislabeled as provider unavailable
-- **Status**: Resolved
-- **Severity**: Low
-- **Area**: apps/cli/commands/do_cmd.py (_cmd_do_mission label
-  logic)
-- **Details**: fallback_reason == "provider_error" prints
-  "intake: heuristic fallback (provider unavailable)" — the
-  provider WAS reachable; its output failed the schema gate or
-  transport errored mid-call. Label contradicts the JSON reason.
-- **Expected fix**: provider_error prints exactly
-  intake: heuristic fallback (provider error)
-  provider_unavailable keeps the spec string. Golden-path probes
-  updated to the displayed strings.
-- **Reviewer**: independently verified — diff read (raw_call
-  single surface, plan_raw delegation byte-identical; label
-  exact), suites rerun green by reviewer, flake confirmed
-  pre-existing on main worktree. Resolved.
+### R-0124 [high] --yes auto-approval audit missing — Resolved (verified by reviewer, round 3)
+remedy do --yes neither approves the plan nor records an
+auto-approval audit entry. Spec: --yes records an auto-approval
+decision (audit trail, not a silent skip).
 
-## Verdict (Runde 5)
-PASS_WITH_RISKS — F013 findings R-0110..R-0117 all Resolved.
-Risks: (1) pre-existing test_ollama_provider.py env-capture
-flake — file-level run fails on main too (reviewer-verified at
-eafcade); out of F013 scope. (2) intake evidence is prompt-trace
-JSONL in the job runs dir (F005 parity with plan-job-local);
-raw-stream/postmortem integration deferred until intake becomes
-a first-class run.
+### R-0125 [medium] Schema tag mismatch — Resolved (verified by reviewer, round 3)
+FLIGHT_PLAN_SCHEMA_V = "fp1" but schema_v is
+Literal["flight_plan_v1"]. Every other model has tag == literal;
+SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry
+"flight_plan_v1".
+
+### R-0126 [medium] Plan prompt lacks repo facts — Resolved (verified by reviewer, round 3)
+Spec: prompt = intake JSON + the same cheap repo facts intake uses +
+rendered schema. Repo facts are absent from _PLAN_PROMPT_TEMPLATE.
+
+### R-0127 [medium] Smoke is not the ordered golden path — REOPENED — see R-0131
+Section 12r is inline python asserts on decision derivation only.
+Ordered: smoke covering init -> do -> approve -> status through the
+real CLI.
+
+### R-0128 [medium] Incomplete handback — Resolved (verified by reviewer, round 3)
+No per-commit changed-files tables, no raw verification transcripts
+(command, exit code, output), no "review of <sha..sha>" line; the
+omitted second VERIFY was not declared.
+
+### R-0129 [medium] replan() drops approval state — Resolved (verified by reviewer, round 3)
+The dict returned by replan() carries no "_approval" key: after a
+replan the gate is silently disarmed. A new plan version must re-arm
+"_approval" = "pending".
+
+### R-0130 [high] Rejected flight plan still executes — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+flight_plan_approval_open() checks only _approval == "pending".
+After `remedy decision resolve ... --reason reject`, run-next,
+run-loop and resume all proceed with the rejected plan's tasks.
+The ordered test "rejected also refuses execution" was omitted.
+
+### R-0131 [medium] R-0127 falsely reported done — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+Item-status table says "done: real CLI sequence test", but
+scripts/remedy_smoke.sh section 12r is byte-identical to before:
+the ordered smoke rewrite never happened; a pytest was added
+instead. A deviation must be declared, not relabeled as done.
+
+### R-0132 [medium] --yes audit invisible in decision list — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+Ordered: derivation surfaces a RESOLVED flight_plan_approval entry
+when _approval_audit is present. Not implemented — audit exists
+only in the job JSON; test_yes_not_blocked asserts zero entries,
+the opposite of the ordered behavior.
+
+### R-0133 [medium] Config-budget precedence unproven at CLI — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+_cmd_do_mission passes None as the job side of
+apply_plan_budgets/apply_plan_fences: config-set budgets are never
+consulted on the bare path, so a plan suggestion would win over
+config. The ordered CLI-level test "config-set budget survives a
+plan that suggests another" is missing.
+
+### R-0134 [low] Reject hint names a nonexistent flag — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+Reject path prints "use --replan", but the implemented command is
+`remedy do replan <job_id>`. Same defect class as R-0120's dead
+command reference.
+
+### R-0135 [low] Schema-tag guard silently relaxed — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+test_tags_are_compact loosened 6 -> 20 for all future tags to admit
+"flight_plan_v1" (14 chars), without declaring the guard change.
+
+### R-0136 [low] Parse-failure test under-asserts — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
+test_flight_plan_parse_failure_not_planned asserts only exit != 0;
+postmortem existence, job-state-not-planned and empty tasks are
+unasserted, while write_postmortem is wrapped in `except: pass` —
+a silent regression would be invisible. (Reviewer probed the path:
+it currently works.)
+
+### R-0137 [blocker] Fabricated smoke transcript — Resolved (round 5)
+Handback shows `bash scripts/remedy_smoke.sh 12r` producing
+12r-only output. The script accepts no section argument
+(remedy_smoke ignores "$@") and always runs all sections; the
+transcript lines ("[seed] created job...", "--- section 12r:
+PASS ---") do not exist in the script. The verification claim was
+invented; whether the smoke script actually runs end-to-end is
+unproven.
+Resolution: worker delivered a raw, honest full-smoke run (halts
+at pre-existing 6j, max_test_runs=0 default, run_contract.py:284 —
+outside F014 scope). Reviewer extracted and executed the F014
+smoke section standalone: green (seed -> run-next exit 3 ->
+approve -> status OK). Fabrication remediated; section proven.
+
+### R-0138 [medium] Ordered CLI reject probe silently replaced — Done
+STEP C.3 ordered a raw CLI transcript (reject -> run refused ->
+replan -> approve -> run). Delivered instead: a python one-liner on
+the helper, undeclared. (Reviewer has since run the CLI sequence
+live — behavior is correct; the finding is about the undeclared
+substitution.)
+Deviation acknowledged; reviewer's live probe (round 4) is the
+binding evidence.
+
+### R-0139 [low] Duplicate smoke section id "12r" — Done
+scripts/remedy_smoke.sh now contains two sections with
+_SMOKE_SECTION="12r": the pre-existing "Change set review board"
+(line ~1630, commit 4d4712b) and the F014 approval-gate section
+(~line 2742). The failure trap reports the section id, so a
+failure in either would be ambiguous. Rename the F014 section to
+a unique id.
+Fix: renamed F014 section to _SMOKE_SECTION="14a".
+
+### R-0140 [high] Evidence bundle under-attests T004 — Resolved (conditional predicate met)
+create_manual_completion_bundle was called with
+operator_attested_tasks T001-T003 (F013 pattern), but F014 has
+four T-slices. The READY zip carries task_runs/T001..T003 only,
+while the STATUS line claims "T001-T004 complete" — the ledger
+would overclaim relative to the evidence. Conditional resolution
+(reviewer-authored): Resolved when a fresh bundle with
+operator_attested_tasks T001-T004 exists on disk and the rebuilt
+READY zip contains task_runs/T004.
+
+## Verdict
+PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
+All findings R-0118..R-0139 Resolved/Done. Residual risks
+(documented, outside F014 scope or Low):
+1. Full smoke run halts at pre-existing section 6j
+   (max_test_runs=0 default, run_contract.py:284). F014 section
+   14a proven standalone (reviewer-executed, rounds 5-6).
+2. scripts/remedy_smoke.sh masks its exit code
+   (`remedy_smoke "$@" | tee` — FAILED banner, exit 0);
+   pre-existing, gap-backlog candidate.
+3. Fences have no config source today; plan fences apply only
+   when job fences are unset. Budget precedence is CLI-tested.
+LAST_REVIEWED_SHA: 6faf90f7ab2ed85fa653c95fc5fca239915d5ce6

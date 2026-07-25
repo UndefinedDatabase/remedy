@@ -2448,6 +2448,21 @@ CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
+        command_id="do.replan",
+        group_id="do",
+        subcommand="replan",
+        description="Regenerate the flight plan for an existing job.",
+        action_class="write_metadata",
+        supports_json=True,
+        related=("do.run",),
+        args=(
+            _JOB_ID,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
         command_id="do.repair-attest",
         group_id="do",
         subcommand="repair-attest",

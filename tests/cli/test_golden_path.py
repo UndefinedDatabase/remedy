@@ -72,7 +72,7 @@ class TestDoMission:
         assert "intake: heuristic (forced by --no-llm)" in out
         assert "analyze_requirements" in out
         assert "Next: remedy status" in out
-        assert "plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)" in out
+        assert "plan: deterministic skeleton" in out
 
     def test_do_mission_json(self, tmp_path):
         repo = _git_repo(tmp_path)
@@ -123,7 +123,7 @@ class TestDoMission:
 
         result = _run_do(repo, env, "ship it")
         assert result.returncode == 0
-        assert "plan: deterministic skeleton (LLM Flight Plan lands with F013/F014)" in result.stdout
+        assert "plan: deterministic skeleton" in result.stdout
 
     def test_old_job_json_without_mission_loads(self, tmp_path):
         """Pre-F147 job JSON without mission field must still load."""
@@ -299,6 +299,22 @@ class TestLLMIntakeWiring:
             "packages.orchestration.intake.make_provider_call_fn",
             lambda: _fake_call_fn,
         )
+
+        from packages.orchestration.flight_plan import FlightPlanResult
+        from packages.orchestration.schemas.models import FlightPlan
+        _fp = FlightPlan(
+            schema_v="flight_plan_v1",
+            tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
+                    "acceptance": ["Done"], "depends_on": [],
+                    "est_tokens_band": "M", "files_hint": []}],
+            risks=[],
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.flight_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: FlightPlanResult(
+                plan=_fp, source="llm", calls=1),
+        )
+
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         monkeypatch.chdir(str(repo))
 
@@ -386,7 +402,11 @@ class TestLLMIntakeWiring:
         assert len(provider_called) == 0, "provider must not be called with --no-llm"
 
     def test_provider_error_label_distinct_from_unavailable(self, tmp_path, monkeypatch):
-        """Provider reachable but returns bad output → 'provider error', not 'unavailable'."""
+        """Provider reachable but returns bad output → 'provider error', not 'unavailable'.
+
+        Intake falls to heuristic; flight plan is mocked to succeed so we
+        isolate the intake label under test.
+        """
         repo = _git_repo(tmp_path)
         env = _env(tmp_path)
         _init_project(repo, env)
@@ -398,6 +418,22 @@ class TestLLMIntakeWiring:
             "packages.orchestration.intake.make_provider_call_fn",
             lambda: _bad_call_fn,
         )
+
+        from packages.orchestration.flight_plan import FlightPlanResult
+        from packages.orchestration.schemas.models import FlightPlan
+        _fp = FlightPlan(
+            schema_v="flight_plan_v1",
+            tasks=[{"id": "T001", "title": "Do thing", "goal": "A goal",
+                    "acceptance": ["Done"], "depends_on": [],
+                    "est_tokens_band": "M", "files_hint": []}],
+            risks=[],
+        )
+        monkeypatch.setattr(
+            "packages.orchestration.flight_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: FlightPlanResult(
+                plan=_fp, source="llm", calls=1),
+        )
+
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
         monkeypatch.chdir(str(repo))
 

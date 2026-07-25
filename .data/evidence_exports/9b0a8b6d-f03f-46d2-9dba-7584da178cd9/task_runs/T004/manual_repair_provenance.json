@@ -1,0 +1,32 @@
+{
+ "changed_files": [
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "packages/orchestration/decision_queue.py",
+  "scripts/remedy_smoke.sh",
+  "tests/cli/test_golden_path.py",
+  "tests/cli/test_plan_approval.py"
+ ],
+ "diff_sha256": "c42ceb8b2db9e98f0904fa788a1f2e9bded946e4e281c827a77ebe2fe42324c3",
+ "job_id": "9b0a8b6d-f03f-46d2-9dba-7584da178cd9",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T004",
+ "provenance_sha256": "c42ceb8b2db9e98f0904fa788a1f2e9bded946e4e281c827a77ebe2fe42324c3",
+ "safe_diff_sha256": "5b39da83ef2353966b479a2b117de67f5d7a587853ce9c2eed0a97579a89f17d",
+ "schema_version": "1.0.0",
+ "task_id": "T004",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "packages/orchestration/decision_queue.py",
+  "scripts/remedy_smoke.sh",
+  "tests/cli/test_golden_path.py",
+  "tests/cli/test_plan_approval.py"
+ ],
+ "timestamp": "2026-07-26T00:30:00Z",
+ "tracked_diff_sha256": "5b39da83ef2353966b479a2b117de67f5d7a587853ce9c2eed0a97579a89f17d",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/grouped.py",
+  "packages/core/models.py",
+  "packages/orchestration/flight_plan.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

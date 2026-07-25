@@ -1,0 +1,13 @@
+{
+ "changed_files": [
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "packages/orchestration/decision_queue.py",
+  "scripts/remedy_smoke.sh",
+  "tests/cli/test_golden_path.py",
+  "tests/cli/test_plan_approval.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T004",
+ "task_title": "Task T004"
+}
