@@ -217,5 +217,6 @@ class Job(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     project_id: str | None = None
     intake: dict[str, Any] | None = None
+    flight_plan: dict[str, Any] | None = None
     fences: JobFences | None = None
     budgets: JobBudgets | None = None
