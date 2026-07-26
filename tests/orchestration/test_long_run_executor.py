@@ -773,3 +773,85 @@ class TestSinglePassRegression:
         assert limits.budgets is None
         assert limits.verify_command is None
 
+
+
+# ---------------------------------------------------------------------------
+# T002 — `remedy job run <id> [--cycles N]`
+# ---------------------------------------------------------------------------
+
+
+class FakeBuilder:
+    model = "fake-model"
+
+    def build(self, context: TaskExecutionContext) -> BuilderOutput:
+        return BuilderOutput(
+            summary=f"did {context.task_description}",
+            proposed_changes=[f"write docs for {context.task_description}"],
+        )
+
+
+class TestJobRunCommand:
+    def test_registered_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import CATALOG
+        from apps.cli.commands.job import COMMAND_HANDLERS
+
+        entry = next(c for c in CATALOG if c.command_id == "job.run")
+        assert entry.subcommand == "run"
+        assert "--cycles" in [a.name for a in entry.args]
+        assert "job.run" in COMMAND_HANDLERS
+
+    def test_one_cycle_delegates_to_the_existing_single_pass(self, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+
+        seen: list[str] = []
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
+        job_cmd._cmd_job_run_cycles("abc12345")
+        assert seen == ["abc12345"]
+
+    def test_the_flag_is_capped_and_the_operator_is_told(self, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+
+        seen: list[str] = []
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
+        job_cmd._cmd_job_run_cycles("abc12345", cycles=9)
+        err = capsys.readouterr().err
+        assert seen == ["abc12345"]                  # still the single pass
+        assert "capped to 1" in err and "F075" in err
+
+    def test_zero_cycles_is_refused(self, monkeypatch):
+        from apps.cli.commands import job as job_cmd
+
+        with pytest.raises(SystemExit) as exc:
+            job_cmd._cmd_job_run_cycles("abc12345", cycles=0)
+        assert exc.value.code == 2
+
+    def test_multi_cycle_path_runs_the_loop_after_the_gate(self, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+        from packages.orchestration.storage import save_job
+        from packages.providers.ollama_builder import provider as provider_mod
+
+        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
+        monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
+
+        job = make_job(2)
+        save_job(job)
+        job_cmd._cmd_job_run_cycles(str(job.id), cycles=3)
+
+        out = capsys.readouterr().out
+        assert "cycles=2/3" in out
+        assert f"terminal={TERMINAL_ALL_GREEN}" in out
+        assert len(read_cycle_records(str(job.id))) == 2
+
+    def test_a_capped_config_value_names_the_config_key(self, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        monkeypatch.setenv("REMEDY_CYCLES_MAX_CYCLES", "8")
+        from packages.orchestration.config import reset_config
+        reset_config()
+        try:
+            job_cmd._cmd_job_run_cycles("abc12345")
+        finally:
+            reset_config()
+        err = capsys.readouterr().err
+        assert "cycles.max_cycles 8 capped to 1" in err

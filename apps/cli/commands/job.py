@@ -634,6 +634,110 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
         sys.exit(1)
 
 
+def _cmd_job_run_cycles(
+    job_id_str: str,
+    *,
+    cycles: int | None = None,
+    json_output: bool = False,
+) -> None:
+    """Run a job in bounded cycles (F046).
+
+    The rollout rule is enforced here, not in the loop: config value and
+    ``--cycles`` flag are both capped by ``CYCLE_SAFETY_CAP`` until the F075
+    milestone gate raises it.  While the resolved count is one cycle, this
+    command IS today's single pass — it delegates to the existing run-next
+    entry point, so single-cycle behavior cannot drift from it.
+    """
+    import json as _json
+    from dataclasses import replace
+
+    from packages.orchestration.config import get_config
+    from packages.orchestration.long_run_executor import (
+        default_task_step,
+        limits_from_config,
+        run_cycles,
+    )
+
+    try:
+        limits, resolved = limits_from_config(get_config(), cycles_flag=cycles)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    if resolved.capped:
+        origin = "--cycles" if resolved.source == "flag" else "cycles.max_cycles"
+        print(
+            f"Note: {origin} {resolved.requested} capped to {resolved.max_cycles} "
+            f"by the F046 rollout default (raised by the F075 milestone gate).",
+            file=sys.stderr,
+        )
+
+    if resolved.max_cycles <= 1:
+        # One cycle == today's single pass. Reuse it verbatim rather than
+        # reimplementing the task/verify/apply pipeline behind a second door.
+        _cmd_run_next_task_local(job_id_str)
+        return
+
+    job_id = resolve_job_id(job_id_str)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    block_reason = flight_plan_blocks_execution(job)
+    if block_reason == "pending":
+        print(
+            f"Error: plan awaiting approval. "
+            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+    elif block_reason == "rejected":
+        print(
+            f"Error: flight plan rejected. "
+            f"Run: remedy do replan {job_id_str[:8]}",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+    from packages.orchestration.permissions import Capability
+    from packages.orchestration.permissions import is_allowed as _perm_allowed
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.providers.ollama_builder.provider import OllamaBuilder
+
+    if not _perm_allowed(job, Capability.workspace_write):
+        print(
+            f"Error: permission denied — workspace_write is not granted for job {job.id}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    log = RunLogWriter(job_id=job.id)
+    try:
+        builder = OllamaBuilder()
+    except Exception as exc:
+        print(f"Error: builder unavailable — {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    limits = replace(limits, budgets=job.budgets)
+    result = run_cycles(job, limits, builder.build,
+                        task_step=default_task_step, log=log)
+
+    if json_output:
+        print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
+    else:
+        print(
+            f"Job {job.id} | cycles={result.cycles_run}/{limits.max_cycles} "
+            f"terminal={result.terminal_status} status={result.job_status}"
+            f"{' reason=' + result.stop_reason if result.stop_reason else ''}"
+            f"  log={log.path}"
+        )
+    if result.terminal_status not in ("all_green", "max_cycles_reached"):
+        sys.exit(1)
+
+
 def _cmd_run_loop(
     job_id_str: str,
     *,
@@ -1640,6 +1744,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         json_output=getattr(args, "json", False),
     ),
     "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
+    "job.run": lambda args: _cmd_job_run_cycles(
+        args.job_id,
+        cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
+        json_output=getattr(args, "json", False),
+    ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
     "job.run-loop": lambda args: _cmd_run_loop(
         args.job_id,

@@ -332,6 +332,23 @@ CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
+        command_id="job.run",
+        group_id="job",
+        subcommand="run",
+        description="Run a job in bounded cycles (F046; one cycle until the F075 gate).",
+        action_class="write_metadata",
+        args=(
+            _JOB_ID,
+            ArgDef("--cycles", "Maximum cycles for this run (capped by the rollout default)",
+                   required=False, is_option=True),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        may_execute_commands=True,
+        related=("job.run-next", "job.plan"),
+    ),
+
+    CommandEntry(
         command_id="job.plan",
         group_id="job",
         subcommand="plan",
