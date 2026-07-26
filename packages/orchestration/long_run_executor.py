@@ -483,6 +483,42 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
     return job_status
 
 
+def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+                            limits: CycleLimits) -> None:
+    """Write this cycle's checkpoint (F047).  Never raises into the loop.
+
+    The next intent is derived from what the job still has PENDING at this
+    moment: another cycle with a named first task, or nothing left to run.
+    A write that fails is recorded on the job as ``checkpoint_error`` and
+    logged by the checkpoint module — the run continues and the next cycle
+    retries (feature-file A9).
+    """
+    from packages.orchestration.checkpoints import (
+        INTENT_CYCLE,
+        INTENT_NONE,
+        record_cycle_checkpoint,
+    )
+
+    pending = ready_tasks(job, limits.batch_size)
+    next_intent: dict[str, Any] = (
+        {"kind": INTENT_CYCLE,
+         "cycle_index": record.cycle_index + 1,
+         "task_id": str(pending[0])}
+        if pending else {"kind": INTENT_NONE}
+    )
+    _, error = record_cycle_checkpoint(
+        str(job.id), record.cycle_index,
+        budget_spent_tokens=record.tokens_so_far,
+        verify_result=record.verify_result,
+        verify_command=limits.verify_command,
+        next_intent=next_intent,
+    )
+    if error:
+        job.metadata["checkpoint_error"] = error
+    else:
+        job.metadata.pop("checkpoint_error", None)
+
+
 def _emit(log: Any, event: str, **meta: Any) -> None:
     """Emit a ledger event when a writer was injected; never raise into the loop."""
     if log is None:
@@ -510,6 +546,7 @@ def run_cycles(
     log: Any = None,
     control_root_path: Any = None,
     record_evidence: bool = True,
+    record_checkpoint: bool = True,
 ) -> CycleLoopResult:
     """Run bounded cycles over *job* until a terminal condition.
 
@@ -530,6 +567,11 @@ def run_cycles(
 evidence area (N cycles -> exactly N records, monotonically indexed).  An
 evidence write that fails is recorded on the job as ``cycle_evidence_error``
 and never aborts execution that already happened.
+
+``record_checkpoint`` writes this cycle's F047 checkpoint next to those
+records, AFTER the job snapshot is persisted (a checkpoint references that
+snapshot).  A checkpoint write that fails is recorded as ``checkpoint_error``
+and never aborts the run either — the next cycle retries.
 
     A failed verify ends the cycle with its failure recorded and denies the job
     the all_green status; self-healing is a later feature.  A task step that
@@ -632,13 +674,17 @@ and never aborts execution that already happened.
         )
         cycles.append(record)
 
-        # 5. Persist the job, then the cycle's own evidence record.
+        # 5. Persist the job, then the cycle's own evidence record, then the
+        #    checkpoint (F047).  Order matters: a checkpoint references the
+        #    persisted snapshot, so the snapshot must already be on disk.
         save_fn(job)
         if record_evidence:
             try:
                 write_cycle_record(str(job.id), record)
             except (OSError, ValueError) as exc:
                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
+        if record_checkpoint:
+            _write_cycle_checkpoint(job, record, limits)
         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
 
     job_status = _apply_terminal(job, terminal, stop_reason)
