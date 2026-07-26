@@ -1361,3 +1361,17 @@ Cycle records reuse `pingpong_job.job_evidence_dir` so there is no second
 evidence convention. The data-root fixture in the slice suite is autouse: cycle
 records are written by default, and a test that reached the repository's real
 `.data/` would pollute it.
+
+## 2026-07-26: F046 integration gate — plan.md keeps its Next Steps section
+The F046 plan.md rewrite dropped `## Next Steps`, which AGENTS.md requires
+("Must contain: Goal, Current Step, Next Steps") and which two dashboard
+contract tests assert. That omission was the ONLY reproducible branch-only
+failure in the integration gate (2 tests, both asserting `"Steps" in
+plan.md`); the base plan.md still had the section, which is exactly why the
+failures were branch-only. The section was restored — a state-file edit, no
+production code, permitted in a gate round. Deviation from the verbatim
+plan.md text dictated at feature start is recorded here rather than applied
+silently. The three sibling failures (context.md wants `## Active Branch` and
+the word "Steps"; live_review.md wants "Steps") fail identically on base and
+were deliberately NOT swept up: they are pre-existing, not F046-attributable,
+and belong on the backlog.

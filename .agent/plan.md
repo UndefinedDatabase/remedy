@@ -17,6 +17,10 @@ DEFAULT stays one cycle until the F075 gate.
 ## Current Step
 Integration gate running (full-suite round 1 of the 2-per-feature rule).
 
+## Next Steps
+Reviewer verdict on the integration gate, then Closure (evidence job,
+review package, Built State in T1_F046.md, authored STATUS line).
+
 ## Risks
 - Conductor must wrap existing parts (A6) — no parallel executor.
 - Pre-existing full-suite nondeterminism (backlog F135/F052).

@@ -1,122 +1,155 @@
-# Handoff — F046 Multi-cycle loop — Round 1 (Setup + T001 + T002)
+# Handoff — F046 Multi-cycle loop — Integration gate
 
-Branch: feature/f046-multi-cycle-loop · base main `c14a83a` (PR #151 merged
-by the Open PR Gate at feature start)
-Review range: `c14a83a..d87a3e0` · LAST_REVIEWED_SHA `c14a83a`
-Open findings: 0. Next expected action: reviewer verdict in
-`.agent/live_review.md`, then the integration gate. Closure is a later step.
+Branch: feature/f046-multi-cycle-loop · PR #152 · base main `c14a83a`
+Review range: `d87a3e0..HEAD` · LAST_REVIEWED_SHA `d87a3e0`
+Gate result: **PASS** — zero F046-attributable regressions.
+Open findings: 0. Next expected action: reviewer verdict on the gate, then
+closure (not part of this step).
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| 0 — Setup (PR gate, branch, STATUS, state files) | done | c6e2389 |
-| 1 — T001 loop skeleton + terminal matrix + fixture | done | a4a6874 |
-| 2 — T002 evidence + config + CLI + regression | done | 8ad17ce, d87a3e0 |
+| 0 — Persist round-1 verdict | done | 1055ae0 (verbatim, own commit) |
+| 1 — Integration gate (branch vs base, attribution) | done | this handoff |
+| — plan.md `## Next Steps` restored | deviated | fixes the only 2 reproducible branch-only failures; state-file-only, AGENTS.md requires the section (see below) |
 
-## Commits
+## Commits this round
 
-**c6e2389** chore(f046): claim F046 — branch, STATUS, state files
-
-| file | +/- |
-|------|-----|
-| .agent/context.md | +20 −29 |
-| .agent/live_review.md | +6 −43 |
-| .agent/plan.md | +13 −31 |
-| docs/roadmap/STATUS.md | +1 −1 |
-
-**a4a6874** feat(f046): multi-cycle loop conductor with terminal-status matrix
+**1055ae0** chore(f046): persist the round-1 reviewer verdict; open the integration gate
 
 | file | +/- |
 |------|-----|
-| .agent/decisions.md | +16 −0 |
-| .agent/plan.md | +4 −3 |
-| packages/orchestration/long_run_executor.py | +523 −0 |
-| tests/orchestration/test_long_run_executor.py | +539 −0 |
+| .agent/live_review.md | +21 −2 |
+| .agent/plan.md | +2 −4 |
 
-**8ad17ce** feat(f046): per-cycle evidence records and the cycles.* config keys
+**HEAD** chore(f046): integration-gate results; restore plan.md Next Steps
 
 | file | +/- |
 |------|-----|
-| docs/system/remedy-toml-configuration-system-v0.md | +13 −0 |
-| packages/orchestration/config.py | +30 −0 |
-| packages/orchestration/long_run_executor.py | +135 −1 |
-| tests/orchestration/test_long_run_executor.py | +238 −2 |
+| .agent/plan.md | +4 −0 |
+| .agent/decisions.md | +11 −0 |
+| .agent/handoff.md | rewritten |
 
-**d87a3e0** feat(f046): remedy job run with a capped --cycles flag
-
-| file | +/- |
-|------|-----|
-| apps/cli/command_catalog.py | +17 −0 |
-| apps/cli/commands/job.py | +109 −0 |
-| tests/orchestration/test_long_run_executor.py | +82 −0 |
-
-Commit-size note (honest): a4a6874 is 1062 lines — a new module plus the
-suite that proves it. Splitting module from tests would have produced a
-commit whose tests do not exist yet and one whose module is untested; T002
-WAS split into two commits (208 and 416 lines) for this reason.
-
-## Terminal status → job state mapping
-
-| terminal status | pingpong_job status | core RunState | trigger |
-|---|---|---|---|
-| all_green | `completed` | COMPLETED | every task COMPLETED, verify did not fail |
-| stopped_by_operator | `stopped` | PAUSED | safe point reports an operator stop |
-| budget_exhausted | `stopped` | PAUSED | safe point reports a budget limit hit |
-| deadline_reached | `stopped` | PAUSED | `first_exhausted_limit == deadline` (injected clock) |
-| blocked | `blocked` | PAUSED | zero ready tasks and not green — terminal, no spin |
-| max_cycles_reached | `running` | (untouched) | cycle budget spent, work still pending |
-
-`RunState` has no BLOCKED member, so the authoritative status is the
-pingpong string, written to `job.metadata["cycle_terminal_status"]` /
-`["cycle_job_status"]` and emitted as the `cycle_loop_terminal` ledger event.
-`blocked` is PAUSED, not FAILED: "no ready task, not green" also covers a job
-awaiting a decision — nothing failed and the job must stay resumable.
-
-## Verification (real output, fresh at handback)
+## Run 1 — branch (`1055ae0`)
 
 ```
-$ python3 -m pytest tests/orchestration/test_long_run_executor.py -q
-.................................................                        [100%]
-49 passed in 0.23s
-exit=0
+$ python3 -m pytest -n auto -q
+... (184 FAILED lines)
+184 failed, 13962 passed, 8 skipped in 161.28s (0:02:41)
+EXIT=1
+```
 
-$ ruff check packages/orchestration/long_run_executor.py \
-      packages/orchestration/config.py apps/cli/commands/job.py \
-      apps/cli/command_catalog.py tests/orchestration/test_long_run_executor.py
-All checks passed!
-exit=0
+## Run 2 — base (`c14a83a`, throwaway worktree)
 
-$ python3 -m pytest tests/orchestration/test_job_task_runner.py \
-      tests/orchestration/test_safe_points.py -q
-269 passed in 101.07s (0:01:41)
-exit=0
-$ git diff --stat main...HEAD -- tests/orchestration/test_job_task_runner.py \
-      tests/orchestration/test_safe_points.py
-(no output — both files unmodified on this branch)
+```
+$ git worktree add /tmp/f046-base c14a83a
+Preparing worktree (detached HEAD c14a83a)
+HEAD is now at c14a83a Merge pull request #151 ...
 
-$ python3 -m pytest tests/cli/test_golden_path.py -q        # canary
+$ (cd /tmp/f046-base && python3 -m pytest -n auto -q)
+... (179 FAILED lines)
+179 failed, 13912 passed, 14 skipped in 196.88s (0:03:16)
+EXIT=1
+```
+
+Worktree removed, proven:
+
+```
+$ git worktree remove /tmp/f046-base && git worktree list
+/home/decodeux/Repos/remedy  1055ae0 [feature/f046-multi-cycle-loop]
+```
+
+## Failure-set diff
+
+| set | count |
+|-----|-------|
+| branch failures | 184 |
+| base failures | 179 |
+| branch-only | 30 |
+| base-only | 25 |
+
+Churn in both directions (30 appear, 25 disappear) with no code path in
+common is the signature of the known xdist nondeterminism, not of a
+regression: the branch adds 50 net passes and 5 net failures across a
+14k-test suite whose failure set is unstable run to run.
+
+## Attribution — all 30 branch-only failures
+
+Serial re-run on the branch, all 30 in one command:
+
+```
+$ python3 -m pytest <30 node ids> -q
+2 failed, 28 passed in 7.23s
+```
+
+| # | branch-only failure | serial | coupled to F046? |
+|---|---------------------|--------|------------------|
+| 1–2 | `cli/test_runtime_cmd.py` TestProbe/TestServe timeouts | pass | no — pre-existing xdist flake (F135/F052) |
+| 3 | `orchestration/test_self_dogfood.py::…::test_roadmap_items_cite_evidence` | pass | no — same class (checked because F046 edits STATUS.md; green serially and on re-run) |
+| 4–13 | `orchestration/test_task_execution.py::TestModularArchitectureGuards` (10) | pass | no — same class |
+| 14–17 | `regression/test_named_bugs.py` (4) | pass | no — same class |
+| 18–21 | `runtimes/` probe / dev-server / process-boundary (4) | pass | no — same class |
+| 22 | `test_data_paths.py::…::test_default_ends_with_data` | pass | no — same class |
+| 23–26 | `test_grouped_cli.py::TestGroupedExecution` json (4) | pass | no — same class |
+| 27 | `ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps` | **FAIL (reproducible)** | no F046 module — caused by `.agent/plan.md` |
+| 28 | `ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps` | **FAIL (reproducible)** | no F046 module — same cause |
+| 29–30 | `ui_server/test_dashboard_contract.py::TestUIServer` no-shell / no-external-assets | pass | no — same class |
+
+None of the 30 touches `long_run_executor.py`, `config.py`,
+`apps/cli/commands/job.py` or `command_catalog.py`. No BLOCKER.
+
+### The 2 reproducible ones, and the fix
+
+Both assert `"Steps" in .agent/plan.md`. The F046 plan.md rewrite dropped the
+`## Next Steps` section that AGENTS.md ("plan.md must contain: Goal, Current
+Step, Next Steps") and these two tests both require; the base plan.md (F034)
+still had it, which is exactly why the failures are branch-only. Fix is a
+state-file edit — permitted this round, no production code touched.
+
+Branch after the fix, same two classes, side by side with base:
+
+```
+$ python3 -m pytest tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch \
+                    tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs -q
+3 failed, 4 passed in 0.10s
+FAILED …TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
+FAILED …TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
+FAILED …TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
+
+$ (cd /tmp/f046-base && python3 -m pytest <same two classes> -q)
+3 failed, 4 passed in 0.09s
+FAILED …TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
+FAILED …TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
+FAILED …TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
+```
+
+Identical: same 3 failures, same 4 passes. Those 3 are pre-existing on base
+(context.md wants a `## Active Branch` heading and the word "Steps";
+live_review.md wants "Steps"). They are NOT F046-attributable and were left
+alone rather than swept up — a gap item for the backlog, not this round.
+
+## Canary
+
+```
+$ python3 -m pytest tests/cli/test_golden_path.py -q
 ..........................................                               [100%]
-42 passed in 18.88s
+42 passed in 18.82s
 exit=0
 ```
 
-Ordering red-proof: neutering the safe-point break turned 8 tests red
-(both ordering tests, both operator-stop tests, budget, deadline ×2); the
-edit was reverted and the suite is green from the committed source.
+## Runtime budget (§3.4)
 
-## Open risks / notes for the reviewer
+Branch 161.28s (2:41), base 196.88s (3:16). Both under the ~5 min threshold;
+no perf pass needs scheduling. The base run being 35s slower than the branch
+is machine noise, not a branch effect.
 
-- The T002 regression is behavioral-plus-declared-delta, not literally
-  byte-identical: `run_cycles` with defaults adds exactly two metadata keys
-  and one cycle evidence record. The test asserts that this IS the only
-  delta. At CLI level there is no delta at all — one cycle delegates to
-  `_cmd_run_next_task_local` verbatim.
-- The multi-cycle CLI branch is unreachable in production while
-  `CYCLE_SAFETY_CAP == 1`; it is exercised in tests with the cap raised,
-  simulating post-F075.
-- Cycle records default to ON, so the slice suite's data-root fixture is
-  autouse. 18 stray job dirs written into `.data/jobs/` during development
-  before that fixture existed were removed.
-- Pre-existing full-suite nondeterminism (backlog F135/F052) — not probed
-  this round; the integration gate is the next step.
+## Residual risks carried forward
+
+- Pre-existing full-suite nondeterminism (F135/F052): 30 branch-only and 25
+  base-only failures churned between two runs of the same suite.
+- 3 pre-existing `.agent` state-file contract failures (context.md ×2,
+  live_review.md ×1) fail identically on base and branch — backlog gap item.
+- From the round-1 verdict: no per-terminal postmortem record is written by
+  the conductor itself; the multi-cycle CLI branch is unreachable while
+  `CYCLE_SAFETY_CAP == 1`.
