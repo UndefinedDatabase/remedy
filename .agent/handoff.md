@@ -1,179 +1,138 @@
-# Handoff — F016 Scaling task granularity — CLOSED (form repair, R-0143)
+# Handoff — F034 Bundled clarification in the Flight Plan (round 1)
 
-Review of 2fad892..HEAD
+Branch: feature/f034-bundled-clarification
+Review range: 34878f3..3a8652f (5 commits; 34878f3 = main after PR #150 merge)
+Open findings: 0. Next expected action: reviewer round 1.
 
-## State
-- Branch: `feature/f016-task-granularity` · PR #150 (NOT merged — Open PR
-  Gate handles it at the next feature start)
-- Verdict: PASS_WITH_RISKS — ACCEPTED (2026-07-26, closure round)
-- Evidence job: `1cc3b1c0-fd59-4884-9252-f8a8e79b5a59`
-- Evidence dir: `.data/evidence_exports/1cc3b1c0-fd59-4884-9252-f8a8e79b5a59`
-- Zip: `remedy-review-20260726-165629-READY_FOR_REVIEW.zip`
-- Zip SHA-256: `0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991`
-- accepted HEAD: `85004253705e5eae15d969812af84738373e5453`
-- LAST_REVIEWED_SHA: `2fad89295e11bc2aad51f7ae5f7de52b7542e9b5`
-- This round: handback FORM repair only. No code, no STATUS, no zip
-  rebuild — the package and STATUS line are accepted as-is.
+## Item status
 
-## Item-Status Table
 | Item | Status | Reason |
 |------|--------|--------|
-| R-0143 persisted verbatim | done | |
-| Per-commit changed-files tables | done | every commit in dcb8b1a..HEAD |
-| Raw grep proofs | done | |
-| Review-range line | done | |
+| Setup (PR gate, branch, claim) | done | PR #150 merged, branch cut from main |
+| T001 decision payload + answer parsing | done | |
+| T002 write-back + immutability | done | |
+| T003 assumptions.md + CLI + plan link | done | |
+| T004 guard test + unattended e2e | done | |
+| Conditional-answer predicates | skipped | OPTIONAL scope, not trivially cheap; see .agent/decisions.md |
 
-## Per-commit changed files — dcb8b1a..HEAD
+## Commits (ordered, changed files with +/-)
 
-### 88911bd — chore(f016): claim F016, reset live review and plan for task granularity
-| File | +/- |
-|------|-----|
-| .agent/live_review.md | 177 (6/173) |
-| .agent/plan.md | 36 (19/17) |
-| docs/roadmap/STATUS.md | 2 (1/1) |
+### 4648d69 chore(f034): claim F034, reset live review and plan
+| File | + | - |
+|------|---|---|
+| .agent/live_review.md | 8 | 55 |
+| .agent/plan.md | 25 | 23 |
+| docs/roadmap/STATUS.md | 1 | 1 |
 
-3 files changed, 25 insertions(+), 190 deletions(-)
+### f5aef15 feat(f034): bundle intake clarifications into the plan approval decision
+| File | + | - |
+|------|---|---|
+| .agent/plan.md | 5 | 6 |
+| apps/cli/command_catalog.py | 8 | 0 |
+| apps/cli/commands/decision.py | 76 | 1 |
+| apps/cli/grouped.py | 6 | 0 |
+| packages/orchestration/decision_queue.py | 28 | 6 |
+| packages/orchestration/flight_plan.py | 103 | 2 |
+| packages/orchestration/schemas/models.py | 14 | 1 |
+| tests/cli/test_decision_answers.py | 163 | 0 |
+| tests/orchestration/test_bundled_clarification.py | 202 | 0 |
 
-### 8b5360c — feat(f016): pure task-granularity split heuristic and planning config keys
-| File | +/- |
-|------|-----|
-| packages/orchestration/config.py | 41 (+) |
-| packages/orchestration/task_granularity.py | 298 (+, new) |
+### 2a365d7 feat(f034): write clarification answers back on approval, then freeze them
+| File | + | - |
+|------|---|---|
+| .agent/plan.md | 4 | 5 |
+| apps/cli/commands/decision.py | 23 | 7 |
+| packages/orchestration/flight_plan.py | 47 | 0 |
+| tests/cli/test_decision_answers.py | 96 | 0 |
+| tests/orchestration/test_bundled_clarification.py | 83 | 0 |
 
-2 files changed, 339 insertions(+)
+### 01f546e feat(f034): assumption log, job assumptions command, plan.md link
+| File | + | - |
+|------|---|---|
+| .agent/plan.md | 5 | 4 |
+| apps/cli/command_catalog.py | 10 | 0 |
+| apps/cli/commands/decision.py | 6 | 0 |
+| apps/cli/commands/job.py | 27 | 0 |
+| packages/orchestration/flight_plan.py | 87 | 1 |
+| tests/cli/test_decision_answers.py | 61 | 0 |
+| tests/orchestration/test_bundled_clarification.py | 86 | 0 |
 
-### 6513fca — test(f016): table-driven split cases for task granularity
-| File | +/- |
-|------|-----|
-| .agent/plan.md | 10 (5/5) |
-| tests/orchestration/test_config.py | 29 (+) |
-| tests/orchestration/test_task_granularity.py | 209 (+, new) |
+### 3a8652f feat(f034): interactive-input guard, unattended end-to-end, planner prompt
+| File | + | - |
+|------|---|---|
+| .agent/decisions.md | 32 | 0 |
+| .agent/plan.md | 12 | 10 |
+| apps/cli/commands/do_cmd.py | 13 | 0 |
+| packages/orchestration/flight_plan.py | 21 | 2 |
+| tests/cli/test_decision_answers.py | 106 | 0 |
+| tests/orchestration/test_bundled_clarification.py | 35 | 0 |
+| tests/test_no_interactive_guard.py | 171 | 0 |
 
-3 files changed, 243 insertions(+), 5 deletions(-)
+## Verification (raw, final tree at 3a8652f)
 
-### fc2e219 — feat(f016): merge rule for runs of trivial neighboring tasks
-| File | +/- |
-|------|-----|
-| .agent/decisions.md | 28 (+) |
-| .agent/plan.md | 10 (5/5) |
-| packages/orchestration/task_granularity.py | 207 (202/5) |
-| tests/orchestration/test_task_granularity.py | 169 (+) |
+    $ python3 -m pytest tests/orchestration/test_bundled_clarification.py tests/cli/test_decision_answers.py -q
+    ...................................................................      [100%]
+    67 passed in 0.73s
+    exit=0
 
-4 files changed, 404 insertions(+), 10 deletions(-)
+(the same command is the T001, T002 and T003 gate; it was green at each
+commit with 30, 47 and 61 tests respectively as the slices landed)
 
-### 51e2575 — feat(f016): revalidate, wire normalization into plan generation
-| File | +/- |
-|------|-----|
-| .agent/plan.md | 18 (9/9) |
-| apps/cli/commands/do_cmd.py | 7 (6/1) |
-| docs/system/remedy-toml-configuration-system-v0.md | 16 (+) |
-| packages/orchestration/flight_plan.py | 85 (79/6) |
-| packages/orchestration/task_granularity.py | 19 (17/2) |
-| tests/cli/test_plan_approval.py | 46 (43/3) |
-| tests/orchestration/test_flight_plan.py | 93 (+) |
-| tests/orchestration/test_task_granularity.py | 99 (+) |
+    $ python3 -m pytest tests/test_no_interactive_guard.py tests/orchestration/test_bundled_clarification.py tests/cli/test_decision_answers.py -q
+    .                                                                        [100%]
+    73 passed in 1.71s
+    exit=0
 
-8 files changed, 363 insertions(+), 20 deletions(-)
+    $ python3 -m pytest tests/cli/test_golden_path.py -q          # canary
+    ..........................................                               [100%]
+    42 passed in 21.80s
+    exit=0
 
-### cd13645 — chore(f016): handback state for round 1
-| File | +/- |
-|------|-----|
-| .agent/handoff.md | 164 (52/112) |
+## Guard-test red proof (T004, required)
 
-1 file changed, 52 insertions(+), 112 deletions(-)
+Injected `def _injected_violation_for_guard_proof(): return input("which
+database? ")` into packages/orchestration/decision_queue.py, then:
 
-### c534d82 — chore(f016): persist round 1 reviewer verdict; open integration gate
-| File | +/- |
-|------|-----|
-| .agent/live_review.md | 15 (13/2) |
-| .agent/plan.md | 8 (5/3) |
+    $ python3 -m pytest tests/test_no_interactive_guard.py -q -p no:randomly
+    E       AssertionError: Interactive input found in an unattended execution package. Remedy asks its questions once, at plan time, on the flight plan approval decision — read the resolved clarifications instead:
+    E           packages/orchestration/decision_queue.py:296: builtin input()
+    E       assert not ['packages/orchestration/decision_queue.py:296: builtin input()']
+    1 failed, 5 passed in 1.00s
+    exit=1
 
-2 files changed, 18 insertions(+), 5 deletions(-)
+Injection removed (`git diff --stat packages/orchestration/decision_queue.py`
+empty), same command on the real tree:
 
-### 2fad892 — chore(f016): integration gate measurements and handback
-| File | +/- |
-|------|-----|
-| .agent/handoff.md | 102 (49/53) |
-| .agent/plan.md | 13 (9/4) |
+    6 passed in 0.93s
+    exit=0
 
-2 files changed, 58 insertions(+), 57 deletions(-)
+An earlier regex-based version of the guard was replaced: it also flagged
+progress_ledger.py:1118 and token_economy.py:374, both prose ("needs user
+input (e.g. ...)"). The AST version has no false positives, so the
+allowlist stays empty.
 
-### f27f9a9 — chore(f016): persist integration-gate and final reviewer verdicts
-| File | +/- |
-|------|-----|
-| .agent/live_review.md | 30 (+) |
+## Regression evidence
 
-1 file changed, 30 insertions(+)
+- tests/cli/ full suite, branch vs base (main 34878f3), -p no:randomly:
+  branch 27 failed / 1058 passed; base 27 failed / 1042 passed. 25 failures
+  identical. 2 branch-only (test_runtime_cmd timeout probes) and 2 base-only
+  (test_self_dogfood_execution_cli) are order/timing flakes; the 2
+  branch-only pass on serial re-run (2 passed, exit 0).
+- tests/orchestration/test_project_brain.py + tests/ui_contracts/
+  test_graph_architecture.py: identical 7 failures on branch and base
+  (missing apps/ui legacy files, unrelated).
+- Green after the change: tests/cli/test_plan_approval.py +
+  tests/orchestration/test_flight_plan.py -> 56 passed; tests/schemas/ and
+  the decision-queue consumer suites -> no new failures.
+- ruff clean on every file touched.
 
-### 8500425 — docs(f016): built state in the feature file; plan set to closure
-| File | +/- |
-|------|-----|
-| .agent/plan.md | 25 (13/12) |
-| docs/roadmap/features/T1_F016.md | 53 (+) |
+## Notes for the reviewer
 
-2 files changed, 66 insertions(+), 12 deletions(-)
-
-### ecbe72f — chore(f016): close F016 — evidence job, review package, STATUS line
-| File | +/- |
-|------|-----|
-| .agent/handoff.md | 105 (55/50) |
-| docs/roadmap/STATUS.md | 2 (1/1) |
-| remedy-review-20260726-165629-READY_FOR_REVIEW.zip | Bin 0 → 8225339 |
-| .data/evidence_exports/1cc3b1c0-fd59-4884-9252-f8a8e79b5a59/ | 68 files under that dir (gates, review_subject, review_commit_chain + 10 commit patches, token_truth, verification_tests, tasks.json, workspace.diff, task_runs/T001–T003/*) |
-
-71 files changed, 7505 insertions(+), 50 deletions(-)
-
-### 2db44f9 — chore(f016): persist R-0143 handback form finding
-| File | +/- |
-|------|-----|
-| .agent/live_review.md | 11 (+) |
-
-1 file changed, 11 insertions(+)
-
-## Raw grep proofs
-```
-$ grep -c "accepted HEAD 85004253705e5eae15d969812af84738373e5453" docs/roadmap/STATUS.md
-1
-$ grep -c "R-0143" .agent/live_review.md
-1
-$ sha256sum remedy-review-20260726-165629-READY_FOR_REVIEW.zip
-0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991  remedy-review-20260726-165629-READY_FOR_REVIEW.zip
-```
-
-## Artifact-build attempts (all, including failures)
-1. Evidence bundle #1 (`ef3acc17-…`) → zip
-   `remedy-review-20260726-165436-BLOCKED_EVIDENCE.zip`
-   (sha256 74467b95…). BLOCKED: `verification_tests.json runs[0..5] has
-   the wrong field set` — the producer stamps schema_version 1.1.0, and
-   the validator demands that exact 14-field set; 10 fields were supplied.
-   Bundle and zip deleted.
-2. Evidence bundle #2 (`ac14f641-…`), full field set. Still invalid:
-   `output_hash does not match sha256(stdout_summary)` — the hash must
-   cover the summary line, not the full captured stdout. Deleted; no zip
-   was built.
-3. Evidence bundle #3 (`1cc3b1c0-…`) — `validate_manual_completion: []`,
-   `is_valid_current_run: True`. Zip → PACKAGE_STATUS=READY_FOR_REVIEW.
-
-Both pitfalls are exactly the class the closure protocol §1 warns about;
-neither is an F016 code defect.
-
-## Verification recorded in the bundle (230 passed, all exit 0)
-| run | command | result |
-|-----|---------|--------|
-| vr-0001 | pytest tests/orchestration/test_task_granularity.py -q | 26 passed |
-| vr-0002 | pytest tests/orchestration/test_flight_plan.py -q | 29 passed |
-| vr-0003 | pytest tests/orchestration/test_config.py -q | 62 passed |
-| vr-0004 | pytest tests/cli/test_plan_approval.py -q | 27 passed |
-| vr-0005 | pytest tests/orchestration/schemas/test_schemas.py -q | 44 passed |
-| vr-0006 | pytest tests/cli/test_golden_path.py -q | 42 passed |
-
-Integration gate (earlier round): base dcb8b1a 181 failed · branch
-162/158 across two runs · ~3 min each with `-n auto` · no F016-attributable
-regression.
-
-## Open findings
-0 open. R-0141 Resolved; R-0142 documented Low (gap backlog);
-R-0143 Resolved by this handoff rewrite.
-
-## Next expected action
-Next feature start runs the Open PR Gate, which merges PR #150.
+- Exactly ONE decision per plan: the questions ride the existing
+  fp:approval payload (decision_queue.py), never a decision per question.
+- Schema changes are additive; a pre-F034 fp1 plan loads with id="" and
+  answered_by="" and produces an empty payload (test asserts this).
+- answered_by stays human|default|""; the "planner" source in the log is
+  derived from an answered record with empty answered_by. Rationale in
+  .agent/decisions.md.
+- Zero-clarification plans take the plain-plan approval path unchanged.
