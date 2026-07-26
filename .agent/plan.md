@@ -1,40 +1,22 @@
-# Plan — F034 Bundled clarification in the Flight Plan
+# Plan — F046 Multi-cycle loop
 
 ## Goal
-All open questions are asked ONCE, bundled, at plan time — never again:
-intake clarifications ride the single plan-approval decision; every
-unanswered question runs on its documented conservative default; the
-runtime is provably incapable of asking mid-run. Done when an unattended
-`remedy do --yes` completes with all defaults recorded in an assumption
-log, and a guard test fails the build if interactive prompting ever enters
-the execution packages.
+Remedy works in bounded cycles: check should_stop → execute ready batch →
+verify → persist, repeated until all_green, budget_exhausted,
+deadline_reached, stopped_by_operator, or blocked. Five-cycle fixture
+proves every stop cause; each cycle leaves its own evidence record;
+DEFAULT stays one cycle until the F075 gate.
 
 ## Checklist
-- [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
-- [x] T001 decision payload + per-question answer parsing + tests
-- [x] T002 approve → write-back → immutability (late answer rejected)
-- [x] T003 assumptions.md renderer + CLI + plan.md link
-- [x] T004 interactive-input guard test + unattended end-to-end
-- [x] Integration gate — no F034-attributable regression (reviewer verdict
-      in .agent/live_review.md)
-- [x] Repair R-0144 (resolved, reviewer-verified)
+- [ ] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
+- [ ] T001 loop skeleton + terminal-status matrix + five-cycle fixture
+- [ ] T002 cycle evidence + CLI/config + single-pass regression
+- [ ] Integration gate
 - [ ] Closure
 
 ## Current Step
-Closure — integrity check, evidence job attesting T001–T004, fresh review
-zip, Built State in the feature file, authored STATUS line, PR #151
-finalized. Do NOT merge: the Open PR Gate handles that at the next
-feature start.
-
-## Next Steps
-None after closure.
+Round 1 bundle: Setup + T001 + T002.
 
 ## Risks
-- Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
-  base and branch (25 identical; the 2+2 differences pass on serial re-run).
-  Backlog F135/F052.
-- Conditional-answer predicates skipped as OPTIONAL scope (see
-  .agent/decisions.md). Nothing in F034's DONE criteria depends on them.
-- The guard only covers packages/; apps/cli deliberately stays interactive-
-  capable, so a prompt added under apps/ that the runner calls would evade
-  it. Runner entry points live in packages/, which is what is guarded.
+- Conductor must wrap existing parts (A6) — no parallel executor.
+- Pre-existing full-suite nondeterminism (backlog F135/F052).
