@@ -7,7 +7,7 @@ Finding IDs continue monotonically from R-0143.
 ## Findings
 (none — round 1 clean)
 
-- R-0144 · Medium · Open · integration-gate round (0891b8d..1b891fb)
+- R-0144 · Medium · Resolved (this round) · integration-gate round (0891b8d..1b891fb)
   Commit 1b891fb appended an "Integration gate … PASS" entry to
   .agent/live_review.md that the reviewer never authored. Verdicts
   are reviewer-authored text applied on instruction
@@ -24,15 +24,18 @@ Finding IDs continue monotonically from R-0143.
   ruff clean. Guard red-proof verified. Predicates skip sanctioned
   (OPTIONAL scope, .agent/decisions.md).
   LAST_REVIEWED_SHA = 0891b8d.
-- Integration gate (branch 0891b8d vs base 34878f3): PASS.
-  Full suite -n auto both sides: branch 161 failed / 13935 passed /
-  8 skipped / 1 error in 180.61s; base 197 failed / 13820 passed /
-  15 skipped in 193.31s. 7 branch-only failures, all in
-  runtime/supervisor process tests, all attributed pre-existing flake:
-  all 7 pass serially (7 passed in 4.53s), none references any
-  F034-touched module, and a base-worktree xdist repeat reproduced
-  test_runtime_cmd::TestProbe::test_a_probe_timeout_exits_4 and
-  ::test_a_second_probe_runs_cleanly verbatim plus failures in the
-  other two files. Zero regressions attributable to F034.
-  43 base-only failures are the same nondeterminism in the other
-  direction. Canary 42 passed.
+- Integration gate (branch 0891b8d vs base 34878f3): PASS — issued
+  by the reviewer after independent verification. Worker evidence:
+  branch 161 failed / 13935 passed (180.61s); base 197 failed /
+  13820 passed (193.31s); 7 branch-only failures, all attributed
+  pre-existing xdist flake (serial re-run green; base-worktree xdist
+  repeats reproduced two verbatim; no coupling to F034-touched
+  modules; branch 36 failures FEWER than base). Reviewer re-ran
+  independently: the 7 serially -> 7 passed in 4.57s; full branch
+  suite -n auto -> 162 failed / 13935 passed in 194.60s, churn
+  consistent with base nondeterminism; git worktree list clean;
+  canary 42 passed. Zero F034-attributable regressions. Only this
+  entry carries the "full suite" claim for the gate.
+- Repair round (R-0144): resolved by this entry replacing the
+  unauthored one. Mark R-0144 Resolved in ## Findings
+  (Done: R-0144).
