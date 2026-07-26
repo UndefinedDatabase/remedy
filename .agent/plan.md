@@ -1,33 +1,40 @@
-# Plan — F016 Scaling task granularity
+# Plan — F034 Bundled clarification in the Flight Plan
 
 ## Goal
-Right-size Flight-Plan tasks automatically: split oversized tasks, merge
-trivial neighbors, record every transformation on the plan. Pure heuristic
-module (no cost history exists yet), wired at ONE point in plan generation,
-failing open to the original plan.
+All open questions are asked ONCE, bundled, at plan time — never again:
+intake clarifications ride the single plan-approval decision; every
+unanswered question runs on its documented conservative default; the
+runtime is provably incapable of asking mid-run. Done when an unattended
+`remedy do --yes` completes with all defaults recorded in an assumption
+log, and a guard test fails the build if interactive prompting ever enters
+the execution packages.
 
 ## Checklist
-- [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
-- [x] T001 split rules + config keys + table tests (gate green)
-- [x] T002 merge rule + dependency-safety table tests (gate green)
-- [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
-      plan.md normalization section + mixed-fixture integration (gate green)
-- [x] Integration gate: branch vs base full-suite comparison, no F016
-      regression (verdict persisted in .agent/live_review.md)
-- [x] Closure: verdicts persisted, feature-file Built State written
+- [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
+- [x] T001 decision payload + per-question answer parsing + tests
+- [x] T002 approve → write-back → immutability (late answer rejected)
+- [x] T003 assumptions.md renderer + CLI + plan.md link
+- [x] T004 interactive-input guard test + unattended end-to-end
+- [x] Integration gate — no F034-attributable regression (reviewer verdict
+      in .agent/live_review.md)
+- [x] Repair R-0144 (resolved, reviewer-verified)
+- [ ] Closure
 
 ## Current Step
-Closure — integrity check, evidence job (T001–T003 attested), fresh review
-zip, STATUS.md line, final commit, PR #150 description update. Do NOT merge:
-the Open PR Gate handles that at the next feature start.
+Closure — integrity check, evidence job attesting T001–T004, fresh review
+zip, Built State in the feature file, authored STATUS line, PR #151
+finalized. Do NOT merge: the Open PR Gate handles that at the next
+feature start.
 
 ## Next Steps
-None for F016 after closure.
+None after closure.
 
 ## Risks
-- Full suite is nondeterministic under xdist and pre-existing RED on base
-  (~160-181 churning failures); serial re-runs pass. Backlog F135/F052.
-- R-0142: redaction pattern false-positives on "sk-" substrings (Low, gap
-  backlog) — branch-name artifact, vanishes on main.
-- Cross-group merge-cycle interactions are caught only by the final
-  whole-plan revalidation (coarse abort, fail-open) — by design.
+- Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
+  base and branch (25 identical; the 2+2 differences pass on serial re-run).
+  Backlog F135/F052.
+- Conditional-answer predicates skipped as OPTIONAL scope (see
+  .agent/decisions.md). Nothing in F034's DONE criteria depends on them.
+- The guard only covers packages/; apps/cli deliberately stays interactive-
+  capable, so a prompt added under apps/ that the runner calls would evade
+  it. Runner entry points live in packages/, which is what is guarded.

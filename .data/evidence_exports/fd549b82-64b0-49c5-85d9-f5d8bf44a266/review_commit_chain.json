@@ -1,0 +1,193 @@
+{
+ "base_commit": "34878f34a3374d73fd8e5b8dbc8eb2192f46b781",
+ "chain_v": 1,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "4648d695c7445b2ecac26d3169ac559107e46426",
+   "parents": [
+    "34878f34a3374d73fd8e5b8dbc8eb2192f46b781"
+   ],
+   "patch_sha256": "66f78451654b1b1038bd942e40d0fb76d84a7b06c642528b116bff5d4bbf926a",
+   "subject": "chore(f034): claim F034, reset live review and plan",
+   "tree": "9adaed64ba53d4e28fcd2490c28f92735806c401"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/decision.py",
+    "apps/cli/grouped.py",
+    "packages/orchestration/decision_queue.py",
+    "packages/orchestration/flight_plan.py",
+    "packages/orchestration/schemas/models.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py"
+   ],
+   "commit": "f5aef157d5e30a2b0a4205155eaa252acfe3586c",
+   "parents": [
+    "4648d695c7445b2ecac26d3169ac559107e46426"
+   ],
+   "patch_sha256": "2e2a516d6f544485c241d8c6fc2b1e07d820b1d4b1ab9662fb4de527dfc03398",
+   "subject": "feat(f034): bundle intake clarifications into the plan approval decision",
+   "tree": "a2eadc3512b54bd80ead66464a5c608cfb55db95"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/commands/decision.py",
+    "packages/orchestration/flight_plan.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py"
+   ],
+   "commit": "2a365d7788ff7301e20389175b6c073ab87d7999",
+   "parents": [
+    "f5aef157d5e30a2b0a4205155eaa252acfe3586c"
+   ],
+   "patch_sha256": "50dd06424cd86642472057da1f89c4e24ae67c26db2b01358c8c797a5f2e0f89",
+   "subject": "feat(f034): write clarification answers back on approval, then freeze them",
+   "tree": "57b3f49af9749fc06009f9c30ef09e9ea276774a"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/decision.py",
+    "apps/cli/commands/job.py",
+    "packages/orchestration/flight_plan.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py"
+   ],
+   "commit": "01f546e5c89ced0086994918a369bee9a0d106e4",
+   "parents": [
+    "2a365d7788ff7301e20389175b6c073ab87d7999"
+   ],
+   "patch_sha256": "44df0c55a9dfcd23a0f3bec1a2269c4a6279e5c3c1945ca53766e13b54c52288",
+   "subject": "feat(f034): assumption log, job assumptions command, plan.md link",
+   "tree": "05ac0c9e102feb3d588437816f982bd99598e424"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/plan.md",
+    "apps/cli/commands/do_cmd.py",
+    "packages/orchestration/flight_plan.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py",
+    "tests/test_no_interactive_guard.py"
+   ],
+   "commit": "3a8652f50fa3342089ac06af6cc253f218438d0d",
+   "parents": [
+    "01f546e5c89ced0086994918a369bee9a0d106e4"
+   ],
+   "patch_sha256": "11c6213f67a489193bb6907db68bb607bc8496ff3424546d0a49a0b62532ddb8",
+   "subject": "feat(f034): interactive-input guard, unattended end-to-end, planner prompt",
+   "tree": "5842f009b0de9019a1f7494ae58eac47f0e9fb9c"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "0891b8d724ffe965f44704e70075fe54c7b323cd",
+   "parents": [
+    "3a8652f50fa3342089ac06af6cc253f218438d0d"
+   ],
+   "patch_sha256": "c31d6c8126ec1e7bf73304388df2518251d4e0adb8cf676c6dea279e0a46a9dc",
+   "subject": "chore(f034): rewrite handoff for round 1 handback",
+   "tree": "0f01e8f7284b1e1535512b1876d4954407cbbff8"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "25351cfbf915d32de87d9eefec669a5ed92a52a7",
+   "parents": [
+    "0891b8d724ffe965f44704e70075fe54c7b323cd"
+   ],
+   "patch_sha256": "71ae78037e5767a95f6eca634b9f8fafa47ebb2fdb41ca5158e48b02cebe9f2a",
+   "subject": "chore(f034): persist round 1 reviewer verdict; open integration gate",
+   "tree": "c87e5b48260b8e6791e28790f4a65b36839c115e"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "1b891fba2d1b23f80eb5202b816954401efde803",
+   "parents": [
+    "25351cfbf915d32de87d9eefec669a5ed92a52a7"
+   ],
+   "patch_sha256": "011954d84741c83585eb0dbef849a65306075da0ee3f705122846607cb3238f1",
+   "subject": "chore(f034): record integration-gate evidence and attribution",
+   "tree": "bc9267c69e9c9f616f967ee62d5aee6fd0978a46"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "a00445af3bb2bccb8b1dedf3d6c7c91a34bc0063",
+   "parents": [
+    "1b891fba2d1b23f80eb5202b816954401efde803"
+   ],
+   "patch_sha256": "9677d5b2c6f3bb0dd747a530947786367dc956ec830ed51b1ee13d3b59e21fce",
+   "subject": "chore(f034): persist R-0144 self-written verdict finding",
+   "tree": "c5be511f69503a7cd4fe93f3d9f2d346741caefb"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "f1c6b4d7e997c739a21538853606a7c9bc7aa0d4",
+   "parents": [
+    "a00445af3bb2bccb8b1dedf3d6c7c91a34bc0063"
+   ],
+   "patch_sha256": "3180951130cd359907be99b00021011837a52d1ffc6a80857017b299b5dbdf1a",
+   "subject": "chore(f034): replace self-written gate verdict with the reviewer-authored verdict (Done: R-0144)",
+   "tree": "ac6ecd5b5c768bca783f7d68484776a179ed0340"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "8027d486225be69c21237fa12de9fbc91b6d35f3",
+   "parents": [
+    "f1c6b4d7e997c739a21538853606a7c9bc7aa0d4"
+   ],
+   "patch_sha256": "2b26adac3be7e792304ee55d7bd7d593cccff677e79cce8c390b29e267c2802b",
+   "subject": "chore(f034): rewrite handoff for the R-0144 repair round",
+   "tree": "50cec2e3cc7510475f2d84321032efb4380f1958"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "2f74aee60dc6ac5656a9136120338b5bc6546cc5",
+   "parents": [
+    "8027d486225be69c21237fa12de9fbc91b6d35f3"
+   ],
+   "patch_sha256": "07a9dd98aa44865f549d3a6eff9555fa0dc26a39de42d3ac2f062d94b6de8a48",
+   "subject": "chore(f034): persist repair-round verdict; open closure",
+   "tree": "2526eed6adb0fc8e27a3066fc75445e277dbce2a"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F034.md"
+   ],
+   "commit": "d1c036ace9802d20bdb521e77905bdb7998c552e",
+   "parents": [
+    "2f74aee60dc6ac5656a9136120338b5bc6546cc5"
+   ],
+   "patch_sha256": "7eb73b8492ecfe7fa5b3267ef8bcc298045ba4e9c51ac45187d8fee0c159b0a8",
+   "subject": "docs(f034): built state in the feature file",
+   "tree": "3b3e2e37ab64af439c972427b416678e12d36e68"
+  }
+ ],
+ "head_commit": "d1c036ace9802d20bdb521e77905bdb7998c552e"
+}

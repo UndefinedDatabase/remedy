@@ -62,6 +62,9 @@ class ArgDef:
     #: different commands: `job stop --status` is a flag, `propose list --status pending`
     #: is not. F011 briefly special-cased the NAME in the parser and broke `propose list`.
     is_flag: bool = False
+    #: A repeatable option collects every occurrence into a list
+    #: (`--answer q1=a --answer q2=b`) instead of last-one-wins.
+    is_repeatable: bool = False
 
 
 @dataclass(frozen=True)
@@ -156,6 +159,10 @@ _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
 _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
 _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
 _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
+_ANSWER_OPT = ArgDef(
+    "--answer",
+    'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
+    required=False, is_option=True, is_repeatable=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
 _PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
 _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
@@ -351,6 +358,16 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_execute_commands=True,
         requires_permission=True,
         related=("job.run-next", "job.plan"),
+    ),
+
+    CommandEntry(
+        command_id="job.assumptions",
+        group_id="job",
+        subcommand="assumptions",
+        description="Print the job's assumption log (clarification answers and their sources).",
+        action_class="read_only",
+        args=(_JOB_ID,),
+        related=("decision.resolve",),
     ),
 
     CommandEntry(
@@ -2246,6 +2263,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("decision_id", "Decision ID"),
             _REASON_OPT,
+            _ANSWER_OPT,
         ),
     ),
     CommandEntry(

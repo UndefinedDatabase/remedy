@@ -1,0 +1,148 @@
+4648d695c7445b2ecac26d3169ac559107e46426
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 9250dc0..8dcc8d7 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,58 +1,11 @@
+-# Live Review — F016 Scaling task granularity
+-Branch: feature/f016-task-granularity
+-LAST_REVIEWED_SHA: cd13645
+-Finding IDs continue at R-0141.
+-## Findings
+-
+-### R-0141 [low] Incomplete handback form (round 1) — Resolved (recorded)
+-Per-commit changed-files tables were ordered but only a net table
+-was delivered; commit cd13645 and .agent/decisions.md were absent
+-from the handoff tables. Substance was fully verifiable from the
+-real diff; no code change required. Future handbacks: per-commit
+-tables, every commit, every file.
+-
+-## Round 1 verdict
+-PASS (round gate + canary tier). All T001-T003 gates independently
+-re-run by reviewer: 117 + 71 + 42 passed. Deviations declared in
+-.agent/decisions.md accepted. LAST_REVIEWED_SHA advances.
++# Live Review — F034 Bundled clarification in the Flight Plan
+ 
+-### R-0142 [low] Redaction pattern false-positives on "sk-" substrings — Documented risk (gap backlog)
+-FORBIDDEN_SECRET_PATTERNS entry `sk-[a-zA-Z0-9_-]{8,}` matches any
+-string containing "task-", "risk-", "disk-" + 8 more chars — the
+-branch name feature/f016-task-granularity trips
+-test_viewer_html_passes_precision (7 findings, reviewer-reproduced
+-standalone). Pre-existing pattern defect, not F016 code; vanishes
+-on main checkout. Fix (boundary before "sk") belongs to a
+-redaction-hygiene item, not this feature.
++Branch: feature/f034-bundled-clarification
++LAST_REVIEWED_SHA: (set after claim commit)
++Finding IDs continue monotonically from R-0143.
+ 
+-## Integration-gate round verdict
+-PASS (integration-gate tier). Base dcb8b1a: 181 failed. Branch:
+-162/158 across two runs, ~3 min wall with -n auto. The 10
+-first-run-only new failures: 9 xdist-flaky (empty intersection
+-with run 2; reviewer serial spot-check 3/3 pass), 1 = R-0142
+-(branch-name artifact). No full-suite regression attributable to
+-F016 code. Suite nondeterminism itself is pre-existing and
+-documented as residual risk (F052/F135 backlog).
+-
+-## Final verdict
+-PASS_WITH_RISKS — ACCEPTED (2026-07-26, closure round)
+-R-0141 Resolved, R-0142 documented Low. Residual risks:
+-1. Full suite is nondeterministic under xdist and pre-existing RED
+-   on base (~160-181 failures churning; serial re-runs pass).
+-   Backlog: F135 flaky detector / F052 self-healing test rounds.
+-2. R-0142 redaction pattern false positive (Low, gap backlog).
+-3. Cross-group merge-cycle interactions are caught only by the
+-   final whole-plan revalidation (coarse abort, fail-open) — by
+-   design, documented in task_granularity.py.
+-LAST_REVIEWED_SHA: 2fad89295e11bc2aad51f7ae5f7de52b7542e9b5
++## Findings
++(none)
+ 
+-### R-0143 [medium] Handback form defect repeated (R-0141 class)
+-The closure handback again omitted the ordered per-commit
+-changed-files tables (this time no changed-files table at all)
+-and the ordered grep proofs of byte-identical applied text.
+-Reviewer verified substance independently (STATUS line, zip
+-SHA-256, manifest head, live-review text) — the round FAILs on
+-form only. Second occurrence: next occurrence escalates and will
+-block until a handback template is adopted.
+-Resolution: handoff.md rewritten with per-commit changed-files
+-tables for every commit in dcb8b1a..HEAD and raw grep proofs.
++## Verdicts
++(none)
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 8c132d4..e5fc015 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,33 +1,35 @@
+-# Plan — F016 Scaling task granularity
++# Plan — F034 Bundled clarification in the Flight Plan
+ 
+ ## Goal
+-Right-size Flight-Plan tasks automatically: split oversized tasks, merge
+-trivial neighbors, record every transformation on the plan. Pure heuristic
+-module (no cost history exists yet), wired at ONE point in plan generation,
+-failing open to the original plan.
++All open questions are asked ONCE, bundled, at plan time — never again:
++intake clarifications ride the single plan-approval decision; every
++unanswered question runs on its documented conservative default; the
++runtime is provably incapable of asking mid-run. Done when an unattended
++`remedy do --yes` completes with all defaults recorded in an assumption
++log, and a guard test fails the build if interactive prompting ever enters
++the execution packages.
+ 
+ ## Checklist
+-- [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
+-- [x] T001 split rules + config keys + table tests (gate green)
+-- [x] T002 merge rule + dependency-safety table tests (gate green)
+-- [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
+-      plan.md normalization section + mixed-fixture integration (gate green)
+-- [x] Integration gate: branch vs base full-suite comparison, no F016
+-      regression (verdict persisted in .agent/live_review.md)
+-- [x] Closure: verdicts persisted, feature-file Built State written
++- [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
++- [ ] T001 decision payload + per-question answer parsing + tests
++- [ ] T002 approve → write-back → immutability (late answer rejected)
++- [ ] T003 assumptions.md renderer + CLI + plan.md link
++- [ ] T004 interactive-input guard test + unattended end-to-end
++- [ ] Integration gate
++- [ ] Closure
+ 
+ ## Current Step
+-Closure — integrity check, evidence job (T001–T003 attested), fresh review
+-zip, STATUS.md line, final commit, PR #150 description update. Do NOT merge:
+-the Open PR Gate handles that at the next feature start.
++T001 — extend FlightPlanClarification with answered_by + stable question
++ids, carry intake clarifications into clarifications_resolved, embed the
++questions into the existing fp:approval decision payload (exactly ONE
++decision per plan), add repeatable `--answer q1="text"` parsing to
++`remedy decision resolve`.
+ 
+ ## Next Steps
+-None for F016 after closure.
++T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
+ 
+ ## Risks
+-- Full suite is nondeterministic under xdist and pre-existing RED on base
+-  (~160-181 churning failures); serial re-runs pass. Backlog F135/F052.
+-- R-0142: redaction pattern false-positives on "sk-" substrings (Low, gap
+-  backlog) — branch-name artifact, vanishes on main.
+-- Cross-group merge-cycle interactions are caught only by the final
+-  whole-plan revalidation (coarse abort, fail-open) — by design.
++- Schema changes must be additive: existing fp1 job data must keep loading.
++- Question ids must be stable across plan regeneration (intake order).
++- Conditional-answer predicates are OPTIONAL scope; skip unless trivially
++  cheap and record the skip in the handoff.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index cfccfb5..3a3d029 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -27,7 +27,7 @@
+ - [x] F013 — Job intake (T001–T003 complete; accepted 2026-07-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f013_job_intake_closure · package remedy-review-20260725-184236-READY_FOR_REVIEW.zip · SHA-256 098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1 · accepted HEAD ba6e6fe6d05e97197ca45c201a7914dc4ef20396)
+ - [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+ - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
+-- [ ] F034 — Bundled clarification in the Flight Plan (never at runtime)
++- [~] F034 — Bundled clarification in the Flight Plan (never at runtime)
+ - [ ] F046 — Multi-cycle loop
+ - [ ] F047 — Checkpoint & resume (kill-proof)
+ - [ ] F048 — Job queue

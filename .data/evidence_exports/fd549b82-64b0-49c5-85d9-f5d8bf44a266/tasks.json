@@ -1,0 +1,43 @@
+[
+ {
+  "safe_diff_files": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/decision.py",
+   "apps/cli/commands/do_cmd.py",
+   "apps/cli/commands/job.py"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "apps/cli/grouped.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F034.md",
+   "packages/orchestration/decision_queue.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "packages/orchestration/flight_plan.py",
+   "packages/orchestration/schemas/models.py",
+   "tests/cli/test_decision_answers.py",
+   "tests/orchestration/test_bundled_clarification.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ },
+ {
+  "safe_diff_files": [
+   "tests/test_no_interactive_guard.py"
+  ],
+  "status": "pending",
+  "task_id": "T004",
+  "title": "Task T004"
+ }
+]

@@ -1,0 +1,360 @@
+{
+ "base_commit": "34878f34a3374d73fd8e5b8dbc8eb2192f46b781",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "4648d695c7445b2ecac26d3169ac559107e46426",
+   "parents": [
+    "34878f34a3374d73fd8e5b8dbc8eb2192f46b781"
+   ],
+   "patch_sha256": "66f78451654b1b1038bd942e40d0fb76d84a7b06c642528b116bff5d4bbf926a",
+   "subject": "chore(f034): claim F034, reset live review and plan",
+   "tree": "9adaed64ba53d4e28fcd2490c28f92735806c401"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/decision.py",
+    "apps/cli/grouped.py",
+    "packages/orchestration/decision_queue.py",
+    "packages/orchestration/flight_plan.py",
+    "packages/orchestration/schemas/models.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py"
+   ],
+   "commit": "f5aef157d5e30a2b0a4205155eaa252acfe3586c",
+   "parents": [
+    "4648d695c7445b2ecac26d3169ac559107e46426"
+   ],
+   "patch_sha256": "2e2a516d6f544485c241d8c6fc2b1e07d820b1d4b1ab9662fb4de527dfc03398",
+   "subject": "feat(f034): bundle intake clarifications into the plan approval decision",
+   "tree": "a2eadc3512b54bd80ead66464a5c608cfb55db95"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/commands/decision.py",
+    "packages/orchestration/flight_plan.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py"
+   ],
+   "commit": "2a365d7788ff7301e20389175b6c073ab87d7999",
+   "parents": [
+    "f5aef157d5e30a2b0a4205155eaa252acfe3586c"
+   ],
+   "patch_sha256": "50dd06424cd86642472057da1f89c4e24ae67c26db2b01358c8c797a5f2e0f89",
+   "subject": "feat(f034): write clarification answers back on approval, then freeze them",
+   "tree": "57b3f49af9749fc06009f9c30ef09e9ea276774a"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/decision.py",
+    "apps/cli/commands/job.py",
+    "packages/orchestration/flight_plan.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py"
+   ],
+   "commit": "01f546e5c89ced0086994918a369bee9a0d106e4",
+   "parents": [
+    "2a365d7788ff7301e20389175b6c073ab87d7999"
+   ],
+   "patch_sha256": "44df0c55a9dfcd23a0f3bec1a2269c4a6279e5c3c1945ca53766e13b54c52288",
+   "subject": "feat(f034): assumption log, job assumptions command, plan.md link",
+   "tree": "05ac0c9e102feb3d588437816f982bd99598e424"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/plan.md",
+    "apps/cli/commands/do_cmd.py",
+    "packages/orchestration/flight_plan.py",
+    "tests/cli/test_decision_answers.py",
+    "tests/orchestration/test_bundled_clarification.py",
+    "tests/test_no_interactive_guard.py"
+   ],
+   "commit": "3a8652f50fa3342089ac06af6cc253f218438d0d",
+   "parents": [
+    "01f546e5c89ced0086994918a369bee9a0d106e4"
+   ],
+   "patch_sha256": "11c6213f67a489193bb6907db68bb607bc8496ff3424546d0a49a0b62532ddb8",
+   "subject": "feat(f034): interactive-input guard, unattended end-to-end, planner prompt",
+   "tree": "5842f009b0de9019a1f7494ae58eac47f0e9fb9c"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "0891b8d724ffe965f44704e70075fe54c7b323cd",
+   "parents": [
+    "3a8652f50fa3342089ac06af6cc253f218438d0d"
+   ],
+   "patch_sha256": "c31d6c8126ec1e7bf73304388df2518251d4e0adb8cf676c6dea279e0a46a9dc",
+   "subject": "chore(f034): rewrite handoff for round 1 handback",
+   "tree": "0f01e8f7284b1e1535512b1876d4954407cbbff8"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "25351cfbf915d32de87d9eefec669a5ed92a52a7",
+   "parents": [
+    "0891b8d724ffe965f44704e70075fe54c7b323cd"
+   ],
+   "patch_sha256": "71ae78037e5767a95f6eca634b9f8fafa47ebb2fdb41ca5158e48b02cebe9f2a",
+   "subject": "chore(f034): persist round 1 reviewer verdict; open integration gate",
+   "tree": "c87e5b48260b8e6791e28790f4a65b36839c115e"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "1b891fba2d1b23f80eb5202b816954401efde803",
+   "parents": [
+    "25351cfbf915d32de87d9eefec669a5ed92a52a7"
+   ],
+   "patch_sha256": "011954d84741c83585eb0dbef849a65306075da0ee3f705122846607cb3238f1",
+   "subject": "chore(f034): record integration-gate evidence and attribution",
+   "tree": "bc9267c69e9c9f616f967ee62d5aee6fd0978a46"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "a00445af3bb2bccb8b1dedf3d6c7c91a34bc0063",
+   "parents": [
+    "1b891fba2d1b23f80eb5202b816954401efde803"
+   ],
+   "patch_sha256": "9677d5b2c6f3bb0dd747a530947786367dc956ec830ed51b1ee13d3b59e21fce",
+   "subject": "chore(f034): persist R-0144 self-written verdict finding",
+   "tree": "c5be511f69503a7cd4fe93f3d9f2d346741caefb"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "f1c6b4d7e997c739a21538853606a7c9bc7aa0d4",
+   "parents": [
+    "a00445af3bb2bccb8b1dedf3d6c7c91a34bc0063"
+   ],
+   "patch_sha256": "3180951130cd359907be99b00021011837a52d1ffc6a80857017b299b5dbdf1a",
+   "subject": "chore(f034): replace self-written gate verdict with the reviewer-authored verdict (Done: R-0144)",
+   "tree": "ac6ecd5b5c768bca783f7d68484776a179ed0340"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "8027d486225be69c21237fa12de9fbc91b6d35f3",
+   "parents": [
+    "f1c6b4d7e997c739a21538853606a7c9bc7aa0d4"
+   ],
+   "patch_sha256": "2b26adac3be7e792304ee55d7bd7d593cccff677e79cce8c390b29e267c2802b",
+   "subject": "chore(f034): rewrite handoff for the R-0144 repair round",
+   "tree": "50cec2e3cc7510475f2d84321032efb4380f1958"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "2f74aee60dc6ac5656a9136120338b5bc6546cc5",
+   "parents": [
+    "8027d486225be69c21237fa12de9fbc91b6d35f3"
+   ],
+   "patch_sha256": "07a9dd98aa44865f549d3a6eff9555fa0dc26a39de42d3ac2f062d94b6de8a48",
+   "subject": "chore(f034): persist repair-round verdict; open closure",
+   "tree": "2526eed6adb0fc8e27a3066fc75445e277dbce2a"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F034.md"
+   ],
+   "commit": "d1c036ace9802d20bdb521e77905bdb7998c552e",
+   "parents": [
+    "2f74aee60dc6ac5656a9136120338b5bc6546cc5"
+   ],
+   "patch_sha256": "7eb73b8492ecfe7fa5b3267ef8bcc298045ba4e9c51ac45187d8fee0c159b0a8",
+   "subject": "docs(f034): built state in the feature file",
+   "tree": "3b3e2e37ab64af439c972427b416678e12d36e68"
+  }
+ ],
+ "files": [
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "abb19c9d32b23bfa9cc75aa6d60b4444c648c7284dd89790e50f5f5af6f6de88",
+   "current_mode": "100644",
+   "current_sha256": "94de5b0d45816cf7aa033f25b2ddb86b92ccf32a5edd4e9e06290c530aac5e7d",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "14e675b5f023ec4cc214246b37911a9122e56789ac01c7ebc12a6a1bb3a63850",
+   "current_mode": "100644",
+   "current_sha256": "d5f3baa480fa7cc564b4ca242b398e497691db58dd3e748da670a14f9221568f",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "2f2477a085030538cdcc1e726f8ed1ac34ec1704728ec495fc7b33fe63b79985",
+   "current_mode": "100644",
+   "current_sha256": "8292c7376833e788493c9ca997084db7a732719406ffa1aae8c343fa207217ae",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "872fcd154e6c26c92bc8cc1f496b594e64bd951284f86dae35e0c4a225e9b7c8",
+   "current_mode": "100644",
+   "current_sha256": "ebe9fa0ff22178f97fb4527cc4dd124960a2b0f8efc5e164623c7e27d4729827",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e0c5cef69e4b69de1ecd53566023375a3d82534949bf892024ae876d5c1d46f6",
+   "current_mode": "100644",
+   "current_sha256": "dd421ed1b281d46071db64b3ab34fd9d2c14c2e26e3fe6c75d449cdb193d762f",
+   "kind": "regular",
+   "path": "apps/cli/command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "588cc4ad00b060bbb4795c70bb727b6ba760ec5c44f626f401718d8def0ae643",
+   "current_mode": "100644",
+   "current_sha256": "c5fca8a945ae059f0394005e190bd1422de3d079514e16557d4abc684b3c8460",
+   "kind": "regular",
+   "path": "apps/cli/commands/decision.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "a2379c766899006da3a1d9c361bbf9af3d05d59db4d62b4fe8f1fdbe0163a71b",
+   "current_mode": "100644",
+   "current_sha256": "dc333f7b3518f4558c3eea7adba565e4dd2a5019703f8fa1abf4fdeef4b33e16",
+   "kind": "regular",
+   "path": "apps/cli/commands/do_cmd.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "268c850c65a1bb595b43bf757a5856ccbadb37e2060ef2144cb2bb2dde0c68df",
+   "current_mode": "100644",
+   "current_sha256": "5a95d7ce8e5dc4ff50fec86c61561f1bede65abc7f2cc10fac700e02856c2b1d",
+   "kind": "regular",
+   "path": "apps/cli/commands/job.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "aed63be65f3ce04d2463aae0e4a3e555da7ef4df32c410d48a30e949c05e5c8b",
+   "current_mode": "100644",
+   "current_sha256": "df654a4ef9563c812f747202e162d81f1f5a3fd976b794b12d4a8a89979edd51",
+   "kind": "regular",
+   "path": "apps/cli/grouped.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0c78f1f461577b7421d5ed9f663e4c290479e95c6bb9045400a8fe59a9a89ea2",
+   "current_mode": "100644",
+   "current_sha256": "10d35e73b9f5d7259873f0c0251b6edfcd78ce3dc48e2d2f89651a01c132087c",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "b3b712de2ae68cc731dbd9b427bb24b50efed4ad4e6def945fa3c559edc9cb6a",
+   "current_mode": "100644",
+   "current_sha256": "b6ecc8e15530ec264dd5648f593347744f8dbc1e66123189549deac82529cdbb",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F034.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8c8b3c5054d41ee7ea3f6b4ab7deedc65ad0606143454e230471e63790dbb411",
+   "current_mode": "100644",
+   "current_sha256": "c2c8d6896988766edf471ff24b6045002b88936b9088e0f820b8625d17dce4a5",
+   "kind": "regular",
+   "path": "packages/orchestration/decision_queue.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "f552668397d7934e3b24b0f91520305bb3767bf72704fcb288dae7db6fb395f5",
+   "current_mode": "100644",
+   "current_sha256": "b3b7890ddd9d2c5d1c59a042622faa389c18d668d24781fd3e5ea2b5988f6957",
+   "kind": "regular",
+   "path": "packages/orchestration/flight_plan.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "dbce3999dea9bddf74075043fed89d8d8edd07338158afde6fa46b2d07fb15a6",
+   "current_mode": "100644",
+   "current_sha256": "42eab217d5dcc98cc22bcd01856ae3ae4ea612306923a5de2d565e7985e9bc41",
+   "kind": "regular",
+   "path": "packages/orchestration/schemas/models.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "358a6705a64718ee29df2bd41e490bfb1ba619a49e6b6aa16f07338546875cd6",
+   "kind": "regular",
+   "path": "tests/cli/test_decision_answers.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "bb3cb5c03d35dcca321b6eada910d6653a32761b512ea1b0cee615e69fdac019",
+   "kind": "regular",
+   "path": "tests/orchestration/test_bundled_clarification.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "0c98125d375b1151018aaa044c5cc3332e6279571fb8cfe9c2b8228eba9e2836",
+   "kind": "regular",
+   "path": "tests/test_no_interactive_guard.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "d1c036ace9802d20bdb521e77905bdb7998c552e",
+ "subject_v": 1
+}

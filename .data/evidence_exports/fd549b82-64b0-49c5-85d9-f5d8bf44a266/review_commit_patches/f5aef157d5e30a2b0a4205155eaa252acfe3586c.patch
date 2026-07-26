@@ -1,0 +1,821 @@
+f5aef157d5e30a2b0a4205155eaa252acfe3586c
+diff --git a/.agent/plan.md b/.agent/plan.md
+index e5fc015..bf97279 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -11,7 +11,7 @@ the execution packages.
+ 
+ ## Checklist
+ - [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
+-- [ ] T001 decision payload + per-question answer parsing + tests
++- [x] T001 decision payload + per-question answer parsing + tests
+ - [ ] T002 approve → write-back → immutability (late answer rejected)
+ - [ ] T003 assumptions.md renderer + CLI + plan.md link
+ - [ ] T004 interactive-input guard test + unattended end-to-end
+@@ -19,11 +19,10 @@ the execution packages.
+ - [ ] Closure
+ 
+ ## Current Step
+-T001 — extend FlightPlanClarification with answered_by + stable question
+-ids, carry intake clarifications into clarifications_resolved, embed the
+-questions into the existing fp:approval decision payload (exactly ONE
+-decision per plan), add repeatable `--answer q1="text"` parsing to
+-`remedy decision resolve`.
++T002 — approve writes answers back (supplied → answered_by "human",
++unanswered → default_answer with answered_by "default"), answers become
++immutable (late `--answer` rejected with "already resolved"), reject
++leaves clarifications untouched.
+ 
+ ## Next Steps
+ T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index eae5431..44a3f83 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -62,6 +62,9 @@ class ArgDef:
+     #: different commands: `job stop --status` is a flag, `propose list --status pending`
+     #: is not. F011 briefly special-cased the NAME in the parser and broke `propose list`.
+     is_flag: bool = False
++    #: A repeatable option collects every occurrence into a list
++    #: (`--answer q1=a --answer q2=b`) instead of last-one-wins.
++    is_repeatable: bool = False
+ 
+ 
+ @dataclass(frozen=True)
+@@ -156,6 +159,10 @@ _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
+ _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
+ _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
+ _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
++_ANSWER_OPT = ArgDef(
++    "--answer",
++    'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
++    required=False, is_option=True, is_repeatable=True)
+ _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
+ _PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
+ _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
+@@ -2246,6 +2253,7 @@ CATALOG: tuple[CommandEntry, ...] = (
+             _JOB_ID,
+             ArgDef("decision_id", "Decision ID"),
+             _REASON_OPT,
++            _ANSWER_OPT,
+         ),
+     ),
+     CommandEntry(
+diff --git a/apps/cli/commands/decision.py b/apps/cli/commands/decision.py
+index 6a3c6a3..57abb60 100644
+--- a/apps/cli/commands/decision.py
++++ b/apps/cli/commands/decision.py
+@@ -74,13 +74,67 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
+         print(f"  Status: {d.status}")
+         print(f"  Severity: {d.severity}")
+         print(f"  Summary: {d.safe_summary}")
++        for q in d.payload.get("clarifications", []):
++            print(f"  Question {q.get('id', '')}: {q.get('question', '')}")
++            print(f"    Default: {q.get('default_answer', '')}")
++            print(f"    Impact: {q.get('impact', '')}")
+         if d.next_actions:
+             print("  Next actions:")
+             for a in d.next_actions:
+                 print(f"    - {a}")
+ 
+ 
+-def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | None = None) -> None:
++class AnswerParseError(ValueError):
++    """A ``--answer`` option could not be applied to the bundled questions."""
++
++
++def parse_answer_options(
++    raw: list[str] | None,
++    questions: list[dict[str, str]],
++) -> dict[str, str]:
++    """Parse repeatable ``--answer q1=text`` options against open questions.
++
++    Answering a subset is valid — every unanswered question falls back to
++    its documented default at approval time. An unknown or duplicated id,
++    or a malformed pair, is a spec error and raises AnswerParseError.
++    """
++    known = [str(q.get("id", "")) for q in questions]
++    answers: dict[str, str] = {}
++    for item in raw or []:
++        text = str(item)
++        if "=" not in text:
++            raise AnswerParseError(
++                f"malformed --answer {text!r}: expected <question-id>=<answer>, "
++                'e.g. --answer q1="use PostgreSQL"')
++        qid, _, value = text.partition("=")
++        qid = qid.strip()
++        if not qid:
++            raise AnswerParseError(
++                f"malformed --answer {text!r}: missing question id before '='")
++        if qid not in known:
++            listed = ", ".join(known) if known else "(none — the plan has no open questions)"
++            raise AnswerParseError(
++                f"unknown question id {qid!r}. Open questions: {listed}")
++        if qid in answers:
++            raise AnswerParseError(f"duplicate --answer for question id {qid!r}")
++        answers[qid] = value
++    return answers
++
++
++def _cmd_decision_resolve(
++    job_id_str: str,
++    decision_id: str,
++    *,
++    reason: str | None = None,
++    answer: list[str] | None = None,
++) -> None:
++    if answer and not decision_id.startswith("fp:"):
++        print(
++            f"Error: --answer is only valid for the flight-plan approval "
++            f"decision, not {decision_id!r}.",
++            file=sys.stderr)
++        sys.exit(1)
++
+     # Decisions are derived — resolve the underlying record if possible
+     if decision_id.startswith("sr:"):
+         from packages.orchestration.stop_reasons import resolve_stop_reason
+@@ -101,6 +155,8 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
+             print(f"Error: {exc}", file=sys.stderr)
+             sys.exit(1)
+ 
++        from packages.orchestration.flight_plan import open_clarification_questions
++
+         fp = getattr(job, "flight_plan", None)
+         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
+             print("Error: no pending flight plan approval for this job.", file=sys.stderr)
+@@ -115,11 +171,29 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
+             )
+             sys.exit(1)
+ 
++        questions = open_clarification_questions(fp.get("clarifications_resolved"))
++        if answer and reason != "approve":
++            print(
++                "Error: --answer applies only when approving the plan.",
++                file=sys.stderr)
++            sys.exit(1)
++        try:
++            answers = parse_answer_options(answer, questions)
++        except AnswerParseError as exc:
++            print(f"Error: {exc}", file=sys.stderr)
++            sys.exit(1)
++
+         if reason == "approve":
++            for rec in fp.get("clarifications_resolved") or []:
++                if isinstance(rec, dict) and rec.get("id") in answers:
++                    rec["answer"] = answers[str(rec["id"])]
++                    rec["answered_by"] = "human"
+             fp["_approval"] = "approved"
+             job.flight_plan = fp
+             save_job(job)
+             print(f"Flight plan approved for job {job_id_str}.")
++            for qid in sorted(answers):
++                print(f"  {qid} (human): {answers[qid]}")
+         else:
+             fp["_approval"] = "rejected"
+             job.flight_plan = fp
+@@ -153,6 +227,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         args.job_id,
+         args.decision_id,
+         reason=getattr(args, "reason", None),
++        answer=getattr(args, "answer", None),
+     ),
+     "decision.explain": lambda args: _cmd_decision_explain(args.job_id),
+ }
+diff --git a/apps/cli/grouped.py b/apps/cli/grouped.py
+index 332cf6b..00d7d43 100644
+--- a/apps/cli/grouped.py
++++ b/apps/cli/grouped.py
+@@ -70,6 +70,12 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
+                 parser.add_argument(arg.name, action="store_true",
+                                     dest=arg.name.lstrip("-").replace("-", "_"),
+                                     help=arg.help)
++            elif arg.is_repeatable:
++                # Declared per argument for the same reason is_flag is: every
++                # occurrence is collected instead of the last one winning.
++                parser.add_argument(arg.name, action="append", default=None,
++                                    dest=arg.name.lstrip("-").replace("-", "_"),
++                                    help=arg.help)
+             elif arg.name == "--json":
+                 parser.add_argument("--json", action="store_true", dest="json", help=arg.help)
+             elif arg.name == "--reason":
+diff --git a/packages/orchestration/decision_queue.py b/packages/orchestration/decision_queue.py
+index 08cd40f..801aa14 100644
+--- a/packages/orchestration/decision_queue.py
++++ b/packages/orchestration/decision_queue.py
+@@ -17,7 +17,7 @@ Public API::
+ 
+ from __future__ import annotations
+ 
+-from dataclasses import dataclass
++from dataclasses import dataclass, field
+ from typing import Any
+ 
+ from packages.core.models import Job
+@@ -39,6 +39,11 @@ class HumanDecision:
+     next_actions: tuple[str, ...]
+     created_at: str
+     resolved_at: str | None
++    #: Structured extras for decisions that carry more than a summary line.
++    #: Additive (F034): every existing producer omits it and gets ``{}``.
++    #: The flight-plan approval uses it to bundle the plan's open
++    #: clarifications, so one decision covers the whole plan.
++    payload: dict[str, Any] = field(default_factory=dict)
+ 
+ 
+ DECISION_TYPES = frozenset({
+@@ -233,6 +238,24 @@ def list_decisions(
+     if isinstance(_flight_plan, dict):
+         _fp_approval = _flight_plan.get("_approval")
+         if _fp_approval == "pending":
++            # F034: the plan's open questions ride THIS decision. One plan,
++            # one human touchpoint — never one decision per question.
++            from packages.orchestration.flight_plan import open_clarification_questions
++            _questions = open_clarification_questions(
++                _flight_plan.get("clarifications_resolved"))
++            _actions = [
++                f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
++                f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
++            ]
++            _summary = "Flight plan awaiting approval."
++            if _questions:
++                _summary = (
++                    f"Flight plan awaiting approval "
++                    f"({len(_questions)} open question"
++                    f"{'s' if len(_questions) != 1 else ''}).")
++                _actions.insert(1, (
++                    f"remedy decision resolve {job_id[:8]} fp:approval "
++                    f"--reason approve --answer {_questions[0]['id']}=\"...\""))
+             decisions.append(HumanDecision(
+                 id="fp:approval",
+                 type="flight_plan_approval",
+@@ -242,13 +265,11 @@ def list_decisions(
+                 related_node_id="",
+                 related_intent_id="",
+                 related_file="",
+-                safe_summary="Flight plan awaiting approval.",
+-                next_actions=(
+-                    f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
+-                    f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
+-                ),
++                safe_summary=_summary,
++                next_actions=tuple(_actions),
+                 created_at="",
+                 resolved_at=None,
++                payload={"clarifications": _questions} if _questions else {},
+             ))
+         elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
+             audit = _flight_plan["_approval_audit"]
+@@ -318,6 +339,7 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
+         "next_actions": list(d.next_actions),
+         "created_at": d.created_at,
+         "resolved_at": d.resolved_at,
++        "payload": dict(d.payload),
+     }
+ 
+ 
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index ec87ea5..d475f47 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -13,7 +13,11 @@ from pathlib import Path
+ from typing import Any
+ 
+ from packages.core.models import AcceptanceCheck, RunState, Task
+-from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
++from packages.orchestration.schemas.models import (
++    _LARGE_PLAN_THRESHOLD,
++    FlightPlan,
++    FlightPlanClarification,
++)
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+ from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
+ 
+@@ -83,6 +87,99 @@ def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
+     )
+ 
+ 
++# ---------------------------------------------------------------------------
++# F034 — bundled clarification (plan-time, never at runtime)
++# ---------------------------------------------------------------------------
++
++def _as_record(clarification: Any) -> dict[str, Any] | None:
++    """Normalize a clarification to a plain dict.
++
++    Callers hand us either the model (fresh plan) or the stored dict
++    (job JSON), and both must read the same way.
++    """
++    if isinstance(clarification, dict):
++        return clarification
++    dump = getattr(clarification, "model_dump", None)
++    if callable(dump):
++        return dump()
++    return None
++
++
++def carry_intake_clarifications(
++    plan: FlightPlan,
++    intake: dict[str, Any] | None,
++) -> FlightPlan:
++    """Carry the intake's open questions into ``clarifications_resolved``.
++
++    Every intake clarification becomes an UNANSWERED entry (empty
++    ``answer``/``answered_by``) with a stable id assigned by intake order
++    (``q1``, ``q2``, …) — those are the questions the single approval
++    decision bundles. Entries the planner produced on its own (a question
++    it already resolved, i.e. an A9 assumption) are preserved verbatim
++    after them and get the next free id.
++
++    A plan whose intake has no clarifications and whose planner declared
++    none is returned unchanged.
++    """
++    carried: list[FlightPlanClarification] = []
++    intake_clarifications = list((intake or {}).get("clarifications") or [])
++    from_intake: set[str] = set()
++
++    for raw in intake_clarifications:
++        if not isinstance(raw, dict):
++            continue
++        question = str(raw.get("question", ""))
++        carried.append(FlightPlanClarification(
++            id=f"q{len(carried) + 1}",
++            question=question,
++            default_answer=str(raw.get("default_answer", "")),
++            impact=str(raw.get("impact", "")),
++            answer="",
++            answered_by="",
++        ))
++        from_intake.add(question)
++
++    for c in plan.clarifications_resolved:
++        # The planner echoing an intake question back does not close it —
++        # the intake entry above is authoritative and stays open.
++        if c.question in from_intake:
++            continue
++        carried.append(c.model_copy(
++            update={"id": c.id or f"q{len(carried) + 1}"}))
++
++    if carried == list(plan.clarifications_resolved):
++        return plan
++    return plan.model_copy(update={"clarifications_resolved": carried})
++
++
++def open_clarification_questions(
++    clarifications: list[Any] | None,
++) -> list[dict[str, str]]:
++    """Return the still-open questions as decision-payload records.
++
++    Accepts the raw ``clarifications_resolved`` list from either a plan
++    model or a stored flight-plan dict. Open means: no answer AND no
++    ``answered_by`` — a planner-declared assumption arrives with an answer
++    and is therefore never asked again.
++    """
++    out: list[dict[str, str]] = []
++    for c in clarifications or []:
++        rec = _as_record(c)
++        if rec is None:
++            continue
++        if str(rec.get("answer", "") or "").strip():
++            continue
++        if str(rec.get("answered_by", "") or "").strip():
++            continue
++        out.append({
++            "id": str(rec.get("id", "") or ""),
++            "question": str(rec.get("question", "") or ""),
++            "default_answer": str(rec.get("default_answer", "") or ""),
++            "impact": str(rec.get("impact", "") or ""),
++        })
++    return out
++
++
+ def granularity_config() -> GranularityConfig:
+     """Read the F016 thresholds from Remedy config.
+ 
+@@ -114,7 +211,8 @@ def plan_job_llm(
+ 
+     The validated plan then passes through F016 task-granularity
+     normalization — the single insertion point for it — and the result
+-    carries the transformation record.
++    carries the transformation record. Finally the intake's open questions
++    are carried into the plan (F034) so the approval gate can bundle them.
+     """
+     prompt = _build_plan_prompt(intake)
+     try:
+@@ -155,6 +253,9 @@ def plan_job_llm(
+             "reason": f"normalization not run, original plan kept: {exc}",
+         }]
+ 
++    # F034: after normalization, so the questions ride the final plan shape.
++    plan = carry_intake_clarifications(plan, intake)
++
+     return FlightPlanResult(
+         plan=plan,
+         source="llm",
+diff --git a/packages/orchestration/schemas/models.py b/packages/orchestration/schemas/models.py
+index c9d0aa7..371965b 100644
+--- a/packages/orchestration/schemas/models.py
++++ b/packages/orchestration/schemas/models.py
+@@ -151,13 +151,26 @@ class PlannedTask(_Strict):
+         return self
+ 
+ 
++#: Who supplied a clarification's answer. Empty until the approval gate
++#: resolves it — an unresolved question is neither human- nor default-answered.
++AnsweredBy = Literal["human", "default", ""]
++
++
+ class FlightPlanClarification(_Strict):
+-    """A resolved clarification carried in the flight plan."""
++    """A resolved clarification carried in the flight plan.
++
++    ``id`` and ``answered_by`` are additive (F034): plans written before
++    bundled clarification existed load unchanged and carry the empty
++    defaults. The id is assigned by intake order (``q1``, ``q2``, …) so it
++    stays stable across plan regeneration for the same intake.
++    """
+ 
+     question: str
+     default_answer: str
+     impact: str
+     answer: str
++    id: str = ""
++    answered_by: AnsweredBy = ""
+ 
+ 
+ class FlightPlan(_Structured):
+diff --git a/tests/cli/test_decision_answers.py b/tests/cli/test_decision_answers.py
+new file mode 100644
+index 0000000..7489d44
+--- /dev/null
++++ b/tests/cli/test_decision_answers.py
+@@ -0,0 +1,163 @@
++"""F034 T001 — per-question answers on `remedy decision resolve`.
++
++The bundled questions are answered on the ONE plan-approval decision:
++`--answer q1="..."` is repeatable, answering a subset is valid, and an
++unknown question id is a clean non-zero error.
++"""
++
++from __future__ import annotations
++
++import pytest
++
++from apps.cli.commands.decision import (
++    AnswerParseError,
++    _cmd_decision_resolve,
++    parse_answer_options,
++)
++from packages.core.models import Job
++from packages.orchestration.flight_plan import carry_intake_clarifications
++from packages.orchestration.schemas.models import FlightPlan
++
++_QUESTIONS = [
++    {"id": "q1", "question": "Which database?",
++     "default_answer": "keep SQLite", "impact": "driver choice"},
++    {"id": "q2", "question": "Add auth?",
++     "default_answer": "no, leave auth untouched", "impact": "scope"},
++]
++
++
++def _pending_job() -> Job:
++    plan = carry_intake_clarifications(
++        FlightPlan(**{
++            "schema_v": "flight_plan_v1",
++            "tasks": [{
++                "id": "T1", "title": "T", "goal": "g",
++                "acceptance": ["ok"], "est_tokens_band": "S",
++            }],
++        }),
++        {"schema_v": "ji1", "goal": "ship",
++         "clarifications": [
++             {k: q[k] for k in ("question", "default_answer", "impact")}
++             for q in _QUESTIONS
++         ]},
++    )
++    fp = plan.model_dump()
++    fp["_approval"] = "pending"
++    return Job(name="t", flight_plan=fp)
++
++
++class TestParseAnswerOptions:
++
++    def test_no_answers(self):
++        assert parse_answer_options(None, _QUESTIONS) == {}
++        assert parse_answer_options([], _QUESTIONS) == {}
++
++    def test_answer_one_of_two_is_valid(self):
++        assert parse_answer_options(['q2=yes, add auth'], _QUESTIONS) == {
++            "q2": "yes, add auth"}
++
++    def test_answer_both(self):
++        parsed = parse_answer_options(["q1=postgres", "q2=no"], _QUESTIONS)
++        assert parsed == {"q1": "postgres", "q2": "no"}
++
++    def test_answer_may_contain_equals_signs(self):
++        assert parse_answer_options(["q1=DSN=postgres://x"], _QUESTIONS) == {
++            "q1": "DSN=postgres://x"}
++
++    def test_unknown_id_rejected(self):
++        with pytest.raises(AnswerParseError, match="unknown question id 'q9'"):
++            parse_answer_options(["q9=whatever"], _QUESTIONS)
++
++    def test_unknown_id_error_lists_open_questions(self):
++        with pytest.raises(AnswerParseError, match="q1, q2"):
++            parse_answer_options(["q9=whatever"], _QUESTIONS)
++
++    def test_missing_equals_rejected(self):
++        with pytest.raises(AnswerParseError, match="malformed"):
++            parse_answer_options(["q1 postgres"], _QUESTIONS)
++
++    def test_missing_id_rejected(self):
++        with pytest.raises(AnswerParseError, match="missing question id"):
++            parse_answer_options(["=postgres"], _QUESTIONS)
++
++    def test_duplicate_id_rejected(self):
++        with pytest.raises(AnswerParseError, match="duplicate --answer"):
++            parse_answer_options(["q1=a", "q1=b"], _QUESTIONS)
++
++    def test_answering_a_plan_without_questions_is_an_error(self):
++        with pytest.raises(AnswerParseError, match="no open questions"):
++            parse_answer_options(["q1=a"], [])
++
++
++class TestResolveWithAnswers:
++
++    def test_answer_persisted_as_human(self, tmp_path, monkeypatch):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++
++        _cmd_decision_resolve(
++            str(job.id)[:8], "fp:approval", reason="approve",
++            answer=['q1=use PostgreSQL'])
++
++        updated = load_job(job.id)
++        recs = updated.flight_plan["clarifications_resolved"]
++        assert updated.flight_plan["_approval"] == "approved"
++        assert recs[0]["answer"] == "use PostgreSQL"
++        assert recs[0]["answered_by"] == "human"
++
++    def test_unknown_id_exits_non_zero(self, tmp_path, monkeypatch):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++
++        with pytest.raises(SystemExit) as exc:
++            _cmd_decision_resolve(
++                str(job.id)[:8], "fp:approval", reason="approve",
++                answer=["q9=nope"])
++        assert exc.value.code == 1
++        # The plan must be untouched by a rejected answer set.
++        assert load_job(job.id).flight_plan["_approval"] == "pending"
++
++    def test_answer_with_reject_is_an_error(self, tmp_path, monkeypatch):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++
++        with pytest.raises(SystemExit) as exc:
++            _cmd_decision_resolve(
++                str(job.id)[:8], "fp:approval", reason="reject",
++                answer=["q1=postgres"])
++        assert exc.value.code == 1
++        assert load_job(job.id).flight_plan["_approval"] == "pending"
++
++    def test_answer_on_other_decision_is_an_error(self, tmp_path, monkeypatch):
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        with pytest.raises(SystemExit) as exc:
++            _cmd_decision_resolve(
++                "deadbeef", "sr:whatever", reason="x", answer=["q1=a"])
++        assert exc.value.code == 1
++
++
++class TestAnswerOptionIsRepeatable:
++
++    def test_catalog_declares_repeatable_answer(self):
++        from apps.cli.command_catalog import CATALOG
++
++        entry = [c for c in CATALOG if c.command_id == "decision.resolve"][0]
++        opt = [a for a in entry.args if a.name == "--answer"][0]
++        assert opt.is_repeatable is True
++        assert opt.is_flag is False
++
++    def test_parser_collects_repeated_answers(self):
++        from apps.cli.grouped import build_parser
++
++        parser = build_parser()
++        args = parser.parse_args([
++            "decision", "resolve", "abc123", "fp:approval",
++            "--reason", "approve", "--answer", "q1=a", "--answer", "q2=b",
++        ])
++        assert args.answer == ["q1=a", "q2=b"]
+diff --git a/tests/orchestration/test_bundled_clarification.py b/tests/orchestration/test_bundled_clarification.py
+new file mode 100644
+index 0000000..d44d870
+--- /dev/null
++++ b/tests/orchestration/test_bundled_clarification.py
+@@ -0,0 +1,202 @@
++"""F034 T001 — intake clarifications ride the single approval decision.
++
++Covers the contract half: stable question ids assigned by intake order,
++carry-through into the plan with empty answer/answered_by, embedding into
++the fp:approval decision payload, and the zero-clarification regression
++(the approval flow must be identical to the plain plan).
++"""
++
++from __future__ import annotations
++
++from packages.core.models import Job
++from packages.orchestration.decision_queue import export_decision_json, list_decisions
++from packages.orchestration.flight_plan import (
++    carry_intake_clarifications,
++    open_clarification_questions,
++)
++from packages.orchestration.schemas.models import FlightPlan
++
++
++def _task(tid: str, **kw):
++    d = {
++        "id": tid,
++        "title": f"Task {tid}",
++        "goal": "do the thing",
++        "acceptance": ["it works"],
++        "est_tokens_band": "S",
++    }
++    d.update(kw)
++    return d
++
++
++def _plan(**kw) -> FlightPlan:
++    d = {"schema_v": "flight_plan_v1", "tasks": [_task("T1")]}
++    d.update(kw)
++    return FlightPlan(**d)
++
++
++def _intake(*clarifications) -> dict:
++    return {
++        "schema_v": "ji1",
++        "goal": "ship it",
++        "clarifications": list(clarifications),
++    }
++
++
++_Q_DB = {
++    "question": "Which database?",
++    "default_answer": "keep the existing SQLite file",
++    "impact": "driver choice and migration work",
++}
++_Q_AUTH = {
++    "question": "Add auth?",
++    "default_answer": "no, leave auth untouched",
++    "impact": "scope of the change",
++}
++
++
++class TestCarryIntakeClarifications:
++
++    def test_ids_assigned_by_intake_order(self):
++        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB, _Q_AUTH))
++        assert [c.id for c in plan.clarifications_resolved] == ["q1", "q2"]
++        assert plan.clarifications_resolved[0].question == "Which database?"
++        assert plan.clarifications_resolved[1].question == "Add auth?"
++
++    def test_carried_questions_start_unanswered(self):
++        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB))
++        c = plan.clarifications_resolved[0]
++        assert c.answer == ""
++        assert c.answered_by == ""
++        assert c.default_answer == "keep the existing SQLite file"
++        assert c.impact == "driver choice and migration work"
++
++    def test_ids_stable_across_regeneration(self):
++        intake = _intake(_Q_DB, _Q_AUTH)
++        first = carry_intake_clarifications(_plan(), intake)
++        second = carry_intake_clarifications(_plan(tasks=[_task("A"), _task("B")]), intake)
++        assert ([(c.id, c.question) for c in first.clarifications_resolved]
++                == [(c.id, c.question) for c in second.clarifications_resolved])
++
++    def test_planner_echo_of_intake_question_stays_open(self):
++        """The planner answering an intake question does not close it."""
++        echoed = dict(_Q_DB, answer="postgres")
++        plan = carry_intake_clarifications(
++            _plan(clarifications_resolved=[echoed]), _intake(_Q_DB))
++        assert len(plan.clarifications_resolved) == 1
++        assert plan.clarifications_resolved[0].answer == ""
++        assert plan.clarifications_resolved[0].id == "q1"
++
++    def test_planner_assumption_preserved_after_intake_questions(self):
++        assumption = {
++            "question": "Which test runner?",
++            "default_answer": "pytest",
++            "impact": "test invocation",
++            "answer": "pytest",
++        }
++        plan = carry_intake_clarifications(
++            _plan(clarifications_resolved=[assumption]), _intake(_Q_DB))
++        assert [c.id for c in plan.clarifications_resolved] == ["q1", "q2"]
++        assert plan.clarifications_resolved[1].answer == "pytest"
++        assert plan.clarifications_resolved[1].answered_by == ""
++
++    def test_zero_clarifications_plan_unchanged(self):
++        plan = _plan()
++        assert carry_intake_clarifications(plan, _intake()) is plan
++        assert carry_intake_clarifications(plan, None) is plan
++        assert plan.clarifications_resolved == []
++
++
++class TestOpenClarificationQuestions:
++
++    def test_answered_entries_are_not_open(self):
++        records = [
++            {"id": "q1", "question": "Which database?",
++             "default_answer": "sqlite", "impact": "driver", "answer": "",
++             "answered_by": ""},
++            {"id": "q2", "question": "Which test runner?",
++             "default_answer": "pytest", "impact": "cmd", "answer": "pytest",
++             "answered_by": ""},
++            {"id": "q3", "question": "Add auth?", "default_answer": "no",
++             "impact": "scope", "answer": "no", "answered_by": "default"},
++        ]
++        assert [q["id"] for q in open_clarification_questions(records)] == ["q1"]
++
++    def test_empty_and_none_inputs(self):
++        assert open_clarification_questions(None) == []
++        assert open_clarification_questions([]) == []
++
++
++class TestApprovalDecisionPayload:
++
++    def _pending_job(self, *clarifications) -> Job:
++        plan = carry_intake_clarifications(_plan(), _intake(*clarifications))
++        fp = plan.model_dump()
++        fp["_approval"] = "pending"
++        return Job(name="t", flight_plan=fp)
++
++    def _fp_decision(self, job: Job):
++        found = [d for d in list_decisions(job, [])
++                 if d.type == "flight_plan_approval"]
++        assert len(found) == 1, "exactly ONE decision per plan"
++        return found[0]
++
++    def test_two_questions_one_decision_with_payload(self):
++        d = self._fp_decision(self._pending_job(_Q_DB, _Q_AUTH))
++        questions = d.payload["clarifications"]
++        assert [q["id"] for q in questions] == ["q1", "q2"]
++        assert questions[0] == {
++            "id": "q1",
++            "question": "Which database?",
++            "default_answer": "keep the existing SQLite file",
++            "impact": "driver choice and migration work",
++        }
++
++    def test_summary_reports_open_question_count(self):
++        d = self._fp_decision(self._pending_job(_Q_DB, _Q_AUTH))
++        assert "2 open questions" in d.safe_summary
++
++    def test_next_actions_show_the_answer_form(self):
++        d = self._fp_decision(self._pending_job(_Q_DB))
++        actions = " ".join(d.next_actions)
++        assert '--answer q1="..."' in actions
++        assert "--reason approve" in actions
++        assert "--reason reject" in actions
++
++    def test_payload_exported_as_json(self):
++        d = self._fp_decision(self._pending_job(_Q_DB))
++        exported = export_decision_json(d)
++        assert exported["payload"]["clarifications"][0]["id"] == "q1"
++
++    def test_zero_clarifications_matches_plain_plan(self):
++        bundled_job = self._pending_job()
++        plain_job = Job(name="t", flight_plan={"_approval": "pending"})
++        bundled = self._fp_decision(bundled_job)
++        plain = self._fp_decision(plain_job)
++
++        def _shape(d, job):
++            # The job id is the only legitimate difference between the two.
++            return tuple(a.replace(str(job.id)[:8], "<job>") for a in d.next_actions)
++
++        assert bundled.payload == {}
++        assert bundled.safe_summary == plain.safe_summary
++        assert _shape(bundled, bundled_job) == _shape(plain, plain_job)
++        assert bundled.severity == plain.severity == "blocker"
++
++    def test_legacy_plan_without_ids_still_loads(self):
++        """Pre-F034 fp1 data has no id/answered_by fields."""
++        legacy = FlightPlan(**{
++            "schema_v": "flight_plan_v1",
++            "tasks": [_task("T1")],
++            "clarifications_resolved": [{
++                "question": "Which DB?", "default_answer": "postgres",
++                "impact": "driver", "answer": "postgres",
++            }],
++        })
++        c = legacy.clarifications_resolved[0]
++        assert c.id == ""
++        assert c.answered_by == ""
++        fp = legacy.model_dump()
++        fp["_approval"] = "pending"
++        d = self._fp_decision(Job(name="t", flight_plan=fp))
++        assert d.payload == {}

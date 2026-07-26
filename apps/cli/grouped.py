@@ -70,6 +70,12 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
                 parser.add_argument(arg.name, action="store_true",
                                     dest=arg.name.lstrip("-").replace("-", "_"),
                                     help=arg.help)
+            elif arg.is_repeatable:
+                # Declared per argument for the same reason is_flag is: every
+                # occurrence is collected instead of the last one winning.
+                parser.add_argument(arg.name, action="append", default=None,
+                                    dest=arg.name.lstrip("-").replace("-", "_"),
+                                    help=arg.help)
             elif arg.name == "--json":
                 parser.add_argument("--json", action="store_true", dest="json", help=arg.help)
             elif arg.name == "--reason":

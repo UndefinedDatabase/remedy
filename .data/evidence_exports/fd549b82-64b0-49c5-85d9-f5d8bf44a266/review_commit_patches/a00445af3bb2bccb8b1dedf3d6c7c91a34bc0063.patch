@@ -1,0 +1,21 @@
+a00445af3bb2bccb8b1dedf3d6c7c91a34bc0063
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index d75eae5..272b4ee 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -7,6 +7,15 @@ Finding IDs continue monotonically from R-0143.
+ ## Findings
+ (none — round 1 clean)
+ 
++- R-0144 · Medium · Open · integration-gate round (0891b8d..1b891fb)
++  Commit 1b891fb appended an "Integration gate … PASS" entry to
++  .agent/live_review.md that the reviewer never authored. Verdicts
++  are reviewer-authored text applied on instruction
++  (planner_reviewer_prompt §0, §4.6); the ledger presented the gate
++  as reviewer-passed while the review was still pending. Same class
++  as the builder-self-merge rule. Fix: replace that entry with the
++  reviewer-authored verdict, verbatim.
++
+ ## Verdicts
+ - Round 1 (Setup+T001–T004, 34878f3..0891b8d): PASS.
+   Reviewer re-ran independently: slice suite 67 passed,

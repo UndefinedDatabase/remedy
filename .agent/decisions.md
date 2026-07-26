@@ -1,5 +1,37 @@
 # Decisions
 
+## 2026-07-26: F034 answered_by stays human|default|""; "planner" is derived
+The feature specifies exactly three answered_by values. A planner-declared
+A9 assumption is neither human- nor default-answered, so it keeps
+answered_by="" and is recognised by having a non-empty answer — the
+assumption log derives the source "planner" from that shape
+(clarification_source). This keeps the persisted contract as specified
+while the log still distinguishes all three sources the golden test needs.
+
+## 2026-07-26: F034 the planner echoing an intake question does not close it
+carry_intake_clarifications treats the intake as authoritative for what is
+open: an intake clarification always becomes an unanswered entry, even if
+the plan echoed that same question back with an answer. Otherwise a model
+that answers its own question would silently remove the human touchpoint.
+Planner entries that are NOT intake questions are preserved as assumptions.
+
+## 2026-07-26: F034 interactive-input guard is AST-based, not textual
+A regex over source text flagged prose — "mission needs user input (e.g.
+acceptance criteria)" in progress_ledger.py and a comment in
+token_economy.py both matched `input\s*\(`. A guard that cries wolf gets
+muted or allowlisted, which defeats it. The guard parses each module and
+looks for real Call/Attribute/Import nodes, so the allowlist can stay
+genuinely empty. Spacing tricks (`input ('x')`) are still caught.
+
+## 2026-07-26: F034 conditional-answer predicates deliberately skipped
+The feature file lists machine-checkable predicates over run state
+(registered comparator set) as part of the clarification design. The
+orchestrator brief and this round's scope mark them OPTIONAL. They need a
+comparator registry, an evaluation point in the runner, and evidence
+plumbing — none of which is trivially cheap, and none of which the DONE
+criteria (unattended --yes with recorded defaults + guard test) require.
+Skipped and recorded here; the rest of F034 does not depend on them.
+
 ## 2026-07-26: F016 clustering groups by matched FILE, not by raw path tokens
 The feature file says "greedy grouping by shared files_hint tokens". Grouping
 directly on token sets merges everything: `src/parser/core.py` and

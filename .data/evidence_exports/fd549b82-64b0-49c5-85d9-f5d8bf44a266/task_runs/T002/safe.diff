@@ -1,0 +1,206 @@
+diff --git a/apps/cli/grouped.py b/apps/cli/grouped.py
+index 332cf6b..00d7d43 100644
+--- a/apps/cli/grouped.py
++++ b/apps/cli/grouped.py
+@@ -70,6 +70,12 @@ def _add_command_args(parser: argparse.ArgumentParser, cmd: CommandEntry) -> Non
+                 parser.add_argument(arg.name, action="store_true",
+                                     dest=arg.name.lstrip("-").replace("-", "_"),
+                                     help=arg.help)
++            elif arg.is_repeatable:
++                # Declared per argument for the same reason is_flag is: every
++                # occurrence is collected instead of the last one winning.
++                parser.add_argument(arg.name, action="append", default=None,
++                                    dest=arg.name.lstrip("-").replace("-", "_"),
++                                    help=arg.help)
+             elif arg.name == "--json":
+                 parser.add_argument("--json", action="store_true", dest="json", help=arg.help)
+             elif arg.name == "--reason":
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index cfccfb5..3a3d029 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -27,7 +27,7 @@
+ - [x] F013 — Job intake (T001–T003 complete; accepted 2026-07-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f013_job_intake_closure · package remedy-review-20260725-184236-READY_FOR_REVIEW.zip · SHA-256 098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1 · accepted HEAD ba6e6fe6d05e97197ca45c201a7914dc4ef20396)
+ - [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+ - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
+-- [ ] F034 — Bundled clarification in the Flight Plan (never at runtime)
++- [~] F034 — Bundled clarification in the Flight Plan (never at runtime)
+ - [ ] F046 — Multi-cycle loop
+ - [ ] F047 — Checkpoint & resume (kill-proof)
+ - [ ] F048 — Job queue
+diff --git a/docs/roadmap/features/T1_F034.md b/docs/roadmap/features/T1_F034.md
+index 5967678..282995b 100644
+--- a/docs/roadmap/features/T1_F034.md
++++ b/docs/roadmap/features/T1_F034.md
+@@ -82,3 +82,96 @@ prompt that touches the planner prompt text.
+ Mid-run advisory decisions, persona question style, notification delivery.
+ Suggested tests: tests/orchestration/test_bundled_clarification.py,
+ tests/cli/test_decision_answers.py, tests/test_no_interactive_guard.py.
++
++## Built State (2026-07-26)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**Contract.** `FlightPlanClarification` (schemas/models.py) gained two
++additive fields: `id` and `answered_by` (`human` | `default` | `""`), both
++defaulting to empty so pre-F034 `fp1` job data loads unchanged. The
++persisted vocabulary is exactly those three values — a planner-declared A9
++assumption keeps `answered_by=""` and is recognised by carrying an answer;
++the log derives the "planner" source from that shape (rationale in
++`.agent/decisions.md`).
++
++**Plan generation.** `flight_plan.py` gained `carry_intake_clarifications`
++(runs inside `plan_job_llm` after F016 granularity normalization): every
++intake clarification becomes an unanswered entry with a stable id assigned
++by intake order (`q1`, `q2`, …). A planner echoing an intake question back
++does not close it — the intake is authoritative for what is open. Planner
++entries that are not intake questions are preserved after them as
++assumptions. A plan with no intake clarifications and no planner entries is
++returned unchanged (identity), so the zero-clarification approval flow is
++byte-for-byte the plain-plan flow.
++
++**One decision per plan.** `open_clarification_questions` feeds the
++questions into the payload of the *existing* `fp:approval` decision
++(`decision_queue.py`, where `HumanDecision` gained an additive `payload`
++dict). Two clarifications produce exactly one open decision, asserted by
++test. No decision is created per question.
++
++**Resolution and immutability.** `apply_clarification_answers` writes every
++open question in one pass — a supplied answer with `answered_by="human"`,
++an unanswered one with its `default_answer` and `answered_by="default"` —
++returning new records rather than mutating the caller's. It is shared by
++the interactive approval path and the unattended one, so both record
++identically. `clarifications_already_resolved` backs the immutability
++check: a late `--answer` against a resolved plan is rejected by name and
++points at replan. Rejection leaves clarifications untouched.
++
++**CLI.** `remedy decision resolve <job> fp:approval` takes a repeatable
++`--answer q1="text"` (`ArgDef.is_repeatable`, declared per argument for the
++same reason `is_flag` is). Answering a subset is valid; unknown, malformed
++and duplicate ids each fail cleanly with exit 1. `remedy job assumptions
++<id>` prints the log, rendered from the job's own flight plan so it is
++truthful even for jobs approved before the evidence file existed.
++
++**Assumption log.** `render_assumptions_md` / `write_assumptions_md` emit
++`assumptions.md` into the job evidence area: one row per question —
++id → question → answer → source → impact — with a source tally. Sources are
++`human`, `default`, `planner`, `unresolved`. Table cells escape pipes and
++fold newlines so free text cannot break the table. `render_plan_md` links
++to the log and shows question ids.
++
++**Unattended.** `remedy do --yes` covers approval AND clarifications: every
++open question resolves to its documented default and the log is written.
++The end-to-end test drives a fake provider with one clarification and
++asserts the default is recorded with `answered_by="default"`, the log is on
++disk, and zero flight-plan decisions remain open.
++
++**Runtime cannot ask — enforced.** `tests/test_no_interactive_guard.py`
++parses every module under `packages/orchestration`, `core`, `providers`,
++`runtimes` and `verification` and fails on `input()`, `raw_input()`,
++`getpass`, `click.prompt/confirm` or `sys.stdin`. The allowlist is empty and
++a test keeps it empty. Detection is AST-based, not textual: a regex version
++flagged prose such as "needs user input (e.g. acceptance criteria)" in
++`progress_ledger.py`, and a guard with false positives gets allowlisted
++into uselessness. The guard was proven red on an injected violation before
++being accepted green. Scope limit worth knowing: it covers `packages/`
++only — `apps/cli` stays deliberately interactive-capable.
++
++**Planner prompt.** Instructs the model to resolve intake questions into
++plan choices where the material settles them, carry forward only genuinely
++ambiguous ones, and give every clarification a conservative keep/no-op
++default with impact text. The conservative-defaults rule is recorded
++verbatim beside the template. A fixture asserts a keep-style default
++survives the round trip into the log.
++
++**Not built.** Conditional-answer predicates (machine-checkable predicates
++over run state, registered comparator set) are declared OPTIONAL by this
++file's orchestrator brief and were skipped — they need a comparator
++registry, a runner evaluation point and evidence plumbing, and no DONE
++criterion depends on them. Recorded in `.agent/decisions.md`.
++
++**Verification.** Slice suite (`test_bundled_clarification.py` +
++`test_decision_answers.py`) 67 passed; guard 6 passed; canary
++`test_golden_path.py` 42 passed; `test_plan_approval.py` +
++`test_flight_plan.py` + `tests/schemas/` 100 passed. Integration gate
++(`pytest -n auto`, branch vs base `34878f3`): branch 161 failed / 13935
++passed, base 197 failed / 13820 passed; all 7 branch-only failures
++attributed to pre-existing xdist flake in runtime/supervisor process tests
++(green on serial re-run, two reproduced verbatim on a base worktree, no
++coupling to any F034-touched module). Zero F034-attributable regressions.
++The suite is RED on base by 197 tests — pre-existing, tracked as F135/F052.
+diff --git a/packages/orchestration/decision_queue.py b/packages/orchestration/decision_queue.py
+index 08cd40f..801aa14 100644
+--- a/packages/orchestration/decision_queue.py
++++ b/packages/orchestration/decision_queue.py
+@@ -17,7 +17,7 @@ Public API::
+ 
+ from __future__ import annotations
+ 
+-from dataclasses import dataclass
++from dataclasses import dataclass, field
+ from typing import Any
+ 
+ from packages.core.models import Job
+@@ -39,6 +39,11 @@ class HumanDecision:
+     next_actions: tuple[str, ...]
+     created_at: str
+     resolved_at: str | None
++    #: Structured extras for decisions that carry more than a summary line.
++    #: Additive (F034): every existing producer omits it and gets ``{}``.
++    #: The flight-plan approval uses it to bundle the plan's open
++    #: clarifications, so one decision covers the whole plan.
++    payload: dict[str, Any] = field(default_factory=dict)
+ 
+ 
+ DECISION_TYPES = frozenset({
+@@ -233,6 +238,24 @@ def list_decisions(
+     if isinstance(_flight_plan, dict):
+         _fp_approval = _flight_plan.get("_approval")
+         if _fp_approval == "pending":
++            # F034: the plan's open questions ride THIS decision. One plan,
++            # one human touchpoint — never one decision per question.
++            from packages.orchestration.flight_plan import open_clarification_questions
++            _questions = open_clarification_questions(
++                _flight_plan.get("clarifications_resolved"))
++            _actions = [
++                f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
++                f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
++            ]
++            _summary = "Flight plan awaiting approval."
++            if _questions:
++                _summary = (
++                    f"Flight plan awaiting approval "
++                    f"({len(_questions)} open question"
++                    f"{'s' if len(_questions) != 1 else ''}).")
++                _actions.insert(1, (
++                    f"remedy decision resolve {job_id[:8]} fp:approval "
++                    f"--reason approve --answer {_questions[0]['id']}=\"...\""))
+             decisions.append(HumanDecision(
+                 id="fp:approval",
+                 type="flight_plan_approval",
+@@ -242,13 +265,11 @@ def list_decisions(
+                 related_node_id="",
+                 related_intent_id="",
+                 related_file="",
+-                safe_summary="Flight plan awaiting approval.",
+-                next_actions=(
+-                    f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
+-                    f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
+-                ),
++                safe_summary=_summary,
++                next_actions=tuple(_actions),
+                 created_at="",
+                 resolved_at=None,
++                payload={"clarifications": _questions} if _questions else {},
+             ))
+         elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
+             audit = _flight_plan["_approval_audit"]
+@@ -318,6 +339,7 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
+         "next_actions": list(d.next_actions),
+         "created_at": d.created_at,
+         "resolved_at": d.resolved_at,
++        "payload": dict(d.payload),
+     }
+ 
+ 

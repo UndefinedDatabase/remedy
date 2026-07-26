@@ -714,6 +714,32 @@ def _cmd_run_loop(
         print(summarize_loop_result(result))
 
 
+def _cmd_job_assumptions(job_id_str: str) -> None:
+    """Print the job's assumption log (F034).
+
+    Rendered from the job's own flight plan, so it tells the truth even
+    for a job approved before the evidence file was written. When the
+    evidence copy exists, its path is reported alongside.
+    """
+    job_id = resolve_job_id(job_id_str)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    from packages.orchestration.flight_plan import render_assumptions_md
+
+    fp = getattr(job, "flight_plan", None)
+    clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
+    print(render_assumptions_md(clarifications))
+
+    log_path = job_evidence_export_dir(str(job.id)) / "assumptions.md"
+    if log_path.exists():
+        print(f"Evidence copy: {log_path}")
+
+
 def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
     """Print an honest summary of job state — truth contract."""
     import json as _json
@@ -1623,6 +1649,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         no_tests=getattr(args, "no_tests", False),
         json_output=getattr(args, "json", False),
     ),
+    "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
     "job.summary": lambda args: _cmd_job_summary(
         args.job_id,
         json_output=getattr(args, "json", False),

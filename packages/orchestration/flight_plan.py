@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import AcceptanceCheck, RunState, Task
-from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
+from packages.orchestration.schemas.models import (
+    _LARGE_PLAN_THRESHOLD,
+    FlightPlan,
+    FlightPlanClarification,
+)
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
 
@@ -49,11 +53,30 @@ and token band estimates.
 - acceptance must have at least one non-empty criterion per task.
 - No cycles in dependencies.
 - Maximum 25 tasks.
-- If clarifications were present in the intake, carry them into
-  clarifications_resolved with your chosen answer.
+- RESOLVE the intake's clarifications into plan choices wherever the
+  intake, the repo facts, or ordinary engineering judgement settle them.
+  Record each one you resolved in clarifications_resolved with your
+  chosen answer — that is an assumption you are declaring, not a
+  question. The target for a routine mission is zero questions left.
+- Carry forward ONLY genuinely ambiguous questions: ones whose answer
+  changes the plan and that you cannot settle from the material given.
+  Leave those with an empty answer; a human resolves them once, at the
+  plan-approval gate, and they are never asked again during the run.
+- Every clarification needs a conservative default_answer and an impact
+  line. A default keeps existing behavior or does nothing; it never
+  deletes, overwrites, migrates, or otherwise takes a destructive path.
+  If the safe choice is "change nothing", that is the default.
 
 Return ONLY a JSON object matching the flight_plan_v1 schema.
 """
+
+# The conservative-defaults rule this prompt encodes, stated verbatim as
+# the feature specifies it (T1_F034, Edge cases & assumption defaults):
+#
+#   Defaults must be conservative: the planner prompt mandates keep/no-op
+#   style defaults with impact text; a fixture asserts a keep-style
+#   default survives the round trip. Remedy never defaults to destructive
+#   choices — humans can, explicitly.
 
 
 def _cheap_repo_facts() -> str:
@@ -81,6 +104,229 @@ def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
         intake_json=json.dumps(intake_dict, indent=2),
         repo_facts=_cheap_repo_facts(),
     )
+
+
+# ---------------------------------------------------------------------------
+# F034 — bundled clarification (plan-time, never at runtime)
+# ---------------------------------------------------------------------------
+
+def _as_record(clarification: Any) -> dict[str, Any] | None:
+    """Normalize a clarification to a plain dict.
+
+    Callers hand us either the model (fresh plan) or the stored dict
+    (job JSON), and both must read the same way.
+    """
+    if isinstance(clarification, dict):
+        return clarification
+    dump = getattr(clarification, "model_dump", None)
+    if callable(dump):
+        return dump()
+    return None
+
+
+def carry_intake_clarifications(
+    plan: FlightPlan,
+    intake: dict[str, Any] | None,
+) -> FlightPlan:
+    """Carry the intake's open questions into ``clarifications_resolved``.
+
+    Every intake clarification becomes an UNANSWERED entry (empty
+    ``answer``/``answered_by``) with a stable id assigned by intake order
+    (``q1``, ``q2``, …) — those are the questions the single approval
+    decision bundles. Entries the planner produced on its own (a question
+    it already resolved, i.e. an A9 assumption) are preserved verbatim
+    after them and get the next free id.
+
+    A plan whose intake has no clarifications and whose planner declared
+    none is returned unchanged.
+    """
+    carried: list[FlightPlanClarification] = []
+    intake_clarifications = list((intake or {}).get("clarifications") or [])
+    from_intake: set[str] = set()
+
+    for raw in intake_clarifications:
+        if not isinstance(raw, dict):
+            continue
+        question = str(raw.get("question", ""))
+        carried.append(FlightPlanClarification(
+            id=f"q{len(carried) + 1}",
+            question=question,
+            default_answer=str(raw.get("default_answer", "")),
+            impact=str(raw.get("impact", "")),
+            answer="",
+            answered_by="",
+        ))
+        from_intake.add(question)
+
+    for c in plan.clarifications_resolved:
+        # The planner echoing an intake question back does not close it —
+        # the intake entry above is authoritative and stays open.
+        if c.question in from_intake:
+            continue
+        carried.append(c.model_copy(
+            update={"id": c.id or f"q{len(carried) + 1}"}))
+
+    if carried == list(plan.clarifications_resolved):
+        return plan
+    return plan.model_copy(update={"clarifications_resolved": carried})
+
+
+def open_clarification_questions(
+    clarifications: list[Any] | None,
+) -> list[dict[str, str]]:
+    """Return the still-open questions as decision-payload records.
+
+    Accepts the raw ``clarifications_resolved`` list from either a plan
+    model or a stored flight-plan dict. Open means: no answer AND no
+    ``answered_by`` — a planner-declared assumption arrives with an answer
+    and is therefore never asked again.
+    """
+    out: list[dict[str, str]] = []
+    for c in clarifications or []:
+        rec = _as_record(c)
+        if rec is None:
+            continue
+        if str(rec.get("answer", "") or "").strip():
+            continue
+        if str(rec.get("answered_by", "") or "").strip():
+            continue
+        out.append({
+            "id": str(rec.get("id", "") or ""),
+            "question": str(rec.get("question", "") or ""),
+            "default_answer": str(rec.get("default_answer", "") or ""),
+            "impact": str(rec.get("impact", "") or ""),
+        })
+    return out
+
+
+def clarifications_already_resolved(clarifications: list[Any] | None) -> bool:
+    """True once the approval gate has written answers back.
+
+    ``answered_by`` is the marker: it is empty on every unresolved record
+    and on planner assumptions, and non-empty only after resolution.
+    """
+    for c in clarifications or []:
+        rec = _as_record(c)
+        if rec and str(rec.get("answered_by", "") or "").strip():
+            return True
+    return False
+
+
+def apply_clarification_answers(
+    clarifications: list[Any] | None,
+    answers: dict[str, str] | None,
+) -> list[dict[str, Any]]:
+    """Resolve every open question: supplied answer, else its default.
+
+    Returns a NEW record list — the caller's records are not mutated. An
+    answered question gets ``answered_by="human"``; an unanswered one runs
+    on its documented default with ``answered_by="default"``, which is
+    what makes an unattended run auditable rather than silent. Planner
+    assumptions (already answered, ``answered_by`` empty) are left
+    untouched, and so is anything already resolved.
+    """
+    supplied = answers or {}
+    out: list[dict[str, Any]] = []
+    for c in clarifications or []:
+        rec = _as_record(c)
+        if rec is None:
+            continue
+        rec = dict(rec)
+        is_open = (not str(rec.get("answer", "") or "").strip()
+                   and not str(rec.get("answered_by", "") or "").strip())
+        if is_open:
+            qid = str(rec.get("id", "") or "")
+            if qid in supplied:
+                rec["answer"] = supplied[qid]
+                rec["answered_by"] = "human"
+            else:
+                rec["answer"] = str(rec.get("default_answer", "") or "")
+                rec["answered_by"] = "default"
+        out.append(rec)
+    return out
+
+
+#: How a clarification's answer came to be, for the audit log.
+_SOURCE_HUMAN = "human"
+_SOURCE_DEFAULT = "default"
+_SOURCE_PLANNER = "planner"
+_SOURCE_OPEN = "unresolved"
+
+
+def clarification_source(clarification: Any) -> str:
+    """Classify where a clarification's answer came from.
+
+    ``human``/``default`` are written by the approval gate. An answer with
+    no ``answered_by`` is a planner-declared A9 assumption — the planner
+    resolved the question itself instead of spending a human touchpoint on
+    it. Anything still empty is ``unresolved``.
+    """
+    rec = _as_record(clarification) or {}
+    answered_by = str(rec.get("answered_by", "") or "").strip()
+    if answered_by in (_SOURCE_HUMAN, _SOURCE_DEFAULT):
+        return answered_by
+    if str(rec.get("answer", "") or "").strip():
+        return _SOURCE_PLANNER
+    return _SOURCE_OPEN
+
+
+def _cell(text: Any) -> str:
+    """Make a value safe for a markdown table cell."""
+    return " ".join(str(text or "").split()).replace("|", "\\|") or "-"
+
+
+def render_assumptions_md(clarifications: list[Any] | None) -> str:
+    """Render the assumption log: what was assumed, and on whose authority.
+
+    One row per question — question → chosen answer → source → impact —
+    covering human answers, documented defaults, and planner-declared A9
+    assumptions alike. This is the artifact a reviewer reads to see what
+    an unattended run decided on its own.
+    """
+    records = [r for r in (_as_record(c) for c in clarifications or [])
+               if r is not None]
+
+    lines = ["# Assumptions", ""]
+    lines.append(
+        "Every question below was asked once, at plan time, on the single "
+        "plan-approval decision. Nothing here was asked mid-run.")
+    lines.append("")
+
+    if not records:
+        lines.append("No clarifications — the plan required no assumptions.")
+        lines.append("")
+        return "\n".join(lines)
+
+    lines.append("| ID | Question | Answer | Source | Impact |")
+    lines.append("| --- | --- | --- | --- | --- |")
+    for rec in records:
+        lines.append(
+            f"| {_cell(rec.get('id'))} | {_cell(rec.get('question'))} "
+            f"| {_cell(rec.get('answer'))} | {clarification_source(rec)} "
+            f"| {_cell(rec.get('impact'))} |")
+    lines.append("")
+
+    counts = {src: sum(1 for r in records if clarification_source(r) == src)
+              for src in (_SOURCE_HUMAN, _SOURCE_DEFAULT, _SOURCE_PLANNER,
+                          _SOURCE_OPEN)}
+    lines.append(
+        f"Sources: {counts[_SOURCE_HUMAN]} human, "
+        f"{counts[_SOURCE_DEFAULT]} default, "
+        f"{counts[_SOURCE_PLANNER]} planner, "
+        f"{counts[_SOURCE_OPEN]} unresolved.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_assumptions_md(
+    clarifications: list[Any] | None,
+    evidence_dir: Path,
+) -> Path:
+    """Write the assumption log into the job's evidence area."""
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    path = evidence_dir / "assumptions.md"
+    path.write_text(render_assumptions_md(clarifications), encoding="utf-8")
+    return path
 
 
 def granularity_config() -> GranularityConfig:
@@ -114,7 +360,8 @@ def plan_job_llm(
 
     The validated plan then passes through F016 task-granularity
     normalization — the single insertion point for it — and the result
-    carries the transformation record.
+    carries the transformation record. Finally the intake's open questions
+    are carried into the plan (F034) so the approval gate can bundle them.
     """
     prompt = _build_plan_prompt(intake)
     try:
@@ -154,6 +401,9 @@ def plan_job_llm(
             "result_ids": [t.id for t in plan.tasks],
             "reason": f"normalization not run, original plan kept: {exc}",
         }]
+
+    # F034: after normalization, so the questions ride the final plan shape.
+    plan = carry_intake_clarifications(plan, intake)
 
     return FlightPlanResult(
         plan=plan,
@@ -307,8 +557,11 @@ def render_plan_md(
     if plan.clarifications_resolved:
         lines.append("## Clarifications Resolved")
         lines.append("")
+        lines.append(
+            "Full audit log with sources: [assumptions.md](assumptions.md)")
+        lines.append("")
         for c in plan.clarifications_resolved:
-            lines.append(f"**Q:** {c.question}")
+            lines.append(f"**Q:** [{c.id or '-'}] {c.question}")
             lines.append(f"**A:** {c.answer} (default: {c.default_answer})")
             lines.append(f"**Impact:** {c.impact}")
             lines.append("")

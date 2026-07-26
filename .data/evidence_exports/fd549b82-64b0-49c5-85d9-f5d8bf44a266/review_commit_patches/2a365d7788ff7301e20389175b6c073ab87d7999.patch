@@ -1,0 +1,349 @@
+2a365d7788ff7301e20389175b6c073ab87d7999
+diff --git a/.agent/plan.md b/.agent/plan.md
+index bf97279..dd10c58 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -12,17 +12,16 @@ the execution packages.
+ ## Checklist
+ - [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
+ - [x] T001 decision payload + per-question answer parsing + tests
+-- [ ] T002 approve → write-back → immutability (late answer rejected)
++- [x] T002 approve → write-back → immutability (late answer rejected)
+ - [ ] T003 assumptions.md renderer + CLI + plan.md link
+ - [ ] T004 interactive-input guard test + unattended end-to-end
+ - [ ] Integration gate
+ - [ ] Closure
+ 
+ ## Current Step
+-T002 — approve writes answers back (supplied → answered_by "human",
+-unanswered → default_answer with answered_by "default"), answers become
+-immutable (late `--answer` rejected with "already resolved"), reject
+-leaves clarifications untouched.
++T003 — assumptions.md renderer in the job evidence area (question →
++answer → source → impact, plus planner-declared A9 defaults), the
++`remedy job assumptions <id>` command, and the plan.md link to it.
+ 
+ ## Next Steps
+ T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
+diff --git a/apps/cli/commands/decision.py b/apps/cli/commands/decision.py
+index 57abb60..9a6d1a5 100644
+--- a/apps/cli/commands/decision.py
++++ b/apps/cli/commands/decision.py
+@@ -155,10 +155,24 @@ def _cmd_decision_resolve(
+             print(f"Error: {exc}", file=sys.stderr)
+             sys.exit(1)
+ 
+-        from packages.orchestration.flight_plan import open_clarification_questions
++        from packages.orchestration.flight_plan import (
++            apply_clarification_answers,
++            clarifications_already_resolved,
++            open_clarification_questions,
++        )
+ 
+         fp = getattr(job, "flight_plan", None)
+         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
++            # Answers are asked once and written once. A late one is a
++            # mistake worth naming, not a generic "nothing pending".
++            if answer and isinstance(fp, dict) and clarifications_already_resolved(
++                    fp.get("clarifications_resolved")):
++                print(
++                    "Error: clarifications already resolved for this job — "
++                    "answers are immutable. Replan to ask again: "
++                    f"remedy do replan {job_id_str}",
++                    file=sys.stderr)
++                sys.exit(1)
+             print("Error: no pending flight plan approval for this job.", file=sys.stderr)
+             sys.exit(1)
+ 
+@@ -184,16 +198,18 @@ def _cmd_decision_resolve(
+             sys.exit(1)
+ 
+         if reason == "approve":
+-            for rec in fp.get("clarifications_resolved") or []:
+-                if isinstance(rec, dict) and rec.get("id") in answers:
+-                    rec["answer"] = answers[str(rec["id"])]
+-                    rec["answered_by"] = "human"
++            if questions:
++                fp["clarifications_resolved"] = apply_clarification_answers(
++                    fp.get("clarifications_resolved"), answers)
+             fp["_approval"] = "approved"
+             job.flight_plan = fp
+             save_job(job)
+             print(f"Flight plan approved for job {job_id_str}.")
+-            for qid in sorted(answers):
+-                print(f"  {qid} (human): {answers[qid]}")
++            for q in questions:
++                qid = q["id"]
++                source = "human" if qid in answers else "default"
++                print(f"  {qid} ({source}): "
++                      f"{answers.get(qid, q['default_answer'])}")
+         else:
+             fp["_approval"] = "rejected"
+             job.flight_plan = fp
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index d475f47..25953d3 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -180,6 +180,53 @@ def open_clarification_questions(
+     return out
+ 
+ 
++def clarifications_already_resolved(clarifications: list[Any] | None) -> bool:
++    """True once the approval gate has written answers back.
++
++    ``answered_by`` is the marker: it is empty on every unresolved record
++    and on planner assumptions, and non-empty only after resolution.
++    """
++    for c in clarifications or []:
++        rec = _as_record(c)
++        if rec and str(rec.get("answered_by", "") or "").strip():
++            return True
++    return False
++
++
++def apply_clarification_answers(
++    clarifications: list[Any] | None,
++    answers: dict[str, str] | None,
++) -> list[dict[str, Any]]:
++    """Resolve every open question: supplied answer, else its default.
++
++    Returns a NEW record list — the caller's records are not mutated. An
++    answered question gets ``answered_by="human"``; an unanswered one runs
++    on its documented default with ``answered_by="default"``, which is
++    what makes an unattended run auditable rather than silent. Planner
++    assumptions (already answered, ``answered_by`` empty) are left
++    untouched, and so is anything already resolved.
++    """
++    supplied = answers or {}
++    out: list[dict[str, Any]] = []
++    for c in clarifications or []:
++        rec = _as_record(c)
++        if rec is None:
++            continue
++        rec = dict(rec)
++        is_open = (not str(rec.get("answer", "") or "").strip()
++                   and not str(rec.get("answered_by", "") or "").strip())
++        if is_open:
++            qid = str(rec.get("id", "") or "")
++            if qid in supplied:
++                rec["answer"] = supplied[qid]
++                rec["answered_by"] = "human"
++            else:
++                rec["answer"] = str(rec.get("default_answer", "") or "")
++                rec["answered_by"] = "default"
++        out.append(rec)
++    return out
++
++
+ def granularity_config() -> GranularityConfig:
+     """Read the F016 thresholds from Remedy config.
+ 
+diff --git a/tests/cli/test_decision_answers.py b/tests/cli/test_decision_answers.py
+index 7489d44..2a279ba 100644
+--- a/tests/cli/test_decision_answers.py
++++ b/tests/cli/test_decision_answers.py
+@@ -142,6 +142,102 @@ class TestResolveWithAnswers:
+         assert exc.value.code == 1
+ 
+ 
++class TestWriteBackAndImmutability:
++    """T002 — approve writes answers AND defaults; then they are frozen."""
++
++    def test_mixed_answer_and_default_persisted(self, tmp_path, monkeypatch, capsys):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++
++        _cmd_decision_resolve(
++            str(job.id)[:8], "fp:approval", reason="approve",
++            answer=["q1=use PostgreSQL"])
++
++        recs = load_job(job.id).flight_plan["clarifications_resolved"]
++        assert [(r["id"], r["answer"], r["answered_by"]) for r in recs] == [
++            ("q1", "use PostgreSQL", "human"),
++            ("q2", "no, leave auth untouched", "default"),
++        ]
++        out = capsys.readouterr().out
++        assert "q1 (human): use PostgreSQL" in out
++        assert "q2 (default): no, leave auth untouched" in out
++
++    def test_no_answers_records_all_defaults(self, tmp_path, monkeypatch):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++
++        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
++
++        recs = load_job(job.id).flight_plan["clarifications_resolved"]
++        assert [r["answered_by"] for r in recs] == ["default", "default"]
++        assert [r["answer"] for r in recs] == [
++            "keep SQLite", "no, leave auth untouched"]
++
++    def test_late_answer_rejected_as_already_resolved(
++            self, tmp_path, monkeypatch, capsys):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++        _cmd_decision_resolve(
++            str(job.id)[:8], "fp:approval", reason="approve",
++            answer=["q1=use PostgreSQL"])
++        capsys.readouterr()
++
++        with pytest.raises(SystemExit) as exc:
++            _cmd_decision_resolve(
++                str(job.id)[:8], "fp:approval", reason="approve",
++                answer=["q1=actually MySQL"])
++        assert exc.value.code == 1
++        assert "already resolved" in capsys.readouterr().err
++
++        recs = load_job(job.id).flight_plan["clarifications_resolved"]
++        assert recs[0]["answer"] == "use PostgreSQL"
++
++    def test_no_open_decision_after_approval(self, tmp_path, monkeypatch):
++        from packages.orchestration.decision_queue import list_decisions
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        save_job(job)
++
++        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
++
++        updated = load_job(job.id)
++        open_fp = [d for d in list_decisions(updated, [])
++                   if d.type == "flight_plan_approval" and d.status == "open"]
++        assert open_fp == []
++
++    def test_reject_leaves_clarifications_untouched(self, tmp_path, monkeypatch):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = _pending_job()
++        before = [dict(r) for r in job.flight_plan["clarifications_resolved"]]
++        save_job(job)
++
++        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="reject")
++
++        updated = load_job(job.id)
++        assert updated.flight_plan["_approval"] == "rejected"
++        assert updated.flight_plan["clarifications_resolved"] == before
++
++    def test_plan_without_questions_keeps_empty_list(self, tmp_path, monkeypatch):
++        from packages.orchestration.storage import load_job, save_job
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        job = Job(name="t", flight_plan={"_approval": "pending"})
++        save_job(job)
++
++        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
++
++        fp = load_job(job.id).flight_plan
++        assert fp["_approval"] == "approved"
++        assert "clarifications_resolved" not in fp
++
++
+ class TestAnswerOptionIsRepeatable:
+ 
+     def test_catalog_declares_repeatable_answer(self):
+diff --git a/tests/orchestration/test_bundled_clarification.py b/tests/orchestration/test_bundled_clarification.py
+index d44d870..5db844c 100644
+--- a/tests/orchestration/test_bundled_clarification.py
++++ b/tests/orchestration/test_bundled_clarification.py
+@@ -11,7 +11,9 @@ from __future__ import annotations
+ from packages.core.models import Job
+ from packages.orchestration.decision_queue import export_decision_json, list_decisions
+ from packages.orchestration.flight_plan import (
++    apply_clarification_answers,
+     carry_intake_clarifications,
++    clarifications_already_resolved,
+     open_clarification_questions,
+ )
+ from packages.orchestration.schemas.models import FlightPlan
+@@ -127,6 +129,87 @@ class TestOpenClarificationQuestions:
+         assert open_clarification_questions([]) == []
+ 
+ 
++class TestApplyClarificationAnswers:
++    """T002 — write-back: supplied answer wins, everything else defaults."""
++
++    def _open(self, qid, question, default):
++        return {"id": qid, "question": question, "default_answer": default,
++                "impact": "some impact", "answer": "", "answered_by": ""}
++
++    def test_mixed_human_and_default(self):
++        records = [
++            self._open("q1", "Which database?", "keep the existing SQLite file"),
++            self._open("q2", "Add auth?", "no, leave auth untouched"),
++        ]
++        out = apply_clarification_answers(records, {"q1": "use PostgreSQL"})
++        assert out[0]["answer"] == "use PostgreSQL"
++        assert out[0]["answered_by"] == "human"
++        assert out[1]["answer"] == "no, leave auth untouched"
++        assert out[1]["answered_by"] == "default"
++
++    def test_no_answers_means_all_defaults(self):
++        records = [self._open("q1", "Which database?", "keep SQLite")]
++        out = apply_clarification_answers(records, None)
++        assert out[0] == dict(records[0], answer="keep SQLite",
++                              answered_by="default")
++
++    def test_conservative_keep_style_default_survives_round_trip(self):
++        """A9: defaults are keep/no-op, and the log must show exactly that."""
++        records = [self._open("q1", "Drop the legacy table?",
++                              "keep the legacy table untouched")]
++        out = apply_clarification_answers(records, None)
++        assert out[0]["answer"] == "keep the legacy table untouched"
++        assert out[0]["answered_by"] == "default"
++
++    def test_planner_assumption_untouched(self):
++        assumption = {"id": "q1", "question": "Which test runner?",
++                      "default_answer": "pytest", "impact": "cmd",
++                      "answer": "pytest", "answered_by": ""}
++        out = apply_clarification_answers([assumption], None)
++        assert out[0] == assumption
++
++    def test_already_resolved_records_untouched(self):
++        resolved = {"id": "q1", "question": "Add auth?", "default_answer": "no",
++                    "impact": "scope", "answer": "yes", "answered_by": "human"}
++        out = apply_clarification_answers([resolved], {"q1": "changed"})
++        assert out[0]["answer"] == "yes"
++        assert out[0]["answered_by"] == "human"
++
++    def test_input_records_not_mutated(self):
++        records = [self._open("q1", "Which database?", "keep SQLite")]
++        apply_clarification_answers(records, {"q1": "postgres"})
++        assert records[0]["answer"] == ""
++        assert records[0]["answered_by"] == ""
++
++    def test_empty_input(self):
++        assert apply_clarification_answers(None, {"q1": "x"}) == []
++        assert apply_clarification_answers([], None) == []
++
++
++class TestClarificationsAlreadyResolved:
++
++    def test_open_plan_is_not_resolved(self):
++        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB, _Q_AUTH))
++        assert clarifications_already_resolved(
++            [c.model_dump() for c in plan.clarifications_resolved]) is False
++
++    def test_planner_assumption_alone_is_not_resolved(self):
++        assumption = {"id": "q1", "question": "Which test runner?",
++                      "default_answer": "pytest", "impact": "cmd",
++                      "answer": "pytest", "answered_by": ""}
++        assert clarifications_already_resolved([assumption]) is False
++
++    def test_written_back_plan_is_resolved(self):
++        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB))
++        records = apply_clarification_answers(
++            [c.model_dump() for c in plan.clarifications_resolved], None)
++        assert clarifications_already_resolved(records) is True
++
++    def test_empty_input(self):
++        assert clarifications_already_resolved(None) is False
++        assert clarifications_already_resolved([]) is False
++
++
+ class TestApprovalDecisionPayload:
+ 
+     def _pending_job(self, *clarifications) -> Job:

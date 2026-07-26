@@ -74,13 +74,67 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
         print(f"  Status: {d.status}")
         print(f"  Severity: {d.severity}")
         print(f"  Summary: {d.safe_summary}")
+        for q in d.payload.get("clarifications", []):
+            print(f"  Question {q.get('id', '')}: {q.get('question', '')}")
+            print(f"    Default: {q.get('default_answer', '')}")
+            print(f"    Impact: {q.get('impact', '')}")
         if d.next_actions:
             print("  Next actions:")
             for a in d.next_actions:
                 print(f"    - {a}")
 
 
-def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | None = None) -> None:
+class AnswerParseError(ValueError):
+    """A ``--answer`` option could not be applied to the bundled questions."""
+
+
+def parse_answer_options(
+    raw: list[str] | None,
+    questions: list[dict[str, str]],
+) -> dict[str, str]:
+    """Parse repeatable ``--answer q1=text`` options against open questions.
+
+    Answering a subset is valid — every unanswered question falls back to
+    its documented default at approval time. An unknown or duplicated id,
+    or a malformed pair, is a spec error and raises AnswerParseError.
+    """
+    known = [str(q.get("id", "")) for q in questions]
+    answers: dict[str, str] = {}
+    for item in raw or []:
+        text = str(item)
+        if "=" not in text:
+            raise AnswerParseError(
+                f"malformed --answer {text!r}: expected <question-id>=<answer>, "
+                'e.g. --answer q1="use PostgreSQL"')
+        qid, _, value = text.partition("=")
+        qid = qid.strip()
+        if not qid:
+            raise AnswerParseError(
+                f"malformed --answer {text!r}: missing question id before '='")
+        if qid not in known:
+            listed = ", ".join(known) if known else "(none — the plan has no open questions)"
+            raise AnswerParseError(
+                f"unknown question id {qid!r}. Open questions: {listed}")
+        if qid in answers:
+            raise AnswerParseError(f"duplicate --answer for question id {qid!r}")
+        answers[qid] = value
+    return answers
+
+
+def _cmd_decision_resolve(
+    job_id_str: str,
+    decision_id: str,
+    *,
+    reason: str | None = None,
+    answer: list[str] | None = None,
+) -> None:
+    if answer and not decision_id.startswith("fp:"):
+        print(
+            f"Error: --answer is only valid for the flight-plan approval "
+            f"decision, not {decision_id!r}.",
+            file=sys.stderr)
+        sys.exit(1)
+
     # Decisions are derived — resolve the underlying record if possible
     if decision_id.startswith("sr:"):
         from packages.orchestration.stop_reasons import resolve_stop_reason
@@ -101,8 +155,25 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)
 
+        from packages.orchestration.flight_plan import (
+            apply_clarification_answers,
+            clarifications_already_resolved,
+            open_clarification_questions,
+            write_assumptions_md,
+        )
+
         fp = getattr(job, "flight_plan", None)
         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
+            # Answers are asked once and written once. A late one is a
+            # mistake worth naming, not a generic "nothing pending".
+            if answer and isinstance(fp, dict) and clarifications_already_resolved(
+                    fp.get("clarifications_resolved")):
+                print(
+                    "Error: clarifications already resolved for this job — "
+                    "answers are immutable. Replan to ask again: "
+                    f"remedy do replan {job_id_str}",
+                    file=sys.stderr)
+                sys.exit(1)
             print("Error: no pending flight plan approval for this job.", file=sys.stderr)
             sys.exit(1)
 
@@ -115,11 +186,36 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
             )
             sys.exit(1)
 
+        questions = open_clarification_questions(fp.get("clarifications_resolved"))
+        if answer and reason != "approve":
+            print(
+                "Error: --answer applies only when approving the plan.",
+                file=sys.stderr)
+            sys.exit(1)
+        try:
+            answers = parse_answer_options(answer, questions)
+        except AnswerParseError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
         if reason == "approve":
+            if questions:
+                fp["clarifications_resolved"] = apply_clarification_answers(
+                    fp.get("clarifications_resolved"), answers)
             fp["_approval"] = "approved"
             job.flight_plan = fp
             save_job(job)
+            from packages.orchestration.data_paths import job_evidence_export_dir
+            log_path = write_assumptions_md(
+                fp.get("clarifications_resolved"),
+                job_evidence_export_dir(str(job.id)))
             print(f"Flight plan approved for job {job_id_str}.")
+            for q in questions:
+                qid = q["id"]
+                source = "human" if qid in answers else "default"
+                print(f"  {qid} ({source}): "
+                      f"{answers.get(qid, q['default_answer'])}")
+            print(f"Assumption log: {log_path}")
         else:
             fp["_approval"] = "rejected"
             job.flight_plan = fp
@@ -153,6 +249,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         args.decision_id,
         reason=getattr(args, "reason", None),
+        answer=getattr(args, "answer", None),
     ),
     "decision.explain": lambda args: _cmd_decision_explain(args.job_id),
 }

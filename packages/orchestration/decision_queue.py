@@ -17,7 +17,7 @@ Public API::
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from packages.core.models import Job
@@ -39,6 +39,11 @@ class HumanDecision:
     next_actions: tuple[str, ...]
     created_at: str
     resolved_at: str | None
+    #: Structured extras for decisions that carry more than a summary line.
+    #: Additive (F034): every existing producer omits it and gets ``{}``.
+    #: The flight-plan approval uses it to bundle the plan's open
+    #: clarifications, so one decision covers the whole plan.
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 DECISION_TYPES = frozenset({
@@ -233,6 +238,24 @@ def list_decisions(
     if isinstance(_flight_plan, dict):
         _fp_approval = _flight_plan.get("_approval")
         if _fp_approval == "pending":
+            # F034: the plan's open questions ride THIS decision. One plan,
+            # one human touchpoint — never one decision per question.
+            from packages.orchestration.flight_plan import open_clarification_questions
+            _questions = open_clarification_questions(
+                _flight_plan.get("clarifications_resolved"))
+            _actions = [
+                f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
+                f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
+            ]
+            _summary = "Flight plan awaiting approval."
+            if _questions:
+                _summary = (
+                    f"Flight plan awaiting approval "
+                    f"({len(_questions)} open question"
+                    f"{'s' if len(_questions) != 1 else ''}).")
+                _actions.insert(1, (
+                    f"remedy decision resolve {job_id[:8]} fp:approval "
+                    f"--reason approve --answer {_questions[0]['id']}=\"...\""))
             decisions.append(HumanDecision(
                 id="fp:approval",
                 type="flight_plan_approval",
@@ -242,13 +265,11 @@ def list_decisions(
                 related_node_id="",
                 related_intent_id="",
                 related_file="",
-                safe_summary="Flight plan awaiting approval.",
-                next_actions=(
-                    f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
-                    f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
-                ),
+                safe_summary=_summary,
+                next_actions=tuple(_actions),
                 created_at="",
                 resolved_at=None,
+                payload={"clarifications": _questions} if _questions else {},
             ))
         elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
             audit = _flight_plan["_approval_audit"]
@@ -318,6 +339,7 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
         "next_actions": list(d.next_actions),
         "created_at": d.created_at,
         "resolved_at": d.resolved_at,
+        "payload": dict(d.payload),
     }
 
 
