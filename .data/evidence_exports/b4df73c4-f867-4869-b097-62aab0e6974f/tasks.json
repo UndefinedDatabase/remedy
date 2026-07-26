@@ -1,0 +1,24 @@
+[
+ {
+  "safe_diff_files": [
+   "packages/orchestration/long_run_executor.py",
+   "tests/orchestration/test_long_run_executor.py"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/job.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F046.md",
+   "docs/system/remedy-toml-configuration-system-v0.md",
+   "packages/orchestration/config.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ }
+]

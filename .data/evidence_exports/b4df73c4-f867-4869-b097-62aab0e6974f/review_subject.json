@@ -1,0 +1,261 @@
+{
+ "base_commit": "c14a83a2d38cf8b91870f4c7bae225effb26f1af",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/context.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "c6e2389f47bbc78b946ce7eea1093e966b6471a3",
+   "parents": [
+    "c14a83a2d38cf8b91870f4c7bae225effb26f1af"
+   ],
+   "patch_sha256": "cb1979bb9232ef703d3e06839b375b094aa9a673e5b6492c2989ea0a1879c047",
+   "subject": "chore(f046): claim F046 \u2014 branch, STATUS, state files",
+   "tree": "a107af16750193d91b0945ebab528f463e1fb123"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/plan.md",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_long_run_executor.py"
+   ],
+   "commit": "a4a6874c5725af68f289d351052e28a293831f74",
+   "parents": [
+    "c6e2389f47bbc78b946ce7eea1093e966b6471a3"
+   ],
+   "patch_sha256": "27b00223f163ba5f66dfc5a9c411791b59de29c78f004daf9abf577775f95270",
+   "subject": "feat(f046): multi-cycle loop conductor with terminal-status matrix",
+   "tree": "38cb479d9ae41cdaa9402e242e4ca5c678e4e9cb"
+  },
+  {
+   "changed_files": [
+    "docs/system/remedy-toml-configuration-system-v0.md",
+    "packages/orchestration/config.py",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_long_run_executor.py"
+   ],
+   "commit": "8ad17ce72ef87c80eadb0e3ec3388681ba14ec69",
+   "parents": [
+    "a4a6874c5725af68f289d351052e28a293831f74"
+   ],
+   "patch_sha256": "e4f4b9d5a3ff987736b285ddb6cba0b4bc81d4e9995140a6d1c41fb00d00234f",
+   "subject": "feat(f046): per-cycle evidence records and the cycles.* config keys",
+   "tree": "b378dc1fa678aef2a16a2fc3014eb956e9af7301"
+  },
+  {
+   "changed_files": [
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/job.py",
+    "tests/orchestration/test_long_run_executor.py"
+   ],
+   "commit": "d87a3e05b1ae084583e6cba602ec50cb1b7c4249",
+   "parents": [
+    "8ad17ce72ef87c80eadb0e3ec3388681ba14ec69"
+   ],
+   "patch_sha256": "56ac3847e8e10d3c59de8c67a45b0e4649027df7c40dabeae5895f84e92c49ad",
+   "subject": "feat(f046): remedy job run with a capped --cycles flag",
+   "tree": "b45d6799afec048ce7a7789cac3ae063bb611d63"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "65fbdbaeda720c4535f21cbb1e6161c8ee5b498b",
+   "parents": [
+    "d87a3e05b1ae084583e6cba602ec50cb1b7c4249"
+   ],
+   "patch_sha256": "d79bde6fd79b007b0739a7bfd976bb990de3ec1361f15ffd3868a76c9ffd5b0a",
+   "subject": "chore(f046): plan, decisions and round-1 handoff",
+   "tree": "15b16b14acab132aeec52c75855dc6ef5cbe5804"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "1055ae0b4721653a28e8c215c0a710b1f1316712",
+   "parents": [
+    "65fbdbaeda720c4535f21cbb1e6161c8ee5b498b"
+   ],
+   "patch_sha256": "33942a3c41869e84fe5e076ce8a8caa491e2942796649d91f2712b7e1f7cd97c",
+   "subject": "chore(f046): persist the round-1 reviewer verdict; open the integration gate",
+   "tree": "613b29fe20e33654fab3d459d02eeb81acfa9c23"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "994398c2000bfd9fe66972563e69dddfc308bc56",
+   "parents": [
+    "1055ae0b4721653a28e8c215c0a710b1f1316712"
+   ],
+   "patch_sha256": "3fdeb31503bc04a980b9f15bb44447e7f686d5a1e08937731952b88c09d63280",
+   "subject": "chore(f046): integration-gate results; restore plan.md Next Steps",
+   "tree": "4fc49fb7061ae7308a86a1187a933752ca1b2729"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "add00a21c3001cb71d115a3bec605cd0f139bac3",
+   "parents": [
+    "994398c2000bfd9fe66972563e69dddfc308bc56"
+   ],
+   "patch_sha256": "211da02b8c01b114b450b31e04abb61e48cadfe5d09e790dc7fd1dc0c8bcd56e",
+   "subject": "chore(f046): persist gate verdict and finding R-0145; open closure",
+   "tree": "dd0e8d700770e7368f101971c6823a0c0dfbfa37"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F046.md"
+   ],
+   "commit": "0216d871290362d4ee81a80c767aa4ba1d2bb985",
+   "parents": [
+    "add00a21c3001cb71d115a3bec605cd0f139bac3"
+   ],
+   "patch_sha256": "fa914275c07c85ce5ec10bf866efb7b311900b2af671bc427f4263271d82c073",
+   "subject": "docs(f046): built state in the feature file",
+   "tree": "37e2a60d3653dcf4ca51e848e09cf633fc9ad040"
+  }
+ ],
+ "files": [
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "9222f29d6cfefd21fdb3e5609c28072cf29c92cee23dcbf09ed82ea9863bc423",
+   "current_mode": "100644",
+   "current_sha256": "890ac0f778f6ed1a6c51a630769376755fccb20a02a49f0802d8815810f2b186",
+   "kind": "regular",
+   "path": ".agent/context.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "94de5b0d45816cf7aa033f25b2ddb86b92ccf32a5edd4e9e06290c530aac5e7d",
+   "current_mode": "100644",
+   "current_sha256": "041793ed5ce6650538c91f37e15f1f0f644d0875184ce62be46e8d3697dfe6d5",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e1e078245188c84f14cbbc4d886720ec78b10106cce839d82e7b15f03717173d",
+   "current_mode": "100644",
+   "current_sha256": "f6639205b65ceca6f37000bc5ef587c0c286c3deaa04d3ab09dfca840732c8d8",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8292c7376833e788493c9ca997084db7a732719406ffa1aae8c343fa207217ae",
+   "current_mode": "100644",
+   "current_sha256": "fe8cb5bcd414e57c113444e84d1a66fb76d642c83417cec81cdee32ff356e56d",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "ebe9fa0ff22178f97fb4527cc4dd124960a2b0f8efc5e164623c7e27d4729827",
+   "current_mode": "100644",
+   "current_sha256": "a23396829e0ad3a1cffd546bc4d3ae060b9933475a54e5b47085a5691bc0b381",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "dd421ed1b281d46071db64b3ab34fd9d2c14c2e26e3fe6c75d449cdb193d762f",
+   "current_mode": "100644",
+   "current_sha256": "bce199585dfe6435af88923103d99f83277d1fd17c20d7b0885d5fdc5f74c071",
+   "kind": "regular",
+   "path": "apps/cli/command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "5a95d7ce8e5dc4ff50fec86c61561f1bede65abc7f2cc10fac700e02856c2b1d",
+   "current_mode": "100644",
+   "current_sha256": "0668c5503bc5f2ea0a793643ce64f5958342851d3ed51e19459cee20c2f0acdd",
+   "kind": "regular",
+   "path": "apps/cli/commands/job.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8f1cea7b3579c28a30fe68a4ea5b0c3c1682137084327d411f004d396242a732",
+   "current_mode": "100644",
+   "current_sha256": "63c24e9173c66a65656f50ac7128d5a771d14fedccd06820e2d55c1751003e10",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "21f923a02d16383edc26b603c116f838848c158fb43a04c44688122a89c8c8e6",
+   "current_mode": "100644",
+   "current_sha256": "90f36e8a5398cc87a8117cfbfe3f810b9cfabe5e6a0f8ace47672b8500a6f3c1",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F046.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "dc4b4c666db0ef263d457dd9b92bb1603204cafa692ebf6cc8e3b2838939e26b",
+   "current_mode": "100644",
+   "current_sha256": "83e53c8d9105740ab87c8bb00e45158e09b909b41eeaaae9ebce2e7003fdb04f",
+   "kind": "regular",
+   "path": "docs/system/remedy-toml-configuration-system-v0.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "c3ad9e4591c49d6a3442c98da3b56d29d278192ead825578bcd7f3180f127548",
+   "current_mode": "100644",
+   "current_sha256": "da0b9db14c4685b668f4acb4a99e439f3e9179fc095c7920186b4c9857ff0dae",
+   "kind": "regular",
+   "path": "packages/orchestration/config.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "bce84c23157abc53ab4ce447c48ee9790d3385ccd00106517089e18d06c1ab77",
+   "kind": "regular",
+   "path": "packages/orchestration/long_run_executor.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7f3774435727db7528dfaa48511ff0a158466bee7961e7671d957abd929b8ced",
+   "kind": "regular",
+   "path": "tests/orchestration/test_long_run_executor.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "0216d871290362d4ee81a80c767aa4ba1d2bb985",
+ "subject_v": 1
+}

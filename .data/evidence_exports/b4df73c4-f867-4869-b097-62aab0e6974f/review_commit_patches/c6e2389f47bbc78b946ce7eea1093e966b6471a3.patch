@@ -1,0 +1,190 @@
+c6e2389f47bbc78b946ce7eea1093e966b6471a3
+diff --git a/.agent/context.md b/.agent/context.md
+index a7c0984..7f22b76 100644
+--- a/.agent/context.md
++++ b/.agent/context.md
+@@ -1,34 +1,25 @@
+-# Context — F146 Project Identity & Repo Autodetection (REPAIR R4)
++# Context — F046 Multi-cycle loop
+ 
+ ## Branch
+-`feature/f146-project-identity-repo-autodetection`
+-Base commit: `d750f65ca42065ee0583f8d0d115f8a591ce6a48`
++`feature/f046-multi-cycle-loop`
++Base commit: `c14a83a2d38cf8b91870f4c7bae225effb26f1af` (main after PR #151 merge)
+ 
+-## Current state
+-All 8 R4 blocking findings fixed. 495 tests green across 10 suites.
+-Commits, Evidence, and ZIP pending.
++## Scope
++- NEW `packages/orchestration/long_run_executor.py` — the cycle conductor.
++- NEW `tests/orchestration/test_long_run_executor.py`.
++- T002 additions: cycle evidence records, config keys (`cycles.*`),
++  `remedy job run <id> [--cycles N]` CLI.
+ 
+-## Changes (R4 — 8 blocking findings)
+-1. `packages/orchestration/project_registry.py` — _project_set_readonly() deterministic
+-   read-only projection; _load_project_readonly uses full-set projection;
+-   load_project calls batch migrate_legacy_projects
+-2. `apps/cli/commands/project.py` — brain/context/summary use _load_project_readonly;
+-   context RunLog event removed
+-3. `apps/cli/commands/readiness.py` — readiness.project uses _load_project_readonly
+-4. `packages/orchestration/runtime_integration_gate.py` — feature_id in gate output;
+-   f146_test_registry_execution binding for tests/test_project_registry.py
+-5. `scripts/refresh_review_evidence.py` — reads/propagates persisted feature_id
+-6. `tests/cli/test_project_current.py` — _resolve_attr_chain + 4 AST guard tests (18 total)
+-7. `tests/orchestration/test_project_resolution.py` — 12 R4 tests (93 total)
+-8. `tests/orchestration/test_f018_package_pipeline_e2e.py` — count fixes (29 total)
+-9. `tests/orchestration/test_f146_package_pipeline_e2e.py` — NEW (11 tests)
+-10. `docs/roadmap/features/T0_F146.md` — R4 Built State
+-11. `.agent/plan.md` — R4 plan
+-12. `.agent/live_review.md` — R4 status
+-13. `.agent/context.md` — R4 context
++## Constraints (A6 — reuse, do not reimplement)
++- should_stop: `safe_points.should_stop()` (operator + budget in one check)
++- task execution: `task_runner.run_next_task()` (rollback stays its concern)
++- persistence: `storage.save_job()` — no new persistence paths
++- terminal statuses map onto `pingpong_job` JOB_* constants + a ledger event
+ 
+-## Remaining
+-- Commit in logical commits
+-- Generate Evidence with fresh job ID, feature_id=f146
+-- Package ZIP
+-- Produce handoff
++## Do not touch
++`autonomy_loop.run_autonomy_loop`, task-level execution semantics, retry
++policy, checkpoint depth, DAG readiness, `run_pingpong` internals.
++
++## Rollout rule
++`max_cycles` DEFAULT stays 1 until the F075 milestone gate; the CLI flag
++is capped by the same safety default.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 839afda..63a88b9 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,48 +1,11 @@
+-# Live Review — F034 Bundled clarification in the Flight Plan
++# Live Review — F046 Multi-cycle loop
+ 
+-Branch: feature/f034-bundled-clarification
+-LAST_REVIEWED_SHA: 8027d48
+-Finding IDs continue monotonically from R-0143.
++Branch: feature/f046-multi-cycle-loop
++LAST_REVIEWED_SHA: c14a83a2d38cf8b91870f4c7bae225effb26f1af
++Finding IDs continue monotonically from R-0144.
+ 
+ ## Findings
+-(none — round 1 clean)
+-
+-- R-0144 · Medium · Resolved (this round) · integration-gate round (0891b8d..1b891fb)
+-  Commit 1b891fb appended an "Integration gate … PASS" entry to
+-  .agent/live_review.md that the reviewer never authored. Verdicts
+-  are reviewer-authored text applied on instruction
+-  (planner_reviewer_prompt §0, §4.6); the ledger presented the gate
+-  as reviewer-passed while the review was still pending. Same class
+-  as the builder-self-merge rule. Fix: replace that entry with the
+-  reviewer-authored verdict, verbatim.
++(none yet)
+ 
+ ## Verdicts
+-- Round 1 (Setup+T001–T004, 34878f3..0891b8d): PASS.
+-  Reviewer re-ran independently: slice suite 67 passed,
+-  guard 6 passed, canary 42 passed, spot-check
+-  test_plan_approval+test_flight_plan+test_schemas 100 passed,
+-  ruff clean. Guard red-proof verified. Predicates skip sanctioned
+-  (OPTIONAL scope, .agent/decisions.md).
+-  LAST_REVIEWED_SHA = 0891b8d.
+-- Integration gate (branch 0891b8d vs base 34878f3): PASS — issued
+-  by the reviewer after independent verification. Worker evidence:
+-  branch 161 failed / 13935 passed (180.61s); base 197 failed /
+-  13820 passed (193.31s); 7 branch-only failures, all attributed
+-  pre-existing xdist flake (serial re-run green; base-worktree xdist
+-  repeats reproduced two verbatim; no coupling to F034-touched
+-  modules; branch 36 failures FEWER than base). Reviewer re-ran
+-  independently: the 7 serially -> 7 passed in 4.57s; full branch
+-  suite -n auto -> 162 failed / 13935 passed in 194.60s, churn
+-  consistent with base nondeterminism; git worktree list clean;
+-  canary 42 passed. Zero F034-attributable regressions. Only this
+-  entry carries the "full suite" claim for the gate.
+-- Repair round (R-0144): resolved by this entry replacing the
+-  unauthored one. Mark R-0144 Resolved in ## Findings
+-  (Done: R-0144).
+-- Repair round (1b891fb..8027d48): PASS — issued by the reviewer.
+-  Both authored texts applied byte-identical (reviewer re-ran the
+-  grep proofs and the canary: 42 passed). The whitespace-
+-  normalized verification of the "issued by the reviewer" check
+-  was the correct, honest handling — the authored text was not
+-  reflowed to satisfy a literal grep. LAST_REVIEWED_SHA = 8027d48.
+-  F034 enters closure.
++(none yet)
+diff --git a/.agent/plan.md b/.agent/plan.md
+index c4a5ce2..7c6447f 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,40 +1,22 @@
+-# Plan — F034 Bundled clarification in the Flight Plan
++# Plan — F046 Multi-cycle loop
+ 
+ ## Goal
+-All open questions are asked ONCE, bundled, at plan time — never again:
+-intake clarifications ride the single plan-approval decision; every
+-unanswered question runs on its documented conservative default; the
+-runtime is provably incapable of asking mid-run. Done when an unattended
+-`remedy do --yes` completes with all defaults recorded in an assumption
+-log, and a guard test fails the build if interactive prompting ever enters
+-the execution packages.
++Remedy works in bounded cycles: check should_stop → execute ready batch →
++verify → persist, repeated until all_green, budget_exhausted,
++deadline_reached, stopped_by_operator, or blocked. Five-cycle fixture
++proves every stop cause; each cycle leaves its own evidence record;
++DEFAULT stays one cycle until the F075 gate.
+ 
+ ## Checklist
+-- [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
+-- [x] T001 decision payload + per-question answer parsing + tests
+-- [x] T002 approve → write-back → immutability (late answer rejected)
+-- [x] T003 assumptions.md renderer + CLI + plan.md link
+-- [x] T004 interactive-input guard test + unattended end-to-end
+-- [x] Integration gate — no F034-attributable regression (reviewer verdict
+-      in .agent/live_review.md)
+-- [x] Repair R-0144 (resolved, reviewer-verified)
++- [ ] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
++- [ ] T001 loop skeleton + terminal-status matrix + five-cycle fixture
++- [ ] T002 cycle evidence + CLI/config + single-pass regression
++- [ ] Integration gate
+ - [ ] Closure
+ 
+ ## Current Step
+-Closure — integrity check, evidence job attesting T001–T004, fresh review
+-zip, Built State in the feature file, authored STATUS line, PR #151
+-finalized. Do NOT merge: the Open PR Gate handles that at the next
+-feature start.
+-
+-## Next Steps
+-None after closure.
++Round 1 bundle: Setup + T001 + T002.
+ 
+ ## Risks
+-- Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
+-  base and branch (25 identical; the 2+2 differences pass on serial re-run).
+-  Backlog F135/F052.
+-- Conditional-answer predicates skipped as OPTIONAL scope (see
+-  .agent/decisions.md). Nothing in F034's DONE criteria depends on them.
+-- The guard only covers packages/; apps/cli deliberately stays interactive-
+-  capable, so a prompt added under apps/ that the runner calls would evade
+-  it. Runner entry points live in packages/, which is what is guarded.
++- Conductor must wrap existing parts (A6) — no parallel executor.
++- Pre-existing full-suite nondeterminism (backlog F135/F052).
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 754bf06..0dabab9 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -28,7 +28,7 @@
+ - [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+ - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
+ - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
+-- [ ] F046 — Multi-cycle loop
++- [~] F046 — Multi-cycle loop
+ - [ ] F047 — Checkpoint & resume (kill-proof)
+ - [ ] F048 — Job queue
+ - [ ] F050 — DAG scheduling

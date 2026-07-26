@@ -1,0 +1,32 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F046.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py"
+ ],
+ "diff_sha256": "39cdf6f1e80df284d71fed508ade1a1e6e16d506ee0948d50a38491ad92ccba9",
+ "job_id": "b4df73c4-f867-4869-b097-62aab0e6974f",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion (F046 T001-T002) - T002",
+ "provenance_sha256": "39cdf6f1e80df284d71fed508ade1a1e6e16d506ee0948d50a38491ad92ccba9",
+ "safe_diff_sha256": "2b3dfeb6ac8be6f780dc82d2ec5f7689e938c3f8c36a0b024290c30f7bb90d60",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F046.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py"
+ ],
+ "timestamp": "2026-07-26T19:50:41.730571+00:00",
+ "tracked_diff_sha256": "2b3dfeb6ac8be6f780dc82d2ec5f7689e938c3f8c36a0b024290c30f7bb90d60",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

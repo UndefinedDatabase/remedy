@@ -1,0 +1,543 @@
+8ad17ce72ef87c80eadb0e3ec3388681ba14ec69
+diff --git a/docs/system/remedy-toml-configuration-system-v0.md b/docs/system/remedy-toml-configuration-system-v0.md
+index e1fd596..62e80de 100644
+--- a/docs/system/remedy-toml-configuration-system-v0.md
++++ b/docs/system/remedy-toml-configuration-system-v0.md
+@@ -54,6 +54,9 @@ env var  >  project config  >  user config  >  built-in default
+ | `planning.granularity.split_band` | string | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | `XL` | no |
+ | `planning.granularity.max_acceptance` | int | `REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE` | `3` | no |
+ | `planning.granularity.merge_group_size` | int | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | `3` | no |
++| `cycles.max_cycles` | int | `REMEDY_CYCLES_MAX_CYCLES` | `1` | no |
++| `cycles.batch_size` | int | `REMEDY_CYCLES_BATCH_SIZE` | `1` | no |
++| `cycles.verify_command` | string | `REMEDY_CYCLES_VERIFY_COMMAND` | (none) | no |
+ 
+ The table above is not exhaustive — later features added their own keys
+ (`scope.*`, `budget.*`, `postmortem.*`). The key registry
+@@ -67,6 +70,16 @@ neighbors are merged, and every transformation is listed in a
+ approves it. Setting `planning.granularity.enabled = false` passes the
+ planner's task list through untouched.
+ 
++The `cycles.*` keys bound the multi-cycle loop (F046) that
++`remedy job run <id> [--cycles N]` drives. `cycles.max_cycles` defaults to
++`1` — the rollout rule: Remedy stays single-pass until the F075 milestone
++gate raises `CYCLE_SAFETY_CAP` in
++`packages/orchestration/long_run_executor.py`. Until then the cap trims BOTH
++the config value and the `--cycles` flag, and the command reports the
++trimmed number instead of silently honoring it. `cycles.verify_command` is
++recorded on every cycle evidence record; a cycle that ran no verification
++records `not_run` and never claims a pass.
++
+ ### TOML file format
+ 
+ ```toml
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 3d91fee..c2970d3 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -298,6 +298,36 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=int,
+         default=3,
+     ),
++    ConfigKeySpec(
++        key="cycles.max_cycles",
++        env_var="REMEDY_CYCLES_MAX_CYCLES",
++        description=(
++            "Maximum cycles one multi-cycle run may execute (F046). "
++            "DEFAULT 1 — the rollout rule: Remedy stays single-pass until the "
++            "F075 milestone gate raises the cap. Both this key and "
++            "'remedy job run --cycles' are capped by that safety default."
++        ),
++        value_type=int,
++        default=1,
++    ),
++    ConfigKeySpec(
++        key="cycles.batch_size",
++        env_var="REMEDY_CYCLES_BATCH_SIZE",
++        description="Maximum tasks executed per cycle (F046)",
++        value_type=int,
++        default=1,
++    ),
++    ConfigKeySpec(
++        key="cycles.verify_command",
++        env_var="REMEDY_CYCLES_VERIFY_COMMAND",
++        description=(
++            "Per-cycle verify command override (F046). Unset means the "
++            "cycle's verify step is whatever the caller injected; no "
++            "verification is ever claimed that did not run."
++        ),
++        value_type=str,
++        default=None,
++    ),
+     ConfigKeySpec(
+         key="planning.granularity.merge_group_size",
+         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index ede6c8f..bda2bdc 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -46,9 +46,11 @@ injected ``clock``, so a deadline is provable in a unit test.
+ 
+ from __future__ import annotations
+ 
++import json
+ from collections.abc import Callable
+ from dataclasses import dataclass
+ from datetime import datetime, timezone
++from pathlib import Path
+ from typing import Any
+ from uuid import UUID
+ 
+@@ -118,6 +120,20 @@ _VERIFY_DENIES_GREEN = frozenset({VERIFY_FAILED, "timeout"})
+ DEFAULT_MAX_CYCLES = 1
+ DEFAULT_BATCH_SIZE = 1
+ 
++#: The rollout CAP.  Config value and CLI flag are both clamped to it, so the
++#: shipped default stays a single pass no matter what is configured.  Only the
++#: F075 milestone gate raises this, via an explicit change with an ADR.
++CYCLE_SAFETY_CAP = 1
++
++#: Config keys this feature owns.
++CONFIG_KEY_MAX_CYCLES = "cycles.max_cycles"
++CONFIG_KEY_BATCH_SIZE = "cycles.batch_size"
++CONFIG_KEY_VERIFY_COMMAND = "cycles.verify_command"
++
++#: Where a cycle's own evidence record lands, and how it is named.
++CYCLE_EVIDENCE_DIRNAME = "cycles"
++CYCLE_RECORD_FILENAME = "cycle_{index:04d}.json"
++
+ 
+ # ---------------------------------------------------------------------------
+ # Inputs
+@@ -268,6 +284,113 @@ def _no_verify(job: Job, cycle_index: int, verify_command: str | None) -> str:
+     return VERIFY_NOT_RUN
+ 
+ 
++# ---------------------------------------------------------------------------
++# Cycle evidence (T002)
++# ---------------------------------------------------------------------------
++
++
++def cycle_evidence_dir(job_id: str) -> Path:
++    """The job's own evidence area, ``cycles/`` subdirectory.
++
++    Built on ``pingpong_job.job_evidence_dir`` so cycle records live exactly
++    where every other job-level record lives — no second evidence convention.
++    """
++    from packages.orchestration.pingpong_job import job_evidence_dir
++    from packages.orchestration.safe_points import validate_job_id
++
++    return Path(job_evidence_dir(validate_job_id(job_id))) / CYCLE_EVIDENCE_DIRNAME
++
++
++def write_cycle_record(job_id: str, record: CycleRecord) -> Path:
++    """Append one cycle's summary record.  One cycle, one file, one index.
++
++    Indices are the cycle indices themselves, so N cycles produce exactly N
++    files named cycle_0001..cycle_000N — monotonic by construction and
++    idempotent under a re-run of the same cycle index.
++    """
++    directory = cycle_evidence_dir(job_id)
++    directory.mkdir(parents=True, exist_ok=True)
++    path = directory / CYCLE_RECORD_FILENAME.format(index=record.cycle_index)
++    payload = dict(record.to_json(), job_id=str(job_id))
++    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
++    return path
++
++
++def read_cycle_records(job_id: str) -> list[dict[str, Any]]:
++    """Every persisted cycle record for a job, in cycle order."""
++    directory = cycle_evidence_dir(job_id)
++    if not directory.is_dir():
++        return []
++    records: list[dict[str, Any]] = []
++    for path in sorted(directory.glob("cycle_*.json")):
++        try:
++            records.append(json.loads(path.read_text(encoding="utf-8")))
++        except (OSError, ValueError):
++            continue
++    records.sort(key=lambda r: r.get("cycle_index", 0))
++    return records
++
++
++# ---------------------------------------------------------------------------
++# Config / flag resolution (T002)
++# ---------------------------------------------------------------------------
++
++
++@dataclass(frozen=True)
++class ResolvedCycles:
++    """How many cycles a run may use, where that came from, and whether the
++    rollout cap trimmed it."""
++
++    max_cycles: int
++    source: str          # "flag" | "config" | "default"
++    requested: int
++    capped: bool
++
++    @property
++    def cap(self) -> int:
++        return CYCLE_SAFETY_CAP
++
++
++def resolve_max_cycles(flag: int | None = None,
++                       config_value: int | None = None) -> ResolvedCycles:
++    """Flag beats config beats default — and BOTH are capped.
++
++    The cap is the F046 rollout rule: until the F075 milestone gate raises
++    ``CYCLE_SAFETY_CAP``, no configuration and no flag can make Remedy run more
++    than one cycle.  The requested value is reported alongside so the caller
++    can tell the operator their number was trimmed rather than ignored.
++    """
++    if flag is not None:
++        requested, source = int(flag), "flag"
++    elif config_value is not None:
++        requested, source = int(config_value), "config"
++    else:
++        requested, source = DEFAULT_MAX_CYCLES, "default"
++    if requested < 1:
++        raise ValueError(f"max_cycles must be >= 1, got {requested}")
++    allowed = min(requested, CYCLE_SAFETY_CAP)
++    return ResolvedCycles(max_cycles=allowed, source=source,
++                          requested=requested, capped=allowed < requested)
++
++
++def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
++                       ) -> tuple[CycleLimits, ResolvedCycles]:
++    """Build ``CycleLimits`` from the resolved Remedy config plus a CLI flag."""
++    if config is None:
++        from packages.orchestration.config import get_config
++        config = get_config()
++    resolved = resolve_max_cycles(cycles_flag, config.get(CONFIG_KEY_MAX_CYCLES))
++    batch_size = config.get(CONFIG_KEY_BATCH_SIZE) or DEFAULT_BATCH_SIZE
++    return (
++        CycleLimits(
++            max_cycles=resolved.max_cycles,
++            batch_size=int(batch_size),
++            verify_command=config.get(CONFIG_KEY_VERIFY_COMMAND) or None,
++        ),
++        resolved,
++    )
++
++
+ # ---------------------------------------------------------------------------
+ # Helpers
+ # ---------------------------------------------------------------------------
+@@ -386,6 +509,7 @@ def run_cycles(
+     save: Callable[[Job], None] | None = None,
+     log: Any = None,
+     control_root_path: Any = None,
++    record_evidence: bool = True,
+ ) -> CycleLoopResult:
+     """Run bounded cycles over *job* until a terminal condition.
+ 
+@@ -402,6 +526,11 @@ def run_cycles(
+       log        anything with ``.log(event, **meta)`` (a RunLogWriter); when
+                  omitted, no ledger events are emitted
+ 
++``record_evidence`` writes one summary record per cycle under the job's own
++evidence area (N cycles -> exactly N records, monotonically indexed).  An
++evidence write that fails is recorded on the job as ``cycle_evidence_error``
++and never aborts execution that already happened.
++
+     A failed verify ends the cycle with its failure recorded and denies the job
+     the all_green status; self-healing is a later feature.  A task step that
+     fails ends the cycle too — the task runner has already rolled the task back
+@@ -503,8 +632,13 @@ def run_cycles(
+         )
+         cycles.append(record)
+ 
+-        # 5. Persist.
++        # 5. Persist the job, then the cycle's own evidence record.
+         save_fn(job)
++        if record_evidence:
++            try:
++                write_cycle_record(str(job.id), record)
++            except (OSError, ValueError) as exc:
++                job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
+         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+ 
+     job_status = _apply_terminal(job, terminal, stop_reason)
+diff --git a/tests/orchestration/test_long_run_executor.py b/tests/orchestration/test_long_run_executor.py
+index b36ae94..4c287e5 100644
+--- a/tests/orchestration/test_long_run_executor.py
++++ b/tests/orchestration/test_long_run_executor.py
+@@ -1,4 +1,5 @@
+-"""F046 T001 — multi-cycle loop conductor.
++"""F046 — multi-cycle loop conductor (T001) and its evidence, config and
++single-pass regression (T002).
+ 
+ One test per row of the terminal-status matrix, an ordering test proving a
+ cycle never starts after should_stop says stop, and a five-cycle fixture that
+@@ -7,14 +8,20 @@ clock and deadlines go through an injected clock.
+ """
+ from __future__ import annotations
+ 
++import json
+ from datetime import datetime, timedelta, timezone
+ from pathlib import Path
+ 
+ import pytest
+ 
++import packages.orchestration.long_run_executor as lre
+ from packages.core.models import Job, JobBudgets, RunState, Task
+ from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
++from packages.orchestration.config import get_key_spec
+ from packages.orchestration.long_run_executor import (
++    CYCLE_SAFETY_CAP,
++    DEFAULT_BATCH_SIZE,
++    DEFAULT_MAX_CYCLES,
+     TERMINAL_ALL_GREEN,
+     TERMINAL_BLOCKED,
+     TERMINAL_BUDGET_EXHAUSTED,
+@@ -28,8 +35,12 @@ from packages.orchestration.long_run_executor import (
+     VERIFY_PASSED,
+     CycleLimits,
+     TaskAttempt,
++    cycle_evidence_dir,
+     default_task_step,
++    limits_from_config,
++    read_cycle_records,
+     ready_tasks,
++    resolve_max_cycles,
+     run_cycles,
+ )
+ from packages.orchestration.pingpong_job import (
+@@ -49,8 +60,10 @@ T0 = datetime(2026, 7, 26, 12, 0, 0, tzinfo=UTC)
+ # ---------------------------------------------------------------------------
+ 
+ 
+-@pytest.fixture
++@pytest.fixture(autouse=True)
+ def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    """Autouse: every cycle writes an evidence record, so no test may ever
++    reach the repository's real data root."""
+     data_dir = tmp_path / "remedy_data"
+     data_dir.mkdir()
+     monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+@@ -537,3 +550,226 @@ class TestDefaultTaskStep:
+         assert result.cycles[0].tasks_failed == 1
+         assert "RuntimeError" in result.cycles[0].errors[0]
+         assert job.tasks[0].status == RunState.PENDING   # rolled back by the runner
++
++
++# ---------------------------------------------------------------------------
++# T002 — cycle evidence records
++# ---------------------------------------------------------------------------
++
++
++class TestCycleEvidence:
++    def test_n_cycles_produce_exactly_n_monotonic_records(self, control_root):
++        job = make_job(4)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=4), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        records = read_cycle_records(str(job.id))
++        assert result.cycles_run == 4
++        assert len(records) == 4
++        assert [r["cycle_index"] for r in records] == [1, 2, 3, 4]
++
++    def test_record_carries_the_cycle_summary(self, control_root):
++        job = make_job(1)
++        run_cycles(
++            job, CycleLimits(max_cycles=1, verify_command="pytest -q"),
++            FakeProvider(), task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        record = read_cycle_records(str(job.id))[0]
++        assert record["job_id"] == str(job.id)
++        assert record["tasks_attempted"] == 1
++        assert record["tasks_completed"] == 1
++        assert record["tasks_failed"] == 0
++        assert record["verify_result"] == VERIFY_PASSED
++        assert record["verify_command"] == "pytest -q"
++        assert record["tokens_so_far"] == 0        # nothing measured, nothing claimed
++        assert record["started_at"] and record["ended_at"]
++
++    def test_records_live_in_the_job_evidence_area(self, isolate_data_root, control_root):
++        job = make_job(1)
++        run_cycles(
++            job, CycleLimits(max_cycles=1), FakeProvider(),
++            task_step=completing_step, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        expected = isolate_data_root / "jobs" / str(job.id) / "evidence" / "cycles"
++        assert cycle_evidence_dir(str(job.id)) == expected
++        assert (expected / "cycle_0001.json").is_file()
++
++    def test_evidence_can_be_switched_off(self, control_root):
++        job = make_job(2)
++        run_cycles(
++            job, CycleLimits(max_cycles=2), FakeProvider(),
++            task_step=completing_step, clock=FakeClock(), save=no_save,
++            control_root_path=control_root, record_evidence=False,
++        )
++        assert read_cycle_records(str(job.id)) == []
++
++    def test_no_records_when_no_cycle_ran(self, control_root):
++        job = make_job(2)
++        request_stop(str(job.id), reason="stop first", control_root_path=control_root)
++        run_cycles(
++            job, CycleLimits(max_cycles=3), FakeProvider(),
++            task_step=never_called_step, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert read_cycle_records(str(job.id)) == []
++
++
++# ---------------------------------------------------------------------------
++# T002 — config keys and the rollout cap
++# ---------------------------------------------------------------------------
++
++
++class FakeConfig:
++    def __init__(self, **values) -> None:
++        self._values = values
++
++    def get(self, key: str):
++        return self._values.get(key)
++
++
++class TestCycleConfig:
++    def test_config_keys_are_registered_with_the_rollout_default(self):
++        assert get_key_spec("cycles.max_cycles").default == DEFAULT_MAX_CYCLES == 1
++        assert get_key_spec("cycles.batch_size").default == DEFAULT_BATCH_SIZE
++        assert get_key_spec("cycles.verify_command").default is None
++        assert get_key_spec("cycles.max_cycles").env_var == "REMEDY_CYCLES_MAX_CYCLES"
++
++    def test_default_when_nothing_is_set(self):
++        r = resolve_max_cycles()
++        assert (r.max_cycles, r.source, r.capped) == (1, "default", False)
++
++    def test_flag_beats_config(self, monkeypatch):
++        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 10)
++        r = resolve_max_cycles(flag=4, config_value=7)
++        assert (r.max_cycles, r.source, r.requested) == (4, "flag", 4)
++
++    def test_config_used_when_no_flag(self, monkeypatch):
++        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 10)
++        r = resolve_max_cycles(config_value=6)
++        assert (r.max_cycles, r.source) == (6, "config")
++
++    def test_the_cap_trims_both_flag_and_config(self):
++        flagged = resolve_max_cycles(flag=25)
++        configured = resolve_max_cycles(config_value=25)
++        assert flagged.max_cycles == configured.max_cycles == CYCLE_SAFETY_CAP == 1
++        assert flagged.capped is True and flagged.requested == 25
++        assert configured.capped is True
++
++    def test_zero_or_negative_is_refused(self):
++        with pytest.raises(ValueError):
++            resolve_max_cycles(flag=0)
++        with pytest.raises(ValueError):
++            resolve_max_cycles(config_value=-3)
++
++    def test_limits_from_config(self, monkeypatch):
++        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 10)
++        limits, resolved = limits_from_config(
++            FakeConfig(**{"cycles.max_cycles": 3, "cycles.batch_size": 5,
++                          "cycles.verify_command": "make test"}),
++        )
++        assert limits.max_cycles == 3
++        assert limits.batch_size == 5
++        assert limits.verify_command == "make test"
++        assert resolved.source == "config"
++
++    def test_limits_from_config_falls_back_to_the_defaults(self):
++        limits, resolved = limits_from_config(FakeConfig())
++        assert limits.max_cycles == DEFAULT_MAX_CYCLES
++        assert limits.batch_size == DEFAULT_BATCH_SIZE
++        assert limits.verify_command is None
++        assert resolved.source == "default"
++
++
++# ---------------------------------------------------------------------------
++# T002 — single-pass regression
++# ---------------------------------------------------------------------------
++
++
++def _single_pass(job: Job, provider) -> None:
++    """Today's single pass, exactly as `remedy job run-next` performs it."""
++    from packages.orchestration.storage import save_job
++    from packages.orchestration.task_runner import (
++        finalize_task,
++        materialize_task_output,
++        run_next_task,
++    )
++    from packages.orchestration.verifier import verify_task_output
++    from packages.orchestration.workspace import LocalWorkspaceRuntime
++
++    result = run_next_task(job, provider)
++    if not result.changed:
++        return
++    materialize_task_output(result, LocalWorkspaceRuntime(job_id=job.id))
++    vr = verify_task_output(result.job, result.task_id)
++    finalize_task(result, vr)
++    save_job(result.job)
++
++
++def _normalize(job: Job) -> dict:
++    """Job JSON with the randomly generated artifact ids replaced by ordinals."""
++    payload = json.loads(job.model_dump_json())
++    mapping: dict[str, str] = {}
++    for i, artifact in enumerate(payload.get("artifacts", [])):
++        mapping[artifact["id"]] = f"artifact-{i}"
++    text = json.dumps(payload, sort_keys=True)
++    for real, placeholder in mapping.items():
++        text = text.replace(real, placeholder)
++    return json.loads(text)
++
++
++class TestSinglePassRegression:
++    def test_defaults_reproduce_the_single_pass_exactly(
++        self, isolate_data_root, control_root
++    ):
++        job = make_job(3)
++        single = job.model_copy(deep=True)
++        cycled = job.model_copy(deep=True)
++
++        _single_pass(single, FakeProvider())
++        single_workspace = sorted(
++            p.name for p in (isolate_data_root / "workspaces" / str(job.id)).rglob("*")
++            if p.is_file()
++        )
++
++        run_cycles(cycled, CycleLimits(), FakeProvider(),
++                   task_step=default_task_step, clock=FakeClock(),
++                   control_root_path=control_root)
++        cycled_workspace = sorted(
++            p.name for p in (isolate_data_root / "workspaces" / str(job.id)).rglob("*")
++            if p.is_file()
++        )
++
++        assert cycled_workspace == single_workspace
++        expected = _normalize(single)
++        actual = _normalize(cycled)
++        # The ONLY difference is the loop's own additive trace.
++        added = set(actual["metadata"]) - set(expected["metadata"])
++        assert added == {"cycle_terminal_status", "cycle_job_status"}
++        for key in added:
++            actual["metadata"].pop(key)
++        assert actual == expected
++
++    def test_defaults_run_exactly_one_cycle_and_leave_the_rest_pending(
++        self, isolate_data_root, control_root
++    ):
++        job = make_job(3)
++        result = run_cycles(job, CycleLimits(), FakeProvider(),
++                            task_step=default_task_step, clock=FakeClock(),
++                            control_root_path=control_root)
++        assert result.cycles_run == 1
++        assert result.terminal_status == TERMINAL_MAX_CYCLES_REACHED
++        assert [t.status for t in job.tasks] == [
++            RunState.COMPLETED, RunState.PENDING, RunState.PENDING,
++        ]
++
++    def test_default_limits_are_the_rollout_defaults(self):
++        limits = CycleLimits()
++        assert limits.max_cycles == 1
++        assert limits.batch_size == 1
++        assert limits.budgets is None
++        assert limits.verify_command is None
++

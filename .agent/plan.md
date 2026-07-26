@@ -12,7 +12,7 @@ DEFAULT stays one cycle until the F075 gate.
 - [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
 - [x] T002 cycle evidence + CLI/config + single-pass regression
 - [x] Integration gate
-- [ ] Closure
+- [x] Closure
 
 ## Current Step
 Closure — evidence job, review package, Built State, STATUS line, PR

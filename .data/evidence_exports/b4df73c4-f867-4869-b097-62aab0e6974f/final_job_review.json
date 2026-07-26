@@ -1,0 +1,66 @@
+{
+ "actual_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F046.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "changed_files_match": true,
+ "completion_mode": "manual_operator_repair",
+ "completion_provider_call_count": 0,
+ "expected_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F046.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "findings": [],
+ "human_final_reviewer_required": true,
+ "job_id": "b4df73c4-f867-4869-b097-62aab0e6974f",
+ "linked_prior_job_ids": [
+  "fd549b82-64b0-49c5-85d9-f5d8bf44a266"
+ ],
+ "linked_prior_job_summaries": [
+  {
+   "job_id": "fd549b82-64b0-49c5-85d9-f5d8bf44a266",
+   "provider_call_count": 0,
+   "status": "operator_attested_complete"
+  }
+ ],
+ "per_task_changed_files": {
+  "T001": [
+   "packages/orchestration/long_run_executor.py",
+   "tests/orchestration/test_long_run_executor.py"
+  ],
+  "T002": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/job.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F046.md",
+   "docs/system/remedy-toml-configuration-system-v0.md",
+   "packages/orchestration/config.py"
+  ]
+ },
+ "prior_execution_provider_call_count": 0,
+ "review_mode": "operator_attested_manual_completion",
+ "root_verification": {
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 91
+ },
+ "schema_version": "1.0.0",
+ "superseded_prior_run_ids": [],
+ "task_verdicts": {
+  "T001": "operator_attested",
+  "T002": "operator_attested"
+ },
+ "verdict": "PASS"
+}

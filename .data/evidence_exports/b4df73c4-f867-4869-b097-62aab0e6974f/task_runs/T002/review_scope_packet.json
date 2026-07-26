@@ -1,0 +1,13 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F046.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}
