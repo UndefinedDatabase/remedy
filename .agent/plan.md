@@ -1,25 +1,33 @@
-# Plan — Tiered Verification Gates (operator decision 2026-07-26)
+# Plan — F016 Scaling task granularity
 
 ## Goal
-Encode tiered verification gates in the planner/reviewer protocol and set
-up pytest-xdist for full-suite runs.
+Right-size Flight-Plan tasks automatically: split oversized tasks, merge
+trivial neighbors, record every transformation on the plan. Pure heuristic
+module (no cost history exists yet), wired at ONE point in plan generation,
+failing open to the original plan.
 
 ## Checklist
-- [x] F014 closure PR #148 merged via Open PR Gate
-- [x] planner_reviewer_prompt.md §3: verification tiers (round gate scoped
-      only · golden-path canary per handback · full suite 2× per feature ·
-      xdist + ~5 min budget note)
-- [x] planner_reviewer_prompt.md §4.6: verdict semantics (round PASS =
-      scoped green + clean diff; only integration gate claims full green)
-- [x] STATUS_closure_protocol.md precondition 2: integration-gate round
-      reference
-- [x] pyproject dev deps: pytest-xdist; markers slow/integration existed
-- [x] Verified: canary 42 passed in ~19 s; full suite `-n auto` 3m11s
+- [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
+- [x] T001 split rules + config keys + table tests (gate green)
+- [x] T002 merge rule + dependency-safety table tests (gate green)
+- [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
+      plan.md normalization section + mixed-fixture integration (gate green)
+- [x] Integration gate: branch vs base full-suite comparison, no F016
+      regression (verdict persisted in .agent/live_review.md)
+- [x] Closure: verdicts persisted, feature-file Built State written
 
 ## Current Step
-Commit + PR.
+Closure — integrity check, evidence job (T001–T003 attested), fresh review
+zip, STATUS.md line, final commit, PR #150 description update. Do NOT merge:
+the Open PR Gate handles that at the next feature start.
+
+## Next Steps
+None for F016 after closure.
 
 ## Risks
-- Full suite currently RED on main: 159 failed / 13827 passed (spot-check
-  serial: pre-existing, e.g. dev_server missing `_ABS_PATH_RE`). Expected
-  target of the first integration-gate round; out of scope here.
+- Full suite is nondeterministic under xdist and pre-existing RED on base
+  (~160-181 churning failures); serial re-runs pass. Backlog F135/F052.
+- R-0142: redaction pattern false-positives on "sk-" substrings (Low, gap
+  backlog) — branch-name artifact, vanishes on main.
+- Cross-group merge-cycle interactions are caught only by the final
+  whole-plan revalidation (coarse abort, fail-open) — by design.

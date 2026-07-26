@@ -1,0 +1,10 @@
+{
+ "changed_files": [
+  "tests/orchestration/test_config.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/orchestration/test_task_granularity.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_title": "Task T003"
+}

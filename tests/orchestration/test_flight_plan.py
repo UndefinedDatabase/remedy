@@ -231,6 +231,99 @@ class TestRenderPlanMd:
         assert p2.exists()
 
 
+class TestNormalizationSection:
+    """F016: the approver always sees what normalization did."""
+
+    def test_empty_record_says_no_transformations(self):
+        from packages.orchestration.flight_plan import render_plan_md
+
+        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
+        md = render_plan_md(fp)
+        assert "## Normalization" in md
+        assert "No transformations" in md
+
+    def test_record_entries_are_rendered(self):
+        from packages.orchestration.flight_plan import render_plan_md
+
+        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
+        md = render_plan_md(fp, [{
+            "kind": "split",
+            "source_ids": ["T001"],
+            "result_ids": ["T001a", "T001b"],
+            "reason": "too many acceptance criteria",
+        }])
+        assert "**split** T001 → T001a, T001b" in md
+        assert "too many acceptance criteria" in md
+
+    def test_write_plan_md_threads_the_record(self, tmp_path):
+        from packages.orchestration.flight_plan import write_plan_md
+
+        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
+        path = write_plan_md(fp, tmp_path, transformations=[{
+            "kind": "merge",
+            "source_ids": ["T001", "T002"],
+            "result_ids": ["T001"],
+            "reason": "trivial neighbors",
+        }])
+        assert "**merge** T001, T002 → T001" in path.read_text()
+
+
+class TestPlanJobLlmNormalization:
+    """F016 runs at exactly one insertion point: plan_job_llm."""
+
+    def _xl_plan_json(self) -> str:
+        return json.dumps({
+            "schema_v": "flight_plan_v1",
+            "tasks": [{
+                "id": "T001",
+                "title": "Big task",
+                "goal": "Do a lot",
+                "acceptance": ["parser core", "runner loop", "docs page",
+                               "cli flag"],
+                "depends_on": [],
+                "est_tokens_band": "XL",
+                "files_hint": ["src/parser.py", "src/runner.py",
+                               "docs/page.md", "cli/flag.py"],
+            }],
+            "risks": [],
+        })
+
+    def test_plan_is_normalized_and_the_record_is_carried(self):
+        result = plan_job_llm(
+            _fake_intake(), _fake_provider(self._xl_plan_json()))
+
+        assert result.plan is not None
+        assert [t.id for t in result.plan.tasks] == [
+            "T001a", "T001b", "T001c", "T001d"]
+        assert [e["kind"] for e in result.transformations] == ["split"]
+
+    def test_disabled_config_passes_the_plan_through(self):
+        from packages.orchestration.task_granularity import GranularityConfig
+
+        result = plan_job_llm(
+            _fake_intake(), _fake_provider(self._xl_plan_json()),
+            granularity=GranularityConfig(enabled=False))
+
+        assert result.plan is not None
+        assert [t.id for t in result.plan.tasks] == ["T001"]
+        assert result.transformations == []
+
+    def test_a_broken_threshold_never_loses_the_plan(self, monkeypatch):
+        import packages.orchestration.flight_plan as FP
+
+        def _boom() -> None:
+            raise ValueError("split_band must be one of S, M, L, XL")
+
+        monkeypatch.setattr(FP, "granularity_config", _boom)
+        result = plan_job_llm(
+            _fake_intake(), _fake_provider(self._xl_plan_json()))
+
+        assert result.plan is not None
+        assert [t.id for t in result.plan.tasks] == ["T001"]
+        assert [e["kind"] for e in result.transformations] == ["aborted"]
+        assert "split_band" in result.transformations[0]["reason"]
+
+
 class TestReplan:
 
     def test_replan_appends_version(self, tmp_path):

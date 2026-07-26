@@ -50,6 +50,22 @@ env var  >  project config  >  user config  >  built-in default
 | `ollama.planner.model` | string | `REMEDY_OLLAMA_PLANNER_MODEL` | (falls back to `ollama.model`) | no |
 | `ollama.planner.temperature` | float | `REMEDY_OLLAMA_PLANNER_TEMPERATURE` | (none) | no |
 | `ollama.planner.num_predict` | int | `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` | (none) | no |
+| `planning.granularity.enabled` | bool | `REMEDY_PLANNING_GRANULARITY_ENABLED` | `true` | no |
+| `planning.granularity.split_band` | string | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | `XL` | no |
+| `planning.granularity.max_acceptance` | int | `REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE` | `3` | no |
+| `planning.granularity.merge_group_size` | int | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | `3` | no |
+
+The table above is not exhaustive — later features added their own keys
+(`scope.*`, `budget.*`, `postmortem.*`). The key registry
+`_CONFIG_KEY_SPECS` in `packages/orchestration/config.py` is the source of
+truth; `remedy config list` prints the resolved set.
+
+The `planning.granularity.*` keys drive Flight-Plan task-granularity
+normalization (F016): oversized planned tasks are split, runs of trivial
+neighbors are merged, and every transformation is listed in a
+**Normalization** section of the generated `plan.md` before a human
+approves it. Setting `planning.granularity.enabled = false` passes the
+planner's task list through untouched.
 
 ### TOML file format
 

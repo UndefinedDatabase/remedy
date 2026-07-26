@@ -1,0 +1,46 @@
+c534d82c1f31e199e3fb3e3f87d24ec80dafe0e4
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index a6c3c1d..09cbdd9 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,6 +1,17 @@
+ # Live Review — F016 Scaling task granularity
+ Branch: feature/f016-task-granularity
+-LAST_REVIEWED_SHA: dcb8b1a7f451c0cce7cc8722ebbd9e0847ca5673
++LAST_REVIEWED_SHA: cd13645
+ Finding IDs continue at R-0141.
+ ## Findings
+-(none yet)
++
++### R-0141 [low] Incomplete handback form (round 1) — Resolved (recorded)
++Per-commit changed-files tables were ordered but only a net table
++was delivered; commit cd13645 and .agent/decisions.md were absent
++from the handoff tables. Substance was fully verifiable from the
++real diff; no code change required. Future handbacks: per-commit
++tables, every commit, every file.
++
++## Round 1 verdict
++PASS (round gate + canary tier). All T001-T003 gates independently
++re-run by reviewer: 117 + 71 + 42 passed. Deviations declared in
++.agent/decisions.md accepted. LAST_REVIEWED_SHA advances.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 51957b1..cbda983 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -14,11 +14,13 @@ failing open to the original plan.
+       plan.md normalization section + mixed-fixture integration (gate green)
+ 
+ ## Current Step
+-Push, open PR, hand back: completion report with per-commit changed-files
+-tables and raw verification transcripts, then rewrite .agent/handoff.md.
++Integration gate: full suite (`-n auto`) on the branch vs the base commit
++dcb8b1a in a worktree; compare FAILED node ids. Measurement only — no
++repair in this round.
+ 
+ ## Next Steps
+-Reviewer round on feature/f016-task-granularity.
++Empty new-failure list → hand back PASS. Non-empty → STOP, hand back the
++list plus raw tracebacks of the new failures only.
+ 
+ ## Risks
+ - Plan schema classes untouched (F014 R-0121); the record lives only in

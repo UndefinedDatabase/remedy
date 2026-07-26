@@ -90,7 +90,7 @@ _FAKE_INTAKE_JSON = json.dumps({
 })
 
 
-def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True):
+def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
     """Configure monkeypatches for LLM intake + flight plan path."""
     def _fake_call(prompt: str, attempt: int) -> str:
         return _FAKE_INTAKE_JSON
@@ -116,7 +116,8 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True):
         monkeypatch.setattr(
             "packages.orchestration.flight_plan.plan_job_llm",
             lambda intake, call_fn, **kw: FlightPlanResult(
-                plan=_fp, source="llm", calls=1),
+                plan=_fp, source="llm", calls=1,
+                transformations=list(transformations or [])),
         )
     else:
         monkeypatch.setattr(
@@ -199,6 +200,47 @@ class TestFlightPlanLabel:
         job_data = json.loads(show.stdout)
         assert job_data["flight_plan"] is not None
         assert job_data["flight_plan"]["_approval"] == "pending"
+
+    def test_normalization_record_is_persisted_and_rendered(
+            self, tmp_path, monkeypatch):
+        """F016: the record lands on the job dict and in plan.md."""
+        repo = _git_repo(tmp_path)
+        env = _env(tmp_path)
+        data_dir = tmp_path / "data"
+        subprocess.run(
+            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+        _setup_llm_mocks(monkeypatch, plan_succeeds=True, transformations=[{
+            "kind": "split",
+            "source_ids": ["T000"],
+            "result_ids": ["T001"],
+            "reason": "oversized task sliced",
+        }])
+        monkeypatch.chdir(str(repo))
+
+        from io import StringIO
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
+        job_id = json.loads(captured.getvalue())["job_id"]
+
+        from packages.orchestration.storage import load_job
+        saved = load_job(job_id)
+        assert saved.flight_plan["_normalization"] == [{
+            "kind": "split",
+            "source_ids": ["T000"],
+            "result_ids": ["T001"],
+            "reason": "oversized task sliced",
+        }]
+
+        plan_md = data_dir / "evidence_exports" / job_id / "plan.md"
+        text = plan_md.read_text()
+        assert "## Normalization" in text
+        assert "oversized task sliced" in text
 
     def test_flight_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
         """LLM flight plan parse failure -> non-zero exit, no tasks, postmortem."""

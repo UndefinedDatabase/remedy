@@ -1,0 +1,584 @@
+51e2575a92a2b7593e7ec2b70467c7d26fd0a0dc
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 83479b8..51957b1 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -10,18 +10,18 @@ failing open to the original plan.
+ - [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
+ - [x] T001 split rules + config keys + table tests (gate green)
+ - [x] T002 merge rule + dependency-safety table tests (gate green)
+-- [ ] T003 revalidation/abort + bypass + wiring into plan_job_llm +
+-      plan.md normalization section + mixed-fixture integration test
++- [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
++      plan.md normalization section + mixed-fixture integration (gate green)
+ 
+ ## Current Step
+-T003 — revalidation/abort, bypass, wiring into plan_job_llm, the plan.md
+-normalization section, mixed-fixture integration + determinism tests.
++Push, open PR, hand back: completion report with per-commit changed-files
++tables and raw verification transcripts, then rewrite .agent/handoff.md.
+ 
+ ## Next Steps
+-Handback: completion report with per-commit tables and raw transcripts,
+-then rewrite .agent/handoff.md.
++Reviewer round on feature/f016-task-granularity.
+ 
+ ## Risks
+-- Wiring touches two call sites (do_cmd.py ~241, ~2832); the record must be
+-  persisted as fp_dict["_normalization"] without touching plan schema classes
+-  (F014 R-0121: schema-size snapshot regression).
++- Plan schema classes untouched (F014 R-0121); the record lives only in
++  fp_dict["_normalization"] and FlightPlanResult.
++- Merge overlap is token-based, so two files under a common directory count
++  as related — over-eager merging is possible, and visible in the record.
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 3aba624..4676de3 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -242,6 +242,7 @@ def _cmd_do_mission(
+         if fp_result.plan is not None:
+             fp_dict = fp_result.plan.model_dump()
+             fp_dict["_approval"] = "pending"
++            fp_dict["_normalization"] = fp_result.transformations
+             tasks = map_flight_plan_to_tasks(fp_result.plan)
+             from packages.core.models import JobBudgets, JobFences
+             from packages.orchestration.budget_resolution import resolve_job_budgets
+@@ -277,7 +278,9 @@ def _cmd_do_mission(
+             )
+             save_job(job)
+             from packages.orchestration.data_paths import job_evidence_export_dir
+-            write_plan_md(fp_result.plan, job_evidence_export_dir(str(job.id)))
++            write_plan_md(
++                fp_result.plan, job_evidence_export_dir(str(job.id)),
++                transformations=fp_result.transformations)
+             if yes:
+                 fp_dict["_approval"] = "approved"
+                 fp_dict["_approval_audit"] = {
+@@ -2842,11 +2845,13 @@ def _cmd_do_replan(
+         new_fp_dict, version = replan(
+             fp, fp_result.plan, ev_dir,
+             any_task_completed=any_completed,
++            transformations=fp_result.transformations,
+         )
+     except ReplanRejectedError as exc:
+         print(f"Error: {exc}", file=sys.stderr)
+         sys.exit(1)
+ 
++    new_fp_dict["_normalization"] = fp_result.transformations
+     job.flight_plan = new_fp_dict
+     job.tasks = map_flight_plan_to_tasks(fp_result.plan)
+     save_job(job)
+diff --git a/docs/system/remedy-toml-configuration-system-v0.md b/docs/system/remedy-toml-configuration-system-v0.md
+index 7827248..e1fd596 100644
+--- a/docs/system/remedy-toml-configuration-system-v0.md
++++ b/docs/system/remedy-toml-configuration-system-v0.md
+@@ -50,6 +50,22 @@ env var  >  project config  >  user config  >  built-in default
+ | `ollama.planner.model` | string | `REMEDY_OLLAMA_PLANNER_MODEL` | (falls back to `ollama.model`) | no |
+ | `ollama.planner.temperature` | float | `REMEDY_OLLAMA_PLANNER_TEMPERATURE` | (none) | no |
+ | `ollama.planner.num_predict` | int | `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` | (none) | no |
++| `planning.granularity.enabled` | bool | `REMEDY_PLANNING_GRANULARITY_ENABLED` | `true` | no |
++| `planning.granularity.split_band` | string | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | `XL` | no |
++| `planning.granularity.max_acceptance` | int | `REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE` | `3` | no |
++| `planning.granularity.merge_group_size` | int | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | `3` | no |
++
++The table above is not exhaustive — later features added their own keys
++(`scope.*`, `budget.*`, `postmortem.*`). The key registry
++`_CONFIG_KEY_SPECS` in `packages/orchestration/config.py` is the source of
++truth; `remedy config list` prints the resolved set.
++
++The `planning.granularity.*` keys drive Flight-Plan task-granularity
++normalization (F016): oversized planned tasks are split, runs of trivial
++neighbors are merged, and every transformation is listed in a
++**Normalization** section of the generated `plan.md` before a human
++approves it. Setting `planning.granularity.enabled = false` passes the
++planner's task list through untouched.
+ 
+ ### TOML file format
+ 
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index 54db20c..ec87ea5 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -8,13 +8,14 @@ from __future__ import annotations
+ 
+ import json
+ from collections.abc import Callable
+-from dataclasses import dataclass
++from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any
+ 
+ from packages.core.models import AcceptanceCheck, RunState, Task
+ from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
++from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
+ 
+ 
+ @dataclass
+@@ -26,6 +27,8 @@ class FlightPlanResult:
+     error_hint: str = ""
+     calls: int = 0
+     call_log: list[dict[str, Any]] | None = None
++    #: F016 granularity record: what normalization changed, if anything.
++    transformations: list[dict[str, Any]] = field(default_factory=list)
+ 
+ 
+ _PLAN_PROMPT_TEMPLATE = """\
+@@ -80,17 +83,38 @@ def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
+     )
+ 
+ 
++def granularity_config() -> GranularityConfig:
++    """Read the F016 thresholds from Remedy config.
++
++    Lives here, not in task_granularity: that module stays pure and takes
++    its thresholds as an argument.
++    """
++    from packages.orchestration.config import get_config
++    cfg = get_config()
++    return GranularityConfig(
++        enabled=bool(cfg.get("planning.granularity.enabled")),
++        split_band=str(cfg.get("planning.granularity.split_band")),
++        max_acceptance=int(cfg.get("planning.granularity.max_acceptance")),
++        merge_group_size=int(cfg.get("planning.granularity.merge_group_size")),
++    )
++
++
+ def plan_job_llm(
+     intake: dict[str, Any],
+     call_fn: Callable[[str, int], str],
+     *,
+     on_call: Callable[[int, str, bool, str], None] | None = None,
++    granularity: GranularityConfig | None = None,
+ ) -> FlightPlanResult:
+     """Generate a FlightPlan from a job's intake via LLM.
+ 
+     Uses run_structured_call for schema validation + one parse retry.
+     Returns a FlightPlanResult; on failure, plan is None and error_hint
+     describes the failure class.
++
++    The validated plan then passes through F016 task-granularity
++    normalization — the single insertion point for it — and the result
++    carries the transformation record.
+     """
+     prompt = _build_plan_prompt(intake)
+     try:
+@@ -115,11 +139,28 @@ def plan_job_llm(
+         )
+ 
+     assert isinstance(outcome.value, FlightPlan)
++    plan = outcome.value
++    transformations: list[dict[str, Any]] = []
++    try:
++        normalized = normalize_plan(plan, granularity or granularity_config())
++        plan = normalized.plan
++        transformations = normalized.as_dicts()
++    except Exception as exc:
++        # Misconfigured thresholds must not lose a valid plan; same fail-open
++        # rule the normalizer applies to its own revalidation.
++        transformations = [{
++            "kind": "aborted",
++            "source_ids": [t.id for t in plan.tasks],
++            "result_ids": [t.id for t in plan.tasks],
++            "reason": f"normalization not run, original plan kept: {exc}",
++        }]
++
+     return FlightPlanResult(
+-        plan=outcome.value,
++        plan=plan,
+         source="llm",
+         calls=outcome.calls,
+         call_log=outcome.call_log,
++        transformations=transformations,
+     )
+ 
+ 
+@@ -198,8 +239,16 @@ def apply_plan_fences(
+ # Renderer (T003)
+ # ---------------------------------------------------------------------------
+ 
+-def render_plan_md(plan: FlightPlan) -> str:
+-    """Render a FlightPlan to deterministic, stably ordered markdown."""
++def render_plan_md(
++    plan: FlightPlan,
++    transformations: list[dict[str, Any]] | None = None,
++) -> str:
++    """Render a FlightPlan to deterministic, stably ordered markdown.
++
++    *transformations* is the F016 granularity record. The section is always
++    rendered so the approving human sees either what was changed or an
++    explicit statement that nothing was.
++    """
+     lines: list[str] = []
+     lines.append("# Flight Plan")
+     lines.append("")
+@@ -234,6 +283,20 @@ def render_plan_md(plan: FlightPlan) -> str:
+                 lines.append(f"- `{f}`")
+         lines.append("")
+ 
++    lines.append("## Normalization")
++    lines.append("")
++    if not transformations:
++        lines.append("No transformations — the plan is used as generated.")
++        lines.append("")
++    else:
++        for entry in transformations:
++            sources = ", ".join(entry.get("source_ids", [])) or "-"
++            results = ", ".join(entry.get("result_ids", [])) or "-"
++            lines.append(
++                f"- **{entry.get('kind', 'unknown')}** {sources} → {results}")
++            lines.append(f"  - {entry.get('reason', '')}")
++        lines.append("")
++
+     if plan.risks:
+         lines.append("## Risks")
+         lines.append("")
+@@ -267,12 +330,17 @@ def render_plan_md(plan: FlightPlan) -> str:
+     return "\n".join(lines)
+ 
+ 
+-def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Path:
++def write_plan_md(
++    plan: FlightPlan,
++    evidence_dir: Path,
++    version: int = 1,
++    transformations: list[dict[str, Any]] | None = None,
++) -> Path:
+     """Write rendered plan to evidence dir. Returns the written path."""
+     evidence_dir.mkdir(parents=True, exist_ok=True)
+     filename = "plan.md" if version == 1 else f"plan_v{version}.md"
+     path = evidence_dir / filename
+-    path.write_text(render_plan_md(plan), encoding="utf-8")
++    path.write_text(render_plan_md(plan, transformations), encoding="utf-8")
+     return path
+ 
+ 
+@@ -310,6 +378,7 @@ def replan(
+     evidence_dir: Path,
+     *,
+     any_task_completed: bool = False,
++    transformations: list[dict[str, Any]] | None = None,
+ ) -> tuple[dict[str, Any], int]:
+     """Apply a new flight plan version.
+ 
+@@ -331,5 +400,7 @@ def replan(
+     new_plan_dict["_version"] = new_version
+     new_plan_dict["_approval"] = "pending"
+ 
+-    write_plan_md(new_plan, evidence_dir, version=new_version)
++    write_plan_md(
++        new_plan, evidence_dir, version=new_version,
++        transformations=transformations)
+     return new_plan_dict, new_version
+diff --git a/packages/orchestration/task_granularity.py b/packages/orchestration/task_granularity.py
+index 1da7b56..bb4fd12 100644
+--- a/packages/orchestration/task_granularity.py
++++ b/packages/orchestration/task_granularity.py
+@@ -492,4 +492,21 @@ def normalize_plan(
+ 
+     data = plan.model_dump()
+     data["tasks"] = [t.model_dump() for t in tasks]
+-    return NormalizationResult(plan=FlightPlan(**data), transformations=records)
++    try:
++        # Constructing the model IS the revalidation: FlightPlan's own
++        # _validate_dag runs here. No validation logic is copied.
++        new_plan = FlightPlan(**data)
++    except Exception as exc:
++        # Fail open to the plan the human is about to approve, never to a
++        # broken one — and say so in the record.
++        return NormalizationResult(
++            plan=plan,
++            transformations=[Transformation(
++                kind="aborted",
++                source_ids=[t.id for t in plan.tasks],
++                result_ids=[t.id for t in plan.tasks],
++                reason=(
++                    f"normalization aborted, original plan kept: {exc}"),
++            )],
++        )
++    return NormalizationResult(plan=new_plan, transformations=records)
+diff --git a/tests/cli/test_plan_approval.py b/tests/cli/test_plan_approval.py
+index bb80f87..f84e342 100644
+--- a/tests/cli/test_plan_approval.py
++++ b/tests/cli/test_plan_approval.py
+@@ -90,7 +90,7 @@ _FAKE_INTAKE_JSON = json.dumps({
+ })
+ 
+ 
+-def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True):
++def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
+     """Configure monkeypatches for LLM intake + flight plan path."""
+     def _fake_call(prompt: str, attempt: int) -> str:
+         return _FAKE_INTAKE_JSON
+@@ -116,7 +116,8 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True):
+         monkeypatch.setattr(
+             "packages.orchestration.flight_plan.plan_job_llm",
+             lambda intake, call_fn, **kw: FlightPlanResult(
+-                plan=_fp, source="llm", calls=1),
++                plan=_fp, source="llm", calls=1,
++                transformations=list(transformations or [])),
+         )
+     else:
+         monkeypatch.setattr(
+@@ -200,6 +201,47 @@ class TestFlightPlanLabel:
+         assert job_data["flight_plan"] is not None
+         assert job_data["flight_plan"]["_approval"] == "pending"
+ 
++    def test_normalization_record_is_persisted_and_rendered(
++            self, tmp_path, monkeypatch):
++        """F016: the record lands on the job dict and in plan.md."""
++        repo = _git_repo(tmp_path)
++        env = _env(tmp_path)
++        data_dir = tmp_path / "data"
++        subprocess.run(
++            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
++            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
++        )
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++        _setup_llm_mocks(monkeypatch, plan_succeeds=True, transformations=[{
++            "kind": "split",
++            "source_ids": ["T000"],
++            "result_ids": ["T001"],
++            "reason": "oversized task sliced",
++        }])
++        monkeypatch.chdir(str(repo))
++
++        from io import StringIO
++        captured = StringIO()
++        monkeypatch.setattr("sys.stdout", captured)
++
++        from apps.cli.commands.do_cmd import _cmd_do_mission
++        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
++        job_id = json.loads(captured.getvalue())["job_id"]
++
++        from packages.orchestration.storage import load_job
++        saved = load_job(job_id)
++        assert saved.flight_plan["_normalization"] == [{
++            "kind": "split",
++            "source_ids": ["T000"],
++            "result_ids": ["T001"],
++            "reason": "oversized task sliced",
++        }]
++
++        plan_md = data_dir / "evidence_exports" / job_id / "plan.md"
++        text = plan_md.read_text()
++        assert "## Normalization" in text
++        assert "oversized task sliced" in text
++
+     def test_flight_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
+         """LLM flight plan parse failure -> non-zero exit, no tasks, postmortem."""
+         from pathlib import Path
+diff --git a/tests/orchestration/test_flight_plan.py b/tests/orchestration/test_flight_plan.py
+index 2de66d6..bf92f30 100644
+--- a/tests/orchestration/test_flight_plan.py
++++ b/tests/orchestration/test_flight_plan.py
+@@ -231,6 +231,99 @@ class TestRenderPlanMd:
+         assert p2.exists()
+ 
+ 
++class TestNormalizationSection:
++    """F016: the approver always sees what normalization did."""
++
++    def test_empty_record_says_no_transformations(self):
++        from packages.orchestration.flight_plan import render_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        md = render_plan_md(fp)
++        assert "## Normalization" in md
++        assert "No transformations" in md
++
++    def test_record_entries_are_rendered(self):
++        from packages.orchestration.flight_plan import render_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(2)))
++        md = render_plan_md(fp, [{
++            "kind": "split",
++            "source_ids": ["T001"],
++            "result_ids": ["T001a", "T001b"],
++            "reason": "too many acceptance criteria",
++        }])
++        assert "**split** T001 → T001a, T001b" in md
++        assert "too many acceptance criteria" in md
++
++    def test_write_plan_md_threads_the_record(self, tmp_path):
++        from packages.orchestration.flight_plan import write_plan_md
++
++        fp = FlightPlan(**json.loads(_valid_plan_json(1)))
++        path = write_plan_md(fp, tmp_path, transformations=[{
++            "kind": "merge",
++            "source_ids": ["T001", "T002"],
++            "result_ids": ["T001"],
++            "reason": "trivial neighbors",
++        }])
++        assert "**merge** T001, T002 → T001" in path.read_text()
++
++
++class TestPlanJobLlmNormalization:
++    """F016 runs at exactly one insertion point: plan_job_llm."""
++
++    def _xl_plan_json(self) -> str:
++        return json.dumps({
++            "schema_v": "flight_plan_v1",
++            "tasks": [{
++                "id": "T001",
++                "title": "Big task",
++                "goal": "Do a lot",
++                "acceptance": ["parser core", "runner loop", "docs page",
++                               "cli flag"],
++                "depends_on": [],
++                "est_tokens_band": "XL",
++                "files_hint": ["src/parser.py", "src/runner.py",
++                               "docs/page.md", "cli/flag.py"],
++            }],
++            "risks": [],
++        })
++
++    def test_plan_is_normalized_and_the_record_is_carried(self):
++        result = plan_job_llm(
++            _fake_intake(), _fake_provider(self._xl_plan_json()))
++
++        assert result.plan is not None
++        assert [t.id for t in result.plan.tasks] == [
++            "T001a", "T001b", "T001c", "T001d"]
++        assert [e["kind"] for e in result.transformations] == ["split"]
++
++    def test_disabled_config_passes_the_plan_through(self):
++        from packages.orchestration.task_granularity import GranularityConfig
++
++        result = plan_job_llm(
++            _fake_intake(), _fake_provider(self._xl_plan_json()),
++            granularity=GranularityConfig(enabled=False))
++
++        assert result.plan is not None
++        assert [t.id for t in result.plan.tasks] == ["T001"]
++        assert result.transformations == []
++
++    def test_a_broken_threshold_never_loses_the_plan(self, monkeypatch):
++        import packages.orchestration.flight_plan as FP
++
++        def _boom() -> None:
++            raise ValueError("split_band must be one of S, M, L, XL")
++
++        monkeypatch.setattr(FP, "granularity_config", _boom)
++        result = plan_job_llm(
++            _fake_intake(), _fake_provider(self._xl_plan_json()))
++
++        assert result.plan is not None
++        assert [t.id for t in result.plan.tasks] == ["T001"]
++        assert [e["kind"] for e in result.transformations] == ["aborted"]
++        assert "split_band" in result.transformations[0]["reason"]
++
++
+ class TestReplan:
+ 
+     def test_replan_appends_version(self, tmp_path):
+diff --git a/tests/orchestration/test_task_granularity.py b/tests/orchestration/test_task_granularity.py
+index 5755a7d..f0e6949 100644
+--- a/tests/orchestration/test_task_granularity.py
++++ b/tests/orchestration/test_task_granularity.py
+@@ -367,6 +367,105 @@ def test_merge_that_would_close_a_cycle_is_refused() -> None:
+     assert "cycle" in record.reason
+ 
+ 
++# ---------------------------------------------------------------------------
++# Mixed fixture (T003 acceptance)
++# ---------------------------------------------------------------------------
++
++def _mixed_fixture() -> list[PlannedTask]:
++    """One XL/four-acceptance task, three trivial neighbors, one M task."""
++    return [
++        _task(
++            "T1",
++            acceptance=["parser core", "runner loop", "docs page", "cli flag"],
++            band="XL",
++            files=["src/parser.py", "src/runner.py", "docs/page.md",
++                   "cli/flag.py"],
++        ),
++        _small("T2", ["lib/util/a.py"], deps=["T1"]),
++        _small("T3", ["lib/util/b.py"], deps=["T2"]),
++        _small("T4", ["lib/util/c.py"], deps=["T3"]),
++        _task("T5", acceptance=["wire it", "prove it"], band="M",
++              deps=["T4"]),
++    ]
++
++
++_HEURISTIC = "assigned heuristically (no cost history — F016 v1)"
++
++_MIXED_GOLDEN = [
++    {
++        "kind": "split",
++        "source_ids": ["T1"],
++        "result_ids": ["T1a", "T1b", "T1c", "T1d"],
++        "reason": (
++            "split (band XL at/above split band XL + acceptance count 4 > 3) "
++            f"into 4 acceptance clusters; children band M {_HEURISTIC}"),
++    },
++    {
++        "kind": "merge",
++        "source_ids": ["T2", "T3", "T4"],
++        "result_ids": ["T2"],
++        "reason": (
++            "merged 3 consecutive S-band tasks sharing files_hint tokens; "
++            f"band M {_HEURISTIC}"),
++    },
++]
++
++
++def test_mixed_fixture_normalizes_and_matches_the_golden_record() -> None:
++    """Acceptance fixture: one XL task, three trivial neighbors, one M task."""
++    result = normalize_plan(_plan(_mixed_fixture()), GranularityConfig())
++    tasks = result.plan.tasks
++
++    assert [t.id for t in tasks] == ["T1a", "T1b", "T1c", "T1d", "T2", "T5"]
++    assert [t.est_tokens_band for t in tasks] == [
++        "M", "M", "M", "M", "M", "M"]
++    assert [list(t.depends_on) for t in tasks] == [
++        [], ["T1a"], ["T1b"], ["T1c"], ["T1d"], ["T2"]]
++    # The M task came through untouched.
++    assert tasks[-1] == _mixed_fixture()[-1].model_copy(
++        update={"depends_on": ["T2"]})
++    assert result.as_dicts() == _MIXED_GOLDEN
++
++
++def test_normalizing_twice_yields_identical_output() -> None:
++    first = normalize_plan(_plan(_mixed_fixture()), GranularityConfig())
++    second = normalize_plan(_plan(_mixed_fixture()), GranularityConfig())
++
++    assert first.plan.model_dump() == second.plan.model_dump()
++    assert first.as_dicts() == second.as_dicts()
++
++    # ...and the normalized plan is a fixed point: nothing left to right-size.
++    again = normalize_plan(first.plan, GranularityConfig())
++    assert again.plan is first.plan
++    assert again.transformations == []
++
++
++def test_disabled_flag_is_a_byte_identical_pass_through() -> None:
++    plan = _plan(_mixed_fixture())
++    before = plan.model_dump()
++    result = normalize_plan(plan, GranularityConfig(enabled=False))
++
++    assert result.plan is plan
++    assert result.plan.model_dump() == before
++    assert result.transformations == []
++
++
++def test_revalidation_failure_aborts_to_the_original_plan() -> None:
++    # 24 tasks + a 4-way split would be 27, over the schema's 25-task cap:
++    # the new FlightPlan cannot be constructed, so nothing is applied.
++    tasks = [_task(f"F{i:03d}", acceptance=["a"], band="M") for i in range(23)]
++    tasks.append(_task("T1", acceptance=["one", "two", "three", "four"],
++                       band="XL"))
++    plan = _plan(tasks)
++    result = normalize_plan(plan, GranularityConfig())
++
++    assert result.plan is plan
++    (record,) = result.transformations
++    assert record.kind == "aborted"
++    assert "25-task cap" in record.reason
++    assert record.source_ids == [t.id for t in tasks]
++
++
+ def test_merge_group_size_one_disables_merging() -> None:
+     plan = _plan([
+         _small("T1", ["src/app/a.py"]),

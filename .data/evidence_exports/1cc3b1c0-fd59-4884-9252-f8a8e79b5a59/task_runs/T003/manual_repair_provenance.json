@@ -1,0 +1,26 @@
+{
+ "changed_files": [
+  "tests/orchestration/test_config.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/orchestration/test_task_granularity.py"
+ ],
+ "diff_sha256": "b3cd933d3d3cdb91585267ba8f97fd6f47deb90a13394005d82ea3c4d7cc62b2",
+ "job_id": "1cc3b1c0-fd59-4884-9252-f8a8e79b5a59",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "b3cd933d3d3cdb91585267ba8f97fd6f47deb90a13394005d82ea3c4d7cc62b2",
+ "safe_diff_sha256": "9c565b6f283fd292f7232f5443c6a113661aba4ef38d2fea02f538bb9fecf020",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "tests/orchestration/test_config.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/orchestration/test_task_granularity.py"
+ ],
+ "timestamp": "2026-07-26T14:56:25+00:00",
+ "tracked_diff_sha256": "9c565b6f283fd292f7232f5443c6a113661aba4ef38d2fea02f538bb9fecf020",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

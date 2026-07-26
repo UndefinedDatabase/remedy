@@ -1,117 +1,179 @@
-# Handoff — F014 Flight Plan — Closure Repair (R-0140)
+# Handoff — F016 Scaling task granularity — CLOSED (form repair, R-0143)
 
-Review of cb96022..785f4d4
+Review of 2fad892..HEAD
 
 ## State
-- Branch: `feature/f014-flight-plan`
-- Verdict: PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
-- Evidence job: `9b0a8b6d-f03f-46d2-9dba-7584da178cd9`
-- Evidence dir: `.data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9`
-- Zip: `remedy-review-20260726-001936-READY_FOR_REVIEW.zip`
-- Zip SHA-256: `bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7`
-- PR: https://github.com/UndefinedDatabase/remedy/pull/148
+- Branch: `feature/f016-task-granularity` · PR #150 (NOT merged — Open PR
+  Gate handles it at the next feature start)
+- Verdict: PASS_WITH_RISKS — ACCEPTED (2026-07-26, closure round)
+- Evidence job: `1cc3b1c0-fd59-4884-9252-f8a8e79b5a59`
+- Evidence dir: `.data/evidence_exports/1cc3b1c0-fd59-4884-9252-f8a8e79b5a59`
+- Zip: `remedy-review-20260726-165629-READY_FOR_REVIEW.zip`
+- Zip SHA-256: `0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991`
+- accepted HEAD: `85004253705e5eae15d969812af84738373e5453`
+- LAST_REVIEWED_SHA: `2fad89295e11bc2aad51f7ae5f7de52b7542e9b5`
+- This round: handback FORM repair only. No code, no STATUS, no zip
+  rebuild — the package and STATUS line are accepted as-is.
 
 ## Item-Status Table
+| Item | Status | Reason |
+|------|--------|--------|
+| R-0143 persisted verbatim | done | |
+| Per-commit changed-files tables | done | every commit in dcb8b1a..HEAD |
+| Raw grep proofs | done | |
+| Review-range line | done | |
 
-| Item   | Status | Reason |
-|--------|--------|--------|
-| R-0140 | done   | fresh 4-task bundle (T001-T004), READY zip contains task_runs/T004 |
+## Per-commit changed files — dcb8b1a..HEAD
 
-## Per-Commit Changed Files
+### 88911bd — chore(f016): claim F016, reset live review and plan for task granularity
+| File | +/- |
+|------|-----|
+| .agent/live_review.md | 177 (6/173) |
+| .agent/plan.md | 36 (19/17) |
+| docs/roadmap/STATUS.md | 2 (1/1) |
 
-### 46a5dc5 chore(f014): persist R-0140
-- .agent/live_review.md
+3 files changed, 25 insertions(+), 190 deletions(-)
 
-### 3bc8751 chore(f014): remove superseded 3-task evidence bundle and zip
-- .data/evidence_exports/6f51a894-*/* (deleted)
-- remedy-review-20260726-001139-READY_FOR_REVIEW.zip (deleted)
+### 8b5360c — feat(f016): pure task-granularity split heuristic and planning config keys
+| File | +/- |
+|------|-----|
+| packages/orchestration/config.py | 41 (+) |
+| packages/orchestration/task_granularity.py | 298 (+, new) |
 
-### 785f4d4 chore(f014): closure repair — T004 attestation, fresh zip (R-0140)
-- docs/roadmap/STATUS.md
-- .agent/live_review.md
-- .data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9/* (100 files)
-- remedy-review-20260726-001936-READY_FOR_REVIEW.zip
+2 files changed, 339 insertions(+)
 
-## STEP B — Fresh Evidence Job (raw)
+### 6513fca — test(f016): table-driven split cases for task granularity
+| File | +/- |
+|------|-----|
+| .agent/plan.md | 10 (5/5) |
+| tests/orchestration/test_config.py | 29 (+) |
+| tests/orchestration/test_task_granularity.py | 209 (+, new) |
 
+3 files changed, 243 insertions(+), 5 deletions(-)
+
+### fc2e219 — feat(f016): merge rule for runs of trivial neighboring tasks
+| File | +/- |
+|------|-----|
+| .agent/decisions.md | 28 (+) |
+| .agent/plan.md | 10 (5/5) |
+| packages/orchestration/task_granularity.py | 207 (202/5) |
+| tests/orchestration/test_task_granularity.py | 169 (+) |
+
+4 files changed, 404 insertions(+), 10 deletions(-)
+
+### 51e2575 — feat(f016): revalidate, wire normalization into plan generation
+| File | +/- |
+|------|-----|
+| .agent/plan.md | 18 (9/9) |
+| apps/cli/commands/do_cmd.py | 7 (6/1) |
+| docs/system/remedy-toml-configuration-system-v0.md | 16 (+) |
+| packages/orchestration/flight_plan.py | 85 (79/6) |
+| packages/orchestration/task_granularity.py | 19 (17/2) |
+| tests/cli/test_plan_approval.py | 46 (43/3) |
+| tests/orchestration/test_flight_plan.py | 93 (+) |
+| tests/orchestration/test_task_granularity.py | 99 (+) |
+
+8 files changed, 363 insertions(+), 20 deletions(-)
+
+### cd13645 — chore(f016): handback state for round 1
+| File | +/- |
+|------|-----|
+| .agent/handoff.md | 164 (52/112) |
+
+1 file changed, 52 insertions(+), 112 deletions(-)
+
+### c534d82 — chore(f016): persist round 1 reviewer verdict; open integration gate
+| File | +/- |
+|------|-----|
+| .agent/live_review.md | 15 (13/2) |
+| .agent/plan.md | 8 (5/3) |
+
+2 files changed, 18 insertions(+), 5 deletions(-)
+
+### 2fad892 — chore(f016): integration gate measurements and handback
+| File | +/- |
+|------|-----|
+| .agent/handoff.md | 102 (49/53) |
+| .agent/plan.md | 13 (9/4) |
+
+2 files changed, 58 insertions(+), 57 deletions(-)
+
+### f27f9a9 — chore(f016): persist integration-gate and final reviewer verdicts
+| File | +/- |
+|------|-----|
+| .agent/live_review.md | 30 (+) |
+
+1 file changed, 30 insertions(+)
+
+### 8500425 — docs(f016): built state in the feature file; plan set to closure
+| File | +/- |
+|------|-----|
+| .agent/plan.md | 25 (13/12) |
+| docs/roadmap/features/T1_F016.md | 53 (+) |
+
+2 files changed, 66 insertions(+), 12 deletions(-)
+
+### ecbe72f — chore(f016): close F016 — evidence job, review package, STATUS line
+| File | +/- |
+|------|-----|
+| .agent/handoff.md | 105 (55/50) |
+| docs/roadmap/STATUS.md | 2 (1/1) |
+| remedy-review-20260726-165629-READY_FOR_REVIEW.zip | Bin 0 → 8225339 |
+| .data/evidence_exports/1cc3b1c0-fd59-4884-9252-f8a8e79b5a59/ | 68 files under that dir (gates, review_subject, review_commit_chain + 10 commit patches, token_truth, verification_tests, tasks.json, workspace.diff, task_runs/T001–T003/*) |
+
+71 files changed, 7505 insertions(+), 50 deletions(-)
+
+### 2db44f9 — chore(f016): persist R-0143 handback form finding
+| File | +/- |
+|------|-----|
+| .agent/live_review.md | 11 (+) |
+
+1 file changed, 11 insertions(+)
+
+## Raw grep proofs
 ```
-$ python3 -c "from packages.orchestration.job_evidence import create_manual_completion_bundle; ..."
-{
-  "job_id": "9b0a8b6d-f03f-46d2-9dba-7584da178cd9",
-  "head_commit": "3bc8751fc70199f9cb6e49d6056181ed6f5855a3",
-  "authority_count": 18,
-  "partition": {
-    "T001": 4,
-    "T002": 4,
-    "T003": 4,
-    "T004": 6
-  },
-  "commit_count": 28,
-  "verdict": "PASS_WITH_RISKS",
-  "manual_completion": true,
-  "operator_attested_tasks": [
-    "T001",
-    "T002",
-    "T003",
-    "T004"
-  ],
-  "total_passed": 221
-}
+$ grep -c "accepted HEAD 85004253705e5eae15d969812af84738373e5453" docs/roadmap/STATUS.md
+1
+$ grep -c "R-0143" .agent/live_review.md
+1
+$ sha256sum remedy-review-20260726-165629-READY_FOR_REVIEW.zip
+0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991  remedy-review-20260726-165629-READY_FOR_REVIEW.zip
 ```
 
-## STEP C — Fresh Zip (raw)
+## Artifact-build attempts (all, including failures)
+1. Evidence bundle #1 (`ef3acc17-…`) → zip
+   `remedy-review-20260726-165436-BLOCKED_EVIDENCE.zip`
+   (sha256 74467b95…). BLOCKED: `verification_tests.json runs[0..5] has
+   the wrong field set` — the producer stamps schema_version 1.1.0, and
+   the validator demands that exact 14-field set; 10 fields were supplied.
+   Bundle and zip deleted.
+2. Evidence bundle #2 (`ac14f641-…`), full field set. Still invalid:
+   `output_hash does not match sha256(stdout_summary)` — the hash must
+   cover the summary line, not the full captured stdout. Deleted; no zip
+   was built.
+3. Evidence bundle #3 (`1cc3b1c0-…`) — `validate_manual_completion: []`,
+   `is_valid_current_run: True`. Zip → PACKAGE_STATUS=READY_FOR_REVIEW.
 
-```
-$ bash scripts/make_review_zip.sh --evidence-dir .data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9
-UNCHANGED: runtime_integration_gate.json — rebuilt from source; identical to existing
-Evidence refresh completed for staged copy.
-Observability index generated from staged bytes: evidence/current/self_run_observability_index.json
-{"member_count": 1479, "authoritative_count": 18, "symlink_count": 0, "tombstone_count": 0, "final_path": "remedy-review-20260726-001936-READY_FOR_REVIEW.zip", "final_sha256": "bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7", "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW", "evidence_authoritative": true, "review_subject_alignment": "PASS", "manifest_sha256": "d92179bf6409d72678545e69c186d122ae44ed2a884aadb21227fe31e1fcf419"}
+Both pitfalls are exactly the class the closure protocol §1 warns about;
+neither is an F016 code defect.
 
-============================================
-REVIEW_PACKAGE_CREATED=true
-PACKAGE_STATUS=READY_FOR_REVIEW
-PACKAGING_CWD=/home/decodeux/Repos/remedy
-EVIDENCE_DIR=.data/evidence_exports/9b0a8b6d-f03f-46d2-9dba-7584da178cd9
-REVIEW_SUBJECT_ALIGNMENT=PASS
-EVIDENCE_AUTHORITATIVE=true
-ZIP_PATH=/home/decodeux/Repos/remedy/remedy-review-20260726-001936-READY_FOR_REVIEW.zip
-============================================
+## Verification recorded in the bundle (230 passed, all exit 0)
+| run | command | result |
+|-----|---------|--------|
+| vr-0001 | pytest tests/orchestration/test_task_granularity.py -q | 26 passed |
+| vr-0002 | pytest tests/orchestration/test_flight_plan.py -q | 29 passed |
+| vr-0003 | pytest tests/orchestration/test_config.py -q | 62 passed |
+| vr-0004 | pytest tests/cli/test_plan_approval.py -q | 27 passed |
+| vr-0005 | pytest tests/orchestration/schemas/test_schemas.py -q | 44 passed |
+| vr-0006 | pytest tests/cli/test_golden_path.py -q | 42 passed |
 
-ZIP CREATED AND READY FOR FINAL REVIEW
+Integration gate (earlier round): base dcb8b1a 181 failed · branch
+162/158 across two runs · ~3 min each with `-n auto` · no F016-attributable
+regression.
 
-8.2M	remedy-review-20260726-001936-READY_FOR_REVIEW.zip
-Included files: 1479
-Branch: feature/f014-flight-plan
-Commit: 3bc8751fc70199f9cb6e49d6056181ed6f5855a3
-Evidence: evidence/current/
-```
+## Open findings
+0 open. R-0141 Resolved; R-0142 documented Low (gap backlog);
+R-0143 Resolved by this handoff rewrite.
 
-### T004 grep verification
-```
-$ unzip -l remedy-review-20260726-001936-READY_FOR_REVIEW.zip | grep "task_runs/T004"
-      330  1980-01-01 00:00   evidence/current/task_runs/T004/manifest.json
-     1169  1980-01-01 00:00   evidence/current/task_runs/T004/manual_repair_provenance.json
-       62  1980-01-01 00:00   evidence/current/task_runs/T004/missing_tests_gate.json
-      474  1980-01-01 00:00   evidence/current/task_runs/T004/provider_evidence.json
-      625  1980-01-01 00:00   evidence/current/task_runs/T004/review.json
-      313  1980-01-01 00:00   evidence/current/task_runs/T004/review_scope_packet.json
-    40400  1980-01-01 00:00   evidence/current/task_runs/T004/safe.diff
-       63  1980-01-01 00:00   evidence/current/task_runs/T004/scratch_file_guard.json
-       59  1980-01-01 00:00   evidence/current/task_runs/T004/spec_compliance_check.json
-      149  1980-01-01 00:00   evidence/current/task_runs/T004/tests.txt
-      299  1980-01-01 00:00   evidence/current/task_runs/T004/token_accounting.json
-```
-
-## Final STATUS Line (raw grep)
-
-```
-$ grep "F014" docs/roadmap/STATUS.md
-- [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
-```
-
-## Open Findings
-0
-
-## Next Expected Action
-Merge gated by Open PR Gate at next feature's start.
+## Next expected action
+Next feature start runs the Open PR Gate, which merges PR #150.

@@ -501,3 +501,32 @@ class TestPostmortemConfig:
         # ...and no summarizer exists to act on it: F010 v1 is deterministic by design.
         import packages.orchestration.failure_postmortem as FP
         assert not any("summar" in name.lower() for name in dir(FP))
+
+
+class TestPlanningGranularityConfig:
+    """F016: the granularity thresholds are config keys, not constants."""
+
+    @pytest.mark.parametrize(
+        ("key", "env_var", "value_type", "default"),
+        [
+            ("planning.granularity.enabled",
+             "REMEDY_PLANNING_GRANULARITY_ENABLED", bool, True),
+            ("planning.granularity.split_band",
+             "REMEDY_PLANNING_GRANULARITY_SPLIT_BAND", str, "XL"),
+            ("planning.granularity.max_acceptance",
+             "REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE", int, 3),
+            ("planning.granularity.merge_group_size",
+             "REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE", int, 3),
+        ],
+    )
+    def test_key_spec_and_default(self, key, env_var, value_type, default):
+        spec = get_key_spec(key)
+        assert spec is not None
+        assert spec.env_var == env_var
+        assert spec.value_type is value_type
+        assert spec.default == default
+        assert get_config().get(key) == default
+
+    def test_enabled_can_be_switched_off_by_env(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_PLANNING_GRANULARITY_ENABLED", "false")
+        assert load_config().get("planning.granularity.enabled") is False

@@ -1,0 +1,138 @@
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 3aba624..4676de3 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -242,6 +242,7 @@ def _cmd_do_mission(
+         if fp_result.plan is not None:
+             fp_dict = fp_result.plan.model_dump()
+             fp_dict["_approval"] = "pending"
++            fp_dict["_normalization"] = fp_result.transformations
+             tasks = map_flight_plan_to_tasks(fp_result.plan)
+             from packages.core.models import JobBudgets, JobFences
+             from packages.orchestration.budget_resolution import resolve_job_budgets
+@@ -277,7 +278,9 @@ def _cmd_do_mission(
+             )
+             save_job(job)
+             from packages.orchestration.data_paths import job_evidence_export_dir
+-            write_plan_md(fp_result.plan, job_evidence_export_dir(str(job.id)))
++            write_plan_md(
++                fp_result.plan, job_evidence_export_dir(str(job.id)),
++                transformations=fp_result.transformations)
+             if yes:
+                 fp_dict["_approval"] = "approved"
+                 fp_dict["_approval_audit"] = {
+@@ -2842,11 +2845,13 @@ def _cmd_do_replan(
+         new_fp_dict, version = replan(
+             fp, fp_result.plan, ev_dir,
+             any_task_completed=any_completed,
++            transformations=fp_result.transformations,
+         )
+     except ReplanRejectedError as exc:
+         print(f"Error: {exc}", file=sys.stderr)
+         sys.exit(1)
+ 
++    new_fp_dict["_normalization"] = fp_result.transformations
+     job.flight_plan = new_fp_dict
+     job.tasks = map_flight_plan_to_tasks(fp_result.plan)
+     save_job(job)
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index dc9465a..a2b9fe2 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -26,7 +26,7 @@
+ 
+ - [x] F013 — Job intake (T001–T003 complete; accepted 2026-07-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f013_job_intake_closure · package remedy-review-20260725-184236-READY_FOR_REVIEW.zip · SHA-256 098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1 · accepted HEAD ba6e6fe6d05e97197ca45c201a7914dc4ef20396)
+ - [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+-- [ ] F016 — Scaling task granularity
++- [~] F016 — Scaling task granularity
+ - [ ] F034 — Bundled clarification in the Flight Plan (never at runtime)
+ - [ ] F046 — Multi-cycle loop
+ - [ ] F047 — Checkpoint & resume (kill-proof)
+diff --git a/docs/roadmap/features/T1_F016.md b/docs/roadmap/features/T1_F016.md
+index 039e471..a5630a2 100644
+--- a/docs/roadmap/features/T1_F016.md
++++ b/docs/roadmap/features/T1_F016.md
+@@ -70,3 +70,56 @@ worked input→output examples in the T001 order text.
+ Re-slicing of running jobs, actuals-driven estimation, review-effort
+ ladder (a later consumer). Suggested tests:
+ tests/orchestration/test_task_granularity.py.
++
++## Built State
++(T001–T003, accepted 2026-07-26)
++
++`packages/orchestration/task_granularity.py` is a pure module — no
++filesystem, network, or environment access; thresholds arrive as a
++`GranularityConfig` argument. Its docstring states that v1 is heuristic on
++plan-intrinsic signals only, because no per-task cost history exists.
++
++`normalize_plan(plan, cfg)` returns the plan to use plus a list of
++`Transformation` records (`kind` split | merge | aborted |
++unsplittable_flag, `source_ids`, `result_ids`, `reason`):
++
++- **Split** — a task at or above the configured band, or above the
++  acceptance-count threshold, becomes one child per acceptance cluster.
++  Clusters group acceptance criteria by the `files_hint` entries they match
++  (token overlap, extension stripped); criteria that match no file each get
++  their own child. Children chain `depends_on`, the first inherits the
++  parent's, tasks that depended on the parent are rewired to the chain end,
++  and every child is band M with the reassignment marked heuristic. A task
++  with a single acceptance criterion, or whose criteria collapse into one
++  cluster, is left intact and recorded `unsplittable_flag`.
++- **Merge** — maximal runs of consecutive S-band tasks with few acceptance
++  criteria and overlapping `files_hint` tokens merge up to the group-size
++  cap, greedily left to right; titles join, acceptance concatenates,
++  `files_hint` unions, the band bumps one step. A group is refused when a
++  task outside it depends on a non-last member, or when contracting the
++  group would close a dependency cycle. Both refusals are recorded.
++- **Revalidation** — the new task list is materialized by constructing a new
++  `FlightPlan`, so the schema's own `_validate_dag` is the validator. A
++  construction failure returns the original plan plus a single `aborted`
++  record carrying the error: it fails open to the plan the human is about to
++  approve, never to a broken one.
++
++Four config keys drive it — `planning.granularity.enabled` (default true),
++`split_band` (XL), `max_acceptance` (3), `merge_group_size` (3) — each with
++a `REMEDY_PLANNING_GRANULARITY_*` env var. Disabled returns the original
++plan object and an empty record.
++
++Normalization runs at one insertion point, inside `plan_job_llm`, after the
++structured call validates. The record travels on
++`FlightPlanResult.transformations`, is persisted as
++`flight_plan["_normalization"]` by both call sites (initial plan and
++replan), and `render_plan_md` renders a **Normalization** section — listing
++each transformation, or stating that there were none — so the approving
++human always sees what changed. No Flight-Plan schema class was modified.
++
++`tests/orchestration/test_task_granularity.py` holds 26 tests: two
++parametrized tables (split and merge cases), the mixed acceptance fixture
++checked against a golden record, determinism plus a fixed-point re-run,
++byte-identical pass-through when disabled, and the revalidation abort.
++Wiring and rendering are covered in `tests/orchestration/test_flight_plan.py`
++and `tests/cli/test_plan_approval.py`.
+diff --git a/docs/system/remedy-toml-configuration-system-v0.md b/docs/system/remedy-toml-configuration-system-v0.md
+index 7827248..e1fd596 100644
+--- a/docs/system/remedy-toml-configuration-system-v0.md
++++ b/docs/system/remedy-toml-configuration-system-v0.md
+@@ -50,6 +50,22 @@ env var  >  project config  >  user config  >  built-in default
+ | `ollama.planner.model` | string | `REMEDY_OLLAMA_PLANNER_MODEL` | (falls back to `ollama.model`) | no |
+ | `ollama.planner.temperature` | float | `REMEDY_OLLAMA_PLANNER_TEMPERATURE` | (none) | no |
+ | `ollama.planner.num_predict` | int | `REMEDY_OLLAMA_PLANNER_NUM_PREDICT` | (none) | no |
++| `planning.granularity.enabled` | bool | `REMEDY_PLANNING_GRANULARITY_ENABLED` | `true` | no |
++| `planning.granularity.split_band` | string | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | `XL` | no |
++| `planning.granularity.max_acceptance` | int | `REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE` | `3` | no |
++| `planning.granularity.merge_group_size` | int | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | `3` | no |
++
++The table above is not exhaustive — later features added their own keys
++(`scope.*`, `budget.*`, `postmortem.*`). The key registry
++`_CONFIG_KEY_SPECS` in `packages/orchestration/config.py` is the source of
++truth; `remedy config list` prints the resolved set.
++
++The `planning.granularity.*` keys drive Flight-Plan task-granularity
++normalization (F016): oversized planned tasks are split, runs of trivial
++neighbors are merged, and every transformation is listed in a
++**Normalization** section of the generated `plan.md` before a human
++approves it. Setting `planning.granularity.enabled = false` passes the
++planner's task list through untouched.
+ 
+ ### TOML file format
+ 

@@ -267,6 +267,47 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=str,
         default=None,
     ),
+    ConfigKeySpec(
+        key="planning.granularity.enabled",
+        env_var="REMEDY_PLANNING_GRANULARITY_ENABLED",
+        description=(
+            "Normalize Flight-Plan task granularity — split oversized tasks, "
+            "merge trivial neighbors (F016). Disable for byte-identical "
+            "pass-through of the planner's task list."
+        ),
+        value_type=bool,
+        default=True,
+    ),
+    ConfigKeySpec(
+        key="planning.granularity.split_band",
+        env_var="REMEDY_PLANNING_GRANULARITY_SPLIT_BAND",
+        description=(
+            "Token band at and above which a planned task is split "
+            "(S, M, L, XL) (F016)"
+        ),
+        value_type=str,
+        default="XL",
+    ),
+    ConfigKeySpec(
+        key="planning.granularity.max_acceptance",
+        env_var="REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE",
+        description=(
+            "Acceptance-criteria count above which a planned task is split "
+            "(F016)"
+        ),
+        value_type=int,
+        default=3,
+    ),
+    ConfigKeySpec(
+        key="planning.granularity.merge_group_size",
+        env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
+        description=(
+            "Maximum number of consecutive trivial tasks merged into one "
+            "(F016)"
+        ),
+        value_type=int,
+        default=3,
+    ),
 )
 
 _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}

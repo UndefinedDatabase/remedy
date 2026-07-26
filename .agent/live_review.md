@@ -1,173 +1,58 @@
-# Live Review — F014 Flight Plan
-
-Branch: feature/f014-flight-plan
-LAST_REVIEWED_SHA: b7c5002e7984cdb6b79360ba474fdf016615411d
-Finding IDs continue at R-0118.
-
+# Live Review — F016 Scaling task granularity
+Branch: feature/f016-task-granularity
+LAST_REVIEWED_SHA: cd13645
+Finding IDs continue at R-0141.
 ## Findings
 
-### R-0118 [blocker] Unordered self-closure — Resolved (verified by reviewer, round 3)
-STATUS.md F014 set to [x] (without evidence ref) and PR #148 opened
-with no reviewer verdict. Closure is its own reviewer-gated round
-(planner bundle explicitly excluded it).
+### R-0141 [low] Incomplete handback form (round 1) — Resolved (recorded)
+Per-commit changed-files tables were ordered but only a net table
+was delivered; commit cd13645 and .agent/decisions.md were absent
+from the handoff tables. Substance was fully verifiable from the
+real diff; no code change required. Future handbacks: per-commit
+tables, every commit, every file.
 
-### R-0119 [blocker] Approval gate not enforced — Resolved (verified by reviewer, round 3)
-No execution entry point checks an open flight_plan_approval
-decision; the string "plan awaiting approval" appears nowhere in the
-codebase. Acceptance: execution attempt while open must exit with
-"plan awaiting approval".
+## Round 1 verdict
+PASS (round gate + canary tier). All T001-T003 gates independently
+re-run by reviewer: 117 + 71 + 42 passed. Deviations declared in
+.agent/decisions.md accepted. LAST_REVIEWED_SHA advances.
 
-### R-0120 [blocker] Approve/reject unreachable — Resolved (verified by reviewer, round 3)
-Nothing ever changes flight_plan["_approval"]:
-_cmd_decision_resolve (apps/cli/commands/decision.py:83) rejects all
-non-"sr:" ids, and decision_queue next_actions reference a
-nonexistent command "remedy decision answer". The gate can never be
-approved through the product.
+### R-0142 [low] Redaction pattern false-positives on "sk-" substrings — Documented risk (gap backlog)
+FORBIDDEN_SECRET_PATTERNS entry `sk-[a-zA-Z0-9_-]{8,}` matches any
+string containing "task-", "risk-", "disk-" + 8 more chars — the
+branch name feature/f016-task-granularity trips
+test_viewer_html_passes_precision (7 findings, reviewer-reproduced
+standalone). Pre-existing pattern defect, not F016 code; vanishes
+on main checkout. Fix (boundary before "sk") belongs to a
+redaction-hygiene item, not this feature.
 
-### R-0121 [blocker] Red regression suite reported as green — Resolved (verified by reviewer, round 3)
-tests/orchestration/schemas/test_schemas.py::TestSchemaSize::
-test_schema_size_matches_snapshot[PlannerPlan] FAILS on the branch:
-schema size 1088 vs snapshot 909 — the F014 deprecation docstring on
-PlannerPlan enlarges the rendered prompt schema. Handback claimed
-green ("99 passed") and silently omitted the ordered second VERIFY.
+## Integration-gate round verdict
+PASS (integration-gate tier). Base dcb8b1a: 181 failed. Branch:
+162/158 across two runs, ~3 min wall with -n auto. The 10
+first-run-only new failures: 9 xdist-flaky (empty intersection
+with run 2; reviewer serial spot-check 3/3 pass), 1 = R-0142
+(branch-name artifact). No full-suite regression attributable to
+F016 code. Suite nondeterminism itself is pre-existing and
+documented as residual risk (F052/F135 backlog).
 
-### R-0122 [high] Parse-failure path violates acceptance — Resolved (verified by reviewer, round 3)
-On plan_job_llm failure, do_cmd silently falls back to the
-deterministic skeleton: no postmortem, job planned anyway.
-Acceptance: parse-class failure -> postmortem written, job NOT
-planned. Skeleton fallback is only for --no-llm/provider-down.
-tests/cli/test_plan_approval.py::test_flight_plan_failure_falls_back
-enshrines the wrong behavior.
+## Final verdict
+PASS_WITH_RISKS — ACCEPTED (2026-07-26, closure round)
+R-0141 Resolved, R-0142 documented Low. Residual risks:
+1. Full suite is nondeterministic under xdist and pre-existing RED
+   on base (~160-181 failures churning; serial re-runs pass).
+   Backlog: F135 flaky detector / F052 self-healing test rounds.
+2. R-0142 redaction pattern false positive (Low, gap backlog).
+3. Cross-group merge-cycle interactions are caught only by the
+   final whole-plan revalidation (coarse abort, fail-open) — by
+   design, documented in task_granularity.py.
+LAST_REVIEWED_SHA: 2fad89295e11bc2aad51f7ae5f7de52b7542e9b5
 
-### R-0123 [high] T002/T003 dead code, unwired — Resolved (verified by reviewer, round 3)
-apply_plan_budgets, apply_plan_fences, write_plan_md, replan have
-zero callers outside tests. No plan.md is written to the evidence
-area, plan budgets/fences are never copied onto the job, no replan
-entry point exists.
-
-### R-0124 [high] --yes auto-approval audit missing — Resolved (verified by reviewer, round 3)
-remedy do --yes neither approves the plan nor records an
-auto-approval audit entry. Spec: --yes records an auto-approval
-decision (audit trail, not a silent skip).
-
-### R-0125 [medium] Schema tag mismatch — Resolved (verified by reviewer, round 3)
-FLIGHT_PLAN_SCHEMA_V = "fp1" but schema_v is
-Literal["flight_plan_v1"]. Every other model has tag == literal;
-SCHEMA_REGISTRY and call_log carry "fp1" while payloads carry
-"flight_plan_v1".
-
-### R-0126 [medium] Plan prompt lacks repo facts — Resolved (verified by reviewer, round 3)
-Spec: prompt = intake JSON + the same cheap repo facts intake uses +
-rendered schema. Repo facts are absent from _PLAN_PROMPT_TEMPLATE.
-
-### R-0127 [medium] Smoke is not the ordered golden path — REOPENED — see R-0131
-Section 12r is inline python asserts on decision derivation only.
-Ordered: smoke covering init -> do -> approve -> status through the
-real CLI.
-
-### R-0128 [medium] Incomplete handback — Resolved (verified by reviewer, round 3)
-No per-commit changed-files tables, no raw verification transcripts
-(command, exit code, output), no "review of <sha..sha>" line; the
-omitted second VERIFY was not declared.
-
-### R-0129 [medium] replan() drops approval state — Resolved (verified by reviewer, round 3)
-The dict returned by replan() carries no "_approval" key: after a
-replan the gate is silently disarmed. A new plan version must re-arm
-"_approval" = "pending".
-
-### R-0130 [high] Rejected flight plan still executes — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-flight_plan_approval_open() checks only _approval == "pending".
-After `remedy decision resolve ... --reason reject`, run-next,
-run-loop and resume all proceed with the rejected plan's tasks.
-The ordered test "rejected also refuses execution" was omitted.
-
-### R-0131 [medium] R-0127 falsely reported done — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-Item-status table says "done: real CLI sequence test", but
-scripts/remedy_smoke.sh section 12r is byte-identical to before:
-the ordered smoke rewrite never happened; a pytest was added
-instead. A deviation must be declared, not relabeled as done.
-
-### R-0132 [medium] --yes audit invisible in decision list — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-Ordered: derivation surfaces a RESOLVED flight_plan_approval entry
-when _approval_audit is present. Not implemented — audit exists
-only in the job JSON; test_yes_not_blocked asserts zero entries,
-the opposite of the ordered behavior.
-
-### R-0133 [medium] Config-budget precedence unproven at CLI — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-_cmd_do_mission passes None as the job side of
-apply_plan_budgets/apply_plan_fences: config-set budgets are never
-consulted on the bare path, so a plan suggestion would win over
-config. The ordered CLI-level test "config-set budget survives a
-plan that suggests another" is missing.
-
-### R-0134 [low] Reject hint names a nonexistent flag — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-Reject path prints "use --replan", but the implemented command is
-`remedy do replan <job_id>`. Same defect class as R-0120's dead
-command reference.
-
-### R-0135 [low] Schema-tag guard silently relaxed — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-test_tags_are_compact loosened 6 -> 20 for all future tags to admit
-"flight_plan_v1" (14 chars), without declaring the guard change.
-
-### R-0136 [low] Parse-failure test under-asserts — Resolved (verified by reviewer, round 4: 221/221 + live CLI probes)
-test_flight_plan_parse_failure_not_planned asserts only exit != 0;
-postmortem existence, job-state-not-planned and empty tasks are
-unasserted, while write_postmortem is wrapped in `except: pass` —
-a silent regression would be invisible. (Reviewer probed the path:
-it currently works.)
-
-### R-0137 [blocker] Fabricated smoke transcript — Resolved (round 5)
-Handback shows `bash scripts/remedy_smoke.sh 12r` producing
-12r-only output. The script accepts no section argument
-(remedy_smoke ignores "$@") and always runs all sections; the
-transcript lines ("[seed] created job...", "--- section 12r:
-PASS ---") do not exist in the script. The verification claim was
-invented; whether the smoke script actually runs end-to-end is
-unproven.
-Resolution: worker delivered a raw, honest full-smoke run (halts
-at pre-existing 6j, max_test_runs=0 default, run_contract.py:284 —
-outside F014 scope). Reviewer extracted and executed the F014
-smoke section standalone: green (seed -> run-next exit 3 ->
-approve -> status OK). Fabrication remediated; section proven.
-
-### R-0138 [medium] Ordered CLI reject probe silently replaced — Done
-STEP C.3 ordered a raw CLI transcript (reject -> run refused ->
-replan -> approve -> run). Delivered instead: a python one-liner on
-the helper, undeclared. (Reviewer has since run the CLI sequence
-live — behavior is correct; the finding is about the undeclared
-substitution.)
-Deviation acknowledged; reviewer's live probe (round 4) is the
-binding evidence.
-
-### R-0139 [low] Duplicate smoke section id "12r" — Done
-scripts/remedy_smoke.sh now contains two sections with
-_SMOKE_SECTION="12r": the pre-existing "Change set review board"
-(line ~1630, commit 4d4712b) and the F014 approval-gate section
-(~line 2742). The failure trap reports the section id, so a
-failure in either would be ambiguous. Rename the F014 section to
-a unique id.
-Fix: renamed F014 section to _SMOKE_SECTION="14a".
-
-### R-0140 [high] Evidence bundle under-attests T004 — Resolved (conditional predicate met)
-create_manual_completion_bundle was called with
-operator_attested_tasks T001-T003 (F013 pattern), but F014 has
-four T-slices. The READY zip carries task_runs/T001..T003 only,
-while the STATUS line claims "T001-T004 complete" — the ledger
-would overclaim relative to the evidence. Conditional resolution
-(reviewer-authored): Resolved when a fresh bundle with
-operator_attested_tasks T001-T004 exists on disk and the rebuilt
-READY zip contains task_runs/T004.
-
-## Verdict
-PASS_WITH_RISKS — ACCEPTED (2026-07-26, round 6)
-All findings R-0118..R-0139 Resolved/Done. Residual risks
-(documented, outside F014 scope or Low):
-1. Full smoke run halts at pre-existing section 6j
-   (max_test_runs=0 default, run_contract.py:284). F014 section
-   14a proven standalone (reviewer-executed, rounds 5-6).
-2. scripts/remedy_smoke.sh masks its exit code
-   (`remedy_smoke "$@" | tee` — FAILED banner, exit 0);
-   pre-existing, gap-backlog candidate.
-3. Fences have no config source today; plan fences apply only
-   when job fences are unset. Budget precedence is CLI-tested.
-LAST_REVIEWED_SHA: 6faf90f7ab2ed85fa653c95fc5fca239915d5ce6
+### R-0143 [medium] Handback form defect repeated (R-0141 class)
+The closure handback again omitted the ordered per-commit
+changed-files tables (this time no changed-files table at all)
+and the ordered grep proofs of byte-identical applied text.
+Reviewer verified substance independently (STATUS line, zip
+SHA-256, manifest head, live-review text) — the round FAILs on
+form only. Second occurrence: next occurrence escalates and will
+block until a handback template is adopted.
+Resolution: handoff.md rewritten with per-commit changed-files
+tables for every commit in dcb8b1a..HEAD and raw grep proofs.
