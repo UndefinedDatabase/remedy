@@ -142,6 +142,102 @@ class TestResolveWithAnswers:
         assert exc.value.code == 1
 
 
+class TestWriteBackAndImmutability:
+    """T002 — approve writes answers AND defaults; then they are frozen."""
+
+    def test_mixed_answer_and_default_persisted(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.storage import load_job, save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        save_job(job)
+
+        _cmd_decision_resolve(
+            str(job.id)[:8], "fp:approval", reason="approve",
+            answer=["q1=use PostgreSQL"])
+
+        recs = load_job(job.id).flight_plan["clarifications_resolved"]
+        assert [(r["id"], r["answer"], r["answered_by"]) for r in recs] == [
+            ("q1", "use PostgreSQL", "human"),
+            ("q2", "no, leave auth untouched", "default"),
+        ]
+        out = capsys.readouterr().out
+        assert "q1 (human): use PostgreSQL" in out
+        assert "q2 (default): no, leave auth untouched" in out
+
+    def test_no_answers_records_all_defaults(self, tmp_path, monkeypatch):
+        from packages.orchestration.storage import load_job, save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        save_job(job)
+
+        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
+
+        recs = load_job(job.id).flight_plan["clarifications_resolved"]
+        assert [r["answered_by"] for r in recs] == ["default", "default"]
+        assert [r["answer"] for r in recs] == [
+            "keep SQLite", "no, leave auth untouched"]
+
+    def test_late_answer_rejected_as_already_resolved(
+            self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.storage import load_job, save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        save_job(job)
+        _cmd_decision_resolve(
+            str(job.id)[:8], "fp:approval", reason="approve",
+            answer=["q1=use PostgreSQL"])
+        capsys.readouterr()
+
+        with pytest.raises(SystemExit) as exc:
+            _cmd_decision_resolve(
+                str(job.id)[:8], "fp:approval", reason="approve",
+                answer=["q1=actually MySQL"])
+        assert exc.value.code == 1
+        assert "already resolved" in capsys.readouterr().err
+
+        recs = load_job(job.id).flight_plan["clarifications_resolved"]
+        assert recs[0]["answer"] == "use PostgreSQL"
+
+    def test_no_open_decision_after_approval(self, tmp_path, monkeypatch):
+        from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.storage import load_job, save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        save_job(job)
+
+        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
+
+        updated = load_job(job.id)
+        open_fp = [d for d in list_decisions(updated, [])
+                   if d.type == "flight_plan_approval" and d.status == "open"]
+        assert open_fp == []
+
+    def test_reject_leaves_clarifications_untouched(self, tmp_path, monkeypatch):
+        from packages.orchestration.storage import load_job, save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        before = [dict(r) for r in job.flight_plan["clarifications_resolved"]]
+        save_job(job)
+
+        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="reject")
+
+        updated = load_job(job.id)
+        assert updated.flight_plan["_approval"] == "rejected"
+        assert updated.flight_plan["clarifications_resolved"] == before
+
+    def test_plan_without_questions_keeps_empty_list(self, tmp_path, monkeypatch):
+        from packages.orchestration.storage import load_job, save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = Job(name="t", flight_plan={"_approval": "pending"})
+        save_job(job)
+
+        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
+
+        fp = load_job(job.id).flight_plan
+        assert fp["_approval"] == "approved"
+        assert "clarifications_resolved" not in fp
+
+
 class TestAnswerOptionIsRepeatable:
 
     def test_catalog_declares_repeatable_answer(self):

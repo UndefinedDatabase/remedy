@@ -155,10 +155,24 @@ def _cmd_decision_resolve(
             print(f"Error: {exc}", file=sys.stderr)
             sys.exit(1)
 
-        from packages.orchestration.flight_plan import open_clarification_questions
+        from packages.orchestration.flight_plan import (
+            apply_clarification_answers,
+            clarifications_already_resolved,
+            open_clarification_questions,
+        )
 
         fp = getattr(job, "flight_plan", None)
         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
+            # Answers are asked once and written once. A late one is a
+            # mistake worth naming, not a generic "nothing pending".
+            if answer and isinstance(fp, dict) and clarifications_already_resolved(
+                    fp.get("clarifications_resolved")):
+                print(
+                    "Error: clarifications already resolved for this job — "
+                    "answers are immutable. Replan to ask again: "
+                    f"remedy do replan {job_id_str}",
+                    file=sys.stderr)
+                sys.exit(1)
             print("Error: no pending flight plan approval for this job.", file=sys.stderr)
             sys.exit(1)
 
@@ -184,16 +198,18 @@ def _cmd_decision_resolve(
             sys.exit(1)
 
         if reason == "approve":
-            for rec in fp.get("clarifications_resolved") or []:
-                if isinstance(rec, dict) and rec.get("id") in answers:
-                    rec["answer"] = answers[str(rec["id"])]
-                    rec["answered_by"] = "human"
+            if questions:
+                fp["clarifications_resolved"] = apply_clarification_answers(
+                    fp.get("clarifications_resolved"), answers)
             fp["_approval"] = "approved"
             job.flight_plan = fp
             save_job(job)
             print(f"Flight plan approved for job {job_id_str}.")
-            for qid in sorted(answers):
-                print(f"  {qid} (human): {answers[qid]}")
+            for q in questions:
+                qid = q["id"]
+                source = "human" if qid in answers else "default"
+                print(f"  {qid} ({source}): "
+                      f"{answers.get(qid, q['default_answer'])}")
         else:
             fp["_approval"] = "rejected"
             job.flight_plan = fp

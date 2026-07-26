@@ -180,6 +180,53 @@ def open_clarification_questions(
     return out
 
 
+def clarifications_already_resolved(clarifications: list[Any] | None) -> bool:
+    """True once the approval gate has written answers back.
+
+    ``answered_by`` is the marker: it is empty on every unresolved record
+    and on planner assumptions, and non-empty only after resolution.
+    """
+    for c in clarifications or []:
+        rec = _as_record(c)
+        if rec and str(rec.get("answered_by", "") or "").strip():
+            return True
+    return False
+
+
+def apply_clarification_answers(
+    clarifications: list[Any] | None,
+    answers: dict[str, str] | None,
+) -> list[dict[str, Any]]:
+    """Resolve every open question: supplied answer, else its default.
+
+    Returns a NEW record list — the caller's records are not mutated. An
+    answered question gets ``answered_by="human"``; an unanswered one runs
+    on its documented default with ``answered_by="default"``, which is
+    what makes an unattended run auditable rather than silent. Planner
+    assumptions (already answered, ``answered_by`` empty) are left
+    untouched, and so is anything already resolved.
+    """
+    supplied = answers or {}
+    out: list[dict[str, Any]] = []
+    for c in clarifications or []:
+        rec = _as_record(c)
+        if rec is None:
+            continue
+        rec = dict(rec)
+        is_open = (not str(rec.get("answer", "") or "").strip()
+                   and not str(rec.get("answered_by", "") or "").strip())
+        if is_open:
+            qid = str(rec.get("id", "") or "")
+            if qid in supplied:
+                rec["answer"] = supplied[qid]
+                rec["answered_by"] = "human"
+            else:
+                rec["answer"] = str(rec.get("default_answer", "") or "")
+                rec["answered_by"] = "default"
+        out.append(rec)
+    return out
+
+
 def granularity_config() -> GranularityConfig:
     """Read the F016 thresholds from Remedy config.
 

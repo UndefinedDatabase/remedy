@@ -11,7 +11,9 @@ from __future__ import annotations
 from packages.core.models import Job
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
 from packages.orchestration.flight_plan import (
+    apply_clarification_answers,
     carry_intake_clarifications,
+    clarifications_already_resolved,
     open_clarification_questions,
 )
 from packages.orchestration.schemas.models import FlightPlan
@@ -125,6 +127,87 @@ class TestOpenClarificationQuestions:
     def test_empty_and_none_inputs(self):
         assert open_clarification_questions(None) == []
         assert open_clarification_questions([]) == []
+
+
+class TestApplyClarificationAnswers:
+    """T002 — write-back: supplied answer wins, everything else defaults."""
+
+    def _open(self, qid, question, default):
+        return {"id": qid, "question": question, "default_answer": default,
+                "impact": "some impact", "answer": "", "answered_by": ""}
+
+    def test_mixed_human_and_default(self):
+        records = [
+            self._open("q1", "Which database?", "keep the existing SQLite file"),
+            self._open("q2", "Add auth?", "no, leave auth untouched"),
+        ]
+        out = apply_clarification_answers(records, {"q1": "use PostgreSQL"})
+        assert out[0]["answer"] == "use PostgreSQL"
+        assert out[0]["answered_by"] == "human"
+        assert out[1]["answer"] == "no, leave auth untouched"
+        assert out[1]["answered_by"] == "default"
+
+    def test_no_answers_means_all_defaults(self):
+        records = [self._open("q1", "Which database?", "keep SQLite")]
+        out = apply_clarification_answers(records, None)
+        assert out[0] == dict(records[0], answer="keep SQLite",
+                              answered_by="default")
+
+    def test_conservative_keep_style_default_survives_round_trip(self):
+        """A9: defaults are keep/no-op, and the log must show exactly that."""
+        records = [self._open("q1", "Drop the legacy table?",
+                              "keep the legacy table untouched")]
+        out = apply_clarification_answers(records, None)
+        assert out[0]["answer"] == "keep the legacy table untouched"
+        assert out[0]["answered_by"] == "default"
+
+    def test_planner_assumption_untouched(self):
+        assumption = {"id": "q1", "question": "Which test runner?",
+                      "default_answer": "pytest", "impact": "cmd",
+                      "answer": "pytest", "answered_by": ""}
+        out = apply_clarification_answers([assumption], None)
+        assert out[0] == assumption
+
+    def test_already_resolved_records_untouched(self):
+        resolved = {"id": "q1", "question": "Add auth?", "default_answer": "no",
+                    "impact": "scope", "answer": "yes", "answered_by": "human"}
+        out = apply_clarification_answers([resolved], {"q1": "changed"})
+        assert out[0]["answer"] == "yes"
+        assert out[0]["answered_by"] == "human"
+
+    def test_input_records_not_mutated(self):
+        records = [self._open("q1", "Which database?", "keep SQLite")]
+        apply_clarification_answers(records, {"q1": "postgres"})
+        assert records[0]["answer"] == ""
+        assert records[0]["answered_by"] == ""
+
+    def test_empty_input(self):
+        assert apply_clarification_answers(None, {"q1": "x"}) == []
+        assert apply_clarification_answers([], None) == []
+
+
+class TestClarificationsAlreadyResolved:
+
+    def test_open_plan_is_not_resolved(self):
+        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB, _Q_AUTH))
+        assert clarifications_already_resolved(
+            [c.model_dump() for c in plan.clarifications_resolved]) is False
+
+    def test_planner_assumption_alone_is_not_resolved(self):
+        assumption = {"id": "q1", "question": "Which test runner?",
+                      "default_answer": "pytest", "impact": "cmd",
+                      "answer": "pytest", "answered_by": ""}
+        assert clarifications_already_resolved([assumption]) is False
+
+    def test_written_back_plan_is_resolved(self):
+        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB))
+        records = apply_clarification_answers(
+            [c.model_dump() for c in plan.clarifications_resolved], None)
+        assert clarifications_already_resolved(records) is True
+
+    def test_empty_input(self):
+        assert clarifications_already_resolved(None) is False
+        assert clarifications_already_resolved([]) is False
 
 
 class TestApprovalDecisionPayload:
