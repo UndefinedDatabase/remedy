@@ -19,11 +19,12 @@ the execution packages.
 - [ ] Closure
 
 ## Current Step
-Handback — all four slice gates green plus the golden-path canary. Awaiting
-the reviewer; integration gate and closure follow.
+Integration gate — full-suite comparison branch (0891b8d) vs base
+(34878f3), raw transcripts, attribution of every branch-only failure.
+Round 1 verdict PASS is persisted in .agent/live_review.md.
 
 ## Next Steps
-Integration gate (branch vs base full-suite comparison), then closure.
+Closure after the integration gate.
 
 ## Risks
 - Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
