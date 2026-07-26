@@ -8,18 +8,18 @@ failing open to the original plan.
 
 ## Checklist
 - [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
-- [ ] T001 split rules + config keys + table tests
+- [x] T001 split rules + config keys + table tests (gate green)
 - [ ] T002 merge rule + dependency-safety table tests
 - [ ] T003 revalidation/abort + bypass + wiring into plan_job_llm +
       plan.md normalization section + mixed-fixture integration test
 
 ## Current Step
-T001 — packages/orchestration/task_granularity.py (split) +
-planning.granularity.* config keys +
-tests/orchestration/test_task_granularity.py.
+T002 — merge rule for consecutive small tasks (group cap, band bump,
+external-dependency safety) in the same module + test file.
 
 ## Next Steps
-T002 merge rule, then T003 safety + wiring.
+T003 revalidation/abort, bypass, wiring into plan_job_llm, plan.md
+normalization section, mixed-fixture integration + determinism tests.
 
 ## Risks
 - Wiring touches two call sites (do_cmd.py ~241, ~2832); the record must be
