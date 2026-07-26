@@ -15,9 +15,7 @@ DEFAULT stays one cycle until the F075 gate.
 - [ ] Closure
 
 ## Current Step
-Round 1 handed back for review (Setup+T001+T002 built and verified).
-Next expected action: reviewer verdict in .agent/live_review.md, then the
-integration gate. Closure is a later step.
+Integration gate running (full-suite round 1 of the 2-per-feature rule).
 
 ## Risks
 - Conductor must wrap existing parts (A6) — no parallel executor.
