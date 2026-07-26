@@ -14,11 +14,13 @@ failing open to the original plan.
       plan.md normalization section + mixed-fixture integration (gate green)
 
 ## Current Step
-Push, open PR, hand back: completion report with per-commit changed-files
-tables and raw verification transcripts, then rewrite .agent/handoff.md.
+Integration gate: full suite (`-n auto`) on the branch vs the base commit
+dcb8b1a in a worktree; compare FAILED node ids. Measurement only — no
+repair in this round.
 
 ## Next Steps
-Reviewer round on feature/f016-task-granularity.
+Empty new-failure list → hand back PASS. Non-empty → STOP, hand back the
+list plus raw tracebacks of the new failures only.
 
 ## Risks
 - Plan schema classes untouched (F014 R-0121); the record lives only in
