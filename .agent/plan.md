@@ -1,27 +1,29 @@
-# Plan — F046 Multi-cycle loop
+# Plan — F047 Checkpoint & resume (kill-proof)
 
 ## Goal
-Remedy works in bounded cycles: check should_stop → execute ready batch →
-verify → persist, repeated until all_green, budget_exhausted,
-deadline_reached, stopped_by_operator, or blocked. Five-cycle fixture
-proves every stop cause; each cycle leaves its own evidence record;
-DEFAULT stays one cycle until the F075 gate.
+A hard-killed run loses nothing but the in-flight task: after every cycle
+a checkpoint captures where the run stands, and
+`remedy job resume <id>` continues from the newest valid one.
+Corrupted checkpoint falls back to the previous valid one; a
+never-checkpointed job degrades honestly to plain re-run of pending
+tasks.
 
 ## Checklist
-- [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
-- [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
-- [x] T002 cycle evidence + CLI/config + single-pass regression
-- [x] Integration gate
-- [x] Closure
+- [ ] Setup: Open PR Gate (#152 merged), branch, STATUS claim, state files
+- [ ] T001 checkpoint writer/loader + hashing + retention + unit tests
+- [ ] T002 resume CLI + head verification + gate/stop interplay + tests
+- [ ] T003 kill -9 / resume subprocess test (exactly-once proof)
+- [ ] Integration gate
+- [ ] Closure
 
 ## Current Step
-Closure — evidence job, review package, Built State, STATUS line, PR
-#152 finalized. NOT merged (Open PR Gate at next feature start).
+Setup + T001 + T002 (this round). T003 is a separate round.
 
 ## Next Steps
-Reviewer verdict on the integration gate, then Closure (evidence job,
-review package, Built State in T1_F046.md, authored STATUS line).
+T003 kill test, then integration gate, then closure.
 
 ## Risks
-- Conductor must wrap existing parts (A6) — no parallel executor.
-- Pre-existing full-suite nondeterminism (backlog F135/F052).
+- Checkpoint write failure must not kill the run: log loudly,
+  continue, retry next cycle (A9 default from the feature file).
+- Resume must consume plan-approval gate and pending stop requests —
+  never bypass (feature file "How it fits").

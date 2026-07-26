@@ -1,5 +1,43 @@
 # Decisions
 
+## 2026-07-26: F047 inspection notes — the four parts this feature wraps (A6)
+Recorded BEFORE any code was written; all four exist as the order describes.
+
+1. Atomic write helper (temp file + fsync + os.replace):
+   `packages/orchestration/storage.py::_atomic_write_job(path, data)` —
+   same package, already the writer behind `save_job`. It is reused
+   verbatim by `checkpoints.py`; no second atomic writer is introduced.
+   (The repo has ~25 per-module `_atomic_write` copies; the storage one
+   is the only text/JSON writer in the orchestration persistence layer,
+   which is exactly what a checkpoint record is. The leading underscore
+   is kept — renaming it would be a refactor mixed into a feature
+   branch, and ruff's selected rule set (E,F,W,I,UP) has no private-
+   member rule.) Note: F046's `write_cycle_record` uses a plain
+   `path.write_text`; checkpoints deliberately do NOT copy that.
+2. Cycle boundary hook: `packages/orchestration/long_run_executor.py`,
+   `run_cycles` step 5 ("Persist the job, then the cycle's own evidence
+   record", ~line 635) — after `save_fn(job)` and `write_cycle_record`,
+   before `_emit(..., LEDGER_EVENT_CYCLE_COMPLETED, ...)`. That is where
+   the checkpoint write attaches, so a checkpoint only ever describes a
+   job state that is already persisted.
+3. F046 cycle evidence area: `long_run_executor.cycle_evidence_dir` =
+   `pingpong_job.job_evidence_dir(job_id) / "cycles"`, itself
+   `data_paths.jobs_dir() / <job_id> / "evidence"`. Checkpoints go under
+   the SAME area, sibling directory `checkpoints/`.
+4. Resume-time checks to consume, not bypass:
+   * pending stop request — `packages/orchestration/safe_points.py`:
+     `stop_requested(job_id)` to detect, `consume_stop(job_id)` to
+     archive + acknowledge in one go (the archive/acknowledge pair is
+     what the job runner uses when it has something durable in between).
+   * plan-approval gate — `packages/orchestration/flight_plan.py`:
+     `flight_plan_blocks_execution(job)` returning "pending"/"rejected",
+     used exactly as `_cmd_job_run_cycles` uses it in
+     `apps/cli/commands/job.py` (exit 3 with the resolve/replan hint).
+   Worktree head for the head-match check: the persisted job plan's
+   `worktree_head` via `pingpong_job.load_job_plan(job_id)`; the live
+   value comes from `worktrees.snapshot(handle)`. `packages.core.models.Job`
+   has no worktree field — that is why the plan is the source.
+
 ## 2026-07-26: F034 answered_by stays human|default|""; "planner" is derived
 The feature specifies exactly three answered_by values. A planner-declared
 A9 assumption is neither human- nor default-answered, so it keeps

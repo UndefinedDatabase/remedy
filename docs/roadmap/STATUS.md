@@ -29,7 +29,7 @@
 - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
 - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
 - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
-- [ ] F047 — Checkpoint & resume (kill-proof)
+- [~] F047 — Checkpoint & resume (kill-proof)
 - [ ] F048 — Job queue
 - [ ] F050 — DAG scheduling
 - [ ] F051 — Escalate instead of block (unattended)
