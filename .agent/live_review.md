@@ -1,7 +1,7 @@
 # Live Review — F047 Checkpoint & resume (kill-proof)
 
 Branch: feature/f047-checkpoint-resume
-LAST_REVIEWED_SHA: 89c4ef0e723f89c58956de3964d1653461d273b9
+LAST_REVIEWED_SHA: 72fc653
 Finding IDs continue monotonically from R-0145.
 
 ## Findings
@@ -25,7 +25,24 @@ Finding IDs continue monotonically from R-0145.
   executor and exits 0. Pinned by 9 tests in TestDryRunPreview plus a
   dispatch pass-through test; the stop-still-pending assertion re-reads
   the request rather than trusting the printed line.
+  Resolved: verified by the reviewer in round 2 (fd93b31..72fc653).
 
 ## Verdicts
 
-(none yet)
+- Round 2 (R-0146 repair + T003, fd93b31..72fc653): PASS — issued by
+  the reviewer after independent verification. Reviewer re-ran: kill
+  test 7 passed in three consecutive runs (flake sniff), resume/
+  checkpoints/executor suites 121 passed, canary 42 passed, ruff
+  clean. R-0146 fix verified read-only: the preview observes
+  stop_requested and never consume_stop, no executor hand-off; the
+  test re-reads the pending request from disk after the preview.
+  Scope addition 2fe5887 accepted as documented, not silent: T003's
+  exactly-once assertion exposed a real defect — cycle numbering was
+  per invocation, so a resumed run overwrote the killed run's cycle
+  and checkpoint records; next_cycle_index(job_id) now continues the
+  job's numbering (both evidence areas consulted), F046 single-pass
+  default unmoved. CycleRecord.executed_task_ids records executions,
+  not successes. Torn-checkpoint-by-explicit-write accepted: the
+  atomic write makes a genuine mid-write tear non-producible on
+  demand; the loader property under test is identical. Verification
+  tier: round gate (scoped) + canary. LAST_REVIEWED_SHA = 72fc653.

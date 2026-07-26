@@ -18,16 +18,15 @@ tasks.
 - [ ] Closure
 
 ## Current Step
-Round 2 complete: R-0146 fixed, T003 green.
-test_resume_kill.py 7 passed (1.28s) · test_resume_cli.py 35 passed ·
-test_checkpoints.py 37 passed · test_long_run_executor.py 49 passed ·
-canary 42 passed · ruff clean. Awaiting the reviewer verdict.
+Integration gate: full suite on the branch vs. base 89c4ef0, parity
+comparison, canary. Round-2 verdict PASS is persisted
+(LAST_REVIEWED_SHA = 72fc653). No closure artifacts in this round.
 
 ## Next Steps
-Integration gate, then closure. Docs: `remedy job resume` gained two new
-behaviors (F047 mode, --dry-run preview) — docs update belongs to closure
-(docs/resume.md does not exist; its two tests are pre-existing red on
-main).
+Closure (its own reviewer-gated round): evidence job, review package,
+Built State in T1_F047.md, STATUS line. Docs: `remedy job resume` gained
+two behaviors (F047 mode, --dry-run preview) — docs/resume.md does not
+exist and its two tests are pre-existing red on main.
 
 ## Risks
 - Checkpoint write failure must not kill the run: log loudly,
