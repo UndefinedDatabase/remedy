@@ -15,16 +15,17 @@ the execution packages.
 - [x] T002 approve → write-back → immutability (late answer rejected)
 - [x] T003 assumptions.md renderer + CLI + plan.md link
 - [x] T004 interactive-input guard test + unattended end-to-end
-- [ ] Integration gate
+- [x] Integration gate — no F034-attributable regression (verdict in
+      .agent/live_review.md)
 - [ ] Closure
 
 ## Current Step
-Integration gate — full-suite comparison branch (0891b8d) vs base
-(34878f3), raw transcripts, attribution of every branch-only failure.
-Round 1 verdict PASS is persisted in .agent/live_review.md.
+Integration-gate handback — both full-suite runs recorded raw, all 7
+branch-only failures attributed to pre-existing flake with serial-rerun
+and base-repeat evidence, canary green. Awaiting the reviewer.
 
 ## Next Steps
-Closure after the integration gate.
+Closure (evidence job, review zip, STATUS line) after the gate verdict.
 
 ## Risks
 - Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
