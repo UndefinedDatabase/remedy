@@ -4,6 +4,15 @@ Branch: feature/f047-checkpoint-resume
 LAST_REVIEWED_SHA: 72fc653
 Finding IDs continue monotonically from R-0145.
 
+## Steps
+
+- Round 1 — Setup + T001 (checkpoint writer/loader) + T002 (resume CLI),
+  89c4ef0..fd93b31. Reviewed in round 2; produced finding R-0146.
+- Round 2 — R-0146 repair + T003 (kill -9 / resume, exactly-once),
+  fd93b31..72fc653. Verdict PASS (below).
+- Integration gate — full suite branch vs. base 89c4ef0, from 72fc653.
+- Closure — its own reviewer-gated round; no artifacts built yet.
+
 ## Findings
 
 - R-0146 · Medium · round 1 (89c4ef0..fd93b31)

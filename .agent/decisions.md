@@ -1,5 +1,22 @@
 # Decisions
 
+## 2026-07-26: F047 gate — live_review.md needs a real "## Steps" section
+The integration gate produced exactly two reproducible branch-only failures,
+both asserting `"Steps" in .agent/live_review.md`
+(`test_test_runner.py::TestNoBroadExceptAndDegradedSignals` and
+`test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs`). The base
+passed them only by accident: F046's live_review.md happened to contain the
+substring inside prose — the sentence about plan.md missing its "## Next
+Steps" section. The F047 rewrite legitimately dropped that sentence and with
+it the token.
+
+Fixed as a declared state-file deviation, same class as F046's plan.md
+"## Next Steps" repair at its own gate: live_review.md now carries a real
+`## Steps` section listing the feature's rounds and their ranges. The
+reviewer-authored finding and verdict text is untouched — the section is
+purely additive. Nothing in the two tests was changed; the contract was met,
+not weakened.
+
 ## 2026-07-26: F047 T003 — cycle numbering belongs to the JOB, not the process
 The kill test's exactly-once assertion came out short (3 of 5 tasks), and the
 cause was a real defect, not a test artifact: `run_cycles` numbered cycles
