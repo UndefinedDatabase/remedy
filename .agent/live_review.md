@@ -45,3 +45,14 @@ R-0141 Resolved, R-0142 documented Low. Residual risks:
    final whole-plan revalidation (coarse abort, fail-open) — by
    design, documented in task_granularity.py.
 LAST_REVIEWED_SHA: 2fad89295e11bc2aad51f7ae5f7de52b7542e9b5
+
+### R-0143 [medium] Handback form defect repeated (R-0141 class)
+The closure handback again omitted the ordered per-commit
+changed-files tables (this time no changed-files table at all)
+and the ordered grep proofs of byte-identical applied text.
+Reviewer verified substance independently (STATUS line, zip
+SHA-256, manifest head, live-review text) — the round FAILs on
+form only. Second occurrence: next occurrence escalates and will
+block until a handback template is adopted.
+Resolution: handoff.md rewritten with per-commit changed-files
+tables for every commit in dcb8b1a..HEAD and raw grep proofs.
