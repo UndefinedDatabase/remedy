@@ -227,6 +227,89 @@ def apply_clarification_answers(
     return out
 
 
+#: How a clarification's answer came to be, for the audit log.
+_SOURCE_HUMAN = "human"
+_SOURCE_DEFAULT = "default"
+_SOURCE_PLANNER = "planner"
+_SOURCE_OPEN = "unresolved"
+
+
+def clarification_source(clarification: Any) -> str:
+    """Classify where a clarification's answer came from.
+
+    ``human``/``default`` are written by the approval gate. An answer with
+    no ``answered_by`` is a planner-declared A9 assumption — the planner
+    resolved the question itself instead of spending a human touchpoint on
+    it. Anything still empty is ``unresolved``.
+    """
+    rec = _as_record(clarification) or {}
+    answered_by = str(rec.get("answered_by", "") or "").strip()
+    if answered_by in (_SOURCE_HUMAN, _SOURCE_DEFAULT):
+        return answered_by
+    if str(rec.get("answer", "") or "").strip():
+        return _SOURCE_PLANNER
+    return _SOURCE_OPEN
+
+
+def _cell(text: Any) -> str:
+    """Make a value safe for a markdown table cell."""
+    return " ".join(str(text or "").split()).replace("|", "\\|") or "-"
+
+
+def render_assumptions_md(clarifications: list[Any] | None) -> str:
+    """Render the assumption log: what was assumed, and on whose authority.
+
+    One row per question — question → chosen answer → source → impact —
+    covering human answers, documented defaults, and planner-declared A9
+    assumptions alike. This is the artifact a reviewer reads to see what
+    an unattended run decided on its own.
+    """
+    records = [r for r in (_as_record(c) for c in clarifications or [])
+               if r is not None]
+
+    lines = ["# Assumptions", ""]
+    lines.append(
+        "Every question below was asked once, at plan time, on the single "
+        "plan-approval decision. Nothing here was asked mid-run.")
+    lines.append("")
+
+    if not records:
+        lines.append("No clarifications — the plan required no assumptions.")
+        lines.append("")
+        return "\n".join(lines)
+
+    lines.append("| ID | Question | Answer | Source | Impact |")
+    lines.append("| --- | --- | --- | --- | --- |")
+    for rec in records:
+        lines.append(
+            f"| {_cell(rec.get('id'))} | {_cell(rec.get('question'))} "
+            f"| {_cell(rec.get('answer'))} | {clarification_source(rec)} "
+            f"| {_cell(rec.get('impact'))} |")
+    lines.append("")
+
+    counts = {src: sum(1 for r in records if clarification_source(r) == src)
+              for src in (_SOURCE_HUMAN, _SOURCE_DEFAULT, _SOURCE_PLANNER,
+                          _SOURCE_OPEN)}
+    lines.append(
+        f"Sources: {counts[_SOURCE_HUMAN]} human, "
+        f"{counts[_SOURCE_DEFAULT]} default, "
+        f"{counts[_SOURCE_PLANNER]} planner, "
+        f"{counts[_SOURCE_OPEN]} unresolved.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_assumptions_md(
+    clarifications: list[Any] | None,
+    evidence_dir: Path,
+) -> Path:
+    """Write the assumption log into the job's evidence area."""
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    path = evidence_dir / "assumptions.md"
+    path.write_text(render_assumptions_md(clarifications), encoding="utf-8")
+    return path
+
+
 def granularity_config() -> GranularityConfig:
     """Read the F016 thresholds from Remedy config.
 
@@ -455,8 +538,11 @@ def render_plan_md(
     if plan.clarifications_resolved:
         lines.append("## Clarifications Resolved")
         lines.append("")
+        lines.append(
+            "Full audit log with sources: [assumptions.md](assumptions.md)")
+        lines.append("")
         for c in plan.clarifications_resolved:
-            lines.append(f"**Q:** {c.question}")
+            lines.append(f"**Q:** [{c.id or '-'}] {c.question}")
             lines.append(f"**A:** {c.answer} (default: {c.default_answer})")
             lines.append(f"**Impact:** {c.impact}")
             lines.append("")

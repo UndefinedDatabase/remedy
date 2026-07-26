@@ -13,15 +13,16 @@ the execution packages.
 - [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
 - [x] T001 decision payload + per-question answer parsing + tests
 - [x] T002 approve → write-back → immutability (late answer rejected)
-- [ ] T003 assumptions.md renderer + CLI + plan.md link
+- [x] T003 assumptions.md renderer + CLI + plan.md link
 - [ ] T004 interactive-input guard test + unattended end-to-end
 - [ ] Integration gate
 - [ ] Closure
 
 ## Current Step
-T003 — assumptions.md renderer in the job evidence area (question →
-answer → source → impact, plus planner-declared A9 defaults), the
-`remedy job assumptions <id>` command, and the plan.md link to it.
+T004 — interactive-input guard test (prove red on an injected violation
+first, then green on the real tree), the unattended `remedy do --yes`
+end-to-end, and the planner prompt change carrying the conservative-
+defaults rule verbatim.
 
 ## Next Steps
 T002 write-back/immutability, T003 assumption log, T004 guard + e2e.

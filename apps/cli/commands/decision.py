@@ -159,6 +159,7 @@ def _cmd_decision_resolve(
             apply_clarification_answers,
             clarifications_already_resolved,
             open_clarification_questions,
+            write_assumptions_md,
         )
 
         fp = getattr(job, "flight_plan", None)
@@ -204,12 +205,17 @@ def _cmd_decision_resolve(
             fp["_approval"] = "approved"
             job.flight_plan = fp
             save_job(job)
+            from packages.orchestration.data_paths import job_evidence_export_dir
+            log_path = write_assumptions_md(
+                fp.get("clarifications_resolved"),
+                job_evidence_export_dir(str(job.id)))
             print(f"Flight plan approved for job {job_id_str}.")
             for q in questions:
                 qid = q["id"]
                 source = "human" if qid in answers else "default"
                 print(f"  {qid} ({source}): "
                       f"{answers.get(qid, q['default_answer'])}")
+            print(f"Assumption log: {log_path}")
         else:
             fp["_approval"] = "rejected"
             job.flight_plan = fp

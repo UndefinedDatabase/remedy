@@ -13,8 +13,12 @@ from packages.orchestration.decision_queue import export_decision_json, list_dec
 from packages.orchestration.flight_plan import (
     apply_clarification_answers,
     carry_intake_clarifications,
+    clarification_source,
     clarifications_already_resolved,
     open_clarification_questions,
+    render_assumptions_md,
+    render_plan_md,
+    write_assumptions_md,
 )
 from packages.orchestration.schemas.models import FlightPlan
 
@@ -208,6 +212,88 @@ class TestClarificationsAlreadyResolved:
     def test_empty_input(self):
         assert clarifications_already_resolved(None) is False
         assert clarifications_already_resolved([]) is False
+
+
+#: T003 golden log: one human answer, one default, one planner assumption.
+_GOLDEN_RECORDS = [
+    {"id": "q1", "question": "Which database?",
+     "default_answer": "keep the existing SQLite file",
+     "impact": "driver choice and migration work",
+     "answer": "use PostgreSQL", "answered_by": "human"},
+    {"id": "q2", "question": "Add auth?",
+     "default_answer": "no, leave auth untouched",
+     "impact": "scope of the change",
+     "answer": "no, leave auth untouched", "answered_by": "default"},
+    {"id": "q3", "question": "Which test runner?",
+     "default_answer": "pytest", "impact": "test invocation",
+     "answer": "pytest", "answered_by": ""},
+]
+
+_GOLDEN_LOG = """\
+# Assumptions
+
+Every question below was asked once, at plan time, on the single \
+plan-approval decision. Nothing here was asked mid-run.
+
+| ID | Question | Answer | Source | Impact |
+| --- | --- | --- | --- | --- |
+| q1 | Which database? | use PostgreSQL | human | driver choice and migration work |
+| q2 | Add auth? | no, leave auth untouched | default | scope of the change |
+| q3 | Which test runner? | pytest | planner | test invocation |
+
+Sources: 1 human, 1 default, 1 planner, 0 unresolved.
+"""
+
+
+class TestAssumptionLog:
+    """T003 — the audit artifact reviewers read."""
+
+    def test_golden_log(self):
+        assert render_assumptions_md(_GOLDEN_RECORDS) == _GOLDEN_LOG
+
+    def test_sources_classified(self):
+        assert [clarification_source(r) for r in _GOLDEN_RECORDS] == [
+            "human", "default", "planner"]
+
+    def test_unanswered_question_is_unresolved(self):
+        assert clarification_source(
+            {"id": "q1", "answer": "", "answered_by": ""}) == "unresolved"
+
+    def test_accepts_plan_models(self):
+        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB))
+        log = render_assumptions_md(plan.clarifications_resolved)
+        assert "| q1 | Which database?" in log
+        assert "unresolved" in log
+
+    def test_no_clarifications_states_so(self):
+        for empty in (None, []):
+            log = render_assumptions_md(empty)
+            assert "No clarifications" in log
+            assert "|" not in log
+
+    def test_pipes_and_newlines_do_not_break_the_table(self):
+        log = render_assumptions_md([{
+            "id": "q1", "question": "a | b\nc", "default_answer": "d",
+            "impact": "e", "answer": "f | g", "answered_by": "human"}])
+        row = [ln for ln in log.splitlines() if ln.startswith("| q1 ")][0]
+        # Six cell delimiters; the pipes inside the text are escaped, so
+        # the row still has exactly five columns.
+        assert row.replace("\\|", "").count("|") == 6
+        assert "a \\| b c" in row
+
+    def test_write_creates_evidence_file(self, tmp_path):
+        path = write_assumptions_md(_GOLDEN_RECORDS, tmp_path / "evidence")
+        assert path.name == "assumptions.md"
+        assert path.read_text(encoding="utf-8") == _GOLDEN_LOG
+
+    def test_plan_md_links_to_the_log(self):
+        plan = carry_intake_clarifications(_plan(), _intake(_Q_DB))
+        rendered = render_plan_md(plan)
+        assert "[assumptions.md](assumptions.md)" in rendered
+        assert "**Q:** [q1] Which database?" in rendered
+
+    def test_plan_md_without_clarifications_has_no_link(self):
+        assert "assumptions.md" not in render_plan_md(_plan())
 
 
 class TestApprovalDecisionPayload:

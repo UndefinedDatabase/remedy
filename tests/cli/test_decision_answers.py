@@ -14,6 +14,7 @@ from apps.cli.commands.decision import (
     _cmd_decision_resolve,
     parse_answer_options,
 )
+from apps.cli.commands.job import _cmd_job_assumptions
 from packages.core.models import Job
 from packages.orchestration.flight_plan import carry_intake_clarifications
 from packages.orchestration.schemas.models import FlightPlan
@@ -236,6 +237,66 @@ class TestWriteBackAndImmutability:
         fp = load_job(job.id).flight_plan
         assert fp["_approval"] == "approved"
         assert "clarifications_resolved" not in fp
+
+
+class TestAssumptionsCommand:
+    """T003 — `remedy job assumptions <id>` and the evidence copy."""
+
+    def test_approval_writes_the_evidence_log(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.data_paths import job_evidence_export_dir
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        save_job(job)
+
+        _cmd_decision_resolve(
+            str(job.id)[:8], "fp:approval", reason="approve",
+            answer=["q1=use PostgreSQL"])
+        assert "Assumption log:" in capsys.readouterr().out
+
+        log = (job_evidence_export_dir(str(job.id)) / "assumptions.md").read_text()
+        assert "| q1 | Which database? | use PostgreSQL | human |" in log
+        assert "| q2 | Add auth? | no, leave auth untouched | default |" in log
+        assert "Sources: 1 human, 1 default, 0 planner, 0 unresolved." in log
+
+    def test_command_prints_the_log(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = _pending_job()
+        save_job(job)
+        _cmd_decision_resolve(str(job.id)[:8], "fp:approval", reason="approve")
+        capsys.readouterr()
+
+        _cmd_job_assumptions(str(job.id)[:8])
+
+        out = capsys.readouterr().out
+        assert "# Assumptions" in out
+        assert "| q1 | Which database? | keep SQLite | default |" in out
+        assert "Evidence copy:" in out
+
+    def test_command_on_job_without_a_plan(self, tmp_path, monkeypatch, capsys):
+        from packages.orchestration.storage import save_job
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        job = Job(name="t")
+        save_job(job)
+
+        _cmd_job_assumptions(str(job.id)[:8])
+
+        assert "No clarifications" in capsys.readouterr().out
+
+    def test_command_unknown_job_exits_non_zero(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        with pytest.raises(SystemExit) as exc:
+            _cmd_job_assumptions("deadbeef")
+        assert exc.value.code == 1
+
+    def test_command_registered_in_catalog(self):
+        from apps.cli.command_catalog import CATALOG
+
+        entry = [c for c in CATALOG if c.command_id == "job.assumptions"]
+        assert len(entry) == 1
+        assert entry[0].subcommand == "assumptions"
+        assert entry[0].action_class == "read_only"
 
 
 class TestAnswerOptionIsRepeatable:

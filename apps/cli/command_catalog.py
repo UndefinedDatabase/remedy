@@ -361,6 +361,16 @@ CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
+        command_id="job.assumptions",
+        group_id="job",
+        subcommand="assumptions",
+        description="Print the job's assumption log (clarification answers and their sources).",
+        action_class="read_only",
+        args=(_JOB_ID,),
+        related=("decision.resolve",),
+    ),
+
+    CommandEntry(
         command_id="job.summary",
         group_id="job",
         subcommand="summary",
