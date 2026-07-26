@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import AcceptanceCheck, RunState, Task
-from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
+from packages.orchestration.schemas.models import (
+    _LARGE_PLAN_THRESHOLD,
+    FlightPlan,
+    FlightPlanClarification,
+)
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
 
@@ -83,6 +87,99 @@ def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
     )
 
 
+# ---------------------------------------------------------------------------
+# F034 — bundled clarification (plan-time, never at runtime)
+# ---------------------------------------------------------------------------
+
+def _as_record(clarification: Any) -> dict[str, Any] | None:
+    """Normalize a clarification to a plain dict.
+
+    Callers hand us either the model (fresh plan) or the stored dict
+    (job JSON), and both must read the same way.
+    """
+    if isinstance(clarification, dict):
+        return clarification
+    dump = getattr(clarification, "model_dump", None)
+    if callable(dump):
+        return dump()
+    return None
+
+
+def carry_intake_clarifications(
+    plan: FlightPlan,
+    intake: dict[str, Any] | None,
+) -> FlightPlan:
+    """Carry the intake's open questions into ``clarifications_resolved``.
+
+    Every intake clarification becomes an UNANSWERED entry (empty
+    ``answer``/``answered_by``) with a stable id assigned by intake order
+    (``q1``, ``q2``, …) — those are the questions the single approval
+    decision bundles. Entries the planner produced on its own (a question
+    it already resolved, i.e. an A9 assumption) are preserved verbatim
+    after them and get the next free id.
+
+    A plan whose intake has no clarifications and whose planner declared
+    none is returned unchanged.
+    """
+    carried: list[FlightPlanClarification] = []
+    intake_clarifications = list((intake or {}).get("clarifications") or [])
+    from_intake: set[str] = set()
+
+    for raw in intake_clarifications:
+        if not isinstance(raw, dict):
+            continue
+        question = str(raw.get("question", ""))
+        carried.append(FlightPlanClarification(
+            id=f"q{len(carried) + 1}",
+            question=question,
+            default_answer=str(raw.get("default_answer", "")),
+            impact=str(raw.get("impact", "")),
+            answer="",
+            answered_by="",
+        ))
+        from_intake.add(question)
+
+    for c in plan.clarifications_resolved:
+        # The planner echoing an intake question back does not close it —
+        # the intake entry above is authoritative and stays open.
+        if c.question in from_intake:
+            continue
+        carried.append(c.model_copy(
+            update={"id": c.id or f"q{len(carried) + 1}"}))
+
+    if carried == list(plan.clarifications_resolved):
+        return plan
+    return plan.model_copy(update={"clarifications_resolved": carried})
+
+
+def open_clarification_questions(
+    clarifications: list[Any] | None,
+) -> list[dict[str, str]]:
+    """Return the still-open questions as decision-payload records.
+
+    Accepts the raw ``clarifications_resolved`` list from either a plan
+    model or a stored flight-plan dict. Open means: no answer AND no
+    ``answered_by`` — a planner-declared assumption arrives with an answer
+    and is therefore never asked again.
+    """
+    out: list[dict[str, str]] = []
+    for c in clarifications or []:
+        rec = _as_record(c)
+        if rec is None:
+            continue
+        if str(rec.get("answer", "") or "").strip():
+            continue
+        if str(rec.get("answered_by", "") or "").strip():
+            continue
+        out.append({
+            "id": str(rec.get("id", "") or ""),
+            "question": str(rec.get("question", "") or ""),
+            "default_answer": str(rec.get("default_answer", "") or ""),
+            "impact": str(rec.get("impact", "") or ""),
+        })
+    return out
+
+
 def granularity_config() -> GranularityConfig:
     """Read the F016 thresholds from Remedy config.
 
@@ -114,7 +211,8 @@ def plan_job_llm(
 
     The validated plan then passes through F016 task-granularity
     normalization — the single insertion point for it — and the result
-    carries the transformation record.
+    carries the transformation record. Finally the intake's open questions
+    are carried into the plan (F034) so the approval gate can bundle them.
     """
     prompt = _build_plan_prompt(intake)
     try:
@@ -154,6 +252,9 @@ def plan_job_llm(
             "result_ids": [t.id for t in plan.tasks],
             "reason": f"normalization not run, original plan kept: {exc}",
         }]
+
+    # F034: after normalization, so the questions ride the final plan shape.
+    plan = carry_intake_clarifications(plan, intake)
 
     return FlightPlanResult(
         plan=plan,

@@ -151,13 +151,26 @@ class PlannedTask(_Strict):
         return self
 
 
+#: Who supplied a clarification's answer. Empty until the approval gate
+#: resolves it — an unresolved question is neither human- nor default-answered.
+AnsweredBy = Literal["human", "default", ""]
+
+
 class FlightPlanClarification(_Strict):
-    """A resolved clarification carried in the flight plan."""
+    """A resolved clarification carried in the flight plan.
+
+    ``id`` and ``answered_by`` are additive (F034): plans written before
+    bundled clarification existed load unchanged and carry the empty
+    defaults. The id is assigned by intake order (``q1``, ``q2``, …) so it
+    stays stable across plan regeneration for the same intake.
+    """
 
     question: str
     default_answer: str
     impact: str
     answer: str
+    id: str = ""
+    answered_by: AnsweredBy = ""
 
 
 class FlightPlan(_Structured):

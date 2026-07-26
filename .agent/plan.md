@@ -11,7 +11,7 @@ the execution packages.
 
 ## Checklist
 - [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
-- [ ] T001 decision payload + per-question answer parsing + tests
+- [x] T001 decision payload + per-question answer parsing + tests
 - [ ] T002 approve → write-back → immutability (late answer rejected)
 - [ ] T003 assumptions.md renderer + CLI + plan.md link
 - [ ] T004 interactive-input guard test + unattended end-to-end
@@ -19,11 +19,10 @@ the execution packages.
 - [ ] Closure
 
 ## Current Step
-T001 — extend FlightPlanClarification with answered_by + stable question
-ids, carry intake clarifications into clarifications_resolved, embed the
-questions into the existing fp:approval decision payload (exactly ONE
-decision per plan), add repeatable `--answer q1="text"` parsing to
-`remedy decision resolve`.
+T002 — approve writes answers back (supplied → answered_by "human",
+unanswered → default_answer with answered_by "default"), answers become
+immutable (late `--answer` rejected with "already resolved"), reject
+leaves clarifications untouched.
 
 ## Next Steps
 T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
