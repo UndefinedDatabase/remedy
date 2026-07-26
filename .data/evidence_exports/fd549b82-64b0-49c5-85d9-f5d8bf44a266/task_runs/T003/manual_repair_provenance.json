@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/cli/test_decision_answers.py",
+  "tests/orchestration/test_bundled_clarification.py"
+ ],
+ "diff_sha256": "621b2c6808f48506772d7b55d1295abe974703cf97ad537d6555582b3dd9ce1a",
+ "job_id": "fd549b82-64b0-49c5-85d9-f5d8bf44a266",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "621b2c6808f48506772d7b55d1295abe974703cf97ad537d6555582b3dd9ce1a",
+ "safe_diff_sha256": "b09b2b68392b49c9ff3038030fafa360c35058ba35c36e972ee14f14357a6857",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/cli/test_decision_answers.py",
+  "tests/orchestration/test_bundled_clarification.py"
+ ],
+ "timestamp": "2026-07-26T18:19:36.205105+00:00",
+ "tracked_diff_sha256": "b09b2b68392b49c9ff3038030fafa360c35058ba35c36e972ee14f14357a6857",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

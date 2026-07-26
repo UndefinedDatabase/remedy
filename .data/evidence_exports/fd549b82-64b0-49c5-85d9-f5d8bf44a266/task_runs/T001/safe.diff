@@ -1,0 +1,270 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index eae5431..ce6a05c 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -62,6 +62,9 @@ class ArgDef:
+     #: different commands: `job stop --status` is a flag, `propose list --status pending`
+     #: is not. F011 briefly special-cased the NAME in the parser and broke `propose list`.
+     is_flag: bool = False
++    #: A repeatable option collects every occurrence into a list
++    #: (`--answer q1=a --answer q2=b`) instead of last-one-wins.
++    is_repeatable: bool = False
+ 
+ 
+ @dataclass(frozen=True)
+@@ -156,6 +159,10 @@ _PROJECT_ID = ArgDef("project_id", "UUID or name of the project")
+ _INTENT_ID = ArgDef("intent_id", "Intent ID (integer)")
+ _JSON_OPT = ArgDef("--json", "Output as JSON", required=False, is_option=True, default="false")
+ _REASON_OPT = ArgDef("--reason", "Reason text", required=False, is_option=True)
++_ANSWER_OPT = ArgDef(
++    "--answer",
++    'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
++    required=False, is_option=True, is_repeatable=True)
+ _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
+ _PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
+ _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
+@@ -353,6 +360,16 @@ CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.run-next", "job.plan"),
+     ),
+ 
++    CommandEntry(
++        command_id="job.assumptions",
++        group_id="job",
++        subcommand="assumptions",
++        description="Print the job's assumption log (clarification answers and their sources).",
++        action_class="read_only",
++        args=(_JOB_ID,),
++        related=("decision.resolve",),
++    ),
++
+     CommandEntry(
+         command_id="job.summary",
+         group_id="job",
+@@ -2246,6 +2263,7 @@ CATALOG: tuple[CommandEntry, ...] = (
+             _JOB_ID,
+             ArgDef("decision_id", "Decision ID"),
+             _REASON_OPT,
++            _ANSWER_OPT,
+         ),
+     ),
+     CommandEntry(
+diff --git a/apps/cli/commands/decision.py b/apps/cli/commands/decision.py
+index 6a3c6a3..0a7bf37 100644
+--- a/apps/cli/commands/decision.py
++++ b/apps/cli/commands/decision.py
+@@ -74,13 +74,67 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
+         print(f"  Status: {d.status}")
+         print(f"  Severity: {d.severity}")
+         print(f"  Summary: {d.safe_summary}")
++        for q in d.payload.get("clarifications", []):
++            print(f"  Question {q.get('id', '')}: {q.get('question', '')}")
++            print(f"    Default: {q.get('default_answer', '')}")
++            print(f"    Impact: {q.get('impact', '')}")
+         if d.next_actions:
+             print("  Next actions:")
+             for a in d.next_actions:
+                 print(f"    - {a}")
+ 
+ 
+-def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | None = None) -> None:
++class AnswerParseError(ValueError):
++    """A ``--answer`` option could not be applied to the bundled questions."""
++
++
++def parse_answer_options(
++    raw: list[str] | None,
++    questions: list[dict[str, str]],
++) -> dict[str, str]:
++    """Parse repeatable ``--answer q1=text`` options against open questions.
++
++    Answering a subset is valid — every unanswered question falls back to
++    its documented default at approval time. An unknown or duplicated id,
++    or a malformed pair, is a spec error and raises AnswerParseError.
++    """
++    known = [str(q.get("id", "")) for q in questions]
++    answers: dict[str, str] = {}
++    for item in raw or []:
++        text = str(item)
++        if "=" not in text:
++            raise AnswerParseError(
++                f"malformed --answer {text!r}: expected <question-id>=<answer>, "
++                'e.g. --answer q1="use PostgreSQL"')
++        qid, _, value = text.partition("=")
++        qid = qid.strip()
++        if not qid:
++            raise AnswerParseError(
++                f"malformed --answer {text!r}: missing question id before '='")
++        if qid not in known:
++            listed = ", ".join(known) if known else "(none — the plan has no open questions)"
++            raise AnswerParseError(
++                f"unknown question id {qid!r}. Open questions: {listed}")
++        if qid in answers:
++            raise AnswerParseError(f"duplicate --answer for question id {qid!r}")
++        answers[qid] = value
++    return answers
++
++
++def _cmd_decision_resolve(
++    job_id_str: str,
++    decision_id: str,
++    *,
++    reason: str | None = None,
++    answer: list[str] | None = None,
++) -> None:
++    if answer and not decision_id.startswith("fp:"):
++        print(
++            f"Error: --answer is only valid for the flight-plan approval "
++            f"decision, not {decision_id!r}.",
++            file=sys.stderr)
++        sys.exit(1)
++
+     # Decisions are derived — resolve the underlying record if possible
+     if decision_id.startswith("sr:"):
+         from packages.orchestration.stop_reasons import resolve_stop_reason
+@@ -101,8 +155,25 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
+             print(f"Error: {exc}", file=sys.stderr)
+             sys.exit(1)
+ 
++        from packages.orchestration.flight_plan import (
++            apply_clarification_answers,
++            clarifications_already_resolved,
++            open_clarification_questions,
++            write_assumptions_md,
++        )
++
+         fp = getattr(job, "flight_plan", None)
+         if not isinstance(fp, dict) or fp.get("_approval") != "pending":
++            # Answers are asked once and written once. A late one is a
++            # mistake worth naming, not a generic "nothing pending".
++            if answer and isinstance(fp, dict) and clarifications_already_resolved(
++                    fp.get("clarifications_resolved")):
++                print(
++                    "Error: clarifications already resolved for this job — "
++                    "answers are immutable. Replan to ask again: "
++                    f"remedy do replan {job_id_str}",
++                    file=sys.stderr)
++                sys.exit(1)
+             print("Error: no pending flight plan approval for this job.", file=sys.stderr)
+             sys.exit(1)
+ 
+@@ -115,11 +186,36 @@ def _cmd_decision_resolve(job_id_str: str, decision_id: str, *, reason: str | No
+             )
+             sys.exit(1)
+ 
++        questions = open_clarification_questions(fp.get("clarifications_resolved"))
++        if answer and reason != "approve":
++            print(
++                "Error: --answer applies only when approving the plan.",
++                file=sys.stderr)
++            sys.exit(1)
++        try:
++            answers = parse_answer_options(answer, questions)
++        except AnswerParseError as exc:
++            print(f"Error: {exc}", file=sys.stderr)
++            sys.exit(1)
++
+         if reason == "approve":
++            if questions:
++                fp["clarifications_resolved"] = apply_clarification_answers(
++                    fp.get("clarifications_resolved"), answers)
+             fp["_approval"] = "approved"
+             job.flight_plan = fp
+             save_job(job)
++            from packages.orchestration.data_paths import job_evidence_export_dir
++            log_path = write_assumptions_md(
++                fp.get("clarifications_resolved"),
++                job_evidence_export_dir(str(job.id)))
+             print(f"Flight plan approved for job {job_id_str}.")
++            for q in questions:
++                qid = q["id"]
++                source = "human" if qid in answers else "default"
++                print(f"  {qid} ({source}): "
++                      f"{answers.get(qid, q['default_answer'])}")
++            print(f"Assumption log: {log_path}")
+         else:
+             fp["_approval"] = "rejected"
+             job.flight_plan = fp
+@@ -153,6 +249,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         args.job_id,
+         args.decision_id,
+         reason=getattr(args, "reason", None),
++        answer=getattr(args, "answer", None),
+     ),
+     "decision.explain": lambda args: _cmd_decision_explain(args.job_id),
+ }
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 4676de3..e898e8b 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -282,6 +282,16 @@ def _cmd_do_mission(
+                 fp_result.plan, job_evidence_export_dir(str(job.id)),
+                 transformations=fp_result.transformations)
+             if yes:
++                # F034: --yes covers approval AND clarifications. Every open
++                # question runs on its documented default, recorded in the
++                # assumption log — unattended, but never silent.
++                from packages.orchestration.flight_plan import (
++                    apply_clarification_answers,
++                    write_assumptions_md,
++                )
++                if fp_dict.get("clarifications_resolved"):
++                    fp_dict["clarifications_resolved"] = apply_clarification_answers(
++                        fp_dict.get("clarifications_resolved"), None)
+                 fp_dict["_approval"] = "approved"
+                 fp_dict["_approval_audit"] = {
+                     "mode": "auto_yes",
+@@ -289,6 +299,9 @@ def _cmd_do_mission(
+                 }
+                 job.flight_plan = fp_dict
+                 save_job(job)
++                write_assumptions_md(
++                    fp_dict.get("clarifications_resolved"),
++                    job_evidence_export_dir(str(job.id)))
+                 plan_label = (
+                     f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
+                 )
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 179652a..dcd2600 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -714,6 +714,32 @@ def _cmd_run_loop(
+         print(summarize_loop_result(result))
+ 
+ 
++def _cmd_job_assumptions(job_id_str: str) -> None:
++    """Print the job's assumption log (F034).
++
++    Rendered from the job's own flight plan, so it tells the truth even
++    for a job approved before the evidence file was written. When the
++    evidence copy exists, its path is reported alongside.
++    """
++    job_id = resolve_job_id(job_id_str)
++    try:
++        job = load_job(job_id)
++    except JobNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    from packages.orchestration.data_paths import job_evidence_export_dir
++    from packages.orchestration.flight_plan import render_assumptions_md
++
++    fp = getattr(job, "flight_plan", None)
++    clarifications = fp.get("clarifications_resolved") if isinstance(fp, dict) else None
++    print(render_assumptions_md(clarifications))
++
++    log_path = job_evidence_export_dir(str(job.id)) / "assumptions.md"
++    if log_path.exists():
++        print(f"Evidence copy: {log_path}")
++
++
+ def _cmd_job_summary(job_id_str: str, *, json_output: bool = False) -> None:
+     """Print an honest summary of job state — truth contract."""
+     import json as _json
+@@ -1623,6 +1649,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         no_tests=getattr(args, "no_tests", False),
+         json_output=getattr(args, "json", False),
+     ),
++    "job.assumptions": lambda args: _cmd_job_assumptions(args.job_id),
+     "job.summary": lambda args: _cmd_job_summary(
+         args.job_id,
+         json_output=getattr(args, "json", False),

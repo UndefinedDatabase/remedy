@@ -1,0 +1,23 @@
+{
+ "base_commit": "34878f34a3374d73fd8e5b8dbc8eb2192f46b781",
+ "file_count": 13,
+ "file_hashes": {
+  "apps/cli/command_catalog.py": "dd421ed1b281d46071db64b3ab34fd9d2c14c2e26e3fe6c75d449cdb193d762f",
+  "apps/cli/commands/decision.py": "c5fca8a945ae059f0394005e190bd1422de3d079514e16557d4abc684b3c8460",
+  "apps/cli/commands/do_cmd.py": "dc333f7b3518f4558c3eea7adba565e4dd2a5019703f8fa1abf4fdeef4b33e16",
+  "apps/cli/commands/job.py": "5a95d7ce8e5dc4ff50fec86c61561f1bede65abc7f2cc10fac700e02856c2b1d",
+  "apps/cli/grouped.py": "df654a4ef9563c812f747202e162d81f1f5a3fd976b794b12d4a8a89979edd51",
+  "docs/roadmap/STATUS.md": "10d35e73b9f5d7259873f0c0251b6edfcd78ce3dc48e2d2f89651a01c132087c",
+  "docs/roadmap/features/T1_F034.md": "b6ecc8e15530ec264dd5648f593347744f8dbc1e66123189549deac82529cdbb",
+  "packages/orchestration/decision_queue.py": "c2c8d6896988766edf471ff24b6045002b88936b9088e0f820b8625d17dce4a5",
+  "packages/orchestration/flight_plan.py": "b3b7890ddd9d2c5d1c59a042622faa389c18d668d24781fd3e5ea2b5988f6957",
+  "packages/orchestration/schemas/models.py": "42eab217d5dcc98cc22bcd01856ae3ae4ea612306923a5de2d565e7985e9bc41",
+  "tests/cli/test_decision_answers.py": "358a6705a64718ee29df2bd41e490bfb1ba619a49e6b6aa16f07338546875cd6",
+  "tests/orchestration/test_bundled_clarification.py": "bb3cb5c03d35dcca321b6eada910d6653a32761b512ea1b0cee615e69fdac019",
+  "tests/test_no_interactive_guard.py": "0c98125d375b1151018aaa044c5cc3332e6279571fb8cfe9c2b8228eba9e2836"
+ },
+ "head_commit": "d1c036ace9802d20bdb521e77905bdb7998c552e",
+ "schema_version": "1.1.0",
+ "tombstone_count": 0,
+ "tombstones": {}
+}

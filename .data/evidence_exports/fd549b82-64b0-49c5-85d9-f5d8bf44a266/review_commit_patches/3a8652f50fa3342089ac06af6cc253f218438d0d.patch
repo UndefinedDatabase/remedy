@@ -1,0 +1,504 @@
+3a8652f50fa3342089ac06af6cc253f218438d0d
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 8fadc77..d62a36e 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1,5 +1,37 @@
+ # Decisions
+ 
++## 2026-07-26: F034 answered_by stays human|default|""; "planner" is derived
++The feature specifies exactly three answered_by values. A planner-declared
++A9 assumption is neither human- nor default-answered, so it keeps
++answered_by="" and is recognised by having a non-empty answer — the
++assumption log derives the source "planner" from that shape
++(clarification_source). This keeps the persisted contract as specified
++while the log still distinguishes all three sources the golden test needs.
++
++## 2026-07-26: F034 the planner echoing an intake question does not close it
++carry_intake_clarifications treats the intake as authoritative for what is
++open: an intake clarification always becomes an unanswered entry, even if
++the plan echoed that same question back with an answer. Otherwise a model
++that answers its own question would silently remove the human touchpoint.
++Planner entries that are NOT intake questions are preserved as assumptions.
++
++## 2026-07-26: F034 interactive-input guard is AST-based, not textual
++A regex over source text flagged prose — "mission needs user input (e.g.
++acceptance criteria)" in progress_ledger.py and a comment in
++token_economy.py both matched `input\s*\(`. A guard that cries wolf gets
++muted or allowlisted, which defeats it. The guard parses each module and
++looks for real Call/Attribute/Import nodes, so the allowlist can stay
++genuinely empty. Spacing tricks (`input ('x')`) are still caught.
++
++## 2026-07-26: F034 conditional-answer predicates deliberately skipped
++The feature file lists machine-checkable predicates over run state
++(registered comparator set) as part of the clarification design. The
++orchestrator brief and this round's scope mark them OPTIONAL. They need a
++comparator registry, an evaluation point in the runner, and evidence
++plumbing — none of which is trivially cheap, and none of which the DONE
++criteria (unattended --yes with recorded defaults + guard test) require.
++Skipped and recorded here; the rest of F034 does not depend on them.
++
+ ## 2026-07-26: F016 clustering groups by matched FILE, not by raw path tokens
+ The feature file says "greedy grouping by shared files_hint tokens". Grouping
+ directly on token sets merges everything: `src/parser/core.py` and
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 7d0a5bb..0fe3722 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -14,21 +14,23 @@ the execution packages.
+ - [x] T001 decision payload + per-question answer parsing + tests
+ - [x] T002 approve → write-back → immutability (late answer rejected)
+ - [x] T003 assumptions.md renderer + CLI + plan.md link
+-- [ ] T004 interactive-input guard test + unattended end-to-end
++- [x] T004 interactive-input guard test + unattended end-to-end
+ - [ ] Integration gate
+ - [ ] Closure
+ 
+ ## Current Step
+-T004 — interactive-input guard test (prove red on an injected violation
+-first, then green on the real tree), the unattended `remedy do --yes`
+-end-to-end, and the planner prompt change carrying the conservative-
+-defaults rule verbatim.
++Handback — all four slice gates green plus the golden-path canary. Awaiting
++the reviewer; integration gate and closure follow.
+ 
+ ## Next Steps
+-T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
++Integration gate (branch vs base full-suite comparison), then closure.
+ 
+ ## Risks
+-- Schema changes must be additive: existing fp1 job data must keep loading.
+-- Question ids must be stable across plan regeneration (intake order).
+-- Conditional-answer predicates are OPTIONAL scope; skip unless trivially
+-  cheap and record the skip in the handoff.
++- Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
++  base and branch (25 identical; the 2+2 differences pass on serial re-run).
++  Backlog F135/F052.
++- Conditional-answer predicates skipped as OPTIONAL scope (see
++  .agent/decisions.md). Nothing in F034's DONE criteria depends on them.
++- The guard only covers packages/; apps/cli deliberately stays interactive-
++  capable, so a prompt added under apps/ that the runner calls would evade
++  it. Runner entry points live in packages/, which is what is guarded.
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index 4676de3..e898e8b 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -282,6 +282,16 @@ def _cmd_do_mission(
+                 fp_result.plan, job_evidence_export_dir(str(job.id)),
+                 transformations=fp_result.transformations)
+             if yes:
++                # F034: --yes covers approval AND clarifications. Every open
++                # question runs on its documented default, recorded in the
++                # assumption log — unattended, but never silent.
++                from packages.orchestration.flight_plan import (
++                    apply_clarification_answers,
++                    write_assumptions_md,
++                )
++                if fp_dict.get("clarifications_resolved"):
++                    fp_dict["clarifications_resolved"] = apply_clarification_answers(
++                        fp_dict.get("clarifications_resolved"), None)
+                 fp_dict["_approval"] = "approved"
+                 fp_dict["_approval_audit"] = {
+                     "mode": "auto_yes",
+@@ -289,6 +299,9 @@ def _cmd_do_mission(
+                 }
+                 job.flight_plan = fp_dict
+                 save_job(job)
++                write_assumptions_md(
++                    fp_dict.get("clarifications_resolved"),
++                    job_evidence_export_dir(str(job.id)))
+                 plan_label = (
+                     f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
+                 )
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index 98a0a6a..3780d86 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -53,12 +53,31 @@ and token band estimates.
+ - acceptance must have at least one non-empty criterion per task.
+ - No cycles in dependencies.
+ - Maximum 25 tasks.
+-- If clarifications were present in the intake, carry them into
+-  clarifications_resolved with your chosen answer.
++- RESOLVE the intake's clarifications into plan choices wherever the
++  intake, the repo facts, or ordinary engineering judgement settle them.
++  Record each one you resolved in clarifications_resolved with your
++  chosen answer — that is an assumption you are declaring, not a
++  question. The target for a routine mission is zero questions left.
++- Carry forward ONLY genuinely ambiguous questions: ones whose answer
++  changes the plan and that you cannot settle from the material given.
++  Leave those with an empty answer; a human resolves them once, at the
++  plan-approval gate, and they are never asked again during the run.
++- Every clarification needs a conservative default_answer and an impact
++  line. A default keeps existing behavior or does nothing; it never
++  deletes, overwrites, migrates, or otherwise takes a destructive path.
++  If the safe choice is "change nothing", that is the default.
+ 
+ Return ONLY a JSON object matching the flight_plan_v1 schema.
+ """
+ 
++# The conservative-defaults rule this prompt encodes, stated verbatim as
++# the feature specifies it (T1_F034, Edge cases & assumption defaults):
++#
++#   Defaults must be conservative: the planner prompt mandates keep/no-op
++#   style defaults with impact text; a fixture asserts a keep-style
++#   default survives the round trip. Remedy never defaults to destructive
++#   choices — humans can, explicitly.
++
+ 
+ def _cheap_repo_facts() -> str:
+     """Gather minimal repo context for the planner prompt."""
+diff --git a/tests/cli/test_decision_answers.py b/tests/cli/test_decision_answers.py
+index 97c522c..6736000 100644
+--- a/tests/cli/test_decision_answers.py
++++ b/tests/cli/test_decision_answers.py
+@@ -7,6 +7,12 @@ unknown question id is a clean non-zero error.
+ 
+ from __future__ import annotations
+ 
++import json
++import os
++import subprocess
++import sys
++from io import StringIO
++
+ import pytest
+ 
+ from apps.cli.commands.decision import (
+@@ -299,6 +305,106 @@ class TestAssumptionsCommand:
+         assert entry[0].action_class == "read_only"
+ 
+ 
++def _git_repo(tmp_path):
++    repo = tmp_path / "repo"
++    repo.mkdir()
++    subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
++    subprocess.run(
++        ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"],
++        check=True, capture_output=True,
++        env={**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
++             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
++    )
++    return repo
++
++
++_INTAKE_WITH_ONE_CLARIFICATION = json.dumps({
++    "schema_v": "ji1",
++    "goal": "Test goal.",
++    "context_refs": [],
++    "constraints": [],
++    "acceptance_hints": [],
++    "truncated_input": False,
++    "clarifications": [{
++        "question": "Drop the legacy table?",
++        "default_answer": "keep the legacy table untouched",
++        "impact": "data retained; migration deferred",
++    }],
++})
++
++
++class TestUnattendedEndToEnd:
++    """T004 — `remedy do --yes` runs the whole plan gate without a human."""
++
++    def _run_unattended(self, tmp_path, monkeypatch):
++        from packages.orchestration.flight_plan import (
++            FlightPlanResult,
++            carry_intake_clarifications,
++        )
++
++        repo = _git_repo(tmp_path)
++        env = {**os.environ, "PYTHONPATH": os.getcwd(),
++               "REMEDY_DATA_DIR": str(tmp_path / "data")}
++        subprocess.run(
++            [sys.executable, "-m", "apps.cli.grouped", "init"],
++            capture_output=True, text=True, timeout=60,
++            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
++        )
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
++        monkeypatch.setattr(
++            "packages.orchestration.intake.make_provider_call_fn",
++            lambda: (lambda prompt, attempt: _INTAKE_WITH_ONE_CLARIFICATION),
++        )
++
++        base_plan = FlightPlan(**{
++            "schema_v": "flight_plan_v1",
++            "tasks": [{
++                "id": "T001", "title": "Do thing", "goal": "A goal",
++                "acceptance": ["Done"], "depends_on": [],
++                "est_tokens_band": "M", "files_hint": [],
++            }],
++        })
++        monkeypatch.setattr(
++            "packages.orchestration.flight_plan.plan_job_llm",
++            lambda intake, call_fn, **kw: FlightPlanResult(
++                plan=carry_intake_clarifications(base_plan, intake),
++                source="llm", calls=1),
++        )
++        monkeypatch.chdir(str(repo))
++
++        captured = StringIO()
++        monkeypatch.setattr("sys.stdout", captured)
++        from apps.cli.commands.do_cmd import _cmd_do_mission
++        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
++        return json.loads(captured.getvalue())
++
++    def test_default_recorded_and_logged_without_a_human(
++            self, tmp_path, monkeypatch):
++        from packages.orchestration.data_paths import job_evidence_export_dir
++        from packages.orchestration.decision_queue import list_decisions
++        from packages.orchestration.storage import load_job
++
++        data = self._run_unattended(tmp_path, monkeypatch)
++        assert "approved via --yes" in data["plan_label"]
++
++        job = load_job(data["job_id"])
++        recs = job.flight_plan["clarifications_resolved"]
++        assert [(r["id"], r["answer"], r["answered_by"]) for r in recs] == [
++            ("q1", "keep the legacy table untouched", "default")]
++
++        log = (job_evidence_export_dir(str(job.id)) / "assumptions.md").read_text()
++        assert ("| q1 | Drop the legacy table? | keep the legacy table "
++                "untouched | default |") in log
++
++        open_fp = [d for d in list_decisions(job, [])
++                   if d.type == "flight_plan_approval" and d.status == "open"]
++        assert open_fp == []
++
++    def test_exits_zero(self, tmp_path, monkeypatch):
++        """_cmd_do_mission returning normally is exit 0 for the CLI."""
++        self._run_unattended(tmp_path, monkeypatch)
++
++
+ class TestAnswerOptionIsRepeatable:
+ 
+     def test_catalog_declares_repeatable_answer(self):
+diff --git a/tests/orchestration/test_bundled_clarification.py b/tests/orchestration/test_bundled_clarification.py
+index d80d339..072a6b9 100644
+--- a/tests/orchestration/test_bundled_clarification.py
++++ b/tests/orchestration/test_bundled_clarification.py
+@@ -11,6 +11,7 @@ from __future__ import annotations
+ from packages.core.models import Job
+ from packages.orchestration.decision_queue import export_decision_json, list_decisions
+ from packages.orchestration.flight_plan import (
++    _build_plan_prompt,
+     apply_clarification_answers,
+     carry_intake_clarifications,
+     clarification_source,
+@@ -296,6 +297,40 @@ class TestAssumptionLog:
+         assert "assumptions.md" not in render_plan_md(_plan())
+ 
+ 
++class TestPlannerPrompt:
++    """T004 — the prompt must aim for zero questions and safe defaults."""
++
++    def test_instructs_the_model_to_resolve_what_it_can(self):
++        prompt = _build_plan_prompt({"schema_v": "ji1", "goal": "ship"})
++        assert "RESOLVE the intake's clarifications into plan choices" in prompt
++        assert "zero questions" in prompt
++
++    def test_carries_forward_only_ambiguous_questions(self):
++        prompt = _build_plan_prompt({"schema_v": "ji1", "goal": "ship"})
++        assert "ONLY genuinely ambiguous questions" in prompt
++        assert "plan-approval gate" in prompt
++
++    def test_mandates_conservative_defaults_with_impact(self):
++        prompt = _build_plan_prompt({"schema_v": "ji1", "goal": "ship"})
++        assert "conservative default_answer and an impact" in prompt
++        assert "never\n  deletes, overwrites, migrates" in prompt
++
++    def test_keep_style_default_survives_the_round_trip(self):
++        """A9 fixture: the safe default reaches the log unchanged."""
++        keep_style = {
++            "question": "Drop the legacy table?",
++            "default_answer": "keep the legacy table untouched",
++            "impact": "data retained; migration deferred",
++        }
++        plan = carry_intake_clarifications(_plan(), _intake(keep_style))
++        records = apply_clarification_answers(
++            [c.model_dump() for c in plan.clarifications_resolved], None)
++        assert records[0]["answer"] == "keep the legacy table untouched"
++        assert records[0]["answered_by"] == "default"
++        assert ("| q1 | Drop the legacy table? | keep the legacy table "
++                "untouched | default |") in render_assumptions_md(records)
++
++
+ class TestApprovalDecisionPayload:
+ 
+     def _pending_job(self, *clarifications) -> Job:
+diff --git a/tests/test_no_interactive_guard.py b/tests/test_no_interactive_guard.py
+new file mode 100644
+index 0000000..2b54f66
+--- /dev/null
++++ b/tests/test_no_interactive_guard.py
+@@ -0,0 +1,171 @@
++"""Guard test: the runtime is incapable of asking a human anything (F034).
++
++Every open question is asked ONCE, bundled, at plan time. That promise is
++only worth as much as its enforcement, so this scans the orchestration and
++core execution packages for interactive-input constructs and fails the
++build if one appears. The allowlist starts empty and should stay that way:
++a module that needs an answer must take it from the flight plan's resolved
++clarifications, not from a prompt.
++
++Detection is AST-based, not textual. A comment reading "mission needs user
++input (e.g. acceptance criteria)" is prose, not a prompt, and a guard that
++cannot tell the difference gets muted by its own false positives.
++
++Follows the repo's guard-test pattern (see
++tests/orchestration/test_development_artifact_boundary.py): repo-root
++scan, relative-path allowlist.
++"""
++
++from __future__ import annotations
++
++import ast
++from pathlib import Path
++
++_ROOT = Path(__file__).resolve().parents[1]
++
++#: Packages that run unattended. Nothing here may block on a human.
++_GUARDED_PACKAGES = (
++    "packages/orchestration",
++    "packages/core",
++    "packages/providers",
++    "packages/runtimes",
++    "packages/verification",
++)
++
++#: Relative paths permitted to use an interactive construct. Empty by
++#: design — adding an entry means the unattended promise no longer holds
++#: for that module, so it needs a documented reason in the same commit.
++_ALLOWLIST: set[str] = set()
++
++#: Builtins that read from a human.
++_BLOCKING_CALLS = {"input", "raw_input"}
++#: module -> forbidden attributes reached as `module.attr`.
++_BLOCKING_ATTRS = {
++    "click": {"prompt", "confirm"},
++    "sys": {"stdin"},
++    "getpass": {"getpass", "getuser"},
++}
++#: Importing these at all means the module is set up to prompt.
++_BLOCKING_IMPORTS = {"getpass"}
++
++
++class _InteractiveVisitor(ast.NodeVisitor):
++    """Collect (line, description) for every interactive construct."""
++
++    def __init__(self) -> None:
++        self.found: list[tuple[int, str]] = []
++
++    def visit_Call(self, node: ast.Call) -> None:
++        func = node.func
++        if isinstance(func, ast.Name) and func.id in _BLOCKING_CALLS:
++            self.found.append((node.lineno, f"builtin {func.id}()"))
++        self.generic_visit(node)
++
++    def visit_Attribute(self, node: ast.Attribute) -> None:
++        value = node.value
++        if isinstance(value, ast.Name):
++            forbidden = _BLOCKING_ATTRS.get(value.id, set())
++            if node.attr in forbidden:
++                self.found.append((node.lineno, f"{value.id}.{node.attr}"))
++        self.generic_visit(node)
++
++    def visit_Import(self, node: ast.Import) -> None:
++        for alias in node.names:
++            if alias.name.split(".")[0] in _BLOCKING_IMPORTS:
++                self.found.append((node.lineno, f"import {alias.name}"))
++        self.generic_visit(node)
++
++    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
++        if (node.module or "").split(".")[0] in _BLOCKING_IMPORTS:
++            self.found.append((node.lineno, f"from {node.module} import ..."))
++        self.generic_visit(node)
++
++
++def scan_source(source: str) -> list[tuple[int, str]]:
++    """Return every interactive construct in *source*."""
++    visitor = _InteractiveVisitor()
++    visitor.visit(ast.parse(source))
++    return sorted(visitor.found)
++
++
++def _guarded_files() -> list[Path]:
++    files: list[Path] = []
++    for pkg in _GUARDED_PACKAGES:
++        root = _ROOT / pkg
++        if not root.is_dir():
++            continue
++        files.extend(
++            p for p in sorted(root.rglob("*.py"))
++            if "__pycache__" not in p.parts
++        )
++    return files
++
++
++def _violations() -> list[str]:
++    found: list[str] = []
++    for path in _guarded_files():
++        rel = path.relative_to(_ROOT).as_posix()
++        if rel in _ALLOWLIST:
++            continue
++        source = path.read_text(encoding="utf-8", errors="replace")
++        for line, what in scan_source(source):
++            found.append(f"{rel}:{line}: {what}")
++    return found
++
++
++class TestNoInteractiveInput:
++
++    def test_guard_scans_real_files(self):
++        """A guard that scans nothing would pass forever."""
++        files = _guarded_files()
++        assert len(files) > 50, f"expected a populated scan, got {len(files)}"
++
++    def test_no_interactive_constructs_in_execution_packages(self):
++        violations = _violations()
++        assert not violations, (
++            "Interactive input found in an unattended execution package. "
++            "Remedy asks its questions once, at plan time, on the flight "
++            "plan approval decision — read the resolved clarifications "
++            "instead:\n  " + "\n  ".join(violations))
++
++    def test_allowlist_is_empty(self):
++        assert _ALLOWLIST == set(), (
++            "The interactive-input allowlist must stay empty; each entry "
++            "breaks the unattended guarantee for that module.")
++
++
++class TestGuardDetectsViolations:
++    """The guard must actually catch what it claims to catch."""
++
++    def test_detects_each_construct(self):
++        samples = {
++            "answer = input('which db? ')": "builtin input()",
++            "answer = raw_input('which db? ')": "builtin raw_input()",
++            "import getpass": "import getpass",
++            "from getpass import getpass": "from getpass import ...",
++            "if click.confirm('proceed?'):\n    pass": "click.confirm",
++            "value = click.prompt('db')": "click.prompt",
++            "raw = sys.stdin.read()": "sys.stdin",
++            "for line in sys.stdin:\n    pass": "sys.stdin",
++        }
++        for snippet, expected in samples.items():
++            found = [what for _, what in scan_source(snippet)]
++            assert expected in found, f"{snippet!r} -> {found}"
++
++    def test_spacing_does_not_hide_a_call(self):
++        assert scan_source("answer = input ('db')")
++
++    def test_prose_and_similar_identifiers_do_not_trip_the_guard(self):
++        benign = [
++            "# Mission needs user input (e.g. acceptance criteria).",
++            "msg = 'needs user input (see docs)'",
++            "prepare_call_input(prompt=p)",
++            "read_intake_input(input_path=x)",
++            "input_tokens = int(x)",
++            "summarize_tool_input(block)",
++            "self.input(value)",
++            "obj.getpass()",
++            "stdin_text = read(path)",
++        ]
++        for snippet in benign:
++            assert scan_source(snippet) == [], snippet

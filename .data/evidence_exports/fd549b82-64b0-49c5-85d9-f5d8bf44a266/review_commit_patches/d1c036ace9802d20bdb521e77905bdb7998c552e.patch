@@ -1,0 +1,102 @@
+d1c036ace9802d20bdb521e77905bdb7998c552e
+diff --git a/docs/roadmap/features/T1_F034.md b/docs/roadmap/features/T1_F034.md
+index 5967678..282995b 100644
+--- a/docs/roadmap/features/T1_F034.md
++++ b/docs/roadmap/features/T1_F034.md
+@@ -82,3 +82,96 @@ prompt that touches the planner prompt text.
+ Mid-run advisory decisions, persona question style, notification delivery.
+ Suggested tests: tests/orchestration/test_bundled_clarification.py,
+ tests/cli/test_decision_answers.py, tests/test_no_interactive_guard.py.
++
++## Built State (2026-07-26)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**Contract.** `FlightPlanClarification` (schemas/models.py) gained two
++additive fields: `id` and `answered_by` (`human` | `default` | `""`), both
++defaulting to empty so pre-F034 `fp1` job data loads unchanged. The
++persisted vocabulary is exactly those three values — a planner-declared A9
++assumption keeps `answered_by=""` and is recognised by carrying an answer;
++the log derives the "planner" source from that shape (rationale in
++`.agent/decisions.md`).
++
++**Plan generation.** `flight_plan.py` gained `carry_intake_clarifications`
++(runs inside `plan_job_llm` after F016 granularity normalization): every
++intake clarification becomes an unanswered entry with a stable id assigned
++by intake order (`q1`, `q2`, …). A planner echoing an intake question back
++does not close it — the intake is authoritative for what is open. Planner
++entries that are not intake questions are preserved after them as
++assumptions. A plan with no intake clarifications and no planner entries is
++returned unchanged (identity), so the zero-clarification approval flow is
++byte-for-byte the plain-plan flow.
++
++**One decision per plan.** `open_clarification_questions` feeds the
++questions into the payload of the *existing* `fp:approval` decision
++(`decision_queue.py`, where `HumanDecision` gained an additive `payload`
++dict). Two clarifications produce exactly one open decision, asserted by
++test. No decision is created per question.
++
++**Resolution and immutability.** `apply_clarification_answers` writes every
++open question in one pass — a supplied answer with `answered_by="human"`,
++an unanswered one with its `default_answer` and `answered_by="default"` —
++returning new records rather than mutating the caller's. It is shared by
++the interactive approval path and the unattended one, so both record
++identically. `clarifications_already_resolved` backs the immutability
++check: a late `--answer` against a resolved plan is rejected by name and
++points at replan. Rejection leaves clarifications untouched.
++
++**CLI.** `remedy decision resolve <job> fp:approval` takes a repeatable
++`--answer q1="text"` (`ArgDef.is_repeatable`, declared per argument for the
++same reason `is_flag` is). Answering a subset is valid; unknown, malformed
++and duplicate ids each fail cleanly with exit 1. `remedy job assumptions
++<id>` prints the log, rendered from the job's own flight plan so it is
++truthful even for jobs approved before the evidence file existed.
++
++**Assumption log.** `render_assumptions_md` / `write_assumptions_md` emit
++`assumptions.md` into the job evidence area: one row per question —
++id → question → answer → source → impact — with a source tally. Sources are
++`human`, `default`, `planner`, `unresolved`. Table cells escape pipes and
++fold newlines so free text cannot break the table. `render_plan_md` links
++to the log and shows question ids.
++
++**Unattended.** `remedy do --yes` covers approval AND clarifications: every
++open question resolves to its documented default and the log is written.
++The end-to-end test drives a fake provider with one clarification and
++asserts the default is recorded with `answered_by="default"`, the log is on
++disk, and zero flight-plan decisions remain open.
++
++**Runtime cannot ask — enforced.** `tests/test_no_interactive_guard.py`
++parses every module under `packages/orchestration`, `core`, `providers`,
++`runtimes` and `verification` and fails on `input()`, `raw_input()`,
++`getpass`, `click.prompt/confirm` or `sys.stdin`. The allowlist is empty and
++a test keeps it empty. Detection is AST-based, not textual: a regex version
++flagged prose such as "needs user input (e.g. acceptance criteria)" in
++`progress_ledger.py`, and a guard with false positives gets allowlisted
++into uselessness. The guard was proven red on an injected violation before
++being accepted green. Scope limit worth knowing: it covers `packages/`
++only — `apps/cli` stays deliberately interactive-capable.
++
++**Planner prompt.** Instructs the model to resolve intake questions into
++plan choices where the material settles them, carry forward only genuinely
++ambiguous ones, and give every clarification a conservative keep/no-op
++default with impact text. The conservative-defaults rule is recorded
++verbatim beside the template. A fixture asserts a keep-style default
++survives the round trip into the log.
++
++**Not built.** Conditional-answer predicates (machine-checkable predicates
++over run state, registered comparator set) are declared OPTIONAL by this
++file's orchestrator brief and were skipped — they need a comparator
++registry, a runner evaluation point and evidence plumbing, and no DONE
++criterion depends on them. Recorded in `.agent/decisions.md`.
++
++**Verification.** Slice suite (`test_bundled_clarification.py` +
++`test_decision_answers.py`) 67 passed; guard 6 passed; canary
++`test_golden_path.py` 42 passed; `test_plan_approval.py` +
++`test_flight_plan.py` + `tests/schemas/` 100 passed. Integration gate
++(`pytest -n auto`, branch vs base `34878f3`): branch 161 failed / 13935
++passed, base 197 failed / 13820 passed; all 7 branch-only failures
++attributed to pre-existing xdist flake in runtime/supervisor process tests
++(green on serial re-run, two reproduced verbatim on a base worktree, no
++coupling to any F034-touched module). Zero F034-attributable regressions.
++The suite is RED on base by 197 tests — pre-existing, tracked as F135/F052.

@@ -1,0 +1,22 @@
+[
+ {
+  "apply_manifest": null,
+  "status": "pending",
+  "task_id": "T001"
+ },
+ {
+  "apply_manifest": null,
+  "status": "pending",
+  "task_id": "T002"
+ },
+ {
+  "apply_manifest": null,
+  "status": "pending",
+  "task_id": "T003"
+ },
+ {
+  "apply_manifest": null,
+  "status": "pending",
+  "task_id": "T004"
+ }
+]

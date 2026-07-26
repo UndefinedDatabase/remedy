@@ -1,0 +1,55 @@
+2f74aee60dc6ac5656a9136120338b5bc6546cc5
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index f07c85c..839afda 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,7 +1,7 @@
+ # Live Review — F034 Bundled clarification in the Flight Plan
+ 
+ Branch: feature/f034-bundled-clarification
+-LAST_REVIEWED_SHA: 0891b8d
++LAST_REVIEWED_SHA: 8027d48
+ Finding IDs continue monotonically from R-0143.
+ 
+ ## Findings
+@@ -39,3 +39,10 @@ Finding IDs continue monotonically from R-0143.
+ - Repair round (R-0144): resolved by this entry replacing the
+   unauthored one. Mark R-0144 Resolved in ## Findings
+   (Done: R-0144).
++- Repair round (1b891fb..8027d48): PASS — issued by the reviewer.
++  Both authored texts applied byte-identical (reviewer re-ran the
++  grep proofs and the canary: 42 passed). The whitespace-
++  normalized verification of the "issued by the reviewer" check
++  was the correct, honest handling — the authored text was not
++  reflowed to satisfy a literal grep. LAST_REVIEWED_SHA = 8027d48.
++  F034 enters closure.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 71f523d..c4a5ce2 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -15,17 +15,19 @@ the execution packages.
+ - [x] T002 approve → write-back → immutability (late answer rejected)
+ - [x] T003 assumptions.md renderer + CLI + plan.md link
+ - [x] T004 interactive-input guard test + unattended end-to-end
+-- [x] Integration gate — no F034-attributable regression (verdict in
+-      .agent/live_review.md)
++- [x] Integration gate — no F034-attributable regression (reviewer verdict
++      in .agent/live_review.md)
++- [x] Repair R-0144 (resolved, reviewer-verified)
+ - [ ] Closure
+ 
+ ## Current Step
+-Integration-gate handback — both full-suite runs recorded raw, all 7
+-branch-only failures attributed to pre-existing flake with serial-rerun
+-and base-repeat evidence, canary green. Awaiting the reviewer.
++Closure — integrity check, evidence job attesting T001–T004, fresh review
++zip, Built State in the feature file, authored STATUS line, PR #151
++finalized. Do NOT merge: the Open PR Gate handles that at the next
++feature start.
+ 
+ ## Next Steps
+-Closure (evidence job, review zip, STATUS line) after the gate verdict.
++None after closure.
+ 
+ ## Risks
+ - Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both

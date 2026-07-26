@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/cli/test_decision_answers.py",
+  "tests/orchestration/test_bundled_clarification.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_title": "Task T003"
+}

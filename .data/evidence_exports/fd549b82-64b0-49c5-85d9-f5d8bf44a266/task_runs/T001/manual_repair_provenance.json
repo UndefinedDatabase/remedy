@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/commands/job.py"
+ ],
+ "diff_sha256": "52348d3f0ea491ebd1832e153a0ef4b47485c5b926b32f148f08e35676e9694f",
+ "job_id": "fd549b82-64b0-49c5-85d9-f5d8bf44a266",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "52348d3f0ea491ebd1832e153a0ef4b47485c5b926b32f148f08e35676e9694f",
+ "safe_diff_sha256": "9dad6fe1750c235a92dce52c9fbb7bff1176a9e5e6828bdb1aa7e1367feeb992",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/commands/job.py"
+ ],
+ "timestamp": "2026-07-26T18:19:36.205105+00:00",
+ "tracked_diff_sha256": "9dad6fe1750c235a92dce52c9fbb7bff1176a9e5e6828bdb1aa7e1367feeb992",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

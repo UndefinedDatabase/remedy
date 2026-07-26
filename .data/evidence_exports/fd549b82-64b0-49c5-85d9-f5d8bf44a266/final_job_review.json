@@ -1,0 +1,79 @@
+{
+ "actual_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/commands/job.py",
+  "apps/cli/grouped.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F034.md",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/cli/test_decision_answers.py",
+  "tests/orchestration/test_bundled_clarification.py",
+  "tests/test_no_interactive_guard.py"
+ ],
+ "changed_files_match": true,
+ "completion_mode": "manual_operator_repair",
+ "completion_provider_call_count": 0,
+ "expected_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/do_cmd.py",
+  "apps/cli/commands/job.py",
+  "apps/cli/grouped.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F034.md",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/schemas/models.py",
+  "tests/cli/test_decision_answers.py",
+  "tests/orchestration/test_bundled_clarification.py",
+  "tests/test_no_interactive_guard.py"
+ ],
+ "findings": [],
+ "human_final_reviewer_required": true,
+ "job_id": "fd549b82-64b0-49c5-85d9-f5d8bf44a266",
+ "linked_prior_job_ids": [],
+ "linked_prior_job_summaries": [],
+ "per_task_changed_files": {
+  "T001": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/decision.py",
+   "apps/cli/commands/do_cmd.py",
+   "apps/cli/commands/job.py"
+  ],
+  "T002": [
+   "apps/cli/grouped.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F034.md",
+   "packages/orchestration/decision_queue.py"
+  ],
+  "T003": [
+   "packages/orchestration/flight_plan.py",
+   "packages/orchestration/schemas/models.py",
+   "tests/cli/test_decision_answers.py",
+   "tests/orchestration/test_bundled_clarification.py"
+  ],
+  "T004": [
+   "tests/test_no_interactive_guard.py"
+  ]
+ },
+ "prior_execution_provider_call_count": 0,
+ "review_mode": "operator_attested_manual_completion",
+ "root_verification": {
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 220
+ },
+ "schema_version": "1.0.0",
+ "superseded_prior_run_ids": [],
+ "task_verdicts": {
+  "T001": "operator_attested",
+  "T002": "operator_attested",
+  "T003": "operator_attested",
+  "T004": "operator_attested"
+ },
+ "verdict": "PASS"
+}

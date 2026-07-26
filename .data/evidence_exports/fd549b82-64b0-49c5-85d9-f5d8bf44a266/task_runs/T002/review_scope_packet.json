@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "apps/cli/grouped.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F034.md",
+  "packages/orchestration/decision_queue.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

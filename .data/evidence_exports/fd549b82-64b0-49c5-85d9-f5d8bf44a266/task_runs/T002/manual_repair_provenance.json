@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/grouped.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F034.md",
+  "packages/orchestration/decision_queue.py"
+ ],
+ "diff_sha256": "f61e01ba8b8e2b8f00bbc326b253a204d8d38b759865278aa9245a28f3b070fe",
+ "job_id": "fd549b82-64b0-49c5-85d9-f5d8bf44a266",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "f61e01ba8b8e2b8f00bbc326b253a204d8d38b759865278aa9245a28f3b070fe",
+ "safe_diff_sha256": "c2abd684453e8e31eb2e3878880862764126cbf3c5c0e909b4096886b7fbe9f9",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/grouped.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F034.md",
+  "packages/orchestration/decision_queue.py"
+ ],
+ "timestamp": "2026-07-26T18:19:36.205105+00:00",
+ "tracked_diff_sha256": "c2abd684453e8e31eb2e3878880862764126cbf3c5c0e909b4096886b7fbe9f9",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

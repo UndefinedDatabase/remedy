@@ -1,0 +1,22 @@
+{
+ "changed_files": [
+  "tests/test_no_interactive_guard.py"
+ ],
+ "diff_sha256": "58bbf6b861725311c67411e6a4b8905fefb5bd3b88748942a404670c447c8fce",
+ "job_id": "fd549b82-64b0-49c5-85d9-f5d8bf44a266",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T004",
+ "provenance_sha256": "58bbf6b861725311c67411e6a4b8905fefb5bd3b88748942a404670c447c8fce",
+ "safe_diff_sha256": "543013cb2df356b90b24c0d3ce6215eb3adbe25aa734778933f9cd98ac5648e2",
+ "schema_version": "1.0.0",
+ "task_id": "T004",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "tests/test_no_interactive_guard.py"
+ ],
+ "timestamp": "2026-07-26T18:19:36.205105+00:00",
+ "tracked_diff_sha256": "543013cb2df356b90b24c0d3ce6215eb3adbe25aa734778933f9cd98ac5648e2",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}
