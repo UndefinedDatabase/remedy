@@ -367,6 +367,105 @@ def test_merge_that_would_close_a_cycle_is_refused() -> None:
     assert "cycle" in record.reason
 
 
+# ---------------------------------------------------------------------------
+# Mixed fixture (T003 acceptance)
+# ---------------------------------------------------------------------------
+
+def _mixed_fixture() -> list[PlannedTask]:
+    """One XL/four-acceptance task, three trivial neighbors, one M task."""
+    return [
+        _task(
+            "T1",
+            acceptance=["parser core", "runner loop", "docs page", "cli flag"],
+            band="XL",
+            files=["src/parser.py", "src/runner.py", "docs/page.md",
+                   "cli/flag.py"],
+        ),
+        _small("T2", ["lib/util/a.py"], deps=["T1"]),
+        _small("T3", ["lib/util/b.py"], deps=["T2"]),
+        _small("T4", ["lib/util/c.py"], deps=["T3"]),
+        _task("T5", acceptance=["wire it", "prove it"], band="M",
+              deps=["T4"]),
+    ]
+
+
+_HEURISTIC = "assigned heuristically (no cost history — F016 v1)"
+
+_MIXED_GOLDEN = [
+    {
+        "kind": "split",
+        "source_ids": ["T1"],
+        "result_ids": ["T1a", "T1b", "T1c", "T1d"],
+        "reason": (
+            "split (band XL at/above split band XL + acceptance count 4 > 3) "
+            f"into 4 acceptance clusters; children band M {_HEURISTIC}"),
+    },
+    {
+        "kind": "merge",
+        "source_ids": ["T2", "T3", "T4"],
+        "result_ids": ["T2"],
+        "reason": (
+            "merged 3 consecutive S-band tasks sharing files_hint tokens; "
+            f"band M {_HEURISTIC}"),
+    },
+]
+
+
+def test_mixed_fixture_normalizes_and_matches_the_golden_record() -> None:
+    """Acceptance fixture: one XL task, three trivial neighbors, one M task."""
+    result = normalize_plan(_plan(_mixed_fixture()), GranularityConfig())
+    tasks = result.plan.tasks
+
+    assert [t.id for t in tasks] == ["T1a", "T1b", "T1c", "T1d", "T2", "T5"]
+    assert [t.est_tokens_band for t in tasks] == [
+        "M", "M", "M", "M", "M", "M"]
+    assert [list(t.depends_on) for t in tasks] == [
+        [], ["T1a"], ["T1b"], ["T1c"], ["T1d"], ["T2"]]
+    # The M task came through untouched.
+    assert tasks[-1] == _mixed_fixture()[-1].model_copy(
+        update={"depends_on": ["T2"]})
+    assert result.as_dicts() == _MIXED_GOLDEN
+
+
+def test_normalizing_twice_yields_identical_output() -> None:
+    first = normalize_plan(_plan(_mixed_fixture()), GranularityConfig())
+    second = normalize_plan(_plan(_mixed_fixture()), GranularityConfig())
+
+    assert first.plan.model_dump() == second.plan.model_dump()
+    assert first.as_dicts() == second.as_dicts()
+
+    # ...and the normalized plan is a fixed point: nothing left to right-size.
+    again = normalize_plan(first.plan, GranularityConfig())
+    assert again.plan is first.plan
+    assert again.transformations == []
+
+
+def test_disabled_flag_is_a_byte_identical_pass_through() -> None:
+    plan = _plan(_mixed_fixture())
+    before = plan.model_dump()
+    result = normalize_plan(plan, GranularityConfig(enabled=False))
+
+    assert result.plan is plan
+    assert result.plan.model_dump() == before
+    assert result.transformations == []
+
+
+def test_revalidation_failure_aborts_to_the_original_plan() -> None:
+    # 24 tasks + a 4-way split would be 27, over the schema's 25-task cap:
+    # the new FlightPlan cannot be constructed, so nothing is applied.
+    tasks = [_task(f"F{i:03d}", acceptance=["a"], band="M") for i in range(23)]
+    tasks.append(_task("T1", acceptance=["one", "two", "three", "four"],
+                       band="XL"))
+    plan = _plan(tasks)
+    result = normalize_plan(plan, GranularityConfig())
+
+    assert result.plan is plan
+    (record,) = result.transformations
+    assert record.kind == "aborted"
+    assert "25-task cap" in record.reason
+    assert record.source_ids == [t.id for t in tasks]
+
+
 def test_merge_group_size_one_disables_merging() -> None:
     plan = _plan([
         _small("T1", ["src/app/a.py"]),

@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from packages.core.models import AcceptanceCheck, RunState, Task
 from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
 
 
 @dataclass
@@ -26,6 +27,8 @@ class FlightPlanResult:
     error_hint: str = ""
     calls: int = 0
     call_log: list[dict[str, Any]] | None = None
+    #: F016 granularity record: what normalization changed, if anything.
+    transformations: list[dict[str, Any]] = field(default_factory=list)
 
 
 _PLAN_PROMPT_TEMPLATE = """\
@@ -80,17 +83,38 @@ def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
     )
 
 
+def granularity_config() -> GranularityConfig:
+    """Read the F016 thresholds from Remedy config.
+
+    Lives here, not in task_granularity: that module stays pure and takes
+    its thresholds as an argument.
+    """
+    from packages.orchestration.config import get_config
+    cfg = get_config()
+    return GranularityConfig(
+        enabled=bool(cfg.get("planning.granularity.enabled")),
+        split_band=str(cfg.get("planning.granularity.split_band")),
+        max_acceptance=int(cfg.get("planning.granularity.max_acceptance")),
+        merge_group_size=int(cfg.get("planning.granularity.merge_group_size")),
+    )
+
+
 def plan_job_llm(
     intake: dict[str, Any],
     call_fn: Callable[[str, int], str],
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    granularity: GranularityConfig | None = None,
 ) -> FlightPlanResult:
     """Generate a FlightPlan from a job's intake via LLM.
 
     Uses run_structured_call for schema validation + one parse retry.
     Returns a FlightPlanResult; on failure, plan is None and error_hint
     describes the failure class.
+
+    The validated plan then passes through F016 task-granularity
+    normalization — the single insertion point for it — and the result
+    carries the transformation record.
     """
     prompt = _build_plan_prompt(intake)
     try:
@@ -115,11 +139,28 @@ def plan_job_llm(
         )
 
     assert isinstance(outcome.value, FlightPlan)
+    plan = outcome.value
+    transformations: list[dict[str, Any]] = []
+    try:
+        normalized = normalize_plan(plan, granularity or granularity_config())
+        plan = normalized.plan
+        transformations = normalized.as_dicts()
+    except Exception as exc:
+        # Misconfigured thresholds must not lose a valid plan; same fail-open
+        # rule the normalizer applies to its own revalidation.
+        transformations = [{
+            "kind": "aborted",
+            "source_ids": [t.id for t in plan.tasks],
+            "result_ids": [t.id for t in plan.tasks],
+            "reason": f"normalization not run, original plan kept: {exc}",
+        }]
+
     return FlightPlanResult(
-        plan=outcome.value,
+        plan=plan,
         source="llm",
         calls=outcome.calls,
         call_log=outcome.call_log,
+        transformations=transformations,
     )
 
 
@@ -198,8 +239,16 @@ def apply_plan_fences(
 # Renderer (T003)
 # ---------------------------------------------------------------------------
 
-def render_plan_md(plan: FlightPlan) -> str:
-    """Render a FlightPlan to deterministic, stably ordered markdown."""
+def render_plan_md(
+    plan: FlightPlan,
+    transformations: list[dict[str, Any]] | None = None,
+) -> str:
+    """Render a FlightPlan to deterministic, stably ordered markdown.
+
+    *transformations* is the F016 granularity record. The section is always
+    rendered so the approving human sees either what was changed or an
+    explicit statement that nothing was.
+    """
     lines: list[str] = []
     lines.append("# Flight Plan")
     lines.append("")
@@ -232,6 +281,20 @@ def render_plan_md(plan: FlightPlan) -> str:
             lines.append("**Files hint:**")
             for f in t.files_hint:
                 lines.append(f"- `{f}`")
+        lines.append("")
+
+    lines.append("## Normalization")
+    lines.append("")
+    if not transformations:
+        lines.append("No transformations — the plan is used as generated.")
+        lines.append("")
+    else:
+        for entry in transformations:
+            sources = ", ".join(entry.get("source_ids", [])) or "-"
+            results = ", ".join(entry.get("result_ids", [])) or "-"
+            lines.append(
+                f"- **{entry.get('kind', 'unknown')}** {sources} → {results}")
+            lines.append(f"  - {entry.get('reason', '')}")
         lines.append("")
 
     if plan.risks:
@@ -267,12 +330,17 @@ def render_plan_md(plan: FlightPlan) -> str:
     return "\n".join(lines)
 
 
-def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Path:
+def write_plan_md(
+    plan: FlightPlan,
+    evidence_dir: Path,
+    version: int = 1,
+    transformations: list[dict[str, Any]] | None = None,
+) -> Path:
     """Write rendered plan to evidence dir. Returns the written path."""
     evidence_dir.mkdir(parents=True, exist_ok=True)
     filename = "plan.md" if version == 1 else f"plan_v{version}.md"
     path = evidence_dir / filename
-    path.write_text(render_plan_md(plan), encoding="utf-8")
+    path.write_text(render_plan_md(plan, transformations), encoding="utf-8")
     return path
 
 
@@ -310,6 +378,7 @@ def replan(
     evidence_dir: Path,
     *,
     any_task_completed: bool = False,
+    transformations: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], int]:
     """Apply a new flight plan version.
 
@@ -331,5 +400,7 @@ def replan(
     new_plan_dict["_version"] = new_version
     new_plan_dict["_approval"] = "pending"
 
-    write_plan_md(new_plan, evidence_dir, version=new_version)
+    write_plan_md(
+        new_plan, evidence_dir, version=new_version,
+        transformations=transformations)
     return new_plan_dict, new_version

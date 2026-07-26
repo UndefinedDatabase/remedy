@@ -492,4 +492,21 @@ def normalize_plan(
 
     data = plan.model_dump()
     data["tasks"] = [t.model_dump() for t in tasks]
-    return NormalizationResult(plan=FlightPlan(**data), transformations=records)
+    try:
+        # Constructing the model IS the revalidation: FlightPlan's own
+        # _validate_dag runs here. No validation logic is copied.
+        new_plan = FlightPlan(**data)
+    except Exception as exc:
+        # Fail open to the plan the human is about to approve, never to a
+        # broken one — and say so in the record.
+        return NormalizationResult(
+            plan=plan,
+            transformations=[Transformation(
+                kind="aborted",
+                source_ids=[t.id for t in plan.tasks],
+                result_ids=[t.id for t in plan.tasks],
+                reason=(
+                    f"normalization aborted, original plan kept: {exc}"),
+            )],
+        )
+    return NormalizationResult(plan=new_plan, transformations=records)

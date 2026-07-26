@@ -10,18 +10,18 @@ failing open to the original plan.
 - [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
 - [x] T001 split rules + config keys + table tests (gate green)
 - [x] T002 merge rule + dependency-safety table tests (gate green)
-- [ ] T003 revalidation/abort + bypass + wiring into plan_job_llm +
-      plan.md normalization section + mixed-fixture integration test
+- [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
+      plan.md normalization section + mixed-fixture integration (gate green)
 
 ## Current Step
-T003 — revalidation/abort, bypass, wiring into plan_job_llm, the plan.md
-normalization section, mixed-fixture integration + determinism tests.
+Push, open PR, hand back: completion report with per-commit changed-files
+tables and raw verification transcripts, then rewrite .agent/handoff.md.
 
 ## Next Steps
-Handback: completion report with per-commit tables and raw transcripts,
-then rewrite .agent/handoff.md.
+Reviewer round on feature/f016-task-granularity.
 
 ## Risks
-- Wiring touches two call sites (do_cmd.py ~241, ~2832); the record must be
-  persisted as fp_dict["_normalization"] without touching plan schema classes
-  (F014 R-0121: schema-size snapshot regression).
+- Plan schema classes untouched (F014 R-0121); the record lives only in
+  fp_dict["_normalization"] and FlightPlanResult.
+- Merge overlap is token-based, so two files under a common directory count
+  as related — over-eager merging is possible, and visible in the record.

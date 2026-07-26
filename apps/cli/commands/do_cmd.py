@@ -242,6 +242,7 @@ def _cmd_do_mission(
         if fp_result.plan is not None:
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
+            fp_dict["_normalization"] = fp_result.transformations
             tasks = map_flight_plan_to_tasks(fp_result.plan)
             from packages.core.models import JobBudgets, JobFences
             from packages.orchestration.budget_resolution import resolve_job_budgets
@@ -277,7 +278,9 @@ def _cmd_do_mission(
             )
             save_job(job)
             from packages.orchestration.data_paths import job_evidence_export_dir
-            write_plan_md(fp_result.plan, job_evidence_export_dir(str(job.id)))
+            write_plan_md(
+                fp_result.plan, job_evidence_export_dir(str(job.id)),
+                transformations=fp_result.transformations)
             if yes:
                 fp_dict["_approval"] = "approved"
                 fp_dict["_approval_audit"] = {
@@ -2842,11 +2845,13 @@ def _cmd_do_replan(
         new_fp_dict, version = replan(
             fp, fp_result.plan, ev_dir,
             any_task_completed=any_completed,
+            transformations=fp_result.transformations,
         )
     except ReplanRejectedError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    new_fp_dict["_normalization"] = fp_result.transformations
     job.flight_plan = new_fp_dict
     job.tasks = map_flight_plan_to_tasks(fp_result.plan)
     save_job(job)
