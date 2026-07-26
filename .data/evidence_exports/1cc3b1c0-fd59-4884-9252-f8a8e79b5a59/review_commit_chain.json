@@ -1,0 +1,145 @@
+{
+ "base_commit": "dcb8b1a7f451c0cce7cc8722ebbd9e0847ca5673",
+ "chain_v": 1,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "88911bd3488868cfec1e0fc718ddf37636e1e755",
+   "parents": [
+    "dcb8b1a7f451c0cce7cc8722ebbd9e0847ca5673"
+   ],
+   "patch_sha256": "824618afe9e5646cc69494eab7e052461926e206939113ff371b9da6274a324e",
+   "subject": "chore(f016): claim F016, reset live review and plan for task granularity",
+   "tree": "7e98563d6ad18599c546059a0b1b14b09266216f"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/config.py",
+    "packages/orchestration/task_granularity.py"
+   ],
+   "commit": "8b5360cc629ffc2bb5249205d68d8c9a3aa7088d",
+   "parents": [
+    "88911bd3488868cfec1e0fc718ddf37636e1e755"
+   ],
+   "patch_sha256": "e2887020d3d856e74d01757fd51b7978ef0e15aee0197eca9d1b14d54659e4d3",
+   "subject": "feat(f016): pure task-granularity split heuristic and planning config keys",
+   "tree": "53a18fc3aecfbc4c9274577f16f55b1768e312e3"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "tests/orchestration/test_config.py",
+    "tests/orchestration/test_task_granularity.py"
+   ],
+   "commit": "6513fcaf6062fe7bc97caf5d559f7601c71a0ffb",
+   "parents": [
+    "8b5360cc629ffc2bb5249205d68d8c9a3aa7088d"
+   ],
+   "patch_sha256": "c807aadbc750e4512997df90a2ba03da2ea1289e3c4777f9b32d5993155f82e6",
+   "subject": "test(f016): table-driven split cases for task granularity",
+   "tree": "a4a1b75402792fa3cc4a09ef402b93df9ed154f2"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/plan.md",
+    "packages/orchestration/task_granularity.py",
+    "tests/orchestration/test_task_granularity.py"
+   ],
+   "commit": "fc2e219d85f9d93102ebef92d5d97cd45052e431",
+   "parents": [
+    "6513fcaf6062fe7bc97caf5d559f7601c71a0ffb"
+   ],
+   "patch_sha256": "960edbcba421aeb2e61254393c5924a2b2239fc50d348faab155288b6d3dac2f",
+   "subject": "feat(f016): merge rule for runs of trivial neighboring tasks",
+   "tree": "ff8b4733855784cf0a863a13493e6ffc5104ee4b"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/commands/do_cmd.py",
+    "docs/system/remedy-toml-configuration-system-v0.md",
+    "packages/orchestration/flight_plan.py",
+    "packages/orchestration/task_granularity.py",
+    "tests/cli/test_plan_approval.py",
+    "tests/orchestration/test_flight_plan.py",
+    "tests/orchestration/test_task_granularity.py"
+   ],
+   "commit": "51e2575a92a2b7593e7ec2b70467c7d26fd0a0dc",
+   "parents": [
+    "fc2e219d85f9d93102ebef92d5d97cd45052e431"
+   ],
+   "patch_sha256": "4479f7b877d0dd5bd28f5532f938c94b52b151f0a92455d950b02d489d42adc7",
+   "subject": "feat(f016): revalidate, wire normalization into plan generation",
+   "tree": "8d70e68ad64f2fb2898ddbd017f8b138ceb16e47"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "cd13645cb149c97196ed6115beeea4bc639b6d4d",
+   "parents": [
+    "51e2575a92a2b7593e7ec2b70467c7d26fd0a0dc"
+   ],
+   "patch_sha256": "ca20da277f3e3e3aed9b2b3c451ea1d54847918186e155ce2b9a7e1361428822",
+   "subject": "chore(f016): handback state for round 1",
+   "tree": "107532bff6abc86f1364b363c9080ea82283d8ee"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "c534d82c1f31e199e3fb3e3f87d24ec80dafe0e4",
+   "parents": [
+    "cd13645cb149c97196ed6115beeea4bc639b6d4d"
+   ],
+   "patch_sha256": "5bd79c4ea4af3697c7c98ec548d8333aca6bc2b5508f9518423d637e630caff9",
+   "subject": "chore(f016): persist round 1 reviewer verdict; open integration gate",
+   "tree": "817beb9c24822ea7357825f4b14e0bb145807697"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "2fad89295e11bc2aad51f7ae5f7de52b7542e9b5",
+   "parents": [
+    "c534d82c1f31e199e3fb3e3f87d24ec80dafe0e4"
+   ],
+   "patch_sha256": "7cf0119118949ccaa6a8834e48fd292c35d0dc9e6aa8b2fdcba8f954304d3196",
+   "subject": "chore(f016): integration gate measurements and handback",
+   "tree": "5d8997086cedad76d7b69bc54b9410f1852fe591"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "f27f9a954f408ee20964cad866edb90bdd9dfca0",
+   "parents": [
+    "2fad89295e11bc2aad51f7ae5f7de52b7542e9b5"
+   ],
+   "patch_sha256": "093ce4db9901cab47c1aa7be4afc8851f5951729f3a02ac8b1bc7045aba887e4",
+   "subject": "chore(f016): persist integration-gate and final reviewer verdicts",
+   "tree": "ce9b02e48984b1fc48a3bd716b969a9f88b9a157"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "docs/roadmap/features/T1_F016.md"
+   ],
+   "commit": "85004253705e5eae15d969812af84738373e5453",
+   "parents": [
+    "f27f9a954f408ee20964cad866edb90bdd9dfca0"
+   ],
+   "patch_sha256": "74234b09bd1cb2815a40713d3398d95c162d0a645ec346f845ee5cf28a1d1140",
+   "subject": "docs(f016): built state in the feature file; plan set to closure",
+   "tree": "ff312e57c703a035aa5a2bd28764743f14e3b10c"
+  }
+ ],
+ "head_commit": "85004253705e5eae15d969812af84738373e5453"
+}

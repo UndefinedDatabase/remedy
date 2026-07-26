@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/commands/do_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F016.md",
+  "docs/system/remedy-toml-configuration-system-v0.md"
+ ],
+ "diff_sha256": "90b92096354b70b88e4b739a22f9dcc55c0eae1b00cd789a3641077fa9516de7",
+ "job_id": "1cc3b1c0-fd59-4884-9252-f8a8e79b5a59",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "90b92096354b70b88e4b739a22f9dcc55c0eae1b00cd789a3641077fa9516de7",
+ "safe_diff_sha256": "69b13c34dcaed96594bbd6837a8f4ea77df89f5b3811563d8441851bf76ef6a2",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/commands/do_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F016.md",
+  "docs/system/remedy-toml-configuration-system-v0.md"
+ ],
+ "timestamp": "2026-07-26T14:56:25+00:00",
+ "tracked_diff_sha256": "69b13c34dcaed96594bbd6837a8f4ea77df89f5b3811563d8441851bf76ef6a2",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

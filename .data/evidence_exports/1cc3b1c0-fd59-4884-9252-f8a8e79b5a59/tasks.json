@@ -1,0 +1,34 @@
+[
+ {
+  "safe_diff_files": [
+   "apps/cli/commands/do_cmd.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F016.md",
+   "docs/system/remedy-toml-configuration-system-v0.md"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "packages/orchestration/config.py",
+   "packages/orchestration/flight_plan.py",
+   "packages/orchestration/task_granularity.py",
+   "tests/cli/test_plan_approval.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "tests/orchestration/test_config.py",
+   "tests/orchestration/test_flight_plan.py",
+   "tests/orchestration/test_task_granularity.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]

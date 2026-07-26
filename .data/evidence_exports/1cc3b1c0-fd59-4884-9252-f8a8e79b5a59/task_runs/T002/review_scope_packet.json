@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "packages/orchestration/config.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/task_granularity.py",
+  "tests/cli/test_plan_approval.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

@@ -1,0 +1,294 @@
+{
+ "base_commit": "dcb8b1a7f451c0cce7cc8722ebbd9e0847ca5673",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "88911bd3488868cfec1e0fc718ddf37636e1e755",
+   "parents": [
+    "dcb8b1a7f451c0cce7cc8722ebbd9e0847ca5673"
+   ],
+   "patch_sha256": "824618afe9e5646cc69494eab7e052461926e206939113ff371b9da6274a324e",
+   "subject": "chore(f016): claim F016, reset live review and plan for task granularity",
+   "tree": "7e98563d6ad18599c546059a0b1b14b09266216f"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/config.py",
+    "packages/orchestration/task_granularity.py"
+   ],
+   "commit": "8b5360cc629ffc2bb5249205d68d8c9a3aa7088d",
+   "parents": [
+    "88911bd3488868cfec1e0fc718ddf37636e1e755"
+   ],
+   "patch_sha256": "e2887020d3d856e74d01757fd51b7978ef0e15aee0197eca9d1b14d54659e4d3",
+   "subject": "feat(f016): pure task-granularity split heuristic and planning config keys",
+   "tree": "53a18fc3aecfbc4c9274577f16f55b1768e312e3"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "tests/orchestration/test_config.py",
+    "tests/orchestration/test_task_granularity.py"
+   ],
+   "commit": "6513fcaf6062fe7bc97caf5d559f7601c71a0ffb",
+   "parents": [
+    "8b5360cc629ffc2bb5249205d68d8c9a3aa7088d"
+   ],
+   "patch_sha256": "c807aadbc750e4512997df90a2ba03da2ea1289e3c4777f9b32d5993155f82e6",
+   "subject": "test(f016): table-driven split cases for task granularity",
+   "tree": "a4a1b75402792fa3cc4a09ef402b93df9ed154f2"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/plan.md",
+    "packages/orchestration/task_granularity.py",
+    "tests/orchestration/test_task_granularity.py"
+   ],
+   "commit": "fc2e219d85f9d93102ebef92d5d97cd45052e431",
+   "parents": [
+    "6513fcaf6062fe7bc97caf5d559f7601c71a0ffb"
+   ],
+   "patch_sha256": "960edbcba421aeb2e61254393c5924a2b2239fc50d348faab155288b6d3dac2f",
+   "subject": "feat(f016): merge rule for runs of trivial neighboring tasks",
+   "tree": "ff8b4733855784cf0a863a13493e6ffc5104ee4b"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "apps/cli/commands/do_cmd.py",
+    "docs/system/remedy-toml-configuration-system-v0.md",
+    "packages/orchestration/flight_plan.py",
+    "packages/orchestration/task_granularity.py",
+    "tests/cli/test_plan_approval.py",
+    "tests/orchestration/test_flight_plan.py",
+    "tests/orchestration/test_task_granularity.py"
+   ],
+   "commit": "51e2575a92a2b7593e7ec2b70467c7d26fd0a0dc",
+   "parents": [
+    "fc2e219d85f9d93102ebef92d5d97cd45052e431"
+   ],
+   "patch_sha256": "4479f7b877d0dd5bd28f5532f938c94b52b151f0a92455d950b02d489d42adc7",
+   "subject": "feat(f016): revalidate, wire normalization into plan generation",
+   "tree": "8d70e68ad64f2fb2898ddbd017f8b138ceb16e47"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "cd13645cb149c97196ed6115beeea4bc639b6d4d",
+   "parents": [
+    "51e2575a92a2b7593e7ec2b70467c7d26fd0a0dc"
+   ],
+   "patch_sha256": "ca20da277f3e3e3aed9b2b3c451ea1d54847918186e155ce2b9a7e1361428822",
+   "subject": "chore(f016): handback state for round 1",
+   "tree": "107532bff6abc86f1364b363c9080ea82283d8ee"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "c534d82c1f31e199e3fb3e3f87d24ec80dafe0e4",
+   "parents": [
+    "cd13645cb149c97196ed6115beeea4bc639b6d4d"
+   ],
+   "patch_sha256": "5bd79c4ea4af3697c7c98ec548d8333aca6bc2b5508f9518423d637e630caff9",
+   "subject": "chore(f016): persist round 1 reviewer verdict; open integration gate",
+   "tree": "817beb9c24822ea7357825f4b14e0bb145807697"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "2fad89295e11bc2aad51f7ae5f7de52b7542e9b5",
+   "parents": [
+    "c534d82c1f31e199e3fb3e3f87d24ec80dafe0e4"
+   ],
+   "patch_sha256": "7cf0119118949ccaa6a8834e48fd292c35d0dc9e6aa8b2fdcba8f954304d3196",
+   "subject": "chore(f016): integration gate measurements and handback",
+   "tree": "5d8997086cedad76d7b69bc54b9410f1852fe591"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "f27f9a954f408ee20964cad866edb90bdd9dfca0",
+   "parents": [
+    "2fad89295e11bc2aad51f7ae5f7de52b7542e9b5"
+   ],
+   "patch_sha256": "093ce4db9901cab47c1aa7be4afc8851f5951729f3a02ac8b1bc7045aba887e4",
+   "subject": "chore(f016): persist integration-gate and final reviewer verdicts",
+   "tree": "ce9b02e48984b1fc48a3bd716b969a9f88b9a157"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "docs/roadmap/features/T1_F016.md"
+   ],
+   "commit": "85004253705e5eae15d969812af84738373e5453",
+   "parents": [
+    "f27f9a954f408ee20964cad866edb90bdd9dfca0"
+   ],
+   "patch_sha256": "74234b09bd1cb2815a40713d3398d95c162d0a645ec346f845ee5cf28a1d1140",
+   "subject": "docs(f016): built state in the feature file; plan set to closure",
+   "tree": "ff312e57c703a035aa5a2bd28764743f14e3b10c"
+  }
+ ],
+ "files": [
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d507821be4f6654cc977d556b85b32359d876570532d3eba7ea14965def49dca",
+   "current_mode": "100644",
+   "current_sha256": "abb19c9d32b23bfa9cc75aa6d60b4444c648c7284dd89790e50f5f5af6f6de88",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d706fac5005b01875afe6b2b3ba7cb1623f319f2cdebe8c87ab438408842d39a",
+   "current_mode": "100644",
+   "current_sha256": "f610c52479e1d302d1f8f9778706c78735d8ac0273759f74e63b00c8a93a1f31",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "55fb7ec932c509f44eb55e7f4b0fe9fd2b4cf4e0fcf5b6b499d9100e44b33c38",
+   "current_mode": "100644",
+   "current_sha256": "c94512287aa621567a258f1805ae1e6ec5498c18b8f3a67eab2d6c57873381f9",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8197d0f4a49d91465a2d8c3e2efb16e1a2024cb4a6b56e400eb92a5e4078aab3",
+   "current_mode": "100644",
+   "current_sha256": "872fcd154e6c26c92bc8cc1f496b594e64bd951284f86dae35e0c4a225e9b7c8",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8596b338a9da7b82d3dfc93abe4bd8ed7f92b20fb76fec89dd29ae203b00ecd0",
+   "current_mode": "100644",
+   "current_sha256": "a2379c766899006da3a1d9c361bbf9af3d05d59db4d62b4fe8f1fdbe0163a71b",
+   "kind": "regular",
+   "path": "apps/cli/commands/do_cmd.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "b7355d966122d013dc2030b9b17f82ef329a1618aef474871be3d7fc5d3f38a4",
+   "current_mode": "100644",
+   "current_sha256": "c2fe3b91c4e24e1920e23e36ce88fe91f35090120c954e37006092f4dd440a9a",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "59c13a6292bd49c230fcb2ef7e606c53559ab9960033fabea3f39a40b8320b57",
+   "current_mode": "100644",
+   "current_sha256": "59809015839391c94fd74ffc4d9fb3a737c835ca47ce72d6a50ac982db640c3c",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F016.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1acc7ce67da0af7d8d1ac1129dbe9fa2bf8937c420d3f9ece873ba4d5fc607ce",
+   "current_mode": "100644",
+   "current_sha256": "dc4b4c666db0ef263d457dd9b92bb1603204cafa692ebf6cc8e3b2838939e26b",
+   "kind": "regular",
+   "path": "docs/system/remedy-toml-configuration-system-v0.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "553e637c3465d94100cc8039f857bebece16b59677cfe34823dfa6edbbe6b44c",
+   "current_mode": "100644",
+   "current_sha256": "c3ad9e4591c49d6a3442c98da3b56d29d278192ead825578bcd7f3180f127548",
+   "kind": "regular",
+   "path": "packages/orchestration/config.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "f27d0144dd321e27da3ce42a4d64a6c14661c0fa85c7aaaf774773658a37e20e",
+   "current_mode": "100644",
+   "current_sha256": "f552668397d7934e3b24b0f91520305bb3767bf72704fcb288dae7db6fb395f5",
+   "kind": "regular",
+   "path": "packages/orchestration/flight_plan.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7a4018760f844c0a364ff9bcd063901841fe1920d6094b12a93587f2149c7ae1",
+   "kind": "regular",
+   "path": "packages/orchestration/task_granularity.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "fea629caff9d1a30b58523ca3a6a3e3bb35ccc4062a5ff41bf4f5f80d29cb50a",
+   "current_mode": "100644",
+   "current_sha256": "a064dc28ee3d9d8fc87d9276033139800bb87af6fc74a38b8701b9a18d3f0090",
+   "kind": "regular",
+   "path": "tests/cli/test_plan_approval.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d6242cfbb5e9ab2abd89806a0bb3d6b5a47947d473912edf2f6633698837a6db",
+   "current_mode": "100644",
+   "current_sha256": "4394f39c9424a4bf25dec2fd676b70cd1723da20f3daaf84aaab44adbf5eaf5e",
+   "kind": "regular",
+   "path": "tests/orchestration/test_config.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "610aefaa1fd9b07bf1c4e0d5640dae47e64565a62210e0f44e7b95909acd350b",
+   "current_mode": "100644",
+   "current_sha256": "eb9b70baed7be43a8d893ad0e727c0b5dc819a22a8153c3c627c748a7f1f2702",
+   "kind": "regular",
+   "path": "tests/orchestration/test_flight_plan.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "1f8ffc11e264900676a397ee0afb1305582f5c0a3fc5e8dd3d20a71a7dbed1e8",
+   "kind": "regular",
+   "path": "tests/orchestration/test_task_granularity.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "85004253705e5eae15d969812af84738373e5453",
+ "subject_v": 1
+}

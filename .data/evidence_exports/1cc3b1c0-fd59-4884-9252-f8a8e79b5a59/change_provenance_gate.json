@@ -1,0 +1,89 @@
+{
+ "content_hash_verified": true,
+ "covered_files": [
+  "apps/cli/commands/do_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F016.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/task_granularity.py",
+  "tests/cli/test_plan_approval.py",
+  "tests/orchestration/test_config.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/orchestration/test_task_granularity.py"
+ ],
+ "current_hashes": {
+  "apps/cli/commands/do_cmd.py": "a2379c766899006da3a1d9c361bbf9af3d05d59db4d62b4fe8f1fdbe0163a71b",
+  "docs/roadmap/STATUS.md": "c2fe3b91c4e24e1920e23e36ce88fe91f35090120c954e37006092f4dd440a9a",
+  "docs/roadmap/features/T1_F016.md": "59809015839391c94fd74ffc4d9fb3a737c835ca47ce72d6a50ac982db640c3c",
+  "docs/system/remedy-toml-configuration-system-v0.md": "dc4b4c666db0ef263d457dd9b92bb1603204cafa692ebf6cc8e3b2838939e26b",
+  "packages/orchestration/config.py": "c3ad9e4591c49d6a3442c98da3b56d29d278192ead825578bcd7f3180f127548",
+  "packages/orchestration/flight_plan.py": "f552668397d7934e3b24b0f91520305bb3767bf72704fcb288dae7db6fb395f5",
+  "packages/orchestration/task_granularity.py": "7a4018760f844c0a364ff9bcd063901841fe1920d6094b12a93587f2149c7ae1",
+  "tests/cli/test_plan_approval.py": "a064dc28ee3d9d8fc87d9276033139800bb87af6fc74a38b8701b9a18d3f0090",
+  "tests/orchestration/test_config.py": "4394f39c9424a4bf25dec2fd676b70cd1723da20f3daaf84aaab44adbf5eaf5e",
+  "tests/orchestration/test_flight_plan.py": "eb9b70baed7be43a8d893ad0e727c0b5dc819a22a8153c3c627c748a7f1f2702",
+  "tests/orchestration/test_task_granularity.py": "1f8ffc11e264900676a397ee0afb1305582f5c0a3fc5e8dd3d20a71a7dbed1e8"
+ },
+ "current_job_id": "1cc3b1c0-fd59-4884-9252-f8a8e79b5a59",
+ "dirty_files": [],
+ "evidence_covered_files": [
+  "apps/cli/commands/do_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F016.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/task_granularity.py",
+  "tests/cli/test_plan_approval.py",
+  "tests/orchestration/test_config.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/orchestration/test_task_granularity.py"
+ ],
+ "evidence_hashes": {
+  "apps/cli/commands/do_cmd.py": "a2379c766899006da3a1d9c361bbf9af3d05d59db4d62b4fe8f1fdbe0163a71b",
+  "docs/roadmap/STATUS.md": "c2fe3b91c4e24e1920e23e36ce88fe91f35090120c954e37006092f4dd440a9a",
+  "docs/roadmap/features/T1_F016.md": "59809015839391c94fd74ffc4d9fb3a737c835ca47ce72d6a50ac982db640c3c",
+  "docs/system/remedy-toml-configuration-system-v0.md": "dc4b4c666db0ef263d457dd9b92bb1603204cafa692ebf6cc8e3b2838939e26b",
+  "packages/orchestration/config.py": "c3ad9e4591c49d6a3442c98da3b56d29d278192ead825578bcd7f3180f127548",
+  "packages/orchestration/flight_plan.py": "f552668397d7934e3b24b0f91520305bb3767bf72704fcb288dae7db6fb395f5",
+  "packages/orchestration/task_granularity.py": "7a4018760f844c0a364ff9bcd063901841fe1920d6094b12a93587f2149c7ae1",
+  "tests/cli/test_plan_approval.py": "a064dc28ee3d9d8fc87d9276033139800bb87af6fc74a38b8701b9a18d3f0090",
+  "tests/orchestration/test_config.py": "4394f39c9424a4bf25dec2fd676b70cd1723da20f3daaf84aaab44adbf5eaf5e",
+  "tests/orchestration/test_flight_plan.py": "eb9b70baed7be43a8d893ad0e727c0b5dc819a22a8153c3c627c748a7f1f2702",
+  "tests/orchestration/test_task_granularity.py": "1f8ffc11e264900676a397ee0afb1305582f5c0a3fc5e8dd3d20a71a7dbed1e8"
+ },
+ "evidence_sources": [
+  "workspace.diff",
+  "current_change_content_proof.json",
+  "task_runs/T001/safe.diff",
+  "task_runs/T002/safe.diff",
+  "task_runs/T003/safe.diff"
+ ],
+ "excluded_files": [
+  ".agent/decisions.md",
+  ".agent/handoff.md",
+  ".agent/live_review.md",
+  ".agent/plan.md"
+ ],
+ "hash_mismatches": [],
+ "issues": [],
+ "schema_version": "1.0.0",
+ "source_files": [
+  "apps/cli/commands/do_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F016.md",
+  "docs/system/remedy-toml-configuration-system-v0.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/flight_plan.py",
+  "packages/orchestration/task_granularity.py",
+  "tests/cli/test_plan_approval.py",
+  "tests/orchestration/test_config.py",
+  "tests/orchestration/test_flight_plan.py",
+  "tests/orchestration/test_task_granularity.py"
+ ],
+ "stale_apply_proofs": [],
+ "uncovered_files": [],
+ "verdict": "PASS"
+}

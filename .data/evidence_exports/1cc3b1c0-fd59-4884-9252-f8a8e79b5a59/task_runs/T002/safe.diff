@@ -1,0 +1,816 @@
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index ddb8874..3d91fee 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -267,6 +267,47 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=str,
+         default=None,
+     ),
++    ConfigKeySpec(
++        key="planning.granularity.enabled",
++        env_var="REMEDY_PLANNING_GRANULARITY_ENABLED",
++        description=(
++            "Normalize Flight-Plan task granularity — split oversized tasks, "
++            "merge trivial neighbors (F016). Disable for byte-identical "
++            "pass-through of the planner's task list."
++        ),
++        value_type=bool,
++        default=True,
++    ),
++    ConfigKeySpec(
++        key="planning.granularity.split_band",
++        env_var="REMEDY_PLANNING_GRANULARITY_SPLIT_BAND",
++        description=(
++            "Token band at and above which a planned task is split "
++            "(S, M, L, XL) (F016)"
++        ),
++        value_type=str,
++        default="XL",
++    ),
++    ConfigKeySpec(
++        key="planning.granularity.max_acceptance",
++        env_var="REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE",
++        description=(
++            "Acceptance-criteria count above which a planned task is split "
++            "(F016)"
++        ),
++        value_type=int,
++        default=3,
++    ),
++    ConfigKeySpec(
++        key="planning.granularity.merge_group_size",
++        env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
++        description=(
++            "Maximum number of consecutive trivial tasks merged into one "
++            "(F016)"
++        ),
++        value_type=int,
++        default=3,
++    ),
+ )
+ 
+ _KEY_SPEC_MAP: dict[str, ConfigKeySpec] = {s.key: s for s in _CONFIG_KEY_SPECS}
+diff --git a/packages/orchestration/flight_plan.py b/packages/orchestration/flight_plan.py
+index 54db20c..ec87ea5 100644
+--- a/packages/orchestration/flight_plan.py
++++ b/packages/orchestration/flight_plan.py
+@@ -8,13 +8,14 @@ from __future__ import annotations
+ 
+ import json
+ from collections.abc import Callable
+-from dataclasses import dataclass
++from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any
+ 
+ from packages.core.models import AcceptanceCheck, RunState, Task
+ from packages.orchestration.schemas.models import _LARGE_PLAN_THRESHOLD, FlightPlan
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
++from packages.orchestration.task_granularity import GranularityConfig, normalize_plan
+ 
+ 
+ @dataclass
+@@ -26,6 +27,8 @@ class FlightPlanResult:
+     error_hint: str = ""
+     calls: int = 0
+     call_log: list[dict[str, Any]] | None = None
++    #: F016 granularity record: what normalization changed, if anything.
++    transformations: list[dict[str, Any]] = field(default_factory=list)
+ 
+ 
+ _PLAN_PROMPT_TEMPLATE = """\
+@@ -80,17 +83,38 @@ def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
+     )
+ 
+ 
++def granularity_config() -> GranularityConfig:
++    """Read the F016 thresholds from Remedy config.
++
++    Lives here, not in task_granularity: that module stays pure and takes
++    its thresholds as an argument.
++    """
++    from packages.orchestration.config import get_config
++    cfg = get_config()
++    return GranularityConfig(
++        enabled=bool(cfg.get("planning.granularity.enabled")),
++        split_band=str(cfg.get("planning.granularity.split_band")),
++        max_acceptance=int(cfg.get("planning.granularity.max_acceptance")),
++        merge_group_size=int(cfg.get("planning.granularity.merge_group_size")),
++    )
++
++
+ def plan_job_llm(
+     intake: dict[str, Any],
+     call_fn: Callable[[str, int], str],
+     *,
+     on_call: Callable[[int, str, bool, str], None] | None = None,
++    granularity: GranularityConfig | None = None,
+ ) -> FlightPlanResult:
+     """Generate a FlightPlan from a job's intake via LLM.
+ 
+     Uses run_structured_call for schema validation + one parse retry.
+     Returns a FlightPlanResult; on failure, plan is None and error_hint
+     describes the failure class.
++
++    The validated plan then passes through F016 task-granularity
++    normalization — the single insertion point for it — and the result
++    carries the transformation record.
+     """
+     prompt = _build_plan_prompt(intake)
+     try:
+@@ -115,11 +139,28 @@ def plan_job_llm(
+         )
+ 
+     assert isinstance(outcome.value, FlightPlan)
++    plan = outcome.value
++    transformations: list[dict[str, Any]] = []
++    try:
++        normalized = normalize_plan(plan, granularity or granularity_config())
++        plan = normalized.plan
++        transformations = normalized.as_dicts()
++    except Exception as exc:
++        # Misconfigured thresholds must not lose a valid plan; same fail-open
++        # rule the normalizer applies to its own revalidation.
++        transformations = [{
++            "kind": "aborted",
++            "source_ids": [t.id for t in plan.tasks],
++            "result_ids": [t.id for t in plan.tasks],
++            "reason": f"normalization not run, original plan kept: {exc}",
++        }]
++
+     return FlightPlanResult(
+-        plan=outcome.value,
++        plan=plan,
+         source="llm",
+         calls=outcome.calls,
+         call_log=outcome.call_log,
++        transformations=transformations,
+     )
+ 
+ 
+@@ -198,8 +239,16 @@ def apply_plan_fences(
+ # Renderer (T003)
+ # ---------------------------------------------------------------------------
+ 
+-def render_plan_md(plan: FlightPlan) -> str:
+-    """Render a FlightPlan to deterministic, stably ordered markdown."""
++def render_plan_md(
++    plan: FlightPlan,
++    transformations: list[dict[str, Any]] | None = None,
++) -> str:
++    """Render a FlightPlan to deterministic, stably ordered markdown.
++
++    *transformations* is the F016 granularity record. The section is always
++    rendered so the approving human sees either what was changed or an
++    explicit statement that nothing was.
++    """
+     lines: list[str] = []
+     lines.append("# Flight Plan")
+     lines.append("")
+@@ -234,6 +283,20 @@ def render_plan_md(plan: FlightPlan) -> str:
+                 lines.append(f"- `{f}`")
+         lines.append("")
+ 
++    lines.append("## Normalization")
++    lines.append("")
++    if not transformations:
++        lines.append("No transformations — the plan is used as generated.")
++        lines.append("")
++    else:
++        for entry in transformations:
++            sources = ", ".join(entry.get("source_ids", [])) or "-"
++            results = ", ".join(entry.get("result_ids", [])) or "-"
++            lines.append(
++                f"- **{entry.get('kind', 'unknown')}** {sources} → {results}")
++            lines.append(f"  - {entry.get('reason', '')}")
++        lines.append("")
++
+     if plan.risks:
+         lines.append("## Risks")
+         lines.append("")
+@@ -267,12 +330,17 @@ def render_plan_md(plan: FlightPlan) -> str:
+     return "\n".join(lines)
+ 
+ 
+-def write_plan_md(plan: FlightPlan, evidence_dir: Path, version: int = 1) -> Path:
++def write_plan_md(
++    plan: FlightPlan,
++    evidence_dir: Path,
++    version: int = 1,
++    transformations: list[dict[str, Any]] | None = None,
++) -> Path:
+     """Write rendered plan to evidence dir. Returns the written path."""
+     evidence_dir.mkdir(parents=True, exist_ok=True)
+     filename = "plan.md" if version == 1 else f"plan_v{version}.md"
+     path = evidence_dir / filename
+-    path.write_text(render_plan_md(plan), encoding="utf-8")
++    path.write_text(render_plan_md(plan, transformations), encoding="utf-8")
+     return path
+ 
+ 
+@@ -310,6 +378,7 @@ def replan(
+     evidence_dir: Path,
+     *,
+     any_task_completed: bool = False,
++    transformations: list[dict[str, Any]] | None = None,
+ ) -> tuple[dict[str, Any], int]:
+     """Apply a new flight plan version.
+ 
+@@ -331,5 +400,7 @@ def replan(
+     new_plan_dict["_version"] = new_version
+     new_plan_dict["_approval"] = "pending"
+ 
+-    write_plan_md(new_plan, evidence_dir, version=new_version)
++    write_plan_md(
++        new_plan, evidence_dir, version=new_version,
++        transformations=transformations)
+     return new_plan_dict, new_version
+diff --git a/packages/orchestration/task_granularity.py b/packages/orchestration/task_granularity.py
+new file mode 100644
+index 0000000..bb4fd12
+--- /dev/null
++++ b/packages/orchestration/task_granularity.py
+@@ -0,0 +1,512 @@
++"""F016 — Flight-Plan task-granularity normalization.
++
++v1 is a HEURISTIC on plan-intrinsic signals only: the token band the planner
++guessed, the number of acceptance criteria, and token overlap between
++``files_hint`` entries. Remedy has no per-task-class cost history yet, so
++nothing here is data-driven and this module does not pretend to be (P6):
++every band it assigns to a generated task is labeled in the transformation
++record as heuristically reassigned.
++
++Purity: this module performs no I/O — no filesystem, no network, no
++environment reads. Thresholds arrive as a :class:`GranularityConfig` that the
++caller builds from the resolved Remedy config.
++
++Nothing is ever rewritten silently: every split, merge, abort, and
++unsplittable task produces a :class:`Transformation` entry that plan
++rendering shows to the human who approves the plan. The "aborted" kind
++covers both refusals — a merge that dependency safety rejected, and a
++whole normalization that failed revalidation — and its reason says which.
++"""
++from __future__ import annotations
++
++import re
++from dataclasses import dataclass, field
++from typing import Any
++
++from packages.orchestration.schemas.models import FlightPlan, PlannedTask
++
++#: Token bands in ascending size order (mirrors schemas.models.TokenBand).
++_BAND_ORDER: tuple[str, ...] = ("S", "M", "L", "XL")
++
++#: Band assigned to every child produced by a split — heuristic, not measured.
++_SPLIT_CHILD_BAND = "M"
++
++_TOKEN_SPLIT_RE = re.compile(r"[^a-z0-9]+")
++
++
++@dataclass(frozen=True)
++class GranularityConfig:
++    """Thresholds for normalization. Built by the caller from Remedy config.
++
++    ``split_band`` is the band at (and above) which a task is split; the
++    default "XL" therefore splits only XL tasks.
++    """
++
++    enabled: bool = True
++    split_band: str = "XL"
++    max_acceptance: int = 3
++    merge_group_size: int = 3
++
++    def __post_init__(self) -> None:
++        if self.split_band not in _BAND_ORDER:
++            raise ValueError(
++                f"planning.granularity.split_band must be one of "
++                f"{', '.join(_BAND_ORDER)} (got {self.split_band!r})")
++
++
++@dataclass(frozen=True)
++class Transformation:
++    """One recorded change to the plan's task list."""
++
++    #: "split" | "merge" | "aborted" | "unsplittable_flag"
++    kind: str
++    source_ids: list[str]
++    result_ids: list[str]
++    reason: str
++
++    def as_dict(self) -> dict[str, Any]:
++        return {
++            "kind": self.kind,
++            "source_ids": list(self.source_ids),
++            "result_ids": list(self.result_ids),
++            "reason": self.reason,
++        }
++
++
++@dataclass(frozen=True)
++class NormalizationResult:
++    """A (possibly) normalized plan plus the record of what changed."""
++
++    plan: FlightPlan
++    transformations: list[Transformation]
++
++    def as_dicts(self) -> list[dict[str, Any]]:
++        return [t.as_dict() for t in self.transformations]
++
++
++# ---------------------------------------------------------------------------
++# Token helpers
++# ---------------------------------------------------------------------------
++
++def _band_rank(band: str) -> int:
++    return _BAND_ORDER.index(band)
++
++
++def _tokens(text: str) -> frozenset[str]:
++    """Lowercase alphanumeric tokens of a free-text string."""
++    return frozenset(t for t in _TOKEN_SPLIT_RE.split(text.lower()) if t)
++
++
++def _path_tokens(path: str) -> frozenset[str]:
++    """Tokens of a file path, with the final extension dropped.
++
++    The extension is dropped so that two unrelated Python files do not look
++    related merely because both end in ``.py``.
++    """
++    base = path.rsplit(".", 1)[0] if "." in path.rsplit("/", 1)[-1] else path
++    return _tokens(base)
++
++
++# ---------------------------------------------------------------------------
++# Split
++# ---------------------------------------------------------------------------
++
++@dataclass
++class _Cluster:
++    """A group of acceptance criteria that point at the same files."""
++
++    acceptance: list[str] = field(default_factory=list)
++    files: list[str] = field(default_factory=list)
++
++
++def _split_triggers(task: PlannedTask, cfg: GranularityConfig) -> list[str]:
++    """Return the human-readable reasons this task qualifies for splitting."""
++    triggers: list[str] = []
++    if _band_rank(task.est_tokens_band) >= _band_rank(cfg.split_band):
++        triggers.append(
++            f"band {task.est_tokens_band} at/above split band {cfg.split_band}")
++    if len(task.acceptance) > cfg.max_acceptance:
++        triggers.append(
++            f"acceptance count {len(task.acceptance)} > {cfg.max_acceptance}")
++    return triggers
++
++
++def _cluster_acceptance(
++    acceptance: list[str], files_hint: list[str],
++) -> list[_Cluster]:
++    """Greedily group acceptance items by shared files_hint entries.
++
++    An acceptance item claims every files_hint entry whose path tokens
++    overlap its own tokens, and then joins the first existing cluster that
++    already claims one of those files. An item that matches no files_hint
++    entry always starts its own cluster — no shared tokens means one child
++    per acceptance item.
++
++    Grouping keys are whole files, not raw tokens: two unrelated files under
++    ``src/`` share the token "src" and would otherwise always look related.
++
++    Cluster order is creation order, so the result is deterministic.
++    """
++    file_tokens = [(f, _path_tokens(f)) for f in files_hint]
++    clusters: list[_Cluster] = []
++
++    for item in acceptance:
++        item_tokens = _tokens(item)
++        matched = [f for f, ft in file_tokens if ft & item_tokens]
++
++        target: _Cluster | None = None
++        for cluster in clusters:
++            if any(f in cluster.files for f in matched):
++                target = cluster
++                break
++
++        if target is None:
++            clusters.append(_Cluster(acceptance=[item], files=list(matched)))
++            continue
++
++        target.acceptance.append(item)
++        for f in matched:
++            if f not in target.files:
++                target.files.append(f)
++
++    return clusters
++
++
++def _child_ids(parent_id: str, count: int, used: set[str]) -> list[str]:
++    """Deterministic, collision-free ids for a parent's split children."""
++    ids: list[str] = []
++    for n in range(count):
++        candidate = (
++            f"{parent_id}{chr(ord('a') + n)}" if n < 26
++            else f"{parent_id}s{n + 1}"
++        )
++        while candidate in used:
++            candidate += "x"
++        used.add(candidate)
++        ids.append(candidate)
++    return ids
++
++
++def _split_task(
++    task: PlannedTask, clusters: list[_Cluster], used_ids: set[str],
++) -> list[PlannedTask]:
++    """Build the chained children of a split task."""
++    ids = _child_ids(task.id, len(clusters), used_ids)
++    children: list[PlannedTask] = []
++    for n, (cid, cluster) in enumerate(zip(ids, clusters, strict=True)):
++        children.append(PlannedTask(
++            id=cid,
++            title=f"{task.title} ({n + 1}/{len(clusters)})",
++            goal=task.goal,
++            acceptance=list(cluster.acceptance),
++            # First child inherits the parent's dependencies; the rest chain.
++            depends_on=list(task.depends_on) if n == 0 else [ids[n - 1]],
++            est_tokens_band=_SPLIT_CHILD_BAND,
++            # A cluster that matched no files_hint entry keeps the parent's
++            # full hint: an over-broad hint is less harmful than none.
++            files_hint=list(cluster.files) if cluster.files
++            else list(task.files_hint),
++        ))
++    return children
++
++
++def _rewire(task: PlannedTask, mapping: dict[str, str]) -> PlannedTask:
++    """Point dependencies at replacement ids, preserving order."""
++    if not any(dep in mapping for dep in task.depends_on):
++        return task
++    deps: list[str] = []
++    for dep in task.depends_on:
++        new_dep = mapping.get(dep, dep)
++        if new_dep not in deps:
++            deps.append(new_dep)
++    return task.model_copy(update={"depends_on": deps})
++
++
++def _apply_splits(
++    tasks: list[PlannedTask], cfg: GranularityConfig,
++) -> tuple[list[PlannedTask], list[Transformation]]:
++    """Split oversized tasks in plan order. Returns (tasks, records)."""
++    used_ids = {t.id for t in tasks}
++    out: list[PlannedTask] = []
++    records: list[Transformation] = []
++    replacements: dict[str, str] = {}
++
++    for task in tasks:
++        triggers = _split_triggers(task, cfg)
++        if not triggers:
++            out.append(task)
++            continue
++
++        trigger_text = " + ".join(triggers)
++        clusters = _cluster_acceptance(task.acceptance, task.files_hint)
++        if len(clusters) < 2:
++            detail = (
++                "single acceptance criterion"
++                if len(task.acceptance) == 1
++                else "acceptance criteria cluster into one files_hint group"
++            )
++            records.append(Transformation(
++                kind="unsplittable_flag",
++                source_ids=[task.id],
++                result_ids=[task.id],
++                reason=(
++                    f"not split ({trigger_text}): {detail} — left oversized, "
++                    f"review risk flagged for the approver"),
++            ))
++            out.append(task)
++            continue
++
++        children = _split_task(task, clusters, used_ids)
++        out.extend(children)
++        # Everything that depended on the parent now depends on the chain end.
++        replacements[task.id] = children[-1].id
++        records.append(Transformation(
++            kind="split",
++            source_ids=[task.id],
++            result_ids=[c.id for c in children],
++            reason=(
++                f"split ({trigger_text}) into {len(children)} acceptance "
++                f"clusters; children band {_SPLIT_CHILD_BAND} assigned "
++                f"heuristically (no cost history — F016 v1)"),
++        ))
++
++    if replacements:
++        out = [_rewire(t, replacements) for t in out]
++    return out, records
++
++
++# ---------------------------------------------------------------------------
++# Merge
++# ---------------------------------------------------------------------------
++
++#: Band a task must have to be a merge candidate.
++_MERGE_BAND = "S"
++
++
++def _is_merge_candidate(task: PlannedTask, cfg: GranularityConfig) -> bool:
++    return (
++        task.est_tokens_band == _MERGE_BAND
++        and len(task.acceptance) <= cfg.max_acceptance
++    )
++
++
++def _task_file_tokens(task: PlannedTask) -> frozenset[str]:
++    tokens: frozenset[str] = frozenset()
++    for f in task.files_hint:
++        tokens |= _path_tokens(f)
++    return tokens
++
++
++def _merge_runs(
++    tasks: list[PlannedTask], cfg: GranularityConfig,
++) -> list[list[int]]:
++    """Maximal runs of consecutive merge candidates with overlapping files.
++
++    Adjacency is decided pairwise: a candidate extends the current run only
++    if it shares at least one files_hint token with its predecessor. A
++    candidate without files_hint therefore never joins a run.
++    """
++    runs: list[list[int]] = []
++    current: list[int] = []
++    for i, task in enumerate(tasks):
++        if not _is_merge_candidate(task, cfg):
++            if len(current) > 1:
++                runs.append(current)
++            current = []
++            continue
++        if current and (
++            _task_file_tokens(tasks[current[-1]]) & _task_file_tokens(task)
++        ):
++            current.append(i)
++            continue
++        if len(current) > 1:
++            runs.append(current)
++        current = [i]
++    if len(current) > 1:
++        runs.append(current)
++    return runs
++
++
++def _closure(
++    start: set[str], edges: dict[str, list[str]], exclude: set[str],
++) -> set[str]:
++    """Transitive closure over an id->ids edge map, minus *exclude*."""
++    seen: set[str] = set()
++    stack = list(start)
++    while stack:
++        node = stack.pop()
++        if node in seen:
++            continue
++        seen.add(node)
++        stack.extend(edges.get(node, ()))
++    return seen - exclude
++
++
++def _merge_blocker(
++    group: list[PlannedTask], tasks: list[PlannedTask],
++) -> str | None:
++    """Return why this group must not merge, or None if it is safe."""
++    member_ids = {t.id for t in group}
++    last_id = group[-1].id
++
++    outside = [t for t in tasks if t.id not in member_ids]
++    for task in outside:
++        for dep in task.depends_on:
++            if dep in member_ids and dep != last_id:
++                return (
++                    f"task {task.id} depends on {dep}, which is not the last "
++                    f"member of the group")
++
++    # Contracting the group into one node must not close a dependency loop:
++    # an outside task that the group depends on must not also depend on the
++    # group.
++    dep_edges = {t.id: list(t.depends_on) for t in tasks}
++    dependent_edges: dict[str, list[str]] = {t.id: [] for t in tasks}
++    for task in tasks:
++        for dep in task.depends_on:
++            dependent_edges.setdefault(dep, []).append(task.id)
++
++    group_deps = {
++        dep for t in group for dep in t.depends_on if dep not in member_ids}
++    group_dependents = {
++        t.id for t in outside
++        if any(dep in member_ids for dep in t.depends_on)}
++
++    ancestors = _closure(group_deps, dep_edges, member_ids)
++    descendants = _closure(group_dependents, dependent_edges, member_ids)
++    overlap = sorted(ancestors & descendants)
++    if overlap:
++        return f"merging would create a dependency cycle via {overlap[0]}"
++    return None
++
++
++def _merge_group(group: list[PlannedTask]) -> PlannedTask:
++    """Fuse a group of consecutive small tasks into one task."""
++    member_ids = {t.id for t in group}
++    deps: list[str] = []
++    for task in group:
++        for dep in task.depends_on:
++            if dep not in member_ids and dep not in deps:
++                deps.append(dep)
++    files: list[str] = []
++    for task in group:
++        for f in task.files_hint:
++            if f not in files:
++                files.append(f)
++    acceptance: list[str] = []
++    for task in group:
++        acceptance.extend(task.acceptance)
++    rank = max(_band_rank(t.est_tokens_band) for t in group)
++    return PlannedTask(
++        id=group[0].id,
++        title=" + ".join(t.title for t in group),
++        goal="; ".join(t.goal for t in group),
++        acceptance=acceptance,
++        depends_on=deps,
++        est_tokens_band=_BAND_ORDER[min(rank + 1, len(_BAND_ORDER) - 1)],
++        files_hint=files,
++    )
++
++
++def _apply_merges(
++    tasks: list[PlannedTask], cfg: GranularityConfig,
++) -> tuple[list[PlannedTask], list[Transformation]]:
++    """Merge runs of trivial neighbors. Returns (tasks, records)."""
++    if cfg.merge_group_size < 2:
++        return tasks, []
++
++    # index -> merged task it belongs to; groups are chunked greedily
++    # left-to-right, so a run longer than the cap leaves a remainder group.
++    merged_at: dict[int, PlannedTask] = {}
++    dropped: set[int] = set()
++    records: list[Transformation] = []
++    replacements: dict[str, str] = {}
++
++    for run in _merge_runs(tasks, cfg):
++        for start in range(0, len(run), cfg.merge_group_size):
++            chunk = run[start:start + cfg.merge_group_size]
++            if len(chunk) < 2:
++                continue
++            group = [tasks[i] for i in chunk]
++            blocker = _merge_blocker(group, tasks)
++            if blocker is not None:
++                records.append(Transformation(
++                    kind="aborted",
++                    source_ids=[t.id for t in group],
++                    result_ids=[t.id for t in group],
++                    reason=f"merge skipped: {blocker}",
++                ))
++                continue
++            merged = _merge_group(group)
++            merged_at[chunk[0]] = merged
++            dropped.update(chunk[1:])
++            for t in group[1:]:
++                replacements[t.id] = merged.id
++            records.append(Transformation(
++                kind="merge",
++                source_ids=[t.id for t in group],
++                result_ids=[merged.id],
++                reason=(
++                    f"merged {len(group)} consecutive {_MERGE_BAND}-band tasks "
++                    f"sharing files_hint tokens; band "
++                    f"{merged.est_tokens_band} assigned heuristically "
++                    f"(no cost history — F016 v1)"),
++            ))
++
++    if not merged_at:
++        return tasks, records
++
++    out: list[PlannedTask] = []
++    for i, task in enumerate(tasks):
++        if i in dropped:
++            continue
++        out.append(merged_at.get(i, task))
++    if replacements:
++        out = [_rewire(t, replacements) for t in out]
++    return out, records
++
++
++# ---------------------------------------------------------------------------
++# Public API
++# ---------------------------------------------------------------------------
++
++def normalize_plan(
++    plan: FlightPlan, cfg: GranularityConfig,
++) -> NormalizationResult:
++    """Right-size a plan's tasks. Returns the plan to use plus the record.
++
++    When normalization is disabled, or when the task list comes out
++    unchanged, the ORIGINAL plan object is returned. A record entry can
++    still be present in that case (a flagged unsplittable task, a merge that
++    dependency safety refused).
++    """
++    if not cfg.enabled:
++        return NormalizationResult(plan=plan, transformations=[])
++
++    tasks, records = _apply_splits(list(plan.tasks), cfg)
++    tasks, merge_records = _apply_merges(tasks, cfg)
++    records += merge_records
++
++    if tasks == list(plan.tasks):
++        return NormalizationResult(plan=plan, transformations=records)
++
++    data = plan.model_dump()
++    data["tasks"] = [t.model_dump() for t in tasks]
++    try:
++        # Constructing the model IS the revalidation: FlightPlan's own
++        # _validate_dag runs here. No validation logic is copied.
++        new_plan = FlightPlan(**data)
++    except Exception as exc:
++        # Fail open to the plan the human is about to approve, never to a
++        # broken one — and say so in the record.
++        return NormalizationResult(
++            plan=plan,
++            transformations=[Transformation(
++                kind="aborted",
++                source_ids=[t.id for t in plan.tasks],
++                result_ids=[t.id for t in plan.tasks],
++                reason=(
++                    f"normalization aborted, original plan kept: {exc}"),
++            )],
++        )
++    return NormalizationResult(plan=new_plan, transformations=records)
+diff --git a/tests/cli/test_plan_approval.py b/tests/cli/test_plan_approval.py
+index bb80f87..f84e342 100644
+--- a/tests/cli/test_plan_approval.py
++++ b/tests/cli/test_plan_approval.py
+@@ -90,7 +90,7 @@ _FAKE_INTAKE_JSON = json.dumps({
+ })
+ 
+ 
+-def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True):
++def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True, transformations=None):
+     """Configure monkeypatches for LLM intake + flight plan path."""
+     def _fake_call(prompt: str, attempt: int) -> str:
+         return _FAKE_INTAKE_JSON
+@@ -116,7 +116,8 @@ def _setup_llm_mocks(monkeypatch, *, plan_succeeds=True):
+         monkeypatch.setattr(
+             "packages.orchestration.flight_plan.plan_job_llm",
+             lambda intake, call_fn, **kw: FlightPlanResult(
+-                plan=_fp, source="llm", calls=1),
++                plan=_fp, source="llm", calls=1,
++                transformations=list(transformations or [])),
+         )
+     else:
+         monkeypatch.setattr(
+@@ -200,6 +201,47 @@ class TestFlightPlanLabel:
+         assert job_data["flight_plan"] is not None
+         assert job_data["flight_plan"]["_approval"] == "pending"
+ 
++    def test_normalization_record_is_persisted_and_rendered(
++            self, tmp_path, monkeypatch):
++        """F016: the record lands on the job dict and in plan.md."""
++        repo = _git_repo(tmp_path)
++        env = _env(tmp_path)
++        data_dir = tmp_path / "data"
++        subprocess.run(
++            [*_CLI, "init"], capture_output=True, text=True, timeout=30,
++            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
++        )
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++        _setup_llm_mocks(monkeypatch, plan_succeeds=True, transformations=[{
++            "kind": "split",
++            "source_ids": ["T000"],
++            "result_ids": ["T001"],
++            "reason": "oversized task sliced",
++        }])
++        monkeypatch.chdir(str(repo))
++
++        from io import StringIO
++        captured = StringIO()
++        monkeypatch.setattr("sys.stdout", captured)
++
++        from apps.cli.commands.do_cmd import _cmd_do_mission
++        _cmd_do_mission("test mission", repo=str(repo), json_output=True)
++        job_id = json.loads(captured.getvalue())["job_id"]
++
++        from packages.orchestration.storage import load_job
++        saved = load_job(job_id)
++        assert saved.flight_plan["_normalization"] == [{
++            "kind": "split",
++            "source_ids": ["T000"],
++            "result_ids": ["T001"],
++            "reason": "oversized task sliced",
++        }]
++
++        plan_md = data_dir / "evidence_exports" / job_id / "plan.md"
++        text = plan_md.read_text()
++        assert "## Normalization" in text
++        assert "oversized task sliced" in text
++
+     def test_flight_plan_parse_failure_not_planned(self, tmp_path, monkeypatch):
+         """LLM flight plan parse failure -> non-zero exit, no tasks, postmortem."""
+         from pathlib import Path
