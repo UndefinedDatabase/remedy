@@ -1,0 +1,171 @@
+"""Guard test: the runtime is incapable of asking a human anything (F034).
+
+Every open question is asked ONCE, bundled, at plan time. That promise is
+only worth as much as its enforcement, so this scans the orchestration and
+core execution packages for interactive-input constructs and fails the
+build if one appears. The allowlist starts empty and should stay that way:
+a module that needs an answer must take it from the flight plan's resolved
+clarifications, not from a prompt.
+
+Detection is AST-based, not textual. A comment reading "mission needs user
+input (e.g. acceptance criteria)" is prose, not a prompt, and a guard that
+cannot tell the difference gets muted by its own false positives.
+
+Follows the repo's guard-test pattern (see
+tests/orchestration/test_development_artifact_boundary.py): repo-root
+scan, relative-path allowlist.
+"""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[1]
+
+#: Packages that run unattended. Nothing here may block on a human.
+_GUARDED_PACKAGES = (
+    "packages/orchestration",
+    "packages/core",
+    "packages/providers",
+    "packages/runtimes",
+    "packages/verification",
+)
+
+#: Relative paths permitted to use an interactive construct. Empty by
+#: design — adding an entry means the unattended promise no longer holds
+#: for that module, so it needs a documented reason in the same commit.
+_ALLOWLIST: set[str] = set()
+
+#: Builtins that read from a human.
+_BLOCKING_CALLS = {"input", "raw_input"}
+#: module -> forbidden attributes reached as `module.attr`.
+_BLOCKING_ATTRS = {
+    "click": {"prompt", "confirm"},
+    "sys": {"stdin"},
+    "getpass": {"getpass", "getuser"},
+}
+#: Importing these at all means the module is set up to prompt.
+_BLOCKING_IMPORTS = {"getpass"}
+
+
+class _InteractiveVisitor(ast.NodeVisitor):
+    """Collect (line, description) for every interactive construct."""
+
+    def __init__(self) -> None:
+        self.found: list[tuple[int, str]] = []
+
+    def visit_Call(self, node: ast.Call) -> None:
+        func = node.func
+        if isinstance(func, ast.Name) and func.id in _BLOCKING_CALLS:
+            self.found.append((node.lineno, f"builtin {func.id}()"))
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        value = node.value
+        if isinstance(value, ast.Name):
+            forbidden = _BLOCKING_ATTRS.get(value.id, set())
+            if node.attr in forbidden:
+                self.found.append((node.lineno, f"{value.id}.{node.attr}"))
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            if alias.name.split(".")[0] in _BLOCKING_IMPORTS:
+                self.found.append((node.lineno, f"import {alias.name}"))
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if (node.module or "").split(".")[0] in _BLOCKING_IMPORTS:
+            self.found.append((node.lineno, f"from {node.module} import ..."))
+        self.generic_visit(node)
+
+
+def scan_source(source: str) -> list[tuple[int, str]]:
+    """Return every interactive construct in *source*."""
+    visitor = _InteractiveVisitor()
+    visitor.visit(ast.parse(source))
+    return sorted(visitor.found)
+
+
+def _guarded_files() -> list[Path]:
+    files: list[Path] = []
+    for pkg in _GUARDED_PACKAGES:
+        root = _ROOT / pkg
+        if not root.is_dir():
+            continue
+        files.extend(
+            p for p in sorted(root.rglob("*.py"))
+            if "__pycache__" not in p.parts
+        )
+    return files
+
+
+def _violations() -> list[str]:
+    found: list[str] = []
+    for path in _guarded_files():
+        rel = path.relative_to(_ROOT).as_posix()
+        if rel in _ALLOWLIST:
+            continue
+        source = path.read_text(encoding="utf-8", errors="replace")
+        for line, what in scan_source(source):
+            found.append(f"{rel}:{line}: {what}")
+    return found
+
+
+class TestNoInteractiveInput:
+
+    def test_guard_scans_real_files(self):
+        """A guard that scans nothing would pass forever."""
+        files = _guarded_files()
+        assert len(files) > 50, f"expected a populated scan, got {len(files)}"
+
+    def test_no_interactive_constructs_in_execution_packages(self):
+        violations = _violations()
+        assert not violations, (
+            "Interactive input found in an unattended execution package. "
+            "Remedy asks its questions once, at plan time, on the flight "
+            "plan approval decision — read the resolved clarifications "
+            "instead:\n  " + "\n  ".join(violations))
+
+    def test_allowlist_is_empty(self):
+        assert _ALLOWLIST == set(), (
+            "The interactive-input allowlist must stay empty; each entry "
+            "breaks the unattended guarantee for that module.")
+
+
+class TestGuardDetectsViolations:
+    """The guard must actually catch what it claims to catch."""
+
+    def test_detects_each_construct(self):
+        samples = {
+            "answer = input('which db? ')": "builtin input()",
+            "answer = raw_input('which db? ')": "builtin raw_input()",
+            "import getpass": "import getpass",
+            "from getpass import getpass": "from getpass import ...",
+            "if click.confirm('proceed?'):\n    pass": "click.confirm",
+            "value = click.prompt('db')": "click.prompt",
+            "raw = sys.stdin.read()": "sys.stdin",
+            "for line in sys.stdin:\n    pass": "sys.stdin",
+        }
+        for snippet, expected in samples.items():
+            found = [what for _, what in scan_source(snippet)]
+            assert expected in found, f"{snippet!r} -> {found}"
+
+    def test_spacing_does_not_hide_a_call(self):
+        assert scan_source("answer = input ('db')")
+
+    def test_prose_and_similar_identifiers_do_not_trip_the_guard(self):
+        benign = [
+            "# Mission needs user input (e.g. acceptance criteria).",
+            "msg = 'needs user input (see docs)'",
+            "prepare_call_input(prompt=p)",
+            "read_intake_input(input_path=x)",
+            "input_tokens = int(x)",
+            "summarize_tool_input(block)",
+            "self.input(value)",
+            "obj.getpass()",
+            "stdin_text = read(path)",
+        ]
+        for snippet in benign:
+            assert scan_source(snippet) == [], snippet

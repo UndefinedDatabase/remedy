@@ -7,6 +7,12 @@ unknown question id is a clean non-zero error.
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
+from io import StringIO
+
 import pytest
 
 from apps.cli.commands.decision import (
@@ -297,6 +303,106 @@ class TestAssumptionsCommand:
         assert len(entry) == 1
         assert entry[0].subcommand == "assumptions"
         assert entry[0].action_class == "read_only"
+
+
+def _git_repo(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"],
+        check=True, capture_output=True,
+        env={**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+    return repo
+
+
+_INTAKE_WITH_ONE_CLARIFICATION = json.dumps({
+    "schema_v": "ji1",
+    "goal": "Test goal.",
+    "context_refs": [],
+    "constraints": [],
+    "acceptance_hints": [],
+    "truncated_input": False,
+    "clarifications": [{
+        "question": "Drop the legacy table?",
+        "default_answer": "keep the legacy table untouched",
+        "impact": "data retained; migration deferred",
+    }],
+})
+
+
+class TestUnattendedEndToEnd:
+    """T004 — `remedy do --yes` runs the whole plan gate without a human."""
+
+    def _run_unattended(self, tmp_path, monkeypatch):
+        from packages.orchestration.flight_plan import (
+            FlightPlanResult,
+            carry_intake_clarifications,
+        )
+
+        repo = _git_repo(tmp_path)
+        env = {**os.environ, "PYTHONPATH": os.getcwd(),
+               "REMEDY_DATA_DIR": str(tmp_path / "data")}
+        subprocess.run(
+            [sys.executable, "-m", "apps.cli.grouped", "init"],
+            capture_output=True, text=True, timeout=60,
+            cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+        )
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "data"))
+        monkeypatch.setattr(
+            "packages.orchestration.intake.make_provider_call_fn",
+            lambda: (lambda prompt, attempt: _INTAKE_WITH_ONE_CLARIFICATION),
+        )
+
+        base_plan = FlightPlan(**{
+            "schema_v": "flight_plan_v1",
+            "tasks": [{
+                "id": "T001", "title": "Do thing", "goal": "A goal",
+                "acceptance": ["Done"], "depends_on": [],
+                "est_tokens_band": "M", "files_hint": [],
+            }],
+        })
+        monkeypatch.setattr(
+            "packages.orchestration.flight_plan.plan_job_llm",
+            lambda intake, call_fn, **kw: FlightPlanResult(
+                plan=carry_intake_clarifications(base_plan, intake),
+                source="llm", calls=1),
+        )
+        monkeypatch.chdir(str(repo))
+
+        captured = StringIO()
+        monkeypatch.setattr("sys.stdout", captured)
+        from apps.cli.commands.do_cmd import _cmd_do_mission
+        _cmd_do_mission("test mission", repo=str(repo), json_output=True, yes=True)
+        return json.loads(captured.getvalue())
+
+    def test_default_recorded_and_logged_without_a_human(
+            self, tmp_path, monkeypatch):
+        from packages.orchestration.data_paths import job_evidence_export_dir
+        from packages.orchestration.decision_queue import list_decisions
+        from packages.orchestration.storage import load_job
+
+        data = self._run_unattended(tmp_path, monkeypatch)
+        assert "approved via --yes" in data["plan_label"]
+
+        job = load_job(data["job_id"])
+        recs = job.flight_plan["clarifications_resolved"]
+        assert [(r["id"], r["answer"], r["answered_by"]) for r in recs] == [
+            ("q1", "keep the legacy table untouched", "default")]
+
+        log = (job_evidence_export_dir(str(job.id)) / "assumptions.md").read_text()
+        assert ("| q1 | Drop the legacy table? | keep the legacy table "
+                "untouched | default |") in log
+
+        open_fp = [d for d in list_decisions(job, [])
+                   if d.type == "flight_plan_approval" and d.status == "open"]
+        assert open_fp == []
+
+    def test_exits_zero(self, tmp_path, monkeypatch):
+        """_cmd_do_mission returning normally is exit 0 for the CLI."""
+        self._run_unattended(tmp_path, monkeypatch)
 
 
 class TestAnswerOptionIsRepeatable:

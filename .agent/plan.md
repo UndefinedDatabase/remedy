@@ -14,21 +14,23 @@ the execution packages.
 - [x] T001 decision payload + per-question answer parsing + tests
 - [x] T002 approve → write-back → immutability (late answer rejected)
 - [x] T003 assumptions.md renderer + CLI + plan.md link
-- [ ] T004 interactive-input guard test + unattended end-to-end
+- [x] T004 interactive-input guard test + unattended end-to-end
 - [ ] Integration gate
 - [ ] Closure
 
 ## Current Step
-T004 — interactive-input guard test (prove red on an injected violation
-first, then green on the real tree), the unattended `remedy do --yes`
-end-to-end, and the planner prompt change carrying the conservative-
-defaults rule verbatim.
+Handback — all four slice gates green plus the golden-path canary. Awaiting
+the reviewer; integration gate and closure follow.
 
 ## Next Steps
-T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
+Integration gate (branch vs base full-suite comparison), then closure.
 
 ## Risks
-- Schema changes must be additive: existing fp1 job data must keep loading.
-- Question ids must be stable across plan regeneration (intake order).
-- Conditional-answer predicates are OPTIONAL scope; skip unless trivially
-  cheap and record the skip in the handoff.
+- Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
+  base and branch (25 identical; the 2+2 differences pass on serial re-run).
+  Backlog F135/F052.
+- Conditional-answer predicates skipped as OPTIONAL scope (see
+  .agent/decisions.md). Nothing in F034's DONE criteria depends on them.
+- The guard only covers packages/; apps/cli deliberately stays interactive-
+  capable, so a prompt added under apps/ that the runner calls would evade
+  it. Runner entry points live in packages/, which is what is guarded.

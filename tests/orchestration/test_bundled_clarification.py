@@ -11,6 +11,7 @@ from __future__ import annotations
 from packages.core.models import Job
 from packages.orchestration.decision_queue import export_decision_json, list_decisions
 from packages.orchestration.flight_plan import (
+    _build_plan_prompt,
     apply_clarification_answers,
     carry_intake_clarifications,
     clarification_source,
@@ -294,6 +295,40 @@ class TestAssumptionLog:
 
     def test_plan_md_without_clarifications_has_no_link(self):
         assert "assumptions.md" not in render_plan_md(_plan())
+
+
+class TestPlannerPrompt:
+    """T004 — the prompt must aim for zero questions and safe defaults."""
+
+    def test_instructs_the_model_to_resolve_what_it_can(self):
+        prompt = _build_plan_prompt({"schema_v": "ji1", "goal": "ship"})
+        assert "RESOLVE the intake's clarifications into plan choices" in prompt
+        assert "zero questions" in prompt
+
+    def test_carries_forward_only_ambiguous_questions(self):
+        prompt = _build_plan_prompt({"schema_v": "ji1", "goal": "ship"})
+        assert "ONLY genuinely ambiguous questions" in prompt
+        assert "plan-approval gate" in prompt
+
+    def test_mandates_conservative_defaults_with_impact(self):
+        prompt = _build_plan_prompt({"schema_v": "ji1", "goal": "ship"})
+        assert "conservative default_answer and an impact" in prompt
+        assert "never\n  deletes, overwrites, migrates" in prompt
+
+    def test_keep_style_default_survives_the_round_trip(self):
+        """A9 fixture: the safe default reaches the log unchanged."""
+        keep_style = {
+            "question": "Drop the legacy table?",
+            "default_answer": "keep the legacy table untouched",
+            "impact": "data retained; migration deferred",
+        }
+        plan = carry_intake_clarifications(_plan(), _intake(keep_style))
+        records = apply_clarification_answers(
+            [c.model_dump() for c in plan.clarifications_resolved], None)
+        assert records[0]["answer"] == "keep the legacy table untouched"
+        assert records[0]["answered_by"] == "default"
+        assert ("| q1 | Drop the legacy table? | keep the legacy table "
+                "untouched | default |") in render_assumptions_md(records)
 
 
 class TestApprovalDecisionPayload:

@@ -53,11 +53,30 @@ and token band estimates.
 - acceptance must have at least one non-empty criterion per task.
 - No cycles in dependencies.
 - Maximum 25 tasks.
-- If clarifications were present in the intake, carry them into
-  clarifications_resolved with your chosen answer.
+- RESOLVE the intake's clarifications into plan choices wherever the
+  intake, the repo facts, or ordinary engineering judgement settle them.
+  Record each one you resolved in clarifications_resolved with your
+  chosen answer — that is an assumption you are declaring, not a
+  question. The target for a routine mission is zero questions left.
+- Carry forward ONLY genuinely ambiguous questions: ones whose answer
+  changes the plan and that you cannot settle from the material given.
+  Leave those with an empty answer; a human resolves them once, at the
+  plan-approval gate, and they are never asked again during the run.
+- Every clarification needs a conservative default_answer and an impact
+  line. A default keeps existing behavior or does nothing; it never
+  deletes, overwrites, migrates, or otherwise takes a destructive path.
+  If the safe choice is "change nothing", that is the default.
 
 Return ONLY a JSON object matching the flight_plan_v1 schema.
 """
+
+# The conservative-defaults rule this prompt encodes, stated verbatim as
+# the feature specifies it (T1_F034, Edge cases & assumption defaults):
+#
+#   Defaults must be conservative: the planner prompt mandates keep/no-op
+#   style defaults with impact text; a fixture asserts a keep-style
+#   default survives the round trip. Remedy never defaults to destructive
+#   choices — humans can, explicitly.
 
 
 def _cheap_repo_facts() -> str:
