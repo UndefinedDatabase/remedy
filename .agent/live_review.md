@@ -19,6 +19,12 @@ Finding IDs continue monotonically from R-0145.
   pending stop request must remain pending), no executor hand-off,
   exit 0. Tests pin: no hand-off, stop not consumed, preview named in
   output. Resolved when tests are green and the reviewer verifies.
+  Done: R-0146 — `_cmd_job_resume` takes `dry_run`, the dispatch passes
+  it in the no-checkpoint branch, and the dry-run path reports every
+  check read-only (`stop_requested`, never `consume_stop`), skips the
+  executor and exits 0. Pinned by 9 tests in TestDryRunPreview plus a
+  dispatch pass-through test; the stop-still-pending assertion re-reads
+  the request rather than trusting the printed line.
 
 ## Verdicts
 

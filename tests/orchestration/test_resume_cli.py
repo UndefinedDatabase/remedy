@@ -335,6 +335,127 @@ class TestDegradations:
 
 
 # ---------------------------------------------------------------------------
+# --dry-run is a read-only preview (R-0146)
+# ---------------------------------------------------------------------------
+
+
+class TestDryRunPreview:
+    def test_a_pending_stop_request_is_reported_and_still_pending_after(
+            self, handed_off, capsys):
+        job = make_job()
+        put_checkpoint(job)
+        request_stop(str(job.id), reason="hold on")
+
+        resume(job, dry_run=True)
+
+        assert stop_requested(str(job.id)) is not None   # NOT consumed
+        assert handed_off == []
+        out = capsys.readouterr().out
+        assert "resume preview (--dry-run)" in out
+        assert "nothing was consumed" in out
+        assert "stop request:  PENDING" in out
+        assert "hold on" in out
+        assert "would run:     no" in out
+
+    def test_a_drifted_head_is_previewed_naming_both_heads_without_refusing(
+            self, handed_off, monkeypatch, capsys):
+        job = make_job()
+        put_checkpoint(job, head="a" * 40)
+        monkeypatch.setattr(job_cmd_checkpoints(), "resolve_live_worktree_head",
+                            lambda _jid: "b" * 40)
+
+        resume(job, dry_run=True)                        # exit 0, no SystemExit
+
+        out = capsys.readouterr().out
+        assert "worktree head: DRIFTED" in out
+        assert "a" * 40 in out and "b" * 40 in out
+        assert "would run:     no" in out
+        assert handed_off == []
+
+    def test_a_plain_dry_run_names_the_checkpoint_and_runs_nothing(
+            self, handed_off, capsys):
+        job = make_job()
+        put_checkpoint(job, index=4)
+
+        resume(job, dry_run=True)
+
+        out = capsys.readouterr().out
+        assert "would resume from checkpoint 4" in out
+        assert "2 task(s) pending" in out
+        assert "would run:     yes" in out
+        assert handed_off == []
+
+    def test_the_no_checkpoint_fallback_is_previewed(self, handed_off, capsys):
+        job = make_job()
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "no checkpoint found" in out
+        assert "persisted job state" in out
+        assert handed_off == []
+
+    def test_an_all_green_job_previews_the_no_op(self, handed_off, capsys):
+        job = make_job(pending=0, completed=2)
+        put_checkpoint(job)
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "already all green" in out
+        assert "would run:     no" in out
+        assert handed_off == []
+
+    def test_a_blocked_plan_gate_is_previewed_without_exiting_three(
+            self, handed_off, capsys):
+        job = make_job()
+        job.flight_plan = {"_approval": "pending"}
+        save_job(job)
+        put_checkpoint(job)
+
+        resume(job, dry_run=True)                        # no SystemExit
+
+        out = capsys.readouterr().out
+        assert "plan gate:     PENDING" in out
+        assert "would refuse" in out
+        assert "would run:     no" in out
+        assert handed_off == []
+
+    def test_json_mode_mirrors_the_preview(self, handed_off, capsys):
+        import json as _json
+
+        job = make_job()
+        put_checkpoint(job, index=2)
+        request_stop(str(job.id), reason="halt")
+
+        resume(job, dry_run=True, json_output=True)
+
+        payload = _json.loads(capsys.readouterr().out)
+        assert payload["action"] == "preview"
+        assert payload["resumed"] is False
+        assert payload["would_run"] is False
+        assert payload["stop_request"] == {"pending": True, "reason": "halt"}
+        assert payload["checkpoint_index"] == 2
+        assert payload["state"] == "from_checkpoint"
+        assert stop_requested(str(job.id)) is not None   # still not consumed
+        assert handed_off == []
+
+    def test_a_matching_head_previews_as_a_match(self, handed_off, monkeypatch,
+                                                 capsys):
+        job = make_job()
+        put_checkpoint(job, head="a" * 40)
+        monkeypatch.setattr(job_cmd_checkpoints(), "resolve_live_worktree_head",
+                            lambda _jid: "a" * 40)
+        resume(job, dry_run=True)
+        out = capsys.readouterr().out
+        assert "worktree head: matches the checkpoint" in out
+        assert "would run:     yes" in out
+
+    def test_without_dry_run_the_job_still_runs(self, handed_off):
+        """The preview is opt-in; the default path is unchanged."""
+        job = make_job()
+        put_checkpoint(job)
+        resume(job)
+        assert len(handed_off) == 1
+
+
+# ---------------------------------------------------------------------------
 # Hand-off and registration
 # ---------------------------------------------------------------------------
 
@@ -368,10 +489,30 @@ class TestHandOff:
             job_id = "abcdef12"
             cycles = "2"
             checkpoint = ""
+            dry_run = False
             json = True
 
         job_cmd.COMMAND_HANDLERS["job.resume"](_Args())
-        assert seen == [("abcdef12", {"cycles": 2, "json_output": True})]
+        assert seen == [("abcdef12", {"cycles": 2, "dry_run": False,
+                                      "json_output": True})]
+
+    def test_the_dispatch_passes_dry_run_through_without_a_checkpoint(
+            self, monkeypatch):
+        """R-0146: --dry-run reached only the event-replay branch."""
+        seen: list[tuple] = []
+        monkeypatch.setattr(job_cmd, "_cmd_job_resume",
+                            lambda job_id, **kw: seen.append((job_id, kw)))
+
+        class _Args:
+            job_id = "abcdef12"
+            cycles = None
+            checkpoint = ""
+            dry_run = True
+            json = False
+
+        job_cmd.COMMAND_HANDLERS["job.resume"](_Args())
+        assert seen == [("abcdef12", {"cycles": None, "dry_run": True,
+                                      "json_output": False})]
 
     def test_a_checkpoint_id_still_reaches_the_event_replay_resume(self, monkeypatch):
         """The pre-existing --checkpoint contract is untouched by F047."""

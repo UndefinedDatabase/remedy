@@ -6,7 +6,7 @@ import re
 import sys
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.data_paths import resolve_data_root, resolve_job_id
@@ -738,10 +738,113 @@ def _cmd_job_run_cycles(
         sys.exit(1)
 
 
+def _resume_preview(job: Job, jid: str, checkpoint: Any) -> dict[str, Any]:
+    """What ``remedy job resume`` WOULD decide — computed without changing anything.
+
+    Every lookup here is read-only.  In particular the stop request is
+    *observed* (``stop_requested``), never consumed: a preview that swallowed
+    an operator's pending stop would be worse than the bug it replaced
+    (R-0146).
+    """
+    from packages.orchestration.checkpoints import resolve_live_worktree_head
+    from packages.orchestration.flight_plan import flight_plan_blocks_execution
+    from packages.orchestration.safe_points import stop_requested
+
+    signal = stop_requested(jid)
+    stop = {
+        "pending": signal is not None,
+        "reason": getattr(signal, "reason", "") if signal is not None else "",
+    }
+
+    checkpoint_head = getattr(checkpoint, "worktree_head", "") if checkpoint else ""
+    live_head = resolve_live_worktree_head(jid) if checkpoint_head else ""
+    if not checkpoint_head:
+        head_outcome = "not_recorded"
+    elif not live_head:
+        head_outcome = "unknown"
+    elif live_head == checkpoint_head:
+        head_outcome = "match"
+    else:
+        head_outcome = "drift"
+    head = {"outcome": head_outcome, "checkpoint_head": checkpoint_head,
+            "live_head": live_head}
+
+    gate = flight_plan_blocks_execution(job) or "open"
+
+    pending_tasks = [t for t in job.tasks if t.status != RunState.COMPLETED]
+    if job.tasks and not pending_tasks:
+        state = "all_green"
+    elif checkpoint is None:
+        state = "no_checkpoint"
+    else:
+        state = "from_checkpoint"
+
+    return {
+        "job_id": jid,
+        "action": "preview",
+        "resumed": False,
+        "stop_request": stop,
+        "worktree_head": head,
+        "plan_approval_gate": gate,
+        "state": state,
+        "checkpoint_index": (
+            getattr(checkpoint, "cycle_index", None) if checkpoint else None),
+        "pending_tasks": len(pending_tasks),
+        "would_run": (
+            not stop["pending"] and head_outcome != "drift"
+            and gate == "open" and state != "all_green"
+        ),
+    }
+
+
+def _print_resume_preview(preview: dict[str, Any]) -> None:
+    """Render the preview as text, in the order the checks are evaluated."""
+    jid = preview["job_id"]
+    print(f"Job {jid} | resume preview (--dry-run) — nothing was consumed, "
+          f"nothing was run")
+
+    stop = preview["stop_request"]
+    if stop["pending"]:
+        print(f"  stop request:  PENDING — would be consumed and the run would "
+              f"not start{' (reason: ' + stop['reason'] + ')' if stop['reason'] else ''}")
+    else:
+        print("  stop request:  none pending")
+
+    head = preview["worktree_head"]
+    if head["outcome"] == "drift":
+        print("  worktree head: DRIFTED — resume would refuse")
+        print(f"                 checkpoint head: {head['checkpoint_head']}")
+        print(f"                 worktree head:   {head['live_head']}")
+    elif head["outcome"] == "match":
+        print(f"  worktree head: matches the checkpoint ({head['live_head']})")
+    elif head["outcome"] == "unknown":
+        print(f"  worktree head: unknown — checkpoint recorded "
+              f"{head['checkpoint_head']}, live head not resolvable")
+    else:
+        print("  worktree head: not recorded on the checkpoint — not compared")
+
+    gate = preview["plan_approval_gate"]
+    print(f"  plan gate:     {'open' if gate == 'open' else gate.upper()}"
+          f"{'' if gate == 'open' else ' — resume would refuse'}")
+
+    if preview["state"] == "all_green":
+        print("  state:         already all green — resume would be a no-op")
+    elif preview["state"] == "no_checkpoint":
+        print(f"  state:         no checkpoint found — would continue from the "
+              f"persisted job state ({preview['pending_tasks']} task(s) pending)")
+    else:
+        print(f"  state:         would resume from checkpoint "
+              f"{preview['checkpoint_index']} "
+              f"({preview['pending_tasks']} task(s) pending)")
+
+    print(f"  would run:     {'yes' if preview['would_run'] else 'no'}")
+
+
 def _cmd_job_resume(
     job_id_str: str,
     *,
     cycles: int | None = None,
+    dry_run: bool = False,
     json_output: bool = False,
 ) -> None:
     """Continue a job from its newest valid CYCLE checkpoint (F047 T002).
@@ -766,6 +869,12 @@ def _cmd_job_resume(
          ``remedy job run`` uses — resume is not a second door around it.
 
     Only then does it hand off to the multi-cycle executor.
+
+    ``dry_run`` makes the whole thing a READ-ONLY PREVIEW: it reports what
+    each of those checks would decide, consumes nothing — a pending stop
+    request is still pending afterwards — never reaches the executor, and
+    exits 0.  ``remedy job resume --dry-run`` previously dropped the flag on
+    this path and executed for real (R-0146).
 
     Degradations, all honest:
       * no checkpoint at all -> says so and continues from the persisted job
@@ -805,6 +914,16 @@ def _cmd_job_resume(
             file=sys.stderr,
         )
         sys.exit(1)
+
+    # A dry run stops HERE: it reports what the checks below would decide and
+    # consumes none of them.  It must never reach the executor (R-0146).
+    if dry_run:
+        preview = _resume_preview(job, jid, checkpoint)
+        if json_output:
+            print(_json.dumps(preview, indent=2, sort_keys=True))
+        else:
+            _print_resume_preview(preview)
+        return
 
     # 1. Pending stop request — consumed first, and it wins.
     if stop_requested(jid) is not None:
@@ -1919,6 +2038,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         else _cmd_job_resume(
             args.job_id,
             cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
+            dry_run=getattr(args, "dry_run", False),
             json_output=getattr(args, "json", False),
         )
     ),
