@@ -13,7 +13,9 @@ caller builds from the resolved Remedy config.
 
 Nothing is ever rewritten silently: every split, merge, abort, and
 unsplittable task produces a :class:`Transformation` entry that plan
-rendering shows to the human who approves the plan.
+rendering shows to the human who approves the plan. The "aborted" kind
+covers both refusals — a merge that dependency safety rejected, and a
+whole normalization that failed revalidation — and its reason says which.
 """
 from __future__ import annotations
 
@@ -274,6 +276,197 @@ def _apply_splits(
 
 
 # ---------------------------------------------------------------------------
+# Merge
+# ---------------------------------------------------------------------------
+
+#: Band a task must have to be a merge candidate.
+_MERGE_BAND = "S"
+
+
+def _is_merge_candidate(task: PlannedTask, cfg: GranularityConfig) -> bool:
+    return (
+        task.est_tokens_band == _MERGE_BAND
+        and len(task.acceptance) <= cfg.max_acceptance
+    )
+
+
+def _task_file_tokens(task: PlannedTask) -> frozenset[str]:
+    tokens: frozenset[str] = frozenset()
+    for f in task.files_hint:
+        tokens |= _path_tokens(f)
+    return tokens
+
+
+def _merge_runs(
+    tasks: list[PlannedTask], cfg: GranularityConfig,
+) -> list[list[int]]:
+    """Maximal runs of consecutive merge candidates with overlapping files.
+
+    Adjacency is decided pairwise: a candidate extends the current run only
+    if it shares at least one files_hint token with its predecessor. A
+    candidate without files_hint therefore never joins a run.
+    """
+    runs: list[list[int]] = []
+    current: list[int] = []
+    for i, task in enumerate(tasks):
+        if not _is_merge_candidate(task, cfg):
+            if len(current) > 1:
+                runs.append(current)
+            current = []
+            continue
+        if current and (
+            _task_file_tokens(tasks[current[-1]]) & _task_file_tokens(task)
+        ):
+            current.append(i)
+            continue
+        if len(current) > 1:
+            runs.append(current)
+        current = [i]
+    if len(current) > 1:
+        runs.append(current)
+    return runs
+
+
+def _closure(
+    start: set[str], edges: dict[str, list[str]], exclude: set[str],
+) -> set[str]:
+    """Transitive closure over an id->ids edge map, minus *exclude*."""
+    seen: set[str] = set()
+    stack = list(start)
+    while stack:
+        node = stack.pop()
+        if node in seen:
+            continue
+        seen.add(node)
+        stack.extend(edges.get(node, ()))
+    return seen - exclude
+
+
+def _merge_blocker(
+    group: list[PlannedTask], tasks: list[PlannedTask],
+) -> str | None:
+    """Return why this group must not merge, or None if it is safe."""
+    member_ids = {t.id for t in group}
+    last_id = group[-1].id
+
+    outside = [t for t in tasks if t.id not in member_ids]
+    for task in outside:
+        for dep in task.depends_on:
+            if dep in member_ids and dep != last_id:
+                return (
+                    f"task {task.id} depends on {dep}, which is not the last "
+                    f"member of the group")
+
+    # Contracting the group into one node must not close a dependency loop:
+    # an outside task that the group depends on must not also depend on the
+    # group.
+    dep_edges = {t.id: list(t.depends_on) for t in tasks}
+    dependent_edges: dict[str, list[str]] = {t.id: [] for t in tasks}
+    for task in tasks:
+        for dep in task.depends_on:
+            dependent_edges.setdefault(dep, []).append(task.id)
+
+    group_deps = {
+        dep for t in group for dep in t.depends_on if dep not in member_ids}
+    group_dependents = {
+        t.id for t in outside
+        if any(dep in member_ids for dep in t.depends_on)}
+
+    ancestors = _closure(group_deps, dep_edges, member_ids)
+    descendants = _closure(group_dependents, dependent_edges, member_ids)
+    overlap = sorted(ancestors & descendants)
+    if overlap:
+        return f"merging would create a dependency cycle via {overlap[0]}"
+    return None
+
+
+def _merge_group(group: list[PlannedTask]) -> PlannedTask:
+    """Fuse a group of consecutive small tasks into one task."""
+    member_ids = {t.id for t in group}
+    deps: list[str] = []
+    for task in group:
+        for dep in task.depends_on:
+            if dep not in member_ids and dep not in deps:
+                deps.append(dep)
+    files: list[str] = []
+    for task in group:
+        for f in task.files_hint:
+            if f not in files:
+                files.append(f)
+    acceptance: list[str] = []
+    for task in group:
+        acceptance.extend(task.acceptance)
+    rank = max(_band_rank(t.est_tokens_band) for t in group)
+    return PlannedTask(
+        id=group[0].id,
+        title=" + ".join(t.title for t in group),
+        goal="; ".join(t.goal for t in group),
+        acceptance=acceptance,
+        depends_on=deps,
+        est_tokens_band=_BAND_ORDER[min(rank + 1, len(_BAND_ORDER) - 1)],
+        files_hint=files,
+    )
+
+
+def _apply_merges(
+    tasks: list[PlannedTask], cfg: GranularityConfig,
+) -> tuple[list[PlannedTask], list[Transformation]]:
+    """Merge runs of trivial neighbors. Returns (tasks, records)."""
+    if cfg.merge_group_size < 2:
+        return tasks, []
+
+    # index -> merged task it belongs to; groups are chunked greedily
+    # left-to-right, so a run longer than the cap leaves a remainder group.
+    merged_at: dict[int, PlannedTask] = {}
+    dropped: set[int] = set()
+    records: list[Transformation] = []
+    replacements: dict[str, str] = {}
+
+    for run in _merge_runs(tasks, cfg):
+        for start in range(0, len(run), cfg.merge_group_size):
+            chunk = run[start:start + cfg.merge_group_size]
+            if len(chunk) < 2:
+                continue
+            group = [tasks[i] for i in chunk]
+            blocker = _merge_blocker(group, tasks)
+            if blocker is not None:
+                records.append(Transformation(
+                    kind="aborted",
+                    source_ids=[t.id for t in group],
+                    result_ids=[t.id for t in group],
+                    reason=f"merge skipped: {blocker}",
+                ))
+                continue
+            merged = _merge_group(group)
+            merged_at[chunk[0]] = merged
+            dropped.update(chunk[1:])
+            for t in group[1:]:
+                replacements[t.id] = merged.id
+            records.append(Transformation(
+                kind="merge",
+                source_ids=[t.id for t in group],
+                result_ids=[merged.id],
+                reason=(
+                    f"merged {len(group)} consecutive {_MERGE_BAND}-band tasks "
+                    f"sharing files_hint tokens; band "
+                    f"{merged.est_tokens_band} assigned heuristically "
+                    f"(no cost history — F016 v1)"),
+            ))
+
+    if not merged_at:
+        return tasks, records
+
+    out: list[PlannedTask] = []
+    for i, task in enumerate(tasks):
+        if i in dropped:
+            continue
+        out.append(merged_at.get(i, task))
+    if replacements:
+        out = [_rewire(t, replacements) for t in out]
+    return out, records
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -282,16 +475,20 @@ def normalize_plan(
 ) -> NormalizationResult:
     """Right-size a plan's tasks. Returns the plan to use plus the record.
 
-    When normalization is disabled, or when no rule fires, the ORIGINAL plan
-    object is returned unchanged with an empty record.
+    When normalization is disabled, or when the task list comes out
+    unchanged, the ORIGINAL plan object is returned. A record entry can
+    still be present in that case (a flagged unsplittable task, a merge that
+    dependency safety refused).
     """
     if not cfg.enabled:
         return NormalizationResult(plan=plan, transformations=[])
 
     tasks, records = _apply_splits(list(plan.tasks), cfg)
+    tasks, merge_records = _apply_merges(tasks, cfg)
+    records += merge_records
 
-    if not records:
-        return NormalizationResult(plan=plan, transformations=[])
+    if tasks == list(plan.tasks):
+        return NormalizationResult(plan=plan, transformations=records)
 
     data = plan.model_dump()
     data["tasks"] = [t.model_dump() for t in tasks]

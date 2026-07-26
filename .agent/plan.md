@@ -9,17 +9,17 @@ failing open to the original plan.
 ## Checklist
 - [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
 - [x] T001 split rules + config keys + table tests (gate green)
-- [ ] T002 merge rule + dependency-safety table tests
+- [x] T002 merge rule + dependency-safety table tests (gate green)
 - [ ] T003 revalidation/abort + bypass + wiring into plan_job_llm +
       plan.md normalization section + mixed-fixture integration test
 
 ## Current Step
-T002 — merge rule for consecutive small tasks (group cap, band bump,
-external-dependency safety) in the same module + test file.
+T003 — revalidation/abort, bypass, wiring into plan_job_llm, the plan.md
+normalization section, mixed-fixture integration + determinism tests.
 
 ## Next Steps
-T003 revalidation/abort, bypass, wiring into plan_job_llm, plan.md
-normalization section, mixed-fixture integration + determinism tests.
+Handback: completion report with per-commit tables and raw transcripts,
+then rewrite .agent/handoff.md.
 
 ## Risks
 - Wiring touches two call sites (do_cmd.py ~241, ~2832); the record must be

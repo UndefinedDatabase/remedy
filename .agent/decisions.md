@@ -1,5 +1,33 @@
 # Decisions
 
+## 2026-07-26: F016 clustering groups by matched FILE, not by raw path tokens
+The feature file says "greedy grouping by shared files_hint tokens". Grouping
+directly on token sets merges everything: `src/parser/core.py` and
+`src/runner/loop.py` share the token "src", so every acceptance item in a
+repo with a `src/` tree would land in one cluster and nothing would ever
+split. An acceptance item therefore still MATCHES files by token overlap
+(that part is unchanged), but two items group only when they matched the
+same files_hint entry. File extensions are stripped before tokenizing for
+the same reason — otherwise two unrelated `.py` files look related.
+
+## 2026-07-26: F016 merge safety also refuses cycle-closing merges
+The ordered rule is "no task OUTSIDE the run depends on a non-last member".
+That rule alone does not prevent a cycle: if outside task X depends on the
+LAST member and some member depends on X, contracting the group into one
+node makes that node depend on itself. The T003 revalidation would catch it,
+but aborting throws away the whole normalization for one bad group. The
+merge step therefore checks per group whether the group's dependency
+ancestors and dependents intersect, and skips just that group.
+
+## 2026-07-26: F016 uses the "aborted" kind for a refused merge too
+A merge that dependency safety refuses is recorded as kind="aborted" with a
+reason starting "merge skipped: ...", the same kind the whole-plan
+revalidation abort uses. The four kinds are fixed by the feature order
+(split | merge | aborted | unsplittable_flag), so a refused merge either
+reuses "aborted" or goes unrecorded; showing the approver what was
+considered and declined is worth the shared kind, and the reason text
+distinguishes the two cases.
+
 ## 2026-07-25: R-0116 — intake timeout removed; OllamaPlanner.raw_call is the single config surface
 make_provider_call_fn previously hardcoded `timeout=15.0` on the Ollama client.
 After R-0116, the function delegates to OllamaPlanner.raw_call, which builds

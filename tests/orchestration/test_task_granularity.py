@@ -207,3 +207,172 @@ def test_split_band_config_lowers_the_trigger() -> None:
 def test_invalid_split_band_is_rejected_loudly() -> None:
     with pytest.raises(ValueError, match="split_band"):
         GranularityConfig(split_band="huge")
+
+
+# ---------------------------------------------------------------------------
+# Merge table (T002)
+# ---------------------------------------------------------------------------
+
+def _small(task_id: str, files: list[str], deps: list[str] | None = None):
+    return _task(task_id, acceptance=[f"do {task_id}"], band="S",
+                 files=files, deps=deps)
+
+
+MERGE_CASES: list[Case] = [
+    Case(
+        name="three_consecutive_small_tasks_merge_into_one",
+        tasks=[
+            _small("T1", ["src/app/a.py"]),
+            _small("T2", ["src/app/b.py"], deps=["T1"]),
+            _small("T3", ["src/app/c.py"], deps=["T2"]),
+        ],
+        expected_ids=["T1"],
+        expected_bands=["M"],
+        expected_deps=[[]],
+        expected_kinds=["merge"],
+        expected_acceptance=[["do T1", "do T2", "do T3"]],
+    ),
+    Case(
+        name="external_dependency_on_middle_member_blocks_the_merge",
+        tasks=[
+            _small("T1", ["src/app/a.py"]),
+            _small("T2", ["src/app/b.py"], deps=["T1"]),
+            _small("T3", ["src/app/c.py"], deps=["T2"]),
+            _task("T9", acceptance=["later"], band="L", deps=["T2"]),
+        ],
+        expected_ids=["T1", "T2", "T3", "T9"],
+        expected_bands=["S", "S", "S", "L"],
+        expected_deps=[[], ["T1"], ["T2"], ["T2"]],
+        expected_kinds=["aborted"],
+    ),
+    Case(
+        name="group_cap_three_with_four_candidates_yields_three_plus_one",
+        tasks=[
+            _small("T1", ["src/app/a.py"]),
+            _small("T2", ["src/app/b.py"], deps=["T1"]),
+            _small("T3", ["src/app/c.py"], deps=["T2"]),
+            _small("T4", ["src/app/d.py"], deps=["T3"]),
+        ],
+        expected_ids=["T1", "T4"],
+        expected_bands=["M", "S"],
+        expected_deps=[[], ["T1"]],
+        expected_kinds=["merge"],
+        expected_acceptance=[["do T1", "do T2", "do T3"], ["do T4"]],
+    ),
+    Case(
+        name="non_overlapping_files_hint_prevents_a_run",
+        tasks=[
+            _small("T1", ["src/app/a.py"]),
+            _small("T2", ["docs/guide.md"], deps=["T1"]),
+        ],
+        expected_ids=["T1", "T2"],
+        expected_bands=["S", "S"],
+        expected_deps=[[], ["T1"]],
+        expected_kinds=[],
+    ),
+    Case(
+        name="a_task_with_too_many_acceptance_items_is_no_candidate",
+        tasks=[
+            _small("T1", ["src/app/a.py"]),
+            _task("T2", acceptance=["a", "b", "c", "d"], band="S",
+                  files=["src/app/b.py"], deps=["T1"]),
+        ],
+        # T2 is above the acceptance threshold: it splits instead of merging.
+        expected_ids=["T1", "T2a", "T2b", "T2c", "T2d"],
+        expected_bands=["S", "M", "M", "M", "M"],
+        expected_deps=[[], ["T1"], ["T2a"], ["T2b"], ["T2c"]],
+        expected_kinds=["split"],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", MERGE_CASES, ids=lambda c: c.name)
+def test_merge_table(case: Case) -> None:
+    result = normalize_plan(_plan(case.tasks), case.cfg)
+    tasks = result.plan.tasks
+
+    assert [t.id for t in tasks] == case.expected_ids
+    assert [t.est_tokens_band for t in tasks] == case.expected_bands
+    assert [list(t.depends_on) for t in tasks] == case.expected_deps
+    assert [t.kind for t in result.transformations] == case.expected_kinds
+    if case.expected_acceptance is not None:
+        assert [list(t.acceptance) for t in tasks] == case.expected_acceptance
+
+
+def test_merged_task_joins_titles_and_unions_files() -> None:
+    plan = _plan([
+        _small("T1", ["src/app/a.py"]),
+        _small("T2", ["src/app/a.py", "src/app/b.py"], deps=["T1"]),
+    ])
+    (merged,) = normalize_plan(plan, GranularityConfig()).plan.tasks
+
+    assert merged.title == "task T1 + task T2"
+    assert list(merged.files_hint) == ["src/app/a.py", "src/app/b.py"]
+    assert merged.est_tokens_band == "M"
+
+
+def test_merge_record_names_sources_result_and_heuristic_band() -> None:
+    plan = _plan([
+        _small("T1", ["src/app/a.py"]),
+        _small("T2", ["src/app/b.py"], deps=["T1"]),
+    ])
+    (record,) = normalize_plan(plan, GranularityConfig()).transformations
+
+    assert record.kind == "merge"
+    assert record.source_ids == ["T1", "T2"]
+    assert record.result_ids == ["T1"]
+    assert "heuristically" in record.reason
+
+
+def test_blocked_merge_is_recorded_with_the_reason() -> None:
+    plan = _plan([
+        _small("T1", ["src/app/a.py"]),
+        _small("T2", ["src/app/b.py"], deps=["T1"]),
+        _small("T3", ["src/app/c.py"], deps=["T2"]),
+        _task("T9", acceptance=["later"], band="L", deps=["T2"]),
+    ])
+    (record,) = normalize_plan(plan, GranularityConfig()).transformations
+
+    assert record.kind == "aborted"
+    assert record.source_ids == ["T1", "T2", "T3"]
+    assert "not the last member" in record.reason
+
+
+def test_external_dependency_on_the_last_member_still_merges() -> None:
+    plan = _plan([
+        _small("T1", ["src/app/a.py"]),
+        _small("T2", ["src/app/b.py"], deps=["T1"]),
+        _task("T9", acceptance=["later"], band="L", deps=["T2"]),
+    ])
+    result = normalize_plan(plan, GranularityConfig())
+
+    assert [t.id for t in result.plan.tasks] == ["T1", "T9"]
+    by_id = {t.id: t for t in result.plan.tasks}
+    assert list(by_id["T9"].depends_on) == ["T1"]
+
+
+def test_merge_that_would_close_a_cycle_is_refused() -> None:
+    # T9 depends on the last member T2 and T1 depends on T9: contracting
+    # T1+T2 into one node would make that node depend on itself.
+    plan = _plan([
+        _task("T9", acceptance=["outside"], band="L", deps=["T2"]),
+        _small("T1", ["src/app/a.py"], deps=["T9"]),
+        _small("T2", ["src/app/b.py"]),
+    ])
+    result = normalize_plan(plan, GranularityConfig())
+
+    assert [t.id for t in result.plan.tasks] == ["T9", "T1", "T2"]
+    (record,) = result.transformations
+    assert record.kind == "aborted"
+    assert "cycle" in record.reason
+
+
+def test_merge_group_size_one_disables_merging() -> None:
+    plan = _plan([
+        _small("T1", ["src/app/a.py"]),
+        _small("T2", ["src/app/b.py"], deps=["T1"]),
+    ])
+    result = normalize_plan(plan, GranularityConfig(merge_group_size=1))
+
+    assert [t.id for t in result.plan.tasks] == ["T1", "T2"]
+    assert result.transformations == []
