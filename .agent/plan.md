@@ -10,13 +10,14 @@ DEFAULT stays one cycle until the F075 gate.
 ## Checklist
 - [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
 - [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
-- [ ] T002 cycle evidence + CLI/config + single-pass regression
+- [x] T002 cycle evidence + CLI/config + single-pass regression
 - [ ] Integration gate
 - [ ] Closure
 
 ## Current Step
-Round 1 bundle: T002 — cycle evidence records, config keys, CLI flag,
-single-pass regression.
+Round 1 handed back for review (Setup+T001+T002 built and verified).
+Next expected action: reviewer verdict in .agent/live_review.md, then the
+integration gate. Closure is a later step.
 
 ## Risks
 - Conductor must wrap existing parts (A6) — no parallel executor.

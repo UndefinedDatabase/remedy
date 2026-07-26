@@ -1345,3 +1345,19 @@ claim a pass; a failed task step or failed verification ends the cycle (retry
 inside a cycle would be a retry policy, which is out of scope); the rollout cap
 lives in the caller, so `run_cycles` honors `limits.max_cycles` verbatim and
 tests can drive a five-cycle fixture.
+
+## 2026-07-26: F046 T002 — where the rollout cap lives, and what "byte-identical" means
+The cap is enforced in the CALLER (`resolve_max_cycles` / the CLI), not inside
+`run_cycles`, so the loop honors `limits.max_cycles` verbatim and the five-cycle
+fixture can drive it. `CYCLE_SAFETY_CAP = 1` trims flag AND config; the CLI
+names the origin of a trimmed value instead of honoring it silently.
+`remedy job run <id>` delegates to `_cmd_run_next_task_local` whenever the
+resolved count is one, so single-cycle CLI behavior IS today's single pass by
+construction — it cannot drift. The library-level regression test asserts the
+delta is exactly two additive metadata keys (`cycle_terminal_status`,
+`cycle_job_status`) plus the cycle evidence record; that additive trace is the
+feature itself and is stated rather than hidden behind the word "identical".
+Cycle records reuse `pingpong_job.job_evidence_dir` so there is no second
+evidence convention. The data-root fixture in the slice suite is autouse: cycle
+records are written by default, and a test that reached the repository's real
+`.data/` would pollute it.
