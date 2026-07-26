@@ -8,14 +8,15 @@ proves every stop cause; each cycle leaves its own evidence record;
 DEFAULT stays one cycle until the F075 gate.
 
 ## Checklist
-- [ ] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
-- [ ] T001 loop skeleton + terminal-status matrix + five-cycle fixture
+- [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
+- [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
 - [ ] T002 cycle evidence + CLI/config + single-pass regression
 - [ ] Integration gate
 - [ ] Closure
 
 ## Current Step
-Round 1 bundle: Setup + T001 + T002.
+Round 1 bundle: T002 — cycle evidence records, config keys, CLI flag,
+single-pass regression.
 
 ## Risks
 - Conductor must wrap existing parts (A6) — no parallel executor.

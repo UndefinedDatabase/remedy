@@ -1329,3 +1329,19 @@ byte-identical self-check duty for reviewer-authored text.
 Hygiene chore scheduled as its OWN gap item: 3 catalog-classification
 test failures, 2 job_stop_integration failures, ruff-432 backlog —
 explicitly NOT part of F148.
+
+## 2026-07-26: F046 T001 — terminal-status mapping and the loop seams
+Core `RunState` has no BLOCKED member, so the pingpong `JOB_*` string is the
+authoritative terminal status and is written to `job.metadata`
+(`cycle_terminal_status` / `cycle_job_status`). `blocked` maps to
+`RunState.PAUSED`, not FAILED: "no ready task and not green" also covers a job
+awaiting a decision — nothing failed, and the job must stay resumable.
+`max_cycles_reached` is a sixth, non-stop-cause terminal that leaves job state
+untouched; that is what makes `max_cycles=1` behave exactly like today's single
+pass (JOB_RUNNING is in the mapping table for this reason).
+A9 defaults taken: a job with zero tasks is `blocked` ("no_tasks"), never
+"green"; a cycle with no verify step configured records `not_run` and does NOT
+claim a pass; a failed task step or failed verification ends the cycle (retry
+inside a cycle would be a retry policy, which is out of scope); the rollout cap
+lives in the caller, so `run_cycles` honors `limits.max_cycles` verbatim and
+tests can drive a five-cycle fixture.
