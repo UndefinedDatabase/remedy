@@ -1,33 +1,35 @@
-# Plan — F016 Scaling task granularity
+# Plan — F034 Bundled clarification in the Flight Plan
 
 ## Goal
-Right-size Flight-Plan tasks automatically: split oversized tasks, merge
-trivial neighbors, record every transformation on the plan. Pure heuristic
-module (no cost history exists yet), wired at ONE point in plan generation,
-failing open to the original plan.
+All open questions are asked ONCE, bundled, at plan time — never again:
+intake clarifications ride the single plan-approval decision; every
+unanswered question runs on its documented conservative default; the
+runtime is provably incapable of asking mid-run. Done when an unattended
+`remedy do --yes` completes with all defaults recorded in an assumption
+log, and a guard test fails the build if interactive prompting ever enters
+the execution packages.
 
 ## Checklist
-- [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
-- [x] T001 split rules + config keys + table tests (gate green)
-- [x] T002 merge rule + dependency-safety table tests (gate green)
-- [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
-      plan.md normalization section + mixed-fixture integration (gate green)
-- [x] Integration gate: branch vs base full-suite comparison, no F016
-      regression (verdict persisted in .agent/live_review.md)
-- [x] Closure: verdicts persisted, feature-file Built State written
+- [x] Setup: Open PR Gate (#150 merged), branch, STATUS claim, state files
+- [ ] T001 decision payload + per-question answer parsing + tests
+- [ ] T002 approve → write-back → immutability (late answer rejected)
+- [ ] T003 assumptions.md renderer + CLI + plan.md link
+- [ ] T004 interactive-input guard test + unattended end-to-end
+- [ ] Integration gate
+- [ ] Closure
 
 ## Current Step
-Closure — integrity check, evidence job (T001–T003 attested), fresh review
-zip, STATUS.md line, final commit, PR #150 description update. Do NOT merge:
-the Open PR Gate handles that at the next feature start.
+T001 — extend FlightPlanClarification with answered_by + stable question
+ids, carry intake clarifications into clarifications_resolved, embed the
+questions into the existing fp:approval decision payload (exactly ONE
+decision per plan), add repeatable `--answer q1="text"` parsing to
+`remedy decision resolve`.
 
 ## Next Steps
-None for F016 after closure.
+T002 write-back/immutability, T003 assumption log, T004 guard + e2e.
 
 ## Risks
-- Full suite is nondeterministic under xdist and pre-existing RED on base
-  (~160-181 churning failures); serial re-runs pass. Backlog F135/F052.
-- R-0142: redaction pattern false-positives on "sk-" substrings (Low, gap
-  backlog) — branch-name artifact, vanishes on main.
-- Cross-group merge-cycle interactions are caught only by the final
-  whole-plan revalidation (coarse abort, fail-open) — by design.
+- Schema changes must be additive: existing fp1 job data must keep loading.
+- Question ids must be stable across plan regeneration (intake order).
+- Conditional-answer predicates are OPTIONAL scope; skip unless trivially
+  cheap and record the skip in the handoff.
