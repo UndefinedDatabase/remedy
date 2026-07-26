@@ -1,57 +1,55 @@
-# Handoff — F016 Scaling task granularity — round 1 (T001–T003)
+# Handoff — F016 — integration gate round (measurement only)
 
-Review of dcb8b1a..HEAD
+Review of cd13645..HEAD
 
 ## State
-- Branch: `feature/f016-task-granularity` (pushed)
-- Base: `dcb8b1a` (merge of PR #149 into main, via Open PR Gate)
-- STATUS.md: F016 claimed `[~]`
-- live_review.md: reset for F016, finding IDs continue at R-0141
-- Evidence bundle / review zip: not built this round (not ordered)
+- Branch: `feature/f016-task-granularity` (PR #150)
+- Base: `dcb8b1a` (main after PR #149)
+- Round 1 verdict PASS persisted; LAST_REVIEWED_SHA = cd13645
+- No code changed this round (gate is measurement, not repair)
 
-## Item-Status Table
-| Item | Status | Reason |
-|------|--------|--------|
-| T001 split rules + config + table tests | done | |
-| T002 merge rule + dependency-safety tests | done | |
-| T003 revalidation + wiring + integration | done | |
+## Gate outcome: BLOCKED by the literal rule
+`comm -13 base branch` is NON-EMPTY (10 node ids), so per the order I
+stopped and did not repair. But the follow-up measurements show the
+single-run comparison is not a valid signal for this suite:
 
-## Commits
-| SHA | Subject |
-|-----|---------|
-| 88911bd | chore(f016): claim F016, reset live review and plan |
-| 8b5360c | feat(f016): pure split heuristic + planning config keys |
-| 6513fca | test(f016): table-driven split cases |
-| fc2e219 | feat(f016): merge rule for trivial neighbors |
-| 51e2575 | feat(f016): revalidate, wire normalization into plan generation |
+- A SECOND branch run (identical command/env) reproduced NONE of the 10.
+  Intersection of the 10 with branch-run-2 failures = empty.
+- Branch run 2 produced 6 different failures absent from branch run 1.
+- 9 of the 10 pass when re-run serially.
+- The `errors` count also churns: 2 (run 1), 2 (run 2), 4 (run 3), with
+  different node ids each time; they pass serially.
 
-## Changed files (net)
-| File | Change |
-|------|--------|
-| packages/orchestration/task_granularity.py | new, pure module (no I/O) |
-| packages/orchestration/config.py | 4 keys under `planning.granularity.*` |
-| packages/orchestration/flight_plan.py | wiring, record on FlightPlanResult, plan.md section |
-| apps/cli/commands/do_cmd.py | `_normalization` persisted at both call sites |
-| tests/orchestration/test_task_granularity.py | new, 26 tests |
-| tests/orchestration/test_flight_plan.py | +6 normalization/wiring tests |
-| tests/orchestration/test_config.py | +5 key tests |
-| tests/cli/test_plan_approval.py | +1 CLI persistence test |
-| docs/system/remedy-toml-configuration-system-v0.md | new keys documented |
+One of the ten is REAL and reproducible — see R-0142 below.
 
-## Verification (raw, all exit 0)
-- `pytest tests/orchestration/test_task_granularity.py -q` → 26 passed
-- `pytest tests/orchestration/test_config.py -q` → 62 passed
-- `pytest tests/orchestration/test_flight_plan.py -q` → 29 passed
-- `pytest tests/cli/test_plan_approval.py -q` → 27 passed
-- `pytest tests/orchestration/schemas/test_schemas.py -q` → 44 passed
-- `pytest tests/cli/test_golden_path.py -q` (canary) → 42 passed
-- Full suite NOT run this round (scoped round gate per §3 tiers).
-- `ruff check` clean on all touched files; 6 pre-existing import-order
-  errors in tests/cli/test_plan_approval.py were confirmed present on the
-  base commit and left alone.
+## Counts
+| Run | Command | Result |
+|-----|---------|--------|
+| base `dcb8b1a` (worktree) | `pytest -n auto -q --tb=no -rf` | 181 failed, 13799 passed, 14 skipped in 180.73s |
+| branch run 1 | same | 162 failed, 13862 passed, 8 skipped, 2 errors in 177.26s |
+| branch run 2 | same | 158 failed, 13864 passed, 8 skipped, 2 errors in 180.17s |
 
-## Open findings
-None (R-0141+ unused).
+Branch wall clock ~3m0s with `-n auto` — inside the ~5 min budget.
+
+## R-0142 candidate [low] — branch NAME trips the redaction gate
+`tests/ui_server/test_auth_redaction.py::TestRedactionPatterns::test_viewer_html_passes_precision`
+fails deterministically on the branch checkout and passes at `dcb8b1a`.
+Cause: `FORBIDDEN_SECRET_PATTERNS` includes `sk-[a-zA-Z0-9_-]{8,}`
+(OpenAI key shape). The branch name `feature/f016-task-granularity`
+contains the substring `sk-granularity`, the brain viewer embeds repo git
+state, so the scanner reports 7 findings. Not caused by F016 code; it is
+a false positive of the pattern on any string containing `sk-`
+("task-", "risk-", "disk-"). Left unfixed per the round constraint.
+
+## Artifacts (raw transcripts)
+`/tmp/claude-1000/-home-decodeux-Repos-remedy/48a649f3-8800-4f34-a88c-f00419bc122b/scratchpad/`
+- `f016_branch_full.txt`, `f016_branch_failed.txt` (162)
+- `f016_branch_full_run2.txt`, `f016_branch_failed_run2.txt` (158)
+- `f016_base_full.txt`, `f016_base_failed.txt` (181)
+- `f016_new_failed_ids.txt` (the 10)
 
 ## Next expected action
-Reviewer round on `dcb8b1a..HEAD`.
+Reviewer decision on the gate: either accept F016 (the 10 are suite
+nondeterminism, proven by run 2) and open R-0142 against the redaction
+pattern as its own item, or order a stabilization round first. No F016
+code change is implied by any of the above.

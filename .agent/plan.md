@@ -14,13 +14,16 @@ failing open to the original plan.
       plan.md normalization section + mixed-fixture integration (gate green)
 
 ## Current Step
-Integration gate: full suite (`-n auto`) on the branch vs the base commit
-dcb8b1a in a worktree; compare FAILED node ids. Measurement only — no
-repair in this round.
+Integration gate RUN, handed back BLOCKED by the literal rule: the
+base-vs-branch new-failure list is non-empty (10 ids). Second branch run
+reproduces none of them and adds 6 others → suite nondeterminism under
+`-n auto`. One real item recorded as an R-0142 candidate (branch NAME
+`task-granularity` matches the `sk-` secret pattern). No repair this
+round, per the round constraint.
 
 ## Next Steps
-Empty new-failure list → hand back PASS. Non-empty → STOP, hand back the
-list plus raw tracebacks of the new failures only.
+Await reviewer decision: accept F016 and track R-0142 separately, or
+order a stabilization round.
 
 ## Risks
 - Plan schema classes untouched (F014 R-0121); the record lives only in
