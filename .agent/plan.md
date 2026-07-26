@@ -1,25 +1,27 @@
-# Plan — Tiered Verification Gates (operator decision 2026-07-26)
+# Plan — F016 Scaling task granularity
 
 ## Goal
-Encode tiered verification gates in the planner/reviewer protocol and set
-up pytest-xdist for full-suite runs.
+Right-size Flight-Plan tasks automatically: split oversized tasks, merge
+trivial neighbors, record every transformation on the plan. Pure heuristic
+module (no cost history exists yet), wired at ONE point in plan generation,
+failing open to the original plan.
 
 ## Checklist
-- [x] F014 closure PR #148 merged via Open PR Gate
-- [x] planner_reviewer_prompt.md §3: verification tiers (round gate scoped
-      only · golden-path canary per handback · full suite 2× per feature ·
-      xdist + ~5 min budget note)
-- [x] planner_reviewer_prompt.md §4.6: verdict semantics (round PASS =
-      scoped green + clean diff; only integration gate claims full green)
-- [x] STATUS_closure_protocol.md precondition 2: integration-gate round
-      reference
-- [x] pyproject dev deps: pytest-xdist; markers slow/integration existed
-- [x] Verified: canary 42 passed in ~19 s; full suite `-n auto` 3m11s
+- [x] Setup: Open PR Gate (#149 merged), branch, STATUS claim, state files
+- [ ] T001 split rules + config keys + table tests
+- [ ] T002 merge rule + dependency-safety table tests
+- [ ] T003 revalidation/abort + bypass + wiring into plan_job_llm +
+      plan.md normalization section + mixed-fixture integration test
 
 ## Current Step
-Commit + PR.
+T001 — packages/orchestration/task_granularity.py (split) +
+planning.granularity.* config keys +
+tests/orchestration/test_task_granularity.py.
+
+## Next Steps
+T002 merge rule, then T003 safety + wiring.
 
 ## Risks
-- Full suite currently RED on main: 159 failed / 13827 passed (spot-check
-  serial: pre-existing, e.g. dev_server missing `_ABS_PATH_RE`). Expected
-  target of the first integration-gate round; out of scope here.
+- Wiring touches two call sites (do_cmd.py ~241, ~2832); the record must be
+  persisted as fp_dict["_normalization"] without touching plan schema classes
+  (F014 R-0121: schema-size snapshot regression).

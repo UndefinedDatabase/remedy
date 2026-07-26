@@ -26,7 +26,7 @@
 
 - [x] F013 — Job intake (T001–T003 complete; accepted 2026-07-25 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job f013_job_intake_closure · package remedy-review-20260725-184236-READY_FOR_REVIEW.zip · SHA-256 098bb64f72a8d08120852d280227d0805871ec41a0430b8d4c4ed7ee4509b9f1 · accepted HEAD ba6e6fe6d05e97197ca45c201a7914dc4ef20396)
 - [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
-- [ ] F016 — Scaling task granularity
+- [~] F016 — Scaling task granularity
 - [ ] F034 — Bundled clarification in the Flight Plan (never at runtime)
 - [ ] F046 — Multi-cycle loop
 - [ ] F047 — Checkpoint & resume (kill-proof)
