@@ -1,5 +1,25 @@
 # Decisions
 
+## 2026-07-26: F047 `job resume` EXTENDS the existing command, it does not shadow it
+`remedy job resume` already existed: an event-replay resume with a REQUIRED
+`--checkpoint <id>`, handled by `_cmd_resume` (apps/cli/commands/job.py).
+Adding a second catalog entry with command_id "job.resume" produced a
+duplicate — `get_command` returned the new one while the dispatch dict's
+later key silently kept the old handler. Caught by the T002 dispatch test,
+not by any existing catalog test (nothing asserts command_id uniqueness).
+
+Resolution: ONE command, two modes on the same name — which is also the
+spelling the feature file mandates (`remedy job resume <id>`), and which
+wraps the existing part rather than duplicating it (A6). `--checkpoint` is
+now optional: given, the event-replay path runs completely unchanged; absent
+(previously an argparse error, so no existing invocation changes behavior),
+the F047 cycle-checkpoint path runs. The T002 suite pins both branches and
+asserts the catalog registers "job.resume" exactly once.
+
+The two "checkpoints" are genuinely different objects and the docstrings say
+so: an event-replay checkpoint is DERIVED from run-log events; an F047
+checkpoint is WRITTEN at a cycle boundary under the job's evidence area.
+
 ## 2026-07-26: F047 checkpoint record shape — pointer + self-verifying envelope
 The record is `{"record": {...body...}, "content_hash": "sha256:<hex>"}`.
 The hash covers the canonical encoding of the body only (sorted keys, no

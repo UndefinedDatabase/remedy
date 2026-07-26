@@ -377,6 +377,23 @@ def snapshot(handle: WorktreeHandle) -> str:
     return sha
 
 
+def head_at(path: str | Path) -> str:
+    """Current HEAD sha of a worktree PATH, claiming nothing (F047).
+
+    ``snapshot`` needs a claimed handle, and ``create`` takes the job lock and
+    may materialise a worktree — neither is acceptable for the read-only head
+    comparison ``remedy job resume`` makes before it decides whether to run.
+    Returns "" when the path is absent or is not a usable git worktree; the
+    caller must treat "" as "unknown", never as "matches".
+    """
+    try:
+        if not path or not Path(path).is_dir():
+            return ""
+        return _git(path, "rev-parse", "HEAD").strip()
+    except (WorktreeError, OSError, subprocess.SubprocessError):
+        return ""
+
+
 def diff(handle: WorktreeHandle) -> str:
     """Deterministic, repository-relative diff of everything the run changed.
 

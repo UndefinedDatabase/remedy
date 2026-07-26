@@ -247,6 +247,29 @@ def resolve_worktree_head(job_id: str) -> str:
     return str(getattr(plan, "worktree_head", "") or "") if plan is not None else ""
 
 
+def resolve_live_worktree_head(job_id: str) -> str:
+    """The head the worktree is standing on RIGHT NOW, or "" when unknown.
+
+    Read-only: it claims no lock and materialises nothing (see
+    ``worktrees.head_at``).  "" means unknown — a caller comparing heads must
+    never read it as "matches".
+    """
+    try:
+        from packages.orchestration.pingpong_job import load_job_plan
+        from packages.orchestration.worktrees import head_at
+
+        plan = load_job_plan(str(job_id))
+        if plan is None:
+            return ""
+        relative = str(getattr(plan, "worktree_path", "") or "")
+        repo = str(getattr(plan, "repo_path", "") or "")
+        if not relative or not repo:
+            return ""
+        return head_at(Path(repo) / relative)
+    except Exception:  # noqa: BLE001 — a head lookup must not break resume
+        return ""
+
+
 # ---------------------------------------------------------------------------
 # Writing
 # ---------------------------------------------------------------------------
