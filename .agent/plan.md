@@ -11,11 +11,12 @@ DEFAULT stays one cycle until the F075 gate.
 - [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
 - [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
 - [x] T002 cycle evidence + CLI/config + single-pass regression
-- [ ] Integration gate
+- [x] Integration gate
 - [ ] Closure
 
 ## Current Step
-Integration gate running (full-suite round 1 of the 2-per-feature rule).
+Closure — evidence job, review package, Built State, STATUS line, PR
+#152 finalized. NOT merged (Open PR Gate at next feature start).
 
 ## Next Steps
 Reviewer verdict on the integration gate, then Closure (evidence job,
