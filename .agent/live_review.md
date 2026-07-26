@@ -1,7 +1,7 @@
 # Live Review — F034 Bundled clarification in the Flight Plan
 
 Branch: feature/f034-bundled-clarification
-LAST_REVIEWED_SHA: 0891b8d
+LAST_REVIEWED_SHA: 8027d48
 Finding IDs continue monotonically from R-0143.
 
 ## Findings
@@ -39,3 +39,10 @@ Finding IDs continue monotonically from R-0143.
 - Repair round (R-0144): resolved by this entry replacing the
   unauthored one. Mark R-0144 Resolved in ## Findings
   (Done: R-0144).
+- Repair round (1b891fb..8027d48): PASS — issued by the reviewer.
+  Both authored texts applied byte-identical (reviewer re-ran the
+  grep proofs and the canary: 42 passed). The whitespace-
+  normalized verification of the "issued by the reviewer" check
+  was the correct, honest handling — the authored text was not
+  reflowed to satisfy a literal grep. LAST_REVIEWED_SHA = 8027d48.
+  F034 enters closure.

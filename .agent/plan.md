@@ -15,17 +15,19 @@ the execution packages.
 - [x] T002 approve → write-back → immutability (late answer rejected)
 - [x] T003 assumptions.md renderer + CLI + plan.md link
 - [x] T004 interactive-input guard test + unattended end-to-end
-- [x] Integration gate — no F034-attributable regression (verdict in
-      .agent/live_review.md)
+- [x] Integration gate — no F034-attributable regression (reviewer verdict
+      in .agent/live_review.md)
+- [x] Repair R-0144 (resolved, reviewer-verified)
 - [ ] Closure
 
 ## Current Step
-Integration-gate handback — both full-suite runs recorded raw, all 7
-branch-only failures attributed to pre-existing flake with serial-rerun
-and base-repeat evidence, canary green. Awaiting the reviewer.
+Closure — integrity check, evidence job attesting T001–T004, fresh review
+zip, Built State in the feature file, authored STATUS line, PR #151
+finalized. Do NOT merge: the Open PR Gate handles that at the next
+feature start.
 
 ## Next Steps
-Closure (evidence job, review zip, STATUS line) after the gate verdict.
+None after closure.
 
 ## Risks
 - Suite nondeterminism is pre-existing: tests/cli/ shows 27 failures on both
