@@ -1,0 +1,246 @@
+d87a3e05b1ae084583e6cba602ec50cb1b7c4249
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index ce6a05c..75c5934 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -331,6 +331,23 @@ CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.show", "test.run"),
+     ),
+ 
++    CommandEntry(
++        command_id="job.run",
++        group_id="job",
++        subcommand="run",
++        description="Run a job in bounded cycles (F046; one cycle until the F075 gate).",
++        action_class="write_metadata",
++        args=(
++            _JOB_ID,
++            ArgDef("--cycles", "Maximum cycles for this run (capped by the rollout default)",
++                   required=False, is_option=True),
++            _JSON_OPT,
++        ),
++        supports_json=True,
++        may_execute_commands=True,
++        related=("job.run-next", "job.plan"),
++    ),
++
+     CommandEntry(
+         command_id="job.plan",
+         group_id="job",
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index dcd2600..2b1b6ce 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -634,6 +634,110 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
+         sys.exit(1)
+ 
+ 
++def _cmd_job_run_cycles(
++    job_id_str: str,
++    *,
++    cycles: int | None = None,
++    json_output: bool = False,
++) -> None:
++    """Run a job in bounded cycles (F046).
++
++    The rollout rule is enforced here, not in the loop: config value and
++    ``--cycles`` flag are both capped by ``CYCLE_SAFETY_CAP`` until the F075
++    milestone gate raises it.  While the resolved count is one cycle, this
++    command IS today's single pass — it delegates to the existing run-next
++    entry point, so single-cycle behavior cannot drift from it.
++    """
++    import json as _json
++    from dataclasses import replace
++
++    from packages.orchestration.config import get_config
++    from packages.orchestration.long_run_executor import (
++        default_task_step,
++        limits_from_config,
++        run_cycles,
++    )
++
++    try:
++        limits, resolved = limits_from_config(get_config(), cycles_flag=cycles)
++    except ValueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(2)
++
++    if resolved.capped:
++        origin = "--cycles" if resolved.source == "flag" else "cycles.max_cycles"
++        print(
++            f"Note: {origin} {resolved.requested} capped to {resolved.max_cycles} "
++            f"by the F046 rollout default (raised by the F075 milestone gate).",
++            file=sys.stderr,
++        )
++
++    if resolved.max_cycles <= 1:
++        # One cycle == today's single pass. Reuse it verbatim rather than
++        # reimplementing the task/verify/apply pipeline behind a second door.
++        _cmd_run_next_task_local(job_id_str)
++        return
++
++    job_id = resolve_job_id(job_id_str)
++    try:
++        job = load_job(job_id)
++    except JobNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    from packages.orchestration.flight_plan import flight_plan_blocks_execution
++    block_reason = flight_plan_blocks_execution(job)
++    if block_reason == "pending":
++        print(
++            f"Error: plan awaiting approval. "
++            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
++            file=sys.stderr,
++        )
++        sys.exit(3)
++    elif block_reason == "rejected":
++        print(
++            f"Error: flight plan rejected. "
++            f"Run: remedy do replan {job_id_str[:8]}",
++            file=sys.stderr,
++        )
++        sys.exit(3)
++
++    from packages.orchestration.permissions import Capability
++    from packages.orchestration.permissions import is_allowed as _perm_allowed
++    from packages.orchestration.run_log import RunLogWriter
++    from packages.providers.ollama_builder.provider import OllamaBuilder
++
++    if not _perm_allowed(job, Capability.workspace_write):
++        print(
++            f"Error: permission denied — workspace_write is not granted for job {job.id}",
++            file=sys.stderr,
++        )
++        sys.exit(1)
++
++    log = RunLogWriter(job_id=job.id)
++    try:
++        builder = OllamaBuilder()
++    except Exception as exc:
++        print(f"Error: builder unavailable — {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    limits = replace(limits, budgets=job.budgets)
++    result = run_cycles(job, limits, builder.build,
++                        task_step=default_task_step, log=log)
++
++    if json_output:
++        print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
++    else:
++        print(
++            f"Job {job.id} | cycles={result.cycles_run}/{limits.max_cycles} "
++            f"terminal={result.terminal_status} status={result.job_status}"
++            f"{' reason=' + result.stop_reason if result.stop_reason else ''}"
++            f"  log={log.path}"
++        )
++    if result.terminal_status not in ("all_green", "max_cycles_reached"):
++        sys.exit(1)
++
++
+ def _cmd_run_loop(
+     job_id_str: str,
+     *,
+@@ -1640,6 +1744,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         json_output=getattr(args, "json", False),
+     ),
+     "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
++    "job.run": lambda args: _cmd_job_run_cycles(
++        args.job_id,
++        cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
++        json_output=getattr(args, "json", False),
++    ),
+     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+     "job.run-loop": lambda args: _cmd_run_loop(
+         args.job_id,
+diff --git a/tests/orchestration/test_long_run_executor.py b/tests/orchestration/test_long_run_executor.py
+index 4c287e5..0a52755 100644
+--- a/tests/orchestration/test_long_run_executor.py
++++ b/tests/orchestration/test_long_run_executor.py
+@@ -773,3 +773,85 @@ class TestSinglePassRegression:
+         assert limits.budgets is None
+         assert limits.verify_command is None
+ 
++
++
++# ---------------------------------------------------------------------------
++# T002 — `remedy job run <id> [--cycles N]`
++# ---------------------------------------------------------------------------
++
++
++class FakeBuilder:
++    model = "fake-model"
++
++    def build(self, context: TaskExecutionContext) -> BuilderOutput:
++        return BuilderOutput(
++            summary=f"did {context.task_description}",
++            proposed_changes=[f"write docs for {context.task_description}"],
++        )
++
++
++class TestJobRunCommand:
++    def test_registered_in_the_catalog_with_a_handler(self):
++        from apps.cli.command_catalog import CATALOG
++        from apps.cli.commands.job import COMMAND_HANDLERS
++
++        entry = next(c for c in CATALOG if c.command_id == "job.run")
++        assert entry.subcommand == "run"
++        assert "--cycles" in [a.name for a in entry.args]
++        assert "job.run" in COMMAND_HANDLERS
++
++    def test_one_cycle_delegates_to_the_existing_single_pass(self, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++
++        seen: list[str] = []
++        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
++        job_cmd._cmd_job_run_cycles("abc12345")
++        assert seen == ["abc12345"]
++
++    def test_the_flag_is_capped_and_the_operator_is_told(self, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++
++        seen: list[str] = []
++        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
++        job_cmd._cmd_job_run_cycles("abc12345", cycles=9)
++        err = capsys.readouterr().err
++        assert seen == ["abc12345"]                  # still the single pass
++        assert "capped to 1" in err and "F075" in err
++
++    def test_zero_cycles_is_refused(self, monkeypatch):
++        from apps.cli.commands import job as job_cmd
++
++        with pytest.raises(SystemExit) as exc:
++            job_cmd._cmd_job_run_cycles("abc12345", cycles=0)
++        assert exc.value.code == 2
++
++    def test_multi_cycle_path_runs_the_loop_after_the_gate(self, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++        from packages.orchestration.storage import save_job
++        from packages.providers.ollama_builder import provider as provider_mod
++
++        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
++        monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
++
++        job = make_job(2)
++        save_job(job)
++        job_cmd._cmd_job_run_cycles(str(job.id), cycles=3)
++
++        out = capsys.readouterr().out
++        assert "cycles=2/3" in out
++        assert f"terminal={TERMINAL_ALL_GREEN}" in out
++        assert len(read_cycle_records(str(job.id))) == 2
++
++    def test_a_capped_config_value_names_the_config_key(self, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++
++        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
++        monkeypatch.setenv("REMEDY_CYCLES_MAX_CYCLES", "8")
++        from packages.orchestration.config import reset_config
++        reset_config()
++        try:
++            job_cmd._cmd_job_run_cycles("abc12345")
++        finally:
++            reset_config()
++        err = capsys.readouterr().err
++        assert "cycles.max_cycles 8 capped to 1" in err

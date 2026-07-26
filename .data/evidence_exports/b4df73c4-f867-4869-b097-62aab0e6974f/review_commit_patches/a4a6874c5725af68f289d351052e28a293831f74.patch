@@ -1,0 +1,1122 @@
+a4a6874c5725af68f289d351052e28a293831f74
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index d62a36e..45085aa 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1329,3 +1329,19 @@ byte-identical self-check duty for reviewer-authored text.
+ Hygiene chore scheduled as its OWN gap item: 3 catalog-classification
+ test failures, 2 job_stop_integration failures, ruff-432 backlog —
+ explicitly NOT part of F148.
++
++## 2026-07-26: F046 T001 — terminal-status mapping and the loop seams
++Core `RunState` has no BLOCKED member, so the pingpong `JOB_*` string is the
++authoritative terminal status and is written to `job.metadata`
++(`cycle_terminal_status` / `cycle_job_status`). `blocked` maps to
++`RunState.PAUSED`, not FAILED: "no ready task and not green" also covers a job
++awaiting a decision — nothing failed, and the job must stay resumable.
++`max_cycles_reached` is a sixth, non-stop-cause terminal that leaves job state
++untouched; that is what makes `max_cycles=1` behave exactly like today's single
++pass (JOB_RUNNING is in the mapping table for this reason).
++A9 defaults taken: a job with zero tasks is `blocked` ("no_tasks"), never
++"green"; a cycle with no verify step configured records `not_run` and does NOT
++claim a pass; a failed task step or failed verification ends the cycle (retry
++inside a cycle would be a retry policy, which is out of scope); the rollout cap
++lives in the caller, so `run_cycles` honors `limits.max_cycles` verbatim and
++tests can drive a five-cycle fixture.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 7c6447f..ad1c266 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -8,14 +8,15 @@ proves every stop cause; each cycle leaves its own evidence record;
+ DEFAULT stays one cycle until the F075 gate.
+ 
+ ## Checklist
+-- [ ] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
+-- [ ] T001 loop skeleton + terminal-status matrix + five-cycle fixture
++- [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
++- [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
+ - [ ] T002 cycle evidence + CLI/config + single-pass regression
+ - [ ] Integration gate
+ - [ ] Closure
+ 
+ ## Current Step
+-Round 1 bundle: Setup + T001 + T002.
++Round 1 bundle: T002 — cycle evidence records, config keys, CLI flag,
++single-pass regression.
+ 
+ ## Risks
+ - Conductor must wrap existing parts (A6) — no parallel executor.
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+new file mode 100644
+index 0000000..ede6c8f
+--- /dev/null
++++ b/packages/orchestration/long_run_executor.py
+@@ -0,0 +1,523 @@
++"""Multi-cycle loop conductor (F046 T001).
++
++Remedy can work in bounded CYCLES instead of a single pass::
++
++    check should_stop -> determine the ready task batch -> execute up to
++    batch_size tasks -> run the verify step -> persist -> repeat
++
++until a terminal condition is reached.  This module is the CONDUCTOR only.
++It sequences parts that already exist and reimplements none of them:
++
++  * should_stop      ``safe_points.should_stop`` (operator stop + budgets in
++                     ONE evaluation per safe point)
++  * task execution   ``task_runner.run_next_task`` — rollback-on-failure stays
++                     that module's concern
++  * verification     ``verifier.verify_task_output`` + ``task_runner.finalize_task``
++  * persistence      ``storage.save_job`` — no new persistence path
++  * job status       the ``pingpong_job.JOB_*`` constants
++
++Readiness is LINEAR: the ready set is the PENDING tasks in ``job.tasks``
++order.  DAG readiness is a later feature and is deliberately absent here.
++
++Terminal statuses and how they map onto job state:
++
++    | terminal status     | pingpong job status | core RunState |
++    |---------------------|---------------------|---------------|
++    | all_green           | completed           | COMPLETED     |
++    | stopped_by_operator | stopped             | PAUSED        |
++    | budget_exhausted    | stopped             | PAUSED        |
++    | deadline_reached    | stopped             | PAUSED        |
++    | blocked             | blocked             | PAUSED        |
++    | max_cycles_reached  | running             | RUNNING       |
++
++``blocked`` maps to PAUSED rather than FAILED because "no ready task and not
++green" also covers a job awaiting a decision — nothing has failed, so the job
++must stay resumable.  ``RunState`` has no BLOCKED member; the exact status
++lives in ``job.metadata["cycle_terminal_status"]`` and in the ledger event.
++
++``max_cycles_reached`` is not a stop CAUSE — it is the loop honoring its cycle
++budget with work still pending.  It leaves job state untouched, which is what
++makes ``max_cycles=1`` (the rollout default until the F075 gate) behave exactly
++like today's single pass.
++
++Nothing in here sleeps.  Wall-clock and deadline evaluation go through the
++injected ``clock``, so a deadline is provable in a unit test.
++"""
++
++from __future__ import annotations
++
++from collections.abc import Callable
++from dataclasses import dataclass
++from datetime import datetime, timezone
++from typing import Any
++from uuid import UUID
++
++from packages.core.models import Job, JobBudgets, RunState
++from packages.orchestration.budget_guard import BudgetCounters
++from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
++from packages.orchestration.pingpong_job import (
++    JOB_BLOCKED,
++    JOB_COMPLETED,
++    JOB_RUNNING,
++    JOB_STOPPED,
++)
++from packages.orchestration.safe_points import should_stop as _should_stop
++from packages.orchestration.storage import save_job as _save_job
++from packages.orchestration.task_runner import (
++    finalize_task,
++    materialize_task_output,
++    run_next_task,
++)
++from packages.orchestration.verifier import verify_task_output
++
++# ---------------------------------------------------------------------------
++# Terminal statuses
++# ---------------------------------------------------------------------------
++
++TERMINAL_ALL_GREEN = "all_green"
++TERMINAL_STOPPED_BY_OPERATOR = "stopped_by_operator"
++TERMINAL_BUDGET_EXHAUSTED = "budget_exhausted"
++TERMINAL_DEADLINE_REACHED = "deadline_reached"
++TERMINAL_BLOCKED = "blocked"
++TERMINAL_MAX_CYCLES_REACHED = "max_cycles_reached"
++
++#: terminal status -> pingpong_job job status constant.
++TERMINAL_JOB_STATUS: dict[str, str] = {
++    TERMINAL_ALL_GREEN: JOB_COMPLETED,
++    TERMINAL_STOPPED_BY_OPERATOR: JOB_STOPPED,
++    TERMINAL_BUDGET_EXHAUSTED: JOB_STOPPED,
++    TERMINAL_DEADLINE_REACHED: JOB_STOPPED,
++    TERMINAL_BLOCKED: JOB_BLOCKED,
++    TERMINAL_MAX_CYCLES_REACHED: JOB_RUNNING,
++}
++
++#: terminal status -> core RunState written on the Job, or None to leave the
++#: state exactly as the task runner left it.
++TERMINAL_RUN_STATE: dict[str, RunState | None] = {
++    TERMINAL_ALL_GREEN: RunState.COMPLETED,
++    TERMINAL_STOPPED_BY_OPERATOR: RunState.PAUSED,
++    TERMINAL_BUDGET_EXHAUSTED: RunState.PAUSED,
++    TERMINAL_DEADLINE_REACHED: RunState.PAUSED,
++    TERMINAL_BLOCKED: RunState.PAUSED,
++    TERMINAL_MAX_CYCLES_REACHED: None,
++}
++
++#: Ledger event names emitted through the injected run-log writer.
++LEDGER_EVENT_CYCLE_COMPLETED = "cycle_completed"
++LEDGER_EVENT_LOOP_TERMINAL = "cycle_loop_terminal"
++
++#: Verify-step outcomes.  "not_run" is recorded verbatim — a cycle that ran no
++#: verification never claims a passing one.
++VERIFY_NOT_RUN = "not_run"
++VERIFY_PASSED = "passed"
++VERIFY_FAILED = "failed"
++#: Verify outcomes that deny the job the all_green status.
++_VERIFY_DENIES_GREEN = frozenset({VERIFY_FAILED, "timeout"})
++
++#: Rollout rule (F046): one cycle until the F075 milestone gate flips it.
++DEFAULT_MAX_CYCLES = 1
++DEFAULT_BATCH_SIZE = 1
++
++
++# ---------------------------------------------------------------------------
++# Inputs
++# ---------------------------------------------------------------------------
++
++
++@dataclass(frozen=True)
++class CycleLimits:
++    """Bounds for one ``run_cycles`` invocation.
++
++    max_cycles:     maximum number of cycles this call may run.  The rollout
++                    cap that keeps production at one cycle lives in the
++                    caller (see ``resolve_max_cycles``), not here, so tests and
++                    the post-gate configuration can drive the real loop.
++    batch_size:     maximum tasks executed per cycle.
++    budgets:        F018 limits handed to ``should_stop``; None disables the
++                    budget half of the safe point (operator stop still applies).
++    verify_command: recorded on every cycle record and passed to the verify
++                    callable; None means "no override configured".
++    """
++
++    max_cycles: int = DEFAULT_MAX_CYCLES
++    batch_size: int = DEFAULT_BATCH_SIZE
++    budgets: JobBudgets | None = None
++    verify_command: str | None = None
++
++    def __post_init__(self) -> None:
++        if self.max_cycles < 0:
++            raise ValueError(f"max_cycles must be >= 0, got {self.max_cycles}")
++        if self.batch_size < 1:
++            raise ValueError(f"batch_size must be >= 1, got {self.batch_size}")
++
++
++ProviderCall = Callable[[TaskExecutionContext], BuilderOutput]
++#: (job, provider_call) -> TaskAttempt.  Executes exactly ONE ready task.
++TaskStep = Callable[[Job, ProviderCall], "TaskAttempt"]
++#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings.
++VerifyStep = Callable[[Job, int, str | None], str]
++
++
++@dataclass(frozen=True)
++class TaskAttempt:
++    """Outcome of one single-task step inside a cycle."""
++
++    task_id: UUID | None = None
++    executed: bool = False
++    verified: bool = False
++    error: str = ""
++
++
++# ---------------------------------------------------------------------------
++# Results
++# ---------------------------------------------------------------------------
++
++
++@dataclass(frozen=True)
++class CycleRecord:
++    """One cycle's own summary — the unit the evidence area stores (T002)."""
++
++    cycle_index: int
++    tasks_attempted: int
++    tasks_completed: int
++    tasks_failed: int
++    verify_result: str
++    tokens_so_far: int
++    started_at: str
++    ended_at: str
++    verify_command: str | None = None
++    errors: tuple[str, ...] = ()
++
++    def to_json(self) -> dict[str, Any]:
++        return {
++            "cycle_index": self.cycle_index,
++            "tasks_attempted": self.tasks_attempted,
++            "tasks_completed": self.tasks_completed,
++            "tasks_failed": self.tasks_failed,
++            "verify_result": self.verify_result,
++            "verify_command": self.verify_command,
++            "tokens_so_far": self.tokens_so_far,
++            "started_at": self.started_at,
++            "ended_at": self.ended_at,
++            "errors": list(self.errors),
++        }
++
++
++@dataclass(frozen=True)
++class CycleLoopResult:
++    """What the whole loop did."""
++
++    job: Job
++    terminal_status: str
++    job_status: str
++    stop_reason: str = ""
++    cycles: tuple[CycleRecord, ...] = ()
++
++    @property
++    def cycles_run(self) -> int:
++        return len(self.cycles)
++
++    def to_json(self) -> dict[str, Any]:
++        return {
++            "job_id": str(self.job.id),
++            "terminal_status": self.terminal_status,
++            "job_status": self.job_status,
++            "stop_reason": self.stop_reason,
++            "cycles_run": self.cycles_run,
++            "cycles": [c.to_json() for c in self.cycles],
++        }
++
++
++# ---------------------------------------------------------------------------
++# Default steps (the existing single-task path — nothing new)
++# ---------------------------------------------------------------------------
++
++
++def default_task_step(job: Job, provider_call: ProviderCall) -> TaskAttempt:
++    """Run ONE ready task through the existing single-task path.
++
++    run_next_task -> materialize -> verify_task_output -> finalize_task, which
++    is exactly what ``remedy job run-next`` does.  Rollback on builder failure
++    is ``run_next_task``'s concern; the exception is translated into a failed
++    attempt so the conductor can end the cycle and record it.
++    """
++    from packages.orchestration.workspace import LocalWorkspaceRuntime
++
++    try:
++        result = run_next_task(job, provider_call)
++    except Exception as exc:  # noqa: BLE001 — the cycle records any failure cause
++        return TaskAttempt(error=f"{type(exc).__name__}: {exc}")
++
++    if not result.changed or result.task_id is None:
++        return TaskAttempt()
++
++    runtime = LocalWorkspaceRuntime(job_id=job.id)
++    materialize_task_output(result, runtime)
++    vr = verify_task_output(result.job, result.task_id)
++    finalize_task(result, vr)
++    return TaskAttempt(
++        task_id=result.task_id,
++        executed=True,
++        verified=vr.passed,
++        error="" if vr.passed else f"verification_failed: {len(vr.failures)} check(s)",
++    )
++
++
++def _no_verify(job: Job, cycle_index: int, verify_command: str | None) -> str:
++    """The default verify step: none configured, and it says so."""
++    return VERIFY_NOT_RUN
++
++
++# ---------------------------------------------------------------------------
++# Helpers
++# ---------------------------------------------------------------------------
++
++
++def ready_tasks(job: Job, batch_size: int) -> list[UUID]:
++    """The ready batch: PENDING tasks in job order, capped at batch_size.
++
++    Linear on purpose — DAG readiness is a later feature.  A batch larger than
++    the number of remaining tasks is fine; the list is simply shorter.
++    """
++    pending = [t.id for t in job.tasks if t.status == RunState.PENDING]
++    return pending[:batch_size]
++
++
++def _is_green(job: Job, last_verify: str) -> bool:
++    """Every task completed AND the last verify step did not fail."""
++    if not job.tasks:
++        return False
++    if not all(t.status == RunState.COMPLETED for t in job.tasks):
++        return False
++    return last_verify not in _VERIFY_DENIES_GREEN
++
++
++def _default_counters(
++    job: Job,
++    *,
++    now: datetime,
++    started_at: datetime,
++    provider_calls: int,
++) -> BudgetCounters:
++    """Counters for the budget half of the safe point.
++
++    Prefers the actuals persisted by the job runner (the same source
++    ``remedy job budget`` reads).  When there are none, it reports what this
++    loop can honestly observe: the provider calls it made itself, all of them
++    UNMEASURED — a token total this loop never measured is never claimed.
++    """
++    try:
++        from packages.orchestration.budget_guard import (
++            counters_from_persisted,
++            decode_persisted_budget_actuals,
++        )
++        from packages.orchestration.pingpong_job import load_job_plan
++
++        plan = load_job_plan(str(job.id))
++        actuals = getattr(plan, "budget_actuals", None) if plan is not None else None
++        if actuals is not None:
++            validated = decode_persisted_budget_actuals(
++                actuals, first_running_at=getattr(plan, "first_running_at", "") or None)
++            return counters_from_persisted(validated, now=now)
++    except Exception:  # noqa: BLE001 — corrupt/absent actuals must not stop the loop
++        pass
++
++    return BudgetCounters(
++        provider_calls=provider_calls,
++        unmeasured_call_count=provider_calls,
++        elapsed_seconds=max(0.0, (now - started_at).total_seconds()),
++        evaluated_at=now,
++        started_at=started_at,
++    )
++
++
++def _terminal_from_stop(reason: str, source: str) -> str:
++    """Translate a ShouldStopResult into a terminal status.
++
++    ``should_stop`` reports budget exhaustion as ``budget_exhausted:<limit>``;
++    the deadline limit is its own terminal status because operators read those
++    two very differently.
++    """
++    if source == "operator":
++        return TERMINAL_STOPPED_BY_OPERATOR
++    if reason.endswith(":deadline"):
++        return TERMINAL_DEADLINE_REACHED
++    return TERMINAL_BUDGET_EXHAUSTED
++
++
++def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
++    """Write the terminal status onto the job and return the job status."""
++    job_status = TERMINAL_JOB_STATUS[terminal_status]
++    run_state = TERMINAL_RUN_STATE[terminal_status]
++    if run_state is not None:
++        job.state = run_state
++    job.metadata["cycle_terminal_status"] = terminal_status
++    job.metadata["cycle_job_status"] = job_status
++    if stop_reason:
++        job.metadata["cycle_stop_reason"] = stop_reason
++    else:
++        job.metadata.pop("cycle_stop_reason", None)
++    return job_status
++
++
++def _emit(log: Any, event: str, **meta: Any) -> None:
++    """Emit a ledger event when a writer was injected; never raise into the loop."""
++    if log is None:
++        return
++    try:
++        log.log(event, **meta)
++    except Exception:  # noqa: BLE001 — a ledger write must not break execution
++        pass
++
++
++# ---------------------------------------------------------------------------
++# The loop
++# ---------------------------------------------------------------------------
++
++
++def run_cycles(
++    job: Job,
++    limits: CycleLimits,
++    provider_call: ProviderCall,
++    *,
++    task_step: TaskStep | None = None,
++    verify: VerifyStep | None = None,
++    clock: Callable[[], datetime] | None = None,
++    save: Callable[[Job], None] | None = None,
++    log: Any = None,
++    control_root_path: Any = None,
++) -> CycleLoopResult:
++    """Run bounded cycles over *job* until a terminal condition.
++
++    One cycle is: safe point -> ready batch -> execute -> verify -> persist.
++    The safe point is evaluated BEFORE any work of a cycle begins, so a cycle
++    never starts after should_stop says stop.
++
++    Seams (all default to the existing production path):
++      task_step  one ready task through run_next_task + verify + finalize
++      verify     the per-cycle verify step; the default runs nothing and
++                 records ``not_run``
++      clock      the only source of "now" — the loop never sleeps
++      save       ``storage.save_job``
++      log        anything with ``.log(event, **meta)`` (a RunLogWriter); when
++                 omitted, no ledger events are emitted
++
++    A failed verify ends the cycle with its failure recorded and denies the job
++    the all_green status; self-healing is a later feature.  A task step that
++    fails ends the cycle too — the task runner has already rolled the task back
++    to PENDING, so the next cycle (if the budget allows one) retries it.
++    """
++    step = task_step or default_task_step
++    verify_step = verify or _no_verify
++    now_fn = clock or (lambda: datetime.now(timezone.utc))
++    save_fn = save or _save_job
++
++    loop_started_at = now_fn()
++    provider_calls = 0
++    cycles: list[CycleRecord] = []
++    last_verify = VERIFY_NOT_RUN
++
++    def counted_provider_call(context: TaskExecutionContext) -> BuilderOutput:
++        nonlocal provider_calls
++        provider_calls += 1
++        return provider_call(context)
++
++    while True:
++        now = now_fn()
++
++        # 1. Safe point FIRST — operator stop and budgets in one evaluation.
++        stop = _should_stop(
++            str(job.id),
++            budgets=limits.budgets,
++            counters=_default_counters(
++                job, now=now, started_at=loop_started_at,
++                provider_calls=provider_calls),
++            now=now,
++            control_root_path=control_root_path,
++        )
++        if stop.should_stop:
++            terminal = _terminal_from_stop(stop.reason, stop.source)
++            stop_reason = stop.reason
++            break
++
++        # 2. Terminal by job shape: green, or nothing ready and not green.
++        batch = ready_tasks(job, limits.batch_size)
++        if not batch:
++            if _is_green(job, last_verify):
++                terminal, stop_reason = TERMINAL_ALL_GREEN, ""
++            else:
++                terminal = TERMINAL_BLOCKED
++                stop_reason = (
++                    "no_tasks" if not job.tasks
++                    else f"no_ready_tasks; last_verify={last_verify}"
++                )
++            break
++
++        # 3. Cycle budget.  Not a stop cause — pending work simply remains.
++        if len(cycles) >= limits.max_cycles:
++            terminal, stop_reason = TERMINAL_MAX_CYCLES_REACHED, ""
++            break
++
++        # 4. Run the cycle.
++        cycle_index = len(cycles) + 1
++        started_at = now
++        attempted = completed = failed = 0
++        errors: list[str] = []
++
++        for _ in batch:
++            attempt = step(job, counted_provider_call)
++            if not attempt.executed and not attempt.error:
++                break                      # nothing ready any more; not an attempt
++            attempted += 1
++            if attempt.verified:
++                completed += 1
++                continue
++            # A failed task step or a failed verification ends the cycle with
++            # the failure recorded.  The task runner already rolled the task
++            # back to PENDING; retrying it inside the same cycle would be a
++            # retry policy, which is not this module's concern.
++            failed += 1
++            if attempt.error:
++                errors.append(attempt.error)
++            break
++
++        last_verify = verify_step(job, cycle_index, limits.verify_command)
++        if last_verify == VERIFY_FAILED:
++            errors.append("verify_failed")
++
++        ended_at = now_fn()
++        counters = _default_counters(
++            job, now=ended_at, started_at=loop_started_at,
++            provider_calls=provider_calls)
++        record = CycleRecord(
++            cycle_index=cycle_index,
++            tasks_attempted=attempted,
++            tasks_completed=completed,
++            tasks_failed=failed,
++            verify_result=last_verify,
++            tokens_so_far=counters.measured_token_total,
++            started_at=started_at.isoformat(),
++            ended_at=ended_at.isoformat(),
++            verify_command=limits.verify_command,
++            errors=tuple(errors),
++        )
++        cycles.append(record)
++
++        # 5. Persist.
++        save_fn(job)
++        _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
++
++    job_status = _apply_terminal(job, terminal, stop_reason)
++    save_fn(job)
++    _emit(
++        log, LEDGER_EVENT_LOOP_TERMINAL,
++        terminal_status=terminal, job_status=job_status,
++        stop_reason=stop_reason, cycles_run=len(cycles),
++    )
++    return CycleLoopResult(
++        job=job,
++        terminal_status=terminal,
++        job_status=job_status,
++        stop_reason=stop_reason,
++        cycles=tuple(cycles),
++    )
+diff --git a/tests/orchestration/test_long_run_executor.py b/tests/orchestration/test_long_run_executor.py
+new file mode 100644
+index 0000000..b36ae94
+--- /dev/null
++++ b/tests/orchestration/test_long_run_executor.py
+@@ -0,0 +1,539 @@
++"""F046 T001 — multi-cycle loop conductor.
++
++One test per row of the terminal-status matrix, an ordering test proving a
++cycle never starts after should_stop says stop, and a five-cycle fixture that
++reaches every stop cause with a fake provider.  Nothing here sleeps: wall
++clock and deadlines go through an injected clock.
++"""
++from __future__ import annotations
++
++from datetime import datetime, timedelta, timezone
++from pathlib import Path
++
++import pytest
++
++from packages.core.models import Job, JobBudgets, RunState, Task
++from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
++from packages.orchestration.long_run_executor import (
++    TERMINAL_ALL_GREEN,
++    TERMINAL_BLOCKED,
++    TERMINAL_BUDGET_EXHAUSTED,
++    TERMINAL_DEADLINE_REACHED,
++    TERMINAL_JOB_STATUS,
++    TERMINAL_MAX_CYCLES_REACHED,
++    TERMINAL_RUN_STATE,
++    TERMINAL_STOPPED_BY_OPERATOR,
++    VERIFY_FAILED,
++    VERIFY_NOT_RUN,
++    VERIFY_PASSED,
++    CycleLimits,
++    TaskAttempt,
++    default_task_step,
++    ready_tasks,
++    run_cycles,
++)
++from packages.orchestration.pingpong_job import (
++    JOB_BLOCKED,
++    JOB_COMPLETED,
++    JOB_RUNNING,
++    JOB_STOPPED,
++)
++from packages.orchestration.safe_points import request_stop
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 26, 12, 0, 0, tzinfo=UTC)
++
++
++# ---------------------------------------------------------------------------
++# Fixtures and fakes
++# ---------------------------------------------------------------------------
++
++
++@pytest.fixture
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++@pytest.fixture
++def control_root(tmp_path: Path) -> Path:
++    root = tmp_path / "control"
++    root.mkdir()
++    return root
++
++
++def make_job(task_count: int = 1, *, name: str = "cycle-job") -> Job:
++    return Job(
++        name=name,
++        user_prompt="build the thing",
++        tasks=[
++            Task(description=f"task {i}", inputs={"task_type": "documentation"})
++            for i in range(task_count)
++        ],
++        state=RunState.PLANNED,
++    )
++
++
++class FakeProvider:
++    """A builder that always returns verifiable output and counts its calls."""
++
++    def __init__(self) -> None:
++        self.calls = 0
++
++    def __call__(self, context: TaskExecutionContext) -> BuilderOutput:
++        self.calls += 1
++        return BuilderOutput(
++            summary=f"did {context.task_description}",
++            proposed_changes=[f"write docs for {context.task_description}"],
++        )
++
++
++class FakeClock:
++    """A clock that advances only when the test says so."""
++
++    def __init__(self, start: datetime = T0, step: timedelta = timedelta(seconds=1)) -> None:
++        self.now = start
++        self.step = step
++        self.reads = 0
++
++    def __call__(self) -> datetime:
++        self.reads += 1
++        current = self.now
++        self.now = self.now + self.step
++        return current
++
++
++def completing_step(job: Job, provider_call) -> TaskAttempt:
++    """A task step that completes the first PENDING task, calling the provider."""
++    task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
++    if task is None:
++        return TaskAttempt()
++    provider_call(
++        TaskExecutionContext(
++            job_id=job.id,
++            job_prompt=job.user_prompt,
++            task_id=task.id,
++            task_type=task.inputs.get("task_type", "unknown"),
++            task_description=task.description,
++        )
++    )
++    task.status = RunState.COMPLETED
++    if all(t.status == RunState.COMPLETED for t in job.tasks):
++        job.state = RunState.COMPLETED
++    return TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++
++def never_called_step(job: Job, provider_call) -> TaskAttempt:
++    raise AssertionError("a cycle started after should_stop said stop")
++
++
++def passing_verify(job: Job, cycle_index: int, verify_command) -> str:
++    return VERIFY_PASSED
++
++
++def failing_verify(job: Job, cycle_index: int, verify_command) -> str:
++    return VERIFY_FAILED
++
++
++def no_save(job: Job) -> None:
++    """Persistence is exercised separately; most matrix tests stay in memory."""
++    return None
++
++
++class RecordingLog:
++    def __init__(self) -> None:
++        self.events: list[tuple[str, dict]] = []
++
++    def log(self, event: str, **meta) -> None:
++        self.events.append((event, meta))
++
++
++# ---------------------------------------------------------------------------
++# Terminal-status matrix — one test per row
++# ---------------------------------------------------------------------------
++
++
++class TestTerminalStatusMatrix:
++    def test_all_green(self, control_root):
++        job = make_job(2)
++        provider = FakeProvider()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), provider,
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert result.job_status == JOB_COMPLETED
++        assert job.state == RunState.COMPLETED
++        assert result.cycles_run == 2
++        assert provider.calls == 2
++
++    def test_stopped_by_operator(self, control_root):
++        job = make_job(3)
++        request_stop(str(job.id), reason="operator asked", control_root_path=control_root)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=never_called_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_STOPPED_BY_OPERATOR
++        assert result.job_status == JOB_STOPPED
++        assert job.state == RunState.PAUSED
++        assert "operator_stop" in result.stop_reason
++        assert result.cycles_run == 0
++
++    def test_budget_exhausted(self, control_root):
++        job = make_job(4)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, budgets=JobBudgets(max_provider_calls=2)),
++            FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_BUDGET_EXHAUSTED
++        assert result.job_status == JOB_STOPPED
++        assert job.state == RunState.PAUSED
++        assert result.stop_reason == "budget_exhausted:max_provider_calls"
++        # Two cycles ran (one provider call each), the third safe point stopped.
++        assert result.cycles_run == 2
++
++    def test_deadline_reached(self, control_root):
++        job = make_job(4)
++        clock = FakeClock(step=timedelta(minutes=10))
++        budgets = JobBudgets(deadline=T0 + timedelta(minutes=15))
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, budgets=budgets), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=clock, save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_DEADLINE_REACHED
++        assert result.job_status == JOB_STOPPED
++        assert job.state == RunState.PAUSED
++        assert result.stop_reason == "budget_exhausted:deadline"
++        assert result.cycles_run >= 1
++
++    def test_blocked_zero_ready_tasks_not_green(self, control_root):
++        job = make_job(2)
++        # Neither PENDING (not ready) nor COMPLETED (not green): awaiting a decision.
++        job.tasks[0].status = RunState.COMPLETED
++        job.tasks[1].status = RunState.RUNNING
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=never_called_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert result.job_status == JOB_BLOCKED
++        assert job.state == RunState.PAUSED
++        assert result.cycles_run == 0
++
++    def test_max_cycles_reached_leaves_job_running(self, control_root):
++        job = make_job(3)
++        job.state = RunState.RUNNING
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_MAX_CYCLES_REACHED
++        assert result.job_status == JOB_RUNNING
++        assert job.state == RunState.RUNNING       # untouched by the conductor
++        assert result.cycles_run == 1
++
++
++class TestStatusMapping:
++    def test_every_terminal_status_maps_to_a_job_status_and_run_state(self):
++        assert set(TERMINAL_JOB_STATUS) == set(TERMINAL_RUN_STATE)
++        assert TERMINAL_JOB_STATUS[TERMINAL_ALL_GREEN] == JOB_COMPLETED
++        assert TERMINAL_JOB_STATUS[TERMINAL_STOPPED_BY_OPERATOR] == JOB_STOPPED
++        assert TERMINAL_JOB_STATUS[TERMINAL_BUDGET_EXHAUSTED] == JOB_STOPPED
++        assert TERMINAL_JOB_STATUS[TERMINAL_DEADLINE_REACHED] == JOB_STOPPED
++        assert TERMINAL_JOB_STATUS[TERMINAL_BLOCKED] == JOB_BLOCKED
++        assert TERMINAL_JOB_STATUS[TERMINAL_MAX_CYCLES_REACHED] == JOB_RUNNING
++        assert TERMINAL_RUN_STATE[TERMINAL_MAX_CYCLES_REACHED] is None
++
++    def test_terminal_status_recorded_on_the_job(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=3), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert job.metadata["cycle_terminal_status"] == result.terminal_status
++        assert job.metadata["cycle_job_status"] == result.job_status
++        assert "cycle_stop_reason" not in job.metadata
++
++
++# ---------------------------------------------------------------------------
++# Ordering — a cycle never starts after should_stop says stop
++# ---------------------------------------------------------------------------
++
++
++class TestOrdering:
++    def test_no_cycle_starts_after_stop_is_requested(self, control_root):
++        """The stop lands after cycle 1; cycle 2 must never begin."""
++        job = make_job(4)
++        order: list[str] = []
++
++        def stopping_step(j: Job, provider_call) -> TaskAttempt:
++            order.append("cycle")
++            if len(order) == 1:
++                request_stop(str(j.id), reason="mid-run", control_root_path=control_root)
++            return completing_step(j, provider_call)
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=stopping_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert order == ["cycle"]
++        assert result.cycles_run == 1
++        assert result.terminal_status == TERMINAL_STOPPED_BY_OPERATOR
++
++    def test_stop_before_the_first_cycle_runs_nothing(self, control_root):
++        job = make_job(2)
++        request_stop(str(job.id), reason="before start", control_root_path=control_root)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=never_called_step, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert result.cycles == ()
++        assert all(t.status == RunState.PENDING for t in job.tasks)
++
++    def test_max_cycles_zero_runs_nothing(self, control_root):
++        job = make_job(2)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=0), FakeProvider(),
++            task_step=never_called_step, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_MAX_CYCLES_REACHED
++        assert result.cycles_run == 0
++
++
++# ---------------------------------------------------------------------------
++# Five-cycle fixture — every stop cause, one loop each, fake provider
++# ---------------------------------------------------------------------------
++
++
++class TestFiveCycleFixture:
++    """Five loops over the same five-task shape, one per stop cause."""
++
++    def _run(self, control_root, **kwargs):
++        job = kwargs.pop("job", None) or make_job(5)
++        provider = FakeProvider()
++        limits = kwargs.pop("limits", CycleLimits(max_cycles=5))
++        result = run_cycles(
++            job, limits, provider,
++            task_step=kwargs.pop("task_step", completing_step),
++            verify=kwargs.pop("verify", passing_verify),
++            clock=kwargs.pop("clock", FakeClock()),
++            save=no_save, control_root_path=control_root, **kwargs,
++        )
++        return job, provider, result
++
++    def test_five_cycles_reach_all_green(self, control_root):
++        job, provider, result = self._run(control_root)
++        assert result.cycles_run == 5
++        assert provider.calls == 5
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert [c.cycle_index for c in result.cycles] == [1, 2, 3, 4, 5]
++
++    def test_operator_stop_in_the_middle_of_five(self, control_root):
++        job = make_job(5)
++        seen: list[int] = []
++
++        def step(j: Job, provider_call) -> TaskAttempt:
++            seen.append(len(seen) + 1)
++            if len(seen) == 3:
++                request_stop(str(j.id), reason="stop at three",
++                             control_root_path=control_root)
++            return completing_step(j, provider_call)
++
++        _, provider, result = self._run(control_root, job=job, task_step=step)
++        assert result.terminal_status == TERMINAL_STOPPED_BY_OPERATOR
++        assert result.cycles_run == 3
++        assert provider.calls == 3
++
++    def test_budget_stops_before_the_fifth_cycle(self, control_root):
++        _, provider, result = self._run(
++            control_root,
++            limits=CycleLimits(max_cycles=5, budgets=JobBudgets(max_provider_calls=4)),
++        )
++        assert result.terminal_status == TERMINAL_BUDGET_EXHAUSTED
++        assert result.cycles_run == 4
++        assert provider.calls == 4
++
++    def test_deadline_stops_before_the_fifth_cycle(self, control_root):
++        clock = FakeClock(step=timedelta(minutes=1))
++        # Each cycle reads the clock twice (safe point + cycle end), so the
++        # deadline lands during the loop without anything ever sleeping.
++        _, _, result = self._run(
++            control_root, clock=clock,
++            limits=CycleLimits(max_cycles=5,
++                               budgets=JobBudgets(deadline=T0 + timedelta(minutes=5))),
++        )
++        assert result.terminal_status == TERMINAL_DEADLINE_REACHED
++        assert 1 <= result.cycles_run < 5
++
++    def test_blocked_when_a_task_awaits_a_decision(self, control_root):
++        job = make_job(5)
++        job.tasks[2].status = RunState.RUNNING          # awaiting a decision
++        job.tasks[3].status = RunState.RUNNING
++        job.tasks[4].status = RunState.RUNNING
++        _, provider, result = self._run(control_root, job=job)
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert result.cycles_run == 2                   # only the two PENDING ones
++        assert provider.calls == 2
++        assert "no_ready_tasks" in result.stop_reason
++
++
++# ---------------------------------------------------------------------------
++# Verify step
++# ---------------------------------------------------------------------------
++
++
++class TestVerifyStep:
++    def test_failed_verify_ends_the_cycle_and_is_recorded(self, control_root):
++        job = make_job(2)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=completing_step, verify=failing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles[0].verify_result == VERIFY_FAILED
++        assert "verify_failed" in result.cycles[0].errors
++
++    def test_failed_verify_denies_all_green(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=3), FakeProvider(),
++            task_step=completing_step, verify=failing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert all(t.status == RunState.COMPLETED for t in job.tasks)
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert result.job_status == JOB_BLOCKED
++
++    def test_no_verify_configured_is_recorded_as_not_run(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=3), FakeProvider(),
++            task_step=completing_step, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert result.cycles[0].verify_result == VERIFY_NOT_RUN
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++
++
++# ---------------------------------------------------------------------------
++# Ready batch, limits, persistence, ledger
++# ---------------------------------------------------------------------------
++
++
++class TestReadyBatch:
++    def test_linear_order_capped_at_batch_size(self):
++        job = make_job(4)
++        assert len(ready_tasks(job, 2)) == 2
++        assert ready_tasks(job, 2) == [job.tasks[0].id, job.tasks[1].id]
++
++    def test_batch_larger_than_remaining_tasks_is_fine(self, control_root):
++        job = make_job(2)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, batch_size=10), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles_run == 1
++        assert result.cycles[0].tasks_attempted == 2
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++
++    def test_invalid_limits_are_refused(self):
++        with pytest.raises(ValueError):
++            CycleLimits(max_cycles=-1)
++        with pytest.raises(ValueError):
++            CycleLimits(batch_size=0)
++
++
++class TestPersistenceAndLedger:
++    def test_job_is_persisted_after_every_cycle_and_at_the_end(self, control_root):
++        job = make_job(3)
++        saves: list[str] = []
++        run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=lambda j: saves.append(j.state.value),
++            control_root_path=control_root,
++        )
++        assert len(saves) == 4                       # 3 cycles + the terminal write
++
++    def test_ledger_events_agree_with_the_result(self, control_root):
++        job = make_job(2)
++        log = RecordingLog()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, log=log,
++            control_root_path=control_root,
++        )
++        names = [e for e, _ in log.events]
++        assert names == ["cycle_completed", "cycle_completed", "cycle_loop_terminal"]
++        terminal_meta = log.events[-1][1]
++        assert terminal_meta["terminal_status"] == result.terminal_status
++        assert terminal_meta["job_status"] == result.job_status
++        assert terminal_meta["cycles_run"] == result.cycles_run
++
++    def test_a_broken_ledger_writer_never_breaks_the_loop(self, control_root):
++        class Exploding:
++            def log(self, event, **meta):
++                raise RuntimeError("ledger is down")
++
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=2), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, log=Exploding(),
++            control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++
++
++# ---------------------------------------------------------------------------
++# The default task step — the real single-task path with a fake provider
++# ---------------------------------------------------------------------------
++
++
++class TestDefaultTaskStep:
++    def test_default_step_runs_the_real_single_task_path(
++        self, isolate_data_root, control_root
++    ):
++        job = make_job(2)
++        provider = FakeProvider()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5), provider,
++            task_step=default_task_step, verify=passing_verify,
++            clock=FakeClock(), control_root_path=control_root,
++        )
++        assert provider.calls == 2
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert all(t.status == RunState.COMPLETED for t in job.tasks)
++        assert (isolate_data_root / "jobs" / f"{job.id}.json").is_file()
++
++    def test_provider_failure_is_recorded_and_the_task_stays_pending(
++        self, isolate_data_root, control_root
++    ):
++        def exploding_provider(context: TaskExecutionContext) -> BuilderOutput:
++            raise RuntimeError("provider is down")
++
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1), exploding_provider,
++            task_step=default_task_step, verify=passing_verify,
++            clock=FakeClock(), control_root_path=control_root,
++        )
++        assert result.cycles[0].tasks_failed == 1
++        assert "RuntimeError" in result.cycles[0].errors[0]
++        assert job.tasks[0].status == RunState.PENDING   # rolled back by the runner

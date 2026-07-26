@@ -1,48 +1,56 @@
-# Live Review — F034 Bundled clarification in the Flight Plan
+# Live Review — F046 Multi-cycle loop
 
-Branch: feature/f034-bundled-clarification
-LAST_REVIEWED_SHA: 8027d48
-Finding IDs continue monotonically from R-0143.
+Branch: feature/f046-multi-cycle-loop
+LAST_REVIEWED_SHA: 994398c
+Finding IDs continue monotonically from R-0144.
 
 ## Findings
-(none — round 1 clean)
 
-- R-0144 · Medium · Resolved (this round) · integration-gate round (0891b8d..1b891fb)
-  Commit 1b891fb appended an "Integration gate … PASS" entry to
-  .agent/live_review.md that the reviewer never authored. Verdicts
-  are reviewer-authored text applied on instruction
-  (planner_reviewer_prompt §0, §4.6); the ledger presented the gate
-  as reviewer-passed while the review was still pending. Same class
-  as the builder-self-merge rule. Fix: replace that entry with the
-  reviewer-authored verdict, verbatim.
+- R-0145 · Low · gate round (d87a3e0..994398c)
+  Incomplete handback accounting: the gate handoff's "Commits this
+  round" table omitted 65fbdba (round-1 handback state files), which
+  lies inside the review range d87a3e0..HEAD, and PR #152's creation
+  (AGENTS.md-mandated, legitimate) was stated as a fact but never
+  reported as an action taken. Content verified harmless by the
+  reviewer. Fix: the closure handback lists EVERY commit in its
+  review range with changed-files tables and reports every external
+  action (PR create/update). Resolved when the closure handback
+  satisfies both.
 
 ## Verdicts
-- Round 1 (Setup+T001–T004, 34878f3..0891b8d): PASS.
-  Reviewer re-ran independently: slice suite 67 passed,
-  guard 6 passed, canary 42 passed, spot-check
-  test_plan_approval+test_flight_plan+test_schemas 100 passed,
-  ruff clean. Guard red-proof verified. Predicates skip sanctioned
-  (OPTIONAL scope, .agent/decisions.md).
-  LAST_REVIEWED_SHA = 0891b8d.
-- Integration gate (branch 0891b8d vs base 34878f3): PASS — issued
-  by the reviewer after independent verification. Worker evidence:
-  branch 161 failed / 13935 passed (180.61s); base 197 failed /
-  13820 passed (193.31s); 7 branch-only failures, all attributed
-  pre-existing xdist flake (serial re-run green; base-worktree xdist
-  repeats reproduced two verbatim; no coupling to F034-touched
-  modules; branch 36 failures FEWER than base). Reviewer re-ran
-  independently: the 7 serially -> 7 passed in 4.57s; full branch
-  suite -n auto -> 162 failed / 13935 passed in 194.60s, churn
-  consistent with base nondeterminism; git worktree list clean;
-  canary 42 passed. Zero F034-attributable regressions. Only this
-  entry carries the "full suite" claim for the gate.
-- Repair round (R-0144): resolved by this entry replacing the
-  unauthored one. Mark R-0144 Resolved in ## Findings
-  (Done: R-0144).
-- Repair round (1b891fb..8027d48): PASS — issued by the reviewer.
-  Both authored texts applied byte-identical (reviewer re-ran the
-  grep proofs and the canary: 42 passed). The whitespace-
-  normalized verification of the "issued by the reviewer" check
-  was the correct, honest handling — the authored text was not
-  reflowed to satisfy a literal grep. LAST_REVIEWED_SHA = 8027d48.
-  F034 enters closure.
+
+- Round 1 (Setup+T001+T002, c14a83a..d87a3e0): PASS — issued by the
+  reviewer after independent verification. Reviewer re-ran: slice suite
+  49 passed, ruff clean on all five touched files, canary 42 passed.
+  Reviewer's own red-proof: safe-point break neutered locally ->
+  9 failed / 40 passed; restored -> 49 passed (ordering guarantee is
+  test-backed, not asserted). Scope additions accepted as documented,
+  not silent: sixth terminal status max_cycles_reached (decisions.md
+  2026-07-26) and the behavioral-plus-declared-delta regression
+  contract. Commit a4a6874 exceeds the 500-line guidance (1062);
+  reasoning accepted (module + proving suite inseparable), not a
+  precedent. Residual risks carried: (1) the conductor writes no
+  postmortem record itself — stopped/budget classes derive at evidence
+  export from the job status it sets; revisit if F053 reporting needs
+  per-terminal postmortems; (2) the multi-cycle CLI branch is
+  unreachable in production while CYCLE_SAFETY_CAP == 1 — exercised in
+  tests with the cap raised. Verification tier: round gate (scoped) +
+  canary. LAST_REVIEWED_SHA = d87a3e0.
+
+- Integration gate (branch d87a3e0..994398c vs base c14a83a): PASS —
+  issued by the reviewer after independent verification. Worker
+  evidence: branch 184 failed / 13962 passed (161.28s); base 179
+  failed / 13912 passed (196.88s); 30 branch-only failures — 28 pass
+  serially (xdist flake class, F135/F052), 2 reproducible ones caused
+  by plan.md missing its AGENTS.md-required "## Next Steps" section,
+  fixed as a declared state-file deviation (decisions.md entry), which
+  restored base parity (3 identical pre-existing contract failures on
+  both sides, deliberately not swept up). Reviewer re-ran
+  independently: full suite -n auto -> 183 failed / 13963 passed in
+  144.13s, churn consistent with base nondeterminism; both contract
+  classes -> 3 failed / 4 passed matching base; reviewer spot-check
+  test_scoped_listings fails identically serially at base
+  (pre-existing flight-plan schema issue, not F046); canary 42 passed;
+  git worktree list clean. Zero F046-attributable regressions. Only
+  this entry carries the "full suite" claim for the gate.
+  LAST_REVIEWED_SHA = 994398c.

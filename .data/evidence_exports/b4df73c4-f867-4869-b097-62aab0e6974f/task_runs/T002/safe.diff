@@ -1,0 +1,351 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index ce6a05c..75c5934 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -331,6 +331,23 @@ CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.show", "test.run"),
+     ),
+ 
++    CommandEntry(
++        command_id="job.run",
++        group_id="job",
++        subcommand="run",
++        description="Run a job in bounded cycles (F046; one cycle until the F075 gate).",
++        action_class="write_metadata",
++        args=(
++            _JOB_ID,
++            ArgDef("--cycles", "Maximum cycles for this run (capped by the rollout default)",
++                   required=False, is_option=True),
++            _JSON_OPT,
++        ),
++        supports_json=True,
++        may_execute_commands=True,
++        related=("job.run-next", "job.plan"),
++    ),
++
+     CommandEntry(
+         command_id="job.plan",
+         group_id="job",
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index dcd2600..2b1b6ce 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -634,6 +634,110 @@ def _cmd_run_next_task_local(job_id_str: str) -> None:
+         sys.exit(1)
+ 
+ 
++def _cmd_job_run_cycles(
++    job_id_str: str,
++    *,
++    cycles: int | None = None,
++    json_output: bool = False,
++) -> None:
++    """Run a job in bounded cycles (F046).
++
++    The rollout rule is enforced here, not in the loop: config value and
++    ``--cycles`` flag are both capped by ``CYCLE_SAFETY_CAP`` until the F075
++    milestone gate raises it.  While the resolved count is one cycle, this
++    command IS today's single pass — it delegates to the existing run-next
++    entry point, so single-cycle behavior cannot drift from it.
++    """
++    import json as _json
++    from dataclasses import replace
++
++    from packages.orchestration.config import get_config
++    from packages.orchestration.long_run_executor import (
++        default_task_step,
++        limits_from_config,
++        run_cycles,
++    )
++
++    try:
++        limits, resolved = limits_from_config(get_config(), cycles_flag=cycles)
++    except ValueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(2)
++
++    if resolved.capped:
++        origin = "--cycles" if resolved.source == "flag" else "cycles.max_cycles"
++        print(
++            f"Note: {origin} {resolved.requested} capped to {resolved.max_cycles} "
++            f"by the F046 rollout default (raised by the F075 milestone gate).",
++            file=sys.stderr,
++        )
++
++    if resolved.max_cycles <= 1:
++        # One cycle == today's single pass. Reuse it verbatim rather than
++        # reimplementing the task/verify/apply pipeline behind a second door.
++        _cmd_run_next_task_local(job_id_str)
++        return
++
++    job_id = resolve_job_id(job_id_str)
++    try:
++        job = load_job(job_id)
++    except JobNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    from packages.orchestration.flight_plan import flight_plan_blocks_execution
++    block_reason = flight_plan_blocks_execution(job)
++    if block_reason == "pending":
++        print(
++            f"Error: plan awaiting approval. "
++            f"Run: remedy decision resolve {job_id_str[:8]} fp:approval --reason approve",
++            file=sys.stderr,
++        )
++        sys.exit(3)
++    elif block_reason == "rejected":
++        print(
++            f"Error: flight plan rejected. "
++            f"Run: remedy do replan {job_id_str[:8]}",
++            file=sys.stderr,
++        )
++        sys.exit(3)
++
++    from packages.orchestration.permissions import Capability
++    from packages.orchestration.permissions import is_allowed as _perm_allowed
++    from packages.orchestration.run_log import RunLogWriter
++    from packages.providers.ollama_builder.provider import OllamaBuilder
++
++    if not _perm_allowed(job, Capability.workspace_write):
++        print(
++            f"Error: permission denied — workspace_write is not granted for job {job.id}",
++            file=sys.stderr,
++        )
++        sys.exit(1)
++
++    log = RunLogWriter(job_id=job.id)
++    try:
++        builder = OllamaBuilder()
++    except Exception as exc:
++        print(f"Error: builder unavailable — {exc}", file=sys.stderr)
++        sys.exit(1)
++
++    limits = replace(limits, budgets=job.budgets)
++    result = run_cycles(job, limits, builder.build,
++                        task_step=default_task_step, log=log)
++
++    if json_output:
++        print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
++    else:
++        print(
++            f"Job {job.id} | cycles={result.cycles_run}/{limits.max_cycles} "
++            f"terminal={result.terminal_status} status={result.job_status}"
++            f"{' reason=' + result.stop_reason if result.stop_reason else ''}"
++            f"  log={log.path}"
++        )
++    if result.terminal_status not in ("all_green", "max_cycles_reached"):
++        sys.exit(1)
++
++
+ def _cmd_run_loop(
+     job_id_str: str,
+     *,
+@@ -1640,6 +1744,11 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         json_output=getattr(args, "json", False),
+     ),
+     "job.run-next": lambda args: _cmd_run_next_task_local(args.job_id),
++    "job.run": lambda args: _cmd_job_run_cycles(
++        args.job_id,
++        cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
++        json_output=getattr(args, "json", False),
++    ),
+     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+     "job.run-loop": lambda args: _cmd_run_loop(
+         args.job_id,
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 754bf06..0dabab9 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -28,7 +28,7 @@
+ - [x] F014 — Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 9b0a8b6d-f03f-46d2-9dba-7584da178cd9 · package remedy-review-20260726-001936-READY_FOR_REVIEW.zip · SHA-256 bc75040080964f67e3c2a19623f6626ecc7d73df891592c083d56f3c81b997d7 · accepted HEAD 162553a5f175965aa0c51baa6769efc8f9b727f1)
+ - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
+ - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
+-- [ ] F046 — Multi-cycle loop
++- [~] F046 — Multi-cycle loop
+ - [ ] F047 — Checkpoint & resume (kill-proof)
+ - [ ] F048 — Job queue
+ - [ ] F050 — DAG scheduling
+diff --git a/docs/roadmap/features/T1_F046.md b/docs/roadmap/features/T1_F046.md
+index a77b840..8382f03 100644
+--- a/docs/roadmap/features/T1_F046.md
++++ b/docs/roadmap/features/T1_F046.md
+@@ -72,3 +72,106 @@ worker prompt and demand one test per row before accepting.
+ Task-level execution semantics, retry policy, checkpoint depth (next
+ feature), DAG readiness (later feature). Suggested tests:
+ tests/orchestration/test_long_run_executor.py.
++
++## Built State (2026-07-26)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**The conductor.** `packages/orchestration/long_run_executor.py` —
++`run_cycles(job, limits, provider_call)` runs bounded cycles of
++`should_stop → ready batch → execute → verify → persist`. It is a conductor
++only: `safe_points.should_stop` answers the safe point (operator stop and
++budgets in ONE evaluation), `task_runner.run_next_task` executes a task and
++keeps its own rollback semantics, `verifier.verify_task_output` +
++`finalize_task` gate completion, and `storage.save_job` persists — no new
++persistence path, no parallel executor. Readiness is LINEAR (PENDING tasks
++in `job.tasks` order); DAG readiness stays a later feature. Nothing sleeps:
++wall clock and deadline evaluation go through an injected `clock`, which is
++what makes `deadline_reached` provable in a unit test.
++
++**Seams.** `task_step`, `verify`, `clock`, `save`, `log` and
++`control_root_path` are injectable and all default to the production path.
++`default_task_step` is exactly the sequence `remedy job run-next` performs.
++
++**Terminal statuses.** Five from this file's matrix plus a sixth,
++`max_cycles_reached`, for the cycle budget running out with work still
++pending (rationale in `.agent/decisions.md`, accepted by the round-1
++verdict as a documented scope addition):
++
++| terminal status | pingpong_job status | core RunState | trigger |
++|---|---|---|---|
++| `all_green` | `completed` | COMPLETED | every task COMPLETED, verify did not fail |
++| `stopped_by_operator` | `stopped` | PAUSED | safe point reports an operator stop |
++| `budget_exhausted` | `stopped` | PAUSED | safe point reports a budget limit hit |
++| `deadline_reached` | `stopped` | PAUSED | `first_exhausted_limit == deadline` |
++| `blocked` | `blocked` | PAUSED | zero ready tasks and not green — terminal, no spin |
++| `max_cycles_reached` | `running` | (untouched) | cycle budget spent, work still pending |
++
++`RunState` has no BLOCKED member, so the pingpong string is authoritative:
++it is written to `job.metadata["cycle_terminal_status"]` /
++`["cycle_job_status"]` and emitted as the `cycle_loop_terminal` ledger
++event, alongside `cycle_completed` per cycle. `blocked` maps to PAUSED, not
++FAILED — "no ready task, not green" also covers a job awaiting a decision,
++which must stay resumable.
++
++**Cycle evidence.** Each cycle writes one record (cycle index, tasks
++attempted/completed/failed, verify result, verify command, tokens so far,
++start/end) under the job's existing evidence area via
++`pingpong_job.job_evidence_dir` — no second evidence convention. N cycles
++produce exactly N monotonically indexed `cycle_NNNN.json` files. An
++evidence write that fails is recorded as `cycle_evidence_error` on the job
++and never aborts execution that already happened.
++
++**Config and CLI.** `cycles.max_cycles` (DEFAULT 1), `cycles.batch_size`,
++`cycles.verify_command` join the config registry and the remedy.toml doc.
++`remedy job run <id> [--cycles N]` is registered in the command catalog.
++The rollout cap lives in the CALLER, not the loop: `CYCLE_SAFETY_CAP = 1`
++trims BOTH the flag and the config value until the F075 milestone gate
++raises it, and a trimmed value is reported with its origin named rather
++than silently honored — `run_cycles` itself honors `limits.max_cycles`
++verbatim so the five-cycle fixture can drive it. While the resolved count
++is one, the command delegates to `_cmd_run_next_task_local` verbatim, so
++single-cycle CLI behavior IS today's single pass by construction.
++
++**Honesty rules baked in.** A cycle that ran no verification records
++`not_run`, never a pass; `tokens_so_far` reports only measured tokens
++(unmeasured provider calls are counted as unmeasured, never as a token
++total); a job with zero tasks is `blocked`, never green.
++
++**Verification.** Slice suite
++`tests/orchestration/test_long_run_executor.py` 49 passed — one test per
++matrix row, an ordering test proving a cycle never starts after
++should_stop says stop, a five-cycle fixture reaching every stop cause with
++a fake provider, and the default task step driving the real single-task
++path. Ruff clean on all five touched files. `test_job_task_runner.py` +
++`test_safe_points.py` 269 passed with both files UNMODIFIED. Canary
++`test_golden_path.py` 42 passed. Reviewer red-proof: neutering the
++safe-point break turned the suite red (9 failed / 40 passed) and restoring
++it returned 49 passed — the ordering guarantee is test-backed, not
++asserted. Integration gate (`pytest -n auto`, branch vs base `c14a83a`):
++branch 184 failed / 13962 passed (161.28s), base 179 failed / 13912 passed
++(196.88s); of 30 branch-only failures 28 pass on a serial re-run
++(pre-existing xdist flake, F135/F052) and the 2 reproducible ones were
++caused by `.agent/plan.md` losing its AGENTS.md-required `## Next Steps`
++section — a state-file defect, fixed as a declared deviation, restoring
++exact base parity on those contract classes. Zero F046-attributable
++regressions. The suite is RED on base by 179 tests — pre-existing.
++
++**Regression contract (stated, not implied).** With defaults
++(`max_cycles=1`) `run_cycles` reproduces the single pass and adds exactly
++two metadata keys plus one cycle evidence record; the regression test
++asserts that this additive trace is the ONLY delta. At CLI level there is
++no delta at all, because one cycle delegates to the existing entry point.
++
++**Carried risks.** (1) The conductor writes no postmortem record itself —
++stopped/budget classes derive at evidence export from the job status it
++sets; revisit if F053 reporting needs per-terminal postmortems. (2) The
++multi-cycle CLI branch is unreachable in production while
++`CYCLE_SAFETY_CAP == 1`; it is exercised in tests with the cap raised,
++simulating post-F075. (3) Full-suite nondeterminism is pre-existing and
++tracked as F135/F052.
++
++**Not built.** DAG readiness, retry policy, checkpoint depth, self-healing
++verify rounds and per-cycle plan deltas — all owned by later features and
++explicitly out of this file's scope.
+diff --git a/docs/system/remedy-toml-configuration-system-v0.md b/docs/system/remedy-toml-configuration-system-v0.md
+index e1fd596..62e80de 100644
+--- a/docs/system/remedy-toml-configuration-system-v0.md
++++ b/docs/system/remedy-toml-configuration-system-v0.md
+@@ -54,6 +54,9 @@ env var  >  project config  >  user config  >  built-in default
+ | `planning.granularity.split_band` | string | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | `XL` | no |
+ | `planning.granularity.max_acceptance` | int | `REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE` | `3` | no |
+ | `planning.granularity.merge_group_size` | int | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | `3` | no |
++| `cycles.max_cycles` | int | `REMEDY_CYCLES_MAX_CYCLES` | `1` | no |
++| `cycles.batch_size` | int | `REMEDY_CYCLES_BATCH_SIZE` | `1` | no |
++| `cycles.verify_command` | string | `REMEDY_CYCLES_VERIFY_COMMAND` | (none) | no |
+ 
+ The table above is not exhaustive — later features added their own keys
+ (`scope.*`, `budget.*`, `postmortem.*`). The key registry
+@@ -67,6 +70,16 @@ neighbors are merged, and every transformation is listed in a
+ approves it. Setting `planning.granularity.enabled = false` passes the
+ planner's task list through untouched.
+ 
++The `cycles.*` keys bound the multi-cycle loop (F046) that
++`remedy job run <id> [--cycles N]` drives. `cycles.max_cycles` defaults to
++`1` — the rollout rule: Remedy stays single-pass until the F075 milestone
++gate raises `CYCLE_SAFETY_CAP` in
++`packages/orchestration/long_run_executor.py`. Until then the cap trims BOTH
++the config value and the `--cycles` flag, and the command reports the
++trimmed number instead of silently honoring it. `cycles.verify_command` is
++recorded on every cycle evidence record; a cycle that ran no verification
++records `not_run` and never claims a pass.
++
+ ### TOML file format
+ 
+ ```toml
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 3d91fee..c2970d3 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -298,6 +298,36 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=int,
+         default=3,
+     ),
++    ConfigKeySpec(
++        key="cycles.max_cycles",
++        env_var="REMEDY_CYCLES_MAX_CYCLES",
++        description=(
++            "Maximum cycles one multi-cycle run may execute (F046). "
++            "DEFAULT 1 — the rollout rule: Remedy stays single-pass until the "
++            "F075 milestone gate raises the cap. Both this key and "
++            "'remedy job run --cycles' are capped by that safety default."
++        ),
++        value_type=int,
++        default=1,
++    ),
++    ConfigKeySpec(
++        key="cycles.batch_size",
++        env_var="REMEDY_CYCLES_BATCH_SIZE",
++        description="Maximum tasks executed per cycle (F046)",
++        value_type=int,
++        default=1,
++    ),
++    ConfigKeySpec(
++        key="cycles.verify_command",
++        env_var="REMEDY_CYCLES_VERIFY_COMMAND",
++        description=(
++            "Per-cycle verify command override (F046). Unset means the "
++            "cycle's verify step is whatever the caller injected; no "
++            "verification is ever claimed that did not run."
++        ),
++        value_type=str,
++        default=None,
++    ),
+     ConfigKeySpec(
+         key="planning.granularity.merge_group_size",
+         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",

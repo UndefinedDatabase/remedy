@@ -1329,3 +1329,49 @@ byte-identical self-check duty for reviewer-authored text.
 Hygiene chore scheduled as its OWN gap item: 3 catalog-classification
 test failures, 2 job_stop_integration failures, ruff-432 backlog —
 explicitly NOT part of F148.
+
+## 2026-07-26: F046 T001 — terminal-status mapping and the loop seams
+Core `RunState` has no BLOCKED member, so the pingpong `JOB_*` string is the
+authoritative terminal status and is written to `job.metadata`
+(`cycle_terminal_status` / `cycle_job_status`). `blocked` maps to
+`RunState.PAUSED`, not FAILED: "no ready task and not green" also covers a job
+awaiting a decision — nothing failed, and the job must stay resumable.
+`max_cycles_reached` is a sixth, non-stop-cause terminal that leaves job state
+untouched; that is what makes `max_cycles=1` behave exactly like today's single
+pass (JOB_RUNNING is in the mapping table for this reason).
+A9 defaults taken: a job with zero tasks is `blocked` ("no_tasks"), never
+"green"; a cycle with no verify step configured records `not_run` and does NOT
+claim a pass; a failed task step or failed verification ends the cycle (retry
+inside a cycle would be a retry policy, which is out of scope); the rollout cap
+lives in the caller, so `run_cycles` honors `limits.max_cycles` verbatim and
+tests can drive a five-cycle fixture.
+
+## 2026-07-26: F046 T002 — where the rollout cap lives, and what "byte-identical" means
+The cap is enforced in the CALLER (`resolve_max_cycles` / the CLI), not inside
+`run_cycles`, so the loop honors `limits.max_cycles` verbatim and the five-cycle
+fixture can drive it. `CYCLE_SAFETY_CAP = 1` trims flag AND config; the CLI
+names the origin of a trimmed value instead of honoring it silently.
+`remedy job run <id>` delegates to `_cmd_run_next_task_local` whenever the
+resolved count is one, so single-cycle CLI behavior IS today's single pass by
+construction — it cannot drift. The library-level regression test asserts the
+delta is exactly two additive metadata keys (`cycle_terminal_status`,
+`cycle_job_status`) plus the cycle evidence record; that additive trace is the
+feature itself and is stated rather than hidden behind the word "identical".
+Cycle records reuse `pingpong_job.job_evidence_dir` so there is no second
+evidence convention. The data-root fixture in the slice suite is autouse: cycle
+records are written by default, and a test that reached the repository's real
+`.data/` would pollute it.
+
+## 2026-07-26: F046 integration gate — plan.md keeps its Next Steps section
+The F046 plan.md rewrite dropped `## Next Steps`, which AGENTS.md requires
+("Must contain: Goal, Current Step, Next Steps") and which two dashboard
+contract tests assert. That omission was the ONLY reproducible branch-only
+failure in the integration gate (2 tests, both asserting `"Steps" in
+plan.md`); the base plan.md still had the section, which is exactly why the
+failures were branch-only. The section was restored — a state-file edit, no
+production code, permitted in a gate round. Deviation from the verbatim
+plan.md text dictated at feature start is recorded here rather than applied
+silently. The three sibling failures (context.md wants `## Active Branch` and
+the word "Steps"; live_review.md wants "Steps") fail identically on base and
+were deliberately NOT swept up: they are pre-existing, not F046-attributable,
+and belong on the backlog.

@@ -54,6 +54,9 @@ env var  >  project config  >  user config  >  built-in default
 | `planning.granularity.split_band` | string | `REMEDY_PLANNING_GRANULARITY_SPLIT_BAND` | `XL` | no |
 | `planning.granularity.max_acceptance` | int | `REMEDY_PLANNING_GRANULARITY_MAX_ACCEPTANCE` | `3` | no |
 | `planning.granularity.merge_group_size` | int | `REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE` | `3` | no |
+| `cycles.max_cycles` | int | `REMEDY_CYCLES_MAX_CYCLES` | `1` | no |
+| `cycles.batch_size` | int | `REMEDY_CYCLES_BATCH_SIZE` | `1` | no |
+| `cycles.verify_command` | string | `REMEDY_CYCLES_VERIFY_COMMAND` | (none) | no |
 
 The table above is not exhaustive — later features added their own keys
 (`scope.*`, `budget.*`, `postmortem.*`). The key registry
@@ -66,6 +69,16 @@ neighbors are merged, and every transformation is listed in a
 **Normalization** section of the generated `plan.md` before a human
 approves it. Setting `planning.granularity.enabled = false` passes the
 planner's task list through untouched.
+
+The `cycles.*` keys bound the multi-cycle loop (F046) that
+`remedy job run <id> [--cycles N]` drives. `cycles.max_cycles` defaults to
+`1` — the rollout rule: Remedy stays single-pass until the F075 milestone
+gate raises `CYCLE_SAFETY_CAP` in
+`packages/orchestration/long_run_executor.py`. Until then the cap trims BOTH
+the config value and the `--cycles` flag, and the command reports the
+trimmed number instead of silently honoring it. `cycles.verify_command` is
+recorded on every cycle evidence record; a cycle that ran no verification
+records `not_run` and never claims a pass.
 
 ### TOML file format
 
