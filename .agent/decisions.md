@@ -1,5 +1,26 @@
 # Decisions
 
+## 2026-07-26: F047 checkpoint record shape — pointer + self-verifying envelope
+The record is `{"record": {...body...}, "content_hash": "sha256:<hex>"}`.
+The hash covers the canonical encoding of the body only (sorted keys, no
+incidental spacing), so it can be recomputed and compared without a second
+source of truth. The body REFERENCES the persisted job snapshot (data-root-
+relative path + sha256) rather than copying it — the persisted job already
+is checkpoint v1; a checkpoint adds only what the job file cannot answer
+(worktree head, spend, verify digest, next intent). An unreadable snapshot
+yields empty path and empty digest: an unmeasured digest is reported as
+unmeasured, never as a match.
+
+## 2026-07-26: F047 load_latest_valid distinguishes "none" from "all corrupt"
+`None` means the job was never checkpointed — the resume path degrades
+honestly to plain continuation. `AllCheckpointsCorruptError` means
+checkpoints exist and not one verifies, which is a louder and different
+situation. Collapsing both into `None` would let a job whose entire
+checkpoint history was destroyed silently resume as if it had never been
+checkpointed. Skipped files are logged and LEFT ON DISK; retention never
+prunes a file that does not verify, because a corrupted checkpoint is
+forensic evidence and retention is not the mechanism that discards it.
+
 ## 2026-07-26: F047 inspection notes — the four parts this feature wraps (A6)
 Recorded BEFORE any code was written; all four exist as the order describes.
 
