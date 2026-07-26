@@ -94,6 +94,21 @@ end the response with:
   Handback:    completion report + rewrite .agent/handoff.md
   ──────────────────────────────────────────────────────────────
 
+- Verification tiers (operator decision 2026-07-26):
+  1. **Round gate** = ONLY the scoped verification command(s) you author in
+     the step block's "Done when". The full suite is NOT part of round
+     verification.
+  2. **Canary** — every handback additionally runs the golden-path smoke
+     (fixed and fast: `pytest tests/cli/test_golden_path.py -q`).
+  3. **Integration gate** — the full suite runs exactly TWICE per feature:
+     a dedicated integration-gate round before closure (raw output; a
+     regression there is a normal repair round), plus the confirmation at
+     closure per STATUS_closure_protocol.md.
+  4. Full runs use `pytest -n auto` (pytest-xdist). Runtime budget: if the
+     full suite exceeds ~5 min wall clock, schedule a perf pass (e.g.
+     deselect via `slow`/`integration` markers, split, or parallelize
+     further).
+
 ## 4. Review loop (per handback; independent, bottom-up)
 1. Read the completion report AND .agent/handoff.md. Missing changed-files
    table = blocking finding (R-0070 class).
@@ -114,7 +129,10 @@ end the response with:
    missing changed-files table · unverified completion claims · silent
    scope change.
 6. Verdict per round: PASS → LAST_REVIEWED_SHA = HEAD, next step. FAIL →
-   repair block; LAST_REVIEWED_SHA does not advance.
+   repair block; LAST_REVIEWED_SHA does not advance. Round PASS means
+   "scoped commands green + diff clean" — the operator brief names the
+   verification tier that ran (§3). Only the integration-gate round may
+   claim "full suite green".
 7. A wrong spec is a finding routed to planning — propose a concrete
    feature-file amendment to the operator; never silently re-plan.
 8. The handoff is the only return channel — audit it as one. If an

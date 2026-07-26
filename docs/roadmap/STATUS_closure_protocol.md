@@ -11,6 +11,9 @@
 2. Full relevant suite green — verified by the reviewer running it where it
    has execution; otherwise via raw transcripts (command, exit code, real
    output) plus one reviewer-chosen spot-check. Never a summary.
+   A dedicated integration-gate round (full suite, `pytest -n auto`, raw
+   output) must have PASSed before closure; this precondition re-confirms it
+   (planner_reviewer_prompt.md §3 verification tiers).
 3. `remedy integrity check --json` → PASS; no relevant untracked files.
 4. Feature file's Built State section is current.
 5. Working tree clean, branch pushed, worker idle.
