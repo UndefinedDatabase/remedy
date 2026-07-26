@@ -380,6 +380,36 @@ class TestCycleBoundaryWiring:
         _run_one_cycle(job, record_checkpoint=False)
         assert checkpoint_paths(str(job.id)) == []
 
+    def test_a_second_run_continues_the_numbering_instead_of_overwriting(self):
+        """Cycle numbering belongs to the JOB, not to the process.
+
+        A resumed run that restarted at 1 would write cycle_0001.json and
+        checkpoint_0001.json over the records the previous process left —
+        which is how the T003 exactly-once proof first came out short.
+        """
+        from packages.orchestration.long_run_executor import (
+            next_cycle_index,
+            read_cycle_records,
+        )
+
+        job = _job(task_count=3)
+        _run_one_cycle(job)                       # first process: cycle 1
+        assert next_cycle_index(str(job.id)) == 2
+
+        _run_one_cycle(job)                       # "resumed" process: cycle 2
+        assert [p.name for p in checkpoint_paths(str(job.id))] == [
+            "checkpoint_0001.json", "checkpoint_0002.json"]
+        assert [r["cycle_index"] for r in read_cycle_records(str(job.id))] == [1, 2]
+
+        executed = [tid for r in read_cycle_records(str(job.id))
+                    for tid in r["executed_task_ids"]]
+        assert len(executed) == len(set(executed)) == 2
+
+    def test_next_cycle_index_starts_at_one_for_a_fresh_job(self):
+        from packages.orchestration.long_run_executor import next_cycle_index
+
+        assert next_cycle_index(JOB_ID) == 1
+
     def test_the_default_single_pass_still_writes_exactly_one_checkpoint(self):
         from packages.orchestration.long_run_executor import CYCLE_SAFETY_CAP
 

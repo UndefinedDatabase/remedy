@@ -203,6 +203,13 @@ class CycleRecord:
     ended_at: str
     verify_command: str | None = None
     errors: tuple[str, ...] = ()
+    #: Ids of the tasks this cycle actually EXECUTED, in execution order.
+    #: They are what makes exactly-once provable across a kill and a resume
+    #: (F047 T003) — a counter in a test process cannot span two processes.
+    #: A task that executed but failed verification is rolled back to PENDING
+    #: and will appear again in a later cycle, which is honest: it really did
+    #: execute twice.
+    executed_task_ids: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -216,6 +223,7 @@ class CycleRecord:
             "started_at": self.started_at,
             "ended_at": self.ended_at,
             "errors": list(self.errors),
+            "executed_task_ids": list(self.executed_task_ids),
         }
 
 
@@ -314,6 +322,30 @@ def write_cycle_record(job_id: str, record: CycleRecord) -> Path:
     payload = dict(record.to_json(), job_id=str(job_id))
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return path
+
+
+def next_cycle_index(job_id: str) -> int:
+    """The number the NEXT cycle of this job must take.
+
+    Cycle numbering belongs to the JOB, not to the process that happens to be
+    running it.  A resumed run that started counting at 1 again would write
+    ``cycle_0001.json`` and ``checkpoint_0001.json`` straight over the records
+    the killed run left — destroying exactly the history F047 exists to
+    preserve, and making "each task executed once" unprovable (F047 T003).
+
+    Both evidence areas are consulted, because either can be switched off
+    independently: whichever got further wins.
+    """
+    highest = max((int(r.get("cycle_index", 0)) for r in read_cycle_records(job_id)),
+                  default=0)
+    try:
+        from packages.orchestration.checkpoints import _index_of_path, checkpoint_paths
+
+        highest = max(highest,
+                      *(_index_of_path(p) for p in checkpoint_paths(job_id)), 0)
+    except Exception:  # noqa: BLE001 — numbering must not depend on checkpoints
+        pass
+    return highest + 1
 
 
 def read_cycle_records(job_id: str) -> list[dict[str, Any]]:
@@ -547,6 +579,7 @@ def run_cycles(
     control_root_path: Any = None,
     record_evidence: bool = True,
     record_checkpoint: bool = True,
+    first_cycle_index: int | None = None,
 ) -> CycleLoopResult:
     """Run bounded cycles over *job* until a terminal condition.
 
@@ -573,6 +606,11 @@ records, AFTER the job snapshot is persisted (a checkpoint references that
 snapshot).  A checkpoint write that fails is recorded as ``checkpoint_error``
 and never aborts the run either — the next cycle retries.
 
+``first_cycle_index`` is the number the first cycle of THIS invocation takes.
+It defaults to one past whatever this job already recorded, so a resumed run
+continues the job's numbering instead of overwriting the records the previous
+process left (F047).  ``max_cycles`` still bounds this invocation only.
+
     A failed verify ends the cycle with its failure recorded and denies the job
     the all_green status; self-healing is a later feature.  A task step that
     fails ends the cycle too — the task runner has already rolled the task back
@@ -583,6 +621,8 @@ and never aborts the run either — the next cycle retries.
     now_fn = clock or (lambda: datetime.now(timezone.utc))
     save_fn = save or _save_job
 
+    base_index = (next_cycle_index(str(job.id)) if first_cycle_index is None
+                  else int(first_cycle_index))
     loop_started_at = now_fn()
     provider_calls = 0
     cycles: list[CycleRecord] = []
@@ -630,16 +670,19 @@ and never aborts the run either — the next cycle retries.
             break
 
         # 4. Run the cycle.
-        cycle_index = len(cycles) + 1
+        cycle_index = base_index + len(cycles)
         started_at = now
         attempted = completed = failed = 0
         errors: list[str] = []
+        executed_ids: list[str] = []
 
         for _ in batch:
             attempt = step(job, counted_provider_call)
             if not attempt.executed and not attempt.error:
                 break                      # nothing ready any more; not an attempt
             attempted += 1
+            if attempt.executed and attempt.task_id is not None:
+                executed_ids.append(str(attempt.task_id))
             if attempt.verified:
                 completed += 1
                 continue
@@ -671,6 +714,7 @@ and never aborts the run either — the next cycle retries.
             ended_at=ended_at.isoformat(),
             verify_command=limits.verify_command,
             errors=tuple(errors),
+            executed_task_ids=tuple(executed_ids),
         )
         cycles.append(record)
 

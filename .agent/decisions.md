@@ -1,5 +1,38 @@
 # Decisions
 
+## 2026-07-26: F047 T003 — cycle numbering belongs to the JOB, not the process
+The kill test's exactly-once assertion came out short (3 of 5 tasks), and the
+cause was a real defect, not a test artifact: `run_cycles` numbered cycles
+`len(cycles) + 1` within ONE invocation, so a resumed run started again at 1
+and wrote `cycle_0001.json` / `checkpoint_0001.json` straight over the records
+the killed process had left. The evidence area silently lost the pre-kill
+history — precisely what F047 exists to preserve, and what makes exactly-once
+unprovable.
+
+Fix: `next_cycle_index(job_id)` reads the highest index already persisted (in
+BOTH the cycles/ and checkpoints/ areas, since either can be switched off
+independently) and the loop starts one past it. A `first_cycle_index` seam
+lets tests pin an exact number. `max_cycles` is unchanged and still bounds one
+invocation only. A fresh job still starts at 1, so nothing about F046's
+single-pass default moves.
+
+## 2026-07-26: F047 T003 — exactly-once is proven from evidence, not from counters
+`CycleRecord` gained `executed_task_ids`. Without it there was nothing on disk
+naming WHICH tasks a cycle ran, only how many — and a counter living in the
+test process cannot see what the killed process did. The ids are written to
+`cycles/*.json`, so the assertion spans both processes and reads only durable
+state. A task that executed but failed verification is rolled back to PENDING
+and will legitimately appear again in a later cycle; the field records
+executions, not successes, which keeps it honest.
+
+## 2026-07-26: F047 T003 — the torn checkpoint is written explicitly, on purpose
+The atomic write (temp file, fsync, rename) makes a genuinely half-written
+checkpoint impossible to produce on demand: a kill leaves either the old file
+or the new one. Racing a SIGKILL against the rename to try would be a flake
+generator. The test writes a truncated file instead, because the property
+under test is that the LOADER survives one and falls back to the previous
+valid checkpoint — identical either way, and deterministic.
+
 ## 2026-07-26: F047 `job resume` EXTENDS the existing command, it does not shadow it
 `remedy job resume` already existed: an event-replay resume with a REQUIRED
 `--checkpoint <id>`, handled by `_cmd_resume` (apps/cli/commands/job.py).

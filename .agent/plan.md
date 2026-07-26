@@ -12,21 +12,22 @@ tasks.
 - [x] Setup: Open PR Gate (#152 merged), branch, STATUS claim, state files
 - [x] T001 checkpoint writer/loader + hashing + retention + unit tests
 - [x] T002 resume CLI + head verification + gate/stop interplay + tests
-- [ ] T003 kill -9 / resume subprocess test (exactly-once proof)
+- [x] R-0146 --dry-run is a read-only preview (fixed, tests green)
+- [x] T003 kill -9 / resume subprocess test (exactly-once proof)
 - [ ] Integration gate
 - [ ] Closure
 
 ## Current Step
-Round complete: Setup + T001 + T002 all green.
-test_checkpoints.py 35 passed · test_resume_cli.py 25 passed ·
-canary tests/cli/test_golden_path.py 42 passed · ruff clean on every
-touched file. Awaiting the reviewer verdict.
+Round 2 complete: R-0146 fixed, T003 green.
+test_resume_kill.py 7 passed (1.28s) · test_resume_cli.py 35 passed ·
+test_checkpoints.py 37 passed · test_long_run_executor.py 49 passed ·
+canary 42 passed · ruff clean. Awaiting the reviewer verdict.
 
 ## Next Steps
-T003 kill test (tests/orchestration/test_resume_kill.py), then the
-integration gate, then closure. Docs: `remedy job resume` gained a second
-mode — docs update belongs to closure (docs/resume.md does not exist;
-its two tests are pre-existing red on main).
+Integration gate, then closure. Docs: `remedy job resume` gained two new
+behaviors (F047 mode, --dry-run preview) — docs update belongs to closure
+(docs/resume.md does not exist; its two tests are pre-existing red on
+main).
 
 ## Risks
 - Checkpoint write failure must not kill the run: log loudly,
