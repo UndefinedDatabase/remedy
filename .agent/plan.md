@@ -12,21 +12,22 @@ failing open to the original plan.
 - [x] T002 merge rule + dependency-safety table tests (gate green)
 - [x] T003 revalidation/abort + bypass + wiring into plan_job_llm +
       plan.md normalization section + mixed-fixture integration (gate green)
+- [x] Integration gate: branch vs base full-suite comparison, no F016
+      regression (verdict persisted in .agent/live_review.md)
+- [x] Closure: verdicts persisted, feature-file Built State written
 
 ## Current Step
-Integration gate RUN, handed back BLOCKED by the literal rule: the
-base-vs-branch new-failure list is non-empty (10 ids). Second branch run
-reproduces none of them and adds 6 others → suite nondeterminism under
-`-n auto`. One real item recorded as an R-0142 candidate (branch NAME
-`task-granularity` matches the `sk-` secret pattern). No repair this
-round, per the round constraint.
+Closure — integrity check, evidence job (T001–T003 attested), fresh review
+zip, STATUS.md line, final commit, PR #150 description update. Do NOT merge:
+the Open PR Gate handles that at the next feature start.
 
 ## Next Steps
-Await reviewer decision: accept F016 and track R-0142 separately, or
-order a stabilization round.
+None for F016 after closure.
 
 ## Risks
-- Plan schema classes untouched (F014 R-0121); the record lives only in
-  fp_dict["_normalization"] and FlightPlanResult.
-- Merge overlap is token-based, so two files under a common directory count
-  as related — over-eager merging is possible, and visible in the record.
+- Full suite is nondeterministic under xdist and pre-existing RED on base
+  (~160-181 churning failures); serial re-runs pass. Backlog F135/F052.
+- R-0142: redaction pattern false-positives on "sk-" substrings (Low, gap
+  backlog) — branch-name artifact, vanishes on main.
+- Cross-group merge-cycle interactions are caught only by the final
+  whole-plan revalidation (coarse abort, fail-open) — by design.
