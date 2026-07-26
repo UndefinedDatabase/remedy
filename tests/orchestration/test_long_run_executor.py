@@ -1,4 +1,5 @@
-"""F046 T001 — multi-cycle loop conductor.
+"""F046 — multi-cycle loop conductor (T001) and its evidence, config and
+single-pass regression (T002).
 
 One test per row of the terminal-status matrix, an ordering test proving a
 cycle never starts after should_stop says stop, and a five-cycle fixture that
@@ -7,14 +8,20 @@ clock and deadlines go through an injected clock.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
+import packages.orchestration.long_run_executor as lre
 from packages.core.models import Job, JobBudgets, RunState, Task
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
+    CYCLE_SAFETY_CAP,
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_MAX_CYCLES,
     TERMINAL_ALL_GREEN,
     TERMINAL_BLOCKED,
     TERMINAL_BUDGET_EXHAUSTED,
@@ -28,8 +35,12 @@ from packages.orchestration.long_run_executor import (
     VERIFY_PASSED,
     CycleLimits,
     TaskAttempt,
+    cycle_evidence_dir,
     default_task_step,
+    limits_from_config,
+    read_cycle_records,
     ready_tasks,
+    resolve_max_cycles,
     run_cycles,
 )
 from packages.orchestration.pingpong_job import (
@@ -49,8 +60,10 @@ T0 = datetime(2026, 7, 26, 12, 0, 0, tzinfo=UTC)
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
+    """Autouse: every cycle writes an evidence record, so no test may ever
+    reach the repository's real data root."""
     data_dir = tmp_path / "remedy_data"
     data_dir.mkdir()
     monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
@@ -537,3 +550,226 @@ class TestDefaultTaskStep:
         assert result.cycles[0].tasks_failed == 1
         assert "RuntimeError" in result.cycles[0].errors[0]
         assert job.tasks[0].status == RunState.PENDING   # rolled back by the runner
+
+
+# ---------------------------------------------------------------------------
+# T002 — cycle evidence records
+# ---------------------------------------------------------------------------
+
+
+class TestCycleEvidence:
+    def test_n_cycles_produce_exactly_n_monotonic_records(self, control_root):
+        job = make_job(4)
+        result = run_cycles(
+            job, CycleLimits(max_cycles=4), FakeProvider(),
+            task_step=completing_step, verify=passing_verify,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        records = read_cycle_records(str(job.id))
+        assert result.cycles_run == 4
+        assert len(records) == 4
+        assert [r["cycle_index"] for r in records] == [1, 2, 3, 4]
+
+    def test_record_carries_the_cycle_summary(self, control_root):
+        job = make_job(1)
+        run_cycles(
+            job, CycleLimits(max_cycles=1, verify_command="pytest -q"),
+            FakeProvider(), task_step=completing_step, verify=passing_verify,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        record = read_cycle_records(str(job.id))[0]
+        assert record["job_id"] == str(job.id)
+        assert record["tasks_attempted"] == 1
+        assert record["tasks_completed"] == 1
+        assert record["tasks_failed"] == 0
+        assert record["verify_result"] == VERIFY_PASSED
+        assert record["verify_command"] == "pytest -q"
+        assert record["tokens_so_far"] == 0        # nothing measured, nothing claimed
+        assert record["started_at"] and record["ended_at"]
+
+    def test_records_live_in_the_job_evidence_area(self, isolate_data_root, control_root):
+        job = make_job(1)
+        run_cycles(
+            job, CycleLimits(max_cycles=1), FakeProvider(),
+            task_step=completing_step, clock=FakeClock(), save=no_save,
+            control_root_path=control_root,
+        )
+        expected = isolate_data_root / "jobs" / str(job.id) / "evidence" / "cycles"
+        assert cycle_evidence_dir(str(job.id)) == expected
+        assert (expected / "cycle_0001.json").is_file()
+
+    def test_evidence_can_be_switched_off(self, control_root):
+        job = make_job(2)
+        run_cycles(
+            job, CycleLimits(max_cycles=2), FakeProvider(),
+            task_step=completing_step, clock=FakeClock(), save=no_save,
+            control_root_path=control_root, record_evidence=False,
+        )
+        assert read_cycle_records(str(job.id)) == []
+
+    def test_no_records_when_no_cycle_ran(self, control_root):
+        job = make_job(2)
+        request_stop(str(job.id), reason="stop first", control_root_path=control_root)
+        run_cycles(
+            job, CycleLimits(max_cycles=3), FakeProvider(),
+            task_step=never_called_step, clock=FakeClock(), save=no_save,
+            control_root_path=control_root,
+        )
+        assert read_cycle_records(str(job.id)) == []
+
+
+# ---------------------------------------------------------------------------
+# T002 — config keys and the rollout cap
+# ---------------------------------------------------------------------------
+
+
+class FakeConfig:
+    def __init__(self, **values) -> None:
+        self._values = values
+
+    def get(self, key: str):
+        return self._values.get(key)
+
+
+class TestCycleConfig:
+    def test_config_keys_are_registered_with_the_rollout_default(self):
+        assert get_key_spec("cycles.max_cycles").default == DEFAULT_MAX_CYCLES == 1
+        assert get_key_spec("cycles.batch_size").default == DEFAULT_BATCH_SIZE
+        assert get_key_spec("cycles.verify_command").default is None
+        assert get_key_spec("cycles.max_cycles").env_var == "REMEDY_CYCLES_MAX_CYCLES"
+
+    def test_default_when_nothing_is_set(self):
+        r = resolve_max_cycles()
+        assert (r.max_cycles, r.source, r.capped) == (1, "default", False)
+
+    def test_flag_beats_config(self, monkeypatch):
+        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 10)
+        r = resolve_max_cycles(flag=4, config_value=7)
+        assert (r.max_cycles, r.source, r.requested) == (4, "flag", 4)
+
+    def test_config_used_when_no_flag(self, monkeypatch):
+        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 10)
+        r = resolve_max_cycles(config_value=6)
+        assert (r.max_cycles, r.source) == (6, "config")
+
+    def test_the_cap_trims_both_flag_and_config(self):
+        flagged = resolve_max_cycles(flag=25)
+        configured = resolve_max_cycles(config_value=25)
+        assert flagged.max_cycles == configured.max_cycles == CYCLE_SAFETY_CAP == 1
+        assert flagged.capped is True and flagged.requested == 25
+        assert configured.capped is True
+
+    def test_zero_or_negative_is_refused(self):
+        with pytest.raises(ValueError):
+            resolve_max_cycles(flag=0)
+        with pytest.raises(ValueError):
+            resolve_max_cycles(config_value=-3)
+
+    def test_limits_from_config(self, monkeypatch):
+        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 10)
+        limits, resolved = limits_from_config(
+            FakeConfig(**{"cycles.max_cycles": 3, "cycles.batch_size": 5,
+                          "cycles.verify_command": "make test"}),
+        )
+        assert limits.max_cycles == 3
+        assert limits.batch_size == 5
+        assert limits.verify_command == "make test"
+        assert resolved.source == "config"
+
+    def test_limits_from_config_falls_back_to_the_defaults(self):
+        limits, resolved = limits_from_config(FakeConfig())
+        assert limits.max_cycles == DEFAULT_MAX_CYCLES
+        assert limits.batch_size == DEFAULT_BATCH_SIZE
+        assert limits.verify_command is None
+        assert resolved.source == "default"
+
+
+# ---------------------------------------------------------------------------
+# T002 — single-pass regression
+# ---------------------------------------------------------------------------
+
+
+def _single_pass(job: Job, provider) -> None:
+    """Today's single pass, exactly as `remedy job run-next` performs it."""
+    from packages.orchestration.storage import save_job
+    from packages.orchestration.task_runner import (
+        finalize_task,
+        materialize_task_output,
+        run_next_task,
+    )
+    from packages.orchestration.verifier import verify_task_output
+    from packages.orchestration.workspace import LocalWorkspaceRuntime
+
+    result = run_next_task(job, provider)
+    if not result.changed:
+        return
+    materialize_task_output(result, LocalWorkspaceRuntime(job_id=job.id))
+    vr = verify_task_output(result.job, result.task_id)
+    finalize_task(result, vr)
+    save_job(result.job)
+
+
+def _normalize(job: Job) -> dict:
+    """Job JSON with the randomly generated artifact ids replaced by ordinals."""
+    payload = json.loads(job.model_dump_json())
+    mapping: dict[str, str] = {}
+    for i, artifact in enumerate(payload.get("artifacts", [])):
+        mapping[artifact["id"]] = f"artifact-{i}"
+    text = json.dumps(payload, sort_keys=True)
+    for real, placeholder in mapping.items():
+        text = text.replace(real, placeholder)
+    return json.loads(text)
+
+
+class TestSinglePassRegression:
+    def test_defaults_reproduce_the_single_pass_exactly(
+        self, isolate_data_root, control_root
+    ):
+        job = make_job(3)
+        single = job.model_copy(deep=True)
+        cycled = job.model_copy(deep=True)
+
+        _single_pass(single, FakeProvider())
+        single_workspace = sorted(
+            p.name for p in (isolate_data_root / "workspaces" / str(job.id)).rglob("*")
+            if p.is_file()
+        )
+
+        run_cycles(cycled, CycleLimits(), FakeProvider(),
+                   task_step=default_task_step, clock=FakeClock(),
+                   control_root_path=control_root)
+        cycled_workspace = sorted(
+            p.name for p in (isolate_data_root / "workspaces" / str(job.id)).rglob("*")
+            if p.is_file()
+        )
+
+        assert cycled_workspace == single_workspace
+        expected = _normalize(single)
+        actual = _normalize(cycled)
+        # The ONLY difference is the loop's own additive trace.
+        added = set(actual["metadata"]) - set(expected["metadata"])
+        assert added == {"cycle_terminal_status", "cycle_job_status"}
+        for key in added:
+            actual["metadata"].pop(key)
+        assert actual == expected
+
+    def test_defaults_run_exactly_one_cycle_and_leave_the_rest_pending(
+        self, isolate_data_root, control_root
+    ):
+        job = make_job(3)
+        result = run_cycles(job, CycleLimits(), FakeProvider(),
+                            task_step=default_task_step, clock=FakeClock(),
+                            control_root_path=control_root)
+        assert result.cycles_run == 1
+        assert result.terminal_status == TERMINAL_MAX_CYCLES_REACHED
+        assert [t.status for t in job.tasks] == [
+            RunState.COMPLETED, RunState.PENDING, RunState.PENDING,
+        ]
+
+    def test_default_limits_are_the_rollout_defaults(self):
+        limits = CycleLimits()
+        assert limits.max_cycles == 1
+        assert limits.batch_size == 1
+        assert limits.budgets is None
+        assert limits.verify_command is None
+

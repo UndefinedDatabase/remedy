@@ -299,6 +299,36 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=3,
     ),
     ConfigKeySpec(
+        key="cycles.max_cycles",
+        env_var="REMEDY_CYCLES_MAX_CYCLES",
+        description=(
+            "Maximum cycles one multi-cycle run may execute (F046). "
+            "DEFAULT 1 — the rollout rule: Remedy stays single-pass until the "
+            "F075 milestone gate raises the cap. Both this key and "
+            "'remedy job run --cycles' are capped by that safety default."
+        ),
+        value_type=int,
+        default=1,
+    ),
+    ConfigKeySpec(
+        key="cycles.batch_size",
+        env_var="REMEDY_CYCLES_BATCH_SIZE",
+        description="Maximum tasks executed per cycle (F046)",
+        value_type=int,
+        default=1,
+    ),
+    ConfigKeySpec(
+        key="cycles.verify_command",
+        env_var="REMEDY_CYCLES_VERIFY_COMMAND",
+        description=(
+            "Per-cycle verify command override (F046). Unset means the "
+            "cycle's verify step is whatever the caller injected; no "
+            "verification is ever claimed that did not run."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="planning.granularity.merge_group_size",
         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
         description=(

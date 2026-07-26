@@ -46,9 +46,11 @@ injected ``clock``, so a deadline is provable in a unit test.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -117,6 +119,20 @@ _VERIFY_DENIES_GREEN = frozenset({VERIFY_FAILED, "timeout"})
 #: Rollout rule (F046): one cycle until the F075 milestone gate flips it.
 DEFAULT_MAX_CYCLES = 1
 DEFAULT_BATCH_SIZE = 1
+
+#: The rollout CAP.  Config value and CLI flag are both clamped to it, so the
+#: shipped default stays a single pass no matter what is configured.  Only the
+#: F075 milestone gate raises this, via an explicit change with an ADR.
+CYCLE_SAFETY_CAP = 1
+
+#: Config keys this feature owns.
+CONFIG_KEY_MAX_CYCLES = "cycles.max_cycles"
+CONFIG_KEY_BATCH_SIZE = "cycles.batch_size"
+CONFIG_KEY_VERIFY_COMMAND = "cycles.verify_command"
+
+#: Where a cycle's own evidence record lands, and how it is named.
+CYCLE_EVIDENCE_DIRNAME = "cycles"
+CYCLE_RECORD_FILENAME = "cycle_{index:04d}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +285,113 @@ def _no_verify(job: Job, cycle_index: int, verify_command: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Cycle evidence (T002)
+# ---------------------------------------------------------------------------
+
+
+def cycle_evidence_dir(job_id: str) -> Path:
+    """The job's own evidence area, ``cycles/`` subdirectory.
+
+    Built on ``pingpong_job.job_evidence_dir`` so cycle records live exactly
+    where every other job-level record lives — no second evidence convention.
+    """
+    from packages.orchestration.pingpong_job import job_evidence_dir
+    from packages.orchestration.safe_points import validate_job_id
+
+    return Path(job_evidence_dir(validate_job_id(job_id))) / CYCLE_EVIDENCE_DIRNAME
+
+
+def write_cycle_record(job_id: str, record: CycleRecord) -> Path:
+    """Append one cycle's summary record.  One cycle, one file, one index.
+
+    Indices are the cycle indices themselves, so N cycles produce exactly N
+    files named cycle_0001..cycle_000N — monotonic by construction and
+    idempotent under a re-run of the same cycle index.
+    """
+    directory = cycle_evidence_dir(job_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / CYCLE_RECORD_FILENAME.format(index=record.cycle_index)
+    payload = dict(record.to_json(), job_id=str(job_id))
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def read_cycle_records(job_id: str) -> list[dict[str, Any]]:
+    """Every persisted cycle record for a job, in cycle order."""
+    directory = cycle_evidence_dir(job_id)
+    if not directory.is_dir():
+        return []
+    records: list[dict[str, Any]] = []
+    for path in sorted(directory.glob("cycle_*.json")):
+        try:
+            records.append(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+    records.sort(key=lambda r: r.get("cycle_index", 0))
+    return records
+
+
+# ---------------------------------------------------------------------------
+# Config / flag resolution (T002)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ResolvedCycles:
+    """How many cycles a run may use, where that came from, and whether the
+    rollout cap trimmed it."""
+
+    max_cycles: int
+    source: str          # "flag" | "config" | "default"
+    requested: int
+    capped: bool
+
+    @property
+    def cap(self) -> int:
+        return CYCLE_SAFETY_CAP
+
+
+def resolve_max_cycles(flag: int | None = None,
+                       config_value: int | None = None) -> ResolvedCycles:
+    """Flag beats config beats default — and BOTH are capped.
+
+    The cap is the F046 rollout rule: until the F075 milestone gate raises
+    ``CYCLE_SAFETY_CAP``, no configuration and no flag can make Remedy run more
+    than one cycle.  The requested value is reported alongside so the caller
+    can tell the operator their number was trimmed rather than ignored.
+    """
+    if flag is not None:
+        requested, source = int(flag), "flag"
+    elif config_value is not None:
+        requested, source = int(config_value), "config"
+    else:
+        requested, source = DEFAULT_MAX_CYCLES, "default"
+    if requested < 1:
+        raise ValueError(f"max_cycles must be >= 1, got {requested}")
+    allowed = min(requested, CYCLE_SAFETY_CAP)
+    return ResolvedCycles(max_cycles=allowed, source=source,
+                          requested=requested, capped=allowed < requested)
+
+
+def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
+                       ) -> tuple[CycleLimits, ResolvedCycles]:
+    """Build ``CycleLimits`` from the resolved Remedy config plus a CLI flag."""
+    if config is None:
+        from packages.orchestration.config import get_config
+        config = get_config()
+    resolved = resolve_max_cycles(cycles_flag, config.get(CONFIG_KEY_MAX_CYCLES))
+    batch_size = config.get(CONFIG_KEY_BATCH_SIZE) or DEFAULT_BATCH_SIZE
+    return (
+        CycleLimits(
+            max_cycles=resolved.max_cycles,
+            batch_size=int(batch_size),
+            verify_command=config.get(CONFIG_KEY_VERIFY_COMMAND) or None,
+        ),
+        resolved,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -386,6 +509,7 @@ def run_cycles(
     save: Callable[[Job], None] | None = None,
     log: Any = None,
     control_root_path: Any = None,
+    record_evidence: bool = True,
 ) -> CycleLoopResult:
     """Run bounded cycles over *job* until a terminal condition.
 
@@ -401,6 +525,11 @@ def run_cycles(
       save       ``storage.save_job``
       log        anything with ``.log(event, **meta)`` (a RunLogWriter); when
                  omitted, no ledger events are emitted
+
+``record_evidence`` writes one summary record per cycle under the job's own
+evidence area (N cycles -> exactly N records, monotonically indexed).  An
+evidence write that fails is recorded on the job as ``cycle_evidence_error``
+and never aborts execution that already happened.
 
     A failed verify ends the cycle with its failure recorded and denies the job
     the all_green status; self-healing is a later feature.  A task step that
@@ -503,8 +632,13 @@ def run_cycles(
         )
         cycles.append(record)
 
-        # 5. Persist.
+        # 5. Persist the job, then the cycle's own evidence record.
         save_fn(job)
+        if record_evidence:
+            try:
+                write_cycle_record(str(job.id), record)
+            except (OSError, ValueError) as exc:
+                job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
 
     job_status = _apply_terminal(job, terminal, stop_reason)
