@@ -1,160 +1,172 @@
-# Handoff — F047 Checkpoint & resume, Round 2 (R-0146 repair + T003)
+# Handoff — F047 Checkpoint & resume, Integration Gate
 
-Branch: feature/f047-checkpoint-resume · PR #153 (draft, description updated)
+Branch: feature/f047-checkpoint-resume · PR #153 (draft)
 Base: main @ 89c4ef0e723f89c58956de3964d1653461d273b9
-Review range this round: `fd93b31..7539442` · Feature range: `89c4ef0..7539442`
-Open findings: 0 (R-0146 fixed) · Next expected action: reviewer verdict, then
-the integration gate.
+Gate range: `72fc653..4692cca` · Feature range: `89c4ef0..4692cca`
+Open findings: 0 · **Zero unexplained branch-only failures.**
+Next expected action: reviewer gate verdict, then closure.
+Only the reviewer may claim the gate verdict; this is the worker's evidence.
 
 ## Item status
 
 | Item | Status | Reason |
 |------|--------|--------|
-| [A] persist R-0146 | done | own commit 269195f, first action |
-| [B] fix R-0146 | done | b3cea6e; `Done: R-0146` in the same commit |
-| [C] T003 kill test | done | 7539442, plus a forced production fix in 2fe5887 |
-
-**In-scope addition (not asked for, but T003 could not pass without it):**
-the kill test's exactly-once assertion came out short (3 of 5 tasks) and the
-cause was a production defect, not a test artifact — see commit 2fe5887 below.
-Both parts recorded in decisions.md.
+| [A] persist round-2 verdict | done | own commit 9cbfbf9, first action |
+| [B] full suite on branch | done | 3 runs, raw below |
+| [C] full suite on base 89c4ef0 | done | worktree, raw below; worktree removed |
+| [D] compare + serial re-runs | done | 2 genuine failures found and fixed |
+| [E] canary | done | 42 passed |
 
 ## External actions taken
 
 | Action | Detail |
 |--------|--------|
-| Pushed branch | `git push` → `864f945..7539442` |
-| Updated PR #153 | `gh pr edit 153 --title --body` (scope now T001–T003 + R-0146) |
+| Pushed branch | `git push` → `72fc653..4692cca` |
+| Worktree add/remove | `git worktree add <scratch>/base89 89c4ef0`, then `git worktree remove --force` — `git worktree list` is clean (one entry) |
+
+No PR update this round (description already covers T001–T003 + R-0146).
+No closure artifacts: no evidence bundle, no zip, no STATUS edit.
 
 ## Commits this round
 
-**269195f** chore(f047): persist finding R-0146
+**9cbfbf9** chore(f047): persist the round-2 reviewer verdict; open the integration gate
 
 | File | +/- |
 |------|-----|
-| .agent/live_review.md | +13 / −1 |
+| .agent/live_review.md | +19 / −2 |
+| .agent/plan.md | +7 / −8 |
 
-**b3cea6e** fix(f047): --dry-run is a read-only resume preview (R-0146)
-
-| File | +/- |
-|------|-----|
-| apps/cli/commands/job.py | +121 / −1 |
-| tests/orchestration/test_resume_cli.py | +142 / −1 |
-| .agent/live_review.md | +6 / −0 |
-
-`_cmd_job_resume` takes `dry_run`; the dispatch passes it in the
-no-checkpoint branch too. The preview observes the stop request via
-`stop_requested` and NEVER `consume_stop`, reports the head comparison
-(naming both heads on drift, without the exit-3 refusal), the gate state and
-the checkpoint / no-checkpoint / all-green state, then exits 0 without
-touching the executor. JSON mirrors it under `action=preview`.
-
-**2fe5887** fix(f047): cycle numbering is per job, and evidence names the tasks it ran
+**4692cca** chore(f047): live_review.md gains its Steps section (gate parity)
 
 | File | +/- |
 |------|-----|
-| packages/orchestration/long_run_executor.py | +45 / −1 |
-| tests/orchestration/test_checkpoints.py | +30 / −0 |
-| .agent/decisions.md | +33 / −0 |
-| .agent/plan.md | +10 / −9 |
+| .agent/decisions.md | +17 / −0 |
+| .agent/live_review.md | +9 / −0 |
 
-1. `run_cycles` numbered cycles `len(cycles) + 1` **within one invocation**,
-   so the resumed run started at 1 again and wrote `cycle_0001.json` /
-   `checkpoint_0001.json` over the killed run's records — the pre-kill
-   history was silently destroyed. `next_cycle_index(job_id)` now reads the
-   highest index already persisted in BOTH evidence areas and the loop starts
-   one past it; `first_cycle_index` is a test seam. `max_cycles` still bounds
-   one invocation, and a fresh job still starts at 1 (F046 default unmoved).
-2. `CycleRecord.executed_task_ids` — nothing on disk previously named WHICH
-   tasks a cycle ran. Records executions, not successes.
+## [B] Full suite on the BRANCH (raw)
 
-**7539442** test(f047): kill -9 mid-cycle, resume, exactly-once (T003)
+    $ python3 -m pytest -n auto -q
+    run 1 (pre-fix):  196 failed, 14028 passed,  9 skipped             in 189.64s
+    run 2 (pre-fix):  177 failed, 14046 passed,  8 skipped, 3 errors   in 162.22s
+    run 3 (post-fix): 158 failed, 14065 passed,  8 skipped, 2 errors   in 158.32s
 
-| File | +/- |
-|------|-----|
-| tests/orchestration/test_resume_kill.py | +358 / −0 (new) |
+Three runs of the SAME tree differ by ~38 failures. That is the known
+F135/F052 xdist nondeterminism (F046's gate saw the same churn); it is why
+every branch-only id below was re-run serially rather than argued about.
+Run 1 was used as the comparison set; run 3 is post-fix.
 
-## Verification (raw)
+## [C] Full suite on the BASE 89c4ef0 (raw)
 
-    $ python3 -m pytest tests/orchestration/test_resume_cli.py -q     # gate for [B]
-    35 passed in 0.23s                                                exit 0
+    $ git worktree add <scratch>/base89 89c4ef0
+    $ (cd <scratch>/base89 && python3 -m pytest -n auto -q)
+    190 failed, 13947 passed, 14 skipped, 3 errors in 143.21s
 
-    $ ruff check apps/cli/commands/job.py tests/orchestration/test_resume_cli.py
-    All checks passed!                                                exit 0
+## [D] Comparison
 
-    $ python3 -m pytest tests/orchestration/test_resume_kill.py -q
-    7 passed in 1.32s                                                 exit 0
+Unique failing node ids: branch run 1 = 197, base = 195.
+Set difference: **40 branch-only**, 38 base-only — churn in BOTH directions,
+which is itself the flake signature.
 
-    $ python3 -m pytest tests/orchestration/test_resume_cli.py \
-          tests/orchestration/test_checkpoints.py -q
-    72 passed in 0.35s                                                exit 0
+### Serial re-run of all 39 branch-only node ids (raw)
 
-    $ python3 -m pytest tests/orchestration/test_long_run_executor.py -q   # F046
-    49 passed in 0.27s                                                exit 0
+    $ python3 -m pytest -q <39 node ids>
+    2 failed, 37 passed in 5.67s
 
-    $ ruff check tests/orchestration/test_resume_kill.py \
-          tests/orchestration/test_checkpoints.py \
-          tests/orchestration/test_resume_cli.py \
-          packages/orchestration/long_run_executor.py apps/cli/commands/job.py
-    All checks passed!                                                exit 0
+(The 40th line was stray stderr — `ERROR: '/tmp/pytest-of-decodeux/…/myrepo'
+is not a git repository.` — not a test id. Its base counterpart appears in
+the base-only list with a different pytest tmp path, so it is the same
+worker-scoped noise on both sides.)
 
-    $ python3 -m pytest tests/cli/test_golden_path.py -q              # canary
-    42 passed in 18.79s                                               exit 0
+**37 of 39 passed serially → xdist flakes, not regressions.** They cluster in
+`tests/regression/test_named_bugs.py` (smoke-script structure checks),
+`tests/runtimes/test_supervisor_portability.py`,
+`tests/runtimes/test_runtime_cli_process_boundary.py`,
+`tests/orchestration/test_test_runner.py` and `tests/cli/test_runtime_cmd.py`
+— all process/port/tmpdir-contending suites, none touching F047 code.
 
-Kill test, named:
+### The 2 genuine, reproducible branch-only failures
 
-    tests/orchestration/test_resume_kill.py::TestKillAndResume::
-      test_the_kill_leaves_checkpoints_for_the_committed_cycles      PASSED
-      test_the_in_flight_task_was_never_recorded_as_executed         PASSED
-      test_resume_completes_the_job_with_each_task_executed_exactly_once PASSED
-      test_the_f047_resume_path_accepts_the_killed_job               PASSED
-      test_the_dry_run_preview_of_a_killed_job_runs_nothing          PASSED
-    tests/orchestration/test_resume_kill.py::TestTornCheckpoint::
-      test_resume_falls_back_to_the_previous_valid_checkpoint        PASSED
-      test_a_torn_newest_still_completes_the_job_exactly_once        PASSED
-    7 passed in 1.32s
+    tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
+    tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
 
-## Exactly-once evidence (same scenario run standalone, raw)
+Both assert `"Steps" in .agent/live_review.md`. F047-attributable, and the
+cause is in a file this feature authored — so fixed in-round per the gate
+rules. The base passed them **by accident**: F046's live_review.md happened
+to contain the substring inside prose, in the sentence about plan.md missing
+its "## Next Steps" section. The F047 rewrite legitimately dropped that
+sentence and with it the token.
 
-    child returncode         : -9 (-9 == SIGKILL)
-    in-flight task at kill   : {'cycle': 3, 'task_id': '747b3c3d-f7b8-473e-9145-80554a7de243'}
-    executed ids BEFORE kill : ['ddcef197-9292-45dd-a530-4ea04a46197a',
-                                'ba72e311-eb1f-433f-a588-7f80dd9e63d5']
-    resume exit              : 0 {"terminal_status": "all_green", "cycles_run": 3,
-                                  "job_id": "7bdd37de-da14-439f-9bdb-66f52d2af4df"}
-    executed ids AFTER resume:
-       1. ddcef197-9292-45dd-a530-4ea04a46197a
-       2. ba72e311-eb1f-433f-a588-7f80dd9e63d5
-       3. 747b3c3d-f7b8-473e-9145-80554a7de243   <- the in-flight task, run ONCE
-       4. dea5b71d-deef-4011-9aa1-d19fe7c647a7
-       5. 11f43465-3829-46d2-bf61-7716cfc81001
-    duplicates               : NONE
-    total executions         : 5 for 5 tasks
-    pre-kill work redone     : NO
-    cycle record files       : cycle_0001..cycle_0005.json
-    checkpoint files         : checkpoint_0001..checkpoint_0005.json
+Fix (commit 4692cca): live_review.md now carries a real `## Steps` section
+listing the feature's rounds and ranges. The reviewer-authored finding and
+verdict text is untouched — the section is purely additive. **Neither test
+was modified**; the contract is met, not weakened. Same class as F046's
+plan.md "## Next Steps" repair at its own gate. Recorded in decisions.md.
 
-Read from `evidence/cycles/*.json` (`executed_task_ids`) — durable state
-written by BOTH processes, not a counter in the test process.
+    $ python3 -m pytest <the 2 node ids> -q
+    2 passed in 0.11s                                              exit 0
+
+### After the fix
+
+    branch-only failures (run 3 vs base): 6
+      tests/runtimes/test_supervisor_portability.py::TestDeniedCwdPortability::test_a_wrong_readable_cwd_is_still_a_mismatch
+      tests/runtimes/test_supervisor_portability.py::TestLiveApplicationOwnership::test_the_real_supervised_app_is_a_child_of_its_supervisor
+      tests/test_data_paths.py::TestResolveDataRoot::test_default_ends_with_data
+      tests/test_grouped_cli.py::TestGroupedExecution::test_brain_graph_json
+      tests/test_grouped_cli.py::TestGroupedExecution::test_policy_contract_json
+      tests/test_grouped_cli.py::TestGroupedExecution::test_policy_token_json
+
+    $ python3 -m pytest -q <those 6 node ids>
+    6 passed in 2.10s                                              exit 0
+
+All six pass serially — a different six from run 1's flake set, which is the
+point. **Zero unexplained branch-only failures.**
+
+### Known classes — parity confirmed on BOTH sides, nothing touched
+
+14 catalog/discovery failures, all present on branch AND base:
+
+    tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_remedy_commands_catalog_valid
+    tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_commands_catalog_valid
+    tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_commands_catalog_valid
+    tests/test_command_catalog.py::TestCatalogClassification::test_every_command_has_action_class
+    tests/test_command_catalog.py::TestCatalogClassification::test_mutating_commands_flagged
+    tests/test_command_catalog.py::TestCatalogSensitivity::test_no_sensitive_terms_in_arg_help
+    tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts
+    tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate
+    tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1
+    tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json
+    tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list
+    tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys
+    tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_output_is_pure_json
+    tests/test_command_discovery.py::TestCLIDiscoverCommands::test_text_output_does_not_crash
+
+4 `.agent` contract failures, all present on branch AND base:
+
+    tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_context_md_updated
+    tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current
+    tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
+    tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
+
+Deliberately not swept up — pre-existing on both sides and out of scope.
+
+## [E] Canary (raw)
+
+    $ python3 -m pytest tests/cli/test_golden_path.py -q
+    42 passed in 19.02s                                            exit 0
+
+## F047's own suites in the branch full run
+
+None of `test_checkpoints.py`, `test_resume_cli.py`, `test_resume_kill.py` or
+`test_long_run_executor.py` appears in the branch failure set — 128 tests,
+green under `-n auto` as well as serially.
 
 ## Notes for the reviewer
 
-- The kill is a real `SIGKILL` to a real child; the parent asserts
-  `returncode == -signal.SIGKILL`, so a child that merely exited would fail.
-- Synchronisation is a marker file polled by the parent; no `sleep` is used
-  as a synchronisation device.
-- The torn checkpoint is written explicitly rather than raced for: the atomic
-  write makes a half-written file impossible to produce on demand, so racing
-  the rename would only generate flakes. The property under test — the loader
-  falls back to the previous valid checkpoint — is identical either way.
-  Reasoning recorded in decisions.md and in the test class docstring.
-- In `test_the_f047_resume_path_accepts_the_killed_job` only the executor
-  hand-off is stubbed; every F047 check (checkpoint load, stop request, head,
-  gate) runs for real. The production executor binds a live provider.
-- Runtime 1.32s for the whole file — no slow/integration marker needed.
-- Pre-existing red, unchanged from round 1 and NOT F047-attributable (proven
-  by stashing the branch): the 14 `command_catalog`/`command_discovery`
-  failures (`job.budget` action_class, `--task-scoped` tripping the `sk-`
-  scanner, missing `docs/resume.md`).
-- No evidence bundle / review zip built (closure artifact). Docs deferred to
-  closure: `remedy job resume` gained two behaviors this feature.
+- Zero F047-attributable regressions remain. The one real finding this gate
+  produced was in an F047 state file, was fixed by meeting the contract (not
+  by editing the test), and is documented in decisions.md.
+- `git worktree list` shows exactly one entry (the main checkout).
+- No closure artifacts built, per the round constraints.
+- Docs still deferred to closure: `remedy job resume` gained two behaviors
+  (F047 mode, `--dry-run` preview); `docs/resume.md` does not exist and its
+  two tests are pre-existing red on both sides.
