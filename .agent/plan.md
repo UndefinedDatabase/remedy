@@ -11,7 +11,7 @@ STATUS.md feature lines.
 - [x] Round 2 (PH-2): R-0148 fixed in b586e5c, ROW OK, canary 42 passed.
       Verdict: PASS at 11a417f.
 - [x] PH-3 Part 1: phv1-r3-1 persisted; live_review.md replaced (IDENTICAL)
-- [x] PH-3 Part 2: final handoff, push
+- [x] PH-3 Part 2: final handoff, push (+ one trim commit to hold the cap)
 - [ ] PH-3 Part 3: merge PR #154, checkout main, pull --ff-only
 
 ## Current Step

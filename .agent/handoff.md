@@ -13,11 +13,11 @@ handoffs at `ac97215` and `11a417f`; round 2 verdict: PASS.
 | .agent/authored/phv1-r3-1.md | +42 −0 | authored verdict text, saved verbatim first |
 | .agent/live_review.md | +31 −29 | full replace from phv1-r3-1 (`cmp` IDENTICAL) |
 
-### HEAD chore(ph3): final handoff before merge
+### 690f54a + HEAD chore(ph3): final handoff (grouped, R-0149(2))
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewritten | this handback |
-| .agent/plan.md | +8 −8 | PH-3 state; missed in 62881a7, carried here |
+| .agent/handoff.md | rewritten | this handback; HEAD trims it to the ≤60 cap |
+| .agent/plan.md | +25 −22 | PH-3 state; missed in 62881a7, carried here |
 
 Self-reference note (accepted R-0149(2) deviation): the HEAD table above
 describes the commit writing this file, so its `+/-` are intended content,
@@ -49,13 +49,11 @@ being applied, then applied with `cp` from that file. Proof is disk-to-disk:
 
 ## Deviations & assumptions
 
-- `.agent/plan.md` was not updated in 62881a7 as the Commit Gate requires;
-  it is updated in this commit instead. Declared, not hidden.
+- `.agent/plan.md` update missed in 62881a7 (Commit Gate); carried here.
 - R-0149 stays OPEN and rides onto main with the merge, by the authored
   verdict's own wording. Not a merge blocker.
-- PR #154 merges in the same session that created it — the operator-
-  approved exception to the split_workflow.md merge policy (directive
-  2026-07-27), not a precedent.
+- PR #154 merges in the session that created it — operator-approved
+  exception to the split_workflow.md merge policy (2026-07-27), no precedent.
 
 ## Next
 
