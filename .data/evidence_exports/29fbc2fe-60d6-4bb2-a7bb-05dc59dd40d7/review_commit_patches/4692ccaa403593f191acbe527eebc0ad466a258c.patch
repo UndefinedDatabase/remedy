@@ -1,0 +1,48 @@
+4692ccaa403593f191acbe527eebc0ad466a258c
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index f248c08..d8a6022 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1,5 +1,22 @@
+ # Decisions
+ 
++## 2026-07-26: F047 gate — live_review.md needs a real "## Steps" section
++The integration gate produced exactly two reproducible branch-only failures,
++both asserting `"Steps" in .agent/live_review.md`
++(`test_test_runner.py::TestNoBroadExceptAndDegradedSignals` and
++`test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs`). The base
++passed them only by accident: F046's live_review.md happened to contain the
++substring inside prose — the sentence about plan.md missing its "## Next
++Steps" section. The F047 rewrite legitimately dropped that sentence and with
++it the token.
++
++Fixed as a declared state-file deviation, same class as F046's plan.md
++"## Next Steps" repair at its own gate: live_review.md now carries a real
++`## Steps` section listing the feature's rounds and their ranges. The
++reviewer-authored finding and verdict text is untouched — the section is
++purely additive. Nothing in the two tests was changed; the contract was met,
++not weakened.
++
+ ## 2026-07-26: F047 T003 — cycle numbering belongs to the JOB, not the process
+ The kill test's exactly-once assertion came out short (3 of 5 tasks), and the
+ cause was a real defect, not a test artifact: `run_cycles` numbered cycles
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 7dbd11b..fd600f5 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -4,6 +4,15 @@ Branch: feature/f047-checkpoint-resume
+ LAST_REVIEWED_SHA: 72fc653
+ Finding IDs continue monotonically from R-0145.
+ 
++## Steps
++
++- Round 1 — Setup + T001 (checkpoint writer/loader) + T002 (resume CLI),
++  89c4ef0..fd93b31. Reviewed in round 2; produced finding R-0146.
++- Round 2 — R-0146 repair + T003 (kill -9 / resume, exactly-once),
++  fd93b31..72fc653. Verdict PASS (below).
++- Integration gate — full suite branch vs. base 89c4ef0, from 72fc653.
++- Closure — its own reviewer-gated round; no artifacts built yet.
++
+ ## Findings
+ 
+ - R-0146 · Medium · round 1 (89c4ef0..fd93b31)

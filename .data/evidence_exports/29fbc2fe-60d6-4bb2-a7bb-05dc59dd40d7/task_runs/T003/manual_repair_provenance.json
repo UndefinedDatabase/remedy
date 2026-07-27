@@ -1,0 +1,26 @@
+{
+ "changed_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F047.md",
+  "tests/orchestration/test_resume_kill.py"
+ ],
+ "diff_sha256": "3d77c648d384ef5836bed0e0d197b527f455b232f8fa3d6c861dbbb88953d024",
+ "job_id": "29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "3d77c648d384ef5836bed0e0d197b527f455b232f8fa3d6c861dbbb88953d024",
+ "safe_diff_sha256": "26e2d377ef8cc9c986c06210c04c2367476289c3ab24e6dd3f123959b4f431ba",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F047.md",
+  "tests/orchestration/test_resume_kill.py"
+ ],
+ "timestamp": "2026-07-27T08:18:46.786163+00:00",
+ "tracked_diff_sha256": "26e2d377ef8cc9c986c06210c04c2367476289c3ab24e6dd3f123959b4f431ba",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

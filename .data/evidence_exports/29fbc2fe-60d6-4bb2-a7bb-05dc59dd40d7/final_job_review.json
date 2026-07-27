@@ -1,0 +1,70 @@
+{
+ "actual_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F047.md",
+  "packages/orchestration/checkpoints.py",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "packages/orchestration/worktrees.py",
+  "tests/orchestration/test_checkpoints.py",
+  "tests/orchestration/test_resume_cli.py",
+  "tests/orchestration/test_resume_kill.py"
+ ],
+ "changed_files_match": true,
+ "completion_mode": "manual_operator_repair",
+ "completion_provider_call_count": 0,
+ "expected_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F047.md",
+  "packages/orchestration/checkpoints.py",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "packages/orchestration/worktrees.py",
+  "tests/orchestration/test_checkpoints.py",
+  "tests/orchestration/test_resume_cli.py",
+  "tests/orchestration/test_resume_kill.py"
+ ],
+ "findings": [],
+ "human_final_reviewer_required": true,
+ "job_id": "29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7",
+ "linked_prior_job_ids": [],
+ "linked_prior_job_summaries": [],
+ "per_task_changed_files": {
+  "T001": [
+   "packages/orchestration/checkpoints.py",
+   "packages/orchestration/config.py",
+   "packages/orchestration/long_run_executor.py",
+   "tests/orchestration/test_checkpoints.py"
+  ],
+  "T002": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/job.py",
+   "packages/orchestration/worktrees.py",
+   "tests/orchestration/test_resume_cli.py"
+  ],
+  "T003": [
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F047.md",
+   "tests/orchestration/test_resume_kill.py"
+  ]
+ },
+ "prior_execution_provider_call_count": 0,
+ "review_mode": "operator_attested_manual_completion",
+ "root_verification": {
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 121
+ },
+ "schema_version": "1.0.0",
+ "superseded_prior_run_ids": [],
+ "task_verdicts": {
+  "T001": "operator_attested",
+  "T002": "operator_attested",
+  "T003": "operator_attested"
+ },
+ "verdict": "PASS"
+}

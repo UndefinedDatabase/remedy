@@ -1,0 +1,1111 @@
+diff --git a/packages/orchestration/checkpoints.py b/packages/orchestration/checkpoints.py
+new file mode 100644
+index 0000000..732d81a
+--- /dev/null
++++ b/packages/orchestration/checkpoints.py
+@@ -0,0 +1,477 @@
++"""Checkpoint writer and loader for kill-proof runs (F047 T001).
++
++A hard-killed run should lose nothing but the in-flight task.  After every
++cycle the conductor writes ``checkpoint_<n>.json`` under the job's OWN
++evidence area — the same area F046's cycle records live in, one directory
++over::
++
++    <data root>/jobs/<job id>/evidence/cycles/cycle_0001.json      (F046)
++    <data root>/jobs/<job id>/evidence/checkpoints/checkpoint_0001.json
++
++What a checkpoint is, and what it deliberately is not:
++
++* It is a POINTER, not a copy.  The persisted job already IS checkpoint v1
++  (the kill switch established that); a checkpoint references that snapshot
++  by path and digest and adds what the job file alone cannot answer — which
++  worktree head the run stood on, what it had spent, what it verified, and
++  which task/cycle would have run next.
++* It is self-verifying.  ``content_hash`` is a SHA-256 over the canonical
++  encoding of the record body, so a torn or edited file is detectable
++  without a second source of truth.
++* It is never load-bearing for the run itself.  A checkpoint write that
++  fails is logged loudly and the run continues (feature-file A9 default);
++  the next cycle simply writes the next one.
++
++Reuse (A6): the atomic write is ``storage._atomic_write_job`` — temp file,
++fsync, ``os.replace`` — the same helper behind ``save_job``.  This module
++introduces NO second atomic writer.  (F046's ``write_cycle_record`` uses a
++plain ``write_text``; checkpoints deliberately do not copy that, because a
++half-written checkpoint is exactly the failure mode this feature exists to
++survive.)
++
++Corruption policy:
++
++* ``load_latest_valid`` walks checkpoints newest-first and returns the first
++  whose hash verifies.  Every skipped file is logged as a warning and LEFT
++  ON DISK for forensics — a corrupted checkpoint is evidence, not litter.
++* No checkpoints at all -> ``None``.  The caller degrades honestly to plain
++  continuation from the persisted job state.
++* Checkpoints exist but none verifies -> ``AllCheckpointsCorruptError``.
++  That is a different, louder situation than "never checkpointed", and the
++  resume path must not blur the two.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import json
++import logging
++from dataclasses import dataclass, field
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import Any
++
++from packages.orchestration.storage import _atomic_write_job as _atomic_write
++
++_log = logging.getLogger("remedy.checkpoints")
++
++#: Bumped whenever the record body changes shape.  A reader that meets a
++#: version it does not know refuses that record rather than guessing.
++SCHEMA_VERSION = 1
++
++#: Where checkpoints live inside the job's evidence area, and how they are named.
++CHECKPOINT_DIRNAME = "checkpoints"
++CHECKPOINT_FILENAME = "checkpoint_{index:04d}.json"
++_CHECKPOINT_GLOB = "checkpoint_*.json"
++
++#: Config key owned by this feature, and its small default.
++CONFIG_KEY_RETENTION = "cycles.checkpoint_retention"
++DEFAULT_RETENTION = 5
++
++#: The two intent kinds a checkpoint can express about what comes next.
++INTENT_CYCLE = "cycle"          # another cycle would run
++INTENT_NONE = "none"            # nothing left to run
++
++
++class CheckpointError(Exception):
++    """A checkpoint operation failed in a way the caller must handle."""
++
++
++class AllCheckpointsCorruptError(CheckpointError):
++    """Checkpoints exist for this job, but not one of them verifies."""
++
++    def __init__(self, job_id: str, paths: list[str]) -> None:
++        super().__init__(
++            f"all {len(paths)} checkpoint(s) for job {job_id} failed hash "
++            f"verification: {', '.join(paths)}"
++        )
++        self.job_id = job_id
++        self.paths = paths
++
++
++# ---------------------------------------------------------------------------
++# The record
++# ---------------------------------------------------------------------------
++
++
++@dataclass(frozen=True)
++class Checkpoint:
++    """One cycle boundary, captured.
++
++    ``job_snapshot_path`` is data-root-relative on purpose: an absolute
++    private path must never end up in a record that can be shared.
++    ``job_snapshot_sha256`` is empty when the snapshot could not be read —
++    an unmeasured digest is reported as unmeasured, never as a match.
++    """
++
++    cycle_index: int
++    job_id: str
++    job_snapshot_path: str = ""
++    job_snapshot_sha256: str = ""
++    worktree_head: str = ""
++    budget_spent_tokens: int = 0
++    verify_result: str = ""
++    verify_digest: str = ""
++    next_intent: dict[str, Any] = field(default_factory=dict)
++    created_at: str = ""
++    schema_version: int = SCHEMA_VERSION
++
++    def to_body(self) -> dict[str, Any]:
++        """The hashed part of the file — everything except the hash itself."""
++        return {
++            "schema_version": self.schema_version,
++            "job_id": self.job_id,
++            "cycle_index": self.cycle_index,
++            "job_snapshot_path": self.job_snapshot_path,
++            "job_snapshot_sha256": self.job_snapshot_sha256,
++            "worktree_head": self.worktree_head,
++            "budget_spent_tokens": self.budget_spent_tokens,
++            "verify_result": self.verify_result,
++            "verify_digest": self.verify_digest,
++            "next_intent": dict(self.next_intent),
++            "created_at": self.created_at,
++        }
++
++    @property
++    def content_hash(self) -> str:
++        return compute_content_hash(self.to_body())
++
++    def to_json(self) -> dict[str, Any]:
++        body = self.to_body()
++        return {"record": body, "content_hash": compute_content_hash(body)}
++
++    @classmethod
++    def from_body(cls, body: dict[str, Any]) -> Checkpoint:
++        return cls(
++            cycle_index=int(body["cycle_index"]),
++            job_id=str(body["job_id"]),
++            job_snapshot_path=str(body.get("job_snapshot_path", "")),
++            job_snapshot_sha256=str(body.get("job_snapshot_sha256", "")),
++            worktree_head=str(body.get("worktree_head", "")),
++            budget_spent_tokens=int(body.get("budget_spent_tokens", 0)),
++            verify_result=str(body.get("verify_result", "")),
++            verify_digest=str(body.get("verify_digest", "")),
++            next_intent=dict(body.get("next_intent") or {}),
++            created_at=str(body.get("created_at", "")),
++            schema_version=int(body.get("schema_version", 0)),
++        )
++
++
++def _canonical(body: dict[str, Any]) -> bytes:
++    """The exact bytes the hash covers.  Sorted keys, no incidental spacing."""
++    return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
++
++
++def compute_content_hash(body: dict[str, Any]) -> str:
++    return "sha256:" + hashlib.sha256(_canonical(body)).hexdigest()
++
++
++def verify_digest_for(verify_result: str, verify_command: str | None) -> str:
++    """A stable digest of what the cycle verified, and with what.
++
++    Two cycles that ran the same command to the same outcome produce the same
++    digest; a cycle that ran no verification produces the digest of exactly
++    that fact.  The digest never claims a verification that did not run.
++    """
++    return "sha256:" + hashlib.sha256(
++        f"{verify_result}|{verify_command or ''}".encode()
++    ).hexdigest()
++
++
++# ---------------------------------------------------------------------------
++# Locations
++# ---------------------------------------------------------------------------
++
++
++def checkpoint_dir(job_id: str) -> Path:
++    """The job's evidence area, ``checkpoints/`` subdirectory.
++
++    Built on ``pingpong_job.job_evidence_dir`` so checkpoints land exactly
++    where every other job-level record lives — no second evidence convention.
++    """
++    from packages.orchestration.pingpong_job import job_evidence_dir
++    from packages.orchestration.safe_points import validate_job_id
++
++    return Path(job_evidence_dir(validate_job_id(str(job_id)))) / CHECKPOINT_DIRNAME
++
++
++def checkpoint_paths(job_id: str) -> list[Path]:
++    """Every checkpoint file for a job, oldest first, ordered by index."""
++    directory = checkpoint_dir(job_id)
++    if not directory.is_dir():
++        return []
++    return sorted(directory.glob(_CHECKPOINT_GLOB), key=_index_of_path)
++
++
++def _index_of_path(path: Path) -> int:
++    """The cycle index encoded in the filename; -1 when it is unreadable.
++
++    Ordering never depends on the record body — a corrupted file still sorts
++    into its right place, which is what lets the loader walk backwards past it.
++    """
++    try:
++        return int(path.stem.split("_", 1)[1])
++    except (IndexError, ValueError):
++        return -1
++
++
++def _job_snapshot_reference(job_id: str) -> tuple[str, str]:
++    """(data-root-relative path, sha256) of the persisted job snapshot.
++
++    Returns ("", "") when the snapshot cannot be read.  A checkpoint that
++    could not measure the snapshot says so rather than inventing a digest.
++    """
++    try:
++        from packages.orchestration.data_paths import jobs_dir
++
++        path = jobs_dir() / f"{job_id}.json"
++        data = path.read_bytes()
++    except (OSError, ValueError):
++        return ("", "")
++    return (f"jobs/{job_id}.json", "sha256:" + hashlib.sha256(data).hexdigest())
++
++
++def resolve_worktree_head(job_id: str) -> str:
++    """The worktree head recorded on the persisted job plan, or "" when unknown.
++
++    ``packages.core.models.Job`` carries no worktree field — the F006 job plan
++    does, and that is the only durable source.  A job that never ran in a
++    worktree honestly reports no head.
++    """
++    try:
++        from packages.orchestration.pingpong_job import load_job_plan
++
++        plan = load_job_plan(str(job_id))
++    except Exception:  # noqa: BLE001 — a missing/corrupt plan must not break a write
++        return ""
++    return str(getattr(plan, "worktree_head", "") or "") if plan is not None else ""
++
++
++def resolve_live_worktree_head(job_id: str) -> str:
++    """The head the worktree is standing on RIGHT NOW, or "" when unknown.
++
++    Read-only: it claims no lock and materialises nothing (see
++    ``worktrees.head_at``).  "" means unknown — a caller comparing heads must
++    never read it as "matches".
++    """
++    try:
++        from packages.orchestration.pingpong_job import load_job_plan
++        from packages.orchestration.worktrees import head_at
++
++        plan = load_job_plan(str(job_id))
++        if plan is None:
++            return ""
++        relative = str(getattr(plan, "worktree_path", "") or "")
++        repo = str(getattr(plan, "repo_path", "") or "")
++        if not relative or not repo:
++            return ""
++        return head_at(Path(repo) / relative)
++    except Exception:  # noqa: BLE001 — a head lookup must not break resume
++        return ""
++
++
++# ---------------------------------------------------------------------------
++# Writing
++# ---------------------------------------------------------------------------
++
++
++def build_checkpoint(
++    job_id: str,
++    cycle_index: int,
++    *,
++    budget_spent_tokens: int = 0,
++    verify_result: str = "",
++    verify_command: str | None = None,
++    next_intent: dict[str, Any] | None = None,
++    worktree_head: str | None = None,
++    now: datetime | None = None,
++) -> Checkpoint:
++    """Assemble the record for one cycle boundary.
++
++    Everything that has to be looked up on disk (job snapshot, worktree head)
++    is looked up HERE, so the writer below stays a pure serializer.
++    """
++    jid = str(job_id)
++    snapshot_path, snapshot_sha = _job_snapshot_reference(jid)
++    head = resolve_worktree_head(jid) if worktree_head is None else worktree_head
++    stamp = (now or datetime.now(timezone.utc)).isoformat()
++    return Checkpoint(
++        cycle_index=cycle_index,
++        job_id=jid,
++        job_snapshot_path=snapshot_path,
++        job_snapshot_sha256=snapshot_sha,
++        worktree_head=head,
++        budget_spent_tokens=budget_spent_tokens,
++        verify_result=verify_result,
++        verify_digest=verify_digest_for(verify_result, verify_command),
++        next_intent=dict(next_intent or {"kind": INTENT_NONE}),
++        created_at=stamp,
++    )
++
++
++def write_checkpoint(job_id: str, checkpoint: Checkpoint,
++                     *, retention: int | None = None) -> Path:
++    """Persist one checkpoint atomically, then prune superseded ones.
++
++    Raises on failure — the caller decides whether a failed checkpoint may
++    stop anything.  Inside the cycle loop it never may; see
++    ``record_cycle_checkpoint``.
++    """
++    directory = checkpoint_dir(job_id)
++    directory.mkdir(parents=True, exist_ok=True)
++    path = directory / CHECKPOINT_FILENAME.format(index=checkpoint.cycle_index)
++    _atomic_write(path, json.dumps(checkpoint.to_json(), indent=2, sort_keys=True))
++    apply_retention(job_id, retention)
++    return path
++
++
++def record_cycle_checkpoint(
++    job_id: str,
++    cycle_index: int,
++    *,
++    budget_spent_tokens: int = 0,
++    verify_result: str = "",
++    verify_command: str | None = None,
++    next_intent: dict[str, Any] | None = None,
++    retention: int | None = None,
++) -> tuple[Path | None, str]:
++    """Write a cycle's checkpoint and NEVER raise out of the cycle.
++
++    Returns ``(path, "")`` on success and ``(None, reason)`` on failure.  A
++    run must not die because bookkeeping hiccuped (feature-file A9): the
++    caller logs the reason, keeps going, and the next cycle retries.
++    """
++    try:
++        checkpoint = build_checkpoint(
++            job_id, cycle_index,
++            budget_spent_tokens=budget_spent_tokens,
++            verify_result=verify_result,
++            verify_command=verify_command,
++            next_intent=next_intent,
++        )
++        return (write_checkpoint(job_id, checkpoint, retention=retention), "")
++    except Exception as exc:  # noqa: BLE001 — bookkeeping never kills the run
++        reason = f"{type(exc).__name__}: {exc}"
++        _log.warning(
++            "checkpoint write FAILED for job %s cycle %s: %s — the run continues "
++            "and the next cycle retries", job_id, cycle_index, reason,
++        )
++        return (None, reason)
++
++
++# ---------------------------------------------------------------------------
++# Reading
++# ---------------------------------------------------------------------------
++
++
++def read_checkpoint(path: Path) -> Checkpoint | None:
++    """Parse and VERIFY one checkpoint file.  ``None`` when it does not verify.
++
++    "Does not verify" covers every way a file can lie: unreadable, not JSON,
++    wrong shape, unknown schema version, or a body whose hash does not match
++    the stored one.  The caller cannot tell those apart on purpose — none of
++    them may be trusted.
++    """
++    try:
++        raw = json.loads(Path(path).read_text(encoding="utf-8"))
++    except (OSError, ValueError):
++        return None
++    if not isinstance(raw, dict):
++        return None
++    body = raw.get("record")
++    stored_hash = raw.get("content_hash")
++    if not isinstance(body, dict) or not isinstance(stored_hash, str):
++        return None
++    try:
++        if compute_content_hash(body) != stored_hash:
++            return None
++        checkpoint = Checkpoint.from_body(body)
++    except (KeyError, TypeError, ValueError):
++        return None
++    if checkpoint.schema_version != SCHEMA_VERSION:
++        return None
++    return checkpoint
++
++
++def load_latest_valid(job_id: str) -> Checkpoint | None:
++    """The newest checkpoint whose hash verifies.
++
++    Walks newest-first.  Every file it has to skip is logged as a warning and
++    left on disk for forensics.  Returns ``None`` when the job was never
++    checkpointed; raises ``AllCheckpointsCorruptError`` when checkpoints exist
++    but not one of them verifies — the caller must be able to tell those two
++    apart.
++    """
++    paths = checkpoint_paths(job_id)
++    if not paths:
++        return None
++    skipped: list[str] = []
++    for path in reversed(paths):
++        checkpoint = read_checkpoint(path)
++        if checkpoint is not None:
++            if skipped:
++                _log.warning(
++                    "job %s: resumed from %s after skipping %d unverifiable "
++                    "checkpoint(s) (kept on disk for forensics): %s",
++                    job_id, path.name, len(skipped), ", ".join(skipped),
++                )
++            return checkpoint
++        skipped.append(path.name)
++        _log.warning("job %s: checkpoint %s does not verify — skipped, kept on disk",
++                     job_id, path.name)
++    raise AllCheckpointsCorruptError(str(job_id), skipped)
++
++
++# ---------------------------------------------------------------------------
++# Retention
++# ---------------------------------------------------------------------------
++
++
++def resolve_retention(config: Any = None) -> int:
++    """How many checkpoints to keep.  Config beats the small default."""
++    if config is None:
++        try:
++            from packages.orchestration.config import get_config
++
++            config = get_config()
++        except Exception:  # noqa: BLE001 — retention must never break a write
++            return DEFAULT_RETENTION
++    try:
++        value = config.get(CONFIG_KEY_RETENTION)
++    except Exception:  # noqa: BLE001
++        return DEFAULT_RETENTION
++    if value is None:
++        return DEFAULT_RETENTION
++    try:
++        return max(1, int(value))
++    except (TypeError, ValueError):
++        return DEFAULT_RETENTION
++
++
++def apply_retention(job_id: str, keep: int | None = None) -> list[str]:
++    """Prune superseded checkpoints; return the names actually deleted.
++
++    Kept, always: the FIRST checkpoint (where the run began) and the LATEST
++    (where it stands), plus the last ``keep`` overall.  Also kept, always: any
++    file that does not verify — a corrupted checkpoint is forensic evidence,
++    and retention is not the mechanism that discards evidence.
++    """
++    limit = resolve_retention() if keep is None else max(1, int(keep))
++    paths = checkpoint_paths(job_id)
++    if len(paths) <= limit:
++        return []
++    survivors = {paths[0], *paths[-limit:]}
++    deleted: list[str] = []
++    for path in paths:
++        if path in survivors:
++            continue
++        if read_checkpoint(path) is None:
++            continue                       # unverifiable: kept for forensics
++        try:
++            path.unlink()
++        except OSError as exc:
++            _log.warning("job %s: could not prune checkpoint %s: %s",
++                         job_id, path.name, exc)
++            continue
++        deleted.append(path.name)
++    return deleted
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index c2970d3..9888be1 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -328,6 +328,18 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=str,
+         default=None,
+     ),
++    ConfigKeySpec(
++        key="cycles.checkpoint_retention",
++        env_var="REMEDY_CYCLES_CHECKPOINT_RETENTION",
++        description=(
++            "How many per-cycle checkpoints to keep for a job (F047). "
++            "The FIRST and the LATEST checkpoint are always kept on top of "
++            "this count, and a checkpoint that does not verify is never "
++            "pruned — it is forensic evidence."
++        ),
++        value_type=int,
++        default=5,
++    ),
+     ConfigKeySpec(
+         key="planning.granularity.merge_group_size",
+         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index bda2bdc..4167e53 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -203,6 +203,13 @@ class CycleRecord:
+     ended_at: str
+     verify_command: str | None = None
+     errors: tuple[str, ...] = ()
++    #: Ids of the tasks this cycle actually EXECUTED, in execution order.
++    #: They are what makes exactly-once provable across a kill and a resume
++    #: (F047 T003) — a counter in a test process cannot span two processes.
++    #: A task that executed but failed verification is rolled back to PENDING
++    #: and will appear again in a later cycle, which is honest: it really did
++    #: execute twice.
++    executed_task_ids: tuple[str, ...] = ()
+ 
+     def to_json(self) -> dict[str, Any]:
+         return {
+@@ -216,6 +223,7 @@ class CycleRecord:
+             "started_at": self.started_at,
+             "ended_at": self.ended_at,
+             "errors": list(self.errors),
++            "executed_task_ids": list(self.executed_task_ids),
+         }
+ 
+ 
+@@ -316,6 +324,30 @@ def write_cycle_record(job_id: str, record: CycleRecord) -> Path:
+     return path
+ 
+ 
++def next_cycle_index(job_id: str) -> int:
++    """The number the NEXT cycle of this job must take.
++
++    Cycle numbering belongs to the JOB, not to the process that happens to be
++    running it.  A resumed run that started counting at 1 again would write
++    ``cycle_0001.json`` and ``checkpoint_0001.json`` straight over the records
++    the killed run left — destroying exactly the history F047 exists to
++    preserve, and making "each task executed once" unprovable (F047 T003).
++
++    Both evidence areas are consulted, because either can be switched off
++    independently: whichever got further wins.
++    """
++    highest = max((int(r.get("cycle_index", 0)) for r in read_cycle_records(job_id)),
++                  default=0)
++    try:
++        from packages.orchestration.checkpoints import _index_of_path, checkpoint_paths
++
++        highest = max(highest,
++                      *(_index_of_path(p) for p in checkpoint_paths(job_id)), 0)
++    except Exception:  # noqa: BLE001 — numbering must not depend on checkpoints
++        pass
++    return highest + 1
++
++
+ def read_cycle_records(job_id: str) -> list[dict[str, Any]]:
+     """Every persisted cycle record for a job, in cycle order."""
+     directory = cycle_evidence_dir(job_id)
+@@ -483,6 +515,42 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
+     return job_status
+ 
+ 
++def _write_cycle_checkpoint(job: Job, record: CycleRecord,
++                            limits: CycleLimits) -> None:
++    """Write this cycle's checkpoint (F047).  Never raises into the loop.
++
++    The next intent is derived from what the job still has PENDING at this
++    moment: another cycle with a named first task, or nothing left to run.
++    A write that fails is recorded on the job as ``checkpoint_error`` and
++    logged by the checkpoint module — the run continues and the next cycle
++    retries (feature-file A9).
++    """
++    from packages.orchestration.checkpoints import (
++        INTENT_CYCLE,
++        INTENT_NONE,
++        record_cycle_checkpoint,
++    )
++
++    pending = ready_tasks(job, limits.batch_size)
++    next_intent: dict[str, Any] = (
++        {"kind": INTENT_CYCLE,
++         "cycle_index": record.cycle_index + 1,
++         "task_id": str(pending[0])}
++        if pending else {"kind": INTENT_NONE}
++    )
++    _, error = record_cycle_checkpoint(
++        str(job.id), record.cycle_index,
++        budget_spent_tokens=record.tokens_so_far,
++        verify_result=record.verify_result,
++        verify_command=limits.verify_command,
++        next_intent=next_intent,
++    )
++    if error:
++        job.metadata["checkpoint_error"] = error
++    else:
++        job.metadata.pop("checkpoint_error", None)
++
++
+ def _emit(log: Any, event: str, **meta: Any) -> None:
+     """Emit a ledger event when a writer was injected; never raise into the loop."""
+     if log is None:
+@@ -510,6 +578,8 @@ def run_cycles(
+     log: Any = None,
+     control_root_path: Any = None,
+     record_evidence: bool = True,
++    record_checkpoint: bool = True,
++    first_cycle_index: int | None = None,
+ ) -> CycleLoopResult:
+     """Run bounded cycles over *job* until a terminal condition.
+ 
+@@ -531,6 +601,16 @@ evidence area (N cycles -> exactly N records, monotonically indexed).  An
+ evidence write that fails is recorded on the job as ``cycle_evidence_error``
+ and never aborts execution that already happened.
+ 
++``record_checkpoint`` writes this cycle's F047 checkpoint next to those
++records, AFTER the job snapshot is persisted (a checkpoint references that
++snapshot).  A checkpoint write that fails is recorded as ``checkpoint_error``
++and never aborts the run either — the next cycle retries.
++
++``first_cycle_index`` is the number the first cycle of THIS invocation takes.
++It defaults to one past whatever this job already recorded, so a resumed run
++continues the job's numbering instead of overwriting the records the previous
++process left (F047).  ``max_cycles`` still bounds this invocation only.
++
+     A failed verify ends the cycle with its failure recorded and denies the job
+     the all_green status; self-healing is a later feature.  A task step that
+     fails ends the cycle too — the task runner has already rolled the task back
+@@ -541,6 +621,8 @@ and never aborts execution that already happened.
+     now_fn = clock or (lambda: datetime.now(timezone.utc))
+     save_fn = save or _save_job
+ 
++    base_index = (next_cycle_index(str(job.id)) if first_cycle_index is None
++                  else int(first_cycle_index))
+     loop_started_at = now_fn()
+     provider_calls = 0
+     cycles: list[CycleRecord] = []
+@@ -588,16 +670,19 @@ and never aborts execution that already happened.
+             break
+ 
+         # 4. Run the cycle.
+-        cycle_index = len(cycles) + 1
++        cycle_index = base_index + len(cycles)
+         started_at = now
+         attempted = completed = failed = 0
+         errors: list[str] = []
++        executed_ids: list[str] = []
+ 
+         for _ in batch:
+             attempt = step(job, counted_provider_call)
+             if not attempt.executed and not attempt.error:
+                 break                      # nothing ready any more; not an attempt
+             attempted += 1
++            if attempt.executed and attempt.task_id is not None:
++                executed_ids.append(str(attempt.task_id))
+             if attempt.verified:
+                 completed += 1
+                 continue
+@@ -629,16 +714,21 @@ and never aborts execution that already happened.
+             ended_at=ended_at.isoformat(),
+             verify_command=limits.verify_command,
+             errors=tuple(errors),
++            executed_task_ids=tuple(executed_ids),
+         )
+         cycles.append(record)
+ 
+-        # 5. Persist the job, then the cycle's own evidence record.
++        # 5. Persist the job, then the cycle's own evidence record, then the
++        #    checkpoint (F047).  Order matters: a checkpoint references the
++        #    persisted snapshot, so the snapshot must already be on disk.
+         save_fn(job)
+         if record_evidence:
+             try:
+                 write_cycle_record(str(job.id), record)
+             except (OSError, ValueError) as exc:
+                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
++        if record_checkpoint:
++            _write_cycle_checkpoint(job, record, limits)
+         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+ 
+     job_status = _apply_terminal(job, terminal, stop_reason)
+diff --git a/tests/orchestration/test_checkpoints.py b/tests/orchestration/test_checkpoints.py
+new file mode 100644
+index 0000000..d1b747e
+--- /dev/null
++++ b/tests/orchestration/test_checkpoints.py
+@@ -0,0 +1,420 @@
++"""F047 T001 — checkpoint writer, loader, hashing and retention.
++
++The five things the order requires proof of:
++
++  * a valid chain loads its newest member;
++  * a corrupted NEWEST checkpoint falls back to the previous valid one;
++  * all checkpoints corrupted is an honest error, not a silent None;
++  * retention keeps the first and the latest;
++  * a checkpoint write that fails does not raise out of the cycle.
++
++Nothing here touches the repository's real data root: the autouse fixture
++points REMEDY_DATA_DIR at a tmp_path, exactly as the F046 cycle tests do.
++"""
++from __future__ import annotations
++
++import json
++from datetime import datetime, timezone
++from pathlib import Path
++
++import pytest
++
++import packages.orchestration.checkpoints as cp
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.checkpoints import (
++    DEFAULT_RETENTION,
++    INTENT_CYCLE,
++    INTENT_NONE,
++    SCHEMA_VERSION,
++    AllCheckpointsCorruptError,
++    Checkpoint,
++    apply_retention,
++    build_checkpoint,
++    checkpoint_dir,
++    checkpoint_paths,
++    compute_content_hash,
++    load_latest_valid,
++    read_checkpoint,
++    record_cycle_checkpoint,
++    resolve_retention,
++    verify_digest_for,
++    write_checkpoint,
++)
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 26, 12, 0, 0, tzinfo=UTC)
++JOB_ID = "11111111-1111-4111-8111-111111111111"
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    """Autouse: every write lands under a throwaway data root."""
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++def make_checkpoint(index: int, *, job_id: str = JOB_ID, head: str = "abc123"
++                    ) -> Checkpoint:
++    """A record built WITHOUT disk lookups, so index is the only variable."""
++    return Checkpoint(
++        cycle_index=index,
++        job_id=job_id,
++        job_snapshot_path=f"jobs/{job_id}.json",
++        job_snapshot_sha256="sha256:" + "0" * 64,
++        worktree_head=head,
++        budget_spent_tokens=100 * index,
++        verify_result="passed",
++        verify_digest=verify_digest_for("passed", "pytest -q"),
++        next_intent={"kind": INTENT_CYCLE, "cycle_index": index + 1},
++        created_at=T0.isoformat(),
++    )
++
++
++def write_chain(count: int, *, job_id: str = JOB_ID) -> list[Path]:
++    """``count`` valid checkpoints, indices 1..count, retention disabled."""
++    return [
++        write_checkpoint(job_id, make_checkpoint(i), retention=count + 1)
++        for i in range(1, count + 1)
++    ]
++
++
++def corrupt(path: Path) -> None:
++    """Edit the body without fixing the hash — the exact tampering the
++    content hash exists to catch."""
++    raw = json.loads(path.read_text(encoding="utf-8"))
++    raw["record"]["worktree_head"] = "tampered"
++    path.write_text(json.dumps(raw, indent=2, sort_keys=True), encoding="utf-8")
++
++
++# ---------------------------------------------------------------------------
++# Hashing
++# ---------------------------------------------------------------------------
++
++
++class TestHashing:
++    def test_hash_is_stable_across_key_order(self):
++        assert compute_content_hash({"a": 1, "b": 2}) == compute_content_hash(
++            {"b": 2, "a": 1})
++
++    def test_hash_changes_when_any_field_changes(self):
++        one = make_checkpoint(1)
++        other = Checkpoint(**{**one.__dict__, "worktree_head": "deadbee"})
++        assert one.content_hash != other.content_hash
++
++    def test_written_file_carries_body_and_matching_hash(self):
++        path = write_checkpoint(JOB_ID, make_checkpoint(1))
++        raw = json.loads(path.read_text(encoding="utf-8"))
++        assert set(raw) == {"record", "content_hash"}
++        assert raw["content_hash"] == compute_content_hash(raw["record"])
++        assert raw["record"]["schema_version"] == SCHEMA_VERSION
++
++    def test_verify_digest_distinguishes_outcome_and_command(self):
++        assert verify_digest_for("passed", "a") != verify_digest_for("failed", "a")
++        assert verify_digest_for("passed", "a") != verify_digest_for("passed", "b")
++        assert verify_digest_for("not_run", None) == verify_digest_for("not_run", None)
++
++
++# ---------------------------------------------------------------------------
++# Writing and locations
++# ---------------------------------------------------------------------------
++
++
++class TestWriting:
++    def test_checkpoints_live_beside_the_cycle_records(self):
++        from packages.orchestration.long_run_executor import cycle_evidence_dir
++
++        assert checkpoint_dir(JOB_ID).parent == cycle_evidence_dir(JOB_ID).parent
++        assert checkpoint_dir(JOB_ID).name == "checkpoints"
++
++    def test_filenames_are_zero_padded_and_indexed_by_cycle(self):
++        paths = write_chain(3)
++        assert [p.name for p in paths] == [
++            "checkpoint_0001.json", "checkpoint_0002.json", "checkpoint_0003.json"]
++
++    def test_rewriting_the_same_cycle_index_replaces_it(self):
++        write_checkpoint(JOB_ID, make_checkpoint(1, head="first"))
++        write_checkpoint(JOB_ID, make_checkpoint(1, head="second"))
++        assert len(checkpoint_paths(JOB_ID)) == 1
++        assert load_latest_valid(JOB_ID).worktree_head == "second"
++
++    def test_build_checkpoint_records_the_persisted_snapshot(self):
++        from packages.orchestration.storage import save_job
++
++        job = Job(name="cp-job", tasks=[Task(title="t", description="d")])
++        save_job(job)
++        checkpoint = build_checkpoint(str(job.id), 1, now=T0)
++        assert checkpoint.job_snapshot_path == f"jobs/{job.id}.json"
++        assert checkpoint.job_snapshot_sha256.startswith("sha256:")
++        assert checkpoint.created_at == T0.isoformat()
++
++    def test_build_checkpoint_is_honest_when_no_snapshot_exists(self):
++        checkpoint = build_checkpoint(JOB_ID, 1, now=T0)
++        assert checkpoint.job_snapshot_path == ""
++        assert checkpoint.job_snapshot_sha256 == ""
++
++
++# ---------------------------------------------------------------------------
++# Loading — the corruption matrix
++# ---------------------------------------------------------------------------
++
++
++class TestLoadLatestValid:
++    def test_valid_chain_returns_the_newest(self):
++        write_chain(4)
++        loaded = load_latest_valid(JOB_ID)
++        assert loaded.cycle_index == 4
++        assert loaded.budget_spent_tokens == 400
++        assert loaded.next_intent == {"kind": INTENT_CYCLE, "cycle_index": 5}
++
++    def test_corrupted_newest_falls_back_to_the_previous_valid_one(self, caplog):
++        paths = write_chain(3)
++        corrupt(paths[-1])
++        with caplog.at_level("WARNING"):
++            loaded = load_latest_valid(JOB_ID)
++        assert loaded.cycle_index == 2
++        assert "checkpoint_0003.json" in caplog.text
++
++    def test_a_skipped_checkpoint_is_kept_on_disk_for_forensics(self):
++        paths = write_chain(3)
++        corrupt(paths[-1])
++        load_latest_valid(JOB_ID)
++        assert paths[-1].exists()
++
++    def test_several_corrupted_newest_are_walked_past(self):
++        paths = write_chain(5)
++        for path in paths[2:]:
++            corrupt(path)
++        assert load_latest_valid(JOB_ID).cycle_index == 2
++
++    def test_all_corrupted_is_an_honest_error(self):
++        paths = write_chain(3)
++        for path in paths:
++            corrupt(path)
++        with pytest.raises(AllCheckpointsCorruptError) as exc:
++            load_latest_valid(JOB_ID)
++        assert len(exc.value.paths) == 3
++        assert "checkpoint_0003.json" in str(exc.value)
++
++    def test_never_checkpointed_returns_none_not_an_error(self):
++        assert load_latest_valid(JOB_ID) is None
++
++    def test_truncated_file_does_not_verify(self, tmp_path):
++        path = write_checkpoint(JOB_ID, make_checkpoint(1))
++        path.write_text('{"record": {"job_id":', encoding="utf-8")
++        assert read_checkpoint(path) is None
++
++    def test_a_body_without_its_hash_does_not_verify(self):
++        path = write_checkpoint(JOB_ID, make_checkpoint(1))
++        raw = json.loads(path.read_text(encoding="utf-8"))
++        path.write_text(json.dumps({"record": raw["record"]}), encoding="utf-8")
++        assert read_checkpoint(path) is None
++
++    def test_an_unknown_schema_version_is_refused_even_when_hashed(self):
++        body = make_checkpoint(1).to_body()
++        body["schema_version"] = SCHEMA_VERSION + 99
++        path = checkpoint_dir(JOB_ID) / "checkpoint_0001.json"
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_text(
++            json.dumps({"record": body, "content_hash": compute_content_hash(body)}),
++            encoding="utf-8")
++        assert read_checkpoint(path) is None
++
++
++# ---------------------------------------------------------------------------
++# Retention
++# ---------------------------------------------------------------------------
++
++
++class TestRetention:
++    def test_retention_keeps_the_first_and_the_latest(self):
++        write_chain(10)
++        apply_retention(JOB_ID, keep=3)
++        kept = [p.name for p in checkpoint_paths(JOB_ID)]
++        assert kept[0] == "checkpoint_0001.json"
++        assert kept[-1] == "checkpoint_0010.json"
++        assert kept == ["checkpoint_0001.json", "checkpoint_0008.json",
++                        "checkpoint_0009.json", "checkpoint_0010.json"]
++
++    def test_retention_is_a_no_op_below_the_limit(self):
++        write_chain(3)
++        assert apply_retention(JOB_ID, keep=5) == []
++        assert len(checkpoint_paths(JOB_ID)) == 3
++
++    def test_a_corrupted_checkpoint_is_never_pruned(self):
++        paths = write_chain(10)
++        corrupt(paths[4])                       # checkpoint_0005, a prune candidate
++        apply_retention(JOB_ID, keep=2)
++        assert paths[4].exists()
++        assert "checkpoint_0005.json" in [p.name for p in checkpoint_paths(JOB_ID)]
++
++    def test_the_writer_applies_retention_as_it_goes(self):
++        for index in range(1, 9):
++            write_checkpoint(JOB_ID, make_checkpoint(index), retention=2)
++        kept = [p.name for p in checkpoint_paths(JOB_ID)]
++        assert kept == ["checkpoint_0001.json", "checkpoint_0007.json",
++                        "checkpoint_0008.json"]
++
++    def test_retention_default_and_config_override(self, monkeypatch):
++        from packages.orchestration.config import load_config
++
++        assert resolve_retention() == DEFAULT_RETENTION
++        monkeypatch.setenv("REMEDY_CYCLES_CHECKPOINT_RETENTION", "2")
++        assert resolve_retention(load_config()) == 2
++
++    def test_a_nonsense_retention_value_falls_back_to_the_default(self):
++        class _Bad:
++            def get(self, _key):
++                return "not-a-number"
++
++        assert resolve_retention(_Bad()) == DEFAULT_RETENTION
++
++    def test_the_retention_key_is_registered_in_the_config_catalog(self):
++        from packages.orchestration.config import get_key_spec
++
++        spec = get_key_spec(cp.CONFIG_KEY_RETENTION)
++        assert spec is not None
++        assert spec.value_type is int
++        assert spec.default == DEFAULT_RETENTION
++
++
++# ---------------------------------------------------------------------------
++# Write failure must not escape the cycle
++# ---------------------------------------------------------------------------
++
++
++class TestWriteFailureIsContained:
++    def test_record_cycle_checkpoint_returns_the_reason_instead_of_raising(
++            self, monkeypatch):
++        def boom(*_a, **_kw):
++            raise OSError("disk full")
++
++        monkeypatch.setattr(cp, "_atomic_write", boom)
++        path, reason = record_cycle_checkpoint(JOB_ID, 1)
++        assert path is None
++        assert "disk full" in reason
++
++    def test_the_failure_is_logged_loudly(self, monkeypatch, caplog):
++        monkeypatch.setattr(cp, "_atomic_write", lambda *_a, **_k: (_ for _ in ()).throw(
++            OSError("disk full")))
++        with caplog.at_level("WARNING"):
++            record_cycle_checkpoint(JOB_ID, 1)
++        assert "checkpoint write FAILED" in caplog.text
++        assert "the run continues" in caplog.text
++
++    def test_a_successful_write_reports_no_error(self):
++        path, reason = record_cycle_checkpoint(JOB_ID, 1)
++        assert reason == ""
++        assert path is not None and path.exists()
++
++
++# ---------------------------------------------------------------------------
++# The cycle boundary in long_run_executor
++# ---------------------------------------------------------------------------
++
++
++def _job(task_count: int = 2) -> Job:
++    return Job(
++        name="cp-loop-job",
++        tasks=[Task(title=f"t{i}", description="d") for i in range(task_count)],
++    )
++
++
++def _run_one_cycle(job: Job, **kwargs):
++    """One cycle with a task step that completes exactly one task."""
++    from packages.orchestration.long_run_executor import CycleLimits, TaskAttempt, run_cycles
++
++    def step(j: Job, _provider):
++        pending = [t for t in j.tasks if t.status == RunState.PENDING]
++        if not pending:
++            return TaskAttempt()
++        pending[0].status = RunState.COMPLETED
++        return TaskAttempt(task_id=pending[0].id, executed=True, verified=True)
++
++    return run_cycles(job, CycleLimits(max_cycles=1), lambda _ctx: None,
++                      task_step=step, clock=lambda: T0, **kwargs)
++
++
++class TestCycleBoundaryWiring:
++    def test_a_cycle_writes_its_checkpoint(self):
++        job = _job()
++        _run_one_cycle(job)
++        loaded = load_latest_valid(str(job.id))
++        assert loaded is not None
++        assert loaded.cycle_index == 1
++        assert loaded.budget_spent_tokens == 0
++
++    def test_the_checkpoint_names_the_task_that_would_run_next(self):
++        job = _job(task_count=2)
++        _run_one_cycle(job)
++        loaded = load_latest_valid(str(job.id))
++        remaining = [t for t in job.tasks if t.status == RunState.PENDING]
++        assert loaded.next_intent["kind"] == INTENT_CYCLE
++        assert loaded.next_intent["task_id"] == str(remaining[0].id)
++        assert loaded.next_intent["cycle_index"] == 2
++
++    def test_nothing_left_to_run_is_recorded_as_such(self):
++        job = _job(task_count=1)
++        _run_one_cycle(job)
++        assert load_latest_valid(str(job.id)).next_intent == {"kind": INTENT_NONE}
++
++    def test_the_checkpoint_references_the_persisted_snapshot(self):
++        job = _job()
++        _run_one_cycle(job)
++        loaded = load_latest_valid(str(job.id))
++        assert loaded.job_snapshot_path == f"jobs/{job.id}.json"
++        assert loaded.job_snapshot_sha256.startswith("sha256:")
++
++    def test_a_failed_checkpoint_write_does_not_break_the_cycle(self, monkeypatch):
++        monkeypatch.setattr(cp, "_atomic_write", lambda *_a, **_k: (_ for _ in ()).throw(
++            OSError("disk full")))
++        job = _job()
++        result = _run_one_cycle(job)
++        assert result.cycles_run == 1
++        assert "disk full" in job.metadata["checkpoint_error"]
++        assert checkpoint_paths(str(job.id)) == []
++
++    def test_checkpointing_can_be_switched_off(self):
++        job = _job()
++        _run_one_cycle(job, record_checkpoint=False)
++        assert checkpoint_paths(str(job.id)) == []
++
++    def test_a_second_run_continues_the_numbering_instead_of_overwriting(self):
++        """Cycle numbering belongs to the JOB, not to the process.
++
++        A resumed run that restarted at 1 would write cycle_0001.json and
++        checkpoint_0001.json over the records the previous process left —
++        which is how the T003 exactly-once proof first came out short.
++        """
++        from packages.orchestration.long_run_executor import (
++            next_cycle_index,
++            read_cycle_records,
++        )
++
++        job = _job(task_count=3)
++        _run_one_cycle(job)                       # first process: cycle 1
++        assert next_cycle_index(str(job.id)) == 2
++
++        _run_one_cycle(job)                       # "resumed" process: cycle 2
++        assert [p.name for p in checkpoint_paths(str(job.id))] == [
++            "checkpoint_0001.json", "checkpoint_0002.json"]
++        assert [r["cycle_index"] for r in read_cycle_records(str(job.id))] == [1, 2]
++
++        executed = [tid for r in read_cycle_records(str(job.id))
++                    for tid in r["executed_task_ids"]]
++        assert len(executed) == len(set(executed)) == 2
++
++    def test_next_cycle_index_starts_at_one_for_a_fresh_job(self):
++        from packages.orchestration.long_run_executor import next_cycle_index
++
++        assert next_cycle_index(JOB_ID) == 1
++
++    def test_the_default_single_pass_still_writes_exactly_one_checkpoint(self):
++        from packages.orchestration.long_run_executor import CYCLE_SAFETY_CAP
++
++        assert CYCLE_SAFETY_CAP == 1        # the rollout default is untouched
++        job = _job(task_count=3)
++        _run_one_cycle(job)
++        assert [p.name for p in checkpoint_paths(str(job.id))] == [
++            "checkpoint_0001.json"]

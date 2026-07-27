@@ -1,0 +1,34 @@
+[
+ {
+  "safe_diff_files": [
+   "packages/orchestration/checkpoints.py",
+   "packages/orchestration/config.py",
+   "packages/orchestration/long_run_executor.py",
+   "tests/orchestration/test_checkpoints.py"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/job.py",
+   "packages/orchestration/worktrees.py",
+   "tests/orchestration/test_resume_cli.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F047.md",
+   "tests/orchestration/test_resume_kill.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]

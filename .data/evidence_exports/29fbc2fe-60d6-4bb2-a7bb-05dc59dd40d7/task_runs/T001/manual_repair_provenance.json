@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "packages/orchestration/checkpoints.py",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_checkpoints.py"
+ ],
+ "diff_sha256": "56d0619ce54c498ee83241b07aee11ffd7efc5e0c28594f75171aba3721b5d02",
+ "job_id": "29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "56d0619ce54c498ee83241b07aee11ffd7efc5e0c28594f75171aba3721b5d02",
+ "safe_diff_sha256": "0b7c5756b5595b9260d64eb4c89ea29edd1ecdcc31f584c5b5c93f1cfcf8a0be",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "packages/orchestration/checkpoints.py",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_checkpoints.py"
+ ],
+ "timestamp": "2026-07-27T08:18:46.786163+00:00",
+ "tracked_diff_sha256": "0b7c5756b5595b9260d64eb4c89ea29edd1ecdcc31f584c5b5c93f1cfcf8a0be",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

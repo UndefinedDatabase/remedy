@@ -1,4 +1,4 @@
-# Plan — F047 Checkpoint & resume (kill-proof)
+# Plan — F047 Checkpoint & resume (kill-proof) — CLOSED
 
 ## Goal
 A hard-killed run loses nothing but the in-flight task: after every cycle
@@ -14,22 +14,23 @@ tasks.
 - [x] T002 resume CLI + head verification + gate/stop interplay + tests
 - [x] R-0146 --dry-run is a read-only preview (fixed, tests green)
 - [x] T003 kill -9 / resume subprocess test (exactly-once proof)
-- [ ] Integration gate
-- [ ] Closure
+- [x] Integration gate (PASS, zero F047-attributable regressions)
+- [x] Closure (Built State, evidence job, READY zip, STATUS line)
 
 ## Current Step
-Integration gate: full suite on the branch vs. base 89c4ef0, parity
-comparison, canary. Round-2 verdict PASS is persisted
-(LAST_REVIEWED_SHA = 72fc653). No closure artifacts in this round.
+CLOSED. Evidence job 29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7 · package
+remedy-review-20260727-101857-READY_FOR_REVIEW.zip · accepted HEAD
+8e870062feb3487f890232d659ef569cf3aa326e. PR #153 is ready for review and
+NOT merged — the Open PR Gate merges it at the next feature's start.
 
 ## Next Steps
-Closure (its own reviewer-gated round): evidence job, review package,
-Built State in T1_F047.md, STATUS line. Docs: `remedy job resume` gained
-two behaviors (F047 mode, --dry-run preview) — docs/resume.md does not
-exist and its two tests are pre-existing red on main.
+Worker idle. Next feature is selected by Rule A5 in a fresh session; the
+Open PR Gate merges PR #153 first.
 
 ## Risks
-- Checkpoint write failure must not kill the run: log loudly,
-  continue, retry next cycle (A9 default from the feature file).
-- Resume must consume plan-approval gate and pending stop requests —
-  never bypass (feature file "How it fits").
+- Carried risks are recorded in the Built State section of
+  docs/roadmap/features/T1_F047.md (5 items: unknown live worktree head
+  proceeds; checkpoint write failure surfaces only via job metadata plus a
+  warning log; pre-existing full-suite xdist nondeterminism F135/F052;
+  docs/resume.md absent as a BACKLOG gap item; integrity-check
+  live_review_verdict matcher warn).

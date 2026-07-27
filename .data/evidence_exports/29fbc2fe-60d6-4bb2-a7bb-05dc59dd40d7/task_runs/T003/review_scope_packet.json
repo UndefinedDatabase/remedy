@@ -1,0 +1,10 @@
+{
+ "changed_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F047.md",
+  "tests/orchestration/test_resume_kill.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_title": "Task T003"
+}
