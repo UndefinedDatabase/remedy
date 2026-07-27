@@ -64,14 +64,37 @@ recorded), and on demand mid-feature for external second opinions.
 5. Window 1 reviews bottom-up, verdict, next block. On closure: banner,
    session ends, PR waits for the next feature's Open PR Gate.
 
+**Authored-text fidelity protocol (R-0147/R-0144/R-0148):** when a paste
+block contains reviewer-authored text (findings, verdicts, STATUS lines,
+state-file resets), each text arrives between markers of the form
+`--- BEGIN <name> sha256=<hex> ---` / `--- END <name> ---`, where the
+hash covers the exact bytes between the markers including the trailing
+newline. The worker's FIRST action is to save each text VERBATIM from
+the paste to `.agent/authored/<feature>-r<round>-<n>.md`, verify
+`sha256sum` of the saved file against the marker hash BEFORE committing
+— on mismatch STOP: report the mismatch and the received bytes, commit
+nothing (transport-wrap guard, R-0148 class) — then commit. Applying the
+text = copying from that file. Byte-identity proofs = mechanical
+disk-to-disk comparison (hash or exact substring) of the applied
+location against that file. A proof computed against any retyped or
+reconstructed copy is a false verification claim (block condition class,
+R-0147). Only reviewer-authored text — arriving this way — may write
+`## Verdicts` entries or set findings Resolved.
+
+**Handback form:** every `.agent/handoff.md` rewrite follows
+docs/agents/handback_template.md — all sections, in order. A missing or
+incomplete section is a Medium finding; the second occurrence within one
+feature is High and blocks until a compliant handback exists.
+
 ## .agent/handoff.md — the fast-resume file
 Rewritten (never appended) by the worker at EVERY handback. Contains only
-the latest state, ≤60 lines: feature + round, branch, last commit SHAs,
-changed-files table, verification results (real output, trimmed), open
-findings count, next expected action. Purpose: a restarted Window 1
-bootstraps from STATUS.md + feature file + handoff.md + plan.md +
-live_review.md instead of re-reading the project. Git history is the
-archive of past handoffs.
+the latest state, ≤60 lines (≤100 when per-commit tables of >5 commits
+require it — sections are never dropped): feature + round, branch, last
+commit SHAs, changed-files table, verification results (real output,
+trimmed), open findings count, next expected action.
+Purpose: a restarted Window 1 bootstraps from STATUS.md + feature file +
+handoff.md + plan.md + live_review.md instead of re-reading the project.
+Git history is the archive of past handoffs.
 
 ## Window 2 — worker bootstrap block (paste at session start)
 ```
@@ -93,6 +116,16 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
   apply VERBATIM. In repair rounds: persist the findings to
   .agent/live_review.md as the FIRST commit, then fix, marking
   `Done: R-XXXX`. Never set Resolved yourself.
+- Paste block contains reviewer-authored text? FIRST action: save each
+  text VERBATIM to .agent/authored/<feature>-r<round>-<n>.md; verify
+  sha256sum of the saved file against the sha256=<hex> in its BEGIN
+  marker BEFORE committing — mismatch = STOP, report, commit nothing
+  (R-0148) — then commit; apply by copying from that file; proofs are
+  disk-to-disk against it (R-0147). Never write into `## Verdicts` or
+  mark findings Resolved — that text only ever arrives as
+  reviewer-authored files under .agent/authored/ (R-0144).
+- Rewrite .agent/handoff.md per docs/agents/handback_template.md — every
+  section, in order.
 - At every handback: in this order: commits → attempt instructed
   package/gate → handoff records the real outcome incl. raw errors +
   commit → push → report. Emit the completion report (outcome ≤6 lines,

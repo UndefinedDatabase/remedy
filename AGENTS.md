@@ -193,6 +193,12 @@ Files must remain:
 - Avoid large or mixed commits.
 - Target one step per commit. Do not bundle multiple unrelated steps.
 - If a diff exceeds 500 lines, stop and split before committing.
+- Exception: a diff over 500 lines is acceptable only when (a) the worker
+  declares it in the handback WITH the inseparability reason before
+  review, and (b) it is the only such commit in its feature. An
+  undeclared oversize commit, or a second one in the same feature, is a
+  finding (Medium). "Accepted, not a precedent" may appear at most once
+  per feature — by construction.
 - Never mix refactoring with new features in the same commit.
 - Commit subjects never contain leading-slash tokens ('/foo'), absolute
   paths, or secret-like strings — the evidence-packaging metadata scanner
@@ -391,9 +397,11 @@ Location:
 
 Purpose: the fast-resume snapshot for the planner/reviewer. Rewritten
 (never appended) by the worker at every handback; only the latest state;
-≤60 lines; git history is the archive. Contents: feature + round, branch,
-last commit SHAs, changed-files table, verification results (real,
-trimmed), open findings count, next expected action.
+≤60 lines (≤100 when per-commit tables of >5 commits require it —
+sections are never dropped); git history is the archive. Contents:
+feature + round, branch, last commit SHAs, changed-files table,
+verification results (real, trimmed), open findings count, next expected
+action.
 
 - Every artifact-build attempt (evidence bundle, review zip)
   appears in the handoff with its status, including failed

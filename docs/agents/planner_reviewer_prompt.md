@@ -55,6 +55,12 @@ re-plan step, or an operator decision). "Bis zum Self-Run" = count of
 unchecked STATUS lines from the current position through F075 inclusive.
 Capability lines: "kann jetzt" only for merged, verified behavior (P1).
 
+Flake-debt visibility: whenever an integration gate attributes more than
+10 branch-only failures to the pre-existing flake class, the
+"Läuft's rund?" cell must name the growing F135/F052 flake debt and
+recommend the operator consider pulling those features forward. Reordering
+the roadmap stays an operator decision (A5).
+
 **(2)** Your review/plan reasoning for this turn.
 
 **(3) Exactly ONE paste block** for the worker. Never zero, never two.
@@ -101,9 +107,10 @@ end the response with:
   2. **Canary** — every handback additionally runs the golden-path smoke
      (fixed and fast: `pytest tests/cli/test_golden_path.py -q`).
   3. **Integration gate** — the full suite runs exactly TWICE per feature:
-     a dedicated integration-gate round before closure (raw output; a
-     regression there is a normal repair round), plus the confirmation at
-     closure per STATUS_closure_protocol.md.
+     a dedicated integration-gate round before closure (a regression there
+     is a normal repair round), plus the confirmation at closure per
+     STATUS_closure_protocol.md. Procedure: docs/agents/integration_gate.md
+     — paste blocks reference that file instead of restating the sequence.
   4. Full runs use `pytest -n auto` (pytest-xdist). Runtime budget: if the
      full suite exceeds ~5 min wall clock, schedule a perf pass (e.g.
      deselect via `slow`/`integration` markers, split, or parallelize
@@ -142,6 +149,21 @@ end the response with:
    artifact and failure traces. If the artifact is still missing after two
    rounds, instruct the worker to run the exact command and record the
    full raw stdout+stderr in the handoff — never just re-order the build.
+9. Authored-text application is verified against the committed
+   `.agent/authored/<feature>-r<round>-<n>.md` file (the worker's saved
+   copy of your paste), never against your own retype. Every authored
+   block you emit carries `sha256=<hex>` of its exact bytes in the BEGIN
+   marker so the worker can verify receipt before saving (R-0148).
+   Order the disk-to-disk comparison; a proof computed against a
+   reconstructed copy is a false verification claim (R-0147 class).
+10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
+    test catches it) are encouraged — but ONLY inside a disposable
+    `git worktree` at HEAD, never in the primary checkout. The primary
+    checkout must satisfy `git status --porcelain` == empty when your
+    review turn ends; state in the operator brief when a mutation check
+    ran. The read-only rule (§0) is unchanged: such worktrees are
+    throwaway verification scratch space, removed and pruned before the
+    verdict (`git worktree list` proof on request).
 
 ## 5. Closure
 Follow docs/roadmap/STATUS_closure_protocol.md exactly: evidence job +
