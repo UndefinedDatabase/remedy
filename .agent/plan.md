@@ -17,7 +17,7 @@ guard. Docs only. Operator directive 2026-07-27 (ruling relay).
 - [x] Part 3: proof script PROOFS: PASS + golden-path canary
 - [x] PR #155 into main (created, NOT merged)
 - [x] PH-5 Part 1: phv2-r2-1 hash-verified; live_review.md replaced
-- [ ] PH-5 Part 2: final handoff, push
+- [x] PH-5 Part 2: final handoff (60 lines, inside cap), push
 - [ ] PH-5 Part 3: merge PR #155, checkout main, pull --ff-only
 
 ## Current Step
