@@ -10,7 +10,7 @@ STATUS.md feature lines.
 - [x] Part 1: persist 10 reviewer-authored texts to .agent/authored/
 - [x] C1 docs/agents/handback_template.md (new, from phv1-r1-1)
 - [x] C5 docs/agents/integration_gate.md (new, from phv1-r1-2)
-- [ ] C2 split_workflow.md += phv1-r1-3, phv1-r1-4
+- [x] C2 split_workflow.md += phv1-r1-3, phv1-r1-4
 - [ ] C3+C6 planner_reviewer_prompt.md += phv1-r1-5, r1-6 (replace), r1-7
 - [ ] C4 AGENTS.md += phv1-r1-8
 - [ ] IDX docs/README.md += phv1-r1-9, phv1-r1-10
@@ -18,7 +18,7 @@ STATUS.md feature lines.
 - [ ] PR into main (created, NOT merged)
 
 ## Current Step
-C5 applied (integration_gate.md). Next: C2.
+C2 applied (split_workflow.md). Next: C3+C6.
 
 ## Next Steps
 Apply each target area as its own small commit in the order above, full
