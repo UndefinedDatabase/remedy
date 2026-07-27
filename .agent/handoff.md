@@ -1,60 +1,100 @@
-# Handoff — Process-Hardening v1 · PH-3 merge round (final)
+# Handoff — Process-Hardening v2 · PH-4 (R-0149 amendment round)
 
 ## Range
 
-Review of `11a417f..HEAD` — 2 commits. Rounds 1 and 2 are tabled in the
-handoffs at `ac97215` and `11a417f`; round 2 verdict: PASS.
+Review of `a1a0db7..HEAD` (main..HEAD) — 6 commits.
 
 ## Commits
 
-### 62881a7 chore(ph3): persist round-2 PASS verdict; R-0148 resolved (authored)
+### 86a55b8 chore(ph4): persist authored amendment texts; R-0149 ruling recorded
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/phv1-r3-1.md | +42 −0 | authored verdict text, saved verbatim first |
-| .agent/live_review.md | +31 −29 | full replace from phv1-r3-1 (`cmp` IDENTICAL) |
+| .agent/authored/phv2-r1-1.md | +55 −0 | handback template v1.1, verbatim |
+| .agent/authored/phv2-r1-2.md | +7 −0 | AGENTS.md cap paragraph, verbatim |
+| .agent/authored/phv2-r1-3.md | +5 −0 | split_workflow cap sentence, verbatim |
+| .agent/authored/phv2-r1-4.md | +16 −0 | fidelity protocol + hash guard, verbatim |
+| .agent/authored/phv2-r1-5.md | +8 −0 | bootstrap bullet, verbatim |
+| .agent/authored/phv2-r1-6.md | +7 −0 | reviewer §4 item 9, verbatim |
+| .agent/authored/phv2-r1-7.md | +6 −0 | R-0149 ruling text, verbatim |
+| .agent/live_review.md | +6 −0 | phv2-r1-7 appended to the R-0149 entry |
+| .agent/plan.md | +23 −20 | PH-4 round plan |
 
-### 690f54a + HEAD chore(ph3): final handoff (grouped, R-0149(2))
+### a944c4a docs(agents): handback template v1.1 — cap wording, self-reference rule (R-0149)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewritten | this handback; HEAD trims it to the ≤60 cap |
-| .agent/plan.md | +25 −22 | PH-3 state; missed in 62881a7, carried here |
+| docs/agents/handback_template.md | +7 −1 | A1 — full replace from phv2-r1-1 |
+| .agent/plan.md | +2 −2 | Commit Gate |
 
-Self-reference note (accepted R-0149(2) deviation): the HEAD table above
-describes the commit writing this file, so its `+/-` are intended content,
-not a post-hoc `git diff`.
+### 1a1e994 docs: handoff cap ruling in AGENTS.md (R-0149)
+| Path | +/- | Reason |
+|---|---|---|
+| AGENTS.md | +5 −3 | A2 — handoff Purpose paragraph replaced by phv2-r1-2 |
+| .agent/plan.md | +2 −2 | Commit Gate |
+
+### 2487616 docs(agents): fidelity hash guard and cap ruling in split workflow (R-0149)
+| Path | +/- | Reason |
+|---|---|---|
+| docs/agents/split_workflow.md | +28 −22 | A3/A4/A5 — phv2-r1-3, r1-4, r1-5 |
+| .agent/plan.md | +2 −2 | Commit Gate |
+
+### 77afd6a docs(agents): reviewer emits sha256-stamped authored blocks (R-0149)
+| Path | +/- | Reason |
+|---|---|---|
+| docs/agents/planner_reviewer_prompt.md | +5 −3 | A6 — §4 item 9 replaced by phv2-r1-6; item 10 untouched |
+| .agent/plan.md | +2 −2 | Commit Gate |
+
+### HEAD chore(ph4): handback — handoff per the amended template
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | this handback |
+| .agent/plan.md | +4 −4 | round complete |
+
+Self-reference note (now codified in handback_template.md): the HEAD table
+states intended content, since no commit can table the commit writing it.
 
 ## External actions
 
-None in Part 1–2. Part 3 runs `gh pr merge 154 --merge --delete-branch`, then
-`git checkout main` + `git pull --ff-only`; raw output goes to the report,
-not to a commit — nothing is committed after the merge.
+`gh pr list --state open` → PR #153 (F047) open, NOTED, untouched (D1).
+`git push -u origin chore/process-hardening-v2` → new remote branch, then
+`git push` ×3 (A2, A3-5, A6) plus one for this handback — all succeeded.
+`gh pr create` → PR #155 into main; NOT merged, not edited since (D3).
 
 ## Verification
 
 ```
-$ cmp .agent/authored/phv1-r3-1.md .agent/live_review.md && echo IDENTICAL
-IDENTICAL          EXIT=0
-$ git status --porcelain     # empty before this commit
-```
+$ for n in 1..7; do sha256sum .agent/authored/phv2-r1-$n.md; done
+12d0062c… d3d59edd… d0dc6594… 5a7f9649… 7faabd6f… 2b6d6be7… 4f9ef20e…
+→ 7/7 identical to the BEGIN-marker hashes. No STOP triggered.
 
-No test gate was ordered: this round changes only `.agent/` state files, and
-the round-2 canary (42 passed, exit 0) covers the last code-adjacent change.
+$ python3 - <<'PY'   (Part-3 proof script)
+OK ×1 byte-equality, OK ×6 substring, OK ×6 gone-checks
+PROOFS: PASS                                              EXIT=0
+
+$ python3 -m pytest tests/cli/test_golden_path.py -q → 42 passed in 14.91s
+                                                          EXIT=0
+$ git status --porcelain     # empty
+```
+Full untruncated hash and proof output is in the completion report.
 
 ## Authored-text proofs
 
-phv1-r3-1 was saved to `.agent/authored/` and committed in 62881a7 BEFORE
-being applied, then applied with `cp` from that file. Proof is disk-to-disk:
-`cmp` → IDENTICAL, exit 0. No retype. Only authored text this round;
-`phv1-r1-*`/`phv1-r2-*` remain committed and unmodified.
+All seven texts were saved to `.agent/authored/`, hash-verified against
+their BEGIN markers, and only then committed (86a55b8) — the new guard's
+first live run, and it also confirms the paste-frame stripping was byte-
+correct. Applications: phv2-r1-1 by `cp` (`cmp` clean, byte-equality in the
+proof script); the other six as exact-substring inserts. Each replacement
+additionally asserts the superseded wording is GONE from its target file —
+6/6 OK. No retype anywhere.
 
 ## Deviations & assumptions
 
-- `.agent/plan.md` update missed in 62881a7 (Commit Gate); carried here.
-- R-0149 stays OPEN and rides onto main with the merge, by the authored
-  verdict's own wording. Not a merge blocker.
-- PR #154 merges in the session that created it — operator-approved
-  exception to the split_workflow.md merge policy (2026-07-27), no precedent.
+- D1/D2/D3 per operator directive 2026-07-27: PR #153 untouched, branch is
+  `chore/*`, PR #155 created but not merged.
+- One formatting edit outside authored text: the split_workflow replacement
+  stranded `Purpose: a restarted Window 1` on a short line, so that
+  following paragraph was re-wrapped. Own artifact, no wording changed.
+- `docs/README.md` needs no update: no docs added or renamed.
 
 ## Next
 
-Merge PR #154; session ends; no commits after the merge.
+Window 1 reviews `a1a0db7..HEAD`; on PASS, PR #155 merges next block.

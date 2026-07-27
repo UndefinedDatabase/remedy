@@ -14,16 +14,16 @@ guard. Docs only. Operator directive 2026-07-27 (ruling relay).
 - [x] A2 AGENTS.md handoff Purpose paragraph (phv2-r1-2)
 - [x] A3+A4+A5 split_workflow.md (phv2-r1-3, r1-4, r1-5)
 - [x] A6 planner_reviewer_prompt.md §4 item 9 (phv2-r1-6)
-- [ ] Part 3: proof script PROOFS: PASS + golden-path canary
-- [ ] PR into main (created, NOT merged)
+- [x] Part 3: proof script PROOFS: PASS + golden-path canary
+- [x] PR #155 into main (created, NOT merged)
 
 ## Current Step
-A6 applied (planner_reviewer_prompt.md). Next: Part 3 proofs + canary, PR.
+Round complete. 7/7 hashes verified, PROOFS: PASS, canary 42 passed,
+PR #155 open and unmerged. Handed back for review of a1a0db7..HEAD.
 
 ## Next Steps
-One commit per target file in the order above, full self-review loop +
-Commit Gate before each, push after each. Then the proof script (FULL +
-SUB + GONE checks), the canary, and the PR.
+Window 1 reviews a1a0db7..HEAD. On PASS, PR #155 merges in the next
+block; then Open PR Gate (#153) and A5 → F048.
 
 ## Risks
 - D1: PR #153 (F047 closure) stays open and untouched; it merges at the
