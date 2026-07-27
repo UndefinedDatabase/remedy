@@ -1,37 +1,46 @@
-# Plan — Process-Hardening v2 (R-0149 amendment round, no feature)
+# Plan — F048 Job queue (T1, file-based v1)
 
 ## Goal
-Apply the operator ruling on R-0149 to the workflow docs: (a) handoff cap
-≤60 lines, ≤100 when per-commit tables of >5 commits require it; the
-self-reference grouped-table rule; the sha256 BEGIN-marker transport
-guard. Docs only. Operator directive 2026-07-27 (ruling relay).
+Work can be queued per project and consumed unattended: entries are
+enqueued per project, a consumer claims one atomically (two consumers
+never claim the same entry), state survives restarts, and the queue is
+honestly listable even with corrupt entry files. v1 is FILE-BASED to
+match the existing atomic per-entity JSON storage — SQLite migration is
+a later feature's decision.
 
 ## Checklist
-- [x] Part 0: branch chore/process-hardening-v2 off main; plan.md
-- [x] Part 1: persist 7 authored texts, 7/7 sha256 verified; R-0149 ruling
-      appended to .agent/live_review.md
-- [x] A1 docs/agents/handback_template.md (full replace, phv2-r1-1)
-- [x] A2 AGENTS.md handoff Purpose paragraph (phv2-r1-2)
-- [x] A3+A4+A5 split_workflow.md (phv2-r1-3, r1-4, r1-5)
-- [x] A6 planner_reviewer_prompt.md §4 item 9 (phv2-r1-6)
-- [x] Part 3: proof script PROOFS: PASS + golden-path canary
-- [x] PR #155 into main (created, NOT merged)
-- [x] PH-5 Part 1: phv2-r2-1 hash-verified; live_review.md replaced
-- [x] PH-5 Part 2: final handoff (60 lines, inside cap), push
-- [ ] PH-5 Part 3: merge PR #155, checkout main, pull --ff-only
+- [x] Open PR Gate: PR #153 (F047) merged; main @ 40c7e4d
+- [x] Claim: STATUS.md F048 → `[~]`; live_review.md reset (authored,
+      sha256-verified); branch feature/f048-job-queue
+- [ ] Inspection: locate the existing atomic create-if-absent primitive
+      (stop-file / storage layer) — T001 MUST reuse it
+- [ ] T001: job_queue.py entry store + enqueue/claim_next/release/
+      complete/fail + (priority desc, created_at asc) ordering +
+      corrupt-entry-tolerant listing + tests/orchestration/test_job_queue.py
+- [ ] T002: tests/orchestration/test_queue_concurrency.py — N ≥ 20
+      entries, TWO real subprocess consumers, ≥ 3 repeats, disjoint claim
+      sets, full coverage, zero double-claims
+- [ ] Canary: tests/cli/test_golden_path.py green
+- [ ] Handback: handoff.md rewritten, branch pushed, NO PR this round
+- [ ] T003 (next round): CLI `remedy queue add|list|rm|reclaim`,
+      executor binding, end-to-end queued-goal-to-planned-job test
+- [ ] Integration gate + closure (later rounds)
 
 ## Current Step
-PH-5 merge round. PH-4 verdict PASS persisted, R-0149 RESOLVED. Next and
-last action: merge PR #155. Nothing is committed after the merge.
+Inspection (item 3): find the atomic create-if-absent pattern, record
+file:line and the exact primitive in the handoff. Then T001.
 
 ## Next Steps
-None on this branch. Next session: Open PR Gate merges PR #153 (F047),
-then A5 → F048.
+T001 → T002 → canary → handback. T003 is a separate round.
 
 ## Risks
-- D1: PR #153 (F047 closure) stays open and untouched; it merges at the
-  F048 start (operator directive 2026-07-27).
-- D2: branch is chore/* not feature/* (same directive).
-- D3: this round's PR is created but NOT merged in this block.
-- The GONE checks make each replacement destructive by design — the old
-  wording must not survive anywhere in the target file.
+- Do-not-touch this feature: cron/scheduling, cross-project queues,
+  SQLite.
+- Do-not-touch this round: CLI commands, multi-cycle-executor changes
+  (both are T003); stale-claim takeover logic — stale claims stay
+  visible, explicit reclaim is T003.
+- Never write into `## Verdicts` in live_review.md; never mark findings
+  Resolved (reviewer-only).
+- T002 must not "pass" by serializing consumers (whole-drain lock or
+  single-process fallback) — that is a FAIL.
+- Keep every commit under 500 changed lines; split if needed.
