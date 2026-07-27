@@ -10,7 +10,7 @@ guard. Docs only. Operator directive 2026-07-27 (ruling relay).
 - [x] Part 0: branch chore/process-hardening-v2 off main; plan.md
 - [x] Part 1: persist 7 authored texts, 7/7 sha256 verified; R-0149 ruling
       appended to .agent/live_review.md
-- [ ] A1 docs/agents/handback_template.md (full replace, phv2-r1-1)
+- [x] A1 docs/agents/handback_template.md (full replace, phv2-r1-1)
 - [ ] A2 AGENTS.md handoff Purpose paragraph (phv2-r1-2)
 - [ ] A3+A4+A5 split_workflow.md (phv2-r1-3, r1-4, r1-5)
 - [ ] A6 planner_reviewer_prompt.md §4 item 9 (phv2-r1-6)
@@ -18,7 +18,7 @@ guard. Docs only. Operator directive 2026-07-27 (ruling relay).
 - [ ] PR into main (created, NOT merged)
 
 ## Current Step
-Part 1 done. Next: A1.
+A1 applied (handback_template.md v1.1). Next: A2.
 
 ## Next Steps
 One commit per target file in the order above, full self-review loop +

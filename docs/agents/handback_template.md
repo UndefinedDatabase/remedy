@@ -5,7 +5,8 @@
 > in order. A missing or incomplete section is a Medium finding; the
 > second occurrence within one feature is High and blocks until a
 > compliant handback exists. (A wholly missing changed-files table remains
-> the R-0070 block condition.) Stay within the AGENTS.md ≤60-line cap by
+> the R-0070 block condition.) Stay within the AGENTS.md handoff cap —
+> ≤60 lines, ≤100 when per-commit tables of >5 commits require it — by
 > trimming transcripts to command + exit code + decisive lines and by
 > summarizing evidence directories — never by dropping a section.
 > Hard cap: this file stays ≤800 tokens (P4 token thrift).
@@ -23,6 +24,10 @@ including state-file and bookkeeping commits:
     | Path | +/- | Reason |
 
 Evidence-dir file lists may be summarized as "<n> files under <dir>".
+Exception (self-reference): the final handoff commit and any trailing
+bookkeeping commits that only trim it may share ONE grouped table with
+per-commit attribution in the Reason column — a handoff cannot table
+the commit that writes it (R-0149 pattern).
 
 ## External actions
 
