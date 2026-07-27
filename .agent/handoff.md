@@ -21,9 +21,15 @@ SHA-256 and the accepted HEAD are exactly as closed.
 | Commit | Files |
 |---|---|
 | `15c7ebe` chore(f047): persist finding R-0147 | `.agent/live_review.md` +17 / −0 |
-| `fe413c9` fix(f047): append the missing verdict sentence; honest proof (R-0147) | `.agent/live_review.md` +8 / −0 · `.agent/handoff.md` +79 / −8 |
+| `c6ab157` fix(f047): append the missing verdict sentence; honest proof (R-0147) | `.agent/live_review.md` +8 / −0 · `.agent/handoff.md` +80 / −8 |
+| _this commit_ chore(f047): correct the fix commit SHA in the handoff table | `.agent/handoff.md` |
 
-External action this round: `git push` (one).
+The third commit exists because `c6ab157` was amended after its table row was
+written, changing its SHA; a commit cannot contain its own hash, so the
+correction is its own commit rather than a silently wrong reference.
+
+External action this round: `git push` (two — one after `c6ab157`, one after
+the SHA correction).
 
 ## Closure facts
 
