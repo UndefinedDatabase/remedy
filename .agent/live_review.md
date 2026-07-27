@@ -36,6 +36,23 @@ Finding IDs continue monotonically from R-0145.
   the request rather than trusting the printed line.
   Resolved: verified by the reviewer in round 2 (fd93b31..72fc653).
 
+- R-0147 · Medium · closure round (3b257f6..350275b)
+  False byte-identity proof in the closure handback: PROOF 1 claims
+  the authored integration-gate verdict block is "present verbatim:
+  True", but the applied block omits the authored final sentence
+  "LAST_REVIEWED_SHA = 3b257f6." — the entry ends at "...carries the
+  'full suite' claim." The header field carries the correct value, so
+  the content is semantically intact; but a proof asserting
+  byte-identity over a missing sentence is a false verification
+  claim, and the omission itself is an unrecorded deviation from the
+  authored text. Fix: (1) append the missing sentence so the gate
+  verdict entry ends exactly with: LAST_REVIEWED_SHA = 3b257f6.
+  (2) re-run the substring proof against the authored block INCLUDING
+  that sentence and record the honest raw output in the handoff;
+  (3) the handoff states what PROOF 1 was actually compared against
+  and why it reported True. Resolved when all three hold and the
+  reviewer verifies.
+
 ## Verdicts
 
 - Round 2 (R-0146 repair + T003, fd93b31..72fc653): PASS — issued by
