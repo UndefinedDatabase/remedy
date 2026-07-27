@@ -168,8 +168,7 @@ routing policy seeds F110.
 | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | Window 1 bootstrap: planner & live reviewer prompt |
 | [split_workflow.md](agents/split_workflow.md) | Two-window feature lifecycle (v3), roles, round protocol, handoff |
 | [handback_template.md](agents/handback_template.md) | Mandatory skeleton of every handoff.md handback rewrite |
-| [integration_gate.md](agents/integration_gate.md) | Canonical full-suite integration-gate procedure (referenced by paste
-blocks) |
+| [integration_gate.md](agents/integration_gate.md) | Canonical full-suite integration-gate procedure |
 
 ## Roadmap (`docs/roadmap/`)
 

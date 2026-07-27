@@ -9,12 +9,12 @@ STATUS.md feature lines.
 - [x] Round 1: 10 authored texts persisted; C1 C2 C3 C4 C5 C6 IDX applied;
       proofs PASS; PR #154 created (NOT merged). Verdict: FAIL (R-0148).
 - [x] PH-2 Part 1: persist phv1-r2-1/phv1-r2-2; reset .agent/live_review.md
-- [ ] PH-2 Part 2: R-0148 — one-line integration_gate row in docs/README.md
+- [x] PH-2 Part 2: R-0148 — one-line integration_gate row in docs/README.md
 - [ ] PH-2 done-when: ROW OK, canary, clean tree, pushed
 
 ## Current Step
-Repair round PH-2. Findings persisted. Next: apply the authored one-line
-row over the wrapped two-line form in docs/README.md.
+Repair round PH-2. R-0148 fixed (ROW OK). Next: handback — record the fix
+sha as `Done: R-0148` and rewrite handoff.md per the template.
 
 ## Next Steps
 Fix R-0148 in its own commit, append `Done: R-0148 (commit <sha>)` under
