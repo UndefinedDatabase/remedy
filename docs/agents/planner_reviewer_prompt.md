@@ -151,9 +151,11 @@ end the response with:
    full raw stdout+stderr in the handoff — never just re-order the build.
 9. Authored-text application is verified against the committed
    `.agent/authored/<feature>-r<round>-<n>.md` file (the worker's saved
-   copy of your paste), never against your own retype. Order the
-   disk-to-disk comparison; a proof computed against a reconstructed copy
-   is a false verification claim (R-0147 class).
+   copy of your paste), never against your own retype. Every authored
+   block you emit carries `sha256=<hex>` of its exact bytes in the BEGIN
+   marker so the worker can verify receipt before saving (R-0148).
+   Order the disk-to-disk comparison; a proof computed against a
+   reconstructed copy is a false verification claim (R-0147 class).
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
     `git worktree` at HEAD, never in the primary checkout. The primary
