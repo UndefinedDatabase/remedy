@@ -1,0 +1,544 @@
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index da640ae..4372d3d 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -29,7 +29,7 @@
+ - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
+ - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
+ - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
+-- [ ] F047 — Checkpoint & resume (kill-proof)
++- [~] F047 — Checkpoint & resume (kill-proof)
+ - [ ] F048 — Job queue
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+diff --git a/docs/roadmap/features/T1_F047.md b/docs/roadmap/features/T1_F047.md
+index f553504..462e609 100644
+--- a/docs/roadmap/features/T1_F047.md
++++ b/docs/roadmap/features/T1_F047.md
+@@ -66,3 +66,162 @@ Daemonization/schedulers, cross-machine resume, SIGKILL detection of
+ foreign processes. Suggested tests:
+ tests/orchestration/test_checkpoints.py,
+ tests/orchestration/test_resume_kill.py.
++
++## Built State (2026-07-27)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**The checkpoint record.** `packages/orchestration/checkpoints.py` — after
++each cycle a `checkpoint_NNNN.json` lands under the job's OWN evidence area,
++sibling to F046's `cycles/` directory
++(`pingpong_job.job_evidence_dir(id)/checkpoints/`), so there is no second
++evidence convention. The file is `{"record": {...}, "content_hash":
++"sha256:<hex>"}`; the hash covers the canonical encoding of the body (sorted
++keys, no incidental spacing), so a torn or edited record is detectable
++without a second source of truth. The body is schema-versioned and carries a
++REFERENCE to the persisted job snapshot (data-root-relative path plus
++sha256), the worktree head, budget spent so far, a verify digest, and the
++next intent (which task/cycle would run next).
++
++Pointer, not copy: the persisted job already IS checkpoint v1, and a
++checkpoint adds only what the job file cannot answer. A snapshot that cannot
++be read yields an empty path and an empty digest — an unmeasured digest is
++reported as unmeasured, never as a match.
++
++**Atomic write, reused not rewritten (A6).** The writer is
++`storage._atomic_write_job` — temp file, fsync, `os.replace` — the same
++helper behind `save_job`. No second atomic writer was introduced. F046's
++`write_cycle_record` uses a plain `write_text`; checkpoints deliberately do
++not copy that, because a half-written checkpoint is exactly the failure mode
++this feature exists to survive.
++
++**Loader and corruption policy.** `load_latest_valid(job_id)` walks
++newest-first and returns the first record whose hash verifies. Every skipped
++file is logged as a warning and LEFT ON DISK — a corrupted checkpoint is
++forensic evidence, not litter. The two "no usable checkpoint" cases are kept
++distinct on purpose: `None` means the job was never checkpointed (honest
++degradation to plain continuation), `AllCheckpointsCorruptError` means
++checkpoints exist and not one verifies. Collapsing them would let a job whose
++entire history was destroyed resume as if it had never been checkpointed.
++
++**Retention.** `cycles.checkpoint_retention` (DEFAULT 5) joins the config
++registry. The last N are kept, and the FIRST and the LATEST are always kept
++on top of that count. A file that does not verify is never pruned.
++
++**Cycle-boundary wiring.** `long_run_executor.run_cycles` step 5 writes the
++checkpoint AFTER `save_fn(job)` and the F046 cycle record — a checkpoint
++references the persisted snapshot, so the snapshot must already be on disk.
++The `record_checkpoint` seam mirrors the existing `record_evidence` seam. A
++checkpoint write that fails NEVER raises into the loop: the reason is logged
++loudly, recorded on the job as `checkpoint_error`, and the next cycle
++retries (this file's A9 default).
++
++**Per-job cycle numbering.** `next_cycle_index(job_id)` reads the highest
++index already persisted in BOTH evidence areas (either can be switched off
++independently) and the loop starts one past it; `first_cycle_index` is a
++test seam. Before this, `run_cycles` numbered cycles within ONE invocation,
++so a resumed run restarted at 1 and wrote `cycle_0001.json` /
++`checkpoint_0001.json` straight over the killed run's records — the pre-kill
++history was silently destroyed, and the T003 exactly-once assertion came out
++short (3 of 5 tasks). A fresh job still starts at 1, so F046's single-pass
++default does not move.
++
++**Executed task ids in evidence.** `CycleRecord.executed_task_ids` records
++which tasks a cycle ran, not merely how many. Without it, exactly-once across
++a kill was unprovable from durable state, and a counter living in the test
++process cannot see what the killed process did. It records EXECUTIONS, not
++successes: a task rolled back after a failed verification legitimately
++appears again in a later cycle.
++
++**Resume CLI — one command, two modes.** `remedy job resume <id>` already
++existed as an event-replay resume with a REQUIRED `--checkpoint <id>`. It was
++EXTENDED, not shadowed: `--checkpoint` is now optional, given routes to the
++untouched event-replay path, absent runs the F047 cycle-checkpoint path.
++Omitting it was previously an argparse error, so no existing invocation
++changes behavior. A second catalog entry with the same `command_id` had
++produced a silent duplicate (`get_command` returning the new entry while the
++dispatch dict kept the old handler); the catalog now registers `job.resume`
++exactly once, asserted by a test. The two "checkpoints" are different objects
++with the same word in their name — an event-replay checkpoint is DERIVED from
++run-log events, an F047 checkpoint is WRITTEN at a cycle boundary.
++
++**The order of the resume checks is the contract.** (1) a pending stop
++request is consumed FIRST and the run does not start — an operator's stop is
++never outlived by a resume; (2) the worktree head recorded in the checkpoint
++is compared with the head the worktree stands on now, and a mismatch refuses
++with a message naming BOTH heads, never rebasing silently (P2); (3) the
++plan-approval gate is consulted through the same
++`flight_plan.flight_plan_blocks_execution` check `remedy job run` makes —
++resume is not a second door around it. Only then does it hand off to the
++multi-cycle executor. `worktrees.head_at(path)` is a new read-only head
++lookup: `snapshot` needs a claimed handle and `create` takes the job lock and
++may materialise a worktree, neither acceptable for a read-only comparison.
++Exit codes: 0 ok / no-op / stop consumed, 1 job or checkpoint problem, 3
++refused by a guard.
++
++**`--dry-run` is a read-only preview (R-0146).** The flag previously reached
++only the event-replay branch, so `remedy job resume <id> --dry-run` silently
++dropped it and executed for real against a command classed `apply_write` /
++`may_mutate_repo`. The F047 path now reports what each check WOULD decide and
++consumes nothing — the stop request is observed via `stop_requested` and
++never `consume_stop`, so a pending stop is still pending afterwards — never
++reaches the executor, and exits 0. JSON mirrors it under `action=preview`.
++
++**Honest degradations.** No checkpoint at all prints "no checkpoint found —
++continuing from persisted job state" and continues from the persisted job;
++all checkpoints unverifiable refuses and names the files; an all-green job is
++a friendly no-op with exit 0; a job with zero tasks is not mistaken for
++all-green.
++
++**The kill test.** `tests/orchestration/test_resume_kill.py` sends a genuine
++`SIGKILL` to a genuine child process — no exception is raised inside the run,
++no cleanup handler tidies up, and the parent asserts `returncode ==
++-signal.SIGKILL` so a child that merely exited would fail. Synchronisation is
++a marker file the child writes at the instant it begins the task that must
++die in flight, polled by the parent; no `sleep` is used as a synchronisation
++device. Exactly-once is proven from the cycle evidence records on disk,
++spanning BOTH processes: no id appears twice, all five tasks appear, the
++pre-kill ids are a subset of the final set (pre-kill work was not redone),
++and the job reaches `all_green` with every task completed. The torn
++checkpoint is written explicitly rather than raced for — the atomic write
++makes a genuine mid-write tear non-producible on demand, so racing the rename
++would only generate flakes, and the property under test (the loader falls
++back to the previous valid checkpoint) is identical either way.
++
++**Verification.** `tests/orchestration/test_checkpoints.py` 37 passed ·
++`test_resume_cli.py` 35 passed · `test_resume_kill.py` 7 passed in 1.32s ·
++F046 regression `test_long_run_executor.py` 49 passed with the conductor's
++default behavior unmoved · canary `test_golden_path.py` 42 passed · ruff
++clean on every touched file. Integration gate (`pytest -n auto`, branch vs
++base `89c4ef0`): branch 158 failed / 14065 passed (158.32s), base 190 failed
++/ 13947 passed (143.21s); of 39 branch-only ids 37 pass on a serial re-run
++(pre-existing xdist flake, F135/F052) and the 2 reproducible ones were
++`.agent/live_review.md` losing the `Steps` token — a state-file defect fixed
++as a declared deviation with neither test modified. Post-fix six branch-only
++ids all pass serially. Zero F047-attributable regressions. The suite is RED
++on base by 190 tests — pre-existing.
++
++**Key decisions** (full rationale in `.agent/decisions.md`): the record is a
++POINTER plus a self-verifying envelope, not a copy of the job; the torn
++checkpoint is written explicitly because the atomic write makes a real tear
++non-producible on demand; the resume command was EXTENDED rather than
++shadowed; cycle numbering belongs to the JOB, not to the process running it.
++
++**Carried risks.** (1) An unknown live worktree head ("") is NOT treated as a
++mismatch and resume proceeds — documented and tested, because refusing on
++unknown would block every copy-mode job that has no worktree at all.
++(2) A checkpoint write failure surfaces only as `job.metadata
++["checkpoint_error"]` plus a warning log; there is no ledger event and no
++CLI-level alarm, so an operator watching only stdout would not see it.
++(3) Full-suite nondeterminism under `-n auto` is pre-existing and tracked as
++F135/F052 — three branch runs of the same tree differed by ~38 failures.
++(4) `docs/resume.md` does not exist; its 2 tests are pre-existing red on main
++and belong to the 14-failure catalog/discovery class. It is a BACKLOG gap
++item spanning commands beyond F047, deliberately NOT created at closure.
++(5) `remedy integrity check` emits a `live_review_verdict` matcher warning —
++known, already a backlog item from F046.
++
++**Not built.** Daemonization, schedulers, cross-machine resume and SIGKILL
++detection of foreign processes — this file's Do-not-touch list, all still
++untouched.
+diff --git a/tests/orchestration/test_resume_kill.py b/tests/orchestration/test_resume_kill.py
+new file mode 100644
+index 0000000..63ea816
+--- /dev/null
++++ b/tests/orchestration/test_resume_kill.py
+@@ -0,0 +1,358 @@
++"""F047 T003 — the kill test: SIGKILL mid-cycle, then resume (acceptance).
++
++The scenario, verbatim from the feature file: start a fixture multi-cycle
++run, kill -9 mid-cycle, resume, and assert completion with EACH TASK
++EXECUTED EXACTLY ONCE.
++
++Two things make the proof real rather than decorative:
++
++* the kill is a genuine ``SIGKILL`` to a genuine child process — no
++  exception is raised inside the run, no cleanup handler gets to tidy up,
++  and nothing in the run's own code path can know it is about to die;
++* exactly-once is proven from the CYCLE EVIDENCE RECORDS on disk
++  (``evidence/cycles/cycle_*.json``, field ``executed_task_ids``), which
++  span BOTH processes.  A counter in the test process could not see what
++  the killed process did, and would be exactly the kind of evidence this
++  feature exists to distrust.
++
++Synchronisation is by marker file, never by sleeping: the child writes a
++marker at the instant it begins the task that must die in flight, then
++blocks; the parent polls for that marker and sends the signal.  A test that
++slept would be racy on a loaded machine and slow on an idle one.
++
++What is deliberately NOT here (feature-file "Do not touch"): daemonisation,
++schedulers, cross-machine resume, and SIGKILL detection of foreign
++processes.  The child is our own subprocess and we know its pid.
++"""
++from __future__ import annotations
++
++import json
++import os
++import signal
++import subprocess
++import sys
++import time
++from collections import Counter
++from pathlib import Path
++
++import pytest
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++
++#: Cycles the fixture job is allowed, and the cycle whose task is killed.
++TOTAL_TASKS = 5
++KILL_ON_CYCLE = 3
++
++#: How long the parent waits for a marker before declaring the child stuck.
++MARKER_TIMEOUT_SECONDS = 25.0
++POLL_SECONDS = 0.02
++
++
++# ---------------------------------------------------------------------------
++# The child: a real multi-cycle run that parks itself mid-cycle
++# ---------------------------------------------------------------------------
++
++CHILD_SOURCE = '''
++"""Fixture multi-cycle run. Executes one task per cycle and, on the cycle
++named by KILL_ON_CYCLE, writes a marker and blocks forever so the parent can
++SIGKILL it with a task genuinely in flight."""
++import json
++import sys
++import time
++from pathlib import Path
++
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.long_run_executor import (
++    CycleLimits,
++    TaskAttempt,
++    run_cycles,
++)
++from packages.orchestration.storage import load_job, save_job
++
++MARKER = Path(sys.argv[1])
++JOB_FILE = Path(sys.argv[2])
++KILL_ON_CYCLE = int(sys.argv[3])
++TOTAL_TASKS = int(sys.argv[4])
++MODE = sys.argv[5]                     # "first" | "resume"
++
++if MODE == "first":
++    job = Job(name="kill-fixture",
++              tasks=[Task(title=f"t{i}", description="d") for i in range(TOTAL_TASKS)])
++    save_job(job)
++    JOB_FILE.write_text(str(job.id), encoding="utf-8")
++else:
++    job = load_job(__import__("uuid").UUID(JOB_FILE.read_text(encoding="utf-8")))
++
++_cycle = {"n": 0}
++
++
++def step(j, _provider):
++    """Complete exactly one pending task — or park forever, in flight."""
++    pending = [t for t in j.tasks if t.status == RunState.PENDING]
++    if not pending:
++        return TaskAttempt()
++    task = pending[0]
++    _cycle["n"] += 1
++    if MODE == "first" and _cycle["n"] == KILL_ON_CYCLE:
++        # In flight: the task is picked but NOT completed and NOT recorded.
++        MARKER.write_text(json.dumps({"cycle": _cycle["n"], "task_id": str(task.id)}),
++                          encoding="utf-8")
++        while True:
++            time.sleep(0.05)            # the parent kills us here
++    task.status = RunState.COMPLETED
++    return TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++
++result = run_cycles(
++    job,
++    CycleLimits(max_cycles=TOTAL_TASKS + 2),
++    lambda _ctx: None,
++    task_step=step,
++)
++print(json.dumps({"terminal_status": result.terminal_status,
++                  "cycles_run": result.cycles_run,
++                  "job_id": str(job.id)}))
++'''
++
++
++def _child_env(data_dir: Path) -> dict[str, str]:
++    env = dict(os.environ)
++    env["REMEDY_DATA_DIR"] = str(data_dir)
++    env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
++    env["PYTHONUNBUFFERED"] = "1"
++    return env
++
++
++def _wait_for(path: Path, proc: subprocess.Popen) -> dict:
++    """Poll for the child's marker. Never sleeps as a synchronisation device."""
++    deadline = time.monotonic() + MARKER_TIMEOUT_SECONDS
++    while time.monotonic() < deadline:
++        if path.exists():
++            try:
++                return json.loads(path.read_text(encoding="utf-8"))
++            except ValueError:
++                pass                      # marker still being written; poll again
++        if proc.poll() is not None:
++            out, err = proc.communicate()
++            pytest.fail(f"child exited early ({proc.returncode})\n"
++                        f"stdout: {out}\nstderr: {err}")
++        time.sleep(POLL_SECONDS)
++    proc.kill()
++    pytest.fail(f"child never wrote {path.name} within {MARKER_TIMEOUT_SECONDS}s")
++
++
++def executed_task_ids(data_dir: Path, job_id: str) -> list[str]:
++    """Every task id recorded as EXECUTED, read from disk, across all processes."""
++    directory = data_dir / "jobs" / job_id / "evidence" / "cycles"
++    ids: list[str] = []
++    for path in sorted(directory.glob("cycle_*.json")):
++        record = json.loads(path.read_text(encoding="utf-8"))
++        ids.extend(record.get("executed_task_ids", []))
++    return ids
++
++
++# ---------------------------------------------------------------------------
++# Fixtures
++# ---------------------------------------------------------------------------
++
++
++@pytest.fixture
++def data_dir(tmp_path: Path, monkeypatch) -> Path:
++    """One throwaway data root shared by the child and this process."""
++    root = tmp_path / "remedy_data"
++    root.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
++    return root
++
++
++@pytest.fixture
++def child_script(tmp_path: Path) -> Path:
++    script = tmp_path / "kill_fixture_run.py"
++    script.write_text(CHILD_SOURCE, encoding="utf-8")
++    return script
++
++
++@pytest.fixture
++def killed_run(data_dir: Path, child_script: Path, tmp_path: Path) -> dict:
++    """Run the fixture until it parks mid-cycle, SIGKILL it, return the facts."""
++    marker = tmp_path / "in_flight.json"
++    job_file = tmp_path / "job_id.txt"
++
++    proc = subprocess.Popen(
++        [sys.executable, str(child_script), str(marker), str(job_file),
++         str(KILL_ON_CYCLE), str(TOTAL_TASKS), "first"],
++        cwd=str(REPO_ROOT), env=_child_env(data_dir),
++        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
++    )
++    in_flight = _wait_for(marker, proc)
++
++    os.kill(proc.pid, signal.SIGKILL)
++    proc.wait(timeout=10)
++
++    assert proc.returncode == -signal.SIGKILL, (
++        f"child was not killed by SIGKILL (returncode {proc.returncode})")
++
++    return {
++        "job_id": job_file.read_text(encoding="utf-8").strip(),
++        "in_flight": in_flight,
++        "returncode": proc.returncode,
++    }
++
++
++# ---------------------------------------------------------------------------
++# The acceptance centerpiece
++# ---------------------------------------------------------------------------
++
++
++class TestKillAndResume:
++    def test_the_kill_leaves_checkpoints_for_the_committed_cycles(
++            self, killed_run, data_dir):
++        from packages.orchestration.checkpoints import load_latest_valid
++
++        job_id = killed_run["job_id"]
++        checkpoint = load_latest_valid(job_id)
++
++        assert checkpoint is not None, "no checkpoint survived the kill"
++        # Cycles 1..KILL_ON_CYCLE-1 committed; the killed one never did.
++        assert checkpoint.cycle_index == KILL_ON_CYCLE - 1
++        assert checkpoint.job_snapshot_path == f"jobs/{job_id}.json"
++
++    def test_the_in_flight_task_was_never_recorded_as_executed(
++            self, killed_run, data_dir):
++        """Only the in-flight task is lost — and it is lost cleanly."""
++        job_id = killed_run["job_id"]
++        recorded = executed_task_ids(data_dir, job_id)
++
++        assert len(recorded) == KILL_ON_CYCLE - 1
++        assert killed_run["in_flight"]["task_id"] not in recorded
++
++    def test_resume_completes_the_job_with_each_task_executed_exactly_once(
++            self, killed_run, data_dir, child_script, tmp_path):
++        """THE acceptance test: kill -9, resume, no duplicated work."""
++        job_id = killed_run["job_id"]
++        before = executed_task_ids(data_dir, job_id)
++
++        proc = subprocess.run(
++            [sys.executable, str(child_script), str(tmp_path / "unused.json"),
++             str(tmp_path / "job_id.txt"), str(KILL_ON_CYCLE), str(TOTAL_TASKS),
++             "resume"],
++            cwd=str(REPO_ROOT), env=_child_env(data_dir),
++            capture_output=True, text=True, timeout=60,
++        )
++        assert proc.returncode == 0, f"resume failed:\n{proc.stderr}"
++        summary = json.loads(proc.stdout.strip().splitlines()[-1])
++        assert summary["terminal_status"] == "all_green"
++
++        after = executed_task_ids(data_dir, job_id)
++
++        # Exactly-once, proven from evidence written by TWO processes.
++        counts = Counter(after)
++        duplicated = {tid: n for tid, n in counts.items() if n > 1}
++        assert not duplicated, f"tasks executed more than once: {duplicated}"
++        assert len(after) == TOTAL_TASKS
++        assert set(before).issubset(set(after))     # pre-kill work was not redone
++
++        # And the job really is finished.
++        from uuid import UUID
++
++        from packages.orchestration.storage import load_job
++
++        job = load_job(UUID(job_id))
++        assert all(t.status.value == "completed" for t in job.tasks)
++
++    def test_the_f047_resume_path_accepts_the_killed_job(
++            self, killed_run, data_dir, monkeypatch, capsys):
++        """The real ``remedy job resume`` decision path, executor stubbed.
++
++        Every F047 check runs for real here — checkpoint load, stop request,
++        head comparison, plan gate. Only the hand-off is stubbed, because the
++        production executor binds a live provider.
++        """
++        import apps.cli.commands.job as job_cmd
++
++        job_id = killed_run["job_id"]
++        handed_off: list[tuple] = []
++        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
++                            lambda jid, **kw: handed_off.append((jid, kw)))
++
++        job_cmd._cmd_job_resume(job_id)
++
++        assert len(handed_off) == 1
++        out = capsys.readouterr().out
++        assert f"resuming from checkpoint {KILL_ON_CYCLE - 1}" in out
++
++    def test_the_dry_run_preview_of_a_killed_job_runs_nothing(
++            self, killed_run, data_dir, monkeypatch, capsys):
++        import apps.cli.commands.job as job_cmd
++
++        handed_off: list[tuple] = []
++        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
++                            lambda jid, **kw: handed_off.append((jid, kw)))
++
++        job_cmd._cmd_job_resume(killed_run["job_id"], dry_run=True)
++
++        assert handed_off == []
++        out = capsys.readouterr().out
++        assert "resume preview (--dry-run)" in out
++        assert f"would resume from checkpoint {KILL_ON_CYCLE - 1}" in out
++
++
++# ---------------------------------------------------------------------------
++# A torn checkpoint is what a kill during a write would leave behind
++# ---------------------------------------------------------------------------
++
++
++class TestTornCheckpoint:
++    """The atomic write makes a torn file impossible to produce on demand.
++
++    ``storage._atomic_write_job`` writes a temp file, fsyncs it and renames
++    it, so a kill leaves either the old file or the new one — never a half
++    one. Forcing a real mid-write kill is therefore not deterministic, and a
++    test that tried would be a flake generator. The torn file is written
++    explicitly instead: the property under test is that the LOADER survives
++    one, which is the same property either way.
++    """
++
++    def test_resume_falls_back_to_the_previous_valid_checkpoint(
++            self, killed_run, data_dir, monkeypatch, capsys):
++        import apps.cli.commands.job as job_cmd
++        from packages.orchestration.checkpoints import checkpoint_paths
++
++        job_id = killed_run["job_id"]
++        paths = checkpoint_paths(job_id)
++        assert len(paths) >= 2, "need at least two checkpoints for a fallback"
++
++        newest = paths[-1]
++        newest.write_text('{"record": {"cycle_index": 9, "job_id": "x"',
++                          encoding="utf-8")          # truncated mid-write
++
++        handed_off: list[tuple] = []
++        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
++                            lambda jid, **kw: handed_off.append((jid, kw)))
++
++        job_cmd._cmd_job_resume(job_id)
++
++        assert len(handed_off) == 1
++        out = capsys.readouterr().out
++        assert f"resuming from checkpoint {KILL_ON_CYCLE - 2}" in out
++        assert newest.exists(), "the torn checkpoint must be kept for forensics"
++
++    def test_a_torn_newest_still_completes_the_job_exactly_once(
++            self, killed_run, data_dir, child_script, tmp_path):
++        from packages.orchestration.checkpoints import checkpoint_paths
++
++        job_id = killed_run["job_id"]
++        checkpoint_paths(job_id)[-1].write_text('{"record": {', encoding="utf-8")
++
++        proc = subprocess.run(
++            [sys.executable, str(child_script), str(tmp_path / "unused.json"),
++             str(tmp_path / "job_id.txt"), str(KILL_ON_CYCLE), str(TOTAL_TASKS),
++             "resume"],
++            cwd=str(REPO_ROOT), env=_child_env(data_dir),
++            capture_output=True, text=True, timeout=60,
++        )
++        assert proc.returncode == 0, f"resume failed:\n{proc.stderr}"
++
++        after = executed_task_ids(data_dir, job_id)
++        assert not [t for t, n in Counter(after).items() if n > 1]
++        assert len(after) == TOTAL_TASKS

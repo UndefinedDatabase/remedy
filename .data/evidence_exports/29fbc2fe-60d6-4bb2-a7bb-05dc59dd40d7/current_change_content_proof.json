@@ -1,0 +1,21 @@
+{
+ "base_commit": "89c4ef0e723f89c58956de3964d1653461d273b9",
+ "file_count": 11,
+ "file_hashes": {
+  "apps/cli/command_catalog.py": "53ccd9cf16d35acf0a8801a16d0d8d1dd9f2948c7e15d54ff81fd55c296d9cb2",
+  "apps/cli/commands/job.py": "de2af0ab34a911d0d102b7f0a9f453fdd41da81500f5b1dcd86b7628a147f2a3",
+  "docs/roadmap/STATUS.md": "c63835099586d944653be9db1a16b62e61ca46c2f2e05cdcea91cec9728a5ac1",
+  "docs/roadmap/features/T1_F047.md": "78156a30326ba699c6490e1436a94a4a289578ab60b90ec67f37b0df1400300f",
+  "packages/orchestration/checkpoints.py": "5046033f11f1ebed68d17d5e25fde4aa314c5f7244a6b56bfe712fa3ed6fcafc",
+  "packages/orchestration/config.py": "bfb814c90447f001ef05b7201d114c47f1477a3ec88d2bc8ea4ba9b6b18c714d",
+  "packages/orchestration/long_run_executor.py": "eeb6e37c45e3f48551e509dbe53a55985132d56e9a822361b6363ab9df100175",
+  "packages/orchestration/worktrees.py": "f344fe5ad159b38285537d2dad321ca62d45525c4c1badf2427457a77bd1b7ef",
+  "tests/orchestration/test_checkpoints.py": "7d05f3c11e83586c6ab520e9765a9a8e0bfd98949238a632f566ee44f4b62a78",
+  "tests/orchestration/test_resume_cli.py": "48680e8ea084255b952794226c4aef466fe573d1e8389e0a31120f47f7eaee05",
+  "tests/orchestration/test_resume_kill.py": "d50d8d9a77b9147f5c015f386f13c27a4d38eb40720020ddd5bf76234c4dc202"
+ },
+ "head_commit": "8e870062feb3487f890232d659ef569cf3aa326e",
+ "schema_version": "1.1.0",
+ "tombstone_count": 0,
+ "tombstones": {}
+}

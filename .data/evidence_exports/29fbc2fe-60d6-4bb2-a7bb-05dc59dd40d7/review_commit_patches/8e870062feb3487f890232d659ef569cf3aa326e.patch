@@ -1,0 +1,168 @@
+8e870062feb3487f890232d659ef569cf3aa326e
+diff --git a/docs/roadmap/features/T1_F047.md b/docs/roadmap/features/T1_F047.md
+index f553504..462e609 100644
+--- a/docs/roadmap/features/T1_F047.md
++++ b/docs/roadmap/features/T1_F047.md
+@@ -66,3 +66,162 @@ Daemonization/schedulers, cross-machine resume, SIGKILL detection of
+ foreign processes. Suggested tests:
+ tests/orchestration/test_checkpoints.py,
+ tests/orchestration/test_resume_kill.py.
++
++## Built State (2026-07-27)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**The checkpoint record.** `packages/orchestration/checkpoints.py` — after
++each cycle a `checkpoint_NNNN.json` lands under the job's OWN evidence area,
++sibling to F046's `cycles/` directory
++(`pingpong_job.job_evidence_dir(id)/checkpoints/`), so there is no second
++evidence convention. The file is `{"record": {...}, "content_hash":
++"sha256:<hex>"}`; the hash covers the canonical encoding of the body (sorted
++keys, no incidental spacing), so a torn or edited record is detectable
++without a second source of truth. The body is schema-versioned and carries a
++REFERENCE to the persisted job snapshot (data-root-relative path plus
++sha256), the worktree head, budget spent so far, a verify digest, and the
++next intent (which task/cycle would run next).
++
++Pointer, not copy: the persisted job already IS checkpoint v1, and a
++checkpoint adds only what the job file cannot answer. A snapshot that cannot
++be read yields an empty path and an empty digest — an unmeasured digest is
++reported as unmeasured, never as a match.
++
++**Atomic write, reused not rewritten (A6).** The writer is
++`storage._atomic_write_job` — temp file, fsync, `os.replace` — the same
++helper behind `save_job`. No second atomic writer was introduced. F046's
++`write_cycle_record` uses a plain `write_text`; checkpoints deliberately do
++not copy that, because a half-written checkpoint is exactly the failure mode
++this feature exists to survive.
++
++**Loader and corruption policy.** `load_latest_valid(job_id)` walks
++newest-first and returns the first record whose hash verifies. Every skipped
++file is logged as a warning and LEFT ON DISK — a corrupted checkpoint is
++forensic evidence, not litter. The two "no usable checkpoint" cases are kept
++distinct on purpose: `None` means the job was never checkpointed (honest
++degradation to plain continuation), `AllCheckpointsCorruptError` means
++checkpoints exist and not one verifies. Collapsing them would let a job whose
++entire history was destroyed resume as if it had never been checkpointed.
++
++**Retention.** `cycles.checkpoint_retention` (DEFAULT 5) joins the config
++registry. The last N are kept, and the FIRST and the LATEST are always kept
++on top of that count. A file that does not verify is never pruned.
++
++**Cycle-boundary wiring.** `long_run_executor.run_cycles` step 5 writes the
++checkpoint AFTER `save_fn(job)` and the F046 cycle record — a checkpoint
++references the persisted snapshot, so the snapshot must already be on disk.
++The `record_checkpoint` seam mirrors the existing `record_evidence` seam. A
++checkpoint write that fails NEVER raises into the loop: the reason is logged
++loudly, recorded on the job as `checkpoint_error`, and the next cycle
++retries (this file's A9 default).
++
++**Per-job cycle numbering.** `next_cycle_index(job_id)` reads the highest
++index already persisted in BOTH evidence areas (either can be switched off
++independently) and the loop starts one past it; `first_cycle_index` is a
++test seam. Before this, `run_cycles` numbered cycles within ONE invocation,
++so a resumed run restarted at 1 and wrote `cycle_0001.json` /
++`checkpoint_0001.json` straight over the killed run's records — the pre-kill
++history was silently destroyed, and the T003 exactly-once assertion came out
++short (3 of 5 tasks). A fresh job still starts at 1, so F046's single-pass
++default does not move.
++
++**Executed task ids in evidence.** `CycleRecord.executed_task_ids` records
++which tasks a cycle ran, not merely how many. Without it, exactly-once across
++a kill was unprovable from durable state, and a counter living in the test
++process cannot see what the killed process did. It records EXECUTIONS, not
++successes: a task rolled back after a failed verification legitimately
++appears again in a later cycle.
++
++**Resume CLI — one command, two modes.** `remedy job resume <id>` already
++existed as an event-replay resume with a REQUIRED `--checkpoint <id>`. It was
++EXTENDED, not shadowed: `--checkpoint` is now optional, given routes to the
++untouched event-replay path, absent runs the F047 cycle-checkpoint path.
++Omitting it was previously an argparse error, so no existing invocation
++changes behavior. A second catalog entry with the same `command_id` had
++produced a silent duplicate (`get_command` returning the new entry while the
++dispatch dict kept the old handler); the catalog now registers `job.resume`
++exactly once, asserted by a test. The two "checkpoints" are different objects
++with the same word in their name — an event-replay checkpoint is DERIVED from
++run-log events, an F047 checkpoint is WRITTEN at a cycle boundary.
++
++**The order of the resume checks is the contract.** (1) a pending stop
++request is consumed FIRST and the run does not start — an operator's stop is
++never outlived by a resume; (2) the worktree head recorded in the checkpoint
++is compared with the head the worktree stands on now, and a mismatch refuses
++with a message naming BOTH heads, never rebasing silently (P2); (3) the
++plan-approval gate is consulted through the same
++`flight_plan.flight_plan_blocks_execution` check `remedy job run` makes —
++resume is not a second door around it. Only then does it hand off to the
++multi-cycle executor. `worktrees.head_at(path)` is a new read-only head
++lookup: `snapshot` needs a claimed handle and `create` takes the job lock and
++may materialise a worktree, neither acceptable for a read-only comparison.
++Exit codes: 0 ok / no-op / stop consumed, 1 job or checkpoint problem, 3
++refused by a guard.
++
++**`--dry-run` is a read-only preview (R-0146).** The flag previously reached
++only the event-replay branch, so `remedy job resume <id> --dry-run` silently
++dropped it and executed for real against a command classed `apply_write` /
++`may_mutate_repo`. The F047 path now reports what each check WOULD decide and
++consumes nothing — the stop request is observed via `stop_requested` and
++never `consume_stop`, so a pending stop is still pending afterwards — never
++reaches the executor, and exits 0. JSON mirrors it under `action=preview`.
++
++**Honest degradations.** No checkpoint at all prints "no checkpoint found —
++continuing from persisted job state" and continues from the persisted job;
++all checkpoints unverifiable refuses and names the files; an all-green job is
++a friendly no-op with exit 0; a job with zero tasks is not mistaken for
++all-green.
++
++**The kill test.** `tests/orchestration/test_resume_kill.py` sends a genuine
++`SIGKILL` to a genuine child process — no exception is raised inside the run,
++no cleanup handler tidies up, and the parent asserts `returncode ==
++-signal.SIGKILL` so a child that merely exited would fail. Synchronisation is
++a marker file the child writes at the instant it begins the task that must
++die in flight, polled by the parent; no `sleep` is used as a synchronisation
++device. Exactly-once is proven from the cycle evidence records on disk,
++spanning BOTH processes: no id appears twice, all five tasks appear, the
++pre-kill ids are a subset of the final set (pre-kill work was not redone),
++and the job reaches `all_green` with every task completed. The torn
++checkpoint is written explicitly rather than raced for — the atomic write
++makes a genuine mid-write tear non-producible on demand, so racing the rename
++would only generate flakes, and the property under test (the loader falls
++back to the previous valid checkpoint) is identical either way.
++
++**Verification.** `tests/orchestration/test_checkpoints.py` 37 passed ·
++`test_resume_cli.py` 35 passed · `test_resume_kill.py` 7 passed in 1.32s ·
++F046 regression `test_long_run_executor.py` 49 passed with the conductor's
++default behavior unmoved · canary `test_golden_path.py` 42 passed · ruff
++clean on every touched file. Integration gate (`pytest -n auto`, branch vs
++base `89c4ef0`): branch 158 failed / 14065 passed (158.32s), base 190 failed
++/ 13947 passed (143.21s); of 39 branch-only ids 37 pass on a serial re-run
++(pre-existing xdist flake, F135/F052) and the 2 reproducible ones were
++`.agent/live_review.md` losing the `Steps` token — a state-file defect fixed
++as a declared deviation with neither test modified. Post-fix six branch-only
++ids all pass serially. Zero F047-attributable regressions. The suite is RED
++on base by 190 tests — pre-existing.
++
++**Key decisions** (full rationale in `.agent/decisions.md`): the record is a
++POINTER plus a self-verifying envelope, not a copy of the job; the torn
++checkpoint is written explicitly because the atomic write makes a real tear
++non-producible on demand; the resume command was EXTENDED rather than
++shadowed; cycle numbering belongs to the JOB, not to the process running it.
++
++**Carried risks.** (1) An unknown live worktree head ("") is NOT treated as a
++mismatch and resume proceeds — documented and tested, because refusing on
++unknown would block every copy-mode job that has no worktree at all.
++(2) A checkpoint write failure surfaces only as `job.metadata
++["checkpoint_error"]` plus a warning log; there is no ledger event and no
++CLI-level alarm, so an operator watching only stdout would not see it.
++(3) Full-suite nondeterminism under `-n auto` is pre-existing and tracked as
++F135/F052 — three branch runs of the same tree differed by ~38 failures.
++(4) `docs/resume.md` does not exist; its 2 tests are pre-existing red on main
++and belong to the 14-failure catalog/discovery class. It is a BACKLOG gap
++item spanning commands beyond F047, deliberately NOT created at closure.
++(5) `remedy integrity check` emits a `live_review_verdict` matcher warning —
++known, already a backlog item from F046.
++
++**Not built.** Daemonization, schedulers, cross-machine resume and SIGKILL
++detection of foreign processes — this file's Do-not-touch list, all still
++untouched.

@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "packages/orchestration/worktrees.py",
+  "tests/orchestration/test_resume_cli.py"
+ ],
+ "diff_sha256": "ae958227f66dee939fa7b348bba642e6499a809ba7dd88ced13e3fc734719ea6",
+ "job_id": "29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "ae958227f66dee939fa7b348bba642e6499a809ba7dd88ced13e3fc734719ea6",
+ "safe_diff_sha256": "9271e548df8f8e088cd51e6e5dce13410932989e217bfdb731c4b4010dd95883",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "packages/orchestration/worktrees.py",
+  "tests/orchestration/test_resume_cli.py"
+ ],
+ "timestamp": "2026-07-27T08:18:46.786163+00:00",
+ "tracked_diff_sha256": "9271e548df8f8e088cd51e6e5dce13410932989e217bfdb731c4b4010dd95883",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

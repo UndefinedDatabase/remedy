@@ -1,0 +1,34 @@
+{
+ "bundle_generated_at": "2026-07-27T08:18:46.786163+00:00",
+ "bundle_type": "job_evidence",
+ "bundle_version": "0.1.0",
+ "completion_mode": "manual_operator_repair",
+ "context_strategy": "task_bounded_sequential_job",
+ "created_at": "2026-07-27T08:18:46.786163+00:00",
+ "effective_status": "operator_attested_complete",
+ "error": "",
+ "evidence_available": true,
+ "execution_config": null,
+ "finished_at": "",
+ "human_final_reviewer_required": true,
+ "job_file_sha256": "dac1d9bdde132a24075b2ff3693b5a712c58dfe65e364e642557e362b93ff511",
+ "job_id": "29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7",
+ "job_title": "F047 \u2014 Checkpoint & resume (kill-proof)",
+ "job_workspace_path": "",
+ "persisted_status": "planned",
+ "repo_identity": "[local]",
+ "status": "planned",
+ "target_guard": null,
+ "task_count": 3,
+ "task_ids": [
+  "T001",
+  "T002",
+  "T003"
+ ],
+ "task_run_ids": {},
+ "task_statuses": {
+  "T001": "pending",
+  "T002": "pending",
+  "T003": "pending"
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "packages/orchestration/worktrees.py",
+  "tests/orchestration/test_resume_cli.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

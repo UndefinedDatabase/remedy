@@ -1,0 +1,180 @@
+09872117f15994477e3c3309100498839b001bfb
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 7f97dbd..f4f66c8 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1,5 +1,43 @@
+ # Decisions
+ 
++## 2026-07-26: F047 inspection notes — the four parts this feature wraps (A6)
++Recorded BEFORE any code was written; all four exist as the order describes.
++
++1. Atomic write helper (temp file + fsync + os.replace):
++   `packages/orchestration/storage.py::_atomic_write_job(path, data)` —
++   same package, already the writer behind `save_job`. It is reused
++   verbatim by `checkpoints.py`; no second atomic writer is introduced.
++   (The repo has ~25 per-module `_atomic_write` copies; the storage one
++   is the only text/JSON writer in the orchestration persistence layer,
++   which is exactly what a checkpoint record is. The leading underscore
++   is kept — renaming it would be a refactor mixed into a feature
++   branch, and ruff's selected rule set (E,F,W,I,UP) has no private-
++   member rule.) Note: F046's `write_cycle_record` uses a plain
++   `path.write_text`; checkpoints deliberately do NOT copy that.
++2. Cycle boundary hook: `packages/orchestration/long_run_executor.py`,
++   `run_cycles` step 5 ("Persist the job, then the cycle's own evidence
++   record", ~line 635) — after `save_fn(job)` and `write_cycle_record`,
++   before `_emit(..., LEDGER_EVENT_CYCLE_COMPLETED, ...)`. That is where
++   the checkpoint write attaches, so a checkpoint only ever describes a
++   job state that is already persisted.
++3. F046 cycle evidence area: `long_run_executor.cycle_evidence_dir` =
++   `pingpong_job.job_evidence_dir(job_id) / "cycles"`, itself
++   `data_paths.jobs_dir() / <job_id> / "evidence"`. Checkpoints go under
++   the SAME area, sibling directory `checkpoints/`.
++4. Resume-time checks to consume, not bypass:
++   * pending stop request — `packages/orchestration/safe_points.py`:
++     `stop_requested(job_id)` to detect, `consume_stop(job_id)` to
++     archive + acknowledge in one go (the archive/acknowledge pair is
++     what the job runner uses when it has something durable in between).
++   * plan-approval gate — `packages/orchestration/flight_plan.py`:
++     `flight_plan_blocks_execution(job)` returning "pending"/"rejected",
++     used exactly as `_cmd_job_run_cycles` uses it in
++     `apps/cli/commands/job.py` (exit 3 with the resolve/replan hint).
++   Worktree head for the head-match check: the persisted job plan's
++   `worktree_head` via `pingpong_job.load_job_plan(job_id)`; the live
++   value comes from `worktrees.snapshot(handle)`. `packages.core.models.Job`
++   has no worktree field — that is why the plan is the source.
++
+ ## 2026-07-26: F034 answered_by stays human|default|""; "planner" is derived
+ The feature specifies exactly three answered_by values. A planner-declared
+ A9 assumption is neither human- nor default-answered, so it keeps
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 4a267d9..b181f5a 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,56 +1,13 @@
+-# Live Review — F046 Multi-cycle loop
++# Live Review — F047 Checkpoint & resume (kill-proof)
+ 
+-Branch: feature/f046-multi-cycle-loop
+-LAST_REVIEWED_SHA: 994398c
+-Finding IDs continue monotonically from R-0144.
++Branch: feature/f047-checkpoint-resume
++LAST_REVIEWED_SHA: 89c4ef0e723f89c58956de3964d1653461d273b9
++Finding IDs continue monotonically from R-0145.
+ 
+ ## Findings
+ 
+-- R-0145 · Low · gate round (d87a3e0..994398c)
+-  Incomplete handback accounting: the gate handoff's "Commits this
+-  round" table omitted 65fbdba (round-1 handback state files), which
+-  lies inside the review range d87a3e0..HEAD, and PR #152's creation
+-  (AGENTS.md-mandated, legitimate) was stated as a fact but never
+-  reported as an action taken. Content verified harmless by the
+-  reviewer. Fix: the closure handback lists EVERY commit in its
+-  review range with changed-files tables and reports every external
+-  action (PR create/update). Resolved when the closure handback
+-  satisfies both.
++(none yet)
+ 
+ ## Verdicts
+ 
+-- Round 1 (Setup+T001+T002, c14a83a..d87a3e0): PASS — issued by the
+-  reviewer after independent verification. Reviewer re-ran: slice suite
+-  49 passed, ruff clean on all five touched files, canary 42 passed.
+-  Reviewer's own red-proof: safe-point break neutered locally ->
+-  9 failed / 40 passed; restored -> 49 passed (ordering guarantee is
+-  test-backed, not asserted). Scope additions accepted as documented,
+-  not silent: sixth terminal status max_cycles_reached (decisions.md
+-  2026-07-26) and the behavioral-plus-declared-delta regression
+-  contract. Commit a4a6874 exceeds the 500-line guidance (1062);
+-  reasoning accepted (module + proving suite inseparable), not a
+-  precedent. Residual risks carried: (1) the conductor writes no
+-  postmortem record itself — stopped/budget classes derive at evidence
+-  export from the job status it sets; revisit if F053 reporting needs
+-  per-terminal postmortems; (2) the multi-cycle CLI branch is
+-  unreachable in production while CYCLE_SAFETY_CAP == 1 — exercised in
+-  tests with the cap raised. Verification tier: round gate (scoped) +
+-  canary. LAST_REVIEWED_SHA = d87a3e0.
+-
+-- Integration gate (branch d87a3e0..994398c vs base c14a83a): PASS —
+-  issued by the reviewer after independent verification. Worker
+-  evidence: branch 184 failed / 13962 passed (161.28s); base 179
+-  failed / 13912 passed (196.88s); 30 branch-only failures — 28 pass
+-  serially (xdist flake class, F135/F052), 2 reproducible ones caused
+-  by plan.md missing its AGENTS.md-required "## Next Steps" section,
+-  fixed as a declared state-file deviation (decisions.md entry), which
+-  restored base parity (3 identical pre-existing contract failures on
+-  both sides, deliberately not swept up). Reviewer re-ran
+-  independently: full suite -n auto -> 183 failed / 13963 passed in
+-  144.13s, churn consistent with base nondeterminism; both contract
+-  classes -> 3 failed / 4 passed matching base; reviewer spot-check
+-  test_scoped_listings fails identically serially at base
+-  (pre-existing flight-plan schema issue, not F046); canary 42 passed;
+-  git worktree list clean. Zero F046-attributable regressions. Only
+-  this entry carries the "full suite" claim for the gate.
+-  LAST_REVIEWED_SHA = 994398c.
++(none yet)
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 802dbcb..eba7888 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,27 +1,29 @@
+-# Plan — F046 Multi-cycle loop
++# Plan — F047 Checkpoint & resume (kill-proof)
+ 
+ ## Goal
+-Remedy works in bounded cycles: check should_stop → execute ready batch →
+-verify → persist, repeated until all_green, budget_exhausted,
+-deadline_reached, stopped_by_operator, or blocked. Five-cycle fixture
+-proves every stop cause; each cycle leaves its own evidence record;
+-DEFAULT stays one cycle until the F075 gate.
++A hard-killed run loses nothing but the in-flight task: after every cycle
++a checkpoint captures where the run stands, and
++`remedy job resume <id>` continues from the newest valid one.
++Corrupted checkpoint falls back to the previous valid one; a
++never-checkpointed job degrades honestly to plain re-run of pending
++tasks.
+ 
+ ## Checklist
+-- [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
+-- [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
+-- [x] T002 cycle evidence + CLI/config + single-pass regression
+-- [x] Integration gate
+-- [x] Closure
++- [ ] Setup: Open PR Gate (#152 merged), branch, STATUS claim, state files
++- [ ] T001 checkpoint writer/loader + hashing + retention + unit tests
++- [ ] T002 resume CLI + head verification + gate/stop interplay + tests
++- [ ] T003 kill -9 / resume subprocess test (exactly-once proof)
++- [ ] Integration gate
++- [ ] Closure
+ 
+ ## Current Step
+-Closure — evidence job, review package, Built State, STATUS line, PR
+-#152 finalized. NOT merged (Open PR Gate at next feature start).
++Setup + T001 + T002 (this round). T003 is a separate round.
+ 
+ ## Next Steps
+-Reviewer verdict on the integration gate, then Closure (evidence job,
+-review package, Built State in T1_F046.md, authored STATUS line).
++T003 kill test, then integration gate, then closure.
+ 
+ ## Risks
+-- Conductor must wrap existing parts (A6) — no parallel executor.
+-- Pre-existing full-suite nondeterminism (backlog F135/F052).
++- Checkpoint write failure must not kill the run: log loudly,
++  continue, retry next cycle (A9 default from the feature file).
++- Resume must consume plan-approval gate and pending stop requests —
++  never bypass (feature file "How it fits").
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index da640ae..4372d3d 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -29,7 +29,7 @@
+ - [x] F016 — Scaling task granularity (T001–T003 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 1cc3b1c0-fd59-4884-9252-f8a8e79b5a59 · package remedy-review-20260726-165629-READY_FOR_REVIEW.zip · SHA-256 0a147595147fa300d0b6b7257e626394b365d689e3af540c536a0c477fb5a991 · accepted HEAD 85004253705e5eae15d969812af84738373e5453)
+ - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
+ - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
+-- [ ] F047 — Checkpoint & resume (kill-proof)
++- [~] F047 — Checkpoint & resume (kill-proof)
+ - [ ] F048 — Job queue
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)

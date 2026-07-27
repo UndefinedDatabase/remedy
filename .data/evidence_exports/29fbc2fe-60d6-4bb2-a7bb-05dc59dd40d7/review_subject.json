@@ -1,0 +1,374 @@
+{
+ "base_commit": "89c4ef0e723f89c58956de3964d1653461d273b9",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "09872117f15994477e3c3309100498839b001bfb",
+   "parents": [
+    "89c4ef0e723f89c58956de3964d1653461d273b9"
+   ],
+   "patch_sha256": "5ee34cae390686808f64c87375ae901c7070ee7f45d09d773ec8d1200596b736",
+   "subject": "chore(f047): claim F047 \u2014 branch, STATUS, state files, inspection notes",
+   "tree": "282902da700cfec15461f589a7a423f783f1db56"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "packages/orchestration/checkpoints.py",
+    "packages/orchestration/config.py"
+   ],
+   "commit": "c708ef005e44996e1709d6eec536233388a042e2",
+   "parents": [
+    "09872117f15994477e3c3309100498839b001bfb"
+   ],
+   "patch_sha256": "b8295481867a8ee2cf8a2606ba2c604f1914cd341e62ea1e57a60c4bc998dce1",
+   "subject": "feat(f047): checkpoint record \u2014 writer, loader, hashing, retention (T001)",
+   "tree": "a9106c5a4a0708b2a55c201e7f37f3d724a65030"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py"
+   ],
+   "commit": "bfbb50376c4dddcc1e87d32da21f86531c18dbbb",
+   "parents": [
+    "c708ef005e44996e1709d6eec536233388a042e2"
+   ],
+   "patch_sha256": "603e1ff870e6aa1c8e1862c00f1ffaf75d251d8c7f0b3342e72bcaa486e6472a",
+   "subject": "feat(f047): write a checkpoint at the cycle boundary (T001)",
+   "tree": "d5e7a3ed4316cf0c59e3bae37fe7ff0b331504b7"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "tests/orchestration/test_checkpoints.py"
+   ],
+   "commit": "f9dc6cdea332afc43cf94222adcafbc89b0e7546",
+   "parents": [
+    "bfbb50376c4dddcc1e87d32da21f86531c18dbbb"
+   ],
+   "patch_sha256": "b778d361619e5278ff1cbce7f5f8922cb5df8f2ace5aab683f380d0a809e33f1",
+   "subject": "test(f047): checkpoint chain, corruption matrix, retention, wiring (T001)",
+   "tree": "246ff78f5d4d0f9face0db8e8dad04de3e3c8022"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/job.py",
+    "packages/orchestration/checkpoints.py",
+    "packages/orchestration/worktrees.py"
+   ],
+   "commit": "98f71f8ef332d06980e8d3c307d0eff3d890d273",
+   "parents": [
+    "f9dc6cdea332afc43cf94222adcafbc89b0e7546"
+   ],
+   "patch_sha256": "bcaa0897b672662d89d208647424216cfa766b9f6a1c409d4c2bf6570f1fb9cc",
+   "subject": "feat(f047): resume a job from its newest valid cycle checkpoint (T002)",
+   "tree": "284bafc8cb5445461f2634381b5d0614ad073acb"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "tests/orchestration/test_resume_cli.py"
+   ],
+   "commit": "fd93b31c9a4b4820f42c692d7d9d133ad07f3f38",
+   "parents": [
+    "98f71f8ef332d06980e8d3c307d0eff3d890d273"
+   ],
+   "patch_sha256": "f596667ade0c120686ec9c0d31ec388786d283439095862cd6f329385475b2de",
+   "subject": "test(f047): resume decisions before the hand-off (T002)",
+   "tree": "1438a0e0066727e5ae9d4bfce29f76b019ec0116"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "864f945935e4ab8e0f6e39e2c4331a467bac4f06",
+   "parents": [
+    "fd93b31c9a4b4820f42c692d7d9d133ad07f3f38"
+   ],
+   "patch_sha256": "2787b05011c3378bdee4498b9494dac377ed3c160c1dd0fc903bcddc49d7963c",
+   "subject": "chore(f047): round-1 handback state \u2014 handoff for Setup+T001+T002",
+   "tree": "3762744f4390a8ec9bbe0750b1bf7232f4e4cec9"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "269195fefd75d477497032bb689c51d6a3d3bc8d",
+   "parents": [
+    "864f945935e4ab8e0f6e39e2c4331a467bac4f06"
+   ],
+   "patch_sha256": "f6889257fba7ffbf3894480d2d64603cf80118fb42dc4131e087ca758e61533b",
+   "subject": "chore(f047): persist finding R-0146",
+   "tree": "caa9d6ca5868979732a184036ed2e75d1b4d95bd"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    "apps/cli/commands/job.py",
+    "tests/orchestration/test_resume_cli.py"
+   ],
+   "commit": "b3cea6ef54d8b196aaaf30bc5cd792a1c9c4e9fe",
+   "parents": [
+    "269195fefd75d477497032bb689c51d6a3d3bc8d"
+   ],
+   "patch_sha256": "d56dda449064354423a4351bc9f1b5f797a46c87e34c67adfb6d0798e67fe980",
+   "subject": "fix(f047): --dry-run is a read-only resume preview (R-0146)",
+   "tree": "643d92031eef60bd405a9f45c86d4f3e578b657d"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/plan.md",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_checkpoints.py"
+   ],
+   "commit": "2fe5887a64a076ec31289ec1bd4d44cd5527bdaf",
+   "parents": [
+    "b3cea6ef54d8b196aaaf30bc5cd792a1c9c4e9fe"
+   ],
+   "patch_sha256": "de735564755b4ddaef47786e33e7a7100d2da46fec032e6cb3ca64ed69596ba1",
+   "subject": "fix(f047): cycle numbering is per job, and evidence names the tasks it ran",
+   "tree": "245a8cec337a2b3ae7df5cc6242220545eab767e"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_resume_kill.py"
+   ],
+   "commit": "7539442fba6d4c9e9d69e209b364c37bc328097b",
+   "parents": [
+    "2fe5887a64a076ec31289ec1bd4d44cd5527bdaf"
+   ],
+   "patch_sha256": "145edbd37dc68c223b5a4980bd1d43e102973746c3b6ebe4a2701a55fa8cbe1f",
+   "subject": "test(f047): kill -9 mid-cycle, resume, exactly-once (T003)",
+   "tree": "bf3f997917e878bf1e1fb86d8300a9ee54751077"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "72fc653c4c8456830232f180aeb9cdc8d075151b",
+   "parents": [
+    "7539442fba6d4c9e9d69e209b364c37bc328097b"
+   ],
+   "patch_sha256": "d9b64d56624eb4c78a9aa78b86ab5ee8c996200dee964898a0fd6fdab9ec2280",
+   "subject": "chore(f047): round-2 handback state \u2014 handoff for R-0146 plus T003",
+   "tree": "1787d9c57dc8ab5d46f52cc17e45ca0e6e0e7570"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "9cbfbf9ef80bf31bd09189ff90064f963d681f9a",
+   "parents": [
+    "72fc653c4c8456830232f180aeb9cdc8d075151b"
+   ],
+   "patch_sha256": "7e0b32dc5784042588ba1cc28155fbf09f96955e4c89665272d5787cd6441c91",
+   "subject": "chore(f047): persist the round-2 reviewer verdict; open the integration gate",
+   "tree": "1bef09724e83e2c1a32b4df6d49a8ee515e87821"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "4692ccaa403593f191acbe527eebc0ad466a258c",
+   "parents": [
+    "9cbfbf9ef80bf31bd09189ff90064f963d681f9a"
+   ],
+   "patch_sha256": "f47f518afa90619a2e27d8f314bd12d1922bbface960b1b82a25c0096c8a99a1",
+   "subject": "chore(f047): live_review.md gains its Steps section (gate parity)",
+   "tree": "67085fe3d382af11e563fc150e88bcb09001914b"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "3b257f618dc744d75a7fd8dfebe25c40a71b138b",
+   "parents": [
+    "4692ccaa403593f191acbe527eebc0ad466a258c"
+   ],
+   "patch_sha256": "5ef532550f4335323894d7dcbb0a64dbe355e9e8feb797a4a563b97feb2b206f",
+   "subject": "chore(f047): integration-gate results in the handoff",
+   "tree": "269d428c79a33b7a025fd93f32d52cfec72458cc"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "29335a26ddc6b876daca60f820dad97822fe0b78",
+   "parents": [
+    "3b257f618dc744d75a7fd8dfebe25c40a71b138b"
+   ],
+   "patch_sha256": "11cefc5a946d8c9d27474d109f9856fdc7291ffa24fdf4ca88c312c221a4f762",
+   "subject": "chore(f047): persist gate verdict; open closure",
+   "tree": "736dfd4fc34584743de9452226ac2127675e4d13"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F047.md"
+   ],
+   "commit": "8e870062feb3487f890232d659ef569cf3aa326e",
+   "parents": [
+    "29335a26ddc6b876daca60f820dad97822fe0b78"
+   ],
+   "patch_sha256": "62dd363d9bfe43a7114d1cd330f5399d4ec3e2a9c1b9b33bf5f653248a44e4a2",
+   "subject": "docs(f047): built state in the feature file",
+   "tree": "2d1b8f8266f83fdbca9d2ad4e22c65e0b45b01fe"
+  }
+ ],
+ "files": [
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "041793ed5ce6650538c91f37e15f1f0f644d0875184ce62be46e8d3697dfe6d5",
+   "current_mode": "100644",
+   "current_sha256": "f971ff829157427346e042cada1b12cb3d06a345fe026e18cb4b12aa66cdba27",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8fed4e85cc74ddbd86bec358b0b42716127b85c822d63df1b0aa2a5b30fa6ea7",
+   "current_mode": "100644",
+   "current_sha256": "ae0c5a9833e692e24d3a4901ed6f6f13f2001668f5bc0f51dca7d9b56659c433",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "fe8cb5bcd414e57c113444e84d1a66fb76d642c83417cec81cdee32ff356e56d",
+   "current_mode": "100644",
+   "current_sha256": "e1759f38acbfdc6a63761d05082604b8073c5df9f419cbf1c497efef8cfa0e4d",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1045b0144a80442ae6e6fac39a244be07dc8c1c725ffd9f730d6eef52e2396b4",
+   "current_mode": "100644",
+   "current_sha256": "8dbc0d3b4ae0ee94e55af1344d2f9e51ccce40971e21150a5723313e16c477b7",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "bce199585dfe6435af88923103d99f83277d1fd17c20d7b0885d5fdc5f74c071",
+   "current_mode": "100644",
+   "current_sha256": "53ccd9cf16d35acf0a8801a16d0d8d1dd9f2948c7e15d54ff81fd55c296d9cb2",
+   "kind": "regular",
+   "path": "apps/cli/command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0668c5503bc5f2ea0a793643ce64f5958342851d3ed51e19459cee20c2f0acdd",
+   "current_mode": "100644",
+   "current_sha256": "de2af0ab34a911d0d102b7f0a9f453fdd41da81500f5b1dcd86b7628a147f2a3",
+   "kind": "regular",
+   "path": "apps/cli/commands/job.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "eda71ac48de2787c75a24928c07ed99cc99afb0e0ea05db30542a4b4e1f6dabc",
+   "current_mode": "100644",
+   "current_sha256": "c63835099586d944653be9db1a16b62e61ca46c2f2e05cdcea91cec9728a5ac1",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "7924804858abdc4ebc5da0b88b6a5d9e8bb7c588c95d392459bfad60ad1ae7b5",
+   "current_mode": "100644",
+   "current_sha256": "78156a30326ba699c6490e1436a94a4a289578ab60b90ec67f37b0df1400300f",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F047.md",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "5046033f11f1ebed68d17d5e25fde4aa314c5f7244a6b56bfe712fa3ed6fcafc",
+   "kind": "regular",
+   "path": "packages/orchestration/checkpoints.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "da0b9db14c4685b668f4acb4a99e439f3e9179fc095c7920186b4c9857ff0dae",
+   "current_mode": "100644",
+   "current_sha256": "bfb814c90447f001ef05b7201d114c47f1477a3ec88d2bc8ea4ba9b6b18c714d",
+   "kind": "regular",
+   "path": "packages/orchestration/config.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "bce84c23157abc53ab4ce447c48ee9790d3385ccd00106517089e18d06c1ab77",
+   "current_mode": "100644",
+   "current_sha256": "eeb6e37c45e3f48551e509dbe53a55985132d56e9a822361b6363ab9df100175",
+   "kind": "regular",
+   "path": "packages/orchestration/long_run_executor.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "3c9e57bf36db5245ad56465d3cde1facc0e22ab95932305fa6010085e6641729",
+   "current_mode": "100644",
+   "current_sha256": "f344fe5ad159b38285537d2dad321ca62d45525c4c1badf2427457a77bd1b7ef",
+   "kind": "regular",
+   "path": "packages/orchestration/worktrees.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7d05f3c11e83586c6ab520e9765a9a8e0bfd98949238a632f566ee44f4b62a78",
+   "kind": "regular",
+   "path": "tests/orchestration/test_checkpoints.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "48680e8ea084255b952794226c4aef466fe573d1e8389e0a31120f47f7eaee05",
+   "kind": "regular",
+   "path": "tests/orchestration/test_resume_cli.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "d50d8d9a77b9147f5c015f386f13c27a4d38eb40720020ddd5bf76234c4dc202",
+   "kind": "regular",
+   "path": "tests/orchestration/test_resume_kill.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "8e870062feb3487f890232d659ef569cf3aa326e",
+ "subject_v": 1
+}

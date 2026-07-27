@@ -2196,19 +2196,27 @@ CATALOG: tuple[CommandEntry, ...] = (
         command_id="job.resume",
         group_id="job",
         subcommand="resume",
-        description="Resume a job from a safe checkpoint.",
+        description=(
+            "Resume a job. Without --checkpoint: continue from the newest valid "
+            "cycle checkpoint (F047) — a pending stop request is consumed first, "
+            "worktree drift refuses, the plan-approval gate still applies. With "
+            "--checkpoint <id>: resume from that safe event-replay checkpoint."
+        ),
         action_class="apply_write",
         args=(
             _JOB_ID,
-            ArgDef("--checkpoint", "Checkpoint ID to resume from", required=True, is_option=True),
+            ArgDef("--checkpoint", "Event-replay checkpoint ID to resume from",
+                   required=False, is_option=True),
             ArgDef("--dry-run", "Preview resume without executing", required=False, is_option=True, default="false"),
+            ArgDef("--cycles", "Maximum cycles for the resumed run (capped by the rollout default)",
+                   required=False, is_option=True),
             _JSON_OPT,
         ),
         supports_json=True,
         may_mutate_repo=True,
         may_execute_commands=True,
         requires_permission=True,
-        related=("job.checkpoints", "event.replay"),
+        related=("job.checkpoints", "job.run", "event.replay"),
     ),
 
     # ── blocker ─────────────────────────────────────────────────────────

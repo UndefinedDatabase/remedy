@@ -329,6 +329,18 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="cycles.checkpoint_retention",
+        env_var="REMEDY_CYCLES_CHECKPOINT_RETENTION",
+        description=(
+            "How many per-cycle checkpoints to keep for a job (F047). "
+            "The FIRST and the LATEST checkpoint are always kept on top of "
+            "this count, and a checkpoint that does not verify is never "
+            "pruned — it is forensic evidence."
+        ),
+        value_type=int,
+        default=5,
+    ),
+    ConfigKeySpec(
         key="planning.granularity.merge_group_size",
         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
         description=(

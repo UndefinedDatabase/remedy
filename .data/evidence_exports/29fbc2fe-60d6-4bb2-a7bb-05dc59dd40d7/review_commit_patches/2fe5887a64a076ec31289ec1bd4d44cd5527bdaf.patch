@@ -1,0 +1,236 @@
+2fe5887a64a076ec31289ec1bd4d44cd5527bdaf
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index ecea20e..f248c08 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1,5 +1,38 @@
+ # Decisions
+ 
++## 2026-07-26: F047 T003 — cycle numbering belongs to the JOB, not the process
++The kill test's exactly-once assertion came out short (3 of 5 tasks), and the
++cause was a real defect, not a test artifact: `run_cycles` numbered cycles
++`len(cycles) + 1` within ONE invocation, so a resumed run started again at 1
++and wrote `cycle_0001.json` / `checkpoint_0001.json` straight over the records
++the killed process had left. The evidence area silently lost the pre-kill
++history — precisely what F047 exists to preserve, and what makes exactly-once
++unprovable.
++
++Fix: `next_cycle_index(job_id)` reads the highest index already persisted (in
++BOTH the cycles/ and checkpoints/ areas, since either can be switched off
++independently) and the loop starts one past it. A `first_cycle_index` seam
++lets tests pin an exact number. `max_cycles` is unchanged and still bounds one
++invocation only. A fresh job still starts at 1, so nothing about F046's
++single-pass default moves.
++
++## 2026-07-26: F047 T003 — exactly-once is proven from evidence, not from counters
++`CycleRecord` gained `executed_task_ids`. Without it there was nothing on disk
++naming WHICH tasks a cycle ran, only how many — and a counter living in the
++test process cannot see what the killed process did. The ids are written to
++`cycles/*.json`, so the assertion spans both processes and reads only durable
++state. A task that executed but failed verification is rolled back to PENDING
++and will legitimately appear again in a later cycle; the field records
++executions, not successes, which keeps it honest.
++
++## 2026-07-26: F047 T003 — the torn checkpoint is written explicitly, on purpose
++The atomic write (temp file, fsync, rename) makes a genuinely half-written
++checkpoint impossible to produce on demand: a kill leaves either the old file
++or the new one. Racing a SIGKILL against the rename to try would be a flake
++generator. The test writes a truncated file instead, because the property
++under test is that the LOADER survives one and falls back to the previous
++valid checkpoint — identical either way, and deterministic.
++
+ ## 2026-07-26: F047 `job resume` EXTENDS the existing command, it does not shadow it
+ `remedy job resume` already existed: an event-replay resume with a REQUIRED
+ `--checkpoint <id>`, handled by `_cmd_resume` (apps/cli/commands/job.py).
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 09b4da0..fef0704 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -12,21 +12,22 @@ tasks.
+ - [x] Setup: Open PR Gate (#152 merged), branch, STATUS claim, state files
+ - [x] T001 checkpoint writer/loader + hashing + retention + unit tests
+ - [x] T002 resume CLI + head verification + gate/stop interplay + tests
+-- [ ] T003 kill -9 / resume subprocess test (exactly-once proof)
++- [x] R-0146 --dry-run is a read-only preview (fixed, tests green)
++- [x] T003 kill -9 / resume subprocess test (exactly-once proof)
+ - [ ] Integration gate
+ - [ ] Closure
+ 
+ ## Current Step
+-Round complete: Setup + T001 + T002 all green.
+-test_checkpoints.py 35 passed · test_resume_cli.py 25 passed ·
+-canary tests/cli/test_golden_path.py 42 passed · ruff clean on every
+-touched file. Awaiting the reviewer verdict.
++Round 2 complete: R-0146 fixed, T003 green.
++test_resume_kill.py 7 passed (1.28s) · test_resume_cli.py 35 passed ·
++test_checkpoints.py 37 passed · test_long_run_executor.py 49 passed ·
++canary 42 passed · ruff clean. Awaiting the reviewer verdict.
+ 
+ ## Next Steps
+-T003 kill test (tests/orchestration/test_resume_kill.py), then the
+-integration gate, then closure. Docs: `remedy job resume` gained a second
+-mode — docs update belongs to closure (docs/resume.md does not exist;
+-its two tests are pre-existing red on main).
++Integration gate, then closure. Docs: `remedy job resume` gained two new
++behaviors (F047 mode, --dry-run preview) — docs update belongs to closure
++(docs/resume.md does not exist; its two tests are pre-existing red on
++main).
+ 
+ ## Risks
+ - Checkpoint write failure must not kill the run: log loudly,
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index 4fd4db8..4167e53 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -203,6 +203,13 @@ class CycleRecord:
+     ended_at: str
+     verify_command: str | None = None
+     errors: tuple[str, ...] = ()
++    #: Ids of the tasks this cycle actually EXECUTED, in execution order.
++    #: They are what makes exactly-once provable across a kill and a resume
++    #: (F047 T003) — a counter in a test process cannot span two processes.
++    #: A task that executed but failed verification is rolled back to PENDING
++    #: and will appear again in a later cycle, which is honest: it really did
++    #: execute twice.
++    executed_task_ids: tuple[str, ...] = ()
+ 
+     def to_json(self) -> dict[str, Any]:
+         return {
+@@ -216,6 +223,7 @@ class CycleRecord:
+             "started_at": self.started_at,
+             "ended_at": self.ended_at,
+             "errors": list(self.errors),
++            "executed_task_ids": list(self.executed_task_ids),
+         }
+ 
+ 
+@@ -316,6 +324,30 @@ def write_cycle_record(job_id: str, record: CycleRecord) -> Path:
+     return path
+ 
+ 
++def next_cycle_index(job_id: str) -> int:
++    """The number the NEXT cycle of this job must take.
++
++    Cycle numbering belongs to the JOB, not to the process that happens to be
++    running it.  A resumed run that started counting at 1 again would write
++    ``cycle_0001.json`` and ``checkpoint_0001.json`` straight over the records
++    the killed run left — destroying exactly the history F047 exists to
++    preserve, and making "each task executed once" unprovable (F047 T003).
++
++    Both evidence areas are consulted, because either can be switched off
++    independently: whichever got further wins.
++    """
++    highest = max((int(r.get("cycle_index", 0)) for r in read_cycle_records(job_id)),
++                  default=0)
++    try:
++        from packages.orchestration.checkpoints import _index_of_path, checkpoint_paths
++
++        highest = max(highest,
++                      *(_index_of_path(p) for p in checkpoint_paths(job_id)), 0)
++    except Exception:  # noqa: BLE001 — numbering must not depend on checkpoints
++        pass
++    return highest + 1
++
++
+ def read_cycle_records(job_id: str) -> list[dict[str, Any]]:
+     """Every persisted cycle record for a job, in cycle order."""
+     directory = cycle_evidence_dir(job_id)
+@@ -547,6 +579,7 @@ def run_cycles(
+     control_root_path: Any = None,
+     record_evidence: bool = True,
+     record_checkpoint: bool = True,
++    first_cycle_index: int | None = None,
+ ) -> CycleLoopResult:
+     """Run bounded cycles over *job* until a terminal condition.
+ 
+@@ -573,6 +606,11 @@ records, AFTER the job snapshot is persisted (a checkpoint references that
+ snapshot).  A checkpoint write that fails is recorded as ``checkpoint_error``
+ and never aborts the run either — the next cycle retries.
+ 
++``first_cycle_index`` is the number the first cycle of THIS invocation takes.
++It defaults to one past whatever this job already recorded, so a resumed run
++continues the job's numbering instead of overwriting the records the previous
++process left (F047).  ``max_cycles`` still bounds this invocation only.
++
+     A failed verify ends the cycle with its failure recorded and denies the job
+     the all_green status; self-healing is a later feature.  A task step that
+     fails ends the cycle too — the task runner has already rolled the task back
+@@ -583,6 +621,8 @@ and never aborts the run either — the next cycle retries.
+     now_fn = clock or (lambda: datetime.now(timezone.utc))
+     save_fn = save or _save_job
+ 
++    base_index = (next_cycle_index(str(job.id)) if first_cycle_index is None
++                  else int(first_cycle_index))
+     loop_started_at = now_fn()
+     provider_calls = 0
+     cycles: list[CycleRecord] = []
+@@ -630,16 +670,19 @@ and never aborts the run either — the next cycle retries.
+             break
+ 
+         # 4. Run the cycle.
+-        cycle_index = len(cycles) + 1
++        cycle_index = base_index + len(cycles)
+         started_at = now
+         attempted = completed = failed = 0
+         errors: list[str] = []
++        executed_ids: list[str] = []
+ 
+         for _ in batch:
+             attempt = step(job, counted_provider_call)
+             if not attempt.executed and not attempt.error:
+                 break                      # nothing ready any more; not an attempt
+             attempted += 1
++            if attempt.executed and attempt.task_id is not None:
++                executed_ids.append(str(attempt.task_id))
+             if attempt.verified:
+                 completed += 1
+                 continue
+@@ -671,6 +714,7 @@ and never aborts the run either — the next cycle retries.
+             ended_at=ended_at.isoformat(),
+             verify_command=limits.verify_command,
+             errors=tuple(errors),
++            executed_task_ids=tuple(executed_ids),
+         )
+         cycles.append(record)
+ 
+diff --git a/tests/orchestration/test_checkpoints.py b/tests/orchestration/test_checkpoints.py
+index 3915369..d1b747e 100644
+--- a/tests/orchestration/test_checkpoints.py
++++ b/tests/orchestration/test_checkpoints.py
+@@ -380,6 +380,36 @@ class TestCycleBoundaryWiring:
+         _run_one_cycle(job, record_checkpoint=False)
+         assert checkpoint_paths(str(job.id)) == []
+ 
++    def test_a_second_run_continues_the_numbering_instead_of_overwriting(self):
++        """Cycle numbering belongs to the JOB, not to the process.
++
++        A resumed run that restarted at 1 would write cycle_0001.json and
++        checkpoint_0001.json over the records the previous process left —
++        which is how the T003 exactly-once proof first came out short.
++        """
++        from packages.orchestration.long_run_executor import (
++            next_cycle_index,
++            read_cycle_records,
++        )
++
++        job = _job(task_count=3)
++        _run_one_cycle(job)                       # first process: cycle 1
++        assert next_cycle_index(str(job.id)) == 2
++
++        _run_one_cycle(job)                       # "resumed" process: cycle 2
++        assert [p.name for p in checkpoint_paths(str(job.id))] == [
++            "checkpoint_0001.json", "checkpoint_0002.json"]
++        assert [r["cycle_index"] for r in read_cycle_records(str(job.id))] == [1, 2]
++
++        executed = [tid for r in read_cycle_records(str(job.id))
++                    for tid in r["executed_task_ids"]]
++        assert len(executed) == len(set(executed)) == 2
++
++    def test_next_cycle_index_starts_at_one_for_a_fresh_job(self):
++        from packages.orchestration.long_run_executor import next_cycle_index
++
++        assert next_cycle_index(JOB_ID) == 1
++
+     def test_the_default_single_pass_still_writes_exactly_one_checkpoint(self):
+         from packages.orchestration.long_run_executor import CYCLE_SAFETY_CAP
+ 

@@ -1,5 +1,134 @@
 # Decisions
 
+## 2026-07-26: F047 gate — live_review.md needs a real "## Steps" section
+The integration gate produced exactly two reproducible branch-only failures,
+both asserting `"Steps" in .agent/live_review.md`
+(`test_test_runner.py::TestNoBroadExceptAndDegradedSignals` and
+`test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs`). The base
+passed them only by accident: F046's live_review.md happened to contain the
+substring inside prose — the sentence about plan.md missing its "## Next
+Steps" section. The F047 rewrite legitimately dropped that sentence and with
+it the token.
+
+Fixed as a declared state-file deviation, same class as F046's plan.md
+"## Next Steps" repair at its own gate: live_review.md now carries a real
+`## Steps` section listing the feature's rounds and their ranges. The
+reviewer-authored finding and verdict text is untouched — the section is
+purely additive. Nothing in the two tests was changed; the contract was met,
+not weakened.
+
+## 2026-07-26: F047 T003 — cycle numbering belongs to the JOB, not the process
+The kill test's exactly-once assertion came out short (3 of 5 tasks), and the
+cause was a real defect, not a test artifact: `run_cycles` numbered cycles
+`len(cycles) + 1` within ONE invocation, so a resumed run started again at 1
+and wrote `cycle_0001.json` / `checkpoint_0001.json` straight over the records
+the killed process had left. The evidence area silently lost the pre-kill
+history — precisely what F047 exists to preserve, and what makes exactly-once
+unprovable.
+
+Fix: `next_cycle_index(job_id)` reads the highest index already persisted (in
+BOTH the cycles/ and checkpoints/ areas, since either can be switched off
+independently) and the loop starts one past it. A `first_cycle_index` seam
+lets tests pin an exact number. `max_cycles` is unchanged and still bounds one
+invocation only. A fresh job still starts at 1, so nothing about F046's
+single-pass default moves.
+
+## 2026-07-26: F047 T003 — exactly-once is proven from evidence, not from counters
+`CycleRecord` gained `executed_task_ids`. Without it there was nothing on disk
+naming WHICH tasks a cycle ran, only how many — and a counter living in the
+test process cannot see what the killed process did. The ids are written to
+`cycles/*.json`, so the assertion spans both processes and reads only durable
+state. A task that executed but failed verification is rolled back to PENDING
+and will legitimately appear again in a later cycle; the field records
+executions, not successes, which keeps it honest.
+
+## 2026-07-26: F047 T003 — the torn checkpoint is written explicitly, on purpose
+The atomic write (temp file, fsync, rename) makes a genuinely half-written
+checkpoint impossible to produce on demand: a kill leaves either the old file
+or the new one. Racing a SIGKILL against the rename to try would be a flake
+generator. The test writes a truncated file instead, because the property
+under test is that the LOADER survives one and falls back to the previous
+valid checkpoint — identical either way, and deterministic.
+
+## 2026-07-26: F047 `job resume` EXTENDS the existing command, it does not shadow it
+`remedy job resume` already existed: an event-replay resume with a REQUIRED
+`--checkpoint <id>`, handled by `_cmd_resume` (apps/cli/commands/job.py).
+Adding a second catalog entry with command_id "job.resume" produced a
+duplicate — `get_command` returned the new one while the dispatch dict's
+later key silently kept the old handler. Caught by the T002 dispatch test,
+not by any existing catalog test (nothing asserts command_id uniqueness).
+
+Resolution: ONE command, two modes on the same name — which is also the
+spelling the feature file mandates (`remedy job resume <id>`), and which
+wraps the existing part rather than duplicating it (A6). `--checkpoint` is
+now optional: given, the event-replay path runs completely unchanged; absent
+(previously an argparse error, so no existing invocation changes behavior),
+the F047 cycle-checkpoint path runs. The T002 suite pins both branches and
+asserts the catalog registers "job.resume" exactly once.
+
+The two "checkpoints" are genuinely different objects and the docstrings say
+so: an event-replay checkpoint is DERIVED from run-log events; an F047
+checkpoint is WRITTEN at a cycle boundary under the job's evidence area.
+
+## 2026-07-26: F047 checkpoint record shape — pointer + self-verifying envelope
+The record is `{"record": {...body...}, "content_hash": "sha256:<hex>"}`.
+The hash covers the canonical encoding of the body only (sorted keys, no
+incidental spacing), so it can be recomputed and compared without a second
+source of truth. The body REFERENCES the persisted job snapshot (data-root-
+relative path + sha256) rather than copying it — the persisted job already
+is checkpoint v1; a checkpoint adds only what the job file cannot answer
+(worktree head, spend, verify digest, next intent). An unreadable snapshot
+yields empty path and empty digest: an unmeasured digest is reported as
+unmeasured, never as a match.
+
+## 2026-07-26: F047 load_latest_valid distinguishes "none" from "all corrupt"
+`None` means the job was never checkpointed — the resume path degrades
+honestly to plain continuation. `AllCheckpointsCorruptError` means
+checkpoints exist and not one verifies, which is a louder and different
+situation. Collapsing both into `None` would let a job whose entire
+checkpoint history was destroyed silently resume as if it had never been
+checkpointed. Skipped files are logged and LEFT ON DISK; retention never
+prunes a file that does not verify, because a corrupted checkpoint is
+forensic evidence and retention is not the mechanism that discards it.
+
+## 2026-07-26: F047 inspection notes — the four parts this feature wraps (A6)
+Recorded BEFORE any code was written; all four exist as the order describes.
+
+1. Atomic write helper (temp file + fsync + os.replace):
+   `packages/orchestration/storage.py::_atomic_write_job(path, data)` —
+   same package, already the writer behind `save_job`. It is reused
+   verbatim by `checkpoints.py`; no second atomic writer is introduced.
+   (The repo has ~25 per-module `_atomic_write` copies; the storage one
+   is the only text/JSON writer in the orchestration persistence layer,
+   which is exactly what a checkpoint record is. The leading underscore
+   is kept — renaming it would be a refactor mixed into a feature
+   branch, and ruff's selected rule set (E,F,W,I,UP) has no private-
+   member rule.) Note: F046's `write_cycle_record` uses a plain
+   `path.write_text`; checkpoints deliberately do NOT copy that.
+2. Cycle boundary hook: `packages/orchestration/long_run_executor.py`,
+   `run_cycles` step 5 ("Persist the job, then the cycle's own evidence
+   record", ~line 635) — after `save_fn(job)` and `write_cycle_record`,
+   before `_emit(..., LEDGER_EVENT_CYCLE_COMPLETED, ...)`. That is where
+   the checkpoint write attaches, so a checkpoint only ever describes a
+   job state that is already persisted.
+3. F046 cycle evidence area: `long_run_executor.cycle_evidence_dir` =
+   `pingpong_job.job_evidence_dir(job_id) / "cycles"`, itself
+   `data_paths.jobs_dir() / <job_id> / "evidence"`. Checkpoints go under
+   the SAME area, sibling directory `checkpoints/`.
+4. Resume-time checks to consume, not bypass:
+   * pending stop request — `packages/orchestration/safe_points.py`:
+     `stop_requested(job_id)` to detect, `consume_stop(job_id)` to
+     archive + acknowledge in one go (the archive/acknowledge pair is
+     what the job runner uses when it has something durable in between).
+   * plan-approval gate — `packages/orchestration/flight_plan.py`:
+     `flight_plan_blocks_execution(job)` returning "pending"/"rejected",
+     used exactly as `_cmd_job_run_cycles` uses it in
+     `apps/cli/commands/job.py` (exit 3 with the resolve/replan hint).
+   Worktree head for the head-match check: the persisted job plan's
+   `worktree_head` via `pingpong_job.load_job_plan(job_id)`; the live
+   value comes from `worktrees.snapshot(handle)`. `packages.core.models.Job`
+   has no worktree field — that is why the plan is the source.
+
 ## 2026-07-26: F034 answered_by stays human|default|""; "planner" is derived
 The feature specifies exactly three answered_by values. A planner-declared
 A9 assumption is neither human- nor default-answered, so it keeps
