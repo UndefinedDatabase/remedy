@@ -1,13 +1,29 @@
-# Handoff — F047 Checkpoint & resume (kill-proof) — CLOSED
+# Handoff — F047 Checkpoint & resume (kill-proof) — CLOSED (+ R-0147 repair)
 
 Branch: feature/f047-checkpoint-resume · PR #153 (ready for review, NOT merged
 — the Open PR Gate merges it at the next feature's start; the gap is the
 operator's manual-review window)
-Closure range: `3b257f6..HEAD` · Feature range: `89c4ef0..HEAD`
+Closure range: `3b257f6..350275b` · Repair range: `350275b..HEAD`
+Feature range: `89c4ef0..HEAD`
 accepted HEAD: `8e870062feb3487f890232d659ef569cf3aa326e` (Commit B — the
-pre-zip head the package and verdicts cover)
-LAST_REVIEWED_SHA: `3b257f6` · Open findings: 0 (R-0146 Resolved)
-Next expected action: reviewer closure verdict / end of Window 1.
+pre-zip head the package and verdicts cover; UNCHANGED by the repair)
+LAST_REVIEWED_SHA: `3b257f6` · Open findings: 0 (R-0146 Resolved,
+R-0147 fixed and awaiting reviewer verification)
+Next expected action: reviewer verifies R-0147, then the closure verdict.
+
+## R-0147 repair — what moved and what did not
+
+Moved: `.agent/live_review.md` (finding persisted, missing sentence appended,
+`Done:` line) and this handoff. **Nothing else.** No code, no zip rebuild, no
+new evidence job, no STATUS change, no PR action, no merge. The package, its
+SHA-256 and the accepted HEAD are exactly as closed.
+
+| Commit | Files |
+|---|---|
+| `15c7ebe` chore(f047): persist finding R-0147 | `.agent/live_review.md` +17 / −0 |
+| `fe413c9` fix(f047): append the missing verdict sentence; honest proof (R-0147) | `.agent/live_review.md` +8 / −0 · `.agent/handoff.md` +79 / −8 |
+
+External action this round: `git push` (one).
 
 ## Closure facts
 
@@ -68,9 +84,35 @@ in Commit C, after the READY zip was built (F147 lesson).
 
 ## Byte-identity proofs (reviewer-authored text applied verbatim)
 
-    ### PROOF 1 — verdict text byte-identical
-    authored block present verbatim in live_review.md: True
-    authored bytes: 1112  sha256: f25d1097aab34e89d69b011dd11bc657
+### PROOF 1 — CORRECTED (R-0147)
+
+The original PROOF 1 was a false verification claim. Corrected, re-run against
+the authored block INCLUDING its final sentence:
+
+    ### CMD: corrected PROOF 1 — authored block INCLUDING the final sentence
+    authored block (WITH 'LAST_REVIEWED_SHA = 3b257f6.') present verbatim: True
+    authored bytes: 1143  sha256: 20788624e53318a27e8bb54e5261ba18692a4bfc6eff3f1e3bf9c9805b764b94
+
+    delta vs the block the ORIGINAL proof compared against:
+      original block bytes: 1112
+      missing tail        : '\n  LAST_REVIEWED_SHA = 3b257f6.'
+
+    gate verdict entry now ends with: '  LAST_REVIEWED_SHA = 3b257f6.'
+
+**What the original proof actually compared, and why it said True.** It did
+not compare against the reviewer's paste block. It compared against
+`authored_verdict.txt` — a copy of that block I reconstructed by hand into the
+scratchpad, which stopped at "...carries the 'full suite' claim." and did not
+include the closing `LAST_REVIEWED_SHA = 3b257f6.` sentence. The applied text
+in `live_review.md` was produced from the same truncated copy, so the
+substring test compared a truncated reconstruction against a truncated
+application and truthfully reported `True` — while the sentence the reviewer
+authored was absent from both. A proof built from a self-made copy of the
+thing it is proving cannot detect an omission introduced when that copy was
+made; it verifies self-consistency and is worth nothing as a verbatim-
+application claim. That is the defect R-0147 names, and it is why the
+corrected proof above is stated against the block WITH the sentence, with the
+byte delta shown explicitly rather than asserted.
 
     ### PROOF 2 — LAST_REVIEWED_SHA header
     4:LAST_REVIEWED_SHA: 3b257f6
@@ -89,6 +131,35 @@ in Commit C, after the READY zip was built (F147 lesson).
 
     $ git diff --numstat docs/roadmap/STATUS.md
     1	1	docs/roadmap/STATUS.md
+
+## R-0147 consistency checks (raw)
+
+    $ python3 -m pytest \
+        "tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section" \
+        "tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section" -q
+    2 passed in 0.08s
+    exit 0
+
+    $ python3 -m apps.cli.main integrity check --json
+    {
+      "version": 1,
+      "passed": true,
+      "fail_count": 0,
+      "check_count": 5,
+      "checks": [
+        { "name": "handler_import",     "status": "pass", "message": "handlers=308" },
+        { "name": "live_review_verdict","status": "warn", "message": "no verdict found" },
+        { "name": "plan_consistency",   "status": "pass", "message": "unchecked=0, context_complete=False" },
+        { "name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0" },
+        { "name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings" }
+      ]
+    }
+    exit 0
+
+`plan_consistency` now reports `unchecked=0` (it was `unchecked=2` before
+Commit C ticked the last two boxes). `live_review_verdict` "no verdict found"
+remains the known matcher warn — carried risk 5, F046 backlog item — and
+`passed` is still true.
 
 ## Preconditions (raw)
 

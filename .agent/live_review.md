@@ -52,6 +52,13 @@ Finding IDs continue monotonically from R-0145.
   (3) the handoff states what PROOF 1 was actually compared against
   and why it reported True. Resolved when all three hold and the
   reviewer verifies.
+  Done: R-0147 — the sentence "LAST_REVIEWED_SHA = 3b257f6." is
+  appended as the gate verdict entry's final line; the substring
+  proof was re-run against the authored block INCLUDING it and the
+  raw output is in the handoff; the handoff states that the original
+  PROOF 1 compared against a locally reconstructed copy of the paste
+  block that stopped at the "full suite" sentence, which is why it
+  reported True while the sentence was missing.
 
 ## Verdicts
 
@@ -90,3 +97,4 @@ Finding IDs continue monotonically from R-0145.
   reviewer-authored verdict and resolution text verified
   byte-identical; git worktree list clean. Zero F047-attributable
   regressions. Only this entry carries the "full suite" claim.
+  LAST_REVIEWED_SHA = 3b257f6.
