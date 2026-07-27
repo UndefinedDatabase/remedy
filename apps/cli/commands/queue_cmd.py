@@ -199,6 +199,31 @@ def _cmd_queue_rm(entry_id: str, *, project: str | None = None) -> None:
     print(f"Removed {entry.id}")
 
 
+def _cmd_queue_reclaim(entry_id: str, *, project: str | None = None) -> None:
+    from packages.orchestration.job_queue import (
+        QueueError,
+        ReclaimRefusedError,
+        reclaim,
+        resolve_reclaim_ttl_minutes,
+    )
+
+    project_id = _resolve_project_id(project)
+    resolved = _resolve_entry_id(project_id, entry_id)
+    try:
+        entry = reclaim(project_id, resolved)
+    except ReclaimRefusedError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        print("  A reclaim needs BOTH: a claim older than "
+              f"{resolve_reclaim_ttl_minutes()} minutes AND an owner that is verifiably "
+              "gone. Remedy never takes a claim away on a timer alone.", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+    except QueueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    print(f"Reclaimed {entry.id} — back in the queue.")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "queue.add": lambda args: _cmd_queue_add(
         args.goal,
@@ -211,5 +236,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         all_projects=getattr(args, "all_projects", False),
     ),
     "queue.rm": lambda args: _cmd_queue_rm(
+        args.entry_id, project=getattr(args, "project", None)),
+    "queue.reclaim": lambda args: _cmd_queue_reclaim(
         args.entry_id, project=getattr(args, "project", None)),
 }

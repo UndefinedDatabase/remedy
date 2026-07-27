@@ -10,9 +10,12 @@ assertions are made on what an operator actually sees.
 """
 from __future__ import annotations
 
+import json
 import os
+import socket
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -247,9 +250,64 @@ class TestRm:
         assert "no queue for project" in proc.stderr
 
 
+class TestReclaim:
+    def test_reclaim_refuses_a_live_owner_and_explains_both_gates(self, project):
+        data_root, project_id = project
+        entry_id = _run(["queue", "add", "held goal", "--project", project_id],
+                        data_root).stdout.strip()
+        _claim_one(data_root, project_id, f"{socket.gethostname()}#{os.getpid()}")
+
+        proc = _run(["queue", "reclaim", entry_id, "--project", project_id],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert str(os.getpid()) in proc.stderr
+        assert "verifiably gone" in proc.stderr
+        assert "never takes a claim away on a timer alone" in proc.stderr
+        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
+        assert "claimed" in listing
+
+    def test_reclaim_returns_a_dead_owners_stale_claim_to_the_queue(self, project):
+        data_root, project_id = project
+        entry_id = _run(["queue", "add", "abandoned goal", "--project", project_id],
+                        data_root).stdout.strip()
+        _claim_one(data_root, project_id, f"{socket.gethostname()}#{_dead_pid()}")
+        _backdate_claim(data_root, project_id, entry_id, minutes=600)
+
+        proc = _run(["queue", "reclaim", entry_id, "--project", project_id], data_root)
+
+        assert f"Reclaimed {entry_id}" in proc.stdout
+        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
+        assert "queued" in listing
+        assert "claimed" not in listing
+
+    def test_reclaim_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        assert get_command("queue.reclaim").action_class == "write_metadata"
+        assert "queue.reclaim" in collect_all_handlers()
+
+
 # ---------------------------------------------------------------------------
 # Helpers that drive the store directly, in their own process
 # ---------------------------------------------------------------------------
+
+
+def _dead_pid() -> int:
+    """A pid that has certainly exited: started, then reaped."""
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.communicate(timeout=60)
+    return proc.pid
+
+
+def _backdate_claim(data_root: Path, project_id: str, entry_id: str, *, minutes: int) -> None:
+    """Age a claim on disk, so the TTL gate can be exercised without waiting an hour."""
+    path = data_root / "queue" / project_id / f"{entry_id}.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+    payload["claimed_at"] = stamp.isoformat()
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _claim_one(data_root: Path, project_id: str, consumer: str) -> None:

@@ -17,8 +17,11 @@ repository's real data root is never touched.
 from __future__ import annotations
 
 import json
+import os
+import socket
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +30,7 @@ import pytest
 from packages.orchestration import job_queue as q
 from packages.orchestration.job_queue import (
     CLAIM_SUFFIX,
+    DEFAULT_RECLAIM_TTL_MINUTES,
     ENTRY_SUFFIX,
     STATUS_CLAIMED,
     STATUS_DONE,
@@ -34,6 +38,7 @@ from packages.orchestration.job_queue import (
     STATUS_QUEUED,
     QueueEntryNotFoundError,
     QueueError,
+    ReclaimRefusedError,
     claim_holder,
     claim_next,
     complete,
@@ -43,7 +48,9 @@ from packages.orchestration.job_queue import (
     list_entries_safe,
     load_entry,
     project_queue_dir,
+    reclaim,
     release,
+    resolve_reclaim_ttl_minutes,
 )
 
 PROJECT = "proj-alpha"
@@ -398,3 +405,122 @@ class TestEnqueue:
     def test_a_non_integer_priority_is_refused(self, root: Path):
         with pytest.raises(QueueError, match="invalid priority"):
             enqueue(PROJECT, "work", "high", root=root)  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# Explicit reclaim (T003b) — the ONLY path that takes a claim from its holder
+# ---------------------------------------------------------------------------
+
+
+def _dead_pid() -> int:
+    """A pid that has certainly exited: we start a process and reap it."""
+    proc = subprocess.Popen([sys.executable, "-c", "pass"])
+    proc.communicate(timeout=60)
+    return proc.pid
+
+
+def _this_host() -> str:
+    return socket.gethostname() or ""
+
+
+def _claim_with(root: Path, owner: str, *, minutes_ago: float) -> str:
+    """Enqueue, claim as *owner*, and backdate the claim stamp on disk."""
+    entry = enqueue(PROJECT, "reclaimable work", 0, root=root)
+    claimed = claim_next(PROJECT, owner, root)
+    assert claimed is not None
+
+    path = project_queue_dir(PROJECT, root) / f"{entry.id}{ENTRY_SUFFIX}"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+    payload["claimed_at"] = stamp.isoformat()
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return entry.id
+
+
+class TestReclaim:
+    def test_a_stale_claim_of_a_dead_owner_is_reclaimed(self, root: Path):
+        owner = f"{_this_host()}#{_dead_pid()}"
+        entry_id = _claim_with(root, owner, minutes_ago=90)
+
+        reclaimed = reclaim(PROJECT, entry_id, root)
+
+        assert reclaimed.status == STATUS_QUEUED
+        assert reclaimed.claimed_by == ""
+        assert reclaimed.claimed_at == ""
+        assert claim_holder(PROJECT, entry_id, root) == ""
+        # And it is genuinely back in circulation.
+        again = claim_next(PROJECT, "fresh-consumer", root)
+        assert again is not None
+        assert again.id == entry_id
+
+    def test_a_live_owner_is_refused_however_old_the_claim(self, root: Path):
+        owner = f"{_this_host()}#{os.getpid()}"
+        entry_id = _claim_with(root, owner, minutes_ago=6000)
+
+        with pytest.raises(ReclaimRefusedError) as caught:
+            reclaim(PROJECT, entry_id, root)
+
+        assert owner in str(caught.value)
+        assert "still running" in str(caught.value)
+        assert caught.value.entry.claimed_by == owner
+        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
+
+    def test_a_young_claim_is_refused_however_dead_the_owner(self, root: Path):
+        owner = f"{_this_host()}#{_dead_pid()}"
+        entry_id = _claim_with(root, owner, minutes_ago=1)
+
+        with pytest.raises(ReclaimRefusedError) as caught:
+            reclaim(PROJECT, entry_id, root, ttl_minutes=60)
+
+        assert owner in str(caught.value)
+        assert "reclaim TTL" in str(caught.value)
+        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
+
+    def test_an_owner_on_another_host_is_never_declared_gone(self, root: Path):
+        """A pid means nothing across hosts — the same number is alive somewhere else."""
+        owner = f"not-this-host#{_dead_pid()}"
+        entry_id = _claim_with(root, owner, minutes_ago=600)
+
+        with pytest.raises(ReclaimRefusedError) as caught:
+            reclaim(PROJECT, entry_id, root)
+
+        assert "not on this host" in str(caught.value)
+        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
+
+    def test_an_unparsable_owner_is_never_declared_gone(self, root: Path):
+        entry_id = _claim_with(root, "a-consumer-without-a-pid", minutes_ago=600)
+
+        with pytest.raises(ReclaimRefusedError, match="does not name a host and pid"):
+            reclaim(PROJECT, entry_id, root)
+
+    def test_an_unreadable_claim_time_is_a_refusal_not_a_licence(self, root: Path):
+        owner = f"{_this_host()}#{_dead_pid()}"
+        entry_id = _claim_with(root, owner, minutes_ago=600)
+        path = project_queue_dir(PROJECT, root) / f"{entry_id}{ENTRY_SUFFIX}"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["claimed_at"] = "some time last week"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with pytest.raises(ReclaimRefusedError, match="age cannot be proven"):
+            reclaim(PROJECT, entry_id, root)
+
+    def test_an_unclaimed_entry_cannot_be_reclaimed(self, root: Path):
+        entry = enqueue(PROJECT, "never claimed", 0, root=root)
+
+        with pytest.raises(ReclaimRefusedError, match="only a claimed entry"):
+            reclaim(PROJECT, entry.id, root)
+
+    def test_the_ttl_comes_from_config_with_a_sixty_minute_default(self, monkeypatch):
+        from packages.orchestration.config import reset_config
+
+        monkeypatch.delenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", raising=False)
+        reset_config()
+        assert resolve_reclaim_ttl_minutes() == DEFAULT_RECLAIM_TTL_MINUTES == 60
+
+        monkeypatch.setenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", "5")
+        reset_config()
+        try:
+            assert resolve_reclaim_ttl_minutes() == 5
+        finally:
+            monkeypatch.delenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", raising=False)
+            reset_config()

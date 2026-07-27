@@ -68,6 +68,11 @@ STATUS_DONE = "done"
 STATUS_FAILED = "failed"
 VALID_STATUSES = (STATUS_QUEUED, STATUS_CLAIMED, STATUS_DONE, STATUS_FAILED)
 
+#: Reclaim gate (T003b). A claim younger than this is never re-offered, and age alone is
+#: never enough — see :func:`reclaim`.
+CONFIG_KEY_RECLAIM_TTL = "queue.reclaim_ttl_minutes"
+DEFAULT_RECLAIM_TTL_MINUTES = 60
+
 #: Anything that becomes a path component: the F011 shape, unchanged.
 _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
@@ -88,6 +93,10 @@ class QueueEntryClaimedError(QueueError):
     def __init__(self, message: str, *, entry: QueueEntry) -> None:
         super().__init__(message)
         self.entry = entry
+
+
+class ReclaimRefusedError(QueueEntryClaimedError):
+    """A reclaim was refused. The claim stands, and the message says why."""
 
 
 # ---------------------------------------------------------------------------
@@ -483,6 +492,142 @@ def _transition(entry: QueueEntry, root: Path | None, *, status: str,
     finally:
         os.close(project_fd)
     return fresh
+
+
+def resolve_reclaim_ttl_minutes(config: Any = None) -> int:
+    """How old a claim must be before reclaim will even consider it. Config beats the
+    default; anything unreadable falls back rather than widening the window."""
+    if config is None:
+        try:
+            from packages.orchestration.config import get_config
+
+            config = get_config()
+        except Exception:  # noqa: BLE001 — a config problem must not loosen the gate
+            return DEFAULT_RECLAIM_TTL_MINUTES
+    try:
+        value = config.get(CONFIG_KEY_RECLAIM_TTL)
+    except Exception:  # noqa: BLE001
+        return DEFAULT_RECLAIM_TTL_MINUTES
+    if value is None:
+        return DEFAULT_RECLAIM_TTL_MINUTES
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return DEFAULT_RECLAIM_TTL_MINUTES
+
+
+def _split_consumer(consumer: str) -> tuple[str, int | None]:
+    """``host#pid`` → ``(host, pid)``. An unparsable owner yields ``(consumer, None)``,
+    which the caller must treat as NOT verifiably gone."""
+    host, sep, pid_text = consumer.rpartition("#")
+    if not sep:
+        return (consumer, None)
+    try:
+        return (host, int(pid_text))
+    except ValueError:
+        return (consumer, None)
+
+
+def _owner_is_gone(consumer: str) -> tuple[bool, str]:
+    """Is the owning consumer verifiably gone? Returns ``(gone, why_not)``.
+
+    Verifiably is the operative word. A pid on ANOTHER host says nothing about that host —
+    the same number is very much alive somewhere — so a foreign owner is never declared
+    gone. On this host, ``kill(pid, 0)`` answers: ``ProcessLookupError`` means gone,
+    ``PermissionError`` means alive under another user, and success means alive.
+    """
+    host, pid = _split_consumer(consumer)
+    if pid is None:
+        return (False, f"the owner {consumer!r} does not name a host and pid")
+    try:
+        this_host = socket.gethostname() or ""
+    except OSError:
+        this_host = ""
+    if host != this_host:
+        return (False, f"the owner is on host {host!r}, not on this host {this_host!r}")
+    if pid <= 0:
+        return (False, f"the owner names an impossible pid {pid}")
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return (True, "")
+    except PermissionError:
+        return (False, f"process {pid} is still running (owned by another user)")
+    except OSError as exc:
+        return (False, f"process {pid} could not be probed: {exc}")
+    return (False, f"process {pid} is still running")
+
+
+def _claim_age_minutes(entry: QueueEntry) -> float | None:
+    """Minutes since the claim was stamped. None when the stamp is unusable — which is a
+    refusal, not a licence: an unreadable age cannot be older than the TTL."""
+    try:
+        stamped = datetime.fromisoformat(entry.claimed_at)
+    except (TypeError, ValueError):
+        return None
+    if stamped.tzinfo is None:
+        stamped = stamped.replace(tzinfo=timezone.utc)
+    delta = (datetime.now(timezone.utc) - stamped).total_seconds()
+    if delta < 0:
+        return None
+    return delta / 60.0
+
+
+def reclaim(project: str, entry_id: str, root: Path | None = None, *,
+            ttl_minutes: int | None = None) -> QueueEntry:
+    """Re-offer a stale claim — explicitly, and only when BOTH gates open (A9).
+
+    1. the claim is older than the reclaim TTL (``queue.reclaim_ttl_minutes``, default 60), and
+    2. the owning consumer is verifiably gone: the owner id names THIS host, and its pid is
+       dead.
+
+    Either gate closed is a refusal that names the owner and the reason. This is the ONLY
+    path that takes a claim away from its holder; nothing in this module ever does it on a
+    timer (P2 — no silent takeovers).
+    """
+    eid = validate_entry_id(entry_id)
+    limit = resolve_reclaim_ttl_minutes() if ttl_minutes is None else max(0, int(ttl_minutes))
+
+    project_fd = _open_project_fd(project, root, create=False)
+    if project_fd is None:
+        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
+    try:
+        entry = _read_entry(project_fd, eid)
+        if entry is None:
+            raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
+        owner = entry.claimed_by or "an unknown consumer"
+        if entry.status != STATUS_CLAIMED:
+            raise ReclaimRefusedError(
+                f"queue entry {eid} is {entry.status}, not {STATUS_CLAIMED}: "
+                f"only a claimed entry can be reclaimed", entry=entry)
+
+        age = _claim_age_minutes(entry)
+        if age is None:
+            raise ReclaimRefusedError(
+                f"queue entry {eid} is held by {owner} and its claim time "
+                f"{entry.claimed_at!r} cannot be read, so its age cannot be proven",
+                entry=entry)
+        if age < limit:
+            raise ReclaimRefusedError(
+                f"queue entry {eid} is held by {owner} and its claim is "
+                f"{age:.1f} minutes old, younger than the {limit}-minute reclaim TTL",
+                entry=entry)
+
+        gone, why_not = _owner_is_gone(entry.claimed_by)
+        if not gone:
+            raise ReclaimRefusedError(
+                f"queue entry {eid} is held by {owner}, which is not verifiably gone: "
+                f"{why_not}", entry=entry)
+
+        entry.status = STATUS_QUEUED
+        entry.claimed_by = ""
+        entry.claimed_at = ""
+        _write_entry(project_fd, entry, create_only=False)
+        _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
+                      noun="queue claim")
+    finally:
+        os.close(project_fd)
+    return entry
 
 
 def remove_entry(project: str, entry_id: str, root: Path | None = None) -> QueueEntry:

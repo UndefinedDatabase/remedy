@@ -482,6 +482,18 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         related=("queue.list",),
     ),
+    CommandEntry(
+        command_id="queue.reclaim",
+        group_id="queue",
+        subcommand="reclaim",
+        description="Re-offer a stale claim — only if it is past the TTL and its owner is verifiably gone.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+        ),
+        related=("queue.list",),
+    ),
 
     # ── project ──────────────────────────────────────────────────────────
     CommandEntry(
