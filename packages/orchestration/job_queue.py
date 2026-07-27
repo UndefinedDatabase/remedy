@@ -43,7 +43,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.common import secure_fs as _fs
-from packages.orchestration.data_paths import resolve_data_root
+from packages.orchestration.data_paths import queue_dir as _queue_dir
 
 #: The queue is this user's private business — same posture as the F011 control area.
 QUEUE_DIR_MODE = 0o700
@@ -79,6 +79,15 @@ class QueueError(RuntimeError):
 
 class QueueEntryNotFoundError(QueueError):
     """The requested entry is not in this project's queue."""
+
+
+class QueueEntryClaimedError(QueueError):
+    """The entry is held by a consumer. Carries the entry so the caller can name the owner
+    instead of refusing anonymously."""
+
+    def __init__(self, message: str, *, entry: QueueEntry) -> None:
+        super().__init__(message)
+        self.entry = entry
 
 
 # ---------------------------------------------------------------------------
@@ -226,11 +235,11 @@ def _is_safe_id(value: Any) -> bool:
 
 
 def queue_root(root: Path | None = None) -> Path:
-    """The queue area (``<data_root>/queue``). The helper lives here rather than in
-    ``data_paths`` because T001's declared change set is this module alone; promoting it
-    next to ``jobs_dir``/``control_dir`` is T003's call, when the CLI needs it too."""
-    base = root if root is not None else resolve_data_root()
-    return Path(os.path.normpath(str(Path(base) / QUEUE_DIRNAME)))
+    """The queue area (``<data_root>/queue``), resolved by ``data_paths`` like every other
+    storage area — promoted there in T003 now that the CLI resolves it too."""
+    # Coerced to Path here: the public API accepts a str root (a CLI flag, a test tmpdir),
+    # while data_paths' helpers, like every other storage area, do Path arithmetic.
+    return Path(os.path.normpath(str(_queue_dir(Path(root) if root is not None else None))))
 
 
 def project_queue_dir(project_id: str, root: Path | None = None) -> Path:
@@ -474,6 +483,34 @@ def _transition(entry: QueueEntry, root: Path | None, *, status: str,
     finally:
         os.close(project_fd)
     return fresh
+
+
+def remove_entry(project: str, entry_id: str, root: Path | None = None) -> QueueEntry:
+    """Remove an entry from the queue and return what was removed.
+
+    A CLAIMED entry is never removed: a consumer is holding it, and deleting the record
+    under a running consumer would turn its completion into a write to nothing. The caller
+    gets the owner in the error so it can say who.
+    """
+    eid = validate_entry_id(entry_id)
+    project_fd = _open_project_fd(project, root, create=False)
+    if project_fd is None:
+        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
+    try:
+        entry = _read_entry(project_fd, eid)
+        if entry is None:
+            raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
+        if entry.status == STATUS_CLAIMED:
+            raise QueueEntryClaimedError(
+                f"queue entry {eid} is claimed by {entry.claimed_by or 'an unknown consumer'}",
+                entry=entry)
+        _fs.unlink_at(f"{eid}{ENTRY_SUFFIX}", project_fd, error_cls=QueueError,
+                      noun="queue entry")
+        _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
+                      noun="queue claim")
+    finally:
+        os.close(project_fd)
+    return entry
 
 
 def claim_holder(project: str, entry_id: str, root: Path | None = None) -> str:

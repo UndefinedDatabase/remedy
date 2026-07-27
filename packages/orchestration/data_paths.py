@@ -101,6 +101,15 @@ def job_evidence_index_dir(root: Path | None = None) -> Path:
     return (root if root is not None else resolve_data_root()) / "job_evidence_index"
 
 
+def queue_dir(root: Path | None = None) -> Path:
+    """Return the job-queue area (<root>/queue).
+
+    F048: one directory per project below this, holding one JSON file per queue
+    entry plus its claim marker; see ``packages/orchestration/job_queue.py``.
+    """
+    return (root if root is not None else resolve_data_root()) / "queue"
+
+
 def control_dir(root: Path | None = None) -> Path:
     """Return the control area (<root>/control).
 
