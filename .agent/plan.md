@@ -12,13 +12,13 @@ STATUS.md feature lines.
 - [x] C5 docs/agents/integration_gate.md (new, from phv1-r1-2)
 - [x] C2 split_workflow.md += phv1-r1-3, phv1-r1-4
 - [x] C3+C6 planner_reviewer_prompt.md += phv1-r1-5, r1-6 (replace), r1-7
-- [ ] C4 AGENTS.md += phv1-r1-8
+- [x] C4 AGENTS.md += phv1-r1-8
 - [ ] IDX docs/README.md += phv1-r1-9, phv1-r1-10
 - [ ] Part 3: proof script PROOFS: PASS + golden-path canary
 - [ ] PR into main (created, NOT merged)
 
 ## Current Step
-C3+C6 applied (planner_reviewer_prompt.md). Next: C4.
+C4 applied (AGENTS.md). Next: IDX.
 
 ## Next Steps
 Apply each target area as its own small commit in the order above, full
