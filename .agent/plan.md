@@ -13,12 +13,12 @@ STATUS.md feature lines.
 - [x] C2 split_workflow.md += phv1-r1-3, phv1-r1-4
 - [x] C3+C6 planner_reviewer_prompt.md += phv1-r1-5, r1-6 (replace), r1-7
 - [x] C4 AGENTS.md += phv1-r1-8
-- [ ] IDX docs/README.md += phv1-r1-9, phv1-r1-10
+- [x] IDX docs/README.md += phv1-r1-9, phv1-r1-10
 - [ ] Part 3: proof script PROOFS: PASS + golden-path canary
 - [ ] PR into main (created, NOT merged)
 
 ## Current Step
-C4 applied (AGENTS.md). Next: IDX.
+IDX applied (docs/README.md). Next: Part 3 proofs + canary, then PR.
 
 ## Next Steps
 Apply each target area as its own small commit in the order above, full

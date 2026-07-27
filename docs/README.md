@@ -8,6 +8,8 @@
 | Keyword | File | Category |
 |---------|------|----------|
 | agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md) | agents |
+| handback template | [handback_template.md](agents/handback_template.md) | agents |
+| integration gate | [integration_gate.md](agents/integration_gate.md) | agents |
 | closure protocol | [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) | roadmap |
 | planner prompt | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | agents |
 | split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
@@ -165,6 +167,9 @@ routing policy seeds F110.
 | [model_routing_policy.md](agents/model_routing_policy.md) | Class→tier seed map, promotion rule, hard rules (seeds F110) |
 | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | Window 1 bootstrap: planner & live reviewer prompt |
 | [split_workflow.md](agents/split_workflow.md) | Two-window feature lifecycle (v3), roles, round protocol, handoff |
+| [handback_template.md](agents/handback_template.md) | Mandatory skeleton of every handoff.md handback rewrite |
+| [integration_gate.md](agents/integration_gate.md) | Canonical full-suite integration-gate procedure (referenced by paste
+blocks) |
 
 ## Roadmap (`docs/roadmap/`)
 
