@@ -13,12 +13,12 @@ guard. Docs only. Operator directive 2026-07-27 (ruling relay).
 - [x] A1 docs/agents/handback_template.md (full replace, phv2-r1-1)
 - [x] A2 AGENTS.md handoff Purpose paragraph (phv2-r1-2)
 - [x] A3+A4+A5 split_workflow.md (phv2-r1-3, r1-4, r1-5)
-- [ ] A6 planner_reviewer_prompt.md §4 item 9 (phv2-r1-6)
+- [x] A6 planner_reviewer_prompt.md §4 item 9 (phv2-r1-6)
 - [ ] Part 3: proof script PROOFS: PASS + golden-path canary
 - [ ] PR into main (created, NOT merged)
 
 ## Current Step
-A3+A4+A5 applied (split_workflow.md). Next: A6.
+A6 applied (planner_reviewer_prompt.md). Next: Part 3 proofs + canary, PR.
 
 ## Next Steps
 One commit per target file in the order above, full self-review loop +
