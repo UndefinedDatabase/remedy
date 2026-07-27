@@ -1,0 +1,2658 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 89dde6b..9651a25 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -96,6 +96,7 @@ GROUPS: dict[str, GroupDef] = {
+     # -- User-facing primary commands --
+     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
+     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
++    "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
+     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
+     "ui": GroupDef("ui", "UI", "Open the local UI."),
+     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
+@@ -445,6 +446,55 @@ CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.status", "job.report"),
+     ),
+ 
++    # ── queue (F048) ─────────────────────────────────────────────────────
++    CommandEntry(
++        command_id="queue.add",
++        group_id="queue",
++        subcommand="add",
++        description="Enqueue a goal for this project (text, or a path to a goal file).",
++        action_class="write_metadata",
++        args=(
++            ArgDef("goal", "Goal text, or a path to a goal file"),
++            ArgDef("--prio", "Priority; higher is claimed first (default 0)", required=False, is_option=True, default=None),
++            ArgDef("--path", "Treat the argument as a goal-file path, not as goal text", required=False, is_option=True, is_flag=True),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list", "queue.rm"),
++    ),
++    CommandEntry(
++        command_id="queue.list",
++        group_id="queue",
++        subcommand="list",
++        description="List queue entries (scoped to the current project by default).",
++        action_class="read_only",
++        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
++        related=("queue.add",),
++    ),
++    CommandEntry(
++        command_id="queue.rm",
++        group_id="queue",
++        subcommand="rm",
++        description="Remove a queue entry. A claimed entry is refused, naming its owner.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list",),
++    ),
++    CommandEntry(
++        command_id="queue.reclaim",
++        group_id="queue",
++        subcommand="reclaim",
++        description="Re-offer a stale claim — only if it is past the TTL and its owner is verifiably gone.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list",),
++    ),
++
+     # ── project ──────────────────────────────────────────────────────────
+     CommandEntry(
+         command_id="project.create",
+diff --git a/apps/cli/commands/__init__.py b/apps/cli/commands/__init__.py
+index 98f80a0..e4fdd03 100644
+--- a/apps/cli/commands/__init__.py
++++ b/apps/cli/commands/__init__.py
+@@ -64,6 +64,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+         project,
+         propose_cmd,
+         provider_cmd,
++        queue_cmd,
+         readiness,
+         real_test_execution_cmd,
+         repair_cmd,
+@@ -85,6 +86,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     )
+ 
+     table: dict[str, Callable[[argparse.Namespace], None]] = {}
+-    for mod in (init_cmd, job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, job_stop_cmd, job_rerun_cmd, status_cmd):
++    for mod in (init_cmd, job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, job_stop_cmd, job_rerun_cmd, status_cmd, queue_cmd):
+         table.update(mod.COMMAND_HANDLERS)
+     return table
+diff --git a/apps/cli/commands/queue_cmd.py b/apps/cli/commands/queue_cmd.py
+new file mode 100644
+index 0000000..2f5f681
+--- /dev/null
++++ b/apps/cli/commands/queue_cmd.py
+@@ -0,0 +1,242 @@
++"""`remedy queue` — the per-project work queue (F048 T003).
++
++Commands over the file-based queue in ``packages.orchestration.job_queue``: ``add`` puts
++work in, ``list`` shows what is there and who holds what, ``rm`` takes an unclaimed entry
++back out. Reclaiming a stale claim is its own command (T003b) — explicit, never silent.
++
++Scoping follows F148: the project comes from ``--project``, ``REMEDY_PROJECT`` or the
++working directory, exactly as ``remedy job list`` resolves it. There is no cross-project
++queue; ``--all-projects`` only widens the LISTING, entry by entry, over the project
++queues that exist on disk.
++"""
++from __future__ import annotations
++
++import sys
++from collections.abc import Callable
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import TYPE_CHECKING, Any
++
++if TYPE_CHECKING:
++    import argparse
++
++EXIT_ERROR = 1
++EXIT_USAGE = 2
++#: The contract's exit code for "no project" — the same one `job create` uses.
++EXIT_NO_PROJECT = 3
++
++
++def _resolve_project_id(project_flag: str | None) -> str:
++    """The one project this command acts on, or exit 3 with the same wording as job create."""
++    from packages.orchestration.project_registry import (
++        ProjectNotFoundError,
++        select_project,
++    )
++
++    try:
++        project, _source = select_project(project_flag, ".")
++    except ProjectNotFoundError:
++        print(
++            "Error: no project found. Run: remedy init\n"
++            "  or pass --project <slug-or-id>",
++            file=sys.stderr,
++        )
++        sys.exit(EXIT_NO_PROJECT)
++    return str(project.id)
++
++
++def _looks_like_a_path(text: str) -> bool:
++    """A goal that names an existing file is a goal FILE. Anything else is goal text.
++
++    Existence, not spelling: a sentence containing a slash is still a sentence, and a
++    typo'd path is better enqueued as text the operator can read back than silently
++    treated as a file reference that will never resolve.
++    """
++    stripped = text.strip()
++    if not stripped or "\n" in stripped:
++        return False
++    try:
++        return Path(stripped).expanduser().is_file()
++    except OSError:
++        return False
++
++
++def _age(created_at: str, *, now: datetime | None = None) -> str:
++    """Compact age for the listing. Unparsable timestamps print as `?` rather than a guess."""
++    try:
++        stamp = datetime.fromisoformat(created_at)
++    except (TypeError, ValueError):
++        return "?"
++    if stamp.tzinfo is None:
++        stamp = stamp.replace(tzinfo=timezone.utc)
++    seconds = int(((now or datetime.now(timezone.utc)) - stamp).total_seconds())
++    if seconds < 0:
++        return "?"
++    if seconds < 60:
++        return f"{seconds}s"
++    if seconds < 3600:
++        return f"{seconds // 60}m"
++    if seconds < 86400:
++        return f"{seconds // 3600}h"
++    return f"{seconds // 86400}d"
++
++
++def _goal_label(entry: Any) -> str:
++    text = entry.goal or f"@{entry.goal_path}"
++    single_line = text.replace("\n", " ").strip()
++    return single_line[:60]
++
++
++def _cmd_queue_add(goal: str, *, project: str | None = None,
++                   prio: str | None = None, path: bool = False) -> None:
++    from packages.orchestration.job_queue import QueueError, enqueue
++
++    project_id = _resolve_project_id(project)
++
++    try:
++        priority = int(prio) if prio is not None else 0
++    except (TypeError, ValueError):
++        print(f"Error: --prio must be an integer, got {prio!r}", file=sys.stderr)
++        sys.exit(EXIT_USAGE)
++
++    as_path = path or _looks_like_a_path(goal)
++    try:
++        if as_path:
++            entry = enqueue(project_id, goal_path=goal, prio=priority)
++        else:
++            entry = enqueue(project_id, goal, priority)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(entry.id)
++
++
++def _project_ids_with_a_queue() -> list[str]:
++    """Every project directory that actually exists under the queue area.
++
++    Read from disk, not from the registry: a queue whose project was unregistered still
++    holds work, and hiding it would make the listing dishonest.
++    """
++    from packages.orchestration.job_queue import queue_root
++
++    root = queue_root()
++    if not root.is_dir():
++        return []
++    return sorted(p.name for p in root.iterdir() if p.is_dir())
++
++
++def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -> None:
++    from packages.orchestration.job_queue import list_entries_safe
++
++    if all_projects:
++        project_ids = _project_ids_with_a_queue()
++    else:
++        project_ids = [_resolve_project_id(project)]
++
++    rows: list[tuple[str, Any]] = []
++    skipped_total = 0
++    for project_id in project_ids:
++        entries, _degraded, skipped = list_entries_safe(project_id)
++        skipped_total += len(skipped)
++        rows.extend((project_id, entry) for entry in entries)
++
++    if not rows:
++        print("No queue entries found.")
++    for project_id, entry in rows:
++        owner = entry.claimed_by or "-"
++        label = f"  (project: {project_id[:8]})" if all_projects else ""
++        print(f"{entry.id[:12]}  {entry.status:<8}  prio {entry.priority:<4}  "
++              f"{_age(entry.created_at):>4}  {owner:<24}  {_goal_label(entry)}{label}")
++    if skipped_total:
++        print(f"  ({skipped_total} unreadable queue file(s) skipped)", file=sys.stderr)
++
++
++def _resolve_entry_id(project_id: str, raw: str) -> str:
++    """Full id, or a unique prefix — the same affordance job ids have."""
++    from packages.orchestration.job_queue import list_entries
++
++    candidate = raw.strip()
++    matches = [e.id for e in list_entries(project_id) if e.id.startswith(candidate)]
++    if candidate in matches:
++        return candidate
++    if len(matches) == 1:
++        return matches[0]
++    if len(matches) > 1:
++        print(f"Error: ambiguous queue entry prefix {raw!r} matches {len(matches)} entries:",
++              file=sys.stderr)
++        for match in sorted(matches):
++            print(f"  {match[:12]}", file=sys.stderr)
++        sys.exit(EXIT_USAGE)
++    return candidate
++
++
++def _cmd_queue_rm(entry_id: str, *, project: str | None = None) -> None:
++    from packages.orchestration.job_queue import (
++        QueueEntryClaimedError,
++        QueueEntryNotFoundError,
++        QueueError,
++        remove_entry,
++    )
++
++    project_id = _resolve_project_id(project)
++    resolved = _resolve_entry_id(project_id, entry_id)
++    try:
++        entry = remove_entry(project_id, resolved)
++    except QueueEntryClaimedError as exc:
++        print(f"Error: {exc}. Claimed at {exc.entry.claimed_at or 'an unknown time'}.",
++              file=sys.stderr)
++        print("  A claimed entry is held by a consumer. Use: remedy queue reclaim "
++              f"{exc.entry.id[:12]}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueEntryNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(f"Removed {entry.id}")
++
++
++def _cmd_queue_reclaim(entry_id: str, *, project: str | None = None) -> None:
++    from packages.orchestration.job_queue import (
++        QueueError,
++        ReclaimRefusedError,
++        reclaim,
++        resolve_reclaim_ttl_minutes,
++    )
++
++    project_id = _resolve_project_id(project)
++    resolved = _resolve_entry_id(project_id, entry_id)
++    try:
++        entry = reclaim(project_id, resolved)
++    except ReclaimRefusedError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        print("  A reclaim needs BOTH: a claim older than "
++              f"{resolve_reclaim_ttl_minutes()} minutes AND an owner that is verifiably "
++              "gone. Remedy never takes a claim away on a timer alone.", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(f"Reclaimed {entry.id} — back in the queue.")
++
++
++COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
++    "queue.add": lambda args: _cmd_queue_add(
++        args.goal,
++        project=getattr(args, "project", None),
++        prio=getattr(args, "prio", None),
++        path=getattr(args, "path", False),
++    ),
++    "queue.list": lambda args: _cmd_queue_list(
++        project=getattr(args, "project", None),
++        all_projects=getattr(args, "all_projects", False),
++    ),
++    "queue.rm": lambda args: _cmd_queue_rm(
++        args.entry_id, project=getattr(args, "project", None)),
++    "queue.reclaim": lambda args: _cmd_queue_reclaim(
++        args.entry_id, project=getattr(args, "project", None)),
++}
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index a39119b..1709d4f 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -30,7 +30,7 @@
+ - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
+ - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
+ - [x] F047 — Checkpoint & resume (kill-proof) (T001–T003 complete; accepted 2026-07-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7 · package remedy-review-20260727-101857-READY_FOR_REVIEW.zip · SHA-256 b6f96e888d7e8a6d5494f213b845a644be34538e6fc17df9d469712efe98b380 · accepted HEAD 8e870062feb3487f890232d659ef569cf3aa326e)
+-- [ ] F048 — Job queue
++- [~] F048 — Job queue
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds
+diff --git a/docs/roadmap/features/T1_F048.md b/docs/roadmap/features/T1_F048.md
+index 1b4e482..3506763 100644
+--- a/docs/roadmap/features/T1_F048.md
++++ b/docs/roadmap/features/T1_F048.md
+@@ -70,3 +70,106 @@ uses before T001.
+ Cron/scheduling (later feature), cross-project queues, SQLite. Suggested
+ tests: tests/orchestration/test_job_queue.py,
+ tests/orchestration/test_queue_concurrency.py, tests/cli/test_queue_cmd.py.
++
++## Built State (2026-07-27)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**The store.** `packages/orchestration/job_queue.py` — one JSON file per
++entry at `<data_root>/queue/<project_id>/<entry_id>.json`, with the claim
++marker `<entry_id>.claim` beside it. `data_paths.queue_dir()` resolves the
++area like every other storage area; directories are 0700, files 0600, and
++every read and write goes through identity-verified directory descriptors,
++so a symlinked `queue`, project or entry is refused rather than followed.
++The record carries id, project_id, goal text OR goal_path, priority,
++created_at, status (queued|claimed|done|failed), claimed_by (host#pid),
++claimed_at, result_job_id and failure_reason, behind a schema version.
++
++v1 is FILE-BASED on purpose: in STATUS order this feature lands before the
++SQLite token ledger (F103), and the codebase persists every entity as an
++atomic per-entity JSON file today. Migrating is a later scheduler feature's
++decision, and the module docstring says so.
++
++**The claim, reused not rewritten.** `secure_fs.write_file_atomically(...,
++create_only=True)` (`packages/common/secure_fs.py:532`) — an `os.link`
++publication over an `O_EXCL` temp file with `fsync`, returning `False`
++instead of clobbering. It is the same primitive F011's stop request uses at
++`safe_points.py:372`; no second atomic-create path was introduced. Losing
++the race is not an error and not a retry: that entry belongs to someone
++else, so the consumer moves on to the next candidate. Because the marker is
++created BEFORE the record is rewritten, an entry whose file still reads
++`queued` while its marker exists is already spoken for.
++
++**Ordering (A9).** Higher priority value first, FIFO by `created_at` within
++equal priority, `id` as the same-microsecond tie-break. Duplicate goal text
++is allowed and makes a second, independently claimable entry — dedup is a
++human judgment, not the queue's.
++
++**Honest listing.** `list_entries_safe` returns `(entries, degraded,
++skipped_files)` — the same shape `storage.list_jobs_safe` uses for jobs. An
++entry file that will not parse, or whose record version is unknown, is
++skipped and COUNTED; a corrupt entry never blocks claiming.
++
++**CLI.** `remedy queue add <text|path> [--prio N] [--path]`, `list`, `rm`,
++`reclaim`, scoped by the F148 rules (`--project` / `REMEDY_PROJECT` / cwd).
++`add` treats its argument as a goal file only when that file EXISTS, so a
++sentence containing a slash stays goal text; `--path` forces it. `rm`
++refuses a claimed entry and names its owner, deleting nothing.
++`--all-projects` widens the LISTING only, over the project directories on
++disk — including queues whose project was unregistered, because hiding work
++that exists would be dishonest. There is still no cross-project queue.
++
++**Reclaim is explicit, and doubly gated (A9).** `remedy queue reclaim <id>`
++re-offers a claim only when BOTH hold: the claim is older than
++`queue.reclaim_ttl_minutes` (default 60), AND the owner is verifiably gone —
++the owner id names THIS host and its pid is dead. The refusals are
++deliberate: an owner on another host is never declared gone, because a pid
++says nothing about a machine we cannot probe; `PermissionError` from
++`kill(pid, 0)` counts as alive under another user; an owner id that does not
++parse as `host#pid` and a `claimed_at` that does not parse as a time both
++refuse, because an age that cannot be proven is not an old age. No code path
++anywhere reclaims on a timer (P2 — no silent takeovers).
++
++**Executor binding, opt-in.** `queue.executor_binding` (default **false**).
++With it off, `long_run_executor.run_cycles` does exactly what it did before
++the queue existed and `to_json()` carries the same keys; the `queue_pull`
++key appears only when something was actually pulled. With it on, a run that
++ends at an IDLE terminal (`all_green`, `blocked`) claims the next entry for
++its OWN project and turns it into a normal job — the same thing `job create`
+++ `job plan` produce — which STOPS at PLANNED. No task is executed and
++nothing implies `--yes`, so a queued goal meets the operator's approval gate
++exactly like a typed one. A failing pull marks the ENTRY failed with the
++reason rather than leaving it claimed by a consumer that has moved on; both
++outcomes emit a `queue_pull` ledger event.
++
++**Verification.** `tests/orchestration/test_job_queue.py` 34 passed (incl. 8
++reclaim) · `test_queue_concurrency.py` 6 passed · `test_queue_executor_
++binding.py` 9 passed · `tests/cli/test_queue_cmd.py` 24 passed · F046/F047
++regression `test_long_run_executor.py` 49 passed with the conductor's
++default behavior unmoved · canary `test_golden_path.py` 42 passed · ruff
++clean on every touched file. T002 is the load-bearing one: 24 entries, TWO
++real subprocess consumers behind a start barrier, three repeats, asserting
++disjoint claim sets, full coverage and zero double-claims, plus an
++anti-cheat assertion that both consumers claimed work and their claim
++windows overlap in wall-clock time. It was falsified in scratch by disabling
++the marker's `create_only` publication: that mutation produced 22
++double-claims, so the assertion is load-bearing rather than incidentally
++true. Integration gate (`pytest -n auto`, branch vs base `40c7e4d`): worker
++run branch 159 failed / 14147 passed (183.61s) vs base 201 failed / 14017
++passed (172.52s), 7 branch-only ids, 7/7 pass on a serial re-run; reviewer's
++independent run 4 branch-only ids, 4/4 serial-pass. No F048 test id in any
++failure list.
++
++**Carried risks.** (1) The T002 interleaving assertion compares wall-clock
++claim windows, so a starved runner can red it without a code change — treat
++that as a test-environment signal first (reviewer's noted risk, R1).
++(2) Full-suite nondeterminism under `-n auto` is pre-existing and tracked as
++F135/F052; the flake class is loud in both directions here. (3) Reclaim
++probes liveness by pid on the local host only; a consumer on another host is
++never reclaimable by this command, by design. (4) The binding takes exactly
++ONE entry per idle run — draining a queue continuously is a scheduler
++concern (F200), not this feature's.
++
++**Not built.** Cron/scheduling, cross-project queues, SQLite — this file's
++Do-not-touch list, all still untouched.
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 9888be1..4651fd9 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -340,6 +340,31 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=int,
+         default=5,
+     ),
++    ConfigKeySpec(
++        key="queue.executor_binding",
++        env_var="REMEDY_QUEUE_EXECUTOR_BINDING",
++        description=(
++            "Let an idle multi-cycle run take the next entry from its project's "
++            "queue and turn it into a normal job (F048). OFF by default: with it "
++            "off the executor behaves exactly as it did before the queue existed. "
++            "A queued goal still stops at a PLANNED job and still meets the "
++            "operator's approval gate — the binding never implies --yes."
++        ),
++        value_type=bool,
++        default=False,
++    ),
++    ConfigKeySpec(
++        key="queue.reclaim_ttl_minutes",
++        env_var="REMEDY_QUEUE_RECLAIM_TTL_MINUTES",
++        description=(
++            "How old a queue claim must be before `remedy queue reclaim` will "
++            "re-offer it (F048). Age alone is never enough: the owning consumer "
++            "must ALSO be verifiably gone — same host, dead pid — because a slow "
++            "consumer is not an absent one, and there are no silent takeovers."
++        ),
++        value_type=int,
++        default=60,
++    ),
+     ConfigKeySpec(
+         key="planning.granularity.merge_group_size",
+         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
+diff --git a/packages/orchestration/data_paths.py b/packages/orchestration/data_paths.py
+index 666a86e..7acd33d 100644
+--- a/packages/orchestration/data_paths.py
++++ b/packages/orchestration/data_paths.py
+@@ -101,6 +101,15 @@ def job_evidence_index_dir(root: Path | None = None) -> Path:
+     return (root if root is not None else resolve_data_root()) / "job_evidence_index"
+ 
+ 
++def queue_dir(root: Path | None = None) -> Path:
++    """Return the job-queue area (<root>/queue).
++
++    F048: one directory per project below this, holding one JSON file per queue
++    entry plus its claim marker; see ``packages/orchestration/job_queue.py``.
++    """
++    return (root if root is not None else resolve_data_root()) / "queue"
++
++
+ def control_dir(root: Path | None = None) -> Path:
+     """Return the control area (<root>/control).
+ 
+diff --git a/packages/orchestration/job_queue.py b/packages/orchestration/job_queue.py
+new file mode 100644
+index 0000000..a6ea3e5
+--- /dev/null
++++ b/packages/orchestration/job_queue.py
+@@ -0,0 +1,682 @@
++"""F048 — the per-project job queue (v1, file-based).
++
++Work is queued per project and consumed unattended: an entry is enqueued, a consumer
++claims exactly one atomically, and the state survives a killed consumer because it only
++ever lives on disk.
++
++**v1 is deliberately FILE-BASED.** In STATUS order this feature lands BEFORE the SQLite
++token ledger (F103) introduces that dependency, and the codebase today persists every
++entity as an atomic per-entity JSON file (``storage.save_job``, ``project_registry``,
++``proposed_tasks``). So the queue matches what exists. If a later scheduler feature
++outgrows this, migrating to the then-existing SQLite is THAT feature's decision, not a
++debt this module pretends to have paid.
++
++Layout, under the resolved data root::
++
++    <data_root>/queue/<project_id>/<entry_id>.json      the entry record
++    <data_root>/queue/<project_id>/<entry_id>.claim     the claim marker
++
++**The claim marker is the mutex, and it is the one the codebase already trusts.** It is
++published with ``secure_fs.write_file_atomically(..., create_only=True)`` — the same
++create-only ``os.link`` publication F011's stop request uses
++(``safe_points.request_stop``): the loser's link fails with ``FileExistsError`` and the
++helper returns ``False``, so two consumers can never both hold one entry. Every read and
++write goes through identity-verified directory descriptors, so a symlinked ``queue``,
++project or entry is refused rather than followed.
++
++Claims are never taken over silently: a consumer that dies leaves its entry visible as
++``claimed`` with its owner on it, and re-offering it is an explicit operator command
++(T003), not a timeout applied behind the operator's back. Listing stays honest under
++corruption — an entry file that will not parse is skipped and COUNTED, exactly as
++``storage.list_jobs_safe`` does for jobs.
++"""
++from __future__ import annotations
++
++import json
++import os
++import re
++import socket
++import uuid
++from dataclasses import dataclass
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import Any
++
++from packages.common import secure_fs as _fs
++from packages.orchestration.data_paths import queue_dir as _queue_dir
++
++#: The queue is this user's private business — same posture as the F011 control area.
++QUEUE_DIR_MODE = 0o700
++QUEUE_FILE_MODE = 0o600
++
++QUEUE_DIRNAME = "queue"
++ENTRY_SUFFIX = ".json"
++CLAIM_SUFFIX = ".claim"
++
++QUEUE_ENTRY_VERSION = 1
++
++#: Bounds. A queue record is operator input: it is small, or it is not a queue record.
++MAX_GOAL_CHARS = 8_000
++MAX_GOAL_PATH_CHARS = 4_096
++MAX_CONSUMER_CHARS = 200
++MAX_REASON_CHARS = 500
++MAX_ENTRY_BYTES = 256 * 1024
++
++STATUS_QUEUED = "queued"
++STATUS_CLAIMED = "claimed"
++STATUS_DONE = "done"
++STATUS_FAILED = "failed"
++VALID_STATUSES = (STATUS_QUEUED, STATUS_CLAIMED, STATUS_DONE, STATUS_FAILED)
++
++#: Reclaim gate (T003b). A claim younger than this is never re-offered, and age alone is
++#: never enough — see :func:`reclaim`.
++CONFIG_KEY_RECLAIM_TTL = "queue.reclaim_ttl_minutes"
++DEFAULT_RECLAIM_TTL_MINUTES = 60
++
++#: Anything that becomes a path component: the F011 shape, unchanged.
++_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
++
++
++class QueueError(RuntimeError):
++    """The queue area could not be used. Loud on purpose: a queue that silently does
++    nothing looks exactly like an empty one."""
++
++
++class QueueEntryNotFoundError(QueueError):
++    """The requested entry is not in this project's queue."""
++
++
++class QueueEntryClaimedError(QueueError):
++    """The entry is held by a consumer. Carries the entry so the caller can name the owner
++    instead of refusing anonymously."""
++
++    def __init__(self, message: str, *, entry: QueueEntry) -> None:
++        super().__init__(message)
++        self.entry = entry
++
++
++class ReclaimRefusedError(QueueEntryClaimedError):
++    """A reclaim was refused. The claim stands, and the message says why."""
++
++
++# ---------------------------------------------------------------------------
++# Validation and small helpers
++# ---------------------------------------------------------------------------
++
++
++def utc_now_iso() -> str:
++    return datetime.now(timezone.utc).isoformat()
++
++
++def validate_project_id(project_id: Any) -> str:
++    text = str(project_id or "").strip()
++    if not _ID_RE.match(text):
++        raise QueueError(
++            f"invalid project id {project_id!r}: a project id is 1-64 characters of "
++            f"letters, digits, '-' or '_'")
++    return text
++
++
++def validate_entry_id(entry_id: Any) -> str:
++    text = str(entry_id or "").strip()
++    if not _ID_RE.match(text):
++        raise QueueError(
++            f"invalid queue entry id {entry_id!r}: an entry id is 1-64 characters of "
++            f"letters, digits, '-' or '_'")
++    return text
++
++
++def new_entry_id() -> str:
++    """Unique per ENTRY. Duplicate goal text is allowed, so identity cannot be the goal."""
++    return uuid.uuid4().hex
++
++
++def consumer_id() -> str:
++    """This consumer, as the feature spells it: host + pid."""
++    try:
++        host = socket.gethostname() or "unknown-host"
++    except OSError:
++        host = "unknown-host"
++    return _bounded(f"{host}#{os.getpid()}", MAX_CONSUMER_CHARS, "unknown-consumer")
++
++
++def _bounded(text: Any, limit: int, fallback: str) -> str:
++    """Bounded, single-line. Goal text is NOT redacted — it is the work item itself, and a
++    redacted goal is a different goal. Only its size and line shape are ours to bound."""
++    cleaned = str(text if text is not None else "").replace("\r", " ").strip()
++    if not cleaned:
++        return fallback
++    return cleaned[:limit]
++
++
++# ---------------------------------------------------------------------------
++# The record
++# ---------------------------------------------------------------------------
++
++
++@dataclass
++class QueueEntry:
++    """One queued unit of work. The file on disk is the truth; this is a read of it."""
++
++    id: str
++    project_id: str
++    goal: str = ""
++    goal_path: str = ""
++    priority: int = 0
++    created_at: str = ""
++    status: str = STATUS_QUEUED
++    claimed_by: str = ""
++    claimed_at: str = ""
++    result_job_id: str = ""
++    failure_reason: str = ""
++
++    def to_json(self) -> dict[str, Any]:
++        return {
++            "queue_entry_v": QUEUE_ENTRY_VERSION,
++            "id": self.id,
++            "project_id": self.project_id,
++            "goal": self.goal,
++            "goal_path": self.goal_path,
++            "priority": self.priority,
++            "created_at": self.created_at,
++            "status": self.status,
++            "claimed_by": self.claimed_by,
++            "claimed_at": self.claimed_at,
++            "result_job_id": self.result_job_id,
++            "failure_reason": self.failure_reason,
++        }
++
++    @property
++    def sort_key(self) -> tuple[int, str, str]:
++        """Higher priority first, FIFO within a priority (A9). ``created_at`` is an
++        ISO-8601 UTC string, which sorts lexicographically iff it sorts chronologically;
++        ``id`` is the tie-break for two entries enqueued in the same microsecond."""
++        return (-self.priority, self.created_at, self.id)
++
++
++def _parse_entry(raw: bytes) -> QueueEntry | None:
++    """Bytes to entry, or None for anything this version cannot trust — an id that would
++    not survive being a path component, an unknown record version, a non-integer
++    priority. Unreadable rather than dangerous; the caller counts it as skipped."""
++    try:
++        data = json.loads(raw.decode("utf-8"))
++    except (ValueError, UnicodeDecodeError):
++        return None
++    if not isinstance(data, dict) or data.get("queue_entry_v") != QUEUE_ENTRY_VERSION:
++        return None
++
++    entry_id = data.get("id")
++    project_id = data.get("project_id")
++    if not _is_safe_id(entry_id) or not _is_safe_id(project_id):
++        return None
++
++    priority = data.get("priority", 0)
++    if isinstance(priority, bool) or not isinstance(priority, int):
++        return None
++
++    status = data.get("status")
++    if status not in VALID_STATUSES:
++        return None
++
++    return QueueEntry(
++        id=entry_id,
++        project_id=project_id,
++        goal=_bounded(data.get("goal"), MAX_GOAL_CHARS, ""),
++        goal_path=_bounded(data.get("goal_path"), MAX_GOAL_PATH_CHARS, ""),
++        priority=priority,
++        created_at=_bounded(data.get("created_at"), 64, ""),
++        status=status,
++        claimed_by=_bounded(data.get("claimed_by"), MAX_CONSUMER_CHARS, ""),
++        claimed_at=_bounded(data.get("claimed_at"), 64, ""),
++        result_job_id=_bounded(data.get("result_job_id"), 64, ""),
++        failure_reason=_bounded(data.get("failure_reason"), MAX_REASON_CHARS, ""),
++    )
++
++
++def _is_safe_id(value: Any) -> bool:
++    """An id is a filename. ``../../../../escaped`` is not one."""
++    return isinstance(value, str) and bool(_ID_RE.match(value))
++
++
++# ---------------------------------------------------------------------------
++# The queue area
++# ---------------------------------------------------------------------------
++
++
++def queue_root(root: Path | None = None) -> Path:
++    """The queue area (``<data_root>/queue``), resolved by ``data_paths`` like every other
++    storage area — promoted there in T003 now that the CLI resolves it too."""
++    # Coerced to Path here: the public API accepts a str root (a CLI flag, a test tmpdir),
++    # while data_paths' helpers, like every other storage area, do Path arithmetic.
++    return Path(os.path.normpath(str(_queue_dir(Path(root) if root is not None else None))))
++
++
++def project_queue_dir(project_id: str, root: Path | None = None) -> Path:
++    """This project's queue area. Cross-project queues are out of scope by construction:
++    a consumer only ever holds a descriptor to one project's directory."""
++    return queue_root(root) / validate_project_id(project_id)
++
++
++def _open_project_fd(project_id: str, root: Path | None, *, create: bool) -> int | None:
++    """A verified directory fd for ``queue/<project_id>``; None when it does not exist.
++    Every component — data root, ``queue``, the project directory — is inspected without
++    following symlinks, opened relative to the handle above it, and identity-checked."""
++    pid = validate_project_id(project_id)
++    base = queue_root(root)
++
++    if create:
++        os.close(_fs.anchor_root(base, error_cls=QueueError, noun="queue",
++                                 create=True, dir_mode=QUEUE_DIR_MODE))
++    else:
++        try:
++            os.close(_fs.anchor_root(base, error_cls=QueueError, noun="queue"))
++        except QueueError as exc:
++            if "does not exist" in str(exc):
++                return None
++            raise
++
++    try:
++        return _fs.anchor_destination(
++            base / pid, base, error_cls=QueueError, noun="queue",
++            create=create, dir_mode=QUEUE_DIR_MODE)
++    except _fs.MissingComponent:
++        return None
++
++
++def _write_entry(project_fd: int, entry: QueueEntry, *, create_only: bool) -> bool:
++    return _fs.write_file_atomically(
++        project_fd, f"{entry.id}{ENTRY_SUFFIX}", _fs.json_bytes(entry.to_json()),
++        create_only=create_only, file_mode=QUEUE_FILE_MODE,
++        error_cls=QueueError, noun="queue entry")
++
++
++def _read_entry(project_fd: int, entry_id: str) -> QueueEntry | None:
++    raw = _fs.read_verified_file(
++        f"{entry_id}{ENTRY_SUFFIX}", project_fd, max_bytes=MAX_ENTRY_BYTES,
++        error_cls=QueueError, noun="queue entry")
++    if raw is None:
++        return None
++    return _parse_entry(raw)
++
++
++# ---------------------------------------------------------------------------
++# Public API
++# ---------------------------------------------------------------------------
++
++
++def enqueue(project: str, goal: str = "", prio: int = 0, *,
++            goal_path: str = "", root: Path | None = None) -> QueueEntry:
++    """Add one entry to *project*'s queue and return it. Exactly one of *goal* (the text)
++    or *goal_path* (a reference to a goal file) is required. Duplicate goal text is
++    allowed and makes a SECOND entry: dedup is a human judgment, not the queue's (A9)."""
++    pid = validate_project_id(project)
++    goal_text = _bounded(goal, MAX_GOAL_CHARS, "")
++    path_text = _bounded(goal_path, MAX_GOAL_PATH_CHARS, "")
++    if bool(goal_text) == bool(path_text):
++        raise QueueError(
++            "a queue entry carries either goal text or a goal-file path — "
++            "exactly one, never both and never neither")
++    if isinstance(prio, bool) or not isinstance(prio, int):
++        raise QueueError(f"invalid priority {prio!r}: a priority is an integer")
++
++    entry = QueueEntry(
++        id=new_entry_id(),
++        project_id=pid,
++        goal=goal_text,
++        goal_path=path_text,
++        priority=prio,
++        created_at=utc_now_iso(),
++        status=STATUS_QUEUED,
++    )
++    project_fd = _open_project_fd(pid, root, create=True)
++    assert project_fd is not None            # create=True either makes it or raises
++    try:
++        if not _write_entry(project_fd, entry, create_only=True):
++            raise QueueError(f"queue entry id collision: {entry.id}")
++    finally:
++        os.close(project_fd)
++    return entry
++
++
++def list_entries_safe(project: str, root: Path | None = None,
++                      ) -> tuple[list[QueueEntry], bool, list[str]]:
++    """List a project's queue with corruption visible: ``(entries, degraded,
++    skipped_files)`` — the same honesty shape ``storage.list_jobs_safe`` uses for jobs. A
++    file that will not parse is skipped and COUNTED; the queue stays listable always."""
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        return ([], False, [])
++    entries: list[QueueEntry] = []
++    skipped: list[str] = []
++    try:
++        for name in _fs.list_dir_names(project_fd, error_cls=QueueError, noun="queue"):
++            if not name.endswith(ENTRY_SUFFIX):
++                continue
++            try:
++                raw = _fs.read_verified_file(name, project_fd, max_bytes=MAX_ENTRY_BYTES,
++                                             error_cls=QueueError, noun="queue entry")
++            except QueueError:
++                skipped.append(name)
++                continue
++            if raw is None:
++                continue                     # removed between listing and reading
++            entry = _parse_entry(raw)
++            if entry is None or f"{entry.id}{ENTRY_SUFFIX}" != name:
++                skipped.append(name)
++                continue
++            entries.append(entry)
++    finally:
++        os.close(project_fd)
++    entries.sort(key=lambda e: e.sort_key)
++    return (entries, len(skipped) > 0, skipped)
++
++
++def list_entries(project: str, root: Path | None = None) -> list[QueueEntry]:
++    """The project's entries in claim order. Corrupt files are skipped silently — use
++    :func:`list_entries_safe` to see how many."""
++    entries, _, _ = list_entries_safe(project, root)
++    return entries
++
++
++def load_entry(project: str, entry_id: str, root: Path | None = None) -> QueueEntry:
++    """Re-read one entry FROM DISK. This is what makes a claim survive a restart: no
++    consumer state is held in memory across calls."""
++    eid = validate_entry_id(entry_id)
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
++    try:
++        entry = _read_entry(project_fd, eid)
++    finally:
++        os.close(project_fd)
++    if entry is None:
++        raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
++    return entry
++
++
++def claim_next(project: str, consumer: str | None = None,
++               root: Path | None = None) -> QueueEntry | None:
++    """Claim the next entry for *consumer*, or None when nothing is claimable. Order:
++    higher priority value first, FIFO by ``created_at`` within equal priority (A9).
++
++    The claim is one create-only publication of ``<entry-id>.claim``. Losing that race is
++    not an error and not a retry: someone else owns the entry, so we move on. Because the
++    marker is created BEFORE the record is rewritten, an entry whose file still reads
++    ``queued`` but whose marker exists is already spoken for."""
++    who = consumer if consumer is not None else consumer_id()
++    who = _bounded(who, MAX_CONSUMER_CHARS, "unknown-consumer")
++
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        return None
++    try:
++        candidates, _, _ = list_entries_safe(project, root)
++        for candidate in candidates:
++            if candidate.status != STATUS_QUEUED:
++                continue
++            claim_name = f"{candidate.id}{CLAIM_SUFFIX}"
++            claim_body = _fs.json_bytes({
++                "queue_entry_v": QUEUE_ENTRY_VERSION,
++                "entry_id": candidate.id,
++                "claimed_by": who,
++                "claimed_at": utc_now_iso(),
++            })
++            won = _fs.write_file_atomically(
++                project_fd, claim_name, claim_body, create_only=True,
++                file_mode=QUEUE_FILE_MODE, error_cls=QueueError, noun="queue claim")
++            if not won:
++                continue                     # another consumer got there first
++
++            # We hold the marker. Re-read from disk before writing: the file is the truth,
++            # and it may have moved on since the listing that suggested it.
++            fresh = _read_entry(project_fd, candidate.id)
++            if fresh is None or fresh.status != STATUS_QUEUED:
++                _fs.unlink_at(claim_name, project_fd, error_cls=QueueError,
++                              noun="queue claim")
++                continue
++
++            fresh.status = STATUS_CLAIMED
++            fresh.claimed_by = who
++            fresh.claimed_at = utc_now_iso()
++            _write_entry(project_fd, fresh, create_only=False)
++            return fresh
++        return None
++    finally:
++        os.close(project_fd)
++
++
++def release(entry: QueueEntry, root: Path | None = None) -> QueueEntry:
++    """Give a claimed entry back to the queue: status ``queued``, owner cleared, marker
++    removed. The entry becomes claimable again by anyone, including us."""
++    return _transition(entry, root, status=STATUS_QUEUED, drop_claim=True,
++                       claimed_by="", claimed_at="")
++
++
++def complete(entry: QueueEntry, job_id: str, root: Path | None = None) -> QueueEntry:
++    """Mark a claimed entry ``done`` and record the job it became."""
++    return _transition(entry, root, status=STATUS_DONE, drop_claim=True,
++                       result_job_id=_bounded(job_id, 64, ""))
++
++
++def fail(entry: QueueEntry, reason: str, root: Path | None = None) -> QueueEntry:
++    """Mark a claimed entry ``failed`` and record why."""
++    return _transition(entry, root, status=STATUS_FAILED, drop_claim=True,
++                       failure_reason=_bounded(reason, MAX_REASON_CHARS, "unknown"))
++
++
++def _transition(entry: QueueEntry, root: Path | None, *, status: str,
++                drop_claim: bool, **fields: Any) -> QueueEntry:
++    """Re-read, transition, write, and only then drop the marker. The re-read is the
++    point: the caller's ``QueueEntry`` is a snapshot that may be older than the file, and
++    a transition written from a stale one would silently undo what happened in between."""
++    eid = validate_entry_id(entry.id)
++    project_fd = _open_project_fd(entry.project_id, root, create=False)
++    if project_fd is None:
++        raise QueueEntryNotFoundError(f"no queue for project {entry.project_id!r}")
++    try:
++        fresh = _read_entry(project_fd, eid)
++        if fresh is None:
++            raise QueueEntryNotFoundError(
++                f"queue entry not found or unreadable: {eid}")
++        if fresh.status != STATUS_CLAIMED:
++            raise QueueError(
++                f"queue entry {eid} is {fresh.status}, not {STATUS_CLAIMED}: "
++                f"only a claimed entry can be released, completed or failed")
++        fresh.status = status
++        for name, value in fields.items():
++            setattr(fresh, name, value)
++        _write_entry(project_fd, fresh, create_only=False)
++        if drop_claim:
++            _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
++                          noun="queue claim")
++    finally:
++        os.close(project_fd)
++    return fresh
++
++
++def resolve_reclaim_ttl_minutes(config: Any = None) -> int:
++    """How old a claim must be before reclaim will even consider it. Config beats the
++    default; anything unreadable falls back rather than widening the window."""
++    if config is None:
++        try:
++            from packages.orchestration.config import get_config
++
++            config = get_config()
++        except Exception:  # noqa: BLE001 — a config problem must not loosen the gate
++            return DEFAULT_RECLAIM_TTL_MINUTES
++    try:
++        value = config.get(CONFIG_KEY_RECLAIM_TTL)
++    except Exception:  # noqa: BLE001
++        return DEFAULT_RECLAIM_TTL_MINUTES
++    if value is None:
++        return DEFAULT_RECLAIM_TTL_MINUTES
++    try:
++        return max(0, int(value))
++    except (TypeError, ValueError):
++        return DEFAULT_RECLAIM_TTL_MINUTES
++
++
++def _split_consumer(consumer: str) -> tuple[str, int | None]:
++    """``host#pid`` → ``(host, pid)``. An unparsable owner yields ``(consumer, None)``,
++    which the caller must treat as NOT verifiably gone."""
++    host, sep, pid_text = consumer.rpartition("#")
++    if not sep:
++        return (consumer, None)
++    try:
++        return (host, int(pid_text))
++    except ValueError:
++        return (consumer, None)
++
++
++def _owner_is_gone(consumer: str) -> tuple[bool, str]:
++    """Is the owning consumer verifiably gone? Returns ``(gone, why_not)``.
++
++    Verifiably is the operative word. A pid on ANOTHER host says nothing about that host —
++    the same number is very much alive somewhere — so a foreign owner is never declared
++    gone. On this host, ``kill(pid, 0)`` answers: ``ProcessLookupError`` means gone,
++    ``PermissionError`` means alive under another user, and success means alive.
++    """
++    host, pid = _split_consumer(consumer)
++    if pid is None:
++        return (False, f"the owner {consumer!r} does not name a host and pid")
++    try:
++        this_host = socket.gethostname() or ""
++    except OSError:
++        this_host = ""
++    if host != this_host:
++        return (False, f"the owner is on host {host!r}, not on this host {this_host!r}")
++    if pid <= 0:
++        return (False, f"the owner names an impossible pid {pid}")
++    try:
++        os.kill(pid, 0)
++    except ProcessLookupError:
++        return (True, "")
++    except PermissionError:
++        return (False, f"process {pid} is still running (owned by another user)")
++    except OSError as exc:
++        return (False, f"process {pid} could not be probed: {exc}")
++    return (False, f"process {pid} is still running")
++
++
++def _claim_age_minutes(entry: QueueEntry) -> float | None:
++    """Minutes since the claim was stamped. None when the stamp is unusable — which is a
++    refusal, not a licence: an unreadable age cannot be older than the TTL."""
++    try:
++        stamped = datetime.fromisoformat(entry.claimed_at)
++    except (TypeError, ValueError):
++        return None
++    if stamped.tzinfo is None:
++        stamped = stamped.replace(tzinfo=timezone.utc)
++    delta = (datetime.now(timezone.utc) - stamped).total_seconds()
++    if delta < 0:
++        return None
++    return delta / 60.0
++
++
++def reclaim(project: str, entry_id: str, root: Path | None = None, *,
++            ttl_minutes: int | None = None) -> QueueEntry:
++    """Re-offer a stale claim — explicitly, and only when BOTH gates open (A9).
++
++    1. the claim is older than the reclaim TTL (``queue.reclaim_ttl_minutes``, default 60), and
++    2. the owning consumer is verifiably gone: the owner id names THIS host, and its pid is
++       dead.
++
++    Either gate closed is a refusal that names the owner and the reason. This is the ONLY
++    path that takes a claim away from its holder; nothing in this module ever does it on a
++    timer (P2 — no silent takeovers).
++    """
++    eid = validate_entry_id(entry_id)
++    limit = resolve_reclaim_ttl_minutes() if ttl_minutes is None else max(0, int(ttl_minutes))
++
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
++    try:
++        entry = _read_entry(project_fd, eid)
++        if entry is None:
++            raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
++        owner = entry.claimed_by or "an unknown consumer"
++        if entry.status != STATUS_CLAIMED:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is {entry.status}, not {STATUS_CLAIMED}: "
++                f"only a claimed entry can be reclaimed", entry=entry)
++
++        age = _claim_age_minutes(entry)
++        if age is None:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is held by {owner} and its claim time "
++                f"{entry.claimed_at!r} cannot be read, so its age cannot be proven",
++                entry=entry)
++        if age < limit:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is held by {owner} and its claim is "
++                f"{age:.1f} minutes old, younger than the {limit}-minute reclaim TTL",
++                entry=entry)
++
++        gone, why_not = _owner_is_gone(entry.claimed_by)
++        if not gone:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is held by {owner}, which is not verifiably gone: "
++                f"{why_not}", entry=entry)
++
++        entry.status = STATUS_QUEUED
++        entry.claimed_by = ""
++        entry.claimed_at = ""
++        _write_entry(project_fd, entry, create_only=False)
++        _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
++                      noun="queue claim")
++    finally:
++        os.close(project_fd)
++    return entry
++
++
++def remove_entry(project: str, entry_id: str, root: Path | None = None) -> QueueEntry:
++    """Remove an entry from the queue and return what was removed.
++
++    A CLAIMED entry is never removed: a consumer is holding it, and deleting the record
++    under a running consumer would turn its completion into a write to nothing. The caller
++    gets the owner in the error so it can say who.
++    """
++    eid = validate_entry_id(entry_id)
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
++    try:
++        entry = _read_entry(project_fd, eid)
++        if entry is None:
++            raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
++        if entry.status == STATUS_CLAIMED:
++            raise QueueEntryClaimedError(
++                f"queue entry {eid} is claimed by {entry.claimed_by or 'an unknown consumer'}",
++                entry=entry)
++        _fs.unlink_at(f"{eid}{ENTRY_SUFFIX}", project_fd, error_cls=QueueError,
++                      noun="queue entry")
++        _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
++                      noun="queue claim")
++    finally:
++        os.close(project_fd)
++    return entry
++
++
++def claim_holder(project: str, entry_id: str, root: Path | None = None) -> str:
++    """Who holds the claim marker for this entry, as read from disk. Empty when there is
++    no marker. Stale claims stay VISIBLE — nothing here takes one over."""
++    eid = validate_entry_id(entry_id)
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        return ""
++    try:
++        raw = _fs.read_verified_file(f"{eid}{CLAIM_SUFFIX}", project_fd,
++                                     max_bytes=MAX_ENTRY_BYTES,
++                                     error_cls=QueueError, noun="queue claim")
++    finally:
++        os.close(project_fd)
++    if raw is None:
++        return ""
++    try:
++        data = json.loads(raw.decode("utf-8"))
++    except (ValueError, UnicodeDecodeError):
++        return ""
++    if not isinstance(data, dict):
++        return ""
++    return _bounded(data.get("claimed_by"), MAX_CONSUMER_CHARS, "")
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index 4167e53..d66b968 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -46,6 +46,7 @@ injected ``clock``, so a deadline is provable in a unit test.
+ 
+ from __future__ import annotations
+ 
++import contextlib
+ import json
+ from collections.abc import Callable
+ from dataclasses import dataclass
+@@ -107,6 +108,8 @@ TERMINAL_RUN_STATE: dict[str, RunState | None] = {
+ #: Ledger event names emitted through the injected run-log writer.
+ LEDGER_EVENT_CYCLE_COMPLETED = "cycle_completed"
+ LEDGER_EVENT_LOOP_TERMINAL = "cycle_loop_terminal"
++#: F048: the idle loop took (or failed to take) a queued entry.
++LEDGER_EVENT_QUEUE_PULL = "queue_pull"
+ 
+ #: Verify-step outcomes.  "not_run" is recorded verbatim — a cycle that ran no
+ #: verification never claims a passing one.
+@@ -227,6 +230,136 @@ class CycleRecord:
+         }
+ 
+ 
++#: F048 executor binding. OFF by default: without it, this module behaves exactly as it
++#: did before the queue existed, and no queued entry is ever consumed behind an operator's
++#: back.
++QUEUE_BINDING_CONFIG_KEY = "queue.executor_binding"
++
++#: The loop is IDLE at these terminals — it ran out of work rather than being stopped,
++#: budget-capped or cut short mid-flight. Only then may it take the next queued entry.
++_IDLE_TERMINALS = frozenset({TERMINAL_ALL_GREEN, TERMINAL_BLOCKED})
++
++QUEUE_PULL_PLANNED = "planned"
++QUEUE_PULL_FAILED = "failed"
++
++
++@dataclass(frozen=True)
++class QueuePull:
++    """One queue entry turned into a job (or honestly not).
++
++    ``status`` is ``planned`` when the entry became a normal PLANNED job, ``failed`` when
++    reading the goal or planning refused it — in which case the ENTRY is marked failed
++    with the same reason, never left claimed by a consumer that has moved on.
++    """
++
++    entry_id: str
++    status: str
++    job_id: str = ""
++    reason: str = ""
++
++    def to_json(self) -> dict[str, Any]:
++        return {
++            "entry_id": self.entry_id,
++            "status": self.status,
++            "job_id": self.job_id,
++            "reason": self.reason,
++        }
++
++
++def queue_binding_enabled(config: Any = None) -> bool:
++    """Is the executor allowed to consume the queue? Opt-in, and closed on any doubt."""
++    if config is None:
++        try:
++            from packages.orchestration.config import get_config
++
++            config = get_config()
++        except Exception:  # noqa: BLE001 — a config problem must not switch this ON
++            return False
++    try:
++        return bool(config.get(QUEUE_BINDING_CONFIG_KEY))
++    except Exception:  # noqa: BLE001
++        return False
++
++
++def _goal_text_for(entry: Any) -> str:
++    """The prompt this entry stands for. A goal-file reference is read HERE, so an
++    unreadable file fails the entry instead of creating a job with an empty prompt."""
++    if entry.goal:
++        return entry.goal
++    try:
++        text = Path(entry.goal_path).read_text(encoding="utf-8", errors="replace").strip()
++    except OSError as exc:
++        raise ValueError(
++            f"goal file {entry.goal_path!r} could not be read: "
++            f"{type(exc).__name__}: {exc}") from exc
++    if not text:
++        raise ValueError(f"goal file {entry.goal_path!r} is empty")
++    return text
++
++
++def queued_entry_to_job(entry: Any, *, save: Callable[[Job], None] | None = None) -> Job:
++    """Turn a claimed queue entry into a NORMAL job, planned and persisted.
++
++    Deliberately the same shape ``remedy job create`` + ``remedy job plan`` produce, and
++    deliberately no further: the job stops at PLANNED. Nothing here executes a task,
++    approves a plan or implies ``--yes`` — a queued goal reaches the operator's approval
++    gate exactly like a typed one (A9).
++    """
++    from packages.orchestration.job_runner import plan_job
++
++    prompt = _goal_text_for(entry)
++    job = Job(
++        name=prompt[:50],
++        user_prompt=prompt,
++        state=RunState.PENDING,
++        metadata={"project_id": entry.project_id, "queue_entry_id": entry.id},
++        project_id=entry.project_id,
++    )
++    plan_job(job)
++    (save or _save_job)(job)
++    return job
++
++
++def _pull_queue_when_idle(job: Job, terminal: str, *, log: Any = None) -> QueuePull | None:
++    """The binding: an idle loop takes the next entry for THIS job's project.
++
++    Every guard here is a reason to do nothing — not enabled, not idle, no project, no
++    queued entry. The default path therefore does exactly what it always did.
++    """
++    if terminal not in _IDLE_TERMINALS or not job.project_id:
++        return None
++    if not queue_binding_enabled():
++        return None
++
++    from packages.orchestration import job_queue as _queue
++
++    try:
++        entry = _queue.claim_next(str(job.project_id))
++    except _queue.QueueError as exc:
++        _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="error",
++              reason=f"{type(exc).__name__}: {exc}")
++        return None
++    if entry is None:
++        return None
++
++    try:
++        queued_job = queued_entry_to_job(entry)
++    except Exception as exc:  # noqa: BLE001 — the entry must not stay claimed by nobody
++        reason = f"{type(exc).__name__}: {exc}"
++        with contextlib.suppress(_queue.QueueError):
++            _queue.fail(entry, reason)
++        _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="failed",
++              entry_id=entry.id, reason=reason)
++        return QueuePull(entry_id=entry.id, status=QUEUE_PULL_FAILED, reason=reason)
++
++    with contextlib.suppress(_queue.QueueError):
++        _queue.complete(entry, str(queued_job.id))
++    _emit(log, LEDGER_EVENT_QUEUE_PULL, outcome="planned",
++          entry_id=entry.id, job_id=str(queued_job.id))
++    return QueuePull(entry_id=entry.id, status=QUEUE_PULL_PLANNED,
++                     job_id=str(queued_job.id))
++
++
+ @dataclass(frozen=True)
+ class CycleLoopResult:
+     """What the whole loop did."""
+@@ -236,13 +369,16 @@ class CycleLoopResult:
+     job_status: str
+     stop_reason: str = ""
+     cycles: tuple[CycleRecord, ...] = ()
++    #: F048: what the idle loop pulled from the queue, if the binding is enabled.
++    #: ``None`` whenever it is not — which is the default.
++    queue_pull: QueuePull | None = None
+ 
+     @property
+     def cycles_run(self) -> int:
+         return len(self.cycles)
+ 
+     def to_json(self) -> dict[str, Any]:
+-        return {
++        payload = {
+             "job_id": str(self.job.id),
+             "terminal_status": self.terminal_status,
+             "job_status": self.job_status,
+@@ -250,6 +386,11 @@ class CycleLoopResult:
+             "cycles_run": self.cycles_run,
+             "cycles": [c.to_json() for c in self.cycles],
+         }
++        # Only present when something was actually pulled: the default shape of this
++        # payload is what every existing reader already parses.
++        if self.queue_pull is not None:
++            payload["queue_pull"] = self.queue_pull.to_json()
++        return payload
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -744,4 +885,5 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         job_status=job_status,
+         stop_reason=stop_reason,
+         cycles=tuple(cycles),
++        queue_pull=_pull_queue_when_idle(job, terminal, log=log),
+     )
+diff --git a/tests/cli/test_queue_cmd.py b/tests/cli/test_queue_cmd.py
+new file mode 100644
+index 0000000..8f73d40
+--- /dev/null
++++ b/tests/cli/test_queue_cmd.py
+@@ -0,0 +1,337 @@
++"""CLI tests: `remedy queue add|list|rm` (F048 T003a).
++
++The surface, not the store: the store's own behaviour is proven in
++tests/orchestration/test_job_queue.py. What matters here is that the catalog carries the
++commands, that scoping follows the F148 rules, that the listing is honest about entries
++it cannot read, and that `rm` refuses a claimed entry and SAYS WHO holds it.
++
++Every test runs the real grouped CLI in a subprocess against a tmp_path data root, so the
++assertions are made on what an operator actually sees.
++"""
++from __future__ import annotations
++
++import json
++import os
++import socket
++import subprocess
++import sys
++from datetime import datetime, timedelta, timezone
++from pathlib import Path
++
++import pytest
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++
++
++def _run(args: list[str], data_root: Path, *, expect_ok: bool = True):
++    """Run the grouped CLI with an isolated data root."""
++    env = {**os.environ, "REMEDY_DATA_DIR": str(data_root)}
++    env.pop("REMEDY_PROJECT", None)
++    proc = subprocess.run(
++        [sys.executable, "-m", "apps.cli.grouped", *args],
++        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=120, env=env,
++    )
++    if expect_ok:
++        assert proc.returncode == 0, f"{args} failed ({proc.returncode}): {proc.stderr}"
++    return proc
++
++
++@pytest.fixture
++def project(tmp_path: Path) -> tuple[Path, str]:
++    """A registered project in an isolated data root. Returns (data_root, project_id)."""
++    data_root = tmp_path / "data"
++    data_root.mkdir(parents=True)
++    proc = subprocess.run(
++        [sys.executable, "-c",
++         "import sys; sys.path.insert(0, '.');"
++         "from packages.orchestration.project_registry import RemyProject, save_project;"
++         "p = RemyProject(name='Queue Test', slug='queue-test'); save_project(p); print(p.id)"],
++        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=60,
++        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
++    )
++    assert proc.returncode == 0, proc.stderr
++    return data_root, proc.stdout.strip().splitlines()[-1]
++
++
++class TestCatalog:
++    def test_the_queue_commands_are_in_the_catalog(self):
++        from apps.cli.command_catalog import CATALOG
++
++        ids = {entry.command_id for entry in CATALOG}
++        assert {"queue.add", "queue.list", "queue.rm"} <= ids
++
++    def test_list_is_read_only_and_add_writes_metadata(self):
++        from apps.cli.command_catalog import get_command
++
++        assert get_command("queue.list").action_class == "read_only"
++        assert get_command("queue.add").action_class == "write_metadata"
++        assert get_command("queue.rm").action_class == "write_metadata"
++
++    def test_every_queue_command_has_a_handler(self):
++        from apps.cli.commands import collect_all_handlers
++
++        handlers = collect_all_handlers()
++        assert {"queue.add", "queue.list", "queue.rm"} <= set(handlers)
++
++    def test_no_queue_command_may_execute_or_mutate_the_repo(self):
++        from apps.cli.command_catalog import get_commands_for_group
++
++        for entry in get_commands_for_group("queue"):
++            assert entry.may_execute_commands is False
++            assert entry.may_mutate_repo is False
++
++
++class TestAdd:
++    def test_add_prints_the_new_entry_id(self, project):
++        data_root, project_id = project
++        proc = _run(["queue", "add", "write the README", "--project", project_id], data_root)
++
++        entry_id = proc.stdout.strip()
++        assert len(entry_id) == 32
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert entry_id[:12] in listing
++        assert "write the README" in listing
++
++    def test_priority_is_recorded_and_orders_the_listing(self, project):
++        data_root, project_id = project
++        _run(["queue", "add", "low goal", "--project", project_id], data_root)
++        _run(["queue", "add", "high goal", "--prio", "9", "--project", project_id], data_root)
++
++        lines = [ln for ln in _run(["queue", "list", "--project", project_id],
++                                   data_root).stdout.splitlines() if ln.strip()]
++        assert "high goal" in lines[0]
++        assert "low goal" in lines[1]
++        assert "prio 9" in lines[0]
++
++    def test_a_non_integer_priority_is_a_usage_error(self, project):
++        data_root, project_id = project
++        proc = _run(["queue", "add", "goal", "--prio", "soon", "--project", project_id],
++                    data_root, expect_ok=False)
++
++        assert proc.returncode == 2
++        assert "--prio must be an integer" in proc.stderr
++
++    def test_an_existing_file_is_enqueued_as_a_goal_path(self, project, tmp_path):
++        data_root, project_id = project
++        goal_file = tmp_path / "goal.md"
++        goal_file.write_text("Ship the queue.\n", encoding="utf-8")
++
++        _run(["queue", "add", str(goal_file), "--project", project_id], data_root)
++
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert f"@{goal_file}"[:60] in listing
++
++    def test_a_sentence_stays_goal_text_even_with_a_slash(self, project):
++        data_root, project_id = project
++        _run(["queue", "add", "fix the a/b split", "--project", project_id], data_root)
++
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "fix the a/b split" in listing
++        assert "@" not in listing
++
++    def test_add_without_a_project_exits_three(self, tmp_path):
++        data_root = tmp_path / "data"
++        data_root.mkdir(parents=True)
++        proc = _run(["queue", "add", "orphan goal"], data_root, expect_ok=False)
++
++        assert proc.returncode == 3
++        assert "no project found" in proc.stderr
++
++    def test_duplicate_goal_text_makes_two_entries(self, project):
++        data_root, project_id = project
++        first = _run(["queue", "add", "same goal", "--project", project_id], data_root).stdout.strip()
++        second = _run(["queue", "add", "same goal", "--project", project_id], data_root).stdout.strip()
++
++        assert first != second
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert listing.count("same goal") == 2
++
++
++class TestList:
++    def test_an_empty_queue_says_so(self, project):
++        data_root, project_id = project
++        proc = _run(["queue", "list", "--project", project_id], data_root)
++
++        assert "No queue entries found." in proc.stdout
++
++    def test_a_claimed_entry_shows_its_owner(self, project):
++        data_root, project_id = project
++        _run(["queue", "add", "claimed goal", "--project", project_id], data_root)
++        _claim_one(data_root, project_id, "host-x#99")
++
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "claimed" in listing
++        assert "host-x#99" in listing
++
++    def test_entries_are_scoped_to_their_project(self, project, tmp_path):
++        data_root, project_id = project
++        other_id = _make_second_project(data_root, tmp_path)
++        _run(["queue", "add", "mine", "--project", project_id], data_root)
++        _run(["queue", "add", "theirs", "--project", other_id], data_root)
++
++        mine = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "mine" in mine
++        assert "theirs" not in mine
++
++    def test_all_projects_widens_the_listing_and_labels_it(self, project, tmp_path):
++        data_root, project_id = project
++        other_id = _make_second_project(data_root, tmp_path)
++        _run(["queue", "add", "mine", "--project", project_id], data_root)
++        _run(["queue", "add", "theirs", "--project", other_id], data_root)
++
++        listing = _run(["queue", "list", "--all-projects"], data_root).stdout
++        assert "mine" in listing
++        assert "theirs" in listing
++        assert f"(project: {project_id[:8]})" in listing
++
++    def test_a_corrupt_entry_is_counted_not_hidden(self, project):
++        data_root, project_id = project
++        _run(["queue", "add", "good goal", "--project", project_id], data_root)
++        broken = _run(["queue", "add", "doomed goal", "--project", project_id], data_root).stdout.strip()
++        (data_root / "queue" / project_id / f"{broken}.json").write_text("{ nope", encoding="utf-8")
++
++        proc = _run(["queue", "list", "--project", project_id], data_root)
++        assert "good goal" in proc.stdout
++        assert "doomed goal" not in proc.stdout
++        assert "1 unreadable queue file(s) skipped" in proc.stderr
++
++
++class TestRm:
++    def test_rm_removes_an_unclaimed_entry(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "regrettable goal", "--project", project_id],
++                        data_root).stdout.strip()
++
++        proc = _run(["queue", "rm", entry_id, "--project", project_id], data_root)
++        assert f"Removed {entry_id}" in proc.stdout
++
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "No queue entries found." in listing
++
++    def test_a_unique_prefix_is_enough(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "prefixed goal", "--project", project_id],
++                        data_root).stdout.strip()
++
++        proc = _run(["queue", "rm", entry_id[:12], "--project", project_id], data_root)
++        assert f"Removed {entry_id}" in proc.stdout
++
++    def test_rm_refuses_a_claimed_entry_and_names_the_owner(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "busy goal", "--project", project_id],
++                        data_root).stdout.strip()
++        _claim_one(data_root, project_id, "host-y#4242")
++
++        proc = _run(["queue", "rm", entry_id, "--project", project_id],
++                    data_root, expect_ok=False)
++
++        assert proc.returncode == 1
++        assert "host-y#4242" in proc.stderr
++        assert "claimed" in proc.stderr
++        # And it is still there — a refusal that deleted anything would be worse than none.
++        assert entry_id[:12] in _run(["queue", "list", "--project", project_id], data_root).stdout
++
++    def test_rm_of_an_unknown_entry_is_an_error(self, project):
++        data_root, project_id = project
++        _run(["queue", "add", "something else", "--project", project_id], data_root)
++
++        proc = _run(["queue", "rm", "deadbeef", "--project", project_id],
++                    data_root, expect_ok=False)
++
++        assert proc.returncode == 1
++        assert "not found" in proc.stderr
++
++    def test_rm_against_an_empty_queue_says_there_is_no_queue(self, project):
++        data_root, project_id = project
++        proc = _run(["queue", "rm", "deadbeef", "--project", project_id],
++                    data_root, expect_ok=False)
++
++        assert proc.returncode == 1
++        assert "no queue for project" in proc.stderr
++
++
++class TestReclaim:
++    def test_reclaim_refuses_a_live_owner_and_explains_both_gates(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "held goal", "--project", project_id],
++                        data_root).stdout.strip()
++        _claim_one(data_root, project_id, f"{socket.gethostname()}#{os.getpid()}")
++
++        proc = _run(["queue", "reclaim", entry_id, "--project", project_id],
++                    data_root, expect_ok=False)
++
++        assert proc.returncode == 1
++        assert str(os.getpid()) in proc.stderr
++        assert "verifiably gone" in proc.stderr
++        assert "never takes a claim away on a timer alone" in proc.stderr
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "claimed" in listing
++
++    def test_reclaim_returns_a_dead_owners_stale_claim_to_the_queue(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "abandoned goal", "--project", project_id],
++                        data_root).stdout.strip()
++        _claim_one(data_root, project_id, f"{socket.gethostname()}#{_dead_pid()}")
++        _backdate_claim(data_root, project_id, entry_id, minutes=600)
++
++        proc = _run(["queue", "reclaim", entry_id, "--project", project_id], data_root)
++
++        assert f"Reclaimed {entry_id}" in proc.stdout
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "queued" in listing
++        assert "claimed" not in listing
++
++    def test_reclaim_is_in_the_catalog_with_a_handler(self):
++        from apps.cli.command_catalog import get_command
++        from apps.cli.commands import collect_all_handlers
++
++        assert get_command("queue.reclaim").action_class == "write_metadata"
++        assert "queue.reclaim" in collect_all_handlers()
++
++
++# ---------------------------------------------------------------------------
++# Helpers that drive the store directly, in their own process
++# ---------------------------------------------------------------------------
++
++
++def _dead_pid() -> int:
++    """A pid that has certainly exited: started, then reaped."""
++    proc = subprocess.Popen([sys.executable, "-c", "pass"])
++    proc.communicate(timeout=60)
++    return proc.pid
++
++
++def _backdate_claim(data_root: Path, project_id: str, entry_id: str, *, minutes: int) -> None:
++    """Age a claim on disk, so the TTL gate can be exercised without waiting an hour."""
++    path = data_root / "queue" / project_id / f"{entry_id}.json"
++    payload = json.loads(path.read_text(encoding="utf-8"))
++    stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes)
++    payload["claimed_at"] = stamp.isoformat()
++    path.write_text(json.dumps(payload), encoding="utf-8")
++
++
++def _claim_one(data_root: Path, project_id: str, consumer: str) -> None:
++    proc = subprocess.run(
++        [sys.executable, "-c",
++         "import sys; sys.path.insert(0, '.');"
++         "from packages.orchestration.job_queue import claim_next;"
++         f"e = claim_next({project_id!r}, {consumer!r});"
++         "print(e.id if e else 'NONE')"],
++        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=60,
++        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
++    )
++    assert proc.returncode == 0, proc.stderr
++    assert proc.stdout.strip() != "NONE", "nothing was claimable"
++
++
++def _make_second_project(data_root: Path, tmp_path: Path) -> str:
++    proc = subprocess.run(
++        [sys.executable, "-c",
++         "import sys; sys.path.insert(0, '.');"
++         "from packages.orchestration.project_registry import RemyProject, save_project;"
++         "p = RemyProject(name='Other', slug='other'); save_project(p); print(p.id)"],
++        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=60,
++        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
++    )
++    assert proc.returncode == 0, proc.stderr
++    return proc.stdout.strip().splitlines()[-1]
+diff --git a/tests/orchestration/test_job_queue.py b/tests/orchestration/test_job_queue.py
+new file mode 100644
+index 0000000..c39f7c7
+--- /dev/null
++++ b/tests/orchestration/test_job_queue.py
+@@ -0,0 +1,526 @@
++"""F048 T001 — the file-based queue entry store and its operations.
++
++What the order requires proof of:
++
++  * ordering: higher priority first, FIFO by ``created_at`` within a priority;
++  * the claim marker's lifecycle — created on claim, gone on release/complete/fail;
++  * complete and fail transitions, and the refusal to transition an unclaimed entry;
++  * a claim survives a process restart, because the state is re-read from disk and
++    nothing is cached in the consumer;
++  * listing survives corrupt entry files — they are skipped and COUNTED;
++  * duplicate goal text is allowed and produces two independent entries.
++
++Every test writes into ``tmp_path``: the queue root is passed explicitly, and the one
++test that exercises default resolution points REMEDY_DATA_DIR at a tmp_path too, so the
++repository's real data root is never touched.
++"""
++from __future__ import annotations
++
++import json
++import os
++import socket
++import subprocess
++import sys
++from datetime import datetime, timedelta, timezone
++from pathlib import Path
++from typing import Any
++
++import pytest
++
++from packages.orchestration import job_queue as q
++from packages.orchestration.job_queue import (
++    CLAIM_SUFFIX,
++    DEFAULT_RECLAIM_TTL_MINUTES,
++    ENTRY_SUFFIX,
++    STATUS_CLAIMED,
++    STATUS_DONE,
++    STATUS_FAILED,
++    STATUS_QUEUED,
++    QueueEntryNotFoundError,
++    QueueError,
++    ReclaimRefusedError,
++    claim_holder,
++    claim_next,
++    complete,
++    enqueue,
++    fail,
++    list_entries,
++    list_entries_safe,
++    load_entry,
++    project_queue_dir,
++    reclaim,
++    release,
++    resolve_reclaim_ttl_minutes,
++)
++
++PROJECT = "proj-alpha"
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++
++
++def _in_a_fresh_process(body: str) -> Any:
++    """Run *body* in a NEW interpreter and return the JSON it printed.
++
++    Not a thread and not a reimport: a separate process, so nothing this one holds in
++    memory can be mistaken for state that survived on disk.
++    """
++    proc = subprocess.run(
++        [sys.executable, "-c", "import json, sys\n" + body],
++        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=60,
++    )
++    assert proc.returncode == 0, f"child failed: {proc.stderr}"
++    return json.loads(proc.stdout.strip().splitlines()[-1])
++
++
++@pytest.fixture
++def root(tmp_path: Path) -> Path:
++    """An isolated data root. The queue area lives at <root>/queue/<project_id>."""
++    return tmp_path / "remedy_data"
++
++
++def _entry_path(root: Path, entry_id: str) -> Path:
++    return project_queue_dir(PROJECT, root) / f"{entry_id}{ENTRY_SUFFIX}"
++
++
++def _claim_path(root: Path, entry_id: str) -> Path:
++    return project_queue_dir(PROJECT, root) / f"{entry_id}{CLAIM_SUFFIX}"
++
++
++# ---------------------------------------------------------------------------
++# Ordering (A9)
++# ---------------------------------------------------------------------------
++
++
++class TestOrdering:
++    def test_higher_priority_is_claimed_first(self, root: Path):
++        low = enqueue(PROJECT, "low", 0, root=root)
++        high = enqueue(PROJECT, "high", 10, root=root)
++        middle = enqueue(PROJECT, "middle", 5, root=root)
++
++        order = [e.id for e in list_entries(PROJECT, root)]
++        assert order == [high.id, middle.id, low.id]
++
++    def test_fifo_within_equal_priority(self, root: Path, monkeypatch):
++        """Same priority: oldest created_at wins, regardless of insertion accident."""
++        stamps = iter([
++            "2026-07-27T10:00:03+00:00",
++            "2026-07-27T10:00:01+00:00",
++            "2026-07-27T10:00:02+00:00",
++        ])
++        monkeypatch.setattr(q, "utc_now_iso", lambda: next(stamps))
++
++        third = enqueue(PROJECT, "enqueued third in time", 0, root=root)
++        first = enqueue(PROJECT, "enqueued first in time", 0, root=root)
++        second = enqueue(PROJECT, "enqueued second in time", 0, root=root)
++
++        order = [e.id for e in list_entries(PROJECT, root)]
++        assert order == [first.id, second.id, third.id]
++
++    def test_priority_outranks_age(self, root: Path, monkeypatch):
++        stamps = iter([
++            "2026-07-27T10:00:01+00:00",
++            "2026-07-27T10:00:09+00:00",
++        ])
++        monkeypatch.setattr(q, "utc_now_iso", lambda: next(stamps))
++
++        old_low = enqueue(PROJECT, "old but low", 0, root=root)
++        young_high = enqueue(PROJECT, "young but high", 3, root=root)
++
++        assert [e.id for e in list_entries(PROJECT, root)] == [young_high.id, old_low.id]
++
++    def test_claim_next_follows_the_listing_order(self, root: Path):
++        enqueue(PROJECT, "low", 0, root=root)
++        high = enqueue(PROJECT, "high", 7, root=root)
++
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++        assert claimed.id == high.id
++
++
++# ---------------------------------------------------------------------------
++# Claim marker lifecycle
++# ---------------------------------------------------------------------------
++
++
++class TestClaimLifecycle:
++    def test_claim_creates_the_marker_and_stamps_the_entry(self, root: Path):
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        assert not _claim_path(root, entry.id).exists()
++
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++        assert claimed.id == entry.id
++        assert claimed.status == STATUS_CLAIMED
++        assert claimed.claimed_by == "consumer-1"
++        assert claimed.claimed_at
++
++        assert _claim_path(root, entry.id).exists()
++        assert claim_holder(PROJECT, entry.id, root) == "consumer-1"
++
++    def test_a_claimed_entry_is_not_offered_again(self, root: Path):
++        enqueue(PROJECT, "only one", 0, root=root)
++
++        first = claim_next(PROJECT, "consumer-1", root)
++        second = claim_next(PROJECT, "consumer-2", root)
++
++        assert first is not None
++        assert second is None
++
++    def test_empty_queue_claims_nothing(self, root: Path):
++        assert claim_next(PROJECT, "consumer-1", root) is None
++
++    def test_release_returns_the_entry_and_removes_the_marker(self, root: Path):
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++
++        released = release(claimed, root)
++        assert released.status == STATUS_QUEUED
++        assert released.claimed_by == ""
++        assert released.claimed_at == ""
++        assert not _claim_path(root, entry.id).exists()
++        assert claim_holder(PROJECT, entry.id, root) == ""
++
++        again = claim_next(PROJECT, "consumer-2", root)
++        assert again is not None
++        assert again.id == entry.id
++        assert again.claimed_by == "consumer-2"
++
++    def test_a_stale_claim_stays_visible(self, root: Path):
++        """No takeover here. A consumer that dies leaves an entry that still names it —
++        re-offering it is an explicit operator command (T003), not a timeout."""
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        claim_next(PROJECT, "host-a#111", root)
++
++        # A consumer that never came back leaves both the marker and the record.
++        assert claim_holder(PROJECT, entry.id, root) == "host-a#111"
++        assert load_entry(PROJECT, entry.id, root).status == STATUS_CLAIMED
++        assert claim_next(PROJECT, "host-b#222", root) is None
++
++
++# ---------------------------------------------------------------------------
++# Terminal transitions
++# ---------------------------------------------------------------------------
++
++
++class TestTransitions:
++    def test_complete_records_the_job_and_drops_the_marker(self, root: Path):
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++
++        done = complete(claimed, "job-abc123", root)
++        assert done.status == STATUS_DONE
++        assert done.result_job_id == "job-abc123"
++        assert not _claim_path(root, entry.id).exists()
++
++        # Terminal: it is not queued work any more.
++        assert claim_next(PROJECT, "consumer-2", root) is None
++        assert load_entry(PROJECT, entry.id, root).status == STATUS_DONE
++
++    def test_fail_records_the_reason_and_drops_the_marker(self, root: Path):
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++
++        failed = fail(claimed, "provider timed out", root)
++        assert failed.status == STATUS_FAILED
++        assert failed.failure_reason == "provider timed out"
++        assert not _claim_path(root, entry.id).exists()
++        assert claim_next(PROJECT, "consumer-2", root) is None
++
++    def test_transition_refuses_an_unclaimed_entry(self, root: Path):
++        entry = enqueue(PROJECT, "never claimed", 0, root=root)
++
++        with pytest.raises(QueueError, match="only a claimed entry"):
++            complete(entry, "job-abc123", root)
++        with pytest.raises(QueueError, match="only a claimed entry"):
++            fail(entry, "nope", root)
++        with pytest.raises(QueueError, match="only a claimed entry"):
++            release(entry, root)
++
++    def test_transition_from_a_stale_snapshot_reads_disk_first(self, root: Path):
++        """The caller's object is a snapshot. The file is the truth."""
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++        complete(claimed, "job-first", root)
++
++        # `claimed` still says "claimed" in memory. Disk says done, so this must refuse
++        # rather than silently rewrite the terminal state.
++        with pytest.raises(QueueError, match="only a claimed entry"):
++            fail(claimed, "second opinion", root)
++        assert load_entry(PROJECT, entry.id, root).result_job_id == "job-first"
++
++    def test_transition_on_a_vanished_entry_is_an_error(self, root: Path):
++        entry = enqueue(PROJECT, "work", 0, root=root)
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++        _entry_path(root, entry.id).unlink()
++
++        with pytest.raises(QueueEntryNotFoundError):
++            complete(claimed, "job-abc123", root)
++
++
++# ---------------------------------------------------------------------------
++# Restart safety
++# ---------------------------------------------------------------------------
++
++
++class TestRestartSafety:
++    def test_claim_survives_a_process_restart(self, root: Path):
++        """A restart keeps nothing in memory. A SECOND interpreter, started after the
++        claim, must see the same claim — and must not be able to steal it."""
++        entry = enqueue(PROJECT, "durable work", 4, root=root)
++        claimed = claim_next(PROJECT, "host-a#4242", root)
++        assert claimed is not None
++
++        observed = _in_a_fresh_process(f"""
++from packages.orchestration import job_queue as q
++root = {str(root)!r}
++after = q.load_entry({PROJECT!r}, {entry.id!r}, root)
++print(json.dumps({{
++    "status": after.status,
++    "claimed_by": after.claimed_by,
++    "claimed_at": after.claimed_at,
++    "priority": after.priority,
++    "goal": after.goal,
++    "holder": q.claim_holder({PROJECT!r}, {entry.id!r}, root),
++    "stolen": q.claim_next({PROJECT!r}, "host-b#7", root) is not None,
++}}))
++""")
++
++        assert observed["status"] == STATUS_CLAIMED
++        assert observed["claimed_by"] == "host-a#4242"
++        assert observed["claimed_at"] == claimed.claimed_at
++        assert observed["priority"] == 4
++        assert observed["goal"] == "durable work"
++        assert observed["holder"] == "host-a#4242"
++        assert observed["stolen"] is False
++
++    def test_the_queue_is_readable_from_a_bare_data_root(self, root: Path, monkeypatch):
++        """Default resolution: no explicit root, REMEDY_DATA_DIR only."""
++        monkeypatch.setenv("REMEDY_DATA_DIR", str(root))
++        entry = enqueue(PROJECT, "resolved by env", 0)
++
++        assert _entry_path(root, entry.id).exists()
++        assert [e.id for e in list_entries(PROJECT)] == [entry.id]
++
++
++# ---------------------------------------------------------------------------
++# Honest listing
++# ---------------------------------------------------------------------------
++
++
++class TestCorruptEntries:
++    def test_corrupt_entries_are_skipped_and_counted(self, root: Path):
++        good_a = enqueue(PROJECT, "good a", 0, root=root)
++        broken = enqueue(PROJECT, "to be broken", 0, root=root)
++        good_b = enqueue(PROJECT, "good b", 0, root=root)
++
++        _entry_path(root, broken.id).write_text("{ this is not json", encoding="utf-8")
++
++        entries, degraded, skipped = list_entries_safe(PROJECT, root)
++        assert [e.id for e in entries] == [good_a.id, good_b.id]
++        assert degraded is True
++        assert skipped == [f"{broken.id}{ENTRY_SUFFIX}"]
++
++    def test_an_unknown_record_version_is_skipped_not_guessed(self, root: Path):
++        good = enqueue(PROJECT, "good", 0, root=root)
++        alien = enqueue(PROJECT, "from the future", 0, root=root)
++
++        payload = json.loads(_entry_path(root, alien.id).read_text(encoding="utf-8"))
++        payload["queue_entry_v"] = 999
++        _entry_path(root, alien.id).write_text(json.dumps(payload), encoding="utf-8")
++
++        entries, degraded, skipped = list_entries_safe(PROJECT, root)
++        assert [e.id for e in entries] == [good.id]
++        assert degraded is True
++        assert skipped == [f"{alien.id}{ENTRY_SUFFIX}"]
++
++    def test_a_corrupt_entry_does_not_block_claiming(self, root: Path):
++        broken = enqueue(PROJECT, "to be broken", 9, root=root)
++        good = enqueue(PROJECT, "still claimable", 0, root=root)
++        _entry_path(root, broken.id).write_text("", encoding="utf-8")
++
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++        assert claimed.id == good.id
++
++    def test_a_missing_queue_lists_empty_and_honest(self, root: Path):
++        entries, degraded, skipped = list_entries_safe("proj-never-used", root)
++        assert entries == []
++        assert degraded is False
++        assert skipped == []
++
++
++# ---------------------------------------------------------------------------
++# Enqueue contract
++# ---------------------------------------------------------------------------
++
++
++class TestEnqueue:
++    def test_duplicate_goal_text_is_allowed(self, root: Path):
++        """Deduplication is a human judgment, not the queue's (A9)."""
++        first = enqueue(PROJECT, "same exact goal", 0, root=root)
++        second = enqueue(PROJECT, "same exact goal", 0, root=root)
++
++        assert first.id != second.id
++        entries = list_entries(PROJECT, root)
++        assert len(entries) == 2
++        assert {e.goal for e in entries} == {"same exact goal"}
++
++        one = claim_next(PROJECT, "consumer-1", root)
++        two = claim_next(PROJECT, "consumer-2", root)
++        assert one is not None and two is not None
++        assert {one.id, two.id} == {first.id, second.id}
++
++    def test_a_goal_file_reference_is_accepted(self, root: Path):
++        entry = enqueue(PROJECT, goal_path="/work/goals/f048.md", root=root)
++        assert entry.goal == ""
++        assert entry.goal_path == "/work/goals/f048.md"
++        assert load_entry(PROJECT, entry.id, root).goal_path == "/work/goals/f048.md"
++
++    def test_goal_text_and_goal_path_are_exclusive(self, root: Path):
++        with pytest.raises(QueueError, match="exactly one"):
++            enqueue(PROJECT, "text", 0, goal_path="/work/goals/f048.md", root=root)
++        with pytest.raises(QueueError, match="exactly one"):
++            enqueue(PROJECT, "", 0, root=root)
++
++    def test_entries_are_scoped_to_their_project(self, root: Path):
++        mine = enqueue(PROJECT, "mine", 0, root=root)
++        enqueue("proj-beta", "theirs", 0, root=root)
++
++        assert [e.id for e in list_entries(PROJECT, root)] == [mine.id]
++        claimed = claim_next(PROJECT, "consumer-1", root)
++        assert claimed is not None
++        assert claimed.id == mine.id
++        assert claim_next(PROJECT, "consumer-1", root) is None
++
++    def test_an_unsafe_project_id_never_becomes_a_path(self, root: Path):
++        for bad in ("../escape", "a/b", "", "."):
++            with pytest.raises(QueueError, match="invalid project id"):
++                enqueue(bad, "work", 0, root=root)
++
++    def test_a_non_integer_priority_is_refused(self, root: Path):
++        with pytest.raises(QueueError, match="invalid priority"):
++            enqueue(PROJECT, "work", "high", root=root)  # type: ignore[arg-type]
++
++
++# ---------------------------------------------------------------------------
++# Explicit reclaim (T003b) — the ONLY path that takes a claim from its holder
++# ---------------------------------------------------------------------------
++
++
++def _dead_pid() -> int:
++    """A pid that has certainly exited: we start a process and reap it."""
++    proc = subprocess.Popen([sys.executable, "-c", "pass"])
++    proc.communicate(timeout=60)
++    return proc.pid
++
++
++def _this_host() -> str:
++    return socket.gethostname() or ""
++
++
++def _claim_with(root: Path, owner: str, *, minutes_ago: float) -> str:
++    """Enqueue, claim as *owner*, and backdate the claim stamp on disk."""
++    entry = enqueue(PROJECT, "reclaimable work", 0, root=root)
++    claimed = claim_next(PROJECT, owner, root)
++    assert claimed is not None
++
++    path = project_queue_dir(PROJECT, root) / f"{entry.id}{ENTRY_SUFFIX}"
++    payload = json.loads(path.read_text(encoding="utf-8"))
++    stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
++    payload["claimed_at"] = stamp.isoformat()
++    path.write_text(json.dumps(payload), encoding="utf-8")
++    return entry.id
++
++
++class TestReclaim:
++    def test_a_stale_claim_of_a_dead_owner_is_reclaimed(self, root: Path):
++        owner = f"{_this_host()}#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=90)
++
++        reclaimed = reclaim(PROJECT, entry_id, root)
++
++        assert reclaimed.status == STATUS_QUEUED
++        assert reclaimed.claimed_by == ""
++        assert reclaimed.claimed_at == ""
++        assert claim_holder(PROJECT, entry_id, root) == ""
++        # And it is genuinely back in circulation.
++        again = claim_next(PROJECT, "fresh-consumer", root)
++        assert again is not None
++        assert again.id == entry_id
++
++    def test_a_live_owner_is_refused_however_old_the_claim(self, root: Path):
++        owner = f"{_this_host()}#{os.getpid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=6000)
++
++        with pytest.raises(ReclaimRefusedError) as caught:
++            reclaim(PROJECT, entry_id, root)
++
++        assert owner in str(caught.value)
++        assert "still running" in str(caught.value)
++        assert caught.value.entry.claimed_by == owner
++        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
++
++    def test_a_young_claim_is_refused_however_dead_the_owner(self, root: Path):
++        owner = f"{_this_host()}#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=1)
++
++        with pytest.raises(ReclaimRefusedError) as caught:
++            reclaim(PROJECT, entry_id, root, ttl_minutes=60)
++
++        assert owner in str(caught.value)
++        assert "reclaim TTL" in str(caught.value)
++        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
++
++    def test_an_owner_on_another_host_is_never_declared_gone(self, root: Path):
++        """A pid means nothing across hosts — the same number is alive somewhere else."""
++        owner = f"not-this-host#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=600)
++
++        with pytest.raises(ReclaimRefusedError) as caught:
++            reclaim(PROJECT, entry_id, root)
++
++        assert "not on this host" in str(caught.value)
++        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
++
++    def test_an_unparsable_owner_is_never_declared_gone(self, root: Path):
++        entry_id = _claim_with(root, "a-consumer-without-a-pid", minutes_ago=600)
++
++        with pytest.raises(ReclaimRefusedError, match="does not name a host and pid"):
++            reclaim(PROJECT, entry_id, root)
++
++    def test_an_unreadable_claim_time_is_a_refusal_not_a_licence(self, root: Path):
++        owner = f"{_this_host()}#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=600)
++        path = project_queue_dir(PROJECT, root) / f"{entry_id}{ENTRY_SUFFIX}"
++        payload = json.loads(path.read_text(encoding="utf-8"))
++        payload["claimed_at"] = "some time last week"
++        path.write_text(json.dumps(payload), encoding="utf-8")
++
++        with pytest.raises(ReclaimRefusedError, match="age cannot be proven"):
++            reclaim(PROJECT, entry_id, root)
++
++    def test_an_unclaimed_entry_cannot_be_reclaimed(self, root: Path):
++        entry = enqueue(PROJECT, "never claimed", 0, root=root)
++
++        with pytest.raises(ReclaimRefusedError, match="only a claimed entry"):
++            reclaim(PROJECT, entry.id, root)
++
++    def test_the_ttl_comes_from_config_with_a_sixty_minute_default(self, monkeypatch):
++        from packages.orchestration.config import reset_config
++
++        monkeypatch.delenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", raising=False)
++        reset_config()
++        assert resolve_reclaim_ttl_minutes() == DEFAULT_RECLAIM_TTL_MINUTES == 60
++
++        monkeypatch.setenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", "5")
++        reset_config()
++        try:
++            assert resolve_reclaim_ttl_minutes() == 5
++        finally:
++            monkeypatch.delenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", raising=False)
++            reset_config()
+diff --git a/tests/orchestration/test_queue_concurrency.py b/tests/orchestration/test_queue_concurrency.py
+new file mode 100644
+index 0000000..0067026
+--- /dev/null
++++ b/tests/orchestration/test_queue_concurrency.py
+@@ -0,0 +1,185 @@
++"""F048 T002 — two real processes, one queue, zero double-claims.
++
++This is the heart of the feature, so the test is deliberately unforgiving:
++
++  * the consumers are SUBPROCESSES, not threads and not sequential calls — the claim is
++    an ``os.link`` against the same directory from two independent interpreters;
++  * they are started before either has drained anything, and a start barrier makes them
++    contend on the same entries rather than politely taking turns;
++  * the assertions are the three the order names — the claim sets are DISJOINT, their
++    union is the FULL queue, and no entry is claimed twice;
++  * the whole scenario runs REPEATEDLY in one test session, because a race that only
++    shows up sometimes is exactly the race worth catching.
++
++A run in which the two consumers did not overlap in time is reported, not silently
++accepted: an implementation that "passes" by serialising its consumers would leave one
++claim set empty, and every such run is failed by the interleaving check below.
++"""
++from __future__ import annotations
++
++import json
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++from packages.orchestration.job_queue import (
++    CLAIM_SUFFIX,
++    STATUS_CLAIMED,
++    claim_holder,
++    enqueue,
++    list_entries,
++    project_queue_dir,
++)
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++
++PROJECT = "proj-race"
++
++#: Well above the two-consumer count, so a lucky interleaving cannot fake coverage.
++ENTRY_COUNT = 24
++
++#: The scenario repeats: one green run proves nothing about a race.
++REPEATS = 3
++
++CONSUMER_TIMEOUT_SEC = 120
++
++
++CONSUMER_SOURCE = """
++import json
++import os
++import sys
++import time
++
++sys.path.insert(0, {repo_root!r})
++
++from packages.orchestration.job_queue import claim_next
++
++project, root, consumer, out_path, barrier_path = sys.argv[1:6]
++
++# Start barrier: announce readiness, then wait for every consumer to be up. Without it
++# the first process can drain the whole queue before the second one has imported us,
++# and the test would prove nothing about contention.
++with open(barrier_path + "." + consumer + ".ready", "w") as handle:
++    handle.write("ready")
++
++deadline = time.time() + 30
++while time.time() < deadline:
++    ready = [n for n in os.listdir(os.path.dirname(barrier_path)) if n.endswith(".ready")]
++    if len(ready) >= {consumer_count}:
++        break
++    time.sleep(0.005)
++
++claimed = []
++first_claim_at = None
++while True:
++    entry = claim_next(project, consumer, root)
++    if entry is None:
++        break
++    if first_claim_at is None:
++        first_claim_at = time.time()
++    claimed.append(entry.id)
++    last_claim_at = time.time()
++
++with open(out_path, "w") as handle:
++    json.dump({{
++        "consumer": consumer,
++        "claimed": claimed,
++        "first_claim_at": first_claim_at,
++        "last_claim_at": last_claim_at if claimed else None,
++    }}, handle)
++"""
++
++
++def _run_one_scenario(tmp_path: Path, attempt: int) -> dict[str, object]:
++    """Fill a fresh queue, drain it with two concurrent processes, return the evidence."""
++    root = tmp_path / f"data_{attempt}"
++    barrier_dir = tmp_path / f"barrier_{attempt}"
++    barrier_dir.mkdir(parents=True)
++    barrier = barrier_dir / "start"
++
++    expected = {enqueue(PROJECT, f"goal {i}", 0, root=root).id for i in range(ENTRY_COUNT)}
++    assert len(expected) == ENTRY_COUNT
++
++    source = CONSUMER_SOURCE.format(repo_root=str(REPO_ROOT), consumer_count=2)
++    out_paths = {
++        "consumer-a": tmp_path / f"result_a_{attempt}.json",
++        "consumer-b": tmp_path / f"result_b_{attempt}.json",
++    }
++
++    # Both processes are STARTED before either is waited on — that is the concurrency.
++    procs = {
++        name: subprocess.Popen(
++            [sys.executable, "-c", source, PROJECT, str(root), name,
++             str(out_path), str(barrier)],
++            cwd=str(REPO_ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
++        )
++        for name, out_path in out_paths.items()
++    }
++
++    results: dict[str, dict] = {}
++    for name, proc in procs.items():
++        _, stderr = proc.communicate(timeout=CONSUMER_TIMEOUT_SEC)
++        assert proc.returncode == 0, f"{name} failed ({proc.returncode}): {stderr}"
++        results[name] = json.loads(out_paths[name].read_text(encoding="utf-8"))
++
++    return {"root": root, "expected": expected, "results": results}
++
++
++@pytest.mark.parametrize("attempt", range(REPEATS))
++def test_two_processes_never_claim_the_same_entry(tmp_path: Path, attempt: int):
++    scenario = _run_one_scenario(tmp_path, attempt)
++    expected: set[str] = scenario["expected"]           # type: ignore[assignment]
++    results: dict[str, dict] = scenario["results"]      # type: ignore[assignment]
++    root: Path = scenario["root"]                       # type: ignore[assignment]
++
++    a = results["consumer-a"]["claimed"]
++    b = results["consumer-b"]["claimed"]
++
++    # No consumer claimed the same entry twice.
++    assert len(a) == len(set(a)), "consumer-a claimed an entry more than once"
++    assert len(b) == len(set(b)), "consumer-b claimed an entry more than once"
++
++    # The two claim sets are disjoint: zero double-claims across processes.
++    overlap = set(a) & set(b)
++    assert overlap == set(), f"both consumers claimed {sorted(overlap)}"
++
++    # Their union is the whole queue: nothing was lost or skipped.
++    assert set(a) | set(b) == expected
++    assert len(a) + len(b) == ENTRY_COUNT
++
++    # And the queue agrees: every entry is claimed, by exactly the consumer that says so.
++    owner_of = {**{entry_id: "consumer-a" for entry_id in a},
++                **{entry_id: "consumer-b" for entry_id in b}}
++    for entry in list_entries(PROJECT, root):
++        assert entry.status == STATUS_CLAIMED
++        assert entry.claimed_by == owner_of[entry.id]
++        assert claim_holder(PROJECT, entry.id, root) == owner_of[entry.id]
++
++    # One marker per entry, no more.
++    markers = sorted(p.name for p in project_queue_dir(PROJECT, root).glob(f"*{CLAIM_SUFFIX}"))
++    assert len(markers) == ENTRY_COUNT
++
++
++@pytest.mark.parametrize("attempt", range(REPEATS))
++def test_the_consumers_actually_ran_concurrently(tmp_path: Path, attempt: int):
++    """The anti-cheat assertion.
++
++    An implementation that serialises its consumers — a lock around the whole drain, or a
++    single-process fallback — would still produce disjoint sets covering the queue. It
++    would NOT produce two consumers that both claimed work and whose claim windows
++    overlap in wall-clock time. Both are required here.
++    """
++    scenario = _run_one_scenario(tmp_path, attempt)
++    results: dict[str, dict] = scenario["results"]      # type: ignore[assignment]
++
++    a, b = results["consumer-a"], results["consumer-b"]
++    assert a["claimed"], "consumer-a claimed nothing — the consumers were serialised"
++    assert b["claimed"], "consumer-b claimed nothing — the consumers were serialised"
++
++    # Claim windows must overlap: neither consumer finished before the other started.
++    assert a["first_claim_at"] < b["last_claim_at"], (
++        "consumer-b finished before consumer-a began claiming — not concurrent")
++    assert b["first_claim_at"] < a["last_claim_at"], (
++        "consumer-a finished before consumer-b began claiming — not concurrent")
+diff --git a/tests/orchestration/test_queue_executor_binding.py b/tests/orchestration/test_queue_executor_binding.py
+new file mode 100644
+index 0000000..722095b
+--- /dev/null
++++ b/tests/orchestration/test_queue_executor_binding.py
+@@ -0,0 +1,188 @@
++"""F048 T003c — the opt-in executor binding, end to end.
++
++An idle multi-cycle run may take the next entry from its project's queue and turn it into
++a NORMAL job. Three properties matter, and each has a test:
++
++  * OFF BY DEFAULT. Without the opt-in nothing is claimed, nothing is created, and the
++    loop's result is shaped exactly as it was before the queue existed.
++  * The queued goal becomes a normal PLANNED job — the same thing `job create` +
++    `job plan` produce — and the entry is marked done with that job's id.
++  * APPROVAL IS UNCHANGED. The binding stops at PLANNED: no task is executed, and nothing
++    behaves as though --yes had been passed.
++
++A failing pull is not allowed to strand an entry: the entry ends `failed`, with the
++reason, rather than `claimed` by a consumer that has moved on.
++"""
++from __future__ import annotations
++
++from pathlib import Path
++from uuid import UUID
++
++import pytest
++
++from packages.core.models import Job, RunState
++from packages.orchestration import job_queue as queue
++from packages.orchestration.config import reset_config
++from packages.orchestration.long_run_executor import (
++    QUEUE_PULL_FAILED,
++    QUEUE_PULL_PLANNED,
++    CycleLimits,
++    queue_binding_enabled,
++    run_cycles,
++)
++from packages.orchestration.storage import load_job
++
++PROJECT = "proj-binding"
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    """Nothing here touches the repository's real data root."""
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir(parents=True)
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    reset_config()
++    yield data_dir
++    reset_config()
++
++
++@pytest.fixture
++def binding_on(monkeypatch):
++    monkeypatch.setenv("REMEDY_QUEUE_EXECUTOR_BINDING", "true")
++    reset_config()
++    assert queue_binding_enabled() is True
++
++
++def _idle_job() -> Job:
++    """A job with no tasks: the loop finds nothing ready and ends idle."""
++    return Job(name="host job", user_prompt="host job", state=RunState.PENDING,
++               project_id=PROJECT)
++
++
++def _never_called(context):  # pragma: no cover - a called provider is the failure
++    raise AssertionError("the binding must not make provider calls")
++
++
++def _run_idle(job: Job):
++    return run_cycles(job, CycleLimits(max_cycles=1), _never_called,
++                      record_evidence=False, record_checkpoint=False)
++
++
++class TestOffByDefault:
++    def test_nothing_is_claimed_without_the_opt_in(self, isolate_data_root):
++        entry = queue.enqueue(PROJECT, "queued goal", 0)
++
++        result = _run_idle(_idle_job())
++
++        assert queue_binding_enabled() is False
++        assert result.queue_pull is None
++        assert "queue_pull" not in result.to_json()
++        assert queue.load_entry(PROJECT, entry.id).status == queue.STATUS_QUEUED
++        assert queue.claim_holder(PROJECT, entry.id) == ""
++
++    def test_an_enabled_binding_with_an_empty_queue_does_nothing(self, binding_on):
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is None
++        assert "queue_pull" not in result.to_json()
++
++    def test_a_job_without_a_project_never_pulls(self, binding_on):
++        queue.enqueue(PROJECT, "queued goal", 0)
++
++        result = _run_idle(Job(name="unscoped", user_prompt="unscoped",
++                               state=RunState.PENDING))
++
++        assert result.queue_pull is None
++
++
++class TestEndToEnd:
++    def test_a_queued_goal_becomes_a_planned_job_and_completes_its_entry(self, binding_on):
++        entry = queue.enqueue(PROJECT, "write the queue docs", 3)
++
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is not None
++        assert result.queue_pull.status == QUEUE_PULL_PLANNED
++        assert result.queue_pull.entry_id == entry.id
++
++        # The entry is done, and it names the job it became.
++        after = queue.load_entry(PROJECT, entry.id)
++        assert after.status == queue.STATUS_DONE
++        assert after.result_job_id == result.queue_pull.job_id
++        assert queue.claim_holder(PROJECT, entry.id) == ""
++
++        # The job exists, is a normal job for this project, and has a plan.
++        queued_job = load_job(UUID(result.queue_pull.job_id))
++        assert queued_job.project_id == PROJECT
++        assert queued_job.user_prompt == "write the queue docs"
++        assert queued_job.tasks, "a pulled goal must arrive planned, not empty"
++        assert queued_job.state == RunState.PLANNED
++        assert queued_job.metadata["queue_entry_id"] == entry.id
++
++        # And the result is serialisable with the pull visible.
++        assert result.to_json()["queue_pull"]["status"] == QUEUE_PULL_PLANNED
++
++    def test_the_highest_priority_entry_is_the_one_pulled(self, binding_on):
++        queue.enqueue(PROJECT, "low goal", 0)
++        high = queue.enqueue(PROJECT, "high goal", 9)
++
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is not None
++        assert result.queue_pull.entry_id == high.id
++        assert queue.load_entry(PROJECT, high.id).status == queue.STATUS_DONE
++
++    def test_one_idle_run_takes_exactly_one_entry(self, binding_on):
++        first = queue.enqueue(PROJECT, "first goal", 5)
++        second = queue.enqueue(PROJECT, "second goal", 1)
++
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is not None
++        assert result.queue_pull.entry_id == first.id
++        assert queue.load_entry(PROJECT, second.id).status == queue.STATUS_QUEUED
++
++    def test_a_goal_file_reference_is_read_into_the_job(self, binding_on, tmp_path):
++        goal_file = tmp_path / "goal.md"
++        goal_file.write_text("Ship the executor binding.\n", encoding="utf-8")
++        entry = queue.enqueue(PROJECT, goal_path=str(goal_file))
++
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is not None
++        assert result.queue_pull.status == QUEUE_PULL_PLANNED
++        queued_job = load_job(UUID(result.queue_pull.job_id))
++        assert queued_job.user_prompt == "Ship the executor binding."
++        assert queue.load_entry(PROJECT, entry.id).status == queue.STATUS_DONE
++
++
++class TestApprovalIsUnchanged:
++    def test_the_pulled_job_stops_at_planned_and_runs_nothing(self, binding_on):
++        """PLANNED, not RUNNING and not COMPLETED: the operator's gate is still ahead."""
++        queue.enqueue(PROJECT, "do something significant", 0)
++
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is not None
++        queued_job = load_job(UUID(result.queue_pull.job_id))
++        assert queued_job.state == RunState.PLANNED
++        assert all(task.status == RunState.PENDING for task in queued_job.tasks)
++        # _never_called would have raised; asserting it plainly documents the rule.
++        assert queued_job.artifacts, "planning output is the only thing produced"
++
++
++class TestFailurePath:
++    def test_an_unreadable_goal_file_fails_the_entry_instead_of_stranding_it(
++            self, binding_on, tmp_path):
++        entry = queue.enqueue(PROJECT, goal_path=str(tmp_path / "missing.md"))
++
++        result = _run_idle(_idle_job())
++
++        assert result.queue_pull is not None
++        assert result.queue_pull.status == QUEUE_PULL_FAILED
++        assert "could not be read" in result.queue_pull.reason
++
++        after = queue.load_entry(PROJECT, entry.id)
++        assert after.status == queue.STATUS_FAILED
++        assert "could not be read" in after.failure_reason
++        assert queue.claim_holder(PROJECT, entry.id) == ""

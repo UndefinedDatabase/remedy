@@ -28,19 +28,23 @@ the dedicated integration gate.
 - [x] Commit A: R2 verdict persisted (f048-r3-1.md, sha256 + cmp exit 0)
 - [x] Commit B: Built State in docs/roadmap/features/T1_F048.md;
       this commit's sha is ACCEPTED_HEAD (pre-zip head)
-- [ ] Preconditions: git status --porcelain empty · integrity check PASS
-- [ ] Evidence job: create_manual_completion_bundle(feature f048)
-- [ ] Review zip: READY_FOR_REVIEW, subject 40c7e4d..ACCEPTED_HEAD
-- [ ] Commit C (LAST, A4): authored STATUS `[x]` line + evidence dir +
-      final .agent state
+- [x] Preconditions: git status --porcelain empty · integrity check
+      passed=true, 0 fails, 0 relevant untracked, no high blockers
+- [x] Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 (164 passed
+      across 6 measured runs); first attempt discarded — node_ids and
+      output_hash producer pitfalls, recorded in the handoff
+- [x] Review zip remedy-review-20260727-223612-READY_FOR_REVIEW.zip —
+      READY, evidence authoritative, subject 40c7e4d..c6a0b58
+- [x] Commit C (LAST, A4): authored STATUS `[x]` line (skeleton proved
+      byte-identical) + evidence dir + final .agent state
 - [ ] PR into main — created, NOT merged
 
 ## Current Step
-Closure. No code changes this round.
+Closure complete except the PR. No code changes this round.
 
 ## Next Steps
-Preconditions → evidence job → zip → STATUS commit → PR. The PR is left
-open: the next feature's Open PR Gate merges it.
+Open the PR and hand back. The PR stays OPEN: the next feature's Open PR
+Gate merges it — that gap is the operator's manual-review window.
 
 ## Risks
 - Do-not-touch: cron/scheduling, cross-project queues, SQLite.

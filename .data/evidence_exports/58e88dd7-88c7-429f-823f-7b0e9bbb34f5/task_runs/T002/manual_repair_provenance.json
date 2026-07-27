@@ -1,0 +1,30 @@
+{
+ "changed_files": [
+  "packages/orchestration/config.py",
+  "packages/orchestration/data_paths.py",
+  "packages/orchestration/job_queue.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/cli/test_queue_cmd.py"
+ ],
+ "diff_sha256": "92535ce7c831df156945cde3e4e89ae75a242f0e3dbc3b68e02f72bd2c96138c",
+ "job_id": "58e88dd7-88c7-429f-823f-7b0e9bbb34f5",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "92535ce7c831df156945cde3e4e89ae75a242f0e3dbc3b68e02f72bd2c96138c",
+ "safe_diff_sha256": "b728c15fb772cc4fcfbfe8d635769ad181196493e4eec286ce4c4806527cc015",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "packages/orchestration/config.py",
+  "packages/orchestration/data_paths.py",
+  "packages/orchestration/job_queue.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/cli/test_queue_cmd.py"
+ ],
+ "timestamp": "2026-07-27T20:35:58.305466+00:00",
+ "tracked_diff_sha256": "b728c15fb772cc4fcfbfe8d635769ad181196493e4eec286ce4c4806527cc015",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

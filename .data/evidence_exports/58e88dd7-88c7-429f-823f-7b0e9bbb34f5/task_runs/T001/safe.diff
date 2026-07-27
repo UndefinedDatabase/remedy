@@ -1,0 +1,460 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 89dde6b..9651a25 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -96,6 +96,7 @@ GROUPS: dict[str, GroupDef] = {
+     # -- User-facing primary commands --
+     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
+     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
++    "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
+     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
+     "ui": GroupDef("ui", "UI", "Open the local UI."),
+     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
+@@ -445,6 +446,55 @@ CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.status", "job.report"),
+     ),
+ 
++    # ── queue (F048) ─────────────────────────────────────────────────────
++    CommandEntry(
++        command_id="queue.add",
++        group_id="queue",
++        subcommand="add",
++        description="Enqueue a goal for this project (text, or a path to a goal file).",
++        action_class="write_metadata",
++        args=(
++            ArgDef("goal", "Goal text, or a path to a goal file"),
++            ArgDef("--prio", "Priority; higher is claimed first (default 0)", required=False, is_option=True, default=None),
++            ArgDef("--path", "Treat the argument as a goal-file path, not as goal text", required=False, is_option=True, is_flag=True),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list", "queue.rm"),
++    ),
++    CommandEntry(
++        command_id="queue.list",
++        group_id="queue",
++        subcommand="list",
++        description="List queue entries (scoped to the current project by default).",
++        action_class="read_only",
++        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
++        related=("queue.add",),
++    ),
++    CommandEntry(
++        command_id="queue.rm",
++        group_id="queue",
++        subcommand="rm",
++        description="Remove a queue entry. A claimed entry is refused, naming its owner.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list",),
++    ),
++    CommandEntry(
++        command_id="queue.reclaim",
++        group_id="queue",
++        subcommand="reclaim",
++        description="Re-offer a stale claim — only if it is past the TTL and its owner is verifiably gone.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list",),
++    ),
++
+     # ── project ──────────────────────────────────────────────────────────
+     CommandEntry(
+         command_id="project.create",
+diff --git a/apps/cli/commands/__init__.py b/apps/cli/commands/__init__.py
+index 98f80a0..e4fdd03 100644
+--- a/apps/cli/commands/__init__.py
++++ b/apps/cli/commands/__init__.py
+@@ -64,6 +64,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+         project,
+         propose_cmd,
+         provider_cmd,
++        queue_cmd,
+         readiness,
+         real_test_execution_cmd,
+         repair_cmd,
+@@ -85,6 +86,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     )
+ 
+     table: dict[str, Callable[[argparse.Namespace], None]] = {}
+-    for mod in (init_cmd, job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, job_stop_cmd, job_rerun_cmd, status_cmd):
++    for mod in (init_cmd, job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, job_stop_cmd, job_rerun_cmd, status_cmd, queue_cmd):
+         table.update(mod.COMMAND_HANDLERS)
+     return table
+diff --git a/apps/cli/commands/queue_cmd.py b/apps/cli/commands/queue_cmd.py
+new file mode 100644
+index 0000000..2f5f681
+--- /dev/null
++++ b/apps/cli/commands/queue_cmd.py
+@@ -0,0 +1,242 @@
++"""`remedy queue` — the per-project work queue (F048 T003).
++
++Commands over the file-based queue in ``packages.orchestration.job_queue``: ``add`` puts
++work in, ``list`` shows what is there and who holds what, ``rm`` takes an unclaimed entry
++back out. Reclaiming a stale claim is its own command (T003b) — explicit, never silent.
++
++Scoping follows F148: the project comes from ``--project``, ``REMEDY_PROJECT`` or the
++working directory, exactly as ``remedy job list`` resolves it. There is no cross-project
++queue; ``--all-projects`` only widens the LISTING, entry by entry, over the project
++queues that exist on disk.
++"""
++from __future__ import annotations
++
++import sys
++from collections.abc import Callable
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import TYPE_CHECKING, Any
++
++if TYPE_CHECKING:
++    import argparse
++
++EXIT_ERROR = 1
++EXIT_USAGE = 2
++#: The contract's exit code for "no project" — the same one `job create` uses.
++EXIT_NO_PROJECT = 3
++
++
++def _resolve_project_id(project_flag: str | None) -> str:
++    """The one project this command acts on, or exit 3 with the same wording as job create."""
++    from packages.orchestration.project_registry import (
++        ProjectNotFoundError,
++        select_project,
++    )
++
++    try:
++        project, _source = select_project(project_flag, ".")
++    except ProjectNotFoundError:
++        print(
++            "Error: no project found. Run: remedy init\n"
++            "  or pass --project <slug-or-id>",
++            file=sys.stderr,
++        )
++        sys.exit(EXIT_NO_PROJECT)
++    return str(project.id)
++
++
++def _looks_like_a_path(text: str) -> bool:
++    """A goal that names an existing file is a goal FILE. Anything else is goal text.
++
++    Existence, not spelling: a sentence containing a slash is still a sentence, and a
++    typo'd path is better enqueued as text the operator can read back than silently
++    treated as a file reference that will never resolve.
++    """
++    stripped = text.strip()
++    if not stripped or "\n" in stripped:
++        return False
++    try:
++        return Path(stripped).expanduser().is_file()
++    except OSError:
++        return False
++
++
++def _age(created_at: str, *, now: datetime | None = None) -> str:
++    """Compact age for the listing. Unparsable timestamps print as `?` rather than a guess."""
++    try:
++        stamp = datetime.fromisoformat(created_at)
++    except (TypeError, ValueError):
++        return "?"
++    if stamp.tzinfo is None:
++        stamp = stamp.replace(tzinfo=timezone.utc)
++    seconds = int(((now or datetime.now(timezone.utc)) - stamp).total_seconds())
++    if seconds < 0:
++        return "?"
++    if seconds < 60:
++        return f"{seconds}s"
++    if seconds < 3600:
++        return f"{seconds // 60}m"
++    if seconds < 86400:
++        return f"{seconds // 3600}h"
++    return f"{seconds // 86400}d"
++
++
++def _goal_label(entry: Any) -> str:
++    text = entry.goal or f"@{entry.goal_path}"
++    single_line = text.replace("\n", " ").strip()
++    return single_line[:60]
++
++
++def _cmd_queue_add(goal: str, *, project: str | None = None,
++                   prio: str | None = None, path: bool = False) -> None:
++    from packages.orchestration.job_queue import QueueError, enqueue
++
++    project_id = _resolve_project_id(project)
++
++    try:
++        priority = int(prio) if prio is not None else 0
++    except (TypeError, ValueError):
++        print(f"Error: --prio must be an integer, got {prio!r}", file=sys.stderr)
++        sys.exit(EXIT_USAGE)
++
++    as_path = path or _looks_like_a_path(goal)
++    try:
++        if as_path:
++            entry = enqueue(project_id, goal_path=goal, prio=priority)
++        else:
++            entry = enqueue(project_id, goal, priority)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(entry.id)
++
++
++def _project_ids_with_a_queue() -> list[str]:
++    """Every project directory that actually exists under the queue area.
++
++    Read from disk, not from the registry: a queue whose project was unregistered still
++    holds work, and hiding it would make the listing dishonest.
++    """
++    from packages.orchestration.job_queue import queue_root
++
++    root = queue_root()
++    if not root.is_dir():
++        return []
++    return sorted(p.name for p in root.iterdir() if p.is_dir())
++
++
++def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -> None:
++    from packages.orchestration.job_queue import list_entries_safe
++
++    if all_projects:
++        project_ids = _project_ids_with_a_queue()
++    else:
++        project_ids = [_resolve_project_id(project)]
++
++    rows: list[tuple[str, Any]] = []
++    skipped_total = 0
++    for project_id in project_ids:
++        entries, _degraded, skipped = list_entries_safe(project_id)
++        skipped_total += len(skipped)
++        rows.extend((project_id, entry) for entry in entries)
++
++    if not rows:
++        print("No queue entries found.")
++    for project_id, entry in rows:
++        owner = entry.claimed_by or "-"
++        label = f"  (project: {project_id[:8]})" if all_projects else ""
++        print(f"{entry.id[:12]}  {entry.status:<8}  prio {entry.priority:<4}  "
++              f"{_age(entry.created_at):>4}  {owner:<24}  {_goal_label(entry)}{label}")
++    if skipped_total:
++        print(f"  ({skipped_total} unreadable queue file(s) skipped)", file=sys.stderr)
++
++
++def _resolve_entry_id(project_id: str, raw: str) -> str:
++    """Full id, or a unique prefix — the same affordance job ids have."""
++    from packages.orchestration.job_queue import list_entries
++
++    candidate = raw.strip()
++    matches = [e.id for e in list_entries(project_id) if e.id.startswith(candidate)]
++    if candidate in matches:
++        return candidate
++    if len(matches) == 1:
++        return matches[0]
++    if len(matches) > 1:
++        print(f"Error: ambiguous queue entry prefix {raw!r} matches {len(matches)} entries:",
++              file=sys.stderr)
++        for match in sorted(matches):
++            print(f"  {match[:12]}", file=sys.stderr)
++        sys.exit(EXIT_USAGE)
++    return candidate
++
++
++def _cmd_queue_rm(entry_id: str, *, project: str | None = None) -> None:
++    from packages.orchestration.job_queue import (
++        QueueEntryClaimedError,
++        QueueEntryNotFoundError,
++        QueueError,
++        remove_entry,
++    )
++
++    project_id = _resolve_project_id(project)
++    resolved = _resolve_entry_id(project_id, entry_id)
++    try:
++        entry = remove_entry(project_id, resolved)
++    except QueueEntryClaimedError as exc:
++        print(f"Error: {exc}. Claimed at {exc.entry.claimed_at or 'an unknown time'}.",
++              file=sys.stderr)
++        print("  A claimed entry is held by a consumer. Use: remedy queue reclaim "
++              f"{exc.entry.id[:12]}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueEntryNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(f"Removed {entry.id}")
++
++
++def _cmd_queue_reclaim(entry_id: str, *, project: str | None = None) -> None:
++    from packages.orchestration.job_queue import (
++        QueueError,
++        ReclaimRefusedError,
++        reclaim,
++        resolve_reclaim_ttl_minutes,
++    )
++
++    project_id = _resolve_project_id(project)
++    resolved = _resolve_entry_id(project_id, entry_id)
++    try:
++        entry = reclaim(project_id, resolved)
++    except ReclaimRefusedError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        print("  A reclaim needs BOTH: a claim older than "
++              f"{resolve_reclaim_ttl_minutes()} minutes AND an owner that is verifiably "
++              "gone. Remedy never takes a claim away on a timer alone.", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(f"Reclaimed {entry.id} — back in the queue.")
++
++
++COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
++    "queue.add": lambda args: _cmd_queue_add(
++        args.goal,
++        project=getattr(args, "project", None),
++        prio=getattr(args, "prio", None),
++        path=getattr(args, "path", False),
++    ),
++    "queue.list": lambda args: _cmd_queue_list(
++        project=getattr(args, "project", None),
++        all_projects=getattr(args, "all_projects", False),
++    ),
++    "queue.rm": lambda args: _cmd_queue_rm(
++        args.entry_id, project=getattr(args, "project", None)),
++    "queue.reclaim": lambda args: _cmd_queue_reclaim(
++        args.entry_id, project=getattr(args, "project", None)),
++}
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index a39119b..1709d4f 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -30,7 +30,7 @@
+ - [x] F034 — Bundled clarification in the Flight Plan (T001–T004 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job fd549b82-64b0-49c5-85d9-f5d8bf44a266 · package remedy-review-20260726-202004-READY_FOR_REVIEW.zip · SHA-256 429e6243f9c4b7b4e5c3a7465b75c490ae9f9ff567f67401c742bff4f6c348c7 · accepted HEAD d1c036ace9802d20bdb521e77905bdb7998c552e)
+ - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
+ - [x] F047 — Checkpoint & resume (kill-proof) (T001–T003 complete; accepted 2026-07-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7 · package remedy-review-20260727-101857-READY_FOR_REVIEW.zip · SHA-256 b6f96e888d7e8a6d5494f213b845a644be34538e6fc17df9d469712efe98b380 · accepted HEAD 8e870062feb3487f890232d659ef569cf3aa326e)
+-- [ ] F048 — Job queue
++- [~] F048 — Job queue
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds
+diff --git a/docs/roadmap/features/T1_F048.md b/docs/roadmap/features/T1_F048.md
+index 1b4e482..3506763 100644
+--- a/docs/roadmap/features/T1_F048.md
++++ b/docs/roadmap/features/T1_F048.md
+@@ -70,3 +70,106 @@ uses before T001.
+ Cron/scheduling (later feature), cross-project queues, SQLite. Suggested
+ tests: tests/orchestration/test_job_queue.py,
+ tests/orchestration/test_queue_concurrency.py, tests/cli/test_queue_cmd.py.
++
++## Built State (2026-07-27)
++
++What exists, as proven by the tests named below. Nothing here claims
++behavior beyond what those tests exercise.
++
++**The store.** `packages/orchestration/job_queue.py` — one JSON file per
++entry at `<data_root>/queue/<project_id>/<entry_id>.json`, with the claim
++marker `<entry_id>.claim` beside it. `data_paths.queue_dir()` resolves the
++area like every other storage area; directories are 0700, files 0600, and
++every read and write goes through identity-verified directory descriptors,
++so a symlinked `queue`, project or entry is refused rather than followed.
++The record carries id, project_id, goal text OR goal_path, priority,
++created_at, status (queued|claimed|done|failed), claimed_by (host#pid),
++claimed_at, result_job_id and failure_reason, behind a schema version.
++
++v1 is FILE-BASED on purpose: in STATUS order this feature lands before the
++SQLite token ledger (F103), and the codebase persists every entity as an
++atomic per-entity JSON file today. Migrating is a later scheduler feature's
++decision, and the module docstring says so.
++
++**The claim, reused not rewritten.** `secure_fs.write_file_atomically(...,
++create_only=True)` (`packages/common/secure_fs.py:532`) — an `os.link`
++publication over an `O_EXCL` temp file with `fsync`, returning `False`
++instead of clobbering. It is the same primitive F011's stop request uses at
++`safe_points.py:372`; no second atomic-create path was introduced. Losing
++the race is not an error and not a retry: that entry belongs to someone
++else, so the consumer moves on to the next candidate. Because the marker is
++created BEFORE the record is rewritten, an entry whose file still reads
++`queued` while its marker exists is already spoken for.
++
++**Ordering (A9).** Higher priority value first, FIFO by `created_at` within
++equal priority, `id` as the same-microsecond tie-break. Duplicate goal text
++is allowed and makes a second, independently claimable entry — dedup is a
++human judgment, not the queue's.
++
++**Honest listing.** `list_entries_safe` returns `(entries, degraded,
++skipped_files)` — the same shape `storage.list_jobs_safe` uses for jobs. An
++entry file that will not parse, or whose record version is unknown, is
++skipped and COUNTED; a corrupt entry never blocks claiming.
++
++**CLI.** `remedy queue add <text|path> [--prio N] [--path]`, `list`, `rm`,
++`reclaim`, scoped by the F148 rules (`--project` / `REMEDY_PROJECT` / cwd).
++`add` treats its argument as a goal file only when that file EXISTS, so a
++sentence containing a slash stays goal text; `--path` forces it. `rm`
++refuses a claimed entry and names its owner, deleting nothing.
++`--all-projects` widens the LISTING only, over the project directories on
++disk — including queues whose project was unregistered, because hiding work
++that exists would be dishonest. There is still no cross-project queue.
++
++**Reclaim is explicit, and doubly gated (A9).** `remedy queue reclaim <id>`
++re-offers a claim only when BOTH hold: the claim is older than
++`queue.reclaim_ttl_minutes` (default 60), AND the owner is verifiably gone —
++the owner id names THIS host and its pid is dead. The refusals are
++deliberate: an owner on another host is never declared gone, because a pid
++says nothing about a machine we cannot probe; `PermissionError` from
++`kill(pid, 0)` counts as alive under another user; an owner id that does not
++parse as `host#pid` and a `claimed_at` that does not parse as a time both
++refuse, because an age that cannot be proven is not an old age. No code path
++anywhere reclaims on a timer (P2 — no silent takeovers).
++
++**Executor binding, opt-in.** `queue.executor_binding` (default **false**).
++With it off, `long_run_executor.run_cycles` does exactly what it did before
++the queue existed and `to_json()` carries the same keys; the `queue_pull`
++key appears only when something was actually pulled. With it on, a run that
++ends at an IDLE terminal (`all_green`, `blocked`) claims the next entry for
++its OWN project and turns it into a normal job — the same thing `job create`
+++ `job plan` produce — which STOPS at PLANNED. No task is executed and
++nothing implies `--yes`, so a queued goal meets the operator's approval gate
++exactly like a typed one. A failing pull marks the ENTRY failed with the
++reason rather than leaving it claimed by a consumer that has moved on; both
++outcomes emit a `queue_pull` ledger event.
++
++**Verification.** `tests/orchestration/test_job_queue.py` 34 passed (incl. 8
++reclaim) · `test_queue_concurrency.py` 6 passed · `test_queue_executor_
++binding.py` 9 passed · `tests/cli/test_queue_cmd.py` 24 passed · F046/F047
++regression `test_long_run_executor.py` 49 passed with the conductor's
++default behavior unmoved · canary `test_golden_path.py` 42 passed · ruff
++clean on every touched file. T002 is the load-bearing one: 24 entries, TWO
++real subprocess consumers behind a start barrier, three repeats, asserting
++disjoint claim sets, full coverage and zero double-claims, plus an
++anti-cheat assertion that both consumers claimed work and their claim
++windows overlap in wall-clock time. It was falsified in scratch by disabling
++the marker's `create_only` publication: that mutation produced 22
++double-claims, so the assertion is load-bearing rather than incidentally
++true. Integration gate (`pytest -n auto`, branch vs base `40c7e4d`): worker
++run branch 159 failed / 14147 passed (183.61s) vs base 201 failed / 14017
++passed (172.52s), 7 branch-only ids, 7/7 pass on a serial re-run; reviewer's
++independent run 4 branch-only ids, 4/4 serial-pass. No F048 test id in any
++failure list.
++
++**Carried risks.** (1) The T002 interleaving assertion compares wall-clock
++claim windows, so a starved runner can red it without a code change — treat
++that as a test-environment signal first (reviewer's noted risk, R1).
++(2) Full-suite nondeterminism under `-n auto` is pre-existing and tracked as
++F135/F052; the flake class is loud in both directions here. (3) Reclaim
++probes liveness by pid on the local host only; a consumer on another host is
++never reclaimable by this command, by design. (4) The binding takes exactly
++ONE entry per idle run — draining a queue continuously is a scheduler
++concern (F200), not this feature's.
++
++**Not built.** Cron/scheduling, cross-project queues, SQLite — this file's
++Do-not-touch list, all still untouched.

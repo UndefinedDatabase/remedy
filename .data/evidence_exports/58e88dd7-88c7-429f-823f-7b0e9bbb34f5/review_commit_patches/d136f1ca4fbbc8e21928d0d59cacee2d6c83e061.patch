@@ -1,0 +1,109 @@
+d136f1ca4fbbc8e21928d0d59cacee2d6c83e061
+diff --git a/.agent/authored/f048-r3-1.md b/.agent/authored/f048-r3-1.md
+new file mode 100644
+index 0000000..b647ae0
+--- /dev/null
++++ b/.agent/authored/f048-r3-1.md
+@@ -0,0 +1,54 @@
++# Live Review — F048 Job queue
++
++Branch: feature/f048-job-queue (PR at closure)
++LAST_REVIEWED_SHA: 8356e40
++Finding IDs continue monotonically; next free ID: R-0150.
++Previous ledgers (F046, process-hardening v1+v2) live in git history.
++
++## Findings
++
++(none this feature)
++
++## Verdicts
++
++- R1 (40c7e4d..7f05857): PASS — issued by the reviewer after independent
++  verification: both authored texts byte-identical disk-to-disk (sha256
++  and cmp); STATUS claim applied, F047 line intact after the gate merge;
++  scoped gates re-run by the reviewer — 26 passed (T001 unit tests),
++  6 passed (T002 two-process claim proof: disjoint sets, full coverage,
++  interleaving anti-cheat), canary 42 passed; tree clean. Spot-check:
++  the claim marker publishes via
++  secure_fs.write_file_atomically(create_only=True) — os.link over an
++  O_EXCL temp file with fsync — the same primitive F011 uses at
++  safe_points.py:372, exactly as the handoff states. Accepted documented
++  deviations: gate-merge conflict on .agent/* resolved to main's side
++  per operator ruling 2026-07-27; queue_root() kept module-local until
++  T003. Noted risk, no finding: the T002 interleaving assertion can
++  flake on a starved runner — if it reds without a code change, treat as
++  test-environment signal first.
++  Verification tier: round gate (scoped) + canary.
++  LAST_REVIEWED_SHA = 7f05857.
++
++- R2 (7f05857..8356e40): PASS, integration gate included — issued by the
++  reviewer after independent verification. Authored verdict text applied
++  cmp-identical; diff read in full (reclaim, remove_entry, CLI group,
++  executor binding). Scoped gates re-run by the reviewer: 24 passed
++  (queue CLI incl. reclaim), 34 passed (unit incl. 8 reclaim), 9 passed
++  (binding e2e), 49 passed (F046/F047 executor regression), canary 42
++  passed. Reclaim opens only when BOTH gates hold (claim older than
++  queue.reclaim_ttl_minutes AND owner names this host with a dead pid);
++  unparsable owner or stamp refuses; no timer-based takeover exists
++  (P2). Binding is opt-in (queue.executor_binding, default false), fires
++  only at idle terminals, stops at PLANNED — approval rules untouched;
++  a failed pull marks the entry failed, never orphan-claimed.
++  Integration gate re-run INDEPENDENTLY by the reviewer per
++  docs/agents/integration_gate.md: branch 156 failed / 14150 passed vs
++  base (40c7e4d, throwaway worktree, removed+pruned) 213 failed / 14003
++  passed at -n auto; branch-only ids 4, all runtime/supervisor probes,
++  4/4 serial-pass → xdist-flake class (F135/F052), recorded; no F048
++  test id in either failure list. Worker's own gate run (7 branch-only,
++  7/7 serial-pass) is consistent. The full suite is NOT absolutely
++  green at this concurrency — the flake class is loud in both
++  directions and is named to the operator as F135/F052 debt.
++  Verification tier: integration gate (full suite) + round gate +
++  canary. LAST_REVIEWED_SHA = 8356e40. Closure round instructed.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 9deef5e..b647ae0 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,13 +1,13 @@
+ # Live Review — F048 Job queue
+ 
+ Branch: feature/f048-job-queue (PR at closure)
+-LAST_REVIEWED_SHA: 7f05857
++LAST_REVIEWED_SHA: 8356e40
+ Finding IDs continue monotonically; next free ID: R-0150.
+ Previous ledgers (F046, process-hardening v1+v2) live in git history.
+ 
+ ## Findings
+ 
+-(none yet)
++(none this feature)
+ 
+ ## Verdicts
+ 
+@@ -28,3 +28,27 @@ Previous ledgers (F046, process-hardening v1+v2) live in git history.
+   test-environment signal first.
+   Verification tier: round gate (scoped) + canary.
+   LAST_REVIEWED_SHA = 7f05857.
++
++- R2 (7f05857..8356e40): PASS, integration gate included — issued by the
++  reviewer after independent verification. Authored verdict text applied
++  cmp-identical; diff read in full (reclaim, remove_entry, CLI group,
++  executor binding). Scoped gates re-run by the reviewer: 24 passed
++  (queue CLI incl. reclaim), 34 passed (unit incl. 8 reclaim), 9 passed
++  (binding e2e), 49 passed (F046/F047 executor regression), canary 42
++  passed. Reclaim opens only when BOTH gates hold (claim older than
++  queue.reclaim_ttl_minutes AND owner names this host with a dead pid);
++  unparsable owner or stamp refuses; no timer-based takeover exists
++  (P2). Binding is opt-in (queue.executor_binding, default false), fires
++  only at idle terminals, stops at PLANNED — approval rules untouched;
++  a failed pull marks the entry failed, never orphan-claimed.
++  Integration gate re-run INDEPENDENTLY by the reviewer per
++  docs/agents/integration_gate.md: branch 156 failed / 14150 passed vs
++  base (40c7e4d, throwaway worktree, removed+pruned) 213 failed / 14003
++  passed at -n auto; branch-only ids 4, all runtime/supervisor probes,
++  4/4 serial-pass → xdist-flake class (F135/F052), recorded; no F048
++  test id in either failure list. Worker's own gate run (7 branch-only,
++  7/7 serial-pass) is consistent. The full suite is NOT absolutely
++  green at this concurrency — the flake class is loud in both
++  directions and is named to the operator as F135/F052 debt.
++  Verification tier: integration gate (full suite) + round gate +
++  canary. LAST_REVIEWED_SHA = 8356e40. Closure round instructed.

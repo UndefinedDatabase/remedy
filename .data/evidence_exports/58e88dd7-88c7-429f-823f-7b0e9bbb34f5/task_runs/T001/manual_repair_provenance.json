@@ -1,0 +1,30 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/__init__.py",
+  "apps/cli/commands/queue_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F048.md"
+ ],
+ "diff_sha256": "61ee943da8b4d33dfbd61766203bf3307c8081b2e7dd97820014e586865d06a4",
+ "job_id": "58e88dd7-88c7-429f-823f-7b0e9bbb34f5",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "61ee943da8b4d33dfbd61766203bf3307c8081b2e7dd97820014e586865d06a4",
+ "safe_diff_sha256": "4788ae05189a3033511be6f966b4931867e5b2d5d447b63a07c3ccf4d813675a",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/__init__.py",
+  "apps/cli/commands/queue_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F048.md"
+ ],
+ "timestamp": "2026-07-27T20:35:58.305466+00:00",
+ "tracked_diff_sha256": "4788ae05189a3033511be6f966b4931867e5b2d5d447b63a07c3ccf4d813675a",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}
