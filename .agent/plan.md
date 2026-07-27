@@ -1,27 +1,32 @@
-# Plan — F046 Multi-cycle loop
+# Plan — Process-Hardening v1 (chore round, no feature)
 
 ## Goal
-Remedy works in bounded cycles: check should_stop → execute ready batch →
-verify → persist, repeated until all_green, budget_exhausted,
-deadline_reached, stopped_by_operator, or blocked. Five-cycle fixture
-proves every stop cause; each cycle leaves its own evidence record;
-DEFAULT stays one cycle until the F075 gate.
+Move accepted process lessons (F016..F047) from session memory into the
+workflow docs. Docs + index only. No production code, no tests, no
+STATUS.md feature lines.
 
 ## Checklist
-- [x] Setup: Open PR Gate (#151 merged), branch, STATUS claim, state files
-- [x] T001 loop skeleton + terminal-status matrix + five-cycle fixture
-- [x] T002 cycle evidence + CLI/config + single-pass regression
-- [x] Integration gate
-- [x] Closure
+- [x] Round 1: 10 authored texts persisted; C1 C2 C3 C4 C5 C6 IDX applied;
+      proofs PASS; PR #154 created. Verdict: FAIL (R-0148).
+- [x] Round 2 (PH-2): R-0148 fixed in b586e5c, ROW OK, canary 42 passed.
+      Verdict: PASS at 11a417f.
+- [x] PH-3 Part 1: phv1-r3-1 persisted; live_review.md replaced (IDENTICAL)
+- [x] PH-3 Part 2: final handoff, push (+ one trim commit to hold the cap)
+- [ ] PH-3 Part 3: merge PR #154, checkout main, pull --ff-only
 
 ## Current Step
-Closure — evidence job, review package, Built State, STATUS line, PR
-#152 finalized. NOT merged (Open PR Gate at next feature start).
+PH-3 merge round. Verdict persisted, handoff final. Next and last action:
+merge PR #154, then main. Nothing is committed after the merge.
 
 ## Next Steps
-Reviewer verdict on the integration gate, then Closure (evidence job,
-review package, Built State in T1_F046.md, authored STATUS line).
+None on this branch. After the merge the branch is deleted and the session
+ends; R-0149 rides onto main for a later operator ruling.
 
 ## Risks
-- Conductor must wrap existing parts (A6) — no parallel executor.
-- Pre-existing full-suite nondeterminism (backlog F135/F052).
+- D1: PR #153 (F047 closure) stays open and untouched; it merges at the
+  next feature's start (operator process-hardening directive 2026-07-27).
+- D2: branch is chore/* not feature/* (same directive).
+- D3 superseded: PR #154 merges this session under the operator-approved
+  exception to the split_workflow.md merge policy — not a precedent.
+- R-0149 (handback template vs. AGENTS.md 60-line cap, plus the handoff
+  self-reference case) stays OPEN, routed to planning.
