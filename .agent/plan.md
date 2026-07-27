@@ -7,23 +7,26 @@ STATUS.md feature lines.
 
 ## Checklist
 - [x] Round 1: 10 authored texts persisted; C1 C2 C3 C4 C5 C6 IDX applied;
-      proofs PASS; PR #154 created (NOT merged). Verdict: FAIL (R-0148).
-- [x] PH-2 Part 1: persist phv1-r2-1/phv1-r2-2; reset .agent/live_review.md
-- [x] PH-2 Part 2: R-0148 — one-line integration_gate row in docs/README.md
-- [x] PH-2 done-when: ROW OK, canary 42 passed, clean tree, pushed
+      proofs PASS; PR #154 created. Verdict: FAIL (R-0148).
+- [x] Round 2 (PH-2): R-0148 fixed in b586e5c, ROW OK, canary 42 passed.
+      Verdict: PASS at 11a417f.
+- [x] PH-3 Part 1: phv1-r3-1 persisted; live_review.md replaced (IDENTICAL)
+- [x] PH-3 Part 2: final handoff, push
+- [ ] PH-3 Part 3: merge PR #154, checkout main, pull --ff-only
 
 ## Current Step
-PH-2 complete. R-0148 fixed in b586e5c and marked Done; handoff rewritten
-per the template at 60 lines. Handed back for review of 89c4ef0..HEAD.
+PH-3 merge round. Verdict persisted, handoff final. Next and last action:
+merge PR #154, then main. Nothing is committed after the merge.
 
 ## Next Steps
-Window 1 reviews 89c4ef0..HEAD and rules on R-0149. PR #154 stays open
-and unmerged until instructed.
+None on this branch. After the merge the branch is deleted and the session
+ends; R-0149 rides onto main for a later operator ruling.
 
 ## Risks
 - D1: PR #153 (F047 closure) stays open and untouched; it merges at the
   next feature's start (operator process-hardening directive 2026-07-27).
 - D2: branch is chore/* not feature/* (same directive).
-- D3: PR #154 stays unmerged in this block.
-- R-0149 (handback template vs. AGENTS.md 60-line cap) is routed to
-  planning; no in-round fix, not a merge blocker.
+- D3 superseded: PR #154 merges this session under the operator-approved
+  exception to the split_workflow.md merge policy — not a precedent.
+- R-0149 (handback template vs. AGENTS.md 60-line cap, plus the handoff
+  self-reference case) stays OPEN, routed to planning.
