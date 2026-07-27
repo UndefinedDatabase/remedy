@@ -341,6 +341,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=5,
     ),
     ConfigKeySpec(
+        key="queue.executor_binding",
+        env_var="REMEDY_QUEUE_EXECUTOR_BINDING",
+        description=(
+            "Let an idle multi-cycle run take the next entry from its project's "
+            "queue and turn it into a normal job (F048). OFF by default: with it "
+            "off the executor behaves exactly as it did before the queue existed. "
+            "A queued goal still stops at a PLANNED job and still meets the "
+            "operator's approval gate — the binding never implies --yes."
+        ),
+        value_type=bool,
+        default=False,
+    ),
+    ConfigKeySpec(
         key="queue.reclaim_ttl_minutes",
         env_var="REMEDY_QUEUE_RECLAIM_TTL_MINUTES",
         description=(
