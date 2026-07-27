@@ -51,9 +51,8 @@ before either was applied; no retype anywhere.
 
 ## Deviations & assumptions
 
-- `Done: R-0148 (commit b586e5c)` lands in this handback commit, not in
-  b586e5c: a commit cannot carry its own SHA, and placeholder-plus-
-  correction is the worse trade. The SHA recorded is the real one.
+- `Done: R-0148 (commit b586e5c)` is in this handback commit, not in
+  b586e5c: a commit cannot carry its own SHA. The SHA recorded is real.
 - WRAP GUARD passed: phv1-r2-2 arrived as ONE line, `wc -l` = 1.
 
 ## Next
