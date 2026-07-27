@@ -14,11 +14,12 @@ STATUS.md feature lines.
 - [x] C3+C6 planner_reviewer_prompt.md += phv1-r1-5, r1-6 (replace), r1-7
 - [x] C4 AGENTS.md += phv1-r1-8
 - [x] IDX docs/README.md += phv1-r1-9, phv1-r1-10
-- [ ] Part 3: proof script PROOFS: PASS + golden-path canary
-- [ ] PR into main (created, NOT merged)
+- [x] Part 3: proof script PROOFS: PASS + golden-path canary
+- [x] PR #154 into main (created, NOT merged)
 
 ## Current Step
-IDX applied (docs/README.md). Next: Part 3 proofs + canary, then PR.
+Round complete. Proofs PASS, canary green, PR #154 open and unmerged.
+Handed back to Window 1 for review of main..HEAD.
 
 ## Next Steps
 Apply each target area as its own small commit in the order above, full
