@@ -12,26 +12,28 @@ a later feature's decision.
 - [x] Open PR Gate: PR #153 (F047) merged; main @ 40c7e4d
 - [x] Claim: STATUS.md F048 → `[~]`; live_review.md reset (authored,
       sha256-verified); branch feature/f048-job-queue
-- [ ] Inspection: locate the existing atomic create-if-absent primitive
-      (stop-file / storage layer) — T001 MUST reuse it
-- [ ] T001: job_queue.py entry store + enqueue/claim_next/release/
+- [x] Inspection: secure_fs.write_file_atomically(create_only=True) —
+      os.link no-clobber (secure_fs.py:532), as used by the F011 stop
+      request (safe_points.py:372). T001 reuses it unchanged.
+- [x] T001: job_queue.py entry store + enqueue/claim_next/release/
       complete/fail + (priority desc, created_at asc) ordering +
-      corrupt-entry-tolerant listing + tests/orchestration/test_job_queue.py
-- [ ] T002: tests/orchestration/test_queue_concurrency.py — N ≥ 20
-      entries, TWO real subprocess consumers, ≥ 3 repeats, disjoint claim
-      sets, full coverage, zero double-claims
-- [ ] Canary: tests/cli/test_golden_path.py green
+      corrupt-entry-tolerant listing; 26 tests green
+- [x] T002: tests/orchestration/test_queue_concurrency.py — 24 entries,
+      TWO real subprocess consumers, 3 repeats, disjoint claim sets, full
+      coverage, zero double-claims; 6 tests green
+- [x] Canary: tests/cli/test_golden_path.py — 42 passed
 - [ ] Handback: handoff.md rewritten, branch pushed, NO PR this round
 - [ ] T003 (next round): CLI `remedy queue add|list|rm|reclaim`,
       executor binding, end-to-end queued-goal-to-planned-job test
 - [ ] Integration gate + closure (later rounds)
 
 ## Current Step
-Inspection (item 3): find the atomic create-if-absent pattern, record
-file:line and the exact primitive in the handoff. Then T001.
+Handback. T001 and T002 are built and green, canary green. Path scheme:
+<data_root>/queue/<project_id>/<entry_id>.json plus <entry_id>.claim.
 
 ## Next Steps
-T001 → T002 → canary → handback. T003 is a separate round.
+Push the branch and hand back for review of the branch point..HEAD.
+No PR this round. T003 is the next round.
 
 ## Risks
 - Do-not-touch this feature: cron/scheduling, cross-project queues,
