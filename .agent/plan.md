@@ -22,14 +22,25 @@ the dedicated integration gate.
 - [x] Integration gate: branch 159F/14147P vs base 201F/14017P; 7
       branch-only ids, all serial-PASS (xdist-flake class), no F048 test
       in either failure list → no blocker
-- [ ] Handback: handoff.md rewritten, branch pushed, NO PR
+- [x] Handback R2; reviewer verdict R2 PASS (integration gate included)
+
+## Closure round (STATUS_closure_protocol.md v3)
+- [x] Commit A: R2 verdict persisted (f048-r3-1.md, sha256 + cmp exit 0)
+- [x] Commit B: Built State in docs/roadmap/features/T1_F048.md;
+      this commit's sha is ACCEPTED_HEAD (pre-zip head)
+- [ ] Preconditions: git status --porcelain empty · integrity check PASS
+- [ ] Evidence job: create_manual_completion_bundle(feature f048)
+- [ ] Review zip: READY_FOR_REVIEW, subject 40c7e4d..ACCEPTED_HEAD
+- [ ] Commit C (LAST, A4): authored STATUS `[x]` line + evidence dir +
+      final .agent state
+- [ ] PR into main — created, NOT merged
 
 ## Current Step
-Handback. The feature body is complete: store, CLI, reclaim, binding.
+Closure. No code changes this round.
 
 ## Next Steps
-Reviewer verdict on 7f05857..HEAD. Closure is its own round: STATUS
-`[x]`, evidence job, review zip, PR — none of it done here.
+Preconditions → evidence job → zip → STATUS commit → PR. The PR is left
+open: the next feature's Open PR Gate merges it.
 
 ## Risks
 - Do-not-touch: cron/scheduling, cross-project queues, SQLite.
