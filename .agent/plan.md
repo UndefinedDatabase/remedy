@@ -10,17 +10,15 @@ STATUS.md feature lines.
       proofs PASS; PR #154 created (NOT merged). Verdict: FAIL (R-0148).
 - [x] PH-2 Part 1: persist phv1-r2-1/phv1-r2-2; reset .agent/live_review.md
 - [x] PH-2 Part 2: R-0148 — one-line integration_gate row in docs/README.md
-- [ ] PH-2 done-when: ROW OK, canary, clean tree, pushed
+- [x] PH-2 done-when: ROW OK, canary 42 passed, clean tree, pushed
 
 ## Current Step
-Repair round PH-2. R-0148 fixed (ROW OK). Next: handback — record the fix
-sha as `Done: R-0148` and rewrite handoff.md per the template.
+PH-2 complete. R-0148 fixed in b586e5c and marked Done; handoff rewritten
+per the template at 60 lines. Handed back for review of 89c4ef0..HEAD.
 
 ## Next Steps
-Fix R-0148 in its own commit, append `Done: R-0148 (commit <sha>)` under
-the finding, push. PR #154 updates automatically — do not edit or merge
-it. Then rewrite .agent/handoff.md per docs/agents/handback_template.md
-(2 commits this round, so the ≤60-line cap fits).
+Window 1 reviews 89c4ef0..HEAD and rules on R-0149. PR #154 stays open
+and unmerged until instructed.
 
 ## Risks
 - D1: PR #153 (F047 closure) stays open and untouched; it merges at the

@@ -17,6 +17,7 @@ archived in git history; this file is per-round working state.
   authored single row in .agent/authored/phv1-r2-2.md; the wrapped
   two-line form must no longer appear anywhere in docs/README.md.
   Resolved only by reviewer text.
+  Done: R-0148 (commit b586e5c)
 
 - R-0149 · Medium · round 1 — routed to planning (spec conflict)
   The mandatory per-commit tables of docs/agents/handback_template.md
