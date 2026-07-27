@@ -1,7 +1,7 @@
 # Live Review — F047 Checkpoint & resume (kill-proof)
 
 Branch: feature/f047-checkpoint-resume
-LAST_REVIEWED_SHA: 72fc653
+LAST_REVIEWED_SHA: 3b257f6
 Finding IDs continue monotonically from R-0145.
 
 ## Steps
@@ -55,3 +55,21 @@ Finding IDs continue monotonically from R-0145.
   atomic write makes a genuine mid-write tear non-producible on
   demand; the loader property under test is identical. Verification
   tier: round gate (scoped) + canary. LAST_REVIEWED_SHA = 72fc653.
+
+- Integration gate (branch 72fc653..4692cca vs base 89c4ef0): PASS —
+  issued by the reviewer after independent verification. Worker
+  evidence: three -n auto branch runs 196/177/158 failed (known
+  F135/F052 xdist churn, both directions vs base 190); 39 branch-only
+  ids re-run serially -> 37 passed (flake class), 2 reproducible
+  failures both asserting "Steps" in .agent/live_review.md —
+  F047-attributable (a state file this feature authored; base passed
+  only by prose accident), fixed in-round as a declared state-file
+  deviation (real "## Steps" section, decisions.md entry, neither
+  test modified). Post-fix: 6 branch-only ids, all pass serially.
+  Reviewer re-ran independently: full suite -n auto -> 158 failed /
+  14066 passed in 177.02s (matches within churn); the two fixed
+  contract tests pass; F047's four suites 128 passed under -n auto;
+  the six post-fix flake ids pass serially; canary 42 passed;
+  reviewer-authored verdict and resolution text verified
+  byte-identical; git worktree list clean. Zero F047-attributable
+  regressions. Only this entry carries the "full suite" claim.
