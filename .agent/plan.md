@@ -6,33 +6,26 @@ workflow docs. Docs + index only. No production code, no tests, no
 STATUS.md feature lines.
 
 ## Checklist
-- [x] Part 0: branch chore/process-hardening-v1 off main; plan.md
-- [x] Part 1: persist 10 reviewer-authored texts to .agent/authored/
-- [x] C1 docs/agents/handback_template.md (new, from phv1-r1-1)
-- [x] C5 docs/agents/integration_gate.md (new, from phv1-r1-2)
-- [x] C2 split_workflow.md += phv1-r1-3, phv1-r1-4
-- [x] C3+C6 planner_reviewer_prompt.md += phv1-r1-5, r1-6 (replace), r1-7
-- [x] C4 AGENTS.md += phv1-r1-8
-- [x] IDX docs/README.md += phv1-r1-9, phv1-r1-10
-- [x] Part 3: proof script PROOFS: PASS + golden-path canary
-- [x] PR #154 into main (created, NOT merged)
+- [x] Round 1: 10 authored texts persisted; C1 C2 C3 C4 C5 C6 IDX applied;
+      proofs PASS; PR #154 created (NOT merged). Verdict: FAIL (R-0148).
+- [x] PH-2 Part 1: persist phv1-r2-1/phv1-r2-2; reset .agent/live_review.md
+- [ ] PH-2 Part 2: R-0148 — one-line integration_gate row in docs/README.md
+- [ ] PH-2 done-when: ROW OK, canary, clean tree, pushed
 
 ## Current Step
-Round complete. Proofs PASS, canary green, PR #154 open and unmerged.
-Handed back to Window 1 for review of main..HEAD.
+Repair round PH-2. Findings persisted. Next: apply the authored one-line
+row over the wrapped two-line form in docs/README.md.
 
 ## Next Steps
-Apply each target area as its own small commit in the order above, full
-self-review loop + Commit Gate before each, push after committing. Then
-run the proof script and the golden-path canary, then open the PR.
+Fix R-0148 in its own commit, append `Done: R-0148 (commit <sha>)` under
+the finding, push. PR #154 updates automatically — do not edit or merge
+it. Then rewrite .agent/handoff.md per docs/agents/handback_template.md
+(2 commits this round, so the ≤60-line cap fits).
 
 ## Risks
-- D1: PR #153 (F047 closure) stays open and untouched this round; it
-  merges at the next feature's start (operator process-hardening
-  directive 2026-07-27).
+- D1: PR #153 (F047 closure) stays open and untouched; it merges at the
+  next feature's start (operator process-hardening directive 2026-07-27).
 - D2: branch is chore/* not feature/* (same directive).
-- D3: this round's PR is created but not merged in this block.
-- phv1-r1-10 line 2 of the second table row appears hard-wrapped
-  ("...by paste\nblocks) |"), which breaks the markdown table row. Saved
-  and applied verbatim per the no-fix rule; reported as a suspected
-  authored-text error.
+- D3: PR #154 stays unmerged in this block.
+- R-0149 (handback template vs. AGENTS.md 60-line cap) is routed to
+  planning; no in-round fix, not a merge blocker.
