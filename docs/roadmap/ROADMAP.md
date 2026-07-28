@@ -331,6 +331,14 @@ comparison); checkpoints contain no secrets.
 immediately or while nobody watches. → 3 entries, one run, 3 results; no
 double claim under parallel access.
 
+**F251 Full-suite stabilization (flake-debt paydown)** — Registered work
+item (operator decision 2026-07-27); executes before F050 (STATUS.md
+order; detail: features/T1_F251.md). Restore gate discriminability before
+the self-run phase: three consecutive `-n auto` full-suite runs with
+identical failure sets, empty except explicitly quarantined tests. →
+Deliverable baseline the F075 gauntlet inherits: "full suite on main:
+N quarantined, 0 churning".
+
 **F050 DAG scheduling** — Topological ready-set from depends_on; a blocked
 branch (awaiting decision / failed) blocks only its downstream; recompute per
 task end. → Diamond fixture: B,C parallel after A; D waits for both; a block
