@@ -1,0 +1,13 @@
+{
+ "changed_files": [
+  "docs/roadmap/ROADMAP.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F251.md",
+  "docs/roadmap/features/T1_F252.md",
+  "tests/cli/test_job_rerun_manifest.py",
+  "tests/cli/test_runtime_cmd.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_title": "Task T001"
+}

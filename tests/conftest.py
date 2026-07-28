@@ -6,6 +6,58 @@ don't need @pytest.mark decorators for category classification.
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _reset_config_cache():
+    """Keep the process-global config cache from leaking between tests.
+
+    ``get_config()`` memoises a ``RemedyConfig`` in a module-level global, and
+    ``load_config()`` resolves ``data_dir`` from ``REMEDY_DATA_DIR`` (and from a
+    cwd-relative ``remedy.toml``). A test that sets ``REMEDY_DATA_DIR`` via
+    ``monkeypatch`` therefore bakes its temp path into the cache; monkeypatch
+    restores the environment afterwards but cannot undo the cache. Every later
+    test in the same xdist worker then reads a stale ``data_dir``:
+    ``resolve_data_root()`` finds no env var, falls through to the cached
+    config, and returns the previous test's temp directory.
+
+    Measured effect before this fixture: running
+    ``test_job_rerun_manifest.py::TestCurrentTargetDrift`` first made every
+    ``test_grouped_cli.py::TestGroupedExecution`` JSON test fail with
+    "Job not found" — ``save_job()`` wrote to the leaked temp root while the
+    CLI subprocess resolved the real one. Order-dependent, so it surfaced as
+    flake under ``-n auto``.
+
+    Resetting on both sides makes each test start from a cold cache.
+    """
+    from packages.orchestration.config import reset_config
+    reset_config()
+    yield
+    reset_config()
+
+
+@pytest.fixture(autouse=True)
+def _restore_cwd():
+    """Undo a working-directory change that a test forgot to reverse.
+
+    Several tests ``os.chdir`` into a temp directory. When one of them fails
+    early — or simply never restores — the process keeps that directory, and
+    every later test in the same xdist worker that reads a repo file by a
+    RELATIVE path breaks:
+
+        FileNotFoundError: 'scripts/remedy_smoke.sh'
+        FileNotFoundError: 'packages/orchestration/ui_server.py'
+
+    Whether a victim runs before or after the offender depends on the xdist
+    schedule, so it presents as flake. Restoring the directory after every test
+    keeps one test's chdir from becoming another test's missing file.
+    """
+    import os
+    before = os.getcwd()
+    yield
+    if os.getcwd() != before:
+        os.chdir(before)
+
+
 # Files that spawn subprocesses (CLI runtime, grouped CLI, etc.)
 SUBPROCESS_FILES = {
     "test_propose_cli_runtime.py",

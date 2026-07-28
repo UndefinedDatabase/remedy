@@ -1,0 +1,68 @@
+ab2258933944cd3ab3280646d1aa00fb062ecb36
+diff --git a/docs/roadmap/features/T1_F251.md b/docs/roadmap/features/T1_F251.md
+index 7aa52ed..d059f23 100644
+--- a/docs/roadmap/features/T1_F251.md
++++ b/docs/roadmap/features/T1_F251.md
+@@ -61,3 +61,62 @@ this registered work item pays the debt directly. The quarantine
+ convention created here should anticipate the F135 marker convention
+ (explicit reviewed marker change; quarantined tests stay visible in
+ reports).
++
++## Built State (2026-07-28)
++
++**Scope actually delivered** — flake stabilization per Ruling A. Every flake
++was closed by a hermetic **test-seam** fix: `packages/` is untouched by this
++feature. **0 tests quarantined.**
++
++### What was built
++- **Global-state isolation** (`tests/conftest.py`, two autouse fixtures):
++  - *config-cache reset.* `get_config()` memoises a `RemedyConfig`, and
++    `load_config()` resolves `data_dir` from `REMEDY_DATA_DIR` plus a
++    cwd-relative `remedy.toml`. A test setting that variable through
++    `monkeypatch` baked its temp path into the cache; `monkeypatch` restores
++    the environment but cannot undo the cache, so later tests in the same
++    xdist worker read a stale `data_dir`. Closed classes F-B, F-C, F-E.
++  - *cwd restore.* A test that `chdir`s and never returns leaves the process
++    in a temp directory; every later test reading a repo file by a RELATIVE
++    path then fails (`FileNotFoundError: 'scripts/remedy_smoke.sh'`). Closed
++    7 repo-scan ids.
++- **Per-worker runtime ports** (`tests/ports.py`, `worker_port()`, base
++  15173; six runtime modules). All workers previously bound the product
++  default 5173, so a test asserting a readiness FAILURE could reach another
++  worker's healthy server. Closed 11 of 13 F-A/F-D ids.
++- **Manifest identity freeze** (`test_run_manifest.py`,
++  `test_job_rerun_manifest.py`). A run manifest records Remedy's own worktree
++  identity, and any untracked entry sets `dirty`; with 24 workers sharing one
++  repo tree, a neighbour's file churn between reference and candidate flipped
++  `same_inputs`. Frozen per test to the value seen at test start — the real
++  value, via the seam the modules already used (`_patch_remedy_identity`).
++  Product behaviour (F012 drift detection) deliberately unchanged. Closed F-F.
++- **Ledger pin** raised 250 → 251 → 252 as registered work items were added,
++  always atomically with the feature file and STATUS line.
++
++### Evidence
++`.agent/f251_baseline/` holds the measured record: `run1/run2.txt` (S1
++baseline), `serial_deterministic.txt` and `clean_main_control.txt` (the
++deterministic core, proven identical on a clean `main` worktree),
++`flake_set.txt`, `class_map.txt` (the 154 standing-red ids by class),
++`reviewer_flake_extras.txt`, and both churn gates with timings.
++
++### Result
++S1 baseline: 169/167 failures per run, **14 churning ids**. Final churn gate:
++three consecutive `pytest -n auto -q` runs — 154 / 154 / 154 failures in
++2m55.5s, 3m0.9s, 3m8.9s — **failure-id sets identical**, 0 errors, each equal
++to the catalogued set exactly. Two independent reviewer full-suite runs
++confirmed the same stable core. Churn: **14 → 0**.
++
++### Carried risks (all owned by F252, none silent)
++- **154 standing red**, 13 classes — deterministic drift and regressions, out
++  of F251 scope by Ruling A. Catalogue: `class_map.txt`. → F252.
++- **D4 live-state coupling** (9 ids). The `.agent` contract tests read LIVE
++  state files with substring assertions, so ordinary round bookkeeping moves
++  them: the `test_live_review_has_steps_section` pair flipped red→green→red
++  across R2–R4 purely from reviewer prose. Recorded as observed at every
++  measurement, never adjusted. → F252 item 7.
++- **Two stopped F-A ids** — the real-Vite probe binds the product-configured
++  `apps/ui` port; the supervisor teardown guard is file-scoped and its fix
++  reaches the product stop/ownership path. Both need product change. → F252
++  item 6.

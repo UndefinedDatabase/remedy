@@ -1,0 +1,41 @@
+de17a00ad60f89304af780ea60e30132aca5c261
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 9285e33..27edba5 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -6,6 +6,35 @@ don't need @pytest.mark decorators for category classification.
+ 
+ import pytest
+ 
++
++@pytest.fixture(autouse=True)
++def _reset_config_cache():
++    """Keep the process-global config cache from leaking between tests.
++
++    ``get_config()`` memoises a ``RemedyConfig`` in a module-level global, and
++    ``load_config()`` resolves ``data_dir`` from ``REMEDY_DATA_DIR`` (and from a
++    cwd-relative ``remedy.toml``). A test that sets ``REMEDY_DATA_DIR`` via
++    ``monkeypatch`` therefore bakes its temp path into the cache; monkeypatch
++    restores the environment afterwards but cannot undo the cache. Every later
++    test in the same xdist worker then reads a stale ``data_dir``:
++    ``resolve_data_root()`` finds no env var, falls through to the cached
++    config, and returns the previous test's temp directory.
++
++    Measured effect before this fixture: running
++    ``test_job_rerun_manifest.py::TestCurrentTargetDrift`` first made every
++    ``test_grouped_cli.py::TestGroupedExecution`` JSON test fail with
++    "Job not found" — ``save_job()`` wrote to the leaked temp root while the
++    CLI subprocess resolved the real one. Order-dependent, so it surfaced as
++    flake under ``-n auto``.
++
++    Resetting on both sides makes each test start from a cold cache.
++    """
++    from packages.orchestration.config import reset_config
++    reset_config()
++    yield
++    reset_config()
++
++
+ # Files that spawn subprocesses (CLI runtime, grouped CLI, etc.)
+ SUBPROCESS_FILES = {
+     "test_propose_cli_runtime.py",

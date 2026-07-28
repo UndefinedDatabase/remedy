@@ -1,0 +1,53 @@
+8a7c8e79c3bf25466a984d7e57bfd3042b61143b
+diff --git a/.agent/authored/f251-r4-3.md b/.agent/authored/f251-r4-3.md
+new file mode 100644
+index 0000000..dcc9c86
+--- /dev/null
++++ b/.agent/authored/f251-r4-3.md
+@@ -0,0 +1,17 @@
++## Operator scope ruling 2026-07-28 (Ruling A — supersedes Goal & Done)
++Measurement (S1/S2, verified across R2–R4) showed the churn premise
++wrong: of ~170 failures per run only a small open-ended pool actually
++flaked, while 154 ids fail deterministically on clean main — real
++drift and regressions, not flake. Ruling A narrows F251 to what its
++title names:
++- Scope = flake stabilization. DONE = the achieved state: three
++  consecutive full-suite runs (pytest -n auto -q) with identical
++  failure sets, 0 churning ids, 0 quarantined tests — every flake
++  closed by a hermetic fix.
++- The 154 standing-red ids (13 classes, catalog:
++  .agent/f251_baseline/class_map.txt) are explicitly OUT of F251's
++  scope. Their paydown is registered item F252 (T1_F252.md), ordered
++  before F050.
++- The two stopped F-A ids (real-Vite port binding, supervisor
++  teardown guard) move to F252, not into F251's closure.
++- F251 proceeds to normal closure on this definition.
+diff --git a/docs/roadmap/features/T1_F251.md b/docs/roadmap/features/T1_F251.md
+index e2ee5c4..7aa52ed 100644
+--- a/docs/roadmap/features/T1_F251.md
++++ b/docs/roadmap/features/T1_F251.md
+@@ -10,6 +10,24 @@ before the self-run phase. DONE when three consecutive full-suite runs
+ failure sets, and that set is empty except for explicitly quarantined
+ tests.
+ 
++## Operator scope ruling 2026-07-28 (Ruling A — supersedes Goal & Done)
++Measurement (S1/S2, verified across R2–R4) showed the churn premise
++wrong: of ~170 failures per run only a small open-ended pool actually
++flaked, while 154 ids fail deterministically on clean main — real
++drift and regressions, not flake. Ruling A narrows F251 to what its
++title names:
++- Scope = flake stabilization. DONE = the achieved state: three
++  consecutive full-suite runs (pytest -n auto -q) with identical
++  failure sets, 0 churning ids, 0 quarantined tests — every flake
++  closed by a hermetic fix.
++- The 154 standing-red ids (13 classes, catalog:
++  .agent/f251_baseline/class_map.txt) are explicitly OUT of F251's
++  scope. Their paydown is registered item F252 (T1_F252.md), ordered
++  before F050.
++- The two stopped F-A ids (real-Vite port binding, supervisor
++  teardown guard) move to F252, not into F251's closure.
++- F251 proceeds to normal closure on this definition.
++
+ ## Rules (operator scope ruling 2026-07-27)
+ - Quarantine = visible, tracked mechanism: marker/skip with reason string
+   + backlog reference per test; follow an existing repo convention or

@@ -1,0 +1,145 @@
+f0ee3e174b8e63573fbe17295df0b5b25d68139d
+diff --git a/.agent/authored/f251-r2-1.md b/.agent/authored/f251-r2-1.md
+new file mode 100644
+index 0000000..884ac86
+--- /dev/null
++++ b/.agent/authored/f251-r2-1.md
+@@ -0,0 +1,55 @@
++# Live Review — F251 Full-suite stabilization (flake-debt paydown)
++
++Branch: feature/f251-suite-stabilization
++LAST_REVIEWED_SHA: 13783ed
++Finding IDs continue monotonically; next free ID: R-0153.
++Previous ledgers (planning amendment, F048) live in git history.
++
++## Findings
++
++- R-0150 · Medium · handback channel — stale handback for the range
++  d8ac7fa..6280cb0 (details in git history of this file).
++  Resolved: ffc49fa (interim handback, Done-marker in body) +
++  3a0f18e/49dbc79/13783ed (final handback) — verified by the reviewer.
++
++- R-0151 · Medium · regression via merged PR #157 · the amendment took
++  the feature ledger 250 → 251 (T1_F251.md + STATUS line) and broke
++  both TestFeatureLedger pins in
++  tests/docs/test_docs_consistency.py (TOTAL_FEATURES = 250).
++  Confirmed by the reviewer: 2 failed, 2 passed on -k FeatureLedger.
++  The amendment round's gate was canary-only, so it could not catch
++  this — reviewer process miss, noted in the R2 verdict. Fix: update
++  the pin to the current ledger truth (251) so both tests are green —
++  an honest expectation update, not a weakened assertion.
++  Resolved: (pending)
++
++- R-0152 · Low · handback cap · the final handback is 103 lines while
++  its own Deviations section claims "≤100"; two trim commits share an
++  identical subject. Fix: the next handback rewrite lands honestly at
++  ≤100 lines (>5 commit tables present).
++  Resolved: (pending)
++
++## Verdicts
++
++- R2 (d8ac7fa..13783ed): PASS — issued by the reviewer after
++  independent verification. Set arithmetic of .agent/f251_baseline/
++  re-computed and exact (run1∩run2=161; serial_deterministic ==
++  clean_main_control, 156; serial-pass 5; churn 14; flake_set = their
++  union, 19). Spot-checks: 5 deterministic ids red serially, the 5
++  xdist-flake ids green serially, both TestFeatureLedger pins red.
++  Reviewer ran the full suite TWICE (-n auto): 189 and 169 failed —
++  154/156 of the deterministic core present in both; the 2 misses are
++  the test_live_review_has_steps_section twins, which flipped after
++  the reviewer-ordered live_review rewrite — confirming the D4
++  state-coupling diagnosis by experiment. 9 previously-unseen flake
++  ids appeared (runtimes/supervisor/probe + repo-scan families):
++  the flake pool is open-ended, S1's 19 are a sample, magnitude
++  consistent with the operator's 150–215 band. R-0150 repair
++  verified compliant; oversize 6b22988 declared, inseparable,
++  accepted — first and only in F251. Stop-on-red on the 13 D-classes
++  honored and CORRECT: the done-definition's premise (churn) does not
++  match the measured reality (156 deterministic standing red);
++  routed to the operator per the wrong-spec rule with a concrete
++  amendment proposal — no silent re-plan. Verification tier: round
++  gate (scoped re-runs + two reviewer full-suite runs) + canary.
++  LAST_REVIEWED_SHA = 13783ed.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 051a50f..884ac86 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,34 +1,55 @@
+ # Live Review — F251 Full-suite stabilization (flake-debt paydown)
+ 
+ Branch: feature/f251-suite-stabilization
+-LAST_REVIEWED_SHA: d8ac7fa (main head at branch creation)
+-Finding IDs continue monotonically; next free ID: R-0151.
++LAST_REVIEWED_SHA: 13783ed
++Finding IDs continue monotonically; next free ID: R-0153.
+ Previous ledgers (planning amendment, F048) live in git history.
+ 
+ ## Findings
+ 
+-- R-0150 · Medium · BLOCKING · handback channel
+-  .agent/handoff.md was not rewritten for the current round: at review
+-  time it still contained the amendment-R1 handback (claiming PR #157
+-  "NOT merged" while the disk shows it merged at d8ac7fa). The round's
+-  executed actions — verdict commit 8aa10d1, merge d8ac7fa, claim
+-  commit 6280cb0, pushes — and the S1 baseline status have no
+-  return-channel record (R-0070 class: no changed-files tables for the
+-  round's commits). The reviewer verified steps 1–3 independently on
+-  disk (all byte-clean); S1–S5 remain unverifiable. Repair: an honest
+-  interim handback per docs/agents/handback_template.md covering ALL
+-  commits since d8ac7fa and the true S1 state, including failed or
+-  in-flight attempts.
++- R-0150 · Medium · handback channel — stale handback for the range
++  d8ac7fa..6280cb0 (details in git history of this file).
++  Resolved: ffc49fa (interim handback, Done-marker in body) +
++  3a0f18e/49dbc79/13783ed (final handback) — verified by the reviewer.
++
++- R-0151 · Medium · regression via merged PR #157 · the amendment took
++  the feature ledger 250 → 251 (T1_F251.md + STATUS line) and broke
++  both TestFeatureLedger pins in
++  tests/docs/test_docs_consistency.py (TOTAL_FEATURES = 250).
++  Confirmed by the reviewer: 2 failed, 2 passed on -k FeatureLedger.
++  The amendment round's gate was canary-only, so it could not catch
++  this — reviewer process miss, noted in the R2 verdict. Fix: update
++  the pin to the current ledger truth (251) so both tests are green —
++  an honest expectation update, not a weakened assertion.
++  Resolved: (pending)
++
++- R-0152 · Low · handback cap · the final handback is 103 lines while
++  its own Deviations section claims "≤100"; two trim commits share an
++  identical subject. Fix: the next handback rewrite lands honestly at
++  ≤100 lines (>5 commit tables present).
+   Resolved: (pending)
+ 
+ ## Verdicts
+ 
+-- R1 pre-verdict (d8ac7fa..6280cb0): FAIL on R-0150 (stale handback) —
+-  issued by the reviewer. Steps 1–3 of the standing LARGE block were
+-  verified clean by the reviewer independently: verdict text applied
+-  cmp-identical at 8aa10d1; #157 merged, main == origin/main ==
+-  d8ac7fa; claim commit 6280cb0 with authored files byte-identical to
+-  the reviewer's originals, STATUS [~] swap exact (one [~], before
+-  F050), branch pushed and in sync. No work range is accepted:
+-  LAST_REVIEWED_SHA stays d8ac7fa until a compliant handback covers
+-  the round.
++- R2 (d8ac7fa..13783ed): PASS — issued by the reviewer after
++  independent verification. Set arithmetic of .agent/f251_baseline/
++  re-computed and exact (run1∩run2=161; serial_deterministic ==
++  clean_main_control, 156; serial-pass 5; churn 14; flake_set = their
++  union, 19). Spot-checks: 5 deterministic ids red serially, the 5
++  xdist-flake ids green serially, both TestFeatureLedger pins red.
++  Reviewer ran the full suite TWICE (-n auto): 189 and 169 failed —
++  154/156 of the deterministic core present in both; the 2 misses are
++  the test_live_review_has_steps_section twins, which flipped after
++  the reviewer-ordered live_review rewrite — confirming the D4
++  state-coupling diagnosis by experiment. 9 previously-unseen flake
++  ids appeared (runtimes/supervisor/probe + repo-scan families):
++  the flake pool is open-ended, S1's 19 are a sample, magnitude
++  consistent with the operator's 150–215 band. R-0150 repair
++  verified compliant; oversize 6b22988 declared, inseparable,
++  accepted — first and only in F251. Stop-on-red on the 13 D-classes
++  honored and CORRECT: the done-definition's premise (churn) does not
++  match the measured reality (156 deterministic standing red);
++  routed to the operator per the wrong-spec rule with a concrete
++  amendment proposal — no silent re-plan. Verification tier: round
++  gate (scoped re-runs + two reviewer full-suite runs) + canary.
++  LAST_REVIEWED_SHA = 13783ed.

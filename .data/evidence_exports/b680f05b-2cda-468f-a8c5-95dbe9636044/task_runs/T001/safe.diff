@@ -1,0 +1,257 @@
+diff --git a/docs/roadmap/ROADMAP.md b/docs/roadmap/ROADMAP.md
+index 77a4c2b..7f049eb 100644
+--- a/docs/roadmap/ROADMAP.md
++++ b/docs/roadmap/ROADMAP.md
+@@ -339,6 +339,15 @@ identical failure sets, empty except explicitly quarantined tests. →
+ Deliverable baseline the F075 gauntlet inherits: "full suite on main:
+ N quarantined, 0 churning".
+ 
++**F252 Standing-red paydown (154 ids, 13 classes)** — Registered work
++item (operator ruling A, 2026-07-28); executes before F050 (STATUS.md
++order; detail: features/T1_F252.md). The 154 deterministic standing-red
++ids catalogued by F251 reach explicit terminal states class by class —
++product bugs first, then product change, test rewrites, doc drift,
++operator decisions; includes the two stopped F-A ids and the D4
++fixture-vs-live design decision. → Full suite: identical sets, empty
++except explicit quarantines; F251's quarantine rules unchanged.
++
+ **F050 DAG scheduling** — Topological ready-set from depends_on; a blocked
+ branch (awaiting decision / failed) blocks only its downstream; recompute per
+ task end. → Diamond fixture: B,C parallel after A; D waits for both; a block
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 5a62f28..25ea814 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -31,7 +31,8 @@
+ - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
+ - [x] F047 — Checkpoint & resume (kill-proof) (T001–T003 complete; accepted 2026-07-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7 · package remedy-review-20260727-101857-READY_FOR_REVIEW.zip · SHA-256 b6f96e888d7e8a6d5494f213b845a644be34538e6fc17df9d469712efe98b380 · accepted HEAD 8e870062feb3487f890232d659ef569cf3aa326e)
+ - [x] F048 — Job queue (T001–T003 complete; accepted 2026-07-27 · live review PASS — ACCEPTED · Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 · package remedy-review-20260727-223612-READY_FOR_REVIEW.zip · SHA-256 6058d0f4d67ee082c852202e910fe05ff42a5e9406a3fd71464c251acf106a4b · accepted HEAD c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee)
+-- [ ] F251 — Full-suite stabilization (flake-debt paydown)
++- [~] F251 — Full-suite stabilization (flake-debt paydown) (in progress: feature/f251-suite-stabilization)
++- [ ] F252 — Standing-red paydown (154 ids, 13 classes)
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds
+diff --git a/docs/roadmap/features/T1_F251.md b/docs/roadmap/features/T1_F251.md
+index e2ee5c4..d059f23 100644
+--- a/docs/roadmap/features/T1_F251.md
++++ b/docs/roadmap/features/T1_F251.md
+@@ -10,6 +10,24 @@ before the self-run phase. DONE when three consecutive full-suite runs
+ failure sets, and that set is empty except for explicitly quarantined
+ tests.
+ 
++## Operator scope ruling 2026-07-28 (Ruling A — supersedes Goal & Done)
++Measurement (S1/S2, verified across R2–R4) showed the churn premise
++wrong: of ~170 failures per run only a small open-ended pool actually
++flaked, while 154 ids fail deterministically on clean main — real
++drift and regressions, not flake. Ruling A narrows F251 to what its
++title names:
++- Scope = flake stabilization. DONE = the achieved state: three
++  consecutive full-suite runs (pytest -n auto -q) with identical
++  failure sets, 0 churning ids, 0 quarantined tests — every flake
++  closed by a hermetic fix.
++- The 154 standing-red ids (13 classes, catalog:
++  .agent/f251_baseline/class_map.txt) are explicitly OUT of F251's
++  scope. Their paydown is registered item F252 (T1_F252.md), ordered
++  before F050.
++- The two stopped F-A ids (real-Vite port binding, supervisor
++  teardown guard) move to F252, not into F251's closure.
++- F251 proceeds to normal closure on this definition.
++
+ ## Rules (operator scope ruling 2026-07-27)
+ - Quarantine = visible, tracked mechanism: marker/skip with reason string
+   + backlog reference per test; follow an existing repo convention or
+@@ -43,3 +61,62 @@ this registered work item pays the debt directly. The quarantine
+ convention created here should anticipate the F135 marker convention
+ (explicit reviewed marker change; quarantined tests stay visible in
+ reports).
++
++## Built State (2026-07-28)
++
++**Scope actually delivered** — flake stabilization per Ruling A. Every flake
++was closed by a hermetic **test-seam** fix: `packages/` is untouched by this
++feature. **0 tests quarantined.**
++
++### What was built
++- **Global-state isolation** (`tests/conftest.py`, two autouse fixtures):
++  - *config-cache reset.* `get_config()` memoises a `RemedyConfig`, and
++    `load_config()` resolves `data_dir` from `REMEDY_DATA_DIR` plus a
++    cwd-relative `remedy.toml`. A test setting that variable through
++    `monkeypatch` baked its temp path into the cache; `monkeypatch` restores
++    the environment but cannot undo the cache, so later tests in the same
++    xdist worker read a stale `data_dir`. Closed classes F-B, F-C, F-E.
++  - *cwd restore.* A test that `chdir`s and never returns leaves the process
++    in a temp directory; every later test reading a repo file by a RELATIVE
++    path then fails (`FileNotFoundError: 'scripts/remedy_smoke.sh'`). Closed
++    7 repo-scan ids.
++- **Per-worker runtime ports** (`tests/ports.py`, `worker_port()`, base
++  15173; six runtime modules). All workers previously bound the product
++  default 5173, so a test asserting a readiness FAILURE could reach another
++  worker's healthy server. Closed 11 of 13 F-A/F-D ids.
++- **Manifest identity freeze** (`test_run_manifest.py`,
++  `test_job_rerun_manifest.py`). A run manifest records Remedy's own worktree
++  identity, and any untracked entry sets `dirty`; with 24 workers sharing one
++  repo tree, a neighbour's file churn between reference and candidate flipped
++  `same_inputs`. Frozen per test to the value seen at test start — the real
++  value, via the seam the modules already used (`_patch_remedy_identity`).
++  Product behaviour (F012 drift detection) deliberately unchanged. Closed F-F.
++- **Ledger pin** raised 250 → 251 → 252 as registered work items were added,
++  always atomically with the feature file and STATUS line.
++
++### Evidence
++`.agent/f251_baseline/` holds the measured record: `run1/run2.txt` (S1
++baseline), `serial_deterministic.txt` and `clean_main_control.txt` (the
++deterministic core, proven identical on a clean `main` worktree),
++`flake_set.txt`, `class_map.txt` (the 154 standing-red ids by class),
++`reviewer_flake_extras.txt`, and both churn gates with timings.
++
++### Result
++S1 baseline: 169/167 failures per run, **14 churning ids**. Final churn gate:
++three consecutive `pytest -n auto -q` runs — 154 / 154 / 154 failures in
++2m55.5s, 3m0.9s, 3m8.9s — **failure-id sets identical**, 0 errors, each equal
++to the catalogued set exactly. Two independent reviewer full-suite runs
++confirmed the same stable core. Churn: **14 → 0**.
++
++### Carried risks (all owned by F252, none silent)
++- **154 standing red**, 13 classes — deterministic drift and regressions, out
++  of F251 scope by Ruling A. Catalogue: `class_map.txt`. → F252.
++- **D4 live-state coupling** (9 ids). The `.agent` contract tests read LIVE
++  state files with substring assertions, so ordinary round bookkeeping moves
++  them: the `test_live_review_has_steps_section` pair flipped red→green→red
++  across R2–R4 purely from reviewer prose. Recorded as observed at every
++  measurement, never adjusted. → F252 item 7.
++- **Two stopped F-A ids** — the real-Vite probe binds the product-configured
++  `apps/ui` port; the supervisor teardown guard is file-scoped and its fix
++  reaches the product stop/ownership path. Both need product change. → F252
++  item 6.
+diff --git a/docs/roadmap/features/T1_F252.md b/docs/roadmap/features/T1_F252.md
+new file mode 100644
+index 0000000..787f8f4
+--- /dev/null
++++ b/docs/roadmap/features/T1_F252.md
+@@ -0,0 +1,63 @@
++# T1_F252 — Standing-red paydown (154 ids, 13 classes)
++**Tier 1 · Registered work item (operator ruling A, 2026-07-28) ·
++Executes before F050 · Depends on: the F251 baseline · Blocks/used
++by: gate honesty, the F075 baseline**
++
++## Goal & Done
++The 154 deterministic standing-red test ids catalogued by F251 reach
++an explicit terminal state, class by class: root-cause fix, honest
++test update, or an operator-decided retirement — never a silent skip.
++DONE when three consecutive full-suite runs (pytest -n auto -q)
++produce identical failure sets and that set is empty except for
++explicitly quarantined tests, with F251's quarantine rules unchanged
++(marker/skip + reason string + backlog reference per test; never
++deletion, never blanket directory skips, never weakened assertions).
++
++## Work breakdown
++Canonical id list: .agent/f251_baseline/class_map.txt (F251 branch,
++merged history). Priority order per the ruling: product-bug classes
++first, then product change, then test rewrites, then doc/text drift,
++then operator-decision classes.
++1. Product bugs: D8 flight-plan schema_v regression (3) · D10
++   discover-commands CLI rc=1 / non-JSON (8) · D11 malformed TOML
++   raises BudgetConfigError not FenceConfigError (3).
++2. Product change: D5 CLI requires a registered project, cwd
++   coupling (11) · D7 dev_server private names removed (6) · D9
++   command-catalog classification drift (3) · D13 review-zip /
++   evidence packaging drift (11).
++3. Test rewrites: D6 incomplete MagicMock vs real comparison (9).
++4. Doc/text drift: D1 doc/file missing at pre-restructure flat path
++   (36) · D14 misc drift, uncategorised (46). Note: the ruling
++   mentioned a "D2"; no such class exists in the catalog — the
++   catalog is authoritative.
++5. Operator-decision classes — each carries a per-class decision
++   request for its round: D3 apps/ui legacy/*.tsx absent (10) — fix
++   the tests now or park them until the Tier 5 UI build? · D12
++   .claude/agents/remedy-reviewer.md absent (1) — restore the file
++   or retire the test?
++6. The two stopped F-A ids from F251: the real-Vite probe binds the
++   product's apps/ui port; the supervisor teardown guard's fix
++   reaches the product stop/ownership path. Both need product
++   change.
++7. D4 design decision (9 ids): the .agent contract tests read LIVE
++   state files, so every round's bookkeeping moves them (proven in
++   F251 R2: two ids flipped after a live_review rewrite). Explicit
++   item: rebuild fixture-based vs keep live-coupled with the
++   movement documented.
++
++## Rules
++Per-class rounds, normal review discipline. F251's quarantine rules
++apply unchanged inside F252. A class whose fix exceeds its stated
++bucket stops and reports — never silent scope drift. Every class
++round ends by recording the full-suite delta (which ids left the
++standing set).
++
++## Out of scope
++New features beyond what a class fix strictly requires; UI build-out
++(D3 is a decision request, not an implementation order).
++
++## Orchestrator brief
++One class per round where possible; the product-bug classes are
++ordinary bug fixes with tests. The ledger pin
++(tests/docs/test_docs_consistency.py) moves atomically with any
++feature-file or STATUS change, always.
+diff --git a/tests/cli/test_job_rerun_manifest.py b/tests/cli/test_job_rerun_manifest.py
+index ce99a56..1eb7344 100644
+--- a/tests/cli/test_job_rerun_manifest.py
++++ b/tests/cli/test_job_rerun_manifest.py
+@@ -20,6 +20,34 @@ from apps.cli.commands import collect_all_handlers
+ from apps.cli.commands import job_rerun_cmd as CMD
+ 
+ 
++@pytest.fixture(autouse=True)
++def _freeze_remedy_identity(monkeypatch):
++    """Pin Remedy's own worktree identity for the duration of each test.
++
++    A run manifest records the identity of the Remedy checkout itself — HEAD, a
++    content hash and a dirty flag — and any UNTRACKED entry sets dirty
++    (run_manifest.py, `dirty = True  # any untracked entry means dirty`). The
++    reference manifest is written when the job runs; the candidate is built a
++    moment later. Under `-n auto` all 24 workers share this one repo tree, so a
++    neighbouring test creating or removing a file in the repo between those two
++    moments changes the identity, the diff records a blocking drift, and
++    `same_inputs` becomes False where the test requires None.
++
++    Reproduced deterministically: with a loop touching and removing an untracked
++    file in the repo root, the coverage test failed 5/5; with a quiet tree it
++    passed 3/3.
++
++    Freezing to the value observed at test start keeps the REAL identity — no
++    forced "complete" — and only removes the race, so what these tests assert
++    stays what they asserted: the job inputs, not Remedy's own tree. This is the
++    same seam the module already uses deliberately in _patch_remedy_identity.
++    """
++    from packages.orchestration import run_manifest as _RM
++    snapshot = _RM.remedy_worktree_identity()
++    monkeypatch.setattr(_RM, "remedy_worktree_identity", lambda: snapshot)
++
++
++
+ def _git_repo(path: Path) -> Path:
+     path.mkdir(parents=True, exist_ok=True)
+     subprocess.run("git init -q && git config user.email t@t && git config user.name t "
+diff --git a/tests/cli/test_runtime_cmd.py b/tests/cli/test_runtime_cmd.py
+index 90e6670..d427ffc 100644
+--- a/tests/cli/test_runtime_cmd.py
++++ b/tests/cli/test_runtime_cmd.py
+@@ -14,6 +14,7 @@ import pytest
+ from apps.cli.command_catalog import CATALOG, GROUPS, get_commands_for_group
+ from apps.cli.commands import collect_all_handlers, runtime_cmd
+ from packages.runtimes.dev_server import load_state
++from tests.ports import worker_port
+ 
+ SERVER = """
+ import http.server, os
+@@ -39,7 +40,9 @@ def isolate_data_root(tmp_path, monkeypatch):
+ 
+ 
+ def _project(tmp_path: Path, script: str, body: str, *, timeout: float = 15.0,
+-             port: int = 5173) -> Path:
++             port: int | None = None) -> Path:
++    if port is None:
++        port = worker_port()
+     root = tmp_path / "proj"
+     root.mkdir(exist_ok=True)
+     (root / script).write_text(body)

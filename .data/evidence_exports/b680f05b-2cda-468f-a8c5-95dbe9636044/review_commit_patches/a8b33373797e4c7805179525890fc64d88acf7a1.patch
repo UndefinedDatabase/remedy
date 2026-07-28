@@ -1,0 +1,53 @@
+a8b33373797e4c7805179525890fc64d88acf7a1
+diff --git a/.agent/authored/f251-r2-2.md b/.agent/authored/f251-r2-2.md
+new file mode 100644
+index 0000000..6d75307
+--- /dev/null
++++ b/.agent/authored/f251-r2-2.md
+@@ -0,0 +1,20 @@
++F251 — reviewer-observed additional flake ids (appendix to S1)
++Source: two reviewer-run full suites (-n auto) during the R2 review,
++189 and 169 failed. These 9 ids failed in a reviewer run and are in
++NEITHER run1.txt NOR run2.txt — second-source proof the flake pool is
++open-ended. Families match F-A/F-D plus repo-scan tests.
++
++tests/cli/test_runtime_cmd.py::TestServe::test_a_readiness_timeout_exits_4_and_leaves_no_state
++tests/regression/test_named_bugs.py::TestBrainViewerNarrowedException::test_viewer_no_bare_except_exception
++tests/regression/test_named_bugs.py::TestNoSilentSwallow::test_no_bare_except_exception_in_key_modules
++tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_a_one_shot_probe_leaves_no_process_and_no_state
++tests/runtimes/test_runtime_cli_process_boundary.py::TestServeSurvivesTheCli::test_serve_cli_exits_successfully_and_the_runtime_survives
++tests/runtimes/test_runtime_lifecycle_safety.py::TestHonestStop::test_a_readiness_failure_reports_survivors_instead_of_lying
++tests/runtimes/test_supervisor_portability.py::TestProbeChecksTheSupervisor::test_a_dead_supervisor_is_never_healthy_when_the_app_cwd_is_denied
++tests/runtimes/test_supervisor_portability.py::TestProbeChecksTheSupervisor::test_stop_never_kills_an_unprovable_orphan
++tests/ui_server/test_dashboard_contract.py::TestUIServer::test_no_external_assets_in_server
++
++Also observed: the two test_live_review_has_steps_section ids (D4)
++flipped to PASS in both reviewer runs after the live_review.md rewrite
++of 69cabd6 — deterministic at fixed .agent state, unstable across
++rounds by design.
+diff --git a/.agent/f251_baseline/reviewer_flake_extras.txt b/.agent/f251_baseline/reviewer_flake_extras.txt
+new file mode 100644
+index 0000000..6d75307
+--- /dev/null
++++ b/.agent/f251_baseline/reviewer_flake_extras.txt
+@@ -0,0 +1,20 @@
++F251 — reviewer-observed additional flake ids (appendix to S1)
++Source: two reviewer-run full suites (-n auto) during the R2 review,
++189 and 169 failed. These 9 ids failed in a reviewer run and are in
++NEITHER run1.txt NOR run2.txt — second-source proof the flake pool is
++open-ended. Families match F-A/F-D plus repo-scan tests.
++
++tests/cli/test_runtime_cmd.py::TestServe::test_a_readiness_timeout_exits_4_and_leaves_no_state
++tests/regression/test_named_bugs.py::TestBrainViewerNarrowedException::test_viewer_no_bare_except_exception
++tests/regression/test_named_bugs.py::TestNoSilentSwallow::test_no_bare_except_exception_in_key_modules
++tests/runtimes/test_apps_ui_probe.py::TestRealViteProbe::test_a_one_shot_probe_leaves_no_process_and_no_state
++tests/runtimes/test_runtime_cli_process_boundary.py::TestServeSurvivesTheCli::test_serve_cli_exits_successfully_and_the_runtime_survives
++tests/runtimes/test_runtime_lifecycle_safety.py::TestHonestStop::test_a_readiness_failure_reports_survivors_instead_of_lying
++tests/runtimes/test_supervisor_portability.py::TestProbeChecksTheSupervisor::test_a_dead_supervisor_is_never_healthy_when_the_app_cwd_is_denied
++tests/runtimes/test_supervisor_portability.py::TestProbeChecksTheSupervisor::test_stop_never_kills_an_unprovable_orphan
++tests/ui_server/test_dashboard_contract.py::TestUIServer::test_no_external_assets_in_server
++
++Also observed: the two test_live_review_has_steps_section ids (D4)
++flipped to PASS in both reviewer runs after the live_review.md rewrite
++of 69cabd6 — deterministic at fixed .agent state, unstable across
++rounds by design.

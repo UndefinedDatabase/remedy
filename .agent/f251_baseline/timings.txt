@@ -1,0 +1,41 @@
+F251 S1 baseline — wall times and outcomes
+Host: 24 cores, pytest -n auto (24 workers), 14314 tests collected.
+Repo state: feature/f251-suite-stabilization at 6280cb0 (parent main d8ac7fa).
+
+run1  time python3 -m pytest -n auto -q
+      168 failed, 14138 passed, 8 skipped, 1 error in 176.97s
+      real 2m57.371s   user 10m25.550s   sys 1m44.552s
+      failure ids -> run1.txt (169 = 168 FAILED + 1 ERROR)
+
+run2  time python3 -m pytest -n auto -q
+      167 failed, 14139 passed, 8 skipped in 172.56s
+      real 2m53.019s   user 10m48.760s   sys 1m50.832s
+      failure ids -> run2.txt (167)
+
+set comparison run1 vs run2
+      common          161
+      only in run1      8
+      only in run2      6
+      churning ids     14
+
+control A — the 161 common ids re-run SERIALLY on this branch
+      python3 -m pytest <161 ids> --tb=line -q -p no:randomly
+      156 failed, 5 passed in 134.76s   real 2m15.004s
+      -> serial_deterministic.txt (156)
+
+control B — the same 161 ids run SERIALLY in a clean `main` worktree (d8ac7fa)
+      156 failed, 5 passed in 143.98s   real 2m25.539s
+      -> clean_main_control.txt (156)
+      comm -23 and comm -13 against control A both EMPTY
+      => the 156 are identical on clean main; pre-existing, not branch-induced
+
+control C — the 19-id flake set in isolation
+      -n auto, three consecutive runs: 5 failed / 14 passed each time,
+      but the failing IDS DIFFER between runs (timing/process flake)
+      serial, once:                    5 failed, and a DIFFERENT id set
+      (4x test_grouped_cli + test_data_paths) => test-order / cached-state
+      -> flake_set.txt (19)
+
+summary
+      flake debt   =  19 ids (14 churning + 5 that fail only under -n auto)
+      standing red = 156 ids (deterministic, reproduce on clean main)

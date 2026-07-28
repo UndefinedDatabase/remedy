@@ -1,0 +1,24 @@
+{
+ "current_job_id": "b680f05b-2cda-468f-a8c5-95dbe9636044",
+ "current_step_range": "S1-S5",
+ "evidence_authoritative": true,
+ "evidence_freshness": {
+  "is_fresh": true,
+  "job_id_match": true,
+  "step_range_match": true
+ },
+ "evidence_job_id": "b680f05b-2cda-468f-a8c5-95dbe9636044",
+ "evidence_validity": {
+  "has_job_id": true,
+  "has_manifest": true,
+  "is_valid_current_run": true
+ },
+ "issues": [],
+ "job_id_match": true,
+ "live_review_match": true,
+ "live_review_step_range": "S1-S5",
+ "plan_match": true,
+ "plan_step_range": "S1-S5",
+ "schema_version": "1.0.0",
+ "verdict": "PASS"
+}

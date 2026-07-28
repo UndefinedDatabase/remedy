@@ -1,0 +1,163 @@
+2a93e314652b679a52235bf657c98d924509dba0
+diff --git a/.agent/authored/f251-r3-1.md b/.agent/authored/f251-r3-1.md
+new file mode 100644
+index 0000000..597e96f
+--- /dev/null
++++ b/.agent/authored/f251-r3-1.md
+@@ -0,0 +1,54 @@
++# Live Review — F251 Full-suite stabilization (flake-debt paydown)
++
++Branch: feature/f251-suite-stabilization
++LAST_REVIEWED_SHA: 6c45717
++Finding IDs continue monotonically; next free ID: R-0154.
++Previous ledgers (planning amendment, F048) live in git history.
++
++## Findings
++
++- R-0150 · Medium · handback channel — Resolved: ffc49fa + final
++  handback, verified (history of this file).
++
++- R-0151 · Medium · regression via merged PR #157 (ledger pins 250).
++  Resolved: 7f67d03 — TOTAL_FEATURES = 251 with an explanatory
++  comment; verified by the reviewer, 4 FeatureLedger tests green.
++
++- R-0152 · Low · handback cap breach (103 vs claimed "≤100").
++  Resolved: the R2 handback measures exactly 100 lines (reviewer wc).
++
++- R-0153 · Low · plan.md staleness · .agent/plan.md was not updated
++  during the whole R2 round: at review time it still read "S3/S4/S5
++  not started" and listed R-0151 as a candidate, while the disk had
++  S3 fixes, the R-0151 fix and two churn-gate attempts committed.
++  AGENTS.md requires plan.md to reflect the current state before
++  every commit. Fix: apply the authored plan rewrite of this round;
++  keep it current from now on.
++  Resolved: (pending)
++
++## Verdicts
++
++- R3 (13783ed..6c45717): PASS — issued by the reviewer after
++  independent verification. Authored-text fidelity: live_review and
++  reviewer_flake_extras byte-identical to the reviewer originals;
++  the transport line-wrap of f251-r2-2 was caught by the sha256
++  guard, joined, re-verified and reported — the R-0148 protocol
++  working as designed. Full diff read: test-seam changes only
++  (conftest autouse config-cache reset + cwd restore, tests/ports.py
++  per-worker ports, module fixes); packages/ untouched since F048.
++  Gate evidence recomputed: run2 == run3 == the expected 154
++  byte-exact; run1 = 154 + one TestCoverage id. R-0151 verified
++  green (4 passed); R2 handback exactly 100 lines. Reviewer ran the
++  full suite once more: 156 failed = the expected 154 + 2 NEW ids
++  from tests/cli/test_job_rerun_manifest.py
++  (TestCompleteVerificationPath) — same family as the worker's
++  one-off in test_run_manifest.py (TestCoverage). The residual flake
++  is one coherent family (run-manifest coverage), now second-source
++  confirmed: churn is down from 14 ids/run to 1–2 ids/run, zero
++  quarantines, all fixes hermetic. The honest stop-on-red at the
++  gate was the ordered behavior. Open: the F-F family root cause
++  (possible REAL product bug — same_inputs comparison), the two
++  stopped F-A ids (product change), the 13 D-classes (operator
++  ruling pending). Verification tier: round gate (scoped) + one
++  reviewer full-suite run + canary.
++  LAST_REVIEWED_SHA = 6c45717.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 884ac86..597e96f 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,55 +1,54 @@
+ # Live Review — F251 Full-suite stabilization (flake-debt paydown)
+ 
+ Branch: feature/f251-suite-stabilization
+-LAST_REVIEWED_SHA: 13783ed
+-Finding IDs continue monotonically; next free ID: R-0153.
++LAST_REVIEWED_SHA: 6c45717
++Finding IDs continue monotonically; next free ID: R-0154.
+ Previous ledgers (planning amendment, F048) live in git history.
+ 
+ ## Findings
+ 
+-- R-0150 · Medium · handback channel — stale handback for the range
+-  d8ac7fa..6280cb0 (details in git history of this file).
+-  Resolved: ffc49fa (interim handback, Done-marker in body) +
+-  3a0f18e/49dbc79/13783ed (final handback) — verified by the reviewer.
+-
+-- R-0151 · Medium · regression via merged PR #157 · the amendment took
+-  the feature ledger 250 → 251 (T1_F251.md + STATUS line) and broke
+-  both TestFeatureLedger pins in
+-  tests/docs/test_docs_consistency.py (TOTAL_FEATURES = 250).
+-  Confirmed by the reviewer: 2 failed, 2 passed on -k FeatureLedger.
+-  The amendment round's gate was canary-only, so it could not catch
+-  this — reviewer process miss, noted in the R2 verdict. Fix: update
+-  the pin to the current ledger truth (251) so both tests are green —
+-  an honest expectation update, not a weakened assertion.
+-  Resolved: (pending)
++- R-0150 · Medium · handback channel — Resolved: ffc49fa + final
++  handback, verified (history of this file).
++
++- R-0151 · Medium · regression via merged PR #157 (ledger pins 250).
++  Resolved: 7f67d03 — TOTAL_FEATURES = 251 with an explanatory
++  comment; verified by the reviewer, 4 FeatureLedger tests green.
++
++- R-0152 · Low · handback cap breach (103 vs claimed "≤100").
++  Resolved: the R2 handback measures exactly 100 lines (reviewer wc).
+ 
+-- R-0152 · Low · handback cap · the final handback is 103 lines while
+-  its own Deviations section claims "≤100"; two trim commits share an
+-  identical subject. Fix: the next handback rewrite lands honestly at
+-  ≤100 lines (>5 commit tables present).
++- R-0153 · Low · plan.md staleness · .agent/plan.md was not updated
++  during the whole R2 round: at review time it still read "S3/S4/S5
++  not started" and listed R-0151 as a candidate, while the disk had
++  S3 fixes, the R-0151 fix and two churn-gate attempts committed.
++  AGENTS.md requires plan.md to reflect the current state before
++  every commit. Fix: apply the authored plan rewrite of this round;
++  keep it current from now on.
+   Resolved: (pending)
+ 
+ ## Verdicts
+ 
+-- R2 (d8ac7fa..13783ed): PASS — issued by the reviewer after
+-  independent verification. Set arithmetic of .agent/f251_baseline/
+-  re-computed and exact (run1∩run2=161; serial_deterministic ==
+-  clean_main_control, 156; serial-pass 5; churn 14; flake_set = their
+-  union, 19). Spot-checks: 5 deterministic ids red serially, the 5
+-  xdist-flake ids green serially, both TestFeatureLedger pins red.
+-  Reviewer ran the full suite TWICE (-n auto): 189 and 169 failed —
+-  154/156 of the deterministic core present in both; the 2 misses are
+-  the test_live_review_has_steps_section twins, which flipped after
+-  the reviewer-ordered live_review rewrite — confirming the D4
+-  state-coupling diagnosis by experiment. 9 previously-unseen flake
+-  ids appeared (runtimes/supervisor/probe + repo-scan families):
+-  the flake pool is open-ended, S1's 19 are a sample, magnitude
+-  consistent with the operator's 150–215 band. R-0150 repair
+-  verified compliant; oversize 6b22988 declared, inseparable,
+-  accepted — first and only in F251. Stop-on-red on the 13 D-classes
+-  honored and CORRECT: the done-definition's premise (churn) does not
+-  match the measured reality (156 deterministic standing red);
+-  routed to the operator per the wrong-spec rule with a concrete
+-  amendment proposal — no silent re-plan. Verification tier: round
+-  gate (scoped re-runs + two reviewer full-suite runs) + canary.
+-  LAST_REVIEWED_SHA = 13783ed.
++- R3 (13783ed..6c45717): PASS — issued by the reviewer after
++  independent verification. Authored-text fidelity: live_review and
++  reviewer_flake_extras byte-identical to the reviewer originals;
++  the transport line-wrap of f251-r2-2 was caught by the sha256
++  guard, joined, re-verified and reported — the R-0148 protocol
++  working as designed. Full diff read: test-seam changes only
++  (conftest autouse config-cache reset + cwd restore, tests/ports.py
++  per-worker ports, module fixes); packages/ untouched since F048.
++  Gate evidence recomputed: run2 == run3 == the expected 154
++  byte-exact; run1 = 154 + one TestCoverage id. R-0151 verified
++  green (4 passed); R2 handback exactly 100 lines. Reviewer ran the
++  full suite once more: 156 failed = the expected 154 + 2 NEW ids
++  from tests/cli/test_job_rerun_manifest.py
++  (TestCompleteVerificationPath) — same family as the worker's
++  one-off in test_run_manifest.py (TestCoverage). The residual flake
++  is one coherent family (run-manifest coverage), now second-source
++  confirmed: churn is down from 14 ids/run to 1–2 ids/run, zero
++  quarantines, all fixes hermetic. The honest stop-on-red at the
++  gate was the ordered behavior. Open: the F-F family root cause
++  (possible REAL product bug — same_inputs comparison), the two
++  stopped F-A ids (product change), the 13 D-classes (operator
++  ruling pending). Verification tier: round gate (scoped) + one
++  reviewer full-suite run + canary.
++  LAST_REVIEWED_SHA = 6c45717.

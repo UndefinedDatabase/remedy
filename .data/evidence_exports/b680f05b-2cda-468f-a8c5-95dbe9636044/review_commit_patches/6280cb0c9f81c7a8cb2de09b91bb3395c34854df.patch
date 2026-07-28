@@ -1,0 +1,187 @@
+6280cb0c9f81c7a8cb2de09b91bb3395c34854df
+diff --git a/.agent/authored/f251-r1-1.md b/.agent/authored/f251-r1-1.md
+new file mode 100644
+index 0000000..bae56ac
+--- /dev/null
++++ b/.agent/authored/f251-r1-1.md
+@@ -0,0 +1,14 @@
++# Live Review — F251 Full-suite stabilization (flake-debt paydown)
++
++Branch: feature/f251-suite-stabilization
++LAST_REVIEWED_SHA: main head at branch creation (recorded in handoff)
++Finding IDs continue monotonically; next free ID: R-0150.
++Previous ledgers (planning amendment, F048) live in git history.
++
++## Findings
++
++(none yet)
++
++## Verdicts
++
++(pending)
+diff --git a/.agent/authored/f251-r1-2.md b/.agent/authored/f251-r1-2.md
+new file mode 100644
+index 0000000..e4dfb03
+--- /dev/null
++++ b/.agent/authored/f251-r1-2.md
+@@ -0,0 +1 @@
++- [~] F251 — Full-suite stabilization (flake-debt paydown) (in progress: feature/f251-suite-stabilization)
+diff --git a/.agent/authored/f251-r1-3.md b/.agent/authored/f251-r1-3.md
+new file mode 100644
+index 0000000..315a174
+--- /dev/null
++++ b/.agent/authored/f251-r1-3.md
+@@ -0,0 +1,35 @@
++# Plan — F251 Full-suite stabilization (R1)
++
++## Goal
++The full suite stops churning: three consecutive `python3 -m pytest
++-n auto -q` runs on this branch produce identical failure sets, and
++that set is empty except for explicitly quarantined tests (T1_F251.md,
++operator scope ruling 2026-07-27). Hermetic fix beats quarantine;
++quarantine = marker/skip + reason string + backlog reference, never
++deletion, never blanket directory skips, never weakened assertions.
++
++## Checklist
++- [ ] S1 baseline: two full-suite runs, failure-set diff, wall time
++      recorded, per-class catalog (the named classes + any new ones)
++- [ ] S2 per-class decision table (root-cause fix vs
++      quarantine-with-reason), committed in plan.md before fixing
++- [ ] S3 root-cause fixes class by class (xdist suspects first: shared
++      tmp/data paths, port collisions, test-order dependencies, global
++      process/env state) — separate commit per class
++- [ ] S4 quarantine mechanism (existing convention or minimal new one)
++      + remaining classes quarantined with reason + backlog ref
++- [ ] S5 proof: three consecutive identical-set runs, set empty except
++      quarantined; wall time after recorded
++- [ ] Handback: per-class item-status table + final line
++      "full suite on main: N quarantined, 0 churning"
++
++## Current Step
++S1 baseline.
++
++## Risks
++- Out of scope: new product features, CLI work, executor changes beyond
++  what a hermetic-test fix strictly requires.
++- A flaky test exposing a REAL product bug is a finding per normal
++  rules, not a default quarantine candidate.
++- Stop-on-red: a class that does not converge → hand back early with
++  the honest state.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 600202f..bae56ac 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,30 +1,14 @@
+-# Live Review — Planning amendment: flake-debt reorder + F070/F075 corpus
++# Live Review — F251 Full-suite stabilization (flake-debt paydown)
+ 
+-Branch: chore/plan-amendment-flake-debt (PR #157)
+-LAST_REVIEWED_SHA: af9ad80
++Branch: feature/f251-suite-stabilization
++LAST_REVIEWED_SHA: main head at branch creation (recorded in handoff)
+ Finding IDs continue monotonically; next free ID: R-0150.
+-Previous ledger (F048) lives in git history.
++Previous ledgers (planning amendment, F048) live in git history.
+ 
+ ## Findings
+ 
+-(none this round)
++(none yet)
+ 
+ ## Verdicts
+ 
+-- R1 (73ac5cc..af9ad80): PASS — issued by the reviewer after independent
+-  verification. All eight authored texts byte-identical disk-to-disk
+-  against the reviewer's originals (sha256sum + cmp); applications
+-  proven: cmp exit 0 for the live_review/T1_F251/plan full replaces,
+-  containment exit 0 for the five insertions; insertion positions
+-  verified in the real diff (STATUS F251 line directly before F050;
+-  ROADMAP Tier-1 entry between F048 and F050; F070 Design + Acceptance;
+-  F075 Acceptance). Diff scope is exactly the declared file set; STATUS
+-  +1/−0, line form unchanged (F080 grammar warning respected). Open PR
+-  Gate on #156 executed correctly (merge 40c7e4d..73ac5cc). Canary
+-  re-run independently by the reviewer: 42 passed. Tree clean.
+-  Findings: 0. The worker's honest flag on the chore/* branch name is
+-  acknowledged and resolved by the operator-approved same-session merge
+-  of PR #157 — the AGENTS.md Open PR Gate never encounters it.
+-  Verification tier: round gate (scoped) + canary.
+-  LAST_REVIEWED_SHA = af9ad80. Merge of #157 instructed (operator
+-  exception); the reordered STATUS takes effect — F251 starts next.
++(pending)
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 36af41f..315a174 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,32 +1,35 @@
+-# Plan — Planning amendment: flake-debt reorder + F070/F075 corpus (R1)
++# Plan — F251 Full-suite stabilization (R1)
+ 
+ ## Goal
+-Persist three operator decisions (2026-07-27) into the roadmap docs so
+-the plan carries them itself: register F251 (full-suite stabilization)
+-as the next open item before F050; add the ledger-fixture corpus and
+-integrity-pattern requirements to T1_F070.md; add the corpus inheritance
+-rule to T1_F075.md. Docs only — no production code, no tests, no
+-process-doc changes.
++The full suite stops churning: three consecutive `python3 -m pytest
++-n auto -q` runs on this branch produce identical failure sets, and
++that set is empty except for explicitly quarantined tests (T1_F251.md,
++operator scope ruling 2026-07-27). Hermetic fix beats quarantine;
++quarantine = marker/skip + reason string + backlog reference, never
++deletion, never blanket directory skips, never weakened assertions.
+ 
+ ## Checklist
+-- [ ] Open PR Gate: merge PR #156 (F048), main pulled clean
+-- [ ] Branch chore/plan-amendment-flake-debt from main
+-- [ ] Commit A: authored files saved + live_review.md reset (r1-1)
+-- [ ] Commit B: docs/roadmap/features/T1_F251.md created (r1-2)
+-- [ ] Commit C: STATUS.md F251 line before F050 (r1-3) + ROADMAP.md
+-      Tier-1 entry after F048 (r1-4)
+-- [ ] Commit D: T1_F070.md Design (r1-5) + Acceptance (r1-6) additions
+-- [ ] Commit E: T1_F075.md Acceptance addition (r1-7)
+-- [ ] Verify: byte-identity proofs per authored file; docs-only diff
+-      vs main; canary tests/cli/test_golden_path.py
+-- [ ] Push, PR into main (NOT merged), handback per template
++- [ ] S1 baseline: two full-suite runs, failure-set diff, wall time
++      recorded, per-class catalog (the named classes + any new ones)
++- [ ] S2 per-class decision table (root-cause fix vs
++      quarantine-with-reason), committed in plan.md before fixing
++- [ ] S3 root-cause fixes class by class (xdist suspects first: shared
++      tmp/data paths, port collisions, test-order dependencies, global
++      process/env state) — separate commit per class
++- [ ] S4 quarantine mechanism (existing convention or minimal new one)
++      + remaining classes quarantined with reason + backlog ref
++- [ ] S5 proof: three consecutive identical-set runs, set empty except
++      quarantined; wall time after recorded
++- [ ] Handback: per-class item-status table + final line
++      "full suite on main: N quarantined, 0 churning"
+ 
+ ## Current Step
+-Apply in order; every authored text via .agent/authored/ with sha256
+-check BEFORE committing.
++S1 baseline.
+ 
+ ## Risks
+-- Docs only: any non-docs diff is scope drift — stop and report.
+-- STATUS.md grammar is parsed later by F080: exactly one new line, no
+-  other line touched.
+-- ROADMAP.md edit is operator-authorized for this ordering entry only.
++- Out of scope: new product features, CLI work, executor changes beyond
++  what a hermetic-test fix strictly requires.
++- A flaky test exposing a REAL product bug is a finding per normal
++  rules, not a default quarantine candidate.
++- Stop-on-red: a class that does not converge → hand back early with
++  the honest state.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 5a62f28..2d1dcba 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -31,7 +31,7 @@
+ - [x] F046 — Multi-cycle loop (T001–T002 complete; accepted 2026-07-26 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job b4df73c4-f867-4869-b097-62aab0e6974f · package remedy-review-20260726-215057-READY_FOR_REVIEW.zip · SHA-256 8dfb264f92b3736a9a58bb5df82693f543fc5877a9b907a897bfb53a54ab7f90 · accepted HEAD 0216d871290362d4ee81a80c767aa4ba1d2bb985)
+ - [x] F047 — Checkpoint & resume (kill-proof) (T001–T003 complete; accepted 2026-07-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7 · package remedy-review-20260727-101857-READY_FOR_REVIEW.zip · SHA-256 b6f96e888d7e8a6d5494f213b845a644be34538e6fc17df9d469712efe98b380 · accepted HEAD 8e870062feb3487f890232d659ef569cf3aa326e)
+ - [x] F048 — Job queue (T001–T003 complete; accepted 2026-07-27 · live review PASS — ACCEPTED · Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 · package remedy-review-20260727-223612-READY_FOR_REVIEW.zip · SHA-256 6058d0f4d67ee082c852202e910fe05ff42a5e9406a3fd71464c251acf106a4b · accepted HEAD c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee)
+-- [ ] F251 — Full-suite stabilization (flake-debt paydown)
++- [~] F251 — Full-suite stabilization (flake-debt paydown) (in progress: feature/f251-suite-stabilization)
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds

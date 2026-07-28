@@ -35,6 +35,7 @@ from packages.runtimes.dev_server import (
     verify_state,
 )
 from packages.runtimes.runtime_config import load_config_spec
+from tests.ports import worker_port
 
 SERVER = """
 import http.server, os
@@ -107,7 +108,7 @@ def project(tmp_path) -> Path:
     (cfg / "config.toml").write_text(
         "[runtime]\n"
         f'cmd = ["{sys.executable}", "server.py"]\n'
-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 15\n'
+        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 15\n'
     )
     return root
 
@@ -115,7 +116,7 @@ def project(tmp_path) -> Path:
 def _spec(project: Path, script: str = "server.py", timeout: float = 15.0) -> RuntimeSpec:
     return RuntimeSpec(
         cmd=[sys.executable, str(project / script)], cwd=str(project),
-        port=5173, health_path="/", ready_timeout_s=timeout,
+        port=worker_port(), health_path="/", ready_timeout_s=timeout,
     )
 
 
@@ -244,7 +245,7 @@ class TestManagedIdentity:
             (project / ".remedy" / "config.toml").write_text(
                 "[runtime]\n"
                 f'cmd = ["{sys.executable}", "server.py", "--other"]\n'
-                'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 15\n'
+                'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 15\n'
             )
             with pytest.raises(SystemExit) as exc:
                 runtime_cmd._cmd_runtime_serve(str(project), json_output=True)

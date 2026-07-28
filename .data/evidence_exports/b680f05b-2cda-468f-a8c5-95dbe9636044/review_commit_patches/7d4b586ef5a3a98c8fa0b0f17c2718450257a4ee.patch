@@ -1,0 +1,211 @@
+7d4b586ef5a3a98c8fa0b0f17c2718450257a4ee
+diff --git a/.agent/authored/f251-r4-4.md b/.agent/authored/f251-r4-4.md
+new file mode 100644
+index 0000000..787f8f4
+--- /dev/null
++++ b/.agent/authored/f251-r4-4.md
+@@ -0,0 +1,63 @@
++# T1_F252 — Standing-red paydown (154 ids, 13 classes)
++**Tier 1 · Registered work item (operator ruling A, 2026-07-28) ·
++Executes before F050 · Depends on: the F251 baseline · Blocks/used
++by: gate honesty, the F075 baseline**
++
++## Goal & Done
++The 154 deterministic standing-red test ids catalogued by F251 reach
++an explicit terminal state, class by class: root-cause fix, honest
++test update, or an operator-decided retirement — never a silent skip.
++DONE when three consecutive full-suite runs (pytest -n auto -q)
++produce identical failure sets and that set is empty except for
++explicitly quarantined tests, with F251's quarantine rules unchanged
++(marker/skip + reason string + backlog reference per test; never
++deletion, never blanket directory skips, never weakened assertions).
++
++## Work breakdown
++Canonical id list: .agent/f251_baseline/class_map.txt (F251 branch,
++merged history). Priority order per the ruling: product-bug classes
++first, then product change, then test rewrites, then doc/text drift,
++then operator-decision classes.
++1. Product bugs: D8 flight-plan schema_v regression (3) · D10
++   discover-commands CLI rc=1 / non-JSON (8) · D11 malformed TOML
++   raises BudgetConfigError not FenceConfigError (3).
++2. Product change: D5 CLI requires a registered project, cwd
++   coupling (11) · D7 dev_server private names removed (6) · D9
++   command-catalog classification drift (3) · D13 review-zip /
++   evidence packaging drift (11).
++3. Test rewrites: D6 incomplete MagicMock vs real comparison (9).
++4. Doc/text drift: D1 doc/file missing at pre-restructure flat path
++   (36) · D14 misc drift, uncategorised (46). Note: the ruling
++   mentioned a "D2"; no such class exists in the catalog — the
++   catalog is authoritative.
++5. Operator-decision classes — each carries a per-class decision
++   request for its round: D3 apps/ui legacy/*.tsx absent (10) — fix
++   the tests now or park them until the Tier 5 UI build? · D12
++   .claude/agents/remedy-reviewer.md absent (1) — restore the file
++   or retire the test?
++6. The two stopped F-A ids from F251: the real-Vite probe binds the
++   product's apps/ui port; the supervisor teardown guard's fix
++   reaches the product stop/ownership path. Both need product
++   change.
++7. D4 design decision (9 ids): the .agent contract tests read LIVE
++   state files, so every round's bookkeeping moves them (proven in
++   F251 R2: two ids flipped after a live_review rewrite). Explicit
++   item: rebuild fixture-based vs keep live-coupled with the
++   movement documented.
++
++## Rules
++Per-class rounds, normal review discipline. F251's quarantine rules
++apply unchanged inside F252. A class whose fix exceeds its stated
++bucket stops and reports — never silent scope drift. Every class
++round ends by recording the full-suite delta (which ids left the
++standing set).
++
++## Out of scope
++New features beyond what a class fix strictly requires; UI build-out
++(D3 is a decision request, not an implementation order).
++
++## Orchestrator brief
++One class per round where possible; the product-bug classes are
++ordinary bug fixes with tests. The ledger pin
++(tests/docs/test_docs_consistency.py) moves atomically with any
++feature-file or STATUS change, always.
+diff --git a/.agent/authored/f251-r4-5.md b/.agent/authored/f251-r4-5.md
+new file mode 100644
+index 0000000..5097a45
+--- /dev/null
++++ b/.agent/authored/f251-r4-5.md
+@@ -0,0 +1 @@
++- [ ] F252 — Standing-red paydown (154 ids, 13 classes)
+diff --git a/.agent/authored/f251-r4-6.md b/.agent/authored/f251-r4-6.md
+new file mode 100644
+index 0000000..04b1930
+--- /dev/null
++++ b/.agent/authored/f251-r4-6.md
+@@ -0,0 +1,8 @@
++**F252 Standing-red paydown (154 ids, 13 classes)** — Registered work
++item (operator ruling A, 2026-07-28); executes before F050 (STATUS.md
++order; detail: features/T1_F252.md). The 154 deterministic standing-red
++ids catalogued by F251 reach explicit terminal states class by class —
++product bugs first, then product change, test rewrites, doc drift,
++operator decisions; includes the two stopped F-A ids and the D4
++fixture-vs-live design decision. → Full suite: identical sets, empty
++except explicit quarantines; F251's quarantine rules unchanged.
+diff --git a/docs/roadmap/ROADMAP.md b/docs/roadmap/ROADMAP.md
+index 77a4c2b..7f049eb 100644
+--- a/docs/roadmap/ROADMAP.md
++++ b/docs/roadmap/ROADMAP.md
+@@ -339,6 +339,15 @@ identical failure sets, empty except explicitly quarantined tests. →
+ Deliverable baseline the F075 gauntlet inherits: "full suite on main:
+ N quarantined, 0 churning".
+ 
++**F252 Standing-red paydown (154 ids, 13 classes)** — Registered work
++item (operator ruling A, 2026-07-28); executes before F050 (STATUS.md
++order; detail: features/T1_F252.md). The 154 deterministic standing-red
++ids catalogued by F251 reach explicit terminal states class by class —
++product bugs first, then product change, test rewrites, doc drift,
++operator decisions; includes the two stopped F-A ids and the D4
++fixture-vs-live design decision. → Full suite: identical sets, empty
++except explicit quarantines; F251's quarantine rules unchanged.
++
+ **F050 DAG scheduling** — Topological ready-set from depends_on; a blocked
+ branch (awaiting decision / failed) blocks only its downstream; recompute per
+ task end. → Diamond fixture: B,C parallel after A; D waits for both; a block
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 2d1dcba..25ea814 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -32,6 +32,7 @@
+ - [x] F047 — Checkpoint & resume (kill-proof) (T001–T003 complete; accepted 2026-07-27 · live review PASS_WITH_RISKS — ACCEPTED · Evidence job 29fbc2fe-60d6-4bb2-a7bb-05dc59dd40d7 · package remedy-review-20260727-101857-READY_FOR_REVIEW.zip · SHA-256 b6f96e888d7e8a6d5494f213b845a644be34538e6fc17df9d469712efe98b380 · accepted HEAD 8e870062feb3487f890232d659ef569cf3aa326e)
+ - [x] F048 — Job queue (T001–T003 complete; accepted 2026-07-27 · live review PASS — ACCEPTED · Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 · package remedy-review-20260727-223612-READY_FOR_REVIEW.zip · SHA-256 6058d0f4d67ee082c852202e910fe05ff42a5e9406a3fd71464c251acf106a4b · accepted HEAD c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee)
+ - [~] F251 — Full-suite stabilization (flake-debt paydown) (in progress: feature/f251-suite-stabilization)
++- [ ] F252 — Standing-red paydown (154 ids, 13 classes)
+ - [ ] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds
+diff --git a/docs/roadmap/features/T1_F252.md b/docs/roadmap/features/T1_F252.md
+new file mode 100644
+index 0000000..787f8f4
+--- /dev/null
++++ b/docs/roadmap/features/T1_F252.md
+@@ -0,0 +1,63 @@
++# T1_F252 — Standing-red paydown (154 ids, 13 classes)
++**Tier 1 · Registered work item (operator ruling A, 2026-07-28) ·
++Executes before F050 · Depends on: the F251 baseline · Blocks/used
++by: gate honesty, the F075 baseline**
++
++## Goal & Done
++The 154 deterministic standing-red test ids catalogued by F251 reach
++an explicit terminal state, class by class: root-cause fix, honest
++test update, or an operator-decided retirement — never a silent skip.
++DONE when three consecutive full-suite runs (pytest -n auto -q)
++produce identical failure sets and that set is empty except for
++explicitly quarantined tests, with F251's quarantine rules unchanged
++(marker/skip + reason string + backlog reference per test; never
++deletion, never blanket directory skips, never weakened assertions).
++
++## Work breakdown
++Canonical id list: .agent/f251_baseline/class_map.txt (F251 branch,
++merged history). Priority order per the ruling: product-bug classes
++first, then product change, then test rewrites, then doc/text drift,
++then operator-decision classes.
++1. Product bugs: D8 flight-plan schema_v regression (3) · D10
++   discover-commands CLI rc=1 / non-JSON (8) · D11 malformed TOML
++   raises BudgetConfigError not FenceConfigError (3).
++2. Product change: D5 CLI requires a registered project, cwd
++   coupling (11) · D7 dev_server private names removed (6) · D9
++   command-catalog classification drift (3) · D13 review-zip /
++   evidence packaging drift (11).
++3. Test rewrites: D6 incomplete MagicMock vs real comparison (9).
++4. Doc/text drift: D1 doc/file missing at pre-restructure flat path
++   (36) · D14 misc drift, uncategorised (46). Note: the ruling
++   mentioned a "D2"; no such class exists in the catalog — the
++   catalog is authoritative.
++5. Operator-decision classes — each carries a per-class decision
++   request for its round: D3 apps/ui legacy/*.tsx absent (10) — fix
++   the tests now or park them until the Tier 5 UI build? · D12
++   .claude/agents/remedy-reviewer.md absent (1) — restore the file
++   or retire the test?
++6. The two stopped F-A ids from F251: the real-Vite probe binds the
++   product's apps/ui port; the supervisor teardown guard's fix
++   reaches the product stop/ownership path. Both need product
++   change.
++7. D4 design decision (9 ids): the .agent contract tests read LIVE
++   state files, so every round's bookkeeping moves them (proven in
++   F251 R2: two ids flipped after a live_review rewrite). Explicit
++   item: rebuild fixture-based vs keep live-coupled with the
++   movement documented.
++
++## Rules
++Per-class rounds, normal review discipline. F251's quarantine rules
++apply unchanged inside F252. A class whose fix exceeds its stated
++bucket stops and reports — never silent scope drift. Every class
++round ends by recording the full-suite delta (which ids left the
++standing set).
++
++## Out of scope
++New features beyond what a class fix strictly requires; UI build-out
++(D3 is a decision request, not an implementation order).
++
++## Orchestrator brief
++One class per round where possible; the product-bug classes are
++ordinary bug fixes with tests. The ledger pin
++(tests/docs/test_docs_consistency.py) moves atomically with any
++feature-file or STATUS change, always.
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index 26c7899..dd7cedf 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -18,9 +18,11 @@ FEATURE_FILE_RE = re.compile(r"\AT(\d{1,2})_F(\d{3})\.md\Z")
+ STATUS_LINE_RE = re.compile(r"^- \[[ ~x]\] F(\d{3}) — ")
+ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
+ 
+-#: 250 roadmap features (F001-F250) plus F251, the registered work item added
+-#: by the planning amendment of 2026-07-27 (docs/roadmap/features/T1_F251.md).
+-TOTAL_FEATURES = 251
++#: 250 roadmap features (F001-F250) plus two registered work items: F251,
++#: added by the planning amendment of 2026-07-27, and F252 (standing-red
++#: paydown), added by operator ruling A of 2026-07-28. See
++#: docs/roadmap/features/T1_F251.md and T1_F252.md.
++TOTAL_FEATURES = 252
+ 
+ #: Documents that must never contain a stale claim.
+ PRIMARY_DOCS = [

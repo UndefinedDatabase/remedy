@@ -14,6 +14,7 @@ import pytest
 from apps.cli.command_catalog import CATALOG, GROUPS, get_commands_for_group
 from apps.cli.commands import collect_all_handlers, runtime_cmd
 from packages.runtimes.dev_server import load_state
+from tests.ports import worker_port
 
 SERVER = """
 import http.server, os
@@ -39,7 +40,9 @@ def isolate_data_root(tmp_path, monkeypatch):
 
 
 def _project(tmp_path: Path, script: str, body: str, *, timeout: float = 15.0,
-             port: int = 5173) -> Path:
+             port: int | None = None) -> Path:
+    if port is None:
+        port = worker_port()
     root = tmp_path / "proj"
     root.mkdir(exist_ok=True)
     (root / script).write_text(body)

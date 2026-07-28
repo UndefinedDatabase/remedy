@@ -1,0 +1,215 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 9285e33..cc0a249 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -6,6 +6,58 @@ don't need @pytest.mark decorators for category classification.
+ 
+ import pytest
+ 
++
++@pytest.fixture(autouse=True)
++def _reset_config_cache():
++    """Keep the process-global config cache from leaking between tests.
++
++    ``get_config()`` memoises a ``RemedyConfig`` in a module-level global, and
++    ``load_config()`` resolves ``data_dir`` from ``REMEDY_DATA_DIR`` (and from a
++    cwd-relative ``remedy.toml``). A test that sets ``REMEDY_DATA_DIR`` via
++    ``monkeypatch`` therefore bakes its temp path into the cache; monkeypatch
++    restores the environment afterwards but cannot undo the cache. Every later
++    test in the same xdist worker then reads a stale ``data_dir``:
++    ``resolve_data_root()`` finds no env var, falls through to the cached
++    config, and returns the previous test's temp directory.
++
++    Measured effect before this fixture: running
++    ``test_job_rerun_manifest.py::TestCurrentTargetDrift`` first made every
++    ``test_grouped_cli.py::TestGroupedExecution`` JSON test fail with
++    "Job not found" — ``save_job()`` wrote to the leaked temp root while the
++    CLI subprocess resolved the real one. Order-dependent, so it surfaced as
++    flake under ``-n auto``.
++
++    Resetting on both sides makes each test start from a cold cache.
++    """
++    from packages.orchestration.config import reset_config
++    reset_config()
++    yield
++    reset_config()
++
++
++@pytest.fixture(autouse=True)
++def _restore_cwd():
++    """Undo a working-directory change that a test forgot to reverse.
++
++    Several tests ``os.chdir`` into a temp directory. When one of them fails
++    early — or simply never restores — the process keeps that directory, and
++    every later test in the same xdist worker that reads a repo file by a
++    RELATIVE path breaks:
++
++        FileNotFoundError: 'scripts/remedy_smoke.sh'
++        FileNotFoundError: 'packages/orchestration/ui_server.py'
++
++    Whether a victim runs before or after the offender depends on the xdist
++    schedule, so it presents as flake. Restoring the directory after every test
++    keeps one test's chdir from becoming another test's missing file.
++    """
++    import os
++    before = os.getcwd()
++    yield
++    if os.getcwd() != before:
++        os.chdir(before)
++
++
+ # Files that spawn subprocesses (CLI runtime, grouped CLI, etc.)
+ SUBPROCESS_FILES = {
+     "test_propose_cli_runtime.py",
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index 5e9b432..dd7cedf 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -18,7 +18,11 @@ FEATURE_FILE_RE = re.compile(r"\AT(\d{1,2})_F(\d{3})\.md\Z")
+ STATUS_LINE_RE = re.compile(r"^- \[[ ~x]\] F(\d{3}) — ")
+ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
+ 
+-TOTAL_FEATURES = 250
++#: 250 roadmap features (F001-F250) plus two registered work items: F251,
++#: added by the planning amendment of 2026-07-27, and F252 (standing-red
++#: paydown), added by operator ruling A of 2026-07-28. See
++#: docs/roadmap/features/T1_F251.md and T1_F252.md.
++TOTAL_FEATURES = 252
+ 
+ #: Documents that must never contain a stale claim.
+ PRIMARY_DOCS = [
+diff --git a/tests/orchestration/test_run_manifest.py b/tests/orchestration/test_run_manifest.py
+index 02dbda8..80e340a 100644
+--- a/tests/orchestration/test_run_manifest.py
++++ b/tests/orchestration/test_run_manifest.py
+@@ -634,6 +634,34 @@ from packages.orchestration.run_manifest import (  # noqa: E402
+ )
+ 
+ 
++@pytest.fixture(autouse=True)
++def _freeze_remedy_identity(monkeypatch):
++    """Pin Remedy's own worktree identity for the duration of each test.
++
++    A run manifest records the identity of the Remedy checkout itself — HEAD, a
++    content hash and a dirty flag — and any UNTRACKED entry sets dirty
++    (run_manifest.py, `dirty = True  # any untracked entry means dirty`). The
++    reference manifest is written when the job runs; the candidate is built a
++    moment later. Under `-n auto` all 24 workers share this one repo tree, so a
++    neighbouring test creating or removing a file in the repo between those two
++    moments changes the identity, the diff records a blocking drift, and
++    `same_inputs` becomes False where the test requires None.
++
++    Reproduced deterministically: with a loop touching and removing an untracked
++    file in the repo root, the coverage test failed 5/5; with a quiet tree it
++    passed 3/3.
++
++    Freezing to the value observed at test start keeps the REAL identity — no
++    forced "complete" — and only removes the race, so what these tests assert
++    stays what they asserted: the job inputs, not Remedy's own tree. This is the
++    same seam the module already uses deliberately in _patch_remedy_identity.
++    """
++    from packages.orchestration import run_manifest as _RM
++    snapshot = _RM.remedy_worktree_identity()
++    monkeypatch.setattr(_RM, "remedy_worktree_identity", lambda: snapshot)
++
++
++
+ def _g(repo, cmd):
+     subprocess.run(cmd, shell=True, cwd=repo, check=True, capture_output=True)
+ 
+diff --git a/tests/ports.py b/tests/ports.py
+new file mode 100644
+index 0000000..1d0ce35
+--- /dev/null
++++ b/tests/ports.py
+@@ -0,0 +1,39 @@
++"""Per-worker TCP ports for tests that start a real runtime.
++
++The runtime default port is 5173 (``packages/runtimes/runtime_config.py``), and
++the runtime tests wrote that literal into every generated ``.remedy/config.toml``.
++Under ``pytest -n auto`` all workers then bound — and probed — the same port, so a
++test asserting a readiness *failure* could reach a **different worker's** healthy
++server: ``RuntimeProbeResult(ok=True, status_code=200, port=5173)`` where the test
++required ``ok is False``, and a delayed-readiness assertion (``elapsed >= 1.4``)
++returned in 0.15 s against the foreign listener.
++
++``worker_port()`` gives each xdist worker its own port, so these tests can only
++ever see the server they started themselves. The product default is untouched:
++this is a test seam, not a behavior change.
++"""
++
++from __future__ import annotations
++
++import os
++
++#: Base of the per-worker range. Above the runtime default (5173) and below the
++#: Linux ephemeral range (``net.ipv4.ip_local_port_range`` starts at 32768), so a
++#: worker port can never collide with a kernel-assigned client port.
++_BASE = 15173
++
++
++def worker_index() -> int:
++    """0 for a serial run, N for xdist worker ``gwN``."""
++    name = os.environ.get("PYTEST_XDIST_WORKER", "")
++    digits = name[2:] if name.startswith("gw") else ""
++    return int(digits) if digits.isdigit() else 0
++
++
++def worker_port(offset: int = 0) -> int:
++    """A port owned by this worker alone.
++
++    ``offset`` separates several servers started within one worker; keep it small
++    and distinct per call site.
++    """
++    return _BASE + worker_index() * 16 + offset
+diff --git a/tests/runtimes/test_dev_server.py b/tests/runtimes/test_dev_server.py
+index 37a2ea4..f8f1a74 100644
+--- a/tests/runtimes/test_dev_server.py
++++ b/tests/runtimes/test_dev_server.py
+@@ -30,6 +30,7 @@ from packages.runtimes.dev_server import (
+     validate_spec,
+     verify_state,
+ )
++from tests.ports import worker_port
+ 
+ 
+ @pytest.fixture(autouse=True)
+@@ -104,11 +105,12 @@ def project(tmp_path) -> Path:
+     return root
+ 
+ 
+-def _spec(project: Path, script: str, *args: str, port: int = 5173,
++def _spec(project: Path, script: str, *args: str, port: int | None = None,
+           timeout: float = 10.0) -> RuntimeSpec:
+     return RuntimeSpec(
+         cmd=[sys.executable, str(project / script), *args],
+-        cwd=str(project), port=port, health_path="/", ready_timeout_s=timeout,
++        cwd=str(project), port=worker_port() if port is None else port,
++        health_path="/", ready_timeout_s=timeout,
+     )
+ 
+ 
+diff --git a/tests/runtimes/test_runtime_cli_process_boundary.py b/tests/runtimes/test_runtime_cli_process_boundary.py
+index 3039ab5..9825cd2 100644
+--- a/tests/runtimes/test_runtime_cli_process_boundary.py
++++ b/tests/runtimes/test_runtime_cli_process_boundary.py
+@@ -33,6 +33,7 @@ from tests.runtimes.runtime_cleanup import (
+     RuntimeRegistry,
+     basetemp_survivors,
+ )
++from tests.ports import worker_port
+ 
+ pytestmark = pytest.mark.subprocess
+ 
+@@ -141,7 +142,10 @@ def project(tmp_path) -> Path:
+     return root
+ 
+ 
+-def _config(root: Path, script: str, *, timeout: float = 20.0, port: int = 5173) -> None:
++def _config(root: Path, script: str, *, timeout: float = 20.0,
++            port: int | None = None) -> None:
++    if port is None:
++        port = worker_port()
+     cfg = root / ".remedy"
+     cfg.mkdir(exist_ok=True)
+     (cfg / "config.toml").write_text(

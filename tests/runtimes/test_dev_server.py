@@ -30,6 +30,7 @@ from packages.runtimes.dev_server import (
     validate_spec,
     verify_state,
 )
+from tests.ports import worker_port
 
 
 @pytest.fixture(autouse=True)
@@ -104,11 +105,12 @@ def project(tmp_path) -> Path:
     return root
 
 
-def _spec(project: Path, script: str, *args: str, port: int = 5173,
+def _spec(project: Path, script: str, *args: str, port: int | None = None,
           timeout: float = 10.0) -> RuntimeSpec:
     return RuntimeSpec(
         cmd=[sys.executable, str(project / script), *args],
-        cwd=str(project), port=port, health_path="/", ready_timeout_s=timeout,
+        cwd=str(project), port=worker_port() if port is None else port,
+        health_path="/", ready_timeout_s=timeout,
     )
 
 

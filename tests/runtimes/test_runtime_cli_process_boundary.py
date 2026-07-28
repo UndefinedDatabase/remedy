@@ -33,6 +33,7 @@ from tests.runtimes.runtime_cleanup import (
     RuntimeRegistry,
     basetemp_survivors,
 )
+from tests.ports import worker_port
 
 pytestmark = pytest.mark.subprocess
 
@@ -141,7 +142,10 @@ def project(tmp_path) -> Path:
     return root
 
 
-def _config(root: Path, script: str, *, timeout: float = 20.0, port: int = 5173) -> None:
+def _config(root: Path, script: str, *, timeout: float = 20.0,
+            port: int | None = None) -> None:
+    if port is None:
+        port = worker_port()
     cfg = root / ".remedy"
     cfg.mkdir(exist_ok=True)
     (cfg / "config.toml").write_text(

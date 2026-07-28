@@ -1,0 +1,241 @@
+c1b33417fc57bf55babea51c35946909a220c608
+diff --git a/.agent/authored/f251-r4-1.md b/.agent/authored/f251-r4-1.md
+new file mode 100644
+index 0000000..62476ff
+--- /dev/null
++++ b/.agent/authored/f251-r4-1.md
+@@ -0,0 +1,43 @@
++# Live Review — F251 Full-suite stabilization (flake-debt paydown)
++
++Branch: feature/f251-suite-stabilization
++LAST_REVIEWED_SHA: 6c98406
++Finding IDs continue monotonically; next free ID: R-0154.
++Previous ledgers (planning amendment, F048) live in git history.
++
++## Findings
++
++- R-0150 · Medium · handback channel — Resolved (history).
++- R-0151 · Medium · ledger pins — Resolved: 7f67d03, verified.
++- R-0152 · Low · handback cap — Resolved: R2 handback exactly 100 lines.
++- R-0153 · Low · plan.md staleness — Resolved: authored plan f251-r4-2
++  applied this round. The R3 re-send failed its sha256 because the
++  reviewer's original contained a trailing space that transport
++  stripped — a reviewer authoring defect, not a worker error; the
++  worker's refusal to commit unverified bytes was correct R-0148
++  protocol.
++
++## Verdicts
++
++- R4 (6c45717..6c98406): PASS — issued by the reviewer after
++  independent verification. F-F root cause verified in the diff: a
++  run manifest records Remedy's own worktree identity and any
++  untracked entry sets dirty; under -n auto a neighbouring test's
++  file churn between reference and candidate manifests flips
++  same_inputs — the fix freezes the identity per test via the
++  module's existing seam (monkeypatch snapshot), test hermeticity
++  only, product untouched, the F012 drift detection preserved.
++  Gate evidence recomputed: churn_gate2 run1 == run2 == run3 ==
++  the expected 154 byte-exact, 0 errors. The reviewer's OWN
++  full-suite run after the handback: 154 failed, byte-identical to
++  the expected set — four consecutive identical failure sets across
++  two independent operators. 0 quarantined, 0 churning, 154
++  standing red (catalogued). D4 twins red and stable in all runs
++  (the current live_review has no Steps section) — coupling
++  documented. OPERATOR RULING A (2026-07-28) recorded: F251 scope =
++  flake stabilization, DONE = the achieved state; the 154
++  standing-red ids and the 2 stopped F-A ids move to registered
++  item F252 (before F050); the D4 design decision is an explicit
++  F252 item. Amendment round ordered; closure follows as its own
++  round. Verification tier: round gate (scoped) + reviewer
++  full-suite run + canary. LAST_REVIEWED_SHA = 6c98406.
+diff --git a/.agent/authored/f251-r4-2.md b/.agent/authored/f251-r4-2.md
+new file mode 100644
+index 0000000..193ad80
+--- /dev/null
++++ b/.agent/authored/f251-r4-2.md
+@@ -0,0 +1,25 @@
++# Plan — F251 Full-suite stabilization (R4, Ruling A)
++
++## Goal
++Persist Ruling A (2026-07-28) into the docs, then close F251: scope =
++flake stabilization, DONE = the achieved state (three identical
++full-suite runs, 0 churning, 0 quarantined); the 154 standing-red ids
++and the 2 stopped F-A ids move to registered item F252.
++
++## Checklist
++- [ ] T1_F251.md: scope-ruling section applied (f251-r4-3)
++- [ ] ATOMIC ledger commit: T1_F252.md (f251-r4-4) + STATUS F252 line
++      before F050 (f251-r4-5) + ROADMAP tier-1 entry (f251-r4-6) +
++      TOTAL_FEATURES 251->252 — one commit, never split (R-0151
++      lesson, extended to the feature-file count)
++- [ ] Verify: FeatureLedger green; one full-suite run still exactly
++      the catalogued 154; canary green
++- [ ] Handback; closure runs as its OWN round after the verdict
++
++## Current Step
++Apply the authored amendment texts in order.
++
++## Risks
++- Ledger (files + STATUS) and pin move atomically, always.
++- No D-class edits; F252 is registration only this round.
++- plan.md stays current per commit (R-0153).
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 597e96f..62476ff 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,54 +1,43 @@
+ # Live Review — F251 Full-suite stabilization (flake-debt paydown)
+ 
+ Branch: feature/f251-suite-stabilization
+-LAST_REVIEWED_SHA: 6c45717
++LAST_REVIEWED_SHA: 6c98406
+ Finding IDs continue monotonically; next free ID: R-0154.
+ Previous ledgers (planning amendment, F048) live in git history.
+ 
+ ## Findings
+ 
+-- R-0150 · Medium · handback channel — Resolved: ffc49fa + final
+-  handback, verified (history of this file).
+-
+-- R-0151 · Medium · regression via merged PR #157 (ledger pins 250).
+-  Resolved: 7f67d03 — TOTAL_FEATURES = 251 with an explanatory
+-  comment; verified by the reviewer, 4 FeatureLedger tests green.
+-
+-- R-0152 · Low · handback cap breach (103 vs claimed "≤100").
+-  Resolved: the R2 handback measures exactly 100 lines (reviewer wc).
+-
+-- R-0153 · Low · plan.md staleness · .agent/plan.md was not updated
+-  during the whole R2 round: at review time it still read "S3/S4/S5
+-  not started" and listed R-0151 as a candidate, while the disk had
+-  S3 fixes, the R-0151 fix and two churn-gate attempts committed.
+-  AGENTS.md requires plan.md to reflect the current state before
+-  every commit. Fix: apply the authored plan rewrite of this round;
+-  keep it current from now on.
+-  Resolved: (pending)
++- R-0150 · Medium · handback channel — Resolved (history).
++- R-0151 · Medium · ledger pins — Resolved: 7f67d03, verified.
++- R-0152 · Low · handback cap — Resolved: R2 handback exactly 100 lines.
++- R-0153 · Low · plan.md staleness — Resolved: authored plan f251-r4-2
++  applied this round. The R3 re-send failed its sha256 because the
++  reviewer's original contained a trailing space that transport
++  stripped — a reviewer authoring defect, not a worker error; the
++  worker's refusal to commit unverified bytes was correct R-0148
++  protocol.
+ 
+ ## Verdicts
+ 
+-- R3 (13783ed..6c45717): PASS — issued by the reviewer after
+-  independent verification. Authored-text fidelity: live_review and
+-  reviewer_flake_extras byte-identical to the reviewer originals;
+-  the transport line-wrap of f251-r2-2 was caught by the sha256
+-  guard, joined, re-verified and reported — the R-0148 protocol
+-  working as designed. Full diff read: test-seam changes only
+-  (conftest autouse config-cache reset + cwd restore, tests/ports.py
+-  per-worker ports, module fixes); packages/ untouched since F048.
+-  Gate evidence recomputed: run2 == run3 == the expected 154
+-  byte-exact; run1 = 154 + one TestCoverage id. R-0151 verified
+-  green (4 passed); R2 handback exactly 100 lines. Reviewer ran the
+-  full suite once more: 156 failed = the expected 154 + 2 NEW ids
+-  from tests/cli/test_job_rerun_manifest.py
+-  (TestCompleteVerificationPath) — same family as the worker's
+-  one-off in test_run_manifest.py (TestCoverage). The residual flake
+-  is one coherent family (run-manifest coverage), now second-source
+-  confirmed: churn is down from 14 ids/run to 1–2 ids/run, zero
+-  quarantines, all fixes hermetic. The honest stop-on-red at the
+-  gate was the ordered behavior. Open: the F-F family root cause
+-  (possible REAL product bug — same_inputs comparison), the two
+-  stopped F-A ids (product change), the 13 D-classes (operator
+-  ruling pending). Verification tier: round gate (scoped) + one
+-  reviewer full-suite run + canary.
+-  LAST_REVIEWED_SHA = 6c45717.
++- R4 (6c45717..6c98406): PASS — issued by the reviewer after
++  independent verification. F-F root cause verified in the diff: a
++  run manifest records Remedy's own worktree identity and any
++  untracked entry sets dirty; under -n auto a neighbouring test's
++  file churn between reference and candidate manifests flips
++  same_inputs — the fix freezes the identity per test via the
++  module's existing seam (monkeypatch snapshot), test hermeticity
++  only, product untouched, the F012 drift detection preserved.
++  Gate evidence recomputed: churn_gate2 run1 == run2 == run3 ==
++  the expected 154 byte-exact, 0 errors. The reviewer's OWN
++  full-suite run after the handback: 154 failed, byte-identical to
++  the expected set — four consecutive identical failure sets across
++  two independent operators. 0 quarantined, 0 churning, 154
++  standing red (catalogued). D4 twins red and stable in all runs
++  (the current live_review has no Steps section) — coupling
++  documented. OPERATOR RULING A (2026-07-28) recorded: F251 scope =
++  flake stabilization, DONE = the achieved state; the 154
++  standing-red ids and the 2 stopped F-A ids move to registered
++  item F252 (before F050); the D4 design decision is an explicit
++  F252 item. Amendment round ordered; closure follows as its own
++  round. Verification tier: round gate (scoped) + reviewer
++  full-suite run + canary. LAST_REVIEWED_SHA = 6c98406.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index afb7a90..193ad80 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,47 +1,25 @@
+-# Plan — F251 Full-suite stabilization (R3)
+-
+-> NOT the authored f251-r3-2 text. That text failed its sha256 check
+-> (received c30e6828…, stated 8ac81a9a…) and unverified authored bytes are
+-> not committed, so this is the worker's own rewrite covering the same
+-> ground. R-0153 stays open until the authored plan is re-sent and applied.
++# Plan — F251 Full-suite stabilization (R4, Ruling A)
+ 
+ ## Goal
+-Three consecutive `pytest -n auto -q` runs with identical failure sets;
+-churn zero; standing red stays catalogued (operator ruling pending on the
+-13 D-classes). Zero quarantines — keep it that way unless a flake survives
+-an honest root-cause attempt.
+-
+-## State
+-- S1/S2 done. S3 done except the 2 stopped F-A ids (product change).
+-- Fixed hermetically: F-C (1), F-B/F-E (5, one root cause), F-A/F-D (11 of
+-  13), 7 repo-scan ids (cwd fixture), F-F (3, this round). Churn 14 → 1–2
+-  ids/run before F-F.
+-- Churn gate attempt 2: run2 == run3 == expected 154; run1 +1 id (F-F).
+-
+-## F-F — root-caused and fixed this round
+-A run manifest records Remedy's OWN worktree identity (HEAD, content hash,
+-dirty), and any untracked entry sets dirty. The reference manifest is
+-written when the job runs; the candidate is built moments later. Under
+-`-n auto` all 24 workers share one repo tree, so a neighbouring test
+-creating or removing a repo file between those moments produces a blocking
+-drift and `same_inputs` becomes False where the test requires None.
+-Deterministic reproducer: churn an untracked file in the repo root → 5/5
+-red; quiet tree → 3/3 green. Fix: freeze the identity per test to the value
+-observed at test start — the real value, not a forced "complete" — the same
+-seam the module already uses in `_patch_remedy_identity`. Product code
+-untouched: detecting a changed Remedy checkout is the intended F012
+-behaviour, so this is test hermeticity, not a product bug.
++Persist Ruling A (2026-07-28) into the docs, then close F251: scope =
++flake stabilization, DONE = the achieved state (three identical
++full-suite runs, 0 churning, 0 quarantined); the 154 standing-red ids
++and the 2 stopped F-A ids move to registered item F252.
+ 
+ ## Checklist
+-- [x] R3 verdict persisted (2a93e31)
+-- [x] F-F root cause + hermetic fix, proofs recorded
+-- [ ] Churn gate ×3 retry
+-- [ ] Operator ruling pending: 13 D-classes (154 standing red), the 2
+-      stopped F-A ids, and a re-send of f251-r3-2 for R-0153
++- [ ] T1_F251.md: scope-ruling section applied (f251-r4-3)
++- [ ] ATOMIC ledger commit: T1_F252.md (f251-r4-4) + STATUS F252 line
++      before F050 (f251-r4-5) + ROADMAP tier-1 entry (f251-r4-6) +
++      TOTAL_FEATURES 251->252 — one commit, never split (R-0151
++      lesson, extended to the feature-file count)
++- [ ] Verify: FeatureLedger green; one full-suite run still exactly
++      the catalogued 154; canary green
++- [ ] Handback; closure runs as its OWN round after the verdict
+ 
+ ## Current Step
+-Churn gate retry.
++Apply the authored amendment texts in order.
+ 
+ ## Risks
+-- D4 ids stay coupled to live `.agent` state; gate comparisons name them.
+-- No D-class edits until the operator rules.
++- Ledger (files + STATUS) and pin move atomically, always.
++- No D-class edits; F252 is registration only this round.
++- plan.md stays current per commit (R-0153).

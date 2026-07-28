@@ -339,6 +339,15 @@ identical failure sets, empty except explicitly quarantined tests. →
 Deliverable baseline the F075 gauntlet inherits: "full suite on main:
 N quarantined, 0 churning".
 
+**F252 Standing-red paydown (154 ids, 13 classes)** — Registered work
+item (operator ruling A, 2026-07-28); executes before F050 (STATUS.md
+order; detail: features/T1_F252.md). The 154 deterministic standing-red
+ids catalogued by F251 reach explicit terminal states class by class —
+product bugs first, then product change, test rewrites, doc drift,
+operator decisions; includes the two stopped F-A ids and the D4
+fixture-vs-live design decision. → Full suite: identical sets, empty
+except explicit quarantines; F251's quarantine rules unchanged.
+
 **F050 DAG scheduling** — Topological ready-set from depends_on; a blocked
 branch (awaiting decision / failed) blocks only its downstream; recompute per
 task end. → Diamond fixture: B,C parallel after A; D waits for both; a block

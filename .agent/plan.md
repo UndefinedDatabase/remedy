@@ -1,32 +1,40 @@
-# Plan — Planning amendment: flake-debt reorder + F070/F075 corpus (R1)
+# Plan — F251 closure round (protocol v3)
 
 ## Goal
-Persist three operator decisions (2026-07-27) into the roadmap docs so
-the plan carries them itself: register F251 (full-suite stabilization)
-as the next open item before F050; add the ledger-fixture corpus and
-integrity-pattern requirements to T1_F070.md; add the corpus inheritance
-rule to T1_F075.md. Docs only — no production code, no tests, no
-process-doc changes.
+Close F251 per STATUS_closure_protocol.md v3 under Ruling A: evidence
+job, fresh READY review zip, authored STATUS line, PR into main (NOT
+merged — the next feature's Open PR Gate merges it).
 
 ## Checklist
-- [ ] Open PR Gate: merge PR #156 (F048), main pulled clean
-- [ ] Branch chore/plan-amendment-flake-debt from main
-- [ ] Commit A: authored files saved + live_review.md reset (r1-1)
-- [ ] Commit B: docs/roadmap/features/T1_F251.md created (r1-2)
-- [ ] Commit C: STATUS.md F251 line before F050 (r1-3) + ROADMAP.md
-      Tier-1 entry after F048 (r1-4)
-- [ ] Commit D: T1_F070.md Design (r1-5) + Acceptance (r1-6) additions
-- [ ] Commit E: T1_F075.md Acceptance addition (r1-7)
-- [ ] Verify: byte-identity proofs per authored file; docs-only diff
-      vs main; canary tests/cli/test_golden_path.py
-- [ ] Push, PR into main (NOT merged), handback per template
+- [x] Commit A: R5 verdict persisted (f251-r5-1, sha256 + cmp 0) — b375b32
+- [x] Commit B: Built State in docs/roadmap/features/T1_F251.md —
+      ACCEPTED_HEAD = ab2258933944cd3ab3280646d1aa00fb062ecb36
+- [x] Preconditions: porcelain empty · integrity check --json passed=true,
+      fail_count=0 (live_review_verdict warn = known matcher backlog)
+- [x] Evidence job 1cadf9c8-0052-4fe8-91a9-efe08c315a00 — 8 green runs,
+      683 passed, evidence_authoritative=true, is_valid_current_run=true,
+      0 issues, validated BEFORE packaging. create_manual_completion_bundle(
+      review_feature_id="f251", ...) — sha256-hex output_hash from
+      the stored stdout_summary, full-length base_commit, node_ids
+      from the same selection (F048 pitfalls)
+- [x] Review zip: READY_FOR_REVIEW on attempt 3; attempts 1 and 2
+      failed and are recorded in the handback, not hidden
+- [x] Commit C (LAST, A4): authored STATUS line, four slots filled,
+      blank-back byte-proof green + evidence dir + final .agent state
+- [ ] PR into main created, NOT merged; description: what/why, key
+      decisions incl. Ruling A, changed-files table, verdict, open
+      findings 0, runtime actuals (models not-measured)
 
 ## Current Step
-Apply in order; every authored text via .agent/authored/ with sha256
-check BEFORE committing.
+PR into main (NOT merged). Closure complete otherwise.
 
 ## Risks
-- Docs only: any non-docs diff is scope drift — stop and report.
-- STATUS.md grammar is parsed later by F080: exactly one new line, no
-  other line touched.
-- ROADMAP.md edit is operator-authorized for this ordering entry only.
+- The D4 ids read live .agent files; their state at evidence time is
+  recorded as observed, never adjusted (F252 item 7).
+- No D-class edits; the 154-catalog baseline stays untouched.
+- Ledger and pin: no feature-file or STATUS count changes this round
+  beyond the [~]→[x] swap (line count unchanged).
+- The churn-gate runs (154 failures each) are NOT in verification_runs:
+  the producer refuses any run with exit_code != 0. They are evidence of
+  churn-freedom, recorded in .agent/f251_baseline/ and Built State, not
+  a green-suite claim.

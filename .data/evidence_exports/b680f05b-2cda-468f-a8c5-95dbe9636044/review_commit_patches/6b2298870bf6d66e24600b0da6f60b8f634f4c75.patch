@@ -1,0 +1,951 @@
+6b2298870bf6d66e24600b0da6f60b8f634f4c75
+diff --git a/.agent/f251_baseline/class_map.txt b/.agent/f251_baseline/class_map.txt
+new file mode 100644
+index 0000000..f65e213
+--- /dev/null
++++ b/.agent/f251_baseline/class_map.txt
+@@ -0,0 +1,200 @@
++F251 S1 per-class catalog — the 156 deterministic failures
++Source: junitxml of the 156 ids re-run serially in a clean main worktree.
++total: 156
++
++  36  D1  doc/file missing at pre-restructure flat path
++   8  D10 discover-commands CLI rc=1 / non-JSON
++   3  D11 malformed TOML raises BudgetConfigError not FenceConfigError
++   1  D12 .claude/agents/remedy-reviewer.md absent
++  11  D13 review-zip / evidence packaging drift
++  46  D14 misc drift (uncategorised)
++  10  D3  apps/ui legacy/*.tsx absent (UI not built/moved)
++   9  D4  .agent state-file content contracts
++  11  D5  CLI requires a registered project (cwd coupling)
++   9  D6  incomplete MagicMock vs real comparison
++   6  D7  dev_server private names removed
++   3  D8  flight-plan schema_v regression
++   3  D9  command-catalog classification drift
++
++=== D1  doc/file missing at pre-restructure flat path (36) ===
++   tests/cli/test_do_cmd_summary/TestDocsCommandContract.py::TestDocsCommandContract::test_docs_do_commands_valid
++   tests/cli/test_do_cmd_summary/TestDocsCommandContract.py::TestDocsCommandContract::test_docs_remedy_commands_catalog_valid
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_commands_use_builder_provider
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_mention_builder_provider
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_model_quality_warning
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_patch_inspect_commands
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_pipeline_overview
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_stop_reasons_complete
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_test_run_command
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_docs_vram_free_command
++   tests/cli/test_product_spine/TestDoRunHelpAlignment.py::TestDoRunHelpAlignment::test_quickstart_doc_uses_do_run
++   tests/cli/test_product_spine/TestDoRunHelpAlignment.py::TestDoRunHelpAlignment::test_spine_doc_uses_do_run
++   tests/cli/test_product_spine/TestStaleCommandScanner.py::TestStaleCommandScanner::test_core_spine_doc_exists
++   tests/orchestration/test_event_replay/TestDocsExist.py::TestDocsExist::test_resume_docs_commands_catalog_valid
++   tests/orchestration/test_job_fulfillment/TestDemoDocsCommands.py::TestDemoDocsCommands::test_demo_docs_command_shapes
++   tests/orchestration/test_job_fulfillment/TestDemoDocsCommands.py::TestDemoDocsCommands::test_job_create_no_json_flag
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_guide_mentions_fulfill
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_guide_mentions_propose
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_guide_mentions_status_report
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_guide_no_invalid_job_id_syntax
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_guide_no_real_provider_claims
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_quickstart_no_invalid_propose_syntax
++   tests/orchestration/test_project_summary/TestProjectBrainDocs.py::TestProjectBrainDocs::test_docs_commands_catalog_valid
++   tests/orchestration/test_project_summary/TestProjectBrainDocs.py::TestProjectBrainDocs::test_docs_mention_commands
++   tests/orchestration/test_project_summary/TestProjectBrainDocs.py::TestProjectBrainDocs::test_docs_no_auto_memory_claim
++   tests/orchestration/test_worker_queue/TestWorkerDocs.py::TestWorkerDocs::test_docs_mention_commands
++   tests/orchestration/test_worker_queue/TestWorkerDocs.py::TestWorkerDocs::test_docs_no_browser_actions
++   tests/orchestration/test_worker_queue/TestWorkerDocs.py::TestWorkerDocs::test_docs_no_overnight_autonomy
++   tests/regression/test_resource_safety/TestResourceSafetyDocs.py::TestResourceSafetyDocs::test_docs_mention_no_background_pytest
++   tests/regression/test_resource_safety/TestResourceSafetyDocs.py::TestResourceSafetyDocs::test_docs_mention_single_session
++   tests/test_execution_foundation/TestDocsDriftDetection.py::TestDocsDriftDetection::test_run_contract_autonomy_level_matches_code
++   tests/test_execution_foundation/TestDocsDriftDetection.py::TestDocsDriftDetection::test_run_contract_has_job_id_in_docs
++   tests/test_execution_foundation/TestDocsDriftDetection.py::TestDocsDriftDetection::test_run_contract_scope_matches_code
++   tests/test_execution_foundation/TestDocsDriftDetection.py::TestDocsDriftDetection::test_run_log_rc_metadata_matches_code
++   tests/test_execution_foundation/TestDocsDriftDetection.py::TestDocsDriftDetection::test_run_log_tp_metadata_matches_code
++   tests/ui_contracts/test_timeline_guard/TestOrchestratorLoopContract.py::TestOrchestratorLoopContract::test_orchestrator_loop_doc_exists
++
++=== D10 discover-commands CLI rc=1 / non-JSON (8) ===
++   tests/test_command_discovery/TestCLIDiscoverCommands.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list
++   tests/test_command_discovery/TestCLIDiscoverCommands.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys
++   tests/test_command_discovery/TestCLIDiscoverCommands.py::TestCLIDiscoverCommands::test_json_output_is_pure_json
++   tests/test_command_discovery/TestCLIDiscoverCommands.py::TestCLIDiscoverCommands::test_text_output_does_not_crash
++   tests/test_command_discovery/TestCLIDiscoverCommandsSchemaV1.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts
++   tests/test_command_discovery/TestCLIDiscoverCommandsSchemaV1.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate
++   tests/test_command_discovery/TestCLIDiscoverCommandsSchemaV1.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1
++   tests/test_command_discovery/TestCLIDiscoverCommandsSchemaV1.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json
++
++=== D11 malformed TOML raises BudgetConfigError not FenceConfigError (3) ===
++   tests/orchestration/test_fence_e2e/TestFenceConfigErrorE2E.py::TestFenceConfigErrorE2E::test_malformed_toml_raises
++   tests/orchestration/test_fence_e2e/TestResolveFenceSpec.py::TestResolveFenceSpec::test_malformed_toml_raises_fence_config_error
++   tests/orchestration/test_fences/TestLoadFenceSpec.py::TestLoadFenceSpec::test_malformed_config_raises_fence_config_error
++
++=== D12 .claude/agents/remedy-reviewer.md absent (1) ===
++   tests/test_agent_tooling.py::test_agent_tooling::test_claude_agent_is_read_only_reviewer
++
++=== D13 review-zip / evidence packaging drift (11) ===
++   tests/orchestration/test_review_manual_completion_shapes/TestManualCompletionRunsEndToEnd.py::TestManualCompletionRunsEndToEnd::test_end_to_end_bundle_is_ready
++   tests/orchestration/test_review_subject_explicit_base/TestTheDeclarationIsReadOnceAndNotInherited.py::TestTheDeclarationIsReadOnceAndNotInherited::test_the_verification_runner_scrubs_the_declaration
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_all_candidates_invalid_still_creates_zip
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_candidate_summary_shows_rejection_reasons
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_manifest_rejected_candidate_count
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_manifest_validation_section
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_missing_command_transcript_creates_zip_with_warning
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_single_valid_evidence_dir_auto_selects
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_stale_dirs_not_in_zip
++   tests/orchestration/test_review_zip_hygiene/TestAutoSelectLatestEvidence.py::TestAutoSelectLatestEvidence::test_unselected_evidence_not_in_zip
++   tests/orchestration/test_review_zip_hygiene/TestIndexedEvidenceSelection.py::TestIndexedEvidenceSelection::test_legacy_root_evidence_only_via_deprecated_fallback_with_warning
++
++=== D14 misc drift (uncategorised) (46) ===
++   tests/cli/test_do_cmd_summary/TestDocsExist.py::TestDocsExist::test_autocoder_usage_doc_exists
++   tests/cli/test_product_spine/TestCommandTaxonomyDocs.py::TestCommandTaxonomyDocs::test_boundary_doc_no_product_dependency
++   tests/cli/test_product_spine/TestCommandTaxonomyDocs.py::TestCommandTaxonomyDocs::test_quickstart_doc_job_first
++   tests/cli/test_product_spine/TestCommandTaxonomyDocs.py::TestCommandTaxonomyDocs::test_spine_doc_has_job_first_flow
++   tests/cli/test_product_spine/TestCommandTaxonomyDocs.py::TestCommandTaxonomyDocs::test_spine_doc_mission_is_advanced
++   tests/cli/test_product_spine/TestJobFacadeNoAgent.py::TestJobFacadeNoAgent::test_job_status_invalid_id_safe
++   tests/cli/test_product_spine/TestJobStatusReportTruthFields.py::TestJobStatusReportTruthFields::test_report_invalid_id_safe
++   tests/cli/test_scoped_listings/TestScopedListingsCLI.py::TestScopedListingsCLI::test_full_isolation_and_flags
++   tests/cli/test_scoped_listings/TestStatsFailuresScopedCLI.py::TestStatsFailuresScopedCLI::test_stats_failures_scoped_by_project
++   tests/docs/test_docs_consistency/TestF012Round13IsPinned.py::TestF012Round13IsPinned::test_the_readme_states_lexical_containment
++   tests/docs/test_docs_consistency/TestF012Round13IsPinned.py::TestF012Round13IsPinned::test_the_readme_states_the_ledger_contract
++   tests/docs/test_docs_consistency/TestF012Round14IsPinned.py::TestF012Round14IsPinned::test_the_readme_states_finality_and_the_grammar
++   tests/docs/test_docs_consistency/TestF012Round15IsPinned.py::TestF012Round15IsPinned::test_the_readme_states_the_task_history_rule
++   tests/docs/test_docs_consistency/TestF012Round16IsPinned.py::TestF012Round16IsPinned::test_the_readme_states_the_review_subject_contract
++   tests/docs/test_docs_consistency/TestF012Round17IsPinned.py::TestF012Round17IsPinned::test_the_readme_states_the_round17_contracts
++   tests/docs/test_docs_consistency/TestF012Round18IsPinned.py::TestF012Round18IsPinned::test_the_readme_states_the_typed_transaction
++   tests/docs/test_docs_consistency/TestF012Round19IsPinned.py::TestF012Round19IsPinned::test_readme_states_the_closure
++   tests/docs/test_docs_consistency/TestF012Round20IsPinned.py::TestF012Round20IsPinned::test_readme_states_the_root_of_trust
++   tests/docs/test_docs_consistency/TestF012Round21IsPinned.py::TestF012Round21IsPinned::test_readme_states_the_raw_byte_identity
++   tests/docs/test_docs_consistency/TestF012Round22IsPinned.py::TestF012Round22IsPinned::test_readme_states_the_gate_matrix
++   tests/docs/test_docs_consistency/TestF012Round23IsPinned.py::TestF012Round23IsPinned::test_readme_states_semantic_consistency
++   tests/docs/test_docs_consistency/TestFeatureLedger.py::TestFeatureLedger::test_there_are_250_unique_feature_detail_files
++   tests/docs/test_docs_consistency/TestFeatureLedger.py::TestFeatureLedger::test_there_are_250_unique_status_entries
++   tests/docs/test_docs_consistency/TestPrimaryDocsAreHonest.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
++   tests/orchestration/test_development_artifact_boundary/TestWhitelistBoundary.py::TestWhitelistBoundary::test_no_new_product_dependency
++   tests/orchestration/test_event_replay/TestDocsExist.py::TestDocsExist::test_resume_docs_exist
++   tests/orchestration/test_evidence_index/TestJobEvidenceCliDefaults.py::TestJobEvidenceCliDefaults::test_default_out_goes_to_hidden_dir_and_indexes
++   tests/orchestration/test_evidence_index/TestLegacyRootFallback.py::TestLegacyRootFallback::test_root_style_evidence_still_readable_but_deprecated
++   tests/orchestration/test_job_evidence/TestDogfoodCommandShape.py::TestDogfoodCommandShape::test_artifact_contract_pass_from_clean_dir
++   tests/orchestration/test_job_fulfillment/TestFulfilledDemoGuide.py::TestFulfilledDemoGuide::test_guide_exists
++   tests/orchestration/test_job_fulfillment/TestJobFulfillCLI.py::TestJobFulfillCLI::test_invalid_job_id
++   tests/orchestration/test_job_worktree_handoff/TestJobPlanResumeCli.py::TestJobPlanResumeCli::test_the_cli_resumes_a_16_char_jobplan_id
++   tests/orchestration/test_project_brain/TestBrainReliabilityHygiene.py::TestBrainReliabilityHygiene::test_no_except_exception_in_key_modules
++   tests/orchestration/test_project_brain/TestFileProvenanceChain.py::TestFileProvenanceChain::test_full_chain_order
++   tests/orchestration/test_project_brain/TestUiRebuildSpecDocument.py::TestUiRebuildSpecDocument::test_has_css_tokens
++   tests/orchestration/test_project_brain/TestUiRebuildSpecDocument.py::TestUiRebuildSpecDocument::test_has_forbidden_words_section
++   tests/orchestration/test_project_brain/TestUiRebuildSpecDocument.py::TestUiRebuildSpecDocument::test_has_semantic_zoom_rules
++   tests/orchestration/test_project_summary/TestProjectBrainDocs.py::TestProjectBrainDocs::test_docs_exist
++   tests/orchestration/test_worker_queue/TestWorkerDocs.py::TestWorkerDocs::test_docs_exist
++   tests/regression/test_resource_safety/TestResourceSafetyDocs.py::TestResourceSafetyDocs::test_reviewer_safety_doc_exists
++   tests/test_cli_main/TestProjectCommandsCLI.py::TestProjectCommandsCLI::test_attach_project_repo_idempotent_message
++   tests/test_project_context_coverage/TestRunLogSchema.py::TestRunLogSchema::test_run_log_event_has_exact_metadata_keys
++   tests/test_project_context_coverage/TestRunLogSchema.py::TestRunLogSchema::test_run_log_event_scope_is_project
++   tests/test_remedy_smoke_script/TestSmokeScriptText.py::TestSmokeScriptText::test_viewer_sanity_block_has_no_bare_assert
++   tests/test_test_runner/TestCliRunTestsLocal.py::TestCliRunTestsLocal::test_no_target_repo_exits_1
++   tests/test_test_runner/TestCliRunTestsLocal.py::TestCliRunTestsLocal::test_permission_missing_exits_1
++
++=== D3  apps/ui legacy/*.tsx absent (UI not built/moved) (10) ===
++   tests/regression/test_named_bugs/TestSmokeContractReset.py::TestSmokeContractReset::test_legacy_brain_flow_under_legacy
++   tests/regression/test_named_bugs/TestSmokeContractReset.py::TestSmokeContractReset::test_legacy_organic_layout_under_legacy
++   tests/regression/test_named_bugs/TestSmokeContractReset.py::TestSmokeContractReset::test_legacy_semantic_zoom_under_legacy
++   tests/regression/test_named_bugs/TestSmokeSafety.py::TestSmokeSafety::test_index_html_has_ux_contract_markers
++   tests/regression/test_named_bugs/TestSmokeSafety.py::TestSmokeSafety::test_renderer_exports_semantic_zoom_fn
++   tests/regression/test_named_bugs/TestSmokeSafety.py::TestSmokeSafety::test_renderer_wheel_cannot_reach_level_6
++   tests/ui_contracts/test_graph_architecture/TestExplainableEdges.py::TestExplainableEdges::test_legacy_edge_component_under_legacy
++   tests/ui_contracts/test_graph_architecture/TestSemanticZoomDirection.py::TestSemanticZoomDirection::test_renderer_zoom_direction_in_legacy_source
++   tests/ui_contracts/test_ux_quality/TestScreenSpaceLabels.py::TestScreenSpaceLabels::test_legacy_graph_nodes_under_legacy
++   tests/ui_contracts/test_ux_quality/TestUXAntiRegression.py::TestUXAntiRegression::test_legacy_graph_files_under_legacy
++
++=== D4  .agent state-file content contracts (9) ===
++   tests/orchestration/test_test_runner/TestNoBroadExceptAndDegradedSignals.py::TestNoBroadExceptAndDegradedSignals::test_context_md_updated
++   tests/orchestration/test_test_runner/TestNoBroadExceptAndDegradedSignals.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
++   tests/orchestration/test_test_runner/TestNoBroadExceptAndDegradedSignals.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current
++   tests/regression/test_resource_safety/TestContextIncludesResourceSafety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
++   tests/ui_server/test_dashboard_contract/TestAgentStateFilesCurrentBranch.py::TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
++   tests/ui_server/test_dashboard_contract/TestAgentStateFilesCurrentBranch.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps
++   tests/ui_server/test_dashboard_contract/TestLiveReviewAndAgentStateRefs.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
++   tests/ui_server/test_dashboard_contract/TestLiveReviewAndAgentStateRefs.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
++   tests/ui_server/test_dashboard_contract/TestLiveReviewAndAgentStateRefs.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps
++
++=== D5  CLI requires a registered project (cwd coupling) (11) ===
++   tests/orchestration/test_test_runner/TestPermitGuidanceArgOrder.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_default_description_when_none_given
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_hyphens_and_underscores_allowed_in_task_type
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_no_task_type_leaves_state_pending
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_task_description_stored_in_task
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_task_type_creates_one_task
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_task_type_sets_state_planned
++   tests/test_cli_main/TestCreateJobTaskType.py::TestCreateJobTaskType::test_task_type_stored_in_task_inputs
++   tests/test_cli_main/TestProjectCommandsCLI.py::TestProjectCommandsCLI::test_attach_project_job_sets_metadata
++   tests/test_cli_main/TestProjectCommandsCLI.py::TestProjectCommandsCLI::test_create_job_missing_project_does_not_set_metadata
++   tests/test_cli_main/TestProjectCommandsCLI.py::TestProjectCommandsCLI::test_create_job_with_missing_project_warns
++
++=== D6  incomplete MagicMock vs real comparison (9) ===
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_command_id_not_silently_swapped
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_concurrent_run_blocked
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_contract_budget_zero_blocked
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_explicit_command_id_executes_that_command
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_no_test_command_blocked
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_non_test_command_id_blocked_at_runner
++   tests/orchestration/test_test_execution_service/TestExecuteTestRunGates.py::TestExecuteTestRunGates::test_unknown_command_id_blocked_at_runner
++   tests/orchestration/test_test_execution_service/TestUsageAccounting.py::TestUsageAccounting::test_usage_incremented_on_process_start
++   tests/orchestration/test_test_runner/TestSourceApplyPermissionBoundary.py::TestSourceApplyPermissionBoundary::test_permission_granted_and_approved_can_write
++
++=== D7  dev_server private names removed (6) ===
++   tests/orchestration/test_failure_postmortem/TestFileUriAndLabelledPathRedaction.py::TestFileUriAndLabelledPathRedaction::test_the_shared_module_is_the_one_f007_uses
++   tests/runtimes/test_supervisor_portability/TestCrossPlatformRedaction.py::TestCrossPlatformRedaction::test_unc_paths_are_redacted_in_both_slash_styles
++   tests/runtimes/test_supervisor_portability/TestCrossPlatformRedaction.py::TestCrossPlatformRedaction::test_windows_forward_slash_paths_are_redacted
++   tests/runtimes/test_supervisor_portability/TestShareableRedaction.py::TestShareableRedaction::test_a_real_served_state_shares_nothing_private
++   tests/runtimes/test_supervisor_portability/TestShareableRedaction.py::TestShareableRedaction::test_embedded_private_paths_are_removed_everywhere
++   tests/runtimes/test_supervisor_portability/TestShareableRedaction.py::TestShareableRedaction::test_the_redaction_walks_dictionaries_and_lists_recursively
++
++=== D8  flight-plan schema_v regression (3) ===
++   tests/cli/test_scoped_listings/TestScopedListingsCLI.py::TestScopedListingsCLI::test_legacy_job_hidden_and_unscoped_label
++   tests/cli/test_scoped_listings/TestScopedListingsCLI.py::TestScopedListingsCLI::test_orphaned_label_on_deleted_project
++   tests/cli/test_scoped_listings/TestScopedListingsCLI.py::TestScopedListingsCLI::test_status_scoped
++
++=== D9  command-catalog classification drift (3) ===
++   tests/test_command_catalog/TestCatalogClassification.py::TestCatalogClassification::test_every_command_has_action_class
++   tests/test_command_catalog/TestCatalogClassification.py::TestCatalogClassification::test_mutating_commands_flagged
++   tests/test_command_catalog/TestCatalogSensitivity.py::TestCatalogSensitivity::test_no_sensitive_terms_in_arg_help
++
+diff --git a/.agent/f251_baseline/clean_main_control.txt b/.agent/f251_baseline/clean_main_control.txt
+new file mode 100644
+index 0000000..377bae0
+--- /dev/null
++++ b/.agent/f251_baseline/clean_main_control.txt
+@@ -0,0 +1,156 @@
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_do_commands_valid
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_remedy_commands_catalog_valid
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_autocoder_usage_doc_exists
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_commands_use_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_mention_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_model_quality_warning
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_patch_inspect_commands
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_pipeline_overview
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_stop_reasons_complete
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_test_run_command
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_vram_free_command
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_boundary_doc_no_product_dependency
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_quickstart_doc_job_first
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_has_job_first_flow
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_mission_is_advanced
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_quickstart_doc_uses_do_run
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_spine_doc_uses_do_run
++tests/cli/test_product_spine.py::TestJobFacadeNoAgent::test_job_status_invalid_id_safe
++tests/cli/test_product_spine.py::TestJobStatusReportTruthFields::test_report_invalid_id_safe
++tests/cli/test_product_spine.py::TestStaleCommandScanner::test_core_spine_doc_exists
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_full_isolation_and_flags
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_legacy_job_hidden_and_unscoped_label
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_orphaned_label_on_deleted_project
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_status_scoped
++tests/cli/test_scoped_listings.py::TestStatsFailuresScopedCLI::test_stats_failures_scoped_by_project
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_lexical_containment
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_the_ledger_contract
++tests/docs/test_docs_consistency.py::TestF012Round14IsPinned::test_the_readme_states_finality_and_the_grammar
++tests/docs/test_docs_consistency.py::TestF012Round15IsPinned::test_the_readme_states_the_task_history_rule
++tests/docs/test_docs_consistency.py::TestF012Round16IsPinned::test_the_readme_states_the_review_subject_contract
++tests/docs/test_docs_consistency.py::TestF012Round17IsPinned::test_the_readme_states_the_round17_contracts
++tests/docs/test_docs_consistency.py::TestF012Round18IsPinned::test_the_readme_states_the_typed_transaction
++tests/docs/test_docs_consistency.py::TestF012Round19IsPinned::test_readme_states_the_closure
++tests/docs/test_docs_consistency.py::TestF012Round20IsPinned::test_readme_states_the_root_of_trust
++tests/docs/test_docs_consistency.py::TestF012Round21IsPinned::test_readme_states_the_raw_byte_identity
++tests/docs/test_docs_consistency.py::TestF012Round22IsPinned::test_readme_states_the_gate_matrix
++tests/docs/test_docs_consistency.py::TestF012Round23IsPinned::test_readme_states_semantic_consistency
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_feature_detail_files
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_status_entries
++tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
++tests/orchestration/test_development_artifact_boundary.py::TestWhitelistBoundary::test_no_new_product_dependency
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_commands_catalog_valid
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_exist
++tests/orchestration/test_evidence_index.py::TestJobEvidenceCliDefaults::test_default_out_goes_to_hidden_dir_and_indexes
++tests/orchestration/test_evidence_index.py::TestLegacyRootFallback::test_root_style_evidence_still_readable_but_deprecated
++tests/orchestration/test_failure_postmortem.py::TestFileUriAndLabelledPathRedaction::test_the_shared_module_is_the_one_f007_uses
++tests/orchestration/test_fence_e2e.py::TestFenceConfigErrorE2E::test_malformed_toml_raises
++tests/orchestration/test_fence_e2e.py::TestResolveFenceSpec::test_malformed_toml_raises_fence_config_error
++tests/orchestration/test_fences.py::TestLoadFenceSpec::test_malformed_config_raises_fence_config_error
++tests/orchestration/test_job_evidence.py::TestDogfoodCommandShape::test_artifact_contract_pass_from_clean_dir
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_demo_docs_command_shapes
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_job_create_no_json_flag
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_exists
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_fulfill
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_propose
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_status_report
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_invalid_job_id_syntax
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_real_provider_claims
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_quickstart_no_invalid_propose_syntax
++tests/orchestration/test_job_fulfillment.py::TestJobFulfillCLI::test_invalid_job_id
++tests/orchestration/test_job_worktree_handoff.py::TestJobPlanResumeCli::test_the_cli_resumes_a_16_char_jobplan_id
++tests/orchestration/test_project_brain.py::TestBrainReliabilityHygiene::test_no_except_exception_in_key_modules
++tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_css_tokens
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_forbidden_words_section
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_semantic_zoom_rules
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_commands_catalog_valid
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_exist
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_mention_commands
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_no_auto_memory_claim
++tests/orchestration/test_review_manual_completion_shapes.py::TestManualCompletionRunsEndToEnd::test_end_to_end_bundle_is_ready
++tests/orchestration/test_review_subject_explicit_base.py::TestTheDeclarationIsReadOnceAndNotInherited::test_the_verification_runner_scrubs_the_declaration
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_all_candidates_invalid_still_creates_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_candidate_summary_shows_rejection_reasons
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_rejected_candidate_count
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_validation_section
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_missing_command_transcript_creates_zip_with_warning
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_single_valid_evidence_dir_auto_selects
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_stale_dirs_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_unselected_evidence_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestIndexedEvidenceSelection::test_legacy_root_evidence_only_via_deprecated_fallback_with_warning
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_command_id_not_silently_swapped
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_concurrent_run_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_contract_budget_zero_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_explicit_command_id_executes_that_command
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_non_test_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_no_test_command_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_unknown_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestUsageAccounting::test_usage_incremented_on_process_start
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_context_md_updated
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current
++tests/orchestration/test_test_runner.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr
++tests/orchestration/test_test_runner.py::TestSourceApplyPermissionBoundary::test_permission_granted_and_approved_can_write
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_exist
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_mention_commands
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_browser_actions
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_overnight_autonomy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_brain_flow_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_organic_layout_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_semantic_zoom_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_index_html_has_ux_contract_markers
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_exports_semantic_zoom_fn
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_wheel_cannot_reach_level_6
++tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_no_background_pytest
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_single_session
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_reviewer_safety_doc_exists
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_unc_paths_are_redacted_in_both_slash_styles
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_windows_forward_slash_paths_are_redacted
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_a_real_served_state_shares_nothing_private
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_embedded_private_paths_are_removed_everywhere
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_the_redaction_walks_dictionaries_and_lists_recursively
++tests/test_agent_tooling.py::test_claude_agent_is_read_only_reviewer
++tests/test_cli_main.py::TestCreateJobTaskType::test_default_description_when_none_given
++tests/test_cli_main.py::TestCreateJobTaskType::test_hyphens_and_underscores_allowed_in_task_type
++tests/test_cli_main.py::TestCreateJobTaskType::test_no_task_type_leaves_state_pending
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_description_stored_in_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_creates_one_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_sets_state_planned
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_stored_in_task_inputs
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_job_sets_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_repo_idempotent_message
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_missing_project_does_not_set_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_with_missing_project_warns
++tests/test_command_catalog.py::TestCatalogClassification::test_every_command_has_action_class
++tests/test_command_catalog.py::TestCatalogClassification::test_mutating_commands_flagged
++tests/test_command_catalog.py::TestCatalogSensitivity::test_no_sensitive_terms_in_arg_help
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_text_output_does_not_crash
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_autonomy_level_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_has_job_id_in_docs
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_scope_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_rc_metadata_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_tp_metadata_matches_code
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_has_exact_metadata_keys
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_scope_is_project
++tests/test_remedy_smoke_script.py::TestSmokeScriptText::test_viewer_sanity_block_has_no_bare_assert
++tests/test_test_runner.py::TestCliRunTestsLocal::test_no_target_repo_exits_1
++tests/test_test_runner.py::TestCliRunTestsLocal::test_permission_missing_exits_1
++tests/ui_contracts/test_graph_architecture.py::TestExplainableEdges::test_legacy_edge_component_under_legacy
++tests/ui_contracts/test_graph_architecture.py::TestSemanticZoomDirection::test_renderer_zoom_direction_in_legacy_source
++tests/ui_contracts/test_timeline_guard.py::TestOrchestratorLoopContract::test_orchestrator_loop_doc_exists
++tests/ui_contracts/test_ux_quality.py::TestScreenSpaceLabels::test_legacy_graph_nodes_under_legacy
++tests/ui_contracts/test_ux_quality.py::TestUXAntiRegression::test_legacy_graph_files_under_legacy
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps
+diff --git a/.agent/f251_baseline/flake_set.txt b/.agent/f251_baseline/flake_set.txt
+new file mode 100644
+index 0000000..e3439a2
+--- /dev/null
++++ b/.agent/f251_baseline/flake_set.txt
+@@ -0,0 +1,19 @@
++tests/cli/test_job_rerun_manifest.py::TestCurrentTargetDrift::test_unchanged_target_verifies_without_blocking
++tests/cli/test_runtime_cmd.py::TestProbe::test_a_one_shot_probe_starts_stops_and_leaves_nothing
++tests/runtimes/test_apps_ui_probe.py::TestRealViteAcrossTheCliBoundary::test_vite_survives_the_serve_cli_and_is_probed_and_stopped_separately
++tests/runtimes/test_dev_server.py::TestReadiness::test_delayed_readiness
++tests/runtimes/test_dev_server.py::TestReadiness::test_readiness_timeout_stops_the_tree_and_leaves_no_state
++tests/runtimes/test_runtime_cli_process_boundary.py::TestReadinessLogTail::test_the_readiness_failure_returns_the_line_the_child_really_printed
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSeparateProbeAndStop::test_a_second_serve_returns_the_same_verified_runtime
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSeparateProbeAndStop::test_a_separate_probe_reaches_the_runtime_and_leaves_it_running
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSupervisorFailures::test_an_application_that_dies_before_readiness_is_a_start_failure
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSupervisorFailures::test_a_readiness_timeout_leaves_no_runtime
++tests/runtimes/test_supervisor_portability.py::TestDeniedCwdPortability::test_a_wrong_supervisor_identity_component_blocks[supervisor_create_time-1.0]
++tests/runtimes/test_supervisor_portability.py::TestLiveApplicationOwnership::test_a_matching_but_unrelated_process_is_never_the_supervised_app
++tests/runtimes/test_supervisor_portability.py::TestLiveApplicationOwnership::test_a_victim_in_the_tests_own_process_group_is_never_signalled
++tests/runtimes/test_supervisor_portability.py::TestSupervisorFinalizationAndGroups::test_every_supervisor_failure_path_uses_the_common_finalizer
++tests/test_data_paths.py::TestResolveDataRoot::test_default_ends_with_data
++tests/test_grouped_cli.py::TestGroupedExecution::test_brain_graph_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_policy_contract_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_policy_token_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_test_discover_json
+diff --git a/.agent/f251_baseline/run1.txt b/.agent/f251_baseline/run1.txt
+new file mode 100644
+index 0000000..3cef31d
+--- /dev/null
++++ b/.agent/f251_baseline/run1.txt
+@@ -0,0 +1,169 @@
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_do_commands_valid
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_remedy_commands_catalog_valid
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_autocoder_usage_doc_exists
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_commands_use_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_mention_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_model_quality_warning
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_patch_inspect_commands
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_pipeline_overview
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_stop_reasons_complete
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_test_run_command
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_vram_free_command
++tests/cli/test_job_rerun_manifest.py::TestCurrentTargetDrift::test_unchanged_target_verifies_without_blocking
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_boundary_doc_no_product_dependency
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_quickstart_doc_job_first
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_has_job_first_flow
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_mission_is_advanced
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_quickstart_doc_uses_do_run
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_spine_doc_uses_do_run
++tests/cli/test_product_spine.py::TestJobFacadeNoAgent::test_job_status_invalid_id_safe
++tests/cli/test_product_spine.py::TestJobStatusReportTruthFields::test_report_invalid_id_safe
++tests/cli/test_product_spine.py::TestStaleCommandScanner::test_core_spine_doc_exists
++tests/cli/test_runtime_cmd.py::TestProbe::test_a_one_shot_probe_starts_stops_and_leaves_nothing
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_full_isolation_and_flags
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_legacy_job_hidden_and_unscoped_label
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_orphaned_label_on_deleted_project
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_status_scoped
++tests/cli/test_scoped_listings.py::TestStatsFailuresScopedCLI::test_stats_failures_scoped_by_project
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_lexical_containment
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_the_ledger_contract
++tests/docs/test_docs_consistency.py::TestF012Round14IsPinned::test_the_readme_states_finality_and_the_grammar
++tests/docs/test_docs_consistency.py::TestF012Round15IsPinned::test_the_readme_states_the_task_history_rule
++tests/docs/test_docs_consistency.py::TestF012Round16IsPinned::test_the_readme_states_the_review_subject_contract
++tests/docs/test_docs_consistency.py::TestF012Round17IsPinned::test_the_readme_states_the_round17_contracts
++tests/docs/test_docs_consistency.py::TestF012Round18IsPinned::test_the_readme_states_the_typed_transaction
++tests/docs/test_docs_consistency.py::TestF012Round19IsPinned::test_readme_states_the_closure
++tests/docs/test_docs_consistency.py::TestF012Round20IsPinned::test_readme_states_the_root_of_trust
++tests/docs/test_docs_consistency.py::TestF012Round21IsPinned::test_readme_states_the_raw_byte_identity
++tests/docs/test_docs_consistency.py::TestF012Round22IsPinned::test_readme_states_the_gate_matrix
++tests/docs/test_docs_consistency.py::TestF012Round23IsPinned::test_readme_states_semantic_consistency
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_feature_detail_files
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_status_entries
++tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
++tests/orchestration/test_development_artifact_boundary.py::TestWhitelistBoundary::test_no_new_product_dependency
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_commands_catalog_valid
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_exist
++tests/orchestration/test_evidence_index.py::TestJobEvidenceCliDefaults::test_default_out_goes_to_hidden_dir_and_indexes
++tests/orchestration/test_evidence_index.py::TestLegacyRootFallback::test_root_style_evidence_still_readable_but_deprecated
++tests/orchestration/test_failure_postmortem.py::TestFileUriAndLabelledPathRedaction::test_the_shared_module_is_the_one_f007_uses
++tests/orchestration/test_fence_e2e.py::TestFenceConfigErrorE2E::test_malformed_toml_raises
++tests/orchestration/test_fence_e2e.py::TestResolveFenceSpec::test_malformed_toml_raises_fence_config_error
++tests/orchestration/test_fences.py::TestLoadFenceSpec::test_malformed_config_raises_fence_config_error
++tests/orchestration/test_job_evidence.py::TestDogfoodCommandShape::test_artifact_contract_pass_from_clean_dir
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_demo_docs_command_shapes
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_job_create_no_json_flag
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_exists
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_fulfill
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_propose
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_status_report
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_invalid_job_id_syntax
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_real_provider_claims
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_quickstart_no_invalid_propose_syntax
++tests/orchestration/test_job_fulfillment.py::TestJobFulfillCLI::test_invalid_job_id
++tests/orchestration/test_job_worktree_handoff.py::TestJobPlanResumeCli::test_the_cli_resumes_a_16_char_jobplan_id
++tests/orchestration/test_project_brain.py::TestBrainReliabilityHygiene::test_no_except_exception_in_key_modules
++tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_css_tokens
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_forbidden_words_section
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_semantic_zoom_rules
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_commands_catalog_valid
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_exist
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_mention_commands
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_no_auto_memory_claim
++tests/orchestration/test_review_manual_completion_shapes.py::TestManualCompletionRunsEndToEnd::test_end_to_end_bundle_is_ready
++tests/orchestration/test_review_subject_explicit_base.py::TestTheDeclarationIsReadOnceAndNotInherited::test_the_verification_runner_scrubs_the_declaration
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_all_candidates_invalid_still_creates_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_candidate_summary_shows_rejection_reasons
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_rejected_candidate_count
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_validation_section
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_missing_command_transcript_creates_zip_with_warning
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_single_valid_evidence_dir_auto_selects
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_stale_dirs_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_unselected_evidence_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestIndexedEvidenceSelection::test_legacy_root_evidence_only_via_deprecated_fallback_with_warning
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_command_id_not_silently_swapped
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_concurrent_run_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_contract_budget_zero_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_explicit_command_id_executes_that_command
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_non_test_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_no_test_command_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_unknown_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestUsageAccounting::test_usage_incremented_on_process_start
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_context_md_updated
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current
++tests/orchestration/test_test_runner.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr
++tests/orchestration/test_test_runner.py::TestSourceApplyPermissionBoundary::test_permission_granted_and_approved_can_write
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_exist
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_mention_commands
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_browser_actions
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_overnight_autonomy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_brain_flow_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_organic_layout_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_semantic_zoom_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_index_html_has_ux_contract_markers
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_exports_semantic_zoom_fn
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_wheel_cannot_reach_level_6
++tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_no_background_pytest
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_single_session
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_reviewer_safety_doc_exists
++tests/runtimes/test_dev_server.py::TestReadiness::test_readiness_timeout_stops_the_tree_and_leaves_no_state
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSeparateProbeAndStop::test_a_second_serve_returns_the_same_verified_runtime
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSeparateProbeAndStop::test_a_separate_probe_reaches_the_runtime_and_leaves_it_running
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSupervisorFailures::test_a_readiness_timeout_leaves_no_runtime
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_unc_paths_are_redacted_in_both_slash_styles
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_windows_forward_slash_paths_are_redacted
++tests/runtimes/test_supervisor_portability.py::TestDeniedCwdPortability::test_a_wrong_supervisor_identity_component_blocks[supervisor_create_time-1.0]
++tests/runtimes/test_supervisor_portability.py::TestLiveApplicationOwnership::test_a_matching_but_unrelated_process_is_never_the_supervised_app
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_a_real_served_state_shares_nothing_private
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_embedded_private_paths_are_removed_everywhere
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_the_redaction_walks_dictionaries_and_lists_recursively
++tests/test_agent_tooling.py::test_claude_agent_is_read_only_reviewer
++tests/test_cli_main.py::TestCreateJobTaskType::test_default_description_when_none_given
++tests/test_cli_main.py::TestCreateJobTaskType::test_hyphens_and_underscores_allowed_in_task_type
++tests/test_cli_main.py::TestCreateJobTaskType::test_no_task_type_leaves_state_pending
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_description_stored_in_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_creates_one_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_sets_state_planned
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_stored_in_task_inputs
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_job_sets_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_repo_idempotent_message
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_missing_project_does_not_set_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_with_missing_project_warns
++tests/test_command_catalog.py::TestCatalogClassification::test_every_command_has_action_class
++tests/test_command_catalog.py::TestCatalogClassification::test_mutating_commands_flagged
++tests/test_command_catalog.py::TestCatalogSensitivity::test_no_sensitive_terms_in_arg_help
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_text_output_does_not_crash
++tests/test_data_paths.py::TestResolveDataRoot::test_default_ends_with_data
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_autonomy_level_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_has_job_id_in_docs
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_scope_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_rc_metadata_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_tp_metadata_matches_code
++tests/test_grouped_cli.py::TestGroupedExecution::test_brain_graph_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_policy_contract_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_policy_token_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_test_discover_json
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_has_exact_metadata_keys
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_scope_is_project
++tests/test_remedy_smoke_script.py::TestSmokeScriptText::test_viewer_sanity_block_has_no_bare_assert
++tests/test_test_runner.py::TestCliRunTestsLocal::test_no_target_repo_exits_1
++tests/test_test_runner.py::TestCliRunTestsLocal::test_permission_missing_exits_1
++tests/ui_contracts/test_graph_architecture.py::TestExplainableEdges::test_legacy_edge_component_under_legacy
++tests/ui_contracts/test_graph_architecture.py::TestSemanticZoomDirection::test_renderer_zoom_direction_in_legacy_source
++tests/ui_contracts/test_timeline_guard.py::TestOrchestratorLoopContract::test_orchestrator_loop_doc_exists
++tests/ui_contracts/test_ux_quality.py::TestScreenSpaceLabels::test_legacy_graph_nodes_under_legacy
++tests/ui_contracts/test_ux_quality.py::TestUXAntiRegression::test_legacy_graph_files_under_legacy
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps
+diff --git a/.agent/f251_baseline/run2.txt b/.agent/f251_baseline/run2.txt
+new file mode 100644
+index 0000000..cc9dd54
+--- /dev/null
++++ b/.agent/f251_baseline/run2.txt
+@@ -0,0 +1,167 @@
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_do_commands_valid
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_remedy_commands_catalog_valid
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_autocoder_usage_doc_exists
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_commands_use_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_mention_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_model_quality_warning
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_patch_inspect_commands
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_pipeline_overview
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_stop_reasons_complete
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_test_run_command
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_vram_free_command
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_boundary_doc_no_product_dependency
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_quickstart_doc_job_first
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_has_job_first_flow
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_mission_is_advanced
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_quickstart_doc_uses_do_run
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_spine_doc_uses_do_run
++tests/cli/test_product_spine.py::TestJobFacadeNoAgent::test_job_status_invalid_id_safe
++tests/cli/test_product_spine.py::TestJobStatusReportTruthFields::test_report_invalid_id_safe
++tests/cli/test_product_spine.py::TestStaleCommandScanner::test_core_spine_doc_exists
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_full_isolation_and_flags
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_legacy_job_hidden_and_unscoped_label
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_orphaned_label_on_deleted_project
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_status_scoped
++tests/cli/test_scoped_listings.py::TestStatsFailuresScopedCLI::test_stats_failures_scoped_by_project
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_lexical_containment
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_the_ledger_contract
++tests/docs/test_docs_consistency.py::TestF012Round14IsPinned::test_the_readme_states_finality_and_the_grammar
++tests/docs/test_docs_consistency.py::TestF012Round15IsPinned::test_the_readme_states_the_task_history_rule
++tests/docs/test_docs_consistency.py::TestF012Round16IsPinned::test_the_readme_states_the_review_subject_contract
++tests/docs/test_docs_consistency.py::TestF012Round17IsPinned::test_the_readme_states_the_round17_contracts
++tests/docs/test_docs_consistency.py::TestF012Round18IsPinned::test_the_readme_states_the_typed_transaction
++tests/docs/test_docs_consistency.py::TestF012Round19IsPinned::test_readme_states_the_closure
++tests/docs/test_docs_consistency.py::TestF012Round20IsPinned::test_readme_states_the_root_of_trust
++tests/docs/test_docs_consistency.py::TestF012Round21IsPinned::test_readme_states_the_raw_byte_identity
++tests/docs/test_docs_consistency.py::TestF012Round22IsPinned::test_readme_states_the_gate_matrix
++tests/docs/test_docs_consistency.py::TestF012Round23IsPinned::test_readme_states_semantic_consistency
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_feature_detail_files
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_status_entries
++tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
++tests/orchestration/test_development_artifact_boundary.py::TestWhitelistBoundary::test_no_new_product_dependency
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_commands_catalog_valid
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_exist
++tests/orchestration/test_evidence_index.py::TestJobEvidenceCliDefaults::test_default_out_goes_to_hidden_dir_and_indexes
++tests/orchestration/test_evidence_index.py::TestLegacyRootFallback::test_root_style_evidence_still_readable_but_deprecated
++tests/orchestration/test_failure_postmortem.py::TestFileUriAndLabelledPathRedaction::test_the_shared_module_is_the_one_f007_uses
++tests/orchestration/test_fence_e2e.py::TestFenceConfigErrorE2E::test_malformed_toml_raises
++tests/orchestration/test_fence_e2e.py::TestResolveFenceSpec::test_malformed_toml_raises_fence_config_error
++tests/orchestration/test_fences.py::TestLoadFenceSpec::test_malformed_config_raises_fence_config_error
++tests/orchestration/test_job_evidence.py::TestDogfoodCommandShape::test_artifact_contract_pass_from_clean_dir
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_demo_docs_command_shapes
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_job_create_no_json_flag
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_exists
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_fulfill
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_propose
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_status_report
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_invalid_job_id_syntax
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_real_provider_claims
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_quickstart_no_invalid_propose_syntax
++tests/orchestration/test_job_fulfillment.py::TestJobFulfillCLI::test_invalid_job_id
++tests/orchestration/test_job_worktree_handoff.py::TestJobPlanResumeCli::test_the_cli_resumes_a_16_char_jobplan_id
++tests/orchestration/test_project_brain.py::TestBrainReliabilityHygiene::test_no_except_exception_in_key_modules
++tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_css_tokens
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_forbidden_words_section
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_semantic_zoom_rules
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_commands_catalog_valid
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_exist
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_mention_commands
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_no_auto_memory_claim
++tests/orchestration/test_review_manual_completion_shapes.py::TestManualCompletionRunsEndToEnd::test_end_to_end_bundle_is_ready
++tests/orchestration/test_review_subject_explicit_base.py::TestTheDeclarationIsReadOnceAndNotInherited::test_the_verification_runner_scrubs_the_declaration
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_all_candidates_invalid_still_creates_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_candidate_summary_shows_rejection_reasons
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_rejected_candidate_count
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_validation_section
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_missing_command_transcript_creates_zip_with_warning
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_single_valid_evidence_dir_auto_selects
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_stale_dirs_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_unselected_evidence_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestIndexedEvidenceSelection::test_legacy_root_evidence_only_via_deprecated_fallback_with_warning
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_command_id_not_silently_swapped
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_concurrent_run_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_contract_budget_zero_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_explicit_command_id_executes_that_command
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_non_test_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_no_test_command_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_unknown_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestUsageAccounting::test_usage_incremented_on_process_start
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_context_md_updated
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current
++tests/orchestration/test_test_runner.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr
++tests/orchestration/test_test_runner.py::TestSourceApplyPermissionBoundary::test_permission_granted_and_approved_can_write
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_exist
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_mention_commands
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_browser_actions
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_overnight_autonomy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_brain_flow_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_organic_layout_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_semantic_zoom_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_index_html_has_ux_contract_markers
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_exports_semantic_zoom_fn
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_wheel_cannot_reach_level_6
++tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_no_background_pytest
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_single_session
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_reviewer_safety_doc_exists
++tests/runtimes/test_apps_ui_probe.py::TestRealViteAcrossTheCliBoundary::test_vite_survives_the_serve_cli_and_is_probed_and_stopped_separately
++tests/runtimes/test_dev_server.py::TestReadiness::test_delayed_readiness
++tests/runtimes/test_runtime_cli_process_boundary.py::TestReadinessLogTail::test_the_readiness_failure_returns_the_line_the_child_really_printed
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSupervisorFailures::test_an_application_that_dies_before_readiness_is_a_start_failure
++tests/runtimes/test_runtime_cli_process_boundary.py::TestSupervisorFailures::test_a_readiness_timeout_leaves_no_runtime
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_unc_paths_are_redacted_in_both_slash_styles
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_windows_forward_slash_paths_are_redacted
++tests/runtimes/test_supervisor_portability.py::TestLiveApplicationOwnership::test_a_victim_in_the_tests_own_process_group_is_never_signalled
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_a_real_served_state_shares_nothing_private
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_embedded_private_paths_are_removed_everywhere
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_the_redaction_walks_dictionaries_and_lists_recursively
++tests/runtimes/test_supervisor_portability.py::TestSupervisorFinalizationAndGroups::test_every_supervisor_failure_path_uses_the_common_finalizer
++tests/test_agent_tooling.py::test_claude_agent_is_read_only_reviewer
++tests/test_cli_main.py::TestCreateJobTaskType::test_default_description_when_none_given
++tests/test_cli_main.py::TestCreateJobTaskType::test_hyphens_and_underscores_allowed_in_task_type
++tests/test_cli_main.py::TestCreateJobTaskType::test_no_task_type_leaves_state_pending
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_description_stored_in_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_creates_one_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_sets_state_planned
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_stored_in_task_inputs
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_job_sets_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_repo_idempotent_message
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_missing_project_does_not_set_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_with_missing_project_warns
++tests/test_command_catalog.py::TestCatalogClassification::test_every_command_has_action_class
++tests/test_command_catalog.py::TestCatalogClassification::test_mutating_commands_flagged
++tests/test_command_catalog.py::TestCatalogSensitivity::test_no_sensitive_terms_in_arg_help
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_text_output_does_not_crash
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_autonomy_level_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_has_job_id_in_docs
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_scope_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_rc_metadata_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_tp_metadata_matches_code
++tests/test_grouped_cli.py::TestGroupedExecution::test_brain_graph_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_policy_contract_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_policy_token_json
++tests/test_grouped_cli.py::TestGroupedExecution::test_test_discover_json
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_has_exact_metadata_keys
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_scope_is_project
++tests/test_remedy_smoke_script.py::TestSmokeScriptText::test_viewer_sanity_block_has_no_bare_assert
++tests/test_test_runner.py::TestCliRunTestsLocal::test_no_target_repo_exits_1
++tests/test_test_runner.py::TestCliRunTestsLocal::test_permission_missing_exits_1
++tests/ui_contracts/test_graph_architecture.py::TestExplainableEdges::test_legacy_edge_component_under_legacy
++tests/ui_contracts/test_graph_architecture.py::TestSemanticZoomDirection::test_renderer_zoom_direction_in_legacy_source
++tests/ui_contracts/test_timeline_guard.py::TestOrchestratorLoopContract::test_orchestrator_loop_doc_exists
++tests/ui_contracts/test_ux_quality.py::TestScreenSpaceLabels::test_legacy_graph_nodes_under_legacy
++tests/ui_contracts/test_ux_quality.py::TestUXAntiRegression::test_legacy_graph_files_under_legacy
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps
+diff --git a/.agent/f251_baseline/serial_deterministic.txt b/.agent/f251_baseline/serial_deterministic.txt
+new file mode 100644
+index 0000000..377bae0
+--- /dev/null
++++ b/.agent/f251_baseline/serial_deterministic.txt
+@@ -0,0 +1,156 @@
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_do_commands_valid
++tests/cli/test_do_cmd_summary.py::TestDocsCommandContract::test_docs_remedy_commands_catalog_valid
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_autocoder_usage_doc_exists
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_commands_use_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_mention_builder_provider
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_model_quality_warning
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_patch_inspect_commands
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_pipeline_overview
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_stop_reasons_complete
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_test_run_command
++tests/cli/test_do_cmd_summary.py::TestDocsExist::test_docs_vram_free_command
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_boundary_doc_no_product_dependency
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_quickstart_doc_job_first
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_has_job_first_flow
++tests/cli/test_product_spine.py::TestCommandTaxonomyDocs::test_spine_doc_mission_is_advanced
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_quickstart_doc_uses_do_run
++tests/cli/test_product_spine.py::TestDoRunHelpAlignment::test_spine_doc_uses_do_run
++tests/cli/test_product_spine.py::TestJobFacadeNoAgent::test_job_status_invalid_id_safe
++tests/cli/test_product_spine.py::TestJobStatusReportTruthFields::test_report_invalid_id_safe
++tests/cli/test_product_spine.py::TestStaleCommandScanner::test_core_spine_doc_exists
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_full_isolation_and_flags
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_legacy_job_hidden_and_unscoped_label
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_orphaned_label_on_deleted_project
++tests/cli/test_scoped_listings.py::TestScopedListingsCLI::test_status_scoped
++tests/cli/test_scoped_listings.py::TestStatsFailuresScopedCLI::test_stats_failures_scoped_by_project
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_lexical_containment
++tests/docs/test_docs_consistency.py::TestF012Round13IsPinned::test_the_readme_states_the_ledger_contract
++tests/docs/test_docs_consistency.py::TestF012Round14IsPinned::test_the_readme_states_finality_and_the_grammar
++tests/docs/test_docs_consistency.py::TestF012Round15IsPinned::test_the_readme_states_the_task_history_rule
++tests/docs/test_docs_consistency.py::TestF012Round16IsPinned::test_the_readme_states_the_review_subject_contract
++tests/docs/test_docs_consistency.py::TestF012Round17IsPinned::test_the_readme_states_the_round17_contracts
++tests/docs/test_docs_consistency.py::TestF012Round18IsPinned::test_the_readme_states_the_typed_transaction
++tests/docs/test_docs_consistency.py::TestF012Round19IsPinned::test_readme_states_the_closure
++tests/docs/test_docs_consistency.py::TestF012Round20IsPinned::test_readme_states_the_root_of_trust
++tests/docs/test_docs_consistency.py::TestF012Round21IsPinned::test_readme_states_the_raw_byte_identity
++tests/docs/test_docs_consistency.py::TestF012Round22IsPinned::test_readme_states_the_gate_matrix
++tests/docs/test_docs_consistency.py::TestF012Round23IsPinned::test_readme_states_semantic_consistency
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_feature_detail_files
++tests/docs/test_docs_consistency.py::TestFeatureLedger::test_there_are_250_unique_status_entries
++tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::test_the_readme_reports_the_accepted_foundation_and_no_later_feature
++tests/orchestration/test_development_artifact_boundary.py::TestWhitelistBoundary::test_no_new_product_dependency
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_commands_catalog_valid
++tests/orchestration/test_event_replay.py::TestDocsExist::test_resume_docs_exist
++tests/orchestration/test_evidence_index.py::TestJobEvidenceCliDefaults::test_default_out_goes_to_hidden_dir_and_indexes
++tests/orchestration/test_evidence_index.py::TestLegacyRootFallback::test_root_style_evidence_still_readable_but_deprecated
++tests/orchestration/test_failure_postmortem.py::TestFileUriAndLabelledPathRedaction::test_the_shared_module_is_the_one_f007_uses
++tests/orchestration/test_fence_e2e.py::TestFenceConfigErrorE2E::test_malformed_toml_raises
++tests/orchestration/test_fence_e2e.py::TestResolveFenceSpec::test_malformed_toml_raises_fence_config_error
++tests/orchestration/test_fences.py::TestLoadFenceSpec::test_malformed_config_raises_fence_config_error
++tests/orchestration/test_job_evidence.py::TestDogfoodCommandShape::test_artifact_contract_pass_from_clean_dir
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_demo_docs_command_shapes
++tests/orchestration/test_job_fulfillment.py::TestDemoDocsCommands::test_job_create_no_json_flag
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_exists
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_fulfill
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_propose
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_mentions_status_report
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_invalid_job_id_syntax
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_guide_no_real_provider_claims
++tests/orchestration/test_job_fulfillment.py::TestFulfilledDemoGuide::test_quickstart_no_invalid_propose_syntax
++tests/orchestration/test_job_fulfillment.py::TestJobFulfillCLI::test_invalid_job_id
++tests/orchestration/test_job_worktree_handoff.py::TestJobPlanResumeCli::test_the_cli_resumes_a_16_char_jobplan_id
++tests/orchestration/test_project_brain.py::TestBrainReliabilityHygiene::test_no_except_exception_in_key_modules
++tests/orchestration/test_project_brain.py::TestFileProvenanceChain::test_full_chain_order
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_css_tokens
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_forbidden_words_section
++tests/orchestration/test_project_brain.py::TestUiRebuildSpecDocument::test_has_semantic_zoom_rules
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_commands_catalog_valid
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_exist
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_mention_commands
++tests/orchestration/test_project_summary.py::TestProjectBrainDocs::test_docs_no_auto_memory_claim
++tests/orchestration/test_review_manual_completion_shapes.py::TestManualCompletionRunsEndToEnd::test_end_to_end_bundle_is_ready
++tests/orchestration/test_review_subject_explicit_base.py::TestTheDeclarationIsReadOnceAndNotInherited::test_the_verification_runner_scrubs_the_declaration
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_all_candidates_invalid_still_creates_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_candidate_summary_shows_rejection_reasons
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_rejected_candidate_count
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_manifest_validation_section
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_missing_command_transcript_creates_zip_with_warning
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_single_valid_evidence_dir_auto_selects
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_stale_dirs_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestAutoSelectLatestEvidence::test_unselected_evidence_not_in_zip
++tests/orchestration/test_review_zip_hygiene.py::TestIndexedEvidenceSelection::test_legacy_root_evidence_only_via_deprecated_fallback_with_warning
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_command_id_not_silently_swapped
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_concurrent_run_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_contract_budget_zero_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_explicit_command_id_executes_that_command
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_non_test_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_no_test_command_blocked
++tests/orchestration/test_test_execution_service.py::TestExecuteTestRunGates::test_unknown_command_id_blocked_at_runner
++tests/orchestration/test_test_execution_service.py::TestUsageAccounting::test_usage_incremented_on_process_start
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_context_md_updated
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
++tests/orchestration/test_test_runner.py::TestNoBroadExceptAndDegradedSignals::test_plan_md_current
++tests/orchestration/test_test_runner.py::TestPermitGuidanceArgOrder::test_permit_runtime_stderr
++tests/orchestration/test_test_runner.py::TestSourceApplyPermissionBoundary::test_permission_granted_and_approved_can_write
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_exist
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_mention_commands
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_browser_actions
++tests/orchestration/test_worker_queue.py::TestWorkerDocs::test_docs_no_overnight_autonomy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_brain_flow_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_organic_layout_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeContractReset::test_legacy_semantic_zoom_under_legacy
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_index_html_has_ux_contract_markers
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_exports_semantic_zoom_fn
++tests/regression/test_named_bugs.py::TestSmokeSafety::test_renderer_wheel_cannot_reach_level_6
++tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_no_background_pytest
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_docs_mention_single_session
++tests/regression/test_resource_safety.py::TestResourceSafetyDocs::test_reviewer_safety_doc_exists
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_unc_paths_are_redacted_in_both_slash_styles
++tests/runtimes/test_supervisor_portability.py::TestCrossPlatformRedaction::test_windows_forward_slash_paths_are_redacted
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_a_real_served_state_shares_nothing_private
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_embedded_private_paths_are_removed_everywhere
++tests/runtimes/test_supervisor_portability.py::TestShareableRedaction::test_the_redaction_walks_dictionaries_and_lists_recursively
++tests/test_agent_tooling.py::test_claude_agent_is_read_only_reviewer
++tests/test_cli_main.py::TestCreateJobTaskType::test_default_description_when_none_given
++tests/test_cli_main.py::TestCreateJobTaskType::test_hyphens_and_underscores_allowed_in_task_type
++tests/test_cli_main.py::TestCreateJobTaskType::test_no_task_type_leaves_state_pending
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_description_stored_in_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_creates_one_task
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_sets_state_planned
++tests/test_cli_main.py::TestCreateJobTaskType::test_task_type_stored_in_task_inputs
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_job_sets_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_attach_project_repo_idempotent_message
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_missing_project_does_not_set_metadata
++tests/test_cli_main.py::TestProjectCommandsCLI::test_create_job_with_missing_project_warns
++tests/test_command_catalog.py::TestCatalogClassification::test_every_command_has_action_class
++tests/test_command_catalog.py::TestCatalogClassification::test_mutating_commands_flagged
++tests/test_command_catalog.py::TestCatalogSensitivity::test_no_sensitive_terms_in_arg_help
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_counts
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_selected_test_candidate
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_has_version_1
++tests/test_command_discovery.py::TestCLIDiscoverCommandsSchemaV1::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_argv_is_list
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_candidates_have_required_keys
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_json_output_is_pure_json
++tests/test_command_discovery.py::TestCLIDiscoverCommands::test_text_output_does_not_crash
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_autonomy_level_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_has_job_id_in_docs
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_contract_scope_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_rc_metadata_matches_code
++tests/test_execution_foundation.py::TestDocsDriftDetection::test_run_log_tp_metadata_matches_code
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_has_exact_metadata_keys
++tests/test_project_context_coverage.py::TestRunLogSchema::test_run_log_event_scope_is_project
++tests/test_remedy_smoke_script.py::TestSmokeScriptText::test_viewer_sanity_block_has_no_bare_assert
++tests/test_test_runner.py::TestCliRunTestsLocal::test_no_target_repo_exits_1
++tests/test_test_runner.py::TestCliRunTestsLocal::test_permission_missing_exits_1
++tests/ui_contracts/test_graph_architecture.py::TestExplainableEdges::test_legacy_edge_component_under_legacy
++tests/ui_contracts/test_graph_architecture.py::TestSemanticZoomDirection::test_renderer_zoom_direction_in_legacy_source
++tests/ui_contracts/test_timeline_guard.py::TestOrchestratorLoopContract::test_orchestrator_loop_doc_exists
++tests/ui_contracts/test_ux_quality.py::TestScreenSpaceLabels::test_legacy_graph_nodes_under_legacy
++tests/ui_contracts/test_ux_quality.py::TestUXAntiRegression::test_legacy_graph_files_under_legacy
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_context_md_references_current_branch
++tests/ui_server/test_dashboard_contract.py::TestAgentStateFilesCurrentBranch::test_plan_md_references_current_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
++tests/ui_server/test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::test_plan_md_references_current_steps
+diff --git a/.agent/f251_baseline/timings.txt b/.agent/f251_baseline/timings.txt
+new file mode 100644
+index 0000000..f5daf85
+--- /dev/null
++++ b/.agent/f251_baseline/timings.txt
+@@ -0,0 +1,41 @@
++F251 S1 baseline — wall times and outcomes
++Host: 24 cores, pytest -n auto (24 workers), 14314 tests collected.
++Repo state: feature/f251-suite-stabilization at 6280cb0 (parent main d8ac7fa).
++
++run1  time python3 -m pytest -n auto -q
++      168 failed, 14138 passed, 8 skipped, 1 error in 176.97s
++      real 2m57.371s   user 10m25.550s   sys 1m44.552s
++      failure ids -> run1.txt (169 = 168 FAILED + 1 ERROR)
++
++run2  time python3 -m pytest -n auto -q
++      167 failed, 14139 passed, 8 skipped in 172.56s
++      real 2m53.019s   user 10m48.760s   sys 1m50.832s
++      failure ids -> run2.txt (167)
++
++set comparison run1 vs run2
++      common          161
++      only in run1      8
++      only in run2      6
++      churning ids     14
++
++control A — the 161 common ids re-run SERIALLY on this branch
++      python3 -m pytest <161 ids> --tb=line -q -p no:randomly
++      156 failed, 5 passed in 134.76s   real 2m15.004s
++      -> serial_deterministic.txt (156)
++
++control B — the same 161 ids run SERIALLY in a clean `main` worktree (d8ac7fa)
++      156 failed, 5 passed in 143.98s   real 2m25.539s
++      -> clean_main_control.txt (156)
++      comm -23 and comm -13 against control A both EMPTY
++      => the 156 are identical on clean main; pre-existing, not branch-induced
++
++control C — the 19-id flake set in isolation
++      -n auto, three consecutive runs: 5 failed / 14 passed each time,
++      but the failing IDS DIFFER between runs (timing/process flake)
++      serial, once:                    5 failed, and a DIFFERENT id set
++      (4x test_grouped_cli + test_data_paths) => test-order / cached-state
++      -> flake_set.txt (19)
++
++summary
++      flake debt   =  19 ids (14 churning + 5 that fail only under -n auto)
++      standing red = 156 ids (deterministic, reproduce on clean main)

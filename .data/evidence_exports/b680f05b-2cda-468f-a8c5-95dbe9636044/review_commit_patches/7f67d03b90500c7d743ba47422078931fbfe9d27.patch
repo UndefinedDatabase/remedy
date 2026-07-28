@@ -1,0 +1,16 @@
+7f67d03b90500c7d743ba47422078931fbfe9d27
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index 5e9b432..26c7899 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -18,7 +18,9 @@ FEATURE_FILE_RE = re.compile(r"\AT(\d{1,2})_F(\d{3})\.md\Z")
+ STATUS_LINE_RE = re.compile(r"^- \[[ ~x]\] F(\d{3}) — ")
+ TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
+ 
+-TOTAL_FEATURES = 250
++#: 250 roadmap features (F001-F250) plus F251, the registered work item added
++#: by the planning amendment of 2026-07-27 (docs/roadmap/features/T1_F251.md).
++TOTAL_FEATURES = 251
+ 
+ #: Documents that must never contain a stale claim.
+ PRIMARY_DOCS = [

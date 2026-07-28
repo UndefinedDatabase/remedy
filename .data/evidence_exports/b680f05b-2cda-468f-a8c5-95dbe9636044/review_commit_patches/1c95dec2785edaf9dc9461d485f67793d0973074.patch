@@ -1,0 +1,223 @@
+1c95dec2785edaf9dc9461d485f67793d0973074
+diff --git a/tests/cli/test_runtime_cmd.py b/tests/cli/test_runtime_cmd.py
+index 90e6670..d427ffc 100644
+--- a/tests/cli/test_runtime_cmd.py
++++ b/tests/cli/test_runtime_cmd.py
+@@ -14,6 +14,7 @@ import pytest
+ from apps.cli.command_catalog import CATALOG, GROUPS, get_commands_for_group
+ from apps.cli.commands import collect_all_handlers, runtime_cmd
+ from packages.runtimes.dev_server import load_state
++from tests.ports import worker_port
+ 
+ SERVER = """
+ import http.server, os
+@@ -39,7 +40,9 @@ def isolate_data_root(tmp_path, monkeypatch):
+ 
+ 
+ def _project(tmp_path: Path, script: str, body: str, *, timeout: float = 15.0,
+-             port: int = 5173) -> Path:
++             port: int | None = None) -> Path:
++    if port is None:
++        port = worker_port()
+     root = tmp_path / "proj"
+     root.mkdir(exist_ok=True)
+     (root / script).write_text(body)
+diff --git a/tests/ports.py b/tests/ports.py
+new file mode 100644
+index 0000000..1d0ce35
+--- /dev/null
++++ b/tests/ports.py
+@@ -0,0 +1,39 @@
++"""Per-worker TCP ports for tests that start a real runtime.
++
++The runtime default port is 5173 (``packages/runtimes/runtime_config.py``), and
++the runtime tests wrote that literal into every generated ``.remedy/config.toml``.
++Under ``pytest -n auto`` all workers then bound — and probed — the same port, so a
++test asserting a readiness *failure* could reach a **different worker's** healthy
++server: ``RuntimeProbeResult(ok=True, status_code=200, port=5173)`` where the test
++required ``ok is False``, and a delayed-readiness assertion (``elapsed >= 1.4``)
++returned in 0.15 s against the foreign listener.
++
++``worker_port()`` gives each xdist worker its own port, so these tests can only
++ever see the server they started themselves. The product default is untouched:
++this is a test seam, not a behavior change.
++"""
++
++from __future__ import annotations
++
++import os
++
++#: Base of the per-worker range. Above the runtime default (5173) and below the
++#: Linux ephemeral range (``net.ipv4.ip_local_port_range`` starts at 32768), so a
++#: worker port can never collide with a kernel-assigned client port.
++_BASE = 15173
++
++
++def worker_index() -> int:
++    """0 for a serial run, N for xdist worker ``gwN``."""
++    name = os.environ.get("PYTEST_XDIST_WORKER", "")
++    digits = name[2:] if name.startswith("gw") else ""
++    return int(digits) if digits.isdigit() else 0
++
++
++def worker_port(offset: int = 0) -> int:
++    """A port owned by this worker alone.
++
++    ``offset`` separates several servers started within one worker; keep it small
++    and distinct per call site.
++    """
++    return _BASE + worker_index() * 16 + offset
+diff --git a/tests/runtimes/test_dev_server.py b/tests/runtimes/test_dev_server.py
+index 37a2ea4..f8f1a74 100644
+--- a/tests/runtimes/test_dev_server.py
++++ b/tests/runtimes/test_dev_server.py
+@@ -30,6 +30,7 @@ from packages.runtimes.dev_server import (
+     validate_spec,
+     verify_state,
+ )
++from tests.ports import worker_port
+ 
+ 
+ @pytest.fixture(autouse=True)
+@@ -104,11 +105,12 @@ def project(tmp_path) -> Path:
+     return root
+ 
+ 
+-def _spec(project: Path, script: str, *args: str, port: int = 5173,
++def _spec(project: Path, script: str, *args: str, port: int | None = None,
+           timeout: float = 10.0) -> RuntimeSpec:
+     return RuntimeSpec(
+         cmd=[sys.executable, str(project / script), *args],
+-        cwd=str(project), port=port, health_path="/", ready_timeout_s=timeout,
++        cwd=str(project), port=worker_port() if port is None else port,
++        health_path="/", ready_timeout_s=timeout,
+     )
+ 
+ 
+diff --git a/tests/runtimes/test_runtime_cli_process_boundary.py b/tests/runtimes/test_runtime_cli_process_boundary.py
+index 3039ab5..9825cd2 100644
+--- a/tests/runtimes/test_runtime_cli_process_boundary.py
++++ b/tests/runtimes/test_runtime_cli_process_boundary.py
+@@ -33,6 +33,7 @@ from tests.runtimes.runtime_cleanup import (
+     RuntimeRegistry,
+     basetemp_survivors,
+ )
++from tests.ports import worker_port
+ 
+ pytestmark = pytest.mark.subprocess
+ 
+@@ -141,7 +142,10 @@ def project(tmp_path) -> Path:
+     return root
+ 
+ 
+-def _config(root: Path, script: str, *, timeout: float = 20.0, port: int = 5173) -> None:
++def _config(root: Path, script: str, *, timeout: float = 20.0,
++            port: int | None = None) -> None:
++    if port is None:
++        port = worker_port()
+     cfg = root / ".remedy"
+     cfg.mkdir(exist_ok=True)
+     (cfg / "config.toml").write_text(
+diff --git a/tests/runtimes/test_runtime_lifecycle_safety.py b/tests/runtimes/test_runtime_lifecycle_safety.py
+index 1474280..41abe12 100644
+--- a/tests/runtimes/test_runtime_lifecycle_safety.py
++++ b/tests/runtimes/test_runtime_lifecycle_safety.py
+@@ -35,6 +35,7 @@ from packages.runtimes.dev_server import (
+     verify_state,
+ )
+ from packages.runtimes.runtime_config import load_config_spec
++from tests.ports import worker_port
+ 
+ SERVER = """
+ import http.server, os
+@@ -107,7 +108,7 @@ def project(tmp_path) -> Path:
+     (cfg / "config.toml").write_text(
+         "[runtime]\n"
+         f'cmd = ["{sys.executable}", "server.py"]\n'
+-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 15\n'
++        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 15\n'
+     )
+     return root
+ 
+@@ -115,7 +116,7 @@ def project(tmp_path) -> Path:
+ def _spec(project: Path, script: str = "server.py", timeout: float = 15.0) -> RuntimeSpec:
+     return RuntimeSpec(
+         cmd=[sys.executable, str(project / script)], cwd=str(project),
+-        port=5173, health_path="/", ready_timeout_s=timeout,
++        port=worker_port(), health_path="/", ready_timeout_s=timeout,
+     )
+ 
+ 
+@@ -244,7 +245,7 @@ class TestManagedIdentity:
+             (project / ".remedy" / "config.toml").write_text(
+                 "[runtime]\n"
+                 f'cmd = ["{sys.executable}", "server.py", "--other"]\n'
+-                'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 15\n'
++                'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 15\n'
+             )
+             with pytest.raises(SystemExit) as exc:
+                 runtime_cmd._cmd_runtime_serve(str(project), json_output=True)
+diff --git a/tests/runtimes/test_runtime_state_machine.py b/tests/runtimes/test_runtime_state_machine.py
+index 3b77e9f..72b9922 100644
+--- a/tests/runtimes/test_runtime_state_machine.py
++++ b/tests/runtimes/test_runtime_state_machine.py
+@@ -42,6 +42,7 @@ from packages.runtimes.dev_server import (
+     state_path,
+     stop_recorded_runtime,
+ )
++from tests.ports import worker_port
+ 
+ SERVER = """
+ import http.server, os, sys, time
+@@ -73,9 +74,11 @@ def project(tmp_path) -> Path:
+     return root
+ 
+ 
+-def _write_config(root: Path, *, args: str = "", port: int = 5173,
++def _write_config(root: Path, *, args: str = "", port: int | None = None,
+                   health: str = "/", timeout: float = 15.0, host: str = "127.0.0.1",
+                   env: str = "") -> None:
++    if port is None:
++        port = worker_port()
+     cfg = root / ".remedy"
+     cfg.mkdir(exist_ok=True)
+     extra = f', "{args}"' if args else ""
+@@ -94,7 +97,7 @@ def _write_config(root: Path, *, args: str = "", port: int = 5173,
+ def _spec(project: Path, *args: str, timeout: float = 15.0) -> RuntimeSpec:
+     return RuntimeSpec(
+         cmd=[sys.executable, str(project / "server.py"), *args],
+-        cwd=str(project), port=5173, health_path="/", ready_timeout_s=timeout,
++        cwd=str(project), port=worker_port(), health_path="/", ready_timeout_s=timeout,
+     )
+ 
+ 
+diff --git a/tests/runtimes/test_supervisor_portability.py b/tests/runtimes/test_supervisor_portability.py
+index f1bc071..ad80ccc 100644
+--- a/tests/runtimes/test_supervisor_portability.py
++++ b/tests/runtimes/test_supervisor_portability.py
+@@ -41,6 +41,7 @@ from tests.runtimes.runtime_cleanup import (
+     RuntimeRegistry,
+     basetemp_survivors,
+ )
++from tests.ports import worker_port
+ 
+ pytestmark = pytest.mark.subprocess
+ 
+@@ -136,7 +137,7 @@ def project(tmp_path) -> Path:
+     (cfg / "config.toml").write_text(
+         "[runtime]\n"
+         f'cmd = ["{sys.executable}", "server.py"]\n'
+-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 20\n'
++        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 20\n'
+     )
+     return root
+ 
+@@ -926,7 +927,7 @@ def secret_project(tmp_path) -> Path:
+     (cfg / "config.toml").write_text(
+         "[runtime]\n"
+         f'cmd = ["{sys.executable}", "server.py"]\n'
+-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 20\n'
++        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 20\n'
+         "[runtime.env]\n"
+         f'API_TOKEN = "{SECRET}"\n'
+     )

@@ -1,0 +1,26 @@
+{
+ "base_commit": "d8ac7faab8600d6f4be9277920322433f17c29d2",
+ "file_count": 16,
+ "file_hashes": {
+  "docs/roadmap/ROADMAP.md": "d427f5af4d3dcbbd4ada454b30f9c0c12ecfc399624b565d1f2bb274bf4f36fb",
+  "docs/roadmap/STATUS.md": "4ccd3064d9a231d491699e6fb769e663f7991dde530883f00d6934b66b7c8011",
+  "docs/roadmap/features/T1_F251.md": "b73da4d99feed5f3a9b8873dd374338e5bbbab301d9e1a5cf95509f52a73e32a",
+  "docs/roadmap/features/T1_F252.md": "55350c4024f8af03d30272510455afddd12e1099806ebfebf7bf304d62eb8dc2",
+  "tests/cli/test_job_rerun_manifest.py": "5edc272527ad0d4817bcdb90815aa1ef9cfb4e94c569fc4f74dfe5d2ba799a33",
+  "tests/cli/test_runtime_cmd.py": "c022f4d04c2bc40bcaf076ece133ed9927d5ded904f403253b05aa2239b6f4a7",
+  "tests/conftest.py": "2116c8c85ee2249aad33a91f99da95ae8354a6f03f0d0213f683193758482504",
+  "tests/docs/test_docs_consistency.py": "64c4a246f69b235ba30f42bf8d9c0c3ab0a2b6d89f6c404e45cc9886f7479180",
+  "tests/orchestration/test_run_manifest.py": "c93fbbe4a5a091c6ee0774d4567d363b4da3059afcd0361be5a0d434e61c1ac4",
+  "tests/ports.py": "7a1494b717d69d998d649811612e2d1571189d2e3160230cea3347821bdeeba9",
+  "tests/runtimes/test_dev_server.py": "750df1537bf5777591800ee275c8b474bb64a27925de1e1b0151c273bea7d23b",
+  "tests/runtimes/test_runtime_cli_process_boundary.py": "6fc7f1690bf3900e98ae2dde3656ad301bd7e414831a0be33d745624cdea65ee",
+  "tests/runtimes/test_runtime_lifecycle_safety.py": "4db7efd50a397a59dd436eccccad42f9619cba423293d76a190af9a992c70ba3",
+  "tests/runtimes/test_runtime_state_machine.py": "da28dc64afee160a07f27675249e6bbc4d5011483a8c29b43d1c69ae750904aa",
+  "tests/runtimes/test_supervisor_portability.py": "8314348783f647a8bd0364c671029681700828a59c5840930ed81955ab889710",
+  "tests/test_data_paths.py": "9f26a0214618a486127159976a80bcc011985247cf86eb4696d58b6fc3b664e4"
+ },
+ "head_commit": "86a0df39ee0928742add7ef457dbd3d1e4efb7f2",
+ "schema_version": "1.1.0",
+ "tombstone_count": 0,
+ "tombstones": {}
+}

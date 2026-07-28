@@ -1,0 +1,40 @@
+F251 churn gate — three consecutive `time python3 -m pytest -n auto -q`
+
+GATE ATTEMPT 1 (after F-C/F-B/F-E + the per-worker port fix)
+  run1  154 failed, 14152 passed, 8 skipped   real 2m38.498s
+  run2  155 failed, 14149 passed, 8 skipped, 2 errors   real 2m54.767s
+  run3  158 failed, 14146 passed, 8 skipped, 2 errors   real 3m8.638s
+  core in all three: 154 (== the expected deterministic set, exactly)
+  churning: 7 NEW ids, none previously catalogued:
+    tests/orchestration/test_self_dogfood.py::TestInspection::test_roadmap_items_cite_evidence
+    tests/ui_contracts/test_ux_quality.py::TestSmokeScriptUI::test_group_help_includes_ui
+    tests/ui_contracts/test_ux_quality.py::TestSmokeScriptUI::test_no_shell_true_in_new_modules
+    tests/ui_contracts/test_ux_quality.py::TestUXZoomAndLabelVisibility::test_renderer_no_all_label_default
+    tests/ui_contracts/test_ux_quality.py::TestUXZoomAndLabelVisibility::test_renderer_reduced_motion
+    tests/ui_server/test_dashboard_contract.py::TestUIServer::test_no_external_assets_in_server
+    tests/ui_server/test_dashboard_contract.py::TestUIServer::test_no_shell_true_in_server
+  diagnosis: FileNotFoundError on RELATIVE repo paths
+    ('scripts/remedy_smoke.sh', 'packages/orchestration/ui_server.py')
+    -- a test chdir'd and never restored; victims depend on xdist order.
+  => fixed by the cwd-restoring autouse fixture (13572dd)
+
+GATE ATTEMPT 2 (authoritative — the three churn_gate_runN.txt files)
+  run1  155 failed, 14151 passed, 8 skipped   real 2m54.885s
+  run2  154 failed, 14152 passed, 8 skipped   real 3m4.077s
+  run3  154 failed, 14152 passed, 8 skipped   real 3m4.346s
+  run2 == run3, byte-identical, and each equals the expected set exactly:
+    the 156 catalogued deterministic ids minus the 2 R-0151 ids = 154
+    (comm in BOTH directions empty against .agent/f251_baseline/
+     serial_deterministic.txt with TestFeatureLedger removed)
+  all 7 attempt-1 churners: gone
+  all 19 S1 flake ids:      gone
+
+  GATE NOT PASSED. run1 carried exactly ONE extra id:
+    tests/orchestration/test_run_manifest.py::TestCoverage::
+      test_check_candidate_is_incomplete_and_never_same
+    assert diff["same_inputs"] is None  ->  False   (test_run_manifest.py:473)
+  Not reproducible: the id alone under -n auto 5/5 passed; its module
+  under -n auto 3/3 passed (44 passed each). One observation, no root
+  cause established, therefore NOT quarantined.
+
+  churn: 14 ids at S1  ->  1 id, seen once in three runs.

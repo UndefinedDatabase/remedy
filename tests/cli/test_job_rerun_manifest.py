@@ -20,6 +20,34 @@ from apps.cli.commands import collect_all_handlers
 from apps.cli.commands import job_rerun_cmd as CMD
 
 
+@pytest.fixture(autouse=True)
+def _freeze_remedy_identity(monkeypatch):
+    """Pin Remedy's own worktree identity for the duration of each test.
+
+    A run manifest records the identity of the Remedy checkout itself — HEAD, a
+    content hash and a dirty flag — and any UNTRACKED entry sets dirty
+    (run_manifest.py, `dirty = True  # any untracked entry means dirty`). The
+    reference manifest is written when the job runs; the candidate is built a
+    moment later. Under `-n auto` all 24 workers share this one repo tree, so a
+    neighbouring test creating or removing a file in the repo between those two
+    moments changes the identity, the diff records a blocking drift, and
+    `same_inputs` becomes False where the test requires None.
+
+    Reproduced deterministically: with a loop touching and removing an untracked
+    file in the repo root, the coverage test failed 5/5; with a quiet tree it
+    passed 3/3.
+
+    Freezing to the value observed at test start keeps the REAL identity — no
+    forced "complete" — and only removes the race, so what these tests assert
+    stays what they asserted: the job inputs, not Remedy's own tree. This is the
+    same seam the module already uses deliberately in _patch_remedy_identity.
+    """
+    from packages.orchestration import run_manifest as _RM
+    snapshot = _RM.remedy_worktree_identity()
+    monkeypatch.setattr(_RM, "remedy_worktree_identity", lambda: snapshot)
+
+
+
 def _git_repo(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     subprocess.run("git init -q && git config user.email t@t && git config user.name t "
