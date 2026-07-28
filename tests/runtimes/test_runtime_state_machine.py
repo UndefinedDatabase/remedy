@@ -42,6 +42,7 @@ from packages.runtimes.dev_server import (
     state_path,
     stop_recorded_runtime,
 )
+from tests.ports import worker_port
 
 SERVER = """
 import http.server, os, sys, time
@@ -73,9 +74,11 @@ def project(tmp_path) -> Path:
     return root
 
 
-def _write_config(root: Path, *, args: str = "", port: int = 5173,
+def _write_config(root: Path, *, args: str = "", port: int | None = None,
                   health: str = "/", timeout: float = 15.0, host: str = "127.0.0.1",
                   env: str = "") -> None:
+    if port is None:
+        port = worker_port()
     cfg = root / ".remedy"
     cfg.mkdir(exist_ok=True)
     extra = f', "{args}"' if args else ""
@@ -94,7 +97,7 @@ def _write_config(root: Path, *, args: str = "", port: int = 5173,
 def _spec(project: Path, *args: str, timeout: float = 15.0) -> RuntimeSpec:
     return RuntimeSpec(
         cmd=[sys.executable, str(project / "server.py"), *args],
-        cwd=str(project), port=5173, health_path="/", ready_timeout_s=timeout,
+        cwd=str(project), port=worker_port(), health_path="/", ready_timeout_s=timeout,
     )
 
 

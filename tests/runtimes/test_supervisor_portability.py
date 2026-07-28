@@ -41,6 +41,7 @@ from tests.runtimes.runtime_cleanup import (
     RuntimeRegistry,
     basetemp_survivors,
 )
+from tests.ports import worker_port
 
 pytestmark = pytest.mark.subprocess
 
@@ -136,7 +137,7 @@ def project(tmp_path) -> Path:
     (cfg / "config.toml").write_text(
         "[runtime]\n"
         f'cmd = ["{sys.executable}", "server.py"]\n'
-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 20\n'
+        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 20\n'
     )
     return root
 
@@ -926,7 +927,7 @@ def secret_project(tmp_path) -> Path:
     (cfg / "config.toml").write_text(
         "[runtime]\n"
         f'cmd = ["{sys.executable}", "server.py"]\n'
-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 20\n'
+        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 20\n'
         "[runtime.env]\n"
         f'API_TOKEN = "{SECRET}"\n'
     )
