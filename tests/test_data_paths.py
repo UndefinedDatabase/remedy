@@ -16,6 +16,27 @@ import re
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_config_cache():
+    """Isolate these tests from the process-global config cache.
+
+    ``resolve_data_root()`` falls back to ``get_config().get("data_dir")``,
+    and ``get_config()`` caches a ``RemedyConfig`` built from the
+    cwd-relative ``remedy.toml`` (``_DEFAULT_PROJECT_PATH``). Any earlier
+    test in the same xdist worker that chdir'd into a temp directory
+    holding a ``remedy.toml`` leaves that ``data_dir`` in the cache, so the
+    default-root assertions here saw another test's value and failed
+    depending on execution order. Reset on both sides so this module never
+    inherits — and never exports — a poisoned cache.
+    """
+    from packages.orchestration.config import reset_config
+    reset_config()
+    yield
+    reset_config()
+
 
 class TestResolveDataRoot:
     def test_env_var_override(self, monkeypatch, tmp_path):
