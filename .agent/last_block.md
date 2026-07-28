@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP PH-v4/1 — four process rulings, docs only ──────────────────
 Context:     Chore round (no STATUS.md change). Rules, in priority
              order: AGENTS.md, docs/agents/worker_conventions.md,
