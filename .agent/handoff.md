@@ -1,100 +1,100 @@
-# Handback — F251 R3: R3 verdict, F-F root cause, churn gate PASSED
+# Handback — F251 R4: R4 verdict + Ruling A persisted, F252 registered
 
 ## Range
-Review of `6c45717..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR.
+Review of `6c98406..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR; no closure work this round, as ordered.
 
 ## Commits
-### 2a93e31 chore(f251): persist the R3 PASS verdict
+### c1b3341 chore(f251): persist the R4 PASS verdict + Ruling A plan
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r3-1.md | +54 | verdict text, sha256 aec772a5… verified |
-| .agent/live_review.md | +85 −43 | full replace from f251-r3-1 (cmp 0) |
+| .agent/authored/f251-r4-1.md | +43 | verdict text, sha256 e8932469… |
+| .agent/authored/f251-r4-2.md | +25 | plan text, sha256 069a1e07… |
+| .agent/live_review.md | +75 −43 | full replace from r4-1 (cmp 0) |
+| .agent/plan.md | +56 −45 | full replace from r4-2 (cmp 0); `Done: R-0153` |
 
-### 5abfd3c test(f251): freeze Remedy's worktree identity per test (F-F)
+### 8a7c8e7 docs(f251): Ruling A — scope narrowed to flake stabilization
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_run_manifest.py | +28 | autouse identity freeze |
-| tests/cli/test_job_rerun_manifest.py | +28 | autouse identity freeze |
-| .agent/plan.md | +38 −45 | worker rewrite (authored r3-2 unverified) |
+| .agent/authored/f251-r4-3.md | +18 | ruling text, sha256 68281fb6… |
+| docs/roadmap/features/T1_F251.md | +18 −0 | inserted between Goal & Done and Rules |
 
-### 6c3f072 + this commit (self-reference, R-0149 grouped table)
+### 7d4b586 docs(roadmap): register F252 + ledger pin 252 — ATOMIC
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/f251_baseline/churn_gate2_run1..3 + timings | +491 | 6c3f072 — gate evidence |
-| .agent/handoff.md | rewrite | this commit — 100 lines (`wc -l`) |
+| .agent/authored/f251-r4-4..6.md | +72 | sha256 55350c40…, 8e361d6f…, 36e6c792… |
+| docs/roadmap/features/T1_F252.md | +63 | full copy of r4-4 (cmp 0) |
+| docs/roadmap/STATUS.md | +1 −0 | F252 line after F251 `[~]`, before F050 |
+| docs/roadmap/ROADMAP.md | +9 −0 | Tier-1 entry after F251, before F050 |
+| tests/docs/test_docs_consistency.py | +5 −3 | TOTAL_FEATURES 251→252, comment names F252 |
+
+### this commit (self-reference, R-0149 grouped table)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | rewrite | progress marks on the applied authored plan |
+| .agent/handoff.md | rewrite | this handback — 100 lines (`wc -l`) |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1a persist R3 verdict (f251-r3-1) | done | 2a93e31, sha256 + cmp 0 |
-| 1b apply authored plan (f251-r3-2) | **BLOCKED** | sha256 mismatch — see below |
-| 2 F-F root cause + fix | done | 5abfd3c, hermetic, reproducer-proven |
-| 3 churn gate ×3 | **PASSED** | three identical sets == expected 154 |
-| 4 canary | done | 42 passed in 15.63s |
-| R-0153 | **open** | needs the authored plan text re-sent |
+| 1 verdict + plan (r4-1, r4-2) | done | c1b3341, both sha256 + cmp 0 |
+| 2 T1_F251 Ruling A (r4-3) | done | 8a7c8e7, containment 0 |
+| 3 atomic ledger (r4-4/5/6 + pin) | done | 7d4b586, one commit, never split |
+| 4a FeatureLedger | done | 4 passed, 288 deselected |
+| 4b full run vs catalogued 154 | **delta** | 152 — see below |
+| 4c canary | done | 42 passed in 14.79s |
+| 4d porcelain | done | empty |
+| R-0153 | **Resolved** | authored plan applied verbatim |
 
-## BLOCKER — f251-r3-2 failed its hash, not committed
-Received 37 lines / 1686 bytes hashing to
-`c30e6828d9b061a6c2b15964cc930d014b1c65266046cb8ff3cedc5b11588cd0`;
-stated `8ac81a9afde5921b68eb792135905528989aecb3f83337c55a0076fa4e1d873d`.
-Recovery attempted per the R2 protocol, all failed: every adjacent-line join
-(with/without space, continuation stripped and unstripped), every combination of
-the unicode variants present (`…` `–` `×` `→` `—`), and trailing-newline / CRLF
-variants. Unverified authored bytes are not committed, so `.agent/plan.md` carries
-a worker rewrite that says so at the top. **R-0153 stays open** until f251-r3-2 is
-re-sent. `f251-r3-1` verified byte-exact, so the verdict was persisted rather than
-lost — step 1's single ordered commit is now two; flagged, not silent.
+## Authored-text proofs
+All six texts hashed BEFORE any commit; every one matched the BEGIN marker
+first time — no wrap recovery needed: r4-1 `e8932469…`, r4-2 `069a1e07…`,
+r4-3 `68281fb6…`, r4-4 `55350c40…`, r4-5 `8e361d6f…`, r4-6 `36e6c792…`.
+`cmp` exit 0: live_review←r4-1, plan←r4-2, T1_F252.md←r4-4.
+Containment exit 0: r4-3→T1_F251.md, r4-5→STATUS.md, r4-6→ROADMAP.md.
+STATUS numstat `1 0` — one line added, no other line touched. ROADMAP `9 0`.
 
-## F-F — root-caused, hermetically fixed
-A run manifest records Remedy's OWN worktree identity (HEAD, content hash,
-dirty), and **any untracked entry sets dirty** (`run_manifest.py`: `dirty = True
-# any untracked entry means dirty`). The reference manifest is written when the
-job runs; the candidate is built moments later. Under `-n auto` all 24 workers
-share this one repo tree, so a neighbouring test creating or removing a repo file
-between those moments yields a blocking drift, and `same_inputs` becomes `False`
-where the tests require `None`.
+## 4b — the full-run delta, stated plainly
+    time python3 -m pytest -n auto -q
+    → 152 failed, 14154 passed, 8 skipped in 182.49s; real 3m2.912s
+    diff vs .agent/f251_baseline/churn_gate2_run1.txt → NOT byte-identical
+    the 152 are a strict SUBSET of the catalogued 154; comm shows ZERO ids
+    present now but absent from the catalog — no new failure, no regression
+    the two missing ids are exactly the documented D4 pair, now GREEN:
+      tests/orchestration/test_test_runner.py::
+        TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
+      tests/ui_server/test_dashboard_contract.py::
+        TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
 
-**Not a product bug.** Detecting that Remedy's own checkout changed between the
-recorded run and the current one is the intended F012 behaviour. The defect is
-test hermeticity: these tests assert about JOB inputs while running in a tree
-other tests mutate. The modules already carry this seam deliberately
-(`_patch_remedy_identity`); these three ids did not use it. The fix freezes the
-identity to the value seen at test start — the real value, not a forced
-"complete" — so the assertions keep their meaning.
+**Mechanism, verified not assumed.** The assertion is a bare substring test,
+`assert "Steps" in (.agent/live_review.md)`. The authored R4 verdict contains
+the clause "(the current live_review has no Steps section)" — the sentence
+*denying* a Steps section supplies the literal substring that makes the test
+pass. This round's docs edits moved nothing; it is the D4 live-state coupling
+behaving as F251 documented, opposite in direction to R3. Recorded, not
+touched: F252 work-breakdown item 7.
 
 ## External actions
-A push per commit (2a93e31, 5abfd3c, 6c3f072, this one). No PR — reviewer-gated,
-no merges.
+A push per commit (c1b3341, 8a7c8e7, 7d4b586, this one). No PR —
+reviewer-gated. No merges.
 
 ## Verification
-    F-F repro    untracked repo-root file churned: coverage id 5/5 RED; quiet tree 3/3 green
-    F-F fixed    all 3 ids under the same churn → 5/5 passed
-                 both modules serial → 75 passed; -n auto ×3 → 75 passed
-                 load-generator loop (4 parallel pytest jobs) 20/20 clean —
-                 generic load never reproduced it, tree mutation always did
-    GATE retry   run1 154 failed / 2m55.453s
-                 run2 154 failed / 3m0.927s
-                 run3 154 failed / 3m8.946s
-                 three id sets IDENTICAL (diff -q clean, both pairs), 0 errors
-                 each == expected 154 exactly (comm empty BOTH directions vs
-                 serial_deterministic minus TestFeatureLedger)
-    canary       test_golden_path.py -q → 42 passed; porcelain empty
-
-## D4 ids — actual state, as ordered
-Both `test_live_review_has_steps_section` ids (test_test_runner.py,
-test_dashboard_contract.py) are PRESENT and RED in all three gate runs. They
-passed in the reviewer's R2 runs because `.agent/live_review.md` then held a text
-with a "Steps" section; this round's live_review (f251-r3-1) has none, so they are
-red — but stably red, which is why the sets are identical. Still D4: coupled to
-live `.agent` state, not to the code under test.
+    4a  pytest tests/docs/test_docs_consistency.py -q -k FeatureLedger
+        → 4 passed, 288 deselected in 0.17s
+    4b  see above — delta of exactly the 2 D4 ids, both green
+    4c  pytest tests/cli/test_golden_path.py -q → 42 passed in 14.79s
+    4d  git status --porcelain → empty (before this commit)
 
 ## Deviations & assumptions
-- Step 1's single ordered commit became two (verdict in, plan not): only one of
-  the two texts verified. See BLOCKER.
-- 0 quarantines, unchanged. Every flake closed was closed by a hermetic fix.
-- 2 F-A ids stay stopped (real-Vite port, file-scoped supervisor guard): both need product change, untouched; neither appeared in any gate run.
-- No D-class edits; the 154 standing red is unchanged and still catalogued.
+- 4b is reported as a delta, not green. The ordered criterion was byte-identical
+  to the catalogued 154; the run is 152. Nothing regressed — the set shrank by
+  the two ids the step flagged as state-coupled — but "byte-identical" would be
+  false, so the claim is not made.
+- `.agent/plan.md` carries progress marks on top of the verbatim authored text
+  (applied cmp-clean at c1b3341): AGENTS.md requires plan.md current per commit. The divergence is stated in the file itself.
+- No D-class edits. No closure work. F252 is registration only.
+- The catalogued 154 in `.agent/f251_baseline/` is left as the F251 baseline
+  of record; F252 inherits it via class_map.txt.
 
 ## Next
-Re-send f251-r3-2 to close R-0153. Operator ruling open on the 13 D-classes (154 standing red) and the 2 stopped F-A ids.
+Closure round for F251 (its own reviewer-gated round, per the ruling).
 **full suite: 0 quarantined, 0 churning, 154 standing red (catalogued)**
