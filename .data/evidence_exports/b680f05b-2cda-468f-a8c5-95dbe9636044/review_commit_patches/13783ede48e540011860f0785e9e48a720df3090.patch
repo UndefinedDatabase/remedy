@@ -1,0 +1,46 @@
+13783ede48e540011860f0785e9e48a720df3090
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index 4294a2d..a156781 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -24,8 +24,7 @@ through the #157 merge, so it is an ancestor of d8ac7fa. Tabled anyway.
+ | Path | +/- | Reason |
+ |---|---|---|
+ | .agent/plan.md | +40 −27 | 16817d4 — first S1 result + S2 table |
+-| .agent/handoff.md | +116 −91 | 977ea47 — round-1 handback, 116 lines (over cap) |
+-| .agent/handoff.md | rewrite → 91 | da61a40 — trim, still over ≤60 |
++| .agent/handoff.md | +116 −91, then → 91 | 977ea47 round-1 handback (over cap), da61a40 trim |
+ 
+ ### 69cabd6 persist R-0150 · 6b22988 baseline evidence
+ | Path | +/- | Reason |
+@@ -53,9 +52,9 @@ through the #157 merge, so it is an ancestor of d8ac7fa. Tabled anyway.
+ ## External actions
+ `gh pr merge 157 --merge --delete-branch` → merged, main 73ac5cc..d8ac7fa ·
+ `git pull --ff-only` → clean · `gh pr list --state open` → `[]` before branching ·
+-`git push -u origin feature/f251-suite-stabilization` + pushes at 977ea47, da61a40,
+-69cabd6, ffc49fa, 6b22988, 1d0df28, this commit · `git worktree add`/`remove` of a
+-clean-main control tree in the scratchpad (removed) · no PR — reviewer-gated.
++`git push -u origin feature/f251-suite-stabilization` + a push per commit since ·
++`git worktree add`/`remove` of a clean-main control tree in the scratchpad
++(removed) · no PR — reviewer-gated.
+ 
+ ## Verification
+     run1 pytest -n auto -q → 168 failed, 14138 passed, 8 skipped, 1 error in
+@@ -87,8 +86,7 @@ f251-r1-1 `bbc0f9f5…`, f251-r1-2 `c71e23d8…`, f251-r1-3 `c61db1cd…`, f251-
+   commits and destroy the set-comparison evidence.
+ - **Cap breaches, self-reported:** 977ea47/da61a40 were 116/91 lines and ffc49fa 110,
+   against ≤60 (≤100 only with >5 commit tables). This file has 6 tables and is ≤100.
+-- **S1 not re-run** — already executed truthfully; the order says skip a half already
+-  done and do not re-run to reconstruct. Artifacts are the originals.
++- **S1 not re-run** — already executed truthfully; artifacts are the originals.
+ - **Named classes vs measurement:** "3 .agent contract failures" is really **9** (D4);
+   "~14 catalog/discovery" = D9+D10+F-B = 15; the "integrity-check
+   live_review_verdict matcher gap" has **no pytest id** (a `remedy integrity check`
+@@ -101,6 +99,5 @@ f251-r1-1 `bbc0f9f5…`, f251-r1-2 `c71e23d8…`, f251-r1-3 `c61db1cd…`, f251-
+   `TestFeatureLedger` pins (`TOTAL_FEATURES = 250`). 250 @73ac5cc vs 251 @d8ac7fa.
+ 
+ ## Next
+-Operator ruling on the 156 standing-red classes (fix campaign vs mass quarantine vs
+-re-scope F251 to the 19 flake ids) and on R-0151.
++Operator ruling on the 156 standing-red classes and on R-0151.
+ **full suite on main: 0 quarantined, 14 churning, 156 standing red**

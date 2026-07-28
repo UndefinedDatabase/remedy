@@ -1,0 +1,85 @@
+{
+ "actual_changed_files": [
+  "docs/roadmap/ROADMAP.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F251.md",
+  "docs/roadmap/features/T1_F252.md",
+  "tests/cli/test_job_rerun_manifest.py",
+  "tests/cli/test_runtime_cmd.py",
+  "tests/conftest.py",
+  "tests/docs/test_docs_consistency.py",
+  "tests/orchestration/test_run_manifest.py",
+  "tests/ports.py",
+  "tests/runtimes/test_dev_server.py",
+  "tests/runtimes/test_runtime_cli_process_boundary.py",
+  "tests/runtimes/test_runtime_lifecycle_safety.py",
+  "tests/runtimes/test_runtime_state_machine.py",
+  "tests/runtimes/test_supervisor_portability.py",
+  "tests/test_data_paths.py"
+ ],
+ "changed_files_match": true,
+ "completion_mode": "manual_operator_repair",
+ "completion_provider_call_count": 0,
+ "expected_changed_files": [
+  "docs/roadmap/ROADMAP.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F251.md",
+  "docs/roadmap/features/T1_F252.md",
+  "tests/cli/test_job_rerun_manifest.py",
+  "tests/cli/test_runtime_cmd.py",
+  "tests/conftest.py",
+  "tests/docs/test_docs_consistency.py",
+  "tests/orchestration/test_run_manifest.py",
+  "tests/ports.py",
+  "tests/runtimes/test_dev_server.py",
+  "tests/runtimes/test_runtime_cli_process_boundary.py",
+  "tests/runtimes/test_runtime_lifecycle_safety.py",
+  "tests/runtimes/test_runtime_state_machine.py",
+  "tests/runtimes/test_supervisor_portability.py",
+  "tests/test_data_paths.py"
+ ],
+ "findings": [],
+ "human_final_reviewer_required": true,
+ "job_id": "b680f05b-2cda-468f-a8c5-95dbe9636044",
+ "linked_prior_job_ids": [],
+ "linked_prior_job_summaries": [],
+ "per_task_changed_files": {
+  "T001": [
+   "docs/roadmap/ROADMAP.md",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F251.md",
+   "docs/roadmap/features/T1_F252.md",
+   "tests/cli/test_job_rerun_manifest.py",
+   "tests/cli/test_runtime_cmd.py"
+  ],
+  "T002": [
+   "tests/conftest.py",
+   "tests/docs/test_docs_consistency.py",
+   "tests/orchestration/test_run_manifest.py",
+   "tests/ports.py",
+   "tests/runtimes/test_dev_server.py",
+   "tests/runtimes/test_runtime_cli_process_boundary.py"
+  ],
+  "T003": [
+   "tests/runtimes/test_runtime_lifecycle_safety.py",
+   "tests/runtimes/test_runtime_state_machine.py",
+   "tests/runtimes/test_supervisor_portability.py",
+   "tests/test_data_paths.py"
+  ]
+ },
+ "prior_execution_provider_call_count": 0,
+ "review_mode": "operator_attested_manual_completion",
+ "root_verification": {
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 682
+ },
+ "schema_version": "1.0.0",
+ "superseded_prior_run_ids": [],
+ "task_verdicts": {
+  "T001": "operator_attested",
+  "T002": "operator_attested",
+  "T003": "operator_attested"
+ },
+ "verdict": "PASS"
+}

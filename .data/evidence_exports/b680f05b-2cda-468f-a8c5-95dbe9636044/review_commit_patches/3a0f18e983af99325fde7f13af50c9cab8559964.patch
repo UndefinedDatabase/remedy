@@ -1,0 +1,174 @@
+3a0f18e983af99325fde7f13af50c9cab8559964
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index a630b7d..9135e83 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -1,12 +1,12 @@
+-# Interim handback — F251 R1 (repair of R-0150)
++# Handback — F251 R1: R-0150 repair + S1 baseline + S2 table
+ 
+ ## Range
+ Review of `d8ac7fa..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR.
+ `8aa10d1` is NOT in this range: it landed on the chore branch and reached main
+-through the #157 merge, so it is an ancestor of d8ac7fa. Tabled below anyway.
++through the #157 merge, so it is an ancestor of d8ac7fa. Tabled anyway.
+ 
+ ## Commits
+-### 8aa10d1 chore(plan): persist the amendment R1 PASS verdict — on chore/plan-amendment-flake-debt, merged via #157
++### 8aa10d1 chore(plan): persist the amendment R1 PASS verdict — chore branch, merged via #157
+ | Path | +/- | Reason |
+ |---|---|---|
+ | .agent/authored/pamend-r2-1.md | +30 | operator verdict text, sha256 08086518… |
+@@ -20,48 +20,46 @@ through the #157 merge, so it is an ancestor of d8ac7fa. Tabled below anyway.
+ | .agent/plan.md | +35 −51 | full replace from f251-r1-3 (cmp 0) |
+ | docs/roadmap/STATUS.md | +1 −1 | `[ ]`→`[~]` from f251-r1-2 (containment 0) |
+ 
+-### 16817d4 docs(f251): S1 baseline result and S2 per-class decision table
++### 16817d4 / 977ea47 / da61a40 — pre-repair round commits
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/plan.md | +40 −27 | S1 measured result + S2 per-class table |
++| .agent/plan.md | +40 −27 | 16817d4 — first S1 result + S2 table |
++| .agent/handoff.md | +116 −91 | 977ea47 — round-1 handback, 116 lines (over cap) |
++| .agent/handoff.md | rewrite → 91 | da61a40 — trim, still over ≤60 |
+ 
+-### 977ea47 chore(f251): handback for round 1 (stop-on-red after S2)
++### 69cabd6 chore(f251): persist R-0150 — stale handback
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/handoff.md | +116 −91 | round-1 handback (116 lines — over the cap) |
++| .agent/authored/f251-r1-4.md | +34 | verdict text, sha256 413ee9fe… |
++| .agent/live_review.md | +28 −4 | full replace from f251-r1-4 (cmp 0) |
+ 
+-### da61a40 chore(f251): trim handback to the AGENTS.md line cap
++### 6b22988 chore(f251): commit the S1 baseline evidence
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/handoff.md | rewrite → 91 lines | still over ≤60; flagged, not hidden |
++| .agent/f251_baseline/ | +908 (7 files) | run1/run2 id sets, serial + clean-main controls, flake set, timings, class map |
+ 
+-### 69cabd6 + this commit (self-reference, R-0149 grouped table)
++### ffc49fa + 1d0df28 + this commit (self-reference, R-0149 grouped table)
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/authored/f251-r1-4.md | +34 | 69cabd6 — R-0150 verdict text, sha256 413ee9fe… |
+-| .agent/live_review.md | +28 −4 | 69cabd6 — full replace from f251-r1-4 (cmp 0) |
+-| .agent/handoff.md | rewrite | this commit — the R-0150 repair |
++| .agent/handoff.md | rewrite | ffc49fa — interim handback (R-0150 repair) |
++| .agent/plan.md | +28 −22 | 1d0df28 — S2 table with churn + root-cause columns |
++| .agent/handoff.md | rewrite | this commit — final handback, supersedes ffc49fa |
+ 
+-## Item status — standing block steps 1–9
++## Item status — this repair round (a)–(d)
+ | Item | Status | Reason |
+ |---|---|---|
+-| 1 verdict commit (pamend-r2-1) | done | 8aa10d1, cmp 0, pushed |
+-| 2 merge #157, main clean | done | main 73ac5cc..d8ac7fa, porcelain empty |
+-| 3 F251 claim (branch, STATUS `[~]`) | done | 6280cb0, pushed |
+-| 4 S1 baseline | done | ran in full; transcripts below; files not yet committed |
+-| 5 S2 decision table | done | 16817d4 (in .agent/plan.md) |
+-| 6 S3 root-cause fixes | skipped | stop-on-red — see Deviations |
+-| 7 S4 quarantine | skipped | stop-on-red — see Deviations |
+-| 8 S5 triple-run proof | skipped | unreachable under the declared scope |
+-| 9 canary | done | 42 passed |
++| (a) persist R-0150, own commit, first | done | 69cabd6, cmp 0, pushed |
++| (b) fix R-0150 — honest interim handback | done | ffc49fa, `Done: R-0150` in body |
++| (c) S1 baseline | done | not re-run — already executed truthfully; artifacts committed at 6b22988 |
++| (d) S2 decision table | done | 1d0df28 |
++| canary | done | 42 passed in 14.84s |
+ 
+ ## External actions
+ `gh pr merge 157 --merge --delete-branch` → merged, main 73ac5cc..d8ac7fa ·
+-`git checkout main && git pull --ff-only` → up to date, clean ·
+-`gh pr list --state open` → `[]` before branching ·
+-`git push -u origin feature/f251-suite-stabilization` → new branch, then pushes at
+-977ea47, da61a40, 69cabd6 · `git worktree add`/`remove` of a clean-main control
+-tree under the session scratchpad (removed; `git worktree list` clean) ·
++`git pull --ff-only` → clean · `gh pr list --state open` → `[]` before branching ·
++`git push -u origin feature/f251-suite-stabilization`, then pushes at 977ea47,
++da61a40, 69cabd6, ffc49fa, 6b22988, 1d0df28 · `git worktree add`/`remove` of a
++clean-main control tree in the session scratchpad (removed; list clean) ·
+ no PR created — reviewer-gated.
+ 
+ ## Verification
+@@ -69,42 +67,51 @@ no PR created — reviewer-gated.
+           → 168 failed, 14138 passed, 8 skipped, 1 error in 176.97s; real 2m57.371s
+     run2  time python3 -m pytest -n auto -q
+           → 167 failed, 14139 passed, 8 skipped in 172.56s;          real 2m53.019s
+-    set diff run1/run2 → 161 common, 8 only-run1, 6 only-run2 (14 churning ids)
+-    161 re-run serially (--tb=line) → 156 failed, 5 passed in 134.76s
+-    same 161 on a clean main worktree → 156 failed, 5 passed in 143.98s;
++    diff run1/run2 → 161 common, 8 only-run1, 6 only-run2 (14 churning)
++    161 re-run serially → 156 failed, 5 passed (134.76s)
++    same 161 serially in a clean main worktree → 156 failed, 5 passed (143.98s);
+           comm both directions EMPTY ⇒ the 156 are pre-existing on main
+-    19 flake ids isolated, -n auto ×3 → 5 failed/14 passed each, DIFFERENT ids
+-    19 flake ids isolated, serial     → 5 failed, another id set
+-    canary python3 -m pytest tests/cli/test_golden_path.py -q → 42 passed in 14.78s
++    19 flake ids isolated -n auto ×3 → 5 failed each, DIFFERENT ids ⇒ real flake
++    19 flake ids isolated serial     → 5 failed, another id set ⇒ order/cache dep
++    canary tests/cli/test_golden_path.py -q → 42 passed in 14.84s
+     git status --porcelain → empty (before this commit)
+-Baseline transcripts are still in the session scratchpad; committing them under
+-`.agent/f251_baseline/` is the next action of this repair round.
+ 
+ ## Authored-text proofs
+ sha256 matched the BEGIN marker BEFORE every commit: pamend-r2-1 `08086518…`,
+ f251-r1-1 `bbc0f9f5…`, f251-r1-2 `c71e23d8…`, f251-r1-3 `c61db1cd…`,
+-f251-r1-4 `413ee9fe…`. `cmp` exit 0 for each full replace of `.agent/live_review.md`
+-and `.agent/plan.md`; containment exit 0 for f251-r1-2 → STATUS.md (numstat 1/1).
++f251-r1-4 `413ee9fe…`. `cmp` exit 0 for every full replace of
++`.agent/live_review.md` and `.agent/plan.md`; containment exit 0 for f251-r1-2 →
++STATUS.md (numstat 1/1, no other line touched).
+ 
+ ## Deviations & assumptions
+-- **R-0150 range note (not a dispute of the finding):** the stale handback is real
+-  for the reviewed range `d8ac7fa..6280cb0`. It was rewritten later on the same
+-  branch at 977ea47 and trimmed at da61a40, i.e. two commits past the reviewed tip,
+-  so HEAD already carried a round handback before this repair. This commit makes it
+-  compliant per the template regardless. Resolved: this commit.
+-- **Cap breach, self-reported:** 977ea47 wrote a 116-line handoff and da61a40 cut it
+-  to 91; the AGENTS.md cap is ≤60 (≤100 only with >5 commit tables). This file has
+-  6 commit tables, so ≤100 now applies.
+-- **Stop-on-red at S3.** 156 of the 161 stable failures are deterministic and
+-  identical on clean main — standing red from product/docs/test drift, not flake.
+-  Only 14 ids churn. Fixing them needs product-code change beyond a hermetic-test
+-  seam; quarantining them would mark genuine regressions as quarantined. Both are
+-  excluded by T1_F251.md. Operator ruling requested.
+-- **Finding candidate (renumbered R-0151, was reported as R-0150 last round):**
+-  PR #157 took `docs/roadmap/features/` 250 → 251 and STATUS 250 → 251, breaking
+-  both pins in `tests/docs/test_docs_consistency.py::TestFeatureLedger`
+-  (`TOTAL_FEATURES = 250`). Verified 250 @73ac5cc vs 251 @d8ac7fa. Untouched.
++- **R-0150 range note (not a dispute):** the stale handback is real for the
++  reviewed range `d8ac7fa..6280cb0`. It was rewritten at 977ea47 and trimmed at
++  da61a40 — two commits past the reviewed tip — so HEAD already carried a round
++  handback before this repair. Made template-compliant regardless. Resolved: ffc49fa.
++- **Oversize commit declared (AGENTS.md exception, first and only in F251):**
++  6b22988 is +908 lines. Inseparable: it is one baseline measurement — five
++  failure-id lists plus their timings and class map. Splitting it would put halves
++  of one id set in different commits and destroy the set-comparison evidence.
++- **Cap breaches, self-reported:** 977ea47 wrote 110–116-line handoffs against a
++  ≤60 cap (≤100 only with >5 commit tables); ffc49fa was 110. This file has 7
++  commit tables and stays ≤100.
++- **S1 not re-run.** It had already executed truthfully; the order says skip a half
++  already done and recorded, and do not re-run to reconstruct. Committed artifacts
++  are the originals from those runs, not a re-measurement.
++- **Named classes vs measurement:** "3 .agent contract failures" is really **9**
++  (D4). "~14 catalog/discovery" = D9+D10+F-B = 15. The "integrity-check
++  live_review_verdict matcher gap" has **no pytest id** — it is a `remedy integrity
++  check` warn, so nothing in this suite maps to it.
++- **Stop-on-red stands.** 156 of 161 stable failures are deterministic and identical
++  on clean main — standing red from product/docs/test drift, not flake. Fixing needs
++  product-code change beyond a hermetic-test seam; quarantining would mark genuine
++  regressions as quarantined. Both excluded by T1_F251.md.
++- **Finding candidate R-0151** (was reported as R-0150 last round; renumbered per
++  f251-r1-4): PR #157 took `docs/roadmap/features/` 250 → 251 and STATUS likewise,
++  breaking both `TestFeatureLedger` pins (`TOTAL_FEATURES = 250`). Verified 250
++  @73ac5cc vs 251 @d8ac7fa. Untouched — the fix is a decision, not a mechanical edit.
+ 
+ ## Next
+-Commit the baseline files under `.agent/f251_baseline/`, then the S2 table commit
+-and the final handback of this repair round.
++Operator ruling on the 156 standing-red classes (fix campaign vs mass quarantine vs
++re-scope F251 to the 19 flake ids) and on R-0151.
++**full suite on main: 0 quarantined, 14 churning, 156 standing red**

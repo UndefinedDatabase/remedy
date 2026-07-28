@@ -1,100 +1,100 @@
-# Handback — F251 R4: R4 verdict + Ruling A persisted, F252 registered
+# Handback — F251 CLOSURE (protocol v3): STATUS [x], READY package, PR open
 
 ## Range
-Review of `6c98406..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR; no closure work this round, as ordered.
+Review of `39c33ad..HEAD` — `feature/f251-suite-stabilization`, pushed, PR open, NOT
+merged. ACCEPTED_HEAD = `86a0df39ee0928742add7ef457dbd3d1e4efb7f2`.
 
 ## Commits
-### c1b3341 chore(f251): persist the R4 PASS verdict + Ruling A plan
+### b375b32 R5 verdict + closure plan · 5b5b271 authored STATUS line
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r4-1.md | +43 | verdict text, sha256 e8932469… |
-| .agent/authored/f251-r4-2.md | +25 | plan text, sha256 069a1e07… |
-| .agent/live_review.md | +75 −43 | full replace from r4-1 (cmp 0) |
-| .agent/plan.md | +56 −45 | full replace from r4-2 (cmp 0); `Done: R-0153` |
+| .agent/authored/f251-r5-1.md, -r5-3.md | +41, +36 | verdict f90d18e7…, plan 2f01d2bb… (cmp 0) |
+| .agent/authored/f251-r5-2.md | +1 | STATUS skeleton, sha256 0b3bbef5… |
+| .agent/{live_review,plan}.md | rewrite | full replaces from r5-1 / r5-3 |
 
-### 8a7c8e7 docs(f251): Ruling A — scope narrowed to flake stabilization
+### ab22589 Built State · 86a0df3 final plan state before packaging
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r4-3.md | +18 | ruling text, sha256 68281fb6… |
-| docs/roadmap/features/T1_F251.md | +18 −0 | inserted between Goal & Done and Rules |
+| docs/roadmap/features/T1_F251.md | +62 | ab22589 — Built State: seams, evidence, result, risks |
+| .agent/plan.md | +12 −6 | 86a0df3 — pre-packaging state; the head the package covers |
 
-### 7d4b586 docs(roadmap): register F252 + ledger pin 252 — ATOMIC
+### this commit — closure (self-reference, R-0149 grouped table)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r4-4..6.md | +72 | sha256 55350c40…, 8e361d6f…, 36e6c792… |
-| docs/roadmap/features/T1_F252.md | +63 | full copy of r4-4 (cmp 0) |
-| docs/roadmap/STATUS.md | +1 −0 | F252 line after F251 `[~]`, before F050 |
-| docs/roadmap/ROADMAP.md | +9 −0 | Tier-1 entry after F251, before F050 |
-| tests/docs/test_docs_consistency.py | +5 −3 | TOTAL_FEATURES 251→252, comment names F252 |
-
-### this commit (self-reference, R-0149 grouped table)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/plan.md | rewrite | progress marks on the applied authored plan |
-| .agent/handoff.md | rewrite | this handback — 100 lines (`wc -l`) |
+| docs/roadmap/STATUS.md | +1 −1 | authored `[x]` line, four slots filled |
+| .data/evidence_exports/b680f05b-…/ | ~90 files | evidence dir, committed AFTER the READY zip |
+| .agent/{plan,handoff}.md | rewrite | final state; this file |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1 verdict + plan (r4-1, r4-2) | done | c1b3341, both sha256 + cmp 0 |
-| 2 T1_F251 Ruling A (r4-3) | done | 8a7c8e7, containment 0 |
-| 3 atomic ledger (r4-4/5/6 + pin) | done | 7d4b586, one commit, never split |
-| 4a FeatureLedger | done | 4 passed, 288 deselected |
-| 4b full run vs catalogued 154 | **delta** | 152 — see below |
-| 4c canary | done | 42 passed in 14.79s |
-| 4d porcelain | done | empty |
-| R-0153 | **Resolved** | authored plan applied verbatim |
+| 1 Commit A (r5-1, r5-3) | done | b375b32, both sha256 + cmp 0 |
+| 2 Commit B Built State | done | ab22589 |
+| 3 Preconditions | done | porcelain empty; integrity passed=true, fail_count=0 |
+| 4 Evidence job | done | b680f05b-2cda-468f-a8c5-95dbe9636044 |
+| 5 Review zip | done | READY_FOR_REVIEW on attempt 3 |
+| 6 Commit C STATUS `[x]` | done | blank-back proof byte-identical |
+| 7 PR into main, NOT merged | done | see External actions |
 
-## Authored-text proofs
-All six texts hashed BEFORE any commit; every one matched the BEGIN marker
-first time — no wrap recovery needed: r4-1 `e8932469…`, r4-2 `069a1e07…`,
-r4-3 `68281fb6…`, r4-4 `55350c40…`, r4-5 `8e361d6f…`, r4-6 `36e6c792…`.
-`cmp` exit 0: live_review←r4-1, plan←r4-2, T1_F252.md←r4-4.
-Containment exit 0: r4-3→T1_F251.md, r4-5→STATUS.md, r4-6→ROADMAP.md.
-STATUS numstat `1 0` — one line added, no other line touched. ROADMAP `9 0`.
+## Preconditions (raw)
+    git status --porcelain        → (empty)
+    remedy integrity check --json → passed=true, fail_count=0, check_count=5
+      handler_import=pass handlers=312 · plan_consistency=pass · high_blockers_open=pass
+      relevant_untracked=pass untracked=0,relevant=0
+      live_review_verdict=warn "no verdict found" — known matcher backlog, a warn
+      and not a fail (F048 precedent)
 
-## 4b — the full-run delta, stated plainly
-    time python3 -m pytest -n auto -q
-    → 152 failed, 14154 passed, 8 skipped in 182.49s; real 3m2.912s
-    diff vs .agent/f251_baseline/churn_gate2_run1.txt → NOT byte-identical
-    the 152 are a strict SUBSET of the catalogued 154; comm shows ZERO ids
-    present now but absent from the catalog — no new failure, no regression
-    the two missing ids are exactly the documented D4 pair, now GREEN:
-      tests/orchestration/test_test_runner.py::
-        TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
-      tests/ui_server/test_dashboard_contract.py::
-        TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
+## Evidence job + package
+    job         b680f05b-2cda-468f-a8c5-95dbe9636044 (create_manual_completion_bundle,
+                review_feature_id="f251", zero-provider, attested T001–T003)
+    runs        9 runs, ALL exit_code 0 / failed 0, 682 passed; validated BEFORE
+                packaging: authoritative=true, is_valid_current_run=true, issues=[]
+    package     remedy-review-20260728-190328-READY_FOR_REVIEW.zip
+    SHA-256     95af04c380da89879bbf4f10cd2529279553a571c5c72b3870a190a90641af2f
+    subject     d8ac7fa…..86a0df3… (32 commits) · members 1560 · testzip() → None
 
-**Mechanism, verified not assumed.** The assertion is a bare substring test,
-`assert "Steps" in (.agent/live_review.md)`. The authored R4 verdict contains
-the clause "(the current live_review has no Steps section)" — the sentence
-*denying* a Steps section supplies the literal substring that makes the test
-pass. This round's docs edits moved nothing; it is the D4 live-state coupling
-behaving as F251 documented, opposite in direction to R3. Recorded, not
-touched: F252 work-breakdown item 7.
+**Two zip attempts failed first and are recorded, not hidden.**
+1. Bundle built at 5b5b271, then I committed plan.md, so staging refused:
+   `REVIEW_ZIP_ERROR: member '.agent/plan.md' hashes to c00079db1ed2 but the plan
+   declared 2f01d2bb4ea1` (the verbatim r5-3 hash the bundle had recorded). My
+   ordering error: the bundle must be built at the final pre-zip head. Deleted,
+   rebuilt at 86a0df3.
+2. Packaged BLOCKED_EVIDENCE with one validation error:
+   `verification_tests.json field verification_tests.runs[7].node_ids[11] carries
+   a local absolute path`. The id is the legitimate parametrize case
+   `test_every_field_changes_the_fingerprint[health_path-/healthz]` — the scanner
+   reads the `/healthz` PARAMETER as a local path — a packaging false positive, not
+   a defect in the run. Resolved by recording two other green modules instead
+   (test_runtime_cmd, test_runtime_cli_process_boundary — both also patched by the
+   port seam, 0 slash-bearing ids). Blocked zip and bundle deleted, nothing kept.
+
+## STATUS-line proofs
+    blank-back: the four measured values replaced by <JOB_ID> / <ZIP_FILENAME> /
+      <ZIP_SHA256> / <ACCEPTED_HEAD_FULL_SHA> yields sha256
+      0b3bbef5751813004bdfda4aefccb54bb14ed5230ffd1223af251d441d9892b2
+      == f251-r5-2 authored skeleton, byte-identical
+    grep "^- \[~\] F251 " docs/roadmap/STATUS.md → exit 1 (old line GONE)
+    git diff --numstat -- docs/roadmap/STATUS.md → 1 1 (no other line touched)
 
 ## External actions
-A push per commit (c1b3341, 8a7c8e7, 7d4b586, this one). No PR —
-reviewer-gated. No merges.
-
-## Verification
-    4a  pytest tests/docs/test_docs_consistency.py -q -k FeatureLedger
-        → 4 passed, 288 deselected in 0.17s
-    4b  see above — delta of exactly the 2 D4 ids, both green
-    4c  pytest tests/cli/test_golden_path.py -q → 42 passed in 14.79s
-    4d  git status --porcelain → empty (before this commit)
+Pushes after every commit. `gh pr create` into main — PR **#158**, NOT merged
+(the next feature's Open PR Gate merges it; the gap is the operator's
+manual-review window). No merges this session.
 
 ## Deviations & assumptions
-- 4b is reported as a delta, not green. The ordered criterion was byte-identical
-  to the catalogued 154; the run is 152. Nothing regressed — the set shrank by
-  the two ids the step flagged as state-coupled — but "byte-identical" would be
-  false, so the claim is not made.
-- `.agent/plan.md` carries progress marks on top of the verbatim authored text
-  (applied cmp-clean at c1b3341): AGENTS.md requires plan.md current per commit. The divergence is stated in the file itself.
-- No D-class edits. No closure work. F252 is registration only.
-- The catalogued 154 in `.agent/f251_baseline/` is left as the F251 baseline
-  of record; F252 inherits it via class_map.txt.
+- **accepted HEAD = 86a0df3, not ab22589.** The step named Commit B's sha; protocol
+  v3 defines accepted HEAD as the manifest's `committed_review_subject.head_commit`,
+  and the package covers 86a0df3. Naming ab22589 would cite a head the package does
+  not cover, so protocol and measured truth won. Flagged, not silent.
+- **churn-gate runs are NOT in verification_runs.** The producer refuses any run with
+  `exit_code != 0`, and those carry the 154 standing red. They evidence
+  churn-freedom, in `.agent/f251_baseline/` and Built State — not a green-suite claim.
+- Precondition 2 ("full relevant suite green") is met in its Ruling-A form per the
+  R5 verdict: churn-free identical sets, standing red owned by F252.
+- Package not committed (gitignored; F048 precedent). Open findings: 0.
+- Runtime actuals: 5 rounds (R1–R5) + closure; models/tokens **not-measured**
+  (zero-provider manual bundle, provider_call_count=0).
 
 ## Next
-Closure round for F251 (its own reviewer-gated round, per the ruling).
-**full suite: 0 quarantined, 0 churning, 154 standing red (catalogued)**
+Window 1 closure review + feature-done banner.
+**full suite: 0 quarantined, 0 churning, 154 standing red (catalogued → F252)**

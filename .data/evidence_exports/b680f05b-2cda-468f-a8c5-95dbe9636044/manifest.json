@@ -1,0 +1,34 @@
+{
+ "bundle_generated_at": "2026-07-28T17:03:21Z",
+ "bundle_type": "job_evidence",
+ "bundle_version": "0.1.0",
+ "completion_mode": "manual_operator_repair",
+ "context_strategy": "task_bounded_sequential_job",
+ "created_at": "2026-07-28T17:03:21Z",
+ "effective_status": "operator_attested_complete",
+ "error": "",
+ "evidence_available": true,
+ "execution_config": null,
+ "finished_at": "",
+ "human_final_reviewer_required": true,
+ "job_file_sha256": "0c7b095a09d693ffa7dbc21f5fd90dc5ff15aece1c5dff64e7ce1db45d99f6cf",
+ "job_id": "b680f05b-2cda-468f-a8c5-95dbe9636044",
+ "job_title": "F251 Full-suite stabilization (flake-debt paydown)",
+ "job_workspace_path": "",
+ "persisted_status": "planned",
+ "repo_identity": "[local]",
+ "status": "planned",
+ "target_guard": null,
+ "task_count": 3,
+ "task_ids": [
+  "T001",
+  "T002",
+  "T003"
+ ],
+ "task_run_ids": {},
+ "task_statuses": {
+  "T001": "pending",
+  "T002": "pending",
+  "T003": "pending"
+ }
+}

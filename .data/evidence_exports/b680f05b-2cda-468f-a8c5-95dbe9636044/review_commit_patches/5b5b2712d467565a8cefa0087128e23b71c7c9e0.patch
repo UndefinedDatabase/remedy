@@ -1,0 +1,8 @@
+5b5b2712d467565a8cefa0087128e23b71c7c9e0
+diff --git a/.agent/authored/f251-r5-2.md b/.agent/authored/f251-r5-2.md
+new file mode 100644
+index 0000000..d280437
+--- /dev/null
++++ b/.agent/authored/f251-r5-2.md
+@@ -0,0 +1 @@
++- [x] F251 — Full-suite stabilization (flake-debt paydown) (S1–S5 complete, scope per operator ruling A 2026-07-28; accepted 2026-07-28 · live review PASS — ACCEPTED · Evidence job <JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <ACCEPTED_HEAD_FULL_SHA>)

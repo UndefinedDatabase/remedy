@@ -1,0 +1,135 @@
+diff --git a/tests/runtimes/test_runtime_lifecycle_safety.py b/tests/runtimes/test_runtime_lifecycle_safety.py
+index 1474280..41abe12 100644
+--- a/tests/runtimes/test_runtime_lifecycle_safety.py
++++ b/tests/runtimes/test_runtime_lifecycle_safety.py
+@@ -35,6 +35,7 @@ from packages.runtimes.dev_server import (
+     verify_state,
+ )
+ from packages.runtimes.runtime_config import load_config_spec
++from tests.ports import worker_port
+ 
+ SERVER = """
+ import http.server, os
+@@ -107,7 +108,7 @@ def project(tmp_path) -> Path:
+     (cfg / "config.toml").write_text(
+         "[runtime]\n"
+         f'cmd = ["{sys.executable}", "server.py"]\n'
+-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 15\n'
++        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 15\n'
+     )
+     return root
+ 
+@@ -115,7 +116,7 @@ def project(tmp_path) -> Path:
+ def _spec(project: Path, script: str = "server.py", timeout: float = 15.0) -> RuntimeSpec:
+     return RuntimeSpec(
+         cmd=[sys.executable, str(project / script)], cwd=str(project),
+-        port=5173, health_path="/", ready_timeout_s=timeout,
++        port=worker_port(), health_path="/", ready_timeout_s=timeout,
+     )
+ 
+ 
+@@ -244,7 +245,7 @@ class TestManagedIdentity:
+             (project / ".remedy" / "config.toml").write_text(
+                 "[runtime]\n"
+                 f'cmd = ["{sys.executable}", "server.py", "--other"]\n'
+-                'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 15\n'
++                'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 15\n'
+             )
+             with pytest.raises(SystemExit) as exc:
+                 runtime_cmd._cmd_runtime_serve(str(project), json_output=True)
+diff --git a/tests/runtimes/test_runtime_state_machine.py b/tests/runtimes/test_runtime_state_machine.py
+index 3b77e9f..72b9922 100644
+--- a/tests/runtimes/test_runtime_state_machine.py
++++ b/tests/runtimes/test_runtime_state_machine.py
+@@ -42,6 +42,7 @@ from packages.runtimes.dev_server import (
+     state_path,
+     stop_recorded_runtime,
+ )
++from tests.ports import worker_port
+ 
+ SERVER = """
+ import http.server, os, sys, time
+@@ -73,9 +74,11 @@ def project(tmp_path) -> Path:
+     return root
+ 
+ 
+-def _write_config(root: Path, *, args: str = "", port: int = 5173,
++def _write_config(root: Path, *, args: str = "", port: int | None = None,
+                   health: str = "/", timeout: float = 15.0, host: str = "127.0.0.1",
+                   env: str = "") -> None:
++    if port is None:
++        port = worker_port()
+     cfg = root / ".remedy"
+     cfg.mkdir(exist_ok=True)
+     extra = f', "{args}"' if args else ""
+@@ -94,7 +97,7 @@ def _write_config(root: Path, *, args: str = "", port: int = 5173,
+ def _spec(project: Path, *args: str, timeout: float = 15.0) -> RuntimeSpec:
+     return RuntimeSpec(
+         cmd=[sys.executable, str(project / "server.py"), *args],
+-        cwd=str(project), port=5173, health_path="/", ready_timeout_s=timeout,
++        cwd=str(project), port=worker_port(), health_path="/", ready_timeout_s=timeout,
+     )
+ 
+ 
+diff --git a/tests/runtimes/test_supervisor_portability.py b/tests/runtimes/test_supervisor_portability.py
+index f1bc071..ad80ccc 100644
+--- a/tests/runtimes/test_supervisor_portability.py
++++ b/tests/runtimes/test_supervisor_portability.py
+@@ -41,6 +41,7 @@ from tests.runtimes.runtime_cleanup import (
+     RuntimeRegistry,
+     basetemp_survivors,
+ )
++from tests.ports import worker_port
+ 
+ pytestmark = pytest.mark.subprocess
+ 
+@@ -136,7 +137,7 @@ def project(tmp_path) -> Path:
+     (cfg / "config.toml").write_text(
+         "[runtime]\n"
+         f'cmd = ["{sys.executable}", "server.py"]\n'
+-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 20\n'
++        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 20\n'
+     )
+     return root
+ 
+@@ -926,7 +927,7 @@ def secret_project(tmp_path) -> Path:
+     (cfg / "config.toml").write_text(
+         "[runtime]\n"
+         f'cmd = ["{sys.executable}", "server.py"]\n'
+-        'cwd = "."\nport = 5173\nhealth_path = "/"\nready_timeout_s = 20\n'
++        'cwd = "."\nport = ' f'{worker_port()}' '\nhealth_path = "/"\nready_timeout_s = 20\n'
+         "[runtime.env]\n"
+         f'API_TOKEN = "{SECRET}"\n'
+     )
+diff --git a/tests/test_data_paths.py b/tests/test_data_paths.py
+index a9f4913..f3cf3a0 100644
+--- a/tests/test_data_paths.py
++++ b/tests/test_data_paths.py
+@@ -16,6 +16,27 @@ import re
+ from pathlib import Path
+ from uuid import uuid4
+ 
++import pytest
++
++
++@pytest.fixture(autouse=True)
++def _hermetic_config_cache():
++    """Isolate these tests from the process-global config cache.
++
++    ``resolve_data_root()`` falls back to ``get_config().get("data_dir")``,
++    and ``get_config()`` caches a ``RemedyConfig`` built from the
++    cwd-relative ``remedy.toml`` (``_DEFAULT_PROJECT_PATH``). Any earlier
++    test in the same xdist worker that chdir'd into a temp directory
++    holding a ``remedy.toml`` leaves that ``data_dir`` in the cache, so the
++    default-root assertions here saw another test's value and failed
++    depending on execution order. Reset on both sides so this module never
++    inherits — and never exports — a poisoned cache.
++    """
++    from packages.orchestration.config import reset_config
++    reset_config()
++    yield
++    reset_config()
++
+ 
+ class TestResolveDataRoot:
+     def test_env_var_override(self, monkeypatch, tmp_path):

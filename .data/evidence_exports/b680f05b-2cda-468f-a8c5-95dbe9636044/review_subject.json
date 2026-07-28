@@ -1,0 +1,879 @@
+{
+ "base_commit": "d8ac7faab8600d6f4be9277920322433f17c29d2",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f251-r1-1.md",
+    ".agent/authored/f251-r1-2.md",
+    ".agent/authored/f251-r1-3.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "6280cb0c9f81c7a8cb2de09b91bb3395c34854df",
+   "parents": [
+    "d8ac7faab8600d6f4be9277920322433f17c29d2"
+   ],
+   "patch_sha256": "bdf3267fd91bafc22e1e1ef495f611111a444b658ce850855a7a7333bf1f199c",
+   "subject": "chore(f251): claim F251 \u2014 round bookkeeping",
+   "tree": "61db66c70009cb5f4e98599e2b2c8e7bdf473ccd"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md"
+   ],
+   "commit": "16817d4e7060b711d5aa3044d89a3a2ca41893af",
+   "parents": [
+    "6280cb0c9f81c7a8cb2de09b91bb3395c34854df"
+   ],
+   "patch_sha256": "1467e144e0a2de69d801fdd4c69ceb071489d4e563e82cdf500b17a063b2c672",
+   "subject": "docs(f251): S1 baseline result and S2 per-class decision table",
+   "tree": "22c895ee74e83d5ed29d963ac203bde141442d20"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "977ea474ec04d2749882d7b3e0df8050bf126dd9",
+   "parents": [
+    "16817d4e7060b711d5aa3044d89a3a2ca41893af"
+   ],
+   "patch_sha256": "95df6ff4e5bad19bc6764fb9f4f01610b6e5063e0fa48eece6e865e1cca81066",
+   "subject": "chore(f251): handback for round 1 (stop-on-red after S2)",
+   "tree": "605297e144a01fa221c4035c181c3bee25f25926"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "da61a4095b7c7eb3a4ad5753e7489dbe9f1a89a5",
+   "parents": [
+    "977ea474ec04d2749882d7b3e0df8050bf126dd9"
+   ],
+   "patch_sha256": "5e96ad17a237286a11ff04e859c54d2881932ae246033af3a7263754ceb031be",
+   "subject": "chore(f251): trim handback to the AGENTS.md line cap",
+   "tree": "75d1e06ffb6aa1e843250fa74b8d7b8936ce2a3b"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r1-4.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "69cabd6d2abc40cfae7cf2af413ce52165e0f802",
+   "parents": [
+    "da61a4095b7c7eb3a4ad5753e7489dbe9f1a89a5"
+   ],
+   "patch_sha256": "ff8c7974af3d167efe0723e09903995eb1eb439be6d2f108c2780ac2bee87391",
+   "subject": "chore(f251): persist R-0150 \u2014 stale handback",
+   "tree": "b3b7cba50be88e996c55f31c6a84eae5967ca853"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "ffc49fadfe415b055e081b166031ebf92fbb5e41",
+   "parents": [
+    "69cabd6d2abc40cfae7cf2af413ce52165e0f802"
+   ],
+   "patch_sha256": "67ef54434b177177fdde6e8ce835168f1cc9bedf60f4d99ef06a78d09edc17b5",
+   "subject": "chore(f251): interim handback (fix R-0150)",
+   "tree": "3503236125a32fa58b58bf8d89609e64477ce962"
+  },
+  {
+   "changed_files": [
+    ".agent/f251_baseline/class_map.txt",
+    ".agent/f251_baseline/clean_main_control.txt",
+    ".agent/f251_baseline/flake_set.txt",
+    ".agent/f251_baseline/run1.txt",
+    ".agent/f251_baseline/run2.txt",
+    ".agent/f251_baseline/serial_deterministic.txt",
+    ".agent/f251_baseline/timings.txt"
+   ],
+   "commit": "6b2298870bf6d66e24600b0da6f60b8f634f4c75",
+   "parents": [
+    "ffc49fadfe415b055e081b166031ebf92fbb5e41"
+   ],
+   "patch_sha256": "cdb4328ba748d77649fe3cf4784b229566cf4f5ccf8d414d397ee3228be80b5e",
+   "subject": "chore(f251): commit the S1 baseline evidence (2 runs, controls, class map)",
+   "tree": "681b1845e00ad23c22c009cffd3d3238318f4a21"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md"
+   ],
+   "commit": "1d0df28327e7ed2313ddd733de21f2b797ca8ba6",
+   "parents": [
+    "6b2298870bf6d66e24600b0da6f60b8f634f4c75"
+   ],
+   "patch_sha256": "f0c57076c76659d9582ac48b8e9ea8a9d7370024d7694d7ee5be45d663d2a4a3",
+   "subject": "chore(f251): S2 per-class decision table",
+   "tree": "ba08c1997e630cfdc62cbc1748e1cda6b2e45d8f"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "3a0f18e983af99325fde7f13af50c9cab8559964",
+   "parents": [
+    "1d0df28327e7ed2313ddd733de21f2b797ca8ba6"
+   ],
+   "patch_sha256": "7554a7670cb84c10288ca49bc9f78fb1dfb02b2b35aead3c64a69430e674eabc",
+   "subject": "chore(f251): final handback for the R-0150 repair round",
+   "tree": "75c21f8cadf97f3ace9fedb36dc82853d6b2ef55"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "49dbc7962daf3826f3355b75aa0c669755b4e913",
+   "parents": [
+    "3a0f18e983af99325fde7f13af50c9cab8559964"
+   ],
+   "patch_sha256": "0f7a878c53e45a4cbc029ebbcbdee7fef8bb878f3c9ca57edc62bc5955eb3b40",
+   "subject": "chore(f251): bring the handback within the AGENTS.md line cap",
+   "tree": "56f5c81acedd384159fb45d178293383ddaba41f"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "13783ede48e540011860f0785e9e48a720df3090",
+   "parents": [
+    "49dbc7962daf3826f3355b75aa0c669755b4e913"
+   ],
+   "patch_sha256": "534f2ad95c47f86b15661977c2764dc6de96a080fc47ff699d03062f31542f27",
+   "subject": "chore(f251): bring the handback within the AGENTS.md line cap",
+   "tree": "8ca8b5f24089814ab427cf37cf6e2eca196bd2f6"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r2-1.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "f0ee3e174b8e63573fbe17295df0b5b25d68139d",
+   "parents": [
+    "13783ede48e540011860f0785e9e48a720df3090"
+   ],
+   "patch_sha256": "302dc9bc1bd082526826541b1b4f176cdc3b7dc86433fa8a844f15cb658b2254",
+   "subject": "chore(f251): persist the R2 PASS verdict + R-0151/R-0152",
+   "tree": "5e1058b739fffbeabed03696d9ac825c2a445b4a"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r2-2.md",
+    ".agent/f251_baseline/reviewer_flake_extras.txt"
+   ],
+   "commit": "a8b33373797e4c7805179525890fc64d88acf7a1",
+   "parents": [
+    "f0ee3e174b8e63573fbe17295df0b5b25d68139d"
+   ],
+   "patch_sha256": "05f1c587c3071bc872169c4ed0e3a62dd80aacd7d04606e499e38ae6a38b27e9",
+   "subject": "chore(f251): reviewer flake appendix (9 second-source ids)",
+   "tree": "21be3b7af18a3f66daa391bf89decdaa046b16c6"
+  },
+  {
+   "changed_files": [
+    "tests/docs/test_docs_consistency.py"
+   ],
+   "commit": "7f67d03b90500c7d743ba47422078931fbfe9d27",
+   "parents": [
+    "a8b33373797e4c7805179525890fc64d88acf7a1"
+   ],
+   "patch_sha256": "efc5f957890c1b1c0bc98f825ece7ea267bdbd6f6d436725504e20b76b09425e",
+   "subject": "test(docs): feature ledger pin 250 -> 251 (R-0151)",
+   "tree": "b8ddfd7b7459ccc333de18a75ccd1a5914ceac73"
+  },
+  {
+   "changed_files": [
+    "tests/test_data_paths.py"
+   ],
+   "commit": "af670469469e0aae310f159494c6cc402d31fd47",
+   "parents": [
+    "7f67d03b90500c7d743ba47422078931fbfe9d27"
+   ],
+   "patch_sha256": "d08cc8b72e20c36857ea1a95aa4fce4dd9035927b393a3eadbb2ce5f30c68eb8",
+   "subject": "test(f251): isolate data_paths tests from the global config cache (F-C)",
+   "tree": "8b360643e64081721efe0db16164bbe739ea96c7"
+  },
+  {
+   "changed_files": [
+    "tests/conftest.py"
+   ],
+   "commit": "de17a00ad60f89304af780ea60e30132aca5c261",
+   "parents": [
+    "af670469469e0aae310f159494c6cc402d31fd47"
+   ],
+   "patch_sha256": "61ebf5c9158a39296420c074308d82ae143284ea7ac1dfd379a53f91e128843a",
+   "subject": "test(f251): reset the global config cache per test (F-B, F-E)",
+   "tree": "dd79fd75739589945a7160afb4a0ea726f73a871"
+  },
+  {
+   "changed_files": [
+    "tests/cli/test_runtime_cmd.py",
+    "tests/ports.py",
+    "tests/runtimes/test_dev_server.py",
+    "tests/runtimes/test_runtime_cli_process_boundary.py",
+    "tests/runtimes/test_runtime_lifecycle_safety.py",
+    "tests/runtimes/test_runtime_state_machine.py",
+    "tests/runtimes/test_supervisor_portability.py"
+   ],
+   "commit": "1c95dec2785edaf9dc9461d485f67793d0973074",
+   "parents": [
+    "de17a00ad60f89304af780ea60e30132aca5c261"
+   ],
+   "patch_sha256": "ac46bee3d16e59bfd98b4a06c123b7de9703e44bae3501a03a381038fd8ae7cb",
+   "subject": "test(f251): per-worker runtime ports (F-A, F-D)",
+   "tree": "e6d8a109d4454abeca4372a772ebdaaccbe9bde8"
+  },
+  {
+   "changed_files": [
+    "tests/conftest.py"
+   ],
+   "commit": "13572dddb359dd25fbdefbb61c2b50df57b4ed10",
+   "parents": [
+    "1c95dec2785edaf9dc9461d485f67793d0973074"
+   ],
+   "patch_sha256": "4cd9fe346efedcf4a1dbda8029b0e3baa260e7de05249daf92805db10eaed97c",
+   "subject": "test(f251): restore the working directory after every test",
+   "tree": "eb15b69d95daadcbf84415651cb339e535bfef16"
+  },
+  {
+   "changed_files": [
+    ".agent/f251_baseline/churn_gate_run1.txt",
+    ".agent/f251_baseline/churn_gate_run2.txt",
+    ".agent/f251_baseline/churn_gate_run3.txt",
+    ".agent/f251_baseline/churn_gate_timings.txt"
+   ],
+   "commit": "487c553b40aa0e369545060bbace32d74ba0f434",
+   "parents": [
+    "13572dddb359dd25fbdefbb61c2b50df57b4ed10"
+   ],
+   "patch_sha256": "a79fdea124fb8ad62c577e92f1257452ae67d219321f7a3f862f40e7e0f3dcb7",
+   "subject": "chore(f251): churn gate evidence (two attempts, three runs each)",
+   "tree": "3f03cdfb3d48297a9db8590938c10b74bd212d5f"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "6c45717b3f68cafbbea8ae5890ee2c51c3593dee",
+   "parents": [
+    "487c553b40aa0e369545060bbace32d74ba0f434"
+   ],
+   "patch_sha256": "4c7a1020302d13a2088a5794718903284d36f25b1b992cd82b6cb4c0ab262777",
+   "subject": "chore(f251): R2 handback -- flake fixes and the churn-gate result",
+   "tree": "9f8ae3f5ce84667c33bb4fe4f00465b56484dfd1"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r3-1.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "2a93e314652b679a52235bf657c98d924509dba0",
+   "parents": [
+    "6c45717b3f68cafbbea8ae5890ee2c51c3593dee"
+   ],
+   "patch_sha256": "31b5e1220b3f2c96db0db433b9741eee0597baf5ed31a12b36a050793fbc1258",
+   "subject": "chore(f251): persist the R3 PASS verdict",
+   "tree": "d4b401639fb9d495b416b46a4e175d63278de67e"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "tests/cli/test_job_rerun_manifest.py",
+    "tests/orchestration/test_run_manifest.py"
+   ],
+   "commit": "5abfd3ccb067ebe751ddc95c2727d8a0b9b5b262",
+   "parents": [
+    "2a93e314652b679a52235bf657c98d924509dba0"
+   ],
+   "patch_sha256": "ceab30092b0dbd6bda4ceab602d55deec8e089c9ea8bc6aa281a824017ec2b0d",
+   "subject": "test(f251): freeze Remedy's worktree identity per test (F-F)",
+   "tree": "48ad7462f324c15d4a9e257418b11495b6f065c7"
+  },
+  {
+   "changed_files": [
+    ".agent/f251_baseline/churn_gate2_run1.txt",
+    ".agent/f251_baseline/churn_gate2_run2.txt",
+    ".agent/f251_baseline/churn_gate2_run3.txt",
+    ".agent/f251_baseline/churn_gate2_timings.txt"
+   ],
+   "commit": "6c3f07274d9a9d7fcea853f3fae2de4dc2d0527f",
+   "parents": [
+    "5abfd3ccb067ebe751ddc95c2727d8a0b9b5b262"
+   ],
+   "patch_sha256": "342beb382963e992710ad87d2ca5bab38e3b3fd3e4b65f0ea260c720d2862a98",
+   "subject": "chore(f251): churn gate retry evidence \u2014 gate passed, 0 churning",
+   "tree": "4155e865f13125cb15d529945413cc039bc4844b"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md"
+   ],
+   "commit": "6c9840692c088eaeb238f2e022db6e5054794403",
+   "parents": [
+    "6c3f07274d9a9d7fcea853f3fae2de4dc2d0527f"
+   ],
+   "patch_sha256": "e13eae931e108758493888276d911da8713ef3932e303cb635030f2e04639edf",
+   "subject": "chore(f251): R3 handback \u2014 F-F root cause and the passing churn gate",
+   "tree": "b0c3aa26f8485b793c7b925c264d46d2dd21ebcb"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r4-1.md",
+    ".agent/authored/f251-r4-2.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "c1b33417fc57bf55babea51c35946909a220c608",
+   "parents": [
+    "6c9840692c088eaeb238f2e022db6e5054794403"
+   ],
+   "patch_sha256": "8804c088d80c47190ca611dd6b4e687237100dbdc0d6ef23ba9f3d8470d14562",
+   "subject": "chore(f251): persist the R4 PASS verdict + Ruling A plan",
+   "tree": "2a0489d659abbc5eee51a62b66441574c894a4be"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r4-3.md",
+    "docs/roadmap/features/T1_F251.md"
+   ],
+   "commit": "8a7c8e79c3bf25466a984d7e57bfd3042b61143b",
+   "parents": [
+    "c1b33417fc57bf55babea51c35946909a220c608"
+   ],
+   "patch_sha256": "4c20f1b08398d35f68567fd06cef045699dbd6824508931efa3bb8d050386d88",
+   "subject": "docs(f251): Ruling A \u2014 scope narrowed to flake stabilization (operator ruling 2026-07-28)",
+   "tree": "fbd7aee9a95f9ebf4548ae60e2548aa4ea65bbf3"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r4-4.md",
+    ".agent/authored/f251-r4-5.md",
+    ".agent/authored/f251-r4-6.md",
+    "docs/roadmap/ROADMAP.md",
+    "docs/roadmap/STATUS.md",
+    "docs/roadmap/features/T1_F252.md",
+    "tests/docs/test_docs_consistency.py"
+   ],
+   "commit": "7d4b586ef5a3a98c8fa0b0f17c2718450257a4ee",
+   "parents": [
+    "8a7c8e79c3bf25466a984d7e57bfd3042b61143b"
+   ],
+   "patch_sha256": "c0cc0b82c2c492464d8ba93183dedf4fccf91dca2be45588891668f3ca5b176b",
+   "subject": "docs(roadmap): register F252 standing-red paydown + ledger pin 252 (operator ruling A)",
+   "tree": "e0c9f13c8669b66f86003256ab0de9ebc0dce9f8"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "39c33ad22856cf5e718b9345346b09874f7fd847",
+   "parents": [
+    "7d4b586ef5a3a98c8fa0b0f17c2718450257a4ee"
+   ],
+   "patch_sha256": "68c1f931cdcead9ebd682734783f7143251a594bd7bd88838a50dc34f37e0b3b",
+   "subject": "chore(f251): R4 handback \u2014 Ruling A persisted, F252 registered",
+   "tree": "ffb42f4f890715a1dcfc8839e4e4b42480f1866e"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r5-1.md",
+    ".agent/authored/f251-r5-3.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "b375b321a708b6fb6fee5c9c09295e4a7e9d23a8",
+   "parents": [
+    "39c33ad22856cf5e718b9345346b09874f7fd847"
+   ],
+   "patch_sha256": "0187e8b2e225c8cc7edbe944d1e30b4e421d1a9015c6e1ac8fd8bd75eec09b68",
+   "subject": "chore(f251): persist the R5 PASS verdict + closure plan",
+   "tree": "5543b10cec17a8de929c776794a0f7bb2f091a3d"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F251.md"
+   ],
+   "commit": "ab2258933944cd3ab3280646d1aa00fb062ecb36",
+   "parents": [
+    "b375b321a708b6fb6fee5c9c09295e4a7e9d23a8"
+   ],
+   "patch_sha256": "1d2e199f1ddbece0e26aeb9881a6f42e51bba5bab24f4f14d777210357f02ab5",
+   "subject": "docs(f251): Built State for the suite stabilization",
+   "tree": "0c62d27e7edb477bd3a38b654bf605c05acc909a"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f251-r5-2.md"
+   ],
+   "commit": "5b5b2712d467565a8cefa0087128e23b71c7c9e0",
+   "parents": [
+    "ab2258933944cd3ab3280646d1aa00fb062ecb36"
+   ],
+   "patch_sha256": "04f69848ed50a04de51fe3ce1d8e621eb5283ab0c1a5074c9df7d05c93cf0924",
+   "subject": "chore(f251): save the authored closure STATUS line",
+   "tree": "ad1cf4f2f4eb561225ba705954098e28d86e8594"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md"
+   ],
+   "commit": "86a0df39ee0928742add7ef457dbd3d1e4efb7f2",
+   "parents": [
+    "5b5b2712d467565a8cefa0087128e23b71c7c9e0"
+   ],
+   "patch_sha256": "d0205c3dfcf26454c830270acce2785f7a4c8dce4bff384904af2540f2d1075d",
+   "subject": "chore(f251): final plan state before packaging",
+   "tree": "7044d1af6f3c2cdf666d87c52643f58807b82ce0"
+  }
+ ],
+ "files": [
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "bbc0f9f5bb2906bb04f592694047b10d927e70b8bdf764d0d3be1cf710c458ee",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r1-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "c71e23d8c4986d1fd6332e1fe11715ed549a1b481fde362d1c74a388b5eabd24",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r1-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "c61db1cdad09ac25328353e2eae53096e5f9a8ff99a87afbbfdbe1c098d1ec24",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r1-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "413ee9fe3fff9ef43557ada89ba376a119d8f22457f70dadd1f3aec9fb1df225",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r1-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "111efa9b4b67c14d2c5df570d259e38a0e73f104b4c3f9c678facb9def113059",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r2-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "45eb4a227899fa1148b98e273d9a0ed210480297fd0e33662bcd053a6c497525",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r2-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "aec772a594f66cadfcacfb8a22793b90a9d23dc2f9c6225094d8c2a80cecf401",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r3-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "e89324692a86ac77699a44c6912c818af212c260cd04b5b54eaafd2ac33d340c",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r4-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "069a1e073d41bf6aab2b627b1084cdf4e7f5c6d386eb532482674de47ff63ede",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r4-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "68281fb6258c006d16a1a7200729ad8c228c10d9b64de95ebaedc31218c447c8",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r4-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "55350c4024f8af03d30272510455afddd12e1099806ebfebf7bf304d62eb8dc2",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r4-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "8e361d6f11f03959aa07c54f8b92524dd3eaea5399d59c6873759dd8ad4cd474",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r4-5.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "36e6c79229e0e7f0721fcc4a434be4623729e49e0b36d8a2408b34031384a89f",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r4-6.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "f90d18e7c72f8e49dd1ce9bae42510b06526ac000c10a34bc9e7f9243962e580",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r5-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "0b3bbef5751813004bdfda4aefccb54bb14ed5230ffd1223af251d441d9892b2",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r5-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "2f01d2bb4ea16a1c0d36093ce442ecf0bd8838b784e6acc837443f7bfda4d066",
+   "kind": "regular",
+   "path": ".agent/authored/f251-r5-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "786531ac5aef9a98484cfac2db5143c5a5d53cf8de6ee75e7e9ebde29f314866",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate2_run1.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "786531ac5aef9a98484cfac2db5143c5a5d53cf8de6ee75e7e9ebde29f314866",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate2_run2.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "786531ac5aef9a98484cfac2db5143c5a5d53cf8de6ee75e7e9ebde29f314866",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate2_run3.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "5113c253f1577314b460e6661316cccc572a25f7e14d17d42627c04910d9e1a9",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate2_timings.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "436b309168749399dba79f3229dad00368e1a7c36a6d8fb7d3e83513b13ec275",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate_run1.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "786531ac5aef9a98484cfac2db5143c5a5d53cf8de6ee75e7e9ebde29f314866",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate_run2.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "786531ac5aef9a98484cfac2db5143c5a5d53cf8de6ee75e7e9ebde29f314866",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate_run3.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "1c857dcd3de3339204678566d0885a2cf9ec774c2ee9c35598f54a0ee398500a",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/churn_gate_timings.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7733abce19bfa2434561d4788c529435bbe301919f3927a8c75236a868726d2b",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/class_map.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "3d2c4c9b02b0e516faf65401c45b40fee8fc64d6f2e781244f207860666510a9",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/clean_main_control.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "ba88ba37af93e74f83bc219150cd768eff310a58110cf06c1e1c08538143ac78",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/flake_set.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "45eb4a227899fa1148b98e273d9a0ed210480297fd0e33662bcd053a6c497525",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/reviewer_flake_extras.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "d13ba0baef236ffb6c602132f7121d3a29936123ecf336888d840d44a23fac2e",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/run1.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "149dbf81d9c1bef2984ade1afeb257157a9e82316e79c3de4ca9ec9da3b0f79e",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/run2.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "3d2c4c9b02b0e516faf65401c45b40fee8fc64d6f2e781244f207860666510a9",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/serial_deterministic.txt",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "13df1f52f5ff8b9c5dac17e1ec8c0bd792e8888b929361e3393b21300d20846f",
+   "kind": "regular",
+   "path": ".agent/f251_baseline/timings.txt",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1f3aee7309205876fd153eb3071896e5f07cde0bdfeaabb9584d1c19f7713f37",
+   "current_mode": "100644",
+   "current_sha256": "5d88a393d4e58daa05bc8f5bcbf4bd379faf5375477a0045786b7dabc0fee413",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "080865182058bea3e89416a22f67ff544c72a5b25a158c0e7bccdf90c2847186",
+   "current_mode": "100644",
+   "current_sha256": "f90d18e7c72f8e49dd1ce9bae42510b06526ac000c10a34bc9e7f9243962e580",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "58a3ad7b36508498492cc11a3a65c44dd30e1bea61fbdbef4553d15c15336c5a",
+   "current_mode": "100644",
+   "current_sha256": "c00079db1ed228957e6b13c39a55830e3bd0881efcf6c148a4ca4e51cef5a03e",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "4ee2405b87a8b477ed962b188add8588d898427662d21fccae141f75a96aff5f",
+   "current_mode": "100644",
+   "current_sha256": "d427f5af4d3dcbbd4ada454b30f9c0c12ecfc399624b565d1f2bb274bf4f36fb",
+   "kind": "regular",
+   "path": "docs/roadmap/ROADMAP.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "bb160c84ad98f815512a1c9716aa2d1c29320790061bec161a30d61ea9670aeb",
+   "current_mode": "100644",
+   "current_sha256": "4ccd3064d9a231d491699e6fb769e663f7991dde530883f00d6934b66b7c8011",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "62925f295d50c6ed50314ac1e7134567c45acb108699d4221be6dbdd64953e47",
+   "current_mode": "100644",
+   "current_sha256": "b73da4d99feed5f3a9b8873dd374338e5bbbab301d9e1a5cf95509f52a73e32a",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F251.md",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "55350c4024f8af03d30272510455afddd12e1099806ebfebf7bf304d62eb8dc2",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F252.md",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "5e62d08d7d72e69ff995fed6b3317f368853fc17b9d60a7eb01717aef72c21f1",
+   "current_mode": "100644",
+   "current_sha256": "5edc272527ad0d4817bcdb90815aa1ef9cfb4e94c569fc4f74dfe5d2ba799a33",
+   "kind": "regular",
+   "path": "tests/cli/test_job_rerun_manifest.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "5c0ac5880c7e09d71ac14c2d0cf18497926542a6b9a4b74843af415b52597a32",
+   "current_mode": "100644",
+   "current_sha256": "c022f4d04c2bc40bcaf076ece133ed9927d5ded904f403253b05aa2239b6f4a7",
+   "kind": "regular",
+   "path": "tests/cli/test_runtime_cmd.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "ca7bda67a89dae46159b9d429e5728e682c1d4f3fffee4df12d8d453d9e2a05d",
+   "current_mode": "100644",
+   "current_sha256": "2116c8c85ee2249aad33a91f99da95ae8354a6f03f0d0213f683193758482504",
+   "kind": "regular",
+   "path": "tests/conftest.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1b43dda8b55522698d5e13352bf07f3e1ab13e9ef3aebddf0f22bd532f0dd00b",
+   "current_mode": "100644",
+   "current_sha256": "64c4a246f69b235ba30f42bf8d9c0c3ab0a2b6d89f6c404e45cc9886f7479180",
+   "kind": "regular",
+   "path": "tests/docs/test_docs_consistency.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "4a600812ffdad4d14583891060e8f6c14f6dc3f71c7c3e0883e7771f9b70b244",
+   "current_mode": "100644",
+   "current_sha256": "c93fbbe4a5a091c6ee0774d4567d363b4da3059afcd0361be5a0d434e61c1ac4",
+   "kind": "regular",
+   "path": "tests/orchestration/test_run_manifest.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7a1494b717d69d998d649811612e2d1571189d2e3160230cea3347821bdeeba9",
+   "kind": "regular",
+   "path": "tests/ports.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1805f6cc0aad62ee757551b038bc97d564f8623ead0ab6234aa5adddf4a26e60",
+   "current_mode": "100644",
+   "current_sha256": "750df1537bf5777591800ee275c8b474bb64a27925de1e1b0151c273bea7d23b",
+   "kind": "regular",
+   "path": "tests/runtimes/test_dev_server.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "cbfc7f31f047a48495ce22551ddc663407c8f8f9a0377a625471d54129e81058",
+   "current_mode": "100644",
+   "current_sha256": "6fc7f1690bf3900e98ae2dde3656ad301bd7e414831a0be33d745624cdea65ee",
+   "kind": "regular",
+   "path": "tests/runtimes/test_runtime_cli_process_boundary.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0818c993182a87a745735c057cff1c901074ad089cc7441c4bfc80747a9390bf",
+   "current_mode": "100644",
+   "current_sha256": "4db7efd50a397a59dd436eccccad42f9619cba423293d76a190af9a992c70ba3",
+   "kind": "regular",
+   "path": "tests/runtimes/test_runtime_lifecycle_safety.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "47d4d60078bf8aff2f9102f5f50dd3a781c189109be46c4ec89513b7cad5ac6c",
+   "current_mode": "100644",
+   "current_sha256": "da28dc64afee160a07f27675249e6bbc4d5011483a8c29b43d1c69ae750904aa",
+   "kind": "regular",
+   "path": "tests/runtimes/test_runtime_state_machine.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8964395fc862a46d9cff5827c3fe48cb94c5eb0382e56bf33d2ed7ac17aa4186",
+   "current_mode": "100644",
+   "current_sha256": "8314348783f647a8bd0364c671029681700828a59c5840930ed81955ab889710",
+   "kind": "regular",
+   "path": "tests/runtimes/test_supervisor_portability.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "3fdda38c5e9048f77e42bbdc41efe2b71f2dc05271d79c723d027c69280fade7",
+   "current_mode": "100644",
+   "current_sha256": "9f26a0214618a486127159976a80bcc011985247cf86eb4696d58b6fc3b664e4",
+   "kind": "regular",
+   "path": "tests/test_data_paths.py",
+   "status": "modified"
+  }
+ ],
+ "head_commit": "86a0df39ee0928742add7ef457dbd3d1e4efb7f2",
+ "subject_v": 1
+}

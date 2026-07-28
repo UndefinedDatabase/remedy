@@ -1,0 +1,236 @@
+b375b321a708b6fb6fee5c9c09295e4a7e9d23a8
+diff --git a/.agent/authored/f251-r5-1.md b/.agent/authored/f251-r5-1.md
+new file mode 100644
+index 0000000..0fc1dab
+--- /dev/null
++++ b/.agent/authored/f251-r5-1.md
+@@ -0,0 +1,42 @@
++# Live Review — F251 Full-suite stabilization (flake-debt paydown)
++
++Branch: feature/f251-suite-stabilization (PR at closure)
++LAST_REVIEWED_SHA: 39c33ad
++Finding IDs continue monotonically; next free ID: R-0154.
++Previous ledgers (planning amendment, F048) live in git history.
++
++## Findings
++
++- R-0150 · Medium — Resolved (history). R-0151 · Medium — Resolved:
++  7f67d03. R-0152 · Low — Resolved: R2 handback at 100 lines.
++  R-0153 · Low — Resolved: authored plan applied at c1b3341.
++  Open findings: 0.
++
++## Verdicts
++
++- R5 (6c98406..39c33ad): PASS — issued by the reviewer after
++  independent verification. All six R4 authored texts byte-identical
++  disk-to-disk against the reviewer originals; cmp exit 0 for the
++  three full replaces and T1_F252.md; containment exit 0 for the
++  T1_F251 ruling section, the STATUS line (numstat 1/0) and the
++  ROADMAP entry; the ledger move was ONE atomic commit (7d4b586:
++  feature file + STATUS + ROADMAP + pin 252) and FeatureLedger is
++  green (4 passed, re-run by the reviewer). Reviewer full-suite
++  control run: 150 failed = the catalogued 154 minus 4 D4
++  state-coupled ids, zero ids outside the catalog, zero churn in
++  the non-D4 remainder — six consecutive runs now confirm the
++  stable core. The worker's refusal to report 4b as byte-identical
++  when the set had legitimately shrunk is exact P1 behavior; the
++  verified mechanism (the R4 verdict text itself supplies the
++  substring the two D4 twins assert on) is recorded as F252
++  work-breakdown item 7 evidence. Ruling A is fully persisted and
++  self-carrying. CLOSURE round ordered per
++  STATUS_closure_protocol.md v3 with one ruled adjustment,
++  documented not silent: precondition 2 ("full relevant suite
++  green") is satisfied per operator ruling A in its F251 form —
++  churn-free identical failure sets with the standing red owned by
++  F252 — evidenced by the passed churn gate and two independent
++  reviewer confirmations. The D4 ids' live state at evidence time
++  is recorded as observed, never adjusted. Verification tier: round
++  gate (scoped) + reviewer full-suite run + canary.
++  LAST_REVIEWED_SHA = 39c33ad.
+diff --git a/.agent/authored/f251-r5-3.md b/.agent/authored/f251-r5-3.md
+new file mode 100644
+index 0000000..12504f3
+--- /dev/null
++++ b/.agent/authored/f251-r5-3.md
+@@ -0,0 +1,36 @@
++# Plan — F251 closure round (protocol v3)
++
++## Goal
++Close F251 per STATUS_closure_protocol.md v3 under Ruling A: evidence
++job, fresh READY review zip, authored STATUS line, PR into main (NOT
++merged — the next feature's Open PR Gate merges it).
++
++## Checklist
++- [ ] Commit A: R5 verdict persisted (f251-r5-1, sha256 + cmp 0)
++- [ ] Commit B: Built State in docs/roadmap/features/T1_F251.md —
++      this commit's sha is ACCEPTED_HEAD (pre-zip head)
++- [ ] Preconditions: porcelain empty · integrity check --json
++      (live_review_verdict warn = known matcher backlog, not a fail)
++- [ ] Evidence job: create_manual_completion_bundle(
++      review_feature_id="f251", ...) — sha256-hex output_hash from
++      the stored stdout_summary, full-length base_commit, node_ids
++      from the same selection (F048 pitfalls)
++- [ ] Review zip LAST, after ALL commits incl. final handoff:
++      make_review_zip.sh --evidence-dir <dir> → READY_FOR_REVIEW;
++      failure = closure BLOCKER, recorded either way
++- [ ] Commit C (LAST, A4): authored STATUS line with the four slots
++      filled (blank-back byte-proof) + evidence dir (committed only
++      AFTER the READY zip) + final .agent state
++- [ ] PR into main created, NOT merged; description: what/why, key
++      decisions incl. Ruling A, changed-files table, verdict, open
++      findings 0, runtime actuals (models not-measured)
++
++## Current Step
++Commit A.
++
++## Risks
++- The D4 ids read live .agent files; their state at evidence time is
++  recorded as observed, never adjusted (F252 item 7).
++- No D-class edits; the 154-catalog baseline stays untouched.
++- Ledger and pin: no feature-file or STATUS count changes this round
++  beyond the [~]→[x] swap (line count unchanged).
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 62476ff..0fc1dab 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,43 +1,42 @@
+ # Live Review — F251 Full-suite stabilization (flake-debt paydown)
+ 
+-Branch: feature/f251-suite-stabilization
+-LAST_REVIEWED_SHA: 6c98406
++Branch: feature/f251-suite-stabilization (PR at closure)
++LAST_REVIEWED_SHA: 39c33ad
+ Finding IDs continue monotonically; next free ID: R-0154.
+ Previous ledgers (planning amendment, F048) live in git history.
+ 
+ ## Findings
+ 
+-- R-0150 · Medium · handback channel — Resolved (history).
+-- R-0151 · Medium · ledger pins — Resolved: 7f67d03, verified.
+-- R-0152 · Low · handback cap — Resolved: R2 handback exactly 100 lines.
+-- R-0153 · Low · plan.md staleness — Resolved: authored plan f251-r4-2
+-  applied this round. The R3 re-send failed its sha256 because the
+-  reviewer's original contained a trailing space that transport
+-  stripped — a reviewer authoring defect, not a worker error; the
+-  worker's refusal to commit unverified bytes was correct R-0148
+-  protocol.
++- R-0150 · Medium — Resolved (history). R-0151 · Medium — Resolved:
++  7f67d03. R-0152 · Low — Resolved: R2 handback at 100 lines.
++  R-0153 · Low — Resolved: authored plan applied at c1b3341.
++  Open findings: 0.
+ 
+ ## Verdicts
+ 
+-- R4 (6c45717..6c98406): PASS — issued by the reviewer after
+-  independent verification. F-F root cause verified in the diff: a
+-  run manifest records Remedy's own worktree identity and any
+-  untracked entry sets dirty; under -n auto a neighbouring test's
+-  file churn between reference and candidate manifests flips
+-  same_inputs — the fix freezes the identity per test via the
+-  module's existing seam (monkeypatch snapshot), test hermeticity
+-  only, product untouched, the F012 drift detection preserved.
+-  Gate evidence recomputed: churn_gate2 run1 == run2 == run3 ==
+-  the expected 154 byte-exact, 0 errors. The reviewer's OWN
+-  full-suite run after the handback: 154 failed, byte-identical to
+-  the expected set — four consecutive identical failure sets across
+-  two independent operators. 0 quarantined, 0 churning, 154
+-  standing red (catalogued). D4 twins red and stable in all runs
+-  (the current live_review has no Steps section) — coupling
+-  documented. OPERATOR RULING A (2026-07-28) recorded: F251 scope =
+-  flake stabilization, DONE = the achieved state; the 154
+-  standing-red ids and the 2 stopped F-A ids move to registered
+-  item F252 (before F050); the D4 design decision is an explicit
+-  F252 item. Amendment round ordered; closure follows as its own
+-  round. Verification tier: round gate (scoped) + reviewer
+-  full-suite run + canary. LAST_REVIEWED_SHA = 6c98406.
++- R5 (6c98406..39c33ad): PASS — issued by the reviewer after
++  independent verification. All six R4 authored texts byte-identical
++  disk-to-disk against the reviewer originals; cmp exit 0 for the
++  three full replaces and T1_F252.md; containment exit 0 for the
++  T1_F251 ruling section, the STATUS line (numstat 1/0) and the
++  ROADMAP entry; the ledger move was ONE atomic commit (7d4b586:
++  feature file + STATUS + ROADMAP + pin 252) and FeatureLedger is
++  green (4 passed, re-run by the reviewer). Reviewer full-suite
++  control run: 150 failed = the catalogued 154 minus 4 D4
++  state-coupled ids, zero ids outside the catalog, zero churn in
++  the non-D4 remainder — six consecutive runs now confirm the
++  stable core. The worker's refusal to report 4b as byte-identical
++  when the set had legitimately shrunk is exact P1 behavior; the
++  verified mechanism (the R4 verdict text itself supplies the
++  substring the two D4 twins assert on) is recorded as F252
++  work-breakdown item 7 evidence. Ruling A is fully persisted and
++  self-carrying. CLOSURE round ordered per
++  STATUS_closure_protocol.md v3 with one ruled adjustment,
++  documented not silent: precondition 2 ("full relevant suite
++  green") is satisfied per operator ruling A in its F251 form —
++  churn-free identical failure sets with the standing red owned by
++  F252 — evidenced by the passed churn gate and two independent
++  reviewer confirmations. The D4 ids' live state at evidence time
++  is recorded as observed, never adjusted. Verification tier: round
++  gate (scoped) + reviewer full-suite run + canary.
++  LAST_REVIEWED_SHA = 39c33ad.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 87b37b9..12504f3 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,32 +1,36 @@
+-# Plan — F251 Full-suite stabilization (R4, Ruling A)
+-
+-> Progress marks added after the authored f251-r4-2 was applied verbatim
+-> (c1b3341, cmp 0); AGENTS.md requires plan.md to be current per commit.
++# Plan — F251 closure round (protocol v3)
+ 
+ ## Goal
+-Persist Ruling A (2026-07-28) into the docs, then close F251: scope =
+-flake stabilization, DONE = the achieved state (three identical
+-full-suite runs, 0 churning, 0 quarantined); the 154 standing-red ids
+-and the 2 stopped F-A ids move to registered item F252.
++Close F251 per STATUS_closure_protocol.md v3 under Ruling A: evidence
++job, fresh READY review zip, authored STATUS line, PR into main (NOT
++merged — the next feature's Open PR Gate merges it).
+ 
+ ## Checklist
+-- [x] T1_F251.md: scope-ruling section applied (f251-r4-3) — 8a7c8e7
+-- [x] ATOMIC ledger commit: T1_F252.md (f251-r4-4) + STATUS F252 line
+-      before F050 (f251-r4-5) + ROADMAP tier-1 entry (f251-r4-6) +
+-      TOTAL_FEATURES 251->252 — one commit, never split (R-0151
+-      lesson, extended to the feature-file count) — 7d4b586
+-- [x] Verify: FeatureLedger 4 passed; canary 42 passed; one full-suite
+-      run = 152, a strict SUBSET of the catalogued 154 — the delta is
+-      exactly the two documented D4 live_review ids, now green
+-- [ ] Handback; closure runs as its OWN round after the verdict
++- [ ] Commit A: R5 verdict persisted (f251-r5-1, sha256 + cmp 0)
++- [ ] Commit B: Built State in docs/roadmap/features/T1_F251.md —
++      this commit's sha is ACCEPTED_HEAD (pre-zip head)
++- [ ] Preconditions: porcelain empty · integrity check --json
++      (live_review_verdict warn = known matcher backlog, not a fail)
++- [ ] Evidence job: create_manual_completion_bundle(
++      review_feature_id="f251", ...) — sha256-hex output_hash from
++      the stored stdout_summary, full-length base_commit, node_ids
++      from the same selection (F048 pitfalls)
++- [ ] Review zip LAST, after ALL commits incl. final handoff:
++      make_review_zip.sh --evidence-dir <dir> → READY_FOR_REVIEW;
++      failure = closure BLOCKER, recorded either way
++- [ ] Commit C (LAST, A4): authored STATUS line with the four slots
++      filled (blank-back byte-proof) + evidence dir (committed only
++      AFTER the READY zip) + final .agent state
++- [ ] PR into main created, NOT merged; description: what/why, key
++      decisions incl. Ruling A, changed-files table, verdict, open
++      findings 0, runtime actuals (models not-measured)
+ 
+ ## Current Step
+-Handback. No closure work this round.
++Commit A.
+ 
+ ## Risks
+-- Ledger (files + STATUS) and pin move atomically, always.
+-- No D-class edits; F252 is registration only this round.
+-- plan.md stays current per commit (R-0153).
+-- D4 coupling is a substring check: the R4 verdict text contains the
+-  word "Steps" while stating live_review has no Steps section, which
+-  is what flipped the two ids. Documented, not touched — F252 item 7.
++- The D4 ids read live .agent files; their state at evidence time is
++  recorded as observed, never adjusted (F252 item 7).
++- No D-class edits; the 154-catalog baseline stays untouched.
++- Ledger and pin: no feature-file or STATUS count changes this round
++  beyond the [~]→[x] swap (line count unchanged).

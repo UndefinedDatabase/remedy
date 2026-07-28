@@ -1,0 +1,32 @@
+{
+ "changed_files": [
+  "tests/conftest.py",
+  "tests/docs/test_docs_consistency.py",
+  "tests/orchestration/test_run_manifest.py",
+  "tests/ports.py",
+  "tests/runtimes/test_dev_server.py",
+  "tests/runtimes/test_runtime_cli_process_boundary.py"
+ ],
+ "diff_sha256": "2192041b0d480aff30e966884648d620fcddb5cf69e023e765c23a0bfd2c9144",
+ "job_id": "b680f05b-2cda-468f-a8c5-95dbe9636044",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "2192041b0d480aff30e966884648d620fcddb5cf69e023e765c23a0bfd2c9144",
+ "safe_diff_sha256": "43945c345c1486a3b016bc3323f94515514e01503b604feae6ab0b91813e3da5",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "tests/conftest.py",
+  "tests/docs/test_docs_consistency.py",
+  "tests/orchestration/test_run_manifest.py",
+  "tests/ports.py",
+  "tests/runtimes/test_dev_server.py",
+  "tests/runtimes/test_runtime_cli_process_boundary.py"
+ ],
+ "timestamp": "2026-07-28T17:03:21Z",
+ "tracked_diff_sha256": "43945c345c1486a3b016bc3323f94515514e01503b604feae6ab0b91813e3da5",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

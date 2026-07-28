@@ -1,0 +1,32 @@
+{
+ "changed_files": [
+  "docs/roadmap/ROADMAP.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F251.md",
+  "docs/roadmap/features/T1_F252.md",
+  "tests/cli/test_job_rerun_manifest.py",
+  "tests/cli/test_runtime_cmd.py"
+ ],
+ "diff_sha256": "8b57733c6b111110894ad7e2d4ad49da7e806caf1105f15d72192e27a0e2870e",
+ "job_id": "b680f05b-2cda-468f-a8c5-95dbe9636044",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "8b57733c6b111110894ad7e2d4ad49da7e806caf1105f15d72192e27a0e2870e",
+ "safe_diff_sha256": "e56a32ada4e1677d397b0b7b7a3bad6ece0f0e937a2d27ee045132d723cd790c",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "docs/roadmap/ROADMAP.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F251.md",
+  "docs/roadmap/features/T1_F252.md",
+  "tests/cli/test_job_rerun_manifest.py",
+  "tests/cli/test_runtime_cmd.py"
+ ],
+ "timestamp": "2026-07-28T17:03:21Z",
+ "tracked_diff_sha256": "e56a32ada4e1677d397b0b7b7a3bad6ece0f0e937a2d27ee045132d723cd790c",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

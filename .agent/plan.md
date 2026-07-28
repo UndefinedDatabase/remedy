@@ -17,18 +17,16 @@ merged — the next feature's Open PR Gate merges it).
       review_feature_id="f251", ...) — sha256-hex output_hash from
       the stored stdout_summary, full-length base_commit, node_ids
       from the same selection (F048 pitfalls)
-- [ ] Review zip LAST, after ALL commits incl. final handoff:
-      make_review_zip.sh --evidence-dir <dir> → READY_FOR_REVIEW;
-      failure = closure BLOCKER, recorded either way
-- [ ] Commit C (LAST, A4): authored STATUS line with the four slots
-      filled (blank-back byte-proof) + evidence dir (committed only
-      AFTER the READY zip) + final .agent state
+- [x] Review zip: READY_FOR_REVIEW on attempt 3; attempts 1 and 2
+      failed and are recorded in the handback, not hidden
+- [x] Commit C (LAST, A4): authored STATUS line, four slots filled,
+      blank-back byte-proof green + evidence dir + final .agent state
 - [ ] PR into main created, NOT merged; description: what/why, key
       decisions incl. Ruling A, changed-files table, verdict, open
       findings 0, runtime actuals (models not-measured)
 
 ## Current Step
-Review zip, then Commit C (STATUS + evidence dir + handoff).
+PR into main (NOT merged). Closure complete otherwise.
 
 ## Risks
 - The D4 ids read live .agent files; their state at evidence time is

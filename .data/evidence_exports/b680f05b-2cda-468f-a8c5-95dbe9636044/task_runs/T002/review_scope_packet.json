@@ -1,0 +1,13 @@
+{
+ "changed_files": [
+  "tests/conftest.py",
+  "tests/docs/test_docs_consistency.py",
+  "tests/orchestration/test_run_manifest.py",
+  "tests/ports.py",
+  "tests/runtimes/test_dev_server.py",
+  "tests/runtimes/test_runtime_cli_process_boundary.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

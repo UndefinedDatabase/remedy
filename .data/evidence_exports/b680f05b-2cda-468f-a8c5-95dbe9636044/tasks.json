@@ -1,0 +1,39 @@
+[
+ {
+  "safe_diff_files": [
+   "docs/roadmap/ROADMAP.md",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F251.md",
+   "docs/roadmap/features/T1_F252.md",
+   "tests/cli/test_job_rerun_manifest.py",
+   "tests/cli/test_runtime_cmd.py"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "tests/conftest.py",
+   "tests/docs/test_docs_consistency.py",
+   "tests/orchestration/test_run_manifest.py",
+   "tests/ports.py",
+   "tests/runtimes/test_dev_server.py",
+   "tests/runtimes/test_runtime_cli_process_boundary.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "tests/runtimes/test_runtime_lifecycle_safety.py",
+   "tests/runtimes/test_runtime_state_machine.py",
+   "tests/runtimes/test_supervisor_portability.py",
+   "tests/test_data_paths.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]
