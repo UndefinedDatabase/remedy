@@ -1,103 +1,100 @@
-# Handback — F251 R1: R-0150 repair + S1 baseline + S2 table
+# Handback — F251 R2: verdict, R-0151/R-0152, S3 flake fixes, churn gate
 
 ## Range
-Review of `d8ac7fa..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR.
-`8aa10d1` is NOT in this range: it landed on the chore branch and reached main
-through the #157 merge, so it is an ancestor of d8ac7fa. Tabled anyway.
+Review of `13783ed..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR;
+6280cb0..13783ed were accepted by the R2 verdict and are not re-tabled.
 
 ## Commits
-### 8aa10d1 persist the amendment R1 PASS verdict — chore branch, merged via #157
+### f0ee3e1 R2 verdict · a8b3337 reviewer flake appendix
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/pamend-r2-1.md | +30 | verdict text, sha256 08086518… |
-| .agent/live_review.md | +22 −3 | full replace from pamend-r2-1 (cmp 0) |
+| .agent/authored/f251-r2-1.md, .agent/live_review.md | +55, +67 −23 | verdict text sha256 111efa9b…, applied cmp 0 |
+| .agent/authored/f251-r2-2.md, .agent/f251_baseline/reviewer_flake_extras.txt | +20, +20 | appendix sha256 45eb4a22…, copied cmp 0 |
 
-### 6280cb0 chore(f251): claim F251 — round bookkeeping
+### 7f67d03 R-0151 · af67046 · de17a00 · 13572dd global-state leaks
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r1-1..3.md | +50 | operator texts, sha256-verified |
-| .agent/live_review.md | +14 −28 | full replace from f251-r1-1 (cmp 0) |
-| .agent/plan.md | +35 −51 | full replace from f251-r1-3 (cmp 0) |
-| docs/roadmap/STATUS.md | +1 −1 | `[ ]`→`[~]` from f251-r1-2 (containment 0) |
+| tests/docs/test_docs_consistency.py | +3 −1 | 7f67d03 — TOTAL_FEATURES 250→251 |
+| tests/test_data_paths.py | +21 | af67046 — config-cache isolation (F-C) |
+| tests/conftest.py | +29, +23 | de17a00 config-cache reset (F-B, F-E); 13572dd cwd restore |
 
-### 16817d4 / 977ea47 / da61a40 — pre-repair commits
+### 1c95dec test(f251): per-worker runtime ports (F-A, F-D)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +40 −27 | 16817d4 — first S1 result + S2 table |
-| .agent/handoff.md | +116 −91, then → 91 | 977ea47 round-1 handback (over cap), da61a40 trim |
+| tests/ports.py | +39 | new: worker_port(), base 15173 |
+| 6 runtime test modules | +36 −13 | dynamic default port (test_runtime_cmd, test_dev_server, test_runtime_{cli_process_boundary,lifecycle_safety,state_machine}, test_supervisor_portability) |
 
-### 69cabd6 persist R-0150 · 6b22988 baseline evidence
+### 487c553 + this commit (self-reference, R-0149 grouped table)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r1-4.md | +34 | 69cabd6 — verdict text, sha256 413ee9fe… |
-| .agent/live_review.md | +28 −4 | 69cabd6 — full replace from f251-r1-4 (cmp 0) |
-| .agent/f251_baseline/ | +908 (7 files) | 6b22988 — run1/run2 id sets, serial + clean-main controls, flake set, timings, class map |
+| .agent/f251_baseline/churn_gate_run1..3 + timings | +503 | 487c553 gate evidence |
+| .agent/handoff.md | rewrite | this commit — 100 lines (`wc -l`) |
 
-### ffc49fa + 1d0df28 + this commit (self-reference, R-0149 grouped table)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | ffc49fa — interim handback (R-0150 repair) |
-| .agent/plan.md | +28 −22 | 1d0df28 — S2 table, churn + root-cause columns |
-| .agent/handoff.md | rewrite | this commit — final handback, supersedes ffc49fa |
-
-## Item status — repair round (a)–(d)
+## Item status
 | Item | Status | Reason |
 |---|---|---|
-| (a) persist R-0150, own commit, first | done | 69cabd6, cmp 0, pushed |
-| (b) fix R-0150 — interim handback | done | ffc49fa, `Done: R-0150` in body |
-| (c) S1 baseline | done | not re-run — already executed truthfully; artifacts at 6b22988 |
-| (d) S2 decision table | done | 1d0df28 |
-| canary | done | 42 passed in 14.84s |
+| 1 persist R2 verdict, own commit, first | done | f0ee3e1, sha256 + cmp 0 |
+| 2 reviewer flake appendix | done | a8b3337, sha256 + cmp 0 |
+| 3 R-0151 fix | done | 7f67d03, 4 FeatureLedger tests green |
+| 4 R-0152 fix (handback ≤100) | done | 100 lines, measured |
+| 5 S3 per class | partial | F-A/F-D residue stopped, below |
+| 6 churn gate ×3 | **NOT PASSED** | 1 id in run1 only |
+| 7 canary | done | 42 passed |
+
+### Per-class outcome
+| Class | ids | Outcome |
+|---|---|---|
+| F-C data_paths | 1 | **fixed** — id 20× serial, module -n auto 3× + serial |
+| F-B grouped_cli / F-E job_rerun_manifest | 5 | **fixed** — one root cause (config cache) |
+| F-A/F-D runtimes+probe | 13 | **fixed** except 2 — union across 3 runs 10 → 2 |
+| appendix repo-scan | 7 | **fixed** — cwd fixture; all 7 gone in gate 2 |
+| F-A residue: Vite probe + supervisor guard | 2 | **stopped** — need product change |
+| new: test_run_manifest TestCoverage | 1 | **open** — seen once, not reproduced |
 
 ## External actions
-`gh pr merge 157 --merge --delete-branch` → merged, main 73ac5cc..d8ac7fa ·
-`git pull --ff-only` → clean · `gh pr list --state open` → `[]` before branching ·
-`git push -u origin feature/f251-suite-stabilization` + a push per commit since ·
-`git worktree add`/`remove` of a clean-main control tree in the scratchpad
-(removed) · no PR — reviewer-gated.
+A push per commit (f0ee3e1, a8b3337, 7f67d03, af67046, de17a00, 1c95dec, 13572dd,
+487c553, this one). No PR — reviewer-gated. No merges this round.
 
 ## Verification
-    run1 pytest -n auto -q → 168 failed, 14138 passed, 8 skipped, 1 error in
-         176.97s; real 2m57.371s
-    run2 pytest -n auto -q → 167 failed, 14139 passed, 8 skipped in 172.56s;
-         real 2m53.019s
-    diff run1/run2 → 161 common, 8 only-run1, 6 only-run2 (14 churning)
-    161 re-run serially → 156 failed, 5 passed (134.76s)
-    same 161 serially in a clean main worktree → 156 failed, 5 passed (143.98s);
-         comm both directions EMPTY ⇒ the 156 are pre-existing on main
-    19 flake ids isolated -n auto ×3 → 5 failed each, DIFFERENT ids ⇒ real flake
-    19 flake ids isolated serial     → 5 failed, another id set ⇒ order/cache dep
-    canary tests/cli/test_golden_path.py -q → 42 passed in 14.84s
-    git status --porcelain → empty (before this commit)
+    R-0151  -k FeatureLedger → 4 passed; file → 13 failed (README drift), 279 passed
+    F-C     id ×20 serial → 0 failures; module -n auto ×3 + serial → 23 passed
+    F-B/F-E poisoner + TestGroupedExecution ×3 → 9 passed (was 4 failed); 4 ids
+            -n auto ×3 → 4 passed; module → 479 passed; 19-id flake set serial →
+            19 passed; 18-id reproducer → 18 passed (was 4 failed)
+    F-A/F-D 22-id set -n auto ×3 → union 10 → 2; serial 22 passed; 4 modules 127
+    GATE 1  154 / 155+2err / 158+2err — core 154, 7 new churners (cwd leak)
+    GATE 2  155 (2m54.885s) / 154 (3m4.077s) / 154 (3m4.346s); run2 == run3
+            byte-identical AND each == the expected 154 exactly (comm empty BOTH
+            ways vs serial_deterministic minus TestFeatureLedger); run1 had ONE
+            extra id → gate not passed
+    canary  test_golden_path.py -q → 42 passed; git status --porcelain → empty
 
 ## Authored-text proofs
-sha256 matched the BEGIN marker BEFORE every commit: pamend-r2-1 `08086518…`,
-f251-r1-1 `bbc0f9f5…`, f251-r1-2 `c71e23d8…`, f251-r1-3 `c61db1cd…`, f251-r1-4
-`413ee9fe…`. `cmp` exit 0 for every full replace of `.agent/live_review.md` and
-`.agent/plan.md`; containment exit 0 for f251-r1-2 → STATUS.md (numstat 1/1).
+sha256 matched BEFORE committing: f251-r2-1 `111efa9b…`, f251-r2-2 `45eb4a22…`;
+`cmp` exit 0 for live_review←f251-r2-1 and reviewer_flake_extras←f251-r2-2.
+**f251-r2-2 arrived line-wrapped**: three ids split mid-token. As-displayed bytes
+hash to `3d148f40…`; joining the wrapped pairs gives `45eb4a22…` = the stated
+hash, so the joined form was applied — R-0148 class, caught by the guard before
+any commit, reported rather than silently "corrected".
 
 ## Deviations & assumptions
-- **R-0150 range note (not a dispute):** the stale handback is real for the reviewed
-  range `d8ac7fa..6280cb0`; it was rewritten at 977ea47 and trimmed at da61a40, two
-  commits past the reviewed tip. Made template-compliant regardless. Resolved: ffc49fa.
-- **Oversize commit declared (AGENTS.md exception, first and only in F251):** 6b22988
-  is +908 lines and inseparable — one baseline measurement (five failure-id lists plus
-  timings and class map). Splitting would put halves of one id set in different
-  commits and destroy the set-comparison evidence.
-- **Cap breaches, self-reported:** 977ea47/da61a40 were 116/91 lines and ffc49fa 110,
-  against ≤60 (≤100 only with >5 commit tables). This file has 6 tables and is ≤100.
-- **S1 not re-run** — already executed truthfully; artifacts are the originals.
-- **Named classes vs measurement:** "3 .agent contract failures" is really **9** (D4);
-  "~14 catalog/discovery" = D9+D10+F-B = 15; the "integrity-check
-  live_review_verdict matcher gap" has **no pytest id** (a `remedy integrity check`
-  warn), so nothing in this suite maps to it.
-- **Stop-on-red stands.** 156 of 161 stable failures are deterministic and identical
-  on clean main — drift, not flake. Fixing needs product-code change beyond a
-  hermetic-test seam; quarantining would mark genuine regressions as quarantined.
-- **Finding candidate R-0151** (renumbered per f251-r1-4): PR #157 took
-  `docs/roadmap/features/` 250 → 251 and STATUS likewise, breaking both
-  `TestFeatureLedger` pins (`TOTAL_FEATURES = 250`). 250 @73ac5cc vs 251 @d8ac7fa.
+- **Gate not passed — stop-on-red.** Churn fell from 14 ids to 1 and the stable
+  core is exactly the catalogued 154, but the bar is three identical sets and run1
+  missed by one: `test_run_manifest.py::TestCoverage::
+  test_check_candidate_is_incomplete_and_never_same`, `assert diff["same_inputs"]
+  is None` → `False` (line 473). Not reproduced in 8 attempts (id 5/5, module
+  3/3), so it is neither fixed nor quarantined.
+- **Two F-A ids stopped, not quarantined** ("product change ⇒ STOP"): the
+  real-Vite probe binds the product's apps/ui port; the supervisor_portability
+  residue is a file-scoped teardown guard whose fix reaches the product
+  stop/ownership path, and quarantining a test cannot silence a file-scoped guard.
+- **0 quarantines.** Every flake closed was closed by a hermetic fix.
+- `tests/conftest.py` now resets config and cwd for all 14314 tests; blast radius
+  covered by 6 full-suite runs across the two gate attempts.
+- A scripted edit put the new import inside embedded server-script strings in 5
+  files; caught before running, reverted, redone via AST. None reached a commit.
 
 ## Next
-Operator ruling on the 156 standing-red classes and on R-0151.
-**full suite on main: 0 quarantined, 14 churning, 156 standing red**
+Operator ruling open on the 13 D-classes (154 standing red) and the `.agent`-coupled
+D4 tests; then the 3 open flake ids above.
+**full suite: 0 quarantined, 1 churning (1 of 3 runs), 154 standing red (catalogued)**
