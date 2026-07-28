@@ -1,50 +1,91 @@
-# Handoff — F048 Job queue · closure round
+# Handback — Planning amendment: flake-debt reorder + F070/F075 corpus (R1)
 
 ## Range
-Review of `8356e40..HEAD` — 3 commits. ACCEPTED_HEAD = `c6a0b58` (the pre-zip head the package and verdict cover).
+Review of `73ac5cc15b60900cd4030968f9a32fd2ee311abf..HEAD` — branch
+`chore/plan-amendment-flake-debt`, PR **#157**, NOT merged.
+73ac5cc = main head at branch creation = LAST_REVIEWED_SHA.
 
 ## Commits
-### d136f1c chore(f048): persist the R2 PASS verdict
+### 2f32853 chore(plan): amendment round bookkeeping — authored texts, live-review reset
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f048-r3-1.md | +55 | authored verdict text, sha256-verified before use |
-| .agent/live_review.md | +36 −20 | full replace from the authored file (cmp exit 0) |
+| .agent/authored/pamend-r1-1..8.md | +124 (8 files) | operator texts saved verbatim, sha256-verified before use |
+| .agent/live_review.md | +6 −46 | full replace from r1-1 (round reset) |
+| .agent/plan.md | +24 −53 | full replace from r1-8 |
 
-### c6a0b58 docs(f048): Built State for the job queue — **ACCEPTED_HEAD**
+### 916a29f docs(roadmap): register F251 full-suite stabilization
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T1_F048.md | +102 | Built State: store, claim primitive, CLI, reclaim, binding, verification, carried risks |
-| .agent/plan.md | +18 −7 | closure checklist |
+| docs/roadmap/features/T1_F251.md | +45 | new file, full copy of r1-2 |
 
-### closure commit (self-reference, R-0149 grouped table)
+### 20298f9 docs(roadmap): F251 ordered before F050 in STATUS and ROADMAP tier 1
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1 −1 | authored `[x]` line, four slots filled with measured values |
-| .data/evidence_exports/58e88dd7-…/ | +~90 files | evidence dir, committed AFTER the READY zip (F147 lesson) |
-| .agent/{plan,handoff}.md | rewrite | final state; this file |
+| docs/roadmap/STATUS.md | +1 | r1-3 line after the F048 `[x]` line, before F050 |
+| docs/roadmap/ROADMAP.md | +8 | r1-4 paragraph after F048, before F050 (7 lines + blank) |
+
+### 82b490b docs(f070): ledger-fixture corpus + integrity-pattern note
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/features/T1_F070.md | +21 | r1-5 at end of Design, r1-6 at end of Acceptance |
+
+### 63e76bb docs(f075): gauntlet inherits era-fixture classes
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/features/T1_F075.md | +5 | r1-7 at end of Acceptance |
+
+### handoff commit (self-reference, R-0149 grouped table)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | this handback; cannot table its own commit |
+
+## Item status
+| Item | Status | Reason |
+|---|---|---|
+| Commit A | done | |
+| Commit B | done | |
+| Commit C | done | |
+| Commit D | done | |
+| Commit E | done | |
 
 ## External actions
-- `git push` after Commit B and after Commit C. `gh pr create` into main — PR **#156**, NOT merged (next feature's Open PR Gate merges it; the gap is the operator's manual-review window).
+- `gh pr list --state open …` → exactly `#156 feature/f048-job-queue → main, isDraft false`; gate passed.
+- `gh pr merge 156 --merge --delete-branch` → merged, 91 files, `40c7e4d..73ac5cc`.
+- `git checkout main && git pull --ff-only` → up to date at 73ac5cc, worktree clean.
+- `git push -u origin chore/plan-amendment-flake-debt` → `* [new branch]`, tracking set.
+- `gh pr create …` → https://github.com/UndefinedDatabase/remedy/pull/157 — open, NOT merged.
 
 ## Verification
-    git status --porcelain         → (empty)
-    remedy integrity check --json  → passed=true, fail_count=0, check_count=5, relevant_untracked=0, no high blockers (live_review_verdict=warn "no verdict found" — the known matcher backlog item, not a fail)
-    evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 — 6 measured runs, 164 passed, all exit 0: test_job_queue 34 · test_queue_concurrency 6 · test_queue_executor_binding 9 · test_queue_cmd 24 · test_long_run_executor 49 · test_golden_path 42
-    zip  PACKAGE_STATUS=READY_FOR_REVIEW · EVIDENCE_AUTHORITATIVE=true · REVIEW_SUBJECT_ALIGNMENT=PASS · ready_gate_matrix.ok=true · packaging_warnings=[] · final_verifier_reproducible=true
-         subject 40c7e4d3b3733b9f48a18d161e6aae425f01a963..c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee (13 commits) · zipfile.testzip() → None over 1497 members (IMPORT CHECK PASS)
-    package remedy-review-20260727-223612-READY_FOR_REVIEW.zip
-    SHA-256 6058d0f4d67ee082c852202e910fe05ff42a5e9406a3fd71464c251acf106a4b
-
-**First zip attempt FAILED and is recorded, not hidden.** Evidence job bd2a80b0-934b-4891-b82b-911407ea88e8 packaged as `BLOCKED_EVIDENCE` (`evidence_authoritative=false`): my `verification_runs` input hit two producer pitfalls — `node_ids` empty while `selected` was non-zero, and `output_hash` hashing full stdout instead of the stored `stdout_summary` — 12 validation errors. Input errors of mine, not code defects. Bundle and zip deleted; the builder now collects node ids from the same selection and hashes the stored summary; the rebuild validated clean (`is_valid_current_run=true`, 0 errors) BEFORE packaging. The integration gate was NOT re-run: R2 PASSed it and the verdict text re-confirms it.
+    4a cmp → exit 0: live_review.md/r1-1 · T1_F251.md/r1-2 · plan.md/r1-8
+    4b containment → exit 0: r1-3→STATUS.md · r1-4→ROADMAP.md · r1-5→T1_F070.md
+                             r1-6→T1_F070.md · r1-7→T1_F075.md
+    4c git diff main...HEAD --stat → 15 files, 234 insertions(+), 99 deletions(-);
+       only .agent/authored/pamend-r1-*, .agent/{live_review,plan}.md,
+       docs/roadmap/{STATUS,ROADMAP}.md, docs/roadmap/features/{T1_F070,T1_F075,T1_F251}.md
+    4d git diff main...HEAD --numstat -- docs/roadmap/STATUS.md → "1  0"
+    4e python3 -m pytest tests/cli/test_golden_path.py -q → exit 0, "42 passed in 14.63s"
+    4f git status --porcelain → (empty), before the handoff commit
 
 ## Authored-text proofs
-- f048-r3-1.md sha256 `33f61d0…8c8ea` = BEGIN marker; `cmp .agent/live_review.md .agent/authored/f048-r3-1.md` → exit 0.
-- STATUS line: with the four slot values blanked back to `<JOB_ID>` / `<ZIP_FILENAME>` / `<ZIP_SHA256>` / `<ACCEPTED_HEAD_FULL_SHA>`, the line is **byte-identical** to the authored skeleton (proved in the completion report); the old `- [~] F048 — Job queue` is GONE (grep exit 1). No other STATUS line touched.
+All eight `sha256sum .agent/authored/pamend-r1-<n>.md` matched the BEGIN
+markers byte-for-byte BEFORE the first commit: r1-1 `6b3f006c…`, r1-2
+`62925f29…`, r1-3 `44c2463d…`, r1-4 `1e2baad2…`, r1-5 `541f1c0d…`, r1-6
+`0d443cb7…`, r1-7 `cbc235cb…`, r1-8 `58a3ad7b…`. Applied texts re-proven
+disk-to-disk under 4a/4b.
 
 ## Deviations & assumptions
-- No code changes this round, as ordered. The evidence-builder script lives in the session scratchpad, outside the repo.
-- Findings: **0** for this feature. Open findings: 0.
-- Runtime actuals: 3 review rounds (R1, R2, closure); models and tokens **not-measured** (zero-provider manual bundle, `provider_call_count=0`).
+- Branch is `chore/plan-amendment-flake-debt` per the operator step text.
+  AGENTS.md requires `feature/*`, and its Open PR Gate stops on a
+  non-`feature/*` PR — the next gate run will halt on #157. Followed as
+  written, flagged here and in the PR body; not silently altered.
+- `docs/roadmap/ROADMAP.md` is normally agent-off-limits; this single Tier-1
+  ordering entry is operator-authorized.
+- `.agent/plan.md` is byte-identical to r1-8 as ordered, so its checkboxes stay
+  unticked although A–E are done; the item-status table above is authoritative.
+- `docs/README.md` untouched: `docs/roadmap/features/` files are not indexed
+  there individually, and it is outside the declared change set.
+- Findings this round: 0. Next free finding ID: R-0150.
 
 ## Next
-Window 1 reviews `8356e40..HEAD` and closes out. PR #156 stays open until the next feature's Open PR Gate.
+Window 1 reviews `73ac5cc..HEAD` on PR #157 (docs only); merge is the
+operator's call.
