@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP PH-v3/1 — process-hardening v3 (relay ergonomics) — FORMAT-UPDATE RE-EMISSION ──
 Note:        Supersedes the two refused unfenced emissions AND the
              fenced one you may hold but have not executed (no phv3
