@@ -103,6 +103,14 @@ block with the stored block portion of the previous last_block.md:
 - Byte-identical with NO previous record, or effects absent with no
   refusal recorded (a relay gap — the F048 case) → deliberate
   re-issue: proceed normally and note the re-issue in the handback.
+On ANY refusal or duplicate STOP (refused-hash-gate /
+stopped-duplicate), the worker COMMITS AND PUSHES
+`.agent/last_block.md` — OUTCOME line set accordingly, plus one
+evidence line (expected vs computed hash, or the duplicate's commit
+shas) — as the round's only commit. A refusal that leaves no disk
+trace is itself a handback defect. (This clarifies "committed with
+the round bookkeeping" for rounds where the bookkeeping commit IS the
+refusal.)
 
 **Handback form:** every `.agent/handoff.md` rewrite follows
 docs/agents/handback_template.md — all sections, in order. A missing or
@@ -156,7 +164,17 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
   one evidence line; previous OUTCOME refused-hash-gate → STOP
   likewise (a loop — the same bytes cannot pass the gate), never
   re-run the failed check; no record / relay gap → deliberate
-  re-issue: proceed and note it in the handback.
+  re-issue: proceed and note it in the handback. On ANY refusal or
+  duplicate STOP: COMMIT AND PUSH .agent/last_block.md — OUTCOME set,
+  plus one evidence line (expected vs computed hash, or the
+  duplicate's commit shas) — as the round's only commit; a refusal
+  with no disk trace is a handback defect.
+- A STOP or refusal reply contains: the banner, the evidence line(s),
+  and nothing else. It never assigns tasks, questions, or
+  instructions to the operator — remediation requests travel to
+  Window 1 via .agent/last_block.md and the handback on disk. The
+  operator relays; the operator is never the addressee of technical
+  work.
 - Rewrite .agent/handoff.md per docs/agents/handback_template.md — every
   section, in order.
 - At every handback: in this order: commits → attempt instructed
