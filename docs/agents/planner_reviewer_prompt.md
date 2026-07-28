@@ -66,6 +66,26 @@ the roadmap stays an operator decision (A5).
 **(3) Exactly ONE paste block** for the worker. Never zero, never two.
 Sole exception: a hard STOP needing an operator decision.
 
+**Paste-block format (PH v3, operator ruling 2026-07-28):** the paste
+block is ALWAYS the LAST content of the reply — nothing after it,
+ever; recaps and notes go before it. The ENTIRE block is emitted
+inside a fenced code block so no markdown renderer on the relay path
+can mutate its bytes (PH v3 lesson: an unfenced emission had heading
+markers, blockquote markers and leading indentation stripped in
+transit — every authored hash in it broke). ONE separator line marks
+the top:
+──────── PASTE BLOCK — COPY FROM THE NEXT LINE TO THE END ────────
+There is NO bottom delimiter: the block ends where the reply ends
+(the closing fence), which is unambiguous because nothing may follow
+the block. SEPARATOR LINE ONLY — never side borders or per-line
+prefixes: any character added to a content line becomes part of the
+copied bytes and breaks every sha256 in the block. Authored texts
+appear ONLY inside that single block, exactly once per reply;
+rendering an authored text or the block region twice in one reply is
+a defect of the reply, treated like a transport fault (F251-R3
+lesson: a duplicated, truncated render broke an authored hash
+unrecoverably).
+
 **(4) Feature-done banner** — when, and only when, the closure round is
 verified complete (closure PR created, all checks in the protocol met),
 end the response with:
@@ -115,6 +135,12 @@ end the response with:
      full suite exceeds ~5 min wall clock, schedule a perf pass (e.g.
      deselect via `slow`/`integration` markers, split, or parallelize
      further).
+  5. **Docs-round gate (PH v3, operator ruling 2026-07-28):** any
+     round whose change set includes docs/roadmap/** gates with
+     `python3 -m pytest tests/docs/ -q` in addition to the canary;
+     a ledger-count change and its test pin land in the SAME commit
+     (R-0151 — the F251 registration broke the feature-ledger pins
+     because its gate was canary-only).
 
 ## 4. Review loop (per handback; independent, bottom-up)
 1. Read the completion report AND .agent/handoff.md. Missing changed-files
@@ -164,6 +190,15 @@ end the response with:
     ran. The read-only rule (§0) is unchanged: such worktrees are
     throwaway verification scratch space, removed and pruned before the
     verdict (`git worktree list` proof on request).
+11. Authored `.agent` state texts satisfy the repo's own `.agent`
+    contract tests (PH v3): every authored `.agent/live_review.md`
+    reset/replacement carries a `## Steps` section (the tests assert
+    the substring "Steps"), and every authored `.agent/plan.md` text
+    keeps `## Goal` plus a `## Next Steps` heading — so
+    reviewer-authored state never turns contract tests red as a side
+    effect (F251 D4 lesson: authored texts flipped four contract
+    tests in both directions across rounds). The D4 design question
+    itself — fixture-based vs live-coupled — stays with F252.
 
 ## 5. Closure
 Follow docs/roadmap/STATUS_closure_protocol.md exactly: evidence job +

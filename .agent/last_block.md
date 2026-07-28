@@ -1,3 +1,30 @@
+OUTCOME: executed
+── STEP PH-v3/2 — verdict + merge (final block of this session) ────────
+Goal:        Persist the R1 PASS verdict, merge PR #159 (operator-
+             approved same-session merge), confirm main. Session ends
+             after this; F252 starts in a fresh window.
+Constraints: Authored text via .agent/authored/ with sha256 check
+             BEFORE commit. Nothing else changes.
+
+PROCEDURE
+1. On chore/process-hardening-v3: save phv3-r2-1 below to
+   .agent/authored/phv3-r2-1.md, sha256-verify, FULL REPLACE of
+   .agent/live_review.md (cmp 0). Update .agent/last_block.md line 1
+   stays "executed"; write THIS block per the guard (new bytes →
+   normal execution). Commit
+   "chore(phv3): persist the R1 PASS verdict". Push.
+2. Merge: gh pr merge 159 --merge --delete-branch
+   git checkout main && git pull --ff-only
+   git status --porcelain → must be empty.
+3. Confirm, single line back to the operator:
+   "PH v3 merged: main <sha>, tree clean, next item per STATUS.md =
+   F252 (new session)."
+Done when:   Verdict committed and pushed; #159 merged; main clean.
+Handback:    The single confirmation line of step 3 — no full
+             handback needed for a merge-only step (nothing further
+             this session).
+
+--- BEGIN phv3-r2-1 sha256=1a8856cd831d0df059dc42a1266cf5c8cf988fb106c09ce82cc996c6f352c7fb ---
 # Live Review — Process-hardening v3 (relay ergonomics)
 
 Branch: chore/process-hardening-v3 (PR #159)
@@ -35,3 +62,4 @@ Previous ledgers (F251, planning amendment, F048) live in git history.
   de-indent-by-2 storage convention is noted as binding for future
   byte comparisons. Verification tier: round gate (scoped) + canary.
   LAST_REVIEWED_SHA = a8a8114. Merge of #159 instructed.
+--- END phv3-r2-1 ---
