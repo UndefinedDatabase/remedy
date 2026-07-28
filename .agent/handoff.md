@@ -1,100 +1,100 @@
-# Handback — F251 R2: verdict, R-0151/R-0152, S3 flake fixes, churn gate
+# Handback — F251 R3: R3 verdict, F-F root cause, churn gate PASSED
 
 ## Range
-Review of `13783ed..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR;
-6280cb0..13783ed were accepted by the R2 verdict and are not re-tabled.
+Review of `6c45717..HEAD` — `feature/f251-suite-stabilization`, pushed, no PR.
 
 ## Commits
-### f0ee3e1 R2 verdict · a8b3337 reviewer flake appendix
+### 2a93e31 chore(f251): persist the R3 PASS verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f251-r2-1.md, .agent/live_review.md | +55, +67 −23 | verdict text sha256 111efa9b…, applied cmp 0 |
-| .agent/authored/f251-r2-2.md, .agent/f251_baseline/reviewer_flake_extras.txt | +20, +20 | appendix sha256 45eb4a22…, copied cmp 0 |
+| .agent/authored/f251-r3-1.md | +54 | verdict text, sha256 aec772a5… verified |
+| .agent/live_review.md | +85 −43 | full replace from f251-r3-1 (cmp 0) |
 
-### 7f67d03 R-0151 · af67046 · de17a00 · 13572dd global-state leaks
+### 5abfd3c test(f251): freeze Remedy's worktree identity per test (F-F)
 | Path | +/- | Reason |
 |---|---|---|
-| tests/docs/test_docs_consistency.py | +3 −1 | 7f67d03 — TOTAL_FEATURES 250→251 |
-| tests/test_data_paths.py | +21 | af67046 — config-cache isolation (F-C) |
-| tests/conftest.py | +29, +23 | de17a00 config-cache reset (F-B, F-E); 13572dd cwd restore |
+| tests/orchestration/test_run_manifest.py | +28 | autouse identity freeze |
+| tests/cli/test_job_rerun_manifest.py | +28 | autouse identity freeze |
+| .agent/plan.md | +38 −45 | worker rewrite (authored r3-2 unverified) |
 
-### 1c95dec test(f251): per-worker runtime ports (F-A, F-D)
+### 6c3f072 + this commit (self-reference, R-0149 grouped table)
 | Path | +/- | Reason |
 |---|---|---|
-| tests/ports.py | +39 | new: worker_port(), base 15173 |
-| 6 runtime test modules | +36 −13 | dynamic default port (test_runtime_cmd, test_dev_server, test_runtime_{cli_process_boundary,lifecycle_safety,state_machine}, test_supervisor_portability) |
-
-### 487c553 + this commit (self-reference, R-0149 grouped table)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/f251_baseline/churn_gate_run1..3 + timings | +503 | 487c553 gate evidence |
+| .agent/f251_baseline/churn_gate2_run1..3 + timings | +491 | 6c3f072 — gate evidence |
 | .agent/handoff.md | rewrite | this commit — 100 lines (`wc -l`) |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1 persist R2 verdict, own commit, first | done | f0ee3e1, sha256 + cmp 0 |
-| 2 reviewer flake appendix | done | a8b3337, sha256 + cmp 0 |
-| 3 R-0151 fix | done | 7f67d03, 4 FeatureLedger tests green |
-| 4 R-0152 fix (handback ≤100) | done | 100 lines, measured |
-| 5 S3 per class | partial | F-A/F-D residue stopped, below |
-| 6 churn gate ×3 | **NOT PASSED** | 1 id in run1 only |
-| 7 canary | done | 42 passed |
+| 1a persist R3 verdict (f251-r3-1) | done | 2a93e31, sha256 + cmp 0 |
+| 1b apply authored plan (f251-r3-2) | **BLOCKED** | sha256 mismatch — see below |
+| 2 F-F root cause + fix | done | 5abfd3c, hermetic, reproducer-proven |
+| 3 churn gate ×3 | **PASSED** | three identical sets == expected 154 |
+| 4 canary | done | 42 passed in 15.63s |
+| R-0153 | **open** | needs the authored plan text re-sent |
 
-### Per-class outcome
-| Class | ids | Outcome |
-|---|---|---|
-| F-C data_paths | 1 | **fixed** — id 20× serial, module -n auto 3× + serial |
-| F-B grouped_cli / F-E job_rerun_manifest | 5 | **fixed** — one root cause (config cache) |
-| F-A/F-D runtimes+probe | 13 | **fixed** except 2 — union across 3 runs 10 → 2 |
-| appendix repo-scan | 7 | **fixed** — cwd fixture; all 7 gone in gate 2 |
-| F-A residue: Vite probe + supervisor guard | 2 | **stopped** — need product change |
-| new: test_run_manifest TestCoverage | 1 | **open** — seen once, not reproduced |
+## BLOCKER — f251-r3-2 failed its hash, not committed
+Received 37 lines / 1686 bytes hashing to
+`c30e6828d9b061a6c2b15964cc930d014b1c65266046cb8ff3cedc5b11588cd0`;
+stated `8ac81a9afde5921b68eb792135905528989aecb3f83337c55a0076fa4e1d873d`.
+Recovery attempted per the R2 protocol, all failed: every adjacent-line join
+(with/without space, continuation stripped and unstripped), every combination of
+the unicode variants present (`…` `–` `×` `→` `—`), and trailing-newline / CRLF
+variants. Unverified authored bytes are not committed, so `.agent/plan.md` carries
+a worker rewrite that says so at the top. **R-0153 stays open** until f251-r3-2 is
+re-sent. `f251-r3-1` verified byte-exact, so the verdict was persisted rather than
+lost — step 1's single ordered commit is now two; flagged, not silent.
+
+## F-F — root-caused, hermetically fixed
+A run manifest records Remedy's OWN worktree identity (HEAD, content hash,
+dirty), and **any untracked entry sets dirty** (`run_manifest.py`: `dirty = True
+# any untracked entry means dirty`). The reference manifest is written when the
+job runs; the candidate is built moments later. Under `-n auto` all 24 workers
+share this one repo tree, so a neighbouring test creating or removing a repo file
+between those moments yields a blocking drift, and `same_inputs` becomes `False`
+where the tests require `None`.
+
+**Not a product bug.** Detecting that Remedy's own checkout changed between the
+recorded run and the current one is the intended F012 behaviour. The defect is
+test hermeticity: these tests assert about JOB inputs while running in a tree
+other tests mutate. The modules already carry this seam deliberately
+(`_patch_remedy_identity`); these three ids did not use it. The fix freezes the
+identity to the value seen at test start — the real value, not a forced
+"complete" — so the assertions keep their meaning.
 
 ## External actions
-A push per commit (f0ee3e1, a8b3337, 7f67d03, af67046, de17a00, 1c95dec, 13572dd,
-487c553, this one). No PR — reviewer-gated. No merges this round.
+A push per commit (2a93e31, 5abfd3c, 6c3f072, this one). No PR — reviewer-gated,
+no merges.
 
 ## Verification
-    R-0151  -k FeatureLedger → 4 passed; file → 13 failed (README drift), 279 passed
-    F-C     id ×20 serial → 0 failures; module -n auto ×3 + serial → 23 passed
-    F-B/F-E poisoner + TestGroupedExecution ×3 → 9 passed (was 4 failed); 4 ids
-            -n auto ×3 → 4 passed; module → 479 passed; 19-id flake set serial →
-            19 passed; 18-id reproducer → 18 passed (was 4 failed)
-    F-A/F-D 22-id set -n auto ×3 → union 10 → 2; serial 22 passed; 4 modules 127
-    GATE 1  154 / 155+2err / 158+2err — core 154, 7 new churners (cwd leak)
-    GATE 2  155 (2m54.885s) / 154 (3m4.077s) / 154 (3m4.346s); run2 == run3
-            byte-identical AND each == the expected 154 exactly (comm empty BOTH
-            ways vs serial_deterministic minus TestFeatureLedger); run1 had ONE
-            extra id → gate not passed
-    canary  test_golden_path.py -q → 42 passed; git status --porcelain → empty
+    F-F repro    untracked repo-root file churned: coverage id 5/5 RED; quiet tree 3/3 green
+    F-F fixed    all 3 ids under the same churn → 5/5 passed
+                 both modules serial → 75 passed; -n auto ×3 → 75 passed
+                 load-generator loop (4 parallel pytest jobs) 20/20 clean —
+                 generic load never reproduced it, tree mutation always did
+    GATE retry   run1 154 failed / 2m55.453s
+                 run2 154 failed / 3m0.927s
+                 run3 154 failed / 3m8.946s
+                 three id sets IDENTICAL (diff -q clean, both pairs), 0 errors
+                 each == expected 154 exactly (comm empty BOTH directions vs
+                 serial_deterministic minus TestFeatureLedger)
+    canary       test_golden_path.py -q → 42 passed; porcelain empty
 
-## Authored-text proofs
-sha256 matched BEFORE committing: f251-r2-1 `111efa9b…`, f251-r2-2 `45eb4a22…`;
-`cmp` exit 0 for live_review←f251-r2-1 and reviewer_flake_extras←f251-r2-2.
-**f251-r2-2 arrived line-wrapped**: three ids split mid-token. As-displayed bytes
-hash to `3d148f40…`; joining the wrapped pairs gives `45eb4a22…` = the stated
-hash, so the joined form was applied — R-0148 class, caught by the guard before
-any commit, reported rather than silently "corrected".
+## D4 ids — actual state, as ordered
+Both `test_live_review_has_steps_section` ids (test_test_runner.py,
+test_dashboard_contract.py) are PRESENT and RED in all three gate runs. They
+passed in the reviewer's R2 runs because `.agent/live_review.md` then held a text
+with a "Steps" section; this round's live_review (f251-r3-1) has none, so they are
+red — but stably red, which is why the sets are identical. Still D4: coupled to
+live `.agent` state, not to the code under test.
 
 ## Deviations & assumptions
-- **Gate not passed — stop-on-red.** Churn fell from 14 ids to 1 and the stable
-  core is exactly the catalogued 154, but the bar is three identical sets and run1
-  missed by one: `test_run_manifest.py::TestCoverage::
-  test_check_candidate_is_incomplete_and_never_same`, `assert diff["same_inputs"]
-  is None` → `False` (line 473). Not reproduced in 8 attempts (id 5/5, module
-  3/3), so it is neither fixed nor quarantined.
-- **Two F-A ids stopped, not quarantined** ("product change ⇒ STOP"): the
-  real-Vite probe binds the product's apps/ui port; the supervisor_portability
-  residue is a file-scoped teardown guard whose fix reaches the product
-  stop/ownership path, and quarantining a test cannot silence a file-scoped guard.
-- **0 quarantines.** Every flake closed was closed by a hermetic fix.
-- `tests/conftest.py` now resets config and cwd for all 14314 tests; blast radius
-  covered by 6 full-suite runs across the two gate attempts.
-- A scripted edit put the new import inside embedded server-script strings in 5
-  files; caught before running, reverted, redone via AST. None reached a commit.
+- Step 1's single ordered commit became two (verdict in, plan not): only one of
+  the two texts verified. See BLOCKER.
+- 0 quarantines, unchanged. Every flake closed was closed by a hermetic fix.
+- 2 F-A ids stay stopped (real-Vite port, file-scoped supervisor guard): both need product change, untouched; neither appeared in any gate run.
+- No D-class edits; the 154 standing red is unchanged and still catalogued.
 
 ## Next
-Operator ruling open on the 13 D-classes (154 standing red) and the `.agent`-coupled
-D4 tests; then the 3 open flake ids above.
-**full suite: 0 quarantined, 1 churning (1 of 3 runs), 154 standing red (catalogued)**
+Re-send f251-r3-2 to close R-0153. Operator ruling open on the 13 D-classes (154 standing red) and the 2 stopped F-A ids.
+**full suite: 0 quarantined, 0 churning, 154 standing red (catalogued)**
