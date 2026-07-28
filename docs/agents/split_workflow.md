@@ -81,6 +81,29 @@ reconstructed copy is a false verification claim (block condition class,
 R-0147). Only reviewer-authored text — arriving this way — may write
 `## Verdicts` entries or set findings Resolved.
 
+**Duplicate-block guard (PH v3, operator ruling 2026-07-28):** on
+receiving a paste block, the worker's bookkeeping FIRST ACTION also
+writes `.agent/last_block.md` (overwrite; committed with the round
+bookkeeping): line 1 is `OUTCOME: pending`, followed by the full
+received block VERBATIM. At round end the worker updates the OUTCOME
+line in place: `executed`, `refused-hash-gate`, or
+`stopped-duplicate`. BEFORE executing anything, compare the received
+block with the stored block portion of the previous last_block.md:
+- Byte-identical and previous OUTCOME `executed` (its
+  commits/artifacts are on disk) → STOP immediately, execute nothing,
+  and reply only
+  `##### SAME PROMPT AGAIN — PROBABLY A RELAY MISTAKE #####`
+  plus one line of evidence (e.g. the existing commit shas).
+- Byte-identical and previous OUTCOME `refused-hash-gate` → a LOOP:
+  resending the same bytes cannot clear a hash failure. STOP with the
+  same banner plus the recorded refusal evidence; do NOT re-run the
+  failing verification. Absence of effects has two causes — never
+  delivered, or delivered and refused — and last_block.md's OUTCOME
+  line exists precisely to tell them apart.
+- Byte-identical with NO previous record, or effects absent with no
+  refusal recorded (a relay gap — the F048 case) → deliberate
+  re-issue: proceed normally and note the re-issue in the handback.
+
 **Handback form:** every `.agent/handoff.md` rewrite follows
 docs/agents/handback_template.md — all sections, in order. A missing or
 incomplete section is a Medium finding; the second occurrence within one
@@ -124,6 +147,16 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
   disk-to-disk against it (R-0147). Never write into `## Verdicts` or
   mark findings Resolved — that text only ever arrives as
   reviewer-authored files under .agent/authored/ (R-0144).
+- FIRST bookkeeping action of every round: write .agent/last_block.md
+  (overwrite): line 1 `OUTCOME: pending`, then the received paste
+  block VERBATIM; update OUTCOME at round end (executed /
+  refused-hash-gate / stopped-duplicate). If the received block is
+  byte-identical to the stored one: previous OUTCOME executed → STOP,
+  reply `##### SAME PROMPT AGAIN — PROBABLY A RELAY MISTAKE #####` +
+  one evidence line; previous OUTCOME refused-hash-gate → STOP
+  likewise (a loop — the same bytes cannot pass the gate), never
+  re-run the failed check; no record / relay gap → deliberate
+  re-issue: proceed and note it in the handback.
 - Rewrite .agent/handoff.md per docs/agents/handback_template.md — every
   section, in order.
 - At every handback: in this order: commits → attempt instructed
