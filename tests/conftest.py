@@ -35,6 +35,29 @@ def _reset_config_cache():
     reset_config()
 
 
+@pytest.fixture(autouse=True)
+def _restore_cwd():
+    """Undo a working-directory change that a test forgot to reverse.
+
+    Several tests ``os.chdir`` into a temp directory. When one of them fails
+    early — or simply never restores — the process keeps that directory, and
+    every later test in the same xdist worker that reads a repo file by a
+    RELATIVE path breaks:
+
+        FileNotFoundError: 'scripts/remedy_smoke.sh'
+        FileNotFoundError: 'packages/orchestration/ui_server.py'
+
+    Whether a victim runs before or after the offender depends on the xdist
+    schedule, so it presents as flake. Restoring the directory after every test
+    keeps one test's chdir from becoming another test's missing file.
+    """
+    import os
+    before = os.getcwd()
+    yield
+    if os.getcwd() != before:
+        os.chdir(before)
+
+
 # Files that spawn subprocesses (CLI runtime, grouped CLI, etc.)
 SUBPROCESS_FILES = {
     "test_propose_cli_runtime.py",
