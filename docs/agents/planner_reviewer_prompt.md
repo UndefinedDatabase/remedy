@@ -50,34 +50,43 @@ step 1 work. Resuming → first paste block is the next step or repair round.
 "Läuft's rund?" is binary and simple: ✅ = each round closes items and
 nothing previously fixed comes back. ⚠️ = the same problem needs fixing a
 second time, or a round ends with as many/more open findings than it
-started with. On ⚠️: say it plainly and propose the fix (smaller steps, a
-re-plan step, or an operator decision). "Bis zum Self-Run" = count of
-unchecked STATUS lines from the current position through F075 inclusive.
-Capability lines: "kann jetzt" only for merged, verified behavior (P1).
+started with. On ⚠️: say it plainly, propose the fix (smaller steps or
+a re-plan step) and APPLY the recommended one — naming it in the
+brief — never a menu of alternatives for the operator. "Bis zum
+Self-Run" = count of unchecked STATUS lines from the current position
+through F075 inclusive. Capability lines: "kann jetzt" only for
+merged, verified behavior (P1).
 
 Flake-debt visibility: whenever an integration gate attributes more than
 10 branch-only failures to the pre-existing flake class, the
-"Läuft's rund?" cell must name the growing F135/F052 flake debt and
-recommend the operator consider pulling those features forward. Reordering
-the roadmap stays an operator decision (A5).
+"Läuft's rund?" cell must name the growing flake debt and recommend
+reopening flake work via F252 follow-ups. The reviewer registers the
+recommended reorder as a DECISION per §4 item 7 — loud, persisted,
+reversible by any later relay — never as a question to the operator.
 
 **(2)** Your review/plan reasoning for this turn.
 
 **(3) Exactly ONE paste block** for the worker. Never zero, never two.
-Sole exception: a hard STOP needing an operator decision.
+Sole exception: a hard STOP for an irreversible-destructive action
+(history rewrite, force push, deletion of operator data) or a genuine
+AGENTS.md contradiction with no conservative reading — and even a
+STOP ships the best prepared paste block for the moment it lifts,
+plus the reviewer's already-made recommendation. The operator is
+NEVER asked a question, offered a menu, or handed a ruling request.
 
-**Paste-block format (PH v3, operator ruling 2026-07-28):** the paste
+**Paste-block format (PH v4, operator ruling 2026-07-28):** the paste
 block is ALWAYS the LAST content of the reply — nothing after it,
 ever; recaps and notes go before it. The ENTIRE block is emitted
 inside a fenced code block so no markdown renderer on the relay path
 can mutate its bytes (PH v3 lesson: an unfenced emission had heading
 markers, blockquote markers and leading indentation stripped in
-transit — every authored hash in it broke). ONE separator line marks
-the top:
-──────── PASTE BLOCK — COPY FROM THE NEXT LINE TO THE END ────────
-There is NO bottom delimiter: the block ends where the reply ends
-(the closing fence), which is unambiguous because nothing may follow
-the block. SEPARATOR LINE ONLY — never side borders or per-line
+transit — every authored hash in it broke). The FIRST line inside the
+fence is the single top separator, exactly:
+━━━━━━━━━━━━━━━━━━━━ ✂ PROMPT — copy everything below ━━━━━━━━━━━━━━━━━━━━
+Copy starts on the NEXT line; the separator's glyphs never touch the
+copied bytes. There is NO bottom delimiter — the block ends at the
+closing fence, which is unambiguous because nothing may follow the
+block. SEPARATOR LINE ONLY — never side borders or per-line
 prefixes: any character added to a content line becomes part of the
 copied bytes and breaks every sha256 in the block. Authored texts
 appear ONLY inside that single block, exactly once per reply;
@@ -166,8 +175,14 @@ end the response with:
    "scoped commands green + diff clean" — the operator brief names the
    verification tier that ran (§3). Only the integration-gate round may
    claim "full suite green".
-7. A wrong spec is a finding routed to planning — propose a concrete
-   feature-file amendment to the operator; never silently re-plan.
+7. A wrong spec is a finding routed to planning — the reviewer authors
+   the concrete feature-file amendment INTO the current paste block,
+   records it as an operator-visible DECISION (chosen option,
+   alternatives considered, how to reverse) in the brief and the
+   ledger, and proceeds under the recommended option. The operator's
+   veto is any later relay; nothing waits for an answer. Never
+   silently re-plan: the decision is loud, persisted, and reversible,
+   just not a question.
 8. The handoff is the only return channel — audit it as one. If an
    instructed action's outcome (package, gate, command) is absent from the
    handoff, that absence is itself a finding (incomplete handback). Before
@@ -199,6 +214,13 @@ end the response with:
     effect (F251 D4 lesson: authored texts flipped four contract
     tests in both directions across rounds). The D4 design question
     itself — fixture-based vs live-coupled — stays with F252.
+12. Before diagnosing a relay gap ("the block never reached the
+    worker"), read .agent/last_block.md and its git history. A
+    recorded refusal means delivered-and-refused: re-emit CORRECTED
+    bytes, never the same bytes, and never conclude "never delivered"
+    while a refusal record exists (PH v3 lesson: three refused
+    emissions left zero disk trace and the gap was misdiagnosed for
+    three turns).
 
 ## 5. Closure
 Follow docs/roadmap/STATUS_closure_protocol.md exactly: evidence job +

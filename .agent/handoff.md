@@ -1,60 +1,60 @@
-# Handback — PH v3 (relay ergonomics): five process rulings persisted
+# Handback — PH v4: four process rulings persisted (docs only)
 
 ## Range
-Review of `ae08881c592531a1e68d83bd622e92bed4a4bd1b..HEAD` — `chore/process-hardening-v3`, 4 commits, pushed, PR open, NOT merged.
+Review of `bcc7ede..HEAD` — `chore/process-hardening-v4`, 4 commits, pushed, PR open, NOT merged.
 
 ## Commits
-### 253dbdb bookkeeping · a5a017f planner · 4cc76dd split_workflow · f615e12 template
+### 38c6065 bookkeeping · 0982b01 planner · ecbf95f split_workflow · this commit
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/phv3-r1-1..8.md | +122 | 253dbdb — eight authored texts, sha256-verified |
-| .agent/last_block.md | +173 | 253dbdb — new; duplicate-block guard, self-applied |
-| .agent/{live_review,plan}.md | +38 −68 | 253dbdb — full replaces r1-7 / r1-8 (cmp 0) |
-| docs/agents/planner_reviewer_prompt.md | +35 −0 | a5a017f — r1-1 §2, r1-2 §3 it.5, r1-3 §4 it.11 |
-| docs/agents/split_workflow.md | +33 −0 | 4cc76dd — r1-4 fidelity section, r1-5 bootstrap bullet |
-| docs/agents/handback_template.md | +4 −0 | f615e12 — r1-6 extends the cap blockquote |
+| .agent/authored/phv4-r1-1..11.md | +134 | 38c6065 — eleven texts, sha256-verified |
+| .agent/last_block.md | +164 −58 | 38c6065 — OUTCOME pending + received block |
+| .agent/{live_review,plan}.md | +19 −58 | 38c6065 — full replaces r1-10 / r1-11 (cmp 0) |
+| docs/agents/planner_reviewer_prompt.md | +40 −18 | 0982b01 — r1-1..r1-6 (5 replaces, 1 insert) |
+| docs/agents/split_workflow.md | +19 −1 | ecbf95f — r1-7 append, r1-8 replace, r1-9 insert |
 | .agent/{last_block,handoff}.md | this commit | OUTCOME→executed; this handback (R-0149 self-ref) |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1/2 Open PR Gate (#158) + branch | done | merged; main ae08881 = LAST_REVIEWED_SHA |
-| 3 Commit A | done | 253dbdb; 8/8 sha256 matched first try |
-| 4/5/6 Commits B,C,D | done | a5a017f, 4cc76dd, f615e12; 6 containment proofs |
-| 7 verification a–f | done | all green |
-| PR into main | done | created, NOT merged — awaits reviewer PASS |
+| Open PR Gate | done | `gh pr list --state open` → empty; main bcc7ede clean |
+| 1 Commit A | done | 38c6065; 11/11 sha256 matched first try |
+| 2/3 Commits B,C | done | 0982b01 (6 edits), ecbf95f (3); containment 0 ×9, absence 0 ×3 |
+| 4 verification a–g | done | 4d/4f pre-existing red only — see below |
+| 5/6 Commit D + PR | done | this commit; PR created, NOT merged |
 
 ## External actions
-`gh pr merge 158 --merge --delete-branch` → merged, main ae08881 · `git pull --ff-only` clean · push per commit · `gh pr create` → PR open, NOT merged.
+`gh pr list --state open` → `[]` (raw: no output) · branch from bcc7ede · push per commit · `gh pr create` → PR open, NOT merged. No merges this round.
 
 ## Verification
-    7a containment exit 0 ×6 (planner ×3, split_workflow ×2, template ×1)
-    7b cmp exit 0: live_review←r1-7, plan←r1-8; last_block.md line 1 present
-    7c four .agent contract tests → 4 passed · 7d canary → 42 passed
-    7e diff main...HEAD → 14 files, exactly the declared set; docs +72/−0
-    7f git status --porcelain → empty (before this commit)
+    4a containment exit 0 ×9 — r1-1..6 planner_reviewer_prompt, r1-7..9 split_workflow
+    4b cmp exit 0 — r1-10 vs live_review.md, r1-11 vs plan.md
+    4c grep -c = 0 ×3 retired strings ("COPY FROM THE NEXT LINE TO THE END",
+       "needing an operator decision", "F135/F052 flake debt")
+    4d test_dashboard_contract.py -q → 2 failed, 68 passed
+    4e canary test_golden_path.py -q → 42 passed · 4f tests/docs/ -q → 13 failed,
+       279 passed · 4g git status --porcelain → empty
+
+**4d/4f are NOT regressions — proven, not asserted.** The 15 failing ids diffed
+against the catalogued F251 baseline (`churn_gate2_run1.txt`): `comm -23` EMPTY,
+so all are pre-existing standing red owned by F252. The 13 in tests/docs are
+README pinned-text drift; the 2 in dashboard_contract read `.agent/context.md`,
+untouched by this round.
 
 ## Authored-text proofs
-All eight matched their BEGIN markers on the FIRST attempt (no recovery needed): `a308e164… 770a0b7f… 079fb749… 7d64e779… e74d6304… 736f0988… e22f4033… 3ff59e3b…`
-
-## Transport event — three refused emissions before this one
-Emissions 1–3 arrived UNFENCED and were refused at the hash gate; nothing ran,
-the repo stayed untouched. The relay's markdown renderer stripped `#`/`##` and
-leading indentation, normalised blank lines, and rendered `>` as `▎` — r1-6's
-own END marker arrived as `▎ --- END phv3-r1-6 ---`, the exact side-border
-failure r1-1 forbids. Emission 3 was byte-identical to 2, so I replied with the
-SAME-PROMPT banner rather than re-run a deterministic failure. Diagnosis proven:
-r1-7/r1-8 reconstructed to their stated hashes by restoring only the stripped
-markup, byte-identical to the texts in this fenced emission (cmp 0).
+All eleven matched their BEGIN markers on the FIRST attempt (no recovery needed):
+`a9229592… 4716a3d3… bd284198… 19e3f85f… b63db559… f6644e33… 8ae895f2… fc5f709c…
+eb5327a7… ec70ff73… d55de1e8…`
 
 ## Deviations & assumptions
-- Four blank-line repairs at insertion boundaries so the tight numbered lists and
-  the `## 4.`/`## 5.` headings keep their spacing; docs +72/−0, no line removed,
-  authored bytes untouched (containment still 0).
-- `.agent/last_block.md` stores the block de-indented by 2 — the transform the
-  authored texts need to hash; keep the convention stable or future
-  byte-comparisons false-positive.
-- No AGENTS.md conflict arose. Open findings: 0.
+- Duplicate-block guard: previous `.agent/last_block.md` carried `OUTCOME:
+  executed` and these are new bytes → normal execution, as the rule prescribes.
+- Gap worth a ruling: the PH v3 authored-state rule (§4 item 11) covers
+  `live_review.md` and `plan.md` but NOT `.agent/context.md`, still F046's and
+  keeping two contract tests red. r1-10/r1-11 satisfy the four tests the rule
+  names; the context.md pair stays red, with F252.
+- The local `chore/process-hardening-v3` ref still exists (remote deleted on
+  merge); outside this round's change set. Open findings: 0; no AGENTS.md conflict.
 
 ## Next
-Reviewer review of PR; PASS → operator-approved same-session merge.
+Handing back to Window 1 for review of bcc7ede..HEAD.

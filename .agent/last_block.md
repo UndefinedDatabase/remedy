@@ -1,65 +1,63 @@
 OUTCOME: executed
-── STEP PH-v3/2 — verdict + merge (final block of this session) ────────
-Goal:        Persist the R1 PASS verdict, merge PR #159 (operator-
-             approved same-session merge), confirm main. Session ends
-             after this; F252 starts in a fresh window.
+── STEP PH-v4/2 — verdict + merge (final block of this session) ────
+Goal:        Persist the R1 PASS verdict, merge PR #160 (operator-
+             approved same-session merge), confirm main clean.
+             Session ends after this; F252 starts in a fresh window.
 Constraints: Authored text via .agent/authored/ with sha256 check
-             BEFORE commit. Nothing else changes.
+             BEFORE commit — mismatch = STOP, report expected vs
+             computed, commit nothing, and per the new rule COMMIT
+             AND PUSH .agent/last_block.md with the refusal.
+             Duplicate-block guard: new bytes → normal execution.
+             Nothing else changes.
 
 PROCEDURE
-1. On chore/process-hardening-v3: save phv3-r2-1 below to
-   .agent/authored/phv3-r2-1.md, sha256-verify, FULL REPLACE of
-   .agent/live_review.md (cmp 0). Update .agent/last_block.md line 1
-   stays "executed"; write THIS block per the guard (new bytes →
-   normal execution). Commit
-   "chore(phv3): persist the R1 PASS verdict". Push.
-2. Merge: gh pr merge 159 --merge --delete-branch
+1. On chore/process-hardening-v4: save phv4-r2-1 below VERBATIM to
+   .agent/authored/phv4-r2-1.md, sha256-verify, then FULL REPLACE
+   .agent/live_review.md (cmp exit 0). Write .agent/last_block.md
+   per the guard (line 1 `OUTCOME: pending`, THIS block verbatim);
+   set OUTCOME: executed when done. Commit:
+   "chore(phv4): persist the R1 PASS verdict"
+   Push.
+2. Merge: gh pr merge 160 --merge --delete-branch
    git checkout main && git pull --ff-only
    git status --porcelain → must be empty.
-3. Confirm, single line back to the operator:
-   "PH v3 merged: main <sha>, tree clean, next item per STATUS.md =
+   Optional tidy (safe, -d refuses unmerged): git branch -d
+   chore/process-hardening-v3 chore/process-hardening-v4
+3. Confirm with a single line back to the operator:
+   "PH v4 merged: main <sha>, tree clean, next item per STATUS.md =
    F252 (new session)."
-Done when:   Verdict committed and pushed; #159 merged; main clean.
+Done when:   Verdict committed and pushed; PR #160 merged; main
+             clean.
 Handback:    The single confirmation line of step 3 — no full
-             handback needed for a merge-only step (nothing further
-             this session).
+             handback for a merge-only step (nothing further this
+             session).
 
---- BEGIN phv3-r2-1 sha256=1a8856cd831d0df059dc42a1266cf5c8cf988fb106c09ce82cc996c6f352c7fb ---
-# Live Review — Process-hardening v3 (relay ergonomics)
+--- BEGIN phv4-r2-1 sha256=ce25143ee5c4db978506310a4bb99bd0d6c6e6f0252c1d80ed7bef1e1d1c703b ---
+# Live Review — Process-hardening v4 (decide-and-proceed + refusal visibility)
 
-Branch: chore/process-hardening-v3 (PR #159)
-LAST_REVIEWED_SHA: a8a8114
-Finding IDs continue monotonically; next free ID: R-0154.
-Previous ledgers (F251, planning amendment, F048) live in git history.
+Branch: chore/process-hardening-v4 (PR #160)
+Scope: docs/agents/planner_reviewer_prompt.md and
+docs/agents/split_workflow.md — docs-only amendments (four operator
+rulings: separator redesign, refusal disk-trace, decide-and-proceed,
+worker STOP etiquette).
 
 ## Steps
-
-- R1 reviewed PASS; merge of PR #159 instructed (operator-approved
-  same-session merge, PH v1/v2 precedent). Session ends after the
-  merge confirmation; the next session starts F252 per Rule A5.
+- R1: apply authored texts phv4-r1-1..11, run gates, hand back. Done.
+- R2: persist this verdict, merge PR #160, confirm main clean. Session
+  ends; F252 starts in a fresh window (A5).
 
 ## Findings
-
-(none this round)
+(none — zero findings in R1)
 
 ## Verdicts
-
-- R1 (ae08881..a8a8114): PASS — issued by the reviewer after
-  independent verification. All eight authored texts byte-identical
-  disk-to-disk against the reviewer originals (first-try hashes —
-  the fenced transport held); all six containment proofs exit 0;
-  the docs diff adds 72 lines and removes NONE (the four blank-line
-  boundary repairs are additions only, authored bytes untouched);
-  .agent/last_block.md exists with OUTCOME: executed — the guard's
-  first self-application; the handback is exactly 60 lines and was
-  written ONCE (no trim commits). The four .agent contract tests
-  and the canary re-run green by the reviewer. Open PR Gate on #158
-  executed correctly (main ae08881). The three refused unfenced
-  emissions are recorded as the round's transport event with the
-  proven mechanism — the refusals were correct guard behavior, and
-  the worker-identified third guard case (delivered-and-refused)
-  was folded into r1-4/r1-5 before persistence. The last_block.md
-  de-indent-by-2 storage convention is noted as binding for future
-  byte comparisons. Verification tier: round gate (scoped) + canary.
-  LAST_REVIEWED_SHA = a8a8114. Merge of #159 instructed.
---- END phv3-r2-1 ---
+- R1: PASS (reviewer, 2026-07-28). Range bcc7ede..de809b5, 4 commits.
+  Diff is exactly the instructed nine doc edits plus bookkeeping;
+  11/11 authored hashes matched on disk; containment 9/9, absence
+  3/3, cmp 2/2 re-run independently by the reviewer. Gates: dashboard
+  contract 2 failed / 68 passed, tests/docs 13 failed / 279 passed,
+  canary 42 passed — the reviewer reproduced the failing ids at
+  bcc7ede in a throwaway worktree (comm branch-minus-main = empty;
+  main even shows one extra environment-dependent failure); all 15
+  are pre-existing standing red owned by F252. Tree clean. Verified
+  tier: docs-round gate + canary (§3). LAST_REVIEWED_SHA = de809b5.
+--- END phv4-r2-1 ---
