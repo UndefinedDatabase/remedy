@@ -1,0 +1,160 @@
+8356e40825c34fe46259c0287b7f28267e60827b
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index ea7e3be..79f4244 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -1,58 +1,81 @@
+-# Handoff — F048 Job queue · round 1 (gate + claim + T001 + T002)
++# Handoff — F048 Job queue · round 2 (verdict + T003 + integration gate)
+ 
+ ## Range
+-Review of `40c7e4d..HEAD` — 5 commits. Branch point `40c7e4d` = main after the F047 gate merge.
++Review of `7f05857..HEAD` — 6 commits.
+ 
+ ## Commits
+-### 739947d chore(f048): claim F048 job queue
++### fd2e21d chore(f048): persist the R1 PASS verdict
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/authored/f048-r1-{1,2}.md | +15 | authored texts, sha256-verified before use |
+-| .agent/live_review.md | +14 −38 | full replace with the F048 ledger |
+-| .agent/plan.md | +40 −23 | rewritten for F048 |
+-| docs/roadmap/STATUS.md | +1 −1 | F048 `[ ]` → `[~]` |
++| .agent/authored/f048-r2-1.md | +30 | authored verdict text, sha256-verified before use |
++| .agent/live_review.md | +20 −8 | full replace from the authored file (cmp exit 0) |
++| .agent/plan.md | +33 −35 | rewritten for round 2 |
+ 
+-### bd990c7 feat(f048): file-based job queue entry store (T001)
++### 61e664f feat(f048): remedy queue add/list/rm (T003a)
+ | Path | +/- | Reason |
+ |---|---|---|
+-| packages/orchestration/job_queue.py | +500 | new module; at the 500-line ceiling, tests split off |
++| apps/cli/commands/queue_cmd.py | +215 | new queue group handlers |
++| apps/cli/command_catalog.py | +38 | queue group + add/list/rm entries |
++| apps/cli/commands/__init__.py | +3 −1 | handler registration |
++| packages/orchestration/job_queue.py | +49 −7 | remove_entry, QueueEntryClaimedError, queue_root via data_paths |
++| packages/orchestration/data_paths.py | +9 | queue_dir() promotion (round-1 deferral) |
+ 
+-### acf0728 test(f048): unit tests for the queue entry store (T001)
++### ed3e2ca test(f048): CLI tests for queue add/list/rm (T003a)
+ | Path | +/- | Reason |
+ |---|---|---|
+-| tests/orchestration/test_job_queue.py | +400 | 26 tests: ordering, claim lifecycle, transitions, restart, corruption, duplicates |
++| tests/cli/test_queue_cmd.py | +279 | 21 subprocess tests over the real grouped CLI |
+ 
+-### 090903f test(f048): two-process claim proof (T002)
++### 042d740 feat(f048): explicit queue reclaim, TTL- and pid-gated (T003b)
+ | Path | +/- | Reason |
+ |---|---|---|
+-| tests/orchestration/test_queue_concurrency.py | +185 | 24 entries, 2 subprocess consumers, 3 repeats |
++| packages/orchestration/job_queue.py | +145 | reclaim(), ReclaimRefusedError, TTL resolution, owner probe |
++| packages/orchestration/config.py | +12 | queue.reclaim_ttl_minutes (default 60) |
++| apps/cli/commands/queue_cmd.py | +27 | queue reclaim handler |
++| apps/cli/command_catalog.py | +12 | queue.reclaim entry |
++| tests/orchestration/test_job_queue.py | +126 | 8 reclaim tests |
++| tests/cli/test_queue_cmd.py | +58 | 3 CLI-level reclaim tests |
++
++### 37da8c6 feat(f048): opt-in executor binding (T003c)
++| Path | +/- | Reason |
++|---|---|---|
++| packages/orchestration/long_run_executor.py | +144 −1 | QueuePull, queue_binding_enabled, queued_entry_to_job, idle seam |
++| packages/orchestration/config.py | +13 | queue.executor_binding (default false) |
++| tests/orchestration/test_queue_executor_binding.py | +188 | 9 end-to-end tests |
+ 
+ ### handoff commit (self-reference, R-0149 grouped table)
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/{handoff,plan}.md | rewrite | this file; plan ticks T001/T002/canary |
++| .agent/{handoff,plan}.md | rewrite | this file; plan ticks T003a-c, canary, gate |
+ 
+ ## External actions
+-- `gh pr merge 153 --merge --delete-branch` → FAILED: `not mergeable: the merge commit cannot be cleanly created` (CONFLICTING/DIRTY) on `.agent/{plan,live_review,handoff}.md` — PR #155 and the F047 closure both rewrote them. Operator ruling 2026-07-27 "take the newest AGENTS.md": resolved to main's side on feature/f047-checkpoint-resume (merge `6c94d23`, pushed `2d0301c..6c94d23`), then the same merge command → exit 0.
+-- `git checkout main && git pull --ff-only` → `Already up to date`, main `40c7e4d`.
+-- `git push -u origin feature/f048-job-queue` → new branch. NO PR this round (as ordered).
++- `git worktree add <scratch>/base_wt 40c7e4d` for the gate base run; removed with `git worktree remove --force` + `git worktree prune`; `git worktree list` now shows only the repo. Both run logs live in the session scratchpad, outside the repo.
++- `git push` of feature/f048-job-queue. NO PR, no STATUS `[x]`, no evidence job, no zip — closure is its own round.
+ 
+ ## Verification
+-    pytest tests/orchestration/test_job_queue.py -q         → 26 passed, exit 0
+-    pytest tests/orchestration/test_queue_concurrency.py -q →  6 passed, exit 0
+-    pytest tests/cli/test_golden_path.py -q                 → 42 passed, exit 0
+-    ruff check job_queue.py + both test files               → All checks passed
+-T002 falsified in scratch (not committed): the same scenario with the claim marker's `create_only` disabled → 22 double-claims. Real runs: splits 10/14, 11/13, 10/14, overlapping claim windows, 0 double-claims.
++    pytest tests/cli/test_queue_cmd.py -q                    → 21 passed, exit 0   (T003a)
++    pytest tests/orchestration/test_job_queue.py -q          → 34 passed, exit 0   (T003b, incl. 8 reclaim)
++    pytest tests/orchestration/test_queue_executor_binding.py → 9 passed, exit 0   (T003c)
++    pytest tests/cli/test_golden_path.py -q                  → 42 passed, exit 0   (canary)
++    pytest tests/orchestration/test_long_run_executor.py -q  → 49 passed, exit 0   (F046/F047 regression)
++    ruff check (every touched file)                          → All checks passed
++
++INTEGRATION GATE — `python3 -m pytest -n auto -q`, per docs/agents/integration_gate.md:
++
++    branch (HEAD)      159 failed, 14147 passed,  8 skipped in 183.61s   exit 1  (wall 184.08s)
++    base   (40c7e4d)   201 failed, 14017 passed, 15 skipped, 1 error in 172.52s  exit 1  (wall 172.98s)
++
++`comm -13` branch-only ids: **7**, all runtime/supervisor/probe. Serial re-run of every one: **7/7 PASS** → xdist-flake class (F135/F052), recorded, not a blocker. `comm -23` (failing on base, not on branch): 49 — the same flake population in the other direction; the suite is noisy at this concurrency in both runs. No F048 test id appears in either failure list. The pre-existing `tests/test_command_catalog.py` classification failures are base failures about `do.job-evidence` / `do.repair-attest`, untouched by this round.
+ 
+ ## Authored-text proofs
+-- f048-r1-1.md sha256 `10e9523…3b65` = BEGIN marker; `sed -n 33p docs/roadmap/STATUS.md | cmp - <file>` → exit 0; old `- [ ] F048 — Job queue` GONE (grep exit 1).
+-- f048-r1-2.md sha256 `f8e9648…a559c` = BEGIN marker; `cmp .agent/live_review.md .agent/authored/f048-r1-2.md` → exit 0.
++- f048-r2-1.md sha256 `a3337bd…4e807` = BEGIN marker; `cmp .agent/live_review.md .agent/authored/f048-r2-1.md` → exit 0.
+ 
+ ## Deviations & assumptions
+-- Inspection (item 3): the primitive is `packages/common/secure_fs.py:532` `write_file_atomically(..., create_only=True)` — publishes with `os.link`, returns False on `FileExistsError`; used by `packages/orchestration/safe_points.py:372` (F011 stop request). T001 reuses it unchanged for `<entry-id>.claim`.
+-- Path scheme: `<data_root>/queue/<project_id>/<entry_id>.json` + sibling `<entry_id>.claim`; 0700 dirs / 0600 files opened through identity-verified directory fds (the F011 control-area posture).
+-- A9: higher priority value first, FIFO by `created_at` within equal priority, `id` as the same-microsecond tie-break; duplicate goal text allowed → two independent entries.
+-- `queue_root()` kept in job_queue.py (not data_paths.py) and `tests/conftest.py` SUBPROCESS_FILES left unextended for the new subprocess test — both outside the declared change set, so both are T003's call. T001's module commit was trimmed to exactly 500 lines rather than declaring an oversize exception.
++- **A9 reclaim semantics**: a claim is re-offered only when BOTH the claim is older than `queue.reclaim_ttl_minutes` (default 60) AND the owner is verifiably gone — the owner id names THIS host and its pid is dead. Deliberate refusals: an owner on another host is never declared gone; `PermissionError` from `kill(pid,0)` counts as alive; an unparsable `host#pid` or an unparsable `claimed_at` refuses, because an age that cannot be proven is not an old age. No code path anywhere reclaims on a timer (P2).
++- **A9 binding semantics**: the pulled entry becomes what `job create` + `job plan` produce and STOPS at PLANNED. No task is executed and nothing implies `--yes`, so approval rules are untouched by construction. The binding fires only at the idle terminals (`all_green`, `blocked`) and only for the job's own project.
++- **A9 add heuristic**: `queue add` treats an argument as a goal-file path only when that file EXISTS; `--path` forces it. A sentence containing a slash stays goal text.
++- `--all-projects` widens the LISTING only, over the project directories on disk (including queues whose project was unregistered — hiding them would be dishonest). There is still no cross-project queue.
++- `tests/conftest.py` SUBPROCESS_FILES was NOT extended: the new subprocess tests already collect and pass under their default `integration` mark, so the edit was unnecessary rather than deferred.
++- `CycleLoopResult.to_json()` gains the `queue_pull` key ONLY when a pull happened, so the default payload shape every existing reader parses is unchanged.
+ 
+ ## Next
+-Window 1 reviews `40c7e4d..HEAD`. T003 (CLI, reclaim, executor binding) is the next round.
++Window 1 reviews `7f05857..HEAD` and issues the gate verdict. Closure (STATUS `[x]`, evidence job, zip, PR) is its own reviewer-gated round.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index ff07c1f..aba6c34 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -10,24 +10,26 @@ the dedicated integration gate.
+ ## Checklist
+ - [x] R1 (40c7e4d..7f05857) reviewed PASS — verdict persisted from the
+       authored text f048-r2-1.md (sha256-verified, cmp exit 0)
+-- [ ] T003a: `remedy queue add|list|rm` + tests/cli/test_queue_cmd.py
+-      (rm refuses a claimed entry and names the owner)
+-- [ ] T003b: `remedy queue reclaim <id>` — only when the claim is older
+-      than the TTL (config, default 60 min) AND the owner's pid is
+-      verifiably dead on this host; refuse otherwise, naming the owner
+-- [ ] T003c: opt-in executor binding — idle multi-cycle executor pulls
+-      claim_next, makes a NORMAL golden-path job (intake → plan →
+-      approval unchanged), complete()/fail() on the entry; e2e test
+-- [ ] Canary: tests/cli/test_golden_path.py green
+-- [ ] Integration gate: full suite per docs/agents/integration_gate.md
++- [x] T003a: `remedy queue add|list|rm` + tests/cli/test_queue_cmd.py;
++      `queue_root()` promoted into data_paths.queue_dir(); 21 tests green
++- [x] T003b: `remedy queue reclaim <id>` — TTL gate (config
++      queue.reclaim_ttl_minutes, default 60) AND verifiably-gone owner
++      (this host + dead pid); refusals name the owner; 34 tests green
++- [x] T003c: opt-in executor binding (config queue.executor_binding,
++      default off) — an idle run pulls claim_next, makes a NORMAL job that
++      stops at PLANNED, complete()/fail() on the entry; 9 e2e tests green
++- [x] Canary: tests/cli/test_golden_path.py — 42 passed
++- [x] Integration gate: branch 159F/14147P vs base 201F/14017P; 7
++      branch-only ids, all serial-PASS (xdist-flake class), no F048 test
++      in either failure list → no blocker
+ - [ ] Handback: handoff.md rewritten, branch pushed, NO PR
+ 
+ ## Current Step
+-T003a — the queue CLI, following the F147 golden-path command patterns.
+-Promoting `queue_root()` into data_paths.py is in scope this round.
++Handback. The feature body is complete: store, CLI, reclaim, binding.
+ 
+ ## Next Steps
+-T003a → T003b → T003c → canary → integration gate → handback.
++Reviewer verdict on 7f05857..HEAD. Closure is its own round: STATUS
++`[x]`, evidence job, review zip, PR — none of it done here.
+ 
+ ## Risks
+ - Do-not-touch: cron/scheduling, cross-project queues, SQLite.

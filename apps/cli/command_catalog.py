@@ -96,6 +96,7 @@ GROUPS: dict[str, GroupDef] = {
     # -- User-facing primary commands --
     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
+    "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
     "ui": GroupDef("ui", "UI", "Open the local UI."),
     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
@@ -443,6 +444,55 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("job.status", "job.report"),
+    ),
+
+    # ── queue (F048) ─────────────────────────────────────────────────────
+    CommandEntry(
+        command_id="queue.add",
+        group_id="queue",
+        subcommand="add",
+        description="Enqueue a goal for this project (text, or a path to a goal file).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("goal", "Goal text, or a path to a goal file"),
+            ArgDef("--prio", "Priority; higher is claimed first (default 0)", required=False, is_option=True, default=None),
+            ArgDef("--path", "Treat the argument as a goal-file path, not as goal text", required=False, is_option=True, is_flag=True),
+            _PROJECT_SCOPE_OPT,
+        ),
+        related=("queue.list", "queue.rm"),
+    ),
+    CommandEntry(
+        command_id="queue.list",
+        group_id="queue",
+        subcommand="list",
+        description="List queue entries (scoped to the current project by default).",
+        action_class="read_only",
+        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
+        related=("queue.add",),
+    ),
+    CommandEntry(
+        command_id="queue.rm",
+        group_id="queue",
+        subcommand="rm",
+        description="Remove a queue entry. A claimed entry is refused, naming its owner.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+        ),
+        related=("queue.list",),
+    ),
+    CommandEntry(
+        command_id="queue.reclaim",
+        group_id="queue",
+        subcommand="reclaim",
+        description="Re-offer a stale claim — only if it is past the TTL and its owner is verifiably gone.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+        ),
+        related=("queue.list",),
     ),
 
     # ── project ──────────────────────────────────────────────────────────

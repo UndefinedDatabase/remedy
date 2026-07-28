@@ -1,0 +1,12 @@
+{
+ "changed_files": [
+  "packages/orchestration/config.py",
+  "packages/orchestration/data_paths.py",
+  "packages/orchestration/job_queue.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/cli/test_queue_cmd.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

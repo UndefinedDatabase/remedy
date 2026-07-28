@@ -1,0 +1,367 @@
+{
+ "base_commit": "40c7e4d3b3733b9f48a18d161e6aae425f01a963",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f048-r1-1.md",
+    ".agent/authored/f048-r1-2.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "739947d6e42bc9f72db7aa213065c43c2f2b1e11",
+   "parents": [
+    "40c7e4d3b3733b9f48a18d161e6aae425f01a963"
+   ],
+   "patch_sha256": "01ddb2f7342424b5e2cf886264fcd4dc977de87b6c658736c14b8a66fd87da01",
+   "subject": "chore(f048): claim F048 job queue",
+   "tree": "ff6f71cb27d884264a615a1691b4207fc15b448b"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/job_queue.py"
+   ],
+   "commit": "bd990c789d54633fa0d6b08f700d91a928f1d65d",
+   "parents": [
+    "739947d6e42bc9f72db7aa213065c43c2f2b1e11"
+   ],
+   "patch_sha256": "93eecd8e1d205e4b72e972d68b76be30fc5a876c9e39d0f9a23a4e3bd4f3a752",
+   "subject": "feat(f048): file-based job queue entry store (T001)",
+   "tree": "e89d3d41da9d2e6befadbfd5303b0279a9f117f2"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_job_queue.py"
+   ],
+   "commit": "acf0728c41a13beb037a1d7513c300d99b042c2b",
+   "parents": [
+    "bd990c789d54633fa0d6b08f700d91a928f1d65d"
+   ],
+   "patch_sha256": "6a8896f8da52599890f177e9eaa45bb29b88c9f03d3f81a5f0c82226698d4213",
+   "subject": "test(f048): unit tests for the queue entry store (T001)",
+   "tree": "6f2627a67cc197c1c21be6edd8de6c06dc86795b"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_queue_concurrency.py"
+   ],
+   "commit": "090903fb8f51e0ce1ef94aec67ae848f8a6cf7dc",
+   "parents": [
+    "acf0728c41a13beb037a1d7513c300d99b042c2b"
+   ],
+   "patch_sha256": "96876879abd92ecf5b20c8bab14089de4934b9bbe1b5c626fab9fe962ae0ef62",
+   "subject": "test(f048): two-process claim proof, zero double-claims (T002)",
+   "tree": "f7b8b7d7d8dd22f59e4ceffe94a4c5b0c227b047"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "7f058576eb9ea148708cbb255e5546c9845cbd0b",
+   "parents": [
+    "090903fb8f51e0ce1ef94aec67ae848f8a6cf7dc"
+   ],
+   "patch_sha256": "55bcebe1acc76ee20ee7fd82d715f8566cead20ca0738704a855ca7cfb110811",
+   "subject": "chore(f048): handback for round 1 (gate + claim + T001 + T002)",
+   "tree": "0616338c732e9e9d75ca5be7a79cca1c12d55d0e"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f048-r2-1.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "fd2e21d19b2fd3773164dff33902ddf1d5f6cd06",
+   "parents": [
+    "7f058576eb9ea148708cbb255e5546c9845cbd0b"
+   ],
+   "patch_sha256": "b980fd759ee98eac16e66eafb18d2af57846078123bf55aa0edc028bc861a330",
+   "subject": "chore(f048): persist the R1 PASS verdict",
+   "tree": "5b063eda7caa0c47e8b3d8e6229b2eb1daee9e98"
+  },
+  {
+   "changed_files": [
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/__init__.py",
+    "apps/cli/commands/queue_cmd.py",
+    "packages/orchestration/data_paths.py",
+    "packages/orchestration/job_queue.py"
+   ],
+   "commit": "61e664f4a25ef75e8756433af87614cce4ea0b7e",
+   "parents": [
+    "fd2e21d19b2fd3773164dff33902ddf1d5f6cd06"
+   ],
+   "patch_sha256": "ad586cc69aae973a4889515c071b310b3b911497f513430747c7ec0a6eca1dc8",
+   "subject": "feat(f048): remedy queue add/list/rm (T003a)",
+   "tree": "4baee923afbe469107835dcdf9773a0f09879060"
+  },
+  {
+   "changed_files": [
+    "tests/cli/test_queue_cmd.py"
+   ],
+   "commit": "ed3e2ca277fd44f72606e3d7e1a09777cffbbd42",
+   "parents": [
+    "61e664f4a25ef75e8756433af87614cce4ea0b7e"
+   ],
+   "patch_sha256": "8febe39a1085843af5ddd6b6ea39982279585806a4f676778cd34e59fe36dea5",
+   "subject": "test(f048): CLI tests for queue add/list/rm (T003a)",
+   "tree": "9e65e00158ec05b4910cf8e112988e7091c18cc3"
+  },
+  {
+   "changed_files": [
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/queue_cmd.py",
+    "packages/orchestration/config.py",
+    "packages/orchestration/job_queue.py",
+    "tests/cli/test_queue_cmd.py",
+    "tests/orchestration/test_job_queue.py"
+   ],
+   "commit": "042d74075bd9fd9134d7d210ac2e46fcee69b0d1",
+   "parents": [
+    "ed3e2ca277fd44f72606e3d7e1a09777cffbbd42"
+   ],
+   "patch_sha256": "407bd45ac581c1fa34aba8fe330d76810cafb2554a3785477c7c28a09c020130",
+   "subject": "feat(f048): explicit queue reclaim, TTL- and pid-gated (T003b)",
+   "tree": "9ffcd27984fea61bff02c909cac2c859e7004698"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/config.py",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_queue_executor_binding.py"
+   ],
+   "commit": "37da8c63423afc63c7f6c393308edd0abceb849d",
+   "parents": [
+    "042d74075bd9fd9134d7d210ac2e46fcee69b0d1"
+   ],
+   "patch_sha256": "5d5046ed236d18d1f2f8bdc128b9af50b1ce31b9d2b96d77e5a9a67c11d0182b",
+   "subject": "feat(f048): opt-in executor binding, queued goal to planned job (T003c)",
+   "tree": "70ddc648e17ef4617ddda25f9154bb90d8e98ad6"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "8356e40825c34fe46259c0287b7f28267e60827b",
+   "parents": [
+    "37da8c63423afc63c7f6c393308edd0abceb849d"
+   ],
+   "patch_sha256": "e6adc0d8ac0165871983211134b0844cf307b9746fe45bfe390672557a63d9dd",
+   "subject": "chore(f048): handback for round 2 (T003 + integration gate)",
+   "tree": "99db379feb3c6bab40034f71641e67ab7d7de51c"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f048-r3-1.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "d136f1ca4fbbc8e21928d0d59cacee2d6c83e061",
+   "parents": [
+    "8356e40825c34fe46259c0287b7f28267e60827b"
+   ],
+   "patch_sha256": "1a4f3f7400de6c159cc72612634ef83f0cda3ea34f5191b90346c101856c3ed8",
+   "subject": "chore(f048): persist the R2 PASS verdict (integration gate included)",
+   "tree": "d71497fbc0b0c5cae183ae89b2bf08c7dfe72e8c"
+  },
+  {
+   "changed_files": [
+    ".agent/plan.md",
+    "docs/roadmap/features/T1_F048.md"
+   ],
+   "commit": "c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee",
+   "parents": [
+    "d136f1ca4fbbc8e21928d0d59cacee2d6c83e061"
+   ],
+   "patch_sha256": "654fb24a6dacf0465e580427e4a62b5661c435161e935a355a8be85b09883600",
+   "subject": "docs(f048): Built State for the job queue",
+   "tree": "f662695548c588548428cbf9401701b91f28d818"
+  }
+ ],
+ "files": [
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "10e9523457bd3a88c9ba2163f271d8d201ebac105283b18e1bbfbebdb3cb3b65",
+   "kind": "regular",
+   "path": ".agent/authored/f048-r1-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "f8e9648a9a3ea2a31699c9cb7a83e033cbaf549f4fefa4d3c2e4e5c0563a559c",
+   "kind": "regular",
+   "path": ".agent/authored/f048-r1-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "a3337bd11e0ca004a7918673ef55b574c91852a841c0f171bf16a20f8414e807",
+   "kind": "regular",
+   "path": ".agent/authored/f048-r2-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "33f61d00889d74982db672fde87c2e637c6b8b88b9af371ee610c2e770a8c8ea",
+   "kind": "regular",
+   "path": ".agent/authored/f048-r3-1.md",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0d70bc318528cb9682ca536ca98f0b3d49196936ac6fc168d4f06b32e9112993",
+   "current_mode": "100644",
+   "current_sha256": "e8fdcd81f487ba83cb1a04b545b41b07e026e3a702ed8c0a0548dff42c746573",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "abcb546d073cc03e9a1d6f225c0e77be97c134a24727a2de002d5a5bd13dfada",
+   "current_mode": "100644",
+   "current_sha256": "33f61d00889d74982db672fde87c2e637c6b8b88b9af371ee610c2e770a8c8ea",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d579fd2b69a4d33a1d7489fc67335c0ea7b362034edba0d6434a07d36786a877",
+   "current_mode": "100644",
+   "current_sha256": "3d0add37f87db74e3036b63a6599f6ae95b51198b86d52b9c55c8420aeaf11b1",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "53ccd9cf16d35acf0a8801a16d0d8d1dd9f2948c7e15d54ff81fd55c296d9cb2",
+   "current_mode": "100644",
+   "current_sha256": "c55a777adf73c8381df1484a8852d3da175be983f5efd33cbb2c1b0274e72db1",
+   "kind": "regular",
+   "path": "apps/cli/command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d929d16f5f5e3d80ba470a365008320934fde56be90cd5e0f962b5ebae90b4ba",
+   "current_mode": "100644",
+   "current_sha256": "45e67ffb638c56ce96843c896f7074d2b75a904941cb1b2e012a15785e069395",
+   "kind": "regular",
+   "path": "apps/cli/commands/__init__.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "b94e02fc0b2a539a4e11bfa88abd19b544e75caef97e962a1948603bfbc2e5d8",
+   "kind": "regular",
+   "path": "apps/cli/commands/queue_cmd.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1a69c16847149a24b92cc9c5fd3957554661e423228949654911c73d5a135f90",
+   "current_mode": "100644",
+   "current_sha256": "94bed30e6c937c4887a1811689f30ba738e25d450cc80afd6e56749bde06baaa",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1a828e92f31b5e2d328f72ac0cdcc647a30b18eb56bdf611872ee6277d27a257",
+   "current_mode": "100644",
+   "current_sha256": "f5b9e4413e60236bebcb4b7e927effe0602f571ccddcc56c8b12b37d4c9618aa",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F048.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "bfb814c90447f001ef05b7201d114c47f1477a3ec88d2bc8ea4ba9b6b18c714d",
+   "current_mode": "100644",
+   "current_sha256": "8ce239c4ed72a3a9688a08edc1a52d2e04c7c440cfac2a30e78528da631fe386",
+   "kind": "regular",
+   "path": "packages/orchestration/config.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8a30f38dd22848b354a22f55bf2fcddad3051eabf102ee35fdb43febbb8926ed",
+   "current_mode": "100644",
+   "current_sha256": "64aaadf3db208ff5fb5614cd38d154a03b9ce50b4d9cf7c0ffe72f8da8e801a5",
+   "kind": "regular",
+   "path": "packages/orchestration/data_paths.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "08e0311c2d6d21261995efd7a339544be961fd53330e2fe8d7bdab8844cfe2a8",
+   "kind": "regular",
+   "path": "packages/orchestration/job_queue.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "eeb6e37c45e3f48551e509dbe53a55985132d56e9a822361b6363ab9df100175",
+   "current_mode": "100644",
+   "current_sha256": "6869e47fe6f42b539081ad15bdd52cc0efb73374d9e2583c2fd14885cbe13261",
+   "kind": "regular",
+   "path": "packages/orchestration/long_run_executor.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "63b232b4221630a2346f2c98517b319ffebdb72b44244a9d48bded325bec9f45",
+   "kind": "regular",
+   "path": "tests/cli/test_queue_cmd.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "5eb9a07709ff4878bdc5a6e7b3aee34ab61edf70035131b2092afcfccb65acf9",
+   "kind": "regular",
+   "path": "tests/orchestration/test_job_queue.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "40f8d785ef79b038888e71362b3e10691b26491d3fc7a4aabf26330f60b29ec1",
+   "kind": "regular",
+   "path": "tests/orchestration/test_queue_concurrency.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7930259c7f293da06a7d583a12e56344aa42faae4a70005f464306792df818f6",
+   "kind": "regular",
+   "path": "tests/orchestration/test_queue_executor_binding.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee",
+ "subject_v": 1
+}

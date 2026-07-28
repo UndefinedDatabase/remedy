@@ -1,0 +1,36 @@
+[
+ {
+  "safe_diff_files": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/__init__.py",
+   "apps/cli/commands/queue_cmd.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F048.md"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "packages/orchestration/config.py",
+   "packages/orchestration/data_paths.py",
+   "packages/orchestration/job_queue.py",
+   "packages/orchestration/long_run_executor.py",
+   "tests/cli/test_queue_cmd.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "tests/orchestration/test_job_queue.py",
+   "tests/orchestration/test_queue_concurrency.py",
+   "tests/orchestration/test_queue_executor_binding.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]

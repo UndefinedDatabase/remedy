@@ -1,37 +1,61 @@
-# Plan — Process-Hardening v2 (R-0149 amendment round, no feature)
+# Plan — F048 Job queue (T1, file-based v1) — round 2
 
 ## Goal
-Apply the operator ruling on R-0149 to the workflow docs: (a) handoff cap
-≤60 lines, ≤100 when per-commit tables of >5 commits require it; the
-self-reference grouped-table rule; the sha256 BEGIN-marker transport
-guard. Docs only. Operator directive 2026-07-27 (ruling relay).
+Work can be queued per project and consumed unattended: entries are
+enqueued per project, a consumer claims one atomically, state survives
+restarts, and the queue is honestly listable. Round 2 finishes the
+feature body: queue CLI, explicit reclaim, opt-in executor binding, and
+the dedicated integration gate.
 
 ## Checklist
-- [x] Part 0: branch chore/process-hardening-v2 off main; plan.md
-- [x] Part 1: persist 7 authored texts, 7/7 sha256 verified; R-0149 ruling
-      appended to .agent/live_review.md
-- [x] A1 docs/agents/handback_template.md (full replace, phv2-r1-1)
-- [x] A2 AGENTS.md handoff Purpose paragraph (phv2-r1-2)
-- [x] A3+A4+A5 split_workflow.md (phv2-r1-3, r1-4, r1-5)
-- [x] A6 planner_reviewer_prompt.md §4 item 9 (phv2-r1-6)
-- [x] Part 3: proof script PROOFS: PASS + golden-path canary
-- [x] PR #155 into main (created, NOT merged)
-- [x] PH-5 Part 1: phv2-r2-1 hash-verified; live_review.md replaced
-- [x] PH-5 Part 2: final handoff (60 lines, inside cap), push
-- [ ] PH-5 Part 3: merge PR #155, checkout main, pull --ff-only
+- [x] R1 (40c7e4d..7f05857) reviewed PASS — verdict persisted from the
+      authored text f048-r2-1.md (sha256-verified, cmp exit 0)
+- [x] T003a: `remedy queue add|list|rm` + tests/cli/test_queue_cmd.py;
+      `queue_root()` promoted into data_paths.queue_dir(); 21 tests green
+- [x] T003b: `remedy queue reclaim <id>` — TTL gate (config
+      queue.reclaim_ttl_minutes, default 60) AND verifiably-gone owner
+      (this host + dead pid); refusals name the owner; 34 tests green
+- [x] T003c: opt-in executor binding (config queue.executor_binding,
+      default off) — an idle run pulls claim_next, makes a NORMAL job that
+      stops at PLANNED, complete()/fail() on the entry; 9 e2e tests green
+- [x] Canary: tests/cli/test_golden_path.py — 42 passed
+- [x] Integration gate: branch 159F/14147P vs base 201F/14017P; 7
+      branch-only ids, all serial-PASS (xdist-flake class), no F048 test
+      in either failure list → no blocker
+- [x] Handback R2; reviewer verdict R2 PASS (integration gate included)
+
+## Closure round (STATUS_closure_protocol.md v3)
+- [x] Commit A: R2 verdict persisted (f048-r3-1.md, sha256 + cmp exit 0)
+- [x] Commit B: Built State in docs/roadmap/features/T1_F048.md;
+      this commit's sha is ACCEPTED_HEAD (pre-zip head)
+- [x] Preconditions: git status --porcelain empty · integrity check
+      passed=true, 0 fails, 0 relevant untracked, no high blockers
+- [x] Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 (164 passed
+      across 6 measured runs); first attempt discarded — node_ids and
+      output_hash producer pitfalls, recorded in the handoff
+- [x] Review zip remedy-review-20260727-223612-READY_FOR_REVIEW.zip —
+      READY, evidence authoritative, subject 40c7e4d..c6a0b58
+- [x] Commit C (LAST, A4): authored STATUS `[x]` line (skeleton proved
+      byte-identical) + evidence dir + final .agent state
+- [ ] PR into main — created, NOT merged
 
 ## Current Step
-PH-5 merge round. PH-4 verdict PASS persisted, R-0149 RESOLVED. Next and
-last action: merge PR #155. Nothing is committed after the merge.
+Closure complete except the PR. No code changes this round.
 
 ## Next Steps
-None on this branch. Next session: Open PR Gate merges PR #153 (F047),
-then A5 → F048.
+Open the PR and hand back. The PR stays OPEN: the next feature's Open PR
+Gate merges it — that gap is the operator's manual-review window.
 
 ## Risks
-- D1: PR #153 (F047 closure) stays open and untouched; it merges at the
-  F048 start (operator directive 2026-07-27).
-- D2: branch is chore/* not feature/* (same directive).
-- D3: this round's PR is created but NOT merged in this block.
-- The GONE checks make each replacement destructive by design — the old
-  wording must not survive anywhere in the target file.
+- Do-not-touch: cron/scheduling, cross-project queues, SQLite.
+- No closure work this round: no STATUS `[x]`, no evidence job, no zip,
+  no PR — closure is its own reviewer-gated round.
+- Approval rules unchanged: a queued entry never bypasses plan approval
+  unless the run itself carries `--yes`. No hidden `--yes` default.
+- No silent takeovers (P2): reclaim is explicit, TTL- and pid-gated.
+- Never write into `## Verdicts` beyond applying f048-r2-1.md as
+  authored; never mark findings Resolved (reviewer-only).
+- Keep every commit under 500 changed lines; split if needed.
+- Known risk from the R1 verdict: the T002 interleaving assertion can
+  flake on a starved runner — red without a code change is an
+  environment signal first.

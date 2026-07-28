@@ -1,0 +1,509 @@
+042d74075bd9fd9134d7d210ac2e46fcee69b0d1
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index cf1bda4..9651a25 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -482,6 +482,18 @@ CATALOG: tuple[CommandEntry, ...] = (
+         ),
+         related=("queue.list",),
+     ),
++    CommandEntry(
++        command_id="queue.reclaim",
++        group_id="queue",
++        subcommand="reclaim",
++        description="Re-offer a stale claim — only if it is past the TTL and its owner is verifiably gone.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list",),
++    ),
+ 
+     # ── project ──────────────────────────────────────────────────────────
+     CommandEntry(
+diff --git a/apps/cli/commands/queue_cmd.py b/apps/cli/commands/queue_cmd.py
+index 1a0c1c0..2f5f681 100644
+--- a/apps/cli/commands/queue_cmd.py
++++ b/apps/cli/commands/queue_cmd.py
+@@ -199,6 +199,31 @@ def _cmd_queue_rm(entry_id: str, *, project: str | None = None) -> None:
+     print(f"Removed {entry.id}")
+ 
+ 
++def _cmd_queue_reclaim(entry_id: str, *, project: str | None = None) -> None:
++    from packages.orchestration.job_queue import (
++        QueueError,
++        ReclaimRefusedError,
++        reclaim,
++        resolve_reclaim_ttl_minutes,
++    )
++
++    project_id = _resolve_project_id(project)
++    resolved = _resolve_entry_id(project_id, entry_id)
++    try:
++        entry = reclaim(project_id, resolved)
++    except ReclaimRefusedError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        print("  A reclaim needs BOTH: a claim older than "
++              f"{resolve_reclaim_ttl_minutes()} minutes AND an owner that is verifiably "
++              "gone. Remedy never takes a claim away on a timer alone.", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(f"Reclaimed {entry.id} — back in the queue.")
++
++
+ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+     "queue.add": lambda args: _cmd_queue_add(
+         args.goal,
+@@ -212,4 +237,6 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+     ),
+     "queue.rm": lambda args: _cmd_queue_rm(
+         args.entry_id, project=getattr(args, "project", None)),
++    "queue.reclaim": lambda args: _cmd_queue_reclaim(
++        args.entry_id, project=getattr(args, "project", None)),
+ }
+diff --git a/packages/orchestration/config.py b/packages/orchestration/config.py
+index 9888be1..707f3fc 100644
+--- a/packages/orchestration/config.py
++++ b/packages/orchestration/config.py
+@@ -340,6 +340,18 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
+         value_type=int,
+         default=5,
+     ),
++    ConfigKeySpec(
++        key="queue.reclaim_ttl_minutes",
++        env_var="REMEDY_QUEUE_RECLAIM_TTL_MINUTES",
++        description=(
++            "How old a queue claim must be before `remedy queue reclaim` will "
++            "re-offer it (F048). Age alone is never enough: the owning consumer "
++            "must ALSO be verifiably gone — same host, dead pid — because a slow "
++            "consumer is not an absent one, and there are no silent takeovers."
++        ),
++        value_type=int,
++        default=60,
++    ),
+     ConfigKeySpec(
+         key="planning.granularity.merge_group_size",
+         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
+diff --git a/packages/orchestration/job_queue.py b/packages/orchestration/job_queue.py
+index 47763a7..a6ea3e5 100644
+--- a/packages/orchestration/job_queue.py
++++ b/packages/orchestration/job_queue.py
+@@ -68,6 +68,11 @@ STATUS_DONE = "done"
+ STATUS_FAILED = "failed"
+ VALID_STATUSES = (STATUS_QUEUED, STATUS_CLAIMED, STATUS_DONE, STATUS_FAILED)
+ 
++#: Reclaim gate (T003b). A claim younger than this is never re-offered, and age alone is
++#: never enough — see :func:`reclaim`.
++CONFIG_KEY_RECLAIM_TTL = "queue.reclaim_ttl_minutes"
++DEFAULT_RECLAIM_TTL_MINUTES = 60
++
+ #: Anything that becomes a path component: the F011 shape, unchanged.
+ _ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+ 
+@@ -90,6 +95,10 @@ class QueueEntryClaimedError(QueueError):
+         self.entry = entry
+ 
+ 
++class ReclaimRefusedError(QueueEntryClaimedError):
++    """A reclaim was refused. The claim stands, and the message says why."""
++
++
+ # ---------------------------------------------------------------------------
+ # Validation and small helpers
+ # ---------------------------------------------------------------------------
+@@ -485,6 +494,142 @@ def _transition(entry: QueueEntry, root: Path | None, *, status: str,
+     return fresh
+ 
+ 
++def resolve_reclaim_ttl_minutes(config: Any = None) -> int:
++    """How old a claim must be before reclaim will even consider it. Config beats the
++    default; anything unreadable falls back rather than widening the window."""
++    if config is None:
++        try:
++            from packages.orchestration.config import get_config
++
++            config = get_config()
++        except Exception:  # noqa: BLE001 — a config problem must not loosen the gate
++            return DEFAULT_RECLAIM_TTL_MINUTES
++    try:
++        value = config.get(CONFIG_KEY_RECLAIM_TTL)
++    except Exception:  # noqa: BLE001
++        return DEFAULT_RECLAIM_TTL_MINUTES
++    if value is None:
++        return DEFAULT_RECLAIM_TTL_MINUTES
++    try:
++        return max(0, int(value))
++    except (TypeError, ValueError):
++        return DEFAULT_RECLAIM_TTL_MINUTES
++
++
++def _split_consumer(consumer: str) -> tuple[str, int | None]:
++    """``host#pid`` → ``(host, pid)``. An unparsable owner yields ``(consumer, None)``,
++    which the caller must treat as NOT verifiably gone."""
++    host, sep, pid_text = consumer.rpartition("#")
++    if not sep:
++        return (consumer, None)
++    try:
++        return (host, int(pid_text))
++    except ValueError:
++        return (consumer, None)
++
++
++def _owner_is_gone(consumer: str) -> tuple[bool, str]:
++    """Is the owning consumer verifiably gone? Returns ``(gone, why_not)``.
++
++    Verifiably is the operative word. A pid on ANOTHER host says nothing about that host —
++    the same number is very much alive somewhere — so a foreign owner is never declared
++    gone. On this host, ``kill(pid, 0)`` answers: ``ProcessLookupError`` means gone,
++    ``PermissionError`` means alive under another user, and success means alive.
++    """
++    host, pid = _split_consumer(consumer)
++    if pid is None:
++        return (False, f"the owner {consumer!r} does not name a host and pid")
++    try:
++        this_host = socket.gethostname() or ""
++    except OSError:
++        this_host = ""
++    if host != this_host:
++        return (False, f"the owner is on host {host!r}, not on this host {this_host!r}")
++    if pid <= 0:
++        return (False, f"the owner names an impossible pid {pid}")
++    try:
++        os.kill(pid, 0)
++    except ProcessLookupError:
++        return (True, "")
++    except PermissionError:
++        return (False, f"process {pid} is still running (owned by another user)")
++    except OSError as exc:
++        return (False, f"process {pid} could not be probed: {exc}")
++    return (False, f"process {pid} is still running")
++
++
++def _claim_age_minutes(entry: QueueEntry) -> float | None:
++    """Minutes since the claim was stamped. None when the stamp is unusable — which is a
++    refusal, not a licence: an unreadable age cannot be older than the TTL."""
++    try:
++        stamped = datetime.fromisoformat(entry.claimed_at)
++    except (TypeError, ValueError):
++        return None
++    if stamped.tzinfo is None:
++        stamped = stamped.replace(tzinfo=timezone.utc)
++    delta = (datetime.now(timezone.utc) - stamped).total_seconds()
++    if delta < 0:
++        return None
++    return delta / 60.0
++
++
++def reclaim(project: str, entry_id: str, root: Path | None = None, *,
++            ttl_minutes: int | None = None) -> QueueEntry:
++    """Re-offer a stale claim — explicitly, and only when BOTH gates open (A9).
++
++    1. the claim is older than the reclaim TTL (``queue.reclaim_ttl_minutes``, default 60), and
++    2. the owning consumer is verifiably gone: the owner id names THIS host, and its pid is
++       dead.
++
++    Either gate closed is a refusal that names the owner and the reason. This is the ONLY
++    path that takes a claim away from its holder; nothing in this module ever does it on a
++    timer (P2 — no silent takeovers).
++    """
++    eid = validate_entry_id(entry_id)
++    limit = resolve_reclaim_ttl_minutes() if ttl_minutes is None else max(0, int(ttl_minutes))
++
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
++    try:
++        entry = _read_entry(project_fd, eid)
++        if entry is None:
++            raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
++        owner = entry.claimed_by or "an unknown consumer"
++        if entry.status != STATUS_CLAIMED:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is {entry.status}, not {STATUS_CLAIMED}: "
++                f"only a claimed entry can be reclaimed", entry=entry)
++
++        age = _claim_age_minutes(entry)
++        if age is None:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is held by {owner} and its claim time "
++                f"{entry.claimed_at!r} cannot be read, so its age cannot be proven",
++                entry=entry)
++        if age < limit:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is held by {owner} and its claim is "
++                f"{age:.1f} minutes old, younger than the {limit}-minute reclaim TTL",
++                entry=entry)
++
++        gone, why_not = _owner_is_gone(entry.claimed_by)
++        if not gone:
++            raise ReclaimRefusedError(
++                f"queue entry {eid} is held by {owner}, which is not verifiably gone: "
++                f"{why_not}", entry=entry)
++
++        entry.status = STATUS_QUEUED
++        entry.claimed_by = ""
++        entry.claimed_at = ""
++        _write_entry(project_fd, entry, create_only=False)
++        _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
++                      noun="queue claim")
++    finally:
++        os.close(project_fd)
++    return entry
++
++
+ def remove_entry(project: str, entry_id: str, root: Path | None = None) -> QueueEntry:
+     """Remove an entry from the queue and return what was removed.
+ 
+diff --git a/tests/cli/test_queue_cmd.py b/tests/cli/test_queue_cmd.py
+index 6e37a47..8f73d40 100644
+--- a/tests/cli/test_queue_cmd.py
++++ b/tests/cli/test_queue_cmd.py
+@@ -10,9 +10,12 @@ assertions are made on what an operator actually sees.
+ """
+ from __future__ import annotations
+ 
++import json
+ import os
++import socket
+ import subprocess
+ import sys
++from datetime import datetime, timedelta, timezone
+ from pathlib import Path
+ 
+ import pytest
+@@ -247,11 +250,66 @@ class TestRm:
+         assert "no queue for project" in proc.stderr
+ 
+ 
++class TestReclaim:
++    def test_reclaim_refuses_a_live_owner_and_explains_both_gates(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "held goal", "--project", project_id],
++                        data_root).stdout.strip()
++        _claim_one(data_root, project_id, f"{socket.gethostname()}#{os.getpid()}")
++
++        proc = _run(["queue", "reclaim", entry_id, "--project", project_id],
++                    data_root, expect_ok=False)
++
++        assert proc.returncode == 1
++        assert str(os.getpid()) in proc.stderr
++        assert "verifiably gone" in proc.stderr
++        assert "never takes a claim away on a timer alone" in proc.stderr
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "claimed" in listing
++
++    def test_reclaim_returns_a_dead_owners_stale_claim_to_the_queue(self, project):
++        data_root, project_id = project
++        entry_id = _run(["queue", "add", "abandoned goal", "--project", project_id],
++                        data_root).stdout.strip()
++        _claim_one(data_root, project_id, f"{socket.gethostname()}#{_dead_pid()}")
++        _backdate_claim(data_root, project_id, entry_id, minutes=600)
++
++        proc = _run(["queue", "reclaim", entry_id, "--project", project_id], data_root)
++
++        assert f"Reclaimed {entry_id}" in proc.stdout
++        listing = _run(["queue", "list", "--project", project_id], data_root).stdout
++        assert "queued" in listing
++        assert "claimed" not in listing
++
++    def test_reclaim_is_in_the_catalog_with_a_handler(self):
++        from apps.cli.command_catalog import get_command
++        from apps.cli.commands import collect_all_handlers
++
++        assert get_command("queue.reclaim").action_class == "write_metadata"
++        assert "queue.reclaim" in collect_all_handlers()
++
++
+ # ---------------------------------------------------------------------------
+ # Helpers that drive the store directly, in their own process
+ # ---------------------------------------------------------------------------
+ 
+ 
++def _dead_pid() -> int:
++    """A pid that has certainly exited: started, then reaped."""
++    proc = subprocess.Popen([sys.executable, "-c", "pass"])
++    proc.communicate(timeout=60)
++    return proc.pid
++
++
++def _backdate_claim(data_root: Path, project_id: str, entry_id: str, *, minutes: int) -> None:
++    """Age a claim on disk, so the TTL gate can be exercised without waiting an hour."""
++    path = data_root / "queue" / project_id / f"{entry_id}.json"
++    payload = json.loads(path.read_text(encoding="utf-8"))
++    stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes)
++    payload["claimed_at"] = stamp.isoformat()
++    path.write_text(json.dumps(payload), encoding="utf-8")
++
++
+ def _claim_one(data_root: Path, project_id: str, consumer: str) -> None:
+     proc = subprocess.run(
+         [sys.executable, "-c",
+diff --git a/tests/orchestration/test_job_queue.py b/tests/orchestration/test_job_queue.py
+index adc1e07..c39f7c7 100644
+--- a/tests/orchestration/test_job_queue.py
++++ b/tests/orchestration/test_job_queue.py
+@@ -17,8 +17,11 @@ repository's real data root is never touched.
+ from __future__ import annotations
+ 
+ import json
++import os
++import socket
+ import subprocess
+ import sys
++from datetime import datetime, timedelta, timezone
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -27,6 +30,7 @@ import pytest
+ from packages.orchestration import job_queue as q
+ from packages.orchestration.job_queue import (
+     CLAIM_SUFFIX,
++    DEFAULT_RECLAIM_TTL_MINUTES,
+     ENTRY_SUFFIX,
+     STATUS_CLAIMED,
+     STATUS_DONE,
+@@ -34,6 +38,7 @@ from packages.orchestration.job_queue import (
+     STATUS_QUEUED,
+     QueueEntryNotFoundError,
+     QueueError,
++    ReclaimRefusedError,
+     claim_holder,
+     claim_next,
+     complete,
+@@ -43,7 +48,9 @@ from packages.orchestration.job_queue import (
+     list_entries_safe,
+     load_entry,
+     project_queue_dir,
++    reclaim,
+     release,
++    resolve_reclaim_ttl_minutes,
+ )
+ 
+ PROJECT = "proj-alpha"
+@@ -398,3 +405,122 @@ class TestEnqueue:
+     def test_a_non_integer_priority_is_refused(self, root: Path):
+         with pytest.raises(QueueError, match="invalid priority"):
+             enqueue(PROJECT, "work", "high", root=root)  # type: ignore[arg-type]
++
++
++# ---------------------------------------------------------------------------
++# Explicit reclaim (T003b) — the ONLY path that takes a claim from its holder
++# ---------------------------------------------------------------------------
++
++
++def _dead_pid() -> int:
++    """A pid that has certainly exited: we start a process and reap it."""
++    proc = subprocess.Popen([sys.executable, "-c", "pass"])
++    proc.communicate(timeout=60)
++    return proc.pid
++
++
++def _this_host() -> str:
++    return socket.gethostname() or ""
++
++
++def _claim_with(root: Path, owner: str, *, minutes_ago: float) -> str:
++    """Enqueue, claim as *owner*, and backdate the claim stamp on disk."""
++    entry = enqueue(PROJECT, "reclaimable work", 0, root=root)
++    claimed = claim_next(PROJECT, owner, root)
++    assert claimed is not None
++
++    path = project_queue_dir(PROJECT, root) / f"{entry.id}{ENTRY_SUFFIX}"
++    payload = json.loads(path.read_text(encoding="utf-8"))
++    stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
++    payload["claimed_at"] = stamp.isoformat()
++    path.write_text(json.dumps(payload), encoding="utf-8")
++    return entry.id
++
++
++class TestReclaim:
++    def test_a_stale_claim_of_a_dead_owner_is_reclaimed(self, root: Path):
++        owner = f"{_this_host()}#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=90)
++
++        reclaimed = reclaim(PROJECT, entry_id, root)
++
++        assert reclaimed.status == STATUS_QUEUED
++        assert reclaimed.claimed_by == ""
++        assert reclaimed.claimed_at == ""
++        assert claim_holder(PROJECT, entry_id, root) == ""
++        # And it is genuinely back in circulation.
++        again = claim_next(PROJECT, "fresh-consumer", root)
++        assert again is not None
++        assert again.id == entry_id
++
++    def test_a_live_owner_is_refused_however_old_the_claim(self, root: Path):
++        owner = f"{_this_host()}#{os.getpid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=6000)
++
++        with pytest.raises(ReclaimRefusedError) as caught:
++            reclaim(PROJECT, entry_id, root)
++
++        assert owner in str(caught.value)
++        assert "still running" in str(caught.value)
++        assert caught.value.entry.claimed_by == owner
++        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
++
++    def test_a_young_claim_is_refused_however_dead_the_owner(self, root: Path):
++        owner = f"{_this_host()}#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=1)
++
++        with pytest.raises(ReclaimRefusedError) as caught:
++            reclaim(PROJECT, entry_id, root, ttl_minutes=60)
++
++        assert owner in str(caught.value)
++        assert "reclaim TTL" in str(caught.value)
++        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
++
++    def test_an_owner_on_another_host_is_never_declared_gone(self, root: Path):
++        """A pid means nothing across hosts — the same number is alive somewhere else."""
++        owner = f"not-this-host#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=600)
++
++        with pytest.raises(ReclaimRefusedError) as caught:
++            reclaim(PROJECT, entry_id, root)
++
++        assert "not on this host" in str(caught.value)
++        assert load_entry(PROJECT, entry_id, root).status == STATUS_CLAIMED
++
++    def test_an_unparsable_owner_is_never_declared_gone(self, root: Path):
++        entry_id = _claim_with(root, "a-consumer-without-a-pid", minutes_ago=600)
++
++        with pytest.raises(ReclaimRefusedError, match="does not name a host and pid"):
++            reclaim(PROJECT, entry_id, root)
++
++    def test_an_unreadable_claim_time_is_a_refusal_not_a_licence(self, root: Path):
++        owner = f"{_this_host()}#{_dead_pid()}"
++        entry_id = _claim_with(root, owner, minutes_ago=600)
++        path = project_queue_dir(PROJECT, root) / f"{entry_id}{ENTRY_SUFFIX}"
++        payload = json.loads(path.read_text(encoding="utf-8"))
++        payload["claimed_at"] = "some time last week"
++        path.write_text(json.dumps(payload), encoding="utf-8")
++
++        with pytest.raises(ReclaimRefusedError, match="age cannot be proven"):
++            reclaim(PROJECT, entry_id, root)
++
++    def test_an_unclaimed_entry_cannot_be_reclaimed(self, root: Path):
++        entry = enqueue(PROJECT, "never claimed", 0, root=root)
++
++        with pytest.raises(ReclaimRefusedError, match="only a claimed entry"):
++            reclaim(PROJECT, entry.id, root)
++
++    def test_the_ttl_comes_from_config_with_a_sixty_minute_default(self, monkeypatch):
++        from packages.orchestration.config import reset_config
++
++        monkeypatch.delenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", raising=False)
++        reset_config()
++        assert resolve_reclaim_ttl_minutes() == DEFAULT_RECLAIM_TTL_MINUTES == 60
++
++        monkeypatch.setenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", "5")
++        reset_config()
++        try:
++            assert resolve_reclaim_ttl_minutes() == 5
++        finally:
++            monkeypatch.delenv("REMEDY_QUEUE_RECLAIM_TTL_MINUTES", raising=False)
++            reset_config()

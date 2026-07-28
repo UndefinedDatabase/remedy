@@ -1,0 +1,192 @@
+090903fb8f51e0ce1ef94aec67ae848f8a6cf7dc
+diff --git a/tests/orchestration/test_queue_concurrency.py b/tests/orchestration/test_queue_concurrency.py
+new file mode 100644
+index 0000000..0067026
+--- /dev/null
++++ b/tests/orchestration/test_queue_concurrency.py
+@@ -0,0 +1,185 @@
++"""F048 T002 — two real processes, one queue, zero double-claims.
++
++This is the heart of the feature, so the test is deliberately unforgiving:
++
++  * the consumers are SUBPROCESSES, not threads and not sequential calls — the claim is
++    an ``os.link`` against the same directory from two independent interpreters;
++  * they are started before either has drained anything, and a start barrier makes them
++    contend on the same entries rather than politely taking turns;
++  * the assertions are the three the order names — the claim sets are DISJOINT, their
++    union is the FULL queue, and no entry is claimed twice;
++  * the whole scenario runs REPEATEDLY in one test session, because a race that only
++    shows up sometimes is exactly the race worth catching.
++
++A run in which the two consumers did not overlap in time is reported, not silently
++accepted: an implementation that "passes" by serialising its consumers would leave one
++claim set empty, and every such run is failed by the interleaving check below.
++"""
++from __future__ import annotations
++
++import json
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++from packages.orchestration.job_queue import (
++    CLAIM_SUFFIX,
++    STATUS_CLAIMED,
++    claim_holder,
++    enqueue,
++    list_entries,
++    project_queue_dir,
++)
++
++REPO_ROOT = Path(__file__).resolve().parents[2]
++
++PROJECT = "proj-race"
++
++#: Well above the two-consumer count, so a lucky interleaving cannot fake coverage.
++ENTRY_COUNT = 24
++
++#: The scenario repeats: one green run proves nothing about a race.
++REPEATS = 3
++
++CONSUMER_TIMEOUT_SEC = 120
++
++
++CONSUMER_SOURCE = """
++import json
++import os
++import sys
++import time
++
++sys.path.insert(0, {repo_root!r})
++
++from packages.orchestration.job_queue import claim_next
++
++project, root, consumer, out_path, barrier_path = sys.argv[1:6]
++
++# Start barrier: announce readiness, then wait for every consumer to be up. Without it
++# the first process can drain the whole queue before the second one has imported us,
++# and the test would prove nothing about contention.
++with open(barrier_path + "." + consumer + ".ready", "w") as handle:
++    handle.write("ready")
++
++deadline = time.time() + 30
++while time.time() < deadline:
++    ready = [n for n in os.listdir(os.path.dirname(barrier_path)) if n.endswith(".ready")]
++    if len(ready) >= {consumer_count}:
++        break
++    time.sleep(0.005)
++
++claimed = []
++first_claim_at = None
++while True:
++    entry = claim_next(project, consumer, root)
++    if entry is None:
++        break
++    if first_claim_at is None:
++        first_claim_at = time.time()
++    claimed.append(entry.id)
++    last_claim_at = time.time()
++
++with open(out_path, "w") as handle:
++    json.dump({{
++        "consumer": consumer,
++        "claimed": claimed,
++        "first_claim_at": first_claim_at,
++        "last_claim_at": last_claim_at if claimed else None,
++    }}, handle)
++"""
++
++
++def _run_one_scenario(tmp_path: Path, attempt: int) -> dict[str, object]:
++    """Fill a fresh queue, drain it with two concurrent processes, return the evidence."""
++    root = tmp_path / f"data_{attempt}"
++    barrier_dir = tmp_path / f"barrier_{attempt}"
++    barrier_dir.mkdir(parents=True)
++    barrier = barrier_dir / "start"
++
++    expected = {enqueue(PROJECT, f"goal {i}", 0, root=root).id for i in range(ENTRY_COUNT)}
++    assert len(expected) == ENTRY_COUNT
++
++    source = CONSUMER_SOURCE.format(repo_root=str(REPO_ROOT), consumer_count=2)
++    out_paths = {
++        "consumer-a": tmp_path / f"result_a_{attempt}.json",
++        "consumer-b": tmp_path / f"result_b_{attempt}.json",
++    }
++
++    # Both processes are STARTED before either is waited on — that is the concurrency.
++    procs = {
++        name: subprocess.Popen(
++            [sys.executable, "-c", source, PROJECT, str(root), name,
++             str(out_path), str(barrier)],
++            cwd=str(REPO_ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
++        )
++        for name, out_path in out_paths.items()
++    }
++
++    results: dict[str, dict] = {}
++    for name, proc in procs.items():
++        _, stderr = proc.communicate(timeout=CONSUMER_TIMEOUT_SEC)
++        assert proc.returncode == 0, f"{name} failed ({proc.returncode}): {stderr}"
++        results[name] = json.loads(out_paths[name].read_text(encoding="utf-8"))
++
++    return {"root": root, "expected": expected, "results": results}
++
++
++@pytest.mark.parametrize("attempt", range(REPEATS))
++def test_two_processes_never_claim_the_same_entry(tmp_path: Path, attempt: int):
++    scenario = _run_one_scenario(tmp_path, attempt)
++    expected: set[str] = scenario["expected"]           # type: ignore[assignment]
++    results: dict[str, dict] = scenario["results"]      # type: ignore[assignment]
++    root: Path = scenario["root"]                       # type: ignore[assignment]
++
++    a = results["consumer-a"]["claimed"]
++    b = results["consumer-b"]["claimed"]
++
++    # No consumer claimed the same entry twice.
++    assert len(a) == len(set(a)), "consumer-a claimed an entry more than once"
++    assert len(b) == len(set(b)), "consumer-b claimed an entry more than once"
++
++    # The two claim sets are disjoint: zero double-claims across processes.
++    overlap = set(a) & set(b)
++    assert overlap == set(), f"both consumers claimed {sorted(overlap)}"
++
++    # Their union is the whole queue: nothing was lost or skipped.
++    assert set(a) | set(b) == expected
++    assert len(a) + len(b) == ENTRY_COUNT
++
++    # And the queue agrees: every entry is claimed, by exactly the consumer that says so.
++    owner_of = {**{entry_id: "consumer-a" for entry_id in a},
++                **{entry_id: "consumer-b" for entry_id in b}}
++    for entry in list_entries(PROJECT, root):
++        assert entry.status == STATUS_CLAIMED
++        assert entry.claimed_by == owner_of[entry.id]
++        assert claim_holder(PROJECT, entry.id, root) == owner_of[entry.id]
++
++    # One marker per entry, no more.
++    markers = sorted(p.name for p in project_queue_dir(PROJECT, root).glob(f"*{CLAIM_SUFFIX}"))
++    assert len(markers) == ENTRY_COUNT
++
++
++@pytest.mark.parametrize("attempt", range(REPEATS))
++def test_the_consumers_actually_ran_concurrently(tmp_path: Path, attempt: int):
++    """The anti-cheat assertion.
++
++    An implementation that serialises its consumers — a lock around the whole drain, or a
++    single-process fallback — would still produce disjoint sets covering the queue. It
++    would NOT produce two consumers that both claimed work and whose claim windows
++    overlap in wall-clock time. Both are required here.
++    """
++    scenario = _run_one_scenario(tmp_path, attempt)
++    results: dict[str, dict] = scenario["results"]      # type: ignore[assignment]
++
++    a, b = results["consumer-a"], results["consumer-b"]
++    assert a["claimed"], "consumer-a claimed nothing — the consumers were serialised"
++    assert b["claimed"], "consumer-b claimed nothing — the consumers were serialised"
++
++    # Claim windows must overlap: neither consumer finished before the other started.
++    assert a["first_claim_at"] < b["last_claim_at"], (
++        "consumer-b finished before consumer-a began claiming — not concurrent")
++    assert b["first_claim_at"] < a["last_claim_at"], (
++        "consumer-a finished before consumer-b began claiming — not concurrent")

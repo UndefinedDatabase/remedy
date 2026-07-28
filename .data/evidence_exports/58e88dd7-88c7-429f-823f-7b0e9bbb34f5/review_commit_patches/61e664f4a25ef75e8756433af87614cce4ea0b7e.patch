@@ -1,0 +1,399 @@
+61e664f4a25ef75e8756433af87614cce4ea0b7e
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 89dde6b..cf1bda4 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -96,6 +96,7 @@ GROUPS: dict[str, GroupDef] = {
+     # -- User-facing primary commands --
+     "init": GroupDef("init", "Init", "Initialize a Remedy project in a git repo."),
+     "job": GroupDef("job", "Job", "Create, inspect, and manage jobs."),
++    "queue": GroupDef("queue", "Queue", "Queue goals for unattended execution."),
+     "project": GroupDef("project", "Project", "Create, inspect, and manage projects."),
+     "ui": GroupDef("ui", "UI", "Open the local UI."),
+     "doctor": GroupDef("doctor", "Doctor", "Check Remedy health."),
+@@ -445,6 +446,43 @@ CATALOG: tuple[CommandEntry, ...] = (
+         related=("job.status", "job.report"),
+     ),
+ 
++    # ── queue (F048) ─────────────────────────────────────────────────────
++    CommandEntry(
++        command_id="queue.add",
++        group_id="queue",
++        subcommand="add",
++        description="Enqueue a goal for this project (text, or a path to a goal file).",
++        action_class="write_metadata",
++        args=(
++            ArgDef("goal", "Goal text, or a path to a goal file"),
++            ArgDef("--prio", "Priority; higher is claimed first (default 0)", required=False, is_option=True, default=None),
++            ArgDef("--path", "Treat the argument as a goal-file path, not as goal text", required=False, is_option=True, is_flag=True),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list", "queue.rm"),
++    ),
++    CommandEntry(
++        command_id="queue.list",
++        group_id="queue",
++        subcommand="list",
++        description="List queue entries (scoped to the current project by default).",
++        action_class="read_only",
++        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG),
++        related=("queue.add",),
++    ),
++    CommandEntry(
++        command_id="queue.rm",
++        group_id="queue",
++        subcommand="rm",
++        description="Remove a queue entry. A claimed entry is refused, naming its owner.",
++        action_class="write_metadata",
++        args=(
++            ArgDef("entry_id", "Queue entry id (or a unique prefix)"),
++            _PROJECT_SCOPE_OPT,
++        ),
++        related=("queue.list",),
++    ),
++
+     # ── project ──────────────────────────────────────────────────────────
+     CommandEntry(
+         command_id="project.create",
+diff --git a/apps/cli/commands/__init__.py b/apps/cli/commands/__init__.py
+index 98f80a0..e4fdd03 100644
+--- a/apps/cli/commands/__init__.py
++++ b/apps/cli/commands/__init__.py
+@@ -64,6 +64,7 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+         project,
+         propose_cmd,
+         provider_cmd,
++        queue_cmd,
+         readiness,
+         real_test_execution_cmd,
+         repair_cmd,
+@@ -85,6 +86,6 @@ def collect_all_handlers() -> dict[str, Callable[[argparse.Namespace], None]]:
+     )
+ 
+     table: dict[str, Callable[[argparse.Namespace], None]] = {}
+-    for mod in (init_cmd, job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, job_stop_cmd, job_rerun_cmd, status_cmd):
++    for mod in (init_cmd, job, project, patch, test_cmds, brain, policy, worker, memory, readiness, context, file, change, repo, event, blocker, decision, dashboard_cmd, guide, ui, do_cmd, repair_cmd, overnight_cmd, overnight_mission_cmd, provider_cmd, review_cmd, self_cmd, self_repair_cmd, orchestrator_cmd, local_advisor_cmd, builder_routing_cmd, local_candidate_cmd, candidate_quality_cmd, external_builder_cmd, route_policy_cmd, token_cmd, tournament_cmd, real_test_execution_cmd, propose_cmd, dev, progress_cmd, feature_cmd, integrity_cmd, contract_cmd, snapshot_cmds, repair_loop_v2_cmd, main_builder_adapter_cmd, managed_builder_execution_cmd, dogfood_cmd, config_cmd, worker_facade_cmd, runtime_cmd, failure_stats_cmd, job_stop_cmd, job_rerun_cmd, status_cmd, queue_cmd):
+         table.update(mod.COMMAND_HANDLERS)
+     return table
+diff --git a/apps/cli/commands/queue_cmd.py b/apps/cli/commands/queue_cmd.py
+new file mode 100644
+index 0000000..1a0c1c0
+--- /dev/null
++++ b/apps/cli/commands/queue_cmd.py
+@@ -0,0 +1,215 @@
++"""`remedy queue` — the per-project work queue (F048 T003).
++
++Commands over the file-based queue in ``packages.orchestration.job_queue``: ``add`` puts
++work in, ``list`` shows what is there and who holds what, ``rm`` takes an unclaimed entry
++back out. Reclaiming a stale claim is its own command (T003b) — explicit, never silent.
++
++Scoping follows F148: the project comes from ``--project``, ``REMEDY_PROJECT`` or the
++working directory, exactly as ``remedy job list`` resolves it. There is no cross-project
++queue; ``--all-projects`` only widens the LISTING, entry by entry, over the project
++queues that exist on disk.
++"""
++from __future__ import annotations
++
++import sys
++from collections.abc import Callable
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import TYPE_CHECKING, Any
++
++if TYPE_CHECKING:
++    import argparse
++
++EXIT_ERROR = 1
++EXIT_USAGE = 2
++#: The contract's exit code for "no project" — the same one `job create` uses.
++EXIT_NO_PROJECT = 3
++
++
++def _resolve_project_id(project_flag: str | None) -> str:
++    """The one project this command acts on, or exit 3 with the same wording as job create."""
++    from packages.orchestration.project_registry import (
++        ProjectNotFoundError,
++        select_project,
++    )
++
++    try:
++        project, _source = select_project(project_flag, ".")
++    except ProjectNotFoundError:
++        print(
++            "Error: no project found. Run: remedy init\n"
++            "  or pass --project <slug-or-id>",
++            file=sys.stderr,
++        )
++        sys.exit(EXIT_NO_PROJECT)
++    return str(project.id)
++
++
++def _looks_like_a_path(text: str) -> bool:
++    """A goal that names an existing file is a goal FILE. Anything else is goal text.
++
++    Existence, not spelling: a sentence containing a slash is still a sentence, and a
++    typo'd path is better enqueued as text the operator can read back than silently
++    treated as a file reference that will never resolve.
++    """
++    stripped = text.strip()
++    if not stripped or "\n" in stripped:
++        return False
++    try:
++        return Path(stripped).expanduser().is_file()
++    except OSError:
++        return False
++
++
++def _age(created_at: str, *, now: datetime | None = None) -> str:
++    """Compact age for the listing. Unparsable timestamps print as `?` rather than a guess."""
++    try:
++        stamp = datetime.fromisoformat(created_at)
++    except (TypeError, ValueError):
++        return "?"
++    if stamp.tzinfo is None:
++        stamp = stamp.replace(tzinfo=timezone.utc)
++    seconds = int(((now or datetime.now(timezone.utc)) - stamp).total_seconds())
++    if seconds < 0:
++        return "?"
++    if seconds < 60:
++        return f"{seconds}s"
++    if seconds < 3600:
++        return f"{seconds // 60}m"
++    if seconds < 86400:
++        return f"{seconds // 3600}h"
++    return f"{seconds // 86400}d"
++
++
++def _goal_label(entry: Any) -> str:
++    text = entry.goal or f"@{entry.goal_path}"
++    single_line = text.replace("\n", " ").strip()
++    return single_line[:60]
++
++
++def _cmd_queue_add(goal: str, *, project: str | None = None,
++                   prio: str | None = None, path: bool = False) -> None:
++    from packages.orchestration.job_queue import QueueError, enqueue
++
++    project_id = _resolve_project_id(project)
++
++    try:
++        priority = int(prio) if prio is not None else 0
++    except (TypeError, ValueError):
++        print(f"Error: --prio must be an integer, got {prio!r}", file=sys.stderr)
++        sys.exit(EXIT_USAGE)
++
++    as_path = path or _looks_like_a_path(goal)
++    try:
++        if as_path:
++            entry = enqueue(project_id, goal_path=goal, prio=priority)
++        else:
++            entry = enqueue(project_id, goal, priority)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(entry.id)
++
++
++def _project_ids_with_a_queue() -> list[str]:
++    """Every project directory that actually exists under the queue area.
++
++    Read from disk, not from the registry: a queue whose project was unregistered still
++    holds work, and hiding it would make the listing dishonest.
++    """
++    from packages.orchestration.job_queue import queue_root
++
++    root = queue_root()
++    if not root.is_dir():
++        return []
++    return sorted(p.name for p in root.iterdir() if p.is_dir())
++
++
++def _cmd_queue_list(*, project: str | None = None, all_projects: bool = False) -> None:
++    from packages.orchestration.job_queue import list_entries_safe
++
++    if all_projects:
++        project_ids = _project_ids_with_a_queue()
++    else:
++        project_ids = [_resolve_project_id(project)]
++
++    rows: list[tuple[str, Any]] = []
++    skipped_total = 0
++    for project_id in project_ids:
++        entries, _degraded, skipped = list_entries_safe(project_id)
++        skipped_total += len(skipped)
++        rows.extend((project_id, entry) for entry in entries)
++
++    if not rows:
++        print("No queue entries found.")
++    for project_id, entry in rows:
++        owner = entry.claimed_by or "-"
++        label = f"  (project: {project_id[:8]})" if all_projects else ""
++        print(f"{entry.id[:12]}  {entry.status:<8}  prio {entry.priority:<4}  "
++              f"{_age(entry.created_at):>4}  {owner:<24}  {_goal_label(entry)}{label}")
++    if skipped_total:
++        print(f"  ({skipped_total} unreadable queue file(s) skipped)", file=sys.stderr)
++
++
++def _resolve_entry_id(project_id: str, raw: str) -> str:
++    """Full id, or a unique prefix — the same affordance job ids have."""
++    from packages.orchestration.job_queue import list_entries
++
++    candidate = raw.strip()
++    matches = [e.id for e in list_entries(project_id) if e.id.startswith(candidate)]
++    if candidate in matches:
++        return candidate
++    if len(matches) == 1:
++        return matches[0]
++    if len(matches) > 1:
++        print(f"Error: ambiguous queue entry prefix {raw!r} matches {len(matches)} entries:",
++              file=sys.stderr)
++        for match in sorted(matches):
++            print(f"  {match[:12]}", file=sys.stderr)
++        sys.exit(EXIT_USAGE)
++    return candidate
++
++
++def _cmd_queue_rm(entry_id: str, *, project: str | None = None) -> None:
++    from packages.orchestration.job_queue import (
++        QueueEntryClaimedError,
++        QueueEntryNotFoundError,
++        QueueError,
++        remove_entry,
++    )
++
++    project_id = _resolve_project_id(project)
++    resolved = _resolve_entry_id(project_id, entry_id)
++    try:
++        entry = remove_entry(project_id, resolved)
++    except QueueEntryClaimedError as exc:
++        print(f"Error: {exc}. Claimed at {exc.entry.claimed_at or 'an unknown time'}.",
++              file=sys.stderr)
++        print("  A claimed entry is held by a consumer. Use: remedy queue reclaim "
++              f"{exc.entry.id[:12]}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueEntryNotFoundError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++    except QueueError as exc:
++        print(f"Error: {exc}", file=sys.stderr)
++        sys.exit(EXIT_ERROR)
++
++    print(f"Removed {entry.id}")
++
++
++COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
++    "queue.add": lambda args: _cmd_queue_add(
++        args.goal,
++        project=getattr(args, "project", None),
++        prio=getattr(args, "prio", None),
++        path=getattr(args, "path", False),
++    ),
++    "queue.list": lambda args: _cmd_queue_list(
++        project=getattr(args, "project", None),
++        all_projects=getattr(args, "all_projects", False),
++    ),
++    "queue.rm": lambda args: _cmd_queue_rm(
++        args.entry_id, project=getattr(args, "project", None)),
++}
+diff --git a/packages/orchestration/data_paths.py b/packages/orchestration/data_paths.py
+index 666a86e..7acd33d 100644
+--- a/packages/orchestration/data_paths.py
++++ b/packages/orchestration/data_paths.py
+@@ -101,6 +101,15 @@ def job_evidence_index_dir(root: Path | None = None) -> Path:
+     return (root if root is not None else resolve_data_root()) / "job_evidence_index"
+ 
+ 
++def queue_dir(root: Path | None = None) -> Path:
++    """Return the job-queue area (<root>/queue).
++
++    F048: one directory per project below this, holding one JSON file per queue
++    entry plus its claim marker; see ``packages/orchestration/job_queue.py``.
++    """
++    return (root if root is not None else resolve_data_root()) / "queue"
++
++
+ def control_dir(root: Path | None = None) -> Path:
+     """Return the control area (<root>/control).
+ 
+diff --git a/packages/orchestration/job_queue.py b/packages/orchestration/job_queue.py
+index a52baf7..47763a7 100644
+--- a/packages/orchestration/job_queue.py
++++ b/packages/orchestration/job_queue.py
+@@ -43,7 +43,7 @@ from pathlib import Path
+ from typing import Any
+ 
+ from packages.common import secure_fs as _fs
+-from packages.orchestration.data_paths import resolve_data_root
++from packages.orchestration.data_paths import queue_dir as _queue_dir
+ 
+ #: The queue is this user's private business — same posture as the F011 control area.
+ QUEUE_DIR_MODE = 0o700
+@@ -81,6 +81,15 @@ class QueueEntryNotFoundError(QueueError):
+     """The requested entry is not in this project's queue."""
+ 
+ 
++class QueueEntryClaimedError(QueueError):
++    """The entry is held by a consumer. Carries the entry so the caller can name the owner
++    instead of refusing anonymously."""
++
++    def __init__(self, message: str, *, entry: QueueEntry) -> None:
++        super().__init__(message)
++        self.entry = entry
++
++
+ # ---------------------------------------------------------------------------
+ # Validation and small helpers
+ # ---------------------------------------------------------------------------
+@@ -226,11 +235,11 @@ def _is_safe_id(value: Any) -> bool:
+ 
+ 
+ def queue_root(root: Path | None = None) -> Path:
+-    """The queue area (``<data_root>/queue``). The helper lives here rather than in
+-    ``data_paths`` because T001's declared change set is this module alone; promoting it
+-    next to ``jobs_dir``/``control_dir`` is T003's call, when the CLI needs it too."""
+-    base = root if root is not None else resolve_data_root()
+-    return Path(os.path.normpath(str(Path(base) / QUEUE_DIRNAME)))
++    """The queue area (``<data_root>/queue``), resolved by ``data_paths`` like every other
++    storage area — promoted there in T003 now that the CLI resolves it too."""
++    # Coerced to Path here: the public API accepts a str root (a CLI flag, a test tmpdir),
++    # while data_paths' helpers, like every other storage area, do Path arithmetic.
++    return Path(os.path.normpath(str(_queue_dir(Path(root) if root is not None else None))))
+ 
+ 
+ def project_queue_dir(project_id: str, root: Path | None = None) -> Path:
+@@ -476,6 +485,34 @@ def _transition(entry: QueueEntry, root: Path | None, *, status: str,
+     return fresh
+ 
+ 
++def remove_entry(project: str, entry_id: str, root: Path | None = None) -> QueueEntry:
++    """Remove an entry from the queue and return what was removed.
++
++    A CLAIMED entry is never removed: a consumer is holding it, and deleting the record
++    under a running consumer would turn its completion into a write to nothing. The caller
++    gets the owner in the error so it can say who.
++    """
++    eid = validate_entry_id(entry_id)
++    project_fd = _open_project_fd(project, root, create=False)
++    if project_fd is None:
++        raise QueueEntryNotFoundError(f"no queue for project {project!r}")
++    try:
++        entry = _read_entry(project_fd, eid)
++        if entry is None:
++            raise QueueEntryNotFoundError(f"queue entry not found or unreadable: {eid}")
++        if entry.status == STATUS_CLAIMED:
++            raise QueueEntryClaimedError(
++                f"queue entry {eid} is claimed by {entry.claimed_by or 'an unknown consumer'}",
++                entry=entry)
++        _fs.unlink_at(f"{eid}{ENTRY_SUFFIX}", project_fd, error_cls=QueueError,
++                      noun="queue entry")
++        _fs.unlink_at(f"{eid}{CLAIM_SUFFIX}", project_fd, error_cls=QueueError,
++                      noun="queue claim")
++    finally:
++        os.close(project_fd)
++    return entry
++
++
+ def claim_holder(project: str, entry_id: str, root: Path | None = None) -> str:
+     """Who holds the claim marker for this entry, as read from disk. Empty when there is
+     no marker. Stale claims stay VISIBLE — nothing here takes one over."""
