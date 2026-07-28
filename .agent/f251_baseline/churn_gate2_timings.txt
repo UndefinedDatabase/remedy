@@ -1,0 +1,29 @@
+F251 churn gate — RETRY after the F-F fix (5abfd3c).  GATE PASSED.
+
+  run1  154 failed, 14152 passed, 8 skipped, 0 errors   real 2m55.453s
+  run2  154 failed, 14152 passed, 8 skipped, 0 errors   real 3m0.927s
+  run3  154 failed, 14152 passed, 8 skipped, 0 errors   real 3m8.946s
+
+  The three failure-id sets are IDENTICAL (diff -q clean, both pairs).
+  Each equals the expected set EXACTLY: the 156 catalogued deterministic
+  ids minus the 2 R-0151 ids = 154. comm is empty in BOTH directions
+  against serial_deterministic.txt with TestFeatureLedger removed.
+
+  Churn: 0.  Errors: 0 (previous attempts carried 2 teardown errors).
+  Quarantined: 0 — every flake was closed by a hermetic fix.
+
+  D4 live_review-coupled ids — actual state, as ordered:
+    both test_live_review_has_steps_section ids are PRESENT and RED in
+    all three runs
+      tests/orchestration/test_test_runner.py::
+        TestNoBroadExceptAndDegradedSignals::test_live_review_has_steps_section
+      tests/ui_server/test_dashboard_contract.py::
+        TestLiveReviewAndAgentStateRefs::test_live_review_has_steps_section
+    They flipped to PASS in the reviewer's R2 runs because .agent/
+    live_review.md then held a text with a "Steps" section. This round's
+    live_review (f251-r3-1) has none, so they are red again — stably red
+    across all three runs, which is why the gate is identical. They remain
+    D4: coupled to live .agent state, not to the code under test.
+    5 test_dashboard_contract ids are in the set in total.
+
+  Progression: churn 14 ids (S1) -> 7 (gate 1) -> 1 (gate 2) -> 0 (this).
