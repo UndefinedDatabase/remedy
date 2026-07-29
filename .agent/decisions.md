@@ -1581,3 +1581,25 @@ portability.py` imports `ABS_PATH_RE` from `packages.common.path_redaction`
 the_one_f007_uses` kept its anti-drift intent and got stronger: three
 identity assertions over the names dev_server really holds, plus a
 behavioral check that a file URI does not survive `_redact`.
+
+## 2026-07-29: F252 D5 — the creation guard is documented, so the tests moved
+docs/system/project-scoping-v0.md ("Creation guard") and T0_F148 both specify
+that `remedy job create` requires a resolvable project and exits 3 with a
+fix-it hint; library functions stay permissive. Every D5 id is a fixture or
+expectation written before that guard, so all 11 are honest test updates —
+no product change:
+- `TestCreateJobTaskType._env` (7 ids) now saves a RemyProject and exports
+  REMEDY_PROJECT; these tests are about --task-type, not resolution.
+- `test_attach_project_job_sets_metadata` creates the job under a SECOND
+  project and attaches it to the first, so the asserted metadata can only
+  come from attach — the old version would have passed trivially.
+- `test_create_job_with_missing_project_warns` /
+  `…_does_not_set_metadata` asserted the pre-F148 warn-and-continue path.
+  Renamed to `…_exits_3` / `…_writes_no_job` and rewritten against the
+  documented guard: exit 3, the fix-it text, no traceback, and no job file
+  on disk (stricter than the old metadata check).
+- `test_test_runner.py::test_permit_runtime_stderr` builds and registers the
+  target repo before `job create`, D10 precedent.
+Also fixed in the same file: `test_attach_project_repo_idempotent_message`
+(catalogued D14) passed a bare directory to a path that has required a git
+repo since F146 — the fixture now runs `git init`.

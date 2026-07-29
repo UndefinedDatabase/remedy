@@ -198,18 +198,33 @@ class TestPermitGuidanceArgOrder:
         import subprocess
 
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
-        r = subprocess.run(
-            [sys.executable, "-m", "apps.cli.main", "job", "create", "perm test"],
-            capture_output=True, env=env, timeout=10,
-        )
-        job_id = r.stdout.decode().strip()
-        assert job_id, f"failed to create job: {r.stderr.decode()}"
 
-        # Attach a repo
+        # The repo comes first: since F148 `job create` resolves a project
+        # from cwd and exits 3 when there is none.
         repo = tmp_path / "target"
         repo.mkdir()
         (repo / "pyproject.toml").write_text("[project]\nname='x'\n")
         (repo / "tests").mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"],
+            check=True, capture_output=True,
+            env={**env, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                 "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+        )
+        init = subprocess.run(
+            [sys.executable, "-m", "apps.cli.main", "init"],
+            capture_output=True, env=env, cwd=str(repo), timeout=30,
+        )
+        assert init.returncode == 0, init.stderr.decode()
+
+        r = subprocess.run(
+            [sys.executable, "-m", "apps.cli.main", "job", "create", "perm test"],
+            capture_output=True, env=env, cwd=str(repo), timeout=10,
+        )
+        job_id = r.stdout.decode().strip()
+        assert job_id, f"failed to create job: {r.stderr.decode()}"
+
         subprocess.run(
             [sys.executable, "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
             capture_output=True, env=env, timeout=10,
