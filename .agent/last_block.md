@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R2 — F252 (R-0152 + the whole remaining feature, no closure) ─
 Goal:        Persist the R1 verdict + finding R-0152, fix R-0152,
              then drive every remaining class to its terminal state:
