@@ -1,67 +1,74 @@
-# Handback — F252 R4b (closure, corrected ordering) — CLOSED
+# Handback — R0154 micro-round R1 (closure protocol v4) — DONE
 
 ## Range
-Review of d9a146a..HEAD · feature/f252-standing-red-paydown · preconditions PASS ·
-evidence job + READY zip · README + STATUS `[x]` in ONE final commit (R-0154) · PR open,
-not merged.
+Review of 757e06f..HEAD · feature/r0154-closure-ordering · docs-only ·
+Open PR Gate cleared (#161 merged) · one commit · PR #162 open, NOT merged.
 
 ## Commits
-### d543d44 chore(f252): persist the R4 stop verdict + R-0154 resolution
+### 16458e2 docs(closure): codify the R-0154 ordering lesson — closure protocol v4
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f252-r4b-1/2.md · live_review.md · plan.md · last_block.md | +236/-63 | authored texts sha256-verified, applied by copy; R4b block |
-### 25eb5bd chore(f252): commit closure evidence (after READY zip)
-| Path | +/- | Reason |
-|---|---|---|
-| .data/evidence_exports/d9a16173-…/ (83 files) | +new | the closure bundle, `git add -f` past `.gitignore:211 .data/` (F251 precedent); committed only after the READY zip existed (F147 lesson) |
-### final commit chore(f252): close F252 — STATUS [x] + README sync
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md · README.md | +4/-4 | the authored line with its four placeholders substituted, plus the three ordered README edits — together, so the ledger pin never sees a disagreement |
-| .agent/handoff.md · last_block.md | rewrite · +1/-1 | this handback; OUTCOME → executed |
+| docs/roadmap/STATUS_closure_protocol.md | +12/-6 | FULL REPLACE with authored v4: header v3→v4; step 5 pins the R-0154 ordering (README sync in the SAME commit as the STATUS `[x]` edit; closure commit touches exactly STATUS.md, README.md, final .agent/ state) |
+| .agent/live_review.md | rewrite | R0154 micro-round review; `## Verdicts` left `(pending R1)` — worker wrote no verdict |
+| .agent/plan.md | rewrite | R0154 micro-round plan |
+| .agent/last_block.md | rewrite | R1 block guard + the three authored texts verbatim |
+| .agent/authored/r0154-r1-{1,2,3}.md | +new | the authored sources, sha256-verified before any apply |
 
 ## External actions
-3 pushes to origin/feature/f252-standing-red-paydown; `make_review_zip.sh --evidence-dir
-.data/evidence_exports/d9a16173-…` → READY_FOR_REVIEW; `gh pr create` right after the
-final commit (number in the handback message). NOT merged. No worktree.
+`gh pr merge 161 --merge --delete-branch` (Open PR Gate, exit 0); 1 push to
+origin/feature/r0154-closure-ordering; `gh pr create` → **PR #162**. NOT merged.
+No worktree.
 
 ## Verification
-- Preconditions `integrity check --json` → exit 0, `"passed": true, "fail_count": 0,
-  "check_count": 5` (handler_import 312, live_review_verdict, plan_consistency 0,
-  relevant_untracked 0/0, high_blockers none). Tree clean, branch synced.
-- Evidence job **d9a16173-0283-40a1-957a-1ee9b7b39343** via
-  `create_manual_completion_bundle(review_feature_id="f252", …)`, base 7baff1dd… → head
-  d543d445…: PASS_WITH_RISKS, 46 authority files, 25 commits, 3 attested tasks, 334
-  passed; gate matrix `ok: True`, `validate_manual_completion() == []`, candidate valid.
-- Zip **remedy-review-20260729-153036-READY_FOR_REVIEW.zip**, SHA-256
-  **7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8** (script output,
-  `sha256sum` agrees): READY_FOR_REVIEW, ALIGNMENT=PASS, AUTHORITATIVE=true, 1588
-  members, authoritative 46; manifest `committed_review_subject` 7baff1dd… → d543d445…;
-  `testzip()` → None. **accepted HEAD = d543d445cd1f9ecb6d092e64fe670881bc6fff67**.
-- Applied STATUS line, verbatim:
-  `- [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)`
-  `grep -cF` new = **1**, old `- [~] …` = **0**; `cmp` on-disk vs substituted template → 0.
-- Pre-commit gate on these exact bytes: `pytest tests/docs/ -q` → 0, "292 passed";
-  canary → 0, "42 passed". Post-commit re-run in the handback message.
+- Open PR Gate: `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
+  → exactly one — `{"baseRefName":"main","headRefName":"feature/f252-standing-red-paydown","isDraft":false,"number":161}`.
+  Merged (exit 0), fast-forward 7baff1d..757e06f, branch deleted. `git checkout main
+  && git pull --ff-only` → "Already up to date."
+- Docs gate: `python3 -m pytest tests/docs/ -q` → exit **0**, tail: `292 passed in 0.31s`.
+- Canary: `python3 -m pytest tests/cli/test_golden_path.py -q` → exit **0**, tail:
+  `42 passed in 14.94s`.
+  Both match the F252 baseline (292 / 42).
+- Diff review: `git diff docs/roadmap/STATUS_closure_protocol.md` = exactly two hunks
+  (v3→v4 header, step 5 rewrite). No other file outside the block's Change list.
 
 ## Authored-text proofs
-f252-r4b-1 `f91bd529…`, f252-r4b-2 `d2d810d5…`: on-disk `sha256sum` matched the BEGIN
-markers BEFORE any commit; applied by copy, `cmp` exit 0 both. f252-r4-4 re-verified to
-`79db25a5…` immediately before substitution (one line, 222 chars). Provenance: `<JOB_ID>`
-from the producer output; `<ZIP_FILENAME>`/`<ZIP_SHA256>` from make_review_zip.sh's JSON
-(`final_path`, `final_sha256`); `<HEAD_SHA>` from the manifest's
-`committed_review_subject.head_commit`. Nothing else in the line was touched.
+On-disk `sha256sum` matched the BEGIN markers BEFORE any apply — all three:
+
+    d2b67cb5d12254aa9ed7253287eae8aa6a8895c83b000d7746b41c45df0545f9  .agent/authored/r0154-r1-1.md
+    e3066d09858a8687175f8ec0477a18ef549f9380d3d4aabaf72aff8dfb541f34  .agent/authored/r0154-r1-2.md
+    f87463160259b1b1cfedf89a593fcf10eb37502827d4892ab70a31cffaeb7046  .agent/authored/r0154-r1-3.md
+
+Applied by copy; `cmp` authored vs target → exit **0**, all three. Post-apply
+`sha256sum` of the three targets equals the same three digests.
 
 ## Deviations & assumptions
-- A first bundle was discarded before any commit: `output_hash` hashed unstripped stdout
-  while `stdout_summary` was stored stripped → `output_hash does not match
-  sha256(stdout_summary)`. Rebuilt with a fresh job id over the stored bytes; the
-  discarded directory removed.
-- Evidence dir needed `git add -f` (`.gitignore:211`) and the zip is not committed
-  (`remedy-review-*` ignored) — F251 / F048 precedent.
-- The PR number is not in this file: the handoff is written inside the last commit
-  (Rule A4), the PR is created after it — as in F251.
+- **Transport wrap on r0154-r1-1 (recovered, verified).** As first saved, the text
+  hashed `07f21848…`, not `d2b67cb5…`. Cause: the step-4 STATUS-line template had been
+  hard-wrapped in transport, split after `· package`. Rejoining the two fragments with a
+  single space reproduced the authored bytes exactly. Confirmed independently: the v3
+  file on disk carries that same template as one unwrapped line, and the resulting diff
+  shows no change to it. Nothing was applied while the hash mismatched; the trial ran in
+  the scratchpad. Recorded in `.agent/last_block.md` as TRANSPORT NOTE.
+- **Two commits, not one.** Step 7's single commit carries the whole Change list. The
+  round-end state — `OUTCOME: pending` → `executed` (step 3) and this handoff rewrite
+  (Handback line) — can only be written after the PR exists, so it lands in a second,
+  mechanical commit. Alternative would have been handing back with a dirty tree.
+- Commit message carries no `Co-Authored-By` trailer, matching every prior commit in
+  this repo.
+
+## Item status
+| Item | Status | Reason |
+|---|---|---|
+| 1 Open PR Gate (#161) | done | |
+| 2 branch | done | |
+| 3 last_block guard | done | flip to `executed` in the round-end commit |
+| 4 authored texts + sha256 | done | r0154-r1-1 needed wrap recovery — see Deviations |
+| 5 apply by copy + cmp | done | 3 × exit 0 |
+| 6 docs gate + canary | done | 292 / 42, both exit 0 |
+| 7 one commit + push | deviated | round-end state needed a second commit — see Deviations |
+| 8 PR (not merged) | done | #162 |
+| 9 handback | done | this file |
 
 ## Next
-Reviewer closure review + feature-done banner; PR merges at the next feature's start via
-the Open PR Gate. Next per Rule A5: F050, fresh window.
+Reviewer R1 review of PR #162 → writes `## Verdicts` in `.agent/live_review.md`.
+On PASS: merge #162 (operator pre-authorized), then bootstrap F050 — DAG scheduling.

@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R1 — R0154 micro-round (docs-only, pre-F050) ────────────────
 Goal:        Codify the R-0154 closure-ordering lesson in
              docs/roadmap/STATUS_closure_protocol.md (v4); merge the
