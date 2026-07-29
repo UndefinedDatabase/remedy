@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R3 — F252 (R-0153 + integration gate + determinism proof) ───
 Goal:        Persist the R2 verdict + finding R-0153, fix R-0153,
              then run the official integration-gate round and the
