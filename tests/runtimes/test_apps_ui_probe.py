@@ -10,7 +10,11 @@ integration blocker instead of quietly substituting a fake server.
 """
 from __future__ import annotations
 
+import fcntl
 import json
+import os
+import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import psutil
@@ -19,7 +23,8 @@ import pytest
 from apps.cli.commands import runtime_cmd
 from packages.runtimes import dev_server as DS
 from packages.runtimes.dev_server import DevServer, load_state
-from packages.runtimes.runtime_config import detect_runtimes, resolve_spec
+from packages.runtimes.runtime_config import PORT_ENV, detect_runtimes, resolve_spec
+from tests.ports import worker_port
 
 pytestmark = [pytest.mark.subprocess, pytest.mark.slow]
 
@@ -40,6 +45,29 @@ requires_ui_deps = pytest.mark.skipif(
 @pytest.fixture(autouse=True)
 def isolate_data_root(tmp_path, monkeypatch):
     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "remedy_data"))
+    # These tests drive the REAL apps/ui runtime of THIS repository, so they
+    # cannot get a private project root. Two protections make that safe under
+    # `-n auto`: the port override keeps every worker off the product default
+    # 5173, and the lock below keeps them off each other's runtime STATE, which
+    # is repo-scoped and therefore genuinely shared.
+    monkeypatch.setenv(PORT_ENV, str(worker_port(1)))
+
+
+@pytest.fixture(autouse=True)
+def one_real_runtime_at_a_time():
+    """Serialize the real-runtime tests across xdist workers.
+
+    The lock lives outside the repository: it is scheduling state, and an
+    untracked file in the repo root would show up in `git status` and in the
+    packaging detritus checks.
+    """
+    lock = Path(tempfile.gettempdir()) / "remedy-apps-ui-probe.lock"
+    with open(lock, "w") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
 
 
 def _alive(pid: int) -> bool:
@@ -56,7 +84,11 @@ def _vite_spec():
     assert detected, "apps/ui must be detected as a vite runtime"
     spec = detected[0].spec
     assert Path(spec.cwd) == UI
-    return spec
+    # Detection reports the project's configured port; honour the same
+    # override the product applies in resolve_spec so this worker binds its
+    # own port instead of the product default.
+    override = os.environ.get(PORT_ENV, "").strip()
+    return replace(spec, port=int(override)) if override else spec
 
 
 class TestDetectApsUi:

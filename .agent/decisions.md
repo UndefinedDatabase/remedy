@@ -1633,3 +1633,20 @@ Fifth product bug, behind the last id: `_scrub_paths` dropped the FIRST LINE
 of every text it redacted — aimed at pytest's rootdir banner, but applied
 unconditionally, so any single-line command output was scrubbed to "". The
 helper now only redacts.
+
+## 2026-07-29: F252 slice E — a runtime port override, so the real-runtime tests stop fighting the product default
+F251 closed 11 of 13 F-A ids with a per-worker test port, and stopped on the
+two that drive the REAL apps/ui runtime of THIS repository: their port comes
+from the product (config, else detection), so the only test-side fix would
+have been editing the repository under test. Product change:
+`REMEDY_RUNTIME_PORT` overrides the resolved port for ONE process, in
+`resolve_spec`, validated like any other port and applied to both the config
+and the detection path. The repository's own configuration is untouched, so
+`remedy runtime serve` still means 5173 for an operator.
+The runtime STATE file is repo-scoped and stays shared, so
+`test_apps_ui_probe.py` also serializes across xdist workers on a file lock
+kept in the system temp dir (not the repo — an untracked file there would
+show up in `git status` and in the packaging detritus checks).
+Verified: the four candidate ids green 3x consecutively, `tests/runtimes/`
+green under `-n 4`, and no listener on the product default 5173 during or
+after the runs.
