@@ -1691,3 +1691,25 @@ helper returned `""` for a missing file, so every assertion over a moved doc
 was passing against an empty string. It now resolves docs/system, docs/guides
 and docs/ in order and RAISES when the doc is absent — which turned six
 further ids green once they started reading real text.
+
+## 2026-07-29: F252 D14 (the 13 README pins) — the README stopped being a spec dump
+bd2f8ad deliberately replaced a 222-line spec-dump README with a concise
+overview ("condensed pitch, <=120 lines"), deleting the F012 contract prose
+and the per-feature `| F010 … externally accepted` table. Thirteen pins still
+asserted that deleted text, so they pinned a documentation design the repo
+had already retired.
+- The twelve `TestF012Round*IsPinned::test_..._readme_states_...` ids now pin
+  the same contract in the document that owns it, `T0_F012.md` — every one of
+  those classes already reads that file for its sibling assertions, and where
+  the exact phrase survives there (root of trust, raw-byte identity, gate
+  matrix, review subject, typed transaction) the phrase itself is asserted.
+- `test_the_readme_reports_the_accepted_foundation_and_no_later_feature` is
+  now a cross-check against the ledger: every feature the README lists in an
+  "Accepted …:" block must carry `- [x]` in STATUS.md. That fails on real
+  drift instead of on layout, and it caught the drift it was meant to: the
+  README still said "13 of 250 features accepted. Next: F081". Updated to the
+  ledger's truth (24 of 252, Tier 0 complete, the eight accepted Tier 1
+  items, F252 in progress) in this same commit.
+Two named clauses ("F012 must never be called accepted yet", the same for
+F017) were dropped: STATUS.md carries `- [x]` for both, and the general
+cross-check subsumes them.
