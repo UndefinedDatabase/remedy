@@ -170,15 +170,26 @@ def _proof_event(intent_id: str, target_path: str) -> dict:
     }
 
 
-def _test_event(status: str = "passed", exit_code: int = 0) -> dict:
+def _test_event(status: str = "passed", exit_code: int = 0,
+                intent_id: str = "") -> dict:
+    """A recorded test run.
+
+    ``intent_id`` is what makes the run LINKED to a change: since the
+    proof-chain hardening, unlinked test evidence is never claimed as proof of
+    a specific change (`_link_test_to_change`, rules 1-4), so a chain that
+    should end in `test_run` has to name the intent it tested.
+    """
+    meta = {
+        "command": "pytest",
+        "status": status,
+        "exit_code": exit_code,
+    }
+    if intent_id:
+        meta["intent_id"] = intent_id
     return {
         "event": "test_run_completed",
         "outcome": status,
-        "metadata": {
-            "command": "pytest",
-            "status": status,
-            "exit_code": exit_code,
-        },
+        "metadata": meta,
     }
 
 
@@ -751,24 +762,37 @@ class TestUiRebuildSpecDocument:
         assert "DetailPopover" in self.content
         assert "LayerSwitcher" in self.content
 
+    # The v2 spec (2026-07-05) stopped inlining the palette, the forbidden-word
+    # list and the zoom levels: each names ONE canonical source under
+    # docs/ui/design_reference/. These pins follow that — the delegation must be
+    # explicit and the target must exist, so a dead pointer still fails.
+    def _reference(self, name: str):
+        p = ROOT / "docs" / "ui" / "design_reference" / name
+        assert p.is_file(), f"canonical reference missing: {name}"
+        return p.read_text(encoding="utf-8")
+
     def test_has_css_tokens(self):
-        assert "--remedy-bg:" in self.content
-        assert "--remedy-blue-500:" in self.content
-        assert "--remedy-card:" in self.content
-        assert "--remedy-text:" in self.content
-        assert "--remedy-shadow:" in self.content
+        assert "design_reference/tokens.css" in self.content
+        assert "the only palette" in self.content
+        assert "--remedy-" in self.content
+        assert "--remedy-" in self._reference("tokens.css")
 
     def test_has_forbidden_words_section(self):
-        assert "Forbidden" in self.content
-        assert "rank" in self.content
-        assert "importance" in self.content
-        assert "node_type" in self.content
-        assert "context coverage" in self.content
+        assert "Forbidden default UI words" in self.content
+        assert "ux_spec.md" in self.content
+        for word in ("rank", "importance", "node_type"):
+            assert word in self.content
+        assert "humanCopy.ts" in self.content
+        self._reference("ux_spec.md")
 
     def test_has_semantic_zoom_rules(self):
-        assert "Semantic Zoom" in self.content
-        assert "Overview" in self.content
-        assert "Diagnostics" in self.content
+        assert "Semantic zoom" in self.content
+        assert "graph_spec.md" in self.content
+        # The one rule v2 keeps stated inline, because it is binding.
+        import re as _re
+        flat = _re.sub(r"\s+", " ", self.content.lower())
+        assert "diagnostics content never appears through zoom alone" in flat
+        self._reference("graph_spec.md")
 
     def test_no_old_ui_as_primary(self):
         lower = self.content.lower()
@@ -971,7 +995,7 @@ class TestFileProvenanceChain:
 
         events = [
             _proof_event(intent_id, "src/foo.py"),
-            _test_event(),
+            _test_event(intent_id=intent_id),
         ]
 
         prov = build_file_provenance(job, events, "src/foo.py")

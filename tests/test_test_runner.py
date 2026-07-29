@@ -815,14 +815,33 @@ class TestCliRunTestsLocal:
         return result.returncode, result.stdout.decode(), result.stderr.decode()
 
     def _create_job(self, tmp_path: Path) -> str:
+        """Create a job in a registered project.
+
+        Since F148 `job create` resolves a project from its cwd and exits 3
+        with "no project found" otherwise; the old fixture ignored the return
+        code and handed an empty id to every command downstream.
+        """
         import subprocess as sp
 
         env = {**__import__("os").environ, "REMEDY_DATA_DIR": str(tmp_path)}
+        repo = tmp_path / "proj"
+        repo.mkdir(parents=True, exist_ok=True)
+        sp.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        sp.run(["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"],
+               check=True, capture_output=True,
+               env={**env, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"})
+        init = sp.run(["python3", "-m", "apps.cli.main", "init"],
+                      capture_output=True, env=env, cwd=str(repo))
+        assert init.returncode == 0, init.stderr.decode()
         r = sp.run(
             ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
-            capture_output=True, env=env,
+            capture_output=True, env=env, cwd=str(repo),
         )
-        return r.stdout.decode().strip()
+        assert r.returncode == 0, r.stderr.decode()
+        job_id = r.stdout.decode().strip()
+        assert job_id, "job create produced no job id"
+        return job_id
 
     def test_permission_missing_exits_1(self, tmp_path):
         env = {"REMEDY_DATA_DIR": str(tmp_path)}

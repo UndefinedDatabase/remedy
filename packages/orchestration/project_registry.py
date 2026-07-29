@@ -45,6 +45,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -587,14 +588,18 @@ def resolve_project(cwd: str | Path) -> RemyProject | None:
     validation.  Returns ``None`` when *cwd* is not in a git repo or no
     project is registered.
     """
-    from packages.orchestration.worktrees import is_git_repo, repo_root
+    from packages.orchestration.worktrees import WorktreeError, is_git_repo, repo_root
 
     cwd_path = Path(cwd).resolve()
     if not is_git_repo(cwd_path):
         return None
     try:
         root = repo_root(cwd_path)
-    except Exception:
+    except (WorktreeError, OSError, subprocess.SubprocessError):
+        # The named failures of `git rev-parse`: a non-repository or an
+        # unusable checkout (WorktreeError), a missing/unreadable path (OSError)
+        # and a git that never returned (SubprocessError, incl. TimeoutExpired).
+        # Anything else is a defect and must not be swallowed here.
         return None
 
     real = str(root.resolve())

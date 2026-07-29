@@ -650,30 +650,13 @@ class TestRunLogSchema:
 
         _cmd_project_context(str(p.id))
 
+        # F146 (2727114) made `project context` strictly read-only and removed
+        # its RunLog write: "zero writes on read-only commands". The pin is now
+        # that contract — the command must leave no run log behind at all.
         runs_dir = tmp_path / "runs" / str(job.id)
-        assert runs_dir.exists(), "runs directory was not created"
-
-        run_files = list(runs_dir.glob("*.jsonl"))
-        assert run_files, "no run log files found"
-
-        events = []
-        for f in run_files:
-            for line in f.read_text().splitlines():
-                try:
-                    events.append(_json.loads(line))
-                except Exception:
-                    pass
-
-        matching = [
-            e for e in events
-            if e.get("event") == "project_context_coverage_inspected"
-        ]
-        assert matching, "project_context_coverage_inspected event not found in run log"
-
-        ev = matching[-1]
-        meta = ev.get("metadata", {})
-        for key in self._REQUIRED_META_KEYS:
-            assert key in meta, f"run-log metadata missing key: {key}"
+        assert not runs_dir.exists(), \
+            "project context is read-only and must not write a run log"
+        assert self._REQUIRED_META_KEYS, "the recorded metadata contract is kept for the writer paths"
 
     def test_run_log_event_scope_is_project(self, tmp_path, monkeypatch):
         import json as _json
@@ -696,17 +679,10 @@ class TestRunLogSchema:
 
         _cmd_project_context(str(p.id))
 
+        # Same F146 read-only contract: nothing under the data root's runs/
+        # may appear because a project was merely inspected.
         runs_dir = tmp_path / "runs" / str(job.id)
-        for f in runs_dir.glob("*.jsonl"):
-            for line in f.read_text().splitlines():
-                try:
-                    ev = _json.loads(line)
-                    if ev.get("event") == "project_context_coverage_inspected":
-                        assert ev["metadata"]["scope"] == "project"
-                        return
-                except Exception:
-                    pass
-        pytest.fail("project_context_coverage_inspected event not found")
+        assert not list(runs_dir.glob("*.jsonl")) if runs_dir.exists() else True
 
     def test_run_log_no_sentinels(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))

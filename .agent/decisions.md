@@ -1713,3 +1713,46 @@ had already retired.
 Two named clauses ("F012 must never be called accepted yet", the same for
 F017) were dropped: STATUS.md carries `- [x]` for both, and the general
 cross-check subsumes them.
+
+## 2026-07-29: F252 D14 (misc) — six retired contracts and two product bugs
+Retired contracts, repinned to what the product does today:
+- `test_no_new_product_dependency`: `fresh_evidence_gate.py` genuinely reads
+  `.agent/live_review.md` (it is the gate OVER development state) and is
+  allowlisted with that reason; `repair_attest.py` only NAMES the file in a
+  docstring to say it is excluded, so the scanner now strips docstrings — a
+  module may document the boundary it honours.
+- `test_run_log_event_has_exact_metadata_keys` / `…_scope_is_project`: F146
+  (2727114) made `project context` strictly read-only and removed its RunLog
+  write. The pin is now that read-only contract.
+- `TestUiRebuildSpecDocument` (3 ids): the v2 spec delegates palette,
+  forbidden words and zoom levels to `docs/ui/design_reference/`. The pins
+  follow the delegation and require the target file to exist, so a dead
+  pointer still fails.
+- `test_full_chain_order`: since the proof-chain hardening, unlinked test
+  evidence is never claimed as proof of a change; the fixture's test event now
+  names the intent it tested.
+- `test_root_style_evidence_still_readable_but_deprecated` → `…_is_ignored…`:
+  same retirement as D13.
+- `test_default_out_goes_to_hidden_dir_and_indexes`: the bare
+  `Path.cwd().glob("remedy-job-evidence-*")` also caught legacy dirs an
+  operator left in the checkout; it now looks for pollution from THIS export.
+- `test_viewer_sanity_block_has_no_bare_assert`: BARE means "without a
+  message"; the blanket ban on the word forbade the fixed form too.
+- The three `invalid_job_id` ids: that token is a stop_reason of the test
+  execution service. The job CLI reports a bad id on stderr and exits
+  non-zero; the pins now assert exit code, the named stderr error, no
+  traceback and NO partial JSON on stdout.
+- `test_the_cli_resumes_a_16_char_jobplan_id`: max-tasks is an F012 material
+  control carried in RunInvocation, not a bare kwarg.
+- `tests/test_test_runner.py::TestCliRunTestsLocal`: D5/D10 fixture
+  precedent — register a project before `job create`.
+Product bugs:
+1. `project_registry.resolve_project` swallowed EVERY exception around
+   `repo_root`; now the named failures only (WorktreeError, OSError,
+   SubprocessError) — a defect is no longer hidden as "no project".
+2. `pingpong_loop._build_provider_evidence` omitted provider_call_count /
+   actual_call_count / cost_call_count when no usage was measured, although
+   ProviderTokenEvidenceV1 REQUIRES them for execution_mode='provider_backed'.
+   token_truth.json therefore refused to build and the artifact-contract gate
+   went BLOCKED on a clean export. Zero is the honest count; the one test that
+   asserted the ABSENCE of those fields now asserts the schema.

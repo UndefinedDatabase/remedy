@@ -437,19 +437,28 @@ class TestJobFacadeNoAgent:
         assert "job_not_found" in output or "error" in output
 
     def test_job_status_invalid_id_safe(self):
+        """A bad id fails safely: named error on stderr, no partial JSON.
+
+        The machine token `invalid_job_id` is a `stop_reason` of the test
+        execution service; the job CLI reports a bad id as a human error on
+        stderr and exits non-zero. This pins that behaviour instead.
+        """
         import contextlib
         import io
 
         from apps.cli.commands.job import _cmd_job_status
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
                 _cmd_job_status("not-a-uuid", json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert "invalid_job_id" in output
-        assert "Traceback" not in output
+            except SystemExit as exc:
+                code = exc.code
+        assert code not in (None, 0)
+        assert "invalid job ID" in err.getvalue()
+        assert "not-a-uuid" in err.getvalue()
+        assert "Traceback" not in err.getvalue()
+        assert out.getvalue().strip() == ""
 
 # ---------------------------------------------------------------------------
 # Steps 3229-3237: Enriched truth, demo integration, safety proofs
@@ -575,19 +584,22 @@ class TestJobStatusReportTruthFields:
         assert len(data['tasks']) == 1
 
     def test_report_invalid_id_safe(self):
+        """Same contract as job status: named stderr error, no partial JSON."""
         import contextlib
         import io
 
         from apps.cli.commands.job import _cmd_job_report
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
                 _cmd_job_report('not-a-uuid', json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert 'invalid_job_id' in output
-        assert 'Traceback' not in output
+            except SystemExit as exc:
+                code = exc.code
+        assert code not in (None, 0)
+        assert 'invalid job ID' in err.getvalue()
+        assert 'Traceback' not in err.getvalue()
+        assert out.getvalue().strip() == ""
 
 
 class TestNoProviderNoApplyProof:

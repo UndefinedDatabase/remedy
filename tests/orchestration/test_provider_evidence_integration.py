@@ -1186,7 +1186,13 @@ class TestNoActualProviderAttemptAccounting:
         assert _aggregate_usage_actuals(result) is None
         ev = _build_provider_evidence(result)
         assert ev["actual_available"] is False
-        assert "provider_call_count" not in ev
+        # ProviderTokenEvidenceV1 REQUIRES the three counts for
+        # execution_mode='provider_backed'; omitting them made token_truth
+        # refuse the bundle. "No measured calls" is written as an explicit
+        # zero, not as an absent field.
+        assert ev["provider_call_count"] == 0
+        assert ev["actual_call_count"] == 0
+        assert ev["cost_call_count"] == 0
         acc = _build_token_accounting(result)
         assert acc["actual_tokens_available"] is False
         assert acc["measurement_confidence"] == "low"

@@ -651,16 +651,19 @@ class TestProposedTaskLifecycle:
 class TestJobFulfillCLI:
 
     def test_invalid_job_id(self):
+        """A bad id is reported on stderr and nothing is printed to stdout."""
         from apps.cli.commands.job import _cmd_job_fulfill
 
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
                 _cmd_job_fulfill("not-a-uuid", fixture_demo=True, json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert "invalid_job_id" in output
+            except SystemExit as exc:
+                code = exc.code
+        assert code not in (None, 0)
+        assert "invalid job ID" in err.getvalue()
+        assert out.getvalue().strip() == ""
 
     def test_missing_job(self, tmp_path, monkeypatch):
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
