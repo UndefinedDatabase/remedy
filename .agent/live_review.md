@@ -11,7 +11,7 @@ state, class by class (catalog: .agent/f251_baseline/class_map.txt).
   full-suite delta; stop at the first red slice gate. In progress.
 
 ## Findings
-- R-0152 (minor, open): apps/cli/commands/do_cmd.py — the `do`
+- Done: R-0152 (minor): apps/cli/commands/do_cmd.py — the `do`
   planning path falls back to the intake-bound call_fn
   (`make_structured_call_fn(FlightPlan) or call_fn`) when the
   FlightPlan factory returns None. The degraded path then knowingly
