@@ -1663,3 +1663,20 @@ list, got MagicMock"). All three builders now construct real `Job` models
 helper). No assertion changed; the gates under test now actually run. The
 remaining MagicMock task fixtures in test_test_runner._make_job are untouched
 — those tests pass and do not reach model-reading product code.
+
+## 2026-07-29: F252 D4 remainder — context.md is maintained; the step-range pins retire
+`.agent/context.md` was still F046-era. Rewritten to current reality (active
+branch, F252 scope boundaries and constraints, resource-safety note, pointer
+to plan.md), which turns the three content ids green:
+`test_context_md_references_current_branch`, `test_context_md_no_stale_steps`,
+`test_context_mentions_resource_safety`.
+The other two ids asserted `Steps?\s+\d+-\d+` in context.md AND plan.md — the
+numbered-step workflow that docs/roadmap/STATUS.md replaced with roadmap
+features and rounds. plan.md is reviewer-authored and cmp-verified this
+round, so it cannot be hand-edited to satisfy a retired convention, and
+inventing a step range in context.md would be fabrication. Both assertions
+now pin the LIVE contract: the feature id (`F\d{3}`), plus `## Active Branch`
+and `feature/` for context.md and the AGENTS.md-required `## Goal` /
+`## Next Steps` for plan.md. Nothing became optional.
+Standing risk unchanged (F251 R2 finding): these ids read LIVE state files,
+so ordinary bookkeeping still moves them. Recorded, not adjusted.

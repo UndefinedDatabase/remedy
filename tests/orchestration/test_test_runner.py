@@ -751,11 +751,18 @@ class TestNoBroadExceptAndDegradedSignals:
         assert "Steps" in content
 
     def test_context_md_updated(self):
-        """context.md references a valid step range (living document)."""
+        """context.md names the work it scopes (living document).
+
+        Work is identified by roadmap feature since the numbered-step
+        workflow was retired (docs/roadmap/STATUS.md is the ledger), so the
+        marker is the feature id and the active branch, not "Steps 91-100".
+        """
         import re
         content = Path(".agent/context.md").read_text()
-        assert re.search(r"Steps?\s+\d+-\d+", content, re.IGNORECASE), \
-            "context.md must reference a valid step range"
+        assert re.search(r"\bF\d{3}\b", content), \
+            "context.md must name the roadmap feature it scopes"
+        assert "## Active Branch" in content
+        assert "feature/" in content
 
     def test_context_md_no_stale_problems(self):
         """context.md doesn't list already-fixed items as current problems."""
@@ -766,11 +773,17 @@ class TestNoBroadExceptAndDegradedSignals:
         assert "job=None source_apply bypass" not in content  # fixed in 265
 
     def test_plan_md_current(self):
-        """plan.md references a valid step range (living document)."""
+        """plan.md carries the sections AGENTS.md requires (living document).
+
+        Same retirement as `test_context_md_updated`: the plan is keyed to a
+        roadmap feature, not to a numbered step range.
+        """
         import re
         content = Path(".agent/plan.md").read_text()
-        assert re.search(r"Steps?\s+\d+-\d+", content, re.IGNORECASE), \
-            "plan.md must reference a valid step range"
+        assert "## Goal" in content, "plan.md must state its Goal"
+        assert "## Next Steps" in content, "plan.md must state its Next Steps"
+        assert re.search(r"\bF\d{3}\b", content), \
+            "plan.md must name the roadmap feature it plans"
 
     def test_no_shell_true_in_orchestration(self):
         """No shell=True in orchestration package (AST check)."""
