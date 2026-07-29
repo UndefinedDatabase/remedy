@@ -1,165 +1,237 @@
-OUTCOME: executed
-── STEP R4b — F252 CLOSURE, corrected ordering (R-0154) ─────────────
-Goal:        Finish closure: preconditions, evidence job, fresh
-             review zip, then ONE final commit = README sync +
-             STATUS [x] + final .agent state, grep proofs, PR.
-Bundle:      Slice 0 persist · Slice A preconditions · Slice B
-             evidence + zip · Slice C final commit + PR.
-Change:      .agent state, README.md + docs/roadmap/STATUS.md (both
-             ONLY in the final commit), evidence dir (committed
-             AFTER the READY zip). Nothing else.
-Constraints: AGENTS.md; STATUS_closure_protocol.md v3 EXACTLY. Zip
-             failure = closure BLOCKER (raw error, hand back).
-             Authored texts: save verbatim, sha256-verify BEFORE
-             commit; mismatch = STOP + refusal record in
-             .agent/last_block.md, apply nothing. The saved STATUS
-             template .agent/authored/f252-r4-4.md must re-verify to
-             79db25a571adeb91cdc4f460654d0630ba2355393bbe8662898c5cd244be5782
-             before substitution; substitute ONLY the four
-             <PLACEHOLDERS>, provenance line per value in the
-             handback. Worker never writes ## Verdicts. The PR is
-             NOT merged this session.
-Done when:   Protocol steps 1–5 complete, zip import check green,
-             combined final commit green on the docs gate, STATUS
-             grep proof, PR open.
-Handback:    Per template, including: raw `remedy integrity check
-             --json`, evidence job id, zip filename + SHA-256 from
-             the script output, accepted HEAD, the applied STATUS
-             line verbatim + grep -cF proofs (new=1, old=0), PR
-             number, and the post-commit `pytest tests/docs/ -q`
-             transcript.
+OUTCOME: pending
+── STEP R1 — R0154 micro-round (docs-only, pre-F050) ────────────────
+Goal:        Codify the R-0154 closure-ordering lesson in
+             docs/roadmap/STATUS_closure_protocol.md (v4); merge the
+             F252 closure PR first via the Open PR Gate.
+Bundle:      Gate #161 · branch · authored texts (save + verify +
+             apply) · docs gate + canary · one commit · PR (open,
+             not merged).
+Change:      docs/roadmap/STATUS_closure_protocol.md (FULL REPLACE),
+             .agent/live_review.md, .agent/plan.md,
+             .agent/authored/r0154-r1-{1,2,3}.md,
+             .agent/last_block.md. Nothing else.
+Constraints: AGENTS.md. Authored texts verbatim: save, sha256-verify
+             against the BEGIN markers BEFORE any apply; mismatch =
+             STOP + refusal record in .agent/last_block.md, apply
+             nothing. Worker never writes ## Verdicts. The
+             micro-round PR is NOT merged this round.
+Done when:   Gate green (python3 -m pytest tests/docs/ -q + canary
+             pytest tests/cli/test_golden_path.py -q, both exit 0;
+             F252 baseline was 292 / 42 passed), cmp proofs exit 0,
+             commit pushed, PR open.
+Handback:    Completion report + rewrite .agent/handoff.md
+             (changed-files table, sha256 + cmp proofs, raw gate
+             transcripts, PR number).
 
-PROCEDURE
+PROCEDURE — STOP at the first red verification (AGENTS.md
+If-Blocked); hand back the raw output.
 
-Slice 0 — persist (one commit)
-1. last_block.md guard: line 1 "OUTCOME: pending", THIS block
-   verbatim; final state "OUTCOME: executed" at round end.
-2. Save f252-r4b-1 and f252-r4b-2 below VERBATIM to
-   .agent/authored/, sha256-verify. Apply: r4b-1 FULL REPLACE
-   .agent/live_review.md (cmp 0), r4b-2 FULL REPLACE .agent/plan.md
-   (cmp 0). Gate: python3 -m pytest tests/docs/ -q → 292 passed +
-   canary 42 passed. Commit: "chore(f252): persist the R4 stop
-   verdict + R-0154 resolution". Push.
+1. Open PR Gate (AGENTS.md):
+   gh pr list --state open --json number,headRefName,baseRefName,isDraft
+   Expected: exactly one open PR — #161, head
+   feature/f252-standing-red-paydown, base main, not draft. Then:
+   gh pr merge 161 --merge --delete-branch
+   git checkout main && git pull --ff-only
+   Any other gate state (count != 1, draft, wrong base/head, merge
+   failure) → STOP, hand back the raw output.
+2. git checkout -b feature/r0154-closure-ordering
+3. .agent/last_block.md guard: line 1 "OUTCOME: pending", then THIS
+   block verbatim; flip to "OUTCOME: executed" at round end.
+4. Save the three authored texts below VERBATIM (bytes between the
+   BEGIN/END markers, including the final newline) to
+   .agent/authored/r0154-r1-1.md, r0154-r1-2.md, r0154-r1-3.md.
+   sha256sum of each file MUST equal its BEGIN marker before step 5.
+5. Apply by copy (never retype):
+   cp .agent/authored/r0154-r1-1.md docs/roadmap/STATUS_closure_protocol.md
+   cp .agent/authored/r0154-r1-2.md .agent/live_review.md
+   cp .agent/authored/r0154-r1-3.md .agent/plan.md
+   cmp each target against its authored file → exit 0, all three.
+6. Gate: python3 -m pytest tests/docs/ -q  AND canary:
+   python3 -m pytest tests/cli/test_golden_path.py -q
+   Both exit 0. Raw transcripts (command, exit code, tail) into the
+   handback.
+7. ONE commit of everything above:
+   "docs(closure): codify the R-0154 ordering lesson — closure protocol v4"
+   Push.
+8. PR per AGENTS.md: title
+   "R0154 micro-round — closure protocol v4 (ordering lesson)";
+   body: what/why (operator-ordered pre-F050: persist the R-0154
+   lesson — README capability sync in the SAME commit as the STATUS
+   [x] edit; closure commit touches exactly STATUS.md, README.md,
+   .agent/), changed-files table, gate results, verdict: pending R1
+   review. Do NOT merge.
+9. Handback per the Handback line above.
 
-Slice A — preconditions (no commit)
-3. remedy integrity check --json → verdict PASS required (record
-   raw). git status --porcelain → empty. Branch pushed. Any failure
-   → STOP, hand back (protocol Failure honesty).
+TRANSPORT NOTE (worker, R1): authored text 1 arrived hard-wrapped —
+the step-4 STATUS template line was split after "· package". Rejoining
+the two fragments with a single space reproduces the authored bytes
+exactly (sha256 d2b67cb5… verified before any apply). The copy embedded
+below is the sha256-verified form, so it re-verifies as-is. Texts 2 and
+3 matched on first save. No other deviation.
 
-Slice B — evidence job + zip (protocol steps 1–2)
-4. Evidence job: final feature-scoped run, fresh job id, canonical
-   producer create_manual_completion_bundle(
-   review_feature_id="f252", …), complete verification_runs
-   (sha256-hex output_hash, valid totals, full-length base_commit
-   7baff1d<full sha>). Do NOT commit the evidence dir yet.
-5. Zip: bash scripts/make_review_zip.sh --evidence-dir <step-4
-   dir>. Verify committed_review_subject spans 7baff1d..HEAD (HEAD
-   = the Slice 0 commit or later) and the import check passes.
-   Record filename + SHA-256 from the script output. THEN commit
-   the evidence dir: "chore(f252): commit closure evidence (after
-   READY zip)". Push.
-6. accepted HEAD for the STATUS line = the zip manifest's
-   committed_review_subject.head_commit (full SHA). Record it.
+--- BEGIN r0154-r1-1 sha256=d2b67cb5d12254aa9ed7253287eae8aa6a8895c83b000d7746b41c45df0545f9 ---
+# STATUS.md Closure Protocol (v4)
 
-Slice C — final commit + PR (protocol steps 4–5, R-0154 ordering)
-7. In ONE commit, the last on the branch (Rule A4):
-   a. README.md, three edits, nothing else: "24 of 252 registered
-      items accepted. In progress: F252 (standing-red paydown)." →
-      "25 of 252 registered items accepted. Next: F050 (DAG
-      scheduling)." · Tier-1 row Done 8 → 9 · append "F252
-      standing-red paydown" to the "Accepted in Tier 1 so far:"
-      block.
-   b. docs/roadmap/STATUS.md: replace the line "- [~] F252 —
-      Standing-red paydown (154 ids, 13 classes)" with the r4-4
-      template line after substituting <JOB_ID> (step 4),
-      <ZIP_FILENAME> (step 5), <ZIP_SHA256> (step 5), <HEAD_SHA>
-      (step 6). Touch no other line.
-   c. Final .agent state: last_block.md OUTCOME → executed;
-      handoff.md rewrite (the handback).
-   Pre-commit gate on the staged state: python3 -m pytest
-   tests/docs/ -q → 292 passed (README and STATUS now agree) +
-   canary 42 passed. grep -cF applied STATUS line = 1, old line
-   = 0. Commit: "chore(f252): close F252 — STATUS [x] + README
-   sync". Push.
-8. PR per AGENTS.md: title "F252 — Standing-red paydown (154 ids,
-   13 classes)"; body: what/why, key decisions (D3/D12 quarantines,
-   D4 live-coupled, D10 test-only, R-0154 ordering), how to review
-   (four gates + determinism proof + zip), changed-files table,
-   latest verdict R4 PASS (stopped-round) / R1–R3 PASS, open
-   findings 0, runtime actuals: "5 rounds (R1–R4b), 2026-07-28 →
-   2026-07-29, ~26 commits; tokens/cost not-measured". Do NOT
-   merge.
-9. Handback per template with everything under Handback above.
+> The only path from `[~]` to `[x]`. Reviewer (Window 1) authors; worker
+> (Window 2) executes and commits. Grammar reference: ROADMAP.md Part C and
+> the accepted F017/F018/F146 lines — the living precedent.
 
---- BEGIN f252-r4b-1 sha256=f91bd529d7e5310721b8d154cf11e2e64133e3804ee5d718eb4dc86e2137511f ---
-# Live Review — F252 Standing-red paydown (154 ids, 13 classes)
+## Preconditions — ALL must hold; any failure aborts closure
+1. Every step has a PASS round; every R-XXXX finding is Resolved or listed
+   as a documented Medium/Low risk. Latest live_review verdict is PASS or
+   PASS WITH RISKS — never PENDING/FAIL.
+2. Full relevant suite green — verified by the reviewer running it where it
+   has execution; otherwise via raw transcripts (command, exit code, real
+   output) plus one reviewer-chosen spot-check. Never a summary.
+   A dedicated integration-gate round (full suite, `pytest -n auto`, raw
+   output) must have PASSed before closure; this precondition re-confirms it
+   (planner_reviewer_prompt.md §3 verification tiers).
+3. `remedy integrity check --json` → PASS; no relevant untracked files.
+4. Feature file's Built State section is current.
+5. Working tree clean, branch pushed, worker idle.
 
-Branch: feature/f252-standing-red-paydown
-Scope: every catalogued standing-red id reaches an explicit terminal
-state, class by class (catalog: .agent/f251_baseline/class_map.txt).
+## Algorithm
+1. **Evidence job (worker).** Final evidence run, fresh job id, feature-
+   scoped (`feature_id=<fxxx>`). Record: `Evidence job <job_id>`.
+   Canonical producer: `packages.orchestration.job_evidence.
+   create_manual_completion_bundle(review_feature_id=<fxxx>, ...)` — it
+   emits the full closed-schema gate set (final_verifier_report,
+   fresh_evidence, artifact_contract, change_provenance, manifest_
+   integrity, postmortem_integrity, commit_execution, runtime_integration).
+   `write_runtime_integration_gate` alone is NOT a bundle and packages as
+   BLOCKED_EVIDENCE.
+   Packaging-deadlock rule: a High finding about closure packaging blocks
+   `remedy integrity check` (high_blockers_open) and thereby the zip
+   itself. The reviewer therefore attaches a CONDITIONAL resolution to
+   such findings at authoring time — a mechanically checkable predicate
+   (e.g. "Resolved when the complete bundle with all listed gates exists
+   on disk at the current head") that the worker applies verbatim once the
+   predicate holds — so persist → fix → resolve → package fits ONE relay.
+   Producer pitfalls that block packaging: verification_runs
+   entries need a sha256-hex output_hash, valid VerificationTests
+   totals, and the full-length base_commit SHA — abbreviated or
+   missing values surface only at zip time.
+2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
+   canonical sequence below. Verify committed_review_subject spans
+   BASE..HEAD and the zip import check passes. Record `package <filename>`
+   and `SHA-256 <hash>`. **A failing zip build is a closure BLOCKER** —
+   fix or go `[!]`; never close without the package.
+   Docs-only features without a runtime evidence job close with an honest
+   NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
+   Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
+   Build order: the closure zip is the LAST action after ALL commits
+   including the final .agent/ state and handoff rewrite; a package built
+   from a dirty tree is invalid. The zip attempt's outcome — package +
+   SHA-256, or the raw error — is recorded in the handoff BEFORE handback,
+   always.
+3. **Runtime actuals (reviewer; observed only).** Rounds, wall clock,
+   models, tokens/cost where the ledger has them; `not-measured` beats a
+   guess. → PR description + final report.
+4. **STATUS line (reviewer authors, worker applies verbatim).** Template:
+   `[x] <Fxxx> — <Name> (<T-slices> complete; accepted <YYYY-MM-DD> · live review <PASS|PASS_WITH_RISKS> — ACCEPTED[ · external verdict <V> — ACCEPTED] · Evidence job <job_id> · package <zip filename> · SHA-256 <hash> · accepted HEAD <full sha>)`
+   `accepted HEAD` = the reviewed head the verdict and zip cover (manifest
+   committed_review_subject.head_commit). External-verdict segment only
+   when an external round happened. Touch no other line.
+5. **Final commit + PR (worker).** STATUS edit is the last commit on the
+   branch (Rule A4). Ordering (R-0154, F252 lesson): the README
+   capability sync lands in the SAME commit as the STATUS `[x]` edit —
+   README and STATUS may never disagree in any committed state (the
+   ledger cross-check pin). The closure commit touches exactly
+   docs/roadmap/STATUS.md, README.md and the final .agent/ state
+   (incl. handoff.md rewrite) — nothing else; the feature file's Built
+   State is already current from an earlier commit (precondition 4).
+   Then the AGENTS.md PR workflow; description carries what/why, key
+   decisions, how to review, changed-files table, latest verdict,
+   open-findings count, runtime actuals.
+   The closure handback includes grep proof that every piece of
+   reviewer-authored applied text (STATUS line, resolution
+   entries) is byte-identical to the authored paste block.
+6. **Merge — deferred to the next feature.** The closure PR is NOT merged
+   in this session. It merges at the next feature's start via the Open PR
+   Gate on Window 1's instruction; the gap is the operator's manual-review
+   window. The operator may merge manually at any time instead.
+7. **End Window 1** with the feature-done banner. Next feature → fresh
+   session; Rule A5 selects it.
+
+## Canonical zip build sequence
+Explicit evidence selection is mandatory. Deprecated root-dir auto-selection
+(mtime-based `remedy-job-evidence-*` scanning) is disabled — the script
+hard-errors if legacy dirs exist and no `--evidence-dir` or `--job-id` is
+given.
+
+```bash
+# 1. Ensure tree is clean and branch is pushed.
+git status          # must be clean
+git push
+
+# 2. Build with explicit evidence dir (preferred):
+bash scripts/make_review_zip.sh --evidence-dir <path-to-evidence-dir>
+
+# Or by indexed job id:
+bash scripts/make_review_zip.sh --job-id <job-id>
+
+# 3. Without evidence (code-only snapshot, e.g. docs-only features):
+bash scripts/make_review_zip.sh
+```
+
+**Stale `review_archive_plan.json`:** The pipeline automatically deletes any
+plan copied from evidence staging before generating a fresh one. No manual
+step needed — `build_review_zip.py` always writes a new plan with current
+SHA-256 hashes.
+
+**Output:** The script prints the final zip filename and SHA-256. Record both
+in the STATUS line (`package <filename>` and `SHA-256 <hash>`).
+
+**Evidence-dir commit ordering:** the evidence dir is committed
+AFTER the READY zip exists, never before. A pre-committed
+evidence dir puts evidence files into the base..HEAD review
+subject and the package builds BLOCKED_EVIDENCE ("evidence is
+not authoritative") — F147 attempt-2 lesson.
+
+## Failure honesty
+If any precondition fails, the feature does NOT close. In order: another
+repair round; `[!] <Fxxx> — <name> (blocked: <reason>)` authored by the
+reviewer, committed by the worker; or an explicit operator decision in
+.agent/decisions.md. Pretending completion is the one unforgivable failure
+mode (AGENTS.md If-Blocked; P1 verify-before-claiming).
+--- END r0154-r1-1 ---
+
+--- BEGIN r0154-r1-2 sha256=e3066d09858a8687175f8ec0477a18ef549f9380d3d4aabaf72aff8dfb541f34 ---
+# Live Review — R0154 micro-round (closure-ordering codification)
+
+> Docs-only micro-round ordered by the operator before F050: persist
+> the R-0154 ordering lesson from the F252 closure into
+> docs/roadmap/STATUS_closure_protocol.md. Reviewer: Window 1.
 
 ## Steps
-- R1: claim + state reset + product-bug classes D8, D10, D11. Done.
-- R2: R-0152 + all remaining classes; 143 fixed, 11 quarantined by
-  decision; suite 14295 passed / 0 failed / 19 skipped. Done.
-- R3: R-0153 + integration gate (zero branch-only failures) +
-  three-run determinism proof (four counting the reviewer's). Done.
-- R4: closure, first attempt — STOPPED at the README sync on the
-  ordered condition; Slice 0 (verdict + Built State) stands. Done.
-- R4b: closure resumed — preconditions, evidence job, zip, then ONE
-  final commit carrying README sync + STATUS [x] + final .agent
-  state; PR. In progress.
+- R1: replace docs/roadmap/STATUS_closure_protocol.md with the
+  authored v4 text (step 5 now pins the R-0154 ordering: README
+  capability sync in the SAME commit as the STATUS `[x]` edit; the
+  closure commit touches exactly STATUS.md, README.md and the final
+  .agent/ state). Gate: tests/docs + canary. In progress.
 
 ## Findings
-- Done: R-0152 (minor): do-planning fallback to the intake-bound
-  call_fn removed (R2).
-- Done: R-0153 (nit): dead `unaccepted <= named` assertion removed
-  from the README honesty pin (R3).
-- Resolved: R-0154 (process, planning-routed): the R4 block ordered
-  the README "Accepted in Tier 1" append (step 3) before the STATUS
-  [x] edit (step 8), contradicting the R2-authored ledger
-  cross-check pin — README and STATUS may never disagree in a
-  committed state. The worker STOPped exactly as ordered, reverted
-  cleanly, handed back with the raw failure. Resolution: R4b folds
-  the README sync into the final STATUS commit; the pin stays
-  untouched. Registered as a DECISION (option a; alternatives:
-  narrow the pin — a test change inside closure, rejected; other
-  orderings). Reversible by any later relay.
+(none yet — IDs continue monotonically from R-0154; next free: R-0155)
 
 ## Verdicts
-- R1: PASS (reviewer, 2026-07-29). Range 7baff1d..cc247fa.
-- R2: PASS (reviewer, 2026-07-29). Range cc247fa..fc3e843.
-- R3: PASS (reviewer, 2026-07-29). Range fc3e843..2758396. Details
-  for R1–R3 in this file's git history.
-- R4 (stopped round): PASS on the executed scope (reviewer,
-  2026-07-29). Range 2758396..d9a146a, 2 commits. All four authored
-  proofs cmp 0 against the reviewer's originals (r4-4 one line, 222
-  chars, placeholders intact); Built State append tail-cmp 0;
-  README.md and STATUS.md byte-untouched on the branch (0-line
-  diff); tree clean. Reviewer re-ran: tests/docs 292 passed, the
-  ledger pin passes on the clean tree, canary 42 passed. The STOP
-  was correct worker behavior on a reviewer authoring error
-  (R-0154); OUTCOME: stopped + STOP RECORD is the prescribed
-  disk trace. LAST_REVIEWED_SHA = d9a146a.
---- END f252-r4b-1 ---
+(pending R1)
+--- END r0154-r1-2 ---
 
---- BEGIN f252-r4b-2 sha256=d2d810d54f5b7fae4407d3d145956778363650691e56c956926e850efece5810 ---
-# Plan — F252 Standing-red paydown
+--- BEGIN r0154-r1-3 sha256=f87463160259b1b1cfedf89a593fcf10eb37502827d4892ab70a31cffaeb7046 ---
+# Plan — R0154 micro-round (docs-only), then F050
 
 ## Goal
-All 154 catalogued standing-red ids reach an explicit terminal state
-(root-cause fix, honest test update, or operator-decided retirement);
-DONE when three consecutive full-suite runs produce identical failure
-sets, empty except explicit quarantines (F251 rules unchanged).
-Status: proven (R3 gate + determinism proof, reviewer-confirmed).
+Persist the R-0154 ordering lesson from the F252 closure into
+docs/roadmap/STATUS_closure_protocol.md (v4): the README capability
+sync lands in the SAME commit as the STATUS `[x]` edit, and the
+closure commit touches exactly docs/roadmap/STATUS.md, README.md and
+the final .agent/ state — nothing else. Merge the micro-round PR,
+then proceed to F050 per Rule A5.
 
 ## Next Steps
-- R4b: closure with the corrected ordering (R-0154): preconditions
-  (integrity check), evidence job (feature_id=f252), fresh review
-  zip, THEN one final commit = README sync + authored STATUS [x] +
-  final .agent state (Rule A4), grep proofs, PR per AGENTS.md. The
-  PR is NOT merged this session; it merges at the next feature's
-  start via the Open PR Gate.
-- After the R4b PASS: session ends; next feature per Rule A5 (F050)
-  in a fresh window.
---- END f252-r4b-2 ---
+- R1: apply the authored protocol v4 text, gate with
+  `python3 -m pytest tests/docs/ -q` + the golden-path canary,
+  commit, push, open the PR.
+- After the reviewer's PASS: merge the micro-round PR (operator
+  pre-authorized), then bootstrap F050 — DAG scheduling.
+--- END r0154-r1-3 ---
