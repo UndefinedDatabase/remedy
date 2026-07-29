@@ -300,16 +300,25 @@ class TestManualCompletionRunsEndToEnd:
 
     def _bundle(self, evd, repo, base, head):
         from packages.orchestration.job_evidence import create_manual_completion_bundle
+        # v1.1.0 runs enumerate what ran: node_ids must account for every
+        # selected test, so a run claiming 2 passed names those 2.
         runs = [{"run_id": "vr-0001", "command": "pytest -q tests_pkg", "exit_code": 0,
                  "passed": 2, "failed": 0, "test_files": ["tests_pkg/test_alpha.py",
-                 "tests_pkg/test_beta.py"], "stdout_summary": "2 passed"}]
+                 "tests_pkg/test_beta.py"],
+                 "node_ids": ["tests_pkg/test_alpha.py::test_alpha",
+                              "tests_pkg/test_beta.py::test_beta"],
+                 "stdout_summary": "2 passed"}]
         return create_manual_completion_bundle(
             str(evd), repo_root=str(repo), base_commit=base, head_commit=head,
             job_id="e2ef4bundle0001", job_title="F4 manual e2e", step_range="1-2",
             prior_job_ids=["priore2ef4000001"], verification_runs=runs,
             timestamp="2026-07-19T00:00:00+00:00",
             generated_at="2026-07-19T00:00:00.000000+00:00", num_tasks=2,
-            note_prefix="F4 manual e2e")
+            note_prefix="F4 manual e2e",
+            # A completion declares its feature: without one the runtime gate
+            # runs EVERY historical feature's execution bindings and blocks on
+            # test evidence this bundle never claimed.
+            review_feature_id="f4manual")
 
     def test_end_to_end_bundle_is_ready(self, tmp_path, monkeypatch):
         repo, base, head = self._make_repo(tmp_path)

@@ -1603,3 +1603,33 @@ no product change:
 Also fixed in the same file: `test_attach_project_repo_idempotent_message`
 (catalogued D14) passed a bare directory to a path that has required a git
 repo since F146 — the fixture now runs `git init`.
+
+## 2026-07-29: F252 D13 — retired contract in tests, four real producer bugs
+The 9 root-selection ids encode a contract Remedy retired on purpose:
+01e2018 replaced mtime-based root-dir auto-selection with a hard error ("it
+cannot distinguish features"), bd93397 downgraded that to warn-and-ignore so
+code snapshots still build. Those tests now assert the live behaviour —
+`remedy-job-evidence-*` root dirs are ignored with a counted warning naming
+both remedies, `current_evidence` is null, nothing lands under `evidence/`,
+and explicit `--evidence-dir` still selects. Tests whose NAME claimed
+auto-selection were renamed; the explicit-selection tests are untouched.
+Four product bugs surfaced behind the other two ids:
+1. `build_manual_completion_gates` filtered caller runs to the v1.1 key set
+   but stamped `schema_version: 1.1.0` without FILLING it — the coordinator
+   rejected `runs[0]` and the final verifier lost its test total. Now
+   normalized through `_vt_run_v11`, same derivations as `_run_verifications`.
+2. …and dropped `head_sha`; the producer threads the bundle's head commit in.
+3. `commit_execution_gate.json` hardcoded `runtime_integration_gate: PASS`
+   while the packaged gate could say BLOCKED. The verdict is now read back
+   from the artifact just written, with coherent non_pass/blocked/issues.
+4. The runtime-integration gate is a SELF check — every pattern it looks for
+   lives in Remedy's own tree — but the manual producer pointed it at the
+   subject repo, so it reported "source file not found" for any non-Remedy
+   target. It now scans Remedy's installed source root.
+Test-side for the same id: the fixture declares `review_feature_id` (without
+one the gate runs every historical feature's execution bindings) and lists
+`node_ids` for the tests its run claims passed.
+Fifth product bug, behind the last id: `_scrub_paths` dropped the FIRST LINE
+of every text it redacted — aimed at pytest's rootdir banner, but applied
+unconditionally, so any single-line command output was scrubbed to "". The
+helper now only redacts.

@@ -1533,10 +1533,10 @@ def _scrub_paths(text: str, repo: str) -> str:
     home = os.path.expanduser("~")
     if home and home != "/":
         text = text.replace(home, "~")
-    if text and not text.startswith("\n"):
-        nl = text.find("\n")
-        if nl > 0:
-            text = text[nl + 1:]
+    # NOTE: this helper only redacts. It used to drop the first line as well —
+    # aimed at pytest's rootdir banner, but applied to every text, so any
+    # single-line output ("ABSENT\n") was scrubbed down to "". Paths in the
+    # banner are already handled by the replacements above.
     return text
 
 
@@ -2997,7 +2997,7 @@ def create_manual_completion_bundle(
     _ma.build_manual_completion_gates(
         evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
         step=step_range, total_passed=total_passed, verification_runs=verification_runs,
-        repo_root=repo_root, verification_data=_vt_data,
+        repo_root=repo_root, head_sha=head_commit, verification_data=_vt_data,
         feature_id=review_feature_id)
     # change-provenance gate must carry the real covered/excluded sets and evidence sources.
     cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
