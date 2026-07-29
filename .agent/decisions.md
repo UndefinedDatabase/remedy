@@ -1537,3 +1537,15 @@ Requiring a project is intentional F148 behavior, so making `job create`
 project-less would be a product CHANGE and belongs to class D5, not here.
 The fixtures now register the target repo and assert the rc, so a future
 break is loud instead of silently producing an empty id.
+
+## 2026-07-29: F252 D11 — translate BudgetConfigError at the fence boundary
+`_load_fence_spec_effective` detected malformed fence config by scanning
+`load_config().load_report.warnings` for "Malformed TOML". config.py now
+fails closed EARLIER: `_load_toml(..., fail_closed_for_budgets=True)` raises
+`BudgetConfigError`, so that diagnostic is never produced and the exception
+escaped the fence API unchanged. Fix: catch `BudgetConfigError` around the
+`load_config` call and re-raise as `FenceConfigError` with the existing
+"refusing to default to allow-all on malformed config" message. The
+diagnostic scan stays for the paths that still report rather than raise
+(e.g. no TOML parser available). No behavior other than the exception TYPE
+changes — the config was already fail-closed.

@@ -428,9 +428,20 @@ def _load_fence_spec_effective(
         )
 
     if config_path is not None:
+        from packages.orchestration.budget_resolution import BudgetConfigError
         from packages.orchestration.config import ConfigSource, load_config
 
-        cfg = load_config(project_path=config_path)
+        try:
+            cfg = load_config(project_path=config_path)
+        except BudgetConfigError as exc:
+            # config.load_config fails closed on unparseable TOML by RAISING a
+            # budget error, so the "Malformed TOML" diagnostic scanned below is
+            # never recorded. At the fence boundary an unreadable config is a
+            # fence-config failure: translate it, or callers lose the F017
+            # contract (FenceConfigError — never a silent allow-all).
+            raise FenceConfigError(
+                f"F017: refusing to default to allow-all on malformed config: {exc}"
+            ) from exc
         diagnostics = tuple(cfg.load_report.warnings)
 
         for d in diagnostics:
