@@ -1,0 +1,23 @@
+{
+ "changed_files": [
+  "tests/orchestration/test_development_artifact_boundary.py",
+  "tests/orchestration/test_event_replay.py",
+  "tests/orchestration/test_evidence_index.py",
+  "tests/orchestration/test_failure_postmortem.py",
+  "tests/orchestration/test_job_evidence.py",
+  "tests/orchestration/test_job_fulfillment.py",
+  "tests/orchestration/test_job_worktree_handoff.py",
+  "tests/orchestration/test_project_brain.py",
+  "tests/orchestration/test_project_summary.py",
+  "tests/orchestration/test_provider_evidence_integration.py",
+  "tests/orchestration/test_review_manual_completion_shapes.py",
+  "tests/orchestration/test_review_zip_hygiene.py",
+  "tests/orchestration/test_test_execution_service.py",
+  "tests/orchestration/test_test_runner.py",
+  "tests/orchestration/test_worker_queue.py",
+  "tests/regression/test_named_bugs.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

@@ -1,0 +1,36 @@
+6ba3fc66593892b1f29a15105714abe067bc824e
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 74377e6..33fc069 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -13,7 +13,7 @@ state, class by class (catalog: .agent/f251_baseline/class_map.txt).
+   the three-consecutive-runs determinism proof. In progress.
+ 
+ ## Findings
+-- R-0153 (nit, open): tests/docs/test_docs_consistency.py — in the
++- Done: R-0153 (nit): tests/docs/test_docs_consistency.py — in the
+   rewritten README honesty pin, `assert unaccepted <= named` is a
+   tautology (`unaccepted` is derived from `named`), a dead check
+   that reads as coverage. Fix: delete the assertion and its comment
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index 9ff3e41..fe642c2 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -151,17 +151,12 @@ class TestPrimaryDocsAreHonest:
+ 
+         accepted = {m.group(1) for m in
+                     re.finditer(r"^- \[x\] F(\d{3}) — ", status, re.MULTILINE)}
+-        named = {m.group(1) for m in re.finditer(r"\bF(\d{3})\b", readme)}
+-        unaccepted = {n for n in named if n not in accepted}
+ 
+         # Every feature the README lists as accepted IS accepted in the ledger.
+         for block in re.findall(r"Accepted[^\n]*:\n((?:[^\n]+\n)+)", readme):
+             for fid in re.findall(r"\bF(\d{3})\b", block):
+                 assert fid in accepted, f"README claims F{fid} accepted; STATUS does not"
+ 
+-        # An unaccepted id may still appear (in progress / a pointer), but only
+-        # outside those blocks — which the loop above already enforces.
+-        assert unaccepted <= named
+         # F012 and F017 were "implemented, not yet accepted" when this pin was
+         # written; STATUS.md now carries `- [x]` for both, and the loop above
+         # is the general form of what these two clauses checked by name.

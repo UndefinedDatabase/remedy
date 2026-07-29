@@ -1,0 +1,23 @@
+{
+ "changed_files": [
+  "README.md",
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/do_cmd.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F252.md",
+  "packages/orchestration/intake.py",
+  "packages/orchestration/job_evidence.py",
+  "packages/orchestration/manual_attestation.py",
+  "packages/orchestration/pingpong_loop.py",
+  "packages/orchestration/project_registry.py",
+  "packages/orchestration/scope_fences.py",
+  "packages/runtimes/runtime_config.py",
+  "tests/cli/test_do_cmd_summary.py",
+  "tests/cli/test_product_spine.py",
+  "tests/cli/test_scoped_listings.py",
+  "tests/docs/test_docs_consistency.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_title": "Task T001"
+}

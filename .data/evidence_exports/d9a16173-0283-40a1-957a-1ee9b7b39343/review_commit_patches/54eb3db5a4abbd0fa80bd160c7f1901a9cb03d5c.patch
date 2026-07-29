@@ -1,0 +1,132 @@
+54eb3db5a4abbd0fa80bd160c7f1901a9cb03d5c
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index d8a6022..c679671 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1504,3 +1504,22 @@ silently. The three sibling failures (context.md wants `## Active Branch` and
+ the word "Steps"; live_review.md wants "Steps") fail identically on base and
+ were deliberately NOT swept up: they are pre-existing, not F046-attributable,
+ and belong on the backlog.
++
++## 2026-07-29: F252 D8 — the intake call_fn was driving the flight-plan call
++`make_provider_call_fn()` bound Ollama's NATIVE `format=` schema to
++`JobIntake` and `do_cmd` reused that same callable for `plan_job_llm`. The
++provider therefore answered every planning attempt (retry included) in
++intake shape, and validation reported exactly `schema_v: Input should be
++'flight_plan_v1'; tasks: Field required; goal: Extra inputs are not
++permitted`. Fix: `make_structured_call_fn(model_cls)` is the general
++factory, `make_provider_call_fn()` is its JobIntake-bound alias, and both
++flight-plan call sites (`do`, `do replan`) build a FlightPlan-bound
++callable.
++
++With the schema bug gone, `remedy do` in `tests/cli/test_scoped_listings.py`
++performs a REAL flight-plan call (~72s measured), so the file's 30s
++subprocess timeout — not scoping behavior — decided the verdict. Its
++`_create_job` fixture now passes `--no-llm`, the convention the golden-path
++canary already enforces for every subprocess `do` (`_run_do` appends the
++flag unconditionally). No assertion was weakened; the file asserts nothing
++about planning.
+diff --git a/apps/cli/commands/do_cmd.py b/apps/cli/commands/do_cmd.py
+index e898e8b..723a6af 100644
+--- a/apps/cli/commands/do_cmd.py
++++ b/apps/cli/commands/do_cmd.py
+@@ -238,7 +238,13 @@ def _cmd_do_mission(
+             plan_job_llm,
+             write_plan_md,
+         )
+-        fp_result = plan_job_llm(intake_result.value.model_dump(), call_fn)
++        from packages.orchestration.intake import make_structured_call_fn
++        from packages.orchestration.schemas.models import FlightPlan
++        # The intake call_fn binds the provider's native schema to JobIntake;
++        # planning needs a call_fn bound to FlightPlan or the provider answers
++        # in intake shape and every plan attempt fails validation.
++        plan_call_fn = make_structured_call_fn(FlightPlan) or call_fn
++        fp_result = plan_job_llm(intake_result.value.model_dump(), plan_call_fn)
+         if fp_result.plan is not None:
+             fp_dict = fp_result.plan.model_dump()
+             fp_dict["_approval"] = "pending"
+@@ -2827,8 +2833,11 @@ def _cmd_do_replan(
+         print("Error: job has no intake data.", file=sys.stderr)
+         sys.exit(1)
+ 
+-    from packages.orchestration.intake import make_provider_call_fn
+-    call_fn = make_provider_call_fn()
++    from packages.orchestration.intake import make_structured_call_fn
++    from packages.orchestration.schemas.models import FlightPlan
++    # Replanning is a flight-plan call: bind the provider's native schema to
++    # FlightPlan, not to the intake model.
++    call_fn = make_structured_call_fn(FlightPlan)
+     if call_fn is None:
+         print("Error: no provider available for replan.", file=sys.stderr)
+         sys.exit(1)
+diff --git a/packages/orchestration/intake.py b/packages/orchestration/intake.py
+index 82d5fc5..6cdfb1b 100644
+--- a/packages/orchestration/intake.py
++++ b/packages/orchestration/intake.py
+@@ -17,6 +17,8 @@ from collections.abc import Callable
+ from dataclasses import dataclass, field
+ from typing import Any
+ 
++from pydantic import BaseModel
++
+ from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake, to_json_schema
+ from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
+ 
+@@ -161,8 +163,17 @@ def run_intake(
+     )
+ 
+ 
+-def make_provider_call_fn() -> Callable[[str, int], str] | None:
+-    """Build an Ollama-backed call_fn for intake, or None if unavailable.
++def make_structured_call_fn(
++    model_cls: type[BaseModel],
++) -> Callable[[str, int], str] | None:
++    """Build an Ollama-backed call_fn bound to ``model_cls``, or None.
++
++    Ollama enforces the schema NATIVELY (``format=``), so the schema bound
++    here decides the SHAPE of every response the returned callable can
++    produce — the prompt cannot override it. A call_fn built for one model
++    therefore must never drive a structured call for another: the provider
++    would answer in the bound shape and validation would fail on every
++    attempt, retry included.
+ 
+     Delegates to OllamaPlanner.raw_call so all Ollama config (host, model,
+     temperature, num_predict) is resolved in one place.
+@@ -179,9 +190,14 @@ def make_provider_call_fn() -> Callable[[str, int], str] | None:
+     except Exception:
+         return None
+ 
+-    schema = to_json_schema(JobIntake)
++    schema = to_json_schema(model_cls)
+ 
+     def _call(prompt: str, attempt: int) -> str:
+         return planner.raw_call(prompt, schema=schema)
+ 
+     return _call
++
++
++def make_provider_call_fn() -> Callable[[str, int], str] | None:
++    """Build an Ollama-backed call_fn for intake, or None if unavailable."""
++    return make_structured_call_fn(JobIntake)
+diff --git a/tests/cli/test_scoped_listings.py b/tests/cli/test_scoped_listings.py
+index 4545281..c4a430b 100644
+--- a/tests/cli/test_scoped_listings.py
++++ b/tests/cli/test_scoped_listings.py
+@@ -69,9 +69,15 @@ def _run_cli(args, env, *, cwd=None, timeout=30):
+ 
+ 
+ def _create_job(repo, env, mission):
+-    """Create a job via 'remedy do' and return (short_id, full_id)."""
++    """Create a job via 'remedy do' and return (short_id, full_id).
++
++    ``--no-llm`` for the same reason the golden-path canary forces it: this
++    file tests project SCOPING of listings, not planning. Without the flag
++    ``do`` runs a real flight-plan call, so the fixture's runtime becomes
++    provider latency and the 30s subprocess timeout decides the verdict.
++    """
+     result = _run_cli(
+-        ["do", mission, "--json"], env, cwd=str(repo),
++        ["do", mission, "--no-llm", "--json"], env, cwd=str(repo),
+     )
+     assert result.returncode == 0, result.stderr
+     data = json.loads(result.stdout)

@@ -1,0 +1,135 @@
+5d7c591f11bc654fac20e7f073d7d727e9b9ec14
+diff --git a/.agent/context.md b/.agent/context.md
+index 7f22b76..f313b2b 100644
+--- a/.agent/context.md
++++ b/.agent/context.md
+@@ -1,25 +1,38 @@
+-# Context — F046 Multi-cycle loop
++# Context — F252 Standing-red paydown
+ 
+-## Branch
+-`feature/f046-multi-cycle-loop`
+-Base commit: `c14a83a2d38cf8b91870f4c7bae225effb26f1af` (main after PR #151 merge)
++## Active Branch
++`feature/f252-standing-red-paydown`
++Base commit: `7baff1d` (main after PR #160 merge)
+ 
+ ## Scope
+-- NEW `packages/orchestration/long_run_executor.py` — the cycle conductor.
+-- NEW `tests/orchestration/test_long_run_executor.py`.
+-- T002 additions: cycle evidence records, config keys (`cycles.*`),
+-  `remedy job run <id> [--cycles N]` CLI.
++Every id in `.agent/f251_baseline/class_map.txt` reaches an explicit
++terminal state, one class per slice. R1 closed D8, D10, D11. R2 covers
++R-0152 plus D9, D7, D5, D13, the two stopped F-A ids, D6, the D4
++remainder, D1, D14, D3 (park), D12.
+ 
+-## Constraints (A6 — reuse, do not reimplement)
+-- should_stop: `safe_points.should_stop()` (operator + budget in one check)
+-- task execution: `task_runner.run_next_task()` (rollback stays its concern)
+-- persistence: `storage.save_job()` — no new persistence paths
+-- terminal statuses map onto `pingpong_job` JOB_* constants + a ledger event
++## Next Steps
++See `.agent/plan.md` for the round's ordered slices; this file records the
++boundaries they run inside.
+ 
+-## Do not touch
+-`autonomy_loop.run_autonomy_loop`, task-level execution semantics, retry
+-policy, checkpoint depth, DAG readiness, `run_pingpong` internals.
++## Constraints
++- F251's quarantine rules unchanged: never deletion, never blanket
++  directory skips, never weakened assertions; a marker needs a reason
++  string and a backlog reference per test.
++- A class whose honest fix exceeds its bucket stops and reports.
++- Reviewer-authored texts under `.agent/authored/` are applied by copy and
++  sha256-verified before any commit; `plan.md` and `live_review.md` are
++  such texts this round and are never hand-edited.
++- Every slice ends green against the baseline subset rule plus the
++  `tests/cli/test_golden_path.py` canary, then commits and pushes.
++
++## Resource safety
++Tests run in ONE session at a time through `scripts/remedy_pytest.sh`;
++never a background pytest, never a second parallel suite — see
++`docs/reviewer-safety.md`. The real-runtime tests additionally hold a
++cross-worker file lock and bind a per-worker port, never the product
++default 5173.
+ 
+-## Rollout rule
+-`max_cycles` DEFAULT stays 1 until the F075 milestone gate; the CLI flag
+-is capped by the same safety default.
++## Do not touch
++`docs/roadmap/ROADMAP.md`; STATUS entries other than the F252 line;
++closure artifacts (evidence job, review zip, `[x]`) — those belong to a
++later reviewer-gated round.
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index a5ba11f..9058887 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1663,3 +1663,20 @@ list, got MagicMock"). All three builders now construct real `Job` models
+ helper). No assertion changed; the gates under test now actually run. The
+ remaining MagicMock task fixtures in test_test_runner._make_job are untouched
+ — those tests pass and do not reach model-reading product code.
++
++## 2026-07-29: F252 D4 remainder — context.md is maintained; the step-range pins retire
++`.agent/context.md` was still F046-era. Rewritten to current reality (active
++branch, F252 scope boundaries and constraints, resource-safety note, pointer
++to plan.md), which turns the three content ids green:
++`test_context_md_references_current_branch`, `test_context_md_no_stale_steps`,
++`test_context_mentions_resource_safety`.
++The other two ids asserted `Steps?\s+\d+-\d+` in context.md AND plan.md — the
++numbered-step workflow that docs/roadmap/STATUS.md replaced with roadmap
++features and rounds. plan.md is reviewer-authored and cmp-verified this
++round, so it cannot be hand-edited to satisfy a retired convention, and
++inventing a step range in context.md would be fabrication. Both assertions
++now pin the LIVE contract: the feature id (`F\d{3}`), plus `## Active Branch`
++and `feature/` for context.md and the AGENTS.md-required `## Goal` /
++`## Next Steps` for plan.md. Nothing became optional.
++Standing risk unchanged (F251 R2 finding): these ids read LIVE state files,
++so ordinary bookkeeping still moves them. Recorded, not adjusted.
+diff --git a/tests/orchestration/test_test_runner.py b/tests/orchestration/test_test_runner.py
+index cbdeaf5..2d59f99 100644
+--- a/tests/orchestration/test_test_runner.py
++++ b/tests/orchestration/test_test_runner.py
+@@ -751,11 +751,18 @@ class TestNoBroadExceptAndDegradedSignals:
+         assert "Steps" in content
+ 
+     def test_context_md_updated(self):
+-        """context.md references a valid step range (living document)."""
++        """context.md names the work it scopes (living document).
++
++        Work is identified by roadmap feature since the numbered-step
++        workflow was retired (docs/roadmap/STATUS.md is the ledger), so the
++        marker is the feature id and the active branch, not "Steps 91-100".
++        """
+         import re
+         content = Path(".agent/context.md").read_text()
+-        assert re.search(r"Steps?\s+\d+-\d+", content, re.IGNORECASE), \
+-            "context.md must reference a valid step range"
++        assert re.search(r"\bF\d{3}\b", content), \
++            "context.md must name the roadmap feature it scopes"
++        assert "## Active Branch" in content
++        assert "feature/" in content
+ 
+     def test_context_md_no_stale_problems(self):
+         """context.md doesn't list already-fixed items as current problems."""
+@@ -766,11 +773,17 @@ class TestNoBroadExceptAndDegradedSignals:
+         assert "job=None source_apply bypass" not in content  # fixed in 265
+ 
+     def test_plan_md_current(self):
+-        """plan.md references a valid step range (living document)."""
++        """plan.md carries the sections AGENTS.md requires (living document).
++
++        Same retirement as `test_context_md_updated`: the plan is keyed to a
++        roadmap feature, not to a numbered step range.
++        """
+         import re
+         content = Path(".agent/plan.md").read_text()
+-        assert re.search(r"Steps?\s+\d+-\d+", content, re.IGNORECASE), \
+-            "plan.md must reference a valid step range"
++        assert "## Goal" in content, "plan.md must state its Goal"
++        assert "## Next Steps" in content, "plan.md must state its Next Steps"
++        assert re.search(r"\bF\d{3}\b", content), \
++            "plan.md must name the roadmap feature it plans"
+ 
+     def test_no_shell_true_in_orchestration(self):
+         """No shell=True in orchestration package (AST check)."""

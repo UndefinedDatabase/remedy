@@ -1,0 +1,24 @@
+{
+ "final_verdict": "operator_attested",
+ "human_final_reviewer_required": true,
+ "note": "F252 standing-red paydown closure - T002",
+ "original_failure_kind": "pending_no_run",
+ "original_failure_summary": "",
+ "original_task_status": "pending",
+ "reviewer": "operator",
+ "reviews": [
+  {
+   "finding_count": 0,
+   "findings": [],
+   "kind": "operator_attestation",
+   "reviewer": "operator",
+   "round": 1,
+   "summary": "F252 standing-red paydown closure - T002",
+   "verdict": "operator_attested"
+  }
+ ],
+ "task_id": "T002",
+ "timestamp": "2026-07-29T00:00:00+00:00",
+ "total_reviews": 1,
+ "verdict": "operator_attested"
+}

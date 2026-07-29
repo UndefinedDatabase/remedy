@@ -1,0 +1,76 @@
+ac13029cf454249f8d78dfcc4a17c13e067a8b61
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index dbc6ac4..9550b49 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1568,3 +1568,16 @@ Test-side: `TestCatalogSensitivity` scanned for `sk-` by substring and fired
+ on the word "task-scoped". Credential PREFIXES now match at a token boundary
+ (`(?<![0-9a-z])`); the field-name terms keep the plain substring scan, so no
+ check got weaker.
++
++## 2026-07-29: F252 D7 — the shared module is the seam, not a private alias
++`dev_server` re-exports only the redaction names it actually uses
++(`_scrub_paths`, `_basename`, `_ABS_PREFIX_RE`); `_ABS_PATH_RE` and
++`_FILE_URI_RE` were dropped when path redaction moved to
++`packages/common/path_redaction.py`. Restoring private aliases purely so
++tests can reach them would rebuild a seam the product does not have, so the
++tests were pointed at the owning module instead: `test_supervisor_
++portability.py` imports `ABS_PATH_RE` from `packages.common.path_redaction`
++(2 use sites, both test-side path detectors). `test_the_shared_module_is_
++the_one_f007_uses` kept its anti-drift intent and got stronger: three
++identity assertions over the names dev_server really holds, plus a
++behavioral check that a file URI does not survive `_redact`.
+diff --git a/tests/orchestration/test_failure_postmortem.py b/tests/orchestration/test_failure_postmortem.py
+index 48665fd..7df202b 100644
+--- a/tests/orchestration/test_failure_postmortem.py
++++ b/tests/orchestration/test_failure_postmortem.py
+@@ -724,8 +724,15 @@ class TestFileUriAndLabelledPathRedaction:
+         from packages.common import path_redaction
+         from packages.runtimes import dev_server
+ 
++        # Every redaction name dev_server holds IS the shared object — the
++        # anti-drift point of this test. (`_FILE_URI_RE` is no longer among
++        # them: dev_server hands file URIs to scrub_paths and never touches
++        # the regex itself.)
+         assert dev_server._scrub_paths is path_redaction.scrub_paths
+-        assert dev_server._FILE_URI_RE is path_redaction.FILE_URI_RE
++        assert dev_server._basename is path_redaction.basename
++        assert dev_server._ABS_PREFIX_RE is path_redaction.ABS_PREFIX_RE
++        assert "file:///home/alice/x.py" not in dev_server._redact(
++            "see file:///home/alice/x.py")
+ 
+     def test_a_record_carries_no_private_path(self, tmp_path):
+         record = _record(raw_reason=(
+diff --git a/tests/runtimes/test_supervisor_portability.py b/tests/runtimes/test_supervisor_portability.py
+index ad80ccc..effd42d 100644
+--- a/tests/runtimes/test_supervisor_portability.py
++++ b/tests/runtimes/test_supervisor_portability.py
+@@ -22,6 +22,10 @@ import psutil
+ import pytest
+ 
+ from apps.cli.commands import runtime_cmd
++# The absolute-path detector is the SHARED one dev_server redacts with; it is
++# imported from its owning module rather than through dev_server's private
++# alias, which no longer exists.
++from packages.common.path_redaction import ABS_PATH_RE
+ from packages.runtimes import dev_server as DS
+ from packages.runtimes import runtime_supervisor as SUP
+ from packages.runtimes.dev_server import (
+@@ -1039,7 +1043,7 @@ class TestShareableRedaction:
+         """Every absolute path anywhere in a nested structure."""
+         found: list[str] = []
+         if isinstance(value, str):
+-            for match in DS._ABS_PATH_RE.finditer(value):
++            for match in ABS_PATH_RE.finditer(value):
+                 found.append(f"{path}={match.group(0)}")
+         elif isinstance(value, (list, tuple)):
+             for i, item in enumerate(value):
+@@ -1505,7 +1509,7 @@ class TestCrossPlatformRedaction:
+ 
+     def _absolutes(self, value) -> list[str]:
+         if isinstance(value, str):
+-            return [m.group(0) for m in DS._ABS_PATH_RE.finditer(value)]
++            return [m.group(0) for m in ABS_PATH_RE.finditer(value)]
+         if isinstance(value, (list, tuple)):
+             return [f for item in value for f in self._absolutes(item)]
+         if isinstance(value, dict):

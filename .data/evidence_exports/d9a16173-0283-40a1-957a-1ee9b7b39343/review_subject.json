@@ -1,0 +1,1015 @@
+{
+ "base_commit": "7baff1dd53f4e46dd02a6f6090482a5a8060acca",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f252-r1-1.md",
+    ".agent/authored/f252-r1-2.md",
+    ".agent/authored/f252-r1-3.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "1e75364ca301cabcaa9ff3c90f0d153f11ce245d",
+   "parents": [
+    "7baff1dd53f4e46dd02a6f6090482a5a8060acca"
+   ],
+   "patch_sha256": "7fe486870f48c1a24c054ec98d7470c3098bbcd2c79dd1e8f2e4041a847dbfe7",
+   "subject": "chore(f252): claim F252, reset agent state",
+   "tree": "c14119614945b2a661c00fff36d107055692f7ef"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "apps/cli/commands/do_cmd.py",
+    "packages/orchestration/intake.py",
+    "tests/cli/test_scoped_listings.py"
+   ],
+   "commit": "54eb3db5a4abbd0fa80bd160c7f1901a9cb03d5c",
+   "parents": [
+    "1e75364ca301cabcaa9ff3c90f0d153f11ce245d"
+   ],
+   "patch_sha256": "eadb4c173613597f316d4b7b084a69f92301ab1c8bff92fee6c3217df9e872cf",
+   "subject": "fix(f252): bind the flight-plan call to its own provider schema",
+   "tree": "ba0b23568d48a92679eb0d5785b5a0064a741480"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "tests/test_command_discovery.py"
+   ],
+   "commit": "19ff5e7de17c6971da9afc9f23a7ffa2467fc590",
+   "parents": [
+    "54eb3db5a4abbd0fa80bd160c7f1901a9cb03d5c"
+   ],
+   "patch_sha256": "39bc17611723142f27f7c723f152d13dfa3e756ab0cc368e5481f2371b7c4b23",
+   "subject": "fix(f252): register a project in the discover-commands fixtures",
+   "tree": "db785f696259ebd40f338e6033b06ea30a9a53bc"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "packages/orchestration/scope_fences.py"
+   ],
+   "commit": "217b6b2ceb02cfa1f701876f9bb192829d542401",
+   "parents": [
+    "19ff5e7de17c6971da9afc9f23a7ffa2467fc590"
+   ],
+   "patch_sha256": "18735ea2f71553540509154602501f68687a3f770e90f6c9f6237cc406f0cd06",
+   "subject": "fix(f252): raise FenceConfigError for malformed fence config",
+   "tree": "31c0510949af398e84f72e3208416006a735ccb3"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "cc247fab1a770ae1a9f487b129e9005948ef8cdf",
+   "parents": [
+    "217b6b2ceb02cfa1f701876f9bb192829d542401"
+   ],
+   "patch_sha256": "420b1f5c34c89a03ae976334d62d8b9ddb70bd743e8d9fd6c6ff4dfbb9910783",
+   "subject": "chore(f252): R1 handback",
+   "tree": "d22ef4cfe22f3c37416ce27dbea0850d9281e0c5"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f252-r2-1.md",
+    ".agent/authored/f252-r2-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "5b5fad4488c5a6193541ad1f2a441644c4253479",
+   "parents": [
+    "cc247fab1a770ae1a9f487b129e9005948ef8cdf"
+   ],
+   "patch_sha256": "275e73cfa3e3062eb380770298d9698f151e0a14ec258212c317b52628b8edde",
+   "subject": "chore(f252): persist R1 verdict + R-0152",
+   "tree": "bcbe726508c9a4b4ee81a48e592a1e76f7fd7841"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    "apps/cli/commands/do_cmd.py"
+   ],
+   "commit": "a0c4717f5e7d00f927043fc9203ea33dcb20487e",
+   "parents": [
+    "5b5fad4488c5a6193541ad1f2a441644c4253479"
+   ],
+   "patch_sha256": "9b8687df0035f22c030580abadeb465eedf2dda671e93c9b7b20d20bce70133e",
+   "subject": "fix(f252): drop the intake-bound fallback in do planning (R-0152)",
+   "tree": "05bf17e1410f2abd07879307021ceb9bbf36bab4"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "apps/cli/command_catalog.py",
+    "tests/orchestration/test_job_evidence.py",
+    "tests/test_command_catalog.py"
+   ],
+   "commit": "92a69d9f7f115bd801cf8d53599680e5f23def8e",
+   "parents": [
+    "a0c4717f5e7d00f927043fc9203ea33dcb20487e"
+   ],
+   "patch_sha256": "a7de4114de86f0d0e8cc9c88056eb626a27cadc5c291ce70d8ee7a7d6cf6e9ad",
+   "subject": "fix(f252): repair command-catalog action-class drift",
+   "tree": "cad6524ac2dcc6e1137285f08d9abc8912f163ef"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "tests/orchestration/test_failure_postmortem.py",
+    "tests/runtimes/test_supervisor_portability.py"
+   ],
+   "commit": "ac13029cf454249f8d78dfcc4a17c13e067a8b61",
+   "parents": [
+    "92a69d9f7f115bd801cf8d53599680e5f23def8e"
+   ],
+   "patch_sha256": "52599724b986cb44afbbcb14c8f3cd6d7b215f9ef72685daa4a8ed3869688471",
+   "subject": "fix(f252): reach path redaction through its owning module",
+   "tree": "70fcf3822f6e29df0494afacd279215627613206"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "tests/orchestration/test_test_runner.py",
+    "tests/test_cli_main.py"
+   ],
+   "commit": "26665680acfa13dcc2b62c5bef54a3d550c28f8f",
+   "parents": [
+    "ac13029cf454249f8d78dfcc4a17c13e067a8b61"
+   ],
+   "patch_sha256": "474be6babb189f9461d2e2561fb282cea31a62e44bfb4035153de0acdc4b608c",
+   "subject": "fix(f252): align project-guard tests with the F148 contract",
+   "tree": "c00ca07b6794f04c1b924f0491f91989675a864d"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "packages/orchestration/job_evidence.py",
+    "packages/orchestration/manual_attestation.py",
+    "tests/orchestration/test_review_manual_completion_shapes.py",
+    "tests/orchestration/test_review_zip_hygiene.py"
+   ],
+   "commit": "031cd9739317f4f9e45ec95acd009f96eb403715",
+   "parents": [
+    "26665680acfa13dcc2b62c5bef54a3d550c28f8f"
+   ],
+   "patch_sha256": "e221bea88df824d43258621922ba033db9ded76291f1a00f81d61e6391895266",
+   "subject": "fix(f252): repair evidence-packaging producers and retire root auto-select tests",
+   "tree": "7e9da673fe05a6d61c7096a7b365449ec09027aa"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "packages/runtimes/runtime_config.py",
+    "tests/runtimes/test_apps_ui_probe.py"
+   ],
+   "commit": "e714200542d2a44e18e9d677aca69ec40e03578a",
+   "parents": [
+    "031cd9739317f4f9e45ec95acd009f96eb403715"
+   ],
+   "patch_sha256": "ab854c1d667835275b0556ccf41ee32e1885277311adb6692b535e62149b0755",
+   "subject": "feat(f252): allow a per-process runtime port override",
+   "tree": "14d0dd5f242e65faddfcdcf939fd58aaaf0b3398"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "tests/orchestration/test_test_execution_service.py",
+    "tests/orchestration/test_test_runner.py"
+   ],
+   "commit": "dd33032a2d4f6902e843a7b6f1b50bb73b0f8bac",
+   "parents": [
+    "e714200542d2a44e18e9d677aca69ec40e03578a"
+   ],
+   "patch_sha256": "a7d8460f624de3649edcf343f945bde81b2a2b625e772fe13179a3f99dab251b",
+   "subject": "test(f252): build real jobs where the product reads model fields",
+   "tree": "b968f9a49e2062c079bd3109f8886ce6d4c26f21"
+  },
+  {
+   "changed_files": [
+    ".agent/context.md",
+    ".agent/decisions.md",
+    "tests/orchestration/test_test_runner.py"
+   ],
+   "commit": "5d7c591f11bc654fac20e7f073d7d727e9b9ec14",
+   "parents": [
+    "dd33032a2d4f6902e843a7b6f1b50bb73b0f8bac"
+   ],
+   "patch_sha256": "28c0d7f92805e3f66689c278f76dffdee183ed500c715f564d898420c6f6a88d",
+   "subject": "chore(f252): make context.md current and pin the live state-file contract",
+   "tree": "cbbbccab6f1447adb78e4439cc403ea1103e9d83"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "tests/cli/test_do_cmd_summary.py",
+    "tests/cli/test_product_spine.py",
+    "tests/orchestration/test_event_replay.py",
+    "tests/orchestration/test_job_fulfillment.py",
+    "tests/orchestration/test_project_summary.py",
+    "tests/orchestration/test_worker_queue.py",
+    "tests/regression/test_resource_safety.py",
+    "tests/test_execution_foundation.py",
+    "tests/ui_contracts/test_timeline_guard.py"
+   ],
+   "commit": "4bf634078e4164e7610f92f4a8a15299e5b85b4a",
+   "parents": [
+    "5d7c591f11bc654fac20e7f073d7d727e9b9ec14"
+   ],
+   "patch_sha256": "7b47efca3734f94f8992a7919f657780cac9e23a8483b38a81a1596813bd94e3",
+   "subject": "test(f252): read docs at their restructured paths",
+   "tree": "e95f8812f26af23e14ea74d9cea7965d41e9fbe2"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "README.md",
+    "tests/docs/test_docs_consistency.py"
+   ],
+   "commit": "a696547ba8b9b90ef804e89ae6107dcbe1e3e78e",
+   "parents": [
+    "4bf634078e4164e7610f92f4a8a15299e5b85b4a"
+   ],
+   "patch_sha256": "d7915f27a2cf3a1ff6f1ebcb04a8ebff265f8cd5e442fb4b866c1ca0812e6391",
+   "subject": "docs(f252): sync README with the ledger and repin the F012 contracts",
+   "tree": "e415c1b8967aa9e8a98e3a52e4747e4f3cd8e274"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "packages/orchestration/pingpong_loop.py",
+    "packages/orchestration/project_registry.py",
+    "tests/cli/test_product_spine.py",
+    "tests/orchestration/test_development_artifact_boundary.py",
+    "tests/orchestration/test_evidence_index.py",
+    "tests/orchestration/test_job_fulfillment.py",
+    "tests/orchestration/test_job_worktree_handoff.py",
+    "tests/orchestration/test_project_brain.py",
+    "tests/orchestration/test_provider_evidence_integration.py",
+    "tests/test_project_context_coverage.py",
+    "tests/test_remedy_smoke_script.py",
+    "tests/test_test_runner.py"
+   ],
+   "commit": "117ff3276ec477b4cacbb6910cd9cb66bca3ed10",
+   "parents": [
+    "a696547ba8b9b90ef804e89ae6107dcbe1e3e78e"
+   ],
+   "patch_sha256": "c5dd10f34f935090a932eafd9265bea43b4c2abee05ea38289df08a874f716fb",
+   "subject": "fix(f252): pay down the misc drift class",
+   "tree": "3d6abfdb3a9943f0aaec110ad82891b70a519db1"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    "tests/regression/test_named_bugs.py",
+    "tests/test_agent_tooling.py",
+    "tests/ui_contracts/test_graph_architecture.py",
+    "tests/ui_contracts/test_ux_quality.py"
+   ],
+   "commit": "e90ac41b244b051e4d6da358e3b7ca3bfc0373a2",
+   "parents": [
+    "117ff3276ec477b4cacbb6910cd9cb66bca3ed10"
+   ],
+   "patch_sha256": "de0920a1a438ca7ede00f6d539fd1044d1331065381c23535b8ae5a71ff66a19",
+   "subject": "test(f252): quarantine the two decision classes with reasons",
+   "tree": "3ca72b6722dc4677c1db3cd44086696f16a8ea8a"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "fc3e843c53793ce23b239284f01eb1cd62f2a789",
+   "parents": [
+    "e90ac41b244b051e4d6da358e3b7ca3bfc0373a2"
+   ],
+   "patch_sha256": "75dd893fd8a3a471107e1020932a823a1563f311e2a400a3055fee15fec04df1",
+   "subject": "chore(f252): R2 handback",
+   "tree": "9df3ce6e87bf0a4bdb4b771b0b69a7c3c1c37909"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f252-r3-1.md",
+    ".agent/authored/f252-r3-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "e2cff742288bf6ae414b6ef7ee9ea41e2aeb8ea5",
+   "parents": [
+    "fc3e843c53793ce23b239284f01eb1cd62f2a789"
+   ],
+   "patch_sha256": "e83978546477c9f1ba7a39e9237f555c0e88998a95877df6c98d0dd9d5c83f3f",
+   "subject": "chore(f252): persist R2 verdict + R-0153",
+   "tree": "2cdfdae8089445e2b1066986705afb0cc8cbfea7"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md",
+    "tests/docs/test_docs_consistency.py"
+   ],
+   "commit": "6ba3fc66593892b1f29a15105714abe067bc824e",
+   "parents": [
+    "e2cff742288bf6ae414b6ef7ee9ea41e2aeb8ea5"
+   ],
+   "patch_sha256": "23764db62c612c6ed637e315002e6afbd39f6dd2fe9397e05f05db242953410d",
+   "subject": "test(f252): drop a dead assertion from the README pin (R-0153)",
+   "tree": "5e437ec0cf7c3e67769bf52c28377b90e5344f7f"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "275839684df10678c2c1bcb7226cbcd36cf8d359",
+   "parents": [
+    "6ba3fc66593892b1f29a15105714abe067bc824e"
+   ],
+   "patch_sha256": "f45a5c2a82e99acdef30fcfd94c7da0e399906151eeca122d03fb3d3eca2ec1e",
+   "subject": "chore(f252): R3 handback",
+   "tree": "bfe8a888a3aef437b4a3ff889ed428b4451d0e8b"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f252-r4-1.md",
+    ".agent/authored/f252-r4-2.md",
+    ".agent/authored/f252-r4-3.md",
+    ".agent/authored/f252-r4-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/features/T1_F252.md"
+   ],
+   "commit": "08f4cdf3e6afaafe13f65fb13d04f2065fedb2e0",
+   "parents": [
+    "275839684df10678c2c1bcb7226cbcd36cf8d359"
+   ],
+   "patch_sha256": "157090bd3f781edaa688add52b2bc28881c058cfdc02831e76fbb6374ff98843",
+   "subject": "chore(f252): persist R3 verdict; record Built State",
+   "tree": "2b4341001828465a5c1cb4d4ae545541ce9a7208"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "d9a146adff78c888c05b6ab844a6d64e89bf2101",
+   "parents": [
+    "08f4cdf3e6afaafe13f65fb13d04f2065fedb2e0"
+   ],
+   "patch_sha256": "550cb3cde513312af13465116b41c2d7c00d7f7f439861f42bdddff1149a3625",
+   "subject": "chore(f252): R4 handback \u2014 closure stopped at the README gate",
+   "tree": "58cb08ac8acf701c91b7a3576ccddb442d0ae142"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f252-r4b-1.md",
+    ".agent/authored/f252-r4b-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "d543d445cd1f9ecb6d092e64fe670881bc6fff67",
+   "parents": [
+    "d9a146adff78c888c05b6ab844a6d64e89bf2101"
+   ],
+   "patch_sha256": "9587cd4c857aadd4481b4cd23ccf0fedfde4984e487c301c88bc25cf806a811d",
+   "subject": "chore(f252): persist the R4 stop verdict + R-0154 resolution",
+   "tree": "21c3134a892bcd4f5365e8a68389cdf67312bfbd"
+  }
+ ],
+ "files": [
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "2d0a38649ee6e1f1f68b2c609f5b834fec46e3405624e3adf78bd64c6f792938",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r1-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "6b278594b1a4add6faed224eeb4c710f8003cb9a3bbfaa9073c7c2120200bf4a",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r1-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "c551e984c6590aaa7601f2124dafe2c8eb0f6d64c2fb0c586c50a5ce87c7ff53",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r1-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "11d5380886ecdd2fcf3c2ede9e8a760ad6612788b6f64b7e30181b85289e7ba7",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r2-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "9b806d942ca51c5b64a5dd85c0b961832c9f431edd70611adc72418fb8be5b2d",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r2-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "1f07b06c19f96f3d5b09bbf049c216ebe9c0c94738c6cf87602894d4a66b8255",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r3-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "dc3e03cc7b0b118d6852e83b4f121d4f360aacbe3817cbdd0f61d795435de0fe",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r3-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "09554936f88638c48ea511073223c0b6037dea245ac26522f20f27d9b643399f",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r4-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "9ae236277ff8f35ae3cefba606ed86cb5c0eb23572d0319181bb5ec5bcc0f3d5",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r4-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "400b7e7924309ac26e1b76395577eb714a0f56d7f1e51758c1992797c6295302",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r4-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "79db25a571adeb91cdc4f460654d0630ba2355393bbe8662898c5cd244be5782",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r4-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "f91bd529d7e5310721b8d154cf11e2e64133e3804ee5d718eb4dc86e2137511f",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r4b-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "d2d810d54f5b7fae4407d3d145956778363650691e56c956926e850efece5810",
+   "kind": "regular",
+   "path": ".agent/authored/f252-r4b-2.md",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "890ac0f778f6ed1a6c51a630769376755fccb20a02a49f0802d8815810f2b186",
+   "current_mode": "100644",
+   "current_sha256": "4578786fb07d38d091b64f8cc6ead23ec52b255ce0c7642e659b94ada75fb616",
+   "kind": "regular",
+   "path": ".agent/context.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "f971ff829157427346e042cada1b12cb3d06a345fe026e18cb4b12aa66cdba27",
+   "current_mode": "100644",
+   "current_sha256": "cab279e0f79462b966abac8190760e173639d8b99c688990d0afdc8b41880a15",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "5565d9a9fb12b6814221afd72fc8f5caa056a5a5b8ca9571f4c54659a8c3ebfc",
+   "current_mode": "100644",
+   "current_sha256": "53e70b9b67e422df3153b75e5caeca435e1f4eb13a06f5285f13c888bf8e2c1c",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "118c2d89665b29962d8aa50210dc1e465ca04e18b303e9ab6da871a14be9ea7f",
+   "current_mode": "100644",
+   "current_sha256": "53e897483b203206ca391c22096e19ce06442132216f32363a062a6b635de4e4",
+   "kind": "regular",
+   "path": ".agent/last_block.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "ce25143ee5c4db978506310a4bb99bd0d6c6e6f0252c1d80ed7bef1e1d1c703b",
+   "current_mode": "100644",
+   "current_sha256": "f91bd529d7e5310721b8d154cf11e2e64133e3804ee5d718eb4dc86e2137511f",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d55de1e80d8cdeec6eafbee02927e949767e6dac6301fa6b0bef0dd7f6354dcb",
+   "current_mode": "100644",
+   "current_sha256": "d2d810d54f5b7fae4407d3d145956778363650691e56c956926e850efece5810",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "af6c7abb1224edb624299f06c6b67f67bf1b11f296b2e5cd730daaa21d404e74",
+   "current_mode": "100644",
+   "current_sha256": "9d5a9a44d4257d6308c7c414f426a2b6c02149038e45b85fffcd039a4a0830ba",
+   "kind": "regular",
+   "path": "README.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "c55a777adf73c8381df1484a8852d3da175be983f5efd33cbb2c1b0274e72db1",
+   "current_mode": "100644",
+   "current_sha256": "27c4d6bd9897a9926b052dc9c0a6f5ac45fc7f5d26f704096267e27d87b5e80b",
+   "kind": "regular",
+   "path": "apps/cli/command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "dc333f7b3518f4558c3eea7adba565e4dd2a5019703f8fa1abf4fdeef4b33e16",
+   "current_mode": "100644",
+   "current_sha256": "b96e1b732aa73716a6c985e8da82dd81b00025fec642eab8e8b68ad61f2e243b",
+   "kind": "regular",
+   "path": "apps/cli/commands/do_cmd.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "c4023628eafd36d72d2b368aca2023474ce8cc6b9b84b1d06e4024c6273eb75c",
+   "current_mode": "100644",
+   "current_sha256": "968f0405a0e161ccd369bd9001b6c5da89b7c346c49564e4528d0122b78b3908",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "55350c4024f8af03d30272510455afddd12e1099806ebfebf7bf304d62eb8dc2",
+   "current_mode": "100644",
+   "current_sha256": "5ad220a2894cb0f1853a330f9b83ee522e2fb9c03c508c7336d0a46750dad834",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F252.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "6769021f5bc72f2afa88d83658f5de420db368df884fddc94f8021af5ac88da3",
+   "current_mode": "100644",
+   "current_sha256": "65cae5a9b89b96430cd51d6da6f70d4c6837fc97e9c0187aeaf77f6546b39b8f",
+   "kind": "regular",
+   "path": "packages/orchestration/intake.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "f582d92623683c7241e17553ce0f207ac9c06fed5556ff3fadc0544bff3b5a0d",
+   "current_mode": "100644",
+   "current_sha256": "53b861c663a3654da8fb7fc5292811243cfc17985d78cec4898213f3ab7cddb1",
+   "kind": "regular",
+   "path": "packages/orchestration/job_evidence.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0d49321f77cc46229276369b30ebab4b55e2cbfaa9cae0a39e034474ec9453b7",
+   "current_mode": "100644",
+   "current_sha256": "6419b762c14351d9cb0c12caf35a7fe1399fe1efee085964f201ce76210c04d8",
+   "kind": "regular",
+   "path": "packages/orchestration/manual_attestation.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1694448d1849ff80207195283c75474bf7ad311aa2a264951d7533af0f076b5c",
+   "current_mode": "100644",
+   "current_sha256": "f4b15c64af1d9ddce5440b3793a9a71647dbafbdae0d5dbd617b4719fca65255",
+   "kind": "regular",
+   "path": "packages/orchestration/pingpong_loop.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "51b59ccc6f818b51b3f52a66cd5d2a198b1d1c15f7938101a8243aab8cb0d05e",
+   "current_mode": "100644",
+   "current_sha256": "a053e16a7cbd8f639cbadd0e5045f38731d88830706f2db8040cf31564288d8b",
+   "kind": "regular",
+   "path": "packages/orchestration/project_registry.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "73f5d363d8e77247aa6a0cd6839222c6a9f2d0ef9ba400e793ca18e79d5f13e8",
+   "current_mode": "100644",
+   "current_sha256": "7f0f512a129ab6ce1b5a6f16f47236d81424c38b854f656775c05237c8bd0e5e",
+   "kind": "regular",
+   "path": "packages/orchestration/scope_fences.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0d813bbee155af77b0eae6edae389a4fabb3a71eda018eb924a8ea2511381ec9",
+   "current_mode": "100644",
+   "current_sha256": "714be76481c80ce8da764dcee041ba8f7f667ef5b9c63ee95c243217757d49ea",
+   "kind": "regular",
+   "path": "packages/runtimes/runtime_config.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "5f67d515242dd24045298acc764d003a0c632071a6c8653acb394895b0b64f54",
+   "current_mode": "100644",
+   "current_sha256": "0990fd36f2dc08ab618e63892ea5afde0d351e5df72672a350e59acbd8c00af6",
+   "kind": "regular",
+   "path": "tests/cli/test_do_cmd_summary.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "9f47da129096a650d0a79559c3b68e0f56f372ce0964ae109792baf3e41a00c2",
+   "current_mode": "100644",
+   "current_sha256": "8b2fdd3a69966cdc94258654a008e6b2bddf668e4c3ea74dcf8b09cc56fc9ceb",
+   "kind": "regular",
+   "path": "tests/cli/test_product_spine.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "982baacb7615795126b2a26f210f1c16390e5a55621090c440e0627c7b026160",
+   "current_mode": "100644",
+   "current_sha256": "210cdfa9968e23b815a2ec0ad17e968f6d7bec4c84d681b2362038c2ef621fcc",
+   "kind": "regular",
+   "path": "tests/cli/test_scoped_listings.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "64c4a246f69b235ba30f42bf8d9c0c3ab0a2b6d89f6c404e45cc9886f7479180",
+   "current_mode": "100644",
+   "current_sha256": "f7afd54aa6c2aebbc4a2457fd7a6d3de786e57ceb6d35fb0b4ed79e6dd1eba58",
+   "kind": "regular",
+   "path": "tests/docs/test_docs_consistency.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "ee6c5bc1959b777bf283f53855d2849d27effd3421e9c20405245772bfa76ac7",
+   "current_mode": "100644",
+   "current_sha256": "407946b7f4be37c61e9e01de8d25473db2d9d3c882934287b65f1d8319ce774e",
+   "kind": "regular",
+   "path": "tests/orchestration/test_development_artifact_boundary.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "3b6f06dfedeceb3786a8b9101dba0e9b0b6922d702173a951f821122f57912a7",
+   "current_mode": "100644",
+   "current_sha256": "0dbc553c6e238a24b4707b3b4e70a7a0d536f29c267bb2691e879a5f4a19c018",
+   "kind": "regular",
+   "path": "tests/orchestration/test_event_replay.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "bf3e205bbb39a47cb9b72b95683ccc0c1c9fe6238ba01a926d12ebd5f9e28db5",
+   "current_mode": "100644",
+   "current_sha256": "f105d6f285df60b2bca58bdea2b47664635f3008bf45e738a9fa6898f3b494e4",
+   "kind": "regular",
+   "path": "tests/orchestration/test_evidence_index.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "48032954cc4beaaf13c324acf0ade5f974c12e53bc68f6fc348dc4f4529f4646",
+   "current_mode": "100644",
+   "current_sha256": "ea72f8c7d02cc0a436b6cfddfef2e308e1181368f5796930ce5503978684672d",
+   "kind": "regular",
+   "path": "tests/orchestration/test_failure_postmortem.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0c2b8864ca853896d1b71aa93248d6ea5c83f3fca6a32eb76eeb35bde5c450eb",
+   "current_mode": "100644",
+   "current_sha256": "52329409d1dc63279e7471b32b451c61ba20526c05674afb8dac01e9913bff76",
+   "kind": "regular",
+   "path": "tests/orchestration/test_job_evidence.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "3cbab851d06410cab9a0af23f4c5633a8d70b7b37b8f046fcf9096b3a660735f",
+   "current_mode": "100644",
+   "current_sha256": "e2c22eceaa5d7759d43f4e764d932eb3d30ac0feefbdf43e5cbadee61a976df9",
+   "kind": "regular",
+   "path": "tests/orchestration/test_job_fulfillment.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "be7e591aeb7fb276bd9e5439177551dc4818929c183cbcee471617bb3ad7aee2",
+   "current_mode": "100644",
+   "current_sha256": "1210840856bc7c30775021e9f21b83ea785be04f0ab1b3101e4b9c446cf8198a",
+   "kind": "regular",
+   "path": "tests/orchestration/test_job_worktree_handoff.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "df972a44173e2fac309f5cf6352c5a637b46ee999e647aa86546c1ef74948ab7",
+   "current_mode": "100644",
+   "current_sha256": "abf4318ba329bceb449e54bf725fa805b6e950c4883975a854a944d980538efa",
+   "kind": "regular",
+   "path": "tests/orchestration/test_project_brain.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "bf267a16991afb9b6851692429c7d0cde84108e5dbc32119cc65e2cd8f6954b5",
+   "current_mode": "100644",
+   "current_sha256": "6614ab4081ed29946ce4facfa650d3c6bffc395db03c157d8e2a897e647483be",
+   "kind": "regular",
+   "path": "tests/orchestration/test_project_summary.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "7ae76150e56e9202ff7304271dd8cc242fb66f43d2ebf6252b90dac051eead8f",
+   "current_mode": "100644",
+   "current_sha256": "3a85516ce9b3507fe14a91a62dfe4b52d8fbf1c54144f1bb4ad5cd523e858657",
+   "kind": "regular",
+   "path": "tests/orchestration/test_provider_evidence_integration.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "18a093a666716e890531bc92ce8de2d6700fa3e33dcdafd830c16184cdde9f4f",
+   "current_mode": "100644",
+   "current_sha256": "488102c95759ef73e2b3704962961324649ab4a2b4ab1394fc251c1bcc5d067f",
+   "kind": "regular",
+   "path": "tests/orchestration/test_review_manual_completion_shapes.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8da075ad547320087769ef262ec09a45fe26bcf0b3fd420fdd64c569fe73246d",
+   "current_mode": "100644",
+   "current_sha256": "802a7eb0e8c8d262d7c7bebd0bd486c3f6c0de54fc6eb12ad231039c19e36faf",
+   "kind": "regular",
+   "path": "tests/orchestration/test_review_zip_hygiene.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e7d1b35e621f40acf67a46ca8b21f49b28c0bd8ab99593e8e2914f1220e027fd",
+   "current_mode": "100644",
+   "current_sha256": "03633ac9acd383c37ee160cb1cf410c11ac19521a2b50f564c90ea798a2f439d",
+   "kind": "regular",
+   "path": "tests/orchestration/test_test_execution_service.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "109e3b411c1b5edde75bb505a93598db9a87e7407b5529d6b50422d936568b46",
+   "current_mode": "100644",
+   "current_sha256": "0f2c2ab5412d673f0c9f01a7aac9dbaba9d0d9c36057cbe4c6f5857a5de63c17",
+   "kind": "regular",
+   "path": "tests/orchestration/test_test_runner.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "a389c511e396b04718d315e90dcbffcb07b56c27d56068deb9f2611e876e0c0e",
+   "current_mode": "100644",
+   "current_sha256": "0df8055427609c6e073efd53ff0ed134ab6f12e22336dbe22fbc382e1033ea20",
+   "kind": "regular",
+   "path": "tests/orchestration/test_worker_queue.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "49514143f6558005f25749c0013d24c27fa33c258ddfa65fe834c96bb7d8abcb",
+   "current_mode": "100644",
+   "current_sha256": "f87361ef0ff7cdf2fefff27e055758a7453e1f8b99a9716dc116f66476b4eea3",
+   "kind": "regular",
+   "path": "tests/regression/test_named_bugs.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "7c1d642c8fd2f8f21f356cf3cdb191ff2b7a11943fc398e917d984ded57b8619",
+   "current_mode": "100644",
+   "current_sha256": "3455497f2244dd0b32ec4b4312082913c8da7cd976250224a7360428d363e957",
+   "kind": "regular",
+   "path": "tests/regression/test_resource_safety.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1002f04e728aeb659d90b1fb130606f584bd0b5e5809861d3384da1aa11e1c16",
+   "current_mode": "100644",
+   "current_sha256": "4a638ec9ae39f635c587a89b2c68cb812ecc5b03471b465b73c0e8a269fe2dfd",
+   "kind": "regular",
+   "path": "tests/runtimes/test_apps_ui_probe.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8314348783f647a8bd0364c671029681700828a59c5840930ed81955ab889710",
+   "current_mode": "100644",
+   "current_sha256": "76fe57228118b6de994448b0638ebbdeb8ce2ae168e244e24e3cc20276d2808f",
+   "kind": "regular",
+   "path": "tests/runtimes/test_supervisor_portability.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "dfa124ef6232f3371ab33c2965f7164b2a2bf3928185b309138be5ca3986cdc3",
+   "current_mode": "100644",
+   "current_sha256": "82b8d69c275a05a87f7c4322718898970c146b98bd1ed3676e0f0c48933b1033",
+   "kind": "regular",
+   "path": "tests/test_agent_tooling.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "fdd7886eb9fb39939c340a6014c706ceaec3b695ec36a2fd189c181455b94fa2",
+   "current_mode": "100644",
+   "current_sha256": "20624777431f352195a7d50566721dd3d18e8c4da77938be2d24d9b71d6923dc",
+   "kind": "regular",
+   "path": "tests/test_cli_main.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "6b46b5024c6ea2e418b42acaa4069c6648db76c753b117679bac34aeaca40758",
+   "current_mode": "100644",
+   "current_sha256": "596fa6961cfa6f30359f16ab1ed44fc23f236947798d67b2e49cb454c5ff911e",
+   "kind": "regular",
+   "path": "tests/test_command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "85b07c0c3f2d59ccb780654e5f221ee415ae4117a2367154c47096964ad588d4",
+   "current_mode": "100644",
+   "current_sha256": "a580ff6539d02c6d3c8d7375cc3618731298e8ffd95c493e831bccef978c4ab8",
+   "kind": "regular",
+   "path": "tests/test_command_discovery.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "72724555a39927cbc01e57fcf5d11f30ab99d98c8bcb2d30db35d6bc96163cdc",
+   "current_mode": "100644",
+   "current_sha256": "f6d5525dc6760a102cb963a065c3f9c0694465ba987c9192b51a0c91d531d37f",
+   "kind": "regular",
+   "path": "tests/test_execution_foundation.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e9eea6540ef485833866ae90c45c8cb1c76ba5de5aa882011debadef3e39c362",
+   "current_mode": "100644",
+   "current_sha256": "a511524014d926aaed0f5827daa090d6069a7a60c75469d28668933f1471530e",
+   "kind": "regular",
+   "path": "tests/test_project_context_coverage.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e1625a8aa49677503fd3590ebf727a224ca86fc598988cbbb2a52ae74c03ee7a",
+   "current_mode": "100644",
+   "current_sha256": "1e008d965b48b4a277103d5c2b9f06a9f7e6c24edc89c88ae26e86808299dd78",
+   "kind": "regular",
+   "path": "tests/test_remedy_smoke_script.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "6399044d78d00c317b4d3b69b0c24d63a61de98897bc04ff7094927a6d18a804",
+   "current_mode": "100644",
+   "current_sha256": "d9870ebfcb4ba093775dd5c3d835041c5415c87f5943646bd506b7ae1e4a2a24",
+   "kind": "regular",
+   "path": "tests/test_test_runner.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "c5e6c207e50c2b8eeb3206585fb5dcfe71efe0bf8745db4093c4c209b42da5a4",
+   "current_mode": "100644",
+   "current_sha256": "8db16aa9a0bd2b84c3252d71fde4aa0ff09e39d79717e46a7df2ac0ad1caba5d",
+   "kind": "regular",
+   "path": "tests/ui_contracts/test_graph_architecture.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "dbf5102bfa5d9c22d230543000a18faf6f7544ee27ca733a0ca1f703811851c5",
+   "current_mode": "100644",
+   "current_sha256": "de7ecf354359a5b597f42052afb591d706f1ca84d297b4fba2b2d3f0e8d7487d",
+   "kind": "regular",
+   "path": "tests/ui_contracts/test_timeline_guard.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e11978a1716d25b941034888cfb30cbb30bbeeaee6c0b0acf6def766b1e74cfe",
+   "current_mode": "100644",
+   "current_sha256": "e89085bf6268d5654285d99e359dadf254a713964974382f4ef41db1b141bbac",
+   "kind": "regular",
+   "path": "tests/ui_contracts/test_ux_quality.py",
+   "status": "modified"
+  }
+ ],
+ "head_commit": "d543d445cd1f9ecb6d092e64fe670881bc6fff67",
+ "subject_v": 1
+}

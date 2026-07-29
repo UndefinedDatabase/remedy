@@ -1,0 +1,142 @@
+92a69d9f7f115bd801cf8d53599680e5f23def8e
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 749f71d..dbc6ac4 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1549,3 +1549,22 @@ escaped the fence API unchanged. Fix: catch `BudgetConfigError` around the
+ diagnostic scan stays for the paths that still report rather than raise
+ (e.g. no TOML parser available). No behavior other than the exception TYPE
+ changes — the config was already fail-closed.
++
++## 2026-07-29: F252 D9 — catalog classification drift, three distinct causes
++1. `job.budget` carried `action_class="read_metadata"`, a value in neither the
++   `ActionClass` Literal nor the integrity test's valid set — a one-off typo
++   for a read-only "show" command, now `read_only` like `job.show`.
++2. `do.job-evidence` executes `--verification-command` (`may_execute_commands
++   =True`) while classified `read_only`, which catalog integrity forbids. It
++   is now `test_execution`, like `test.run`. `tests/orchestration/
++   test_job_evidence.py` asserted BOTH `read_only` and `may_execute_commands
++   is True` in the same block — a contradiction that predates the
++   verification-command feature; that assertion is updated with the catalog.
++3. The `ActionClass` Literal listed 6 values while the catalog used 8; it is
++   a plain type alias with no runtime validation, which is why the drift went
++   unseen. Added `local_state_change` and `controlled_builder_execution` —
++   both already in use and in the test's valid set.
++Test-side: `TestCatalogSensitivity` scanned for `sk-` by substring and fired
++on the word "task-scoped". Credential PREFIXES now match at a token boundary
++(`(?<![0-9a-z])`); the field-name terms keep the plain substring scan, so no
++check got weaker.
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 9651a25..965404d 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -35,6 +35,8 @@ ActionClass = Literal[
+     "apply_write",
+     "test_execution",
+     "dev_helper",
++    "local_state_change",
++    "controlled_builder_execution",
+ ]
+ 
+ 
+@@ -311,7 +313,7 @@ CATALOG: tuple[CommandEntry, ...] = (
+         group_id="job",
+         subcommand="budget",
+         description="Show budget limits and current counters for a job (F018).",
+-        action_class="read_metadata",
++        action_class="read_only",
+         supports_json=True,
+         args=(
+             ArgDef("job_id", "Job ID to inspect"),
+@@ -2804,7 +2806,7 @@ CATALOG: tuple[CommandEntry, ...] = (
+         group_id="do",
+         subcommand="job-evidence",
+         description="Export a self-contained evidence bundle for an entire job.",
+-        action_class="read_only",
++        action_class="test_execution",
+         supports_json=True,
+         related=("do.job-plan", "do.job-run", "do.job-report"),
+         args=(
+diff --git a/tests/orchestration/test_job_evidence.py b/tests/orchestration/test_job_evidence.py
+index 0f77391..7de74c0 100644
+--- a/tests/orchestration/test_job_evidence.py
++++ b/tests/orchestration/test_job_evidence.py
+@@ -879,9 +879,10 @@ class TestDogfoodCommandShape:
+             None,
+         )
+         assert cmd is not None
+-        assert cmd.action_class == "read_only"
++        # job-evidence now executes explicit verification commands, so it is
++        # no longer read_only — catalog integrity forbids that combination.
++        assert cmd.action_class == "test_execution"
+         assert cmd.may_mutate_repo is False
+-        # job-evidence now executes explicit verification commands.
+         assert cmd.may_execute_commands is True
+         assert any(a.name == "--verification-command" for a in cmd.args)
+ 
+diff --git a/tests/test_command_catalog.py b/tests/test_command_catalog.py
+index 9a3c723..265c21d 100644
+--- a/tests/test_command_catalog.py
++++ b/tests/test_command_catalog.py
+@@ -14,6 +14,8 @@ Coverage:
+ 
+ from __future__ import annotations
+ 
++import re
++
+ import pytest
+ 
+ from apps.cli.command_catalog import (
+@@ -73,28 +75,41 @@ class TestCatalogClassification:
+ class TestCatalogSensitivity:
+     """No sensitive content in catalog descriptions."""
+ 
++    #: Credential PREFIXES. Short and alphanumeric, so they are matched at a
++    #: token boundary: a plain substring scan fires on ordinary prose
++    #: ("task-scoped" contains "sk-").
++    FORBIDDEN_PREFIXES = ("sk-", "ghp_", "xoxb-")
++
++    #: Terms that are sensitive wherever they appear.
+     FORBIDDEN = (
+-        "sk-", "ghp_", "xoxb-", "password=", "BEGIN PRIVATE KEY",
++        "password=", "BEGIN PRIVATE KEY",
+         "raw_stdout", "raw_stderr", "diff_preview", "approval_reason",
+         "api_key=", "secret=",
+     )
+ 
++    def _violations(self, text: str) -> list[str]:
++        lower = text.lower()
++        found = [bad for bad in self.FORBIDDEN if bad.lower() in lower]
++        found += [
++            p for p in self.FORBIDDEN_PREFIXES
++            if re.search(rf"(?<![0-9a-z]){re.escape(p.lower())}", lower)
++        ]
++        return found
++
+     def test_no_sensitive_terms_in_descriptions(self) -> None:
+         for cmd in CATALOG:
+-            lower = cmd.description.lower()
+-            for bad in self.FORBIDDEN:
+-                assert bad.lower() not in lower, (
+-                    f"{cmd.command_id} description contains forbidden term: {bad}"
+-                )
++            found = self._violations(cmd.description)
++            assert not found, (
++                f"{cmd.command_id} description contains forbidden terms: {found}"
++            )
+ 
+     def test_no_sensitive_terms_in_arg_help(self) -> None:
+         for cmd in CATALOG:
+             for arg in cmd.args:
+-                lower = arg.help.lower()
+-                for bad in self.FORBIDDEN:
+-                    assert bad.lower() not in lower, (
+-                        f"{cmd.command_id} arg '{arg.name}' help contains forbidden: {bad}"
+-                    )
++                found = self._violations(arg.help)
++                assert not found, (
++                    f"{cmd.command_id} arg '{arg.name}' help contains forbidden: {found}"
++                )
+ 
+ 
+ class TestCatalogJSONSupport:
