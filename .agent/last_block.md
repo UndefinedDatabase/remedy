@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R1 — F252 (bookkeeping + D8 + D10 + D11) ────────────────────
 Goal:        Claim F252, reset the .agent state, and root-cause-fix
              the three product-bug classes D8, D10, D11 (14 ids).
