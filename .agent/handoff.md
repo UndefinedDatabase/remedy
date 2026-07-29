@@ -1,66 +1,67 @@
-# Handback — F252 R4 (closure) — STOPPED at Slice A step 3
+# Handback — F252 R4b (closure, corrected ordering) — CLOSED
 
 ## Range
-Review of 2758396..08f4cdf + the handoff commit · feature/f252-standing-red-paydown ·
-Slice 0 done · Slice A STOPPED on the ordered condition · Slice B not started · no
-evidence job, zip, STATUS edit or PR.
+Review of d9a146a..HEAD · feature/f252-standing-red-paydown · preconditions PASS ·
+evidence job + READY zip · README + STATUS `[x]` in ONE final commit (R-0154) · PR open,
+not merged.
 
 ## Commits
-### 08f4cdf chore(f252): persist R3 verdict; record Built State
+### d543d44 chore(f252): persist the R4 stop verdict + R-0154 resolution
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f252-r4-1..4.md · live_review.md · plan.md · last_block.md | +216/-135 | four authored texts saved and sha256-verified; r4-2/r4-3 applied by copy; R4 block |
-| docs/roadmap/features/T1_F252.md | +21 | r4-1 appended verbatim (Built State) |
-### handoff commit (self-reference exception)
+| .agent/authored/f252-r4b-1/2.md · live_review.md · plan.md · last_block.md | +236/-63 | authored texts sha256-verified, applied by copy; R4b block |
+### 25eb5bd chore(f252): commit closure evidence (after READY zip)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md · last_block.md · decisions.md | rewrite · +37 | this handback; OUTCOME → stopped + STOP RECORD; the ordering conflict recorded |
+| .data/evidence_exports/d9a16173-…/ (83 files) | +new | the closure bundle, `git add -f` past `.gitignore:211 .data/` (F251 precedent); committed only after the READY zip existed (F147 lesson) |
+### final commit chore(f252): close F252 — STATUS [x] + README sync
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/STATUS.md · README.md | +4/-4 | the authored line with its four placeholders substituted, plus the three ordered README edits — together, so the ledger pin never sees a disagreement |
+| .agent/handoff.md · last_block.md | rewrite · +1/-1 | this handback; OUTCOME → executed |
 
 ## External actions
-1 push to origin/feature/f252-standing-red-paydown (08f4cdf); the handoff commit is
-pushed last. No PR, no merge, no worktree, no evidence job, no zip.
+3 pushes to origin/feature/f252-standing-red-paydown; `make_review_zip.sh --evidence-dir
+.data/evidence_exports/d9a16173-…` → READY_FOR_REVIEW; `gh pr create` right after the
+final commit (number in the handback message). NOT merged. No worktree.
 
 ## Verification
-- Slice 0 gate: `pytest tests/docs/ -q` → 0, "292 passed in 0.19s"; canary
-  `pytest tests/cli/test_golden_path.py -q` → 0, "42 passed in 14.95s".
-- Slice A step 3, after applying the three ordered README edits:
-  `python3 -m pytest tests/docs/ -q` → **exit 1, "1 failed, 291 passed in 0.20s"**.
-  Failing id: `tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::
-  test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
-  Raw: `AssertionError: README claims F252 accepted; STATUS does not`
-       `assert '252' in {'001', '002', '003', ...}`
-- After reverting README.md (`git checkout --`): `pytest tests/docs/ -q` → 0,
-  "292 passed"; canary → 0, "42 passed"; `git status --porcelain` empty.
-- NOT RUN because the STOP precedes them: `remedy integrity check --json`, the evidence
-  job, `make_review_zip.sh`, the STATUS edit and its grep proof, the PR.
+- Preconditions `integrity check --json` → exit 0, `"passed": true, "fail_count": 0,
+  "check_count": 5` (handler_import 312, live_review_verdict, plan_consistency 0,
+  relevant_untracked 0/0, high_blockers none). Tree clean, branch synced.
+- Evidence job **d9a16173-0283-40a1-957a-1ee9b7b39343** via
+  `create_manual_completion_bundle(review_feature_id="f252", …)`, base 7baff1dd… → head
+  d543d445…: PASS_WITH_RISKS, 46 authority files, 25 commits, 3 attested tasks, 334
+  passed; gate matrix `ok: True`, `validate_manual_completion() == []`, candidate valid.
+- Zip **remedy-review-20260729-153036-READY_FOR_REVIEW.zip**, SHA-256
+  **7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8** (script output,
+  `sha256sum` agrees): READY_FOR_REVIEW, ALIGNMENT=PASS, AUTHORITATIVE=true, 1588
+  members, authoritative 46; manifest `committed_review_subject` 7baff1dd… → d543d445…;
+  `testzip()` → None. **accepted HEAD = d543d445cd1f9ecb6d092e64fe670881bc6fff67**.
+- Applied STATUS line, verbatim:
+  `- [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)`
+  `grep -cF` new = **1**, old `- [~] …` = **0**; `cmp` on-disk vs substituted template → 0.
+- Pre-commit gate on these exact bytes: `pytest tests/docs/ -q` → 0, "292 passed";
+  canary → 0, "42 passed". Post-commit re-run in the handback message.
 
 ## Authored-text proofs
-All four hash-verified on the SAVED files BEFORE any commit, expected = computed:
-f252-r4-1 `09554936…`, r4-2 `9ae23627…`, r4-3 `400b7e79…`, r4-4 `79db25a5…`.
-r4-4 survived the relay as **one line of 222 chars** (`wc -l` = 1) — the displayed wrap
-was recovered, and the matching hash is the proof; its four `<PLACEHOLDERS>` are still
-unsubstituted because step 8 was never reached.
-Applied by copy: `cmp` exit 0 for live_review.md (r4-2) and plan.md (r4-3). For the
-r4-1 append, `tail -c 1228 docs/roadmap/features/T1_F252.md | cmp - <authored>` → exit 0
-(equally `tail -n 21 | cmp -` → exit 0), i.e. the file's last 21 lines are byte-identical
-to the authored text including its leading blank line.
+f252-r4b-1 `f91bd529…`, f252-r4b-2 `d2d810d5…`: on-disk `sha256sum` matched the BEGIN
+markers BEFORE any commit; applied by copy, `cmp` exit 0 both. f252-r4-4 re-verified to
+`79db25a5…` immediately before substitution (one line, 222 chars). Provenance: `<JOB_ID>`
+from the producer output; `<ZIP_FILENAME>`/`<ZIP_SHA256>` from make_review_zip.sh's JSON
+(`final_path`, `final_sha256`); `<HEAD_SHA>` from the manifest's
+`committed_review_subject.head_commit`. Nothing else in the line was touched.
 
 ## Deviations & assumptions
-- STOP, as the block ordered ("If it fails here, STOP and hand back — do not reorder
-  steps on your own"). Diagnosis: the NOTE assumed the ledger cross-check "only
-  constrains 'Accepted…:' blocks" — it does, and that is exactly what fires. Step 3
-  appends "F252 standing-red paydown" to the "Accepted in Tier 1 so far:" block while
-  STATUS.md still carries `- [~] F252` until step 8; the pin (authored R2, trimmed R3)
-  requires every feature named in such a block to carry `- [x]`. README and STATUS
-  cannot disagree in any committed state.
-- README.md was reverted rather than committed red, so the branch stays green and the
-  tree clean. No other step was attempted.
-- Resolution options recorded in .agent/last_block.md; the worker chose none: (a) fold
-  the README sync into the step-8 commit — also satisfies Rule A4, no test change;
-  (b) narrow the pin to skip a `[~]` feature — a test change inside a closure round;
-  (c) any other reviewer-authored ordering.
-- `.agent/last_block.md` line 1 reads `OUTCOME: stopped`, not `executed`: the round did
-  not run to completion, and `pending` would read as "never started".
+- A first bundle was discarded before any commit: `output_hash` hashed unstripped stdout
+  while `stdout_summary` was stored stripped → `output_hash does not match
+  sha256(stdout_summary)`. Rebuilt with a fresh job id over the stored bytes; the
+  discarded directory removed.
+- Evidence dir needed `git add -f` (`.gitignore:211`) and the zip is not committed
+  (`remedy-review-*` ignored) — F251 / F048 precedent.
+- The PR number is not in this file: the handoff is written inside the last commit
+  (Rule A4), the PR is created after it — as in F251.
 
 ## Next
-Reviewer picks the ordering (a/b/c) and re-issues R4 from Slice A; Slice 0 stands.
+Reviewer closure review + feature-done banner; PR merges at the next feature's start via
+the Open PR Gate. Next per Rule A5: F050, fresh window.

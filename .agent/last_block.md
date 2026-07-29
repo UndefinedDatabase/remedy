@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R4b — F252 CLOSURE, corrected ordering (R-0154) ─────────────
 Goal:        Finish closure: preconditions, evidence job, fresh
              review zip, then ONE final commit = README sync +

@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-24 of 252 registered items accepted. In progress: F252 (standing-red paydown).
+25 of 252 registered items accepted. Next: F050 (DAG scheduling).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 8 | 22 |
+| 1 | Self-Build Bootstrap | 9 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
@@ -50,7 +50,7 @@ F148 project scoping everywhere.
 Accepted in Tier 1 so far:
 F013 job intake, F014 flight plan, F016 scaling task granularity,
 F034 bundled clarification, F046 multi-cycle loop, F047 checkpoint & resume,
-F048 job queue, F251 full-suite stabilization.
+F048 job queue, F251 full-suite stabilization, F252 standing-red paydown.
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
