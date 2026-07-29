@@ -1523,3 +1523,17 @@ subprocess timeout — not scoping behavior — decided the verdict. Its
 canary already enforces for every subprocess `do` (`_run_do` appends the
 flag unconditionally). No assertion was weakened; the file asserts nothing
 about planning.
+
+## 2026-07-29: F252 D10 — the fixture, not `test discover`, was broken
+The catalog label ("discover-commands CLI rc=1 / non-JSON") is the symptom.
+Diagnosis: both `_create_job_with_repo` fixtures in
+`tests/test_command_discovery.py` ran `job create` against a bare
+REMEDY_DATA_DIR with no registered project. Since F148 that exits 3 ("no
+project found"), and the fixtures ignored the return code, so `job_id` was
+`""` and every downstream `test discover ""` failed with `invalid job ID`.
+Verified against product code: with a registered project, `test discover
+<id> --json` returns rc=0 and a schema-v1 JSON document — no product defect.
+Requiring a project is intentional F148 behavior, so making `job create`
+project-less would be a product CHANGE and belongs to class D5, not here.
+The fixtures now register the target repo and assert the rc, so a future
+break is loud instead of silently producing an empty id.

@@ -43,6 +43,27 @@ from packages.orchestration.command_discovery import (
 # ---------------------------------------------------------------------------
 
 
+def _register_project(repo: Path, env: dict) -> None:
+    """Make ``repo`` a git repo registered as a Remedy project.
+
+    Since F148 every job belongs to a project, so ``job create`` resolves the
+    project from its cwd and exits 3 with "no project found" when there is
+    none. A bare data dir is no longer enough to create a job.
+    """
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"],
+        check=True, capture_output=True,
+        env={**env, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+    r = subprocess.run(
+        ["python3", "-m", "apps.cli.main", "init"],
+        capture_output=True, env=env, cwd=str(repo), timeout=30,
+    )
+    assert r.returncode == 0, r.stderr.decode()
+
+
 def _make_job() -> Job:
     return Job(name="test", state=RunState.PENDING)
 
@@ -532,16 +553,20 @@ class TestCLIDiscoverCommands:
     def _create_job_with_repo(self, tmp_path: Path) -> str:
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
-        r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
-            capture_output=True, env=env, timeout=15,
-        )
-        job_id = r.stdout.decode().strip()
-        # Create a target repo with pyproject + tests.
+        # Create the target repo with pyproject + tests, and register it, so
+        # `job create` can resolve a project (see _register_project).
         repo = tmp_path / "target"
         repo.mkdir(parents=True)
         (repo / "pyproject.toml").write_text("[project]\nname='x'\n")
         (repo / "tests").mkdir()
+        _register_project(repo, env)
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "job", "create", "test job"],
+            capture_output=True, env=env, cwd=str(repo), timeout=15,
+        )
+        assert r.returncode == 0, r.stderr.decode()
+        job_id = r.stdout.decode().strip()
+        assert job_id, "job create produced no job id"
         subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
             capture_output=True, env=env, timeout=15,
@@ -915,15 +940,18 @@ class TestCLIDiscoverCommandsSchemaV1:
     def _create_job_with_repo(self, tmp_path):
         import os
         env = {**os.environ, "REMEDY_DATA_DIR": str(tmp_path)}
-        r = subprocess.run(
-            ["python3", "-m", "apps.cli.main", "job", "create", "test"],
-            capture_output=True, env=env, timeout=15,
-        )
-        job_id = r.stdout.decode().strip()
         repo = tmp_path / "target"
         repo.mkdir(parents=True)
         (repo / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
         (repo / "tests").mkdir()
+        _register_project(repo, env)
+        r = subprocess.run(
+            ["python3", "-m", "apps.cli.main", "job", "create", "test"],
+            capture_output=True, env=env, cwd=str(repo), timeout=15,
+        )
+        assert r.returncode == 0, r.stderr.decode()
+        job_id = r.stdout.decode().strip()
+        assert job_id, "job create produced no job id"
         subprocess.run(
             ["python3", "-m", "apps.cli.main", "job", "attach-repo", job_id, str(repo)],
             capture_output=True, env=env, timeout=15,
