@@ -1756,3 +1756,18 @@ Product bugs:
    token_truth.json therefore refused to build and the artifact-contract gate
    went BLOCKED on a clean export. Zero is the honest count; the one test that
    asserted the ABSENCE of those fields now asserts the schema.
+
+## 2026-07-29: F252 D3 + D12 — the two operator-decision classes, executed
+D3 (10 ids): the pre-rebuild `apps/ui/src/components/graph/legacy/*.tsx`
+sources these assert (RemedyBrainFlow.tsx, semanticZoom.ts, the organic
+layout, the old index.html markers) are not in the tree — the graph directory
+holds the rebuilt components instead. Nothing to fix before the UI is rebuilt,
+so each id carries `@pytest.mark.skip` with its own reason string and the
+backlog reference "Tier 5 UI build (F019+)". No file deleted, no assertion
+weakened, no blanket directory skip.
+D12 (1 id): git history answers it — 219dd32 deleted
+`.claude/agents/remedy-reviewer.md` deliberately as finding R-0074
+("superseded by split workflow Window 1"). A reasoned removal, so per the
+round's rule it is quarantined rather than restored; the skip names the
+commit, the finding, and the document that now carries the read-only
+reviewer contract (docs/agents/planner_reviewer_prompt.md).

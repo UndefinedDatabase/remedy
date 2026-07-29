@@ -6,6 +6,8 @@ import ast
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts import remedy_agent_tooling_doctor as doctor
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +40,12 @@ def test_agent_skills_have_expected_files():
         assert "AGENTS.md" in text
 
 
+@pytest.mark.skip(reason=(
+    "D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted "
+    "deliberately in 219dd32 (finding R-0074 — superseded by the split "
+    "workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The "
+    "read-only reviewer contract now lives there. Backlog: re-pin this "
+    "contract on the split-workflow docs, or retire the test."))
 def test_claude_agent_is_read_only_reviewer():
     text = (ROOT / ".claude/agents/remedy-reviewer.md").read_text(encoding="utf-8")
     assert "tools: Read, Grep, Glob" in text

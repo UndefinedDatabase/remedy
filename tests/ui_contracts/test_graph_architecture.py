@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -437,6 +438,8 @@ class TestExplainableEdges:
         for e in vm["edges"]:
             assert "is_primary_chain" in e
 
+    @pytest.mark.skip(reason=(
+        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
     def test_legacy_edge_component_under_legacy(self):
         """Old SoftGlowEdge.tsx is preserved under legacy/."""
         edge = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "SoftGlowEdge.tsx"
@@ -478,6 +481,8 @@ class TestSemanticZoomDirection:
         for i in range(1, len(counts)):
             assert counts[i] >= counts[i - 1], f"counts[{i}]={counts[i]} < counts[{i-1}]={counts[i-1]}"
 
+    @pytest.mark.skip(reason=(
+        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
     def test_renderer_zoom_direction_in_legacy_source(self):
         """Verify legacy semanticZoom.ts maps lower viewport zoom to lower level."""
         src = (Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()

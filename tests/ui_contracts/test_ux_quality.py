@@ -504,6 +504,8 @@ class TestUXAntiRegression:
         # Labels gated by globalScale threshold
         assert "globalScale" in content, "Label visibility must be gated by zoom scale"
 
+    @pytest.mark.skip(reason=(
+        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
     def test_legacy_graph_files_under_legacy(self):
         """Old React Flow graph files live under legacy/ directory."""
         legacy = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy"
@@ -538,6 +540,8 @@ class TestScreenSpaceLabels:
         assert "PIXI" not in content, "ForceBrainGraph should not import raw PIXI"
         assert "pixi.js" not in content, "ForceBrainGraph should not depend on pixi.js"
 
+    @pytest.mark.skip(reason=(
+        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
     def test_legacy_graph_nodes_under_legacy(self):
         """Old GraphNodes.tsx lives under legacy/, not top-level graph/."""
         legacy = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "GraphNodes.tsx"
