@@ -13,7 +13,7 @@ state, class by class (catalog: .agent/f251_baseline/class_map.txt).
   the three-consecutive-runs determinism proof. In progress.
 
 ## Findings
-- R-0153 (nit, open): tests/docs/test_docs_consistency.py — in the
+- Done: R-0153 (nit): tests/docs/test_docs_consistency.py — in the
   rewritten README honesty pin, `assert unaccepted <= named` is a
   tautology (`unaccepted` is derived from `named`), a dead check
   that reads as coverage. Fix: delete the assertion and its comment

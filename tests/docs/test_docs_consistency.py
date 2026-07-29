@@ -151,17 +151,12 @@ class TestPrimaryDocsAreHonest:
 
         accepted = {m.group(1) for m in
                     re.finditer(r"^- \[x\] F(\d{3}) — ", status, re.MULTILINE)}
-        named = {m.group(1) for m in re.finditer(r"\bF(\d{3})\b", readme)}
-        unaccepted = {n for n in named if n not in accepted}
 
         # Every feature the README lists as accepted IS accepted in the ledger.
         for block in re.findall(r"Accepted[^\n]*:\n((?:[^\n]+\n)+)", readme):
             for fid in re.findall(r"\bF(\d{3})\b", block):
                 assert fid in accepted, f"README claims F{fid} accepted; STATUS does not"
 
-        # An unaccepted id may still appear (in progress / a pointer), but only
-        # outside those blocks — which the loop above already enforces.
-        assert unaccepted <= named
         # F012 and F017 were "implemented, not yet accepted" when this pin was
         # written; STATUS.md now carries `- [x]` for both, and the loop above
         # is the general form of what these two clauses checked by name.
