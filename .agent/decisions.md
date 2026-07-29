@@ -1504,3 +1504,284 @@ silently. The three sibling failures (context.md wants `## Active Branch` and
 the word "Steps"; live_review.md wants "Steps") fail identically on base and
 were deliberately NOT swept up: they are pre-existing, not F046-attributable,
 and belong on the backlog.
+
+## 2026-07-29: F252 D8 — the intake call_fn was driving the flight-plan call
+`make_provider_call_fn()` bound Ollama's NATIVE `format=` schema to
+`JobIntake` and `do_cmd` reused that same callable for `plan_job_llm`. The
+provider therefore answered every planning attempt (retry included) in
+intake shape, and validation reported exactly `schema_v: Input should be
+'flight_plan_v1'; tasks: Field required; goal: Extra inputs are not
+permitted`. Fix: `make_structured_call_fn(model_cls)` is the general
+factory, `make_provider_call_fn()` is its JobIntake-bound alias, and both
+flight-plan call sites (`do`, `do replan`) build a FlightPlan-bound
+callable.
+
+With the schema bug gone, `remedy do` in `tests/cli/test_scoped_listings.py`
+performs a REAL flight-plan call (~72s measured), so the file's 30s
+subprocess timeout — not scoping behavior — decided the verdict. Its
+`_create_job` fixture now passes `--no-llm`, the convention the golden-path
+canary already enforces for every subprocess `do` (`_run_do` appends the
+flag unconditionally). No assertion was weakened; the file asserts nothing
+about planning.
+
+## 2026-07-29: F252 D10 — the fixture, not `test discover`, was broken
+The catalog label ("discover-commands CLI rc=1 / non-JSON") is the symptom.
+Diagnosis: both `_create_job_with_repo` fixtures in
+`tests/test_command_discovery.py` ran `job create` against a bare
+REMEDY_DATA_DIR with no registered project. Since F148 that exits 3 ("no
+project found"), and the fixtures ignored the return code, so `job_id` was
+`""` and every downstream `test discover ""` failed with `invalid job ID`.
+Verified against product code: with a registered project, `test discover
+<id> --json` returns rc=0 and a schema-v1 JSON document — no product defect.
+Requiring a project is intentional F148 behavior, so making `job create`
+project-less would be a product CHANGE and belongs to class D5, not here.
+The fixtures now register the target repo and assert the rc, so a future
+break is loud instead of silently producing an empty id.
+
+## 2026-07-29: F252 D11 — translate BudgetConfigError at the fence boundary
+`_load_fence_spec_effective` detected malformed fence config by scanning
+`load_config().load_report.warnings` for "Malformed TOML". config.py now
+fails closed EARLIER: `_load_toml(..., fail_closed_for_budgets=True)` raises
+`BudgetConfigError`, so that diagnostic is never produced and the exception
+escaped the fence API unchanged. Fix: catch `BudgetConfigError` around the
+`load_config` call and re-raise as `FenceConfigError` with the existing
+"refusing to default to allow-all on malformed config" message. The
+diagnostic scan stays for the paths that still report rather than raise
+(e.g. no TOML parser available). No behavior other than the exception TYPE
+changes — the config was already fail-closed.
+
+## 2026-07-29: F252 D9 — catalog classification drift, three distinct causes
+1. `job.budget` carried `action_class="read_metadata"`, a value in neither the
+   `ActionClass` Literal nor the integrity test's valid set — a one-off typo
+   for a read-only "show" command, now `read_only` like `job.show`.
+2. `do.job-evidence` executes `--verification-command` (`may_execute_commands
+   =True`) while classified `read_only`, which catalog integrity forbids. It
+   is now `test_execution`, like `test.run`. `tests/orchestration/
+   test_job_evidence.py` asserted BOTH `read_only` and `may_execute_commands
+   is True` in the same block — a contradiction that predates the
+   verification-command feature; that assertion is updated with the catalog.
+3. The `ActionClass` Literal listed 6 values while the catalog used 8; it is
+   a plain type alias with no runtime validation, which is why the drift went
+   unseen. Added `local_state_change` and `controlled_builder_execution` —
+   both already in use and in the test's valid set.
+Test-side: `TestCatalogSensitivity` scanned for `sk-` by substring and fired
+on the word "task-scoped". Credential PREFIXES now match at a token boundary
+(`(?<![0-9a-z])`); the field-name terms keep the plain substring scan, so no
+check got weaker.
+
+## 2026-07-29: F252 D7 — the shared module is the seam, not a private alias
+`dev_server` re-exports only the redaction names it actually uses
+(`_scrub_paths`, `_basename`, `_ABS_PREFIX_RE`); `_ABS_PATH_RE` and
+`_FILE_URI_RE` were dropped when path redaction moved to
+`packages/common/path_redaction.py`. Restoring private aliases purely so
+tests can reach them would rebuild a seam the product does not have, so the
+tests were pointed at the owning module instead: `test_supervisor_
+portability.py` imports `ABS_PATH_RE` from `packages.common.path_redaction`
+(2 use sites, both test-side path detectors). `test_the_shared_module_is_
+the_one_f007_uses` kept its anti-drift intent and got stronger: three
+identity assertions over the names dev_server really holds, plus a
+behavioral check that a file URI does not survive `_redact`.
+
+## 2026-07-29: F252 D5 — the creation guard is documented, so the tests moved
+docs/system/project-scoping-v0.md ("Creation guard") and T0_F148 both specify
+that `remedy job create` requires a resolvable project and exits 3 with a
+fix-it hint; library functions stay permissive. Every D5 id is a fixture or
+expectation written before that guard, so all 11 are honest test updates —
+no product change:
+- `TestCreateJobTaskType._env` (7 ids) now saves a RemyProject and exports
+  REMEDY_PROJECT; these tests are about --task-type, not resolution.
+- `test_attach_project_job_sets_metadata` creates the job under a SECOND
+  project and attaches it to the first, so the asserted metadata can only
+  come from attach — the old version would have passed trivially.
+- `test_create_job_with_missing_project_warns` /
+  `…_does_not_set_metadata` asserted the pre-F148 warn-and-continue path.
+  Renamed to `…_exits_3` / `…_writes_no_job` and rewritten against the
+  documented guard: exit 3, the fix-it text, no traceback, and no job file
+  on disk (stricter than the old metadata check).
+- `test_test_runner.py::test_permit_runtime_stderr` builds and registers the
+  target repo before `job create`, D10 precedent.
+Also fixed in the same file: `test_attach_project_repo_idempotent_message`
+(catalogued D14) passed a bare directory to a path that has required a git
+repo since F146 — the fixture now runs `git init`.
+
+## 2026-07-29: F252 D13 — retired contract in tests, four real producer bugs
+The 9 root-selection ids encode a contract Remedy retired on purpose:
+01e2018 replaced mtime-based root-dir auto-selection with a hard error ("it
+cannot distinguish features"), bd93397 downgraded that to warn-and-ignore so
+code snapshots still build. Those tests now assert the live behaviour —
+`remedy-job-evidence-*` root dirs are ignored with a counted warning naming
+both remedies, `current_evidence` is null, nothing lands under `evidence/`,
+and explicit `--evidence-dir` still selects. Tests whose NAME claimed
+auto-selection were renamed; the explicit-selection tests are untouched.
+Four product bugs surfaced behind the other two ids:
+1. `build_manual_completion_gates` filtered caller runs to the v1.1 key set
+   but stamped `schema_version: 1.1.0` without FILLING it — the coordinator
+   rejected `runs[0]` and the final verifier lost its test total. Now
+   normalized through `_vt_run_v11`, same derivations as `_run_verifications`.
+2. …and dropped `head_sha`; the producer threads the bundle's head commit in.
+3. `commit_execution_gate.json` hardcoded `runtime_integration_gate: PASS`
+   while the packaged gate could say BLOCKED. The verdict is now read back
+   from the artifact just written, with coherent non_pass/blocked/issues.
+4. The runtime-integration gate is a SELF check — every pattern it looks for
+   lives in Remedy's own tree — but the manual producer pointed it at the
+   subject repo, so it reported "source file not found" for any non-Remedy
+   target. It now scans Remedy's installed source root.
+Test-side for the same id: the fixture declares `review_feature_id` (without
+one the gate runs every historical feature's execution bindings) and lists
+`node_ids` for the tests its run claims passed.
+Fifth product bug, behind the last id: `_scrub_paths` dropped the FIRST LINE
+of every text it redacted — aimed at pytest's rootdir banner, but applied
+unconditionally, so any single-line command output was scrubbed to "". The
+helper now only redacts.
+
+## 2026-07-29: F252 slice E — a runtime port override, so the real-runtime tests stop fighting the product default
+F251 closed 11 of 13 F-A ids with a per-worker test port, and stopped on the
+two that drive the REAL apps/ui runtime of THIS repository: their port comes
+from the product (config, else detection), so the only test-side fix would
+have been editing the repository under test. Product change:
+`REMEDY_RUNTIME_PORT` overrides the resolved port for ONE process, in
+`resolve_spec`, validated like any other port and applied to both the config
+and the detection path. The repository's own configuration is untouched, so
+`remedy runtime serve` still means 5173 for an operator.
+The runtime STATE file is repo-scoped and stays shared, so
+`test_apps_ui_probe.py` also serializes across xdist workers on a file lock
+kept in the system temp dir (not the repo — an untracked file there would
+show up in `git status` and in the packaging detritus checks).
+Verified: the four candidate ids green 3x consecutively, `tests/runtimes/`
+green under `-n 4`, and no listener on the product default 5173 during or
+after the runs.
+
+## 2026-07-29: F252 D6 — real models instead of half-specced MagicMocks
+`MagicMock(spec=Job)` pins attribute NAMES only: every field a test does not
+set answers with another MagicMock, so product code comparing a budget or
+reading fences fails on the mock, not on the behaviour under test
+("'>' not supported between MagicMock and int"; "job_fences.allow must be a
+list, got MagicMock"). All three builders now construct real `Job` models
+(`test_test_execution_service._make_job` / `_make_contract` /
+`TestExecuteTestRunGates._make_job_with_repo`, and
+`test_test_runner._make_approved_job` reuses the file's existing real-Job
+helper). No assertion changed; the gates under test now actually run. The
+remaining MagicMock task fixtures in test_test_runner._make_job are untouched
+— those tests pass and do not reach model-reading product code.
+
+## 2026-07-29: F252 D4 remainder — context.md is maintained; the step-range pins retire
+`.agent/context.md` was still F046-era. Rewritten to current reality (active
+branch, F252 scope boundaries and constraints, resource-safety note, pointer
+to plan.md), which turns the three content ids green:
+`test_context_md_references_current_branch`, `test_context_md_no_stale_steps`,
+`test_context_mentions_resource_safety`.
+The other two ids asserted `Steps?\s+\d+-\d+` in context.md AND plan.md — the
+numbered-step workflow that docs/roadmap/STATUS.md replaced with roadmap
+features and rounds. plan.md is reviewer-authored and cmp-verified this
+round, so it cannot be hand-edited to satisfy a retired convention, and
+inventing a step range in context.md would be fabrication. Both assertions
+now pin the LIVE contract: the feature id (`F\d{3}`), plus `## Active Branch`
+and `feature/` for context.md and the AGENTS.md-required `## Goal` /
+`## Next Steps` for plan.md. Nothing became optional.
+Standing risk unchanged (F251 R2 finding): these ids read LIVE state files,
+so ordinary bookkeeping still moves them. Recorded, not adjusted.
+
+## 2026-07-29: F252 D1 — the docs moved, the tests did not
+Every D1 id read an ist-doc at its pre-restructure flat path
+(`docs/<name>.md`); all of them now live under `docs/system/` or
+`docs/guides/` with `docs/README.md` as the index. No doc is missing, so the
+fix is the path in the test — ten documents across nine test files.
+`tests/cli/test_product_spine.py` needed more than a path: its `_read_doc`
+helper returned `""` for a missing file, so every assertion over a moved doc
+was passing against an empty string. It now resolves docs/system, docs/guides
+and docs/ in order and RAISES when the doc is absent — which turned six
+further ids green once they started reading real text.
+
+## 2026-07-29: F252 D14 (the 13 README pins) — the README stopped being a spec dump
+bd2f8ad deliberately replaced a 222-line spec-dump README with a concise
+overview ("condensed pitch, <=120 lines"), deleting the F012 contract prose
+and the per-feature `| F010 … externally accepted` table. Thirteen pins still
+asserted that deleted text, so they pinned a documentation design the repo
+had already retired.
+- The twelve `TestF012Round*IsPinned::test_..._readme_states_...` ids now pin
+  the same contract in the document that owns it, `T0_F012.md` — every one of
+  those classes already reads that file for its sibling assertions, and where
+  the exact phrase survives there (root of trust, raw-byte identity, gate
+  matrix, review subject, typed transaction) the phrase itself is asserted.
+- `test_the_readme_reports_the_accepted_foundation_and_no_later_feature` is
+  now a cross-check against the ledger: every feature the README lists in an
+  "Accepted …:" block must carry `- [x]` in STATUS.md. That fails on real
+  drift instead of on layout, and it caught the drift it was meant to: the
+  README still said "13 of 250 features accepted. Next: F081". Updated to the
+  ledger's truth (24 of 252, Tier 0 complete, the eight accepted Tier 1
+  items, F252 in progress) in this same commit.
+Two named clauses ("F012 must never be called accepted yet", the same for
+F017) were dropped: STATUS.md carries `- [x]` for both, and the general
+cross-check subsumes them.
+
+## 2026-07-29: F252 D14 (misc) — six retired contracts and two product bugs
+Retired contracts, repinned to what the product does today:
+- `test_no_new_product_dependency`: `fresh_evidence_gate.py` genuinely reads
+  `.agent/live_review.md` (it is the gate OVER development state) and is
+  allowlisted with that reason; `repair_attest.py` only NAMES the file in a
+  docstring to say it is excluded, so the scanner now strips docstrings — a
+  module may document the boundary it honours.
+- `test_run_log_event_has_exact_metadata_keys` / `…_scope_is_project`: F146
+  (2727114) made `project context` strictly read-only and removed its RunLog
+  write. The pin is now that read-only contract.
+- `TestUiRebuildSpecDocument` (3 ids): the v2 spec delegates palette,
+  forbidden words and zoom levels to `docs/ui/design_reference/`. The pins
+  follow the delegation and require the target file to exist, so a dead
+  pointer still fails.
+- `test_full_chain_order`: since the proof-chain hardening, unlinked test
+  evidence is never claimed as proof of a change; the fixture's test event now
+  names the intent it tested.
+- `test_root_style_evidence_still_readable_but_deprecated` → `…_is_ignored…`:
+  same retirement as D13.
+- `test_default_out_goes_to_hidden_dir_and_indexes`: the bare
+  `Path.cwd().glob("remedy-job-evidence-*")` also caught legacy dirs an
+  operator left in the checkout; it now looks for pollution from THIS export.
+- `test_viewer_sanity_block_has_no_bare_assert`: BARE means "without a
+  message"; the blanket ban on the word forbade the fixed form too.
+- The three `invalid_job_id` ids: that token is a stop_reason of the test
+  execution service. The job CLI reports a bad id on stderr and exits
+  non-zero; the pins now assert exit code, the named stderr error, no
+  traceback and NO partial JSON on stdout.
+- `test_the_cli_resumes_a_16_char_jobplan_id`: max-tasks is an F012 material
+  control carried in RunInvocation, not a bare kwarg.
+- `tests/test_test_runner.py::TestCliRunTestsLocal`: D5/D10 fixture
+  precedent — register a project before `job create`.
+Product bugs:
+1. `project_registry.resolve_project` swallowed EVERY exception around
+   `repo_root`; now the named failures only (WorktreeError, OSError,
+   SubprocessError) — a defect is no longer hidden as "no project".
+2. `pingpong_loop._build_provider_evidence` omitted provider_call_count /
+   actual_call_count / cost_call_count when no usage was measured, although
+   ProviderTokenEvidenceV1 REQUIRES them for execution_mode='provider_backed'.
+   token_truth.json therefore refused to build and the artifact-contract gate
+   went BLOCKED on a clean export. Zero is the honest count; the one test that
+   asserted the ABSENCE of those fields now asserts the schema.
+
+## 2026-07-29: F252 D3 + D12 — the two operator-decision classes, executed
+D3 (10 ids): the pre-rebuild `apps/ui/src/components/graph/legacy/*.tsx`
+sources these assert (RemedyBrainFlow.tsx, semanticZoom.ts, the organic
+layout, the old index.html markers) are not in the tree — the graph directory
+holds the rebuilt components instead. Nothing to fix before the UI is rebuilt,
+so each id carries `@pytest.mark.skip` with its own reason string and the
+backlog reference "Tier 5 UI build (F019+)". No file deleted, no assertion
+weakened, no blanket directory skip.
+D12 (1 id): git history answers it — 219dd32 deleted
+`.claude/agents/remedy-reviewer.md` deliberately as finding R-0074
+("superseded by split workflow Window 1"). A reasoned removal, so per the
+round's rule it is quarantined rather than restored; the skip names the
+commit, the finding, and the document that now carries the read-only
+reviewer contract (docs/agents/planner_reviewer_prompt.md).
+
+## 2026-07-29: F252 R4 — closure stopped at the README/STATUS ordering conflict
+The closure block sequences the README status sync (step 3) BEFORE the STATUS
+`[x]` (step 8, Rule A4's last commit). Those two cannot disagree in any
+committed state: the ledger cross-check added in R2 requires every feature
+named in an "Accepted …:" README block to carry `- [x]` in STATUS.md, so
+appending "F252 standing-red paydown" while STATUS still reads `- [~] F252`
+fails `test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
+("README claims F252 accepted; STATUS does not").
+The block anticipated this and ordered a STOP rather than a self-chosen
+reordering, so: README reverted, branch green and clean, no evidence job, no
+zip, no STATUS edit, no PR. The natural resolution is to fold the README sync
+into the step-8 commit — which also satisfies Rule A4 — but that is the
+reviewer's call, recorded in .agent/last_block.md as options (a)/(b)/(c).

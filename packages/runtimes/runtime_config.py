@@ -21,7 +21,8 @@ Explicit config always wins.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -281,27 +282,57 @@ def detect_runtimes(project_root: str | Path) -> list[DetectedRuntime]:
     return _detect_node(root) + _detect_python(root)
 
 
+#: Environment override for the resolved runtime port. Config and detection
+#: both describe ONE port per repository, so a second instance of the same
+#: project could only be moved by editing the repository — which mutates the
+#: subject under test. This override moves the port for one process only;
+#: everything else about the spec is unchanged.
+PORT_ENV = "REMEDY_RUNTIME_PORT"
+
+
+def _port_override() -> int | None:
+    """The `REMEDY_RUNTIME_PORT` value, or None when unset/blank."""
+    raw = os.environ.get(PORT_ENV, "").strip()
+    if not raw:
+        return None
+    try:
+        port = int(raw)
+    except ValueError:
+        raise RuntimeConfigError(
+            f"{PORT_ENV} must be an integer port; got {raw!r}") from None
+    if not 1 <= port <= 65535:
+        raise RuntimeConfigError(f"{PORT_ENV} out of range: {port}")
+    return port
+
+
 def resolve_spec(project_root: str | Path) -> RuntimeSpec:
-    """Explicit config, else exactly one detected runtime, else block honestly."""
+    """Explicit config, else exactly one detected runtime, else block honestly.
+
+    ``REMEDY_RUNTIME_PORT`` overrides the resolved port in either case.
+    """
     root = Path(project_root).resolve()
     if not root.is_dir():
         raise RuntimeConfigError(f"project root {root} is not a directory")
 
-    spec = load_config_spec(root)
-    if spec is not None:
-        return spec                    # explicit config always wins
+    override = _port_override()
 
-    found = detect_runtimes(root)
-    if not found:
-        raise RuntimeConfigError(
-            "no runtime detected and no [runtime] section in "
-            f"{CONFIG_RELPATH}: configuration required"
-        )
-    if len(found) > 1:
-        kinds = ", ".join(
-            f"{d.kind} ({Path(d.spec.cwd).name})" for d in found)
-        raise RuntimeConfigError(
-            f"ambiguous runtime: {kinds}. Configuration required — add a [runtime] "
-            f"section to {CONFIG_RELPATH}"
-        )
-    return validate_spec(found[0].spec, root)
+    spec = load_config_spec(root)
+    if spec is None:
+        found = detect_runtimes(root)
+        if not found:
+            raise RuntimeConfigError(
+                "no runtime detected and no [runtime] section in "
+                f"{CONFIG_RELPATH}: configuration required"
+            )
+        if len(found) > 1:
+            kinds = ", ".join(
+                f"{d.kind} ({Path(d.spec.cwd).name})" for d in found)
+            raise RuntimeConfigError(
+                f"ambiguous runtime: {kinds}. Configuration required — add a [runtime] "
+                f"section to {CONFIG_RELPATH}"
+            )
+        spec = validate_spec(found[0].spec, root)
+
+    if override is not None and override != spec.port:
+        spec = validate_spec(replace(spec, port=override), root)
+    return spec

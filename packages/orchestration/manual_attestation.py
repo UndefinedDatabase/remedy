@@ -14,7 +14,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from pathlib import Path
 from typing import Any
+
+#: Remedy's own source tree — the subject of the runtime-integration gate,
+#: which is a self check and has nothing to do with the repository a job
+#: happens to target.
+_REMEDY_SOURCE_ROOT = str(Path(__file__).resolve().parents[2])
 
 #: The deterministic, documented token status a zero-provider-call manual completion produces. It is
 #: low confidence (heuristic only) with every actual/provider count zeroed and every cost unknown.
@@ -167,10 +173,68 @@ def _na_worktree():
             "unsafe_result_diff_refs": []}
 
 
+#: The complete VerificationTests v1.1.0 run field set the coordinator requires.
+_VT_V11_FIELDS = ("run_id", "command", "exit_code", "passed", "failed", "test_files",
+                  "stdout_summary", "head_sha", "output_hash", "selected",
+                  "deselected", "skipped", "node_ids", "duration_seconds")
+
+
+def _vt_run_v11(run: dict, head_sha: str = "") -> dict[str, Any]:
+    """Normalize a caller-supplied verification run to the FULL v1.1.0 shape.
+
+    Filtering to the v1.1 keys while stamping ``schema_version: 1.1.0`` produced
+    a run that claimed the new schema with the old field set, which the review
+    coordinator rejects ("runs[i] has the wrong field set") — and a rejected
+    VerificationTests takes the final verifier's test total down with it. Every
+    derived default matches what ``job_evidence._run_verifications`` computes.
+    """
+    passed = int(run.get("passed", 0) or 0)
+    failed = int(run.get("failed", 0) or 0)
+    skipped = int(run.get("skipped", 0) or 0)
+    node_ids = list(run.get("node_ids") or [])
+    selected = int(run.get("selected", 0) or 0)
+    if not selected:
+        selected = len(node_ids) if node_ids else (passed + failed + skipped)
+    stdout_summary = str(run.get("stdout_summary", "") or "")[-2000:]
+    output_hash = str(run.get("output_hash", "") or "")
+    if output_hash.startswith("sha256:"):
+        output_hash = output_hash[7:]
+    if not output_hash:
+        output_hash = hashlib.sha256(
+            stdout_summary.encode("utf-8", errors="replace")).hexdigest()
+    duration = run.get("duration_seconds")
+    return {
+        "run_id": run["run_id"],
+        "command": run["command"],
+        "exit_code": int(run.get("exit_code", -1)),
+        "passed": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "selected": selected,
+        "deselected": int(run.get("deselected", 0) or 0),
+        "node_ids": node_ids,
+        "output_hash": output_hash,
+        "head_sha": str(run.get("head_sha", "") or "") or head_sha,
+        "duration_seconds": 0.0 if duration is None else round(float(duration), 3),
+        "test_files": list(run.get("test_files") or []),
+        "stdout_summary": stdout_summary,
+    }
+
+
+def _read_verdict(path: str, default: str = "BLOCKED") -> str:
+    """The ``verdict`` a just-written gate artifact actually carries."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return str(json.load(fh).get("verdict") or default)
+    except Exception:
+        return default
+
+
 def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: list[str],
                                   file_hashes: dict, step: str, total_passed: int,
                                   verification_runs: list,
                                   repo_root: str = ".",
+                                  head_sha: str = "",
                                   verification_data: dict | None = None,
                                   feature_id: str | None = None) -> None:
     """Write the complete, semantically-consistent READY gate set + verification_tests for a manual
@@ -200,25 +264,37 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: 
         "stale_apply_proofs": [], "issues": [], "current_hashes": dict(file_hashes),
         "evidence_hashes": dict(file_hashes)})
     from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
+    # The runtime-integration gate is a SELF check: every one of its source
+    # patterns lives in Remedy's own tree (packages/orchestration/…). Pointing
+    # it at the subject repo made it report "source file not found" — BLOCKED —
+    # for any target repository that is not Remedy itself, while the gate set
+    # below still claimed PASS. It scans Remedy's tree, wherever it is
+    # installed, and the subject repo stays out of it.
     write_runtime_integration_gate(
-        evidence_dir, repo_root=repo_root,
+        evidence_dir, repo_root=_REMEDY_SOURCE_ROOT,
         verification_data=verification_data,
         feature_id=feature_id)
     _w(os.path.join(evidence_dir, "manifest_integrity.json"),
        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),
        {"schema_version": "1.0.0", "ok": True, "failures": []})
+    # The runtime verdict is READ BACK from the gate just written: a hardcoded
+    # "PASS" here contradicted the packaged artifact whenever the gate failed,
+    # and the coordinator rejects exactly that disagreement.
+    _rig_verdict = _read_verdict(os.path.join(evidence_dir, "runtime_integration_gate.json"))
+    _gate_checks = {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
+                    "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+                    "runtime_integration_gate": _rig_verdict}
+    _non_pass = [g for g, v in sorted(_gate_checks.items()) if v != "PASS"]
+    _blocked = [g for g, v in sorted(_gate_checks.items()) if v == "BLOCKED"]
     _w(os.path.join(evidence_dir, "commit_execution_gate.json"), {
-        "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
-        "blocked_gates": [], "non_pass_gates": ["final_verifier"],
-        "issues": ["gate 'final_verifier' is not PASS (verdict 'PASS_WITH_RISKS')"],
-        "gate_checks": {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
-                        "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
-                        "runtime_integration_gate": "PASS"}})
-    _VT_V11_FIELDS = {"run_id", "command", "exit_code", "passed", "failed", "test_files",
-                       "stdout_summary", "head_sha", "output_hash", "selected",
-                       "deselected", "skipped", "node_ids", "duration_seconds"}
-    _vt_runs = [{k: r[k] for k in _VT_V11_FIELDS if k in r} for r in verification_runs]
+        "schema_version": "1.0.0",
+        "verdict": "BLOCKED" if _blocked else "NEEDS_HUMAN_APPROVAL",
+        "promote_ready": False,
+        "blocked_gates": _blocked, "non_pass_gates": _non_pass,
+        "issues": [f"gate {g!r} is not PASS (verdict {_gate_checks[g]!r})" for g in _non_pass],
+        "gate_checks": _gate_checks})
+    _vt_runs = [_vt_run_v11(r, head_sha) for r in verification_runs]
     dc = " && ".join(r["command"] for r in verification_runs)
     de = 0 if all(r["exit_code"] == 0 for r in verification_runs) else 1
     from datetime import datetime as _dt

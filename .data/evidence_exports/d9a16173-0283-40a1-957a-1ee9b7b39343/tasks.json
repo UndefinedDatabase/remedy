@@ -1,0 +1,69 @@
+[
+ {
+  "safe_diff_files": [
+   "README.md",
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/do_cmd.py",
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F252.md",
+   "packages/orchestration/intake.py",
+   "packages/orchestration/job_evidence.py",
+   "packages/orchestration/manual_attestation.py",
+   "packages/orchestration/pingpong_loop.py",
+   "packages/orchestration/project_registry.py",
+   "packages/orchestration/scope_fences.py",
+   "packages/runtimes/runtime_config.py",
+   "tests/cli/test_do_cmd_summary.py",
+   "tests/cli/test_product_spine.py",
+   "tests/cli/test_scoped_listings.py",
+   "tests/docs/test_docs_consistency.py"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "tests/orchestration/test_development_artifact_boundary.py",
+   "tests/orchestration/test_event_replay.py",
+   "tests/orchestration/test_evidence_index.py",
+   "tests/orchestration/test_failure_postmortem.py",
+   "tests/orchestration/test_job_evidence.py",
+   "tests/orchestration/test_job_fulfillment.py",
+   "tests/orchestration/test_job_worktree_handoff.py",
+   "tests/orchestration/test_project_brain.py",
+   "tests/orchestration/test_project_summary.py",
+   "tests/orchestration/test_provider_evidence_integration.py",
+   "tests/orchestration/test_review_manual_completion_shapes.py",
+   "tests/orchestration/test_review_zip_hygiene.py",
+   "tests/orchestration/test_test_execution_service.py",
+   "tests/orchestration/test_test_runner.py",
+   "tests/orchestration/test_worker_queue.py",
+   "tests/regression/test_named_bugs.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "tests/regression/test_resource_safety.py",
+   "tests/runtimes/test_apps_ui_probe.py",
+   "tests/runtimes/test_supervisor_portability.py",
+   "tests/test_agent_tooling.py",
+   "tests/test_cli_main.py",
+   "tests/test_command_catalog.py",
+   "tests/test_command_discovery.py",
+   "tests/test_execution_foundation.py",
+   "tests/test_project_context_coverage.py",
+   "tests/test_remedy_smoke_script.py",
+   "tests/test_test_runner.py",
+   "tests/ui_contracts/test_graph_architecture.py",
+   "tests/ui_contracts/test_timeline_guard.py",
+   "tests/ui_contracts/test_ux_quality.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]

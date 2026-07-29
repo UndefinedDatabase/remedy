@@ -460,8 +460,15 @@ def _make_valid_evidence(ev_dir: Path, job_id: str = "test123") -> None:
     reason="git, bash, zip required",
 )
 class TestAutoSelectLatestEvidence:
+    """Root-dir auto-selection is RETIRED — see commits 01e2018 (mtime-based
+    root selection replaced by a hard error, "it cannot distinguish features")
+    and bd93397 (downgraded to warn-and-ignore so code snapshots still build).
+    These tests hold that retirement: `remedy-job-evidence-*` dirs in the repo
+    root are ignored with a warning, and only `--evidence-dir` / `--job-id`
+    select evidence. The explicit-selection tests below are unchanged.
+    """
 
-    def test_single_valid_evidence_dir_auto_selects(self, tmp_path: Path):
+    def test_single_root_evidence_dir_is_ignored_with_warning(self, tmp_path: Path):
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-aaa111"
         _make_valid_evidence(ev, "aaa")
@@ -471,10 +478,12 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "Auto-selected" in proc.stdout
+        assert "Auto-selected" not in proc.stdout
+        assert "IGNORED" in proc.stderr
+        assert "PACKAGE_STATUS=NO_EVIDENCE" in proc.stdout
 
-    def test_all_candidates_invalid_still_creates_zip(self, tmp_path: Path):
-        """All incomplete → newest selected, zip created with warning."""
+    def test_invalid_root_dirs_still_create_a_code_snapshot_zip(self, tmp_path: Path):
+        """Unusable root dirs never block the snapshot — they are just ignored."""
         repo = _make_git_repo_with_scripts(tmp_path)
 
         bad1 = repo / "remedy-job-evidence-bad1"
@@ -490,7 +499,8 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "incomplete" in proc.stdout.lower()
+        assert "not a final review package" in proc.stdout
+        assert "IGNORED" in proc.stderr
         assert list(repo.glob("*.zip"))
 
     def test_explicit_incomplete_creates_zip(self, tmp_path: Path):
@@ -574,6 +584,7 @@ class TestAutoSelectLatestEvidence:
             assert '"old"' in jf
 
     def test_stale_dirs_not_in_zip(self, tmp_path: Path):
+        """Neither root dir rides along — mtime buys nothing any more."""
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -598,9 +609,12 @@ class TestAutoSelectLatestEvidence:
             names = zf.namelist()
             assert not any("stale1" in n for n in names), \
                 "Stale evidence must not appear in zip"
-            assert "evidence/current/job_flow.json" in names
+            assert not any("current1" in n for n in names), \
+                "An unselected root dir must not appear either"
+            assert not any(n.startswith("evidence/") for n in names)
 
-    def test_manifest_validation_section(self, tmp_path: Path):
+    def test_manifest_has_no_current_evidence_for_root_dirs(self, tmp_path: Path):
+        """The manifest must not claim evidence the package does not carry."""
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -624,15 +638,9 @@ class TestAutoSelectLatestEvidence:
         assert zips
         with ZipFile(zips[0]) as zf:
             manifest = json.loads(zf.read(".review_zip_manifest.json"))
-        ce = manifest["current_evidence"]
-        assert ce["selection_mode"] == "deprecated_root_fallback"
-        assert ce["selected_from_candidate_count"] == 2
-        assert ce["zip_prefix"] == "evidence/current"
-        val = ce["validation"]
-        assert val["is_valid_current_run"] is True
-        assert val["validation_errors"] == []
-        assert val["selected_candidate_status"] == "valid"
-        assert val["selection_mode"] == "deprecated_root_fallback"
+        assert manifest["current_evidence"] is None
+        assert "EVIDENCE_AUTHORITATIVE=false" in proc.stdout
+        assert "NO_EVIDENCE" in zips[0].name
 
     def test_manifest_records_explicit_mode(self, tmp_path: Path):
         repo = _make_git_repo_with_scripts(tmp_path)
@@ -653,7 +661,8 @@ class TestAutoSelectLatestEvidence:
         ce = manifest["current_evidence"]
         assert ce["selection_mode"] == "explicit"
 
-    def test_candidate_summary_shows_rejection_reasons(self, tmp_path: Path):
+    def test_ignored_root_dirs_are_reported_with_remedies(self, tmp_path: Path):
+        """Ignoring is never silent: the count and both remedies are printed."""
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -670,23 +679,25 @@ class TestAutoSelectLatestEvidence:
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "candidate summary" in proc.stdout.lower()
-        assert "incomplete" in proc.stdout
-        assert "valid" in proc.stdout
+        assert "2 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
+        assert "--evidence-dir" in proc.stderr
+        assert "do job-evidence" in proc.stderr
 
     def test_missing_command_transcript_creates_zip_with_warning(self, tmp_path: Path):
-        """Missing command_transcript.json → zip created, validation records it."""
+        """Missing command_transcript.json → zip created, validation records it.
+
+        Selected explicitly: root dirs are no longer picked up on their own.
+        """
         repo = _make_git_repo_with_scripts(tmp_path)
         ev = repo / "remedy-job-evidence-noct"
         _make_valid_evidence(ev, "noct")
         (ev / "command_transcript.json").unlink()
 
         proc = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh"],
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
-        assert "incomplete" in proc.stdout.lower()
 
         import json
         from zipfile import ZipFile
@@ -723,6 +734,7 @@ class TestAutoSelectLatestEvidence:
         assert "review.json" in result["required_task_artifacts"]["T001"]
 
     def test_unselected_evidence_not_in_zip(self, tmp_path: Path):
+        """With an explicit selection, the sibling root dir stays out."""
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -735,7 +747,7 @@ class TestAutoSelectLatestEvidence:
         os.utime(other / "job_flow.json", (1000000, 1000000))
 
         proc = subprocess.run(
-            ["bash", "scripts/make_review_zip.sh"],
+            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(sel)],
             cwd=repo, capture_output=True, text=True, timeout=30,
         )
         assert proc.returncode == 0
@@ -765,8 +777,9 @@ class TestAutoSelectLatestEvidence:
                         if n.startswith("evidence/")]
             assert all(n.startswith("evidence/current/") for n in ev_files)
 
-    def test_manifest_rejected_candidate_count(self, tmp_path: Path):
-        """R-4332: manifest tracks rejected_candidate_count."""
+    def test_root_dirs_are_counted_as_ignored_not_as_candidates(self, tmp_path: Path):
+        """R-4332 counted rejected CANDIDATES; root dirs are no longer
+        candidates at all, so the count they now feed is the ignored count."""
         import os
         repo = _make_git_repo_with_scripts(tmp_path)
 
@@ -788,11 +801,11 @@ class TestAutoSelectLatestEvidence:
 
         import json
         from zipfile import ZipFile
+        assert "3 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
         zips = list(repo.glob("*.zip"))
         with ZipFile(zips[0]) as zf:
             manifest = json.loads(zf.read(".review_zip_manifest.json"))
-        val = manifest["current_evidence"]["validation"]
-        assert val["rejected_candidate_count"] == 2
+        assert manifest["current_evidence"] is None
 
 
 class TestFilenamePattern:
@@ -1067,7 +1080,9 @@ class TestIndexedEvidenceSelection:
         m = _zip_manifest(repo)
         assert m["current_evidence"]["job_id"] == "current001"
 
-    def test_legacy_root_evidence_only_via_deprecated_fallback_with_warning(self, tmp_path: Path):
+    def test_legacy_root_evidence_is_ignored_with_warning(self, tmp_path: Path):
+        """The deprecated root fallback is gone (01e2018 / bd93397): legacy
+        dirs are warned about and ignored, never selected."""
         repo = _make_git_repo_with_scripts(tmp_path)
         _make_valid_evidence(repo / "remedy-job-evidence-legacy1", "legacy1")
 
@@ -1075,7 +1090,8 @@ class TestIndexedEvidenceSelection:
         assert proc.returncode == 0, proc.stdout + proc.stderr
         combined = proc.stdout + proc.stderr
         assert "deprecated" in combined.lower(), combined
-        assert _zip_manifest(repo)["current_evidence"]["selection_mode"] == "deprecated_root_fallback"
+        assert "IGNORED" in proc.stderr
+        assert _zip_manifest(repo)["current_evidence"] is None
 
     def test_jsonl_and_status_md_participate_in_alignment(self, tmp_path: Path):
         """A bundle covering only .py could never align if .jsonl/.md were ignored."""

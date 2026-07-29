@@ -1,60 +1,67 @@
-# Handback — PH v4: four process rulings persisted (docs only)
+# Handback — F252 R4b (closure, corrected ordering) — CLOSED
 
 ## Range
-Review of `bcc7ede..HEAD` — `chore/process-hardening-v4`, 4 commits, pushed, PR open, NOT merged.
+Review of d9a146a..HEAD · feature/f252-standing-red-paydown · preconditions PASS ·
+evidence job + READY zip · README + STATUS `[x]` in ONE final commit (R-0154) · PR open,
+not merged.
 
 ## Commits
-### 38c6065 bookkeeping · 0982b01 planner · ecbf95f split_workflow · this commit
+### d543d44 chore(f252): persist the R4 stop verdict + R-0154 resolution
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/phv4-r1-1..11.md | +134 | 38c6065 — eleven texts, sha256-verified |
-| .agent/last_block.md | +164 −58 | 38c6065 — OUTCOME pending + received block |
-| .agent/{live_review,plan}.md | +19 −58 | 38c6065 — full replaces r1-10 / r1-11 (cmp 0) |
-| docs/agents/planner_reviewer_prompt.md | +40 −18 | 0982b01 — r1-1..r1-6 (5 replaces, 1 insert) |
-| docs/agents/split_workflow.md | +19 −1 | ecbf95f — r1-7 append, r1-8 replace, r1-9 insert |
-| .agent/{last_block,handoff}.md | this commit | OUTCOME→executed; this handback (R-0149 self-ref) |
-
-## Item status
-| Item | Status | Reason |
+| .agent/authored/f252-r4b-1/2.md · live_review.md · plan.md · last_block.md | +236/-63 | authored texts sha256-verified, applied by copy; R4b block |
+### 25eb5bd chore(f252): commit closure evidence (after READY zip)
+| Path | +/- | Reason |
 |---|---|---|
-| Open PR Gate | done | `gh pr list --state open` → empty; main bcc7ede clean |
-| 1 Commit A | done | 38c6065; 11/11 sha256 matched first try |
-| 2/3 Commits B,C | done | 0982b01 (6 edits), ecbf95f (3); containment 0 ×9, absence 0 ×3 |
-| 4 verification a–g | done | 4d/4f pre-existing red only — see below |
-| 5/6 Commit D + PR | done | this commit; PR created, NOT merged |
+| .data/evidence_exports/d9a16173-…/ (83 files) | +new | the closure bundle, `git add -f` past `.gitignore:211 .data/` (F251 precedent); committed only after the READY zip existed (F147 lesson) |
+### final commit chore(f252): close F252 — STATUS [x] + README sync
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/STATUS.md · README.md | +4/-4 | the authored line with its four placeholders substituted, plus the three ordered README edits — together, so the ledger pin never sees a disagreement |
+| .agent/handoff.md · last_block.md | rewrite · +1/-1 | this handback; OUTCOME → executed |
 
 ## External actions
-`gh pr list --state open` → `[]` (raw: no output) · branch from bcc7ede · push per commit · `gh pr create` → PR open, NOT merged. No merges this round.
+3 pushes to origin/feature/f252-standing-red-paydown; `make_review_zip.sh --evidence-dir
+.data/evidence_exports/d9a16173-…` → READY_FOR_REVIEW; `gh pr create` right after the
+final commit (number in the handback message). NOT merged. No worktree.
 
 ## Verification
-    4a containment exit 0 ×9 — r1-1..6 planner_reviewer_prompt, r1-7..9 split_workflow
-    4b cmp exit 0 — r1-10 vs live_review.md, r1-11 vs plan.md
-    4c grep -c = 0 ×3 retired strings ("COPY FROM THE NEXT LINE TO THE END",
-       "needing an operator decision", "F135/F052 flake debt")
-    4d test_dashboard_contract.py -q → 2 failed, 68 passed
-    4e canary test_golden_path.py -q → 42 passed · 4f tests/docs/ -q → 13 failed,
-       279 passed · 4g git status --porcelain → empty
-
-**4d/4f are NOT regressions — proven, not asserted.** The 15 failing ids diffed
-against the catalogued F251 baseline (`churn_gate2_run1.txt`): `comm -23` EMPTY,
-so all are pre-existing standing red owned by F252. The 13 in tests/docs are
-README pinned-text drift; the 2 in dashboard_contract read `.agent/context.md`,
-untouched by this round.
+- Preconditions `integrity check --json` → exit 0, `"passed": true, "fail_count": 0,
+  "check_count": 5` (handler_import 312, live_review_verdict, plan_consistency 0,
+  relevant_untracked 0/0, high_blockers none). Tree clean, branch synced.
+- Evidence job **d9a16173-0283-40a1-957a-1ee9b7b39343** via
+  `create_manual_completion_bundle(review_feature_id="f252", …)`, base 7baff1dd… → head
+  d543d445…: PASS_WITH_RISKS, 46 authority files, 25 commits, 3 attested tasks, 334
+  passed; gate matrix `ok: True`, `validate_manual_completion() == []`, candidate valid.
+- Zip **remedy-review-20260729-153036-READY_FOR_REVIEW.zip**, SHA-256
+  **7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8** (script output,
+  `sha256sum` agrees): READY_FOR_REVIEW, ALIGNMENT=PASS, AUTHORITATIVE=true, 1588
+  members, authoritative 46; manifest `committed_review_subject` 7baff1dd… → d543d445…;
+  `testzip()` → None. **accepted HEAD = d543d445cd1f9ecb6d092e64fe670881bc6fff67**.
+- Applied STATUS line, verbatim:
+  `- [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)`
+  `grep -cF` new = **1**, old `- [~] …` = **0**; `cmp` on-disk vs substituted template → 0.
+- Pre-commit gate on these exact bytes: `pytest tests/docs/ -q` → 0, "292 passed";
+  canary → 0, "42 passed". Post-commit re-run in the handback message.
 
 ## Authored-text proofs
-All eleven matched their BEGIN markers on the FIRST attempt (no recovery needed):
-`a9229592… 4716a3d3… bd284198… 19e3f85f… b63db559… f6644e33… 8ae895f2… fc5f709c…
-eb5327a7… ec70ff73… d55de1e8…`
+f252-r4b-1 `f91bd529…`, f252-r4b-2 `d2d810d5…`: on-disk `sha256sum` matched the BEGIN
+markers BEFORE any commit; applied by copy, `cmp` exit 0 both. f252-r4-4 re-verified to
+`79db25a5…` immediately before substitution (one line, 222 chars). Provenance: `<JOB_ID>`
+from the producer output; `<ZIP_FILENAME>`/`<ZIP_SHA256>` from make_review_zip.sh's JSON
+(`final_path`, `final_sha256`); `<HEAD_SHA>` from the manifest's
+`committed_review_subject.head_commit`. Nothing else in the line was touched.
 
 ## Deviations & assumptions
-- Duplicate-block guard: previous `.agent/last_block.md` carried `OUTCOME:
-  executed` and these are new bytes → normal execution, as the rule prescribes.
-- Gap worth a ruling: the PH v3 authored-state rule (§4 item 11) covers
-  `live_review.md` and `plan.md` but NOT `.agent/context.md`, still F046's and
-  keeping two contract tests red. r1-10/r1-11 satisfy the four tests the rule
-  names; the context.md pair stays red, with F252.
-- The local `chore/process-hardening-v3` ref still exists (remote deleted on
-  merge); outside this round's change set. Open findings: 0; no AGENTS.md conflict.
+- A first bundle was discarded before any commit: `output_hash` hashed unstripped stdout
+  while `stdout_summary` was stored stripped → `output_hash does not match
+  sha256(stdout_summary)`. Rebuilt with a fresh job id over the stored bytes; the
+  discarded directory removed.
+- Evidence dir needed `git add -f` (`.gitignore:211`) and the zip is not committed
+  (`remedy-review-*` ignored) — F251 / F048 precedent.
+- The PR number is not in this file: the handoff is written inside the last commit
+  (Rule A4), the PR is created after it — as in F251.
 
 ## Next
-Handing back to Window 1 for review of bcc7ede..HEAD.
+Reviewer closure review + feature-done banner; PR merges at the next feature's start via
+the Open PR Gate. Next per Rule A5: F050, fresh window.

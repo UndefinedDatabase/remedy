@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-13 of 250 features accepted. Next: F081 (remedy init).
+25 of 252 registered items accepted. Next: F050 (DAG scheduling).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
-| 0 | Foundation & Trust Core | 13 | 16 |
-| 1 | Self-Build Bootstrap | 0 | 20 |
+| 0 | Foundation & Trust Core | 16 | 16 |
+| 1 | Self-Build Bootstrap | 9 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
@@ -39,12 +39,18 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 16 | Cockpit v2 | 0 | 10 |
 | 17 | Self-Improvement & Ecosystem | 0 | 8 |
 
-Accepted foundation (Tier 0 so far):
+Accepted foundation (Tier 0, complete):
 F001 adaptive timeouts, F002 prompt-trace evidence, F003 token/cost truth,
 F004 raw stream evidence, F005 enforced structured outputs, F006 worktree isolation,
 F007 runtime harness, F010 failure post-mortems, F011 kill switch,
 F012 deterministic runs, F017 scope fences, F018 budgets & stop conditions,
-F146 project identity & repo autodetection.
+F081 remedy init, F146 project identity & repo autodetection, F147 golden-path CLI,
+F148 project scoping everywhere.
+
+Accepted in Tier 1 so far:
+F013 job intake, F014 flight plan, F016 scaling task granularity,
+F034 bundled clarification, F046 multi-cycle loop, F047 checkpoint & resume,
+F048 job queue, F251 full-suite stabilization, F252 standing-red paydown.
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 
@@ -77,7 +83,7 @@ remedy runtime serve                       # start dev-server supervisor (F007)
 | What | Where |
 |------|-------|
 | Doc index | [`docs/README.md`](docs/README.md) |
-| Roadmap (250 features) | [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) |
+| Roadmap (250 features + registered items) | [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) |
 | Execution ledger | [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md) |
 | Agent rules | [`AGENTS.md`](AGENTS.md) |
 | Operator quickstart | [`docs/guides/simple-operator-quickstart-v0.md`](docs/guides/simple-operator-quickstart-v0.md) |

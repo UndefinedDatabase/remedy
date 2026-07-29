@@ -1,0 +1,34 @@
+{
+ "bundle_generated_at": "2026-07-29T00:00:00.000000+00:00",
+ "bundle_type": "job_evidence",
+ "bundle_version": "0.1.0",
+ "completion_mode": "manual_operator_repair",
+ "context_strategy": "task_bounded_sequential_job",
+ "created_at": "2026-07-29T00:00:00.000000+00:00",
+ "effective_status": "operator_attested_complete",
+ "error": "",
+ "evidence_available": true,
+ "execution_config": null,
+ "finished_at": "",
+ "human_final_reviewer_required": true,
+ "job_file_sha256": "648d8a32d14cdf32d06beb12c501b36e826626e8beb1034fcf1c7a9b31637ae6",
+ "job_id": "d9a16173-0283-40a1-957a-1ee9b7b39343",
+ "job_title": "F252 Standing-red paydown",
+ "job_workspace_path": "",
+ "persisted_status": "planned",
+ "repo_identity": "[local]",
+ "status": "planned",
+ "target_guard": null,
+ "task_count": 3,
+ "task_ids": [
+  "T001",
+  "T002",
+  "T003"
+ ],
+ "task_run_ids": {},
+ "task_statuses": {
+  "T001": "pending",
+  "T002": "pending",
+  "T003": "pending"
+ }
+}

@@ -371,8 +371,15 @@ class TestSmokeScriptText:
             viewer_block = text[start:end]
         else:
             viewer_block = text
-        assert "assert " not in viewer_block, (
-            "viewer sanity block must not use bare 'assert' — use explicit error messages"
+        # BARE means "without an error message". The block now asserts with
+        # explicit messages (`assert st['name'] == …, 'wrong name: ' + …`),
+        # which is exactly what this rule asks for; a blanket ban on the word
+        # forbade the fixed form too.
+        bare = [ln.strip() for ln in viewer_block.splitlines()
+                if ln.strip().startswith("assert ") and "," not in ln]
+        assert not bare, (
+            "viewer sanity block must not use bare 'assert' — use explicit "
+            f"error messages; found: {bare}"
         )
 
     def test_viewer_sanity_block_prints_actionable_errors(self):

@@ -87,15 +87,15 @@ class TestResourceSafetyDocs:
     """Safety docs must mention key policy rules."""
 
     def test_reviewer_safety_doc_exists(self):
-        assert (REPO_ROOT / "docs" / "reviewer-safety.md").exists()
+        assert (REPO_ROOT / "docs" / "system" / "reviewer-safety.md").exists()
 
     def test_docs_mention_no_background_pytest(self):
-        text = (REPO_ROOT / "docs" / "reviewer-safety.md").read_text()
+        text = (REPO_ROOT / "docs" / "system" / "reviewer-safety.md").read_text()
         assert "background" in text.lower()
         assert "never" in text.lower()
 
     def test_docs_mention_single_session(self):
-        text = (REPO_ROOT / "docs" / "reviewer-safety.md").read_text()
+        text = (REPO_ROOT / "docs" / "system" / "reviewer-safety.md").read_text()
         assert "parallel" in text.lower() or "single" in text.lower()
 
     def test_tests_readme_mentions_wrapper(self):

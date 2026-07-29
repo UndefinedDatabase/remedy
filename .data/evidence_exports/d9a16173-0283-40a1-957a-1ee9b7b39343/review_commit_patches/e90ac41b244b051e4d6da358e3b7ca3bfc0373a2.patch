@@ -1,0 +1,158 @@
+e90ac41b244b051e4d6da358e3b7ca3bfc0373a2
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 2b2e534..d88c4ee 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1756,3 +1756,18 @@ Product bugs:
+    token_truth.json therefore refused to build and the artifact-contract gate
+    went BLOCKED on a clean export. Zero is the honest count; the one test that
+    asserted the ABSENCE of those fields now asserts the schema.
++
++## 2026-07-29: F252 D3 + D12 — the two operator-decision classes, executed
++D3 (10 ids): the pre-rebuild `apps/ui/src/components/graph/legacy/*.tsx`
++sources these assert (RemedyBrainFlow.tsx, semanticZoom.ts, the organic
++layout, the old index.html markers) are not in the tree — the graph directory
++holds the rebuilt components instead. Nothing to fix before the UI is rebuilt,
++so each id carries `@pytest.mark.skip` with its own reason string and the
++backlog reference "Tier 5 UI build (F019+)". No file deleted, no assertion
++weakened, no blanket directory skip.
++D12 (1 id): git history answers it — 219dd32 deleted
++`.claude/agents/remedy-reviewer.md` deliberately as finding R-0074
++("superseded by split workflow Window 1"). A reasoned removal, so per the
++round's rule it is quarantined rather than restored; the skip names the
++commit, the finding, and the document that now carries the read-only
++reviewer contract (docs/agents/planner_reviewer_prompt.md).
+diff --git a/tests/regression/test_named_bugs.py b/tests/regression/test_named_bugs.py
+index ef1a0f7..0845391 100644
+--- a/tests/regression/test_named_bugs.py
++++ b/tests/regression/test_named_bugs.py
+@@ -293,6 +293,8 @@ class TestSmokeContractReset:
+         src = (Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "ForceBrainGraph.tsx").read_text()
+         assert "react-force-graph-2d" in src
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_legacy_brain_flow_under_legacy(self):
+         """Old RemedyBrainFlow.tsx preserved under legacy/."""
+         p = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "RemedyBrainFlow.tsx"
+@@ -308,6 +310,8 @@ class TestSmokeContractReset:
+         css = (Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "panels" / "RightLivePanel.module.css").read_text()
+         assert "taskRow" in css
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_legacy_semantic_zoom_under_legacy(self):
+         """Old semanticZoom.ts preserved under legacy/."""
+         p = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts"
+@@ -315,6 +319,8 @@ class TestSmokeContractReset:
+         src = p.read_text()
+         assert "semanticZoomLevel" in src
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_legacy_organic_layout_under_legacy(self):
+         """Old organicLayout.ts preserved under legacy/."""
+         p = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "organicLayout.ts"
+@@ -379,6 +385,8 @@ class TestSmokeSafety:
+         for pattern in ["cdn.", "googleapis.com", "unpkg.com", "jsdelivr.net"]:
+             assert pattern not in html
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_index_html_has_ux_contract_markers(self):
+         """Legacy semantic zoom module exists under legacy/ and reduced-motion support present."""
+         sz = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts")
+@@ -386,11 +394,15 @@ class TestSmokeSafety:
+         css = Path(_ROOT / "apps" / "ui" / "src" / "styles" / "globals.css").read_text()
+         assert "prefers-reduced-motion" in css, "missing reduced-motion in globals.css"
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_renderer_exports_semantic_zoom_fn(self):
+         """Legacy semanticZoom.ts should export semanticZoomLevelFromViewportZoom."""
+         src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()
+         assert "semanticZoomLevelFromViewportZoom" in src
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_renderer_wheel_cannot_reach_level_6(self):
+         """Semantic zoom max level should be 4, not 6."""
+         src = Path(_ROOT / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()
+diff --git a/tests/test_agent_tooling.py b/tests/test_agent_tooling.py
+index 42f609a..0561106 100644
+--- a/tests/test_agent_tooling.py
++++ b/tests/test_agent_tooling.py
+@@ -6,6 +6,8 @@ import ast
+ import json
+ from pathlib import Path
+ 
++import pytest
++
+ from scripts import remedy_agent_tooling_doctor as doctor
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+@@ -38,6 +40,12 @@ def test_agent_skills_have_expected_files():
+         assert "AGENTS.md" in text
+ 
+ 
++@pytest.mark.skip(reason=(
++    "D12 quarantine (F252): .claude/agents/remedy-reviewer.md was deleted "
++    "deliberately in 219dd32 (finding R-0074 — superseded by the split "
++    "workflow's Window 1, docs/agents/planner_reviewer_prompt.md). The "
++    "read-only reviewer contract now lives there. Backlog: re-pin this "
++    "contract on the split-workflow docs, or retire the test."))
+ def test_claude_agent_is_read_only_reviewer():
+     text = (ROOT / ".claude/agents/remedy-reviewer.md").read_text(encoding="utf-8")
+     assert "tools: Read, Grep, Glob" in text
+diff --git a/tests/ui_contracts/test_graph_architecture.py b/tests/ui_contracts/test_graph_architecture.py
+index 0b6b7af..93f38d3 100644
+--- a/tests/ui_contracts/test_graph_architecture.py
++++ b/tests/ui_contracts/test_graph_architecture.py
+@@ -7,6 +7,7 @@ from __future__ import annotations
+ 
+ import json
+ import tempfile
++import pytest
+ from pathlib import Path
+ from unittest.mock import MagicMock
+ from uuid import uuid4
+@@ -437,6 +438,8 @@ class TestExplainableEdges:
+         for e in vm["edges"]:
+             assert "is_primary_chain" in e
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_legacy_edge_component_under_legacy(self):
+         """Old SoftGlowEdge.tsx is preserved under legacy/."""
+         edge = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "SoftGlowEdge.tsx"
+@@ -478,6 +481,8 @@ class TestSemanticZoomDirection:
+         for i in range(1, len(counts)):
+             assert counts[i] >= counts[i - 1], f"counts[{i}]={counts[i]} < counts[{i-1}]={counts[i-1]}"
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_renderer_zoom_direction_in_legacy_source(self):
+         """Verify legacy semanticZoom.ts maps lower viewport zoom to lower level."""
+         src = (Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "semanticZoom.ts").read_text()
+diff --git a/tests/ui_contracts/test_ux_quality.py b/tests/ui_contracts/test_ux_quality.py
+index 8e793d8..27bce5a 100644
+--- a/tests/ui_contracts/test_ux_quality.py
++++ b/tests/ui_contracts/test_ux_quality.py
+@@ -504,6 +504,8 @@ class TestUXAntiRegression:
+         # Labels gated by globalScale threshold
+         assert "globalScale" in content, "Label visibility must be gated by zoom scale"
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_legacy_graph_files_under_legacy(self):
+         """Old React Flow graph files live under legacy/ directory."""
+         legacy = Path(__file__).resolve().parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy"
+@@ -538,6 +540,8 @@ class TestScreenSpaceLabels:
+         assert "PIXI" not in content, "ForceBrainGraph should not import raw PIXI"
+         assert "pixi.js" not in content, "ForceBrainGraph should not depend on pixi.js"
+ 
++    @pytest.mark.skip(reason=(
++        "D3 quarantine (F252): the pre-rebuild apps/ui legacy/*.tsx sources this asserts are not in the tree; the UI is rebuilt in Tier 5 (F019+). Backlog: Tier 5 UI build (F019+)."))
+     def test_legacy_graph_nodes_under_legacy(self):
+         """Old GraphNodes.tsx lives under legacy/, not top-level graph/."""
+         legacy = Path(__file__).parent.parent.parent / "apps" / "ui" / "src" / "components" / "graph" / "legacy" / "GraphNodes.tsx"

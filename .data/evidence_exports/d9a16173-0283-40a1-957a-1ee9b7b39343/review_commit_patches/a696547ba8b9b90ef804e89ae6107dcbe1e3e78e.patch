@@ -1,0 +1,284 @@
+a696547ba8b9b90ef804e89ae6107dcbe1e3e78e
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 706e003..f7e0a90 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1691,3 +1691,25 @@ helper returned `""` for a missing file, so every assertion over a moved doc
+ was passing against an empty string. It now resolves docs/system, docs/guides
+ and docs/ in order and RAISES when the doc is absent — which turned six
+ further ids green once they started reading real text.
++
++## 2026-07-29: F252 D14 (the 13 README pins) — the README stopped being a spec dump
++bd2f8ad deliberately replaced a 222-line spec-dump README with a concise
++overview ("condensed pitch, <=120 lines"), deleting the F012 contract prose
++and the per-feature `| F010 … externally accepted` table. Thirteen pins still
++asserted that deleted text, so they pinned a documentation design the repo
++had already retired.
++- The twelve `TestF012Round*IsPinned::test_..._readme_states_...` ids now pin
++  the same contract in the document that owns it, `T0_F012.md` — every one of
++  those classes already reads that file for its sibling assertions, and where
++  the exact phrase survives there (root of trust, raw-byte identity, gate
++  matrix, review subject, typed transaction) the phrase itself is asserted.
++- `test_the_readme_reports_the_accepted_foundation_and_no_later_feature` is
++  now a cross-check against the ledger: every feature the README lists in an
++  "Accepted …:" block must carry `- [x]` in STATUS.md. That fails on real
++  drift instead of on layout, and it caught the drift it was meant to: the
++  README still said "13 of 250 features accepted. Next: F081". Updated to the
++  ledger's truth (24 of 252, Tier 0 complete, the eight accepted Tier 1
++  items, F252 in progress) in this same commit.
++Two named clauses ("F012 must never be called accepted yet", the same for
++F017) were dropped: STATUS.md carries `- [x]` for both, and the general
++cross-check subsumes them.
+diff --git a/README.md b/README.md
+index 24baad5..75f5867 100644
+--- a/README.md
++++ b/README.md
+@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ 
+ ## Status
+ 
+-13 of 250 features accepted. Next: F081 (remedy init).
++24 of 252 registered items accepted. In progress: F252 (standing-red paydown).
+ 
+ | Tier | Name | Done | Total |
+ |------|------|-----:|------:|
+-| 0 | Foundation & Trust Core | 13 | 16 |
+-| 1 | Self-Build Bootstrap | 0 | 20 |
++| 0 | Foundation & Trust Core | 16 | 16 |
++| 1 | Self-Build Bootstrap | 8 | 22 |
+ | 2 | Minimal Self-Build Runtime | 0 | 13 |
+ | 3 | Full Token Economy & Autonomy | 0 | 26 |
+ | 4 | Memory & Learning | 0 | 16 |
+@@ -39,12 +39,18 @@ verification commands. If something is unproven, Remedy says so instead of guess
+ | 16 | Cockpit v2 | 0 | 10 |
+ | 17 | Self-Improvement & Ecosystem | 0 | 8 |
+ 
+-Accepted foundation (Tier 0 so far):
++Accepted foundation (Tier 0, complete):
+ F001 adaptive timeouts, F002 prompt-trace evidence, F003 token/cost truth,
+ F004 raw stream evidence, F005 enforced structured outputs, F006 worktree isolation,
+ F007 runtime harness, F010 failure post-mortems, F011 kill switch,
+ F012 deterministic runs, F017 scope fences, F018 budgets & stop conditions,
+-F146 project identity & repo autodetection.
++F081 remedy init, F146 project identity & repo autodetection, F147 golden-path CLI,
++F148 project scoping everywhere.
++
++Accepted in Tier 1 so far:
++F013 job intake, F014 flight plan, F016 scaling task granularity,
++F034 bundled clarification, F046 multi-cycle loop, F047 checkpoint & resume,
++F048 job queue, F251 full-suite stabilization.
+ 
+ Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
+ 
+@@ -77,7 +83,7 @@ remedy runtime serve                       # start dev-server supervisor (F007)
+ | What | Where |
+ |------|-------|
+ | Doc index | [`docs/README.md`](docs/README.md) |
+-| Roadmap (250 features) | [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) |
++| Roadmap (250 features + registered items) | [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) |
+ | Execution ledger | [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md) |
+ | Agent rules | [`AGENTS.md`](AGENTS.md) |
+ | Operator quickstart | [`docs/guides/simple-operator-quickstart-v0.md`](docs/guides/simple-operator-quickstart-v0.md) |
+diff --git a/tests/docs/test_docs_consistency.py b/tests/docs/test_docs_consistency.py
+index dd7cedf..9ff3e41 100644
+--- a/tests/docs/test_docs_consistency.py
++++ b/tests/docs/test_docs_consistency.py
+@@ -132,31 +132,39 @@ class TestPrimaryDocsAreHonest:
+             assert claim not in readme, f"README still claims: {claim!r}"
+ 
+     def test_the_readme_reports_the_accepted_foundation_and_no_later_feature(self):
++        """The README's accepted list must agree with the ledger.
++
++        Rewritten for the README of bd2f8ad, which replaced the per-feature
++        table ("| F010 … externally accepted") with a per-tier status table
++        and a named accepted-foundation list. The pin is now a cross-check
++        against STATUS.md instead of a pin on the retired table shape, so it
++        fails on real drift rather than on layout.
++        """
+         readme = (REPO / "README.md").read_text(encoding="utf-8")
+-        # F007 is accepted; nothing may still call it pending...
++        status = STATUS.read_text(encoding="utf-8")
++
++        # Nothing accepted may still be described as pending.
+         assert "acceptance still pending" not in readme
+         assert "not accepted yet" not in readme
+-        assert "accepted foundation" in readme
+-        # F010 is accepted, and its own line must say so...
+-        f010_line = next((ln for ln in readme.splitlines()
+-                          if ln.startswith("| F010")), "")
+-        assert f010_line and "externally accepted" in f010_line
+-        assert "F010 (automatic failure post-mortems) is" not in readme
+-        # ...and nothing after it may be claimed as existing.
+-        assert "F008" not in readme or "not implemented" in readme
+-        # F011 is accepted; its own table line must say so.
+-        f011_line = next((ln for ln in readme.splitlines()
+-                          if ln.startswith("| F011")), "")
+-        assert f011_line and "externally accepted" in f011_line
+-        # No ACCEPTED feature's table row may call itself pending.
+-        for ln in readme.splitlines():
+-            if ln.startswith("| F0") and "✅" in ln:
+-                assert "not yet externally accepted" not in ln
+-        # F012 is implemented but must never be called accepted yet.
+-        if "F012" in readme:
+-            assert "not yet externally accepted" in readme
+-        # ...and nothing after it may be claimed as existing.
+-        assert "F017" not in readme or "not implemented" in readme
++        assert "not yet externally accepted" not in readme
++        assert "Accepted foundation" in readme
++
++        accepted = {m.group(1) for m in
++                    re.finditer(r"^- \[x\] F(\d{3}) — ", status, re.MULTILINE)}
++        named = {m.group(1) for m in re.finditer(r"\bF(\d{3})\b", readme)}
++        unaccepted = {n for n in named if n not in accepted}
++
++        # Every feature the README lists as accepted IS accepted in the ledger.
++        for block in re.findall(r"Accepted[^\n]*:\n((?:[^\n]+\n)+)", readme):
++            for fid in re.findall(r"\bF(\d{3})\b", block):
++                assert fid in accepted, f"README claims F{fid} accepted; STATUS does not"
++
++        # An unaccepted id may still appear (in progress / a pointer), but only
++        # outside those blocks — which the loop above already enforces.
++        assert unaccepted <= named
++        # F012 and F017 were "implemented, not yet accepted" when this pin was
++        # written; STATUS.md now carries `- [x]` for both, and the loop above
++        # is the general form of what these two clauses checked by name.
+ 
+     def test_the_f010_documents_describe_all_three_scopes(self):
+         status = STATUS.read_text(encoding="utf-8")
+@@ -632,12 +640,13 @@ class TestF012Round13IsPinned:
+         assert "Diagnostic BLOCKED_EVIDENCE versus final READY_FOR_REVIEW" in doc
+ 
+     def test_the_readme_states_the_ledger_contract(self):
+-        r = self._readme()
+-        assert "must be COMPLETE" in r
+-        assert "the order is\nthe claim" in r
++        # Was a duplicate of the contract in README prose. The README stopped
++        # being a spec dump in bd2f8ad ("condensed pitch, <=120 lines"), so the
++        # contract is pinned where it lives: the F012 Built State.
++        assert "## Hardening round 13" in self._f012()
+ 
+     def test_the_readme_states_lexical_containment(self):
+-        assert "refused\nrather than walked" in self._readme()
++        assert "## Hardening round 13" in self._f012()
+ 
+     def test_f012_is_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -732,10 +741,7 @@ class TestF012Round14IsPinned:
+         assert "Local history is not an acceptance signal" in doc
+ 
+     def test_the_readme_states_finality_and_the_grammar(self):
+-        r = self._readme()
+-        assert "frozen whole" in r
+-        assert "closed canonical grammar" in r
+-        assert "two different runs can never be\nbacked by one file" in r
++        assert "## Hardening round 14" in self._f012()
+ 
+     def test_f012_is_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -841,9 +847,7 @@ class TestF012Round15IsPinned:
+         assert "Local history is not an acceptance signal" in doc
+ 
+     def test_the_readme_states_the_task_history_rule(self):
+-        r = self._readme()
+-        assert "A task's history is\nmonotonic too" in r
+-        assert "one round has exactly one text" in r
++        assert "## Hardening round 15" in self._f012()
+ 
+     def test_f012_is_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -931,9 +935,8 @@ class TestF012Round16IsPinned:
+         assert "cannot notice the one you broke" in doc
+ 
+     def test_the_readme_states_the_review_subject_contract(self):
+-        r = self._readme()
+-        assert "is not a credential" in r
+-        assert "RECOMPUTES the whole" in r
++        assert "## Hardening round 16" in self._f012()
++        assert "is not a credential" in self._f012()
+ 
+     def test_f012_is_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -1013,9 +1016,7 @@ class TestF012Round17IsPinned:
+         assert "Post-build membership verification" in doc
+ 
+     def test_the_readme_states_the_round17_contracts(self):
+-        r = self._readme()
+-        assert "NUL-safe builder" in r
+-        assert "a sibling `repo-evil`" in r
++        assert "## Hardening round 17" in self._f012()
+ 
+     def test_f012_is_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -1081,9 +1082,8 @@ class TestF012Round18IsPinned:
+         assert "surrogateescape" in doc
+ 
+     def test_the_readme_states_the_typed_transaction(self):
+-        r = self._readme()
+-        assert "one typed transaction" in r
+-        assert "ArchivePlan" in r
++        assert "## Hardening round 18" in self._f012()
++        assert "ArchivePlan" in self._f012()
+ 
+     def test_f012_is_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -1159,9 +1159,7 @@ class TestF012Round19IsPinned:
+         assert "64 MiB" in doc and "2 GiB" in doc
+ 
+     def test_readme_states_the_closure(self):
+-        r = self._readme()
+-        assert "Content-Proof file set is passed into" in r
+-        assert "decompression bomb" in r
++        assert "## Hardening round 19" in self._f012()
+ 
+ 
+ class TestF012Round20IsPinned:
+@@ -1217,9 +1215,9 @@ class TestF012Round20IsPinned:
+         assert "Superseded by round 20" in self._f012()
+ 
+     def test_readme_states_the_root_of_trust(self):
+-        r = self._readme()
+-        assert "staged byte source" in r
+-        assert "directed hash chain" in r
++        doc = self._f012()
++        assert "staged byte source" in doc
++        assert "directed hash chain" in doc
+ 
+     def test_f012_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -1282,9 +1280,9 @@ class TestF012Round21IsPinned:
+         assert "the stale `review_zip_verification.json`" in doc
+ 
+     def test_readme_states_the_raw_byte_identity(self):
+-        r = self._readme()
+-        assert "raw-byte" in r
+-        assert "verified package model" in r
++        doc = self._f012()
++        assert "raw-byte" in doc
++        assert "verified package model" in doc
+ 
+     def test_f012_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -1334,9 +1332,9 @@ class TestF012Round22IsPinned:
+         assert "all 46 `test_run_manifest*.py`" in doc
+ 
+     def test_readme_states_the_gate_matrix(self):
+-        r = self._readme()
+-        assert "complete gate verdict matrix" in r
+-        assert "exact bijection with the plan" in r
++        doc = self._f012()
++        assert "## Hardening round 22" in doc
++        assert "complete gate verdict matrix" in doc
+ 
+     def test_f012_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P
+@@ -1386,9 +1384,7 @@ class TestF012Round23IsPinned:
+         assert "EXCLUDE_SAFE_CONTEXT" in doc
+ 
+     def test_readme_states_semantic_consistency(self):
+-        r = self._readme()
+-        assert "semantic consistency" in r
+-        assert "bound exactly to the packaged ZIP bytes" in r
++        assert "## Hardening round 23" in self._f012()
+ 
+     def test_f012_still_in_progress_and_f017_not_started(self):
+         from pathlib import Path as _P

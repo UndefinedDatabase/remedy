@@ -1,0 +1,47 @@
+217b6b2ceb02cfa1f701876f9bb192829d542401
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 330ff38..749f71d 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1537,3 +1537,15 @@ Requiring a project is intentional F148 behavior, so making `job create`
+ project-less would be a product CHANGE and belongs to class D5, not here.
+ The fixtures now register the target repo and assert the rc, so a future
+ break is loud instead of silently producing an empty id.
++
++## 2026-07-29: F252 D11 — translate BudgetConfigError at the fence boundary
++`_load_fence_spec_effective` detected malformed fence config by scanning
++`load_config().load_report.warnings` for "Malformed TOML". config.py now
++fails closed EARLIER: `_load_toml(..., fail_closed_for_budgets=True)` raises
++`BudgetConfigError`, so that diagnostic is never produced and the exception
++escaped the fence API unchanged. Fix: catch `BudgetConfigError` around the
++`load_config` call and re-raise as `FenceConfigError` with the existing
++"refusing to default to allow-all on malformed config" message. The
++diagnostic scan stays for the paths that still report rather than raise
++(e.g. no TOML parser available). No behavior other than the exception TYPE
++changes — the config was already fail-closed.
+diff --git a/packages/orchestration/scope_fences.py b/packages/orchestration/scope_fences.py
+index 47fc998..4497c54 100644
+--- a/packages/orchestration/scope_fences.py
++++ b/packages/orchestration/scope_fences.py
+@@ -428,9 +428,20 @@ def _load_fence_spec_effective(
+         )
+ 
+     if config_path is not None:
++        from packages.orchestration.budget_resolution import BudgetConfigError
+         from packages.orchestration.config import ConfigSource, load_config
+ 
+-        cfg = load_config(project_path=config_path)
++        try:
++            cfg = load_config(project_path=config_path)
++        except BudgetConfigError as exc:
++            # config.load_config fails closed on unparseable TOML by RAISING a
++            # budget error, so the "Malformed TOML" diagnostic scanned below is
++            # never recorded. At the fence boundary an unreadable config is a
++            # fence-config failure: translate it, or callers lose the F017
++            # contract (FenceConfigError — never a silent allow-all).
++            raise FenceConfigError(
++                f"F017: refusing to default to allow-all on malformed config: {exc}"
++            ) from exc
+         diagnostics = tuple(cfg.load_report.warnings)
+ 
+         for d in diagnostics:

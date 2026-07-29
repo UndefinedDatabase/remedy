@@ -879,9 +879,10 @@ class TestDogfoodCommandShape:
             None,
         )
         assert cmd is not None
-        assert cmd.action_class == "read_only"
+        # job-evidence now executes explicit verification commands, so it is
+        # no longer read_only — catalog integrity forbids that combination.
+        assert cmd.action_class == "test_execution"
         assert cmd.may_mutate_repo is False
-        # job-evidence now executes explicit verification commands.
         assert cmd.may_execute_commands is True
         assert any(a.name == "--verification-command" for a in cmd.args)
 

@@ -356,7 +356,7 @@ class _no_exit:
 # ---------------------------------------------------------------------------
 
 
-_ARCH_DOC = Path(__file__).resolve().parent.parent / "docs" / "architecture.md"
+_ARCH_DOC = Path(__file__).resolve().parent.parent / "docs" / "system" / "architecture.md"
 
 
 class TestDocsDriftDetection:

@@ -85,7 +85,7 @@ class TestFixtureBuilderParse:
 class TestDocsExist:
     def test_autocoder_usage_doc_exists(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         assert doc.is_file()
         content = doc.read_text()
         assert "REMEDY_REAL_OLLAMA_SMOKE" in content
@@ -95,7 +95,7 @@ class TestDocsExist:
 
     def test_docs_mention_builder_provider(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "--builder-provider" in content
         assert "ollama" in content.lower()
@@ -104,14 +104,14 @@ class TestDocsExist:
 
     def test_docs_commands_use_builder_provider(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "--builder-provider fixture" in content
         assert "--builder-provider ollama" in content
 
     def test_docs_pipeline_overview(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "Pipeline Overview" in content
         assert "source_apply" in content
@@ -120,7 +120,7 @@ class TestDocsExist:
 
     def test_docs_stop_reasons_complete(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         for reason in (
             "provider_output_prose_only",
@@ -137,20 +137,20 @@ class TestDocsExist:
 
     def test_docs_vram_free_command(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "remedy worker unload" in content
 
     def test_docs_model_quality_warning(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "not guaranteed" in content.lower()
         assert "Normal CI does not require Ollama" in content
 
     def test_docs_patch_inspect_commands(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "remedy patch list" in content
         assert "remedy patch show" in content
@@ -160,7 +160,7 @@ class TestDocsExist:
 
     def test_docs_test_run_command(self):
         from pathlib import Path
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
         assert "remedy test run" in content
 
@@ -172,7 +172,7 @@ class TestDocsCommandContract:
 
         from apps.cli.command_catalog import CATALOG
 
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
 
         catalog_groups = {c.group_id for c in CATALOG}
@@ -195,7 +195,7 @@ class TestDocsCommandContract:
 
         from apps.cli.command_catalog import CATALOG
 
-        doc = Path("docs/autocoder-usage.md")
+        doc = Path("docs/guides/autocoder-usage.md")
         content = doc.read_text()
 
         do_entry = next(c for c in CATALOG if c.command_id == "do.run")

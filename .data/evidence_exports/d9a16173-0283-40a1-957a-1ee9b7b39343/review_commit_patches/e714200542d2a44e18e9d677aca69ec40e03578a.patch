@@ -1,0 +1,185 @@
+e714200542d2a44e18e9d677aca69ec40e03578a
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index f9a4e52..1d67f92 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1633,3 +1633,20 @@ Fifth product bug, behind the last id: `_scrub_paths` dropped the FIRST LINE
+ of every text it redacted — aimed at pytest's rootdir banner, but applied
+ unconditionally, so any single-line command output was scrubbed to "". The
+ helper now only redacts.
++
++## 2026-07-29: F252 slice E — a runtime port override, so the real-runtime tests stop fighting the product default
++F251 closed 11 of 13 F-A ids with a per-worker test port, and stopped on the
++two that drive the REAL apps/ui runtime of THIS repository: their port comes
++from the product (config, else detection), so the only test-side fix would
++have been editing the repository under test. Product change:
++`REMEDY_RUNTIME_PORT` overrides the resolved port for ONE process, in
++`resolve_spec`, validated like any other port and applied to both the config
++and the detection path. The repository's own configuration is untouched, so
++`remedy runtime serve` still means 5173 for an operator.
++The runtime STATE file is repo-scoped and stays shared, so
++`test_apps_ui_probe.py` also serializes across xdist workers on a file lock
++kept in the system temp dir (not the repo — an untracked file there would
++show up in `git status` and in the packaging detritus checks).
++Verified: the four candidate ids green 3x consecutively, `tests/runtimes/`
++green under `-n 4`, and no listener on the product default 5173 during or
++after the runs.
+diff --git a/packages/runtimes/runtime_config.py b/packages/runtimes/runtime_config.py
+index 7861ca3..61c89c0 100644
+--- a/packages/runtimes/runtime_config.py
++++ b/packages/runtimes/runtime_config.py
+@@ -21,7 +21,8 @@ Explicit config always wins.
+ from __future__ import annotations
+ 
+ import json
+-from dataclasses import dataclass
++import os
++from dataclasses import dataclass, replace
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -281,27 +282,57 @@ def detect_runtimes(project_root: str | Path) -> list[DetectedRuntime]:
+     return _detect_node(root) + _detect_python(root)
+ 
+ 
++#: Environment override for the resolved runtime port. Config and detection
++#: both describe ONE port per repository, so a second instance of the same
++#: project could only be moved by editing the repository — which mutates the
++#: subject under test. This override moves the port for one process only;
++#: everything else about the spec is unchanged.
++PORT_ENV = "REMEDY_RUNTIME_PORT"
++
++
++def _port_override() -> int | None:
++    """The `REMEDY_RUNTIME_PORT` value, or None when unset/blank."""
++    raw = os.environ.get(PORT_ENV, "").strip()
++    if not raw:
++        return None
++    try:
++        port = int(raw)
++    except ValueError:
++        raise RuntimeConfigError(
++            f"{PORT_ENV} must be an integer port; got {raw!r}") from None
++    if not 1 <= port <= 65535:
++        raise RuntimeConfigError(f"{PORT_ENV} out of range: {port}")
++    return port
++
++
+ def resolve_spec(project_root: str | Path) -> RuntimeSpec:
+-    """Explicit config, else exactly one detected runtime, else block honestly."""
++    """Explicit config, else exactly one detected runtime, else block honestly.
++
++    ``REMEDY_RUNTIME_PORT`` overrides the resolved port in either case.
++    """
+     root = Path(project_root).resolve()
+     if not root.is_dir():
+         raise RuntimeConfigError(f"project root {root} is not a directory")
+ 
+-    spec = load_config_spec(root)
+-    if spec is not None:
+-        return spec                    # explicit config always wins
++    override = _port_override()
+ 
+-    found = detect_runtimes(root)
+-    if not found:
+-        raise RuntimeConfigError(
+-            "no runtime detected and no [runtime] section in "
+-            f"{CONFIG_RELPATH}: configuration required"
+-        )
+-    if len(found) > 1:
+-        kinds = ", ".join(
+-            f"{d.kind} ({Path(d.spec.cwd).name})" for d in found)
+-        raise RuntimeConfigError(
+-            f"ambiguous runtime: {kinds}. Configuration required — add a [runtime] "
+-            f"section to {CONFIG_RELPATH}"
+-        )
+-    return validate_spec(found[0].spec, root)
++    spec = load_config_spec(root)
++    if spec is None:
++        found = detect_runtimes(root)
++        if not found:
++            raise RuntimeConfigError(
++                "no runtime detected and no [runtime] section in "
++                f"{CONFIG_RELPATH}: configuration required"
++            )
++        if len(found) > 1:
++            kinds = ", ".join(
++                f"{d.kind} ({Path(d.spec.cwd).name})" for d in found)
++            raise RuntimeConfigError(
++                f"ambiguous runtime: {kinds}. Configuration required — add a [runtime] "
++                f"section to {CONFIG_RELPATH}"
++            )
++        spec = validate_spec(found[0].spec, root)
++
++    if override is not None and override != spec.port:
++        spec = validate_spec(replace(spec, port=override), root)
++    return spec
+diff --git a/tests/runtimes/test_apps_ui_probe.py b/tests/runtimes/test_apps_ui_probe.py
+index b9392b2..7589fbc 100644
+--- a/tests/runtimes/test_apps_ui_probe.py
++++ b/tests/runtimes/test_apps_ui_probe.py
+@@ -10,7 +10,11 @@ integration blocker instead of quietly substituting a fake server.
+ """
+ from __future__ import annotations
+ 
++import fcntl
+ import json
++import os
++import tempfile
++from dataclasses import replace
+ from pathlib import Path
+ 
+ import psutil
+@@ -19,7 +23,8 @@ import pytest
+ from apps.cli.commands import runtime_cmd
+ from packages.runtimes import dev_server as DS
+ from packages.runtimes.dev_server import DevServer, load_state
+-from packages.runtimes.runtime_config import detect_runtimes, resolve_spec
++from packages.runtimes.runtime_config import PORT_ENV, detect_runtimes, resolve_spec
++from tests.ports import worker_port
+ 
+ pytestmark = [pytest.mark.subprocess, pytest.mark.slow]
+ 
+@@ -40,6 +45,29 @@ requires_ui_deps = pytest.mark.skipif(
+ @pytest.fixture(autouse=True)
+ def isolate_data_root(tmp_path, monkeypatch):
+     monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path / "remedy_data"))
++    # These tests drive the REAL apps/ui runtime of THIS repository, so they
++    # cannot get a private project root. Two protections make that safe under
++    # `-n auto`: the port override keeps every worker off the product default
++    # 5173, and the lock below keeps them off each other's runtime STATE, which
++    # is repo-scoped and therefore genuinely shared.
++    monkeypatch.setenv(PORT_ENV, str(worker_port(1)))
++
++
++@pytest.fixture(autouse=True)
++def one_real_runtime_at_a_time():
++    """Serialize the real-runtime tests across xdist workers.
++
++    The lock lives outside the repository: it is scheduling state, and an
++    untracked file in the repo root would show up in `git status` and in the
++    packaging detritus checks.
++    """
++    lock = Path(tempfile.gettempdir()) / "remedy-apps-ui-probe.lock"
++    with open(lock, "w") as fh:
++        fcntl.flock(fh, fcntl.LOCK_EX)
++        try:
++            yield
++        finally:
++            fcntl.flock(fh, fcntl.LOCK_UN)
+ 
+ 
+ def _alive(pid: int) -> bool:
+@@ -56,7 +84,11 @@ def _vite_spec():
+     assert detected, "apps/ui must be detected as a vite runtime"
+     spec = detected[0].spec
+     assert Path(spec.cwd) == UI
+-    return spec
++    # Detection reports the project's configured port; honour the same
++    # override the product applies in resolve_spec so this worker binds its
++    # own port instead of the product default.
++    override = os.environ.get(PORT_ENV, "").strip()
++    return replace(spec, port=int(override)) if override else spec
+ 
+ 
+ class TestDetectApsUi:

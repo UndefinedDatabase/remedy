@@ -1,0 +1,21 @@
+{
+ "changed_files": [
+  "tests/regression/test_resource_safety.py",
+  "tests/runtimes/test_apps_ui_probe.py",
+  "tests/runtimes/test_supervisor_portability.py",
+  "tests/test_agent_tooling.py",
+  "tests/test_cli_main.py",
+  "tests/test_command_catalog.py",
+  "tests/test_command_discovery.py",
+  "tests/test_execution_foundation.py",
+  "tests/test_project_context_coverage.py",
+  "tests/test_remedy_smoke_script.py",
+  "tests/test_test_runner.py",
+  "tests/ui_contracts/test_graph_architecture.py",
+  "tests/ui_contracts/test_timeline_guard.py",
+  "tests/ui_contracts/test_ux_quality.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_title": "Task T003"
+}

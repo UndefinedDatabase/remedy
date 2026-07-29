@@ -91,8 +91,11 @@ class TestJobEvidenceCliDefaults:
 
         expected = job_evidence_export_dir(job.job_id)
         assert expected.is_dir(), "evidence must default to the hidden data-dir location"
-        # No repo-root pollution anywhere.
-        assert not list(Path.cwd().glob("remedy-job-evidence-*"))
+        # No repo-root pollution FROM THIS EXPORT. The bare glob also caught
+        # legacy dirs an operator left in the checkout years ago, which says
+        # nothing about the command under test.
+        assert not [d for d in Path.cwd().glob("remedy-job-evidence-*")
+                    if job.job_id in d.name]
 
         rec = find_record(job.job_id)
         assert rec is not None
@@ -243,11 +246,17 @@ class TestSelectorScript:
 
 
 class TestLegacyRootFallback:
-    def test_root_style_evidence_still_readable_but_deprecated(self):
-        """The shell keeps a deprecated root-directory fallback that warns."""
+    def test_root_style_evidence_is_ignored_with_a_warning(self):
+        """The shell warns about root-directory evidence and never selects it.
+
+        The fallback itself is gone: 01e2018 replaced mtime-based root
+        selection with a hard error ("cannot distinguish features"), bd93397
+        downgraded that to warn-and-ignore so code snapshots still build.
+        """
         script = (Path(__file__).resolve().parents[2] / "scripts" / "make_review_zip.sh").read_text()
-        assert "Deprecated fallback" in script or "deprecated repository-root evidence" in script
-        assert "WARNING: falling back to deprecated repository-root evidence directories." in script
+        assert "deprecated remedy-job-evidence-* dir(s) in repo root — IGNORED." in script
+        assert "Auto-selection from root dirs is disabled" in script
+        assert "To use one: --evidence-dir <path>." in script
         # And the honest NO_EVIDENCE message is present.
         assert "No matching review evidence exists for the current branch/worktree." in script
         assert "This is a code snapshot, not a final review package." in script

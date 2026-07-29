@@ -17,6 +17,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from pydantic import BaseModel
+
 from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake, to_json_schema
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
@@ -161,8 +163,17 @@ def run_intake(
     )
 
 
-def make_provider_call_fn() -> Callable[[str, int], str] | None:
-    """Build an Ollama-backed call_fn for intake, or None if unavailable.
+def make_structured_call_fn(
+    model_cls: type[BaseModel],
+) -> Callable[[str, int], str] | None:
+    """Build an Ollama-backed call_fn bound to ``model_cls``, or None.
+
+    Ollama enforces the schema NATIVELY (``format=``), so the schema bound
+    here decides the SHAPE of every response the returned callable can
+    produce — the prompt cannot override it. A call_fn built for one model
+    therefore must never drive a structured call for another: the provider
+    would answer in the bound shape and validation would fail on every
+    attempt, retry included.
 
     Delegates to OllamaPlanner.raw_call so all Ollama config (host, model,
     temperature, num_predict) is resolved in one place.
@@ -179,9 +190,14 @@ def make_provider_call_fn() -> Callable[[str, int], str] | None:
     except Exception:
         return None
 
-    schema = to_json_schema(JobIntake)
+    schema = to_json_schema(model_cls)
 
     def _call(prompt: str, attempt: int) -> str:
         return planner.raw_call(prompt, schema=schema)
 
     return _call
+
+
+def make_provider_call_fn() -> Callable[[str, int], str] | None:
+    """Build an Ollama-backed call_fn for intake, or None if unavailable."""
+    return make_structured_call_fn(JobIntake)

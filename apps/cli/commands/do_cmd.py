@@ -230,7 +230,19 @@ def _cmd_do_mission(
     job = None
     plan_label = "deterministic skeleton"
 
+    plan_call_fn = None
     if call_fn is not None and not no_llm:
+        from packages.orchestration.intake import make_structured_call_fn
+        from packages.orchestration.schemas.models import FlightPlan
+        # Planning needs a call_fn bound to FlightPlan: the intake one binds
+        # the provider's native schema to JobIntake, so the provider would
+        # answer in intake shape and every plan attempt would fail validation.
+        # There is deliberately NO fallback to it — without a FlightPlan-bound
+        # provider we skip LLM planning and take the deterministic skeleton
+        # below, exactly as the no-provider path does.
+        plan_call_fn = make_structured_call_fn(FlightPlan)
+
+    if plan_call_fn is not None:
         from packages.orchestration.flight_plan import (
             apply_plan_budgets,
             apply_plan_fences,
@@ -238,7 +250,7 @@ def _cmd_do_mission(
             plan_job_llm,
             write_plan_md,
         )
-        fp_result = plan_job_llm(intake_result.value.model_dump(), call_fn)
+        fp_result = plan_job_llm(intake_result.value.model_dump(), plan_call_fn)
         if fp_result.plan is not None:
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
@@ -2827,8 +2839,11 @@ def _cmd_do_replan(
         print("Error: job has no intake data.", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.intake import make_provider_call_fn
-    call_fn = make_provider_call_fn()
+    from packages.orchestration.intake import make_structured_call_fn
+    from packages.orchestration.schemas.models import FlightPlan
+    # Replanning is a flight-plan call: bind the provider's native schema to
+    # FlightPlan, not to the intake model.
+    call_fn = make_structured_call_fn(FlightPlan)
     if call_fn is None:
         print("Error: no provider available for replan.", file=sys.stderr)
         sys.exit(1)

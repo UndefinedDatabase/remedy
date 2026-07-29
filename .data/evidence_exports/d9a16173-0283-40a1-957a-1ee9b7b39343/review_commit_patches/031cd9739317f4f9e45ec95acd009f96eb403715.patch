@@ -1,0 +1,432 @@
+031cd9739317f4f9e45ec95acd009f96eb403715
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index c474ec3..f9a4e52 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1603,3 +1603,33 @@ no product change:
+ Also fixed in the same file: `test_attach_project_repo_idempotent_message`
+ (catalogued D14) passed a bare directory to a path that has required a git
+ repo since F146 — the fixture now runs `git init`.
++
++## 2026-07-29: F252 D13 — retired contract in tests, four real producer bugs
++The 9 root-selection ids encode a contract Remedy retired on purpose:
++01e2018 replaced mtime-based root-dir auto-selection with a hard error ("it
++cannot distinguish features"), bd93397 downgraded that to warn-and-ignore so
++code snapshots still build. Those tests now assert the live behaviour —
++`remedy-job-evidence-*` root dirs are ignored with a counted warning naming
++both remedies, `current_evidence` is null, nothing lands under `evidence/`,
++and explicit `--evidence-dir` still selects. Tests whose NAME claimed
++auto-selection were renamed; the explicit-selection tests are untouched.
++Four product bugs surfaced behind the other two ids:
++1. `build_manual_completion_gates` filtered caller runs to the v1.1 key set
++   but stamped `schema_version: 1.1.0` without FILLING it — the coordinator
++   rejected `runs[0]` and the final verifier lost its test total. Now
++   normalized through `_vt_run_v11`, same derivations as `_run_verifications`.
++2. …and dropped `head_sha`; the producer threads the bundle's head commit in.
++3. `commit_execution_gate.json` hardcoded `runtime_integration_gate: PASS`
++   while the packaged gate could say BLOCKED. The verdict is now read back
++   from the artifact just written, with coherent non_pass/blocked/issues.
++4. The runtime-integration gate is a SELF check — every pattern it looks for
++   lives in Remedy's own tree — but the manual producer pointed it at the
++   subject repo, so it reported "source file not found" for any non-Remedy
++   target. It now scans Remedy's installed source root.
++Test-side for the same id: the fixture declares `review_feature_id` (without
++one the gate runs every historical feature's execution bindings) and lists
++`node_ids` for the tests its run claims passed.
++Fifth product bug, behind the last id: `_scrub_paths` dropped the FIRST LINE
++of every text it redacted — aimed at pytest's rootdir banner, but applied
++unconditionally, so any single-line command output was scrubbed to "". The
++helper now only redacts.
+diff --git a/packages/orchestration/job_evidence.py b/packages/orchestration/job_evidence.py
+index 7ab40bb..e8e60f4 100644
+--- a/packages/orchestration/job_evidence.py
++++ b/packages/orchestration/job_evidence.py
+@@ -1533,10 +1533,10 @@ def _scrub_paths(text: str, repo: str) -> str:
+     home = os.path.expanduser("~")
+     if home and home != "/":
+         text = text.replace(home, "~")
+-    if text and not text.startswith("\n"):
+-        nl = text.find("\n")
+-        if nl > 0:
+-            text = text[nl + 1:]
++    # NOTE: this helper only redacts. It used to drop the first line as well —
++    # aimed at pytest's rootdir banner, but applied to every text, so any
++    # single-line output ("ABSENT\n") was scrubbed down to "". Paths in the
++    # banner are already handled by the replacements above.
+     return text
+ 
+ 
+@@ -2997,7 +2997,7 @@ def create_manual_completion_bundle(
+     _ma.build_manual_completion_gates(
+         evidence_dir, job_id=job_id, authority=authority, file_hashes=file_hashes,
+         step=step_range, total_passed=total_passed, verification_runs=verification_runs,
+-        repo_root=repo_root, verification_data=_vt_data,
++        repo_root=repo_root, head_sha=head_commit, verification_data=_vt_data,
+         feature_id=review_feature_id)
+     # change-provenance gate must carry the real covered/excluded sets and evidence sources.
+     cp_path = os.path.join(evidence_dir, "change_provenance_gate.json")
+diff --git a/packages/orchestration/manual_attestation.py b/packages/orchestration/manual_attestation.py
+index b4ee2b4..953c21f 100644
+--- a/packages/orchestration/manual_attestation.py
++++ b/packages/orchestration/manual_attestation.py
+@@ -14,8 +14,14 @@ from __future__ import annotations
+ import hashlib
+ import json
+ import os
++from pathlib import Path
+ from typing import Any
+ 
++#: Remedy's own source tree — the subject of the runtime-integration gate,
++#: which is a self check and has nothing to do with the repository a job
++#: happens to target.
++_REMEDY_SOURCE_ROOT = str(Path(__file__).resolve().parents[2])
++
+ #: The deterministic, documented token status a zero-provider-call manual completion produces. It is
+ #: low confidence (heuristic only) with every actual/provider count zeroed and every cost unknown.
+ MANUAL_TOKEN_TRUTH: dict[str, Any] = {
+@@ -167,10 +173,68 @@ def _na_worktree():
+             "unsafe_result_diff_refs": []}
+ 
+ 
++#: The complete VerificationTests v1.1.0 run field set the coordinator requires.
++_VT_V11_FIELDS = ("run_id", "command", "exit_code", "passed", "failed", "test_files",
++                  "stdout_summary", "head_sha", "output_hash", "selected",
++                  "deselected", "skipped", "node_ids", "duration_seconds")
++
++
++def _vt_run_v11(run: dict, head_sha: str = "") -> dict[str, Any]:
++    """Normalize a caller-supplied verification run to the FULL v1.1.0 shape.
++
++    Filtering to the v1.1 keys while stamping ``schema_version: 1.1.0`` produced
++    a run that claimed the new schema with the old field set, which the review
++    coordinator rejects ("runs[i] has the wrong field set") — and a rejected
++    VerificationTests takes the final verifier's test total down with it. Every
++    derived default matches what ``job_evidence._run_verifications`` computes.
++    """
++    passed = int(run.get("passed", 0) or 0)
++    failed = int(run.get("failed", 0) or 0)
++    skipped = int(run.get("skipped", 0) or 0)
++    node_ids = list(run.get("node_ids") or [])
++    selected = int(run.get("selected", 0) or 0)
++    if not selected:
++        selected = len(node_ids) if node_ids else (passed + failed + skipped)
++    stdout_summary = str(run.get("stdout_summary", "") or "")[-2000:]
++    output_hash = str(run.get("output_hash", "") or "")
++    if output_hash.startswith("sha256:"):
++        output_hash = output_hash[7:]
++    if not output_hash:
++        output_hash = hashlib.sha256(
++            stdout_summary.encode("utf-8", errors="replace")).hexdigest()
++    duration = run.get("duration_seconds")
++    return {
++        "run_id": run["run_id"],
++        "command": run["command"],
++        "exit_code": int(run.get("exit_code", -1)),
++        "passed": passed,
++        "failed": failed,
++        "skipped": skipped,
++        "selected": selected,
++        "deselected": int(run.get("deselected", 0) or 0),
++        "node_ids": node_ids,
++        "output_hash": output_hash,
++        "head_sha": str(run.get("head_sha", "") or "") or head_sha,
++        "duration_seconds": 0.0 if duration is None else round(float(duration), 3),
++        "test_files": list(run.get("test_files") or []),
++        "stdout_summary": stdout_summary,
++    }
++
++
++def _read_verdict(path: str, default: str = "BLOCKED") -> str:
++    """The ``verdict`` a just-written gate artifact actually carries."""
++    try:
++        with open(path, encoding="utf-8") as fh:
++            return str(json.load(fh).get("verdict") or default)
++    except Exception:
++        return default
++
++
+ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority: list[str],
+                                   file_hashes: dict, step: str, total_passed: int,
+                                   verification_runs: list,
+                                   repo_root: str = ".",
++                                  head_sha: str = "",
+                                   verification_data: dict | None = None,
+                                   feature_id: str | None = None) -> None:
+     """Write the complete, semantically-consistent READY gate set + verification_tests for a manual
+@@ -200,25 +264,37 @@ def build_manual_completion_gates(evidence_dir: str, *, job_id: str, authority:
+         "stale_apply_proofs": [], "issues": [], "current_hashes": dict(file_hashes),
+         "evidence_hashes": dict(file_hashes)})
+     from packages.orchestration.runtime_integration_gate import write_runtime_integration_gate
++    # The runtime-integration gate is a SELF check: every one of its source
++    # patterns lives in Remedy's own tree (packages/orchestration/…). Pointing
++    # it at the subject repo made it report "source file not found" — BLOCKED —
++    # for any target repository that is not Remedy itself, while the gate set
++    # below still claimed PASS. It scans Remedy's tree, wherever it is
++    # installed, and the subject repo stays out of it.
+     write_runtime_integration_gate(
+-        evidence_dir, repo_root=repo_root,
++        evidence_dir, repo_root=_REMEDY_SOURCE_ROOT,
+         verification_data=verification_data,
+         feature_id=feature_id)
+     _w(os.path.join(evidence_dir, "manifest_integrity.json"),
+        {"schema_version": "1.0.0", "ok": True, "failures": [], "notes": []})
+     _w(os.path.join(evidence_dir, "postmortem_integrity.json"),
+        {"schema_version": "1.0.0", "ok": True, "failures": []})
++    # The runtime verdict is READ BACK from the gate just written: a hardcoded
++    # "PASS" here contradicted the packaged artifact whenever the gate failed,
++    # and the coordinator rejects exactly that disagreement.
++    _rig_verdict = _read_verdict(os.path.join(evidence_dir, "runtime_integration_gate.json"))
++    _gate_checks = {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
++                    "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
++                    "runtime_integration_gate": _rig_verdict}
++    _non_pass = [g for g, v in sorted(_gate_checks.items()) if v != "PASS"]
++    _blocked = [g for g, v in sorted(_gate_checks.items()) if v == "BLOCKED"]
+     _w(os.path.join(evidence_dir, "commit_execution_gate.json"), {
+-        "schema_version": "1.0.0", "verdict": "NEEDS_HUMAN_APPROVAL", "promote_ready": False,
+-        "blocked_gates": [], "non_pass_gates": ["final_verifier"],
+-        "issues": ["gate 'final_verifier' is not PASS (verdict 'PASS_WITH_RISKS')"],
+-        "gate_checks": {"final_verifier": "PASS_WITH_RISKS", "fresh_evidence_gate": "PASS",
+-                        "artifact_contract_gate": "PASS", "change_provenance_gate": "PASS",
+-                        "runtime_integration_gate": "PASS"}})
+-    _VT_V11_FIELDS = {"run_id", "command", "exit_code", "passed", "failed", "test_files",
+-                       "stdout_summary", "head_sha", "output_hash", "selected",
+-                       "deselected", "skipped", "node_ids", "duration_seconds"}
+-    _vt_runs = [{k: r[k] for k in _VT_V11_FIELDS if k in r} for r in verification_runs]
++        "schema_version": "1.0.0",
++        "verdict": "BLOCKED" if _blocked else "NEEDS_HUMAN_APPROVAL",
++        "promote_ready": False,
++        "blocked_gates": _blocked, "non_pass_gates": _non_pass,
++        "issues": [f"gate {g!r} is not PASS (verdict {_gate_checks[g]!r})" for g in _non_pass],
++        "gate_checks": _gate_checks})
++    _vt_runs = [_vt_run_v11(r, head_sha) for r in verification_runs]
+     dc = " && ".join(r["command"] for r in verification_runs)
+     de = 0 if all(r["exit_code"] == 0 for r in verification_runs) else 1
+     from datetime import datetime as _dt
+diff --git a/tests/orchestration/test_review_manual_completion_shapes.py b/tests/orchestration/test_review_manual_completion_shapes.py
+index ede8ad3..58d7e80 100644
+--- a/tests/orchestration/test_review_manual_completion_shapes.py
++++ b/tests/orchestration/test_review_manual_completion_shapes.py
+@@ -300,16 +300,25 @@ class TestManualCompletionRunsEndToEnd:
+ 
+     def _bundle(self, evd, repo, base, head):
+         from packages.orchestration.job_evidence import create_manual_completion_bundle
++        # v1.1.0 runs enumerate what ran: node_ids must account for every
++        # selected test, so a run claiming 2 passed names those 2.
+         runs = [{"run_id": "vr-0001", "command": "pytest -q tests_pkg", "exit_code": 0,
+                  "passed": 2, "failed": 0, "test_files": ["tests_pkg/test_alpha.py",
+-                 "tests_pkg/test_beta.py"], "stdout_summary": "2 passed"}]
++                 "tests_pkg/test_beta.py"],
++                 "node_ids": ["tests_pkg/test_alpha.py::test_alpha",
++                              "tests_pkg/test_beta.py::test_beta"],
++                 "stdout_summary": "2 passed"}]
+         return create_manual_completion_bundle(
+             str(evd), repo_root=str(repo), base_commit=base, head_commit=head,
+             job_id="e2ef4bundle0001", job_title="F4 manual e2e", step_range="1-2",
+             prior_job_ids=["priore2ef4000001"], verification_runs=runs,
+             timestamp="2026-07-19T00:00:00+00:00",
+             generated_at="2026-07-19T00:00:00.000000+00:00", num_tasks=2,
+-            note_prefix="F4 manual e2e")
++            note_prefix="F4 manual e2e",
++            # A completion declares its feature: without one the runtime gate
++            # runs EVERY historical feature's execution bindings and blocks on
++            # test evidence this bundle never claimed.
++            review_feature_id="f4manual")
+ 
+     def test_end_to_end_bundle_is_ready(self, tmp_path, monkeypatch):
+         repo, base, head = self._make_repo(tmp_path)
+diff --git a/tests/orchestration/test_review_zip_hygiene.py b/tests/orchestration/test_review_zip_hygiene.py
+index d24d89a..8b2d1e0 100644
+--- a/tests/orchestration/test_review_zip_hygiene.py
++++ b/tests/orchestration/test_review_zip_hygiene.py
+@@ -460,8 +460,15 @@ def _make_valid_evidence(ev_dir: Path, job_id: str = "test123") -> None:
+     reason="git, bash, zip required",
+ )
+ class TestAutoSelectLatestEvidence:
+-
+-    def test_single_valid_evidence_dir_auto_selects(self, tmp_path: Path):
++    """Root-dir auto-selection is RETIRED — see commits 01e2018 (mtime-based
++    root selection replaced by a hard error, "it cannot distinguish features")
++    and bd93397 (downgraded to warn-and-ignore so code snapshots still build).
++    These tests hold that retirement: `remedy-job-evidence-*` dirs in the repo
++    root are ignored with a warning, and only `--evidence-dir` / `--job-id`
++    select evidence. The explicit-selection tests below are unchanged.
++    """
++
++    def test_single_root_evidence_dir_is_ignored_with_warning(self, tmp_path: Path):
+         repo = _make_git_repo_with_scripts(tmp_path)
+         ev = repo / "remedy-job-evidence-aaa111"
+         _make_valid_evidence(ev, "aaa")
+@@ -471,10 +478,12 @@ class TestAutoSelectLatestEvidence:
+             cwd=repo, capture_output=True, text=True, timeout=30,
+         )
+         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+-        assert "Auto-selected" in proc.stdout
++        assert "Auto-selected" not in proc.stdout
++        assert "IGNORED" in proc.stderr
++        assert "PACKAGE_STATUS=NO_EVIDENCE" in proc.stdout
+ 
+-    def test_all_candidates_invalid_still_creates_zip(self, tmp_path: Path):
+-        """All incomplete → newest selected, zip created with warning."""
++    def test_invalid_root_dirs_still_create_a_code_snapshot_zip(self, tmp_path: Path):
++        """Unusable root dirs never block the snapshot — they are just ignored."""
+         repo = _make_git_repo_with_scripts(tmp_path)
+ 
+         bad1 = repo / "remedy-job-evidence-bad1"
+@@ -490,7 +499,8 @@ class TestAutoSelectLatestEvidence:
+             cwd=repo, capture_output=True, text=True, timeout=30,
+         )
+         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+-        assert "incomplete" in proc.stdout.lower()
++        assert "not a final review package" in proc.stdout
++        assert "IGNORED" in proc.stderr
+         assert list(repo.glob("*.zip"))
+ 
+     def test_explicit_incomplete_creates_zip(self, tmp_path: Path):
+@@ -574,6 +584,7 @@ class TestAutoSelectLatestEvidence:
+             assert '"old"' in jf
+ 
+     def test_stale_dirs_not_in_zip(self, tmp_path: Path):
++        """Neither root dir rides along — mtime buys nothing any more."""
+         import os
+         repo = _make_git_repo_with_scripts(tmp_path)
+ 
+@@ -598,9 +609,12 @@ class TestAutoSelectLatestEvidence:
+             names = zf.namelist()
+             assert not any("stale1" in n for n in names), \
+                 "Stale evidence must not appear in zip"
+-            assert "evidence/current/job_flow.json" in names
++            assert not any("current1" in n for n in names), \
++                "An unselected root dir must not appear either"
++            assert not any(n.startswith("evidence/") for n in names)
+ 
+-    def test_manifest_validation_section(self, tmp_path: Path):
++    def test_manifest_has_no_current_evidence_for_root_dirs(self, tmp_path: Path):
++        """The manifest must not claim evidence the package does not carry."""
+         import os
+         repo = _make_git_repo_with_scripts(tmp_path)
+ 
+@@ -624,15 +638,9 @@ class TestAutoSelectLatestEvidence:
+         assert zips
+         with ZipFile(zips[0]) as zf:
+             manifest = json.loads(zf.read(".review_zip_manifest.json"))
+-        ce = manifest["current_evidence"]
+-        assert ce["selection_mode"] == "deprecated_root_fallback"
+-        assert ce["selected_from_candidate_count"] == 2
+-        assert ce["zip_prefix"] == "evidence/current"
+-        val = ce["validation"]
+-        assert val["is_valid_current_run"] is True
+-        assert val["validation_errors"] == []
+-        assert val["selected_candidate_status"] == "valid"
+-        assert val["selection_mode"] == "deprecated_root_fallback"
++        assert manifest["current_evidence"] is None
++        assert "EVIDENCE_AUTHORITATIVE=false" in proc.stdout
++        assert "NO_EVIDENCE" in zips[0].name
+ 
+     def test_manifest_records_explicit_mode(self, tmp_path: Path):
+         repo = _make_git_repo_with_scripts(tmp_path)
+@@ -653,7 +661,8 @@ class TestAutoSelectLatestEvidence:
+         ce = manifest["current_evidence"]
+         assert ce["selection_mode"] == "explicit"
+ 
+-    def test_candidate_summary_shows_rejection_reasons(self, tmp_path: Path):
++    def test_ignored_root_dirs_are_reported_with_remedies(self, tmp_path: Path):
++        """Ignoring is never silent: the count and both remedies are printed."""
+         import os
+         repo = _make_git_repo_with_scripts(tmp_path)
+ 
+@@ -670,23 +679,25 @@ class TestAutoSelectLatestEvidence:
+             cwd=repo, capture_output=True, text=True, timeout=30,
+         )
+         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+-        assert "candidate summary" in proc.stdout.lower()
+-        assert "incomplete" in proc.stdout
+-        assert "valid" in proc.stdout
++        assert "2 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
++        assert "--evidence-dir" in proc.stderr
++        assert "do job-evidence" in proc.stderr
+ 
+     def test_missing_command_transcript_creates_zip_with_warning(self, tmp_path: Path):
+-        """Missing command_transcript.json → zip created, validation records it."""
++        """Missing command_transcript.json → zip created, validation records it.
++
++        Selected explicitly: root dirs are no longer picked up on their own.
++        """
+         repo = _make_git_repo_with_scripts(tmp_path)
+         ev = repo / "remedy-job-evidence-noct"
+         _make_valid_evidence(ev, "noct")
+         (ev / "command_transcript.json").unlink()
+ 
+         proc = subprocess.run(
+-            ["bash", "scripts/make_review_zip.sh"],
++            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(ev)],
+             cwd=repo, capture_output=True, text=True, timeout=30,
+         )
+         assert proc.returncode == 0, f"Failed: {proc.stdout}\n{proc.stderr}"
+-        assert "incomplete" in proc.stdout.lower()
+ 
+         import json
+         from zipfile import ZipFile
+@@ -723,6 +734,7 @@ class TestAutoSelectLatestEvidence:
+         assert "review.json" in result["required_task_artifacts"]["T001"]
+ 
+     def test_unselected_evidence_not_in_zip(self, tmp_path: Path):
++        """With an explicit selection, the sibling root dir stays out."""
+         import os
+         repo = _make_git_repo_with_scripts(tmp_path)
+ 
+@@ -735,7 +747,7 @@ class TestAutoSelectLatestEvidence:
+         os.utime(other / "job_flow.json", (1000000, 1000000))
+ 
+         proc = subprocess.run(
+-            ["bash", "scripts/make_review_zip.sh"],
++            ["bash", "scripts/make_review_zip.sh", "--evidence-dir", str(sel)],
+             cwd=repo, capture_output=True, text=True, timeout=30,
+         )
+         assert proc.returncode == 0
+@@ -765,8 +777,9 @@ class TestAutoSelectLatestEvidence:
+                         if n.startswith("evidence/")]
+             assert all(n.startswith("evidence/current/") for n in ev_files)
+ 
+-    def test_manifest_rejected_candidate_count(self, tmp_path: Path):
+-        """R-4332: manifest tracks rejected_candidate_count."""
++    def test_root_dirs_are_counted_as_ignored_not_as_candidates(self, tmp_path: Path):
++        """R-4332 counted rejected CANDIDATES; root dirs are no longer
++        candidates at all, so the count they now feed is the ignored count."""
+         import os
+         repo = _make_git_repo_with_scripts(tmp_path)
+ 
+@@ -788,11 +801,11 @@ class TestAutoSelectLatestEvidence:
+ 
+         import json
+         from zipfile import ZipFile
++        assert "3 deprecated remedy-job-evidence-* dir(s)" in proc.stderr
+         zips = list(repo.glob("*.zip"))
+         with ZipFile(zips[0]) as zf:
+             manifest = json.loads(zf.read(".review_zip_manifest.json"))
+-        val = manifest["current_evidence"]["validation"]
+-        assert val["rejected_candidate_count"] == 2
++        assert manifest["current_evidence"] is None
+ 
+ 
+ class TestFilenamePattern:
+@@ -1067,7 +1080,9 @@ class TestIndexedEvidenceSelection:
+         m = _zip_manifest(repo)
+         assert m["current_evidence"]["job_id"] == "current001"
+ 
+-    def test_legacy_root_evidence_only_via_deprecated_fallback_with_warning(self, tmp_path: Path):
++    def test_legacy_root_evidence_is_ignored_with_warning(self, tmp_path: Path):
++        """The deprecated root fallback is gone (01e2018 / bd93397): legacy
++        dirs are warned about and ignored, never selected."""
+         repo = _make_git_repo_with_scripts(tmp_path)
+         _make_valid_evidence(repo / "remedy-job-evidence-legacy1", "legacy1")
+ 
+@@ -1075,7 +1090,8 @@ class TestIndexedEvidenceSelection:
+         assert proc.returncode == 0, proc.stdout + proc.stderr
+         combined = proc.stdout + proc.stderr
+         assert "deprecated" in combined.lower(), combined
+-        assert _zip_manifest(repo)["current_evidence"]["selection_mode"] == "deprecated_root_fallback"
++        assert "IGNORED" in proc.stderr
++        assert _zip_manifest(repo)["current_evidence"] is None
+ 
+     def test_jsonl_and_status_md_participate_in_alignment(self, tmp_path: Path):
+         """A bundle covering only .py could never align if .jsonl/.md were ignored."""

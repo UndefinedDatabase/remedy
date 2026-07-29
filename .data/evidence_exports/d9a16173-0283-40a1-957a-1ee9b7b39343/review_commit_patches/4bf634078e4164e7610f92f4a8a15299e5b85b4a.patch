@@ -1,0 +1,412 @@
+4bf634078e4164e7610f92f4a8a15299e5b85b4a
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 9058887..706e003 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1680,3 +1680,14 @@ and `feature/` for context.md and the AGENTS.md-required `## Goal` /
+ `## Next Steps` for plan.md. Nothing became optional.
+ Standing risk unchanged (F251 R2 finding): these ids read LIVE state files,
+ so ordinary bookkeeping still moves them. Recorded, not adjusted.
++
++## 2026-07-29: F252 D1 — the docs moved, the tests did not
++Every D1 id read an ist-doc at its pre-restructure flat path
++(`docs/<name>.md`); all of them now live under `docs/system/` or
++`docs/guides/` with `docs/README.md` as the index. No doc is missing, so the
++fix is the path in the test — ten documents across nine test files.
++`tests/cli/test_product_spine.py` needed more than a path: its `_read_doc`
++helper returned `""` for a missing file, so every assertion over a moved doc
++was passing against an empty string. It now resolves docs/system, docs/guides
++and docs/ in order and RAISES when the doc is absent — which turned six
++further ids green once they started reading real text.
+diff --git a/tests/cli/test_do_cmd_summary.py b/tests/cli/test_do_cmd_summary.py
+index 8a2882f..b2e460c 100644
+--- a/tests/cli/test_do_cmd_summary.py
++++ b/tests/cli/test_do_cmd_summary.py
+@@ -85,7 +85,7 @@ class TestFixtureBuilderParse:
+ class TestDocsExist:
+     def test_autocoder_usage_doc_exists(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         assert doc.is_file()
+         content = doc.read_text()
+         assert "REMEDY_REAL_OLLAMA_SMOKE" in content
+@@ -95,7 +95,7 @@ class TestDocsExist:
+ 
+     def test_docs_mention_builder_provider(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "--builder-provider" in content
+         assert "ollama" in content.lower()
+@@ -104,14 +104,14 @@ class TestDocsExist:
+ 
+     def test_docs_commands_use_builder_provider(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "--builder-provider fixture" in content
+         assert "--builder-provider ollama" in content
+ 
+     def test_docs_pipeline_overview(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "Pipeline Overview" in content
+         assert "source_apply" in content
+@@ -120,7 +120,7 @@ class TestDocsExist:
+ 
+     def test_docs_stop_reasons_complete(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         for reason in (
+             "provider_output_prose_only",
+@@ -137,20 +137,20 @@ class TestDocsExist:
+ 
+     def test_docs_vram_free_command(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "remedy worker unload" in content
+ 
+     def test_docs_model_quality_warning(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "not guaranteed" in content.lower()
+         assert "Normal CI does not require Ollama" in content
+ 
+     def test_docs_patch_inspect_commands(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "remedy patch list" in content
+         assert "remedy patch show" in content
+@@ -160,7 +160,7 @@ class TestDocsExist:
+ 
+     def test_docs_test_run_command(self):
+         from pathlib import Path
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+         assert "remedy test run" in content
+ 
+@@ -172,7 +172,7 @@ class TestDocsCommandContract:
+ 
+         from apps.cli.command_catalog import CATALOG
+ 
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+ 
+         catalog_groups = {c.group_id for c in CATALOG}
+@@ -195,7 +195,7 @@ class TestDocsCommandContract:
+ 
+         from apps.cli.command_catalog import CATALOG
+ 
+-        doc = Path("docs/autocoder-usage.md")
++        doc = Path("docs/guides/autocoder-usage.md")
+         content = doc.read_text()
+ 
+         do_entry = next(c for c in CATALOG if c.command_id == "do.run")
+diff --git a/tests/cli/test_product_spine.py b/tests/cli/test_product_spine.py
+index 66f4f79..a1e0ddb 100644
+--- a/tests/cli/test_product_spine.py
++++ b/tests/cli/test_product_spine.py
+@@ -9,6 +9,18 @@ from pathlib import Path
+ 
+ _ROOT = Path(__file__).resolve().parent.parent.parent
+ 
++#: Where an ist-doc can live after the docs restructure (index: docs/README.md).
++_DOC_DIRS = ("system", "guides", "")
++
++
++def _read_doc(name: str) -> str:
++    """The text of ``name`` wherever it lives under docs/ — never a silent ""."""
++    for sub in _DOC_DIRS:
++        p = (_ROOT / "docs" / sub / name) if sub else (_ROOT / "docs" / name)
++        if p.exists():
++            return p.read_text(encoding="utf-8", errors="replace")
++    raise AssertionError(f"doc not found under docs/: {name}")
++
+ 
+ # ---------------------------------------------------------------------------
+ # Step 2671: operator-facing command entries exist + safe classification
+@@ -79,10 +91,13 @@ class TestOperatorCommandsExist:
+ 
+ class TestStaleCommandScanner:
+     def _read_doc(self, name: str) -> str:
+-        p = _ROOT / "docs" / name
+-        if not p.exists():
+-            return ""
+-        return p.read_text(encoding="utf-8", errors="replace")
++        """Read a doc from the restructured tree.
++
++        The docs moved into docs/system/ and docs/guides/; the flat lookup
++        silently returned "" for every one of them, so these assertions were
++        passing against an empty string. Missing is now an explicit failure.
++        """
++        return _read_doc(name)
+ 
+     def test_no_stale_adapter_flag_in_quickstart(self):
+         text = self._read_doc("simple-operator-quickstart-v0.md")
+@@ -111,7 +126,7 @@ class TestStaleCommandScanner:
+             "Stale command in mission docs"
+ 
+     def test_core_spine_doc_exists(self):
+-        p = _ROOT / "docs" / "core-product-spine-v0.md"
++        p = _ROOT / "docs" / "system" / "core-product-spine-v0.md"
+         assert p.exists(), "core-product-spine-v0.md must exist"
+ 
+ 
+@@ -344,10 +359,13 @@ class TestCommandTaxonomyDocs:
+     """Docs use job-first language."""
+ 
+     def _read_doc(self, name: str) -> str:
+-        p = _ROOT / "docs" / name
+-        if not p.exists():
+-            return ""
+-        return p.read_text(encoding="utf-8", errors="replace")
++        """Read a doc from the restructured tree.
++
++        The docs moved into docs/system/ and docs/guides/; the flat lookup
++        silently returned "" for every one of them, so these assertions were
++        passing against an empty string. Missing is now an explicit failure.
++        """
++        return _read_doc(name)
+ 
+     def test_spine_doc_has_job_first_flow(self):
+         text = self._read_doc("core-product-spine-v0.md")
+@@ -637,9 +655,9 @@ class TestDoRunHelpAlignment:
+         assert 'do run' in first or 'remedy do' in first
+ 
+     def test_spine_doc_uses_do_run(self):
+-        text = (_ROOT / 'docs' / 'core-product-spine-v0.md').read_text()
++        text = _read_doc('core-product-spine-v0.md')
+         assert 'do run' in text
+ 
+     def test_quickstart_doc_uses_do_run(self):
+-        text = (_ROOT / 'docs' / 'simple-operator-quickstart-v0.md').read_text()
++        text = _read_doc('simple-operator-quickstart-v0.md')
+         assert 'do run' in text
+diff --git a/tests/orchestration/test_event_replay.py b/tests/orchestration/test_event_replay.py
+index 6517fe8..f322599 100644
+--- a/tests/orchestration/test_event_replay.py
++++ b/tests/orchestration/test_event_replay.py
+@@ -392,7 +392,7 @@ class TestDryRunValidation:
+ 
+ class TestDocsExist:
+     def test_resume_docs_exist(self):
+-        doc = Path("docs/resume.md")
++        doc = Path("docs/guides/resume.md")
+         assert doc.is_file()
+         content = doc.read_text()
+         assert "from_apply" in content
+@@ -406,7 +406,7 @@ class TestDocsExist:
+         from apps.cli.command_catalog import CATALOG
+         catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
+ 
+-        doc = Path("docs/resume.md")
++        doc = Path("docs/guides/resume.md")
+         content = doc.read_text()
+         for m in re.finditer(r"remedy\s+(\w+)\s+(\w[\w-]*)", content):
+             group, sub = m.group(1), m.group(2)
+diff --git a/tests/orchestration/test_job_fulfillment.py b/tests/orchestration/test_job_fulfillment.py
+index 55f2e40..c1e7447 100644
+--- a/tests/orchestration/test_job_fulfillment.py
++++ b/tests/orchestration/test_job_fulfillment.py
+@@ -704,40 +704,40 @@ class TestJobFulfillCLI:
+ class TestFulfilledDemoGuide:
+ 
+     def test_guide_exists(self):
+-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
++        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
+         assert path.exists()
+ 
+     def test_guide_mentions_fulfill(self):
+-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
++        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
+         text = path.read_text()
+         assert "job fulfill" in text
+         assert "fixture-demo" in text
+ 
+     def test_guide_mentions_status_report(self):
+-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
++        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
+         text = path.read_text()
+         assert "job status" in text
+         assert "job report" in text
+ 
+     def test_guide_mentions_propose(self):
+-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
++        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
+         text = path.read_text()
+         assert "propose list" in text
+ 
+     def test_guide_no_real_provider_claims(self):
+-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
++        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
+         text = path.read_text()
+         assert "No real provider" in text
+ 
+     def test_guide_no_invalid_job_id_syntax(self):
+         """R-0196: No --job-id syntax in demo guide."""
+-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
++        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
+         text = path.read_text()
+         assert "--job-id" not in text
+ 
+     def test_quickstart_no_invalid_propose_syntax(self):
+         """R-0196: No --job-id in propose command in quickstart."""
+-        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
++        path = _ROOT / "docs" / "guides" / "simple-operator-quickstart-v0.md"
+         text = path.read_text()
+         assert "propose list --job-id" not in text
+ 
+@@ -1591,7 +1591,7 @@ class TestDemoDocsCommands:
+ 
+     def test_job_create_no_json_flag(self):
+         """job create does not support --json — docs must not claim it."""
+-        docs = (_ROOT / "docs" / "first-fulfilled-job-demo-v0.md").read_text()
++        docs = (_ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md").read_text()
+         # Should NOT have 'job create' with --json
+         create_lines = [l for l in docs.splitlines() if "job create" in l and "remedy" in l]
+         for line in create_lines:
+@@ -1612,7 +1612,7 @@ class TestDemoDocsCommands:
+ 
+     def test_demo_docs_command_shapes(self):
+         """All remedy commands in demo docs must be valid shapes."""
+-        docs = (_ROOT / "docs" / "first-fulfilled-job-demo-v0.md").read_text()
++        docs = (_ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md").read_text()
+         cmd_lines = [l.strip() for l in docs.splitlines()
+                      if l.strip().startswith("remedy ") or l.strip().startswith("JOB_ID=$(remedy ")]
+         assert len(cmd_lines) >= 4, f"Expected >=4 commands, got {len(cmd_lines)}"
+@@ -1840,7 +1840,7 @@ class TestDocsCommandShapesV06:
+     """Docs must not contain invalid job create --json."""
+ 
+     def test_no_job_create_json_in_quickstart(self):
+-        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
++        path = _ROOT / "docs" / "guides" / "simple-operator-quickstart-v0.md"
+         if not path.exists():
+             return
+         content = path.read_text()
+diff --git a/tests/orchestration/test_project_summary.py b/tests/orchestration/test_project_summary.py
+index a476378..0a388fe 100644
+--- a/tests/orchestration/test_project_summary.py
++++ b/tests/orchestration/test_project_summary.py
+@@ -401,18 +401,18 @@ class TestProjectBrainDocs:
+ 
+     def test_docs_exist(self):
+         from pathlib import Path
+-        docs = Path(__file__).resolve().parents[2] / "docs" / "project-brain.md"
++        docs = Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md"
+         assert docs.exists()
+ 
+     def test_docs_mention_commands(self):
+         from pathlib import Path
+-        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
++        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md").read_text()
+         assert "remedy project summary" in text
+         assert "remedy project show" in text
+ 
+     def test_docs_no_auto_memory_claim(self):
+         from pathlib import Path
+-        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
++        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md").read_text()
+         assert "approval" in text.lower()
+         assert "does not auto-write" in text.lower() or "require" in text.lower()
+ 
+@@ -422,7 +422,7 @@ class TestProjectBrainDocs:
+ 
+         from apps.cli.command_catalog import CATALOG
+ 
+-        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
++        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md").read_text()
+         cmds = re.findall(r"remedy (\w+) (\w[\w-]*)", text)
+         catalog_groups = {e.group_id for e in CATALOG}
+         for group, _sub in cmds:
+diff --git a/tests/orchestration/test_worker_queue.py b/tests/orchestration/test_worker_queue.py
+index 86beed2..02d0f22 100644
+--- a/tests/orchestration/test_worker_queue.py
++++ b/tests/orchestration/test_worker_queue.py
+@@ -351,19 +351,19 @@ class TestNoRawLeaks:
+ 
+ class TestWorkerDocs:
+     def test_docs_exist(self):
+-        assert (Path(__file__).resolve().parents[2] / "docs" / "worker.md").exists()
++        assert (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").exists()
+ 
+     def test_docs_mention_commands(self):
+-        text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
++        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
+         for cmd in ("remedy worker run", "remedy worker status", "remedy job enqueue", "remedy job pause", "remedy job cancel"):
+             assert cmd in text
+ 
+     def test_docs_no_overnight_autonomy(self):
+-        text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
++        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
+         assert "not overnight" in text.lower() or "not autonomy" in text.lower()
+ 
+     def test_docs_no_browser_actions(self):
+-        text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
++        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
+         assert "read-only" in text.lower()
+ 
+ 
+diff --git a/tests/regression/test_resource_safety.py b/tests/regression/test_resource_safety.py
+index 7f643f6..9aafba7 100644
+--- a/tests/regression/test_resource_safety.py
++++ b/tests/regression/test_resource_safety.py
+@@ -87,15 +87,15 @@ class TestResourceSafetyDocs:
+     """Safety docs must mention key policy rules."""
+ 
+     def test_reviewer_safety_doc_exists(self):
+-        assert (REPO_ROOT / "docs" / "reviewer-safety.md").exists()
++        assert (REPO_ROOT / "docs" / "system" / "reviewer-safety.md").exists()
+ 
+     def test_docs_mention_no_background_pytest(self):
+-        text = (REPO_ROOT / "docs" / "reviewer-safety.md").read_text()
++        text = (REPO_ROOT / "docs" / "system" / "reviewer-safety.md").read_text()
+         assert "background" in text.lower()
+         assert "never" in text.lower()
+ 
+     def test_docs_mention_single_session(self):
+-        text = (REPO_ROOT / "docs" / "reviewer-safety.md").read_text()
++        text = (REPO_ROOT / "docs" / "system" / "reviewer-safety.md").read_text()
+         assert "parallel" in text.lower() or "single" in text.lower()
+ 
+     def test_tests_readme_mentions_wrapper(self):
+diff --git a/tests/test_execution_foundation.py b/tests/test_execution_foundation.py
+index 5bc2090..287e612 100644
+--- a/tests/test_execution_foundation.py
++++ b/tests/test_execution_foundation.py
+@@ -356,7 +356,7 @@ class _no_exit:
+ # ---------------------------------------------------------------------------
+ 
+ 
+-_ARCH_DOC = Path(__file__).resolve().parent.parent / "docs" / "architecture.md"
++_ARCH_DOC = Path(__file__).resolve().parent.parent / "docs" / "system" / "architecture.md"
+ 
+ 
+ class TestDocsDriftDetection:
+diff --git a/tests/ui_contracts/test_timeline_guard.py b/tests/ui_contracts/test_timeline_guard.py
+index ba6251a..4a3b416 100644
+--- a/tests/ui_contracts/test_timeline_guard.py
++++ b/tests/ui_contracts/test_timeline_guard.py
+@@ -198,7 +198,7 @@ class TestBackendPhases:
+ 
+ class TestOrchestratorLoopContract:
+     def test_orchestrator_loop_doc_exists(self):
+-        doc = ROOT / "docs" / "orchestrator-loop.md"
++        doc = ROOT / "docs" / "system" / "orchestrator-loop.md"
+         assert doc.exists(), "docs/orchestrator-loop.md must exist"
+         content = doc.read_text()
+         assert "Build/Test/Review" in content, "Must describe iterative loop"

@@ -1,0 +1,107 @@
+dd33032a2d4f6902e843a7b6f1b50bb73b0f8bac
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index 1d67f92..a5ba11f 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1650,3 +1650,16 @@ show up in `git status` and in the packaging detritus checks).
+ Verified: the four candidate ids green 3x consecutively, `tests/runtimes/`
+ green under `-n 4`, and no listener on the product default 5173 during or
+ after the runs.
++
++## 2026-07-29: F252 D6 — real models instead of half-specced MagicMocks
++`MagicMock(spec=Job)` pins attribute NAMES only: every field a test does not
++set answers with another MagicMock, so product code comparing a budget or
++reading fences fails on the mock, not on the behaviour under test
++("'>' not supported between MagicMock and int"; "job_fences.allow must be a
++list, got MagicMock"). All three builders now construct real `Job` models
++(`test_test_execution_service._make_job` / `_make_contract` /
++`TestExecuteTestRunGates._make_job_with_repo`, and
++`test_test_runner._make_approved_job` reuses the file's existing real-Job
++helper). No assertion changed; the gates under test now actually run. The
++remaining MagicMock task fixtures in test_test_runner._make_job are untouched
++— those tests pass and do not reach model-reading product code.
+diff --git a/tests/orchestration/test_test_execution_service.py b/tests/orchestration/test_test_execution_service.py
+index df5756b..f5f7a04 100644
+--- a/tests/orchestration/test_test_execution_service.py
++++ b/tests/orchestration/test_test_execution_service.py
+@@ -36,26 +36,22 @@ from packages.orchestration.test_execution_service import (
+ # ---------------------------------------------------------------------------
+ 
+ def _make_job(*, permitted: bool = True, target_repo: str | None = None, max_test_runs: int = 1):
++    """A REAL Job.
++
++    ``MagicMock(spec=Job)`` only pins the attribute NAMES: every field the test
++    does not set answers with a MagicMock, so product code that compares a
++    budget or a counter hits `'>' not supported between MagicMock and int`.
++    A real model costs nothing here and carries the real defaults.
++    """
+     from packages.core.models import Job
+-    job = MagicMock(spec=Job)
+-    job.id = uuid4()
+-    job.name = "test-job"
+-    job.metadata = {}
+-    job.tasks = []
+-    job.artifacts = []
+-    if target_repo:
+-        job.metadata["target_repo"] = target_repo
+-    return job
++    metadata = {"target_repo": target_repo} if target_repo else {}
++    return Job(name="test-job", metadata=metadata)
+ 
+ 
+ def _make_contract(max_test_runs: int = 1, max_runtime_seconds: float = 300.0):
++    from packages.core.models import Job
+     from packages.orchestration.run_contract import build_default_run_contract
+-    job = MagicMock()
+-    job.id = uuid4()
+-    job.metadata = {}
+-    job.tasks = []
+-    job.artifacts = []
+-    c = build_default_run_contract(job)
++    c = build_default_run_contract(Job(name="test-job"))
+     from dataclasses import replace as dc_replace
+     return dc_replace(c, max_test_runs=max_test_runs, max_runtime_seconds=max_runtime_seconds)
+ 
+@@ -477,13 +473,7 @@ class TestExecuteTestRunGates:
+ 
+     def _make_job_with_repo(self, tmp_path):
+         from packages.core.models import Job
+-        job = MagicMock(spec=Job)
+-        job.id = uuid4()
+-        job.name = "test-job"
+-        job.tasks = []
+-        job.artifacts = []
+-        job.metadata = {"target_repo": str(tmp_path)}
+-        return job
++        return Job(name="test-job", metadata={"target_repo": str(tmp_path)})
+ 
+     def test_invalid_job_id_blocked(self):
+         from packages.orchestration.test_execution_service import execute_test_run
+diff --git a/tests/orchestration/test_test_runner.py b/tests/orchestration/test_test_runner.py
+index be5cd31..cbdeaf5 100644
+--- a/tests/orchestration/test_test_runner.py
++++ b/tests/orchestration/test_test_runner.py
+@@ -72,7 +72,13 @@ def _make_job_s261(**kw: Any) -> Job:
+ 
+ 
+ def _make_approved_job() -> tuple[Job, str]:
+-    """Create a job with repo_generated_write + an approved patch intent."""
++    """Create a job with repo_generated_write + an approved patch intent.
++
++    A REAL Job: this one is handed to the apply path, which resolves fences off
++    ``job.fences``. On a bare MagicMock that attribute answers with another
++    MagicMock and the fence loader rejects it ("job_fences.allow must be a
++    list, got MagicMock") before the permission boundary under test is reached.
++    """
+     from packages.core.models import Artifact
+     from packages.orchestration.approval_queue import (
+         APPROVAL_APPROVED,
+@@ -81,7 +87,7 @@ def _make_approved_job() -> tuple[Job, str]:
+     )
+     from packages.orchestration.permissions import Capability, set_permission
+ 
+-    job = _make_job()
++    job = _make_job_s261()
+     set_permission(job, Capability.repo_generated_write, allow=True)
+     artifact = Artifact(task_id=uuid4(), name="test-intent", content_type="patch", content="")
+     artifact.metadata["patch_intent_explanations"] = [

@@ -69,9 +69,15 @@ def _run_cli(args, env, *, cwd=None, timeout=30):
 
 
 def _create_job(repo, env, mission):
-    """Create a job via 'remedy do' and return (short_id, full_id)."""
+    """Create a job via 'remedy do' and return (short_id, full_id).
+
+    ``--no-llm`` for the same reason the golden-path canary forces it: this
+    file tests project SCOPING of listings, not planning. Without the flag
+    ``do`` runs a real flight-plan call, so the fixture's runtime becomes
+    provider latency and the 30s subprocess timeout decides the verdict.
+    """
     result = _run_cli(
-        ["do", mission, "--json"], env, cwd=str(repo),
+        ["do", mission, "--no-llm", "--json"], env, cwd=str(repo),
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)

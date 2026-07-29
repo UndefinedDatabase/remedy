@@ -35,6 +35,8 @@ ActionClass = Literal[
     "apply_write",
     "test_execution",
     "dev_helper",
+    "local_state_change",
+    "controlled_builder_execution",
 ]
 
 
@@ -311,7 +313,7 @@ CATALOG: tuple[CommandEntry, ...] = (
         group_id="job",
         subcommand="budget",
         description="Show budget limits and current counters for a job (F018).",
-        action_class="read_metadata",
+        action_class="read_only",
         supports_json=True,
         args=(
             ArgDef("job_id", "Job ID to inspect"),
@@ -2804,7 +2806,7 @@ CATALOG: tuple[CommandEntry, ...] = (
         group_id="do",
         subcommand="job-evidence",
         description="Export a self-contained evidence bundle for an entire job.",
-        action_class="read_only",
+        action_class="test_execution",
         supports_json=True,
         related=("do.job-plan", "do.job-run", "do.job-report"),
         args=(

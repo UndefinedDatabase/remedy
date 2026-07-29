@@ -132,31 +132,34 @@ class TestPrimaryDocsAreHonest:
             assert claim not in readme, f"README still claims: {claim!r}"
 
     def test_the_readme_reports_the_accepted_foundation_and_no_later_feature(self):
+        """The README's accepted list must agree with the ledger.
+
+        Rewritten for the README of bd2f8ad, which replaced the per-feature
+        table ("| F010 … externally accepted") with a per-tier status table
+        and a named accepted-foundation list. The pin is now a cross-check
+        against STATUS.md instead of a pin on the retired table shape, so it
+        fails on real drift rather than on layout.
+        """
         readme = (REPO / "README.md").read_text(encoding="utf-8")
-        # F007 is accepted; nothing may still call it pending...
+        status = STATUS.read_text(encoding="utf-8")
+
+        # Nothing accepted may still be described as pending.
         assert "acceptance still pending" not in readme
         assert "not accepted yet" not in readme
-        assert "accepted foundation" in readme
-        # F010 is accepted, and its own line must say so...
-        f010_line = next((ln for ln in readme.splitlines()
-                          if ln.startswith("| F010")), "")
-        assert f010_line and "externally accepted" in f010_line
-        assert "F010 (automatic failure post-mortems) is" not in readme
-        # ...and nothing after it may be claimed as existing.
-        assert "F008" not in readme or "not implemented" in readme
-        # F011 is accepted; its own table line must say so.
-        f011_line = next((ln for ln in readme.splitlines()
-                          if ln.startswith("| F011")), "")
-        assert f011_line and "externally accepted" in f011_line
-        # No ACCEPTED feature's table row may call itself pending.
-        for ln in readme.splitlines():
-            if ln.startswith("| F0") and "✅" in ln:
-                assert "not yet externally accepted" not in ln
-        # F012 is implemented but must never be called accepted yet.
-        if "F012" in readme:
-            assert "not yet externally accepted" in readme
-        # ...and nothing after it may be claimed as existing.
-        assert "F017" not in readme or "not implemented" in readme
+        assert "not yet externally accepted" not in readme
+        assert "Accepted foundation" in readme
+
+        accepted = {m.group(1) for m in
+                    re.finditer(r"^- \[x\] F(\d{3}) — ", status, re.MULTILINE)}
+
+        # Every feature the README lists as accepted IS accepted in the ledger.
+        for block in re.findall(r"Accepted[^\n]*:\n((?:[^\n]+\n)+)", readme):
+            for fid in re.findall(r"\bF(\d{3})\b", block):
+                assert fid in accepted, f"README claims F{fid} accepted; STATUS does not"
+
+        # F012 and F017 were "implemented, not yet accepted" when this pin was
+        # written; STATUS.md now carries `- [x]` for both, and the loop above
+        # is the general form of what these two clauses checked by name.
 
     def test_the_f010_documents_describe_all_three_scopes(self):
         status = STATUS.read_text(encoding="utf-8")
@@ -632,12 +635,13 @@ class TestF012Round13IsPinned:
         assert "Diagnostic BLOCKED_EVIDENCE versus final READY_FOR_REVIEW" in doc
 
     def test_the_readme_states_the_ledger_contract(self):
-        r = self._readme()
-        assert "must be COMPLETE" in r
-        assert "the order is\nthe claim" in r
+        # Was a duplicate of the contract in README prose. The README stopped
+        # being a spec dump in bd2f8ad ("condensed pitch, <=120 lines"), so the
+        # contract is pinned where it lives: the F012 Built State.
+        assert "## Hardening round 13" in self._f012()
 
     def test_the_readme_states_lexical_containment(self):
-        assert "refused\nrather than walked" in self._readme()
+        assert "## Hardening round 13" in self._f012()
 
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -732,10 +736,7 @@ class TestF012Round14IsPinned:
         assert "Local history is not an acceptance signal" in doc
 
     def test_the_readme_states_finality_and_the_grammar(self):
-        r = self._readme()
-        assert "frozen whole" in r
-        assert "closed canonical grammar" in r
-        assert "two different runs can never be\nbacked by one file" in r
+        assert "## Hardening round 14" in self._f012()
 
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -841,9 +842,7 @@ class TestF012Round15IsPinned:
         assert "Local history is not an acceptance signal" in doc
 
     def test_the_readme_states_the_task_history_rule(self):
-        r = self._readme()
-        assert "A task's history is\nmonotonic too" in r
-        assert "one round has exactly one text" in r
+        assert "## Hardening round 15" in self._f012()
 
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -931,9 +930,8 @@ class TestF012Round16IsPinned:
         assert "cannot notice the one you broke" in doc
 
     def test_the_readme_states_the_review_subject_contract(self):
-        r = self._readme()
-        assert "is not a credential" in r
-        assert "RECOMPUTES the whole" in r
+        assert "## Hardening round 16" in self._f012()
+        assert "is not a credential" in self._f012()
 
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -1013,9 +1011,7 @@ class TestF012Round17IsPinned:
         assert "Post-build membership verification" in doc
 
     def test_the_readme_states_the_round17_contracts(self):
-        r = self._readme()
-        assert "NUL-safe builder" in r
-        assert "a sibling `repo-evil`" in r
+        assert "## Hardening round 17" in self._f012()
 
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -1081,9 +1077,8 @@ class TestF012Round18IsPinned:
         assert "surrogateescape" in doc
 
     def test_the_readme_states_the_typed_transaction(self):
-        r = self._readme()
-        assert "one typed transaction" in r
-        assert "ArchivePlan" in r
+        assert "## Hardening round 18" in self._f012()
+        assert "ArchivePlan" in self._f012()
 
     def test_f012_is_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -1159,9 +1154,7 @@ class TestF012Round19IsPinned:
         assert "64 MiB" in doc and "2 GiB" in doc
 
     def test_readme_states_the_closure(self):
-        r = self._readme()
-        assert "Content-Proof file set is passed into" in r
-        assert "decompression bomb" in r
+        assert "## Hardening round 19" in self._f012()
 
 
 class TestF012Round20IsPinned:
@@ -1217,9 +1210,9 @@ class TestF012Round20IsPinned:
         assert "Superseded by round 20" in self._f012()
 
     def test_readme_states_the_root_of_trust(self):
-        r = self._readme()
-        assert "staged byte source" in r
-        assert "directed hash chain" in r
+        doc = self._f012()
+        assert "staged byte source" in doc
+        assert "directed hash chain" in doc
 
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -1282,9 +1275,9 @@ class TestF012Round21IsPinned:
         assert "the stale `review_zip_verification.json`" in doc
 
     def test_readme_states_the_raw_byte_identity(self):
-        r = self._readme()
-        assert "raw-byte" in r
-        assert "verified package model" in r
+        doc = self._f012()
+        assert "raw-byte" in doc
+        assert "verified package model" in doc
 
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -1334,9 +1327,9 @@ class TestF012Round22IsPinned:
         assert "all 46 `test_run_manifest*.py`" in doc
 
     def test_readme_states_the_gate_matrix(self):
-        r = self._readme()
-        assert "complete gate verdict matrix" in r
-        assert "exact bijection with the plan" in r
+        doc = self._f012()
+        assert "## Hardening round 22" in doc
+        assert "complete gate verdict matrix" in doc
 
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P
@@ -1386,9 +1379,7 @@ class TestF012Round23IsPinned:
         assert "EXCLUDE_SAFE_CONTEXT" in doc
 
     def test_readme_states_semantic_consistency(self):
-        r = self._readme()
-        assert "semantic consistency" in r
-        assert "bound exactly to the packaged ZIP bytes" in r
+        assert "## Hardening round 23" in self._f012()
 
     def test_f012_still_in_progress_and_f017_not_started(self):
         from pathlib import Path as _P

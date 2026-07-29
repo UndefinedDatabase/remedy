@@ -9,6 +9,18 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
+#: Where an ist-doc can live after the docs restructure (index: docs/README.md).
+_DOC_DIRS = ("system", "guides", "")
+
+
+def _read_doc(name: str) -> str:
+    """The text of ``name`` wherever it lives under docs/ — never a silent ""."""
+    for sub in _DOC_DIRS:
+        p = (_ROOT / "docs" / sub / name) if sub else (_ROOT / "docs" / name)
+        if p.exists():
+            return p.read_text(encoding="utf-8", errors="replace")
+    raise AssertionError(f"doc not found under docs/: {name}")
+
 
 # ---------------------------------------------------------------------------
 # Step 2671: operator-facing command entries exist + safe classification
@@ -79,10 +91,13 @@ class TestOperatorCommandsExist:
 
 class TestStaleCommandScanner:
     def _read_doc(self, name: str) -> str:
-        p = _ROOT / "docs" / name
-        if not p.exists():
-            return ""
-        return p.read_text(encoding="utf-8", errors="replace")
+        """Read a doc from the restructured tree.
+
+        The docs moved into docs/system/ and docs/guides/; the flat lookup
+        silently returned "" for every one of them, so these assertions were
+        passing against an empty string. Missing is now an explicit failure.
+        """
+        return _read_doc(name)
 
     def test_no_stale_adapter_flag_in_quickstart(self):
         text = self._read_doc("simple-operator-quickstart-v0.md")
@@ -111,7 +126,7 @@ class TestStaleCommandScanner:
             "Stale command in mission docs"
 
     def test_core_spine_doc_exists(self):
-        p = _ROOT / "docs" / "core-product-spine-v0.md"
+        p = _ROOT / "docs" / "system" / "core-product-spine-v0.md"
         assert p.exists(), "core-product-spine-v0.md must exist"
 
 
@@ -344,10 +359,13 @@ class TestCommandTaxonomyDocs:
     """Docs use job-first language."""
 
     def _read_doc(self, name: str) -> str:
-        p = _ROOT / "docs" / name
-        if not p.exists():
-            return ""
-        return p.read_text(encoding="utf-8", errors="replace")
+        """Read a doc from the restructured tree.
+
+        The docs moved into docs/system/ and docs/guides/; the flat lookup
+        silently returned "" for every one of them, so these assertions were
+        passing against an empty string. Missing is now an explicit failure.
+        """
+        return _read_doc(name)
 
     def test_spine_doc_has_job_first_flow(self):
         text = self._read_doc("core-product-spine-v0.md")
@@ -419,19 +437,28 @@ class TestJobFacadeNoAgent:
         assert "job_not_found" in output or "error" in output
 
     def test_job_status_invalid_id_safe(self):
+        """A bad id fails safely: named error on stderr, no partial JSON.
+
+        The machine token `invalid_job_id` is a `stop_reason` of the test
+        execution service; the job CLI reports a bad id as a human error on
+        stderr and exits non-zero. This pins that behaviour instead.
+        """
         import contextlib
         import io
 
         from apps.cli.commands.job import _cmd_job_status
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
                 _cmd_job_status("not-a-uuid", json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert "invalid_job_id" in output
-        assert "Traceback" not in output
+            except SystemExit as exc:
+                code = exc.code
+        assert code not in (None, 0)
+        assert "invalid job ID" in err.getvalue()
+        assert "not-a-uuid" in err.getvalue()
+        assert "Traceback" not in err.getvalue()
+        assert out.getvalue().strip() == ""
 
 # ---------------------------------------------------------------------------
 # Steps 3229-3237: Enriched truth, demo integration, safety proofs
@@ -557,19 +584,22 @@ class TestJobStatusReportTruthFields:
         assert len(data['tasks']) == 1
 
     def test_report_invalid_id_safe(self):
+        """Same contract as job status: named stderr error, no partial JSON."""
         import contextlib
         import io
 
         from apps.cli.commands.job import _cmd_job_report
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
+        out, err = io.StringIO(), io.StringIO()
+        code = None
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
                 _cmd_job_report('not-a-uuid', json_output=True)
-            except SystemExit:
-                pass
-        output = buf.getvalue()
-        assert 'invalid_job_id' in output
-        assert 'Traceback' not in output
+            except SystemExit as exc:
+                code = exc.code
+        assert code not in (None, 0)
+        assert 'invalid job ID' in err.getvalue()
+        assert 'Traceback' not in err.getvalue()
+        assert out.getvalue().strip() == ""
 
 
 class TestNoProviderNoApplyProof:
@@ -637,9 +667,9 @@ class TestDoRunHelpAlignment:
         assert 'do run' in first or 'remedy do' in first
 
     def test_spine_doc_uses_do_run(self):
-        text = (_ROOT / 'docs' / 'core-product-spine-v0.md').read_text()
+        text = _read_doc('core-product-spine-v0.md')
         assert 'do run' in text
 
     def test_quickstart_doc_uses_do_run(self):
-        text = (_ROOT / 'docs' / 'simple-operator-quickstart-v0.md').read_text()
+        text = _read_doc('simple-operator-quickstart-v0.md')
         assert 'do run' in text

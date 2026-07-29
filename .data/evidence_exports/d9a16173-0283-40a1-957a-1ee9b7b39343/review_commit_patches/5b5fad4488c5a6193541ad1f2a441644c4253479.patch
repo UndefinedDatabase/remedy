@@ -1,0 +1,453 @@
+5b5fad4488c5a6193541ad1f2a441644c4253479
+diff --git a/.agent/authored/f252-r2-1.md b/.agent/authored/f252-r2-1.md
+new file mode 100644
+index 0000000..ccbae8f
+--- /dev/null
++++ b/.agent/authored/f252-r2-1.md
+@@ -0,0 +1,35 @@
++# Live Review — F252 Standing-red paydown (154 ids, 13 classes)
++
++Branch: feature/f252-standing-red-paydown
++Scope: every catalogued standing-red id reaches an explicit terminal
++state, class by class (catalog: .agent/f251_baseline/class_map.txt).
++
++## Steps
++- R1: claim + state reset + product-bug classes D8, D10, D11. Done.
++- R2: persist this verdict + R-0152, fix R-0152, then D9, D7, D5,
++  D13, the two F-A ids, D6, D4 remainder, D1, D14, D3 park, D12;
++  full-suite delta; stop at the first red slice gate. In progress.
++
++## Findings
++- R-0152 (minor, open): apps/cli/commands/do_cmd.py — the `do`
++  planning path falls back to the intake-bound call_fn
++  (`make_structured_call_fn(FlightPlan) or call_fn`) when the
++  FlightPlan factory returns None. The degraded path then knowingly
++  re-drives planning with a wrong-shaped native schema — the exact
++  D8 failure shape. Fix: no fallback; when the factory returns None,
++  skip LLM planning exactly like the no-provider path.
++
++## Verdicts
++- R1: PASS (reviewer, 2026-07-29). Range 7baff1d..cc247fa, 5
++  commits; diff = instructed scope only. Authored proofs verified
++  disk-to-disk against the reviewer's originals (cmp 0 x5; STATUS
++  grep new=1/old=0). Gates re-run independently: 18/92/208 passed,
++  canary 42, tests/docs 13F/279P = baseline exactly. Full suite
++  re-run twice by the reviewer: 134F/14172P; junitxml failing-id set
++  vs churn_gate2_run1.txt: NEW empty, GONE = exactly the claimed 20
++  (14 targets, 2 D14 siblings, 4 D4). Red-proof in a throwaway
++  worktree at 7baff1d: 3/3 sampled target ids fail at base, pass at
++  HEAD; worktree removed, primary checkout clean. R-0152 filed as
++  minor, non-blocking. Verified tier: scoped gates + canary + a full
++  suite run (reviewer-side; the official integration gate stays a
++  dedicated later round). LAST_REVIEWED_SHA = cc247fa.
+diff --git a/.agent/authored/f252-r2-2.md b/.agent/authored/f252-r2-2.md
+new file mode 100644
+index 0000000..246d60e
+--- /dev/null
++++ b/.agent/authored/f252-r2-2.md
+@@ -0,0 +1,16 @@
++# Plan — F252 Standing-red paydown
++
++## Goal
++All 154 catalogued standing-red ids reach an explicit terminal state
++(root-cause fix, honest test update, or operator-decided retirement);
++DONE when three consecutive full-suite runs produce identical failure
++sets, empty except explicit quarantines (F251 rules unchanged).
++
++## Next Steps
++- R2 (bundle): fix R-0152; class rounds in order D9, D7, D5, D13,
++  the two stopped F-A ids, D6; D4 remainder via a current
++  context.md; D1 + D14 doc-drift triage; D3 parked by decision
++  (quarantine + Tier 5 backlog ref); D12 restore-or-quarantine by
++  history. Full-suite delta at the end (or at a STOP).
++- Then: integration-gate round, closure round (evidence job, fresh
++  zip, STATUS [x], PR) — reviewer-gated, never bundled.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index 9291f01..3809cba 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,132 +1,187 @@
+-OUTCOME: executed
+-── STEP R1 — F252 (bookkeeping + D8 + D10 + D11) ────────────────────
+-Goal:        Claim F252, reset the .agent state, and root-cause-fix
+-             the three product-bug classes D8, D10, D11 (14 ids).
+-Bundle:      Slice 0 bookkeeping · Slice A D8 · Slice B D10 ·
+-             Slice C D11 · closing full-suite delta.
+-Change:      docs/roadmap/STATUS.md (one line), .agent state files,
+-             product code + only these classes' tests where a test
+-             encodes a stale expectation. Nothing beyond this.
++OUTCOME: pending
++── STEP R2 — F252 (R-0152 + the whole remaining feature, no closure) ─
++Goal:        Persist the R1 verdict + finding R-0152, fix R-0152,
++             then drive every remaining class to its terminal state:
++             D9, D7, D5, D13, the two F-A ids, D6, D4 remainder,
++             D1, D14, D3 (park), D12. Stop at the first red slice
++             gate.
++Bundle:      Slice 0 persist+fix · slices A–J below · closing
++             full-suite delta.
++Change:      Product code, tests, and docs strictly as each class
++             requires. Nothing beyond.
+ Constraints: AGENTS.md. F251 quarantine rules unchanged (never
+-             deletion, never blanket skips, never weakened
+-             assertions). Commits small (<500-line diffs), one
+-             logical step each — multiple commits expected. Worker
+-             never writes ## Verdicts / Resolved. Authored texts:
+-             save verbatim, sha256-verify BEFORE commit; mismatch =
+-             STOP, commit and push .agent/last_block.md with the
+-             refusal record, apply nothing.
+-Done when:   Every slice gate below green + full-suite delta
+-             recorded in the handoff.
++             deletion, never blanket directory skips, never weakened
++             assertions; marker/skip needs reason + backlog ref per
++             test). One commit minimum per slice, each <500-line
++             diff; push after every slice. Worker never writes
++             ## Verdicts / Resolved — the authored text below is the
++             only source of those. Authored texts: save verbatim,
++             sha256-verify BEFORE commit; mismatch = STOP, commit
++             and push .agent/last_block.md with the refusal record,
++             apply nothing. A class whose honest fix exceeds its
++             bucket: STOP the bundle there, record the diagnosis,
++             hand back with the finished slices.
++Done when:   Every slice gate green (or a documented STOP) +
++             full-suite delta recorded in the handoff.
+ Handback:    Completion report + rewrite .agent/handoff.md per
+-             docs/agents/handback_template.md. NO PR, NO STATUS [x],
+-             no closure artifacts — closure is a later
+-             reviewer-gated round.
++             docs/agents/handback_template.md (≤100 lines applies —
++             many commits). NO PR, NO STATUS [x], no closure
++             artifacts; integration gate and closure are their own
++             later reviewer-gated rounds.
+ 
+ PROCEDURE
+ 
+-Slice 0 — bookkeeping (own commit)
+-1. Open PR Gate: gh pr list --state open — expected empty (PR #160
+-   already merged). If anything is open, act per the AGENTS.md gate
+-   before branching.
+-2. From clean, current main (git pull --ff-only):
+-   git checkout -b feature/f252-standing-red-paydown
+-3. Save the three authored texts below VERBATIM to
+-   .agent/authored/f252-r1-1.md, f252-r1-2.md, f252-r1-3.md and
+-   sha256-verify each against its BEGIN marker.
+-4. Write .agent/last_block.md: line 1 "OUTCOME: pending", then THIS
+-   entire block verbatim. Set "OUTCOME: executed" when the round
+-   ends.
+-5. Apply by copy (disk-to-disk proof, never a retype):
+-   - f252-r1-1 replaces the line
+-     "- [ ] F252 — Standing-red paydown (154 ids, 13 classes)"
+-     in docs/roadmap/STATUS.md (afterwards grep -c of the old line
+-     = 0, of the new line = 1);
+-   - f252-r1-2 FULL REPLACE of .agent/live_review.md (cmp exit 0);
+-   - f252-r1-3 FULL REPLACE of .agent/plan.md (cmp exit 0).
+-6. Slice gate (docs round — STATUS touched):
+-   python3 -m pytest tests/docs/ -q
+-     → failing ids must be EXACTLY the baseline set (compare against
+-       .agent/f251_baseline/churn_gate2_run1.txt; none new)
+-   pytest tests/cli/test_golden_path.py -q → all pass
+-   Commit: "chore(f252): claim F252, reset agent state". Push.
+-
+-Slice A — D8 "flight-plan schema_v regression" (3 ids)
+-7. Reproduce: python3 -m pytest tests/cli/test_scoped_listings.py -q
+-   Target ids (TestScopedListingsCLI):
+-     test_legacy_job_hidden_and_unscoped_label
+-     test_orphaned_label_on_deleted_project
+-     test_status_scoped
+-8. Diagnose the actual root cause (catalog label says flight-plan
+-   schema_v; the catalog is authoritative on ids, you are
+-   authoritative on the diagnosis — record it). Fix in PRODUCT code.
+-   A test edit is allowed only for a provably stale expectation and
+-   is named in the handoff with its reason.
+-9. Slice gate: the 3 ids pass; remaining failures in that file are a
+-   subset of the baseline set (its D14 ids may stay red). Canary
+-   green. Own commit(s), push.
+-
+-Slice B — D10 discover-commands CLI rc=1 / non-JSON (8 ids)
+-10. Reproduce: python3 -m pytest tests/test_command_discovery.py -q
+-    (all 8 catalogued ids: TestCLIDiscoverCommands,
+-    TestCLIDiscoverCommandsSchemaV1).
+-11. Root-cause fix in product code, same rules as slice A.
+-12. Slice gate: tests/test_command_discovery.py fully green (this
+-    file has no other baseline red). Canary green. Own commit(s),
+-    push.
+-
+-Slice C — D11 malformed TOML raises BudgetConfigError instead of
+-FenceConfigError (3 ids)
+-13. Reproduce:
+-    python3 -m pytest tests/orchestration/test_fence_e2e.py \
+-      tests/orchestration/test_fences.py -q
+-14. Root-cause fix in product code (error mapping at the
+-    fence-config boundary), same rules.
+-15. Slice gate: the 3 ids pass; both files' remaining failures are a
+-    subset of the baseline set. Canary green. Own commit(s), push.
+-
+-Closing — full-suite delta (required by the feature file)
+-16. python3 -m pytest -n auto -q — keep the raw output. Extract the
+-    sorted failing-id set; comm -23 against the sorted
+-    .agent/f251_baseline/churn_gate2_run1.txt must be EMPTY (if an
+-    environment-dependent flake appears, name it explicitly — never
+-    fold it into the delta silently). Record in the handoff WHICH of
+-    the 14 target ids left the standing set.
+-17. git status --porcelain → empty. Everything committed and pushed.
+-18. Handback: per-commit changed-files tables, raw transcripts for
+-    every gate (command, exit code, output tail), the full-suite
+-    delta list, and one line per class: root cause + fix shape.
+-
+-STOP rule for this bundle: at the FIRST slice gate you cannot turn
+-green without leaving the class's bucket (product bug turning into
+-product change or wider), stop there — do NOT start the next slice.
+-Record the diagnosis and the partial delta in the handoff and hand
+-back with the finished slices. Never silent scope drift.
+-
+---- BEGIN f252-r1-1 sha256=2d0a38649ee6e1f1f68b2c609f5b834fec46e3405624e3adf78bd64c6f792938 ---
+-- [~] F252 — Standing-red paydown (154 ids, 13 classes)
+---- END f252-r1-1 ---
+-
+---- BEGIN f252-r1-2 sha256=6b278594b1a4add6faed224eeb4c710f8003cb9a3bbfaa9073c7c2120200bf4a ---
++Slice 0 — persist verdict + findings, fix R-0152 (two commits)
++1. Write .agent/last_block.md: line 1 "OUTCOME: pending", then THIS
++   block verbatim; "OUTCOME: executed" when the round ends.
++2. Save the two authored texts below VERBATIM to
++   .agent/authored/f252-r2-1.md and f252-r2-2.md; sha256-verify
++   each. Apply by copy: f252-r2-1 FULL REPLACE .agent/live_review.md
++   (cmp exit 0), f252-r2-2 FULL REPLACE .agent/plan.md (cmp 0).
++   Commit A: "chore(f252): persist R1 verdict + R-0152". Push.
++3. Fix R-0152 in apps/cli/commands/do_cmd.py: remove the
++   `or call_fn` fallback; when make_structured_call_fn(FlightPlan)
++   returns None, skip LLM planning the same way the no-provider
++   path does. Mark `Done: R-0152` in live_review.md's finding line.
++   Gate: python3 -m pytest tests/cli/test_scoped_listings.py -q
++   (18 passed) + canary. Commit B, push.
++
++Slice A — D9 command-catalog classification drift (3 ids)
++4. Reproduce: python3 -m pytest tests/test_command_catalog.py -q
++   Root-cause fix (product or honest test update — diagnose, record
++   in .agent/decisions.md). Gate: file fully green + canary.
++
++Slice B — D7 dev_server private names removed (6 ids)
++5. Files: tests/orchestration/test_failure_postmortem.py (1),
++   tests/runtimes/test_supervisor_portability.py (5). Diagnose: the
++   catalog says tests reach for removed private names; decide per id
++   between restoring a shared public seam and honest test update.
++   Gate: the 6 ids pass, files' remaining failures subset of
++   baseline. Canary.
++
++Slice C — D5 CLI requires a registered project (11 ids)
++6. Files: tests/test_cli_main.py (10),
++   tests/orchestration/test_test_runner.py (1). Per-id rule, D10
++   precedent: intentional F148 behavior → fixture registers a
++   project (honest update, assert rc); a genuine cwd-coupling defect
++   against a command's documented contract → product fix. Record
++   the split in decisions.md. Gate: the 11 ids pass, subset rule.
++   Canary.
++
++Slice D — D13 review-zip / evidence packaging drift (11 ids)
++7. Files: tests/orchestration/test_review_zip_hygiene.py (8),
++   test_review_manual_completion_shapes.py (1),
++   test_review_subject_explicit_base.py (1),
++   test_evidence_index.py ids stay D14. Diagnose against the REAL
++   packaging behavior (make_review_zip.sh, build_review_manifest);
++   product fix where packaging broke a documented contract, honest
++   update where the contract legitimately moved. Gate: the 11 ids
++   pass, subset rule. Canary.
++
++Slice E — the two stopped F-A ids from F251 (2 ids, product change)
++8. From the F251 notes (.agent/f251_baseline/, flake_set /
++   reviewer_flake_extras): the real-Vite probe binds the product's
++   apps/ui port; the supervisor teardown guard's fix reaches the
++   product stop/ownership path. Product fixes. Gate: each id run 3x
++   consecutively green (they were flake-class), no port bound on the
++   product's default. Canary.
++
++Slice F — D6 incomplete MagicMock vs real comparison (9 ids)
++9. Files: tests/orchestration/test_test_execution_service.py (8),
++   tests/orchestration/test_test_runner.py (1). Test rewrites: real
++   objects or complete fakes instead of half-specced MagicMocks —
++   assertions must stay at least as strong. Gate: the 9 ids pass,
++   subset rule. Canary.
++
++Slice G — D4 remainder: context.md joins the maintained state set
++10. Rewrite .agent/context.md to current reality (worker-owned
++    file): active branch, F252 scope boundaries, resource-safety
++    note, current steps — whatever the 5 remaining D4 ids assert;
++    read the tests first, satisfy them honestly, keep the file
++    current every future round. Gate:
++    python3 -m pytest tests/ui_server/test_dashboard_contract.py \
++      tests/orchestration/test_test_runner.py \
++      tests/regression/test_resource_safety.py -q
++    → remaining failures subset of baseline minus the D4 ids.
++    Canary.
++
++Slice H — D1 doc/file missing at flat path (36 ids)
++11. Per id: the doc moved in the restructure → point the test at
++    the real path (docs/README.md is the index); the doc is
++    genuinely gone → restore or fix the doc, never delete the test.
++    Multiple commits fine, subset-rule gate per touched test file.
++    Canary per commit.
++
++Slice I — D14 misc drift (46 ids incl. the 13 tests/docs pins)
++12. Same per-id triage as D1. The 13 README pins: update the pinned
++    text honestly to current truth — a pin that asserts a stale
++    claim is updated WITH the README statement it pins, same
++    commit. Gate at slice end: python3 -m pytest tests/docs/ -q
++    fully green + touched files subset rule. Canary.
++
++Slice J — decisions D3 and D12 (registered above, execute)
++13. D3 (10 ids): quarantine markers — skip + reason + backlog ref
++    "Tier 5 UI build (F019+)", per test, per F251 rules. Gate:
++    python3 -m pytest <the three D3 files> -q -rs → 0 failed, the
++    10 shown as skipped with reasons.
++14. D12 (1 id): git log --follow on .claude/agents/
++    remedy-reviewer.md. Removal without stated reason → restore
++    from history and the test goes green. Deliberate, reasoned
++    removal → quarantine with that reason + backlog ref. Record
++    which path in decisions.md. Gate: the id green or properly
++    skipped.
++
++Closing — full-suite delta
++15. python3 -m pytest -n auto -q --junitxml=<scratch>/f252-r2.xml —
++    keep the raw output. Extract the failing-id set from the xml,
++    LC_ALL=C sort, comm against LC_ALL=C-sorted
++    .agent/f251_baseline/churn_gate2_run1.txt. NEW must be EMPTY;
++    record the GONE list per class in the handoff. Expected end
++    state: failures empty except explicit quarantines (D3, possibly
++    D12) and any documented STOP remainder.
++16. git status --porcelain → empty; everything pushed. Handback per
++    template: per-commit tables, raw gate transcripts, the delta,
++    one line per class: root cause + fix shape + terminal state.
++
++--- BEGIN f252-r2-1 sha256=11d5380886ecdd2fcf3c2ede9e8a760ad6612788b6f64b7e30181b85289e7ba7 ---
+ # Live Review — F252 Standing-red paydown (154 ids, 13 classes)
+ 
+ Branch: feature/f252-standing-red-paydown
+ Scope: every catalogued standing-red id reaches an explicit terminal
+ state, class by class (catalog: .agent/f251_baseline/class_map.txt).
+-Round 1 = STATUS claim + state reset + the three product-bug classes
+-D8, D10, D11 (14 ids).
+ 
+ ## Steps
+-- R1: claim F252 in STATUS, reset state files, fix D8 + D10 + D11,
+-  record the full-suite delta, hand back.
++- R1: claim + state reset + product-bug classes D8, D10, D11. Done.
++- R2: persist this verdict + R-0152, fix R-0152, then D9, D7, D5,
++  D13, the two F-A ids, D6, D4 remainder, D1, D14, D3 park, D12;
++  full-suite delta; stop at the first red slice gate. In progress.
+ 
+ ## Findings
+-(none yet)
++- R-0152 (minor, open): apps/cli/commands/do_cmd.py — the `do`
++  planning path falls back to the intake-bound call_fn
++  (`make_structured_call_fn(FlightPlan) or call_fn`) when the
++  FlightPlan factory returns None. The degraded path then knowingly
++  re-drives planning with a wrong-shaped native schema — the exact
++  D8 failure shape. Fix: no fallback; when the factory returns None,
++  skip LLM planning exactly like the no-provider path.
+ 
+ ## Verdicts
+-(pending R1)
+---- END f252-r1-2 ---
+-
+---- BEGIN f252-r1-3 sha256=c551e984c6590aaa7601f2124dafe2c8eb0f6d64c2fb0c586c50a5ce87c7ff53 ---
++- R1: PASS (reviewer, 2026-07-29). Range 7baff1d..cc247fa, 5
++  commits; diff = instructed scope only. Authored proofs verified
++  disk-to-disk against the reviewer's originals (cmp 0 x5; STATUS
++  grep new=1/old=0). Gates re-run independently: 18/92/208 passed,
++  canary 42, tests/docs 13F/279P = baseline exactly. Full suite
++  re-run twice by the reviewer: 134F/14172P; junitxml failing-id set
++  vs churn_gate2_run1.txt: NEW empty, GONE = exactly the claimed 20
++  (14 targets, 2 D14 siblings, 4 D4). Red-proof in a throwaway
++  worktree at 7baff1d: 3/3 sampled target ids fail at base, pass at
++  HEAD; worktree removed, primary checkout clean. R-0152 filed as
++  minor, non-blocking. Verified tier: scoped gates + canary + a full
++  suite run (reviewer-side; the official integration gate stays a
++  dedicated later round). LAST_REVIEWED_SHA = cc247fa.
++--- END f252-r2-1 ---
++
++--- BEGIN f252-r2-2 sha256=9b806d942ca51c5b64a5dd85c0b961832c9f431edd70611adc72418fb8be5b2d ---
+ # Plan — F252 Standing-red paydown
+ 
+ ## Goal
+@@ -136,10 +191,11 @@ DONE when three consecutive full-suite runs produce identical failure
+ sets, empty except explicit quarantines (F251 rules unchanged).
+ 
+ ## Next Steps
+-- R1: product-bug classes — D8 flight-plan schema_v (3 ids), D10
+-  discover-commands CLI (8 ids), D11 fence TOML error type (3 ids);
+-  full-suite delta recorded in the handoff.
+-- Later rounds: product change (D5, D7, D9, D13), test rewrites (D6),
+-  doc drift (D1, D14), decision classes (D3, D12), the D4 design
+-  item, the two stopped F-A ids.
+---- END f252-r1-3 ---
++- R2 (bundle): fix R-0152; class rounds in order D9, D7, D5, D13,
++  the two stopped F-A ids, D6; D4 remainder via a current
++  context.md; D1 + D14 doc-drift triage; D3 parked by decision
++  (quarantine + Tier 5 backlog ref); D12 restore-or-quarantine by
++  history. Full-suite delta at the end (or at a STOP).
++- Then: integration-gate round, closure round (evidence job, fresh
++  zip, STATUS [x], PR) — reviewer-gated, never bundled.
++--- END f252-r2-2 ---
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index fff6dde..ccbae8f 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -3,15 +3,33 @@
+ Branch: feature/f252-standing-red-paydown
+ Scope: every catalogued standing-red id reaches an explicit terminal
+ state, class by class (catalog: .agent/f251_baseline/class_map.txt).
+-Round 1 = STATUS claim + state reset + the three product-bug classes
+-D8, D10, D11 (14 ids).
+ 
+ ## Steps
+-- R1: claim F252 in STATUS, reset state files, fix D8 + D10 + D11,
+-  record the full-suite delta, hand back.
++- R1: claim + state reset + product-bug classes D8, D10, D11. Done.
++- R2: persist this verdict + R-0152, fix R-0152, then D9, D7, D5,
++  D13, the two F-A ids, D6, D4 remainder, D1, D14, D3 park, D12;
++  full-suite delta; stop at the first red slice gate. In progress.
+ 
+ ## Findings
+-(none yet)
++- R-0152 (minor, open): apps/cli/commands/do_cmd.py — the `do`
++  planning path falls back to the intake-bound call_fn
++  (`make_structured_call_fn(FlightPlan) or call_fn`) when the
++  FlightPlan factory returns None. The degraded path then knowingly
++  re-drives planning with a wrong-shaped native schema — the exact
++  D8 failure shape. Fix: no fallback; when the factory returns None,
++  skip LLM planning exactly like the no-provider path.
+ 
+ ## Verdicts
+-(pending R1)
++- R1: PASS (reviewer, 2026-07-29). Range 7baff1d..cc247fa, 5
++  commits; diff = instructed scope only. Authored proofs verified
++  disk-to-disk against the reviewer's originals (cmp 0 x5; STATUS
++  grep new=1/old=0). Gates re-run independently: 18/92/208 passed,
++  canary 42, tests/docs 13F/279P = baseline exactly. Full suite
++  re-run twice by the reviewer: 134F/14172P; junitxml failing-id set
++  vs churn_gate2_run1.txt: NEW empty, GONE = exactly the claimed 20
++  (14 targets, 2 D14 siblings, 4 D4). Red-proof in a throwaway
++  worktree at 7baff1d: 3/3 sampled target ids fail at base, pass at
++  HEAD; worktree removed, primary checkout clean. R-0152 filed as
++  minor, non-blocking. Verified tier: scoped gates + canary + a full
++  suite run (reviewer-side; the official integration gate stays a
++  dedicated later round). LAST_REVIEWED_SHA = cc247fa.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index dda3f59..246d60e 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -7,9 +7,10 @@ DONE when three consecutive full-suite runs produce identical failure
+ sets, empty except explicit quarantines (F251 rules unchanged).
+ 
+ ## Next Steps
+-- R1: product-bug classes — D8 flight-plan schema_v (3 ids), D10
+-  discover-commands CLI (8 ids), D11 fence TOML error type (3 ids);
+-  full-suite delta recorded in the handoff.
+-- Later rounds: product change (D5, D7, D9, D13), test rewrites (D6),
+-  doc drift (D1, D14), decision classes (D3, D12), the D4 design
+-  item, the two stopped F-A ids.
++- R2 (bundle): fix R-0152; class rounds in order D9, D7, D5, D13,
++  the two stopped F-A ids, D6; D4 remainder via a current
++  context.md; D1 + D14 doc-drift triage; D3 parked by decision
++  (quarantine + Tier 5 backlog ref); D12 restore-or-quarantine by
++  history. Full-suite delta at the end (or at a STOP).
++- Then: integration-gate round, closure round (evidence job, fresh
++  zip, STATUS [x], PR) — reviewer-gated, never bundled.

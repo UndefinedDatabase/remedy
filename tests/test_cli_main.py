@@ -733,7 +733,10 @@ class TestProjectCommandsCLI:
         project_id = capsys.readouterr().out.strip()
         repo = str(tmp_path / "myrepo")
         import os
+        import subprocess
         os.makedirs(repo)
+        # F146 canonicalizes through git; a bare directory is rejected (exit 2).
+        subprocess.run(["git", "init", "-q", repo], check=True, capture_output=True)
         _cmd_attach_project_repo(project_id, repo)
         capsys.readouterr()
         _cmd_attach_project_repo(project_id, repo)
@@ -748,13 +751,17 @@ class TestProjectCommandsCLI:
         from apps.cli.commands.project import _cmd_attach_project_job, _cmd_create_project
         from packages.orchestration.storage import load_job
         _cmd_create_project("JobLink", None)
-        project_id = capsys.readouterr().out.strip()
-        _cmd_create_job("test prompt")
+        target_id = capsys.readouterr().out.strip()
+        # The job is created under a DIFFERENT project (F148 requires a
+        # resolvable one), so the metadata below can only come from attach.
+        _cmd_create_project("JobOrigin", None)
+        origin_id = capsys.readouterr().out.strip()
+        _cmd_create_job("test prompt", project_id=origin_id)
         job_id = capsys.readouterr().out.strip()
-        _cmd_attach_project_job(project_id, job_id)
+        _cmd_attach_project_job(target_id, job_id)
         capsys.readouterr()
         job = load_job(UUID(job_id))
-        assert job.metadata.get("project_id") == project_id
+        assert job.metadata.get("project_id") == target_id
 
     def test_create_job_with_valid_project_links(self, tmp_path, monkeypatch, capsys):
         import json
@@ -770,24 +777,36 @@ class TestProjectCommandsCLI:
         d = json.loads(out)
         assert any(j["id"] == job_id for j in d["jobs"])
 
-    def test_create_job_with_missing_project_warns(self, tmp_path, monkeypatch, capsys):
+    def test_create_job_with_missing_project_exits_3(self, tmp_path, monkeypatch, capsys):
+        """F148 creation guard: an unresolvable --project is a hard error.
+
+        Was "…_warns": pre-F148 the CLI warned and created an unscoped job.
+        docs/system/project-scoping-v0.md now specifies exit 3 with a fix-it.
+        """
         from uuid import uuid4
+
+        import pytest
         self._env(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_create_job
-        _cmd_create_job("warn prompt", project_id=str(uuid4()))
+        with pytest.raises(SystemExit) as exc:
+            _cmd_create_job("warn prompt", project_id=str(uuid4()))
+        assert exc.value.code == 3
         out = capsys.readouterr()
-        assert "warning" in out.err.lower()
+        assert "no project found" in out.err.lower()
+        assert "remedy init" in out.err.lower()
         assert "traceback" not in out.err.lower()
 
-    def test_create_job_missing_project_does_not_set_metadata(self, tmp_path, monkeypatch, capsys):
-        from uuid import UUID, uuid4
+    def test_create_job_missing_project_writes_no_job(self, tmp_path, monkeypatch, capsys):
+        """The guard refuses before any job file is written."""
+        from uuid import uuid4
+
+        import pytest
         self._env(tmp_path, monkeypatch)
         from apps.cli.commands.job import _cmd_create_job
-        from packages.orchestration.storage import load_job
-        _cmd_create_job("no-link prompt", project_id=str(uuid4()))
-        job_id = capsys.readouterr().out.strip()
-        job = load_job(UUID(job_id))
-        assert "project_id" not in job.metadata
+        with pytest.raises(SystemExit):
+            _cmd_create_job("no-link prompt", project_id=str(uuid4()))
+        assert capsys.readouterr().out.strip() == ""
+        assert list((tmp_path / "jobs").glob("*.json")) == []
 
     def test_malformed_project_id_no_placeholder_in_brain(self, tmp_path, monkeypatch, capsys):
         self._env(tmp_path, monkeypatch)
@@ -806,7 +825,18 @@ class TestCreateJobTaskType:
     """Tests for create-job --task-type / --task-description (Step 30.12)."""
 
     def _env(self, tmp_path, monkeypatch):
+        """Data dir plus a resolvable project.
+
+        Since F148 `_cmd_create_job` requires one and exits 3 otherwise
+        (docs/system/project-scoping-v0.md, "Creation guard"). These tests
+        are about --task-type, so the project is supplied through
+        REMEDY_PROJECT instead of being threaded through every call.
+        """
         monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        from packages.orchestration.project_registry import RemyProject, save_project
+        project = RemyProject(name="TaskTypeTests")
+        save_project(project)
+        monkeypatch.setenv("REMEDY_PROJECT", str(project.id))
 
     # ------------------------------------------------------------------
     # Happy-path: --task-type creates one task and sets state PLANNED
