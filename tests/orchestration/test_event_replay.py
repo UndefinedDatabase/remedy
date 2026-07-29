@@ -392,7 +392,7 @@ class TestDryRunValidation:
 
 class TestDocsExist:
     def test_resume_docs_exist(self):
-        doc = Path("docs/resume.md")
+        doc = Path("docs/guides/resume.md")
         assert doc.is_file()
         content = doc.read_text()
         assert "from_apply" in content
@@ -406,7 +406,7 @@ class TestDocsExist:
         from apps.cli.command_catalog import CATALOG
         catalog_subs = {(c.group_id, c.subcommand) for c in CATALOG}
 
-        doc = Path("docs/resume.md")
+        doc = Path("docs/guides/resume.md")
         content = doc.read_text()
         for m in re.finditer(r"remedy\s+(\w+)\s+(\w[\w-]*)", content):
             group, sub = m.group(1), m.group(2)

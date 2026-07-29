@@ -351,19 +351,19 @@ class TestNoRawLeaks:
 
 class TestWorkerDocs:
     def test_docs_exist(self):
-        assert (Path(__file__).resolve().parents[2] / "docs" / "worker.md").exists()
+        assert (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").exists()
 
     def test_docs_mention_commands(self):
-        text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
+        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
         for cmd in ("remedy worker run", "remedy worker status", "remedy job enqueue", "remedy job pause", "remedy job cancel"):
             assert cmd in text
 
     def test_docs_no_overnight_autonomy(self):
-        text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
+        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
         assert "not overnight" in text.lower() or "not autonomy" in text.lower()
 
     def test_docs_no_browser_actions(self):
-        text = (Path(__file__).resolve().parents[2] / "docs" / "worker.md").read_text()
+        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "worker.md").read_text()
         assert "read-only" in text.lower()
 
 

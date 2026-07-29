@@ -704,40 +704,40 @@ class TestJobFulfillCLI:
 class TestFulfilledDemoGuide:
 
     def test_guide_exists(self):
-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         assert path.exists()
 
     def test_guide_mentions_fulfill(self):
-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
         assert "job fulfill" in text
         assert "fixture-demo" in text
 
     def test_guide_mentions_status_report(self):
-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
         assert "job status" in text
         assert "job report" in text
 
     def test_guide_mentions_propose(self):
-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
         assert "propose list" in text
 
     def test_guide_no_real_provider_claims(self):
-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
         assert "No real provider" in text
 
     def test_guide_no_invalid_job_id_syntax(self):
         """R-0196: No --job-id syntax in demo guide."""
-        path = _ROOT / "docs" / "first-fulfilled-job-demo-v0.md"
+        path = _ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md"
         text = path.read_text()
         assert "--job-id" not in text
 
     def test_quickstart_no_invalid_propose_syntax(self):
         """R-0196: No --job-id in propose command in quickstart."""
-        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
+        path = _ROOT / "docs" / "guides" / "simple-operator-quickstart-v0.md"
         text = path.read_text()
         assert "propose list --job-id" not in text
 
@@ -1591,7 +1591,7 @@ class TestDemoDocsCommands:
 
     def test_job_create_no_json_flag(self):
         """job create does not support --json — docs must not claim it."""
-        docs = (_ROOT / "docs" / "first-fulfilled-job-demo-v0.md").read_text()
+        docs = (_ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md").read_text()
         # Should NOT have 'job create' with --json
         create_lines = [l for l in docs.splitlines() if "job create" in l and "remedy" in l]
         for line in create_lines:
@@ -1612,7 +1612,7 @@ class TestDemoDocsCommands:
 
     def test_demo_docs_command_shapes(self):
         """All remedy commands in demo docs must be valid shapes."""
-        docs = (_ROOT / "docs" / "first-fulfilled-job-demo-v0.md").read_text()
+        docs = (_ROOT / "docs" / "system" / "first-fulfilled-job-demo-v0.md").read_text()
         cmd_lines = [l.strip() for l in docs.splitlines()
                      if l.strip().startswith("remedy ") or l.strip().startswith("JOB_ID=$(remedy ")]
         assert len(cmd_lines) >= 4, f"Expected >=4 commands, got {len(cmd_lines)}"
@@ -1840,7 +1840,7 @@ class TestDocsCommandShapesV06:
     """Docs must not contain invalid job create --json."""
 
     def test_no_job_create_json_in_quickstart(self):
-        path = _ROOT / "docs" / "simple-operator-quickstart-v0.md"
+        path = _ROOT / "docs" / "guides" / "simple-operator-quickstart-v0.md"
         if not path.exists():
             return
         content = path.read_text()

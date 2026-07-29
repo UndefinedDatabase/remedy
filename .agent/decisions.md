@@ -1680,3 +1680,14 @@ and `feature/` for context.md and the AGENTS.md-required `## Goal` /
 `## Next Steps` for plan.md. Nothing became optional.
 Standing risk unchanged (F251 R2 finding): these ids read LIVE state files,
 so ordinary bookkeeping still moves them. Recorded, not adjusted.
+
+## 2026-07-29: F252 D1 — the docs moved, the tests did not
+Every D1 id read an ist-doc at its pre-restructure flat path
+(`docs/<name>.md`); all of them now live under `docs/system/` or
+`docs/guides/` with `docs/README.md` as the index. No doc is missing, so the
+fix is the path in the test — ten documents across nine test files.
+`tests/cli/test_product_spine.py` needed more than a path: its `_read_doc`
+helper returned `""` for a missing file, so every assertion over a moved doc
+was passing against an empty string. It now resolves docs/system, docs/guides
+and docs/ in order and RAISES when the doc is absent — which turned six
+further ids green once they started reading real text.

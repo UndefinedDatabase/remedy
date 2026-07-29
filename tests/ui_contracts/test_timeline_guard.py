@@ -198,7 +198,7 @@ class TestBackendPhases:
 
 class TestOrchestratorLoopContract:
     def test_orchestrator_loop_doc_exists(self):
-        doc = ROOT / "docs" / "orchestrator-loop.md"
+        doc = ROOT / "docs" / "system" / "orchestrator-loop.md"
         assert doc.exists(), "docs/orchestrator-loop.md must exist"
         content = doc.read_text()
         assert "Build/Test/Review" in content, "Must describe iterative loop"

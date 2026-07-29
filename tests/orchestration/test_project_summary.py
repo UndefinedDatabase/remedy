@@ -401,18 +401,18 @@ class TestProjectBrainDocs:
 
     def test_docs_exist(self):
         from pathlib import Path
-        docs = Path(__file__).resolve().parents[2] / "docs" / "project-brain.md"
+        docs = Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md"
         assert docs.exists()
 
     def test_docs_mention_commands(self):
         from pathlib import Path
-        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
+        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md").read_text()
         assert "remedy project summary" in text
         assert "remedy project show" in text
 
     def test_docs_no_auto_memory_claim(self):
         from pathlib import Path
-        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
+        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md").read_text()
         assert "approval" in text.lower()
         assert "does not auto-write" in text.lower() or "require" in text.lower()
 
@@ -422,7 +422,7 @@ class TestProjectBrainDocs:
 
         from apps.cli.command_catalog import CATALOG
 
-        text = (Path(__file__).resolve().parents[2] / "docs" / "project-brain.md").read_text()
+        text = (Path(__file__).resolve().parents[2] / "docs" / "system" / "project-brain.md").read_text()
         cmds = re.findall(r"remedy (\w+) (\w[\w-]*)", text)
         catalog_groups = {e.group_id for e in CATALOG}
         for group, _sub in cmds:
