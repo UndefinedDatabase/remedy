@@ -1,4 +1,38 @@
-OUTCOME: pending
+OUTCOME: stopped
+
+STOP RECORD (worker, 2026-07-29) — Slice A step 3, README gate.
+The block's own NOTE anticipated this and ordered: "If it fails here,
+STOP and hand back (do not reorder steps on your own)."
+
+Command: python3 -m pytest tests/docs/ -q   → exit 1, "1 failed, 291 passed"
+Failing id: tests/docs/test_docs_consistency.py::TestPrimaryDocsAreHonest::
+            test_the_readme_reports_the_accepted_foundation_and_no_later_feature
+Raw: AssertionError: README claims F252 accepted; STATUS does not
+     assert '252' in {'001', '002', ...}
+
+Diagnosis: the NOTE assumed the ledger cross-check "only constrains
+'Accepted...:' blocks". It does — and that is exactly the constraint that
+fires: step 3 appends "F252 standing-red paydown" to the "Accepted in Tier 1
+so far:" block while docs/roadmap/STATUS.md still carries `- [~] F252` until
+step 8. The pin (authored in R2, R-0153-trimmed in R3) requires every feature
+named in an "Accepted ...:" block to carry `- [x]` in STATUS.md. README and
+STATUS cannot disagree in any committed state.
+
+Action taken: README.md reverted to its committed content (`git checkout --`),
+so the branch stays green and the tree clean. Nothing else was attempted:
+no evidence job, no zip, no STATUS edit, no PR. Slice 0 stands (commit
+08f4cdf); Slice A and Slice B are NOT done.
+
+Re-run after the revert: tests/docs 292 passed; canary 42 passed.
+
+Resolution options for the reviewer (worker did NOT choose one):
+ (a) Fold the README sync into the step-8 commit, so README and the STATUS
+     `[x]` land together. This also satisfies Rule A4 (the STATUS edit is the
+     last commit) and needs no test change.
+ (b) Keep step 3 separate and narrow the pin to skip a feature whose STATUS
+     line is `[~]` — a test change inside a closure round.
+ (c) Any other reviewer-authored ordering.
+
 ── STEP R4 — F252 CLOSURE (docs/roadmap/STATUS_closure_protocol.md) ─
 Goal:        Close F252: evidence job, fresh review zip, README
              sync, authored STATUS [x] as the last commit, PR.

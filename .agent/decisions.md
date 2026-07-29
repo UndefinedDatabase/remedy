@@ -1771,3 +1771,17 @@ D12 (1 id): git history answers it — 219dd32 deleted
 round's rule it is quarantined rather than restored; the skip names the
 commit, the finding, and the document that now carries the read-only
 reviewer contract (docs/agents/planner_reviewer_prompt.md).
+
+## 2026-07-29: F252 R4 — closure stopped at the README/STATUS ordering conflict
+The closure block sequences the README status sync (step 3) BEFORE the STATUS
+`[x]` (step 8, Rule A4's last commit). Those two cannot disagree in any
+committed state: the ledger cross-check added in R2 requires every feature
+named in an "Accepted …:" README block to carry `- [x]` in STATUS.md, so
+appending "F252 standing-red paydown" while STATUS still reads `- [~] F252`
+fails `test_the_readme_reports_the_accepted_foundation_and_no_later_feature`
+("README claims F252 accepted; STATUS does not").
+The block anticipated this and ordered a STOP rather than a self-chosen
+reordering, so: README reverted, branch green and clean, no evidence job, no
+zip, no STATUS edit, no PR. The natural resolution is to fold the README sync
+into the step-8 commit — which also satisfies Rule A4 — but that is the
+reviewer's call, recorded in .agent/last_block.md as options (a)/(b)/(c).
