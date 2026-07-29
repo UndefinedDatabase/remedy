@@ -238,7 +238,13 @@ def _cmd_do_mission(
             plan_job_llm,
             write_plan_md,
         )
-        fp_result = plan_job_llm(intake_result.value.model_dump(), call_fn)
+        from packages.orchestration.intake import make_structured_call_fn
+        from packages.orchestration.schemas.models import FlightPlan
+        # The intake call_fn binds the provider's native schema to JobIntake;
+        # planning needs a call_fn bound to FlightPlan or the provider answers
+        # in intake shape and every plan attempt fails validation.
+        plan_call_fn = make_structured_call_fn(FlightPlan) or call_fn
+        fp_result = plan_job_llm(intake_result.value.model_dump(), plan_call_fn)
         if fp_result.plan is not None:
             fp_dict = fp_result.plan.model_dump()
             fp_dict["_approval"] = "pending"
@@ -2827,8 +2833,11 @@ def _cmd_do_replan(
         print("Error: job has no intake data.", file=sys.stderr)
         sys.exit(1)
 
-    from packages.orchestration.intake import make_provider_call_fn
-    call_fn = make_provider_call_fn()
+    from packages.orchestration.intake import make_structured_call_fn
+    from packages.orchestration.schemas.models import FlightPlan
+    # Replanning is a flight-plan call: bind the provider's native schema to
+    # FlightPlan, not to the intake model.
+    call_fn = make_structured_call_fn(FlightPlan)
     if call_fn is None:
         print("Error: no provider available for replan.", file=sys.stderr)
         sys.exit(1)

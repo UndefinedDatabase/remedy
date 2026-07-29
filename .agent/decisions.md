@@ -1504,3 +1504,22 @@ silently. The three sibling failures (context.md wants `## Active Branch` and
 the word "Steps"; live_review.md wants "Steps") fail identically on base and
 were deliberately NOT swept up: they are pre-existing, not F046-attributable,
 and belong on the backlog.
+
+## 2026-07-29: F252 D8 — the intake call_fn was driving the flight-plan call
+`make_provider_call_fn()` bound Ollama's NATIVE `format=` schema to
+`JobIntake` and `do_cmd` reused that same callable for `plan_job_llm`. The
+provider therefore answered every planning attempt (retry included) in
+intake shape, and validation reported exactly `schema_v: Input should be
+'flight_plan_v1'; tasks: Field required; goal: Extra inputs are not
+permitted`. Fix: `make_structured_call_fn(model_cls)` is the general
+factory, `make_provider_call_fn()` is its JobIntake-bound alias, and both
+flight-plan call sites (`do`, `do replan`) build a FlightPlan-bound
+callable.
+
+With the schema bug gone, `remedy do` in `tests/cli/test_scoped_listings.py`
+performs a REAL flight-plan call (~72s measured), so the file's 30s
+subprocess timeout — not scoping behavior — decided the verdict. Its
+`_create_job` fixture now passes `--no-llm`, the convention the golden-path
+canary already enforces for every subprocess `do` (`_run_do` appends the
+flag unconditionally). No assertion was weakened; the file asserts nothing
+about planning.
