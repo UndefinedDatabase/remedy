@@ -1568,3 +1568,16 @@ Test-side: `TestCatalogSensitivity` scanned for `sk-` by substring and fired
 on the word "task-scoped". Credential PREFIXES now match at a token boundary
 (`(?<![0-9a-z])`); the field-name terms keep the plain substring scan, so no
 check got weaker.
+
+## 2026-07-29: F252 D7 — the shared module is the seam, not a private alias
+`dev_server` re-exports only the redaction names it actually uses
+(`_scrub_paths`, `_basename`, `_ABS_PREFIX_RE`); `_ABS_PATH_RE` and
+`_FILE_URI_RE` were dropped when path redaction moved to
+`packages/common/path_redaction.py`. Restoring private aliases purely so
+tests can reach them would rebuild a seam the product does not have, so the
+tests were pointed at the owning module instead: `test_supervisor_
+portability.py` imports `ABS_PATH_RE` from `packages.common.path_redaction`
+(2 use sites, both test-side path detectors). `test_the_shared_module_is_
+the_one_f007_uses` kept its anti-drift intent and got stronger: three
+identity assertions over the names dev_server really holds, plus a
+behavioral check that a file URI does not survive `_redact`.

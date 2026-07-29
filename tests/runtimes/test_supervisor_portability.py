@@ -22,6 +22,10 @@ import psutil
 import pytest
 
 from apps.cli.commands import runtime_cmd
+# The absolute-path detector is the SHARED one dev_server redacts with; it is
+# imported from its owning module rather than through dev_server's private
+# alias, which no longer exists.
+from packages.common.path_redaction import ABS_PATH_RE
 from packages.runtimes import dev_server as DS
 from packages.runtimes import runtime_supervisor as SUP
 from packages.runtimes.dev_server import (
@@ -1039,7 +1043,7 @@ class TestShareableRedaction:
         """Every absolute path anywhere in a nested structure."""
         found: list[str] = []
         if isinstance(value, str):
-            for match in DS._ABS_PATH_RE.finditer(value):
+            for match in ABS_PATH_RE.finditer(value):
                 found.append(f"{path}={match.group(0)}")
         elif isinstance(value, (list, tuple)):
             for i, item in enumerate(value):
@@ -1505,7 +1509,7 @@ class TestCrossPlatformRedaction:
 
     def _absolutes(self, value) -> list[str]:
         if isinstance(value, str):
-            return [m.group(0) for m in DS._ABS_PATH_RE.finditer(value)]
+            return [m.group(0) for m in ABS_PATH_RE.finditer(value)]
         if isinstance(value, (list, tuple)):
             return [f for item in value for f in self._absolutes(item)]
         if isinstance(value, dict):

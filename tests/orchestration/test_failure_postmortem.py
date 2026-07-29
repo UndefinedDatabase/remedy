@@ -724,8 +724,15 @@ class TestFileUriAndLabelledPathRedaction:
         from packages.common import path_redaction
         from packages.runtimes import dev_server
 
+        # Every redaction name dev_server holds IS the shared object — the
+        # anti-drift point of this test. (`_FILE_URI_RE` is no longer among
+        # them: dev_server hands file URIs to scrub_paths and never touches
+        # the regex itself.)
         assert dev_server._scrub_paths is path_redaction.scrub_paths
-        assert dev_server._FILE_URI_RE is path_redaction.FILE_URI_RE
+        assert dev_server._basename is path_redaction.basename
+        assert dev_server._ABS_PREFIX_RE is path_redaction.ABS_PREFIX_RE
+        assert "file:///home/alice/x.py" not in dev_server._redact(
+            "see file:///home/alice/x.py")
 
     def test_a_record_carries_no_private_path(self, tmp_path):
         record = _record(raw_reason=(
