@@ -14,6 +14,8 @@ Coverage:
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from apps.cli.command_catalog import (
@@ -73,28 +75,41 @@ class TestCatalogClassification:
 class TestCatalogSensitivity:
     """No sensitive content in catalog descriptions."""
 
+    #: Credential PREFIXES. Short and alphanumeric, so they are matched at a
+    #: token boundary: a plain substring scan fires on ordinary prose
+    #: ("task-scoped" contains "sk-").
+    FORBIDDEN_PREFIXES = ("sk-", "ghp_", "xoxb-")
+
+    #: Terms that are sensitive wherever they appear.
     FORBIDDEN = (
-        "sk-", "ghp_", "xoxb-", "password=", "BEGIN PRIVATE KEY",
+        "password=", "BEGIN PRIVATE KEY",
         "raw_stdout", "raw_stderr", "diff_preview", "approval_reason",
         "api_key=", "secret=",
     )
 
+    def _violations(self, text: str) -> list[str]:
+        lower = text.lower()
+        found = [bad for bad in self.FORBIDDEN if bad.lower() in lower]
+        found += [
+            p for p in self.FORBIDDEN_PREFIXES
+            if re.search(rf"(?<![0-9a-z]){re.escape(p.lower())}", lower)
+        ]
+        return found
+
     def test_no_sensitive_terms_in_descriptions(self) -> None:
         for cmd in CATALOG:
-            lower = cmd.description.lower()
-            for bad in self.FORBIDDEN:
-                assert bad.lower() not in lower, (
-                    f"{cmd.command_id} description contains forbidden term: {bad}"
-                )
+            found = self._violations(cmd.description)
+            assert not found, (
+                f"{cmd.command_id} description contains forbidden terms: {found}"
+            )
 
     def test_no_sensitive_terms_in_arg_help(self) -> None:
         for cmd in CATALOG:
             for arg in cmd.args:
-                lower = arg.help.lower()
-                for bad in self.FORBIDDEN:
-                    assert bad.lower() not in lower, (
-                        f"{cmd.command_id} arg '{arg.name}' help contains forbidden: {bad}"
-                    )
+                found = self._violations(arg.help)
+                assert not found, (
+                    f"{cmd.command_id} arg '{arg.name}' help contains forbidden: {found}"
+                )
 
 
 class TestCatalogJSONSupport:

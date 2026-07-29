@@ -1549,3 +1549,22 @@ escaped the fence API unchanged. Fix: catch `BudgetConfigError` around the
 diagnostic scan stays for the paths that still report rather than raise
 (e.g. no TOML parser available). No behavior other than the exception TYPE
 changes — the config was already fail-closed.
+
+## 2026-07-29: F252 D9 — catalog classification drift, three distinct causes
+1. `job.budget` carried `action_class="read_metadata"`, a value in neither the
+   `ActionClass` Literal nor the integrity test's valid set — a one-off typo
+   for a read-only "show" command, now `read_only` like `job.show`.
+2. `do.job-evidence` executes `--verification-command` (`may_execute_commands
+   =True`) while classified `read_only`, which catalog integrity forbids. It
+   is now `test_execution`, like `test.run`. `tests/orchestration/
+   test_job_evidence.py` asserted BOTH `read_only` and `may_execute_commands
+   is True` in the same block — a contradiction that predates the
+   verification-command feature; that assertion is updated with the catalog.
+3. The `ActionClass` Literal listed 6 values while the catalog used 8; it is
+   a plain type alias with no runtime validation, which is why the drift went
+   unseen. Added `local_state_change` and `controlled_builder_execution` —
+   both already in use and in the test's valid set.
+Test-side: `TestCatalogSensitivity` scanned for `sk-` by substring and fired
+on the word "task-scoped". Credential PREFIXES now match at a token boundary
+(`(?<![0-9a-z])`); the field-name terms keep the plain substring scan, so no
+check got weaker.
