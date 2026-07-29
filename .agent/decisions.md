@@ -1650,3 +1650,16 @@ show up in `git status` and in the packaging detritus checks).
 Verified: the four candidate ids green 3x consecutively, `tests/runtimes/`
 green under `-n 4`, and no listener on the product default 5173 during or
 after the runs.
+
+## 2026-07-29: F252 D6 — real models instead of half-specced MagicMocks
+`MagicMock(spec=Job)` pins attribute NAMES only: every field a test does not
+set answers with another MagicMock, so product code comparing a budget or
+reading fences fails on the mock, not on the behaviour under test
+("'>' not supported between MagicMock and int"; "job_fences.allow must be a
+list, got MagicMock"). All three builders now construct real `Job` models
+(`test_test_execution_service._make_job` / `_make_contract` /
+`TestExecuteTestRunGates._make_job_with_repo`, and
+`test_test_runner._make_approved_job` reuses the file's existing real-Job
+helper). No assertion changed; the gates under test now actually run. The
+remaining MagicMock task fixtures in test_test_runner._make_job are untouched
+— those tests pass and do not reach model-reading product code.

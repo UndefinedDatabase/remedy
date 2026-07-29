@@ -72,7 +72,13 @@ def _make_job_s261(**kw: Any) -> Job:
 
 
 def _make_approved_job() -> tuple[Job, str]:
-    """Create a job with repo_generated_write + an approved patch intent."""
+    """Create a job with repo_generated_write + an approved patch intent.
+
+    A REAL Job: this one is handed to the apply path, which resolves fences off
+    ``job.fences``. On a bare MagicMock that attribute answers with another
+    MagicMock and the fence loader rejects it ("job_fences.allow must be a
+    list, got MagicMock") before the permission boundary under test is reached.
+    """
     from packages.core.models import Artifact
     from packages.orchestration.approval_queue import (
         APPROVAL_APPROVED,
@@ -81,7 +87,7 @@ def _make_approved_job() -> tuple[Job, str]:
     )
     from packages.orchestration.permissions import Capability, set_permission
 
-    job = _make_job()
+    job = _make_job_s261()
     set_permission(job, Capability.repo_generated_write, allow=True)
     artifact = Artifact(task_id=uuid4(), name="test-intent", content_type="patch", content="")
     artifact.metadata["patch_intent_explanations"] = [

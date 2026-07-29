@@ -36,26 +36,22 @@ from packages.orchestration.test_execution_service import (
 # ---------------------------------------------------------------------------
 
 def _make_job(*, permitted: bool = True, target_repo: str | None = None, max_test_runs: int = 1):
+    """A REAL Job.
+
+    ``MagicMock(spec=Job)`` only pins the attribute NAMES: every field the test
+    does not set answers with a MagicMock, so product code that compares a
+    budget or a counter hits `'>' not supported between MagicMock and int`.
+    A real model costs nothing here and carries the real defaults.
+    """
     from packages.core.models import Job
-    job = MagicMock(spec=Job)
-    job.id = uuid4()
-    job.name = "test-job"
-    job.metadata = {}
-    job.tasks = []
-    job.artifacts = []
-    if target_repo:
-        job.metadata["target_repo"] = target_repo
-    return job
+    metadata = {"target_repo": target_repo} if target_repo else {}
+    return Job(name="test-job", metadata=metadata)
 
 
 def _make_contract(max_test_runs: int = 1, max_runtime_seconds: float = 300.0):
+    from packages.core.models import Job
     from packages.orchestration.run_contract import build_default_run_contract
-    job = MagicMock()
-    job.id = uuid4()
-    job.metadata = {}
-    job.tasks = []
-    job.artifacts = []
-    c = build_default_run_contract(job)
+    c = build_default_run_contract(Job(name="test-job"))
     from dataclasses import replace as dc_replace
     return dc_replace(c, max_test_runs=max_test_runs, max_runtime_seconds=max_runtime_seconds)
 
@@ -477,13 +473,7 @@ class TestExecuteTestRunGates:
 
     def _make_job_with_repo(self, tmp_path):
         from packages.core.models import Job
-        job = MagicMock(spec=Job)
-        job.id = uuid4()
-        job.name = "test-job"
-        job.tasks = []
-        job.artifacts = []
-        job.metadata = {"target_repo": str(tmp_path)}
-        return job
+        return Job(name="test-job", metadata={"target_repo": str(tmp_path)})
 
     def test_invalid_job_id_blocked(self):
         from packages.orchestration.test_execution_service import execute_test_run
