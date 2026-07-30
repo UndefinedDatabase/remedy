@@ -126,4 +126,4 @@ No PR yet; never merge. R-0159 stays Open as a documented Low risk.
   Done: R-0158 (commit <SHA_R0158> — the doc diff is the evidence).
 --- END f052-r3-5 ---
 
-OUTCOME: pending
+OUTCOME: executed
