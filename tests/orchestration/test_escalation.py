@@ -1,0 +1,432 @@
+"""F051 — escalate instead of block.
+
+T001 here: the ``needs_decision`` records themselves — enqueue, cross-
+referencing, awaiting-branch derivation, answering, attended-vs-unattended
+default handling, the mid-run assumption log, and the additive
+``decision_queue`` derivation that surfaces them.  Everything in this section
+is pure: no clock of its own (the clock is injected), no filesystem except the
+assumption-log test, no provider.
+"""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+
+from packages.core.models import Job, RunState, Task
+from packages.orchestration.decision_queue import (
+    DECISION_TYPES,
+    export_decision_json,
+    list_decisions,
+)
+from packages.orchestration.escalation import (
+    ANSWER_SOURCE_DEFAULT,
+    ANSWER_SOURCE_HUMAN,
+    DECISION_ID_PREFIX,
+    DECISION_TYPE_TASK_DECISION,
+    ESCALATION_STATUS_ANSWERED,
+    ESCALATION_STATUS_OPEN,
+    JOB_METADATA_ESCALATIONS_KEY,
+    TASK_INPUTS_ANSWERS_KEY,
+    TASK_OUTCOME_NEEDS_DECISION,
+    answer_task_decision,
+    answered_task_decisions,
+    auto_apply_safe_default,
+    awaiting_decision_task_ids,
+    enqueue_task_decision,
+    escalation_records,
+    find_task_decision,
+    open_task_decisions,
+    render_escalation_assumptions_md,
+    task_decision_answer_command,
+    write_escalation_assumptions_md,
+)
+
+UTC = timezone.utc
+T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)
+T1 = datetime(2026, 7, 30, 12, 5, 0, tzinfo=UTC)
+
+
+# ---------------------------------------------------------------------------
+# Fixture builders
+# ---------------------------------------------------------------------------
+
+
+def make_job(task_count: int = 2, *, name: str = "escalation-job") -> Job:
+    return Job(
+        name=name,
+        user_prompt="build the thing",
+        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
+               for i in range(task_count)],
+        state=RunState.PLANNED,
+    )
+
+
+def escalate(job: Job, task_index: int = 0, *, question: str = "Which database?",
+             options=("postgres", "sqlite"), safe_default: str = "",
+             now: datetime = T0) -> dict:
+    return enqueue_task_decision(
+        job,
+        task_id=job.tasks[task_index].id,
+        question=question,
+        options=options,
+        safe_default=safe_default,
+        now=now,
+    )
+
+
+# ---------------------------------------------------------------------------
+# The record and its id
+# ---------------------------------------------------------------------------
+
+
+class TestEnqueue:
+    def test_one_call_enqueues_exactly_one_record(self):
+        job = make_job()
+        record = escalate(job)
+
+        assert escalation_records(job) == [record]
+        assert job.metadata[JOB_METADATA_ESCALATIONS_KEY] == [record]
+
+    def test_the_record_carries_task_question_options_and_default(self):
+        job = make_job()
+        record = escalate(job, safe_default="sqlite")
+
+        assert record["task_id"] == str(job.tasks[0].id)
+        assert record["question"] == "Which database?"
+        assert record["options"] == ["postgres", "sqlite"]
+        assert record["safe_default"] == "sqlite"
+        assert record["status"] == ESCALATION_STATUS_OPEN
+        assert record["created_at"] == T0.isoformat()
+        assert record["answer"] == "" and record["answered_at"] == ""
+
+    def test_the_decision_id_is_task_scoped_and_prefixed(self):
+        job = make_job()
+        record = escalate(job)
+
+        assert record["decision_id"].startswith(DECISION_ID_PREFIX)
+        assert job.tasks[0].id.hex[:8] in record["decision_id"]
+
+    def test_a_second_decision_for_the_same_task_gets_its_own_id(self):
+        job = make_job()
+        first = escalate(job, question="Which database?")
+        second = escalate(job, question="Which cache?")
+
+        assert first["decision_id"] != second["decision_id"]
+        assert second["decision_id"].endswith("-2")
+        assert len(escalation_records(job)) == 2
+
+    def test_the_record_is_json_safe(self):
+        # It rides job.metadata, which is persisted as JSON.
+        import json
+        job = make_job()
+        escalate(job, safe_default="sqlite")
+        assert json.loads(json.dumps(escalation_records(job)))
+
+
+class TestSameQuestionTwice:
+    """Two tasks, one question: two decisions, cross-referenced — never merged."""
+
+    def test_two_tasks_raising_the_same_question_get_two_decisions(self):
+        job = make_job()
+        first = escalate(job, 0, question="Which database?")
+        second = escalate(job, 1, question="Which database?")
+
+        assert len(escalation_records(job)) == 2
+        assert first["decision_id"] != second["decision_id"]
+
+    def test_they_cross_reference_each_other_in_both_directions(self):
+        job = make_job()
+        first = escalate(job, 0, question="Which database?")
+        second = escalate(job, 1, question="Which database?")
+
+        assert second["cross_references"] == [first["decision_id"]]
+        assert first["cross_references"] == [second["decision_id"]]
+
+    def test_cross_referencing_ignores_whitespace_and_case(self):
+        job = make_job()
+        first = escalate(job, 0, question="Which  database?")
+        second = escalate(job, 1, question="which database?")
+
+        assert second["cross_references"] == [first["decision_id"]]
+
+    def test_a_different_question_is_not_cross_referenced(self):
+        job = make_job()
+        escalate(job, 0, question="Which database?")
+        second = escalate(job, 1, question="Which cache?")
+
+        assert second["cross_references"] == []
+
+    def test_an_answered_decision_is_not_cross_referenced(self):
+        job = make_job()
+        first = escalate(job, 0, question="Which database?")
+        answer_task_decision(job, first["decision_id"], answer="postgres", now=T1)
+        second = escalate(job, 1, question="Which database?")
+
+        assert second["cross_references"] == []
+
+
+# ---------------------------------------------------------------------------
+# Awaiting is not failure
+# ---------------------------------------------------------------------------
+
+
+class TestAwaitingBranch:
+    def test_an_open_decision_marks_its_task_awaiting(self):
+        job = make_job()
+        escalate(job, 0)
+
+        assert awaiting_decision_task_ids(job) == {job.tasks[0].id}
+
+    def test_the_task_keeps_its_pending_status(self):
+        # Awaiting is NOT failed: no FAILED task state, so the job stays
+        # resumable and the DAG treats the branch exactly like a blocked one.
+        job = make_job()
+        escalate(job, 0)
+
+        assert job.tasks[0].status == RunState.PENDING
+
+    def test_answering_clears_the_awaiting_mark(self):
+        job = make_job()
+        record = escalate(job, 0)
+        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
+
+        assert awaiting_decision_task_ids(job) == set()
+
+    def test_a_job_without_escalations_awaits_nothing(self):
+        job = make_job()
+
+        assert awaiting_decision_task_ids(job) == set()
+        assert escalation_records(job) == []
+        assert open_task_decisions(job) == []
+
+    def test_a_malformed_task_id_blocks_nothing(self):
+        job = make_job()
+        job.metadata[JOB_METADATA_ESCALATIONS_KEY] = [
+            {"decision_id": "td:bogus", "task_id": "not-a-uuid",
+             "status": ESCALATION_STATUS_OPEN},
+        ]
+
+        assert awaiting_decision_task_ids(job) == set()
+
+
+# ---------------------------------------------------------------------------
+# Answering
+# ---------------------------------------------------------------------------
+
+
+class TestAnswering:
+    def test_answering_records_answer_source_and_time(self):
+        job = make_job()
+        record = escalate(job, 0)
+        updated = answer_task_decision(
+            job, record["decision_id"], answer="postgres", now=T1)
+
+        assert updated is not None
+        assert updated["status"] == ESCALATION_STATUS_ANSWERED
+        assert updated["answer"] == "postgres"
+        assert updated["answer_source"] == ANSWER_SOURCE_HUMAN
+        assert updated["answered_at"] == T1.isoformat()
+        assert answered_task_decisions(job) == [updated]
+
+    def test_the_answer_lands_on_the_task_for_its_next_attempt(self):
+        job = make_job()
+        record = escalate(job, 0)
+        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
+
+        assert job.tasks[0].inputs[TASK_INPUTS_ANSWERS_KEY] == {
+            record["decision_id"]: "postgres"}
+
+    def test_answering_an_unknown_decision_returns_none(self):
+        job = make_job()
+        escalate(job, 0)
+
+        assert answer_task_decision(job, "td:nope", answer="x", now=T1) is None
+
+    def test_answering_twice_is_refused(self):
+        # Answers are written once: a late second answer must not overwrite the
+        # one the run already acted on.
+        job = make_job()
+        record = escalate(job, 0)
+        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
+        again = answer_task_decision(
+            job, record["decision_id"], answer="sqlite", now=T1)
+
+        assert again is None
+        assert find_task_decision(job, record["decision_id"])["answer"] == "postgres"
+
+
+class TestSafeDefaults:
+    def test_a_safe_default_is_still_asked_and_stays_open(self):
+        # A9 consistency: enqueueing never applies the default by itself.
+        job = make_job()
+        record = escalate(job, 0, safe_default="sqlite")
+
+        assert record["status"] == ESCALATION_STATUS_OPEN
+        assert record["answer"] == ""
+        assert awaiting_decision_task_ids(job) == {job.tasks[0].id}
+
+    def test_auto_apply_answers_from_the_default_and_says_so(self):
+        job = make_job()
+        record = escalate(job, 0, safe_default="sqlite")
+        applied = auto_apply_safe_default(job, record, now=T1)
+
+        assert applied is not None
+        assert applied["answer"] == "sqlite"
+        assert applied["answer_source"] == ANSWER_SOURCE_DEFAULT
+        assert awaiting_decision_task_ids(job) == set()
+
+    def test_auto_apply_refuses_a_record_without_a_default(self):
+        job = make_job()
+        record = escalate(job, 0, safe_default="")
+
+        assert auto_apply_safe_default(job, record, now=T1) is None
+        assert open_task_decisions(job) == [record]
+
+
+# ---------------------------------------------------------------------------
+# The assumption log
+# ---------------------------------------------------------------------------
+
+
+class TestEscalationAssumptionLog:
+    def test_it_records_answer_and_source_per_decision(self):
+        job = make_job()
+        human = escalate(job, 0, question="Which database?")
+        answer_task_decision(job, human["decision_id"], answer="postgres", now=T1)
+        defaulted = escalate(job, 1, question="Which cache?", safe_default="none")
+        auto_apply_safe_default(job, defaulted, now=T1)
+
+        text = render_escalation_assumptions_md(job)
+
+        assert "Which database?" in text and "postgres" in text
+        assert "Which cache?" in text and "none" in text
+        assert "Sources: 1 human, 1 default, 0 unresolved." in text
+
+    def test_an_open_decision_is_reported_unresolved(self):
+        job = make_job()
+        escalate(job, 0)
+
+        text = render_escalation_assumptions_md(job)
+
+        assert "unanswered" in text
+        assert "Sources: 0 human, 0 default, 1 unresolved." in text
+
+    def test_a_run_without_escalations_says_so(self):
+        text = render_escalation_assumptions_md(make_job())
+
+        assert "No escalations" in text
+
+    def test_it_is_written_next_to_the_other_job_evidence(self, tmp_path: Path):
+        job = make_job()
+        escalate(job, 0)
+        path = write_escalation_assumptions_md(job, tmp_path / "evidence")
+
+        assert path.name == "escalation_assumptions.md"
+        assert "Which database?" in path.read_text(encoding="utf-8")
+
+    def test_it_is_not_the_flight_plan_assumption_log(self, tmp_path: Path):
+        # The plan-time log states nothing in it was asked mid-run; mid-run
+        # escalations therefore get their own file rather than making it lie.
+        from packages.orchestration.flight_plan import write_assumptions_md
+        job = make_job()
+        escalate(job, 0)
+        evidence = tmp_path / "evidence"
+        plan_log = write_assumptions_md([], evidence)
+        escalation_log = write_escalation_assumptions_md(job, evidence)
+
+        assert plan_log != escalation_log
+        assert "Which database?" not in plan_log.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# The decision queue derives them — no second queue
+# ---------------------------------------------------------------------------
+
+
+class TestDecisionQueueDerivation:
+    def test_the_type_is_registered(self):
+        assert DECISION_TYPE_TASK_DECISION in DECISION_TYPES
+
+    def test_an_open_escalation_appears_as_an_open_blocker(self):
+        job = make_job()
+        record = escalate(job, 0)
+
+        derived = [d for d in list_decisions(job, [])
+                   if d.type == DECISION_TYPE_TASK_DECISION]
+
+        assert len(derived) == 1
+        assert derived[0].id == record["decision_id"]
+        assert derived[0].status == "open"
+        assert derived[0].severity == "blocker"
+        assert "Which database?" in derived[0].safe_summary
+
+    def test_it_carries_the_exact_answer_command_per_option(self):
+        job = make_job()
+        record = escalate(job, 0, options=("postgres", "sqlite"))
+
+        d = next(d for d in list_decisions(job, [])
+                 if d.type == DECISION_TYPE_TASK_DECISION)
+
+        assert d.next_actions == (
+            task_decision_answer_command(str(job.id), record["decision_id"], "postgres"),
+            task_decision_answer_command(str(job.id), record["decision_id"], "sqlite"),
+        )
+        assert all(a.startswith("remedy decision resolve ") for a in d.next_actions)
+
+    def test_a_decision_without_options_still_offers_the_command(self):
+        job = make_job()
+        record = escalate(job, 0, options=())
+
+        d = next(d for d in list_decisions(job, [])
+                 if d.type == DECISION_TYPE_TASK_DECISION)
+
+        assert d.next_actions == (
+            task_decision_answer_command(str(job.id), record["decision_id"]),)
+
+    def test_the_payload_carries_question_options_default_and_refs(self):
+        job = make_job()
+        first = escalate(job, 0, question="Which database?", safe_default="sqlite")
+        escalate(job, 1, question="Which database?")
+
+        d = next(d for d in list_decisions(job, [])
+                 if d.id == first["decision_id"])
+
+        assert d.payload["question"] == "Which database?"
+        assert d.payload["options"] == ["postgres", "sqlite"]
+        assert d.payload["safe_default"] == "sqlite"
+        assert d.payload["task_id"] == str(job.tasks[0].id)
+        assert len(d.payload["cross_references"]) == 1
+
+    def test_an_answered_escalation_is_resolved_not_open(self):
+        job = make_job()
+        record = escalate(job, 0)
+        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
+
+        d = next(d for d in list_decisions(job, [])
+                 if d.type == DECISION_TYPE_TASK_DECISION)
+
+        assert d.status == "resolved"
+        assert d.severity == "info"
+        assert d.next_actions == ()
+        assert "postgres" in d.safe_summary
+
+    def test_it_exports_as_safe_json(self):
+        job = make_job()
+        escalate(job, 0)
+
+        d = next(d for d in list_decisions(job, [])
+                 if d.type == DECISION_TYPE_TASK_DECISION)
+        exported = export_decision_json(d)
+
+        assert exported["type"] == DECISION_TYPE_TASK_DECISION
+        assert exported["payload"]["question"] == "Which database?"
+
+    def test_a_job_without_escalations_derives_none(self):
+        job = make_job()
+
+        assert [d for d in list_decisions(job, [])
+                if d.type == DECISION_TYPE_TASK_DECISION] == []
+
+
+def test_the_outcome_name_is_the_one_the_feature_specifies():
+    assert TASK_OUTCOME_NEEDS_DECISION == "needs_decision"
