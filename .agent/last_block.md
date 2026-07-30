@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R2/R0154 + R1/F050 — verdict · merge · claim · T001 · T002 ──
 Goal:        Persist the R0154 R1 PASS verdict, merge PR #162 via the
              Open PR Gate, then build ALL of F050 — DAG scheduling
