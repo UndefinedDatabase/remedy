@@ -638,6 +638,7 @@ def _cmd_job_run_cycles(
     job_id_str: str,
     *,
     cycles: int | None = None,
+    unattended: bool = False,
     json_output: bool = False,
 ) -> None:
     """Run a job in bounded cycles (F046).
@@ -647,6 +648,12 @@ def _cmd_job_run_cycles(
     milestone gate raises it.  While the resolved count is one cycle, this
     command IS today's single pass — it delegates to the existing run-next
     entry point, so single-cycle behavior cannot drift from it.
+
+    ``unattended`` (F051, R-0157) is the product surface for the loop's
+    unattended mode: a task decision that carries a safe default is answered
+    from that default and recorded in the escalation assumption log, instead of
+    pausing the branch until a human answers.  A decision with no safe default
+    waits either way.  Default OFF — attended behavior is untouched.
     """
     import json as _json
     from dataclasses import replace
@@ -675,6 +682,15 @@ def _cmd_job_run_cycles(
     if resolved.max_cycles <= 1:
         # One cycle == today's single pass. Reuse it verbatim rather than
         # reimplementing the task/verify/apply pipeline behind a second door.
+        if unattended:
+            # Say it rather than swallow it: the single pass does not go through
+            # the cycle loop, so it raises no task decisions to auto-answer.
+            print(
+                "Note: --unattended has no effect while the run resolves to the "
+                "single pass (F046 rollout default); task decisions are raised by "
+                "the cycle loop, which the F075 milestone gate enables.",
+                file=sys.stderr,
+            )
         _cmd_run_next_task_local(job_id_str)
         return
 
@@ -723,7 +739,8 @@ def _cmd_job_run_cycles(
 
     limits = replace(limits, budgets=job.budgets)
     result = run_cycles(job, limits, builder.build,
-                        task_step=default_task_step, log=log)
+                        task_step=default_task_step, log=log,
+                        unattended=unattended)
 
     if json_output:
         print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
@@ -2057,6 +2074,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.run": lambda args: _cmd_job_run_cycles(
         args.job_id,
         cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
+        unattended=getattr(args, "unattended", False),
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),

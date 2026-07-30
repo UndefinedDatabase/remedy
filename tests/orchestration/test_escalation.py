@@ -954,6 +954,146 @@ class TestLinearPlansAreUnchanged:
         assert attempt.safe_default == ""
 
 
+class TestUnattendedRunLoopCliFlag:
+    """R-0157: the unattended mode must be reachable from the product surface.
+
+    ``run_cycles(unattended=…)`` existed with no CLI call site passing it, so the
+    A9 rule ("defaults auto-apply only under --yes/unattended") was unreachable.
+    These drive the real ``remedy job run`` handler.
+    """
+
+    @pytest.fixture
+    def cli_job(self, monkeypatch):
+        """A saved 2-task job with the cycle loop reachable and a fake builder."""
+        import packages.orchestration.long_run_executor as lre
+        from packages.orchestration.storage import save_job
+        from packages.providers.ollama_builder import provider as provider_mod
+
+        class FakeBuilder:
+            model = "fake-model"
+
+            def build(self, context: TaskExecutionContext) -> BuilderOutput:
+                return BuilderOutput(summary="did it", proposed_changes=["change"])
+
+        # The F046 rollout cap collapses every run to the single pass; the loop
+        # itself is what F051 hangs off, so the cap is lifted for these tests
+        # exactly as the existing job.run multi-cycle test does.
+        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
+        monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
+        monkeypatch.setattr(lre, "default_task_step",
+                            EscalatingStep("T0", safe_default="safe"))
+
+        job = Job(
+            name="cli-unattended-job",
+            user_prompt="build the thing",
+            tasks=[Task(description=f"task {i}",
+                        inputs={"task_type": "documentation",
+                                "flight": {"planned_id": f"T{i}", "title": f"T{i}",
+                                           "depends_on": ([f"T{i - 1}"] if i else [])}})
+                   for i in range(2)],
+            state=RunState.PLANNED,
+        )
+        save_job(job)
+        return job
+
+    def test_the_flag_auto_answers_a_safe_default_and_the_run_continues(
+            self, cli_job, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+        from packages.orchestration.storage import load_job
+
+        job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3, unattended=True)
+        out = capsys.readouterr().out
+
+        stored = load_job(cli_job.id)
+        answered = answered_task_decisions(stored)
+        assert len(answered) == 1
+        assert answered[0]["answer"] == "safe"
+        assert answered[0]["answer_source"] == ANSWER_SOURCE_DEFAULT
+        assert open_task_decisions(stored) == []
+        # The run went past the question instead of parking on it.
+        assert f"terminal={TERMINAL_ALL_GREEN}" in out
+        assert all(t.status == RunState.COMPLETED for t in stored.tasks)
+
+    def test_without_the_flag_the_same_fixture_leaves_the_decision_open(
+            self, cli_job, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+        from packages.orchestration.storage import load_job
+
+        with pytest.raises(SystemExit) as exit_info:
+            job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3)
+        out = capsys.readouterr().out
+
+        assert exit_info.value.code == 1          # blocked is a non-zero exit
+        stored = load_job(cli_job.id)
+        assert len(open_task_decisions(stored)) == 1
+        assert open_task_decisions(stored)[0]["safe_default"] == "safe"
+        assert answered_task_decisions(stored) == []
+        assert f"terminal={TERMINAL_BLOCKED}" in out
+
+    def test_the_flag_is_registered_in_the_catalog(self):
+        from apps.cli.command_catalog import CATALOG
+
+        entry = next(c for c in CATALOG if c.command_id == "job.run")
+        flag = next(a for a in entry.args if a.name == "--unattended")
+
+        assert flag.is_option and flag.is_flag and not flag.required
+        assert "safe default" in flag.help
+        assert "still waits" in flag.help
+
+    def test_the_handler_passes_the_flag_through(self, monkeypatch):
+        from apps.cli.command_catalog import ArgDef  # noqa: F401 — import guard
+        from apps.cli.commands import job as job_cmd
+
+        seen: dict = {}
+        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
+                            lambda job_id, **kw: seen.update(kw))
+
+        class Args:
+            job_id = "abc12345"
+            cycles = None
+            unattended = True
+            json = False
+
+        job_cmd.COMMAND_HANDLERS["job.run"](Args())
+
+        assert seen["unattended"] is True
+
+    def test_an_old_namespace_without_the_flag_still_works(self, monkeypatch):
+        # argparse namespaces from before this flag existed must not crash.
+        from apps.cli.commands import job as job_cmd
+
+        seen: dict = {}
+        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
+                            lambda job_id, **kw: seen.update(kw))
+
+        class OldArgs:
+            job_id = "abc12345"
+            cycles = None
+            json = False
+
+        job_cmd.COMMAND_HANDLERS["job.run"](OldArgs())
+
+        assert seen["unattended"] is False
+
+    def test_the_single_pass_says_the_flag_had_no_effect(self, monkeypatch, capsys):
+        # Honesty over silence: with the rollout cap in place the loop never
+        # runs, so the flag cannot do what its help promises.
+        from apps.cli.commands import job as job_cmd
+
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
+
+        assert "--unattended has no effect" in capsys.readouterr().err
+
+    def test_the_single_pass_is_silent_without_the_flag(self, monkeypatch, capsys):
+        from apps.cli.commands import job as job_cmd
+
+        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
+        job_cmd._cmd_job_run_cycles("abc12345")
+
+        assert "--unattended" not in capsys.readouterr().err
+
+
 class LinearStep:
     """Completes the first PENDING task — the pre-F051 step shape, no task_id."""
 

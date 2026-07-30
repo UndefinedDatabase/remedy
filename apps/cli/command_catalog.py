@@ -344,11 +344,16 @@ CATALOG: tuple[CommandEntry, ...] = (
             _JOB_ID,
             ArgDef("--cycles", "Maximum cycles for this run (capped by the rollout default)",
                    required=False, is_option=True),
+            ArgDef("--unattended",
+                   "Run without a human present: a task decision that carries a safe "
+                   "default is auto-answered from it and recorded in the escalation "
+                   "assumption log. A question with no safe default still waits.",
+                   required=False, is_option=True, is_flag=True),
             _JSON_OPT,
         ),
         supports_json=True,
         may_execute_commands=True,
-        related=("job.run-next", "job.plan"),
+        related=("job.run-next", "job.plan", "decision.list"),
     ),
 
     CommandEntry(
