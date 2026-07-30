@@ -32,6 +32,7 @@ answered-branch pickup at batch boundaries; status/report surfacing
   wired through to run_cycles, plus a CLI-level test proving a safe
   default auto-applies under the flag and is still ASKED without it.
   Resolved when that CLI-level test exists and is green.
+  Done: R-0157 (commit a96a8ce).
 - Next free ID: R-0158.
 
 ## Verdicts
