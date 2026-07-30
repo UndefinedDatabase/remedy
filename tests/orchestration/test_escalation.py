@@ -675,6 +675,66 @@ class TestThreeBranchFixture:
         assert all(t.status == RunState.COMPLETED for t in job.tasks)
         assert open_task_decisions(job) == []
 
+    def test_answering_through_the_existing_decision_cli_completes_the_rest(
+            self, control_root, capsys):
+        # The acceptance path exactly as a human walks it: the command the
+        # status view printed, then a resume.  No new CLI, no new queue.
+        from apps.cli.commands.decision import _cmd_decision_resolve
+        from packages.orchestration.storage import load_job, save_job
+
+        step = EscalatingStep("B1a")
+        job, first = run_fanout(control_root, step)
+        save_job(job)
+        decision_id = first.open_decision_ids[0]
+
+        _cmd_decision_resolve(str(job.id), decision_id, reason="fast")
+        out = capsys.readouterr().out
+
+        assert f"Answered {decision_id}" in out and "fast" in out
+        reloaded = load_job(job.id)
+        assert open_task_decisions(reloaded) == []
+        assert answered_task_decisions(reloaded)[0]["answer"] == "fast"
+        assert answered_task_decisions(reloaded)[0]["answer_source"] == (
+            ANSWER_SOURCE_HUMAN)
+
+        resumed_step = EscalatingStep()
+        reloaded, second = run_fanout(control_root, resumed_step, job=reloaded)
+
+        assert second.terminal_status == TERMINAL_ALL_GREEN
+        assert resumed_step.executed == ["B1a", "B1b"]
+
+    def test_the_cli_refuses_to_overwrite_an_answer(self, control_root, capsys):
+        from apps.cli.commands.decision import _cmd_decision_resolve
+        from packages.orchestration.storage import save_job
+
+        step = EscalatingStep("B1a")
+        job, first = run_fanout(control_root, step)
+        save_job(job)
+        decision_id = first.open_decision_ids[0]
+
+        _cmd_decision_resolve(str(job.id), decision_id, reason="fast")
+        capsys.readouterr()
+        with pytest.raises(SystemExit) as exit_info:
+            _cmd_decision_resolve(str(job.id), decision_id, reason="safe")
+
+        assert exit_info.value.code == 1
+        assert "already answered" in capsys.readouterr().err
+
+    def test_the_cli_refuses_an_empty_answer_without_a_default(
+            self, control_root, capsys):
+        from apps.cli.commands.decision import _cmd_decision_resolve
+        from packages.orchestration.storage import save_job
+
+        step = EscalatingStep("B1a", safe_default="")
+        job, first = run_fanout(control_root, step)
+        save_job(job)
+
+        with pytest.raises(SystemExit) as exit_info:
+            _cmd_decision_resolve(str(job.id), first.open_decision_ids[0], reason="")
+
+        assert exit_info.value.code == 1
+        assert "--reason carries the answer" in capsys.readouterr().err
+
     def test_the_answer_reaches_the_task_that_asked(self, control_root):
         step = EscalatingStep("B1a")
         job, first = run_fanout(control_root, step)
