@@ -1,0 +1,23 @@
+[
+ {
+  "safe_diff_files": [
+   "docs/roadmap/STATUS.md",
+   "docs/roadmap/features/T1_F050.md",
+   "packages/orchestration/dag_schedule.py",
+   "packages/orchestration/long_run_executor.py"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "packages/orchestration/task_runner.py",
+   "tests/orchestration/test_dag_schedule.py",
+   "tests/orchestration/test_long_run_executor.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ }
+]

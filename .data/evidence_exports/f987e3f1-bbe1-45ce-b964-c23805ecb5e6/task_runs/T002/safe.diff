@@ -1,0 +1,665 @@
+diff --git a/packages/orchestration/task_runner.py b/packages/orchestration/task_runner.py
+index c09dd6e..fb292af 100644
+--- a/packages/orchestration/task_runner.py
++++ b/packages/orchestration/task_runner.py
+@@ -74,11 +74,19 @@ class RunTaskResult:
+     changed: bool
+ 
+ 
+-def _find_next_pending(job: Job) -> Task | None:
+-    """Return the first task with status PENDING, or None."""
++def _find_next_pending(job: Job, *, task_id: UUID | None = None) -> Task | None:
++    """Return the first task with status PENDING, or None.
++
++    With *task_id*, return that task only if it is PENDING — the caller has
++    already decided which task is next (F050: the DAG ready set) and this
++    function must not silently substitute a different one.
++    """
+     for task in job.tasks:
+-        if task.status == RunState.PENDING:
+-            return task
++        if task.status != RunState.PENDING:
++            continue
++        if task_id is not None and task.id != task_id:
++            continue
++        return task
+     return None
+ 
+ 
+@@ -148,6 +156,8 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
+ def run_next_task(
+     job: Job,
+     call_builder: Callable[[TaskExecutionContext], BuilderOutput],
++    *,
++    task_id: UUID | None = None,
+ ) -> RunTaskResult:
+     """Execute the next pending task using the injected builder callable.
+ 
+@@ -156,6 +166,12 @@ def run_next_task(
+     creates one task-owned Artifact, and appends its id to
+     task.output_artifact_ids.
+ 
++    *task_id* names the task to run instead of the first pending one, for
++    callers that have already computed which task is next (F050: the DAG ready
++    set, where the first PENDING task in plan order may still be waiting on a
++    dependency).  When it names a task that is not PENDING, nothing runs and
++    the result is unchanged — the caller's view was stale.
++
+     The task remains RUNNING after this call — it is NOT marked COMPLETED here.
+     The caller must run verify_task_output() then finalize_task() to complete
+     the task after materialization and verification.
+@@ -168,7 +184,7 @@ def run_next_task(
+ 
+     All errors from call_builder propagate to the caller — no retries.
+     """
+-    task = _find_next_pending(job)
++    task = _find_next_pending(job, task_id=task_id)
+     if task is None:
+         return RunTaskResult(job=job, task_id=None, changed=False)
+ 
+diff --git a/tests/orchestration/test_dag_schedule.py b/tests/orchestration/test_dag_schedule.py
+new file mode 100644
+index 0000000..c58df5e
+--- /dev/null
++++ b/tests/orchestration/test_dag_schedule.py
+@@ -0,0 +1,300 @@
++"""F050 T001 — the pure DAG scheduling functions.
++
++Table tests over the plan shapes named in the feature order: diamond, chain,
++independent islands, the legacy-linear rule, a mixed plan, a single-task plan,
++skipped-blocked transitivity, and determinism.  Everything here is pure: no
++clock, no filesystem, no provider.
++"""
++from __future__ import annotations
++
++import pytest
++
++from packages.core.models import RunState, Task
++from packages.orchestration.dag_schedule import (
++    BLOCKING_STATES,
++    blocked_downstream,
++    build_graph,
++    ready_set,
++)
++
++
++# ---------------------------------------------------------------------------
++# Fixture builders
++# ---------------------------------------------------------------------------
++
++
++def flight_task(planned_id: str, *depends_on: str,
++                status: RunState = RunState.PENDING) -> Task:
++    """A task carrying Flight Plan metadata, shaped like the real mapper's."""
++    return Task(
++        description=f"task {planned_id}",
++        inputs={"flight": {
++            "planned_id": planned_id,
++            "title": planned_id,
++            "depends_on": list(depends_on),
++        }},
++        status=status,
++    )
++
++
++def legacy_task(name: str, *, status: RunState = RunState.PENDING) -> Task:
++    """A task with no flight metadata — the legacy/heuristic-fallback shape."""
++    return Task(description=f"legacy {name}", status=status)
++
++
++def ids(tasks: list[Task], *planned_ids: str) -> list:
++    """Task ids for the given planned ids, in the order asked for."""
++    by_planned = {t.inputs["flight"]["planned_id"]: t.id
++                  for t in tasks if "flight" in t.inputs}
++    return [by_planned[p] for p in planned_ids]
++
++
++def diamond(**states: RunState) -> list[Task]:
++    """A -> (B, C) -> D.  States passed by planned id override PENDING."""
++    return [
++        flight_task("A", status=states.get("A", RunState.PENDING)),
++        flight_task("B", "A", status=states.get("B", RunState.PENDING)),
++        flight_task("C", "A", status=states.get("C", RunState.PENDING)),
++        flight_task("D", "B", "C", status=states.get("D", RunState.PENDING)),
++    ]
++
++
++# ---------------------------------------------------------------------------
++# ready_set — plan shapes
++# ---------------------------------------------------------------------------
++
++
++def test_diamond_root_is_the_only_ready_task_at_the_start():
++    tasks = diamond()
++    assert ready_set(tasks) == ids(tasks, "A")
++
++
++def test_diamond_opens_both_branches_when_the_root_completes():
++    tasks = diamond(A=RunState.COMPLETED)
++    # Both branches ready at once, in plan order — this is the whole feature.
++    assert ready_set(tasks) == ids(tasks, "B", "C")
++
++
++def test_diamond_join_waits_for_both_branches():
++    tasks = diamond(A=RunState.COMPLETED, B=RunState.COMPLETED)
++    assert ready_set(tasks) == ids(tasks, "C")
++
++
++def test_diamond_join_becomes_ready_only_after_both_parents():
++    tasks = diamond(A=RunState.COMPLETED, B=RunState.COMPLETED,
++                    C=RunState.COMPLETED)
++    assert ready_set(tasks) == ids(tasks, "D")
++
++
++def test_chain_releases_exactly_one_task_at_a_time():
++    tasks = [flight_task("A"), flight_task("B", "A"), flight_task("C", "B")]
++    assert ready_set(tasks) == ids(tasks, "A")
++
++    tasks[0].status = RunState.COMPLETED
++    assert ready_set(tasks) == ids(tasks, "B")
++
++    tasks[1].status = RunState.COMPLETED
++    assert ready_set(tasks) == ids(tasks, "C")
++
++
++def test_independent_islands_are_all_ready_at_once():
++    tasks = [flight_task("A"), flight_task("B"), flight_task("C", "B")]
++    # A and B have no dependencies; C waits for B.
++    assert ready_set(tasks) == ids(tasks, "A", "B")
++
++
++def test_single_task_plan_degenerates_correctly():
++    tasks = [flight_task("only")]
++    assert ready_set(tasks) == ids(tasks, "only")
++
++    tasks[0].status = RunState.COMPLETED
++    assert ready_set(tasks) == []
++
++
++def test_empty_plan_is_empty():
++    assert ready_set([]) == []
++    assert blocked_downstream([], []) == set()
++
++
++# ---------------------------------------------------------------------------
++# The legacy-linear rule
++# ---------------------------------------------------------------------------
++
++
++def test_legacy_plan_without_metadata_schedules_linearly():
++    tasks = [legacy_task("one"), legacy_task("two"), legacy_task("three")]
++    # One rule: each task depends on its predecessor.
++    assert ready_set(tasks) == [tasks[0].id]
++
++    tasks[0].status = RunState.COMPLETED
++    assert ready_set(tasks) == [tasks[1].id]
++
++    tasks[1].status = RunState.COMPLETED
++    assert ready_set(tasks) == [tasks[2].id]
++
++
++def test_legacy_plan_holds_the_tail_while_the_head_is_unfinished():
++    tasks = [legacy_task("one", status=RunState.RUNNING), legacy_task("two")]
++    assert ready_set(tasks) == []
++
++
++def test_mixed_plan_resolves_each_task_by_its_own_kind():
++    # Legacy task at index 1 depends on its predecessor (the flight task A);
++    # the flight task C declares its edge explicitly and ignores position.
++    a = flight_task("A")
++    mid = legacy_task("mid")
++    c = flight_task("C", "A")
++    tasks = [a, mid, c]
++
++    assert ready_set(tasks) == [a.id]
++
++    a.status = RunState.COMPLETED
++    # mid unblocks by predecessor rule, C unblocks by its declared edge.
++    assert ready_set(tasks) == [mid.id, c.id]
++
++
++def test_flight_task_after_a_legacy_task_does_not_inherit_position():
++    legacy = legacy_task("first")
++    independent = flight_task("B")          # declares no dependency at all
++    tasks = [legacy, independent]
++    # The flight task is ready immediately: it is not the legacy chain's tail.
++    assert ready_set(tasks) == [legacy.id, independent.id]
++
++
++# ---------------------------------------------------------------------------
++# Dangling / self edges
++# ---------------------------------------------------------------------------
++
++
++def test_dangling_dependency_is_never_ready():
++    tasks = [flight_task("A"), flight_task("B", "GHOST")]
++    assert ready_set(tasks) == ids(tasks, "A")
++
++    tasks[0].status = RunState.COMPLETED
++    # GHOST names no task in the plan, so B's dependency never completes.
++    assert ready_set(tasks) == []
++    assert build_graph(tasks)[1].has_unresolved_dependency is True
++
++
++def test_self_dependency_is_never_ready():
++    tasks = [flight_task("A", "A")]
++    assert ready_set(tasks) == []
++
++
++def test_duplicate_declared_edge_is_collapsed():
++    tasks = [flight_task("A", status=RunState.COMPLETED),
++             flight_task("B", "A", "A")]
++    assert build_graph(tasks)[1].depends_on == (tasks[0].id,)
++    assert ready_set(tasks) == ids(tasks, "B")
++
++
++# ---------------------------------------------------------------------------
++# Non-pending and blocking states
++# ---------------------------------------------------------------------------
++
++
++@pytest.mark.parametrize("state", [
++    RunState.RUNNING,
++    RunState.PLANNED,
++    RunState.PAUSED,
++    RunState.COMPLETED,
++    RunState.FAILED,
++    RunState.CANCELLED,
++])
++def test_only_pending_tasks_are_ever_ready(state):
++    tasks = [flight_task("A", status=state)]
++    assert ready_set(tasks) == []
++
++
++@pytest.mark.parametrize("state", sorted(BLOCKING_STATES, key=lambda s: s.value))
++def test_a_dependency_in_a_blocking_state_withholds_its_dependents(state):
++    tasks = [flight_task("A", status=state), flight_task("B", "A")]
++    assert ready_set(tasks) == []
++
++
++# ---------------------------------------------------------------------------
++# blocked_downstream — transitivity
++# ---------------------------------------------------------------------------
++
++
++def test_blocked_downstream_is_transitive():
++    tasks = [flight_task("A"), flight_task("B", "A"), flight_task("C", "B"),
++             flight_task("D", "C")]
++    blocked = blocked_downstream(tasks, ids(tasks, "B"))
++    # B's whole tail, and B itself is not in its own downstream.
++    assert blocked == set(ids(tasks, "C", "D"))
++
++
++def test_blocked_downstream_spares_the_independent_branch():
++    tasks = diamond(A=RunState.COMPLETED)
++    blocked = blocked_downstream(tasks, ids(tasks, "B"))
++    # Only the join is blocked; C is an independent branch and stays runnable.
++    assert blocked == set(ids(tasks, "D"))
++    assert ids(tasks, "C")[0] not in blocked
++
++
++def test_blocked_downstream_excludes_the_seeds():
++    tasks = diamond()
++    seeds = ids(tasks, "B", "C")
++    assert blocked_downstream(tasks, seeds) == set(ids(tasks, "D"))
++
++
++def test_blocked_downstream_never_reports_a_completed_task():
++    tasks = diamond(A=RunState.COMPLETED, B=RunState.COMPLETED)
++    # B finished, then A is somehow blocked again: B cannot be "skipped".
++    blocked = blocked_downstream(tasks, ids(tasks, "A"))
++    assert ids(tasks, "B")[0] not in blocked
++    assert blocked == set(ids(tasks, "C", "D"))
++
++
++def test_blocked_downstream_follows_the_legacy_chain():
++    tasks = [legacy_task("one"), legacy_task("two"), legacy_task("three")]
++    assert blocked_downstream(tasks, [tasks[0].id]) == {tasks[1].id,
++                                                        tasks[2].id}
++
++
++def test_blocked_downstream_of_an_unknown_id_is_empty():
++    tasks = diamond()
++    stranger = flight_task("STRANGER")
++    assert blocked_downstream(tasks, [stranger.id]) == set()
++
++
++def test_blocked_downstream_of_a_leaf_is_empty():
++    tasks = diamond()
++    assert blocked_downstream(tasks, ids(tasks, "D")) == set()
++
++
++# ---------------------------------------------------------------------------
++# Determinism
++# ---------------------------------------------------------------------------
++
++
++def test_ready_set_is_deterministic_across_calls():
++    tasks = diamond(A=RunState.COMPLETED)
++    first = ready_set(tasks)
++    second = ready_set(tasks)
++    assert first == second
++    assert len(first) == 2
++
++
++def test_ready_set_follows_plan_order_not_id_order():
++    tasks = diamond(A=RunState.COMPLETED)
++    expected = ids(tasks, "B", "C")
++    # Plan order is the contract; uuid4 ids sort differently often enough that
++    # an id-ordered implementation would fail this on most runs.
++    assert ready_set(tasks) == expected
++
++
++def test_blocked_downstream_is_deterministic_across_calls():
++    tasks = diamond(A=RunState.COMPLETED)
++    seeds = ids(tasks, "B")
++    assert blocked_downstream(tasks, seeds) == blocked_downstream(tasks, seeds)
++
++
++def test_build_graph_is_deterministic_and_in_plan_order():
++    tasks = diamond()
++    first = build_graph(tasks)
++    second = build_graph(tasks)
++    assert first == second
++    assert [node.task_id for node in first] == [t.id for t in tasks]
++    assert [node.index for node in first] == [0, 1, 2, 3]
+diff --git a/tests/orchestration/test_long_run_executor.py b/tests/orchestration/test_long_run_executor.py
+index 0a52755..1bb9448 100644
+--- a/tests/orchestration/test_long_run_executor.py
++++ b/tests/orchestration/test_long_run_executor.py
+@@ -448,10 +448,31 @@ class TestVerifyStep:
+ 
+ 
+ class TestReadyBatch:
+-    def test_linear_order_capped_at_batch_size(self):
++    def test_legacy_plan_releases_one_task_at_a_time(self):
++        """F050 replaced the linear batch with the DAG ready set.
++
++        ``make_job`` builds tasks without Flight Plan metadata, so the legacy
++        rule applies: each task depends on its predecessor.  The ready set is
++        therefore one task deep until that predecessor completes — where this
++        used to return the first ``batch_size`` PENDING tasks.  Loop behavior
++        for such plans is unchanged (see the linear-regression tests below and
++        ``test_batch_larger_than_remaining_tasks_is_fine``): the batch is a cap
++        on how many tasks a cycle runs, and the set is recomputed after each.
++        """
+         job = make_job(4)
+-        assert len(ready_tasks(job, 2)) == 2
++        assert ready_tasks(job, 2) == [job.tasks[0].id]
++
++        job.tasks[0].status = RunState.COMPLETED
++        assert ready_tasks(job, 2) == [job.tasks[1].id]
++
++    def test_independent_tasks_fill_the_batch_up_to_its_cap(self):
++        job = make_job(4)
++        # Flight metadata declaring no dependencies: all four are ready, and
++        # the cap is what limits the batch.
++        for index, task in enumerate(job.tasks):
++            task.inputs["flight"] = {"planned_id": f"T{index}", "depends_on": []}
+         assert ready_tasks(job, 2) == [job.tasks[0].id, job.tasks[1].id]
++        assert len(ready_tasks(job, 10)) == 4
+ 
+     def test_batch_larger_than_remaining_tasks_is_fine(self, control_root):
+         job = make_job(2)
+@@ -855,3 +876,261 @@ class TestJobRunCommand:
+             reset_config()
+         err = capsys.readouterr().err
+         assert "cycles.max_cycles 8 capped to 1" in err
++
++
++# ---------------------------------------------------------------------------
++# F050 — DAG scheduling in the loop (T002)
++# ---------------------------------------------------------------------------
++
++
++def make_diamond_job(name: str = "diamond-job") -> Job:
++    """A -> (B, C) -> D, expressed the way ``map_flight_plan_to_tasks`` does.
++
++    Plan order puts B before C, so a scheduler that just took the first PENDING
++    task would pick the blocked branch and never reach C — which is exactly the
++    behavior F050 replaces.
++    """
++    def task(planned_id: str, *depends_on: str) -> Task:
++        return Task(
++            description=f"task {planned_id}",
++            inputs={
++                "task_type": "documentation",
++                "flight": {"planned_id": planned_id,
++                           "title": planned_id,
++                           "depends_on": list(depends_on)},
++            },
++        )
++
++    return Job(
++        name=name,
++        user_prompt="build the thing",
++        tasks=[task("A"), task("B", "A"), task("C", "A"), task("D", "B", "C")],
++        state=RunState.PLANNED,
++    )
++
++
++def planned_id_of(job: Job, task_id) -> str:
++    for task in job.tasks:
++        if str(task.id) == str(task_id):
++            return task.inputs["flight"]["planned_id"]
++    raise AssertionError(f"no task {task_id} in this job")
++
++
++def task_by_planned_id(job: Job, planned_id: str) -> Task:
++    for task in job.tasks:
++        if task.inputs.get("flight", {}).get("planned_id") == planned_id:
++            return task
++    raise AssertionError(f"no task {planned_id} in this job")
++
++
++class SteeredStep:
++    """A step that runs the task the ready set selected, failing named ones.
++
++    Declaring ``task_id`` is what makes the conductor offer the target; a step
++    without it keeps the pre-F050 "first PENDING" behavior.  A forced failure
++    mirrors the real task runner: the task is rolled back to PENDING.
++    """
++
++    def __init__(self, *fail_planned_ids: str) -> None:
++        self.fail = set(fail_planned_ids)
++        self.executed: list[str] = []
++
++    def __call__(self, job: Job, provider_call, task_id=None) -> TaskAttempt:
++        if task_id is not None:
++            task = next((t for t in job.tasks if t.id == task_id), None)
++        else:
++            task = next((t for t in job.tasks
++                         if t.status == RunState.PENDING), None)
++        if task is None:
++            return TaskAttempt()
++
++        planned_id = task.inputs["flight"]["planned_id"]
++        provider_call(
++            TaskExecutionContext(
++                job_id=job.id,
++                job_prompt=job.user_prompt,
++                task_id=task.id,
++                task_type=task.inputs.get("task_type", "unknown"),
++                task_description=task.description,
++            )
++        )
++        self.executed.append(planned_id)
++        if planned_id in self.fail:
++            task.status = RunState.PENDING          # the runner's rollback
++            return TaskAttempt(task_id=task.id, executed=True, verified=False,
++                               error=f"verification_failed: {planned_id}")
++        task.status = RunState.COMPLETED
++        if all(t.status == RunState.COMPLETED for t in job.tasks):
++            job.state = RunState.COMPLETED
++        return TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++
++def run_diamond(control_root: Path, *fail: str, batch_size: int = 1):
++    job = make_diamond_job()
++    step = SteeredStep(*fail)
++    result = run_cycles(
++        job, CycleLimits(max_cycles=10, batch_size=batch_size), FakeProvider(),
++        task_step=step, verify=passing_verify, clock=FakeClock(),
++        save=no_save, control_root_path=control_root,
++    )
++    return job, step, result
++
++
++class TestDagScheduling:
++    def test_both_branches_open_once_the_root_completes(self, control_root):
++        job, step, result = run_diamond(control_root, batch_size=1)
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        # A first, then the two branches in plan order, then the join.
++        assert step.executed == ["A", "B", "C", "D"]
++        assert all(t.status == RunState.COMPLETED for t in job.tasks)
++
++    def test_a_blocked_branch_does_not_block_the_independent_one(self, control_root):
++        job, step, result = run_diamond(control_root, "B", batch_size=1)
++
++        # B failed; C is independent of B and must still complete.
++        assert step.executed == ["A", "B", "C"]
++        assert task_by_planned_id(job, "C").status == RunState.COMPLETED
++        # D depends on B, so it is never attempted at all.
++        assert "D" not in step.executed
++        assert task_by_planned_id(job, "D").status == RunState.PENDING
++        assert result.terminal_status == TERMINAL_BLOCKED
++
++    def test_the_skipped_downstream_is_named_in_the_cycle_evidence(self, control_root):
++        job, _, result = run_diamond(control_root, "B", batch_size=1)
++
++        last = result.cycles[-1]
++        skipped = [planned_id_of(job, t) for t in last.skipped_blocked_task_ids]
++        # Exactly the join — not C, which ran, and not B, which is blocked for
++        # its own reason rather than skipped.
++        assert skipped == ["D"]
++        assert last.to_json()["skipped_blocked_task_ids"] == list(
++            last.skipped_blocked_task_ids)
++
++    def test_the_terminal_reason_says_nothing_was_ready(self, control_root):
++        _, _, result = run_diamond(control_root, "B", batch_size=1)
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert "no_ready_tasks" in result.stop_reason
++
++    def test_a_blocked_leaf_blocks_nothing(self, control_root):
++        job, step, result = run_diamond(control_root, "D", batch_size=1)
++        # Everything upstream of the failed join still completes.
++        assert step.executed == ["A", "B", "C", "D"]
++        for planned_id in ("A", "B", "C"):
++            assert task_by_planned_id(job, planned_id).status == RunState.COMPLETED
++        assert result.cycles[-1].skipped_blocked_task_ids == ()
++        assert result.terminal_status == TERMINAL_BLOCKED
++
++    def test_the_ready_set_is_recomputed_after_every_task_end(self, control_root):
++        # batch_size 4 with a diamond: only A is ready when the cycle starts.
++        # B, C and D can only run in this same cycle if the ready set is
++        # recomputed after each task end rather than once per batch.
++        job, step, result = run_diamond(control_root, batch_size=4)
++        assert result.cycles_run == 1
++        assert step.executed == ["A", "B", "C", "D"]
++        assert result.cycles[0].tasks_attempted == 4
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++
++    def test_recomputation_is_visible_to_a_counting_stub(self, control_root,
++                                                         monkeypatch):
++        calls: list[int] = []
++        real_ready_tasks = lre.ready_tasks
++
++        def counting_ready_tasks(job, batch_size, **kwargs):
++            calls.append(len(calls))
++            return real_ready_tasks(job, batch_size, **kwargs)
++
++        monkeypatch.setattr(lre, "ready_tasks", counting_ready_tasks)
++        _, step, result = run_diamond(control_root, batch_size=4)
++
++        assert step.executed == ["A", "B", "C", "D"]
++        # One batch-boundary call, then one per task end inside the cycle: the
++        # selection point is consulted more often than once per cycle.
++        assert len(calls) > result.cycles_run
++
++    def test_two_runs_of_the_same_fixture_schedule_identically(self, control_root):
++        first_job, first_step, first = run_diamond(control_root, "B", batch_size=1)
++        second_job, second_step, second = run_diamond(control_root, "B", batch_size=1)
++
++        assert first_step.executed == second_step.executed
++        assert first.terminal_status == second.terminal_status
++        assert first.cycles_run == second.cycles_run
++        as_planned = lambda job, record: [                      # noqa: E731
++            planned_id_of(job, t) for t in record.executed_task_ids]
++        assert [as_planned(first_job, r) for r in first.cycles] == \
++               [as_planned(second_job, r) for r in second.cycles]
++        assert [[planned_id_of(first_job, t) for t in r.skipped_blocked_task_ids]
++                for r in first.cycles] == \
++               [[planned_id_of(second_job, t) for t in r.skipped_blocked_task_ids]
++                for r in second.cycles]
++
++    def test_a_step_without_a_target_parameter_still_works(self, control_root):
++        # The pre-F050 seam: ``completing_step`` takes (job, provider_call) and
++        # picks the first PENDING task itself.  It must keep running unchanged.
++        job = make_diamond_job()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=10, batch_size=1), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert all(t.status == RunState.COMPLETED for t in job.tasks)
++
++
++class TestLinearPlansAreUnchanged:
++    def test_a_legacy_plan_runs_one_task_per_cycle_at_batch_size_one(
++            self, control_root):
++        job = make_job(3)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles_run == 3
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert [r.tasks_attempted for r in result.cycles] == [1, 1, 1]
++
++    def test_a_legacy_plan_fills_one_cycle_when_the_batch_allows(self, control_root):
++        job = make_job(3)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, batch_size=3), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles_run == 1
++        assert result.cycles[0].tasks_attempted == 3
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++
++    def test_a_legacy_plan_never_reports_a_skipped_downstream(self, control_root):
++        job = make_job(3)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
++            task_step=completing_step, verify=passing_verify,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert all(r.skipped_blocked_task_ids == () for r in result.cycles)
++
++    def test_a_failed_legacy_task_blocks_its_successors(self, control_root):
++        job = make_job(3)
++        failing_ids = {job.tasks[1].id}
++
++        def step(job_: Job, provider_call) -> TaskAttempt:
++            task = next((t for t in job_.tasks
++                         if t.status == RunState.PENDING), None)
++            if task is None:
++                return TaskAttempt()
++            if task.id in failing_ids:
++                return TaskAttempt(task_id=task.id, executed=True,
++                                   verified=False, error="boom")
++            task.status = RunState.COMPLETED
++            return TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
++            task_step=step, verify=passing_verify, clock=FakeClock(),
++            save=no_save, control_root_path=control_root,
++        )
++        # Task 2 failed, so task 3 (its successor in the legacy chain) is
++        # skipped-blocked rather than run out of order.
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert result.cycles[-1].skipped_blocked_task_ids == (str(job.tasks[2].id),)
++        assert job.tasks[2].status == RunState.PENDING

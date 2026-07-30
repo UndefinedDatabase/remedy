@@ -74,11 +74,19 @@ class RunTaskResult:
     changed: bool
 
 
-def _find_next_pending(job: Job) -> Task | None:
-    """Return the first task with status PENDING, or None."""
+def _find_next_pending(job: Job, *, task_id: UUID | None = None) -> Task | None:
+    """Return the first task with status PENDING, or None.
+
+    With *task_id*, return that task only if it is PENDING — the caller has
+    already decided which task is next (F050: the DAG ready set) and this
+    function must not silently substitute a different one.
+    """
     for task in job.tasks:
-        if task.status == RunState.PENDING:
-            return task
+        if task.status != RunState.PENDING:
+            continue
+        if task_id is not None and task.id != task_id:
+            continue
+        return task
     return None
 
 
@@ -148,6 +156,8 @@ def _build_execution_context(job: Job, task: Task) -> TaskExecutionContext:
 def run_next_task(
     job: Job,
     call_builder: Callable[[TaskExecutionContext], BuilderOutput],
+    *,
+    task_id: UUID | None = None,
 ) -> RunTaskResult:
     """Execute the next pending task using the injected builder callable.
 
@@ -155,6 +165,12 @@ def run_next_task(
     TaskExecutionContext from the current job state, calls call_builder,
     creates one task-owned Artifact, and appends its id to
     task.output_artifact_ids.
+
+    *task_id* names the task to run instead of the first pending one, for
+    callers that have already computed which task is next (F050: the DAG ready
+    set, where the first PENDING task in plan order may still be waiting on a
+    dependency).  When it names a task that is not PENDING, nothing runs and
+    the result is unchanged — the caller's view was stale.
 
     The task remains RUNNING after this call — it is NOT marked COMPLETED here.
     The caller must run verify_task_output() then finalize_task() to complete
@@ -168,7 +184,7 @@ def run_next_task(
 
     All errors from call_builder propagate to the caller — no retries.
     """
-    task = _find_next_pending(job)
+    task = _find_next_pending(job, task_id=task_id)
     if task is None:
         return RunTaskResult(job=job, task_id=None, changed=False)
 

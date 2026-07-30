@@ -1,0 +1,488 @@
+f6f6faae29290aaf7b269922dce9a98e295f566e
+diff --git a/.agent/authored/f050-r2-1.md b/.agent/authored/f050-r2-1.md
+new file mode 100644
+index 0000000..1899b46
+--- /dev/null
++++ b/.agent/authored/f050-r2-1.md
+@@ -0,0 +1,39 @@
++# Live Review — F050 DAG scheduling (Tier 1)
++
++Branch: feature/f050-dag-scheduling
++Scope: topological ready set + blocked-downstream skip in the
++multi-cycle executor (docs/roadmap/features/T1_F050.md).
++
++## Steps
++- R1: claim + state reset + T001 pure module + T002 executor
++  integration (large bundle, per-slice gates). Done.
++- R2: persist the R1 verdict + Built State; integration-gate round
++  per docs/agents/integration_gate.md. In progress.
++
++## Findings
++(none — next free ID: R-0155)
++
++## Verdicts
++- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f, 4
++  commits, plus 1717fc8 (R0154 verdict) merged as PR #162. Reviewer
++  re-ran: slice-3 gate 144 passed; task_runner/do_job_flow/
++  checkpoints/resume/flight_plan spot-check 331 passed; docs gate
++  292 passed; canary 42 passed. Authored-text hash + cmp proofs
++  verified; STATUS claim one-line diff confirmed; tree clean; no
++  threading in the diff. Mutation spot-check in a throwaway
++  worktree (in-run blocking removed) → 5 tests failed, worktree
++  removed and pruned — the F050 coverage is real.
++  DECISION (a): the task_runner.py touch is ACCEPTED — additive
++  task_id keyword on run_next_task/_find_next_pending; without it
++  the ready set could not choose WHICH task runs and the diamond
++  acceptance was unsatisfiable. Alternatives (duplicating rollback
++  semantics in the executor) rejected. Reversible: drop the keyword.
++  DECISION (b): replacing the pre-F050 helper assertion
++  test_linear_order_capped_at_batch_size is ACCEPTED — it asserted
++  the exact helper contract F050 replaces; loop-level linear
++  behavior is proven unchanged by TestLinearPlansAreUnchanged and
++  by test_batch_larger_than_remaining_tasks_is_fine, untouched.
++  Observation, no finding: the blocked_downstream subtraction inside
++  ready_tasks is defensive redundancy (ready_set already withholds
++  tasks whose deps are not COMPLETED); harmless, keep.
++  LAST_REVIEWED_SHA = ac9dc6f.
+diff --git a/.agent/authored/f050-r2-2.md b/.agent/authored/f050-r2-2.md
+new file mode 100644
+index 0000000..b0ad5cb
+--- /dev/null
++++ b/.agent/authored/f050-r2-2.md
+@@ -0,0 +1,26 @@
++
++## Built State
++- T001 `packages/orchestration/dag_schedule.py` — pure module:
++  `build_graph` (flight metadata → task-id edges; legacy rule: a
++  task without `inputs["flight"]` depends on its predecessor),
++  `ready_set` (PENDING with all deps COMPLETED, plan order,
++  deterministic), `blocked_downstream` (transitive dependents,
++  seeds excluded, COMPLETED never reported), `BLOCKING_STATES`
++  (FAILED, CANCELLED). Dangling dep ids → never ready, documented.
++  34 table tests in tests/orchestration/test_dag_schedule.py.
++- T002 `packages/orchestration/long_run_executor.py` — `ready_tasks`
++  now returns the DAG ready set minus in-run blocked ids and their
++  downstream; the ready set is recomputed after EVERY task end (the
++  batch is a cap); a failed attempt adds its task to in-run
++  `blocked_ids` (failure rolls tasks back to PENDING, so blocking is
++  run-scoped by design); `CycleRecord.skipped_blocked_task_ids`
++  names the withheld downstream in cycle evidence; empty ready set
++  with unfinished tasks reuses TERMINAL_BLOCKED; checkpoint next
++  intent skips blocked tasks. `task_runner.run_next_task` gained an
++  additive `task_id=` keyword (default = pre-F050 behavior,
++  byte-identical); the step seam stays 2-arg-compatible via
++  signature inspection. Diamond fixture + 13 F050 tests +
++  linear-regression class in tests/orchestration/
++  test_long_run_executor.py.
++- Accepted rounds: R1 PASS (T001+T002). Pending: integration gate,
++  closure.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index 768c7a8..4582ba9 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,182 +1,61 @@
+-OUTCOME: executed
+-── STEP R2/R0154 + R1/F050 — verdict · merge · claim · T001 · T002 ──
+-Goal:        Persist the R0154 R1 PASS verdict, merge PR #162 via the
+-             Open PR Gate, then build ALL of F050 — DAG scheduling
+-             (T001 pure module + T002 executor integration).
+-Bundle:      Slice 0 verdict + gate · Slice 1 claim + state ·
+-             Slice 2 T001 · Slice 3 T002. STOP at the FIRST red
+-             verification (AGENTS.md If-Blocked); hand back raw
+-             output with completed slices intact.
+-Change:      .agent/ state; docs/roadmap/STATUS.md (ONE line);
+-             packages/orchestration/dag_schedule.py (new);
+-             packages/orchestration/long_run_executor.py (batch
+-             selection + blocked tracking only);
+-             tests/orchestration/test_dag_schedule.py (new);
+-             executor tests as needed. Nothing else.
+-Constraints: AGENTS.md; feature file docs/roadmap/features/T1_F050.md
+-             is the spec — read it COMPLETELY first. Do-not-touch:
+-             plan-time validation, parallel workers, decision UX.
+-             NO THREADING — any diff adding threading is a defect.
+-             Commits < 500 lines each; split slices into several
+-             commits where needed. Authored texts verbatim:
+-             sha256-verify BEFORE apply; mismatch = STOP + refusal
+-             record. Worker never writes ## Verdicts for F050.
+-             NO closure work: no [x], no evidence job, no zip —
+-             closure is its own later round.
+-Done when:   Every slice gate green (commands below), pushed, PR
+-             open for feature/f050-dag-scheduling.
+-Handback:    Completion report + rewrite .agent/handoff.md:
+-             changed-files table PER COMMIT, raw gate transcripts
+-             (command, exit code, tail), sha256 + cmp proofs, STATUS
+-             grep proofs, PR number.
+-
+-GROUND FACTS (reviewer-verified; do not re-derive, DO spot-check)
+-- Dependency edges: task.inputs["flight"]["depends_on"] (list of
+-  planned ids); own planned id in task.inputs["flight"]["planned_id"].
+-  Producer: map_flight_plan_to_tasks, flight_plan.py:417. Plan-time
+-  DAG validation exists — cycles cannot reach the executor.
+-- Legacy tasks (no inputs["flight"]) → implicit linear chain: each
+-  task depends on its predecessor. One rule, docstring, tested.
+-- Sole selection point: ready_tasks(job, batch_size),
+-  long_run_executor.py:572 — replace its linear logic; keep the
+-  signature the executor loop uses (or adapt the loop minimally).
+-- RunState: PENDING/PLANNED/RUNNING/PAUSED/COMPLETED/FAILED/
+-  CANCELLED. Task failure ROLLS BACK to PENDING (task_runner.py
+-  states table) — there is NO persistent task-level FAILED in the
+-  loop. Blocked tracking is therefore IN-RUN: a task whose attempt
+-  executed-but-failed in this run is blocked; its transitive
+-  downstream is skipped-blocked. Treat FAILED/CANCELLED task states
+-  as blocking too if encountered.
+-- Empty ready set + unfinished tasks → the existing TERMINAL_BLOCKED
+-  path (long_run_executor.py ~800) — reuse, do not invent a status.
+-- Cycle evidence: CycleRecord — extend to name skipped-blocked task
+-  ids so reports say WHY nothing happened on a branch.
++OUTCOME: pending
++── STEP R2 — F050 verdict persist + INTEGRATION GATE ────────────────
++Goal:        Persist the R1 PASS verdict and the feature file's Built
++             State, then run the full-suite integration gate per
++             docs/agents/integration_gate.md. NO closure work.
++Bundle:      Slice 0 persist (one commit) · Slice 1 integration gate
++             (no commit unless the gate procedure requires records).
++Change:      .agent/ state; docs/roadmap/features/T1_F050.md (Built
++             State append ONLY). No production or test code.
++Constraints: AGENTS.md. Authored texts verbatim, sha256-verify
++             BEFORE apply; mismatch = STOP + refusal record. Worker
++             never writes ## Verdicts beyond the authored text. NO
++             closure: no STATUS [x], no evidence job, no zip.
++             A reproducible branch-only failure coupled to feature
++             code = STOP, hand back (gate step 4).
++Done when:   Slice 0 gates green; integration-gate steps 1–4
++             executed with raw records; handback carries everything
++             the reviewer needs to issue the gate verdict.
++Handback:    Completion report + rewrite .agent/handoff.md: raw
++             tails + exit codes + wall times of BOTH full runs, the
++             branch_failed/base_failed lists, comm -13 and comm -23
++             output, per-id attribution (serial re-runs), worktree
++             list proof after removal, changed-files table.
+ 
+ PROCEDURE
+ 
+-Slice 0 — verdict + Open PR Gate
+-1. On feature/r0154-closure-ordering. .agent/last_block.md guard:
++Slice 0 — persist verdict + Built State
++1. On feature/f050-dag-scheduling. .agent/last_block.md guard:
+    line 1 "OUTCOME: pending", THIS block verbatim; flip to
+    "OUTCOME: executed" at round end.
+-2. Save authored text r0154-r2-1 below VERBATIM to
+-   .agent/authored/r0154-r2-1.md; sha256sum must equal its BEGIN
+-   marker. FULL REPLACE .agent/live_review.md with it; cmp → 0.
+-   Commit: "chore(r0154): persist the R1 PASS verdict". Push.
+-3. Open PR Gate (AGENTS.md):
+-   gh pr list --state open --json number,headRefName,baseRefName,isDraft
+-   Expected exactly one: #162, head feature/r0154-closure-ordering,
+-   base main, not draft. Then:
+-   gh pr merge 162 --merge --delete-branch
+-   git checkout main && git pull --ff-only
+-   Any other gate state → STOP, hand back raw output.
+-
+-Slice 1 — F050 claim + state reset
+-4. git checkout -b feature/f050-dag-scheduling
+-5. Save f050-r1-1 and f050-r1-2 below VERBATIM to .agent/authored/;
+-   sha256-verify. Apply by copy: f050-r1-1 FULL REPLACE
+-   .agent/live_review.md; f050-r1-2 FULL REPLACE .agent/plan.md;
+-   cmp both → 0.
+-6. docs/roadmap/STATUS.md: replace the exact line
+-   "- [ ] F050 — DAG scheduling"
+-   with
+-   "- [~] F050 — DAG scheduling"
+-   Touch no other line. Proof: grep -cF new = 1, old = 0.
+-7. Gate: python3 -m pytest tests/docs/ -q (docs/roadmap changed;
+-   F252 baseline 292 passed) AND canary
++2. Save f050-r2-1 below VERBATIM to .agent/authored/f050-r2-1.md;
++   sha256-verify. FULL REPLACE .agent/live_review.md; cmp → 0.
++3. Save f050-r2-2 below VERBATIM to .agent/authored/f050-r2-2.md;
++   sha256-verify. APPEND its bytes unchanged to
++   docs/roadmap/features/T1_F050.md (the file currently ends after
++   the "Do not touch" section; the authored text begins with the
++   separating blank line). Proof: tail -c of the feature file cmp 0
++   against the authored file.
++4. Gate (docs/roadmap changed): python3 -m pytest tests/docs/ -q
++   (baseline 292) AND canary
+    python3 -m pytest tests/cli/test_golden_path.py -q (baseline 42).
+    Both exit 0 ELSE STOP. Commit:
+-   "chore(f050): claim F050 — state reset". Push.
+-
+-Slice 2 — T001 pure module + table tests
+-8. New packages/orchestration/dag_schedule.py, PURE (no I/O, no
+-   timestamps, no randomness, no threading):
+-   - ready_set(tasks) -> ordered list of task ids: PENDING tasks
+-     whose dependencies are ALL COMPLETED, in plan order (stable,
+-     deterministic).
+-   - blocked_downstream(tasks, blocked_ids) -> set: transitive
+-     dependents of the blocked tasks.
+-   - Dependency resolution per GROUND FACTS: flight metadata ids
+-     mapped to task order; legacy/missing metadata → predecessor
+-     chain; state the rule in the module docstring.
+-   - Unknown/dangling dep ids: treat the dep as never-completed and
+-     say so in the docstring (plan-time validation makes this a
+-     legacy-only corner).
+-9. New tests/orchestration/test_dag_schedule.py — table tests:
+-   diamond, chain, independent islands, legacy-linear rule, mixed
+-   (flight + legacy tasks in one plan), single-task plan,
+-   skipped-blocked transitivity, deterministic ordering (two calls,
+-   identical result).
+-10. Slice gate: python3 -m pytest tests/orchestration/test_dag_schedule.py -q
+-    exit 0 ELSE STOP here and hand back. Commit:
+-    "feat(f050): dag_schedule pure module + table tests (T001)".
+-    Push.
+-
+-Slice 3 — T002 executor integration
+-11. long_run_executor.py: at each batch boundary compute
+-    ready_set minus blocked downstreams (recompute after EVERY task
+-    end); a task whose attempt executed-but-failed this run joins
+-    blocked_ids and its downstream is marked skipped-blocked in the
+-    cycle evidence (CycleRecord extension); empty ready set with
+-    unfinished tasks → existing TERMINAL_BLOCKED. Batch-size cap
+-    semantics unchanged. Legacy plans behave exactly as before.
+-12. Tests (extend tests/orchestration/test_long_run_executor.py or
+-    the T001 file where it fits):
+-    - Diamond fixture: forced failure on one branch → independent
+-      branch COMPLETES, failed branch's downstream skipped-blocked,
+-      final blocked status lists exactly the right tasks, evidence
+-      names them.
+-    - Recomputation after every task end via a counting stub.
+-    - Determinism: two runs of the same fixture → identical
+-      schedules.
+-    - Linear regression: existing linear fixtures produce unchanged
+-      behavior (existing executor tests stay green untouched).
+-13. Slice gate:
+-    python3 -m pytest tests/orchestration/test_dag_schedule.py tests/orchestration/test_long_run_executor.py tests/orchestration/test_queue_executor_binding.py tests/orchestration/test_overnight_executor.py -q
+-    exit 0 ELSE STOP. Then canary:
+-    python3 -m pytest tests/cli/test_golden_path.py -q  exit 0.
+-    Commit(s): "feat(f050): DAG ready-set executor integration +
+-    diamond fixture (T002)". Push.
+-14. PR per AGENTS.md: title "F050 — DAG scheduling (T001+T002)";
+-    body: what/why, ground facts used, changed-files table, gate
+-    results per slice, verdict: pending R1 review. Do NOT merge.
+-15. Handback per the Handback line above.
+-
+-TRANSPORT NOTE (worker, R2/R1): the step-13 slice-gate command arrived
+-hard-wrapped, split after `test_queue_executor_binding.py`. Recorded
+-above rejoined into the single four-path pytest invocation that was
+-actually run — same recoverable wrap class as r0154-r1-1 last round.
+-No sha256-stamped text was affected.
+-
+---- BEGIN r0154-r2-1 sha256=800c9f15bf69fd222cfc6e13b1b51423580e000dcabf15e5516862104f7ebffb ---
+-# Live Review — R0154 micro-round (closure-ordering codification)
+-
+-> Docs-only micro-round ordered by the operator before F050: persist
+-> the R-0154 ordering lesson from the F252 closure into
+-> docs/roadmap/STATUS_closure_protocol.md. Reviewer: Window 1.
+-
+-## Steps
+-- R1: replace docs/roadmap/STATUS_closure_protocol.md with the
+-  authored v4 text (step 5 now pins the R-0154 ordering: README
+-  capability sync in the SAME commit as the STATUS `[x]` edit; the
+-  closure commit touches exactly STATUS.md, README.md and the final
+-  .agent/ state). Gate: tests/docs + canary. Done.
+-
+-## Findings
+-(none — IDs continue monotonically from R-0154; next free: R-0155)
+-
+-## Verdicts
+-- R1: PASS (reviewer, 2026-07-29). Range 757e06f..ffad73a, 2
+-  commits. All three authored texts disk-to-disk cmp 0 against the
+-  reviewer's originals; applied targets cmp 0; protocol diff =
+-  exactly the two authored hunks; docs gate 292 passed + canary 42
+-  passed, re-run by the reviewer; tree clean; the transport-wrap
+-  recovery on r0154-r1-1 is proven by hash identity (d2b67cb5…).
+-  Deviation accepted: round-end state in a second mechanical commit
+-  (ffad73a — handoff + OUTCOME flip only, verified via --stat).
+-  LAST_REVIEWED_SHA = ffad73a.
+---- END r0154-r2-1 ---
+-
+---- BEGIN f050-r1-1 sha256=373c67edd96338b630eaedc7ab3c60a573712e9b24facc8c2809a20a4c5d1569 ---
++   "chore(f050): persist R1 verdict; record Built State". Push.
++
++Slice 1 — integration gate
++5. Execute docs/agents/integration_gate.md steps 1–4 EXACTLY:
++   branch run (python3 -m pytest -n auto -q, raw tail + FAILED list
++   + exit code + wall time), base run in a throwaway worktree at the
++   merge base with identical command, comm compare both directions,
++   serial re-run attribution for EVERY branch-only failure id.
++   Remove + prune the worktree; record git worktree list.
++   Reproducible feature-coupled branch-only failure → STOP + hand
++   back raw evidence (the fix is its own reviewer-gated round).
++6. Note wall clock; over ~5 min flag for a perf pass (§3.4).
++7. Handback per the Handback line above. The gate VERDICT is the
++   reviewer's — report evidence only.
++
++--- BEGIN f050-r2-1 sha256=a46f0d067d7438cd4ef174e93a2248228069b9f00f954155a9007dcd5b932716 ---
+ # Live Review — F050 DAG scheduling (Tier 1)
+ 
+ Branch: feature/f050-dag-scheduling
+@@ -185,37 +64,64 @@ multi-cycle executor (docs/roadmap/features/T1_F050.md).
+ 
+ ## Steps
+ - R1: claim + state reset + T001 pure module + T002 executor
+-  integration (large bundle, per-slice gates, stop at the first red
+-  verification). In progress.
++  integration (large bundle, per-slice gates). Done.
++- R2: persist the R1 verdict + Built State; integration-gate round
++  per docs/agents/integration_gate.md. In progress.
+ 
+ ## Findings
+-(none yet — next free ID: R-0155)
++(none — next free ID: R-0155)
+ 
+ ## Verdicts
+-(pending R1)
+---- END f050-r1-1 ---
+-
+---- BEGIN f050-r1-2 sha256=d019d7b347cb92468562c12acb5342cc585d627293aa8d1f5addd741bef744c7 ---
+-# Plan — F050 DAG scheduling
+-
+-## Goal
+-The executor draws its next tasks from a topological READY SET
+-computed from the Flight Plan dependency edges
+-(task.inputs["flight"]["depends_on"]); a blocked branch (failed or
+-awaiting a decision) locks only its own downstream. DONE when the
+-diamond fixture executes the independent branch while the blocked
+-branch's downstream is skipped-blocked, the ready set recomputes
+-after every task end, and linear plans behave exactly as before
+-(docs/roadmap/features/T1_F050.md).
+-
+-## Next Steps
+-- T001: pure module packages/orchestration/dag_schedule.py
+-  (ready_set, blocked_downstream, legacy-linear rule) + table tests
+-  in tests/orchestration/test_dag_schedule.py.
+-- T002: executor integration at the ready_tasks batch boundary in
+-  packages/orchestration/long_run_executor.py + diamond fixture +
+-  linear-regression proof.
+-- Then: integration gate round, closure per
+-  docs/roadmap/STATUS_closure_protocol.md (v4) — own rounds, never
+-  bundled.
+---- END f050-r1-2 ---
++- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f, 4
++  commits, plus 1717fc8 (R0154 verdict) merged as PR #162. Reviewer
++  re-ran: slice-3 gate 144 passed; task_runner/do_job_flow/
++  checkpoints/resume/flight_plan spot-check 331 passed; docs gate
++  292 passed; canary 42 passed. Authored-text hash + cmp proofs
++  verified; STATUS claim one-line diff confirmed; tree clean; no
++  threading in the diff. Mutation spot-check in a throwaway
++  worktree (in-run blocking removed) → 5 tests failed, worktree
++  removed and pruned — the F050 coverage is real.
++  DECISION (a): the task_runner.py touch is ACCEPTED — additive
++  task_id keyword on run_next_task/_find_next_pending; without it
++  the ready set could not choose WHICH task runs and the diamond
++  acceptance was unsatisfiable. Alternatives (duplicating rollback
++  semantics in the executor) rejected. Reversible: drop the keyword.
++  DECISION (b): replacing the pre-F050 helper assertion
++  test_linear_order_capped_at_batch_size is ACCEPTED — it asserted
++  the exact helper contract F050 replaces; loop-level linear
++  behavior is proven unchanged by TestLinearPlansAreUnchanged and
++  by test_batch_larger_than_remaining_tasks_is_fine, untouched.
++  Observation, no finding: the blocked_downstream subtraction inside
++  ready_tasks is defensive redundancy (ready_set already withholds
++  tasks whose deps are not COMPLETED); harmless, keep.
++  LAST_REVIEWED_SHA = ac9dc6f.
++--- END f050-r2-1 ---
++
++--- BEGIN f050-r2-2 sha256=6b727bc08b80b3894720a43c11fbf7377fce46b82688ca4e8166437cbad42406 ---
++
++## Built State
++- T001 `packages/orchestration/dag_schedule.py` — pure module:
++  `build_graph` (flight metadata → task-id edges; legacy rule: a
++  task without `inputs["flight"]` depends on its predecessor),
++  `ready_set` (PENDING with all deps COMPLETED, plan order,
++  deterministic), `blocked_downstream` (transitive dependents,
++  seeds excluded, COMPLETED never reported), `BLOCKING_STATES`
++  (FAILED, CANCELLED). Dangling dep ids → never ready, documented.
++  34 table tests in tests/orchestration/test_dag_schedule.py.
++- T002 `packages/orchestration/long_run_executor.py` — `ready_tasks`
++  now returns the DAG ready set minus in-run blocked ids and their
++  downstream; the ready set is recomputed after EVERY task end (the
++  batch is a cap); a failed attempt adds its task to in-run
++  `blocked_ids` (failure rolls tasks back to PENDING, so blocking is
++  run-scoped by design); `CycleRecord.skipped_blocked_task_ids`
++  names the withheld downstream in cycle evidence; empty ready set
++  with unfinished tasks reuses TERMINAL_BLOCKED; checkpoint next
++  intent skips blocked tasks. `task_runner.run_next_task` gained an
++  additive `task_id=` keyword (default = pre-F050 behavior,
++  byte-identical); the step seam stays 2-arg-compatible via
++  signature inspection. Diamond fixture + 13 F050 tests +
++  linear-regression class in tests/orchestration/
++  test_long_run_executor.py.
++- Accepted rounds: R1 PASS (T001+T002). Pending: integration gate,
++  closure.
++--- END f050-r2-2 ---
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index d0af591..1899b46 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -6,11 +6,34 @@ multi-cycle executor (docs/roadmap/features/T1_F050.md).
+ 
+ ## Steps
+ - R1: claim + state reset + T001 pure module + T002 executor
+-  integration (large bundle, per-slice gates, stop at the first red
+-  verification). In progress.
++  integration (large bundle, per-slice gates). Done.
++- R2: persist the R1 verdict + Built State; integration-gate round
++  per docs/agents/integration_gate.md. In progress.
+ 
+ ## Findings
+-(none yet — next free ID: R-0155)
++(none — next free ID: R-0155)
+ 
+ ## Verdicts
+-(pending R1)
++- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f, 4
++  commits, plus 1717fc8 (R0154 verdict) merged as PR #162. Reviewer
++  re-ran: slice-3 gate 144 passed; task_runner/do_job_flow/
++  checkpoints/resume/flight_plan spot-check 331 passed; docs gate
++  292 passed; canary 42 passed. Authored-text hash + cmp proofs
++  verified; STATUS claim one-line diff confirmed; tree clean; no
++  threading in the diff. Mutation spot-check in a throwaway
++  worktree (in-run blocking removed) → 5 tests failed, worktree
++  removed and pruned — the F050 coverage is real.
++  DECISION (a): the task_runner.py touch is ACCEPTED — additive
++  task_id keyword on run_next_task/_find_next_pending; without it
++  the ready set could not choose WHICH task runs and the diamond
++  acceptance was unsatisfiable. Alternatives (duplicating rollback
++  semantics in the executor) rejected. Reversible: drop the keyword.
++  DECISION (b): replacing the pre-F050 helper assertion
++  test_linear_order_capped_at_batch_size is ACCEPTED — it asserted
++  the exact helper contract F050 replaces; loop-level linear
++  behavior is proven unchanged by TestLinearPlansAreUnchanged and
++  by test_batch_larger_than_remaining_tasks_is_fine, untouched.
++  Observation, no finding: the blocked_downstream subtraction inside
++  ready_tasks is defensive redundancy (ready_set already withholds
++  tasks whose deps are not COMPLETED); harmless, keep.
++  LAST_REVIEWED_SHA = ac9dc6f.
+diff --git a/docs/roadmap/features/T1_F050.md b/docs/roadmap/features/T1_F050.md
+index 3caa04f..d717d84 100644
+--- a/docs/roadmap/features/T1_F050.md
++++ b/docs/roadmap/features/T1_F050.md
+@@ -62,3 +62,29 @@ threading.
+ ## Do not touch
+ Plan-time validation (already done), parallel workers, decision UX.
+ Suggested tests: tests/orchestration/test_dag_schedule.py.
++
++## Built State
++- T001 `packages/orchestration/dag_schedule.py` — pure module:
++  `build_graph` (flight metadata → task-id edges; legacy rule: a
++  task without `inputs["flight"]` depends on its predecessor),
++  `ready_set` (PENDING with all deps COMPLETED, plan order,
++  deterministic), `blocked_downstream` (transitive dependents,
++  seeds excluded, COMPLETED never reported), `BLOCKING_STATES`
++  (FAILED, CANCELLED). Dangling dep ids → never ready, documented.
++  34 table tests in tests/orchestration/test_dag_schedule.py.
++- T002 `packages/orchestration/long_run_executor.py` — `ready_tasks`
++  now returns the DAG ready set minus in-run blocked ids and their
++  downstream; the ready set is recomputed after EVERY task end (the
++  batch is a cap); a failed attempt adds its task to in-run
++  `blocked_ids` (failure rolls tasks back to PENDING, so blocking is
++  run-scoped by design); `CycleRecord.skipped_blocked_task_ids`
++  names the withheld downstream in cycle evidence; empty ready set
++  with unfinished tasks reuses TERMINAL_BLOCKED; checkpoint next
++  intent skips blocked tasks. `task_runner.run_next_task` gained an
++  additive `task_id=` keyword (default = pre-F050 behavior,
++  byte-identical); the step seam stays 2-arg-compatible via
++  signature inspection. Diamond fixture + 13 F050 tests +
++  linear-regression class in tests/orchestration/
++  test_long_run_executor.py.
++- Accepted rounds: R1 PASS (T001+T002). Pending: integration gate,
++  closure.

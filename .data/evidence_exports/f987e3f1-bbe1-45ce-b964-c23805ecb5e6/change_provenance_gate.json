@@ -1,0 +1,74 @@
+{
+ "content_hash_verified": true,
+ "covered_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F050.md",
+  "packages/orchestration/dag_schedule.py",
+  "packages/orchestration/long_run_executor.py",
+  "packages/orchestration/task_runner.py",
+  "tests/orchestration/test_dag_schedule.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "current_hashes": {
+  "docs/roadmap/STATUS.md": "52638eb5b2e193b74c660cf251f03529dafdff9e6705128bf2f240d642dc3bee",
+  "docs/roadmap/features/T1_F050.md": "40479e1b18e08427fcce833e69ba1e113a9fab38c0e76ba4d72833dafca691a4",
+  "packages/orchestration/dag_schedule.py": "b45767368fd746b676c090784cdf65567c94ac4343fc6f7e3c7325d0d37f53c3",
+  "packages/orchestration/long_run_executor.py": "813347e7356a021b79cb0c7cede4e9aa8f14cc9e1f7897701ad5e4b394af8bea",
+  "packages/orchestration/task_runner.py": "561adbd36aa09e538bfa52a52b88debf8108fc827154814979669e862e3fd99d",
+  "tests/orchestration/test_dag_schedule.py": "04231115fa7273f1e9ba46f99c30914f5ec31656889dafbe1a9a64c479e7ee0f",
+  "tests/orchestration/test_long_run_executor.py": "00eec0fc548f19ddbb8a46c90b667d295d635f62f9b8ab1f20ddec0000bbbc79"
+ },
+ "current_job_id": "f987e3f1-bbe1-45ce-b964-c23805ecb5e6",
+ "dirty_files": [],
+ "evidence_covered_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F050.md",
+  "packages/orchestration/dag_schedule.py",
+  "packages/orchestration/long_run_executor.py",
+  "packages/orchestration/task_runner.py",
+  "tests/orchestration/test_dag_schedule.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "evidence_hashes": {
+  "docs/roadmap/STATUS.md": "52638eb5b2e193b74c660cf251f03529dafdff9e6705128bf2f240d642dc3bee",
+  "docs/roadmap/features/T1_F050.md": "40479e1b18e08427fcce833e69ba1e113a9fab38c0e76ba4d72833dafca691a4",
+  "packages/orchestration/dag_schedule.py": "b45767368fd746b676c090784cdf65567c94ac4343fc6f7e3c7325d0d37f53c3",
+  "packages/orchestration/long_run_executor.py": "813347e7356a021b79cb0c7cede4e9aa8f14cc9e1f7897701ad5e4b394af8bea",
+  "packages/orchestration/task_runner.py": "561adbd36aa09e538bfa52a52b88debf8108fc827154814979669e862e3fd99d",
+  "tests/orchestration/test_dag_schedule.py": "04231115fa7273f1e9ba46f99c30914f5ec31656889dafbe1a9a64c479e7ee0f",
+  "tests/orchestration/test_long_run_executor.py": "00eec0fc548f19ddbb8a46c90b667d295d635f62f9b8ab1f20ddec0000bbbc79"
+ },
+ "evidence_sources": [
+  "workspace.diff",
+  "current_change_content_proof.json",
+  "task_runs/T001/safe.diff",
+  "task_runs/T002/safe.diff"
+ ],
+ "excluded_files": [
+  ".agent/authored/f050-r1-1.md",
+  ".agent/authored/f050-r1-2.md",
+  ".agent/authored/f050-r2-1.md",
+  ".agent/authored/f050-r2-2.md",
+  ".agent/authored/f050-r3-1.md",
+  ".agent/authored/f050-r3-2.md",
+  ".agent/handoff.md",
+  ".agent/last_block.md",
+  ".agent/live_review.md",
+  ".agent/plan.md"
+ ],
+ "hash_mismatches": [],
+ "issues": [],
+ "schema_version": "1.0.0",
+ "source_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F050.md",
+  "packages/orchestration/dag_schedule.py",
+  "packages/orchestration/long_run_executor.py",
+  "packages/orchestration/task_runner.py",
+  "tests/orchestration/test_dag_schedule.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "stale_apply_proofs": [],
+ "uncovered_files": [],
+ "verdict": "PASS"
+}

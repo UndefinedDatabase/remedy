@@ -1,0 +1,143 @@
+983709f9755ff790b41401f7b29b57f7647004c9
+diff --git a/.agent/authored/f050-r1-1.md b/.agent/authored/f050-r1-1.md
+new file mode 100644
+index 0000000..d0af591
+--- /dev/null
++++ b/.agent/authored/f050-r1-1.md
+@@ -0,0 +1,16 @@
++# Live Review — F050 DAG scheduling (Tier 1)
++
++Branch: feature/f050-dag-scheduling
++Scope: topological ready set + blocked-downstream skip in the
++multi-cycle executor (docs/roadmap/features/T1_F050.md).
++
++## Steps
++- R1: claim + state reset + T001 pure module + T002 executor
++  integration (large bundle, per-slice gates, stop at the first red
++  verification). In progress.
++
++## Findings
++(none yet — next free ID: R-0155)
++
++## Verdicts
++(pending R1)
+diff --git a/.agent/authored/f050-r1-2.md b/.agent/authored/f050-r1-2.md
+new file mode 100644
+index 0000000..033dee0
+--- /dev/null
++++ b/.agent/authored/f050-r1-2.md
+@@ -0,0 +1,22 @@
++# Plan — F050 DAG scheduling
++
++## Goal
++The executor draws its next tasks from a topological READY SET
++computed from the Flight Plan dependency edges
++(task.inputs["flight"]["depends_on"]); a blocked branch (failed or
++awaiting a decision) locks only its own downstream. DONE when the
++diamond fixture executes the independent branch while the blocked
++branch's downstream is skipped-blocked, the ready set recomputes
++after every task end, and linear plans behave exactly as before
++(docs/roadmap/features/T1_F050.md).
++
++## Next Steps
++- T001: pure module packages/orchestration/dag_schedule.py
++  (ready_set, blocked_downstream, legacy-linear rule) + table tests
++  in tests/orchestration/test_dag_schedule.py.
++- T002: executor integration at the ready_tasks batch boundary in
++  packages/orchestration/long_run_executor.py + diamond fixture +
++  linear-regression proof.
++- Then: integration gate round, closure per
++  docs/roadmap/STATUS_closure_protocol.md (v4) — own rounds, never
++  bundled.
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index d810997..d0af591 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,26 +1,16 @@
+-# Live Review — R0154 micro-round (closure-ordering codification)
++# Live Review — F050 DAG scheduling (Tier 1)
+ 
+-> Docs-only micro-round ordered by the operator before F050: persist
+-> the R-0154 ordering lesson from the F252 closure into
+-> docs/roadmap/STATUS_closure_protocol.md. Reviewer: Window 1.
++Branch: feature/f050-dag-scheduling
++Scope: topological ready set + blocked-downstream skip in the
++multi-cycle executor (docs/roadmap/features/T1_F050.md).
+ 
+ ## Steps
+-- R1: replace docs/roadmap/STATUS_closure_protocol.md with the
+-  authored v4 text (step 5 now pins the R-0154 ordering: README
+-  capability sync in the SAME commit as the STATUS `[x]` edit; the
+-  closure commit touches exactly STATUS.md, README.md and the final
+-  .agent/ state). Gate: tests/docs + canary. Done.
++- R1: claim + state reset + T001 pure module + T002 executor
++  integration (large bundle, per-slice gates, stop at the first red
++  verification). In progress.
+ 
+ ## Findings
+-(none — IDs continue monotonically from R-0154; next free: R-0155)
++(none yet — next free ID: R-0155)
+ 
+ ## Verdicts
+-- R1: PASS (reviewer, 2026-07-29). Range 757e06f..ffad73a, 2
+-  commits. All three authored texts disk-to-disk cmp 0 against the
+-  reviewer's originals; applied targets cmp 0; protocol diff =
+-  exactly the two authored hunks; docs gate 292 passed + canary 42
+-  passed, re-run by the reviewer; tree clean; the transport-wrap
+-  recovery on r0154-r1-1 is proven by hash identity (d2b67cb5…).
+-  Deviation accepted: round-end state in a second mechanical commit
+-  (ffad73a — handoff + OUTCOME flip only, verified via --stat).
+-  LAST_REVIEWED_SHA = ffad73a.
++(pending R1)
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 5c4a406..033dee0 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,16 +1,22 @@
+-# Plan — R0154 micro-round (docs-only), then F050
++# Plan — F050 DAG scheduling
+ 
+ ## Goal
+-Persist the R-0154 ordering lesson from the F252 closure into
+-docs/roadmap/STATUS_closure_protocol.md (v4): the README capability
+-sync lands in the SAME commit as the STATUS `[x]` edit, and the
+-closure commit touches exactly docs/roadmap/STATUS.md, README.md and
+-the final .agent/ state — nothing else. Merge the micro-round PR,
+-then proceed to F050 per Rule A5.
++The executor draws its next tasks from a topological READY SET
++computed from the Flight Plan dependency edges
++(task.inputs["flight"]["depends_on"]); a blocked branch (failed or
++awaiting a decision) locks only its own downstream. DONE when the
++diamond fixture executes the independent branch while the blocked
++branch's downstream is skipped-blocked, the ready set recomputes
++after every task end, and linear plans behave exactly as before
++(docs/roadmap/features/T1_F050.md).
+ 
+ ## Next Steps
+-- R1: apply the authored protocol v4 text, gate with
+-  `python3 -m pytest tests/docs/ -q` + the golden-path canary,
+-  commit, push, open the PR.
+-- After the reviewer's PASS: merge the micro-round PR (operator
+-  pre-authorized), then bootstrap F050 — DAG scheduling.
++- T001: pure module packages/orchestration/dag_schedule.py
++  (ready_set, blocked_downstream, legacy-linear rule) + table tests
++  in tests/orchestration/test_dag_schedule.py.
++- T002: executor integration at the ready_tasks batch boundary in
++  packages/orchestration/long_run_executor.py + diamond fixture +
++  linear-regression proof.
++- Then: integration gate round, closure per
++  docs/roadmap/STATUS_closure_protocol.md (v4) — own rounds, never
++  bundled.
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 2727fce..7d34148 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -33,7 +33,7 @@
+ - [x] F048 — Job queue (T001–T003 complete; accepted 2026-07-27 · live review PASS — ACCEPTED · Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 · package remedy-review-20260727-223612-READY_FOR_REVIEW.zip · SHA-256 6058d0f4d67ee082c852202e910fe05ff42a5e9406a3fd71464c251acf106a4b · accepted HEAD c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee)
+ - [x] F251 — Full-suite stabilization (flake-debt paydown) (S1–S5 complete, scope per operator ruling A 2026-07-28; accepted 2026-07-28 · live review PASS — ACCEPTED · Evidence job b680f05b-2cda-468f-a8c5-95dbe9636044 · package remedy-review-20260728-190328-READY_FOR_REVIEW.zip · SHA-256 95af04c380da89879bbf4f10cd2529279553a571c5c72b3870a190a90641af2f · accepted HEAD 86a0df39ee0928742add7ef457dbd3d1e4efb7f2)
+ - [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)
+-- [ ] F050 — DAG scheduling
++- [~] F050 — DAG scheduling
+ - [ ] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds
+ - [ ] F053 — Final & interim report

@@ -1,0 +1,107 @@
+{
+ "base_commit": "c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8",
+ "chain_v": 1,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f050-r1-1.md",
+    ".agent/authored/f050-r1-2.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "983709f9755ff790b41401f7b29b57f7647004c9",
+   "parents": [
+    "c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8"
+   ],
+   "patch_sha256": "eb1c6404770e3c0e246ae25b758b50ad1d0b53308d28aebb42e32fddad1a7ea9",
+   "subject": "chore(f050): claim F050 \u2014 state reset",
+   "tree": "ae2f24b5f228299b55b49b046ecd2799aa704110"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/dag_schedule.py",
+    "tests/orchestration/test_dag_schedule.py"
+   ],
+   "commit": "34aec7516ff279e428947245b2ac45f3adaf7ded",
+   "parents": [
+    "983709f9755ff790b41401f7b29b57f7647004c9"
+   ],
+   "patch_sha256": "13f0b5e8404395913724a462d51376127124953c43de0a4684ea6875b5f78a23",
+   "subject": "feat(f050): dag_schedule pure module + table tests (T001)",
+   "tree": "cd142a0249683272af52c959544d7c741c5bfb44"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py",
+    "packages/orchestration/task_runner.py",
+    "tests/orchestration/test_long_run_executor.py"
+   ],
+   "commit": "cc79dcb033d934d1874e11052412d8beb591d019",
+   "parents": [
+    "34aec7516ff279e428947245b2ac45f3adaf7ded"
+   ],
+   "patch_sha256": "7a2adc6161891cf4cfbf5bc2ca61de629b26df6f595f0b3bcac608ccb6048139",
+   "subject": "feat(f050): DAG ready-set executor integration + diamond fixture (T002)",
+   "tree": "35c400e157158d7a90691b90cd06d467ceb14e2b"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "ac9dc6f9ae01b82b8876316dd1785cdfdea2d0a0",
+   "parents": [
+    "cc79dcb033d934d1874e11052412d8beb591d019"
+   ],
+   "patch_sha256": "8b9a2013cc53f0d37571d915b5b02150973e8787e5cdea9cb0c8582249c217f4",
+   "subject": "chore(f050): round-end state \u2014 handback + OUTCOME executed",
+   "tree": "0e35d54a7fac6f853c27cf768c4d58d7a0764b38"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f050-r2-1.md",
+    ".agent/authored/f050-r2-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    "docs/roadmap/features/T1_F050.md"
+   ],
+   "commit": "f6f6faae29290aaf7b269922dce9a98e295f566e",
+   "parents": [
+    "ac9dc6f9ae01b82b8876316dd1785cdfdea2d0a0"
+   ],
+   "patch_sha256": "b80322f36f94e84fb8619ee0bb400cb074affde8483bf47325999900cf8fbea7",
+   "subject": "chore(f050): persist R1 verdict; record Built State",
+   "tree": "61c67a813bb92bfd75dc016e2b6323b38c7d3f77"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "ed70dfb70a91198cb60baecc6a05d183b4d19a4f",
+   "parents": [
+    "f6f6faae29290aaf7b269922dce9a98e295f566e"
+   ],
+   "patch_sha256": "a33943deba4fd2bda976e2ab6ec35ea7938a310cec2d9bc8f5dd90bc2380a697",
+   "subject": "chore(f050): round-end state \u2014 integration-gate handback + OUTCOME executed",
+   "tree": "5529b9314ef1dcba010eea894d15e2a6a1e8e05f"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f050-r3-1.md",
+    ".agent/authored/f050-r3-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "2fd7d6b949b98022b977aa48c0191bbf0efceec1",
+   "parents": [
+    "ed70dfb70a91198cb60baecc6a05d183b4d19a4f"
+   ],
+   "patch_sha256": "9a733ebe7aa0562afad04aee505d9178b1f9210db7152ba7e45118e1298b709d",
+   "subject": "chore(f050): persist the R2 integration-gate verdict",
+   "tree": "ce1f03cc04f3c9fd147b8f3dcbbf327e15570479"
+  }
+ ],
+ "head_commit": "2fd7d6b949b98022b977aa48c0191bbf0efceec1"
+}
