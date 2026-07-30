@@ -1,57 +1,40 @@
-# Live Review — F051 Escalate instead of block (Tier 1)
+# Live Review — Paydown micro-round 2026-07-30 (F051→F052 boundary)
 
-Branch: feature/f051-escalate-instead-of-block
-Scope: needs_decision task outcome → enqueue on the EXISTING decision
-queue + branch awaiting-decision marking; executor continuation and
-answered-branch pickup at batch boundaries; status/report surfacing
-(docs/roadmap/features/T1_F051.md).
+Branch: feature/paydown-0730
+Scope: docs/process paydown — codify the sha256-everything transport
+rule (planner_reviewer_prompt.md) and the closure-candidate ledger
+rule (STATUS_closure_protocol.md); add the F051 producer pitfalls;
+fix R-0155 (integration-gate baseline gap) and R-0156 (README
+accepted-count pin). Same-session merge on PASS (standing operator
+approval, 2026-07-30).
 
 ## Steps
-- R1 (LARGE): claim + state reset + T001 + T002 + T003. Done.
-- R2: persist R1 verdict; R-0157 fix + Built State; integration gate
-  per docs/agents/integration_gate.md. Done.
-- R3: closure per docs/roadmap/STATUS_closure_protocol.md v4:
-  preconditions, evidence job, READY zip, evidence commit, then ONE
-  final commit = STATUS [x] + README sync + final .agent state
-  (R-0154 ordering). In progress.
+- R1: Open PR Gate (#165) → Items 1–5 → gates (tests/docs + canary)
+  → handback.
 
 ## Findings
-- Open: R-0155 (process, Low, planning-routed, documented risk;
-  REFINED 2026-07-30): the integration-gate base worktree lacks the
-  ROOT node_modules and apps/ui/dist (NOT apps/ui/node_modules as the
-  earlier text said — R2 gate evidence), so ~20 environment-coupled
-  ids (vitest/tsc/ui-server classes) land in comm -23 on every gate
-  run and could mask a genuine base failure in those files. Fix =
-  docs amendment to docs/agents/integration_gate.md (install/build in
-  the base worktree, or deselect the environment-coupled ids) — its
-  own micro-round. Documented Low risk for F051 closure.
-- Open: R-0156 (process, Medium, planning-routed, documented risk):
-  the README/STATUS accepted-count cross-check is unenforced in
-  tests/docs (negative control: a wrong count still passed all 292).
-  Fix = a count-pin test landing with its doc change in one commit
-  (R-0151); next docs-infra round. Documented Medium risk for F051
-  closure.
-- Resolved: R-0157 (feature, Medium): job run --unattended →
-  run_cycles(unattended=…) wired additively (a96a8ce).
-  Done: R-0157 (commit a96a8ce). RESOLVED by the reviewer 2026-07-30:
-  the 7 CLI-level tests exist and are green in the reviewer's own
-  runs (auto-apply with the flag, still-asked without it, honest
-  no-effect note under the F046 single-pass cap).
+- Resolved: R-0155 (process, Low) 2026-07-30: integration_gate.md
+  now requires base-environment parity (root node_modules +
+  apps/ui/dist) or per-id direct-evidence attribution; an
+  unattributed comm -23 id counts as a genuine base failure and
+  blocks the gate verdict.
+  Done: R-0155 (commit 9fdebad — the doc diff is the evidence).
+- Resolved: R-0156 (process, Medium) 2026-07-30: tests/docs now pins
+  the README accepted-count against the STATUS [x] count; the pin
+  landed green (counts agree at 27) with a red negative control
+  proving it bites.
+  Done: R-0156 (commit bc4b032 — test + red-proof transcript).
 - Next free ID: R-0158.
 
 ## Verdicts
-- R1: PASS (reviewer, 2026-07-30). Range 894375e..34a32a1 — details
-  in this file's git history (d432a3f version).
-- R2: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-30). Range
-  34a32a1..1a651fd. Authored texts cmp 0 disk-to-disk; the only later
-  live_review edit is the dictated Done line (+1). R-0157 fix
-  verified additive (flag default OFF, attended path untouched).
-  Built State strictly factual. Gate evidence: the reviewer's OWN
-  full run at 1a651fd — 14435 passed, 0 failed, 19 skipped, 2:07 —
-  makes the branch-only failure set empty by construction; the
-  worker's branch run matches (14435/0/19, 2:24), and its base-run
-  20 failures at 894375e are the R-0155 environment class, attributed
-  by direct evidence (missing root node_modules + apps/ui/dist; scope
-  grep: zero coupling to the 19 changed files). Collection delta
-  +92 = exactly the feature's new tests (66 + 26). Wall clock under
-  budget, no perf pass. LAST_REVIEWED_SHA = 1a651fd.
+- R1: PASS (reviewer, 2026-07-30). Range 631be59..08029de. All 8
+  authored texts cmp 0 disk-to-disk against the reviewer originals;
+  every payload verified at its anchor in the real diff; ledger
+  resolutions carry the correct shas (bc4b032 = count-pin test,
+  9fdebad = gate amendment; git log binding checked). Reviewer's own
+  gate runs: tests/docs 293 passed, canary 42 passed. Reviewer's own
+  negative control (count faked to 29 in a throwaway worktree) went
+  red at the pin's assertion; worktree removed + pruned. Open PR
+  Gate executed correctly (#165 → merge 631be59). PR #166 merges
+  same-session on standing operator approval (2026-07-30).
+  LAST_REVIEWED_SHA = 08029de.
