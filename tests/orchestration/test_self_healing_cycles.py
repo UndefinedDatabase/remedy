@@ -23,17 +23,23 @@ import pytest
 import packages.orchestration.long_run_executor as lre
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.builder_models import TaskExecutionContext
+from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
+    DEFAULT_REPAIR_ROUNDS,
     VERIFY_CONFIG_ERROR,
     VERIFY_FAILED,
     VERIFY_NOT_RUN,
     VERIFY_PASSED,
     VERIFY_UNKNOWN_ERROR,
     CycleLimits,
+    RepairOutcome,
+    RepairPhase,
     TaskAttempt,
     VerifyOutcome,
     as_verify_outcome,
+    build_cycle_repair_findings,
     cycle_verify_failure_class,
+    limits_from_config,
     read_cycle_records,
     render_cycle_summary_line,
     run_cycles,
@@ -233,3 +239,134 @@ class TestCycleSummaryRendering:
         line = render_cycle_summary_line(self._record(
             verify_result=VERIFY_FAILED, verify_failure_class="test_failed"))
         assert "failure_class=test_failed" in line
+
+
+# ---------------------------------------------------------------------------
+# What a repair round is given, and how many it may have
+# ---------------------------------------------------------------------------
+
+
+class TestRepairFindingsPayload:
+    def test_the_payload_carries_ids_tail_and_changed_files(self):
+        job = make_job(1)
+        outcome = VerifyOutcome(
+            result=VERIFY_FAILED, output="E   assert 4 == 5",
+            failing_test_ids=("tests/test_calc.py::test_add",),
+            changed_files=("calc.py",),
+        )
+        findings = build_cycle_repair_findings(job, 3, outcome, round_number=2)
+
+        assert findings["failing_test_ids"] == ["tests/test_calc.py::test_add"]
+        assert findings["failure_tail"] == "E   assert 4 == 5"
+        assert findings["changed_files"] == ["calc.py"]
+        assert findings["cycle_index"] == 3
+        assert findings["repair_round"] == 2
+        assert findings["source"] == "cycle_verify"
+
+    def test_the_payload_is_the_existing_repair_context_shape(self):
+        """Not a second findings vocabulary — the one the repair loop consumes."""
+        job = make_job(1)
+        findings = build_cycle_repair_findings(
+            job, 1, VerifyOutcome(result=VERIFY_FAILED))
+        assert findings["version"] == 1
+        assert findings["job_id"] == str(job.id)
+        assert findings["failure_kind"] == "assertion"
+        assert findings["status"] == "failed"
+        assert "safe_summary" in findings
+
+    def test_executed_task_ids_are_the_hint_when_the_step_named_no_files(self):
+        job = make_job(1)
+        findings = build_cycle_repair_findings(
+            job, 1, VerifyOutcome(result=VERIFY_FAILED),
+            executed_task_ids=("task-1",))
+        assert findings["changed_files"] == ["task-1"]
+
+
+class TestRepairOutcome:
+    def test_a_round_defaults_to_not_having_run(self):
+        """Nothing is claimed about a round nobody reported."""
+        assert RepairOutcome().ran is False
+        assert RepairOutcome().changed_files == ()
+
+
+class TestRepairPhaseSummary:
+    def test_no_rounds_says_nothing_at_all(self):
+        assert RepairPhase(outcome=VerifyOutcome(result=VERIFY_FAILED)).summary == ""
+
+    def test_one_round_that_healed(self):
+        phase = RepairPhase(outcome=VerifyOutcome(result=VERIFY_PASSED),
+                            rounds_used=1, healed=True)
+        assert phase.summary == "healed after 1 repair round"
+
+    def test_two_rounds_that_did_not_heal(self):
+        phase = RepairPhase(outcome=VerifyOutcome(result=VERIFY_FAILED),
+                            rounds_used=2)
+        assert phase.summary == "not healed after 2 repair rounds"
+
+    def test_a_heal_that_changed_nothing_is_a_flake_suspect(self):
+        """A9: a test that starts passing on its own has to be visible."""
+        phase = RepairPhase(outcome=VerifyOutcome(result=VERIFY_PASSED),
+                            rounds_used=1, healed=True,
+                            healed_without_changes=True)
+        assert phase.summary == "healed without changes (flaky?) after 1 repair round"
+
+
+class TestRepairRoundCap:
+    def test_the_config_key_exists_with_default_two(self):
+        spec = get_key_spec("cycles.repair_rounds")
+        assert spec is not None
+        assert spec.default == 2
+        assert spec.value_type is int
+        assert DEFAULT_REPAIR_ROUNDS == 2
+
+    def test_limits_read_the_cap_from_config(self):
+        class Cfg:
+            def get(self, key):
+                return {"cycles.max_cycles": 1, "cycles.batch_size": 1,
+                        "cycles.verify_command": None,
+                        "cycles.repair_rounds": 5}.get(key)
+
+        limits, _ = limits_from_config(Cfg())
+        assert limits.repair_rounds == 5
+
+    def test_a_missing_config_value_falls_back_to_the_default(self):
+        class Cfg:
+            def get(self, key):
+                return {"cycles.max_cycles": 1, "cycles.batch_size": 1}.get(key)
+
+        limits, _ = limits_from_config(Cfg())
+        assert limits.repair_rounds == DEFAULT_REPAIR_ROUNDS
+
+    def test_hand_built_limits_do_not_self_heal_by_accident(self):
+        """A caller that named its own bounds never spends calls it did not ask for."""
+        assert CycleLimits().repair_rounds == 0
+
+    def test_a_negative_cap_is_refused(self):
+        with pytest.raises(ValueError, match="repair_rounds must be >= 0"):
+            CycleLimits(repair_rounds=-1)
+
+
+class TestRepairSummaryIsRendered:
+    def test_the_rendered_line_names_the_repair_phase(self):
+        record = lre.CycleRecord(
+            cycle_index=1, tasks_attempted=1, tasks_completed=1, tasks_failed=0,
+            verify_result=VERIFY_PASSED, tokens_so_far=0, started_at="",
+            ended_at="", repair_rounds_used=1, healed_after_repair=True,
+            repair_summary="healed after 1 repair round",
+        )
+        line = render_cycle_summary_line(record)
+        assert "healed after 1 repair round" in line
+        assert "cycle 1" in line
+
+    def test_the_record_serializes_the_repair_phase(self):
+        payload = lre.CycleRecord(
+            cycle_index=1, tasks_attempted=1, tasks_completed=1, tasks_failed=0,
+            verify_result=VERIFY_PASSED, tokens_so_far=0, started_at="",
+            ended_at="", repair_rounds_used=2, healed_after_repair=True,
+            healed_without_changes=True,
+            repair_summary="healed without changes (flaky?) after 2 repair rounds",
+        ).to_json()
+        assert payload["repair_rounds_used"] == 2
+        assert payload["healed_after_repair"] is True
+        assert payload["healed_without_changes"] is True
+        assert "flaky?" in payload["repair_summary"]
