@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R3 — F050 CLOSURE (STATUS_closure_protocol.md v4) ───────────
 Goal:        Close F050: persist the R2 gate verdict, preconditions,
              evidence job, fresh READY zip, then ONE final commit =
@@ -113,9 +113,16 @@ TRANSPORT NOTES (worker, R3) — two defects in this block as received:
     precedent is count+1 with "Next: <following feature>", so the
     replacement is "26 of 252 registered items accepted. Next: F051
     (Escalate instead of block).", which ends exactly at the surviving
-    fragment. The docs-gate ledger cross-check verifies the count
-    mechanically, so a wrong number cannot pass silently. Edits 2 and
-    3 of 7a survived intact and were applied verbatim.
+    fragment. Edits 2 and 3 of 7a survived intact and were applied
+    verbatim.
+    Verification of the reconstruction: NOT by the docs gate. A
+    negative control (count set to 27) still gave 292 passed, so
+    tests/docs does not pin the README accepted-count at all. Verified
+    instead by direct count of docs/roadmap/STATUS.md: 26 lines match
+    "^- \[x\]" (Tier 0 = 16, Tier 1 = 10, all other tiers 0) → "26 of
+    252"; Tier 1 = 10 accepted of 22 lines → the Tier-1 row; and the
+    first unchecked line top-to-bottom after F050 is F051 (Rule A5) →
+    "Next: F051". The absent pin is worth a finding of its own.
 
 --- BEGIN f050-r3-1 sha256=20b646c3e027a74cd888d8942434ff91a6bc6cddb6e3b992780ccca8af1385c3 ---
 # Live Review — F050 DAG scheduling (Tier 1)

@@ -1,133 +1,156 @@
-# Handback — F050 R2 (verdict persist + INTEGRATION GATE) — evidence complete
+# Handback — F050 R3 (CLOSURE, protocol v4) — CLOSED
 
 ## Range
-`ac9dc6f..HEAD` · feature/f050-dag-scheduling · Slice 0 = 1 commit (`f6f6faa`)
-+ 1 round-end. Merge base `c0e2bd1`. PR **#163** still open, NOT merged.
-No closure work: no STATUS `[x]`, no evidence job, no zip.
+`ed70dfb..HEAD` · feature/f050-dag-scheduling · 3 commits (persist ·
+evidence · closure). Base `c0e2bd1`. PR **#163** updated, NOT merged.
 
 ## Commits
-### f6f6faa chore(f050): persist R1 verdict; record Built State
+### 2fd7d6b chore(f050): persist the R2 integration-gate verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +31/-… | authored f050-r2-1 FULL REPLACE — R1 PASS verdict + DECISIONS (a)/(b) |
-| docs/roadmap/features/T1_F050.md | +26 | authored f050-r2-2 appended byte-unchanged after "Do not touch" |
-| .agent/last_block.md | rewrite | R2 block guard |
-| .agent/authored/f050-r2-{1,2}.md | +new | authored sources, sha256-verified |
+| .agent/live_review.md | rewrite | authored f050-r3-1 FULL REPLACE — R2 INTEGRATION GATE PASS + R-0155 |
+| .agent/last_block.md | rewrite | R3 block guard + transport notes |
+| .agent/authored/f050-r3-{1,2}.md | +new | authored sources; r3-2 = the STATUS template, applied in Slice C |
 
-No production or test code in this round.
+### 58b5479 chore(f050): commit closure evidence (after READY zip)
+| Path | +/- | Reason |
+|---|---|---|
+| .data/evidence_exports/f987e3f1-…/ (54 files) | +new | the closure bundle; `git add -f` past `.gitignore:211 .data/`; committed only AFTER the READY zip existed (F147 lesson) |
 
-## Authored-text proofs
-Both matched their BEGIN markers on first save, BEFORE any apply:
+### final commit chore(f050): close F050 — STATUS [x] + README sync
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/STATUS.md | +1/-1 | the authored line with its four placeholders substituted |
+| README.md | +4/-3 | the three ordered README edits — same commit as the STATUS `[x]`, so the ledger never disagrees (R-0154 / protocol v4 step 5) |
+| .agent/last_block.md · handoff.md | +1/-1 · rewrite | OUTCOME → executed; this handback |
 
-    a46f0d067d7438cd4ef174e93a2248228069b9f00f954155a9007dcd5b932716  .agent/authored/f050-r2-1.md
-    6b727bc08b80b3894720a43c11fbf7377fce46b82688ca4e8166437cbad42406  .agent/authored/f050-r2-2.md
+## Slice A — preconditions (raw)
+`python3 -m apps.cli.grouped integrity check --json` → exit **0**:
+`"passed": true, "fail_count": 0, "check_count": 5` — handler_import
+`handlers=312`, live_review_verdict PASS, plan_consistency `unchecked=0`,
+relevant_untracked `untracked=0, relevant=0`, high_blockers_open
+`no open blocker/high findings`.
+(`remedy` is not on PATH as a module — the console script is
+`apps.cli.grouped:main` per pyproject; same command, module invocation.)
+`git status --porcelain` → empty. Branch synced, `rev-list --left-right --count
+@{u}...HEAD` → `0 0`.
 
-- `cmp .agent/authored/f050-r2-1.md .agent/live_review.md` → exit **0**.
-- Append proof: `tail -c $(wc -c < f050-r2-2.md) docs/roadmap/features/T1_F050.md | cmp - f050-r2-2.md`
-  → exit **0**. Feature file 3114 → 4576 bytes; diff is a pure 26-line append.
+## Slice B — evidence job + zip
+- **Evidence job `f987e3f1-bbe1-45ce-b964-c23805ecb5e6`** via
+  `create_manual_completion_bundle(review_feature_id="f050", …)`, base
+  `c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8` (full 40 chars, verified in
+  `current_change_content_proof.json`) → head `2fd7d6b…`. Verdict
+  **PASS_WITH_RISKS**, authority 7 files, 7 commits, tasks T001/T002
+  operator-attested, **total_passed 431**.
+- `verification_runs` — 4 real runs, all exit 0, `failed: 0`, schema 1.1.0:
 
-## Slice 0 gates
-- `python3 -m pytest tests/docs/ -q` → exit **0**, `292 passed in 0.19s`.
-- `python3 -m pytest tests/cli/test_golden_path.py -q` → exit **0**, `42 passed in 15.06s`.
+      vr-0001  pytest tests/orchestration/test_dag_schedule.py -q        34 passed
+      vr-0002  pytest tests/orchestration/test_long_run_executor.py -q   63 passed
+      vr-0003  pytest tests/cli/test_golden_path.py -q                   42 passed
+      vr-0004  pytest tests/docs/ -q                                    292 passed
 
-## INTEGRATION GATE — raw evidence (verdict is the reviewer's)
+  Every `output_hash` is 64-hex and equals `sha256(stdout_summary)` as stored
+  (checked all four → consistent). The F252 failure mode was avoided
+  structurally: `stdout_summary` was pre-truncated to the same last-2000-char
+  window the producer uses and `output_hash` left empty, so the producer derives
+  it from exactly the stored bytes — the two cannot diverge. `selected` equals
+  `len(node_ids)` for every run.
+- Gate matrix: final_verifier PASS_WITH_RISKS · fresh_evidence PASS ·
+  artifact_contract PASS · change_provenance PASS · runtime_integration PASS ·
+  commit_execution NEEDS_HUMAN_APPROVAL with `blocked_gates: []` — byte-for-byte
+  the same shape as F252's accepted bundle (diffed both).
+- **Zip `remedy-review-20260730-145728-READY_FOR_REVIEW.zip`**
+  **SHA-256 `3d04713f33072ce544ab4c0a430e82fc8edeee85bcb0aaa007fa48ef9ee4d8c0`**
+  (script output; independent `sha256sum` agrees). PACKAGE_STATUS
+  READY_FOR_REVIEW, REVIEW_SUBJECT_ALIGNMENT PASS, EVIDENCE_AUTHORITATIVE true,
+  1571 members, authoritative 7, publication SUPPORTED.
+  Manifest `committed_review_subject`: base `c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8`
+  → head `2fd7d6b949b98022b977aa48c0191bbf0efceec1`, `base_is_ancestor: true`,
+  commit_count 7, file_count 17 — spans base..HEAD as required.
+  Import check `ZipFile.testzip()` → **None**.
+- **accepted HEAD = `2fd7d6b949b98022b977aa48c0191bbf0efceec1`**, taken from the
+  manifest's `committed_review_subject.head_commit`.
 
-### Step 1 — branch run
-    CMD:  python3 -m pytest -n auto -q
-    CWD:  /home/decodeux/Repos/remedy
-    HEAD: f6f6faae29290aaf7b269922dce9a98e295f566e
-    EXIT: 0
-    WALL_SECONDS=164.82
-    tail: 14343 passed, 19 skipped in 164.39s (0:02:44)
+## Slice C — applied text + proofs
+Template `.agent/authored/f050-r3-2.md` re-verified to
+`313f77c000b15bfdd21be56cc42fee2648feca017800b83a69f0684ae76df1e8` immediately
+before substitution (one line, 4 placeholders, each occurring exactly once).
+Applied STATUS line, verbatim:
 
-`grep '^FAILED' | sort > branch_failed.txt` → **0 lines**.
+    - [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job f987e3f1-bbe1-45ce-b964-c23805ecb5e6 · package remedy-review-20260730-145728-READY_FOR_REVIEW.zip · SHA-256 3d04713f33072ce544ab4c0a430e82fc8edeee85bcb0aaa007fa48ef9ee4d8c0 · accepted HEAD 2fd7d6b949b98022b977aa48c0191bbf0efceec1)
 
-### Step 2 — base run (throwaway worktree at the merge base)
-    CMD:  python3 -m pytest -n auto -q
-    CWD:  <scratchpad>/gate_base_wt
-    HEAD: c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8
-    EXIT: 1
-    WALL_SECONDS=201.50
-    tail: 20 failed, 14269 passed, 25 skipped in 201.06s (0:03:21)
+Provenance per substituted value:
+| Placeholder | Value | Source |
+|---|---|---|
+| `<JOB_ID>` | f987e3f1-bbe1-45ce-b964-c23805ecb5e6 | producer output (step 4) |
+| `<ZIP_FILENAME>` | remedy-review-20260730-145728-READY_FOR_REVIEW.zip | make_review_zip.sh JSON `final_path` |
+| `<ZIP_SHA256>` | 3d04713f…4d8c0 | same JSON `final_sha256`; `sha256sum` agrees |
+| `<HEAD_SHA>` | 2fd7d6b949b98022b977aa48c0191bbf0efceec1 | manifest `committed_review_subject.head_commit` |
 
-`base_failed.txt` → **20 lines**: 2 × `tests/cli/test_self_dogfood_execution_cli.py`,
-1 × `test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`,
-1 × `test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles`,
-16 × `tests/ui_server/test_live_state.py::TestUIServerIntegration::*`.
+Nothing else in the line was touched.
 
-Collection delta (branch 14362 vs base 14314 selected) = the 48 tests this
-feature added — consistent, nothing silently dropped.
+- STATUS: `grep -cF` applied line = **1**, old `- [~] F050 — DAG scheduling` = **0**.
+  `grep -F <line> STATUS.md | cmp - <substituted template>` → exit **0**.
+- README, each new string = **1**: the 26/252 line · `| 1 | Self-Build Bootstrap | 10 | 22 |` ·
+  `F048 job queue, F251 full-suite stabilization, F252 standing-red paydown,` ·
+  `F050 DAG scheduling.`  Each old string = **0**.
+- Post-commit gate: `python3 -m pytest tests/docs/ -q` → exit **0**,
+  `292 passed in 0.26s`; canary `tests/cli/test_golden_path.py -q` → exit **0**,
+  `42 passed`.
 
-### Step 3 — compare
-- `comm -13 base_failed.txt branch_failed.txt` (**branch-only failures**) → **EMPTY, 0 lines**.
-- `comm -23 base_failed.txt branch_failed.txt` → all **20** base ids.
-
-### Step 4 — attribution
-**Zero branch-only failure ids, so no serial re-run attribution was required**
-(gate step 4 applies per branch-only id). Nothing to classify, no blocker.
-
-The 20 `comm -23` ids are NOT fixes by this branch, and reporting them as such
-would be false. All 20 are artifacts of a fresh `git worktree`, which checks out
-tracked files only and therefore lacks install/build outputs:
-- `apps/ui/node_modules` — **0 entries** in the worktree vs **205** in the main
-  checkout; root `node_modules` absent entirely. Failure text:
-  `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vitest'`, and tsc's
-  "Use yarn to avoid accidentally running code from un-installed packages".
-- `apps/ui/dist` — present in the main checkout, absent in the worktree; the
-  `TestUIServerIntegration` failures are all `_start_server()` failing.
-- The 2 dogfood ids assert on local `.data/` state (`'blocked'` vs
-  `'awaiting_external_candidate'`, `0 == 1` attempts) that a fresh tree has none of.
-
-Diagnostic re-run of those exact 20 ids at the base commit, serially, with the
-root `node_modules` symlinked in: still `20 failed in 82.24s` — the missing piece
-is the per-app install and build, not the base code. Scope proof that none of
-this touches the feature: `git diff --name-only c0e2bd1..HEAD | grep -iE
-'apps/ui|\.tsx?$|package(-lock)?\.json|vitest|tsconfig|ui_server|dogfood|test_runner'`
-→ **no match**. The same 20 ids pass on the branch in the main checkout (branch
-run, 0 failures), which is the environment difference stated plainly.
-
-### Worktree removal proof
-    $ git worktree list          # after remove --force + prune
-    /home/decodeux/Repos/remedy  f6f6faa [feature/f050-dag-scheduling]
-Worktree directory confirmed gone. The `node_modules` symlink added during
-diagnosis was inside the throwaway worktree only, was created strictly AFTER the
-recorded base run, and died with it — `base_failed.txt` is unaffected.
-
-### Step 6 — budget
-Branch 164.82s (2:44), base 201.50s (3:21). Both under the ~5 min threshold; no
-perf pass flagged.
-
-## Deviations & assumptions
-- **Extra diagnostic work beyond gate steps 1–4.** The procedure asks for
-  `comm -23` to be reported; it labels that set "failures the branch fixed",
-  which would have been a false claim here. I diagnosed the cause instead of
-  reporting the label. No extra commits, no code touched.
-- **Observation for the reviewer, not a finding:** a fresh worktree is not a
-  like-for-like baseline for any test that shells out to the JS toolchain or
-  reads local `.data/`. Every such test lands in `comm -23` on every gate run
-  and can mask a genuine base failure in the same files. Whether
-  `docs/agents/integration_gate.md` should require installing/building in the
-  base worktree, or deselecting environment-coupled ids, is the reviewer's call.
-- Round-end state in a second mechanical commit (handoff + OUTCOME flip), as
-  accepted in R0154 R1.
-- `.agent/plan.md` untouched: still byte-verbatim as authored, and its
-  "integration gate, then closure" next-step line describes exactly this round.
+## Deviations & assumptions — READ THIS
+1. **The block arrived with Slice C truncated.** The `7.` step header and the
+   FROM-string of 7a's first README edit are missing; the text resumes mid-
+   replacement at `      F051 (Escalate instead of block)."`. Edits 2 and 3
+   survived intact and were applied verbatim. Edit 1 was RECONSTRUCTED as
+   `25 of 252 … Next: F050 (DAG scheduling).` →
+   `26 of 252 registered items accepted. Next: F051 (Escalate instead of block).`
+   — the only line of that shape in README, the F252 precedent (count+1, "Next:
+   <following feature>"), and it terminates exactly at the surviving fragment.
+2. **I first claimed the docs gate would verify that count. It does not.** A
+   negative control — count set to 27 — still produced `292 passed`. So
+   `tests/docs` does not pin the README accepted-count at all. The
+   reconstruction is instead verified by direct count of STATUS.md:
+   `grep -c '^- \[x\]'` → **26** (Tier 0 = 16, Tier 1 = 10, every other tier 0);
+   Tier 1 = 10 accepted of 22 lines → the Tier-1 row; first unchecked line
+   top-to-bottom after F050 is F051 → `Next: F051` (Rule A5). All three README
+   numbers are therefore correct, but by counting, not by a gate.
+3. **New finding candidate for the reviewer (not written by me — worker never
+   writes findings):** the README/STATUS ledger cross-check does not actually
+   pin the accepted count, so README and STATUS can disagree numerically in a
+   committed state and every gate stays green. This is exactly the invariant
+   R-0154 and protocol v4 step 5 exist to protect, and it is currently
+   unenforced. Suggested next free ID R-0156.
+4. `f050-r3-2` arrived hard-wrapped (split after `· package <ZIP_FILENAME> ·`);
+   rejoining with a single space reproduced the authored bytes (sha256 verified
+   before any use). Third such wrap this feature.
+5. Zip build order: the block puts the zip in Slice B, before the evidence
+   commit and the closure commit — so `accepted HEAD` is the persist commit
+   `2fd7d6b`, not the closure commit. This is the F252 pattern exactly
+   (accepted HEAD `d543d445` there, also pre-closure) and differs from protocol
+   v4 step 2's "the closure zip is the LAST action after ALL commits". Followed
+   the block; flagging the wording conflict for the reviewer.
+6. `remedy integrity check` was run as `python3 -m apps.cli.grouped …`; the bare
+   `remedy` module path does not exist in this environment.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1 last_block guard | done | flip to `executed` in the round-end commit |
-| 2 f050-r2-1 → live_review.md | done | sha256 match, cmp 0 |
-| 3 f050-r2-2 → T1_F050.md append | done | sha256 match, tail cmp 0 |
-| 4 Slice 0 gate + commit | done | 292 / 42, both exit 0 |
-| 5 gate steps 1–4 | done | 0 branch-only failures; worktree removed + pruned |
-| 6 wall-clock note | done | 2:44 / 3:21, under threshold |
-| 7 handback | done | this file |
+| 1 last_block guard | done | block recorded as received, incl. the truncation |
+| 2 f050-r3-1/2 save + verify + apply | done | both sha256 match; live_review cmp 0 |
+| 3 preconditions | done | integrity PASS, tree clean, branch synced |
+| 4 evidence job | done | f987e3f1…, 431 passed, full base_commit |
+| 5 zip + evidence commit | done | READY_FOR_REVIEW, testzip None, then committed |
+| 6 accepted HEAD | done | 2fd7d6b… from the manifest |
+| 7a README (3 edits) | deviated | edit 1 reconstructed from a truncated block — see Deviations 1–2 |
+| 7b STATUS line | done | grep 1 / 0, cmp 0 |
+| 7c final .agent state | done | OUTCOME executed + this handback, same commit |
+| 8 PR #163 update | done | title + body updated, NOT merged |
+| 9 handback | done | this file |
 
 ## Next
-Reviewer issues the **integration-gate verdict** on this evidence. Open
-questions: (a) accept the `comm -23` set as worktree-environment artifacts
-rather than branch fixes; (b) whether the integration_gate.md baseline
-observation above deserves a finding. On PASS: closure per
-docs/roadmap/STATUS_closure_protocol.md v4 — its own round, and PR #163 merges
-at the next round's Open PR Gate.
+Reviewer closure review. Decisions needed: (a) accept the reconstructed README
+edit 1; (b) whether the unenforced README/STATUS count pin becomes R-0156;
+(c) the protocol-v4-step-2 vs block zip-ordering wording conflict.
+PR #163 merges at the next feature's start via the Open PR Gate. Next per
+Rule A5: F051 — Escalate instead of block (unattended), fresh window.
