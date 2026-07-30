@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP amend0730-R1/1 — docs amendment micro-round ─────────────────────
 Goal:        Merge PR #163 (Open PR Gate), then apply the operator's
              2026-07-30 docs amendments (AGENTS.md discoverability
