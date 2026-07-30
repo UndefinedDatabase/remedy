@@ -1,0 +1,20 @@
+{
+ "base_commit": "894375e40f2d88c3d2cd2859073423faa2b17120",
+ "file_count": 10,
+ "file_hashes": {
+  "apps/cli/command_catalog.py": "c24b226a8b394310a1c99a8354b5ad4947fc9c7bbb9106ad21c701ec28124e78",
+  "apps/cli/commands/decision.py": "4235d105f5aa16b5de2016c38c969f88baf3fe76778b99ee8933d80fd7b228a4",
+  "apps/cli/commands/job.py": "8d08b90c7940b45960506c3d7ee221d01a3f57c0abd4ebcf82d116ffb86b44a6",
+  "docs/roadmap/STATUS.md": "bba41b0f6891ed818e288a29ba8bd62fea43d074767918d43c9d2bc126a0ad78",
+  "docs/roadmap/features/T1_F051.md": "13c575746b8a12dd1f4cd75ab0a7cc816973d947c19a06e2767c2afbbdc331e4",
+  "packages/orchestration/decision_queue.py": "0f4b4469275a82fbd5e3374b26c1d77ac35120a48c6686580618bb2613dba898",
+  "packages/orchestration/escalation.py": "971d791d45107ca4299c49ef7e4a7aa15c9f24a1660823fbfa222b774ca266e0",
+  "packages/orchestration/long_run_executor.py": "ba49f87b2f0ccdfbfeea6f9c9eae660aa20bd7c350bec720bdad38d17ccd92f1",
+  "tests/cli/test_open_decisions_view.py": "23240214975554ec3f67fd0ba8584029063695be6b9a4de1da00add577c917bf",
+  "tests/orchestration/test_escalation.py": "0c910479b58aa1158dd89bbffa07f1af52efceccb2f8e8dd72d1820b30385a49"
+ },
+ "head_commit": "54df8f7a1adea2f3d140efef22e2e6f991aea6ff",
+ "schema_version": "1.1.0",
+ "tombstone_count": 0,
+ "tombstones": {}
+}

@@ -1,0 +1,207 @@
+2756b09d381c5ece653b16a7ecaf97bf007d56ec
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 153530c..bac42db 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1519,6 +1519,36 @@ def _extract_job_truth(job: Job) -> dict:
+     }
+ 
+ 
++def _open_decisions_view(job: Job) -> dict:
++    """The open-decision block status and report both render FIRST (F051 T003).
++
++    Returns the rendered text lines, the JSON-safe decision dicts, and the one
++    command that answers the most urgent open decision.  A decision queue that
++    cannot be read must never break a read-only view, so any failure degrades to
++    "nothing open" rather than an error.
++    """
++    try:
++        from packages.orchestration.decision_queue import (
++            export_decision_json,
++            list_decisions,
++            open_decisions,
++            open_decisions_next_action,
++            render_open_decisions_lines,
++        )
++        from packages.orchestration.timeline import load_run_events
++
++        events = load_run_events(resolve_data_root(), job.id)
++        decisions = list_decisions(job, events)
++        return {
++            'lines': render_open_decisions_lines(decisions),
++            'open_decisions': [export_decision_json(d)
++                               for d in open_decisions(decisions)],
++            'next_action': open_decisions_next_action(decisions),
++        }
++    except Exception:  # noqa: BLE001 — a read-only view never fails on this
++        return {'lines': [], 'open_decisions': [], 'next_action': ''}
++
++
+ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+     """Job status -- safe read-only view of current job state."""
+     import json as _json
+@@ -1534,6 +1564,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+         sys.exit(1)
+ 
+     truth = _extract_job_truth(job)
++    open_decision_view = _open_decisions_view(job)
+ 
+     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+     task_count = len(job.tasks)
+@@ -1541,6 +1572,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
+ 
+     blockers: list[str] = []
++    # F051: an open decision comes first — it is what the run needs from a human.
++    if open_decision_view['open_decisions']:
++        blockers.append('awaiting_decision')
+     if truth['approval_required']:
+         blockers.append('approval_required')
+     elif pending_count > 0 and state == 'pending':
+@@ -1551,7 +1585,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+     if truth.get('fulfillment_blockers'):
+         blockers.extend(truth['fulfillment_blockers'])
+ 
+-    if truth['approval_required']:
++    if open_decision_view['next_action']:
++        next_action = open_decision_view['next_action']
++    elif truth['approval_required']:
+         next_action = 'remedy patch approve <job_id> <patch_intent_id>'
+     elif truth.get('fulfillment_next_action'):
+         next_action = truth['fulfillment_next_action']
+@@ -1582,11 +1618,16 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+         'staging_promoted': truth.get('staging_promoted', False),
+         'blockers': blockers,
+         'next_safe_action': next_action,
++        # F051: open decisions first, with the exact command that answers each.
++        'open_decisions': open_decision_view['open_decisions'],
++        'open_decision_count': len(open_decision_view['open_decisions']),
+     }
+ 
+     if json_output:
+         print(_json.dumps(status, indent=2))
+     else:
++        for line in open_decision_view['lines']:
++            print(line)
+         print(f'Job {job.id}')
+         print(f'  Name:      {job.name}')
+         print(f'  State:     {state}')
+@@ -1616,6 +1657,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+         sys.exit(1)
+ 
+     truth = _extract_job_truth(job)
++    open_decision_view = _open_decisions_view(job)
+ 
+     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+     task_count = len(job.tasks)
+@@ -1663,7 +1705,12 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+         'staging_used': truth.get('staging_used', False),
+         'staging_promoted': truth.get('staging_promoted', False),
+         'fulfillment_blockers': truth.get('fulfillment_blockers', []),
+-        'next_safe_action': truth.get('fulfillment_next_action', ''),
++        # F051: a blocked run's next action is the command that answers its
++        # most urgent open decision — that is what unblocks it.
++        'next_safe_action': (open_decision_view['next_action']
++                             or truth.get('fulfillment_next_action', '')),
++        'open_decisions': open_decision_view['open_decisions'],
++        'open_decision_count': len(open_decision_view['open_decisions']),
+         'tasks': task_details,
+     }
+     if fulfillment_data:
+@@ -1672,6 +1719,8 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+     if json_output:
+         print(_json.dumps(report, indent=2))
+     else:
++        for line in open_decision_view['lines']:
++            print(line)
+         print(f'Job Report: {job.id}')
+         print(f'  Name:      {job.name}')
+         print(f'  State:     {state}')
+@@ -1690,6 +1739,10 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+                 ty = td['type']
+                 desc = td['description']
+                 print(f'    [{s:<10}] {ty}: {desc}')
++        # The last line a human reads is what to do next.  For a blocked run
++        # with open decisions that is the answer command, spelled out (F051).
++        if report['next_safe_action']:
++            print(f'  Next:      {report["next_safe_action"]}')
+ 
+ 
+ def _cmd_job_fulfill(
+diff --git a/packages/orchestration/decision_queue.py b/packages/orchestration/decision_queue.py
+index 6b72421..4f1b698 100644
+--- a/packages/orchestration/decision_queue.py
++++ b/packages/orchestration/decision_queue.py
+@@ -13,6 +13,10 @@ Public API::
+     explain_decisions(job, events) -> str
+     export_decision_json(d) -> dict
+     build_decision_summary(decisions) -> dict  (brain node metadata)
++    sort_open_decisions_first(decisions) -> list[HumanDecision]
++    open_decisions(decisions) -> list[HumanDecision]
++    render_open_decisions_lines(decisions) -> list[str]  (status/report block)
++    open_decisions_next_action(decisions) -> str
+ """
+ 
+ from __future__ import annotations
+@@ -393,6 +397,61 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
+     }
+ 
+ 
++#: Severity order for the views below.  Unknown severities sort last rather
++#: than raising: a decision with an odd severity must still be shown.
++_SEVERITY_RANK = {"blocker": 0, "warning": 1, "info": 2}
++
++
++def sort_open_decisions_first(
++    decisions: list[HumanDecision],
++) -> list[HumanDecision]:
++    """Open before resolved, blockers before warnings before info; stable.
++
++    Why: an unattended run's most important output is what it needs from a
++    human, so every view that shows decisions shows those first (F051 T003).
++    """
++    return sorted(
++        decisions,
++        key=lambda d: (0 if d.status == "open" else 1,
++                       _SEVERITY_RANK.get(d.severity, 3)),
++    )
++
++
++def open_decisions(decisions: list[HumanDecision]) -> list[HumanDecision]:
++    """The still-open decisions, most urgent first."""
++    return [d for d in sort_open_decisions_first(decisions) if d.status == "open"]
++
++
++def render_open_decisions_lines(
++    decisions: list[HumanDecision],
++    *,
++    indent: str = "  ",
++) -> list[str]:
++    """The block that status and report print FIRST — empty when nothing is open.
++
++    Every line a human needs is here: what is being asked, and the exact
++    command that answers it.  Nothing is truncated away: an answer command that
++    is not shown in full cannot be pasted.
++    """
++    pending = open_decisions(decisions)
++    if not pending:
++        return []
++    lines = [f"Open decisions: {len(pending)} — the run needs an answer"]
++    for d in pending:
++        lines.append(f"{indent}[{d.severity}] {d.type} {d.id}: {d.safe_summary}")
++        for action in d.next_actions:
++            lines.append(f"{indent}  -> {action}")
++    return lines
++
++
++def open_decisions_next_action(decisions: list[HumanDecision]) -> str:
++    """The one command that answers the most urgent open decision, or ""."""
++    for d in open_decisions(decisions):
++        if d.next_actions:
++            return d.next_actions[0]
++    return ""
++
++
+ def build_decision_summary(decisions: list[HumanDecision]) -> dict[str, Any]:
+     """Build safe metadata for brain node."""
+     open_decisions = [d for d in decisions if d.status == "open"]

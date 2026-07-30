@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md"
+ ],
+ "diff_sha256": "162d268212e08c50f43d37e21a199230ad3f0645cc1d270cf3964ef6dfa86cf6",
+ "job_id": "785d275a-2f78-4b44-bd29-f8764ff95bb8",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "162d268212e08c50f43d37e21a199230ad3f0645cc1d270cf3964ef6dfa86cf6",
+ "safe_diff_sha256": "a357177486ffec710fb037dd7f70400c8de3742e50c28a71add279689b4a6a5d",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md"
+ ],
+ "timestamp": "2026-07-30T15:23:08.725123+00:00",
+ "tracked_diff_sha256": "a357177486ffec710fb037dd7f70400c8de3742e50c28a71add279689b4a6a5d",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

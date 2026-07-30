@@ -1,0 +1,294 @@
+1a651fd6f784f8d250d9775f0aff4861b1f13ab0
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index dde003f..7271a18 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -1,150 +1,152 @@
+-# Handback — F051 R1 (LARGE round, T001–T003)
++# Handback — F051 R2 (verdict persist + R-0157 + Built State + integration gate)
+ 
+ ## Range
+-`894375e..HEAD` · feature/f051-escalate-instead-of-block · 9 commits.
+-Base = main after the #164 merge. PR open, base `main`, **NOT merged**.
+-Verdict R1: **PENDING**. Closure and the integration gate are their own rounds.
++`34a32a1..HEAD` · feature/f051-escalate-instead-of-block · 5 commits this round
++(R1's 9 are below it). PR **#165** updated, base `main`, **NOT merged**.
++R2 verdict: **PENDING** — the gate verdict is the reviewer's; this carries records only.
+ 
+ ## Item status
+ | Item | Status | Reason |
+ |---|---|---|
+-| 1 Open PR Gate | done | exactly #164, `feature/docs-discoverability-amend`→`main`, non-draft → merged + branch deleted; list then empty |
+-| 2 branch | done | off main `894375e` |
+-| 3 three authored texts | done | all three sha256 matched first try, no rejoin |
+-| 4 claim + state commit | done | `d6b723b`; STATUS grep 1/0; docs gate 292 exit 0 right after |
+-| 5 inspection | done | map below |
+-| 6 T001 | done | `8b52454` + `da80634`; slice gate 36 + 475 green |
+-| 7 T002 | done | `4d92873` + `3bbadf7` + `f0bd12b`; slice gate 153 green |
+-| 8 T003 | done | `2756b09` + `1e7fbc2`; slice gate 26 green |
+-| 9 round gate | done | 182 · 292 · 42, all exit 0 (raw below) |
+-| 10 final commit + push + PR | done | this commit, PR created, not merged |
+-| 11 handback | done | this file + completion report |
++| 1 guard | done | block f051-r2 recorded in `.agent/last_block.md`, OUTCOME pending → executed |
++| 2 authored texts | done | both sha256 matched first try, no rejoin |
++| 3 persist commit | done | `d432a3f`; cmp 0 for both state files |
++| 4 R-0157 fix + CLI test | done | `a96a8ce` + `6c4dae2`; slice gate 178 exit 0 |
++| 5 Built State | done | `f59e88f` |
++| 6 docs gate + canary | done | 292 exit 0 · 42 exit 0 |
++| 7 integration gate | done | executed in full; **no branch-only failures**; STOP-ON-RED not triggered |
++| 8 handback + push + PR update | done | this commit; PR #165 body updated; not merged |
+ 
+ ## Authored-text verification — `sha256sum` output verbatim
+-    f705d2dc19bb275bf9e4589e2d91671c0fbc2fb2a96e1e7ba87d84045e283634  .agent/authored/f051-r1-1.md
+-    a07541e48bb64d631902c3578e6ee451a4425fac0cd0952bf082f2794f54fed9  .agent/authored/f051-r1-2.md
+-    2ae860a6ece29b057c12a3c79a08bf1ab0d6ce128723e55a7ee51788046c7f10  .agent/authored/f051-r1-3.md
+-All three equal their BEGIN-marker hashes; no transport fault in the authored
+-bytes. STATUS proofs: new `- [~] F051 …` grep -cF = **1**, old `- [ ] F051 …`
+-= **0**, diff on STATUS.md = +1/-1. `cmp` live_review vs f051-r1-2 → 0;
+-`cmp` plan vs f051-r1-3 → 0.
+-
+-## Inspection map (item 5 — the seams built on)
+-| What | Where |
+-|---|---|
+-| Decision queue = read-only DERIVATION, not a mutable store | `packages/orchestration/decision_queue.py:56` `list_decisions` — 7 producer branches, each deriving from an existing record |
+-| Record type + registry | `decision_queue.py:26` `HumanDecision` (has additive `payload`), `:49` `DECISION_TYPES` |
+-| Enqueue call sites it derives from | plan approval: `decision_queue.py:236` off `job.flight_plan["_approval"]`; budget stops: `:158-211` off `job_stopped` events + `budget_guard`; patch approvals `:67`; stop reasons `:93` via `stop_reasons.derive_stop_reasons` |
+-| Answer CLI | `apps/cli/commands/decision.py:124` `_cmd_decision_resolve`, dispatching on the `sr:` / `fp:` id prefix; catalog entry `apps/cli/command_catalog.py:2334` `decision.resolve` |
+-| Executor batch boundary (F050) | `long_run_executor.py:862` per-cycle `ready_tasks` + `:891` the after-every-task recompute; `ready_tasks` at `:592`; in-run `blocked_ids` at `:835`; `TERMINAL_BLOCKED` → `JOB_BLOCKED`/`PAUSED` at `:94,:103,:114` |
+-| Status / report render | `apps/cli/commands/job.py:1522` `_cmd_job_status`, `:1604` `_cmd_job_report`, shared truth at `:1414` `_extract_job_truth` |
+-
+-Two facts that shaped the design: (a) `RunState` has **no** awaiting/blocked
+-member, so awaiting had to be derived, not stored on the task — same reason
+-F050 keeps `blocked_ids` in the loop; (b) the queue derives, so "enqueue" =
+-write a record the queue reads. Records live on `job.metadata["escalations"]`
+-and are derived as `task_decision` — **no second queue, no new CLI group**.
++    c3c89e2a8c698dd5cf57c6a475e2ee6775602d5d34d84e21673c0847d76b931b  .agent/authored/f051-r2-1.md
++    63ac4c5a13a2910994135f4f77504634245c0e24f377d7ab3e528f0e367510d7  .agent/authored/f051-r2-2.md
++Both equal their BEGIN-marker hashes; no transport fault in the authored bytes.
++`cmp` live_review vs f051-r2-1 → **0**; `cmp` plan vs f051-r2-2 → **0**.
++The only later edit to `live_review.md` is the single line the block dictated:
++`  Done: R-0157 (commit a96a8ce).` appended at the end of the R-0157 bullet
++(`6c4dae2`, diff = +1 line, nothing else touched).
+ 
+ ## Commits
+ | Commit | Files | +/- | Note |
+ |---|---|---|---|
+-| `d6b723b` chore claim + state | `.agent/authored/f051-r1-{1,2,3}.md`, `.agent/{live_review,plan,last_block}.md`, `docs/roadmap/STATUS.md` | +235/-159 | STATUS `[~]` claim, state reset |
+-| `8b52454` feat T001 | `packages/orchestration/escalation.py` (new), `decision_queue.py` | +427 | records, enqueue, cross-refs, answering, awaiting derivation, assumption log; additive queue branch 8 + `task_decision` type |
+-| `da80634` test T001 | `tests/orchestration/test_escalation.py` (new) | +432 | 36 unit tests |
+-| `4d92873` feat T002 | `packages/orchestration/long_run_executor.py` | +189/-13 | `TaskAttempt.needs_decision`, `ready_tasks(awaiting_ids=…)`, `awaiting_downstream_tasks`, boundary re-check, blocked terminal, 4 additive `CycleRecord` fields, 2 additive result fields, 2 ledger events, `unattended` flag |
+-| `3bbadf7` test T002 | `tests/orchestration/test_escalation.py` | +489/-7 | three-branch fixture, pickup, check count, linear regression |
+-| `2756b09` feat T003 | `apps/cli/commands/job.py`, `decision_queue.py` | +114/-2 | open-decisions block first in status + report, `open_decisions*` view helpers |
+-| `1e7fbc2` test T003 | `tests/cli/test_open_decisions_view.py` (new) | +335 | 26 view tests |
+-| `f0bd12b` feat T002 | `apps/cli/commands/decision.py`, `tests/orchestration/test_escalation.py` | +119 | `td:` branch in the EXISTING `decision resolve` + 3 CLI tests |
++| `d432a3f` chore | `.agent/authored/f051-r2-{1,2}.md`, `.agent/{live_review,plan,last_block}.md` | +209/-163 | R1 PASS persisted, R-0157 registered |
++| `a96a8ce` fix R-0157 | `apps/cli/command_catalog.py`, `apps/cli/commands/job.py`, `tests/orchestration/test_escalation.py` | +165/-2 | `--unattended` flag → `run_cycles(unattended=…)` + 7 CLI tests |
++| `6c4dae2` chore | `.agent/live_review.md` | +1 | the dictated Done line |
++| `f59e88f` docs | `docs/roadmap/features/T1_F051.md` | +62 | Built State, F050's shape |
+ | this commit | `.agent/handoff.md`, `.agent/last_block.md` | rewrite | handback, OUTCOME executed |
+ 
+-Every commit is under the 500-line limit. The first T001 attempt was staged as
+-one 859-line commit; it was **not** pushed and was split into `8b52454` +
+-`da80634` before any push, so no oversize commit exists in the history.
+-
+-## Fixture pause/resume timeline (`make_fanout_job`: R → (B1a → B1b, B2, B3))
+-    boundary 1  awaiting {}      cycle 1  executed R
+-    boundary 2  awaiting {}      cycle 2  B1a raises needs_decision -> td:<b1a8>
+-                                          escalated 1, failed 0, executed []
+-    boundary 3  awaiting {B1a}   cycle 3  executed B2      (disjoint branch)
+-    boundary 4  awaiting {B1a}   cycle 4  executed B3      (disjoint branch)
+-    boundary 5  awaiting {B1a}   nothing ready -> terminal blocked,
+-                                 stop_reason "awaiting_decision; open_decisions=td:<b1a8>"
+-                                 job.state PAUSED (resumable), tasks_failed total 0
+-    answer via remedy decision resolve <job8> td:<b1a8> --reason "fast"
+-    resume      awaiting {}      executed B1a, B1b -> terminal all_green
+-    awaiting_checks 5 == cycles_run 4 + 1  (the no-polling proof)
+-Mid-run pickup, ONE run, no restart: R · B2 (answers the decision as a side
+-effect) · **B1a · B1b** · B3 → all_green — branch 1 rejoins in plan order at
+-the next boundary.
+-
+-## Round gate — raw
++## R-0157 — what was built
++`job run --unattended` (catalog `job.run`, `ArgDef(is_flag=True)`, additive) →
++handler `unattended=getattr(args, "unattended", False)` →
++`_cmd_job_run_cycles(unattended=…)` → `run_cycles(…, unattended=unattended)`.
++Default OFF; attended behavior byte-unchanged. Help text names both halves:
++safe defaults auto-apply into the escalation assumption log, a question with no
++default still waits.
++One thing the finding did not mention and I did not paper over: while the F046
++rollout cap collapses a run to the single pass (`resolved.max_cycles <= 1`), the
++loop never runs, so the flag cannot do what its help promises — the command now
++prints a `Note: --unattended has no effect …` on stderr instead of accepting it
++silently. Two tests pin that (present with the flag, absent without).
++CLI-level tests (7, in `test_escalation.py::TestUnattendedRunLoopCliFlag`), all
++driving the real `_cmd_job_run_cycles` with `CYCLE_SAFETY_CAP` lifted the way
++the existing `job.run` multi-cycle test does: (a) with the flag the safe default
++is auto-answered — `answer_source "default"`, no open decisions, terminal
++`all_green`, every task COMPLETED; (b) without it the same fixture ends
++`blocked`, exit 1, one open decision still carrying its `safe_default`; plus
++catalog registration, handler passthrough, and an old namespace lacking the
++attribute (defaults to False, no crash).
++
++## Round gates — raw
+     $ python3 -m pytest tests/orchestration/test_escalation.py \
+         tests/orchestration/test_long_run_executor.py \
+-        tests/orchestration/test_dag_schedule.py \
+-        tests/cli/test_open_decisions_view.py -q
+-    182 passed in 0.65s
+-    EXIT=0
++        tests/cli/test_open_decisions_view.py tests/cli/test_command_catalog.py -q
++    178 passed in 0.99s          EXIT=0     (slice gate, item 4)
+ 
+     $ python3 -m pytest tests/docs/ -q
+-    292 passed in 0.25s
+-    EXIT=0
++    292 passed in 0.25s          EXIT=0
+ 
+     $ python3 -m pytest tests/cli/test_golden_path.py -q
+-    42 passed in 19.18s
+-    EXIT=0
+-
+-Per-slice gates (all exit 0): T001 `test_escalation.py` 36 + the nine existing
+-decision-queue test files 475 passed / 2 skipped · T002 escalation +
+-long_run_executor + dag_schedule 153 · T003 `test_open_decisions_view.py` 26.
+-Extra regression I ran unasked, on every suite that touches status/report or
+-the queue (13 files): **707 passed, 2 skipped, exit 0**. `ruff check` clean on
+-every file I touched.
+-
+-## Deviations & judgment calls — READ THIS
+-1. **`decision resolve` gained a `td:` branch** (`f0bd12b`). The block says
+-   reuse the queue and CLI "unchanged"; the acceptance criterion says answering
+-   happens "via the EXISTING decision CLI". Those cannot both hold literally:
+-   `_cmd_decision_resolve`'s else-branch REFUSES unknown prefixes, so a task
+-   decision would have been unanswerable. I extended the existing command
+-   additively (new `elif`, same command, `--reason` carries the answer) rather
+-   than adding a command or a queue. Reviewer call if you disagree.
+-2. **The mid-run assumption log is its own file**,
+-   `escalation_assumptions.md`, NOT the flight plan's `assumptions.md`. That
+-   log's own first paragraph states every question in it was asked at plan time
+-   and nothing mid-run; writing escalations into it would make it lie. Same
+-   table shape, same evidence dir.
+-3. **The status/report block is queue-wide, not task-decision-only.** A job
+-   with no repo attached already has an open `stop_reason` blocker, so it now
+-   also leads with the decision block and its `next_safe_action` is
+-   `remedy job attach-repo …`. That follows the feature text ("open decisions
+-   render FIRST") and is pinned by its own test, but it is a visible change for
+-   existing repo-less jobs — flagging it rather than hiding it.
+-4. **`blockers[0] = "awaiting_decision"`** fires for any open decision, not
+-   only task decisions (same reason as 3).
+-5. **T001's executor wiring landed in the T002 commits.** The block lists
+-   "enqueue" under T001; the enqueue FUNCTION and the queue derivation are
+-   T001, the call site inside `run_cycles` is `4d92873`. Splitting it the other
+-   way would have put an unreachable call site in T001.
+-6. **Not in this round's declared scope, needed before closure:** F051's
+-   feature file has no `## Built State` section yet (F050's does,
+-   `T1_F050.md:66`). The block's Change list excludes
+-   `docs/roadmap/features/T1_F051.md`, so I did not add it. No `docs/` ist-doc
+-   mentions the executor, so no index/ist-doc update is due.
+-7. One pre-existing `ruff` UP035 in `dag_schedule.py:36` (F050 code, typing vs
+-   collections.abc imports). Untouched — not my scope, no "while I'm here".
+-8. Two test expectations of mine were wrong and were corrected, not the code:
+-   the mid-run pickup order (branch 1 legitimately resumes ahead of B3, plan
+-   order) and the checkpoint assertion (a checkpoint written BEFORE the question
+-   was raised may name the task; the invariant only holds from the escalating
+-   cycle onwards).
++    42 passed in 19.07s          EXIT=0
++
++`ruff check` clean on every file touched this round.
++
++## Integration gate (docs/agents/integration_gate.md) — records
++**Step 1 — branch run**, repo root, `python3 -m pytest -n auto -q`:
++
++    14435 passed, 19 skipped in 144.80s (0:02:24)
++    EXIT=0   WALL=145s
++    grep '^FAILED' branch.log | sort > branch_failed.txt   ->  0 lines
++
++**Step 2 — base run**, identical command, throwaway worktree at the merge base
++`894375e40f2d88c3d2cd2859073423faa2b17120` (`git merge-base main HEAD`):
++
++    20 failed, 14317 passed, 25 skipped in 161.50s (0:02:41)
++    EXIT=1   WALL=162s
++    base_failed.txt  ->  20 lines
++
++Collection delta branch − base = 14454 − 14362 = **+92**, exactly this feature's
++new tests (66 escalation + 26 open-decisions view). Nothing else appeared or
++vanished.
++
++**Step 3 — compare.**
++`comm -13 base_failed.txt branch_failed.txt` (branch-only) → **EMPTY**.
++The branch run has zero failures, so the branch-only set is empty by
++construction, not by interpretation.
++`comm -23` (base-only, 20 ids — failures the branch "fixed"):
++
++    tests/cli/test_self_dogfood_execution_cli.py           2 ids
++    tests/orchestration/test_test_runner.py                1 id   (vitest)
++    tests/ui_server/test_dashboard_contract.py             1 id   (tsc)
++    tests/ui_server/test_live_state.py                    16 ids
++    (full id list: gate/base_failed.txt, reproduced in the PR body)
++
++**Step 4 — attribution.** No branch-only ids exist, so there is nothing to
++re-run serially and STOP-ON-RED cannot trigger. The 20 base-only ids are the
++known R-0155 environment class, attributed by direct evidence rather than
++assumption:
++- worktree vs primary checkout: `node_modules` **ABSENT** in the worktree
++  (present in primary), `apps/ui/dist` **ABSENT** (present in primary);
++  `apps/ui/node_modules` and `.data` were present in both.
++- raw causes from `base.log`: `AssertionError: vitest failed:` /
++  `Cannot find package 'vitest'` / `AssertionError: tsc failed:` /
++  `CompletedProcess(args=['npx', 'tsc', '--noEmit'], returncode=1)` — i.e. a
++  missing root `node_modules`, and a UI server with no built `dist` to serve.
++- scope grep: none of the four failing test FILES is in this branch's changed
++  set (19 changed files, listed in the commit tables above) — zero coupling to
++  feature code.
++Refinement worth carrying into R-0155's eventual fix: the missing outputs here
++are the **root `node_modules`** and **`apps/ui/dist`**, not `apps/ui/node_modules`
++as the finding's text currently says.
++
++**Worktree removal proof.**
++
++    $ git worktree remove --force <scratch>/base-wt && git worktree prune
++    $ git worktree list
++    /home/decodeux/Repos/remedy  f59e88f [feature/f051-escalate-instead-of-block]
++    directory gone: removed        primary tree: git status --porcelain empty
++
++**Step 5 — budget.** Branch 2:24, base 2:41 — both under the ~5 min threshold;
++no perf pass indicated. Verdict deliberately NOT issued here.
++
++## Deviations
++None. Every item executed as written; no stop-on-red condition arose.
++
++## Observations (not deviations)
++1. The `--unattended` no-effect note under the rollout cap (above) is behavior
++   the block did not specify; silence seemed worse than a stderr line. Reviewer
++   call.
++2. `docs/roadmap/features/T1_F051.md` Built State claims only what tests pin;
++   test counts are from `--collect-only` (66 + 26 = 92).
++3. Gate logs kept at the session scratchpad (`gate/branch.log`, `base.log`,
++   `branch_failed.txt`, `base_failed.txt`) — not committed, per the round's
++   Change list.
+ 
+ ## Open findings
+-2 open, both planning-routed carry-forwards: **R-0155** (Low), **R-0156**
+-(Medium). Next free ID: **R-0157**. No new findings raised by me — worker
+-never writes findings.
++**R-0155** (process, Low) and **R-0156** (process, Medium) remain open,
++planning-routed. **R-0157** carries the dictated `Done:` line and awaits the
++reviewer's Resolved. Next free ID: **R-0158**.
+ 
+ ## Next expected action
+-Reviewer R1 verdict on the open PR. Then, as their own rounds: the F051 Built
+-State block, an integration-gate round per `docs/agents/integration_gate.md`,
+-and closure per `docs/roadmap/STATUS_closure_protocol.md`.
++Reviewer R2 verdict, including the integration-gate verdict on the records
++above. Then closure per `docs/roadmap/STATUS_closure_protocol.md` — its own
++round, never bundled; its zip was explicitly not part of R2.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index e0ff756..0a3483d 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,4 +1,4 @@
+-OUTCOME: pending
++OUTCOME: executed
+ ── STEP R2 — F051: verdict persist + R-0157 fix + Built State + gate ────
+ Block id: f051-r2
+ Goal:        Persist the R1 PASS verdict, make the unattended path
