@@ -33,7 +33,7 @@
 - [x] F048 — Job queue (T001–T003 complete; accepted 2026-07-27 · live review PASS — ACCEPTED · Evidence job 58e88dd7-88c7-429f-823f-7b0e9bbb34f5 · package remedy-review-20260727-223612-READY_FOR_REVIEW.zip · SHA-256 6058d0f4d67ee082c852202e910fe05ff42a5e9406a3fd71464c251acf106a4b · accepted HEAD c6a0b58d13cec49abbf15c9dab08fd5e6a9e54ee)
 - [x] F251 — Full-suite stabilization (flake-debt paydown) (S1–S5 complete, scope per operator ruling A 2026-07-28; accepted 2026-07-28 · live review PASS — ACCEPTED · Evidence job b680f05b-2cda-468f-a8c5-95dbe9636044 · package remedy-review-20260728-190328-READY_FOR_REVIEW.zip · SHA-256 95af04c380da89879bbf4f10cd2529279553a571c5c72b3870a190a90641af2f · accepted HEAD 86a0df39ee0928742add7ef457dbd3d1e4efb7f2)
 - [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)
-- [ ] F050 — DAG scheduling
+- [~] F050 — DAG scheduling
 - [ ] F051 — Escalate instead of block (unattended)
 - [ ] F052 — Self-healing test rounds
 - [ ] F053 — Final & interim report
