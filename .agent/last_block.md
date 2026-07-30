@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP T001–T003/3 — F051 Escalate instead of block (LARGE round) ──────
 Goal:        An unattended run never stalls on a human question: a
              needs_decision task pauses only its branch, the executor
