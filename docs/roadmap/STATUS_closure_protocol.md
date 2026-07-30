@@ -39,6 +39,12 @@
    entries need a sha256-hex output_hash, valid VerificationTests
    totals, and the full-length base_commit SHA — abbreviated or
    missing values surface only at zip time.
+   Two more, from the F051 BLOCKED_EVIDENCE attempt (both caught by
+   the packaging validator — catch them at authoring time instead):
+   (a) verification records must carry non-empty test node ids with
+   `len(node_ids) == selected` (run `--collect-only` for real ids);
+   (b) `test_files` entries are files, never directories (expand
+   `tests/docs/` to the actual file paths).
 2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
    canonical sequence below. Verify committed_review_subject spans
    BASE..HEAD and the zip import check passes. Record `package <filename>`
@@ -83,6 +89,17 @@
    window. The operator may merge manually at any time instead.
 7. **End Window 1** with the feature-done banner. Next feature → fresh
    session; Rule A5 selects it.
+
+## Closure-candidate findings
+
+Operator ruling 2026-07-30 (F050→amend0730 precedent): findings
+raised DURING a closure review are recorded in the closure brief as
+CANDIDATES only — no R-id is spent, nothing is registered in the
+already-final live_review. The NEXT session's first reviewed round
+then either registers each candidate (spending the next free ID) or
+resolves it inline as a DECISION per planner_reviewer_prompt.md §4
+item 7. This keeps the ledger monotonic across the session boundary
+and keeps the operator-facing narrative in agreement with the disk.
 
 ## Canonical zip build sequence
 Explicit evidence selection is mandatory. Deprecated root-dir auto-selection
