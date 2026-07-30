@@ -13,6 +13,10 @@ Public API::
     explain_decisions(job, events) -> str
     export_decision_json(d) -> dict
     build_decision_summary(decisions) -> dict  (brain node metadata)
+    sort_open_decisions_first(decisions) -> list[HumanDecision]
+    open_decisions(decisions) -> list[HumanDecision]
+    render_open_decisions_lines(decisions) -> list[str]  (status/report block)
+    open_decisions_next_action(decisions) -> str
 """
 
 from __future__ import annotations
@@ -391,6 +395,61 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
         "resolved_at": d.resolved_at,
         "payload": dict(d.payload),
     }
+
+
+#: Severity order for the views below.  Unknown severities sort last rather
+#: than raising: a decision with an odd severity must still be shown.
+_SEVERITY_RANK = {"blocker": 0, "warning": 1, "info": 2}
+
+
+def sort_open_decisions_first(
+    decisions: list[HumanDecision],
+) -> list[HumanDecision]:
+    """Open before resolved, blockers before warnings before info; stable.
+
+    Why: an unattended run's most important output is what it needs from a
+    human, so every view that shows decisions shows those first (F051 T003).
+    """
+    return sorted(
+        decisions,
+        key=lambda d: (0 if d.status == "open" else 1,
+                       _SEVERITY_RANK.get(d.severity, 3)),
+    )
+
+
+def open_decisions(decisions: list[HumanDecision]) -> list[HumanDecision]:
+    """The still-open decisions, most urgent first."""
+    return [d for d in sort_open_decisions_first(decisions) if d.status == "open"]
+
+
+def render_open_decisions_lines(
+    decisions: list[HumanDecision],
+    *,
+    indent: str = "  ",
+) -> list[str]:
+    """The block that status and report print FIRST — empty when nothing is open.
+
+    Every line a human needs is here: what is being asked, and the exact
+    command that answers it.  Nothing is truncated away: an answer command that
+    is not shown in full cannot be pasted.
+    """
+    pending = open_decisions(decisions)
+    if not pending:
+        return []
+    lines = [f"Open decisions: {len(pending)} — the run needs an answer"]
+    for d in pending:
+        lines.append(f"{indent}[{d.severity}] {d.type} {d.id}: {d.safe_summary}")
+        for action in d.next_actions:
+            lines.append(f"{indent}  -> {action}")
+    return lines
+
+
+def open_decisions_next_action(decisions: list[HumanDecision]) -> str:
+    """The one command that answers the most urgent open decision, or ""."""
+    for d in open_decisions(decisions):
+        if d.next_actions:
+            return d.next_actions[0]
+    return ""
 
 
 def build_decision_summary(decisions: list[HumanDecision]) -> dict[str, Any]:
