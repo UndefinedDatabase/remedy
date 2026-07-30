@@ -50,6 +50,8 @@ DECISION_TYPES = frozenset({
     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
     "token_budget", "worker_approval", "memory_review", "revert_missing",
     "flight_plan_approval",
+    # F051: a task raised a question mid-run; its branch waits, the run does not.
+    "task_decision",
 })
 
 
@@ -288,6 +290,54 @@ def list_decisions(
                 created_at="",
                 resolved_at="",
             ))
+
+    # 8. Task decisions raised mid-run (F051).  Derived from the escalation
+    #    records on the job — not a second queue, the same read-only
+    #    aggregation as every branch above.
+    try:
+        from packages.orchestration.escalation import (
+            DECISION_TYPE_TASK_DECISION,
+            ESCALATION_STATUS_OPEN,
+            escalation_records,
+            task_decision_answer_command,
+        )
+        for record in escalation_records(job):
+            is_open = record.get("status") == ESCALATION_STATUS_OPEN
+            options = [str(o) for o in (record.get("options") or [])]
+            actions = tuple(
+                task_decision_answer_command(job_id, str(record.get("decision_id")), opt)
+                for opt in (options or ["<your answer>"])
+            ) if is_open else ()
+            decisions.append(HumanDecision(
+                id=str(record.get("decision_id", "")),
+                type=DECISION_TYPE_TASK_DECISION,
+                status=ESCALATION_STATUS_OPEN if is_open else "resolved",
+                severity="blocker" if is_open else "info",
+                source="escalation",
+                related_node_id=f"task:{str(record.get('task_id'))[:8]}",
+                related_intent_id="",
+                related_file="",
+                safe_summary=(
+                    f"Task {str(record.get('task_id'))[:8]} needs a decision: "
+                    f"{record.get('question', '')}"
+                    if is_open else
+                    f"Task {str(record.get('task_id'))[:8]} decision answered "
+                    f"({record.get('answer_source', '')}): {record.get('answer', '')}"
+                ),
+                next_actions=actions,
+                created_at=str(record.get("created_at", "")),
+                resolved_at=None if is_open else str(record.get("answered_at", "")),
+                payload={
+                    "task_id": str(record.get("task_id", "")),
+                    "question": str(record.get("question", "")),
+                    "options": options,
+                    "safe_default": str(record.get("safe_default", "")),
+                    "cross_references": [
+                        str(x) for x in (record.get("cross_references") or [])],
+                },
+            ))
+    except (ImportError, ValueError, OSError, AttributeError):
+        pass
 
     return decisions
 
