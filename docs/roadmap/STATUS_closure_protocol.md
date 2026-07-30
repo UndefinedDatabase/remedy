@@ -47,11 +47,14 @@
    Docs-only features without a runtime evidence job close with an honest
    NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
    Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
-   Build order: the closure zip is the LAST action after ALL commits
-   including the final .agent/ state and handoff rewrite; a package built
-   from a dirty tree is invalid. The zip attempt's outcome — package +
-   SHA-256, or the raw error — is recorded in the handoff BEFORE handback,
-   always.
+   Build order (wording aligned with accepted F252/F050 practice,
+   2026-07-30): the zip is built from a clean tree after all CONTENT
+   commits — the reviewed head the manifest records as accepted HEAD.
+   The evidence-dir commit and the final closure commit (STATUS/README/
+   final .agent state) follow the READY zip. A package built from a
+   dirty tree is invalid. The zip attempt's outcome — package +
+   SHA-256, or the raw error — is recorded in the handoff BEFORE
+   handback, always.
 3. **Runtime actuals (reviewer; observed only).** Rounds, wall clock,
    models, tokens/cost where the ledger has them; `not-measured` beats a
    guess. → PR description + final report.
