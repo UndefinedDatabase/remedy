@@ -22,10 +22,13 @@ import pytest
 
 import packages.orchestration.long_run_executor as lre
 from packages.core.models import Job, RunState, Task
-from packages.orchestration.builder_models import TaskExecutionContext
+from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.long_run_executor import (
     DEFAULT_REPAIR_ROUNDS,
+    LEDGER_EVENT_CYCLE_HEALED,
+    LEDGER_EVENT_CYCLE_REPAIR_ROUND,
+    TERMINAL_ALL_GREEN,
     VERIFY_CONFIG_ERROR,
     VERIFY_FAILED,
     VERIFY_NOT_RUN,
@@ -370,3 +373,263 @@ class TestRepairSummaryIsRendered:
         assert payload["healed_after_repair"] is True
         assert payload["healed_without_changes"] is True
         assert "flaky?" in payload["repair_summary"]
+
+
+# ---------------------------------------------------------------------------
+# Shared fakes for the loop-level tests
+# ---------------------------------------------------------------------------
+
+
+class RecordingLog:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict]] = []
+
+    def log(self, event: str, **meta) -> None:
+        self.events.append((event, meta))
+
+    def of(self, name: str) -> list[dict]:
+        return [meta for event, meta in self.events if event == name]
+
+
+class BreakingVerify:
+    """A verify step whose one broken assertion heals after *heals_after* calls.
+
+    Call 0 is the cycle's own verify; every later call is the re-run after a
+    repair round.  ``heals_after=None`` is the stubborn fixture — the fake
+    provider never fixes it, so it never heals.
+    """
+
+    def __init__(self, heals_after: int | None = 1) -> None:
+        self.heals_after = heals_after
+        self.calls = 0
+
+    def __call__(self, job: Job, cycle_index: int, verify_command) -> VerifyOutcome:
+        result = (VERIFY_PASSED
+                  if self.heals_after is not None and self.calls >= self.heals_after
+                  else VERIFY_FAILED)
+        self.calls += 1
+        return VerifyOutcome(
+            result=result,
+            output="E   assert add(2, 3) == 5\nE   assert 4 == 5",
+            failing_test_ids=("tests/test_calc.py::test_add",),
+            changed_files=("calc.py",),
+        )
+
+
+class FakeRepair:
+    """A repair seam that records the findings each round was given."""
+
+    def __init__(self, *, ran: bool = True,
+                 changed_files: tuple[str, ...] = ("calc.py",),
+                 error: str = "") -> None:
+        self.ran = ran
+        self.changed_files = changed_files
+        self.error = error
+        self.findings: list[dict] = []
+
+    def __call__(self, job: Job, cycle_index: int, findings: dict) -> RepairOutcome:
+        self.findings.append(findings)
+        return RepairOutcome(ran=self.ran, changed_files=self.changed_files,
+                             error=self.error)
+
+
+# ---------------------------------------------------------------------------
+# T001 — a failed verify triggers the existing repair loop, bounded, and heals
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyFailureTriggersRepair:
+    def test_a_one_line_break_heals_in_round_one(self, control_root):
+        job = make_job(1)
+        verify = BreakingVerify(heals_after=1)
+        repair = FakeRepair()
+        log = RecordingLog()
+
+        result = run_cycles(
+            job, CycleLimits(max_cycles=3, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=verify, repair=repair,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+            log=log,
+        )
+
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        first = result.cycles[0]
+        assert first.repair_rounds_used == 1
+        assert first.healed_after_repair is True
+        assert first.verify_result == VERIFY_PASSED
+        assert first.repair_summary == "healed after 1 repair round"
+        assert first.verify_failure_class == ""
+        # The heal is announced, never implied by a green cycle.
+        assert log.of(LEDGER_EVENT_CYCLE_HEALED)[0]["repair_rounds_used"] == 1
+        assert len(log.of(LEDGER_EVENT_CYCLE_REPAIR_ROUND)) == 1
+
+    def test_a_passing_verify_never_spends_a_repair_round(self, control_root):
+        job = make_job(1)
+        repair = FakeRepair()
+        run_cycles(
+            job, CycleLimits(max_cycles=2, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=lambda j, i, c: VERIFY_PASSED,
+            repair=repair, clock=FakeClock(), save=no_save,
+            control_root_path=control_root,
+        )
+        assert repair.findings == []
+
+    def test_repair_rounds_zero_keeps_the_pre_f052_behavior(self, control_root):
+        job = make_job(1)
+        repair = FakeRepair()
+        result = run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=0), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            repair=repair, clock=FakeClock(), save=no_save,
+            control_root_path=control_root,
+        )
+        assert repair.findings == []
+        assert result.cycles[0].verify_result == VERIFY_FAILED
+        assert result.cycles[0].repair_rounds_used == 0
+        assert "verify_failed" in result.cycles[0].errors
+
+    def test_a_round_that_did_not_run_is_not_counted(self, control_root):
+        """An uncounted round would make "exactly two rounds" unprovable."""
+        job = make_job(1)
+        repair = FakeRepair(ran=False, error="repair path unavailable")
+        result = run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=None),
+            repair=repair, clock=FakeClock(), save=no_save,
+            control_root_path=control_root,
+        )
+        assert result.cycles[0].repair_rounds_used == 0
+        assert result.cycles[0].repair_summary == ""
+        assert any("repair_not_run" in e for e in result.cycles[0].errors)
+
+    def test_the_verify_step_re_runs_after_every_repair_round(self, control_root):
+        job = make_job(1)
+        verify = BreakingVerify(heals_after=2)
+        result = run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=verify, repair=FakeRepair(),
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        # One verify for the cycle, plus one after each of the two rounds.
+        assert verify.calls == 3
+        assert result.cycles[0].repair_rounds_used == 2
+        assert result.cycles[0].healed_after_repair is True
+
+    def test_every_round_is_told_which_round_it_is(self, control_root):
+        job = make_job(1)
+        repair = FakeRepair()
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=None),
+            repair=repair, clock=FakeClock(), save=no_save,
+            control_root_path=control_root,
+        )
+        assert [f["repair_round"] for f in repair.findings] == [1, 2]
+
+
+class TestHealedCycleIsVisible:
+    def test_the_evidence_record_carries_the_healed_line(self, control_root):
+        job = make_job(1)
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            repair=FakeRepair(), clock=FakeClock(), save=no_save,
+            control_root_path=control_root, record_checkpoint=False,
+        )
+        record = read_cycle_records(str(job.id))[0]
+        assert record["repair_summary"] == "healed after 1 repair round"
+        assert record["healed_after_repair"] is True
+        assert record["repair_rounds_used"] == 1
+
+
+class TestDefaultRepairSeamUsesTheExistingLoop:
+    def test_the_default_seam_calls_the_existing_bounded_repair_loop(
+            self, control_root, monkeypatch):
+        """A6: F052 TRIGGERS the existing loop; it never builds a second one."""
+        seen: dict = {}
+
+        class FakeLoopResult:
+            cycles_run = 1
+            stop_reason = ""
+            final_result = None
+
+        def fake_loop(build_fn, repo_path, *, job, data_dir, max_cycles=3, **kw):
+            seen["max_cycles"] = max_cycles
+            seen["repo_path"] = repo_path
+            build_fn(None)          # the round really does call the provider seam
+            return FakeLoopResult()
+
+        monkeypatch.setattr(
+            "packages.orchestration.builder_bridge.run_builder_bridge_loop",
+            fake_loop)
+
+        job = make_job(1)
+        calls: list[TaskExecutionContext] = []
+
+        def provider(context: TaskExecutionContext) -> BuilderOutput:
+            calls.append(context)
+            return BuilderOutput(summary="fixed", proposed_changes=["fix calc.py"])
+
+        result = run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=1), provider,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+
+        # The ROUND CAP belongs to the cycle, so the existing loop runs one round.
+        assert seen["max_cycles"] == 1
+        assert result.cycles[0].repair_rounds_used == 1
+        assert result.cycles[0].healed_after_repair is True
+        # Task call plus repair call — both through the SAME counted seam.
+        assert len(calls) == 2
+
+    def test_the_findings_reach_the_provider_the_round_calls(
+            self, control_root, monkeypatch):
+        """A repair round the builder cannot see the findings of is a re-run,
+        not a repair."""
+        class FakeLoopResult:
+            cycles_run = 1
+            stop_reason = ""
+            final_result = None
+
+        def fake_loop(build_fn, repo_path, *, job, data_dir, max_cycles=3, **kw):
+            build_fn(None)
+            return FakeLoopResult()
+
+        monkeypatch.setattr(
+            "packages.orchestration.builder_bridge.run_builder_bridge_loop",
+            fake_loop)
+
+        job = make_job(1)
+        contexts: list[TaskExecutionContext] = []
+
+        def provider(context: TaskExecutionContext) -> BuilderOutput:
+            contexts.append(context)
+            return BuilderOutput(summary="fixed", proposed_changes=["fix calc.py"])
+
+        run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=1), provider,
+            task_step=completing_step, verify=BreakingVerify(heals_after=1),
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+
+        repair_context = contexts[-1].prior_task_summaries[0]
+        assert "tests/test_calc.py::test_add" in repair_context
+        assert "cycle_verify" in repair_context
+
+    def test_an_unreachable_repair_loop_is_reported_not_crashed(
+            self, control_root, monkeypatch):
+        def boom(*a, **kw):
+            raise RuntimeError("no workspace here")
+
+        monkeypatch.setattr(
+            "packages.orchestration.builder_bridge.run_builder_bridge_loop", boom)
+
+        job = make_job(1)
+        result = run_cycles(
+            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
+            task_step=completing_step, verify=BreakingVerify(heals_after=None),
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        assert result.cycles[0].repair_rounds_used == 0
+        assert any("RuntimeError" in e for e in result.cycles[0].errors)
