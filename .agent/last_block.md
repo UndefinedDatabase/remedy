@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R2 — F051: verdict persist + R-0157 fix + Built State + gate ────
 Block id: f051-r2
 Goal:        Persist the R1 PASS verdict, make the unattended path
