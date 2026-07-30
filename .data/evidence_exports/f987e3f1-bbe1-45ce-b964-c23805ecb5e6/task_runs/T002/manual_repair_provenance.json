@@ -1,0 +1,26 @@
+{
+ "changed_files": [
+  "packages/orchestration/task_runner.py",
+  "tests/orchestration/test_dag_schedule.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "diff_sha256": "eef0cda1bf7a82066b6a57f1b8c6168a4724786e21357d661cc66921a82fa631",
+ "job_id": "f987e3f1-bbe1-45ce-b964-c23805ecb5e6",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "eef0cda1bf7a82066b6a57f1b8c6168a4724786e21357d661cc66921a82fa631",
+ "safe_diff_sha256": "56f993f4b330467791796e2c834c84ef330cd5bf24b20304d30e6bdff5a671c8",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "packages/orchestration/task_runner.py",
+  "tests/orchestration/test_dag_schedule.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "timestamp": "2026-07-30T12:56:48.320530+00:00",
+ "tracked_diff_sha256": "56f993f4b330467791796e2c834c84ef330cd5bf24b20304d30e6bdff5a671c8",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

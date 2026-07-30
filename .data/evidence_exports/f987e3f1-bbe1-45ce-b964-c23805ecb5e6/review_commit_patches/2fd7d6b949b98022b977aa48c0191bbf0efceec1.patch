@@ -1,0 +1,409 @@
+2fd7d6b949b98022b977aa48c0191bbf0efceec1
+diff --git a/.agent/authored/f050-r3-1.md b/.agent/authored/f050-r3-1.md
+new file mode 100644
+index 0000000..1a2c1b3
+--- /dev/null
++++ b/.agent/authored/f050-r3-1.md
+@@ -0,0 +1,46 @@
++# Live Review — F050 DAG scheduling (Tier 1)
++
++Branch: feature/f050-dag-scheduling
++Scope: topological ready set + blocked-downstream skip in the
++multi-cycle executor (docs/roadmap/features/T1_F050.md).
++
++## Steps
++- R1: claim + state reset + T001 pure module + T002 executor
++  integration (large bundle, per-slice gates). Done.
++- R2: persist the R1 verdict + Built State; integration-gate round
++  per docs/agents/integration_gate.md. Done.
++- R3: closure per docs/roadmap/STATUS_closure_protocol.md v4:
++  preconditions, evidence job, READY zip, then ONE final commit =
++  README sync + STATUS [x] + final .agent state (R-0154 ordering).
++  In progress.
++
++## Findings
++- Open: R-0155 (process, Low, planning-routed, documented risk):
++  the integration-gate base run uses a fresh worktree without
++  install/build outputs (apps/ui/node_modules, apps/ui/dist) or
++  local .data/ state, so ~20 environment-coupled ids land in
++  comm -23 on every gate run and could mask a genuine base failure
++  in those same files. Disposition: documented Low risk for F050
++  closure; fix = a docs amendment to
++  docs/agents/integration_gate.md (install/build in the base
++  worktree, or deselect environment-coupled ids) — its own
++  micro-round after F050. DECISION registered; reversible by any
++  later relay. Next free ID: R-0156.
++
++## Verdicts
++- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f — details
++  in this file's git history (f6f6faa version).
++- R2: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-30). Range
++  ac9dc6f..ed70dfb. Slice 0 proofs verified (sha256 match, cmp 0,
++  append tail-cmp 0). Gate evidence: the reviewer's OWN full run at
++  f6f6faa — 14343 passed, 0 failed, 19 skipped, 161s — makes the
++  branch-only failure set empty by construction; the worker's branch
++  run matches, and its base-run 20 failures are all attributed to
++  the fresh-worktree environment (no install/build outputs, no
++  local .data), with a scope grep proving zero coupling to feature
++  files. DECISION: the comm -23 set is accepted as worktree
++  environment artifacts, NOT as failures the branch fixed.
++  Collection delta +48 = exactly the feature's new tests (34 + 13
++  + 1). Wall clock 2:44 branch / 3:21 base — under budget, no perf
++  pass. R-0155 registered from the worker's baseline observation.
++  LAST_REVIEWED_SHA = ed70dfb.
+diff --git a/.agent/authored/f050-r3-2.md b/.agent/authored/f050-r3-2.md
+new file mode 100644
+index 0000000..d767956
+--- /dev/null
++++ b/.agent/authored/f050-r3-2.md
+@@ -0,0 +1 @@
++- [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job <JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <HEAD_SHA>)
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index 7e6c35a..880eb9c 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,61 +1,123 @@
+-OUTCOME: executed
+-── STEP R2 — F050 verdict persist + INTEGRATION GATE ────────────────
+-Goal:        Persist the R1 PASS verdict and the feature file's Built
+-             State, then run the full-suite integration gate per
+-             docs/agents/integration_gate.md. NO closure work.
+-Bundle:      Slice 0 persist (one commit) · Slice 1 integration gate
+-             (no commit unless the gate procedure requires records).
+-Change:      .agent/ state; docs/roadmap/features/T1_F050.md (Built
+-             State append ONLY). No production or test code.
+-Constraints: AGENTS.md. Authored texts verbatim, sha256-verify
+-             BEFORE apply; mismatch = STOP + refusal record. Worker
+-             never writes ## Verdicts beyond the authored text. NO
+-             closure: no STATUS [x], no evidence job, no zip.
+-             A reproducible branch-only failure coupled to feature
+-             code = STOP, hand back (gate step 4).
+-Done when:   Slice 0 gates green; integration-gate steps 1–4
+-             executed with raw records; handback carries everything
+-             the reviewer needs to issue the gate verdict.
+-Handback:    Completion report + rewrite .agent/handoff.md: raw
+-             tails + exit codes + wall times of BOTH full runs, the
+-             branch_failed/base_failed lists, comm -13 and comm -23
+-             output, per-id attribution (serial re-runs), worktree
+-             list proof after removal, changed-files table.
++OUTCOME: pending
++── STEP R3 — F050 CLOSURE (STATUS_closure_protocol.md v4) ───────────
++Goal:        Close F050: persist the R2 gate verdict, preconditions,
++             evidence job, fresh READY zip, then ONE final commit =
++             README sync + STATUS [x] + final .agent state (R-0154
++             ordering, protocol v4 step 5). Update PR #163.
++Bundle:      Slice 0 persist · Slice A preconditions · Slice B
++             evidence + zip · Slice C final commit + PR update.
++Change:      .agent state; evidence dir (committed AFTER the READY
++             zip); README.md + docs/roadmap/STATUS.md (both ONLY in
++             the final commit). Nothing else.
++Constraints: AGENTS.md; STATUS_closure_protocol.md v4 EXACTLY. Zip
++             failure = closure BLOCKER (raw error, hand back).
++             Authored texts: save verbatim, sha256-verify BEFORE
++             any apply; mismatch = STOP + refusal record. The saved
++             STATUS template f050-r3-2 must re-verify to its BEGIN
++             hash before substitution; substitute ONLY the four
++             <PLACEHOLDERS>, provenance per value in the handback.
++             Worker never writes ## Verdicts beyond the authored
++             text. The PR is NOT merged this session.
++Done when:   Protocol steps 1–5 complete, zip import check green,
++             final commit green on the docs gate, STATUS + README
++             grep proofs, PR #163 updated.
++Handback:    Per template, including: raw `remedy integrity check
++             --json`, evidence job id, zip filename + SHA-256 from
++             the script output, accepted HEAD, the applied STATUS
++             line verbatim + grep -cF proofs (new=1, old=0), README
++             grep proofs, cmp/sha proofs, post-commit
++             `pytest tests/docs/ -q` transcript.
+ 
+ PROCEDURE
+ 
+-Slice 0 — persist verdict + Built State
+-1. On feature/f050-dag-scheduling. .agent/last_block.md guard:
+-   line 1 "OUTCOME: pending", THIS block verbatim; flip to
+-   "OUTCOME: executed" at round end.
+-2. Save f050-r2-1 below VERBATIM to .agent/authored/f050-r2-1.md;
+-   sha256-verify. FULL REPLACE .agent/live_review.md; cmp → 0.
+-3. Save f050-r2-2 below VERBATIM to .agent/authored/f050-r2-2.md;
+-   sha256-verify. APPEND its bytes unchanged to
+-   docs/roadmap/features/T1_F050.md (the file currently ends after
+-   the "Do not touch" section; the authored text begins with the
+-   separating blank line). Proof: tail -c of the feature file cmp 0
+-   against the authored file.
+-4. Gate (docs/roadmap changed): python3 -m pytest tests/docs/ -q
+-   (baseline 292) AND canary
+-   python3 -m pytest tests/cli/test_golden_path.py -q (baseline 42).
+-   Both exit 0 ELSE STOP. Commit:
+-   "chore(f050): persist R1 verdict; record Built State". Push.
++Slice 0 — persist (one commit)
++1. .agent/last_block.md guard: line 1 "OUTCOME: pending", THIS
++   block verbatim; final state "OUTCOME: executed" at round end.
++2. Save f050-r3-1 and f050-r3-2 below VERBATIM to .agent/authored/;
++   sha256-verify both. Apply: f050-r3-1 FULL REPLACE
++   .agent/live_review.md (cmp 0). f050-r3-2 is the STATUS template —
++   saved only, applied in Slice C. Gate: python3 -m pytest
++   tests/docs/ -q (292) + canary (42), both exit 0. Commit:
++   "chore(f050): persist the R2 integration-gate verdict". Push.
+ 
+-Slice 1 — integration gate
+-5. Execute docs/agents/integration_gate.md steps 1–4 EXACTLY:
+-   branch run (python3 -m pytest -n auto -q, raw tail + FAILED list
+-   + exit code + wall time), base run in a throwaway worktree at the
+-   merge base with identical command, comm compare both directions,
+-   serial re-run attribution for EVERY branch-only failure id.
+-   Remove + prune the worktree; record git worktree list.
+-   Reproducible feature-coupled branch-only failure → STOP + hand
+-   back raw evidence (the fix is its own reviewer-gated round).
+-6. Note wall clock; over ~5 min flag for a perf pass (§3.4).
+-7. Handback per the Handback line above. The gate VERDICT is the
+-   reviewer's — report evidence only.
++Slice A — preconditions (no commit)
++3. remedy integrity check --json → verdict PASS required (record
++   raw). git status --porcelain → empty. Branch pushed. Any failure
++   → STOP, hand back (protocol Failure honesty).
+ 
+---- BEGIN f050-r2-1 sha256=a46f0d067d7438cd4ef174e93a2248228069b9f00f954155a9007dcd5b932716 ---
++Slice B — evidence job + zip (protocol steps 1–2)
++4. Evidence job: fresh job id, canonical producer
++   create_manual_completion_bundle(review_feature_id="f050", …),
++   complete verification_runs (sha256-hex output_hash, valid
++   VerificationTests totals, FULL-length base_commit
++   c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8). Do NOT commit the
++   evidence dir yet.
++5. Zip: bash scripts/make_review_zip.sh --evidence-dir <step-4 dir>.
++   Verify committed_review_subject spans c0e2bd1..HEAD (HEAD = the
++   Slice 0 commit or later) and the zip import check passes. Record
++   filename + SHA-256 from the script output. THEN commit the
++   evidence dir (git add -f past .gitignore, F251/F252 precedent):
++   "chore(f050): commit closure evidence (after READY zip)". Push.
++6. accepted HEAD for the STATUS line = the zip manifest's
++   committed_review_subject.head_commit (full SHA). Record it.
++
++Slice C — final commit + PR (protocol v4 steps 4–5, R-0154 order)
++      F051 (Escalate instead of block)."
++      · Tier-1 row "| 1 | Self-Build Bootstrap | 9 | 22 |" →
++      "| 1 | Self-Build Bootstrap | 10 | 22 |"
++      · In the "Accepted in Tier 1 so far:" block:
++      "F251 full-suite stabilization, F252 standing-red paydown." →
++      "F251 full-suite stabilization, F252 standing-red paydown,
++      F050 DAG scheduling."
++   b. docs/roadmap/STATUS.md: replace the line
++      "- [~] F050 — DAG scheduling" with the f050-r3-2 template
++      after substituting <JOB_ID> (step 4), <ZIP_FILENAME> (step
++      5), <ZIP_SHA256> (step 5), <HEAD_SHA> (step 6). Touch no
++      other line.
++   c. Final .agent state: last_block.md OUTCOME → executed;
++      handoff.md rewrite (the handback).
++   Pre-commit gate on the staged state: python3 -m pytest
++   tests/docs/ -q → 292 passed (README and STATUS now agree) +
++   canary 42 passed. grep -cF applied STATUS line = 1, old "[~]"
++   line = 0; grep -cF each README new string = 1. Commit:
++   "chore(f050): close F050 — STATUS [x] + README sync". Push.
++8. PR #163 UPDATE per AGENTS.md (gh pr edit): title "F050 — DAG
++   scheduling (T001–T002)"; body: what/why (topological ready set,
++   blocked-downstream skip, in-run blocked tracking), key decisions
++   (task_runner task_id keyword, helper-assertion replacement,
++   comm -23 environment attribution, R-0155 documented Low), how to
++   review (dag_schedule table tests, diamond fixture, mutation
++   check, integration gate), changed-files table, latest verdict R2
++   INTEGRATION GATE PASS, open findings: 1 documented Low
++   (R-0155), runtime actuals: "R0154 micro-round + F050 R1–R3,
++   2026-07-29 → 2026-07-30, ~12 commits; tokens/cost not-measured".
++   Do NOT merge.
++9. Handback per the Handback line above, including grep proof that
++   every applied authored text (STATUS line, README strings) is
++   byte-identical to the authored source.
++
++TRANSPORT NOTES (worker, R3) — two defects in this block as received:
++(1) f050-r3-2 arrived hard-wrapped, split after "· package
++    <ZIP_FILENAME> ·". Rejoining the two fragments with a single space
++    reproduces the authored bytes exactly (sha256 313f77c0… verified
++    before any use); the STATUS template is ONE line, all four
++    placeholders intact. Same recoverable wrap class as r0154-r1-1 and
++    the R2 step-13 command.
++(2) Slice C is TRUNCATED: the "7." step header and the FROM-string of
++    7a's first README edit are missing — the block resumes mid-
++    replacement at `      F051 (Escalate instead of block)."`. The
++    block is recorded above exactly as received. Reconstruction used,
++    and flagged in the handback: README.md:19 currently reads
++    "25 of 252 registered items accepted. Next: F050 (DAG
++    scheduling)." — the only line of that shape — and the F252
++    precedent is count+1 with "Next: <following feature>", so the
++    replacement is "26 of 252 registered items accepted. Next: F051
++    (Escalate instead of block).", which ends exactly at the surviving
++    fragment. The docs-gate ledger cross-check verifies the count
++    mechanically, so a wrong number cannot pass silently. Edits 2 and
++    3 of 7a survived intact and were applied verbatim.
++
++--- BEGIN f050-r3-1 sha256=20b646c3e027a74cd888d8942434ff91a6bc6cddb6e3b992780ccca8af1385c3 ---
+ # Live Review — F050 DAG scheduling (Tier 1)
+ 
+ Branch: feature/f050-dag-scheduling
+@@ -66,62 +128,44 @@ multi-cycle executor (docs/roadmap/features/T1_F050.md).
+ - R1: claim + state reset + T001 pure module + T002 executor
+   integration (large bundle, per-slice gates). Done.
+ - R2: persist the R1 verdict + Built State; integration-gate round
+-  per docs/agents/integration_gate.md. In progress.
++  per docs/agents/integration_gate.md. Done.
++- R3: closure per docs/roadmap/STATUS_closure_protocol.md v4:
++  preconditions, evidence job, READY zip, then ONE final commit =
++  README sync + STATUS [x] + final .agent state (R-0154 ordering).
++  In progress.
+ 
+ ## Findings
+-(none — next free ID: R-0155)
++- Open: R-0155 (process, Low, planning-routed, documented risk):
++  the integration-gate base run uses a fresh worktree without
++  install/build outputs (apps/ui/node_modules, apps/ui/dist) or
++  local .data/ state, so ~20 environment-coupled ids land in
++  comm -23 on every gate run and could mask a genuine base failure
++  in those same files. Disposition: documented Low risk for F050
++  closure; fix = a docs amendment to
++  docs/agents/integration_gate.md (install/build in the base
++  worktree, or deselect environment-coupled ids) — its own
++  micro-round after F050. DECISION registered; reversible by any
++  later relay. Next free ID: R-0156.
+ 
+ ## Verdicts
+-- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f, 4
+-  commits, plus 1717fc8 (R0154 verdict) merged as PR #162. Reviewer
+-  re-ran: slice-3 gate 144 passed; task_runner/do_job_flow/
+-  checkpoints/resume/flight_plan spot-check 331 passed; docs gate
+-  292 passed; canary 42 passed. Authored-text hash + cmp proofs
+-  verified; STATUS claim one-line diff confirmed; tree clean; no
+-  threading in the diff. Mutation spot-check in a throwaway
+-  worktree (in-run blocking removed) → 5 tests failed, worktree
+-  removed and pruned — the F050 coverage is real.
+-  DECISION (a): the task_runner.py touch is ACCEPTED — additive
+-  task_id keyword on run_next_task/_find_next_pending; without it
+-  the ready set could not choose WHICH task runs and the diamond
+-  acceptance was unsatisfiable. Alternatives (duplicating rollback
+-  semantics in the executor) rejected. Reversible: drop the keyword.
+-  DECISION (b): replacing the pre-F050 helper assertion
+-  test_linear_order_capped_at_batch_size is ACCEPTED — it asserted
+-  the exact helper contract F050 replaces; loop-level linear
+-  behavior is proven unchanged by TestLinearPlansAreUnchanged and
+-  by test_batch_larger_than_remaining_tasks_is_fine, untouched.
+-  Observation, no finding: the blocked_downstream subtraction inside
+-  ready_tasks is defensive redundancy (ready_set already withholds
+-  tasks whose deps are not COMPLETED); harmless, keep.
+-  LAST_REVIEWED_SHA = ac9dc6f.
+---- END f050-r2-1 ---
+-
+---- BEGIN f050-r2-2 sha256=6b727bc08b80b3894720a43c11fbf7377fce46b82688ca4e8166437cbad42406 ---
++- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f — details
++  in this file's git history (f6f6faa version).
++- R2: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-30). Range
++  ac9dc6f..ed70dfb. Slice 0 proofs verified (sha256 match, cmp 0,
++  append tail-cmp 0). Gate evidence: the reviewer's OWN full run at
++  f6f6faa — 14343 passed, 0 failed, 19 skipped, 161s — makes the
++  branch-only failure set empty by construction; the worker's branch
++  run matches, and its base-run 20 failures are all attributed to
++  the fresh-worktree environment (no install/build outputs, no
++  local .data), with a scope grep proving zero coupling to feature
++  files. DECISION: the comm -23 set is accepted as worktree
++  environment artifacts, NOT as failures the branch fixed.
++  Collection delta +48 = exactly the feature's new tests (34 + 13
++  + 1). Wall clock 2:44 branch / 3:21 base — under budget, no perf
++  pass. R-0155 registered from the worker's baseline observation.
++  LAST_REVIEWED_SHA = ed70dfb.
++--- END f050-r3-1 ---
+ 
+-## Built State
+-- T001 `packages/orchestration/dag_schedule.py` — pure module:
+-  `build_graph` (flight metadata → task-id edges; legacy rule: a
+-  task without `inputs["flight"]` depends on its predecessor),
+-  `ready_set` (PENDING with all deps COMPLETED, plan order,
+-  deterministic), `blocked_downstream` (transitive dependents,
+-  seeds excluded, COMPLETED never reported), `BLOCKING_STATES`
+-  (FAILED, CANCELLED). Dangling dep ids → never ready, documented.
+-  34 table tests in tests/orchestration/test_dag_schedule.py.
+-- T002 `packages/orchestration/long_run_executor.py` — `ready_tasks`
+-  now returns the DAG ready set minus in-run blocked ids and their
+-  downstream; the ready set is recomputed after EVERY task end (the
+-  batch is a cap); a failed attempt adds its task to in-run
+-  `blocked_ids` (failure rolls tasks back to PENDING, so blocking is
+-  run-scoped by design); `CycleRecord.skipped_blocked_task_ids`
+-  names the withheld downstream in cycle evidence; empty ready set
+-  with unfinished tasks reuses TERMINAL_BLOCKED; checkpoint next
+-  intent skips blocked tasks. `task_runner.run_next_task` gained an
+-  additive `task_id=` keyword (default = pre-F050 behavior,
+-  byte-identical); the step seam stays 2-arg-compatible via
+-  signature inspection. Diamond fixture + 13 F050 tests +
+-  linear-regression class in tests/orchestration/
+-  test_long_run_executor.py.
+-- Accepted rounds: R1 PASS (T001+T002). Pending: integration gate,
+-  closure.
+---- END f050-r2-2 ---
++--- BEGIN f050-r3-2 sha256=313f77c000b15bfdd21be56cc42fee2648feca017800b83a69f0684ae76df1e8 ---
++- [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job <JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <HEAD_SHA>)
++--- END f050-r3-2 ---
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 1899b46..1a2c1b3 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -8,32 +8,39 @@ multi-cycle executor (docs/roadmap/features/T1_F050.md).
+ - R1: claim + state reset + T001 pure module + T002 executor
+   integration (large bundle, per-slice gates). Done.
+ - R2: persist the R1 verdict + Built State; integration-gate round
+-  per docs/agents/integration_gate.md. In progress.
++  per docs/agents/integration_gate.md. Done.
++- R3: closure per docs/roadmap/STATUS_closure_protocol.md v4:
++  preconditions, evidence job, READY zip, then ONE final commit =
++  README sync + STATUS [x] + final .agent state (R-0154 ordering).
++  In progress.
+ 
+ ## Findings
+-(none — next free ID: R-0155)
++- Open: R-0155 (process, Low, planning-routed, documented risk):
++  the integration-gate base run uses a fresh worktree without
++  install/build outputs (apps/ui/node_modules, apps/ui/dist) or
++  local .data/ state, so ~20 environment-coupled ids land in
++  comm -23 on every gate run and could mask a genuine base failure
++  in those same files. Disposition: documented Low risk for F050
++  closure; fix = a docs amendment to
++  docs/agents/integration_gate.md (install/build in the base
++  worktree, or deselect environment-coupled ids) — its own
++  micro-round after F050. DECISION registered; reversible by any
++  later relay. Next free ID: R-0156.
+ 
+ ## Verdicts
+-- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f, 4
+-  commits, plus 1717fc8 (R0154 verdict) merged as PR #162. Reviewer
+-  re-ran: slice-3 gate 144 passed; task_runner/do_job_flow/
+-  checkpoints/resume/flight_plan spot-check 331 passed; docs gate
+-  292 passed; canary 42 passed. Authored-text hash + cmp proofs
+-  verified; STATUS claim one-line diff confirmed; tree clean; no
+-  threading in the diff. Mutation spot-check in a throwaway
+-  worktree (in-run blocking removed) → 5 tests failed, worktree
+-  removed and pruned — the F050 coverage is real.
+-  DECISION (a): the task_runner.py touch is ACCEPTED — additive
+-  task_id keyword on run_next_task/_find_next_pending; without it
+-  the ready set could not choose WHICH task runs and the diamond
+-  acceptance was unsatisfiable. Alternatives (duplicating rollback
+-  semantics in the executor) rejected. Reversible: drop the keyword.
+-  DECISION (b): replacing the pre-F050 helper assertion
+-  test_linear_order_capped_at_batch_size is ACCEPTED — it asserted
+-  the exact helper contract F050 replaces; loop-level linear
+-  behavior is proven unchanged by TestLinearPlansAreUnchanged and
+-  by test_batch_larger_than_remaining_tasks_is_fine, untouched.
+-  Observation, no finding: the blocked_downstream subtraction inside
+-  ready_tasks is defensive redundancy (ready_set already withholds
+-  tasks whose deps are not COMPLETED); harmless, keep.
+-  LAST_REVIEWED_SHA = ac9dc6f.
++- R1: PASS (reviewer, 2026-07-30). Range c0e2bd1..ac9dc6f — details
++  in this file's git history (f6f6faa version).
++- R2: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-30). Range
++  ac9dc6f..ed70dfb. Slice 0 proofs verified (sha256 match, cmp 0,
++  append tail-cmp 0). Gate evidence: the reviewer's OWN full run at
++  f6f6faa — 14343 passed, 0 failed, 19 skipped, 161s — makes the
++  branch-only failure set empty by construction; the worker's branch
++  run matches, and its base-run 20 failures are all attributed to
++  the fresh-worktree environment (no install/build outputs, no
++  local .data), with a scope grep proving zero coupling to feature
++  files. DECISION: the comm -23 set is accepted as worktree
++  environment artifacts, NOT as failures the branch fixed.
++  Collection delta +48 = exactly the feature's new tests (34 + 13
++  + 1). Wall clock 2:44 branch / 3:21 base — under budget, no perf
++  pass. R-0155 registered from the worker's baseline observation.
++  LAST_REVIEWED_SHA = ed70dfb.

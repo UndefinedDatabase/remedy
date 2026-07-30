@@ -1,0 +1,10 @@
+{
+ "changed_files": [
+  "packages/orchestration/task_runner.py",
+  "tests/orchestration/test_dag_schedule.py",
+  "tests/orchestration/test_long_run_executor.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

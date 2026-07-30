@@ -1,0 +1,256 @@
+ed70dfb70a91198cb60baecc6a05d183b4d19a4f
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index fec969d..6ca8346 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -1,128 +1,133 @@
+-# Handback — R0154 R2 (verdict + merge) & F050 R1 (T001+T002) — DONE
++# Handback — F050 R2 (verdict persist + INTEGRATION GATE) — evidence complete
+ 
+ ## Range
+-`c0e2bd1..HEAD` · feature/f050-dag-scheduling · 3 commits + 1 round-end.
+-Preceded by `1717fc8` on feature/r0154-closure-ordering (verdict), merged as
+-PR #162. F050 PR **#163** open, NOT merged.
++`ac9dc6f..HEAD` · feature/f050-dag-scheduling · Slice 0 = 1 commit (`f6f6faa`)
+++ 1 round-end. Merge base `c0e2bd1`. PR **#163** still open, NOT merged.
++No closure work: no STATUS `[x]`, no evidence job, no zip.
+ 
+ ## Commits
+-### 1717fc8 chore(r0154): persist the R1 PASS verdict — on feature/r0154-closure-ordering
++### f6f6faa chore(f050): persist R1 verdict; record Built State
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/live_review.md | +14/-6 | authored r0154-r2-1 applied by copy — the R1 PASS verdict |
+-| .agent/last_block.md | rewrite | R2/R1 block guard + authored texts |
+-| .agent/authored/r0154-r2-1.md | +new | authored source, sha256-verified |
++| .agent/live_review.md | +31/-… | authored f050-r2-1 FULL REPLACE — R1 PASS verdict + DECISIONS (a)/(b) |
++| docs/roadmap/features/T1_F050.md | +26 | authored f050-r2-2 appended byte-unchanged after "Do not touch" |
++| .agent/last_block.md | rewrite | R2 block guard |
++| .agent/authored/f050-r2-{1,2}.md | +new | authored sources, sha256-verified |
+ 
+-### 983709f chore(f050): claim F050 — state reset
+-| Path | +/- | Reason |
+-|---|---|---|
+-| docs/roadmap/STATUS.md | +1/-1 | `- [ ] F050` → `- [~] F050`, one line, nothing else |
+-| .agent/live_review.md · plan.md | +66/-32 | authored f050-r1-1 / f050-r1-2 applied by copy |
+-| .agent/authored/f050-r1-{1,2}.md | +new | authored sources, sha256-verified |
+-
+-### 34aec75 feat(f050): dag_schedule pure module + table tests (T001)
+-| Path | +/- | Reason |
+-|---|---|---|
+-| packages/orchestration/dag_schedule.py | +185 | pure `ready_set` / `blocked_downstream` / `build_graph`; no I/O, clock, randomness or threading |
+-| tests/orchestration/test_dag_schedule.py | +300 | 34 table tests: diamond, chain, islands, legacy-linear, mixed, single-task, transitivity, determinism |
+-
+-485 lines — under the 500 cap.
+-
+-### cc79dcb feat(f050): DAG ready-set executor integration + diamond fixture (T002)
+-| Path | +/- | Reason |
+-|---|---|---|
+-| packages/orchestration/long_run_executor.py | +118/-… | DAG `ready_tasks(…, blocked_ids=)`, `skipped_blocked_tasks`, in-run `blocked_ids`, recompute after every task end, `CycleRecord.skipped_blocked_task_ids`, checkpoint intent skips blocked tasks |
+-| packages/orchestration/task_runner.py | +26/-… | additive `task_id=None` on `run_next_task` / `_find_next_pending` — DEVIATION, see below |
+-| tests/orchestration/test_long_run_executor.py | +283/-… | diamond fixture + 13 F050 tests + linear-regression class; one pre-F050 helper assertion updated |
+-
+-402 lines — under the cap.
+-
+-## External actions
+-`gh pr merge 162 --merge --delete-branch` (exit 0); 4 pushes; `gh pr create` →
+-**PR #163**. NOT merged. No worktree.
+-
+-## Verification — raw
+-- Open PR Gate: `gh pr list …` → exactly one, `{"baseRefName":"main","headRefName":"feature/r0154-closure-ordering","isDraft":false,"number":162}`.
+-  Merged exit 0; `git checkout main && git pull --ff-only` → "Already up to date."
+-- `python3 -m pytest tests/docs/ -q` → exit **0**, `292 passed in 0.19s`.
+-- `python3 -m pytest tests/cli/test_golden_path.py -q` → exit **0**, `42 passed in 14.98s` (Slice 1) and `42 passed in 14.88s` (Slice 3).
+-- `python3 -m pytest tests/orchestration/test_dag_schedule.py -q` → exit **0**, `34 passed in 0.12s`.
+-- Slice-3 gate, `python3 -m pytest tests/orchestration/test_dag_schedule.py tests/orchestration/test_long_run_executor.py tests/orchestration/test_queue_executor_binding.py tests/orchestration/test_overnight_executor.py -q`
+-  → exit **0**, `144 passed in 0.54s`.
+-- Blast-radius runs for the two files outside the declared list:
+-  `python3 -m pytest tests/orchestration/ -q` → exit **0**, `8672 passed, 7 skipped in 598.74s`.
+-  `python3 -m pytest tests/test_task_runner.py tests/orchestration/test_resume_kill.py tests/orchestration/test_checkpoints.py tests/orchestration/test_resume_cli.py tests/orchestration/test_memory_execution.py tests/test_verifier.py -q`
+-  → exit **0**, `161 passed in 1.35s`.
+-- No threading: `git diff | grep -E '^\+.*(threading|Thread|concurrent\.futures|multiprocessing|asyncio)'` → no match.
++No production or test code in this round.
+ 
+ ## Authored-text proofs
+-On-disk `sha256sum` matched each BEGIN marker BEFORE any apply; applied by
+-copy; `cmp` authored vs target exit **0** for all three.
++Both matched their BEGIN markers on first save, BEFORE any apply:
+ 
+-    800c9f15bf69fd222cfc6e13b1b51423580e000dcabf15e5516862104f7ebffb  .agent/authored/r0154-r2-1.md
+-    373c67edd96338b630eaedc7ab3c60a573712e9b24facc8c2809a20a4c5d1569  .agent/authored/f050-r1-1.md
+-    d019d7b347cb92468562c12acb5342cc585d627293aa8d1f5addd741bef744c7  .agent/authored/f050-r1-2.md
++    a46f0d067d7438cd4ef174e93a2248228069b9f00f954155a9007dcd5b932716  .agent/authored/f050-r2-1.md
++    6b727bc08b80b3894720a43c11fbf7377fce46b82688ca4e8166437cbad42406  .agent/authored/f050-r2-2.md
+ 
+-No `## Verdicts` written for F050 — `.agent/live_review.md` still reads
+-`(pending R1)`.
++- `cmp .agent/authored/f050-r2-1.md .agent/live_review.md` → exit **0**.
++- Append proof: `tail -c $(wc -c < f050-r2-2.md) docs/roadmap/features/T1_F050.md | cmp - f050-r2-2.md`
++  → exit **0**. Feature file 3114 → 4576 bytes; diff is a pure 26-line append.
+ 
+-## STATUS grep proofs
+-`grep -cF -- '- [~] F050 — DAG scheduling'` = **1**;
+-`grep -cF -- '- [ ] F050 — DAG scheduling'` = **0**. One-line diff confirmed.
++## Slice 0 gates
++- `python3 -m pytest tests/docs/ -q` → exit **0**, `292 passed in 0.19s`.
++- `python3 -m pytest tests/cli/test_golden_path.py -q` → exit **0**, `42 passed in 15.06s`.
++
++## INTEGRATION GATE — raw evidence (verdict is the reviewer's)
++
++### Step 1 — branch run
++    CMD:  python3 -m pytest -n auto -q
++    CWD:  /home/decodeux/Repos/remedy
++    HEAD: f6f6faae29290aaf7b269922dce9a98e295f566e
++    EXIT: 0
++    WALL_SECONDS=164.82
++    tail: 14343 passed, 19 skipped in 164.39s (0:02:44)
++
++`grep '^FAILED' | sort > branch_failed.txt` → **0 lines**.
++
++### Step 2 — base run (throwaway worktree at the merge base)
++    CMD:  python3 -m pytest -n auto -q
++    CWD:  <scratchpad>/gate_base_wt
++    HEAD: c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8
++    EXIT: 1
++    WALL_SECONDS=201.50
++    tail: 20 failed, 14269 passed, 25 skipped in 201.06s (0:03:21)
++
++`base_failed.txt` → **20 lines**: 2 × `tests/cli/test_self_dogfood_execution_cli.py`,
++1 × `test_test_runner.py::TestVitestFrontendTestFoundation::test_vitest_passes`,
++1 × `test_dashboard_contract.py::TestJobSummaryCommandContract::test_typescript_compiles`,
++16 × `tests/ui_server/test_live_state.py::TestUIServerIntegration::*`.
++
++Collection delta (branch 14362 vs base 14314 selected) = the 48 tests this
++feature added — consistent, nothing silently dropped.
++
++### Step 3 — compare
++- `comm -13 base_failed.txt branch_failed.txt` (**branch-only failures**) → **EMPTY, 0 lines**.
++- `comm -23 base_failed.txt branch_failed.txt` → all **20** base ids.
++
++### Step 4 — attribution
++**Zero branch-only failure ids, so no serial re-run attribution was required**
++(gate step 4 applies per branch-only id). Nothing to classify, no blocker.
++
++The 20 `comm -23` ids are NOT fixes by this branch, and reporting them as such
++would be false. All 20 are artifacts of a fresh `git worktree`, which checks out
++tracked files only and therefore lacks install/build outputs:
++- `apps/ui/node_modules` — **0 entries** in the worktree vs **205** in the main
++  checkout; root `node_modules` absent entirely. Failure text:
++  `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vitest'`, and tsc's
++  "Use yarn to avoid accidentally running code from un-installed packages".
++- `apps/ui/dist` — present in the main checkout, absent in the worktree; the
++  `TestUIServerIntegration` failures are all `_start_server()` failing.
++- The 2 dogfood ids assert on local `.data/` state (`'blocked'` vs
++  `'awaiting_external_candidate'`, `0 == 1` attempts) that a fresh tree has none of.
++
++Diagnostic re-run of those exact 20 ids at the base commit, serially, with the
++root `node_modules` symlinked in: still `20 failed in 82.24s` — the missing piece
++is the per-app install and build, not the base code. Scope proof that none of
++this touches the feature: `git diff --name-only c0e2bd1..HEAD | grep -iE
++'apps/ui|\.tsx?$|package(-lock)?\.json|vitest|tsconfig|ui_server|dogfood|test_runner'`
++→ **no match**. The same 20 ids pass on the branch in the main checkout (branch
++run, 0 failures), which is the environment difference stated plainly.
++
++### Worktree removal proof
++    $ git worktree list          # after remove --force + prune
++    /home/decodeux/Repos/remedy  f6f6faa [feature/f050-dag-scheduling]
++Worktree directory confirmed gone. The `node_modules` symlink added during
++diagnosis was inside the throwaway worktree only, was created strictly AFTER the
++recorded base run, and died with it — `base_failed.txt` is unaffected.
++
++### Step 6 — budget
++Branch 164.82s (2:44), base 201.50s (3:21). Both under the ~5 min threshold; no
++perf pass flagged.
+ 
+ ## Deviations & assumptions
+-- **`task_runner.py` touched (outside the declared Change list).** The feature
+-  is unreachable without it: `run_next_task` selected `_find_next_pending(job)`
+-  — the first PENDING task in plan order — so the ready set could only change
+-  HOW MANY tasks ran, never WHICH. In the diamond the blocked branch's task
+-  sorts before the healthy branch's, so the acceptance criterion was
+-  unsatisfiable. Fix: additive keyword `task_id=None` on `run_next_task` and
+-  `_find_next_pending` (6 lines of logic); default reproduces byte-identical
+-  behavior. Rejected alternative: duplicating `run_next_task`'s rollback
+-  semantics inside the executor. Blast radius covered by the two extra runs
+-  above.
+-- **One pre-F050 assertion updated**, `TestReadyBatch::test_linear_order_capped_at_batch_size`
+-  → `test_legacy_plan_releases_one_task_at_a_time` (+ a new
+-  `test_independent_tasks_fill_the_batch_up_to_its_cap`). It asserted the old
+-  helper contract (`ready_tasks` returns the first `batch_size` PENDING tasks),
+-  which is exactly what F050 replaces: under the legacy predecessor rule the
+-  ready set is one deep. Loop-level behavior for linear plans is unchanged —
+-  proved by `TestLinearPlansAreUnchanged` and by
+-  `test_batch_larger_than_remaining_tasks_is_fine` passing untouched.
+-- **Per-cycle iteration cap is `limits.batch_size`, not `len(batch)`.** First
+-  attempt used `len(batch)` and regressed legacy plans to one task per cycle
+-  (caught by the existing suite, fixed before commit). The batch is a cap; the
+-  ready set is recomputed after each task end.
+-- **Step seam kept 2-arg-compatible.** The target is passed only to callables
+-  declaring `task_id` (`_step_target_argument` via `inspect.signature`), so all
+-  30 existing `task_step=` injections run unchanged.
+-- **Round-end state in a second mechanical commit** (handoff + OUTCOME flip),
+-  as accepted in R0154 R1 — it can only be written after the PR exists.
+-- `.agent/plan.md` left byte-verbatim as authored: it describes this round
+-  (T001+T002), so it is not stale. Actual progress is reported here.
++- **Extra diagnostic work beyond gate steps 1–4.** The procedure asks for
++  `comm -23` to be reported; it labels that set "failures the branch fixed",
++  which would have been a false claim here. I diagnosed the cause instead of
++  reporting the label. No extra commits, no code touched.
++- **Observation for the reviewer, not a finding:** a fresh worktree is not a
++  like-for-like baseline for any test that shells out to the JS toolchain or
++  reads local `.data/`. Every such test lands in `comm -23` on every gate run
++  and can mask a genuine base failure in the same files. Whether
++  `docs/agents/integration_gate.md` should require installing/building in the
++  base worktree, or deselecting environment-coupled ids, is the reviewer's call.
++- Round-end state in a second mechanical commit (handoff + OUTCOME flip), as
++  accepted in R0154 R1.
++- `.agent/plan.md` untouched: still byte-verbatim as authored, and its
++  "integration gate, then closure" next-step line describes exactly this round.
+ 
+ ## Item status
+ | Item | Status | Reason |
+ |---|---|---|
+ | 1 last_block guard | done | flip to `executed` in the round-end commit |
+-| 2 verdict text + commit | done | sha256 + cmp 0 |
+-| 3 Open PR Gate (#162) | done | merged, main fast-forwarded |
+-| 4 branch feature/f050-dag-scheduling | done | |
+-| 5 f050 authored texts + apply | done | 2 × sha256 match, 2 × cmp 0 |
+-| 6 STATUS.md one-line claim | done | grep 1 / 0 |
+-| 7 Slice 1 gate + commit | done | 292 / 42, both exit 0 |
+-| 8 dag_schedule.py (T001) | done | pure; 185 lines |
+-| 9 test_dag_schedule.py | done | 34 tests, all 8 named shapes covered |
+-| 10 Slice 2 gate + commit | done | exit 0 |
+-| 11 executor integration | deviated | needed `task_runner.py` too — see Deviations |
+-| 12 T002 tests | done | diamond, recomputation (behavioral + counting stub), determinism, linear regression |
+-| 13 Slice 3 gate + canary | done | 144 / 42, both exit 0 |
+-| 14 PR, not merged | done | #163 |
+-| 15 handback | done | this file |
++| 2 f050-r2-1 → live_review.md | done | sha256 match, cmp 0 |
++| 3 f050-r2-2 → T1_F050.md append | done | sha256 match, tail cmp 0 |
++| 4 Slice 0 gate + commit | done | 292 / 42, both exit 0 |
++| 5 gate steps 1–4 | done | 0 branch-only failures; worktree removed + pruned |
++| 6 wall-clock note | done | 2:44 / 3:21, under threshold |
++| 7 handback | done | this file |
+ 
+ ## Next
+-Reviewer R1 review of PR #163 → writes `## Verdicts` in `.agent/live_review.md`.
+-Open questions for the reviewer: (a) accept the `task_runner.py` deviation;
+-(b) accept the updated pre-F050 helper assertion. Then per the plan: the
+-integration-gate round, then closure per STATUS_closure_protocol.md v4 — own
+-rounds, never bundled.
++Reviewer issues the **integration-gate verdict** on this evidence. Open
++questions: (a) accept the `comm -23` set as worktree-environment artifacts
++rather than branch fixes; (b) whether the integration_gate.md baseline
++observation above deserves a finding. On PASS: closure per
++docs/roadmap/STATUS_closure_protocol.md v4 — its own round, and PR #163 merges
++at the next round's Open PR Gate.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index 4582ba9..7e6c35a 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,4 +1,4 @@
+-OUTCOME: pending
++OUTCOME: executed
+ ── STEP R2 — F050 verdict persist + INTEGRATION GATE ────────────────
+ Goal:        Persist the R1 PASS verdict and the feature file's Built
+              State, then run the full-suite integration gate per

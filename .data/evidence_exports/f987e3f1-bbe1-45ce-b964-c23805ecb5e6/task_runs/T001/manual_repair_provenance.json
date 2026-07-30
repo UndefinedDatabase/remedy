@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F050.md",
+  "packages/orchestration/dag_schedule.py",
+  "packages/orchestration/long_run_executor.py"
+ ],
+ "diff_sha256": "e75bb47cd1fb98e29c1dbc329245e0e19183bdb98320dca18d3ef2b0008b5fb6",
+ "job_id": "f987e3f1-bbe1-45ce-b964-c23805ecb5e6",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "e75bb47cd1fb98e29c1dbc329245e0e19183bdb98320dca18d3ef2b0008b5fb6",
+ "safe_diff_sha256": "0f6f4661c7cee97354e3beb5b24fbb9f705e0079ff7e1e5ec85b0dbffb628c61",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F050.md",
+  "packages/orchestration/dag_schedule.py",
+  "packages/orchestration/long_run_executor.py"
+ ],
+ "timestamp": "2026-07-30T12:56:48.320530+00:00",
+ "tracked_diff_sha256": "0f6f4661c7cee97354e3beb5b24fbb9f705e0079ff7e1e5ec85b0dbffb628c61",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

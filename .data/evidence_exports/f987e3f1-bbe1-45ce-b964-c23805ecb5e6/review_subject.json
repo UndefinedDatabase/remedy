@@ -1,0 +1,264 @@
+{
+ "base_commit": "c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f050-r1-1.md",
+    ".agent/authored/f050-r1-2.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "983709f9755ff790b41401f7b29b57f7647004c9",
+   "parents": [
+    "c0e2bd1b7f0f1bc8810ef240ee42804c52357cd8"
+   ],
+   "patch_sha256": "eb1c6404770e3c0e246ae25b758b50ad1d0b53308d28aebb42e32fddad1a7ea9",
+   "subject": "chore(f050): claim F050 \u2014 state reset",
+   "tree": "ae2f24b5f228299b55b49b046ecd2799aa704110"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/dag_schedule.py",
+    "tests/orchestration/test_dag_schedule.py"
+   ],
+   "commit": "34aec7516ff279e428947245b2ac45f3adaf7ded",
+   "parents": [
+    "983709f9755ff790b41401f7b29b57f7647004c9"
+   ],
+   "patch_sha256": "13f0b5e8404395913724a462d51376127124953c43de0a4684ea6875b5f78a23",
+   "subject": "feat(f050): dag_schedule pure module + table tests (T001)",
+   "tree": "cd142a0249683272af52c959544d7c741c5bfb44"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py",
+    "packages/orchestration/task_runner.py",
+    "tests/orchestration/test_long_run_executor.py"
+   ],
+   "commit": "cc79dcb033d934d1874e11052412d8beb591d019",
+   "parents": [
+    "34aec7516ff279e428947245b2ac45f3adaf7ded"
+   ],
+   "patch_sha256": "7a2adc6161891cf4cfbf5bc2ca61de629b26df6f595f0b3bcac608ccb6048139",
+   "subject": "feat(f050): DAG ready-set executor integration + diamond fixture (T002)",
+   "tree": "35c400e157158d7a90691b90cd06d467ceb14e2b"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "ac9dc6f9ae01b82b8876316dd1785cdfdea2d0a0",
+   "parents": [
+    "cc79dcb033d934d1874e11052412d8beb591d019"
+   ],
+   "patch_sha256": "8b9a2013cc53f0d37571d915b5b02150973e8787e5cdea9cb0c8582249c217f4",
+   "subject": "chore(f050): round-end state \u2014 handback + OUTCOME executed",
+   "tree": "0e35d54a7fac6f853c27cf768c4d58d7a0764b38"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f050-r2-1.md",
+    ".agent/authored/f050-r2-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    "docs/roadmap/features/T1_F050.md"
+   ],
+   "commit": "f6f6faae29290aaf7b269922dce9a98e295f566e",
+   "parents": [
+    "ac9dc6f9ae01b82b8876316dd1785cdfdea2d0a0"
+   ],
+   "patch_sha256": "b80322f36f94e84fb8619ee0bb400cb074affde8483bf47325999900cf8fbea7",
+   "subject": "chore(f050): persist R1 verdict; record Built State",
+   "tree": "61c67a813bb92bfd75dc016e2b6323b38c7d3f77"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "ed70dfb70a91198cb60baecc6a05d183b4d19a4f",
+   "parents": [
+    "f6f6faae29290aaf7b269922dce9a98e295f566e"
+   ],
+   "patch_sha256": "a33943deba4fd2bda976e2ab6ec35ea7938a310cec2d9bc8f5dd90bc2380a697",
+   "subject": "chore(f050): round-end state \u2014 integration-gate handback + OUTCOME executed",
+   "tree": "5529b9314ef1dcba010eea894d15e2a6a1e8e05f"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f050-r3-1.md",
+    ".agent/authored/f050-r3-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "2fd7d6b949b98022b977aa48c0191bbf0efceec1",
+   "parents": [
+    "ed70dfb70a91198cb60baecc6a05d183b4d19a4f"
+   ],
+   "patch_sha256": "9a733ebe7aa0562afad04aee505d9178b1f9210db7152ba7e45118e1298b709d",
+   "subject": "chore(f050): persist the R2 integration-gate verdict",
+   "tree": "ce1f03cc04f3c9fd147b8f3dcbbf327e15570479"
+  }
+ ],
+ "files": [
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "373c67edd96338b630eaedc7ab3c60a573712e9b24facc8c2809a20a4c5d1569",
+   "kind": "regular",
+   "path": ".agent/authored/f050-r1-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "d019d7b347cb92468562c12acb5342cc585d627293aa8d1f5addd741bef744c7",
+   "kind": "regular",
+   "path": ".agent/authored/f050-r1-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "a46f0d067d7438cd4ef174e93a2248228069b9f00f954155a9007dcd5b932716",
+   "kind": "regular",
+   "path": ".agent/authored/f050-r2-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "6b727bc08b80b3894720a43c11fbf7377fce46b82688ca4e8166437cbad42406",
+   "kind": "regular",
+   "path": ".agent/authored/f050-r2-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "20b646c3e027a74cd888d8942434ff91a6bc6cddb6e3b992780ccca8af1385c3",
+   "kind": "regular",
+   "path": ".agent/authored/f050-r3-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "313f77c000b15bfdd21be56cc42fee2648feca017800b83a69f0684ae76df1e8",
+   "kind": "regular",
+   "path": ".agent/authored/f050-r3-2.md",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "fcc6c68cdddc40d139f0f555be8d3717dff4c742b935aeaaa1f67b46b476443f",
+   "current_mode": "100644",
+   "current_sha256": "c48326a31138cac9ae4caad63c938c6745cb39e649ca7e3b4afccb2a9ddd6ac6",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1ded3eedc97c534695c84c54f3182162a4c2c32dfb5236c5552e7d13c887b812",
+   "current_mode": "100644",
+   "current_sha256": "d35d49b2b1d0c0f61fb6b3a6c168e27db49af74761b8d2f6de63cbe3c04e24c7",
+   "kind": "regular",
+   "path": ".agent/last_block.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "800c9f15bf69fd222cfc6e13b1b51423580e000dcabf15e5516862104f7ebffb",
+   "current_mode": "100644",
+   "current_sha256": "20b646c3e027a74cd888d8942434ff91a6bc6cddb6e3b992780ccca8af1385c3",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "f87463160259b1b1cfedf89a593fcf10eb37502827d4892ab70a31cffaeb7046",
+   "current_mode": "100644",
+   "current_sha256": "d019d7b347cb92468562c12acb5342cc585d627293aa8d1f5addd741bef744c7",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "de8f406439f9bf5a65f4c26cd20f4486e71580ec429b2b61c76c4f95b0a5fe1d",
+   "current_mode": "100644",
+   "current_sha256": "52638eb5b2e193b74c660cf251f03529dafdff9e6705128bf2f240d642dc3bee",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "77ecac0b8ff8c91f4af6706f651caaba292745560851715b912d4ccac114f2be",
+   "current_mode": "100644",
+   "current_sha256": "40479e1b18e08427fcce833e69ba1e113a9fab38c0e76ba4d72833dafca691a4",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F050.md",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "b45767368fd746b676c090784cdf65567c94ac4343fc6f7e3c7325d0d37f53c3",
+   "kind": "regular",
+   "path": "packages/orchestration/dag_schedule.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "6869e47fe6f42b539081ad15bdd52cc0efb73374d9e2583c2fd14885cbe13261",
+   "current_mode": "100644",
+   "current_sha256": "813347e7356a021b79cb0c7cede4e9aa8f14cc9e1f7897701ad5e4b394af8bea",
+   "kind": "regular",
+   "path": "packages/orchestration/long_run_executor.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "0918c8f15e1408229dd580f443f5133a603bba47068594dd5e7becc1a3029817",
+   "current_mode": "100644",
+   "current_sha256": "561adbd36aa09e538bfa52a52b88debf8108fc827154814979669e862e3fd99d",
+   "kind": "regular",
+   "path": "packages/orchestration/task_runner.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "04231115fa7273f1e9ba46f99c30914f5ec31656889dafbe1a9a64c479e7ee0f",
+   "kind": "regular",
+   "path": "tests/orchestration/test_dag_schedule.py",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "7f3774435727db7528dfaa48511ff0a158466bee7961e7671d957abd929b8ced",
+   "current_mode": "100644",
+   "current_sha256": "00eec0fc548f19ddbb8a46c90b667d295d635f62f9b8ab1f20ddec0000bbbc79",
+   "kind": "regular",
+   "path": "tests/orchestration/test_long_run_executor.py",
+   "status": "modified"
+  }
+ ],
+ "head_commit": "2fd7d6b949b98022b977aa48c0191bbf0efceec1",
+ "subject_v": 1
+}
