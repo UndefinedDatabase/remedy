@@ -253,4 +253,4 @@ and keeps the operator-facing narrative in agreement with the disk.
   Done: R-0156 (commit <SHA_R0156> — test + red-proof transcript).
 --- END paydown0730-r1-8 ---
 
-OUTCOME: pending
+OUTCOME: executed
