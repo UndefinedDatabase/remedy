@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R3 — F051 CLOSURE (docs/roadmap/STATUS_closure_protocol.md v4) ──
 Block id: f051-r3
 Goal:        Close F051: persist the R2 verdict, run the closure
