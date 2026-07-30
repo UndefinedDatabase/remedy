@@ -139,8 +139,15 @@ LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
 VERIFY_NOT_RUN = "not_run"
 VERIFY_PASSED = "passed"
 VERIFY_FAILED = "failed"
+#: F052: the verify step itself could not run (command missing, bad config), and
+#: the outcome where nothing said which.  These are NOT test failures — they deny
+#: green like any failure, but they say something different about the run, and
+#: F052's self-healing never spends a repair round on them.
+VERIFY_CONFIG_ERROR = "config"
+VERIFY_UNKNOWN_ERROR = "unknown"
 #: Verify outcomes that deny the job the all_green status.
-_VERIFY_DENIES_GREEN = frozenset({VERIFY_FAILED, "timeout"})
+_VERIFY_DENIES_GREEN = frozenset(
+    {VERIFY_FAILED, "timeout", VERIFY_CONFIG_ERROR, VERIFY_UNKNOWN_ERROR})
 
 #: Rollout rule (F046): one cycle until the F075 milestone gate flips it.
 DEFAULT_MAX_CYCLES = 1
@@ -196,8 +203,28 @@ class CycleLimits:
 ProviderCall = Callable[[TaskExecutionContext], BuilderOutput]
 #: (job, provider_call) -> TaskAttempt.  Executes exactly ONE ready task.
 TaskStep = Callable[[Job, ProviderCall], "TaskAttempt"]
-#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings.
-VerifyStep = Callable[[Job, int, str | None], str]
+#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings, or a
+#: :class:`VerifyOutcome` when the step can also report WHAT failed (F052).
+#: Returning a bare string is the pre-F052 contract and stays supported.
+VerifyStep = Callable[[Job, int, str | None], "str | VerifyOutcome"]
+
+
+@dataclass(frozen=True)
+class VerifyOutcome:
+    """What a verify step observed, for steps that can say more than pass/fail.
+
+    A bare ``"failed"`` says a cycle is broken but not what broke, which is
+    exactly what a later reader — or a repair round — needs.  Steps written
+    before F052 keep returning the string; the loop normalizes both shapes
+    through :func:`as_verify_outcome`, so no existing caller changes.
+    """
+
+    result: str
+    #: The tail of the failure text, already bounded by the step that owns it.
+    output: str = ""
+    failing_test_ids: tuple[str, ...] = ()
+    #: Files this cycle changed — the hint a later reader starts from.
+    changed_files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -260,6 +287,10 @@ class CycleRecord:
     awaiting_downstream_task_ids: tuple[str, ...] = ()
     #: F051: the decisions this cycle raised, in the order they were raised.
     open_decision_ids: tuple[str, ...] = ()
+    #: F052: the failure class of a verify that did not pass, from the EXISTING
+    #: classifier (``failure_postmortem.classify``) rather than a second
+    #: vocabulary.  Empty when the verify passed or never ran.
+    verify_failure_class: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -279,6 +310,7 @@ class CycleRecord:
             "awaiting_task_ids": list(self.awaiting_task_ids),
             "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
             "open_decision_ids": list(self.open_decision_ids),
+            "verify_failure_class": self.verify_failure_class,
         }
 
 
@@ -881,6 +913,58 @@ def _emit(log: Any, event: str, **meta: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
+# What a failed verify actually means (F052)
+# ---------------------------------------------------------------------------
+
+
+def as_verify_outcome(value: str | VerifyOutcome) -> VerifyOutcome:
+    """Normalize whatever a verify step returned.
+
+    Every verify step written before F052 returns a bare VERIFY_* string, and
+    they must all keep working untouched — so the richer shape is accepted, not
+    required.
+    """
+    if isinstance(value, VerifyOutcome):
+        return value
+    return VerifyOutcome(result=str(value))
+
+
+def cycle_verify_failure_class(verify_result: str) -> str:
+    """Classify a non-passing verify through the EXISTING classifier (F010).
+
+    No second vocabulary and no second enum: a failed test is the classifier's
+    ``test_failed``, a verify step that could not run at all is its ``config``,
+    and anything else is honestly ``unknown``.  A passing or never-run verify has
+    no failure class — an empty string, not a guess.
+    """
+    from packages.orchestration.failure_postmortem import FailureSignals, classify
+
+    if verify_result in (VERIFY_PASSED, VERIFY_NOT_RUN, ""):
+        return ""
+    if verify_result == VERIFY_FAILED:
+        signals = FailureSignals(terminal_status="test_failed")
+    elif verify_result == VERIFY_CONFIG_ERROR:
+        signals = FailureSignals(error_class="config")
+    else:
+        signals = FailureSignals(error_text=verify_result)
+    return classify(signals).failure_class.value
+
+
+def render_cycle_summary_line(record: CycleRecord) -> str:
+    """One human-readable line per cycle, for status and report renderings.
+
+    A cycle that did not verify says WHY in the same breath: "verify=failed"
+    alone sends a reader to the logs, "failure_class=config" sends them to the
+    harness instead of to a test they were never going to fix.
+    """
+    line = (f"cycle {record.cycle_index}: verify={record.verify_result} "
+            f"tasks={record.tasks_completed}/{record.tasks_attempted}")
+    if record.verify_failure_class:
+        line += f" | failure_class={record.verify_failure_class}"
+    return line
+
+
+# ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
 
@@ -1080,7 +1164,9 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
                             else target)
             break
 
-        last_verify = verify_step(job, cycle_index, limits.verify_command)
+        verify_outcome = as_verify_outcome(
+            verify_step(job, cycle_index, limits.verify_command))
+        last_verify = verify_outcome.result
         if last_verify == VERIFY_FAILED:
             errors.append("verify_failed")
 
@@ -1109,6 +1195,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
                 str(task_id)
                 for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
             open_decision_ids=tuple(raised_decision_ids),
+            verify_failure_class=cycle_verify_failure_class(last_verify),
         )
         cycles.append(record)
 
