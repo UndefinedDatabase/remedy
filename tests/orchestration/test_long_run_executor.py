@@ -448,10 +448,31 @@ class TestVerifyStep:
 
 
 class TestReadyBatch:
-    def test_linear_order_capped_at_batch_size(self):
+    def test_legacy_plan_releases_one_task_at_a_time(self):
+        """F050 replaced the linear batch with the DAG ready set.
+
+        ``make_job`` builds tasks without Flight Plan metadata, so the legacy
+        rule applies: each task depends on its predecessor.  The ready set is
+        therefore one task deep until that predecessor completes — where this
+        used to return the first ``batch_size`` PENDING tasks.  Loop behavior
+        for such plans is unchanged (see the linear-regression tests below and
+        ``test_batch_larger_than_remaining_tasks_is_fine``): the batch is a cap
+        on how many tasks a cycle runs, and the set is recomputed after each.
+        """
         job = make_job(4)
-        assert len(ready_tasks(job, 2)) == 2
+        assert ready_tasks(job, 2) == [job.tasks[0].id]
+
+        job.tasks[0].status = RunState.COMPLETED
+        assert ready_tasks(job, 2) == [job.tasks[1].id]
+
+    def test_independent_tasks_fill_the_batch_up_to_its_cap(self):
+        job = make_job(4)
+        # Flight metadata declaring no dependencies: all four are ready, and
+        # the cap is what limits the batch.
+        for index, task in enumerate(job.tasks):
+            task.inputs["flight"] = {"planned_id": f"T{index}", "depends_on": []}
         assert ready_tasks(job, 2) == [job.tasks[0].id, job.tasks[1].id]
+        assert len(ready_tasks(job, 10)) == 4
 
     def test_batch_larger_than_remaining_tasks_is_fine(self, control_root):
         job = make_job(2)
@@ -855,3 +876,261 @@ class TestJobRunCommand:
             reset_config()
         err = capsys.readouterr().err
         assert "cycles.max_cycles 8 capped to 1" in err
+
+
+# ---------------------------------------------------------------------------
+# F050 — DAG scheduling in the loop (T002)
+# ---------------------------------------------------------------------------
+
+
+def make_diamond_job(name: str = "diamond-job") -> Job:
+    """A -> (B, C) -> D, expressed the way ``map_flight_plan_to_tasks`` does.
+
+    Plan order puts B before C, so a scheduler that just took the first PENDING
+    task would pick the blocked branch and never reach C — which is exactly the
+    behavior F050 replaces.
+    """
+    def task(planned_id: str, *depends_on: str) -> Task:
+        return Task(
+            description=f"task {planned_id}",
+            inputs={
+                "task_type": "documentation",
+                "flight": {"planned_id": planned_id,
+                           "title": planned_id,
+                           "depends_on": list(depends_on)},
+            },
+        )
+
+    return Job(
+        name=name,
+        user_prompt="build the thing",
+        tasks=[task("A"), task("B", "A"), task("C", "A"), task("D", "B", "C")],
+        state=RunState.PLANNED,
+    )
+
+
+def planned_id_of(job: Job, task_id) -> str:
+    for task in job.tasks:
+        if str(task.id) == str(task_id):
+            return task.inputs["flight"]["planned_id"]
+    raise AssertionError(f"no task {task_id} in this job")
+
+
+def task_by_planned_id(job: Job, planned_id: str) -> Task:
+    for task in job.tasks:
+        if task.inputs.get("flight", {}).get("planned_id") == planned_id:
+            return task
+    raise AssertionError(f"no task {planned_id} in this job")
+
+
+class SteeredStep:
+    """A step that runs the task the ready set selected, failing named ones.
+
+    Declaring ``task_id`` is what makes the conductor offer the target; a step
+    without it keeps the pre-F050 "first PENDING" behavior.  A forced failure
+    mirrors the real task runner: the task is rolled back to PENDING.
+    """
+
+    def __init__(self, *fail_planned_ids: str) -> None:
+        self.fail = set(fail_planned_ids)
+        self.executed: list[str] = []
+
+    def __call__(self, job: Job, provider_call, task_id=None) -> TaskAttempt:
+        if task_id is not None:
+            task = next((t for t in job.tasks if t.id == task_id), None)
+        else:
+            task = next((t for t in job.tasks
+                         if t.status == RunState.PENDING), None)
+        if task is None:
+            return TaskAttempt()
+
+        planned_id = task.inputs["flight"]["planned_id"]
+        provider_call(
+            TaskExecutionContext(
+                job_id=job.id,
+                job_prompt=job.user_prompt,
+                task_id=task.id,
+                task_type=task.inputs.get("task_type", "unknown"),
+                task_description=task.description,
+            )
+        )
+        self.executed.append(planned_id)
+        if planned_id in self.fail:
+            task.status = RunState.PENDING          # the runner's rollback
+            return TaskAttempt(task_id=task.id, executed=True, verified=False,
+                               error=f"verification_failed: {planned_id}")
+        task.status = RunState.COMPLETED
+        if all(t.status == RunState.COMPLETED for t in job.tasks):
+            job.state = RunState.COMPLETED
+        return TaskAttempt(task_id=task.id, executed=True, verified=True)
+
+
+def run_diamond(control_root: Path, *fail: str, batch_size: int = 1):
+    job = make_diamond_job()
+    step = SteeredStep(*fail)
+    result = run_cycles(
+        job, CycleLimits(max_cycles=10, batch_size=batch_size), FakeProvider(),
+        task_step=step, verify=passing_verify, clock=FakeClock(),
+        save=no_save, control_root_path=control_root,
+    )
+    return job, step, result
+
+
+class TestDagScheduling:
+    def test_both_branches_open_once_the_root_completes(self, control_root):
+        job, step, result = run_diamond(control_root, batch_size=1)
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        # A first, then the two branches in plan order, then the join.
+        assert step.executed == ["A", "B", "C", "D"]
+        assert all(t.status == RunState.COMPLETED for t in job.tasks)
+
+    def test_a_blocked_branch_does_not_block_the_independent_one(self, control_root):
+        job, step, result = run_diamond(control_root, "B", batch_size=1)
+
+        # B failed; C is independent of B and must still complete.
+        assert step.executed == ["A", "B", "C"]
+        assert task_by_planned_id(job, "C").status == RunState.COMPLETED
+        # D depends on B, so it is never attempted at all.
+        assert "D" not in step.executed
+        assert task_by_planned_id(job, "D").status == RunState.PENDING
+        assert result.terminal_status == TERMINAL_BLOCKED
+
+    def test_the_skipped_downstream_is_named_in_the_cycle_evidence(self, control_root):
+        job, _, result = run_diamond(control_root, "B", batch_size=1)
+
+        last = result.cycles[-1]
+        skipped = [planned_id_of(job, t) for t in last.skipped_blocked_task_ids]
+        # Exactly the join — not C, which ran, and not B, which is blocked for
+        # its own reason rather than skipped.
+        assert skipped == ["D"]
+        assert last.to_json()["skipped_blocked_task_ids"] == list(
+            last.skipped_blocked_task_ids)
+
+    def test_the_terminal_reason_says_nothing_was_ready(self, control_root):
+        _, _, result = run_diamond(control_root, "B", batch_size=1)
+        assert result.terminal_status == TERMINAL_BLOCKED
+        assert "no_ready_tasks" in result.stop_reason
+
+    def test_a_blocked_leaf_blocks_nothing(self, control_root):
+        job, step, result = run_diamond(control_root, "D", batch_size=1)
+        # Everything upstream of the failed join still completes.
+        assert step.executed == ["A", "B", "C", "D"]
+        for planned_id in ("A", "B", "C"):
+            assert task_by_planned_id(job, planned_id).status == RunState.COMPLETED
+        assert result.cycles[-1].skipped_blocked_task_ids == ()
+        assert result.terminal_status == TERMINAL_BLOCKED
+
+    def test_the_ready_set_is_recomputed_after_every_task_end(self, control_root):
+        # batch_size 4 with a diamond: only A is ready when the cycle starts.
+        # B, C and D can only run in this same cycle if the ready set is
+        # recomputed after each task end rather than once per batch.
+        job, step, result = run_diamond(control_root, batch_size=4)
+        assert result.cycles_run == 1
+        assert step.executed == ["A", "B", "C", "D"]
+        assert result.cycles[0].tasks_attempted == 4
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+
+    def test_recomputation_is_visible_to_a_counting_stub(self, control_root,
+                                                         monkeypatch):
+        calls: list[int] = []
+        real_ready_tasks = lre.ready_tasks
+
+        def counting_ready_tasks(job, batch_size, **kwargs):
+            calls.append(len(calls))
+            return real_ready_tasks(job, batch_size, **kwargs)
+
+        monkeypatch.setattr(lre, "ready_tasks", counting_ready_tasks)
+        _, step, result = run_diamond(control_root, batch_size=4)
+
+        assert step.executed == ["A", "B", "C", "D"]
+        # One batch-boundary call, then one per task end inside the cycle: the
+        # selection point is consulted more often than once per cycle.
+        assert len(calls) > result.cycles_run
+
+    def test_two_runs_of_the_same_fixture_schedule_identically(self, control_root):
+        first_job, first_step, first = run_diamond(control_root, "B", batch_size=1)
+        second_job, second_step, second = run_diamond(control_root, "B", batch_size=1)
+
+        assert first_step.executed == second_step.executed
+        assert first.terminal_status == second.terminal_status
+        assert first.cycles_run == second.cycles_run
+        as_planned = lambda job, record: [                      # noqa: E731
+            planned_id_of(job, t) for t in record.executed_task_ids]
+        assert [as_planned(first_job, r) for r in first.cycles] == \
+               [as_planned(second_job, r) for r in second.cycles]
+        assert [[planned_id_of(first_job, t) for t in r.skipped_blocked_task_ids]
+                for r in first.cycles] == \
+               [[planned_id_of(second_job, t) for t in r.skipped_blocked_task_ids]
+                for r in second.cycles]
+
+    def test_a_step_without_a_target_parameter_still_works(self, control_root):
+        # The pre-F050 seam: ``completing_step`` takes (job, provider_call) and
+        # picks the first PENDING task itself.  It must keep running unchanged.
+        job = make_diamond_job()
+        result = run_cycles(
+            job, CycleLimits(max_cycles=10, batch_size=1), FakeProvider(),
+            task_step=completing_step, verify=passing_verify,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        assert all(t.status == RunState.COMPLETED for t in job.tasks)
+
+
+class TestLinearPlansAreUnchanged:
+    def test_a_legacy_plan_runs_one_task_per_cycle_at_batch_size_one(
+            self, control_root):
+        job = make_job(3)
+        result = run_cycles(
+            job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
+            task_step=completing_step, verify=passing_verify,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        assert result.cycles_run == 3
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        assert [r.tasks_attempted for r in result.cycles] == [1, 1, 1]
+
+    def test_a_legacy_plan_fills_one_cycle_when_the_batch_allows(self, control_root):
+        job = make_job(3)
+        result = run_cycles(
+            job, CycleLimits(max_cycles=5, batch_size=3), FakeProvider(),
+            task_step=completing_step, verify=passing_verify,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        assert result.cycles_run == 1
+        assert result.cycles[0].tasks_attempted == 3
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+
+    def test_a_legacy_plan_never_reports_a_skipped_downstream(self, control_root):
+        job = make_job(3)
+        result = run_cycles(
+            job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
+            task_step=completing_step, verify=passing_verify,
+            clock=FakeClock(), save=no_save, control_root_path=control_root,
+        )
+        assert all(r.skipped_blocked_task_ids == () for r in result.cycles)
+
+    def test_a_failed_legacy_task_blocks_its_successors(self, control_root):
+        job = make_job(3)
+        failing_ids = {job.tasks[1].id}
+
+        def step(job_: Job, provider_call) -> TaskAttempt:
+            task = next((t for t in job_.tasks
+                         if t.status == RunState.PENDING), None)
+            if task is None:
+                return TaskAttempt()
+            if task.id in failing_ids:
+                return TaskAttempt(task_id=task.id, executed=True,
+                                   verified=False, error="boom")
+            task.status = RunState.COMPLETED
+            return TaskAttempt(task_id=task.id, executed=True, verified=True)
+
+        result = run_cycles(
+            job, CycleLimits(max_cycles=5, batch_size=1), FakeProvider(),
+            task_step=step, verify=passing_verify, clock=FakeClock(),
+            save=no_save, control_root_path=control_root,
+        )
+        # Task 2 failed, so task 3 (its successor in the legacy chain) is
+        # skipped-blocked rather than run out of order.
+        assert result.terminal_status == TERMINAL_BLOCKED
+        assert result.cycles[-1].skipped_blocked_task_ids == (str(job.tasks[2].id),)
+        assert job.tasks[2].status == RunState.PENDING

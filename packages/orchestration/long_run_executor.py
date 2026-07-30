@@ -16,8 +16,15 @@ It sequences parts that already exist and reimplements none of them:
   * persistence      ``storage.save_job`` — no new persistence path
   * job status       the ``pingpong_job.JOB_*`` constants
 
-Readiness is LINEAR: the ready set is the PENDING tasks in ``job.tasks``
-order.  DAG readiness is a later feature and is deliberately absent here.
+Readiness is TOPOLOGICAL (F050): the ready set is the PENDING tasks whose
+Flight Plan dependencies are all COMPLETED, in plan order — computed by the
+pure ``dag_schedule`` module.  Plans without dependency metadata keep behaving
+exactly linearly, because the rule there is "each task depends on its
+predecessor".  A task whose attempt executed and failed blocks its own
+transitive downstream for the rest of the run and nothing else, so independent
+branches keep running; those withheld ids are named in the cycle record.
+Execution itself stays SEQUENTIAL — the ready set feeds one batch at a time
+and this module never starts a thread.
 
 Terminal statuses and how they map onto job state:
 
@@ -47,8 +54,9 @@ injected ``clock``, so a deadline is provable in a unit test.
 from __future__ import annotations
 
 import contextlib
+import inspect
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -58,6 +66,8 @@ from uuid import UUID
 from packages.core.models import Job, JobBudgets, RunState
 from packages.orchestration.budget_guard import BudgetCounters
 from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+from packages.orchestration.dag_schedule import blocked_downstream
+from packages.orchestration.dag_schedule import ready_set as dag_ready_set
 from packages.orchestration.pingpong_job import (
     JOB_BLOCKED,
     JOB_COMPLETED,
@@ -213,6 +223,10 @@ class CycleRecord:
     #: and will appear again in a later cycle, which is honest: it really did
     #: execute twice.
     executed_task_ids: tuple[str, ...] = ()
+    #: F050: ids withheld from the ready set because a task upstream of them is
+    #: blocked in this run, in plan order.  This is what lets a report say WHY
+    #: nothing happened on a branch instead of leaving a silent gap.
+    skipped_blocked_task_ids: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -227,6 +241,7 @@ class CycleRecord:
             "ended_at": self.ended_at,
             "errors": list(self.errors),
             "executed_task_ids": list(self.executed_task_ids),
+            "skipped_blocked_task_ids": list(self.skipped_blocked_task_ids),
         }
 
 
@@ -398,18 +413,23 @@ class CycleLoopResult:
 # ---------------------------------------------------------------------------
 
 
-def default_task_step(job: Job, provider_call: ProviderCall) -> TaskAttempt:
+def default_task_step(job: Job, provider_call: ProviderCall,
+                      task_id: UUID | None = None) -> TaskAttempt:
     """Run ONE ready task through the existing single-task path.
 
     run_next_task -> materialize -> verify_task_output -> finalize_task, which
     is exactly what ``remedy job run-next`` does.  Rollback on builder failure
     is ``run_next_task``'s concern; the exception is translated into a failed
     attempt so the conductor can end the cycle and record it.
+
+    *task_id* is the task the DAG ready set selected (F050).  Without it this
+    runs whatever task is first PENDING, which is what every caller before
+    F050 wanted.
     """
     from packages.orchestration.workspace import LocalWorkspaceRuntime
 
     try:
-        result = run_next_task(job, provider_call)
+        result = run_next_task(job, provider_call, task_id=task_id)
     except Exception as exc:  # noqa: BLE001 — the cycle records any failure cause
         return TaskAttempt(error=f"{type(exc).__name__}: {exc}")
 
@@ -569,14 +589,51 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
 # ---------------------------------------------------------------------------
 
 
-def ready_tasks(job: Job, batch_size: int) -> list[UUID]:
-    """The ready batch: PENDING tasks in job order, capped at batch_size.
+def ready_tasks(job: Job, batch_size: int, *,
+                blocked_ids: Collection[UUID] = ()) -> list[UUID]:
+    """The ready batch: the DAG ready set in plan order, capped at batch_size.
 
-    Linear on purpose — DAG readiness is a later feature.  A batch larger than
-    the number of remaining tasks is fine; the list is simply shorter.
+    F050: a task is ready when every dependency it declares in its Flight Plan
+    metadata is COMPLETED (``dag_schedule.ready_set``); plans without that
+    metadata keep behaving linearly, because the legacy rule there is "each
+    task depends on its predecessor".  A batch larger than the number of ready
+    tasks is fine; the list is simply shorter.
+
+    *blocked_ids* are tasks blocked for this run — an attempt executed and
+    failed.  They and their transitive dependents are withheld, so a blocked
+    branch locks only its own downstream and independent branches keep running.
     """
-    pending = [t.id for t in job.tasks if t.status == RunState.PENDING]
-    return pending[:batch_size]
+    ready = dag_ready_set(job.tasks)
+    if blocked_ids:
+        withheld = set(blocked_ids) | blocked_downstream(job.tasks, blocked_ids)
+        ready = [task_id for task_id in ready if task_id not in withheld]
+    return ready[:batch_size]
+
+
+def skipped_blocked_tasks(job: Job,
+                          blocked_ids: Collection[UUID]) -> list[UUID]:
+    """Ids withheld only because something upstream is blocked, in plan order.
+
+    This is what the cycle record names so a report can say WHY nothing
+    happened on a branch, rather than leaving a silent gap.
+    """
+    if not blocked_ids:
+        return []
+    skipped = blocked_downstream(job.tasks, blocked_ids)
+    return [task.id for task in job.tasks if task.id in skipped]
+
+
+def _step_target_argument(step: TaskStep) -> bool:
+    """True when *step* accepts the ``task_id`` the ready set selected.
+
+    The task-step seam predates F050 and its callables take ``(job,
+    provider_call)``.  Passing a third argument to those would break every
+    injected step, so the target is offered only to callables that declare it.
+    """
+    try:
+        return "task_id" in inspect.signature(step).parameters
+    except (TypeError, ValueError):  # builtins and other unintrospectables
+        return False
 
 
 def _is_green(job: Job, last_verify: str) -> bool:
@@ -657,11 +714,14 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
 
 
 def _write_cycle_checkpoint(job: Job, record: CycleRecord,
-                            limits: CycleLimits) -> None:
+                            limits: CycleLimits, *,
+                            blocked_ids: Collection[UUID] = ()) -> None:
     """Write this cycle's checkpoint (F047).  Never raises into the loop.
 
-    The next intent is derived from what the job still has PENDING at this
+    The next intent is derived from what the job still has READY at this
     moment: another cycle with a named first task, or nothing left to run.
+    A task blocked in this run is not named as the next intent — resuming into
+    a task that just failed would be a retry policy this module does not own.
     A write that fails is recorded on the job as ``checkpoint_error`` and
     logged by the checkpoint module — the run continues and the next cycle
     retries (feature-file A9).
@@ -672,7 +732,7 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
         record_cycle_checkpoint,
     )
 
-    pending = ready_tasks(job, limits.batch_size)
+    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
     next_intent: dict[str, Any] = (
         {"kind": INTENT_CYCLE,
          "cycle_index": record.cycle_index + 1,
@@ -768,6 +828,12 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
     provider_calls = 0
     cycles: list[CycleRecord] = []
     last_verify = VERIFY_NOT_RUN
+    #: F050 in-run blocked tracking.  A task failure rolls the task back to
+    #: PENDING (there is no persistent task-level FAILED), so only this loop
+    #: knows which attempts it made and lost.  Ids accumulate for the whole
+    #: run: a branch that failed stays blocked until a new run retries it.
+    blocked_ids: set[UUID] = set()
+    step_takes_target = _step_target_argument(task_step or default_task_step)
 
     def counted_provider_call(context: TaskExecutionContext) -> BuilderOutput:
         nonlocal provider_calls
@@ -793,7 +859,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             break
 
         # 2. Terminal by job shape: green, or nothing ready and not green.
-        batch = ready_tasks(job, limits.batch_size)
+        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
         if not batch:
             if _is_green(job, last_verify):
                 terminal, stop_reason = TERMINAL_ALL_GREEN, ""
@@ -817,8 +883,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
         errors: list[str] = []
         executed_ids: list[str] = []
 
-        for _ in batch:
-            attempt = step(job, counted_provider_call)
+        # The ready set is recomputed after EVERY task end (F050), so a task
+        # that completes mid-cycle can release its dependents immediately and a
+        # task that fails withholds its downstream from the rest of this cycle.
+        # The batch is a CAP on how many tasks this cycle may run, unchanged.
+        for _ in range(limits.batch_size):
+            ready_now = ready_tasks(job, limits.batch_size,
+                                    blocked_ids=blocked_ids)
+            if not ready_now:
+                break                      # nothing ready any more
+            target = ready_now[0]
+            attempt = (step(job, counted_provider_call, target)
+                       if step_takes_target else step(job, counted_provider_call))
             if not attempt.executed and not attempt.error:
                 break                      # nothing ready any more; not an attempt
             attempted += 1
@@ -834,6 +910,10 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             failed += 1
             if attempt.error:
                 errors.append(attempt.error)
+            # F050: this attempt executed and lost, so it blocks its own
+            # transitive downstream for the rest of the run — and nothing else.
+            blocked_ids.add(attempt.task_id if attempt.task_id is not None
+                            else target)
             break
 
         last_verify = verify_step(job, cycle_index, limits.verify_command)
@@ -856,6 +936,8 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             verify_command=limits.verify_command,
             errors=tuple(errors),
             executed_task_ids=tuple(executed_ids),
+            skipped_blocked_task_ids=tuple(
+                str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
         )
         cycles.append(record)
 
@@ -869,7 +951,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             except (OSError, ValueError) as exc:
                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
         if record_checkpoint:
-            _write_cycle_checkpoint(job, record, limits)
+            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids)
         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
 
     job_status = _apply_terminal(job, terminal, stop_reason)
