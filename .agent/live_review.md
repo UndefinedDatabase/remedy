@@ -13,17 +13,17 @@ approval, 2026-07-30).
   → handback.
 
 ## Findings
-- Open: R-0155 (process, Low, carried from F051; REFINED
-  2026-07-30): the integration-gate base worktree lacks the ROOT
-  node_modules and apps/ui/dist, so ~20 environment-coupled ids
-  (vitest/tsc/ui-server classes) land in comm -23 on every gate run
-  and could mask a genuine base failure in those files. Fix: this
-  round's integration_gate.md amendment (Item 4).
-- Open: R-0156 (process, Medium, carried from F051): the
-  README/STATUS accepted-count cross-check is unenforced in
-  tests/docs (negative control: a faked count still passed all 292).
-  Fix: this round's count-pin test (Item 3; same-commit rule
-  R-0151).
+- Resolved: R-0155 (process, Low) 2026-07-30: integration_gate.md
+  now requires base-environment parity (root node_modules +
+  apps/ui/dist) or per-id direct-evidence attribution; an
+  unattributed comm -23 id counts as a genuine base failure and
+  blocks the gate verdict.
+  Done: R-0155 (commit 9fdebad — the doc diff is the evidence).
+- Resolved: R-0156 (process, Medium) 2026-07-30: tests/docs now pins
+  the README accepted-count against the STATUS [x] count; the pin
+  landed green (counts agree at 27) with a red negative control
+  proving it bites.
+  Done: R-0156 (commit bc4b032 — test + red-proof transcript).
 - Next free ID: R-0158.
 
 ## Verdicts
