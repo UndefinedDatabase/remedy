@@ -1,16 +1,22 @@
 """F051 — escalate instead of block.
 
-T001 here: the ``needs_decision`` records themselves — enqueue, cross-
-referencing, awaiting-branch derivation, answering, attended-vs-unattended
-default handling, the mid-run assumption log, and the additive
-``decision_queue`` derivation that surfaces them.  Everything in this section
-is pure: no clock of its own (the clock is injected), no filesystem except the
-assumption-log test, no provider.
+T001: the ``needs_decision`` records themselves — enqueue, cross-referencing,
+awaiting-branch derivation, answering, attended-vs-unattended default handling,
+the mid-run assumption log, and the additive ``decision_queue`` derivation that
+surfaces them.  That section is pure: no clock of its own (the clock is
+injected), no filesystem except the assumption-log test, no provider.
+
+T002: the same behavior through the real conductor — the three-branch fixture
+that is this feature's acceptance heart, the batch-boundary pickup with its
+check count (the no-polling proof), the blocked terminal, answer-and-resume,
+and the linear-plan regression.  Nothing here sleeps.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
 
 from packages.core.models import Job, RunState, Task
 from packages.orchestration.decision_queue import (
@@ -430,3 +436,479 @@ class TestDecisionQueueDerivation:
 
 def test_the_outcome_name_is_the_one_the_feature_specifies():
     assert TASK_OUTCOME_NEEDS_DECISION == "needs_decision"
+
+
+# ---------------------------------------------------------------------------
+# T002 — the same behavior through the real conductor
+# ---------------------------------------------------------------------------
+
+from packages.orchestration.builder_models import (  # noqa: E402 — section-local
+    BuilderOutput,
+    TaskExecutionContext,
+)
+from packages.orchestration.long_run_executor import (  # noqa: E402
+    LEDGER_EVENT_TASK_NEEDS_DECISION,
+    TERMINAL_ALL_GREEN,
+    TERMINAL_BLOCKED,
+    VERIFY_PASSED,
+    CycleLimits,
+    TaskAttempt,
+    awaiting_downstream_tasks,
+    ready_tasks,
+    run_cycles,
+)
+from packages.orchestration.pingpong_job import JOB_BLOCKED  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
+    """Autouse: a cycle writes evidence and a checkpoint, so no test here may
+    ever reach the repository's real data root."""
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return data_dir
+
+
+@pytest.fixture
+def control_root(tmp_path: Path) -> Path:
+    root = tmp_path / "control"
+    root.mkdir()
+    return root
+
+
+class FakeClock:
+    """A clock that advances only when it is read — the loop never sleeps."""
+
+    def __init__(self, start: datetime = T0,
+                 step: timedelta = timedelta(seconds=1)) -> None:
+        self.now = start
+        self.step = step
+
+    def __call__(self) -> datetime:
+        current = self.now
+        self.now = self.now + self.step
+        return current
+
+
+class FakeProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __call__(self, context: TaskExecutionContext) -> BuilderOutput:
+        self.calls += 1
+        return BuilderOutput(summary=f"did {context.task_description}",
+                            proposed_changes=["change"])
+
+
+class RecordingLog:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict]] = []
+
+    def log(self, event: str, **meta) -> None:
+        self.events.append((event, meta))
+
+
+def passing_verify(job: Job, cycle_index: int, verify_command) -> str:
+    return VERIFY_PASSED
+
+
+def no_save(job: Job) -> None:
+    return None
+
+
+def make_fanout_job(name: str = "fanout-job") -> Job:
+    """R -> (B1a -> B1b, B2, B3): one root, three branches, one with downstream.
+
+    Branch 1 is the one that will raise a question, and B1b exists precisely so
+    the fixture can prove that a paused branch pauses its OWN downstream and
+    nothing else.  Plan order puts branch 1 first, so a scheduler that just took
+    the first PENDING task would stall on it.
+    """
+    def task(planned_id: str, *depends_on: str) -> Task:
+        return Task(
+            description=f"task {planned_id}",
+            inputs={"task_type": "documentation",
+                    "flight": {"planned_id": planned_id, "title": planned_id,
+                               "depends_on": list(depends_on)}},
+        )
+
+    return Job(
+        name=name,
+        user_prompt="build the thing",
+        tasks=[task("R"), task("B1a", "R"), task("B1b", "B1a"),
+               task("B2", "R"), task("B3", "R")],
+        state=RunState.PLANNED,
+    )
+
+
+def planned_id_of(job: Job, task_id) -> str:
+    for task in job.tasks:
+        if str(task.id) == str(task_id):
+            return task.inputs["flight"]["planned_id"]
+    raise AssertionError(f"no task {task_id} in this job")
+
+
+def task_by_planned_id(job: Job, planned_id: str) -> Task:
+    for task in job.tasks:
+        if task.inputs.get("flight", {}).get("planned_id") == planned_id:
+            return task
+    raise AssertionError(f"no task {planned_id} in this job")
+
+
+class EscalatingStep:
+    """Runs the task the ready set selected; named ones raise needs_decision.
+
+    A task escalates only the FIRST time it is selected — after an answer it
+    proceeds, which is what makes answer-and-continue observable.  ``on_execute``
+    is a hook the pickup test uses to answer a decision mid-run.
+    """
+
+    def __init__(self, *escalate_planned_ids: str, safe_default: str = "",
+                 on_execute=None) -> None:
+        self.escalate = set(escalate_planned_ids)
+        self.safe_default = safe_default
+        self.on_execute = on_execute
+        self.executed: list[str] = []
+        self.escalated: list[str] = []
+
+    def __call__(self, job: Job, provider_call, task_id=None) -> TaskAttempt:
+        task = (next((t for t in job.tasks if t.id == task_id), None)
+                if task_id is not None
+                else next((t for t in job.tasks
+                           if t.status == RunState.PENDING), None))
+        if task is None:
+            return TaskAttempt()
+
+        planned_id = task.inputs["flight"]["planned_id"]
+        if planned_id in self.escalate:
+            self.escalate.discard(planned_id)     # asked once
+            self.escalated.append(planned_id)
+            return TaskAttempt(
+                task_id=task.id,
+                needs_decision=True,
+                question=f"How should {planned_id} proceed?",
+                options=("fast", "safe"),
+                safe_default=self.safe_default,
+            )
+
+        provider_call(TaskExecutionContext(
+            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
+            task_type=task.inputs.get("task_type", "unknown"),
+            task_description=task.description))
+        self.executed.append(planned_id)
+        task.status = RunState.COMPLETED
+        if all(t.status == RunState.COMPLETED for t in job.tasks):
+            job.state = RunState.COMPLETED
+        if self.on_execute is not None:
+            self.on_execute(job, planned_id)
+        return TaskAttempt(task_id=task.id, executed=True, verified=True)
+
+
+def run_fanout(control_root: Path, step: EscalatingStep, *,
+               batch_size: int = 1, max_cycles: int = 10,
+               unattended: bool = False, job: Job | None = None,
+               log=None):
+    job = job if job is not None else make_fanout_job()
+    result = run_cycles(
+        job, CycleLimits(max_cycles=max_cycles, batch_size=batch_size),
+        FakeProvider(), task_step=step, verify=passing_verify,
+        clock=FakeClock(), save=no_save, control_root_path=control_root,
+        unattended=unattended, log=log,
+    )
+    return job, result
+
+
+# ---------------------------------------------------------------------------
+# The three-branch fixture — this feature's acceptance heart
+# ---------------------------------------------------------------------------
+
+
+class TestThreeBranchFixture:
+    def test_the_free_branches_complete_while_branch_one_waits(self, control_root):
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+
+        assert result.terminal_status == TERMINAL_BLOCKED
+        assert result.job_status == JOB_BLOCKED
+        # Root first, then the question, then both free branches — in plan order.
+        assert step_order(job, result) == ["R", "B2", "B3"]
+        assert task_by_planned_id(job, "B2").status == RunState.COMPLETED
+        assert task_by_planned_id(job, "B3").status == RunState.COMPLETED
+
+    def test_the_paused_branch_pauses_only_its_own_downstream(self, control_root):
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+
+        assert task_by_planned_id(job, "B1a").status == RunState.PENDING
+        assert task_by_planned_id(job, "B1b").status == RunState.PENDING
+        assert awaiting_downstream_tasks(job, awaiting_decision_task_ids(job)) == [
+            task_by_planned_id(job, "B1b").id]
+
+    def test_exactly_one_open_decision_is_listed(self, control_root):
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+
+        assert len(open_task_decisions(job)) == 1
+        assert result.open_decision_ids == (
+            open_task_decisions(job)[0]["decision_id"],)
+        assert "awaiting_decision" in result.stop_reason
+        assert result.open_decision_ids[0] in result.stop_reason
+
+    def test_the_run_is_paused_not_failed(self, control_root):
+        # Nothing failed: the job must stay resumable, and no cycle may report
+        # the escalation as a failure.
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+
+        assert job.state == RunState.PAUSED
+        assert sum(c.tasks_failed for c in result.cycles) == 0
+        assert sum(c.tasks_escalated for c in result.cycles) == 1
+
+    def test_answering_and_resuming_completes_the_remainder(self, control_root):
+        step = EscalatingStep("B1a")
+        job, first = run_fanout(control_root, step)
+        decision_id = first.open_decision_ids[0]
+
+        answer_task_decision(job, decision_id, answer="fast", now=T1)
+        resumed_step = EscalatingStep()          # nothing escalates any more
+        job, second = run_fanout(control_root, resumed_step, job=job)
+
+        assert second.terminal_status == TERMINAL_ALL_GREEN
+        assert resumed_step.executed == ["B1a", "B1b"]
+        assert all(t.status == RunState.COMPLETED for t in job.tasks)
+        assert open_task_decisions(job) == []
+
+    def test_the_answer_reaches_the_task_that_asked(self, control_root):
+        step = EscalatingStep("B1a")
+        job, first = run_fanout(control_root, step)
+        answer_task_decision(job, first.open_decision_ids[0], answer="fast", now=T1)
+
+        assert task_by_planned_id(job, "B1a").inputs[TASK_INPUTS_ANSWERS_KEY] == {
+            first.open_decision_ids[0]: "fast"}
+
+    def test_the_cycle_evidence_names_the_awaiting_branch(self, control_root):
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+        awaiting_task = task_by_planned_id(job, "B1a")
+
+        # From the cycle that raised it onwards, every record names the branch.
+        naming = [c for c in result.cycles
+                  if str(awaiting_task.id) in c.awaiting_task_ids]
+        assert naming, "no cycle record named the awaiting task"
+        assert str(task_by_planned_id(job, "B1b").id) in (
+            naming[-1].awaiting_downstream_task_ids)
+        raised = [c for c in result.cycles if c.open_decision_ids]
+        assert len(raised) == 1
+        assert raised[0].tasks_escalated == 1
+        assert raised[0].to_json()["open_decision_ids"] == list(
+            raised[0].open_decision_ids)
+
+    def test_the_escalation_is_emitted_to_the_ledger(self, control_root):
+        log = RecordingLog()
+        job, result = run_fanout(control_root, EscalatingStep("B1a"), log=log)
+
+        raised = [meta for event, meta in log.events
+                  if event == LEDGER_EVENT_TASK_NEEDS_DECISION]
+        assert len(raised) == 1
+        assert raised[0]["decision_id"] == result.open_decision_ids[0]
+        assert raised[0]["question"] == "How should B1a proceed?"
+
+
+def step_order(job: Job, result) -> list[str]:
+    """Planned ids this run executed, in execution order, from the records."""
+    return [planned_id_of(job, task_id)
+            for cycle in result.cycles for task_id in cycle.executed_task_ids]
+
+
+# ---------------------------------------------------------------------------
+# Continuation and batch-boundary pickup
+# ---------------------------------------------------------------------------
+
+
+class TestContinuationAndPickup:
+    def test_disjoint_branches_run_in_the_same_cycle_as_the_question(self, control_root):
+        # batch_size 3: the escalation must not consume the cycle.
+        job, result = run_fanout(control_root, EscalatingStep("B1a"), batch_size=3)
+
+        first_working_cycle = next(c for c in result.cycles if c.open_decision_ids)
+        assert len(first_working_cycle.executed_task_ids) >= 1
+        assert step_order(job, result) == ["R", "B2", "B3"]
+
+    def test_a_decision_answered_mid_run_is_picked_up_without_a_restart(self, control_root):
+        # B2's execution answers B1a's decision. No restart, no resume: the very
+        # next batch boundary of THIS run must release branch 1.
+        answered: list[str] = []
+
+        def answer_when_b2_runs(job: Job, planned_id: str) -> None:
+            if planned_id != "B2" or answered:
+                return
+            open_now = open_task_decisions(job)
+            if open_now:
+                answer_task_decision(job, open_now[0]["decision_id"],
+                                     answer="fast", now=T1)
+                answered.append(open_now[0]["decision_id"])
+
+        step = EscalatingStep("B1a", on_execute=answer_when_b2_runs)
+        job, result = run_fanout(control_root, step)
+
+        assert answered, "the fixture never answered the decision"
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        # Released at the boundary right after B2, so branch 1 resumes ahead of
+        # B3 — plan order, exactly as if it had never paused.
+        assert step.executed == ["R", "B2", "B1a", "B1b", "B3"]
+        assert all(t.status == RunState.COMPLETED for t in job.tasks)
+        assert open_task_decisions(job) == []
+
+    def test_the_awaiting_check_runs_exactly_once_per_batch_boundary(self, control_root):
+        # The no-polling proof: one check per boundary, and the loop has exactly
+        # one boundary more than the cycles it ran (the last one finds nothing).
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+
+        assert result.awaiting_checks == result.cycles_run + 1
+        assert result.to_json()["awaiting_checks"] == result.awaiting_checks
+
+    def test_the_check_count_does_not_grow_while_a_branch_waits(self, control_root):
+        # A polling implementation would spin extra checks for the waiting
+        # branch; this asserts the exact number for a known topology.
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+
+        # R, the escalation, B2, B3 — four cycles, five boundaries.
+        assert result.cycles_run == 4
+        assert result.awaiting_checks == 5
+
+    def test_an_awaiting_task_is_withheld_from_the_ready_set(self, control_root):
+        job, result = run_fanout(control_root, EscalatingStep("B1a"))
+        awaiting = awaiting_decision_task_ids(job)
+
+        assert ready_tasks(job, 10, awaiting_ids=awaiting) == []
+        # And the moment it is answered, the branch is ready again.
+        answer_task_decision(job, result.open_decision_ids[0], answer="fast", now=T1)
+        assert ready_tasks(job, 10, awaiting_ids=awaiting_decision_task_ids(job)) == [
+            task_by_planned_id(job, "B1a").id]
+
+    def test_the_checkpoint_never_names_an_awaiting_task_as_the_next_intent(
+            self, control_root, isolate_data_root):
+        from packages.orchestration.checkpoints import (
+            INTENT_NONE,
+            checkpoint_paths,
+            load_latest_valid,
+            read_checkpoint,
+        )
+
+        step = EscalatingStep("B1a")
+        job = make_fanout_job()
+        result = run_cycles(
+            job, CycleLimits(max_cycles=10, batch_size=1), FakeProvider(),
+            task_step=step, verify=passing_verify, clock=FakeClock(),
+            save=no_save, control_root_path=control_root,
+        )
+        awaiting_task_id = str(task_by_planned_id(job, "B1a").id)
+        escalating_cycle = next(c.cycle_index for c in result.cycles
+                                if c.tasks_escalated)
+
+        assert checkpoint_paths(str(job.id)), "the run wrote no checkpoint"
+        # From the escalating cycle onwards, no checkpoint may point a resume at
+        # the awaiting task.  Earlier ones legitimately name it: at that point
+        # the question had not been raised yet.
+        checked = 0
+        for path in checkpoint_paths(str(job.id)):
+            checkpoint = read_checkpoint(path)
+            assert checkpoint is not None
+            if checkpoint.cycle_index < escalating_cycle:
+                continue
+            checked += 1
+            assert checkpoint.next_intent.get("task_id", "") != awaiting_task_id
+        assert checked >= 1
+        latest = load_latest_valid(str(job.id))
+        assert latest is not None
+        assert latest.next_intent.get("kind") == INTENT_NONE
+        assert result.terminal_status == TERMINAL_BLOCKED
+
+
+# ---------------------------------------------------------------------------
+# Attended vs unattended, and the linear regression
+# ---------------------------------------------------------------------------
+
+
+class TestUnattendedDefaults:
+    def test_attended_asks_even_when_a_safe_default_exists(self, control_root):
+        job, result = run_fanout(
+            control_root, EscalatingStep("B1a", safe_default="safe"))
+
+        assert result.terminal_status == TERMINAL_BLOCKED
+        assert len(open_task_decisions(job)) == 1
+        assert open_task_decisions(job)[0]["safe_default"] == "safe"
+        assert task_by_planned_id(job, "B1a").status == RunState.PENDING
+
+    def test_unattended_applies_the_default_and_the_run_finishes(self, control_root):
+        job, result = run_fanout(
+            control_root, EscalatingStep("B1a", safe_default="safe"),
+            unattended=True)
+
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        assert open_task_decisions(job) == []
+        answered = answered_task_decisions(job)
+        assert len(answered) == 1
+        assert answered[0]["answer"] == "safe"
+        assert answered[0]["answer_source"] == ANSWER_SOURCE_DEFAULT
+
+    def test_unattended_still_waits_when_there_is_no_default(self, control_root):
+        # Escalation exists so Remedy never invents an answer.
+        job, result = run_fanout(
+            control_root, EscalatingStep("B1a", safe_default=""), unattended=True)
+
+        assert result.terminal_status == TERMINAL_BLOCKED
+        assert len(open_task_decisions(job)) == 1
+
+    def test_the_auto_applied_default_is_in_the_assumption_log(self, control_root):
+        job, _ = run_fanout(
+            control_root, EscalatingStep("B1a", safe_default="safe"),
+            unattended=True)
+
+        text = render_escalation_assumptions_md(job)
+
+        assert "How should B1a proceed?" in text
+        assert "Sources: 0 human, 1 default, 0 unresolved." in text
+
+
+class TestLinearPlansAreUnchanged:
+    def test_a_linear_plan_without_escalations_behaves_exactly_as_before(
+            self, control_root):
+        job = make_job(3)
+        step = LinearStep()
+        result = run_cycles(
+            job, CycleLimits(max_cycles=10, batch_size=1), FakeProvider(),
+            task_step=step, verify=passing_verify, clock=FakeClock(),
+            save=no_save, control_root_path=control_root,
+        )
+
+        assert result.terminal_status == TERMINAL_ALL_GREEN
+        assert len(step.executed) == 3
+        assert result.open_decision_ids == ()
+        assert escalation_records(job) == []
+        assert all(c.tasks_escalated == 0 for c in result.cycles)
+
+    def test_a_step_that_never_heard_of_escalation_is_untouched(self, control_root):
+        # TaskAttempt's new fields default to "no decision needed", so a step
+        # written before F051 cannot accidentally escalate.
+        attempt = TaskAttempt()
+
+        assert attempt.needs_decision is False
+        assert attempt.question == "" and attempt.options == ()
+        assert attempt.safe_default == ""
+
+
+class LinearStep:
+    """Completes the first PENDING task — the pre-F051 step shape, no task_id."""
+
+    def __init__(self) -> None:
+        self.executed: list[str] = []
+
+    def __call__(self, job: Job, provider_call) -> TaskAttempt:
+        task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
+        if task is None:
+            return TaskAttempt()
+        provider_call(TaskExecutionContext(
+            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
+            task_type="documentation", task_description=task.description))
+        self.executed.append(task.description)
+        task.status = RunState.COMPLETED
+        if all(t.status == RunState.COMPLETED for t in job.tasks):
+            job.state = RunState.COMPLETED
+        return TaskAttempt(task_id=task.id, executed=True, verified=True)
