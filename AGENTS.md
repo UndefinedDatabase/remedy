@@ -547,6 +547,38 @@ If diff becomes large:
 
 ------------------------------------------------------------------------
 
+## 🔎 Code Discoverability Conventions
+
+> Operator ruling 2026-07-30, source: agent-retrieval evidence.
+> FORWARD-LOOKING ONLY: applies to new code and code being touched anyway.
+> Mass renames of existing code are FORBIDDEN as their own activity — the
+> suite was just stabilized; churn is the enemy.
+
+- Exported/public names carry 2–4 words including one domain word
+  (`createStripeClient`, not `create`; `FlightPlanFence`, not `Fence`).
+  A name must grep to its own definition and real usages only.
+- One spelling per concept repo-wide. No synonym drift (`orgId` vs
+  `organizationId`), no local rename-imports of core concepts.
+- Test files are named after the source they cover
+  (`test_x.py` ↔ `x.py`, the repo's existing pattern).
+- Kept legacy paths are marked deprecated in the language's idiom;
+  preferred: remove instead.
+- Use distinct ID/value types where an argument swap is plausible (the
+  branded-type/newtype pattern) so swaps become type errors.
+- The one-line WHY comment sits directly above the definition — that is
+  where searches land.
+- Deliberate absences are documented where a reader would search for them
+  ("Remedy deliberately does not X because Y") — text search cannot find
+  code that does not exist.
+
+Why: workers and reviewers navigate this repo by text search; names are
+the reverse index. Evidence: retrieval-token reductions of roughly 6–66%
+per reader and elimination of confidently-wrong retrieval answers on
+specifically-named code in published July 2026 experiments; effect
+strongest for smaller models.
+
+------------------------------------------------------------------------
+
 ## 🧩 Documentation Structure
 
 Use four layers:
