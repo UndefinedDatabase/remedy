@@ -1,202 +1,153 @@
-OUTCOME: executed
-── STEP R1 — R0154 micro-round (docs-only, pre-F050) ────────────────
-Goal:        Codify the R-0154 closure-ordering lesson in
-             docs/roadmap/STATUS_closure_protocol.md (v4); merge the
-             F252 closure PR first via the Open PR Gate.
-Bundle:      Gate #161 · branch · authored texts (save + verify +
-             apply) · docs gate + canary · one commit · PR (open,
-             not merged).
-Change:      docs/roadmap/STATUS_closure_protocol.md (FULL REPLACE),
-             .agent/live_review.md, .agent/plan.md,
-             .agent/authored/r0154-r1-{1,2,3}.md,
-             .agent/last_block.md. Nothing else.
-Constraints: AGENTS.md. Authored texts verbatim: save, sha256-verify
-             against the BEGIN markers BEFORE any apply; mismatch =
-             STOP + refusal record in .agent/last_block.md, apply
-             nothing. Worker never writes ## Verdicts. The
-             micro-round PR is NOT merged this round.
-Done when:   Gate green (python3 -m pytest tests/docs/ -q + canary
-             pytest tests/cli/test_golden_path.py -q, both exit 0;
-             F252 baseline was 292 / 42 passed), cmp proofs exit 0,
-             commit pushed, PR open.
-Handback:    Completion report + rewrite .agent/handoff.md
-             (changed-files table, sha256 + cmp proofs, raw gate
-             transcripts, PR number).
+OUTCOME: pending
+── STEP R2/R0154 + R1/F050 — verdict · merge · claim · T001 · T002 ──
+Goal:        Persist the R0154 R1 PASS verdict, merge PR #162 via the
+             Open PR Gate, then build ALL of F050 — DAG scheduling
+             (T001 pure module + T002 executor integration).
+Bundle:      Slice 0 verdict + gate · Slice 1 claim + state ·
+             Slice 2 T001 · Slice 3 T002. STOP at the FIRST red
+             verification (AGENTS.md If-Blocked); hand back raw
+             output with completed slices intact.
+Change:      .agent/ state; docs/roadmap/STATUS.md (ONE line);
+             packages/orchestration/dag_schedule.py (new);
+             packages/orchestration/long_run_executor.py (batch
+             selection + blocked tracking only);
+             tests/orchestration/test_dag_schedule.py (new);
+             executor tests as needed. Nothing else.
+Constraints: AGENTS.md; feature file docs/roadmap/features/T1_F050.md
+             is the spec — read it COMPLETELY first. Do-not-touch:
+             plan-time validation, parallel workers, decision UX.
+             NO THREADING — any diff adding threading is a defect.
+             Commits < 500 lines each; split slices into several
+             commits where needed. Authored texts verbatim:
+             sha256-verify BEFORE apply; mismatch = STOP + refusal
+             record. Worker never writes ## Verdicts for F050.
+             NO closure work: no [x], no evidence job, no zip —
+             closure is its own later round.
+Done when:   Every slice gate green (commands below), pushed, PR
+             open for feature/f050-dag-scheduling.
+Handback:    Completion report + rewrite .agent/handoff.md:
+             changed-files table PER COMMIT, raw gate transcripts
+             (command, exit code, tail), sha256 + cmp proofs, STATUS
+             grep proofs, PR number.
 
-PROCEDURE — STOP at the first red verification (AGENTS.md
-If-Blocked); hand back the raw output.
+GROUND FACTS (reviewer-verified; do not re-derive, DO spot-check)
+- Dependency edges: task.inputs["flight"]["depends_on"] (list of
+  planned ids); own planned id in task.inputs["flight"]["planned_id"].
+  Producer: map_flight_plan_to_tasks, flight_plan.py:417. Plan-time
+  DAG validation exists — cycles cannot reach the executor.
+- Legacy tasks (no inputs["flight"]) → implicit linear chain: each
+  task depends on its predecessor. One rule, docstring, tested.
+- Sole selection point: ready_tasks(job, batch_size),
+  long_run_executor.py:572 — replace its linear logic; keep the
+  signature the executor loop uses (or adapt the loop minimally).
+- RunState: PENDING/PLANNED/RUNNING/PAUSED/COMPLETED/FAILED/
+  CANCELLED. Task failure ROLLS BACK to PENDING (task_runner.py
+  states table) — there is NO persistent task-level FAILED in the
+  loop. Blocked tracking is therefore IN-RUN: a task whose attempt
+  executed-but-failed in this run is blocked; its transitive
+  downstream is skipped-blocked. Treat FAILED/CANCELLED task states
+  as blocking too if encountered.
+- Empty ready set + unfinished tasks → the existing TERMINAL_BLOCKED
+  path (long_run_executor.py ~800) — reuse, do not invent a status.
+- Cycle evidence: CycleRecord — extend to name skipped-blocked task
+  ids so reports say WHY nothing happened on a branch.
 
-1. Open PR Gate (AGENTS.md):
+PROCEDURE
+
+Slice 0 — verdict + Open PR Gate
+1. On feature/r0154-closure-ordering. .agent/last_block.md guard:
+   line 1 "OUTCOME: pending", THIS block verbatim; flip to
+   "OUTCOME: executed" at round end.
+2. Save authored text r0154-r2-1 below VERBATIM to
+   .agent/authored/r0154-r2-1.md; sha256sum must equal its BEGIN
+   marker. FULL REPLACE .agent/live_review.md with it; cmp → 0.
+   Commit: "chore(r0154): persist the R1 PASS verdict". Push.
+3. Open PR Gate (AGENTS.md):
    gh pr list --state open --json number,headRefName,baseRefName,isDraft
-   Expected: exactly one open PR — #161, head
-   feature/f252-standing-red-paydown, base main, not draft. Then:
-   gh pr merge 161 --merge --delete-branch
+   Expected exactly one: #162, head feature/r0154-closure-ordering,
+   base main, not draft. Then:
+   gh pr merge 162 --merge --delete-branch
    git checkout main && git pull --ff-only
-   Any other gate state (count != 1, draft, wrong base/head, merge
-   failure) → STOP, hand back the raw output.
-2. git checkout -b feature/r0154-closure-ordering
-3. .agent/last_block.md guard: line 1 "OUTCOME: pending", then THIS
-   block verbatim; flip to "OUTCOME: executed" at round end.
-4. Save the three authored texts below VERBATIM (bytes between the
-   BEGIN/END markers, including the final newline) to
-   .agent/authored/r0154-r1-1.md, r0154-r1-2.md, r0154-r1-3.md.
-   sha256sum of each file MUST equal its BEGIN marker before step 5.
-5. Apply by copy (never retype):
-   cp .agent/authored/r0154-r1-1.md docs/roadmap/STATUS_closure_protocol.md
-   cp .agent/authored/r0154-r1-2.md .agent/live_review.md
-   cp .agent/authored/r0154-r1-3.md .agent/plan.md
-   cmp each target against its authored file → exit 0, all three.
-6. Gate: python3 -m pytest tests/docs/ -q  AND canary:
-   python3 -m pytest tests/cli/test_golden_path.py -q
-   Both exit 0. Raw transcripts (command, exit code, tail) into the
-   handback.
-7. ONE commit of everything above:
-   "docs(closure): codify the R-0154 ordering lesson — closure protocol v4"
-   Push.
-8. PR per AGENTS.md: title
-   "R0154 micro-round — closure protocol v4 (ordering lesson)";
-   body: what/why (operator-ordered pre-F050: persist the R-0154
-   lesson — README capability sync in the SAME commit as the STATUS
-   [x] edit; closure commit touches exactly STATUS.md, README.md,
-   .agent/), changed-files table, gate results, verdict: pending R1
-   review. Do NOT merge.
-9. Handback per the Handback line above.
+   Any other gate state → STOP, hand back raw output.
 
-TRANSPORT NOTE (worker, R1): authored text 1 arrived hard-wrapped —
-the step-4 STATUS template line was split after "· package". Rejoining
-the two fragments with a single space reproduces the authored bytes
-exactly (sha256 d2b67cb5… verified before any apply). The copy embedded
-below is the sha256-verified form, so it re-verifies as-is. Texts 2 and
-3 matched on first save. No other deviation.
+Slice 1 — F050 claim + state reset
+4. git checkout -b feature/f050-dag-scheduling
+5. Save f050-r1-1 and f050-r1-2 below VERBATIM to .agent/authored/;
+   sha256-verify. Apply by copy: f050-r1-1 FULL REPLACE
+   .agent/live_review.md; f050-r1-2 FULL REPLACE .agent/plan.md;
+   cmp both → 0.
+6. docs/roadmap/STATUS.md: replace the exact line
+   "- [ ] F050 — DAG scheduling"
+   with
+   "- [~] F050 — DAG scheduling"
+   Touch no other line. Proof: grep -cF new = 1, old = 0.
+7. Gate: python3 -m pytest tests/docs/ -q (docs/roadmap changed;
+   F252 baseline 292 passed) AND canary
+   python3 -m pytest tests/cli/test_golden_path.py -q (baseline 42).
+   Both exit 0 ELSE STOP. Commit:
+   "chore(f050): claim F050 — state reset". Push.
 
---- BEGIN r0154-r1-1 sha256=d2b67cb5d12254aa9ed7253287eae8aa6a8895c83b000d7746b41c45df0545f9 ---
-# STATUS.md Closure Protocol (v4)
+Slice 2 — T001 pure module + table tests
+8. New packages/orchestration/dag_schedule.py, PURE (no I/O, no
+   timestamps, no randomness, no threading):
+   - ready_set(tasks) -> ordered list of task ids: PENDING tasks
+     whose dependencies are ALL COMPLETED, in plan order (stable,
+     deterministic).
+   - blocked_downstream(tasks, blocked_ids) -> set: transitive
+     dependents of the blocked tasks.
+   - Dependency resolution per GROUND FACTS: flight metadata ids
+     mapped to task order; legacy/missing metadata → predecessor
+     chain; state the rule in the module docstring.
+   - Unknown/dangling dep ids: treat the dep as never-completed and
+     say so in the docstring (plan-time validation makes this a
+     legacy-only corner).
+9. New tests/orchestration/test_dag_schedule.py — table tests:
+   diamond, chain, independent islands, legacy-linear rule, mixed
+   (flight + legacy tasks in one plan), single-task plan,
+   skipped-blocked transitivity, deterministic ordering (two calls,
+   identical result).
+10. Slice gate: python3 -m pytest tests/orchestration/test_dag_schedule.py -q
+    exit 0 ELSE STOP here and hand back. Commit:
+    "feat(f050): dag_schedule pure module + table tests (T001)".
+    Push.
 
-> The only path from `[~]` to `[x]`. Reviewer (Window 1) authors; worker
-> (Window 2) executes and commits. Grammar reference: ROADMAP.md Part C and
-> the accepted F017/F018/F146 lines — the living precedent.
+Slice 3 — T002 executor integration
+11. long_run_executor.py: at each batch boundary compute
+    ready_set minus blocked downstreams (recompute after EVERY task
+    end); a task whose attempt executed-but-failed this run joins
+    blocked_ids and its downstream is marked skipped-blocked in the
+    cycle evidence (CycleRecord extension); empty ready set with
+    unfinished tasks → existing TERMINAL_BLOCKED. Batch-size cap
+    semantics unchanged. Legacy plans behave exactly as before.
+12. Tests (extend tests/orchestration/test_long_run_executor.py or
+    the T001 file where it fits):
+    - Diamond fixture: forced failure on one branch → independent
+      branch COMPLETES, failed branch's downstream skipped-blocked,
+      final blocked status lists exactly the right tasks, evidence
+      names them.
+    - Recomputation after every task end via a counting stub.
+    - Determinism: two runs of the same fixture → identical
+      schedules.
+    - Linear regression: existing linear fixtures produce unchanged
+      behavior (existing executor tests stay green untouched).
+13. Slice gate:
+    python3 -m pytest tests/orchestration/test_dag_schedule.py tests/orchestration/test_long_run_executor.py tests/orchestration/test_queue_executor_binding.py tests/orchestration/test_overnight_executor.py -q
+    exit 0 ELSE STOP. Then canary:
+    python3 -m pytest tests/cli/test_golden_path.py -q  exit 0.
+    Commit(s): "feat(f050): DAG ready-set executor integration +
+    diamond fixture (T002)". Push.
+14. PR per AGENTS.md: title "F050 — DAG scheduling (T001+T002)";
+    body: what/why, ground facts used, changed-files table, gate
+    results per slice, verdict: pending R1 review. Do NOT merge.
+15. Handback per the Handback line above.
 
-## Preconditions — ALL must hold; any failure aborts closure
-1. Every step has a PASS round; every R-XXXX finding is Resolved or listed
-   as a documented Medium/Low risk. Latest live_review verdict is PASS or
-   PASS WITH RISKS — never PENDING/FAIL.
-2. Full relevant suite green — verified by the reviewer running it where it
-   has execution; otherwise via raw transcripts (command, exit code, real
-   output) plus one reviewer-chosen spot-check. Never a summary.
-   A dedicated integration-gate round (full suite, `pytest -n auto`, raw
-   output) must have PASSed before closure; this precondition re-confirms it
-   (planner_reviewer_prompt.md §3 verification tiers).
-3. `remedy integrity check --json` → PASS; no relevant untracked files.
-4. Feature file's Built State section is current.
-5. Working tree clean, branch pushed, worker idle.
+TRANSPORT NOTE (worker, R2/R1): the step-13 slice-gate command arrived
+hard-wrapped, split after `test_queue_executor_binding.py`. Recorded
+above rejoined into the single four-path pytest invocation that was
+actually run — same recoverable wrap class as r0154-r1-1 last round.
+No sha256-stamped text was affected.
 
-## Algorithm
-1. **Evidence job (worker).** Final evidence run, fresh job id, feature-
-   scoped (`feature_id=<fxxx>`). Record: `Evidence job <job_id>`.
-   Canonical producer: `packages.orchestration.job_evidence.
-   create_manual_completion_bundle(review_feature_id=<fxxx>, ...)` — it
-   emits the full closed-schema gate set (final_verifier_report,
-   fresh_evidence, artifact_contract, change_provenance, manifest_
-   integrity, postmortem_integrity, commit_execution, runtime_integration).
-   `write_runtime_integration_gate` alone is NOT a bundle and packages as
-   BLOCKED_EVIDENCE.
-   Packaging-deadlock rule: a High finding about closure packaging blocks
-   `remedy integrity check` (high_blockers_open) and thereby the zip
-   itself. The reviewer therefore attaches a CONDITIONAL resolution to
-   such findings at authoring time — a mechanically checkable predicate
-   (e.g. "Resolved when the complete bundle with all listed gates exists
-   on disk at the current head") that the worker applies verbatim once the
-   predicate holds — so persist → fix → resolve → package fits ONE relay.
-   Producer pitfalls that block packaging: verification_runs
-   entries need a sha256-hex output_hash, valid VerificationTests
-   totals, and the full-length base_commit SHA — abbreviated or
-   missing values surface only at zip time.
-2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
-   canonical sequence below. Verify committed_review_subject spans
-   BASE..HEAD and the zip import check passes. Record `package <filename>`
-   and `SHA-256 <hash>`. **A failing zip build is a closure BLOCKER** —
-   fix or go `[!]`; never close without the package.
-   Docs-only features without a runtime evidence job close with an honest
-   NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
-   Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
-   Build order: the closure zip is the LAST action after ALL commits
-   including the final .agent/ state and handoff rewrite; a package built
-   from a dirty tree is invalid. The zip attempt's outcome — package +
-   SHA-256, or the raw error — is recorded in the handoff BEFORE handback,
-   always.
-3. **Runtime actuals (reviewer; observed only).** Rounds, wall clock,
-   models, tokens/cost where the ledger has them; `not-measured` beats a
-   guess. → PR description + final report.
-4. **STATUS line (reviewer authors, worker applies verbatim).** Template:
-   `[x] <Fxxx> — <Name> (<T-slices> complete; accepted <YYYY-MM-DD> · live review <PASS|PASS_WITH_RISKS> — ACCEPTED[ · external verdict <V> — ACCEPTED] · Evidence job <job_id> · package <zip filename> · SHA-256 <hash> · accepted HEAD <full sha>)`
-   `accepted HEAD` = the reviewed head the verdict and zip cover (manifest
-   committed_review_subject.head_commit). External-verdict segment only
-   when an external round happened. Touch no other line.
-5. **Final commit + PR (worker).** STATUS edit is the last commit on the
-   branch (Rule A4). Ordering (R-0154, F252 lesson): the README
-   capability sync lands in the SAME commit as the STATUS `[x]` edit —
-   README and STATUS may never disagree in any committed state (the
-   ledger cross-check pin). The closure commit touches exactly
-   docs/roadmap/STATUS.md, README.md and the final .agent/ state
-   (incl. handoff.md rewrite) — nothing else; the feature file's Built
-   State is already current from an earlier commit (precondition 4).
-   Then the AGENTS.md PR workflow; description carries what/why, key
-   decisions, how to review, changed-files table, latest verdict,
-   open-findings count, runtime actuals.
-   The closure handback includes grep proof that every piece of
-   reviewer-authored applied text (STATUS line, resolution
-   entries) is byte-identical to the authored paste block.
-6. **Merge — deferred to the next feature.** The closure PR is NOT merged
-   in this session. It merges at the next feature's start via the Open PR
-   Gate on Window 1's instruction; the gap is the operator's manual-review
-   window. The operator may merge manually at any time instead.
-7. **End Window 1** with the feature-done banner. Next feature → fresh
-   session; Rule A5 selects it.
-
-## Canonical zip build sequence
-Explicit evidence selection is mandatory. Deprecated root-dir auto-selection
-(mtime-based `remedy-job-evidence-*` scanning) is disabled — the script
-hard-errors if legacy dirs exist and no `--evidence-dir` or `--job-id` is
-given.
-
-```bash
-# 1. Ensure tree is clean and branch is pushed.
-git status          # must be clean
-git push
-
-# 2. Build with explicit evidence dir (preferred):
-bash scripts/make_review_zip.sh --evidence-dir <path-to-evidence-dir>
-
-# Or by indexed job id:
-bash scripts/make_review_zip.sh --job-id <job-id>
-
-# 3. Without evidence (code-only snapshot, e.g. docs-only features):
-bash scripts/make_review_zip.sh
-```
-
-**Stale `review_archive_plan.json`:** The pipeline automatically deletes any
-plan copied from evidence staging before generating a fresh one. No manual
-step needed — `build_review_zip.py` always writes a new plan with current
-SHA-256 hashes.
-
-**Output:** The script prints the final zip filename and SHA-256. Record both
-in the STATUS line (`package <filename>` and `SHA-256 <hash>`).
-
-**Evidence-dir commit ordering:** the evidence dir is committed
-AFTER the READY zip exists, never before. A pre-committed
-evidence dir puts evidence files into the base..HEAD review
-subject and the package builds BLOCKED_EVIDENCE ("evidence is
-not authoritative") — F147 attempt-2 lesson.
-
-## Failure honesty
-If any precondition fails, the feature does NOT close. In order: another
-repair round; `[!] <Fxxx> — <name> (blocked: <reason>)` authored by the
-reviewer, committed by the worker; or an explicit operator decision in
-.agent/decisions.md. Pretending completion is the one unforgivable failure
-mode (AGENTS.md If-Blocked; P1 verify-before-claiming).
---- END r0154-r1-1 ---
-
---- BEGIN r0154-r1-2 sha256=e3066d09858a8687175f8ec0477a18ef549f9380d3d4aabaf72aff8dfb541f34 ---
+--- BEGIN r0154-r2-1 sha256=800c9f15bf69fd222cfc6e13b1b51423580e000dcabf15e5516862104f7ebffb ---
 # Live Review — R0154 micro-round (closure-ordering codification)
 
 > Docs-only micro-round ordered by the operator before F050: persist
@@ -208,30 +159,63 @@ mode (AGENTS.md If-Blocked; P1 verify-before-claiming).
   authored v4 text (step 5 now pins the R-0154 ordering: README
   capability sync in the SAME commit as the STATUS `[x]` edit; the
   closure commit touches exactly STATUS.md, README.md and the final
-  .agent/ state). Gate: tests/docs + canary. In progress.
+  .agent/ state). Gate: tests/docs + canary. Done.
 
 ## Findings
-(none yet — IDs continue monotonically from R-0154; next free: R-0155)
+(none — IDs continue monotonically from R-0154; next free: R-0155)
+
+## Verdicts
+- R1: PASS (reviewer, 2026-07-29). Range 757e06f..ffad73a, 2
+  commits. All three authored texts disk-to-disk cmp 0 against the
+  reviewer's originals; applied targets cmp 0; protocol diff =
+  exactly the two authored hunks; docs gate 292 passed + canary 42
+  passed, re-run by the reviewer; tree clean; the transport-wrap
+  recovery on r0154-r1-1 is proven by hash identity (d2b67cb5…).
+  Deviation accepted: round-end state in a second mechanical commit
+  (ffad73a — handoff + OUTCOME flip only, verified via --stat).
+  LAST_REVIEWED_SHA = ffad73a.
+--- END r0154-r2-1 ---
+
+--- BEGIN f050-r1-1 sha256=373c67edd96338b630eaedc7ab3c60a573712e9b24facc8c2809a20a4c5d1569 ---
+# Live Review — F050 DAG scheduling (Tier 1)
+
+Branch: feature/f050-dag-scheduling
+Scope: topological ready set + blocked-downstream skip in the
+multi-cycle executor (docs/roadmap/features/T1_F050.md).
+
+## Steps
+- R1: claim + state reset + T001 pure module + T002 executor
+  integration (large bundle, per-slice gates, stop at the first red
+  verification). In progress.
+
+## Findings
+(none yet — next free ID: R-0155)
 
 ## Verdicts
 (pending R1)
---- END r0154-r1-2 ---
+--- END f050-r1-1 ---
 
---- BEGIN r0154-r1-3 sha256=f87463160259b1b1cfedf89a593fcf10eb37502827d4892ab70a31cffaeb7046 ---
-# Plan — R0154 micro-round (docs-only), then F050
+--- BEGIN f050-r1-2 sha256=d019d7b347cb92468562c12acb5342cc585d627293aa8d1f5addd741bef744c7 ---
+# Plan — F050 DAG scheduling
 
 ## Goal
-Persist the R-0154 ordering lesson from the F252 closure into
-docs/roadmap/STATUS_closure_protocol.md (v4): the README capability
-sync lands in the SAME commit as the STATUS `[x]` edit, and the
-closure commit touches exactly docs/roadmap/STATUS.md, README.md and
-the final .agent/ state — nothing else. Merge the micro-round PR,
-then proceed to F050 per Rule A5.
+The executor draws its next tasks from a topological READY SET
+computed from the Flight Plan dependency edges
+(task.inputs["flight"]["depends_on"]); a blocked branch (failed or
+awaiting a decision) locks only its own downstream. DONE when the
+diamond fixture executes the independent branch while the blocked
+branch's downstream is skipped-blocked, the ready set recomputes
+after every task end, and linear plans behave exactly as before
+(docs/roadmap/features/T1_F050.md).
 
 ## Next Steps
-- R1: apply the authored protocol v4 text, gate with
-  `python3 -m pytest tests/docs/ -q` + the golden-path canary,
-  commit, push, open the PR.
-- After the reviewer's PASS: merge the micro-round PR (operator
-  pre-authorized), then bootstrap F050 — DAG scheduling.
---- END r0154-r1-3 ---
+- T001: pure module packages/orchestration/dag_schedule.py
+  (ready_set, blocked_downstream, legacy-linear rule) + table tests
+  in tests/orchestration/test_dag_schedule.py.
+- T002: executor integration at the ready_tasks batch boundary in
+  packages/orchestration/long_run_executor.py + diamond fixture +
+  linear-regression proof.
+- Then: integration gate round, closure per
+  docs/roadmap/STATUS_closure_protocol.md (v4) — own rounds, never
+  bundled.
+--- END f050-r1-2 ---
