@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 ── STEP R2 — F050 verdict persist + INTEGRATION GATE ────────────────
 Goal:        Persist the R1 PASS verdict and the feature file's Built
              State, then run the full-suite integration gate per
