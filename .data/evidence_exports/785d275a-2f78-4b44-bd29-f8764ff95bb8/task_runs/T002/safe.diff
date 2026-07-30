@@ -1,0 +1,1016 @@
+diff --git a/docs/roadmap/features/T1_F051.md b/docs/roadmap/features/T1_F051.md
+index 03912e1..4b07444 100644
+--- a/docs/roadmap/features/T1_F051.md
++++ b/docs/roadmap/features/T1_F051.md
+@@ -64,3 +64,66 @@ decision queue records additively; a second queue is an automatic reject.
+ ## Do not touch
+ Notification channels, inbox UI, decision auto-answering. Suggested tests:
+ tests/orchestration/test_escalation.py, tests/cli/test_open_decisions_view.py.
++
++## Built State
++- T001 `packages/orchestration/escalation.py` — the records:
++  `enqueue_task_decision` (ONE record per call; same question as an
++  OPEN one → both get `cross_references`, never merged),
++  `awaiting_decision_task_ids` (DERIVED from open records — `RunState`
++  has no awaiting member, so the task stays PENDING and nothing is
++  stored twice), `answer_task_decision` (write-once; the answer also
++  lands on the task's `inputs["decision_answers"]` for its next
++  attempt), `auto_apply_safe_default`, `render/write_escalation_
++  assumptions_md`. Records live on `job.metadata["escalations"]`,
++  JSON-safe; ids are `td:<task8>` (`-2`, `-3` … for repeats),
++  deterministic, no clock or randomness.
++  `packages/orchestration/decision_queue.py` gained the additive
++  `task_decision` type and derivation branch 8 — the queue stays ONE
++  read-only aggregation; no second queue exists. Deliberately NOT in
++  the flight plan's `assumptions.md`: that log states every question
++  in it was asked at plan time, so mid-run escalations get their own
++  `escalation_assumptions.md` in the same evidence dir.
++- T002 `packages/orchestration/long_run_executor.py` — `TaskAttempt`
++  gained `needs_decision`/`question`/`options`/`safe_default` (all
++  defaulting to "no decision needed", so a pre-F051 step cannot
++  escalate); an escalating attempt counts as `tasks_escalated`, never
++  `tasks_failed`, and the loop `continue`s to the next ready task
++  instead of ending the cycle. `ready_tasks` gained `awaiting_ids=`,
++  withholding those tasks and their transitive downstream exactly like
++  in-run blocked ids; `awaiting_downstream_tasks` names that set under
++  its own name. Awaiting is re-checked EXACTLY ONCE per batch boundary
++  (`awaiting_checks == cycles_run + 1`, asserted) — no polling, no
++  sleeping — so a decision answered mid-run releases its branch at the
++  next boundary without a restart. Empty ready set with open decisions
++  → `TERMINAL_BLOCKED` (PAUSED, resumable) with
++  `stop_reason "awaiting_decision; open_decisions=…"`. Additive cycle
++  evidence: `tasks_escalated`, `awaiting_task_ids`,
++  `awaiting_downstream_task_ids`, `open_decision_ids`; additive result
++  fields `open_decision_ids`, `awaiting_checks`; ledger events
++  `task_needs_decision`, `task_decision_answered`. Checkpoints never
++  name an awaiting task as the next intent.
++  `apps/cli/commands/decision.py` — the EXISTING `decision resolve`
++  gained a `td:` branch (`--reason` carries the answer, write-once);
++  no new command and no new group.
++- T003 `apps/cli/commands/job.py` — `job status` and `job report`
++  render open decisions FIRST, each with the exact answer command, and
++  a blocked run's `next_safe_action` / final `Next:` line IS that
++  command; JSON gained `open_decisions` + `open_decision_count`, and
++  `blockers` gains `awaiting_decision`. View helpers live in
++  `decision_queue.py`: `sort_open_decisions_first`, `open_decisions`,
++  `render_open_decisions_lines`, `open_decisions_next_action`. The
++  block is queue-WIDE (any open decision, not only task decisions).
++- R-0157 `job run --unattended` (catalog `job.run`, additive flag) →
++  `run_cycles(unattended=…)`: a safe default is auto-applied and
++  recorded as `answer_source "default"`; a question without a default
++  still waits; attended behavior unchanged. While the F046 rollout cap
++  collapses a run to the single pass, the flag prints that it had no
++  effect rather than passing silently.
++- Tests: 66 in tests/orchestration/test_escalation.py (units, the
++  three-branch fixture R → (B1a → B1b, B2, B3), boundary pickup, the
++  check-count no-polling proof, the existing-CLI answer path, the
++  unattended CLI flag, linear regression) + 26 in
++  tests/cli/test_open_decisions_view.py = 92.
++- Accepted rounds: R1 PASS (T001–T003) · integration gate PASS
++  (2026-07-30; branch 14435/0/19 vs base 894375e — zero branch-only
++  failures). Closed per docs/roadmap/STATUS.md.
+diff --git a/packages/orchestration/decision_queue.py b/packages/orchestration/decision_queue.py
+index 801aa14..4f1b698 100644
+--- a/packages/orchestration/decision_queue.py
++++ b/packages/orchestration/decision_queue.py
+@@ -13,6 +13,10 @@ Public API::
+     explain_decisions(job, events) -> str
+     export_decision_json(d) -> dict
+     build_decision_summary(decisions) -> dict  (brain node metadata)
++    sort_open_decisions_first(decisions) -> list[HumanDecision]
++    open_decisions(decisions) -> list[HumanDecision]
++    render_open_decisions_lines(decisions) -> list[str]  (status/report block)
++    open_decisions_next_action(decisions) -> str
+ """
+ 
+ from __future__ import annotations
+@@ -50,6 +54,8 @@ DECISION_TYPES = frozenset({
+     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
+     "token_budget", "worker_approval", "memory_review", "revert_missing",
+     "flight_plan_approval",
++    # F051: a task raised a question mid-run; its branch waits, the run does not.
++    "task_decision",
+ })
+ 
+ 
+@@ -289,6 +295,54 @@ def list_decisions(
+                 resolved_at="",
+             ))
+ 
++    # 8. Task decisions raised mid-run (F051).  Derived from the escalation
++    #    records on the job — not a second queue, the same read-only
++    #    aggregation as every branch above.
++    try:
++        from packages.orchestration.escalation import (
++            DECISION_TYPE_TASK_DECISION,
++            ESCALATION_STATUS_OPEN,
++            escalation_records,
++            task_decision_answer_command,
++        )
++        for record in escalation_records(job):
++            is_open = record.get("status") == ESCALATION_STATUS_OPEN
++            options = [str(o) for o in (record.get("options") or [])]
++            actions = tuple(
++                task_decision_answer_command(job_id, str(record.get("decision_id")), opt)
++                for opt in (options or ["<your answer>"])
++            ) if is_open else ()
++            decisions.append(HumanDecision(
++                id=str(record.get("decision_id", "")),
++                type=DECISION_TYPE_TASK_DECISION,
++                status=ESCALATION_STATUS_OPEN if is_open else "resolved",
++                severity="blocker" if is_open else "info",
++                source="escalation",
++                related_node_id=f"task:{str(record.get('task_id'))[:8]}",
++                related_intent_id="",
++                related_file="",
++                safe_summary=(
++                    f"Task {str(record.get('task_id'))[:8]} needs a decision: "
++                    f"{record.get('question', '')}"
++                    if is_open else
++                    f"Task {str(record.get('task_id'))[:8]} decision answered "
++                    f"({record.get('answer_source', '')}): {record.get('answer', '')}"
++                ),
++                next_actions=actions,
++                created_at=str(record.get("created_at", "")),
++                resolved_at=None if is_open else str(record.get("answered_at", "")),
++                payload={
++                    "task_id": str(record.get("task_id", "")),
++                    "question": str(record.get("question", "")),
++                    "options": options,
++                    "safe_default": str(record.get("safe_default", "")),
++                    "cross_references": [
++                        str(x) for x in (record.get("cross_references") or [])],
++                },
++            ))
++    except (ImportError, ValueError, OSError, AttributeError):
++        pass
++
+     return decisions
+ 
+ 
+@@ -343,6 +397,61 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
+     }
+ 
+ 
++#: Severity order for the views below.  Unknown severities sort last rather
++#: than raising: a decision with an odd severity must still be shown.
++_SEVERITY_RANK = {"blocker": 0, "warning": 1, "info": 2}
++
++
++def sort_open_decisions_first(
++    decisions: list[HumanDecision],
++) -> list[HumanDecision]:
++    """Open before resolved, blockers before warnings before info; stable.
++
++    Why: an unattended run's most important output is what it needs from a
++    human, so every view that shows decisions shows those first (F051 T003).
++    """
++    return sorted(
++        decisions,
++        key=lambda d: (0 if d.status == "open" else 1,
++                       _SEVERITY_RANK.get(d.severity, 3)),
++    )
++
++
++def open_decisions(decisions: list[HumanDecision]) -> list[HumanDecision]:
++    """The still-open decisions, most urgent first."""
++    return [d for d in sort_open_decisions_first(decisions) if d.status == "open"]
++
++
++def render_open_decisions_lines(
++    decisions: list[HumanDecision],
++    *,
++    indent: str = "  ",
++) -> list[str]:
++    """The block that status and report print FIRST — empty when nothing is open.
++
++    Every line a human needs is here: what is being asked, and the exact
++    command that answers it.  Nothing is truncated away: an answer command that
++    is not shown in full cannot be pasted.
++    """
++    pending = open_decisions(decisions)
++    if not pending:
++        return []
++    lines = [f"Open decisions: {len(pending)} — the run needs an answer"]
++    for d in pending:
++        lines.append(f"{indent}[{d.severity}] {d.type} {d.id}: {d.safe_summary}")
++        for action in d.next_actions:
++            lines.append(f"{indent}  -> {action}")
++    return lines
++
++
++def open_decisions_next_action(decisions: list[HumanDecision]) -> str:
++    """The one command that answers the most urgent open decision, or ""."""
++    for d in open_decisions(decisions):
++        if d.next_actions:
++            return d.next_actions[0]
++    return ""
++
++
+ def build_decision_summary(decisions: list[HumanDecision]) -> dict[str, Any]:
+     """Build safe metadata for brain node."""
+     open_decisions = [d for d in decisions if d.status == "open"]
+diff --git a/packages/orchestration/escalation.py b/packages/orchestration/escalation.py
+new file mode 100644
+index 0000000..98c2522
+--- /dev/null
++++ b/packages/orchestration/escalation.py
+@@ -0,0 +1,377 @@
++"""Escalate instead of block — the ``needs_decision`` task outcome (F051 T001).
++
++A task that needs a human answer must not end the run.  It raises
++``needs_decision``, ONE decision is enqueued for it, and the task is marked
++awaiting-decision: its own branch pauses, every disjoint branch keeps running,
++and the run stays resumable.  Awaiting is NOT failure — nothing was attempted
++and lost, so the task keeps its PENDING status exactly as a rolled-back attempt
++does, and the executor withholds its transitive downstream the same way it
++withholds the downstream of a blocked task (``dag_schedule.blocked_downstream``).
++
++Where the records live
++----------------------
++On ``job.metadata["escalations"]`` — a list of plain JSON-safe dicts.  This is
++NOT a second decision queue: ``decision_queue`` stays the one read-only
++aggregation over existing records and simply derives one ``task_decision``
++entry per record, the same way it derives the flight-plan approval from
++``job.flight_plan``.  Answering goes through the existing
++``remedy decision resolve`` command.
++
++Two tasks raising the same question produce TWO records (deduplication is a
++human call, feature-file A9); they cross-reference each other by decision id so
++whoever answers sees the pair.
++
++Attended vs unattended
++----------------------
++A safe default is still ASKED in attended mode: the record is created open and
++waits.  Only an unattended run (``--yes``) auto-applies the default, and then
++the record says so (``answer_source="default"``) and lands in the escalation
++assumption log.
++
++Remedy deliberately does NOT write these into the flight plan's
++``assumptions.md``: that log states in its own first paragraph that every
++question in it was asked at plan time and nothing mid-run.  Mid-run escalations
++therefore get their own ``escalation_assumptions.md`` in the same evidence area,
++in the same table shape, rather than making the plan-time log lie.
++"""
++
++from __future__ import annotations
++
++from collections.abc import Iterable, Mapping
++from datetime import datetime
++from pathlib import Path
++from typing import Any
++from uuid import UUID
++
++from packages.core.models import Job
++
++#: The additive task outcome.  A task step reports it instead of a failure when
++#: it cannot proceed without a human answer.
++TASK_OUTCOME_NEEDS_DECISION = "needs_decision"
++
++#: ``decision_queue`` type for a derived task decision.  Additive: every
++#: existing producer keeps its own type.
++DECISION_TYPE_TASK_DECISION = "task_decision"
++
++#: Where the records live on the job.  One key, additive, JSON-safe.
++JOB_METADATA_ESCALATIONS_KEY = "escalations"
++
++ESCALATION_STATUS_OPEN = "open"
++ESCALATION_STATUS_ANSWERED = "answered"
++
++#: Who supplied the answer.  Same vocabulary as the flight-plan clarifications.
++ANSWER_SOURCE_HUMAN = "human"
++ANSWER_SOURCE_DEFAULT = "default"
++
++#: Decision-id prefix for a task decision — the namespace ``decision resolve``
++#: dispatches on, next to ``sr:`` (stop reason) and ``fp:`` (flight plan).
++DECISION_ID_PREFIX = "td:"
++
++#: Task inputs key carrying the answers a task's decisions received, so the
++#: next attempt of that task can actually use them.
++TASK_INPUTS_ANSWERS_KEY = "decision_answers"
++
++#: Filename of the mid-run assumption log inside the job's evidence area.
++ESCALATION_ASSUMPTIONS_FILENAME = "escalation_assumptions.md"
++
++__all__ = [
++    "ANSWER_SOURCE_DEFAULT",
++    "ANSWER_SOURCE_HUMAN",
++    "DECISION_ID_PREFIX",
++    "DECISION_TYPE_TASK_DECISION",
++    "ESCALATION_ASSUMPTIONS_FILENAME",
++    "ESCALATION_STATUS_ANSWERED",
++    "ESCALATION_STATUS_OPEN",
++    "JOB_METADATA_ESCALATIONS_KEY",
++    "TASK_INPUTS_ANSWERS_KEY",
++    "TASK_OUTCOME_NEEDS_DECISION",
++    "answer_task_decision",
++    "answered_task_decisions",
++    "auto_apply_safe_default",
++    "awaiting_decision_task_ids",
++    "enqueue_task_decision",
++    "escalation_records",
++    "find_task_decision",
++    "open_task_decisions",
++    "render_escalation_assumptions_md",
++    "task_decision_answer_command",
++    "write_escalation_assumptions_md",
++]
++
++
++def _metadata(job: Job | Any) -> dict[str, Any]:
++    """The job's metadata dict, created on first use.
++
++    Both Core ``Job`` and the pingpong ``JobPlan`` are accepted; a job shape
++    without metadata at all gets an empty dict rather than an AttributeError,
++    because a missing metadata store means "no escalations", not a crash.
++    """
++    meta = getattr(job, "metadata", None)
++    if not isinstance(meta, dict):
++        meta = {}
++        try:
++            job.metadata = meta
++        except (AttributeError, ValueError):  # frozen or validated shapes
++            pass
++    return meta
++
++
++def escalation_records(job: Job | Any) -> list[dict[str, Any]]:
++    """Every escalation record on *job*, in creation order.
++
++    The live list is returned, so callers that append go through the helpers
++    below rather than mutating it themselves.
++    """
++    records = _metadata(job).get(JOB_METADATA_ESCALATIONS_KEY)
++    if not isinstance(records, list):
++        return []
++    return [r for r in records if isinstance(r, dict)]
++
++
++def _stored_records(job: Job | Any) -> list[dict[str, Any]]:
++    """The stored list itself, created if absent — the write path."""
++    meta = _metadata(job)
++    records = meta.get(JOB_METADATA_ESCALATIONS_KEY)
++    if not isinstance(records, list):
++        records = []
++        meta[JOB_METADATA_ESCALATIONS_KEY] = records
++    return records
++
++
++def open_task_decisions(job: Job | Any) -> list[dict[str, Any]]:
++    """Records still waiting for an answer, in creation order."""
++    return [r for r in escalation_records(job)
++            if r.get("status") == ESCALATION_STATUS_OPEN]
++
++
++def answered_task_decisions(job: Job | Any) -> list[dict[str, Any]]:
++    """Records that have an answer — human or auto-applied default."""
++    return [r for r in escalation_records(job)
++            if r.get("status") == ESCALATION_STATUS_ANSWERED]
++
++
++def awaiting_decision_task_ids(job: Job | Any) -> set[UUID]:
++    """Task ids whose branch is paused on an OPEN decision.
++
++    This is what the executor withholds from the ready set: the tasks
++    themselves and — through ``blocked_downstream`` — everything depending on
++    them.  Answering a decision empties this set for that task with no further
++    bookkeeping, which is why the awaiting state is derived and never stored
++    twice.
++    """
++    awaiting: set[UUID] = set()
++    for record in open_task_decisions(job):
++        try:
++            awaiting.add(UUID(str(record.get("task_id"))))
++        except (TypeError, ValueError):
++            continue                        # a malformed id blocks nothing
++    return awaiting
++
++
++def find_task_decision(job: Job | Any, decision_id: str) -> dict[str, Any] | None:
++    """The record with this decision id, or None."""
++    for record in escalation_records(job):
++        if record.get("decision_id") == decision_id:
++            return record
++    return None
++
++
++def task_decision_answer_command(job_id: str, decision_id: str,
++                                 answer: str = "<your answer>") -> str:
++    """The EXACT command that answers this decision.
++
++    Rendered into the decision's next actions and into the status/report views,
++    so what a human reads is what a human can paste.
++    """
++    return (f'remedy decision resolve {str(job_id)[:8]} {decision_id} '
++            f'--reason "{answer}"')
++
++
++def _next_decision_id(records: Iterable[Mapping[str, Any]], task_id: Any) -> str:
++    """``td:<task8>`` for a task's first decision, ``td:<task8>-<n>`` after.
++
++    Task-scoped and deterministic: no clock and no randomness, so the same
++    sequence of escalations always produces the same ids across a resume.
++    """
++    task_str = str(task_id)
++    try:
++        task_hex = UUID(task_str).hex[:8]
++    except (TypeError, ValueError):
++        task_hex = task_str[:8]
++    seen = sum(1 for r in records if str(r.get("task_id")) == task_str)
++    return (f"{DECISION_ID_PREFIX}{task_hex}" if seen == 0
++            else f"{DECISION_ID_PREFIX}{task_hex}-{seen + 1}")
++
++
++def _normalized_question(text: Any) -> str:
++    """Whitespace- and case-insensitive question key for cross-referencing."""
++    return " ".join(str(text or "").split()).casefold()
++
++
++def enqueue_task_decision(
++    job: Job | Any,
++    *,
++    task_id: Any,
++    question: str,
++    options: Iterable[str] = (),
++    safe_default: str = "",
++    impact: str = "",
++    now: datetime,
++) -> dict[str, Any]:
++    """Enqueue ONE decision for *task_id* and return its record.
++
++    One call, one record — a task raising the same question twice really did
++    ask twice.  Records whose question matches an existing OPEN one are
++    cross-referenced in both directions (``cross_references``) so a human sees
++    the pair without the code guessing they are the same call.
++    """
++    records = _stored_records(job)
++    decision_id = _next_decision_id(records, task_id)
++    question_key = _normalized_question(question)
++
++    siblings = [r for r in records
++                if r.get("status") == ESCALATION_STATUS_OPEN
++                and _normalized_question(r.get("question")) == question_key]
++
++    record: dict[str, Any] = {
++        "decision_id": decision_id,
++        "task_id": str(task_id),
++        "question": str(question),
++        "options": [str(o) for o in options],
++        "safe_default": str(safe_default or ""),
++        "impact": str(impact or ""),
++        "status": ESCALATION_STATUS_OPEN,
++        "answer": "",
++        "answer_source": "",
++        "created_at": now.isoformat(),
++        "answered_at": "",
++        "cross_references": [str(r.get("decision_id")) for r in siblings],
++    }
++    for sibling in siblings:
++        refs = sibling.setdefault("cross_references", [])
++        if isinstance(refs, list) and decision_id not in refs:
++            refs.append(decision_id)
++    records.append(record)
++    return record
++
++
++def _record_answer_on_task(job: Job | Any, record: Mapping[str, Any]) -> None:
++    """Put the answer where the next attempt of that task will read it.
++
++    Without this the branch would resume as ignorant as it paused.  Additive:
++    tasks that never escalated keep their inputs untouched.
++    """
++    task_id = str(record.get("task_id"))
++    for task in getattr(job, "tasks", ()) or ():
++        if str(task.id) != task_id:
++            continue
++        inputs = task.inputs if isinstance(task.inputs, dict) else {}
++        answers = inputs.get(TASK_INPUTS_ANSWERS_KEY)
++        if not isinstance(answers, dict):
++            answers = {}
++            inputs[TASK_INPUTS_ANSWERS_KEY] = answers
++        answers[str(record.get("decision_id"))] = str(record.get("answer", ""))
++        return
++
++
++def answer_task_decision(
++    job: Job | Any,
++    decision_id: str,
++    *,
++    answer: str,
++    source: str = ANSWER_SOURCE_HUMAN,
++    now: datetime,
++) -> dict[str, Any] | None:
++    """Answer an OPEN decision and return the updated record.
++
++    Returns None when no such decision exists.  Answering one that is already
++    answered is refused the same way — answers are written once, so a late
++    second answer cannot silently overwrite the one the run acted on.
++    """
++    record = find_task_decision(job, decision_id)
++    if record is None or record.get("status") != ESCALATION_STATUS_OPEN:
++        return None
++    record["status"] = ESCALATION_STATUS_ANSWERED
++    record["answer"] = str(answer)
++    record["answer_source"] = str(source)
++    record["answered_at"] = now.isoformat()
++    _record_answer_on_task(job, record)
++    return record
++
++
++def auto_apply_safe_default(
++    job: Job | Any,
++    record: Mapping[str, Any],
++    *,
++    now: datetime,
++) -> dict[str, Any] | None:
++    """Apply *record*'s safe default — unattended runs only.
++
++    The caller decides whether the run is unattended; this function only
++    refuses records that have no default to apply.  A default applied here is
++    marked ``answer_source="default"`` and therefore shows up in the escalation
++    assumption log, which is the whole point of recording it.
++    """
++    if not str(record.get("safe_default") or ""):
++        return None
++    return answer_task_decision(
++        job, str(record.get("decision_id")),
++        answer=str(record["safe_default"]),
++        source=ANSWER_SOURCE_DEFAULT,
++        now=now,
++    )
++
++
++def _cell(text: Any) -> str:
++    """Make a value safe for a markdown table cell."""
++    return " ".join(str(text or "").split()).replace("|", "\\|") or "-"
++
++
++def render_escalation_assumptions_md(job: Job | Any) -> str:
++    """The mid-run assumption log: what was asked, answered, and by whom.
++
++    Deliberately separate from the flight plan's ``assumptions.md`` — see the
++    module docstring.  Same table shape, so a reviewer reads both the same way.
++    """
++    records = escalation_records(job)
++
++    lines = ["# Escalation assumptions", ""]
++    lines.append(
++        "Questions raised BY A TASK DURING THE RUN. Each one paused only its "
++        "own branch; the run continued on every disjoint branch.")
++    lines.append("")
++
++    if not records:
++        lines.append("No escalations — no task needed a decision.")
++        lines.append("")
++        return "\n".join(lines)
++
++    lines.append("| Decision | Task | Question | Answer | Source | Impact |")
++    lines.append("| --- | --- | --- | --- | --- | --- |")
++    for record in records:
++        source = str(record.get("answer_source") or "")
++        lines.append(
++            f"| {_cell(record.get('decision_id'))} "
++            f"| {_cell(str(record.get('task_id'))[:8])} "
++            f"| {_cell(record.get('question'))} "
++            f"| {_cell(record.get('answer'))} "
++            f"| {_cell(source or 'unanswered')} "
++            f"| {_cell(record.get('impact'))} |")
++    lines.append("")
++
++    human = sum(1 for r in records if r.get("answer_source") == ANSWER_SOURCE_HUMAN)
++    default = sum(1 for r in records if r.get("answer_source") == ANSWER_SOURCE_DEFAULT)
++    still_open = sum(1 for r in records if r.get("status") == ESCALATION_STATUS_OPEN)
++    lines.append(
++        f"Sources: {human} human, {default} default, {still_open} unresolved.")
++    lines.append("")
++    return "\n".join(lines)
++
++
++def write_escalation_assumptions_md(job: Job | Any, evidence_dir: Path) -> Path:
++    """Write the mid-run assumption log into the job's evidence area."""
++    evidence_dir = Path(evidence_dir)
++    evidence_dir.mkdir(parents=True, exist_ok=True)
++    path = evidence_dir / ESCALATION_ASSUMPTIONS_FILENAME
++    path.write_text(render_escalation_assumptions_md(job), encoding="utf-8")
++    return path
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index a7c4a0d..939fd23 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -26,6 +26,15 @@ branches keep running; those withheld ids are named in the cycle record.
+ Execution itself stays SEQUENTIAL — the ready set feeds one batch at a time
+ and this module never starts a thread.
+ 
++A task may also raise ``needs_decision`` (F051) instead of finishing or
++failing.  One decision is enqueued on the existing decision queue, that branch
++pauses, and the loop keeps pulling ready tasks from every disjoint branch.  At
++each batch boundary the awaiting branches are re-checked once against the job's
++open decisions, so a decision answered while the run is still working elsewhere
++is picked up without a restart and without a polling loop.  A run that ends
++with open decisions is ``blocked`` — PAUSED, resumable, and the report says
++which command answers what.
++
+ Terminal statuses and how they map onto job state:
+ 
+     | terminal status     | pingpong job status | core RunState |
+@@ -68,6 +77,7 @@ from packages.orchestration.budget_guard import BudgetCounters
+ from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+ from packages.orchestration.dag_schedule import blocked_downstream
+ from packages.orchestration.dag_schedule import ready_set as dag_ready_set
++from packages.orchestration.escalation import awaiting_decision_task_ids
+ from packages.orchestration.pingpong_job import (
+     JOB_BLOCKED,
+     JOB_COMPLETED,
+@@ -120,6 +130,9 @@ LEDGER_EVENT_CYCLE_COMPLETED = "cycle_completed"
+ LEDGER_EVENT_LOOP_TERMINAL = "cycle_loop_terminal"
+ #: F048: the idle loop took (or failed to take) a queued entry.
+ LEDGER_EVENT_QUEUE_PULL = "queue_pull"
++#: F051: a task raised a question, and what happened to it.
++LEDGER_EVENT_TASK_NEEDS_DECISION = "task_needs_decision"
++LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
+ 
+ #: Verify-step outcomes.  "not_run" is recorded verbatim — a cycle that ran no
+ #: verification never claims a passing one.
+@@ -195,6 +208,15 @@ class TaskAttempt:
+     executed: bool = False
+     verified: bool = False
+     error: str = ""
++    #: F051: the task cannot proceed without a human answer.  This is NOT a
++    #: failure — nothing was attempted and lost — so the conductor enqueues one
++    #: decision, pauses this branch only, and keeps pulling ready tasks from
++    #: every other branch.  Every step written before F051 omits these and
++    #: behaves exactly as it did.
++    needs_decision: bool = False
++    question: str = ""
++    options: tuple[str, ...] = ()
++    safe_default: str = ""
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -216,6 +238,10 @@ class CycleRecord:
+     ended_at: str
+     verify_command: str | None = None
+     errors: tuple[str, ...] = ()
++    #: F051: attempts that ended in ``needs_decision`` this cycle.  Counted
++    #: separately from ``tasks_failed`` on purpose — an escalation is a question,
++    #: not a failure, and a report that mixed the two would lie about the run.
++    tasks_escalated: int = 0
+     #: Ids of the tasks this cycle actually EXECUTED, in execution order.
+     #: They are what makes exactly-once provable across a kill and a resume
+     #: (F047 T003) — a counter in a test process cannot span two processes.
+@@ -227,6 +253,13 @@ class CycleRecord:
+     #: blocked in this run, in plan order.  This is what lets a report say WHY
+     #: nothing happened on a branch instead of leaving a silent gap.
+     skipped_blocked_task_ids: tuple[str, ...] = ()
++    #: F051: tasks whose branch is paused on an OPEN decision, in plan order.
++    awaiting_task_ids: tuple[str, ...] = ()
++    #: F051: ids withheld only because something upstream of them awaits a
++    #: decision — the awaiting counterpart of ``skipped_blocked_task_ids``.
++    awaiting_downstream_task_ids: tuple[str, ...] = ()
++    #: F051: the decisions this cycle raised, in the order they were raised.
++    open_decision_ids: tuple[str, ...] = ()
+ 
+     def to_json(self) -> dict[str, Any]:
+         return {
+@@ -234,6 +267,7 @@ class CycleRecord:
+             "tasks_attempted": self.tasks_attempted,
+             "tasks_completed": self.tasks_completed,
+             "tasks_failed": self.tasks_failed,
++            "tasks_escalated": self.tasks_escalated,
+             "verify_result": self.verify_result,
+             "verify_command": self.verify_command,
+             "tokens_so_far": self.tokens_so_far,
+@@ -242,6 +276,9 @@ class CycleRecord:
+             "errors": list(self.errors),
+             "executed_task_ids": list(self.executed_task_ids),
+             "skipped_blocked_task_ids": list(self.skipped_blocked_task_ids),
++            "awaiting_task_ids": list(self.awaiting_task_ids),
++            "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
++            "open_decision_ids": list(self.open_decision_ids),
+         }
+ 
+ 
+@@ -387,6 +424,13 @@ class CycleLoopResult:
+     #: F048: what the idle loop pulled from the queue, if the binding is enabled.
+     #: ``None`` whenever it is not — which is the default.
+     queue_pull: QueuePull | None = None
++    #: F051: decisions still open when the loop ended.  A non-empty tuple with
++    #: terminal ``blocked`` is the "the run needs you" case.
++    open_decision_ids: tuple[str, ...] = ()
++    #: F051: how many times the loop re-checked the awaiting branches — exactly
++    #: once per batch boundary.  Asserted in tests: it proves the pickup is a
++    #: boundary check and not a polling loop.
++    awaiting_checks: int = 0
+ 
+     @property
+     def cycles_run(self) -> int:
+@@ -400,6 +444,8 @@ class CycleLoopResult:
+             "stop_reason": self.stop_reason,
+             "cycles_run": self.cycles_run,
+             "cycles": [c.to_json() for c in self.cycles],
++            "open_decision_ids": list(self.open_decision_ids),
++            "awaiting_checks": self.awaiting_checks,
+         }
+         # Only present when something was actually pulled: the default shape of this
+         # payload is what every existing reader already parses.
+@@ -590,7 +636,8 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
+ 
+ 
+ def ready_tasks(job: Job, batch_size: int, *,
+-                blocked_ids: Collection[UUID] = ()) -> list[UUID]:
++                blocked_ids: Collection[UUID] = (),
++                awaiting_ids: Collection[UUID] = ()) -> list[UUID]:
+     """The ready batch: the DAG ready set in plan order, capped at batch_size.
+ 
+     F050: a task is ready when every dependency it declares in its Flight Plan
+@@ -602,10 +649,16 @@ def ready_tasks(job: Job, batch_size: int, *,
+     *blocked_ids* are tasks blocked for this run — an attempt executed and
+     failed.  They and their transitive dependents are withheld, so a blocked
+     branch locks only its own downstream and independent branches keep running.
++
++    *awaiting_ids* are tasks paused on an OPEN human decision (F051).  They are
++    withheld exactly like blocked ids — same branch-local effect — but they are
++    a separate argument because they mean something entirely different: nothing
++    failed, and the moment the decision is answered they become ready again.
+     """
+     ready = dag_ready_set(job.tasks)
+-    if blocked_ids:
+-        withheld = set(blocked_ids) | blocked_downstream(job.tasks, blocked_ids)
++    withheld_seeds = set(blocked_ids) | set(awaiting_ids)
++    if withheld_seeds:
++        withheld = withheld_seeds | blocked_downstream(job.tasks, withheld_seeds)
+         ready = [task_id for task_id in ready if task_id not in withheld]
+     return ready[:batch_size]
+ 
+@@ -623,6 +676,17 @@ def skipped_blocked_tasks(job: Job,
+     return [task.id for task in job.tasks if task.id in skipped]
+ 
+ 
++def awaiting_downstream_tasks(job: Job,
++                              awaiting_ids: Collection[UUID]) -> list[UUID]:
++    """Ids withheld only because something upstream awaits a decision (F051).
++
++    Same traversal as ``skipped_blocked_tasks``, reported under its own name so
++    a report can distinguish "waiting for an answer" from "blocked by a
++    failure" — for a returning human those are opposite situations.
++    """
++    return skipped_blocked_tasks(job, awaiting_ids)
++
++
+ def _step_target_argument(step: TaskStep) -> bool:
+     """True when *step* accepts the ``task_id`` the ready set selected.
+ 
+@@ -715,13 +779,16 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
+ 
+ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+                             limits: CycleLimits, *,
+-                            blocked_ids: Collection[UUID] = ()) -> None:
++                            blocked_ids: Collection[UUID] = (),
++                            awaiting_ids: Collection[UUID] = ()) -> None:
+     """Write this cycle's checkpoint (F047).  Never raises into the loop.
+ 
+     The next intent is derived from what the job still has READY at this
+     moment: another cycle with a named first task, or nothing left to run.
+     A task blocked in this run is not named as the next intent — resuming into
+     a task that just failed would be a retry policy this module does not own.
++    A task awaiting a decision is not named either: resuming into it before the
++    decision is answered would just escalate again (F051).
+     A write that fails is recorded on the job as ``checkpoint_error`` and
+     logged by the checkpoint module — the run continues and the next cycle
+     retries (feature-file A9).
+@@ -732,7 +799,8 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+         record_cycle_checkpoint,
+     )
+ 
+-    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
++    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
++                          awaiting_ids=awaiting_ids)
+     next_intent: dict[str, Any] = (
+         {"kind": INTENT_CYCLE,
+          "cycle_index": record.cycle_index + 1,
+@@ -752,6 +820,56 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+         job.metadata.pop("checkpoint_error", None)
+ 
+ 
++def _open_decision_ids(job: Job) -> tuple[str, ...]:
++    """Ids of the job's still-open task decisions, in the order they were raised."""
++    from packages.orchestration.escalation import open_task_decisions
++
++    return tuple(str(record.get("decision_id", ""))
++                 for record in open_task_decisions(job))
++
++
++def _escalate_task(job: Job, attempt: TaskAttempt, target: UUID, *,
++                   now: datetime, unattended: bool,
++                   log: Any = None) -> dict[str, Any]:
++    """Enqueue ONE decision for the task that raised ``needs_decision`` (F051).
++
++    Attended runs always ask.  An unattended run applies the decision's safe
++    default at once — and only then; a decision with no default waits in both
++    modes, because inventing an answer is the one thing escalation exists to
++    avoid.  The returned record is the one the cycle names in its evidence.
++    """
++    from packages.orchestration.escalation import (
++        auto_apply_safe_default,
++        enqueue_task_decision,
++    )
++
++    task_id = attempt.task_id if attempt.task_id is not None else target
++    record = enqueue_task_decision(
++        job,
++        task_id=task_id,
++        question=attempt.question,
++        options=attempt.options,
++        safe_default=attempt.safe_default,
++        now=now,
++    )
++    _emit(log, LEDGER_EVENT_TASK_NEEDS_DECISION,
++          task_id=str(task_id),
++          decision_id=record["decision_id"],
++          question=record["question"],
++          options=list(record["options"]),
++          safe_default=record["safe_default"])
++
++    if unattended:
++        applied = auto_apply_safe_default(job, record, now=now)
++        if applied is not None:
++            _emit(log, LEDGER_EVENT_DECISION_ANSWERED,
++                  task_id=str(task_id),
++                  decision_id=record["decision_id"],
++                  answer=applied["answer"],
++                  answer_source=applied["answer_source"])
++    return record
++
++
+ def _emit(log: Any, event: str, **meta: Any) -> None:
+     """Emit a ledger event when a writer was injected; never raise into the loop."""
+     if log is None:
+@@ -781,6 +899,7 @@ def run_cycles(
+     record_evidence: bool = True,
+     record_checkpoint: bool = True,
+     first_cycle_index: int | None = None,
++    unattended: bool = False,
+ ) -> CycleLoopResult:
+     """Run bounded cycles over *job* until a terminal condition.
+ 
+@@ -816,6 +935,14 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+     the all_green status; self-healing is a later feature.  A task step that
+     fails ends the cycle too — the task runner has already rolled the task back
+     to PENDING, so the next cycle (if the budget allows one) retries it.
++
++    ``unattended`` (F051) decides what a safe default is worth.  Attended (the
++    default): a task raising ``needs_decision`` always ASKS — the decision is
++    enqueued and its branch waits, default or not.  Unattended: a decision that
++    carries a safe default is answered from that default immediately, recorded
++    as ``answer_source="default"`` in the escalation assumption log, and the
++    branch continues in the same cycle.  A decision without a default waits
++    either way — Remedy never invents an answer it was not given.
+     """
+     step = task_step or default_task_step
+     verify_step = verify or _no_verify
+@@ -833,6 +960,12 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+     #: knows which attempts it made and lost.  Ids accumulate for the whole
+     #: run: a branch that failed stays blocked until a new run retries it.
+     blocked_ids: set[UUID] = set()
++    #: F051 awaiting tracking.  DERIVED from the job's open escalation records
++    #: at every batch boundary, never stored twice: answering a decision removes
++    #: the task from this set with no bookkeeping here, which is exactly how an
++    #: answered branch gets picked up mid-run.
++    awaiting_ids: set[UUID] = set()
++    awaiting_checks = 0
+     step_takes_target = _step_target_argument(task_step or default_task_step)
+ 
+     def counted_provider_call(context: TaskExecutionContext) -> BuilderOutput:
+@@ -858,11 +991,27 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             stop_reason = stop.reason
+             break
+ 
+-        # 2. Terminal by job shape: green, or nothing ready and not green.
+-        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
++        # 2. Batch boundary (F051): re-check which branches still await a
++        #    decision.  An answered decision has disappeared from the job's open
++        #    records, so its branch becomes ready again right here — exactly one
++        #    check per boundary, no sleeping and no polling loop anywhere.
++        awaiting_checks += 1
++        awaiting_ids = awaiting_decision_task_ids(job)
++
++        # 3. Terminal by job shape: green, or nothing ready and not green.
++        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
++                            awaiting_ids=awaiting_ids)
+         if not batch:
+             if _is_green(job, last_verify):
+                 terminal, stop_reason = TERMINAL_ALL_GREEN, ""
++            elif awaiting_ids:
++                # Nothing has failed — the run needs an answer.  ``blocked``
++                # maps to PAUSED, so answering and resuming finishes the rest.
++                terminal = TERMINAL_BLOCKED
++                stop_reason = (
++                    "awaiting_decision; open_decisions="
++                    + ",".join(_open_decision_ids(job))
++                )
+             else:
+                 terminal = TERMINAL_BLOCKED
+                 stop_reason = (
+@@ -871,17 +1020,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+                 )
+             break
+ 
+-        # 3. Cycle budget.  Not a stop cause — pending work simply remains.
++        # 4. Cycle budget.  Not a stop cause — pending work simply remains.
+         if len(cycles) >= limits.max_cycles:
+             terminal, stop_reason = TERMINAL_MAX_CYCLES_REACHED, ""
+             break
+ 
+-        # 4. Run the cycle.
++        # 5. Run the cycle.
+         cycle_index = base_index + len(cycles)
+         started_at = now
+-        attempted = completed = failed = 0
++        attempted = completed = failed = escalated = 0
+         errors: list[str] = []
+         executed_ids: list[str] = []
++        raised_decision_ids: list[str] = []
+ 
+         # The ready set is recomputed after EVERY task end (F050), so a task
+         # that completes mid-cycle can release its dependents immediately and a
+@@ -889,12 +1039,26 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         # The batch is a CAP on how many tasks this cycle may run, unchanged.
+         for _ in range(limits.batch_size):
+             ready_now = ready_tasks(job, limits.batch_size,
+-                                    blocked_ids=blocked_ids)
++                                    blocked_ids=blocked_ids,
++                                    awaiting_ids=awaiting_ids)
+             if not ready_now:
+                 break                      # nothing ready any more
+             target = ready_now[0]
+             attempt = (step(job, counted_provider_call, target)
+                        if step_takes_target else step(job, counted_provider_call))
++            # F051: a question, not a failure.  One decision is enqueued for
++            # this task, its branch pauses, and the loop carries straight on to
++            # whatever else is ready — including tasks on disjoint branches of
++            # this very cycle.
++            if attempt.needs_decision:
++                attempted += 1
++                escalated += 1
++                record = _escalate_task(
++                    job, attempt, target,
++                    now=now_fn(), unattended=unattended, log=log)
++                raised_decision_ids.append(str(record.get("decision_id", "")))
++                awaiting_ids = awaiting_decision_task_ids(job)
++                continue
+             if not attempt.executed and not attempt.error:
+                 break                      # nothing ready any more; not an attempt
+             attempted += 1
+@@ -929,6 +1093,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             tasks_attempted=attempted,
+             tasks_completed=completed,
+             tasks_failed=failed,
++            tasks_escalated=escalated,
+             verify_result=last_verify,
+             tokens_so_far=counters.measured_token_total,
+             started_at=started_at.isoformat(),
+@@ -938,10 +1103,16 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             executed_task_ids=tuple(executed_ids),
+             skipped_blocked_task_ids=tuple(
+                 str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
++            awaiting_task_ids=tuple(
++                str(task.id) for task in job.tasks if task.id in awaiting_ids),
++            awaiting_downstream_task_ids=tuple(
++                str(task_id)
++                for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
++            open_decision_ids=tuple(raised_decision_ids),
+         )
+         cycles.append(record)
+ 
+-        # 5. Persist the job, then the cycle's own evidence record, then the
++        # 6. Persist the job, then the cycle's own evidence record, then the
+         #    checkpoint (F047).  Order matters: a checkpoint references the
+         #    persisted snapshot, so the snapshot must already be on disk.
+         save_fn(job)
+@@ -951,15 +1122,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             except (OSError, ValueError) as exc:
+                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
+         if record_checkpoint:
+-            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids)
++            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
++                                    awaiting_ids=awaiting_ids)
+         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+ 
+     job_status = _apply_terminal(job, terminal, stop_reason)
+     save_fn(job)
++    open_decisions = _open_decision_ids(job)
+     _emit(
+         log, LEDGER_EVENT_LOOP_TERMINAL,
+         terminal_status=terminal, job_status=job_status,
+         stop_reason=stop_reason, cycles_run=len(cycles),
++        open_decision_ids=list(open_decisions),
+     )
+     return CycleLoopResult(
+         job=job,
+@@ -968,4 +1142,6 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         stop_reason=stop_reason,
+         cycles=tuple(cycles),
+         queue_pull=_pull_queue_when_idle(job, terminal, log=log),
++        open_decision_ids=open_decisions,
++        awaiting_checks=awaiting_checks,
+     )

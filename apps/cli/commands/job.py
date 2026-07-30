@@ -638,6 +638,7 @@ def _cmd_job_run_cycles(
     job_id_str: str,
     *,
     cycles: int | None = None,
+    unattended: bool = False,
     json_output: bool = False,
 ) -> None:
     """Run a job in bounded cycles (F046).
@@ -647,6 +648,12 @@ def _cmd_job_run_cycles(
     milestone gate raises it.  While the resolved count is one cycle, this
     command IS today's single pass — it delegates to the existing run-next
     entry point, so single-cycle behavior cannot drift from it.
+
+    ``unattended`` (F051, R-0157) is the product surface for the loop's
+    unattended mode: a task decision that carries a safe default is answered
+    from that default and recorded in the escalation assumption log, instead of
+    pausing the branch until a human answers.  A decision with no safe default
+    waits either way.  Default OFF — attended behavior is untouched.
     """
     import json as _json
     from dataclasses import replace
@@ -675,6 +682,15 @@ def _cmd_job_run_cycles(
     if resolved.max_cycles <= 1:
         # One cycle == today's single pass. Reuse it verbatim rather than
         # reimplementing the task/verify/apply pipeline behind a second door.
+        if unattended:
+            # Say it rather than swallow it: the single pass does not go through
+            # the cycle loop, so it raises no task decisions to auto-answer.
+            print(
+                "Note: --unattended has no effect while the run resolves to the "
+                "single pass (F046 rollout default); task decisions are raised by "
+                "the cycle loop, which the F075 milestone gate enables.",
+                file=sys.stderr,
+            )
         _cmd_run_next_task_local(job_id_str)
         return
 
@@ -723,7 +739,8 @@ def _cmd_job_run_cycles(
 
     limits = replace(limits, budgets=job.budgets)
     result = run_cycles(job, limits, builder.build,
-                        task_step=default_task_step, log=log)
+                        task_step=default_task_step, log=log,
+                        unattended=unattended)
 
     if json_output:
         print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
@@ -1519,6 +1536,36 @@ def _extract_job_truth(job: Job) -> dict:
     }
 
 
+def _open_decisions_view(job: Job) -> dict:
+    """The open-decision block status and report both render FIRST (F051 T003).
+
+    Returns the rendered text lines, the JSON-safe decision dicts, and the one
+    command that answers the most urgent open decision.  A decision queue that
+    cannot be read must never break a read-only view, so any failure degrades to
+    "nothing open" rather than an error.
+    """
+    try:
+        from packages.orchestration.decision_queue import (
+            export_decision_json,
+            list_decisions,
+            open_decisions,
+            open_decisions_next_action,
+            render_open_decisions_lines,
+        )
+        from packages.orchestration.timeline import load_run_events
+
+        events = load_run_events(resolve_data_root(), job.id)
+        decisions = list_decisions(job, events)
+        return {
+            'lines': render_open_decisions_lines(decisions),
+            'open_decisions': [export_decision_json(d)
+                               for d in open_decisions(decisions)],
+            'next_action': open_decisions_next_action(decisions),
+        }
+    except Exception:  # noqa: BLE001 — a read-only view never fails on this
+        return {'lines': [], 'open_decisions': [], 'next_action': ''}
+
+
 def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     """Job status -- safe read-only view of current job state."""
     import json as _json
@@ -1534,6 +1581,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         sys.exit(1)
 
     truth = _extract_job_truth(job)
+    open_decision_view = _open_decisions_view(job)
 
     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
     task_count = len(job.tasks)
@@ -1541,6 +1589,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
 
     blockers: list[str] = []
+    # F051: an open decision comes first — it is what the run needs from a human.
+    if open_decision_view['open_decisions']:
+        blockers.append('awaiting_decision')
     if truth['approval_required']:
         blockers.append('approval_required')
     elif pending_count > 0 and state == 'pending':
@@ -1551,7 +1602,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
     if truth.get('fulfillment_blockers'):
         blockers.extend(truth['fulfillment_blockers'])
 
-    if truth['approval_required']:
+    if open_decision_view['next_action']:
+        next_action = open_decision_view['next_action']
+    elif truth['approval_required']:
         next_action = 'remedy patch approve <job_id> <patch_intent_id>'
     elif truth.get('fulfillment_next_action'):
         next_action = truth['fulfillment_next_action']
@@ -1582,11 +1635,16 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         'staging_promoted': truth.get('staging_promoted', False),
         'blockers': blockers,
         'next_safe_action': next_action,
+        # F051: open decisions first, with the exact command that answers each.
+        'open_decisions': open_decision_view['open_decisions'],
+        'open_decision_count': len(open_decision_view['open_decisions']),
     }
 
     if json_output:
         print(_json.dumps(status, indent=2))
     else:
+        for line in open_decision_view['lines']:
+            print(line)
         print(f'Job {job.id}')
         print(f'  Name:      {job.name}')
         print(f'  State:     {state}')
@@ -1616,6 +1674,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         sys.exit(1)
 
     truth = _extract_job_truth(job)
+    open_decision_view = _open_decisions_view(job)
 
     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
     task_count = len(job.tasks)
@@ -1663,7 +1722,12 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
         'staging_used': truth.get('staging_used', False),
         'staging_promoted': truth.get('staging_promoted', False),
         'fulfillment_blockers': truth.get('fulfillment_blockers', []),
-        'next_safe_action': truth.get('fulfillment_next_action', ''),
+        # F051: a blocked run's next action is the command that answers its
+        # most urgent open decision — that is what unblocks it.
+        'next_safe_action': (open_decision_view['next_action']
+                             or truth.get('fulfillment_next_action', '')),
+        'open_decisions': open_decision_view['open_decisions'],
+        'open_decision_count': len(open_decision_view['open_decisions']),
         'tasks': task_details,
     }
     if fulfillment_data:
@@ -1672,6 +1736,8 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
     if json_output:
         print(_json.dumps(report, indent=2))
     else:
+        for line in open_decision_view['lines']:
+            print(line)
         print(f'Job Report: {job.id}')
         print(f'  Name:      {job.name}')
         print(f'  State:     {state}')
@@ -1690,6 +1756,10 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
                 ty = td['type']
                 desc = td['description']
                 print(f'    [{s:<10}] {ty}: {desc}')
+        # The last line a human reads is what to do next.  For a blocked run
+        # with open decisions that is the answer command, spelled out (F051).
+        if report['next_safe_action']:
+            print(f'  Next:      {report["next_safe_action"]}')
 
 
 def _cmd_job_fulfill(
@@ -2004,6 +2074,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "job.run": lambda args: _cmd_job_run_cycles(
         args.job_id,
         cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
+        unattended=getattr(args, "unattended", False),
         json_output=getattr(args, "json", False),
     ),
     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),

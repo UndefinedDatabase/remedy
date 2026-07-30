@@ -1,0 +1,34 @@
+{
+ "bundle_generated_at": "2026-07-30T15:23:08.725123+00:00",
+ "bundle_type": "job_evidence",
+ "bundle_version": "0.1.0",
+ "completion_mode": "manual_operator_repair",
+ "context_strategy": "task_bounded_sequential_job",
+ "created_at": "2026-07-30T15:23:08.725123+00:00",
+ "effective_status": "operator_attested_complete",
+ "error": "",
+ "evidence_available": true,
+ "execution_config": null,
+ "finished_at": "",
+ "human_final_reviewer_required": true,
+ "job_file_sha256": "94afe290a9201f1c199172538606d0059e72272fa8370735eac2a9af6d32c732",
+ "job_id": "785d275a-2f78-4b44-bd29-f8764ff95bb8",
+ "job_title": "F051 \u2014 Escalate instead of block (unattended)",
+ "job_workspace_path": "",
+ "persisted_status": "planned",
+ "repo_identity": "[local]",
+ "status": "planned",
+ "target_guard": null,
+ "task_count": 3,
+ "task_ids": [
+  "T001",
+  "T002",
+  "T003"
+ ],
+ "task_run_ids": {},
+ "task_statuses": {
+  "T001": "pending",
+  "T002": "pending",
+  "T003": "pending"
+ }
+}

@@ -1,0 +1,422 @@
+4d9287304070b84805167cf35985cd4f7ed4c12f
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index a7c4a0d..939fd23 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -26,6 +26,15 @@ branches keep running; those withheld ids are named in the cycle record.
+ Execution itself stays SEQUENTIAL — the ready set feeds one batch at a time
+ and this module never starts a thread.
+ 
++A task may also raise ``needs_decision`` (F051) instead of finishing or
++failing.  One decision is enqueued on the existing decision queue, that branch
++pauses, and the loop keeps pulling ready tasks from every disjoint branch.  At
++each batch boundary the awaiting branches are re-checked once against the job's
++open decisions, so a decision answered while the run is still working elsewhere
++is picked up without a restart and without a polling loop.  A run that ends
++with open decisions is ``blocked`` — PAUSED, resumable, and the report says
++which command answers what.
++
+ Terminal statuses and how they map onto job state:
+ 
+     | terminal status     | pingpong job status | core RunState |
+@@ -68,6 +77,7 @@ from packages.orchestration.budget_guard import BudgetCounters
+ from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+ from packages.orchestration.dag_schedule import blocked_downstream
+ from packages.orchestration.dag_schedule import ready_set as dag_ready_set
++from packages.orchestration.escalation import awaiting_decision_task_ids
+ from packages.orchestration.pingpong_job import (
+     JOB_BLOCKED,
+     JOB_COMPLETED,
+@@ -120,6 +130,9 @@ LEDGER_EVENT_CYCLE_COMPLETED = "cycle_completed"
+ LEDGER_EVENT_LOOP_TERMINAL = "cycle_loop_terminal"
+ #: F048: the idle loop took (or failed to take) a queued entry.
+ LEDGER_EVENT_QUEUE_PULL = "queue_pull"
++#: F051: a task raised a question, and what happened to it.
++LEDGER_EVENT_TASK_NEEDS_DECISION = "task_needs_decision"
++LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
+ 
+ #: Verify-step outcomes.  "not_run" is recorded verbatim — a cycle that ran no
+ #: verification never claims a passing one.
+@@ -195,6 +208,15 @@ class TaskAttempt:
+     executed: bool = False
+     verified: bool = False
+     error: str = ""
++    #: F051: the task cannot proceed without a human answer.  This is NOT a
++    #: failure — nothing was attempted and lost — so the conductor enqueues one
++    #: decision, pauses this branch only, and keeps pulling ready tasks from
++    #: every other branch.  Every step written before F051 omits these and
++    #: behaves exactly as it did.
++    needs_decision: bool = False
++    question: str = ""
++    options: tuple[str, ...] = ()
++    safe_default: str = ""
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -216,6 +238,10 @@ class CycleRecord:
+     ended_at: str
+     verify_command: str | None = None
+     errors: tuple[str, ...] = ()
++    #: F051: attempts that ended in ``needs_decision`` this cycle.  Counted
++    #: separately from ``tasks_failed`` on purpose — an escalation is a question,
++    #: not a failure, and a report that mixed the two would lie about the run.
++    tasks_escalated: int = 0
+     #: Ids of the tasks this cycle actually EXECUTED, in execution order.
+     #: They are what makes exactly-once provable across a kill and a resume
+     #: (F047 T003) — a counter in a test process cannot span two processes.
+@@ -227,6 +253,13 @@ class CycleRecord:
+     #: blocked in this run, in plan order.  This is what lets a report say WHY
+     #: nothing happened on a branch instead of leaving a silent gap.
+     skipped_blocked_task_ids: tuple[str, ...] = ()
++    #: F051: tasks whose branch is paused on an OPEN decision, in plan order.
++    awaiting_task_ids: tuple[str, ...] = ()
++    #: F051: ids withheld only because something upstream of them awaits a
++    #: decision — the awaiting counterpart of ``skipped_blocked_task_ids``.
++    awaiting_downstream_task_ids: tuple[str, ...] = ()
++    #: F051: the decisions this cycle raised, in the order they were raised.
++    open_decision_ids: tuple[str, ...] = ()
+ 
+     def to_json(self) -> dict[str, Any]:
+         return {
+@@ -234,6 +267,7 @@ class CycleRecord:
+             "tasks_attempted": self.tasks_attempted,
+             "tasks_completed": self.tasks_completed,
+             "tasks_failed": self.tasks_failed,
++            "tasks_escalated": self.tasks_escalated,
+             "verify_result": self.verify_result,
+             "verify_command": self.verify_command,
+             "tokens_so_far": self.tokens_so_far,
+@@ -242,6 +276,9 @@ class CycleRecord:
+             "errors": list(self.errors),
+             "executed_task_ids": list(self.executed_task_ids),
+             "skipped_blocked_task_ids": list(self.skipped_blocked_task_ids),
++            "awaiting_task_ids": list(self.awaiting_task_ids),
++            "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
++            "open_decision_ids": list(self.open_decision_ids),
+         }
+ 
+ 
+@@ -387,6 +424,13 @@ class CycleLoopResult:
+     #: F048: what the idle loop pulled from the queue, if the binding is enabled.
+     #: ``None`` whenever it is not — which is the default.
+     queue_pull: QueuePull | None = None
++    #: F051: decisions still open when the loop ended.  A non-empty tuple with
++    #: terminal ``blocked`` is the "the run needs you" case.
++    open_decision_ids: tuple[str, ...] = ()
++    #: F051: how many times the loop re-checked the awaiting branches — exactly
++    #: once per batch boundary.  Asserted in tests: it proves the pickup is a
++    #: boundary check and not a polling loop.
++    awaiting_checks: int = 0
+ 
+     @property
+     def cycles_run(self) -> int:
+@@ -400,6 +444,8 @@ class CycleLoopResult:
+             "stop_reason": self.stop_reason,
+             "cycles_run": self.cycles_run,
+             "cycles": [c.to_json() for c in self.cycles],
++            "open_decision_ids": list(self.open_decision_ids),
++            "awaiting_checks": self.awaiting_checks,
+         }
+         # Only present when something was actually pulled: the default shape of this
+         # payload is what every existing reader already parses.
+@@ -590,7 +636,8 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
+ 
+ 
+ def ready_tasks(job: Job, batch_size: int, *,
+-                blocked_ids: Collection[UUID] = ()) -> list[UUID]:
++                blocked_ids: Collection[UUID] = (),
++                awaiting_ids: Collection[UUID] = ()) -> list[UUID]:
+     """The ready batch: the DAG ready set in plan order, capped at batch_size.
+ 
+     F050: a task is ready when every dependency it declares in its Flight Plan
+@@ -602,10 +649,16 @@ def ready_tasks(job: Job, batch_size: int, *,
+     *blocked_ids* are tasks blocked for this run — an attempt executed and
+     failed.  They and their transitive dependents are withheld, so a blocked
+     branch locks only its own downstream and independent branches keep running.
++
++    *awaiting_ids* are tasks paused on an OPEN human decision (F051).  They are
++    withheld exactly like blocked ids — same branch-local effect — but they are
++    a separate argument because they mean something entirely different: nothing
++    failed, and the moment the decision is answered they become ready again.
+     """
+     ready = dag_ready_set(job.tasks)
+-    if blocked_ids:
+-        withheld = set(blocked_ids) | blocked_downstream(job.tasks, blocked_ids)
++    withheld_seeds = set(blocked_ids) | set(awaiting_ids)
++    if withheld_seeds:
++        withheld = withheld_seeds | blocked_downstream(job.tasks, withheld_seeds)
+         ready = [task_id for task_id in ready if task_id not in withheld]
+     return ready[:batch_size]
+ 
+@@ -623,6 +676,17 @@ def skipped_blocked_tasks(job: Job,
+     return [task.id for task in job.tasks if task.id in skipped]
+ 
+ 
++def awaiting_downstream_tasks(job: Job,
++                              awaiting_ids: Collection[UUID]) -> list[UUID]:
++    """Ids withheld only because something upstream awaits a decision (F051).
++
++    Same traversal as ``skipped_blocked_tasks``, reported under its own name so
++    a report can distinguish "waiting for an answer" from "blocked by a
++    failure" — for a returning human those are opposite situations.
++    """
++    return skipped_blocked_tasks(job, awaiting_ids)
++
++
+ def _step_target_argument(step: TaskStep) -> bool:
+     """True when *step* accepts the ``task_id`` the ready set selected.
+ 
+@@ -715,13 +779,16 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
+ 
+ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+                             limits: CycleLimits, *,
+-                            blocked_ids: Collection[UUID] = ()) -> None:
++                            blocked_ids: Collection[UUID] = (),
++                            awaiting_ids: Collection[UUID] = ()) -> None:
+     """Write this cycle's checkpoint (F047).  Never raises into the loop.
+ 
+     The next intent is derived from what the job still has READY at this
+     moment: another cycle with a named first task, or nothing left to run.
+     A task blocked in this run is not named as the next intent — resuming into
+     a task that just failed would be a retry policy this module does not own.
++    A task awaiting a decision is not named either: resuming into it before the
++    decision is answered would just escalate again (F051).
+     A write that fails is recorded on the job as ``checkpoint_error`` and
+     logged by the checkpoint module — the run continues and the next cycle
+     retries (feature-file A9).
+@@ -732,7 +799,8 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+         record_cycle_checkpoint,
+     )
+ 
+-    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
++    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
++                          awaiting_ids=awaiting_ids)
+     next_intent: dict[str, Any] = (
+         {"kind": INTENT_CYCLE,
+          "cycle_index": record.cycle_index + 1,
+@@ -752,6 +820,56 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+         job.metadata.pop("checkpoint_error", None)
+ 
+ 
++def _open_decision_ids(job: Job) -> tuple[str, ...]:
++    """Ids of the job's still-open task decisions, in the order they were raised."""
++    from packages.orchestration.escalation import open_task_decisions
++
++    return tuple(str(record.get("decision_id", ""))
++                 for record in open_task_decisions(job))
++
++
++def _escalate_task(job: Job, attempt: TaskAttempt, target: UUID, *,
++                   now: datetime, unattended: bool,
++                   log: Any = None) -> dict[str, Any]:
++    """Enqueue ONE decision for the task that raised ``needs_decision`` (F051).
++
++    Attended runs always ask.  An unattended run applies the decision's safe
++    default at once — and only then; a decision with no default waits in both
++    modes, because inventing an answer is the one thing escalation exists to
++    avoid.  The returned record is the one the cycle names in its evidence.
++    """
++    from packages.orchestration.escalation import (
++        auto_apply_safe_default,
++        enqueue_task_decision,
++    )
++
++    task_id = attempt.task_id if attempt.task_id is not None else target
++    record = enqueue_task_decision(
++        job,
++        task_id=task_id,
++        question=attempt.question,
++        options=attempt.options,
++        safe_default=attempt.safe_default,
++        now=now,
++    )
++    _emit(log, LEDGER_EVENT_TASK_NEEDS_DECISION,
++          task_id=str(task_id),
++          decision_id=record["decision_id"],
++          question=record["question"],
++          options=list(record["options"]),
++          safe_default=record["safe_default"])
++
++    if unattended:
++        applied = auto_apply_safe_default(job, record, now=now)
++        if applied is not None:
++            _emit(log, LEDGER_EVENT_DECISION_ANSWERED,
++                  task_id=str(task_id),
++                  decision_id=record["decision_id"],
++                  answer=applied["answer"],
++                  answer_source=applied["answer_source"])
++    return record
++
++
+ def _emit(log: Any, event: str, **meta: Any) -> None:
+     """Emit a ledger event when a writer was injected; never raise into the loop."""
+     if log is None:
+@@ -781,6 +899,7 @@ def run_cycles(
+     record_evidence: bool = True,
+     record_checkpoint: bool = True,
+     first_cycle_index: int | None = None,
++    unattended: bool = False,
+ ) -> CycleLoopResult:
+     """Run bounded cycles over *job* until a terminal condition.
+ 
+@@ -816,6 +935,14 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+     the all_green status; self-healing is a later feature.  A task step that
+     fails ends the cycle too — the task runner has already rolled the task back
+     to PENDING, so the next cycle (if the budget allows one) retries it.
++
++    ``unattended`` (F051) decides what a safe default is worth.  Attended (the
++    default): a task raising ``needs_decision`` always ASKS — the decision is
++    enqueued and its branch waits, default or not.  Unattended: a decision that
++    carries a safe default is answered from that default immediately, recorded
++    as ``answer_source="default"`` in the escalation assumption log, and the
++    branch continues in the same cycle.  A decision without a default waits
++    either way — Remedy never invents an answer it was not given.
+     """
+     step = task_step or default_task_step
+     verify_step = verify or _no_verify
+@@ -833,6 +960,12 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+     #: knows which attempts it made and lost.  Ids accumulate for the whole
+     #: run: a branch that failed stays blocked until a new run retries it.
+     blocked_ids: set[UUID] = set()
++    #: F051 awaiting tracking.  DERIVED from the job's open escalation records
++    #: at every batch boundary, never stored twice: answering a decision removes
++    #: the task from this set with no bookkeeping here, which is exactly how an
++    #: answered branch gets picked up mid-run.
++    awaiting_ids: set[UUID] = set()
++    awaiting_checks = 0
+     step_takes_target = _step_target_argument(task_step or default_task_step)
+ 
+     def counted_provider_call(context: TaskExecutionContext) -> BuilderOutput:
+@@ -858,11 +991,27 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             stop_reason = stop.reason
+             break
+ 
+-        # 2. Terminal by job shape: green, or nothing ready and not green.
+-        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
++        # 2. Batch boundary (F051): re-check which branches still await a
++        #    decision.  An answered decision has disappeared from the job's open
++        #    records, so its branch becomes ready again right here — exactly one
++        #    check per boundary, no sleeping and no polling loop anywhere.
++        awaiting_checks += 1
++        awaiting_ids = awaiting_decision_task_ids(job)
++
++        # 3. Terminal by job shape: green, or nothing ready and not green.
++        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
++                            awaiting_ids=awaiting_ids)
+         if not batch:
+             if _is_green(job, last_verify):
+                 terminal, stop_reason = TERMINAL_ALL_GREEN, ""
++            elif awaiting_ids:
++                # Nothing has failed — the run needs an answer.  ``blocked``
++                # maps to PAUSED, so answering and resuming finishes the rest.
++                terminal = TERMINAL_BLOCKED
++                stop_reason = (
++                    "awaiting_decision; open_decisions="
++                    + ",".join(_open_decision_ids(job))
++                )
+             else:
+                 terminal = TERMINAL_BLOCKED
+                 stop_reason = (
+@@ -871,17 +1020,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+                 )
+             break
+ 
+-        # 3. Cycle budget.  Not a stop cause — pending work simply remains.
++        # 4. Cycle budget.  Not a stop cause — pending work simply remains.
+         if len(cycles) >= limits.max_cycles:
+             terminal, stop_reason = TERMINAL_MAX_CYCLES_REACHED, ""
+             break
+ 
+-        # 4. Run the cycle.
++        # 5. Run the cycle.
+         cycle_index = base_index + len(cycles)
+         started_at = now
+-        attempted = completed = failed = 0
++        attempted = completed = failed = escalated = 0
+         errors: list[str] = []
+         executed_ids: list[str] = []
++        raised_decision_ids: list[str] = []
+ 
+         # The ready set is recomputed after EVERY task end (F050), so a task
+         # that completes mid-cycle can release its dependents immediately and a
+@@ -889,12 +1039,26 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         # The batch is a CAP on how many tasks this cycle may run, unchanged.
+         for _ in range(limits.batch_size):
+             ready_now = ready_tasks(job, limits.batch_size,
+-                                    blocked_ids=blocked_ids)
++                                    blocked_ids=blocked_ids,
++                                    awaiting_ids=awaiting_ids)
+             if not ready_now:
+                 break                      # nothing ready any more
+             target = ready_now[0]
+             attempt = (step(job, counted_provider_call, target)
+                        if step_takes_target else step(job, counted_provider_call))
++            # F051: a question, not a failure.  One decision is enqueued for
++            # this task, its branch pauses, and the loop carries straight on to
++            # whatever else is ready — including tasks on disjoint branches of
++            # this very cycle.
++            if attempt.needs_decision:
++                attempted += 1
++                escalated += 1
++                record = _escalate_task(
++                    job, attempt, target,
++                    now=now_fn(), unattended=unattended, log=log)
++                raised_decision_ids.append(str(record.get("decision_id", "")))
++                awaiting_ids = awaiting_decision_task_ids(job)
++                continue
+             if not attempt.executed and not attempt.error:
+                 break                      # nothing ready any more; not an attempt
+             attempted += 1
+@@ -929,6 +1093,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             tasks_attempted=attempted,
+             tasks_completed=completed,
+             tasks_failed=failed,
++            tasks_escalated=escalated,
+             verify_result=last_verify,
+             tokens_so_far=counters.measured_token_total,
+             started_at=started_at.isoformat(),
+@@ -938,10 +1103,16 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             executed_task_ids=tuple(executed_ids),
+             skipped_blocked_task_ids=tuple(
+                 str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
++            awaiting_task_ids=tuple(
++                str(task.id) for task in job.tasks if task.id in awaiting_ids),
++            awaiting_downstream_task_ids=tuple(
++                str(task_id)
++                for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
++            open_decision_ids=tuple(raised_decision_ids),
+         )
+         cycles.append(record)
+ 
+-        # 5. Persist the job, then the cycle's own evidence record, then the
++        # 6. Persist the job, then the cycle's own evidence record, then the
+         #    checkpoint (F047).  Order matters: a checkpoint references the
+         #    persisted snapshot, so the snapshot must already be on disk.
+         save_fn(job)
+@@ -951,15 +1122,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             except (OSError, ValueError) as exc:
+                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
+         if record_checkpoint:
+-            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids)
++            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
++                                    awaiting_ids=awaiting_ids)
+         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+ 
+     job_status = _apply_terminal(job, terminal, stop_reason)
+     save_fn(job)
++    open_decisions = _open_decision_ids(job)
+     _emit(
+         log, LEDGER_EVENT_LOOP_TERMINAL,
+         terminal_status=terminal, job_status=job_status,
+         stop_reason=stop_reason, cycles_run=len(cycles),
++        open_decision_ids=list(open_decisions),
+     )
+     return CycleLoopResult(
+         job=job,
+@@ -968,4 +1142,6 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         stop_reason=stop_reason,
+         cycles=tuple(cycles),
+         queue_pull=_pull_queue_when_idle(job, terminal, log=log),
++        open_decision_ids=open_decisions,
++        awaiting_checks=awaiting_checks,
+     )

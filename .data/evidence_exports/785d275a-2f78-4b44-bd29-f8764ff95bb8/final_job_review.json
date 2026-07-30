@@ -1,0 +1,67 @@
+{
+ "actual_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F051.md",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/escalation.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/cli/test_open_decisions_view.py",
+  "tests/orchestration/test_escalation.py"
+ ],
+ "changed_files_match": true,
+ "completion_mode": "manual_operator_repair",
+ "completion_provider_call_count": 0,
+ "expected_changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/decision.py",
+  "apps/cli/commands/job.py",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F051.md",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/escalation.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/cli/test_open_decisions_view.py",
+  "tests/orchestration/test_escalation.py"
+ ],
+ "findings": [],
+ "human_final_reviewer_required": true,
+ "job_id": "785d275a-2f78-4b44-bd29-f8764ff95bb8",
+ "linked_prior_job_ids": [],
+ "linked_prior_job_summaries": [],
+ "per_task_changed_files": {
+  "T001": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/decision.py",
+   "apps/cli/commands/job.py",
+   "docs/roadmap/STATUS.md"
+  ],
+  "T002": [
+   "docs/roadmap/features/T1_F051.md",
+   "packages/orchestration/decision_queue.py",
+   "packages/orchestration/escalation.py",
+   "packages/orchestration/long_run_executor.py"
+  ],
+  "T003": [
+   "tests/cli/test_open_decisions_view.py",
+   "tests/orchestration/test_escalation.py"
+  ]
+ },
+ "prior_execution_provider_call_count": 0,
+ "review_mode": "operator_attested_manual_completion",
+ "root_verification": {
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 426
+ },
+ "schema_version": "1.0.0",
+ "superseded_prior_run_ids": [],
+ "task_verdicts": {
+  "T001": "operator_attested",
+  "T002": "operator_attested",
+  "T003": "operator_attested"
+ },
+ "verdict": "PASS"
+}

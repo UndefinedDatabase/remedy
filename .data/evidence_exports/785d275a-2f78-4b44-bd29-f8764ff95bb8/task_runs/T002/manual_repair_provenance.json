@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "docs/roadmap/features/T1_F051.md",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/escalation.py",
+  "packages/orchestration/long_run_executor.py"
+ ],
+ "diff_sha256": "975ed18459f0819f71ba9cea0cb3f71643edc3a164f2fad5155b82dd73e686dc",
+ "job_id": "785d275a-2f78-4b44-bd29-f8764ff95bb8",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T002",
+ "provenance_sha256": "975ed18459f0819f71ba9cea0cb3f71643edc3a164f2fad5155b82dd73e686dc",
+ "safe_diff_sha256": "f23089e778ac1c0e40ce599c754c47eced42c8fe7061288d2649a954f228c8e1",
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "docs/roadmap/features/T1_F051.md",
+  "packages/orchestration/decision_queue.py",
+  "packages/orchestration/escalation.py",
+  "packages/orchestration/long_run_executor.py"
+ ],
+ "timestamp": "2026-07-30T15:23:08.725123+00:00",
+ "tracked_diff_sha256": "f23089e778ac1c0e40ce599c754c47eced42c8fe7061288d2649a954f228c8e1",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

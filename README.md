@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-26 of 252 registered items accepted. Next: F051 (Escalate instead of block).
+27 of 252 registered items accepted. Next: F052 (Self-healing test rounds).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 10 | 22 |
+| 1 | Self-Build Bootstrap | 11 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
@@ -51,7 +51,7 @@ Accepted in Tier 1 so far:
 F013 job intake, F014 flight plan, F016 scaling task granularity,
 F034 bundled clarification, F046 multi-cycle loop, F047 checkpoint & resume,
 F048 job queue, F251 full-suite stabilization, F252 standing-red paydown,
-F050 DAG scheduling.
+F050 DAG scheduling, F051 escalate instead of block.
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

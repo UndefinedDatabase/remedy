@@ -1,0 +1,33 @@
+[
+ {
+  "safe_diff_files": [
+   "apps/cli/command_catalog.py",
+   "apps/cli/commands/decision.py",
+   "apps/cli/commands/job.py",
+   "docs/roadmap/STATUS.md"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "docs/roadmap/features/T1_F051.md",
+   "packages/orchestration/decision_queue.py",
+   "packages/orchestration/escalation.py",
+   "packages/orchestration/long_run_executor.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "tests/cli/test_open_decisions_view.py",
+   "tests/orchestration/test_escalation.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]

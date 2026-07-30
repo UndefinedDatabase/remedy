@@ -1,0 +1,2780 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 965404d..58a3445 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -344,11 +344,16 @@ CATALOG: tuple[CommandEntry, ...] = (
+             _JOB_ID,
+             ArgDef("--cycles", "Maximum cycles for this run (capped by the rollout default)",
+                    required=False, is_option=True),
++            ArgDef("--unattended",
++                   "Run without a human present: a task decision that carries a safe "
++                   "default is auto-answered from it and recorded in the escalation "
++                   "assumption log. A question with no safe default still waits.",
++                   required=False, is_option=True, is_flag=True),
+             _JSON_OPT,
+         ),
+         supports_json=True,
+         may_execute_commands=True,
+-        related=("job.run-next", "job.plan"),
++        related=("job.run-next", "job.plan", "decision.list"),
+     ),
+ 
+     CommandEntry(
+diff --git a/apps/cli/commands/decision.py b/apps/cli/commands/decision.py
+index 0a7bf37..ab358fc 100644
+--- a/apps/cli/commands/decision.py
++++ b/apps/cli/commands/decision.py
+@@ -12,6 +12,11 @@ from packages.orchestration.data_paths import resolve_job_id
+ if TYPE_CHECKING:
+     import argparse
+ 
++#: F051 task-decision namespace.  Mirrors escalation.DECISION_ID_PREFIX, kept
++#: as a literal here so this module's dispatch reads like the ``sr:``/``fp:``
++#: branches next to it.
++_ESCALATION_PREFIX = "td:"
++
+ 
+ def _load_job_events(job_id_str: str):
+     """Load job and events. Returns (job, events, job_id_str)."""
+@@ -128,6 +133,8 @@ def _cmd_decision_resolve(
+     reason: str | None = None,
+     answer: list[str] | None = None,
+ ) -> None:
++    # ``--answer`` bundles the flight plan's clarification questions; a task
++    # decision carries exactly one question, answered through --reason.
+     if answer and not decision_id.startswith("fp:"):
+         print(
+             f"Error: --answer is only valid for the flight-plan approval "
+@@ -144,6 +151,58 @@ def _cmd_decision_resolve(
+             print(f"Error: stop reason not found: {stop_id}", file=sys.stderr)
+             sys.exit(1)
+         print(f"Resolved stop reason: {sr.id[:8]} ({sr.reason_code})")
++    elif decision_id.startswith(_ESCALATION_PREFIX):
++        # F051: a task asked a question mid-run.  ``--reason`` carries the
++        # ANSWER, and the same command that the status/report views print is the
++        # one that lands here — no separate answer command exists.
++        from datetime import datetime, timezone
++
++        from packages.orchestration.data_paths import resolve_job_id as _rji
++        from packages.orchestration.escalation import (
++            answer_task_decision,
++            find_task_decision,
++        )
++        from packages.orchestration.storage import JobNotFoundError, load_job, save_job
++
++        job_id = _rji(job_id_str)
++        try:
++            job = load_job(job_id)
++        except JobNotFoundError as exc:
++            print(f"Error: {exc}", file=sys.stderr)
++            sys.exit(1)
++
++        record = find_task_decision(job, decision_id)
++        if record is None:
++            print(f"Error: decision not found: {decision_id}", file=sys.stderr)
++            sys.exit(1)
++
++        answer_text = (reason or "").strip() or str(record.get("safe_default", ""))
++        if not answer_text:
++            print(
++                "Error: --reason carries the answer for a task decision, and "
++                "this one has no safe default to fall back on.\n"
++                f"  remedy decision resolve {job_id_str} {decision_id} "
++                '--reason "<your answer>"',
++                file=sys.stderr,
++            )
++            sys.exit(1)
++
++        answered = answer_task_decision(
++            job, decision_id, answer=answer_text,
++            now=datetime.now(timezone.utc))
++        if answered is None:
++            # Answers are written once — say which answer already stands.
++            print(
++                f"Error: decision {decision_id} is already answered "
++                f"({record.get('answer_source', '')}): {record.get('answer', '')}",
++                file=sys.stderr)
++            sys.exit(1)
++
++        save_job(job)
++        print(f"Answered {decision_id} for job {job_id_str}: {answered['answer']}")
++        for ref in answered.get("cross_references", []):
++            print(f"  Same question also asked as: {ref}")
++        print(f"Resume the run: remedy job run-loop {job_id_str} --json")
+     elif decision_id.startswith("fp:"):
+         from packages.orchestration.data_paths import resolve_job_id as _rji
+         from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 153530c..3198c0f 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -638,6 +638,7 @@ def _cmd_job_run_cycles(
+     job_id_str: str,
+     *,
+     cycles: int | None = None,
++    unattended: bool = False,
+     json_output: bool = False,
+ ) -> None:
+     """Run a job in bounded cycles (F046).
+@@ -647,6 +648,12 @@ def _cmd_job_run_cycles(
+     milestone gate raises it.  While the resolved count is one cycle, this
+     command IS today's single pass — it delegates to the existing run-next
+     entry point, so single-cycle behavior cannot drift from it.
++
++    ``unattended`` (F051, R-0157) is the product surface for the loop's
++    unattended mode: a task decision that carries a safe default is answered
++    from that default and recorded in the escalation assumption log, instead of
++    pausing the branch until a human answers.  A decision with no safe default
++    waits either way.  Default OFF — attended behavior is untouched.
+     """
+     import json as _json
+     from dataclasses import replace
+@@ -675,6 +682,15 @@ def _cmd_job_run_cycles(
+     if resolved.max_cycles <= 1:
+         # One cycle == today's single pass. Reuse it verbatim rather than
+         # reimplementing the task/verify/apply pipeline behind a second door.
++        if unattended:
++            # Say it rather than swallow it: the single pass does not go through
++            # the cycle loop, so it raises no task decisions to auto-answer.
++            print(
++                "Note: --unattended has no effect while the run resolves to the "
++                "single pass (F046 rollout default); task decisions are raised by "
++                "the cycle loop, which the F075 milestone gate enables.",
++                file=sys.stderr,
++            )
+         _cmd_run_next_task_local(job_id_str)
+         return
+ 
+@@ -723,7 +739,8 @@ def _cmd_job_run_cycles(
+ 
+     limits = replace(limits, budgets=job.budgets)
+     result = run_cycles(job, limits, builder.build,
+-                        task_step=default_task_step, log=log)
++                        task_step=default_task_step, log=log,
++                        unattended=unattended)
+ 
+     if json_output:
+         print(_json.dumps(result.to_json(), indent=2, sort_keys=True))
+@@ -1519,6 +1536,36 @@ def _extract_job_truth(job: Job) -> dict:
+     }
+ 
+ 
++def _open_decisions_view(job: Job) -> dict:
++    """The open-decision block status and report both render FIRST (F051 T003).
++
++    Returns the rendered text lines, the JSON-safe decision dicts, and the one
++    command that answers the most urgent open decision.  A decision queue that
++    cannot be read must never break a read-only view, so any failure degrades to
++    "nothing open" rather than an error.
++    """
++    try:
++        from packages.orchestration.decision_queue import (
++            export_decision_json,
++            list_decisions,
++            open_decisions,
++            open_decisions_next_action,
++            render_open_decisions_lines,
++        )
++        from packages.orchestration.timeline import load_run_events
++
++        events = load_run_events(resolve_data_root(), job.id)
++        decisions = list_decisions(job, events)
++        return {
++            'lines': render_open_decisions_lines(decisions),
++            'open_decisions': [export_decision_json(d)
++                               for d in open_decisions(decisions)],
++            'next_action': open_decisions_next_action(decisions),
++        }
++    except Exception:  # noqa: BLE001 — a read-only view never fails on this
++        return {'lines': [], 'open_decisions': [], 'next_action': ''}
++
++
+ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+     """Job status -- safe read-only view of current job state."""
+     import json as _json
+@@ -1534,6 +1581,7 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+         sys.exit(1)
+ 
+     truth = _extract_job_truth(job)
++    open_decision_view = _open_decisions_view(job)
+ 
+     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+     task_count = len(job.tasks)
+@@ -1541,6 +1589,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+     pending_count = sum(1 for t in job.tasks if (t.status.value if hasattr(t.status, 'value') else str(t.status)) == 'pending')
+ 
+     blockers: list[str] = []
++    # F051: an open decision comes first — it is what the run needs from a human.
++    if open_decision_view['open_decisions']:
++        blockers.append('awaiting_decision')
+     if truth['approval_required']:
+         blockers.append('approval_required')
+     elif pending_count > 0 and state == 'pending':
+@@ -1551,7 +1602,9 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+     if truth.get('fulfillment_blockers'):
+         blockers.extend(truth['fulfillment_blockers'])
+ 
+-    if truth['approval_required']:
++    if open_decision_view['next_action']:
++        next_action = open_decision_view['next_action']
++    elif truth['approval_required']:
+         next_action = 'remedy patch approve <job_id> <patch_intent_id>'
+     elif truth.get('fulfillment_next_action'):
+         next_action = truth['fulfillment_next_action']
+@@ -1582,11 +1635,16 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+         'staging_promoted': truth.get('staging_promoted', False),
+         'blockers': blockers,
+         'next_safe_action': next_action,
++        # F051: open decisions first, with the exact command that answers each.
++        'open_decisions': open_decision_view['open_decisions'],
++        'open_decision_count': len(open_decision_view['open_decisions']),
+     }
+ 
+     if json_output:
+         print(_json.dumps(status, indent=2))
+     else:
++        for line in open_decision_view['lines']:
++            print(line)
+         print(f'Job {job.id}')
+         print(f'  Name:      {job.name}')
+         print(f'  State:     {state}')
+@@ -1616,6 +1674,7 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+         sys.exit(1)
+ 
+     truth = _extract_job_truth(job)
++    open_decision_view = _open_decisions_view(job)
+ 
+     state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+     task_count = len(job.tasks)
+@@ -1663,7 +1722,12 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+         'staging_used': truth.get('staging_used', False),
+         'staging_promoted': truth.get('staging_promoted', False),
+         'fulfillment_blockers': truth.get('fulfillment_blockers', []),
+-        'next_safe_action': truth.get('fulfillment_next_action', ''),
++        # F051: a blocked run's next action is the command that answers its
++        # most urgent open decision — that is what unblocks it.
++        'next_safe_action': (open_decision_view['next_action']
++                             or truth.get('fulfillment_next_action', '')),
++        'open_decisions': open_decision_view['open_decisions'],
++        'open_decision_count': len(open_decision_view['open_decisions']),
+         'tasks': task_details,
+     }
+     if fulfillment_data:
+@@ -1672,6 +1736,8 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+     if json_output:
+         print(_json.dumps(report, indent=2))
+     else:
++        for line in open_decision_view['lines']:
++            print(line)
+         print(f'Job Report: {job.id}')
+         print(f'  Name:      {job.name}')
+         print(f'  State:     {state}')
+@@ -1690,6 +1756,10 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+                 ty = td['type']
+                 desc = td['description']
+                 print(f'    [{s:<10}] {ty}: {desc}')
++        # The last line a human reads is what to do next.  For a blocked run
++        # with open decisions that is the answer command, spelled out (F051).
++        if report['next_safe_action']:
++            print(f'  Next:      {report["next_safe_action"]}')
+ 
+ 
+ def _cmd_job_fulfill(
+@@ -2004,6 +2074,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+     "job.run": lambda args: _cmd_job_run_cycles(
+         args.job_id,
+         cycles=(int(args.cycles) if getattr(args, "cycles", None) else None),
++        unattended=getattr(args, "unattended", False),
+         json_output=getattr(args, "json", False),
+     ),
+     "job.plan": lambda args: _cmd_plan_job_local(args.job_id),
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 5e8d428..870a1d6 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -34,7 +34,7 @@
+ - [x] F251 — Full-suite stabilization (flake-debt paydown) (S1–S5 complete, scope per operator ruling A 2026-07-28; accepted 2026-07-28 · live review PASS — ACCEPTED · Evidence job b680f05b-2cda-468f-a8c5-95dbe9636044 · package remedy-review-20260728-190328-READY_FOR_REVIEW.zip · SHA-256 95af04c380da89879bbf4f10cd2529279553a571c5c72b3870a190a90641af2f · accepted HEAD 86a0df39ee0928742add7ef457dbd3d1e4efb7f2)
+ - [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)
+ - [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job f987e3f1-bbe1-45ce-b964-c23805ecb5e6 · package remedy-review-20260730-145728-READY_FOR_REVIEW.zip · SHA-256 3d04713f33072ce544ab4c0a430e82fc8edeee85bcb0aaa007fa48ef9ee4d8c0 · accepted HEAD 2fd7d6b949b98022b977aa48c0191bbf0efceec1)
+-- [ ] F051 — Escalate instead of block (unattended)
++- [~] F051 — Escalate instead of block (unattended)
+ - [ ] F052 — Self-healing test rounds
+ - [ ] F053 — Final & interim report
+ - [ ] F056 — Missions: persistent goal, jobs as execution units
+diff --git a/docs/roadmap/features/T1_F051.md b/docs/roadmap/features/T1_F051.md
+index 03912e1..4b07444 100644
+--- a/docs/roadmap/features/T1_F051.md
++++ b/docs/roadmap/features/T1_F051.md
+@@ -64,3 +64,66 @@ decision queue records additively; a second queue is an automatic reject.
+ ## Do not touch
+ Notification channels, inbox UI, decision auto-answering. Suggested tests:
+ tests/orchestration/test_escalation.py, tests/cli/test_open_decisions_view.py.
++
++## Built State
++- T001 `packages/orchestration/escalation.py` — the records:
++  `enqueue_task_decision` (ONE record per call; same question as an
++  OPEN one → both get `cross_references`, never merged),
++  `awaiting_decision_task_ids` (DERIVED from open records — `RunState`
++  has no awaiting member, so the task stays PENDING and nothing is
++  stored twice), `answer_task_decision` (write-once; the answer also
++  lands on the task's `inputs["decision_answers"]` for its next
++  attempt), `auto_apply_safe_default`, `render/write_escalation_
++  assumptions_md`. Records live on `job.metadata["escalations"]`,
++  JSON-safe; ids are `td:<task8>` (`-2`, `-3` … for repeats),
++  deterministic, no clock or randomness.
++  `packages/orchestration/decision_queue.py` gained the additive
++  `task_decision` type and derivation branch 8 — the queue stays ONE
++  read-only aggregation; no second queue exists. Deliberately NOT in
++  the flight plan's `assumptions.md`: that log states every question
++  in it was asked at plan time, so mid-run escalations get their own
++  `escalation_assumptions.md` in the same evidence dir.
++- T002 `packages/orchestration/long_run_executor.py` — `TaskAttempt`
++  gained `needs_decision`/`question`/`options`/`safe_default` (all
++  defaulting to "no decision needed", so a pre-F051 step cannot
++  escalate); an escalating attempt counts as `tasks_escalated`, never
++  `tasks_failed`, and the loop `continue`s to the next ready task
++  instead of ending the cycle. `ready_tasks` gained `awaiting_ids=`,
++  withholding those tasks and their transitive downstream exactly like
++  in-run blocked ids; `awaiting_downstream_tasks` names that set under
++  its own name. Awaiting is re-checked EXACTLY ONCE per batch boundary
++  (`awaiting_checks == cycles_run + 1`, asserted) — no polling, no
++  sleeping — so a decision answered mid-run releases its branch at the
++  next boundary without a restart. Empty ready set with open decisions
++  → `TERMINAL_BLOCKED` (PAUSED, resumable) with
++  `stop_reason "awaiting_decision; open_decisions=…"`. Additive cycle
++  evidence: `tasks_escalated`, `awaiting_task_ids`,
++  `awaiting_downstream_task_ids`, `open_decision_ids`; additive result
++  fields `open_decision_ids`, `awaiting_checks`; ledger events
++  `task_needs_decision`, `task_decision_answered`. Checkpoints never
++  name an awaiting task as the next intent.
++  `apps/cli/commands/decision.py` — the EXISTING `decision resolve`
++  gained a `td:` branch (`--reason` carries the answer, write-once);
++  no new command and no new group.
++- T003 `apps/cli/commands/job.py` — `job status` and `job report`
++  render open decisions FIRST, each with the exact answer command, and
++  a blocked run's `next_safe_action` / final `Next:` line IS that
++  command; JSON gained `open_decisions` + `open_decision_count`, and
++  `blockers` gains `awaiting_decision`. View helpers live in
++  `decision_queue.py`: `sort_open_decisions_first`, `open_decisions`,
++  `render_open_decisions_lines`, `open_decisions_next_action`. The
++  block is queue-WIDE (any open decision, not only task decisions).
++- R-0157 `job run --unattended` (catalog `job.run`, additive flag) →
++  `run_cycles(unattended=…)`: a safe default is auto-applied and
++  recorded as `answer_source "default"`; a question without a default
++  still waits; attended behavior unchanged. While the F046 rollout cap
++  collapses a run to the single pass, the flag prints that it had no
++  effect rather than passing silently.
++- Tests: 66 in tests/orchestration/test_escalation.py (units, the
++  three-branch fixture R → (B1a → B1b, B2, B3), boundary pickup, the
++  check-count no-polling proof, the existing-CLI answer path, the
++  unattended CLI flag, linear regression) + 26 in
++  tests/cli/test_open_decisions_view.py = 92.
++- Accepted rounds: R1 PASS (T001–T003) · integration gate PASS
++  (2026-07-30; branch 14435/0/19 vs base 894375e — zero branch-only
++  failures). Closed per docs/roadmap/STATUS.md.
+diff --git a/packages/orchestration/decision_queue.py b/packages/orchestration/decision_queue.py
+index 801aa14..4f1b698 100644
+--- a/packages/orchestration/decision_queue.py
++++ b/packages/orchestration/decision_queue.py
+@@ -13,6 +13,10 @@ Public API::
+     explain_decisions(job, events) -> str
+     export_decision_json(d) -> dict
+     build_decision_summary(decisions) -> dict  (brain node metadata)
++    sort_open_decisions_first(decisions) -> list[HumanDecision]
++    open_decisions(decisions) -> list[HumanDecision]
++    render_open_decisions_lines(decisions) -> list[str]  (status/report block)
++    open_decisions_next_action(decisions) -> str
+ """
+ 
+ from __future__ import annotations
+@@ -50,6 +54,8 @@ DECISION_TYPES = frozenset({
+     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
+     "token_budget", "worker_approval", "memory_review", "revert_missing",
+     "flight_plan_approval",
++    # F051: a task raised a question mid-run; its branch waits, the run does not.
++    "task_decision",
+ })
+ 
+ 
+@@ -289,6 +295,54 @@ def list_decisions(
+                 resolved_at="",
+             ))
+ 
++    # 8. Task decisions raised mid-run (F051).  Derived from the escalation
++    #    records on the job — not a second queue, the same read-only
++    #    aggregation as every branch above.
++    try:
++        from packages.orchestration.escalation import (
++            DECISION_TYPE_TASK_DECISION,
++            ESCALATION_STATUS_OPEN,
++            escalation_records,
++            task_decision_answer_command,
++        )
++        for record in escalation_records(job):
++            is_open = record.get("status") == ESCALATION_STATUS_OPEN
++            options = [str(o) for o in (record.get("options") or [])]
++            actions = tuple(
++                task_decision_answer_command(job_id, str(record.get("decision_id")), opt)
++                for opt in (options or ["<your answer>"])
++            ) if is_open else ()
++            decisions.append(HumanDecision(
++                id=str(record.get("decision_id", "")),
++                type=DECISION_TYPE_TASK_DECISION,
++                status=ESCALATION_STATUS_OPEN if is_open else "resolved",
++                severity="blocker" if is_open else "info",
++                source="escalation",
++                related_node_id=f"task:{str(record.get('task_id'))[:8]}",
++                related_intent_id="",
++                related_file="",
++                safe_summary=(
++                    f"Task {str(record.get('task_id'))[:8]} needs a decision: "
++                    f"{record.get('question', '')}"
++                    if is_open else
++                    f"Task {str(record.get('task_id'))[:8]} decision answered "
++                    f"({record.get('answer_source', '')}): {record.get('answer', '')}"
++                ),
++                next_actions=actions,
++                created_at=str(record.get("created_at", "")),
++                resolved_at=None if is_open else str(record.get("answered_at", "")),
++                payload={
++                    "task_id": str(record.get("task_id", "")),
++                    "question": str(record.get("question", "")),
++                    "options": options,
++                    "safe_default": str(record.get("safe_default", "")),
++                    "cross_references": [
++                        str(x) for x in (record.get("cross_references") or [])],
++                },
++            ))
++    except (ImportError, ValueError, OSError, AttributeError):
++        pass
++
+     return decisions
+ 
+ 
+@@ -343,6 +397,61 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
+     }
+ 
+ 
++#: Severity order for the views below.  Unknown severities sort last rather
++#: than raising: a decision with an odd severity must still be shown.
++_SEVERITY_RANK = {"blocker": 0, "warning": 1, "info": 2}
++
++
++def sort_open_decisions_first(
++    decisions: list[HumanDecision],
++) -> list[HumanDecision]:
++    """Open before resolved, blockers before warnings before info; stable.
++
++    Why: an unattended run's most important output is what it needs from a
++    human, so every view that shows decisions shows those first (F051 T003).
++    """
++    return sorted(
++        decisions,
++        key=lambda d: (0 if d.status == "open" else 1,
++                       _SEVERITY_RANK.get(d.severity, 3)),
++    )
++
++
++def open_decisions(decisions: list[HumanDecision]) -> list[HumanDecision]:
++    """The still-open decisions, most urgent first."""
++    return [d for d in sort_open_decisions_first(decisions) if d.status == "open"]
++
++
++def render_open_decisions_lines(
++    decisions: list[HumanDecision],
++    *,
++    indent: str = "  ",
++) -> list[str]:
++    """The block that status and report print FIRST — empty when nothing is open.
++
++    Every line a human needs is here: what is being asked, and the exact
++    command that answers it.  Nothing is truncated away: an answer command that
++    is not shown in full cannot be pasted.
++    """
++    pending = open_decisions(decisions)
++    if not pending:
++        return []
++    lines = [f"Open decisions: {len(pending)} — the run needs an answer"]
++    for d in pending:
++        lines.append(f"{indent}[{d.severity}] {d.type} {d.id}: {d.safe_summary}")
++        for action in d.next_actions:
++            lines.append(f"{indent}  -> {action}")
++    return lines
++
++
++def open_decisions_next_action(decisions: list[HumanDecision]) -> str:
++    """The one command that answers the most urgent open decision, or ""."""
++    for d in open_decisions(decisions):
++        if d.next_actions:
++            return d.next_actions[0]
++    return ""
++
++
+ def build_decision_summary(decisions: list[HumanDecision]) -> dict[str, Any]:
+     """Build safe metadata for brain node."""
+     open_decisions = [d for d in decisions if d.status == "open"]
+diff --git a/packages/orchestration/escalation.py b/packages/orchestration/escalation.py
+new file mode 100644
+index 0000000..98c2522
+--- /dev/null
++++ b/packages/orchestration/escalation.py
+@@ -0,0 +1,377 @@
++"""Escalate instead of block — the ``needs_decision`` task outcome (F051 T001).
++
++A task that needs a human answer must not end the run.  It raises
++``needs_decision``, ONE decision is enqueued for it, and the task is marked
++awaiting-decision: its own branch pauses, every disjoint branch keeps running,
++and the run stays resumable.  Awaiting is NOT failure — nothing was attempted
++and lost, so the task keeps its PENDING status exactly as a rolled-back attempt
++does, and the executor withholds its transitive downstream the same way it
++withholds the downstream of a blocked task (``dag_schedule.blocked_downstream``).
++
++Where the records live
++----------------------
++On ``job.metadata["escalations"]`` — a list of plain JSON-safe dicts.  This is
++NOT a second decision queue: ``decision_queue`` stays the one read-only
++aggregation over existing records and simply derives one ``task_decision``
++entry per record, the same way it derives the flight-plan approval from
++``job.flight_plan``.  Answering goes through the existing
++``remedy decision resolve`` command.
++
++Two tasks raising the same question produce TWO records (deduplication is a
++human call, feature-file A9); they cross-reference each other by decision id so
++whoever answers sees the pair.
++
++Attended vs unattended
++----------------------
++A safe default is still ASKED in attended mode: the record is created open and
++waits.  Only an unattended run (``--yes``) auto-applies the default, and then
++the record says so (``answer_source="default"``) and lands in the escalation
++assumption log.
++
++Remedy deliberately does NOT write these into the flight plan's
++``assumptions.md``: that log states in its own first paragraph that every
++question in it was asked at plan time and nothing mid-run.  Mid-run escalations
++therefore get their own ``escalation_assumptions.md`` in the same evidence area,
++in the same table shape, rather than making the plan-time log lie.
++"""
++
++from __future__ import annotations
++
++from collections.abc import Iterable, Mapping
++from datetime import datetime
++from pathlib import Path
++from typing import Any
++from uuid import UUID
++
++from packages.core.models import Job
++
++#: The additive task outcome.  A task step reports it instead of a failure when
++#: it cannot proceed without a human answer.
++TASK_OUTCOME_NEEDS_DECISION = "needs_decision"
++
++#: ``decision_queue`` type for a derived task decision.  Additive: every
++#: existing producer keeps its own type.
++DECISION_TYPE_TASK_DECISION = "task_decision"
++
++#: Where the records live on the job.  One key, additive, JSON-safe.
++JOB_METADATA_ESCALATIONS_KEY = "escalations"
++
++ESCALATION_STATUS_OPEN = "open"
++ESCALATION_STATUS_ANSWERED = "answered"
++
++#: Who supplied the answer.  Same vocabulary as the flight-plan clarifications.
++ANSWER_SOURCE_HUMAN = "human"
++ANSWER_SOURCE_DEFAULT = "default"
++
++#: Decision-id prefix for a task decision — the namespace ``decision resolve``
++#: dispatches on, next to ``sr:`` (stop reason) and ``fp:`` (flight plan).
++DECISION_ID_PREFIX = "td:"
++
++#: Task inputs key carrying the answers a task's decisions received, so the
++#: next attempt of that task can actually use them.
++TASK_INPUTS_ANSWERS_KEY = "decision_answers"
++
++#: Filename of the mid-run assumption log inside the job's evidence area.
++ESCALATION_ASSUMPTIONS_FILENAME = "escalation_assumptions.md"
++
++__all__ = [
++    "ANSWER_SOURCE_DEFAULT",
++    "ANSWER_SOURCE_HUMAN",
++    "DECISION_ID_PREFIX",
++    "DECISION_TYPE_TASK_DECISION",
++    "ESCALATION_ASSUMPTIONS_FILENAME",
++    "ESCALATION_STATUS_ANSWERED",
++    "ESCALATION_STATUS_OPEN",
++    "JOB_METADATA_ESCALATIONS_KEY",
++    "TASK_INPUTS_ANSWERS_KEY",
++    "TASK_OUTCOME_NEEDS_DECISION",
++    "answer_task_decision",
++    "answered_task_decisions",
++    "auto_apply_safe_default",
++    "awaiting_decision_task_ids",
++    "enqueue_task_decision",
++    "escalation_records",
++    "find_task_decision",
++    "open_task_decisions",
++    "render_escalation_assumptions_md",
++    "task_decision_answer_command",
++    "write_escalation_assumptions_md",
++]
++
++
++def _metadata(job: Job | Any) -> dict[str, Any]:
++    """The job's metadata dict, created on first use.
++
++    Both Core ``Job`` and the pingpong ``JobPlan`` are accepted; a job shape
++    without metadata at all gets an empty dict rather than an AttributeError,
++    because a missing metadata store means "no escalations", not a crash.
++    """
++    meta = getattr(job, "metadata", None)
++    if not isinstance(meta, dict):
++        meta = {}
++        try:
++            job.metadata = meta
++        except (AttributeError, ValueError):  # frozen or validated shapes
++            pass
++    return meta
++
++
++def escalation_records(job: Job | Any) -> list[dict[str, Any]]:
++    """Every escalation record on *job*, in creation order.
++
++    The live list is returned, so callers that append go through the helpers
++    below rather than mutating it themselves.
++    """
++    records = _metadata(job).get(JOB_METADATA_ESCALATIONS_KEY)
++    if not isinstance(records, list):
++        return []
++    return [r for r in records if isinstance(r, dict)]
++
++
++def _stored_records(job: Job | Any) -> list[dict[str, Any]]:
++    """The stored list itself, created if absent — the write path."""
++    meta = _metadata(job)
++    records = meta.get(JOB_METADATA_ESCALATIONS_KEY)
++    if not isinstance(records, list):
++        records = []
++        meta[JOB_METADATA_ESCALATIONS_KEY] = records
++    return records
++
++
++def open_task_decisions(job: Job | Any) -> list[dict[str, Any]]:
++    """Records still waiting for an answer, in creation order."""
++    return [r for r in escalation_records(job)
++            if r.get("status") == ESCALATION_STATUS_OPEN]
++
++
++def answered_task_decisions(job: Job | Any) -> list[dict[str, Any]]:
++    """Records that have an answer — human or auto-applied default."""
++    return [r for r in escalation_records(job)
++            if r.get("status") == ESCALATION_STATUS_ANSWERED]
++
++
++def awaiting_decision_task_ids(job: Job | Any) -> set[UUID]:
++    """Task ids whose branch is paused on an OPEN decision.
++
++    This is what the executor withholds from the ready set: the tasks
++    themselves and — through ``blocked_downstream`` — everything depending on
++    them.  Answering a decision empties this set for that task with no further
++    bookkeeping, which is why the awaiting state is derived and never stored
++    twice.
++    """
++    awaiting: set[UUID] = set()
++    for record in open_task_decisions(job):
++        try:
++            awaiting.add(UUID(str(record.get("task_id"))))
++        except (TypeError, ValueError):
++            continue                        # a malformed id blocks nothing
++    return awaiting
++
++
++def find_task_decision(job: Job | Any, decision_id: str) -> dict[str, Any] | None:
++    """The record with this decision id, or None."""
++    for record in escalation_records(job):
++        if record.get("decision_id") == decision_id:
++            return record
++    return None
++
++
++def task_decision_answer_command(job_id: str, decision_id: str,
++                                 answer: str = "<your answer>") -> str:
++    """The EXACT command that answers this decision.
++
++    Rendered into the decision's next actions and into the status/report views,
++    so what a human reads is what a human can paste.
++    """
++    return (f'remedy decision resolve {str(job_id)[:8]} {decision_id} '
++            f'--reason "{answer}"')
++
++
++def _next_decision_id(records: Iterable[Mapping[str, Any]], task_id: Any) -> str:
++    """``td:<task8>`` for a task's first decision, ``td:<task8>-<n>`` after.
++
++    Task-scoped and deterministic: no clock and no randomness, so the same
++    sequence of escalations always produces the same ids across a resume.
++    """
++    task_str = str(task_id)
++    try:
++        task_hex = UUID(task_str).hex[:8]
++    except (TypeError, ValueError):
++        task_hex = task_str[:8]
++    seen = sum(1 for r in records if str(r.get("task_id")) == task_str)
++    return (f"{DECISION_ID_PREFIX}{task_hex}" if seen == 0
++            else f"{DECISION_ID_PREFIX}{task_hex}-{seen + 1}")
++
++
++def _normalized_question(text: Any) -> str:
++    """Whitespace- and case-insensitive question key for cross-referencing."""
++    return " ".join(str(text or "").split()).casefold()
++
++
++def enqueue_task_decision(
++    job: Job | Any,
++    *,
++    task_id: Any,
++    question: str,
++    options: Iterable[str] = (),
++    safe_default: str = "",
++    impact: str = "",
++    now: datetime,
++) -> dict[str, Any]:
++    """Enqueue ONE decision for *task_id* and return its record.
++
++    One call, one record — a task raising the same question twice really did
++    ask twice.  Records whose question matches an existing OPEN one are
++    cross-referenced in both directions (``cross_references``) so a human sees
++    the pair without the code guessing they are the same call.
++    """
++    records = _stored_records(job)
++    decision_id = _next_decision_id(records, task_id)
++    question_key = _normalized_question(question)
++
++    siblings = [r for r in records
++                if r.get("status") == ESCALATION_STATUS_OPEN
++                and _normalized_question(r.get("question")) == question_key]
++
++    record: dict[str, Any] = {
++        "decision_id": decision_id,
++        "task_id": str(task_id),
++        "question": str(question),
++        "options": [str(o) for o in options],
++        "safe_default": str(safe_default or ""),
++        "impact": str(impact or ""),
++        "status": ESCALATION_STATUS_OPEN,
++        "answer": "",
++        "answer_source": "",
++        "created_at": now.isoformat(),
++        "answered_at": "",
++        "cross_references": [str(r.get("decision_id")) for r in siblings],
++    }
++    for sibling in siblings:
++        refs = sibling.setdefault("cross_references", [])
++        if isinstance(refs, list) and decision_id not in refs:
++            refs.append(decision_id)
++    records.append(record)
++    return record
++
++
++def _record_answer_on_task(job: Job | Any, record: Mapping[str, Any]) -> None:
++    """Put the answer where the next attempt of that task will read it.
++
++    Without this the branch would resume as ignorant as it paused.  Additive:
++    tasks that never escalated keep their inputs untouched.
++    """
++    task_id = str(record.get("task_id"))
++    for task in getattr(job, "tasks", ()) or ():
++        if str(task.id) != task_id:
++            continue
++        inputs = task.inputs if isinstance(task.inputs, dict) else {}
++        answers = inputs.get(TASK_INPUTS_ANSWERS_KEY)
++        if not isinstance(answers, dict):
++            answers = {}
++            inputs[TASK_INPUTS_ANSWERS_KEY] = answers
++        answers[str(record.get("decision_id"))] = str(record.get("answer", ""))
++        return
++
++
++def answer_task_decision(
++    job: Job | Any,
++    decision_id: str,
++    *,
++    answer: str,
++    source: str = ANSWER_SOURCE_HUMAN,
++    now: datetime,
++) -> dict[str, Any] | None:
++    """Answer an OPEN decision and return the updated record.
++
++    Returns None when no such decision exists.  Answering one that is already
++    answered is refused the same way — answers are written once, so a late
++    second answer cannot silently overwrite the one the run acted on.
++    """
++    record = find_task_decision(job, decision_id)
++    if record is None or record.get("status") != ESCALATION_STATUS_OPEN:
++        return None
++    record["status"] = ESCALATION_STATUS_ANSWERED
++    record["answer"] = str(answer)
++    record["answer_source"] = str(source)
++    record["answered_at"] = now.isoformat()
++    _record_answer_on_task(job, record)
++    return record
++
++
++def auto_apply_safe_default(
++    job: Job | Any,
++    record: Mapping[str, Any],
++    *,
++    now: datetime,
++) -> dict[str, Any] | None:
++    """Apply *record*'s safe default — unattended runs only.
++
++    The caller decides whether the run is unattended; this function only
++    refuses records that have no default to apply.  A default applied here is
++    marked ``answer_source="default"`` and therefore shows up in the escalation
++    assumption log, which is the whole point of recording it.
++    """
++    if not str(record.get("safe_default") or ""):
++        return None
++    return answer_task_decision(
++        job, str(record.get("decision_id")),
++        answer=str(record["safe_default"]),
++        source=ANSWER_SOURCE_DEFAULT,
++        now=now,
++    )
++
++
++def _cell(text: Any) -> str:
++    """Make a value safe for a markdown table cell."""
++    return " ".join(str(text or "").split()).replace("|", "\\|") or "-"
++
++
++def render_escalation_assumptions_md(job: Job | Any) -> str:
++    """The mid-run assumption log: what was asked, answered, and by whom.
++
++    Deliberately separate from the flight plan's ``assumptions.md`` — see the
++    module docstring.  Same table shape, so a reviewer reads both the same way.
++    """
++    records = escalation_records(job)
++
++    lines = ["# Escalation assumptions", ""]
++    lines.append(
++        "Questions raised BY A TASK DURING THE RUN. Each one paused only its "
++        "own branch; the run continued on every disjoint branch.")
++    lines.append("")
++
++    if not records:
++        lines.append("No escalations — no task needed a decision.")
++        lines.append("")
++        return "\n".join(lines)
++
++    lines.append("| Decision | Task | Question | Answer | Source | Impact |")
++    lines.append("| --- | --- | --- | --- | --- | --- |")
++    for record in records:
++        source = str(record.get("answer_source") or "")
++        lines.append(
++            f"| {_cell(record.get('decision_id'))} "
++            f"| {_cell(str(record.get('task_id'))[:8])} "
++            f"| {_cell(record.get('question'))} "
++            f"| {_cell(record.get('answer'))} "
++            f"| {_cell(source or 'unanswered')} "
++            f"| {_cell(record.get('impact'))} |")
++    lines.append("")
++
++    human = sum(1 for r in records if r.get("answer_source") == ANSWER_SOURCE_HUMAN)
++    default = sum(1 for r in records if r.get("answer_source") == ANSWER_SOURCE_DEFAULT)
++    still_open = sum(1 for r in records if r.get("status") == ESCALATION_STATUS_OPEN)
++    lines.append(
++        f"Sources: {human} human, {default} default, {still_open} unresolved.")
++    lines.append("")
++    return "\n".join(lines)
++
++
++def write_escalation_assumptions_md(job: Job | Any, evidence_dir: Path) -> Path:
++    """Write the mid-run assumption log into the job's evidence area."""
++    evidence_dir = Path(evidence_dir)
++    evidence_dir.mkdir(parents=True, exist_ok=True)
++    path = evidence_dir / ESCALATION_ASSUMPTIONS_FILENAME
++    path.write_text(render_escalation_assumptions_md(job), encoding="utf-8")
++    return path
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index a7c4a0d..939fd23 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -26,6 +26,15 @@ branches keep running; those withheld ids are named in the cycle record.
+ Execution itself stays SEQUENTIAL — the ready set feeds one batch at a time
+ and this module never starts a thread.
+ 
++A task may also raise ``needs_decision`` (F051) instead of finishing or
++failing.  One decision is enqueued on the existing decision queue, that branch
++pauses, and the loop keeps pulling ready tasks from every disjoint branch.  At
++each batch boundary the awaiting branches are re-checked once against the job's
++open decisions, so a decision answered while the run is still working elsewhere
++is picked up without a restart and without a polling loop.  A run that ends
++with open decisions is ``blocked`` — PAUSED, resumable, and the report says
++which command answers what.
++
+ Terminal statuses and how they map onto job state:
+ 
+     | terminal status     | pingpong job status | core RunState |
+@@ -68,6 +77,7 @@ from packages.orchestration.budget_guard import BudgetCounters
+ from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+ from packages.orchestration.dag_schedule import blocked_downstream
+ from packages.orchestration.dag_schedule import ready_set as dag_ready_set
++from packages.orchestration.escalation import awaiting_decision_task_ids
+ from packages.orchestration.pingpong_job import (
+     JOB_BLOCKED,
+     JOB_COMPLETED,
+@@ -120,6 +130,9 @@ LEDGER_EVENT_CYCLE_COMPLETED = "cycle_completed"
+ LEDGER_EVENT_LOOP_TERMINAL = "cycle_loop_terminal"
+ #: F048: the idle loop took (or failed to take) a queued entry.
+ LEDGER_EVENT_QUEUE_PULL = "queue_pull"
++#: F051: a task raised a question, and what happened to it.
++LEDGER_EVENT_TASK_NEEDS_DECISION = "task_needs_decision"
++LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
+ 
+ #: Verify-step outcomes.  "not_run" is recorded verbatim — a cycle that ran no
+ #: verification never claims a passing one.
+@@ -195,6 +208,15 @@ class TaskAttempt:
+     executed: bool = False
+     verified: bool = False
+     error: str = ""
++    #: F051: the task cannot proceed without a human answer.  This is NOT a
++    #: failure — nothing was attempted and lost — so the conductor enqueues one
++    #: decision, pauses this branch only, and keeps pulling ready tasks from
++    #: every other branch.  Every step written before F051 omits these and
++    #: behaves exactly as it did.
++    needs_decision: bool = False
++    question: str = ""
++    options: tuple[str, ...] = ()
++    safe_default: str = ""
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -216,6 +238,10 @@ class CycleRecord:
+     ended_at: str
+     verify_command: str | None = None
+     errors: tuple[str, ...] = ()
++    #: F051: attempts that ended in ``needs_decision`` this cycle.  Counted
++    #: separately from ``tasks_failed`` on purpose — an escalation is a question,
++    #: not a failure, and a report that mixed the two would lie about the run.
++    tasks_escalated: int = 0
+     #: Ids of the tasks this cycle actually EXECUTED, in execution order.
+     #: They are what makes exactly-once provable across a kill and a resume
+     #: (F047 T003) — a counter in a test process cannot span two processes.
+@@ -227,6 +253,13 @@ class CycleRecord:
+     #: blocked in this run, in plan order.  This is what lets a report say WHY
+     #: nothing happened on a branch instead of leaving a silent gap.
+     skipped_blocked_task_ids: tuple[str, ...] = ()
++    #: F051: tasks whose branch is paused on an OPEN decision, in plan order.
++    awaiting_task_ids: tuple[str, ...] = ()
++    #: F051: ids withheld only because something upstream of them awaits a
++    #: decision — the awaiting counterpart of ``skipped_blocked_task_ids``.
++    awaiting_downstream_task_ids: tuple[str, ...] = ()
++    #: F051: the decisions this cycle raised, in the order they were raised.
++    open_decision_ids: tuple[str, ...] = ()
+ 
+     def to_json(self) -> dict[str, Any]:
+         return {
+@@ -234,6 +267,7 @@ class CycleRecord:
+             "tasks_attempted": self.tasks_attempted,
+             "tasks_completed": self.tasks_completed,
+             "tasks_failed": self.tasks_failed,
++            "tasks_escalated": self.tasks_escalated,
+             "verify_result": self.verify_result,
+             "verify_command": self.verify_command,
+             "tokens_so_far": self.tokens_so_far,
+@@ -242,6 +276,9 @@ class CycleRecord:
+             "errors": list(self.errors),
+             "executed_task_ids": list(self.executed_task_ids),
+             "skipped_blocked_task_ids": list(self.skipped_blocked_task_ids),
++            "awaiting_task_ids": list(self.awaiting_task_ids),
++            "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
++            "open_decision_ids": list(self.open_decision_ids),
+         }
+ 
+ 
+@@ -387,6 +424,13 @@ class CycleLoopResult:
+     #: F048: what the idle loop pulled from the queue, if the binding is enabled.
+     #: ``None`` whenever it is not — which is the default.
+     queue_pull: QueuePull | None = None
++    #: F051: decisions still open when the loop ended.  A non-empty tuple with
++    #: terminal ``blocked`` is the "the run needs you" case.
++    open_decision_ids: tuple[str, ...] = ()
++    #: F051: how many times the loop re-checked the awaiting branches — exactly
++    #: once per batch boundary.  Asserted in tests: it proves the pickup is a
++    #: boundary check and not a polling loop.
++    awaiting_checks: int = 0
+ 
+     @property
+     def cycles_run(self) -> int:
+@@ -400,6 +444,8 @@ class CycleLoopResult:
+             "stop_reason": self.stop_reason,
+             "cycles_run": self.cycles_run,
+             "cycles": [c.to_json() for c in self.cycles],
++            "open_decision_ids": list(self.open_decision_ids),
++            "awaiting_checks": self.awaiting_checks,
+         }
+         # Only present when something was actually pulled: the default shape of this
+         # payload is what every existing reader already parses.
+@@ -590,7 +636,8 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
+ 
+ 
+ def ready_tasks(job: Job, batch_size: int, *,
+-                blocked_ids: Collection[UUID] = ()) -> list[UUID]:
++                blocked_ids: Collection[UUID] = (),
++                awaiting_ids: Collection[UUID] = ()) -> list[UUID]:
+     """The ready batch: the DAG ready set in plan order, capped at batch_size.
+ 
+     F050: a task is ready when every dependency it declares in its Flight Plan
+@@ -602,10 +649,16 @@ def ready_tasks(job: Job, batch_size: int, *,
+     *blocked_ids* are tasks blocked for this run — an attempt executed and
+     failed.  They and their transitive dependents are withheld, so a blocked
+     branch locks only its own downstream and independent branches keep running.
++
++    *awaiting_ids* are tasks paused on an OPEN human decision (F051).  They are
++    withheld exactly like blocked ids — same branch-local effect — but they are
++    a separate argument because they mean something entirely different: nothing
++    failed, and the moment the decision is answered they become ready again.
+     """
+     ready = dag_ready_set(job.tasks)
+-    if blocked_ids:
+-        withheld = set(blocked_ids) | blocked_downstream(job.tasks, blocked_ids)
++    withheld_seeds = set(blocked_ids) | set(awaiting_ids)
++    if withheld_seeds:
++        withheld = withheld_seeds | blocked_downstream(job.tasks, withheld_seeds)
+         ready = [task_id for task_id in ready if task_id not in withheld]
+     return ready[:batch_size]
+ 
+@@ -623,6 +676,17 @@ def skipped_blocked_tasks(job: Job,
+     return [task.id for task in job.tasks if task.id in skipped]
+ 
+ 
++def awaiting_downstream_tasks(job: Job,
++                              awaiting_ids: Collection[UUID]) -> list[UUID]:
++    """Ids withheld only because something upstream awaits a decision (F051).
++
++    Same traversal as ``skipped_blocked_tasks``, reported under its own name so
++    a report can distinguish "waiting for an answer" from "blocked by a
++    failure" — for a returning human those are opposite situations.
++    """
++    return skipped_blocked_tasks(job, awaiting_ids)
++
++
+ def _step_target_argument(step: TaskStep) -> bool:
+     """True when *step* accepts the ``task_id`` the ready set selected.
+ 
+@@ -715,13 +779,16 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
+ 
+ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+                             limits: CycleLimits, *,
+-                            blocked_ids: Collection[UUID] = ()) -> None:
++                            blocked_ids: Collection[UUID] = (),
++                            awaiting_ids: Collection[UUID] = ()) -> None:
+     """Write this cycle's checkpoint (F047).  Never raises into the loop.
+ 
+     The next intent is derived from what the job still has READY at this
+     moment: another cycle with a named first task, or nothing left to run.
+     A task blocked in this run is not named as the next intent — resuming into
+     a task that just failed would be a retry policy this module does not own.
++    A task awaiting a decision is not named either: resuming into it before the
++    decision is answered would just escalate again (F051).
+     A write that fails is recorded on the job as ``checkpoint_error`` and
+     logged by the checkpoint module — the run continues and the next cycle
+     retries (feature-file A9).
+@@ -732,7 +799,8 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+         record_cycle_checkpoint,
+     )
+ 
+-    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
++    pending = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
++                          awaiting_ids=awaiting_ids)
+     next_intent: dict[str, Any] = (
+         {"kind": INTENT_CYCLE,
+          "cycle_index": record.cycle_index + 1,
+@@ -752,6 +820,56 @@ def _write_cycle_checkpoint(job: Job, record: CycleRecord,
+         job.metadata.pop("checkpoint_error", None)
+ 
+ 
++def _open_decision_ids(job: Job) -> tuple[str, ...]:
++    """Ids of the job's still-open task decisions, in the order they were raised."""
++    from packages.orchestration.escalation import open_task_decisions
++
++    return tuple(str(record.get("decision_id", ""))
++                 for record in open_task_decisions(job))
++
++
++def _escalate_task(job: Job, attempt: TaskAttempt, target: UUID, *,
++                   now: datetime, unattended: bool,
++                   log: Any = None) -> dict[str, Any]:
++    """Enqueue ONE decision for the task that raised ``needs_decision`` (F051).
++
++    Attended runs always ask.  An unattended run applies the decision's safe
++    default at once — and only then; a decision with no default waits in both
++    modes, because inventing an answer is the one thing escalation exists to
++    avoid.  The returned record is the one the cycle names in its evidence.
++    """
++    from packages.orchestration.escalation import (
++        auto_apply_safe_default,
++        enqueue_task_decision,
++    )
++
++    task_id = attempt.task_id if attempt.task_id is not None else target
++    record = enqueue_task_decision(
++        job,
++        task_id=task_id,
++        question=attempt.question,
++        options=attempt.options,
++        safe_default=attempt.safe_default,
++        now=now,
++    )
++    _emit(log, LEDGER_EVENT_TASK_NEEDS_DECISION,
++          task_id=str(task_id),
++          decision_id=record["decision_id"],
++          question=record["question"],
++          options=list(record["options"]),
++          safe_default=record["safe_default"])
++
++    if unattended:
++        applied = auto_apply_safe_default(job, record, now=now)
++        if applied is not None:
++            _emit(log, LEDGER_EVENT_DECISION_ANSWERED,
++                  task_id=str(task_id),
++                  decision_id=record["decision_id"],
++                  answer=applied["answer"],
++                  answer_source=applied["answer_source"])
++    return record
++
++
+ def _emit(log: Any, event: str, **meta: Any) -> None:
+     """Emit a ledger event when a writer was injected; never raise into the loop."""
+     if log is None:
+@@ -781,6 +899,7 @@ def run_cycles(
+     record_evidence: bool = True,
+     record_checkpoint: bool = True,
+     first_cycle_index: int | None = None,
++    unattended: bool = False,
+ ) -> CycleLoopResult:
+     """Run bounded cycles over *job* until a terminal condition.
+ 
+@@ -816,6 +935,14 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+     the all_green status; self-healing is a later feature.  A task step that
+     fails ends the cycle too — the task runner has already rolled the task back
+     to PENDING, so the next cycle (if the budget allows one) retries it.
++
++    ``unattended`` (F051) decides what a safe default is worth.  Attended (the
++    default): a task raising ``needs_decision`` always ASKS — the decision is
++    enqueued and its branch waits, default or not.  Unattended: a decision that
++    carries a safe default is answered from that default immediately, recorded
++    as ``answer_source="default"`` in the escalation assumption log, and the
++    branch continues in the same cycle.  A decision without a default waits
++    either way — Remedy never invents an answer it was not given.
+     """
+     step = task_step or default_task_step
+     verify_step = verify or _no_verify
+@@ -833,6 +960,12 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+     #: knows which attempts it made and lost.  Ids accumulate for the whole
+     #: run: a branch that failed stays blocked until a new run retries it.
+     blocked_ids: set[UUID] = set()
++    #: F051 awaiting tracking.  DERIVED from the job's open escalation records
++    #: at every batch boundary, never stored twice: answering a decision removes
++    #: the task from this set with no bookkeeping here, which is exactly how an
++    #: answered branch gets picked up mid-run.
++    awaiting_ids: set[UUID] = set()
++    awaiting_checks = 0
+     step_takes_target = _step_target_argument(task_step or default_task_step)
+ 
+     def counted_provider_call(context: TaskExecutionContext) -> BuilderOutput:
+@@ -858,11 +991,27 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             stop_reason = stop.reason
+             break
+ 
+-        # 2. Terminal by job shape: green, or nothing ready and not green.
+-        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids)
++        # 2. Batch boundary (F051): re-check which branches still await a
++        #    decision.  An answered decision has disappeared from the job's open
++        #    records, so its branch becomes ready again right here — exactly one
++        #    check per boundary, no sleeping and no polling loop anywhere.
++        awaiting_checks += 1
++        awaiting_ids = awaiting_decision_task_ids(job)
++
++        # 3. Terminal by job shape: green, or nothing ready and not green.
++        batch = ready_tasks(job, limits.batch_size, blocked_ids=blocked_ids,
++                            awaiting_ids=awaiting_ids)
+         if not batch:
+             if _is_green(job, last_verify):
+                 terminal, stop_reason = TERMINAL_ALL_GREEN, ""
++            elif awaiting_ids:
++                # Nothing has failed — the run needs an answer.  ``blocked``
++                # maps to PAUSED, so answering and resuming finishes the rest.
++                terminal = TERMINAL_BLOCKED
++                stop_reason = (
++                    "awaiting_decision; open_decisions="
++                    + ",".join(_open_decision_ids(job))
++                )
+             else:
+                 terminal = TERMINAL_BLOCKED
+                 stop_reason = (
+@@ -871,17 +1020,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+                 )
+             break
+ 
+-        # 3. Cycle budget.  Not a stop cause — pending work simply remains.
++        # 4. Cycle budget.  Not a stop cause — pending work simply remains.
+         if len(cycles) >= limits.max_cycles:
+             terminal, stop_reason = TERMINAL_MAX_CYCLES_REACHED, ""
+             break
+ 
+-        # 4. Run the cycle.
++        # 5. Run the cycle.
+         cycle_index = base_index + len(cycles)
+         started_at = now
+-        attempted = completed = failed = 0
++        attempted = completed = failed = escalated = 0
+         errors: list[str] = []
+         executed_ids: list[str] = []
++        raised_decision_ids: list[str] = []
+ 
+         # The ready set is recomputed after EVERY task end (F050), so a task
+         # that completes mid-cycle can release its dependents immediately and a
+@@ -889,12 +1039,26 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         # The batch is a CAP on how many tasks this cycle may run, unchanged.
+         for _ in range(limits.batch_size):
+             ready_now = ready_tasks(job, limits.batch_size,
+-                                    blocked_ids=blocked_ids)
++                                    blocked_ids=blocked_ids,
++                                    awaiting_ids=awaiting_ids)
+             if not ready_now:
+                 break                      # nothing ready any more
+             target = ready_now[0]
+             attempt = (step(job, counted_provider_call, target)
+                        if step_takes_target else step(job, counted_provider_call))
++            # F051: a question, not a failure.  One decision is enqueued for
++            # this task, its branch pauses, and the loop carries straight on to
++            # whatever else is ready — including tasks on disjoint branches of
++            # this very cycle.
++            if attempt.needs_decision:
++                attempted += 1
++                escalated += 1
++                record = _escalate_task(
++                    job, attempt, target,
++                    now=now_fn(), unattended=unattended, log=log)
++                raised_decision_ids.append(str(record.get("decision_id", "")))
++                awaiting_ids = awaiting_decision_task_ids(job)
++                continue
+             if not attempt.executed and not attempt.error:
+                 break                      # nothing ready any more; not an attempt
+             attempted += 1
+@@ -929,6 +1093,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             tasks_attempted=attempted,
+             tasks_completed=completed,
+             tasks_failed=failed,
++            tasks_escalated=escalated,
+             verify_result=last_verify,
+             tokens_so_far=counters.measured_token_total,
+             started_at=started_at.isoformat(),
+@@ -938,10 +1103,16 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             executed_task_ids=tuple(executed_ids),
+             skipped_blocked_task_ids=tuple(
+                 str(task_id) for task_id in skipped_blocked_tasks(job, blocked_ids)),
++            awaiting_task_ids=tuple(
++                str(task.id) for task in job.tasks if task.id in awaiting_ids),
++            awaiting_downstream_task_ids=tuple(
++                str(task_id)
++                for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
++            open_decision_ids=tuple(raised_decision_ids),
+         )
+         cycles.append(record)
+ 
+-        # 5. Persist the job, then the cycle's own evidence record, then the
++        # 6. Persist the job, then the cycle's own evidence record, then the
+         #    checkpoint (F047).  Order matters: a checkpoint references the
+         #    persisted snapshot, so the snapshot must already be on disk.
+         save_fn(job)
+@@ -951,15 +1122,18 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+             except (OSError, ValueError) as exc:
+                 job.metadata["cycle_evidence_error"] = f"{type(exc).__name__}: {exc}"
+         if record_checkpoint:
+-            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids)
++            _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
++                                    awaiting_ids=awaiting_ids)
+         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+ 
+     job_status = _apply_terminal(job, terminal, stop_reason)
+     save_fn(job)
++    open_decisions = _open_decision_ids(job)
+     _emit(
+         log, LEDGER_EVENT_LOOP_TERMINAL,
+         terminal_status=terminal, job_status=job_status,
+         stop_reason=stop_reason, cycles_run=len(cycles),
++        open_decision_ids=list(open_decisions),
+     )
+     return CycleLoopResult(
+         job=job,
+@@ -968,4 +1142,6 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+         stop_reason=stop_reason,
+         cycles=tuple(cycles),
+         queue_pull=_pull_queue_when_idle(job, terminal, log=log),
++        open_decision_ids=open_decisions,
++        awaiting_checks=awaiting_checks,
+     )
+diff --git a/tests/cli/test_open_decisions_view.py b/tests/cli/test_open_decisions_view.py
+new file mode 100644
+index 0000000..2338677
+--- /dev/null
++++ b/tests/cli/test_open_decisions_view.py
+@@ -0,0 +1,335 @@
++"""F051 T003 — open decisions render FIRST, with the command that answers them.
++
++Covers the pure view helpers in ``decision_queue`` and the two CLI views that
++use them (``remedy job status`` and ``remedy job report``), in text and JSON.
++The point being pinned: a returning human sees what the run needs before
++anything else, and the exact command is in the output — never paraphrased.
++"""
++from __future__ import annotations
++
++import json
++from datetime import datetime, timezone
++from pathlib import Path
++
++import pytest
++
++from apps.cli.commands.job import _cmd_job_report, _cmd_job_status
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.decision_queue import (
++    HumanDecision,
++    list_decisions,
++    open_decisions,
++    open_decisions_next_action,
++    render_open_decisions_lines,
++    sort_open_decisions_first,
++)
++from packages.orchestration.escalation import (
++    answer_task_decision,
++    enqueue_task_decision,
++    task_decision_answer_command,
++)
++from packages.orchestration.storage import save_job
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)
++
++
++# ---------------------------------------------------------------------------
++# Fixtures
++# ---------------------------------------------------------------------------
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++def make_job(*, name: str = "view-job", state: RunState = RunState.PAUSED,
++             target_repo: str = "/tmp/repo") -> Job:
++    """A job with a repo attached, so the queue's baseline is empty.
++
++    Without ``target_repo`` the queue derives its own ``no_target_repo`` blocker
++    (stop_reasons.py) — real behavior, pinned by its own test below, but noise
++    for the assertions about task decisions.
++    """
++    return Job(
++        name=name,
++        user_prompt="build the thing",
++        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
++               for i in range(2)],
++        state=state,
++        metadata={"target_repo": target_repo},
++    )
++
++
++def saved_job_with_open_decision(*, question: str = "Which database?",
++                                 options=("postgres", "sqlite")) -> tuple[Job, dict]:
++    """A persisted blocked job whose first task awaits a decision."""
++    job = make_job()
++    record = enqueue_task_decision(
++        job, task_id=job.tasks[0].id, question=question,
++        options=options, safe_default="", now=T0)
++    save_job(job)
++    return job, record
++
++
++def decision(id_: str, *, status: str = "open", severity: str = "blocker",
++             type_: str = "task_decision", actions=()) -> HumanDecision:
++    return HumanDecision(
++        id=id_, type=type_, status=status, severity=severity, source="test",
++        related_node_id="", related_intent_id="", related_file="",
++        safe_summary=f"summary {id_}", next_actions=tuple(actions),
++        created_at="", resolved_at=None if status == "open" else "")
++
++
++# ---------------------------------------------------------------------------
++# The pure view helpers
++# ---------------------------------------------------------------------------
++
++
++class TestOrdering:
++    def test_open_decisions_come_before_resolved_ones(self):
++        items = [decision("resolved-1", status="resolved", severity="info"),
++                 decision("open-1")]
++
++        assert [d.id for d in sort_open_decisions_first(items)] == [
++            "open-1", "resolved-1"]
++
++    def test_blockers_come_before_warnings_and_info(self):
++        items = [decision("i", severity="info"),
++                 decision("w", severity="warning"),
++                 decision("b", severity="blocker")]
++
++        assert [d.id for d in sort_open_decisions_first(items)] == ["b", "w", "i"]
++
++    def test_equal_severity_keeps_its_original_order(self):
++        items = [decision("first"), decision("second")]
++
++        assert [d.id for d in sort_open_decisions_first(items)] == [
++            "first", "second"]
++
++    def test_an_unknown_severity_sorts_last_instead_of_raising(self):
++        items = [decision("odd", severity="chartreuse"), decision("info-1",
++                                                                  severity="info")]
++
++        assert [d.id for d in sort_open_decisions_first(items)] == ["info-1", "odd"]
++
++    def test_open_decisions_filters_out_the_resolved_ones(self):
++        items = [decision("open-1"), decision("done", status="resolved")]
++
++        assert [d.id for d in open_decisions(items)] == ["open-1"]
++
++
++class TestRenderedBlock:
++    def test_nothing_open_renders_nothing(self):
++        assert render_open_decisions_lines([]) == []
++        assert render_open_decisions_lines(
++            [decision("done", status="resolved")]) == []
++
++    def test_the_header_counts_the_open_decisions(self):
++        lines = render_open_decisions_lines(
++            [decision("a", actions=("cmd a",)), decision("b", actions=("cmd b",))])
++
++        assert lines[0] == "Open decisions: 2 — the run needs an answer"
++
++    def test_every_answer_command_appears_in_full(self):
++        long_command = ('remedy decision resolve deadbeef td:cafebabe '
++                        '--reason "a rather long answer that must not be cut"')
++        lines = render_open_decisions_lines([decision("x", actions=(long_command,))])
++
++        assert any(line.endswith(long_command) for line in lines)
++
++    def test_the_summary_and_severity_are_shown(self):
++        lines = render_open_decisions_lines([decision("td:abc", actions=("cmd",))])
++
++        assert "[blocker] task_decision td:abc: summary td:abc" in lines[1]
++
++    def test_the_next_action_is_the_most_urgent_open_command(self):
++        items = [decision("info-1", severity="info", actions=("cmd info",)),
++                 decision("block-1", severity="blocker", actions=("cmd block",))]
++
++        assert open_decisions_next_action(items) == "cmd block"
++
++    def test_the_next_action_is_empty_when_nothing_is_open(self):
++        assert open_decisions_next_action([]) == ""
++        assert open_decisions_next_action([decision("d", status="resolved")]) == ""
++
++    def test_an_open_decision_without_a_command_is_skipped_for_next_action(self):
++        items = [decision("no-cmd", actions=()),
++                 decision("has-cmd", actions=("cmd here",))]
++
++        assert open_decisions_next_action(items) == "cmd here"
++
++
++# ---------------------------------------------------------------------------
++# remedy job status
++# ---------------------------------------------------------------------------
++
++
++class TestJobStatusView:
++    def test_the_open_decision_block_is_printed_first(self, capsys):
++        job, record = saved_job_with_open_decision()
++
++        _cmd_job_status(str(job.id))
++        out = capsys.readouterr().out.splitlines()
++
++        assert out[0] == "Open decisions: 1 — the run needs an answer"
++        assert out[0:1] and out[1].strip().startswith("[blocker] task_decision")
++        # The job summary follows the block, never precedes it.
++        assert any(line.startswith("Job ") for line in out)
++        assert out.index(f"Job {job.id}") > 0
++
++    def test_the_exact_answer_command_is_in_the_output(self, capsys):
++        job, record = saved_job_with_open_decision()
++        expected = task_decision_answer_command(
++            str(job.id), record["decision_id"], "postgres")
++
++        _cmd_job_status(str(job.id))
++        out = capsys.readouterr().out
++
++        assert expected in out
++
++    def test_awaiting_decision_is_the_first_blocker(self, capsys):
++        job, _ = saved_job_with_open_decision()
++
++        _cmd_job_status(str(job.id), json_output=True)
++        status = json.loads(capsys.readouterr().out)
++
++        assert status["blockers"][0] == "awaiting_decision"
++
++    def test_the_json_carries_the_open_decisions_and_the_count(self, capsys):
++        job, record = saved_job_with_open_decision()
++
++        _cmd_job_status(str(job.id), json_output=True)
++        status = json.loads(capsys.readouterr().out)
++
++        assert status["open_decision_count"] == 1
++        assert status["open_decisions"][0]["id"] == record["decision_id"]
++        assert status["open_decisions"][0]["payload"]["question"] == "Which database?"
++
++    def test_the_next_safe_action_answers_the_decision(self, capsys):
++        job, record = saved_job_with_open_decision()
++
++        _cmd_job_status(str(job.id), json_output=True)
++        status = json.loads(capsys.readouterr().out)
++
++        assert status["next_safe_action"] == task_decision_answer_command(
++            str(job.id), record["decision_id"], "postgres")
++
++    def test_a_job_without_open_decisions_is_unchanged(self, capsys):
++        job = make_job(state=RunState.PLANNED)
++        save_job(job)
++
++        _cmd_job_status(str(job.id))
++        out = capsys.readouterr().out.splitlines()
++
++        assert out[0] == f"Job {job.id}"
++        assert "Open decisions" not in capsys.readouterr().out
++
++    def test_an_answered_decision_disappears_from_the_view(self, capsys):
++        job, record = saved_job_with_open_decision()
++        answer_task_decision(job, record["decision_id"], answer="postgres", now=T0)
++        save_job(job)
++
++        _cmd_job_status(str(job.id), json_output=True)
++        status = json.loads(capsys.readouterr().out)
++
++        assert status["open_decision_count"] == 0
++        assert "awaiting_decision" not in status["blockers"]
++
++
++# ---------------------------------------------------------------------------
++# remedy job report
++# ---------------------------------------------------------------------------
++
++
++class TestJobReportView:
++    def test_the_open_decision_block_is_printed_first(self, capsys):
++        job, _ = saved_job_with_open_decision()
++
++        _cmd_job_report(str(job.id))
++        out = capsys.readouterr().out.splitlines()
++
++        assert out[0] == "Open decisions: 1 — the run needs an answer"
++        assert out.index(f"Job Report: {job.id}") > 0
++
++    def test_the_final_next_action_line_names_the_answer_command(self, capsys):
++        job, record = saved_job_with_open_decision()
++        expected = task_decision_answer_command(
++            str(job.id), record["decision_id"], "postgres")
++
++        _cmd_job_report(str(job.id))
++        out = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
++
++        assert out[-1].strip() == f"Next:      {expected}"
++
++    def test_the_json_report_carries_the_open_decisions(self, capsys):
++        job, record = saved_job_with_open_decision()
++
++        _cmd_job_report(str(job.id), json_output=True)
++        report = json.loads(capsys.readouterr().out)
++
++        assert report["open_decision_count"] == 1
++        assert report["open_decisions"][0]["id"] == record["decision_id"]
++        assert report["next_safe_action"] == task_decision_answer_command(
++            str(job.id), record["decision_id"], "postgres")
++
++    def test_two_tasks_asking_the_same_question_are_both_listed(self, capsys):
++        job = make_job()
++        first = enqueue_task_decision(
++            job, task_id=job.tasks[0].id, question="Which database?",
++            options=("postgres",), now=T0)
++        second = enqueue_task_decision(
++            job, task_id=job.tasks[1].id, question="Which database?",
++            options=("postgres",), now=T0)
++        save_job(job)
++
++        _cmd_job_report(str(job.id), json_output=True)
++        report = json.loads(capsys.readouterr().out)
++
++        listed = [d["id"] for d in report["open_decisions"]]
++        assert listed == [first["decision_id"], second["decision_id"]]
++        # Cross-referenced, not merged — deduplication is a human call.
++        assert report["open_decisions"][0]["payload"]["cross_references"] == [
++            second["decision_id"]]
++
++    def test_a_job_without_open_decisions_reports_as_before(self, capsys):
++        job = make_job(state=RunState.PLANNED)
++        save_job(job)
++
++        _cmd_job_report(str(job.id))
++        out = capsys.readouterr().out.splitlines()
++
++        assert out[0] == f"Job Report: {job.id}"
++
++
++# ---------------------------------------------------------------------------
++# The queue is the one surface
++# ---------------------------------------------------------------------------
++
++
++def test_the_view_reads_the_existing_decision_queue():
++    # No second queue: what the views render is exactly what
++    # ``remedy decision list`` derives for the same job.
++    job, record = saved_job_with_open_decision()
++    derived = [d.id for d in open_decisions(list_decisions(job, []))]
++
++    assert record["decision_id"] in derived
++
++
++def test_the_block_is_queue_wide_not_task_decision_only(capsys):
++    # A job with no repo attached has an open blocker of a different type; it
++    # renders first too.  The view surfaces the QUEUE, not one producer.
++    job = make_job(target_repo="")
++    save_job(job)
++
++    _cmd_job_status(str(job.id), json_output=True)
++    status = json.loads(capsys.readouterr().out)
++
++    assert status["open_decision_count"] == 1
++    assert status["open_decisions"][0]["type"] == "stop_reason"
++    assert status["blockers"][0] == "awaiting_decision"
++    assert status["next_safe_action"] == "remedy job attach-repo <job_id> <path>"
+diff --git a/tests/orchestration/test_escalation.py b/tests/orchestration/test_escalation.py
+new file mode 100644
+index 0000000..5925a4a
+--- /dev/null
++++ b/tests/orchestration/test_escalation.py
+@@ -0,0 +1,1114 @@
++"""F051 — escalate instead of block.
++
++T001: the ``needs_decision`` records themselves — enqueue, cross-referencing,
++awaiting-branch derivation, answering, attended-vs-unattended default handling,
++the mid-run assumption log, and the additive ``decision_queue`` derivation that
++surfaces them.  That section is pure: no clock of its own (the clock is
++injected), no filesystem except the assumption-log test, no provider.
++
++T002: the same behavior through the real conductor — the three-branch fixture
++that is this feature's acceptance heart, the batch-boundary pickup with its
++check count (the no-polling proof), the blocked terminal, answer-and-resume,
++and the linear-plan regression.  Nothing here sleeps.
++"""
++from __future__ import annotations
++
++from datetime import datetime, timedelta, timezone
++from pathlib import Path
++
++import pytest
++
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.decision_queue import (
++    DECISION_TYPES,
++    export_decision_json,
++    list_decisions,
++)
++from packages.orchestration.escalation import (
++    ANSWER_SOURCE_DEFAULT,
++    ANSWER_SOURCE_HUMAN,
++    DECISION_ID_PREFIX,
++    DECISION_TYPE_TASK_DECISION,
++    ESCALATION_STATUS_ANSWERED,
++    ESCALATION_STATUS_OPEN,
++    JOB_METADATA_ESCALATIONS_KEY,
++    TASK_INPUTS_ANSWERS_KEY,
++    TASK_OUTCOME_NEEDS_DECISION,
++    answer_task_decision,
++    answered_task_decisions,
++    auto_apply_safe_default,
++    awaiting_decision_task_ids,
++    enqueue_task_decision,
++    escalation_records,
++    find_task_decision,
++    open_task_decisions,
++    render_escalation_assumptions_md,
++    task_decision_answer_command,
++    write_escalation_assumptions_md,
++)
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 30, 12, 0, 0, tzinfo=UTC)
++T1 = datetime(2026, 7, 30, 12, 5, 0, tzinfo=UTC)
++
++
++# ---------------------------------------------------------------------------
++# Fixture builders
++# ---------------------------------------------------------------------------
++
++
++def make_job(task_count: int = 2, *, name: str = "escalation-job") -> Job:
++    return Job(
++        name=name,
++        user_prompt="build the thing",
++        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
++               for i in range(task_count)],
++        state=RunState.PLANNED,
++    )
++
++
++def escalate(job: Job, task_index: int = 0, *, question: str = "Which database?",
++             options=("postgres", "sqlite"), safe_default: str = "",
++             now: datetime = T0) -> dict:
++    return enqueue_task_decision(
++        job,
++        task_id=job.tasks[task_index].id,
++        question=question,
++        options=options,
++        safe_default=safe_default,
++        now=now,
++    )
++
++
++# ---------------------------------------------------------------------------
++# The record and its id
++# ---------------------------------------------------------------------------
++
++
++class TestEnqueue:
++    def test_one_call_enqueues_exactly_one_record(self):
++        job = make_job()
++        record = escalate(job)
++
++        assert escalation_records(job) == [record]
++        assert job.metadata[JOB_METADATA_ESCALATIONS_KEY] == [record]
++
++    def test_the_record_carries_task_question_options_and_default(self):
++        job = make_job()
++        record = escalate(job, safe_default="sqlite")
++
++        assert record["task_id"] == str(job.tasks[0].id)
++        assert record["question"] == "Which database?"
++        assert record["options"] == ["postgres", "sqlite"]
++        assert record["safe_default"] == "sqlite"
++        assert record["status"] == ESCALATION_STATUS_OPEN
++        assert record["created_at"] == T0.isoformat()
++        assert record["answer"] == "" and record["answered_at"] == ""
++
++    def test_the_decision_id_is_task_scoped_and_prefixed(self):
++        job = make_job()
++        record = escalate(job)
++
++        assert record["decision_id"].startswith(DECISION_ID_PREFIX)
++        assert job.tasks[0].id.hex[:8] in record["decision_id"]
++
++    def test_a_second_decision_for_the_same_task_gets_its_own_id(self):
++        job = make_job()
++        first = escalate(job, question="Which database?")
++        second = escalate(job, question="Which cache?")
++
++        assert first["decision_id"] != second["decision_id"]
++        assert second["decision_id"].endswith("-2")
++        assert len(escalation_records(job)) == 2
++
++    def test_the_record_is_json_safe(self):
++        # It rides job.metadata, which is persisted as JSON.
++        import json
++        job = make_job()
++        escalate(job, safe_default="sqlite")
++        assert json.loads(json.dumps(escalation_records(job)))
++
++
++class TestSameQuestionTwice:
++    """Two tasks, one question: two decisions, cross-referenced — never merged."""
++
++    def test_two_tasks_raising_the_same_question_get_two_decisions(self):
++        job = make_job()
++        first = escalate(job, 0, question="Which database?")
++        second = escalate(job, 1, question="Which database?")
++
++        assert len(escalation_records(job)) == 2
++        assert first["decision_id"] != second["decision_id"]
++
++    def test_they_cross_reference_each_other_in_both_directions(self):
++        job = make_job()
++        first = escalate(job, 0, question="Which database?")
++        second = escalate(job, 1, question="Which database?")
++
++        assert second["cross_references"] == [first["decision_id"]]
++        assert first["cross_references"] == [second["decision_id"]]
++
++    def test_cross_referencing_ignores_whitespace_and_case(self):
++        job = make_job()
++        first = escalate(job, 0, question="Which  database?")
++        second = escalate(job, 1, question="which database?")
++
++        assert second["cross_references"] == [first["decision_id"]]
++
++    def test_a_different_question_is_not_cross_referenced(self):
++        job = make_job()
++        escalate(job, 0, question="Which database?")
++        second = escalate(job, 1, question="Which cache?")
++
++        assert second["cross_references"] == []
++
++    def test_an_answered_decision_is_not_cross_referenced(self):
++        job = make_job()
++        first = escalate(job, 0, question="Which database?")
++        answer_task_decision(job, first["decision_id"], answer="postgres", now=T1)
++        second = escalate(job, 1, question="Which database?")
++
++        assert second["cross_references"] == []
++
++
++# ---------------------------------------------------------------------------
++# Awaiting is not failure
++# ---------------------------------------------------------------------------
++
++
++class TestAwaitingBranch:
++    def test_an_open_decision_marks_its_task_awaiting(self):
++        job = make_job()
++        escalate(job, 0)
++
++        assert awaiting_decision_task_ids(job) == {job.tasks[0].id}
++
++    def test_the_task_keeps_its_pending_status(self):
++        # Awaiting is NOT failed: no FAILED task state, so the job stays
++        # resumable and the DAG treats the branch exactly like a blocked one.
++        job = make_job()
++        escalate(job, 0)
++
++        assert job.tasks[0].status == RunState.PENDING
++
++    def test_answering_clears_the_awaiting_mark(self):
++        job = make_job()
++        record = escalate(job, 0)
++        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
++
++        assert awaiting_decision_task_ids(job) == set()
++
++    def test_a_job_without_escalations_awaits_nothing(self):
++        job = make_job()
++
++        assert awaiting_decision_task_ids(job) == set()
++        assert escalation_records(job) == []
++        assert open_task_decisions(job) == []
++
++    def test_a_malformed_task_id_blocks_nothing(self):
++        job = make_job()
++        job.metadata[JOB_METADATA_ESCALATIONS_KEY] = [
++            {"decision_id": "td:bogus", "task_id": "not-a-uuid",
++             "status": ESCALATION_STATUS_OPEN},
++        ]
++
++        assert awaiting_decision_task_ids(job) == set()
++
++
++# ---------------------------------------------------------------------------
++# Answering
++# ---------------------------------------------------------------------------
++
++
++class TestAnswering:
++    def test_answering_records_answer_source_and_time(self):
++        job = make_job()
++        record = escalate(job, 0)
++        updated = answer_task_decision(
++            job, record["decision_id"], answer="postgres", now=T1)
++
++        assert updated is not None
++        assert updated["status"] == ESCALATION_STATUS_ANSWERED
++        assert updated["answer"] == "postgres"
++        assert updated["answer_source"] == ANSWER_SOURCE_HUMAN
++        assert updated["answered_at"] == T1.isoformat()
++        assert answered_task_decisions(job) == [updated]
++
++    def test_the_answer_lands_on_the_task_for_its_next_attempt(self):
++        job = make_job()
++        record = escalate(job, 0)
++        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
++
++        assert job.tasks[0].inputs[TASK_INPUTS_ANSWERS_KEY] == {
++            record["decision_id"]: "postgres"}
++
++    def test_answering_an_unknown_decision_returns_none(self):
++        job = make_job()
++        escalate(job, 0)
++
++        assert answer_task_decision(job, "td:nope", answer="x", now=T1) is None
++
++    def test_answering_twice_is_refused(self):
++        # Answers are written once: a late second answer must not overwrite the
++        # one the run already acted on.
++        job = make_job()
++        record = escalate(job, 0)
++        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
++        again = answer_task_decision(
++            job, record["decision_id"], answer="sqlite", now=T1)
++
++        assert again is None
++        assert find_task_decision(job, record["decision_id"])["answer"] == "postgres"
++
++
++class TestSafeDefaults:
++    def test_a_safe_default_is_still_asked_and_stays_open(self):
++        # A9 consistency: enqueueing never applies the default by itself.
++        job = make_job()
++        record = escalate(job, 0, safe_default="sqlite")
++
++        assert record["status"] == ESCALATION_STATUS_OPEN
++        assert record["answer"] == ""
++        assert awaiting_decision_task_ids(job) == {job.tasks[0].id}
++
++    def test_auto_apply_answers_from_the_default_and_says_so(self):
++        job = make_job()
++        record = escalate(job, 0, safe_default="sqlite")
++        applied = auto_apply_safe_default(job, record, now=T1)
++
++        assert applied is not None
++        assert applied["answer"] == "sqlite"
++        assert applied["answer_source"] == ANSWER_SOURCE_DEFAULT
++        assert awaiting_decision_task_ids(job) == set()
++
++    def test_auto_apply_refuses_a_record_without_a_default(self):
++        job = make_job()
++        record = escalate(job, 0, safe_default="")
++
++        assert auto_apply_safe_default(job, record, now=T1) is None
++        assert open_task_decisions(job) == [record]
++
++
++# ---------------------------------------------------------------------------
++# The assumption log
++# ---------------------------------------------------------------------------
++
++
++class TestEscalationAssumptionLog:
++    def test_it_records_answer_and_source_per_decision(self):
++        job = make_job()
++        human = escalate(job, 0, question="Which database?")
++        answer_task_decision(job, human["decision_id"], answer="postgres", now=T1)
++        defaulted = escalate(job, 1, question="Which cache?", safe_default="none")
++        auto_apply_safe_default(job, defaulted, now=T1)
++
++        text = render_escalation_assumptions_md(job)
++
++        assert "Which database?" in text and "postgres" in text
++        assert "Which cache?" in text and "none" in text
++        assert "Sources: 1 human, 1 default, 0 unresolved." in text
++
++    def test_an_open_decision_is_reported_unresolved(self):
++        job = make_job()
++        escalate(job, 0)
++
++        text = render_escalation_assumptions_md(job)
++
++        assert "unanswered" in text
++        assert "Sources: 0 human, 0 default, 1 unresolved." in text
++
++    def test_a_run_without_escalations_says_so(self):
++        text = render_escalation_assumptions_md(make_job())
++
++        assert "No escalations" in text
++
++    def test_it_is_written_next_to_the_other_job_evidence(self, tmp_path: Path):
++        job = make_job()
++        escalate(job, 0)
++        path = write_escalation_assumptions_md(job, tmp_path / "evidence")
++
++        assert path.name == "escalation_assumptions.md"
++        assert "Which database?" in path.read_text(encoding="utf-8")
++
++    def test_it_is_not_the_flight_plan_assumption_log(self, tmp_path: Path):
++        # The plan-time log states nothing in it was asked mid-run; mid-run
++        # escalations therefore get their own file rather than making it lie.
++        from packages.orchestration.flight_plan import write_assumptions_md
++        job = make_job()
++        escalate(job, 0)
++        evidence = tmp_path / "evidence"
++        plan_log = write_assumptions_md([], evidence)
++        escalation_log = write_escalation_assumptions_md(job, evidence)
++
++        assert plan_log != escalation_log
++        assert "Which database?" not in plan_log.read_text(encoding="utf-8")
++
++
++# ---------------------------------------------------------------------------
++# The decision queue derives them — no second queue
++# ---------------------------------------------------------------------------
++
++
++class TestDecisionQueueDerivation:
++    def test_the_type_is_registered(self):
++        assert DECISION_TYPE_TASK_DECISION in DECISION_TYPES
++
++    def test_an_open_escalation_appears_as_an_open_blocker(self):
++        job = make_job()
++        record = escalate(job, 0)
++
++        derived = [d for d in list_decisions(job, [])
++                   if d.type == DECISION_TYPE_TASK_DECISION]
++
++        assert len(derived) == 1
++        assert derived[0].id == record["decision_id"]
++        assert derived[0].status == "open"
++        assert derived[0].severity == "blocker"
++        assert "Which database?" in derived[0].safe_summary
++
++    def test_it_carries_the_exact_answer_command_per_option(self):
++        job = make_job()
++        record = escalate(job, 0, options=("postgres", "sqlite"))
++
++        d = next(d for d in list_decisions(job, [])
++                 if d.type == DECISION_TYPE_TASK_DECISION)
++
++        assert d.next_actions == (
++            task_decision_answer_command(str(job.id), record["decision_id"], "postgres"),
++            task_decision_answer_command(str(job.id), record["decision_id"], "sqlite"),
++        )
++        assert all(a.startswith("remedy decision resolve ") for a in d.next_actions)
++
++    def test_a_decision_without_options_still_offers_the_command(self):
++        job = make_job()
++        record = escalate(job, 0, options=())
++
++        d = next(d for d in list_decisions(job, [])
++                 if d.type == DECISION_TYPE_TASK_DECISION)
++
++        assert d.next_actions == (
++            task_decision_answer_command(str(job.id), record["decision_id"]),)
++
++    def test_the_payload_carries_question_options_default_and_refs(self):
++        job = make_job()
++        first = escalate(job, 0, question="Which database?", safe_default="sqlite")
++        escalate(job, 1, question="Which database?")
++
++        d = next(d for d in list_decisions(job, [])
++                 if d.id == first["decision_id"])
++
++        assert d.payload["question"] == "Which database?"
++        assert d.payload["options"] == ["postgres", "sqlite"]
++        assert d.payload["safe_default"] == "sqlite"
++        assert d.payload["task_id"] == str(job.tasks[0].id)
++        assert len(d.payload["cross_references"]) == 1
++
++    def test_an_answered_escalation_is_resolved_not_open(self):
++        job = make_job()
++        record = escalate(job, 0)
++        answer_task_decision(job, record["decision_id"], answer="postgres", now=T1)
++
++        d = next(d for d in list_decisions(job, [])
++                 if d.type == DECISION_TYPE_TASK_DECISION)
++
++        assert d.status == "resolved"
++        assert d.severity == "info"
++        assert d.next_actions == ()
++        assert "postgres" in d.safe_summary
++
++    def test_it_exports_as_safe_json(self):
++        job = make_job()
++        escalate(job, 0)
++
++        d = next(d for d in list_decisions(job, [])
++                 if d.type == DECISION_TYPE_TASK_DECISION)
++        exported = export_decision_json(d)
++
++        assert exported["type"] == DECISION_TYPE_TASK_DECISION
++        assert exported["payload"]["question"] == "Which database?"
++
++    def test_a_job_without_escalations_derives_none(self):
++        job = make_job()
++
++        assert [d for d in list_decisions(job, [])
++                if d.type == DECISION_TYPE_TASK_DECISION] == []
++
++
++def test_the_outcome_name_is_the_one_the_feature_specifies():
++    assert TASK_OUTCOME_NEEDS_DECISION == "needs_decision"
++
++
++# ---------------------------------------------------------------------------
++# T002 — the same behavior through the real conductor
++# ---------------------------------------------------------------------------
++
++from packages.orchestration.builder_models import (  # noqa: E402 — section-local
++    BuilderOutput,
++    TaskExecutionContext,
++)
++from packages.orchestration.long_run_executor import (  # noqa: E402
++    LEDGER_EVENT_TASK_NEEDS_DECISION,
++    TERMINAL_ALL_GREEN,
++    TERMINAL_BLOCKED,
++    VERIFY_PASSED,
++    CycleLimits,
++    TaskAttempt,
++    awaiting_downstream_tasks,
++    ready_tasks,
++    run_cycles,
++)
++from packages.orchestration.pingpong_job import JOB_BLOCKED  # noqa: E402
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    """Autouse: a cycle writes evidence and a checkpoint, so no test here may
++    ever reach the repository's real data root."""
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++@pytest.fixture
++def control_root(tmp_path: Path) -> Path:
++    root = tmp_path / "control"
++    root.mkdir()
++    return root
++
++
++class FakeClock:
++    """A clock that advances only when it is read — the loop never sleeps."""
++
++    def __init__(self, start: datetime = T0,
++                 step: timedelta = timedelta(seconds=1)) -> None:
++        self.now = start
++        self.step = step
++
++    def __call__(self) -> datetime:
++        current = self.now
++        self.now = self.now + self.step
++        return current
++
++
++class FakeProvider:
++    def __init__(self) -> None:
++        self.calls = 0
++
++    def __call__(self, context: TaskExecutionContext) -> BuilderOutput:
++        self.calls += 1
++        return BuilderOutput(summary=f"did {context.task_description}",
++                            proposed_changes=["change"])
++
++
++class RecordingLog:
++    def __init__(self) -> None:
++        self.events: list[tuple[str, dict]] = []
++
++    def log(self, event: str, **meta) -> None:
++        self.events.append((event, meta))
++
++
++def passing_verify(job: Job, cycle_index: int, verify_command) -> str:
++    return VERIFY_PASSED
++
++
++def no_save(job: Job) -> None:
++    return None
++
++
++def make_fanout_job(name: str = "fanout-job") -> Job:
++    """R -> (B1a -> B1b, B2, B3): one root, three branches, one with downstream.
++
++    Branch 1 is the one that will raise a question, and B1b exists precisely so
++    the fixture can prove that a paused branch pauses its OWN downstream and
++    nothing else.  Plan order puts branch 1 first, so a scheduler that just took
++    the first PENDING task would stall on it.
++    """
++    def task(planned_id: str, *depends_on: str) -> Task:
++        return Task(
++            description=f"task {planned_id}",
++            inputs={"task_type": "documentation",
++                    "flight": {"planned_id": planned_id, "title": planned_id,
++                               "depends_on": list(depends_on)}},
++        )
++
++    return Job(
++        name=name,
++        user_prompt="build the thing",
++        tasks=[task("R"), task("B1a", "R"), task("B1b", "B1a"),
++               task("B2", "R"), task("B3", "R")],
++        state=RunState.PLANNED,
++    )
++
++
++def planned_id_of(job: Job, task_id) -> str:
++    for task in job.tasks:
++        if str(task.id) == str(task_id):
++            return task.inputs["flight"]["planned_id"]
++    raise AssertionError(f"no task {task_id} in this job")
++
++
++def task_by_planned_id(job: Job, planned_id: str) -> Task:
++    for task in job.tasks:
++        if task.inputs.get("flight", {}).get("planned_id") == planned_id:
++            return task
++    raise AssertionError(f"no task {planned_id} in this job")
++
++
++class EscalatingStep:
++    """Runs the task the ready set selected; named ones raise needs_decision.
++
++    A task escalates only the FIRST time it is selected — after an answer it
++    proceeds, which is what makes answer-and-continue observable.  ``on_execute``
++    is a hook the pickup test uses to answer a decision mid-run.
++    """
++
++    def __init__(self, *escalate_planned_ids: str, safe_default: str = "",
++                 on_execute=None) -> None:
++        self.escalate = set(escalate_planned_ids)
++        self.safe_default = safe_default
++        self.on_execute = on_execute
++        self.executed: list[str] = []
++        self.escalated: list[str] = []
++
++    def __call__(self, job: Job, provider_call, task_id=None) -> TaskAttempt:
++        task = (next((t for t in job.tasks if t.id == task_id), None)
++                if task_id is not None
++                else next((t for t in job.tasks
++                           if t.status == RunState.PENDING), None))
++        if task is None:
++            return TaskAttempt()
++
++        planned_id = task.inputs["flight"]["planned_id"]
++        if planned_id in self.escalate:
++            self.escalate.discard(planned_id)     # asked once
++            self.escalated.append(planned_id)
++            return TaskAttempt(
++                task_id=task.id,
++                needs_decision=True,
++                question=f"How should {planned_id} proceed?",
++                options=("fast", "safe"),
++                safe_default=self.safe_default,
++            )
++
++        provider_call(TaskExecutionContext(
++            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
++            task_type=task.inputs.get("task_type", "unknown"),
++            task_description=task.description))
++        self.executed.append(planned_id)
++        task.status = RunState.COMPLETED
++        if all(t.status == RunState.COMPLETED for t in job.tasks):
++            job.state = RunState.COMPLETED
++        if self.on_execute is not None:
++            self.on_execute(job, planned_id)
++        return TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++
++def run_fanout(control_root: Path, step: EscalatingStep, *,
++               batch_size: int = 1, max_cycles: int = 10,
++               unattended: bool = False, job: Job | None = None,
++               log=None):
++    job = job if job is not None else make_fanout_job()
++    result = run_cycles(
++        job, CycleLimits(max_cycles=max_cycles, batch_size=batch_size),
++        FakeProvider(), task_step=step, verify=passing_verify,
++        clock=FakeClock(), save=no_save, control_root_path=control_root,
++        unattended=unattended, log=log,
++    )
++    return job, result
++
++
++# ---------------------------------------------------------------------------
++# The three-branch fixture — this feature's acceptance heart
++# ---------------------------------------------------------------------------
++
++
++class TestThreeBranchFixture:
++    def test_the_free_branches_complete_while_branch_one_waits(self, control_root):
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert result.job_status == JOB_BLOCKED
++        # Root first, then the question, then both free branches — in plan order.
++        assert step_order(job, result) == ["R", "B2", "B3"]
++        assert task_by_planned_id(job, "B2").status == RunState.COMPLETED
++        assert task_by_planned_id(job, "B3").status == RunState.COMPLETED
++
++    def test_the_paused_branch_pauses_only_its_own_downstream(self, control_root):
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++
++        assert task_by_planned_id(job, "B1a").status == RunState.PENDING
++        assert task_by_planned_id(job, "B1b").status == RunState.PENDING
++        assert awaiting_downstream_tasks(job, awaiting_decision_task_ids(job)) == [
++            task_by_planned_id(job, "B1b").id]
++
++    def test_exactly_one_open_decision_is_listed(self, control_root):
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++
++        assert len(open_task_decisions(job)) == 1
++        assert result.open_decision_ids == (
++            open_task_decisions(job)[0]["decision_id"],)
++        assert "awaiting_decision" in result.stop_reason
++        assert result.open_decision_ids[0] in result.stop_reason
++
++    def test_the_run_is_paused_not_failed(self, control_root):
++        # Nothing failed: the job must stay resumable, and no cycle may report
++        # the escalation as a failure.
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++
++        assert job.state == RunState.PAUSED
++        assert sum(c.tasks_failed for c in result.cycles) == 0
++        assert sum(c.tasks_escalated for c in result.cycles) == 1
++
++    def test_answering_and_resuming_completes_the_remainder(self, control_root):
++        step = EscalatingStep("B1a")
++        job, first = run_fanout(control_root, step)
++        decision_id = first.open_decision_ids[0]
++
++        answer_task_decision(job, decision_id, answer="fast", now=T1)
++        resumed_step = EscalatingStep()          # nothing escalates any more
++        job, second = run_fanout(control_root, resumed_step, job=job)
++
++        assert second.terminal_status == TERMINAL_ALL_GREEN
++        assert resumed_step.executed == ["B1a", "B1b"]
++        assert all(t.status == RunState.COMPLETED for t in job.tasks)
++        assert open_task_decisions(job) == []
++
++    def test_answering_through_the_existing_decision_cli_completes_the_rest(
++            self, control_root, capsys):
++        # The acceptance path exactly as a human walks it: the command the
++        # status view printed, then a resume.  No new CLI, no new queue.
++        from apps.cli.commands.decision import _cmd_decision_resolve
++        from packages.orchestration.storage import load_job, save_job
++
++        step = EscalatingStep("B1a")
++        job, first = run_fanout(control_root, step)
++        save_job(job)
++        decision_id = first.open_decision_ids[0]
++
++        _cmd_decision_resolve(str(job.id), decision_id, reason="fast")
++        out = capsys.readouterr().out
++
++        assert f"Answered {decision_id}" in out and "fast" in out
++        reloaded = load_job(job.id)
++        assert open_task_decisions(reloaded) == []
++        assert answered_task_decisions(reloaded)[0]["answer"] == "fast"
++        assert answered_task_decisions(reloaded)[0]["answer_source"] == (
++            ANSWER_SOURCE_HUMAN)
++
++        resumed_step = EscalatingStep()
++        reloaded, second = run_fanout(control_root, resumed_step, job=reloaded)
++
++        assert second.terminal_status == TERMINAL_ALL_GREEN
++        assert resumed_step.executed == ["B1a", "B1b"]
++
++    def test_the_cli_refuses_to_overwrite_an_answer(self, control_root, capsys):
++        from apps.cli.commands.decision import _cmd_decision_resolve
++        from packages.orchestration.storage import save_job
++
++        step = EscalatingStep("B1a")
++        job, first = run_fanout(control_root, step)
++        save_job(job)
++        decision_id = first.open_decision_ids[0]
++
++        _cmd_decision_resolve(str(job.id), decision_id, reason="fast")
++        capsys.readouterr()
++        with pytest.raises(SystemExit) as exit_info:
++            _cmd_decision_resolve(str(job.id), decision_id, reason="safe")
++
++        assert exit_info.value.code == 1
++        assert "already answered" in capsys.readouterr().err
++
++    def test_the_cli_refuses_an_empty_answer_without_a_default(
++            self, control_root, capsys):
++        from apps.cli.commands.decision import _cmd_decision_resolve
++        from packages.orchestration.storage import save_job
++
++        step = EscalatingStep("B1a", safe_default="")
++        job, first = run_fanout(control_root, step)
++        save_job(job)
++
++        with pytest.raises(SystemExit) as exit_info:
++            _cmd_decision_resolve(str(job.id), first.open_decision_ids[0], reason="")
++
++        assert exit_info.value.code == 1
++        assert "--reason carries the answer" in capsys.readouterr().err
++
++    def test_the_answer_reaches_the_task_that_asked(self, control_root):
++        step = EscalatingStep("B1a")
++        job, first = run_fanout(control_root, step)
++        answer_task_decision(job, first.open_decision_ids[0], answer="fast", now=T1)
++
++        assert task_by_planned_id(job, "B1a").inputs[TASK_INPUTS_ANSWERS_KEY] == {
++            first.open_decision_ids[0]: "fast"}
++
++    def test_the_cycle_evidence_names_the_awaiting_branch(self, control_root):
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++        awaiting_task = task_by_planned_id(job, "B1a")
++
++        # From the cycle that raised it onwards, every record names the branch.
++        naming = [c for c in result.cycles
++                  if str(awaiting_task.id) in c.awaiting_task_ids]
++        assert naming, "no cycle record named the awaiting task"
++        assert str(task_by_planned_id(job, "B1b").id) in (
++            naming[-1].awaiting_downstream_task_ids)
++        raised = [c for c in result.cycles if c.open_decision_ids]
++        assert len(raised) == 1
++        assert raised[0].tasks_escalated == 1
++        assert raised[0].to_json()["open_decision_ids"] == list(
++            raised[0].open_decision_ids)
++
++    def test_the_escalation_is_emitted_to_the_ledger(self, control_root):
++        log = RecordingLog()
++        job, result = run_fanout(control_root, EscalatingStep("B1a"), log=log)
++
++        raised = [meta for event, meta in log.events
++                  if event == LEDGER_EVENT_TASK_NEEDS_DECISION]
++        assert len(raised) == 1
++        assert raised[0]["decision_id"] == result.open_decision_ids[0]
++        assert raised[0]["question"] == "How should B1a proceed?"
++
++
++def step_order(job: Job, result) -> list[str]:
++    """Planned ids this run executed, in execution order, from the records."""
++    return [planned_id_of(job, task_id)
++            for cycle in result.cycles for task_id in cycle.executed_task_ids]
++
++
++# ---------------------------------------------------------------------------
++# Continuation and batch-boundary pickup
++# ---------------------------------------------------------------------------
++
++
++class TestContinuationAndPickup:
++    def test_disjoint_branches_run_in_the_same_cycle_as_the_question(self, control_root):
++        # batch_size 3: the escalation must not consume the cycle.
++        job, result = run_fanout(control_root, EscalatingStep("B1a"), batch_size=3)
++
++        first_working_cycle = next(c for c in result.cycles if c.open_decision_ids)
++        assert len(first_working_cycle.executed_task_ids) >= 1
++        assert step_order(job, result) == ["R", "B2", "B3"]
++
++    def test_a_decision_answered_mid_run_is_picked_up_without_a_restart(self, control_root):
++        # B2's execution answers B1a's decision. No restart, no resume: the very
++        # next batch boundary of THIS run must release branch 1.
++        answered: list[str] = []
++
++        def answer_when_b2_runs(job: Job, planned_id: str) -> None:
++            if planned_id != "B2" or answered:
++                return
++            open_now = open_task_decisions(job)
++            if open_now:
++                answer_task_decision(job, open_now[0]["decision_id"],
++                                     answer="fast", now=T1)
++                answered.append(open_now[0]["decision_id"])
++
++        step = EscalatingStep("B1a", on_execute=answer_when_b2_runs)
++        job, result = run_fanout(control_root, step)
++
++        assert answered, "the fixture never answered the decision"
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        # Released at the boundary right after B2, so branch 1 resumes ahead of
++        # B3 — plan order, exactly as if it had never paused.
++        assert step.executed == ["R", "B2", "B1a", "B1b", "B3"]
++        assert all(t.status == RunState.COMPLETED for t in job.tasks)
++        assert open_task_decisions(job) == []
++
++    def test_the_awaiting_check_runs_exactly_once_per_batch_boundary(self, control_root):
++        # The no-polling proof: one check per boundary, and the loop has exactly
++        # one boundary more than the cycles it ran (the last one finds nothing).
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++
++        assert result.awaiting_checks == result.cycles_run + 1
++        assert result.to_json()["awaiting_checks"] == result.awaiting_checks
++
++    def test_the_check_count_does_not_grow_while_a_branch_waits(self, control_root):
++        # A polling implementation would spin extra checks for the waiting
++        # branch; this asserts the exact number for a known topology.
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++
++        # R, the escalation, B2, B3 — four cycles, five boundaries.
++        assert result.cycles_run == 4
++        assert result.awaiting_checks == 5
++
++    def test_an_awaiting_task_is_withheld_from_the_ready_set(self, control_root):
++        job, result = run_fanout(control_root, EscalatingStep("B1a"))
++        awaiting = awaiting_decision_task_ids(job)
++
++        assert ready_tasks(job, 10, awaiting_ids=awaiting) == []
++        # And the moment it is answered, the branch is ready again.
++        answer_task_decision(job, result.open_decision_ids[0], answer="fast", now=T1)
++        assert ready_tasks(job, 10, awaiting_ids=awaiting_decision_task_ids(job)) == [
++            task_by_planned_id(job, "B1a").id]
++
++    def test_the_checkpoint_never_names_an_awaiting_task_as_the_next_intent(
++            self, control_root, isolate_data_root):
++        from packages.orchestration.checkpoints import (
++            INTENT_NONE,
++            checkpoint_paths,
++            load_latest_valid,
++            read_checkpoint,
++        )
++
++        step = EscalatingStep("B1a")
++        job = make_fanout_job()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=10, batch_size=1), FakeProvider(),
++            task_step=step, verify=passing_verify, clock=FakeClock(),
++            save=no_save, control_root_path=control_root,
++        )
++        awaiting_task_id = str(task_by_planned_id(job, "B1a").id)
++        escalating_cycle = next(c.cycle_index for c in result.cycles
++                                if c.tasks_escalated)
++
++        assert checkpoint_paths(str(job.id)), "the run wrote no checkpoint"
++        # From the escalating cycle onwards, no checkpoint may point a resume at
++        # the awaiting task.  Earlier ones legitimately name it: at that point
++        # the question had not been raised yet.
++        checked = 0
++        for path in checkpoint_paths(str(job.id)):
++            checkpoint = read_checkpoint(path)
++            assert checkpoint is not None
++            if checkpoint.cycle_index < escalating_cycle:
++                continue
++            checked += 1
++            assert checkpoint.next_intent.get("task_id", "") != awaiting_task_id
++        assert checked >= 1
++        latest = load_latest_valid(str(job.id))
++        assert latest is not None
++        assert latest.next_intent.get("kind") == INTENT_NONE
++        assert result.terminal_status == TERMINAL_BLOCKED
++
++
++# ---------------------------------------------------------------------------
++# Attended vs unattended, and the linear regression
++# ---------------------------------------------------------------------------
++
++
++class TestUnattendedDefaults:
++    def test_attended_asks_even_when_a_safe_default_exists(self, control_root):
++        job, result = run_fanout(
++            control_root, EscalatingStep("B1a", safe_default="safe"))
++
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert len(open_task_decisions(job)) == 1
++        assert open_task_decisions(job)[0]["safe_default"] == "safe"
++        assert task_by_planned_id(job, "B1a").status == RunState.PENDING
++
++    def test_unattended_applies_the_default_and_the_run_finishes(self, control_root):
++        job, result = run_fanout(
++            control_root, EscalatingStep("B1a", safe_default="safe"),
++            unattended=True)
++
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert open_task_decisions(job) == []
++        answered = answered_task_decisions(job)
++        assert len(answered) == 1
++        assert answered[0]["answer"] == "safe"
++        assert answered[0]["answer_source"] == ANSWER_SOURCE_DEFAULT
++
++    def test_unattended_still_waits_when_there_is_no_default(self, control_root):
++        # Escalation exists so Remedy never invents an answer.
++        job, result = run_fanout(
++            control_root, EscalatingStep("B1a", safe_default=""), unattended=True)
++
++        assert result.terminal_status == TERMINAL_BLOCKED
++        assert len(open_task_decisions(job)) == 1
++
++    def test_the_auto_applied_default_is_in_the_assumption_log(self, control_root):
++        job, _ = run_fanout(
++            control_root, EscalatingStep("B1a", safe_default="safe"),
++            unattended=True)
++
++        text = render_escalation_assumptions_md(job)
++
++        assert "How should B1a proceed?" in text
++        assert "Sources: 0 human, 1 default, 0 unresolved." in text
++
++
++class TestLinearPlansAreUnchanged:
++    def test_a_linear_plan_without_escalations_behaves_exactly_as_before(
++            self, control_root):
++        job = make_job(3)
++        step = LinearStep()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=10, batch_size=1), FakeProvider(),
++            task_step=step, verify=passing_verify, clock=FakeClock(),
++            save=no_save, control_root_path=control_root,
++        )
++
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        assert len(step.executed) == 3
++        assert result.open_decision_ids == ()
++        assert escalation_records(job) == []
++        assert all(c.tasks_escalated == 0 for c in result.cycles)
++
++    def test_a_step_that_never_heard_of_escalation_is_untouched(self, control_root):
++        # TaskAttempt's new fields default to "no decision needed", so a step
++        # written before F051 cannot accidentally escalate.
++        attempt = TaskAttempt()
++
++        assert attempt.needs_decision is False
++        assert attempt.question == "" and attempt.options == ()
++        assert attempt.safe_default == ""
++
++
++class TestUnattendedRunLoopCliFlag:
++    """R-0157: the unattended mode must be reachable from the product surface.
++
++    ``run_cycles(unattended=…)`` existed with no CLI call site passing it, so the
++    A9 rule ("defaults auto-apply only under --yes/unattended") was unreachable.
++    These drive the real ``remedy job run`` handler.
++    """
++
++    @pytest.fixture
++    def cli_job(self, monkeypatch):
++        """A saved 2-task job with the cycle loop reachable and a fake builder."""
++        import packages.orchestration.long_run_executor as lre
++        from packages.orchestration.storage import save_job
++        from packages.providers.ollama_builder import provider as provider_mod
++
++        class FakeBuilder:
++            model = "fake-model"
++
++            def build(self, context: TaskExecutionContext) -> BuilderOutput:
++                return BuilderOutput(summary="did it", proposed_changes=["change"])
++
++        # The F046 rollout cap collapses every run to the single pass; the loop
++        # itself is what F051 hangs off, so the cap is lifted for these tests
++        # exactly as the existing job.run multi-cycle test does.
++        monkeypatch.setattr(lre, "CYCLE_SAFETY_CAP", 5)
++        monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
++        monkeypatch.setattr(lre, "default_task_step",
++                            EscalatingStep("T0", safe_default="safe"))
++
++        job = Job(
++            name="cli-unattended-job",
++            user_prompt="build the thing",
++            tasks=[Task(description=f"task {i}",
++                        inputs={"task_type": "documentation",
++                                "flight": {"planned_id": f"T{i}", "title": f"T{i}",
++                                           "depends_on": ([f"T{i - 1}"] if i else [])}})
++                   for i in range(2)],
++            state=RunState.PLANNED,
++        )
++        save_job(job)
++        return job
++
++    def test_the_flag_auto_answers_a_safe_default_and_the_run_continues(
++            self, cli_job, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++        from packages.orchestration.storage import load_job
++
++        job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3, unattended=True)
++        out = capsys.readouterr().out
++
++        stored = load_job(cli_job.id)
++        answered = answered_task_decisions(stored)
++        assert len(answered) == 1
++        assert answered[0]["answer"] == "safe"
++        assert answered[0]["answer_source"] == ANSWER_SOURCE_DEFAULT
++        assert open_task_decisions(stored) == []
++        # The run went past the question instead of parking on it.
++        assert f"terminal={TERMINAL_ALL_GREEN}" in out
++        assert all(t.status == RunState.COMPLETED for t in stored.tasks)
++
++    def test_without_the_flag_the_same_fixture_leaves_the_decision_open(
++            self, cli_job, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++        from packages.orchestration.storage import load_job
++
++        with pytest.raises(SystemExit) as exit_info:
++            job_cmd._cmd_job_run_cycles(str(cli_job.id), cycles=3)
++        out = capsys.readouterr().out
++
++        assert exit_info.value.code == 1          # blocked is a non-zero exit
++        stored = load_job(cli_job.id)
++        assert len(open_task_decisions(stored)) == 1
++        assert open_task_decisions(stored)[0]["safe_default"] == "safe"
++        assert answered_task_decisions(stored) == []
++        assert f"terminal={TERMINAL_BLOCKED}" in out
++
++    def test_the_flag_is_registered_in_the_catalog(self):
++        from apps.cli.command_catalog import CATALOG
++
++        entry = next(c for c in CATALOG if c.command_id == "job.run")
++        flag = next(a for a in entry.args if a.name == "--unattended")
++
++        assert flag.is_option and flag.is_flag and not flag.required
++        assert "safe default" in flag.help
++        assert "still waits" in flag.help
++
++    def test_the_handler_passes_the_flag_through(self, monkeypatch):
++        from apps.cli.command_catalog import ArgDef  # noqa: F401 — import guard
++        from apps.cli.commands import job as job_cmd
++
++        seen: dict = {}
++        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
++                            lambda job_id, **kw: seen.update(kw))
++
++        class Args:
++            job_id = "abc12345"
++            cycles = None
++            unattended = True
++            json = False
++
++        job_cmd.COMMAND_HANDLERS["job.run"](Args())
++
++        assert seen["unattended"] is True
++
++    def test_an_old_namespace_without_the_flag_still_works(self, monkeypatch):
++        # argparse namespaces from before this flag existed must not crash.
++        from apps.cli.commands import job as job_cmd
++
++        seen: dict = {}
++        monkeypatch.setattr(job_cmd, "_cmd_job_run_cycles",
++                            lambda job_id, **kw: seen.update(kw))
++
++        class OldArgs:
++            job_id = "abc12345"
++            cycles = None
++            json = False
++
++        job_cmd.COMMAND_HANDLERS["job.run"](OldArgs())
++
++        assert seen["unattended"] is False
++
++    def test_the_single_pass_says_the_flag_had_no_effect(self, monkeypatch, capsys):
++        # Honesty over silence: with the rollout cap in place the loop never
++        # runs, so the flag cannot do what its help promises.
++        from apps.cli.commands import job as job_cmd
++
++        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
++        job_cmd._cmd_job_run_cycles("abc12345", unattended=True)
++
++        assert "--unattended has no effect" in capsys.readouterr().err
++
++    def test_the_single_pass_is_silent_without_the_flag(self, monkeypatch, capsys):
++        from apps.cli.commands import job as job_cmd
++
++        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
++        job_cmd._cmd_job_run_cycles("abc12345")
++
++        assert "--unattended" not in capsys.readouterr().err
++
++
++class LinearStep:
++    """Completes the first PENDING task — the pre-F051 step shape, no task_id."""
++
++    def __init__(self) -> None:
++        self.executed: list[str] = []
++
++    def __call__(self, job: Job, provider_call) -> TaskAttempt:
++        task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
++        if task is None:
++            return TaskAttempt()
++        provider_call(TaskExecutionContext(
++            job_id=job.id, job_prompt=job.user_prompt, task_id=task.id,
++            task_type="documentation", task_description=task.description))
++        self.executed.append(task.description)
++        task.status = RunState.COMPLETED
++        if all(t.status == RunState.COMPLETED for t in job.tasks):
++            job.state = RunState.COMPLETED
++        return TaskAttempt(task_id=task.id, executed=True, verified=True)

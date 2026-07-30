@@ -13,6 +13,10 @@ Public API::
     explain_decisions(job, events) -> str
     export_decision_json(d) -> dict
     build_decision_summary(decisions) -> dict  (brain node metadata)
+    sort_open_decisions_first(decisions) -> list[HumanDecision]
+    open_decisions(decisions) -> list[HumanDecision]
+    render_open_decisions_lines(decisions) -> list[str]  (status/report block)
+    open_decisions_next_action(decisions) -> str
 """
 
 from __future__ import annotations
@@ -50,6 +54,8 @@ DECISION_TYPES = frozenset({
     "patch_approval", "stop_reason", "test_failure", "repo_dirty",
     "token_budget", "worker_approval", "memory_review", "revert_missing",
     "flight_plan_approval",
+    # F051: a task raised a question mid-run; its branch waits, the run does not.
+    "task_decision",
 })
 
 
@@ -289,6 +295,54 @@ def list_decisions(
                 resolved_at="",
             ))
 
+    # 8. Task decisions raised mid-run (F051).  Derived from the escalation
+    #    records on the job — not a second queue, the same read-only
+    #    aggregation as every branch above.
+    try:
+        from packages.orchestration.escalation import (
+            DECISION_TYPE_TASK_DECISION,
+            ESCALATION_STATUS_OPEN,
+            escalation_records,
+            task_decision_answer_command,
+        )
+        for record in escalation_records(job):
+            is_open = record.get("status") == ESCALATION_STATUS_OPEN
+            options = [str(o) for o in (record.get("options") or [])]
+            actions = tuple(
+                task_decision_answer_command(job_id, str(record.get("decision_id")), opt)
+                for opt in (options or ["<your answer>"])
+            ) if is_open else ()
+            decisions.append(HumanDecision(
+                id=str(record.get("decision_id", "")),
+                type=DECISION_TYPE_TASK_DECISION,
+                status=ESCALATION_STATUS_OPEN if is_open else "resolved",
+                severity="blocker" if is_open else "info",
+                source="escalation",
+                related_node_id=f"task:{str(record.get('task_id'))[:8]}",
+                related_intent_id="",
+                related_file="",
+                safe_summary=(
+                    f"Task {str(record.get('task_id'))[:8]} needs a decision: "
+                    f"{record.get('question', '')}"
+                    if is_open else
+                    f"Task {str(record.get('task_id'))[:8]} decision answered "
+                    f"({record.get('answer_source', '')}): {record.get('answer', '')}"
+                ),
+                next_actions=actions,
+                created_at=str(record.get("created_at", "")),
+                resolved_at=None if is_open else str(record.get("answered_at", "")),
+                payload={
+                    "task_id": str(record.get("task_id", "")),
+                    "question": str(record.get("question", "")),
+                    "options": options,
+                    "safe_default": str(record.get("safe_default", "")),
+                    "cross_references": [
+                        str(x) for x in (record.get("cross_references") or [])],
+                },
+            ))
+    except (ImportError, ValueError, OSError, AttributeError):
+        pass
+
     return decisions
 
 
@@ -341,6 +395,61 @@ def export_decision_json(d: HumanDecision) -> dict[str, Any]:
         "resolved_at": d.resolved_at,
         "payload": dict(d.payload),
     }
+
+
+#: Severity order for the views below.  Unknown severities sort last rather
+#: than raising: a decision with an odd severity must still be shown.
+_SEVERITY_RANK = {"blocker": 0, "warning": 1, "info": 2}
+
+
+def sort_open_decisions_first(
+    decisions: list[HumanDecision],
+) -> list[HumanDecision]:
+    """Open before resolved, blockers before warnings before info; stable.
+
+    Why: an unattended run's most important output is what it needs from a
+    human, so every view that shows decisions shows those first (F051 T003).
+    """
+    return sorted(
+        decisions,
+        key=lambda d: (0 if d.status == "open" else 1,
+                       _SEVERITY_RANK.get(d.severity, 3)),
+    )
+
+
+def open_decisions(decisions: list[HumanDecision]) -> list[HumanDecision]:
+    """The still-open decisions, most urgent first."""
+    return [d for d in sort_open_decisions_first(decisions) if d.status == "open"]
+
+
+def render_open_decisions_lines(
+    decisions: list[HumanDecision],
+    *,
+    indent: str = "  ",
+) -> list[str]:
+    """The block that status and report print FIRST — empty when nothing is open.
+
+    Every line a human needs is here: what is being asked, and the exact
+    command that answers it.  Nothing is truncated away: an answer command that
+    is not shown in full cannot be pasted.
+    """
+    pending = open_decisions(decisions)
+    if not pending:
+        return []
+    lines = [f"Open decisions: {len(pending)} — the run needs an answer"]
+    for d in pending:
+        lines.append(f"{indent}[{d.severity}] {d.type} {d.id}: {d.safe_summary}")
+        for action in d.next_actions:
+            lines.append(f"{indent}  -> {action}")
+    return lines
+
+
+def open_decisions_next_action(decisions: list[HumanDecision]) -> str:
+    """The one command that answers the most urgent open decision, or ""."""
+    for d in open_decisions(decisions):
+        if d.next_actions:
+            return d.next_actions[0]
+    return ""
 
 
 def build_decision_summary(decisions: list[HumanDecision]) -> dict[str, Any]:

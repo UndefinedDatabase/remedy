@@ -12,6 +12,11 @@ from packages.orchestration.data_paths import resolve_job_id
 if TYPE_CHECKING:
     import argparse
 
+#: F051 task-decision namespace.  Mirrors escalation.DECISION_ID_PREFIX, kept
+#: as a literal here so this module's dispatch reads like the ``sr:``/``fp:``
+#: branches next to it.
+_ESCALATION_PREFIX = "td:"
+
 
 def _load_job_events(job_id_str: str):
     """Load job and events. Returns (job, events, job_id_str)."""
@@ -128,6 +133,8 @@ def _cmd_decision_resolve(
     reason: str | None = None,
     answer: list[str] | None = None,
 ) -> None:
+    # ``--answer`` bundles the flight plan's clarification questions; a task
+    # decision carries exactly one question, answered through --reason.
     if answer and not decision_id.startswith("fp:"):
         print(
             f"Error: --answer is only valid for the flight-plan approval "
@@ -144,6 +151,58 @@ def _cmd_decision_resolve(
             print(f"Error: stop reason not found: {stop_id}", file=sys.stderr)
             sys.exit(1)
         print(f"Resolved stop reason: {sr.id[:8]} ({sr.reason_code})")
+    elif decision_id.startswith(_ESCALATION_PREFIX):
+        # F051: a task asked a question mid-run.  ``--reason`` carries the
+        # ANSWER, and the same command that the status/report views print is the
+        # one that lands here — no separate answer command exists.
+        from datetime import datetime, timezone
+
+        from packages.orchestration.data_paths import resolve_job_id as _rji
+        from packages.orchestration.escalation import (
+            answer_task_decision,
+            find_task_decision,
+        )
+        from packages.orchestration.storage import JobNotFoundError, load_job, save_job
+
+        job_id = _rji(job_id_str)
+        try:
+            job = load_job(job_id)
+        except JobNotFoundError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+        record = find_task_decision(job, decision_id)
+        if record is None:
+            print(f"Error: decision not found: {decision_id}", file=sys.stderr)
+            sys.exit(1)
+
+        answer_text = (reason or "").strip() or str(record.get("safe_default", ""))
+        if not answer_text:
+            print(
+                "Error: --reason carries the answer for a task decision, and "
+                "this one has no safe default to fall back on.\n"
+                f"  remedy decision resolve {job_id_str} {decision_id} "
+                '--reason "<your answer>"',
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        answered = answer_task_decision(
+            job, decision_id, answer=answer_text,
+            now=datetime.now(timezone.utc))
+        if answered is None:
+            # Answers are written once — say which answer already stands.
+            print(
+                f"Error: decision {decision_id} is already answered "
+                f"({record.get('answer_source', '')}): {record.get('answer', '')}",
+                file=sys.stderr)
+            sys.exit(1)
+
+        save_job(job)
+        print(f"Answered {decision_id} for job {job_id_str}: {answered['answer']}")
+        for ref in answered.get("cross_references", []):
+            print(f"  Same question also asked as: {ref}")
+        print(f"Resume the run: remedy job run-loop {job_id_str} --json")
     elif decision_id.startswith("fp:"):
         from packages.orchestration.data_paths import resolve_job_id as _rji
         from packages.orchestration.storage import JobNotFoundError, load_job, save_job

@@ -1,0 +1,210 @@
+{
+ "base_commit": "894375e40f2d88c3d2cd2859073423faa2b17120",
+ "chain_v": 1,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f051-r1-1.md",
+    ".agent/authored/f051-r1-2.md",
+    ".agent/authored/f051-r1-3.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "d6b723b13a2e33190c4ee47be277166b858613da",
+   "parents": [
+    "894375e40f2d88c3d2cd2859073423faa2b17120"
+   ],
+   "patch_sha256": "c405577438b16049cff8ce837bbaf73b6a416154c6f9e3d001d04b99eca777f3",
+   "subject": "chore(f051): claim F051 + state reset (amend0730 verdict persisted)",
+   "tree": "a092e22ea40e5b10c2126c1a580e44d7bbffe3b1"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/decision_queue.py",
+    "packages/orchestration/escalation.py"
+   ],
+   "commit": "8b52454dd5d7475448f7e4ea528ebf961c5c17bb",
+   "parents": [
+    "d6b723b13a2e33190c4ee47be277166b858613da"
+   ],
+   "patch_sha256": "f96ef158432f1fef5fbfbcc566f66ca93b04ec53cd74ee8e406bc849e46f4633",
+   "subject": "feat(f051): needs_decision escalation records + decision-queue derivation (T001)",
+   "tree": "91baf60c7d6d73f8ca92f14db723425dd5c48aeb"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_escalation.py"
+   ],
+   "commit": "da80634dbd351e0be99041bae5f35e6b0c79760d",
+   "parents": [
+    "8b52454dd5d7475448f7e4ea528ebf961c5c17bb"
+   ],
+   "patch_sha256": "74a215a115371aac4d00a35afae93643e0cfb3f908015a4cec9661126c526c54",
+   "subject": "test(f051): escalation records, cross-refs, defaults, queue derivation (T001)",
+   "tree": "6d21ca5ad5ba73b0ade8c8b2f2636bd39fa5ca57"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py"
+   ],
+   "commit": "4d9287304070b84805167cf35985cd4f7ed4c12f",
+   "parents": [
+    "da80634dbd351e0be99041bae5f35e6b0c79760d"
+   ],
+   "patch_sha256": "94b54a17a5e3774332b3d76b0ccf1750538abe3085d8f7f7857e512b50acd96f",
+   "subject": "feat(f051): executor escalates and keeps disjoint branches running (T002)",
+   "tree": "f07d4ad3baa41cbd4bc500e84fd4d2f07e6a71ff"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_escalation.py"
+   ],
+   "commit": "3bbadf740fb1f7c629d229f4f4e7480e48787f9f",
+   "parents": [
+    "4d9287304070b84805167cf35985cd4f7ed4c12f"
+   ],
+   "patch_sha256": "b6e0f150682895198418dbb35facb261f6e45c4b12437e022f4f1ebdb76c1c81",
+   "subject": "test(f051): three-branch fixture, boundary pickup, check count, linear regression (T002)",
+   "tree": "33480222de6e504488b7a2066f3cb31358c22117"
+  },
+  {
+   "changed_files": [
+    "apps/cli/commands/job.py",
+    "packages/orchestration/decision_queue.py"
+   ],
+   "commit": "2756b09d381c5ece653b16a7ecaf97bf007d56ec",
+   "parents": [
+    "3bbadf740fb1f7c629d229f4f4e7480e48787f9f"
+   ],
+   "patch_sha256": "d129b23ec262c06c157de1087a0014479e73276b68e45f83bfd3ebb68f42077b",
+   "subject": "feat(f051): status and report render open decisions first with the answer command (T003)",
+   "tree": "32fd318f63c52ca9e1ff98bb6ca2b0767962b4e6"
+  },
+  {
+   "changed_files": [
+    "tests/cli/test_open_decisions_view.py"
+   ],
+   "commit": "1e7fbc2df3b345281e3e75d69571033b8a72ab49",
+   "parents": [
+    "2756b09d381c5ece653b16a7ecaf97bf007d56ec"
+   ],
+   "patch_sha256": "62b688775ceb4b2b47285b79d91e7949c8dae2d242cb323081469a7a92e6a6f5",
+   "subject": "test(f051): open-decisions view ordering, commands, status and report (T003)",
+   "tree": "48f1a084ba3f4b2a389c1ea25dcd98820816e960"
+  },
+  {
+   "changed_files": [
+    "apps/cli/commands/decision.py",
+    "tests/orchestration/test_escalation.py"
+   ],
+   "commit": "f0bd12b6fe69e796b43d474d46cd3f7fc650c507",
+   "parents": [
+    "1e7fbc2df3b345281e3e75d69571033b8a72ab49"
+   ],
+   "patch_sha256": "1efd80ab01ed7589ec5d67335381d79f6c3dbb88d318f02c93adc5d33204f1ab",
+   "subject": "feat(f051): answer a task decision through the existing decision resolve command (T002)",
+   "tree": "f6a8550ecbdc18c34098bd85a5b48a242e9ac139"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "34a32a11d39ae55776f313bd01ae9d7d232a7c4c",
+   "parents": [
+    "f0bd12b6fe69e796b43d474d46cd3f7fc650c507"
+   ],
+   "patch_sha256": "bbc67d99e59d4c87025e65af335e5317c702a0062937aa5c5b993c90b0171a16",
+   "subject": "chore(f051): handback R1",
+   "tree": "fe10f5bc134e31f099bcbe7e1e19e19acedd7da8"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f051-r2-1.md",
+    ".agent/authored/f051-r2-2.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md"
+   ],
+   "commit": "d432a3fba993962fcd12062cf2cd0cfb6f30e654",
+   "parents": [
+    "34a32a11d39ae55776f313bd01ae9d7d232a7c4c"
+   ],
+   "patch_sha256": "7b79c8e00a85350ff66d62cdfcabcf0e7a7df76a10f70eeefcc37ecbf895ae9b",
+   "subject": "chore(f051): persist R1 verdict (PASS) + register R-0157",
+   "tree": "429cf3f2c6e7a3f9d04e2c9f668dce8813357332"
+  },
+  {
+   "changed_files": [
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/job.py",
+    "tests/orchestration/test_escalation.py"
+   ],
+   "commit": "a96a8ce8699616a6df5aff6147e7217bcf7d8da6",
+   "parents": [
+    "d432a3fba993962fcd12062cf2cd0cfb6f30e654"
+   ],
+   "patch_sha256": "459654bddb51fef087d08d572ec5b5c8a1e66054bdefb976e8fe3729f0fa2f0f",
+   "subject": "fix(f051): expose the unattended run mode on the run-loop CLI (R-0157)",
+   "tree": "d8e373e62492073321760d724a363ac78b1ce051"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "6c4dae20d4c16790bb301fe8b3482eb57c8a5f08",
+   "parents": [
+    "a96a8ce8699616a6df5aff6147e7217bcf7d8da6"
+   ],
+   "patch_sha256": "9fc4d3ac5e595866d479237a4f29cb3d3fb1beefff95bc71f21795dd6b2d1278",
+   "subject": "chore(f051): mark R-0157 done in the live review",
+   "tree": "1da64684bb337711c0a4d1638828030446cdee05"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F051.md"
+   ],
+   "commit": "f59e88fffe8b88e92fce62b654db5f5df6185f25",
+   "parents": [
+    "6c4dae20d4c16790bb301fe8b3482eb57c8a5f08"
+   ],
+   "patch_sha256": "33a2cbcdf6f277977d466c659a52948693b93e52400d7c03e651f5baf839164e",
+   "subject": "docs(f051): record Built State (T001\u2013T003 + R-0157 wiring)",
+   "tree": "590dc839ccd5ee0b93d5abc02bf4020246bd470d"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "1a651fd6f784f8d250d9775f0aff4861b1f13ab0",
+   "parents": [
+    "f59e88fffe8b88e92fce62b654db5f5df6185f25"
+   ],
+   "patch_sha256": "0a4b7f2878f31b330952607e748f0e4f01b6928755c071d6d6db8a8afb6e6464",
+   "subject": "chore(f051): handback R2 (integration gate records)",
+   "tree": "54aeafdfac1b803cd036ab1653f454f424124d6a"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f051-r3-1.md",
+    ".agent/authored/f051-r3-2.md",
+    ".agent/authored/f051-r3-3.md",
+    ".agent/authored/f051-r3-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    "docs/roadmap/features/T1_F051.md"
+   ],
+   "commit": "54df8f7a1adea2f3d140efef22e2e6f991aea6ff",
+   "parents": [
+    "1a651fd6f784f8d250d9775f0aff4861b1f13ab0"
+   ],
+   "patch_sha256": "1b85c551d28f242468ac456b0b9104fab0a6eb49a921a40784559e70e6b2373e",
+   "subject": "chore(f051): persist R2 verdict (integration gate PASS); Built State current",
+   "tree": "6938c11f3ae7c680051cb0413f032010ea20dfed"
+  }
+ ],
+ "head_commit": "54df8f7a1adea2f3d140efef22e2e6f991aea6ff"
+}

@@ -1,0 +1,24 @@
+{
+ "changed_files": [
+  "tests/cli/test_open_decisions_view.py",
+  "tests/orchestration/test_escalation.py"
+ ],
+ "diff_sha256": "28d30273ef8862d0ebcc74cfdc2e2d7972fbec8999bb559f977881b7e9f2bcd5",
+ "job_id": "785d275a-2f78-4b44-bd29-f8764ff95bb8",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "28d30273ef8862d0ebcc74cfdc2e2d7972fbec8999bb559f977881b7e9f2bcd5",
+ "safe_diff_sha256": "cb05f7398e3d6b025e3424124a8e951a74b8425843355015d16d4a821b230c68",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "tests/cli/test_open_decisions_view.py",
+  "tests/orchestration/test_escalation.py"
+ ],
+ "timestamp": "2026-07-30T15:23:08.725123+00:00",
+ "tracked_diff_sha256": "cb05f7398e3d6b025e3424124a8e951a74b8425843355015d16d4a821b230c68",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}
