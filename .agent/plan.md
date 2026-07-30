@@ -13,7 +13,8 @@ one; a stubborn break stops after exactly two rounds with an honest
 trail; costs attributed via actuals.
 
 ## Next Steps
-- R1 (LARGE): inspect repair-loop intake → T001 trigger + cap +
-  healed path → T002 stubborn path + budget + stop request.
+- R1 (LARGE): DONE — inspect report, T001 (trigger + cap + healed
+  path) and T002 (stubborn + budget + stop + A9 edges) landed in
+  four green commits; all four gates green; awaiting reviewer.
 - Then: integration gate round; closure its own round (never
   bundled).

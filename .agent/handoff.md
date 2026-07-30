@@ -1,99 +1,92 @@
-# Handback — paydown0730-r1 (Window 2 → Window 1)
+# Handback — f052-r1 (Window 2 → Window 1)
 
 ## Range
-Review of 631be59..HEAD (branch `feature/paydown-0730`, PR #166, NOT merged).
+Review of main..HEAD (`feature/f052-self-healing-rounds`, 6 commits, pushed, NO PR — the reviewer orders it after the integration gate).
 
 ## Commits
 
-### 1d20ad9 chore(paydown0730): persist round state + authored texts
+### 92c998c chore(f052): claim F052 + state reset
 | Path | +/- | Reason |
 |------|-----|--------|
-| .agent/authored/paydown0730-r1-{1..8}.md | +113 | 8 authored texts, all hashes verified |
-| .agent/last_block.md | +393/-205 | round block, OUTCOME pending |
-| .agent/live_review.md | +71 (replace) | := r1-1.md |
-| .agent/plan.md | +28 (replace) | := r1-2.md |
+| docs/roadmap/STATUS.md | +1/-1 | `- [ ] F052` → `- [~] F052` (grep 1→0 / 0→1) |
+| .agent/authored/f052-r1-{1,2,3}.md | +40 | 3 authored texts, hashes verified |
+| .agent/live_review.md, .agent/plan.md | replace | := r1-1 / r1-2 (cmp 0) |
+| .agent/last_block.md | +173/-87 | round block, OUTCOME pending |
 
-### 1c9cb50 docs(agents): hash-stamp-everything transport rule
+### 7b27e5d feat(f052): classify a failed cycle verify and render it (VerifyOutcome)
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/agents/planner_reviewer_prompt.md | +11 | Item 1: r1-3 as own §2 paragraph before "**(4)" |
+| packages/orchestration/long_run_executor.py | +95/-4 | `VerifyOutcome` + `as_verify_outcome` (bare-string steps unchanged), `VERIFY_CONFIG_ERROR`/`VERIFY_UNKNOWN_ERROR`, `cycle_verify_failure_class` via the EXISTING `failure_postmortem.classify`, `CycleRecord.verify_failure_class`, `render_cycle_summary_line` |
+| apps/cli/commands/job.py | +6 | `remedy job run` prints one rendered line per cycle |
+| tests/orchestration/test_self_healing_cycles.py | +235 | 14 tests |
 
-### e2eee6c docs(roadmap): closure-candidate ledger rule + F051 producer pitfalls
+### b97cde3 feat(f052): repair-round seam, findings payload and round cap
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/roadmap/STATUS_closure_protocol.md | +17 | Items 2+5: r1-4 new section after Algorithm item 7; r1-5 into Algorithm step 1 |
+| packages/orchestration/config.py | +14 | `cycles.repair_rounds`, default 2 |
+| packages/orchestration/long_run_executor.py | +125 | `RepairStep`/`RepairOutcome`/`RepairPhase`, `build_cycle_repair_findings` (on `repair_context.build_repair_context`), `CycleLimits.repair_rounds`, 4 repair fields on `CycleRecord`, `_VERIFY_REPAIRABLE` |
+| tests/orchestration/test_self_healing_cycles.py | +137 | 15 tests |
 
-### bc4b032 test(docs): pin README accepted-count to STATUS [x] count (R-0156)
+### e29da45 feat(f052): trigger the existing bounded repair loop from a failed cycle verify
 | Path | +/- | Reason |
 |------|-----|--------|
-| tests/docs/test_docs_consistency.py | +21 | Item 3: r1-6 method in TestPrimaryDocsAreHonest. SHA_R0156 |
+| packages/orchestration/long_run_executor.py | +175/-5 | `_run_repair_rounds`, `default_repair_step` → `builder_bridge.run_builder_bridge_loop(max_cycles=1)`, `repair` seam + `repair_stop_probe` in `run_cycles`, 2 ledger events |
+| tests/orchestration/test_self_healing_cycles.py | +265/-1 | 10 tests |
 
-### 9fdebad docs(agents): integration gate — environment-coupled base-failure rule (R-0155)
+### e295fcb test(f052): stubborn path, budget attribution, stop between rounds, A9 edges
 | Path | +/- | Reason |
 |------|-----|--------|
-| docs/agents/integration_gate.md | +13 | Item 4: r1-7 as continuation of list item 3. SHA_R0155 |
+| tests/orchestration/test_self_healing_cycles.py | +257/-1 | 11 tests (T002) |
 
-### c9e3629 chore(paydown0730): resolve R-0155 + R-0156 in the ledger
-| Path | +/- | Reason |
-|------|-----|--------|
-| .agent/live_review.md | +11/-11 | both Open bullets → substituted r1-8 bullets |
-
-### <handback> chore(paydown0730): handback R1
+### \<handback\> chore(f052): handback R1
 | Path | +/- | Reason |
 |------|-----|--------|
 | .agent/handoff.md | rewrite | this file (R-0149 self-reference) |
-| .agent/last_block.md | 1 line | OUTCOME pending → executed |
+| .agent/plan.md, .agent/decisions.md, .agent/last_block.md | edits | R1 done; 3 decisions; OUTCOME executed |
+
+## INSPECT report (bundle item 1)
+- **Where a cycle verify failure surfaces**: `long_run_executor.run_cycles`, the `verify_step(...)` call in the cycle body — `VERIFY_FAILED` is appended to `errors` and denies green via `_VERIFY_DENIES_GREEN`. No production caller injects a verify step today (`_no_verify` → `not_run`); the seam is caller-supplied by design.
+- **Existing repair loop that accepts findings and EXECUTES**: `builder_bridge.run_builder_bridge_loop(build_fn, repo_path, *, job, data_dir, max_cycles)` — same core-`Job` world, `build_fn(repair_context) -> BuilderOutput`. Findings intake = `repair_context.build_repair_context(job_id, test_run_event, events) -> dict`. Round cap = its `max_cycles` (default 3); exhaustion reason `repair_budget_exhausted`. Used only by tests before this round — no production caller.
+- **Ping-pong repair loop** (`pingpong_loop.run_pingpong`): real bounded rounds (`resolve_repair_rounds`, default 2 / hard cap 10; governance `make_repair_decision`; findings enter via `_build_builder_prompt(findings=…)`), but findings come from its OWN reviewer inside the invocation, there is no injection seam, and it belongs to `pingpong_job.JobPlan` — NOT reachable from `run_cycles`. **Not a STOP**: a reachable executing repair path does exist (above), so the block's stop condition was not met.
+- **`repair_loop` v0/v1 and `repair_loop_v2`**: human-gated proposal flows by explicit module contract ("No real provider. No automatic apply. No test execution." / "NO model/provider/worker execution"). Unsuitable as the executor; not used.
+- **Budgets and repair calls**: `run_cycles.counted_provider_call` increments `provider_calls`, read by `_default_counters` → `safe_points.should_stop`. A repair round run through that seam is counted with no separate accounting — proven by the two budget tests.
+- **Postmortem test-failure class**: `failure_postmortem.FailureClass.TEST_FAILED` (`"test_failed"`, from `TERMINAL_STATUS_CLASSES`); harness cases are `CONFIG` / `UNKNOWN`. `PostmortemV1.evidence_refs` accepts `cycles/cycle_0001.json`, which is how the postmortem links the repair-round evidence.
 
 ## External actions
-- `gh pr list --state open …` → exactly PR #165, feature/f051-escalate-instead-of-block → main, not draft. Gate PASS.
-- `gh pr merge 165 --merge --delete-branch` → exit 0. Merge commit **631be5974c785858b3965fac11ba82a1fd6cf65d**.
-- `git pull --ff-only` → "Already up to date." exit 0.
-- `git branch -D feature/f051-escalate-instead-of-block` → "error: branch … not found", exit 1 — already removed by `--delete-branch`. No-op.
-- `git checkout -b feature/paydown-0730`; `git push -u origin feature/paydown-0730` → new branch, exit 0.
-- `gh pr create --base main …` → https://github.com/UndefinedDatabase/remedy/pull/166. NOT merged.
-- `git worktree add /tmp/paydown-negctl HEAD` → detached bc4b032; `git worktree remove --force` + `git worktree prune` → `git worktree list` shows only `/home/decodeux/Repos/remedy  bc4b032 [feature/paydown-0730]`.
+- `gh pr list --state open …` → `[]` (gate passed); `git checkout main && git pull --ff-only` → up to date.
+- `git checkout -b feature/f052-self-healing-rounds`; `git push -u origin …` → new branch. Pushed after every commit. **No PR created, nothing merged.**
 
 ## Verification
+`python3 -m pytest tests/orchestration/test_self_healing_cycles.py -q` → `50 passed in 0.22s`, exit 0.
+`python3 -m pytest tests/orchestration/ -q` → `8788 passed, 7 skipped in 592.17s`, exit 0.
+`python3 -m pytest tests/docs/ -q` → `293 passed in 0.26s`, exit 0.
+`python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in 18.92s`, exit 0.
+Clean tree at gate time (`git status --porcelain` empty).
 
-Pre-proof, before the pin (Step 6):
-`python3 -m pytest tests/docs/ -q` → `292 passed in 0.25s`, exit 0.
-
-Gate 1 (clean tree, `git status --porcelain` empty):
-`python3 -m pytest tests/docs/ -q` → `293 passed in 0.25s`, exit 0.
-
-Gate 2:
-`python3 -m pytest tests/cli/test_golden_path.py -q` → `42 passed in 19.05s`, exit 0.
-
-Negative control (throwaway worktree, README `27 of 252` → `28 of 252`, new test only):
+Healed-cycle evidence, rendered by `render_cycle_summary_line` — the line `remedy job run` prints:
 ```
-E       AssertionError: README claims 28 accepted; STATUS.md has 27
-E       assert 28 == 27
-tests/docs/test_docs_consistency.py:181: AssertionError
-1 failed in 0.20s
+  [repair round 1] findings -> ['tests/test_calc.py::test_add'] | tail='E   assert 4 == 5'
+Job 211be8d2-1744-463c-aaaa-8287d59e83ba | cycles=1/2 terminal=all_green status=completed
+  cycle 1: verify=passed tasks=1/1 | healed after 1 repair round
 ```
-exit 1. Primary checkout untouched (`git status --short` empty throughout).
+and the same facts in the on-disk cycle record: `"repair_rounds_used": 1, "healed_after_repair": true, "repair_summary": "healed after 1 repair round"`.
 
 ## Authored-text proofs
-
-`sha256sum .agent/authored/paydown0730-r1-*.md` (all 8 matched the BEGIN-marker hashes on FIRST computation — no transport fault, no rejoin needed):
+`sha256sum .agent/authored/f052-r1-*.md` — all three matched the BEGIN-marker hashes on FIRST computation (no transport fault, no rejoin):
 ```
-269bab2c143ee8a98bc471b5de3c470eee0a67e82bec44ef137b606890d4a59b  .agent/authored/paydown0730-r1-1.md
-59f9de7b5ecbeed94f84f529854890ec5df1de326937b41ce24f5a93e7f641a4  .agent/authored/paydown0730-r1-2.md
-0dd842d6c45a0ee7e231c058c9f84f33023d0ecf61956445917b669745e9aa8f  .agent/authored/paydown0730-r1-3.md
-bc1972aec19b5325fad8ceee0a9faeeb2e0cdaff29d465f9f525db1e8b933a78  .agent/authored/paydown0730-r1-4.md
-d81c78d0dc1d6f59901e21b7673f58fafa745429ce09c688bd174f314cd99920  .agent/authored/paydown0730-r1-5.md
-253f733da566ca890633091efb838d49b54028780e671ce981caa0cea236ab50  .agent/authored/paydown0730-r1-6.md
-2b4612f6b425e69b416242c2d5d18dec607834a8768ad34911fe0082499de1ef  .agent/authored/paydown0730-r1-7.md
-3afe410d4f93339ee4ff1662b58e306e8a02ace87e98834c88947ebaadbddc95  .agent/authored/paydown0730-r1-8.md
+8ba4dc102c31225686db256ac05863a8cf266a09525d6d936f0339bfc3990c96  .agent/authored/f052-r1-1.md
+7c57cbadbe37f2dc61111c457fac71370cbf0f116361fc5fbaf137edd62c01d4  .agent/authored/f052-r1-2.md
+7c0b8fd0a7679e9bc26f46548733ebf29d3e97d4d33b8a539c0cac0eef67d137  .agent/authored/f052-r1-3.md
 ```
-- `cmp r1-1.md .agent/live_review.md` → 0; `cmp r1-2.md .agent/plan.md` → 0.
-- r1-3, r1-4, r1-5, r1-6, r1-7: exact body occurs **1×** in its target file (Python substring count on the committed bytes); r1-3 additionally proven anchored between "unrecoverably)." and "**(4) Feature-done banner**".
-- r1-8: placeholders `<SHA_R0155>` / `<SHA_R0156>` `grep -cF` → 1 before, 0 after in the COPY; original `.agent/authored/paydown0730-r1-8.md` hash unchanged (3afe410…). `cmp` of the applied live_review region against the substituted copy → 0; `- Open: R-01` bullets remaining → 0.
+`cmp f052-r1-1.md .agent/live_review.md` → 0; `cmp f052-r1-2.md .agent/plan.md` → 0 (plan.md then updated at handback, as the Commit Gate requires). STATUS line: old `grep -cF` 1→0, new 0→1, one line changed.
 
 ## Deviations & assumptions
-1. `git branch -D feature/f051-escalate-instead-of-block` was a no-op — `gh pr merge --delete-branch` had already deleted the local branch. Exit 1 recorded above; no state impact.
-2. The negative control ran AFTER commit D instead of before it: `git worktree add … HEAD` can only contain the new test once it is committed. The red proof is therefore against the exact committed bytes of bc4b032, which is stronger, not weaker. Primary checkout never touched.
-3. Item-status table: items 1–5 all `done`; no skips, no other deviations.
+1. **Four content commits instead of the two implied by T001/T002.** The combined diff was 875 lines, over the AGENTS.md 500-line limit, and genuinely separable — so it was split rather than declared oversize. Each commit is independently green. Rationale in `.agent/decisions.md`.
+2. **`CycleLimits.repair_rounds` defaults to 0 while the config key defaults to 2.** A dataclass default of 2 silently turned every existing direct `CycleLimits(...)` construction into a self-healing one. Production goes through `limits_from_config`, which supplies 2. Documented on the field and in decisions.md.
+3. **Budget attribution holds for the DEFAULT repair seam only.** An INJECTED repair seam receives no provider callable, so it cannot spend the counted seam; the budget tests therefore drive the production path (default seam, `run_builder_bridge_loop` monkeypatched to call `build_fn`). A first attempt that asserted attribution through an injected fake failed honestly and was rewritten — worth a reviewer's eye if an injected seam should also be counted.
+4. **`default_repair_step` is exercised with a monkeypatched `run_builder_bridge_loop`**, not against a real workspace apply/test — real-provider behavior belongs to the integration gate, not to a unit round.
+
+Item status: | 1 INSPECT done | 2 T001 done | 3 T002 done | no skips.
 
 ## Next
-Reviewer verdict on PR #166. On PASS: same-session merge (standing operator approval 2026-07-30), then Rule A5 → F052 in a fresh window. Open findings: 0. Next free ID: R-0158.
+Reviewer verdict on f052-r1, then the integration-gate round. Open findings: 0. Next free ID: R-0158.

@@ -126,4 +126,4 @@ trail; costs attributed via actuals.
 - [~] F052 — Self-healing test rounds
 --- END f052-r1-3 ---
 
-OUTCOME: pending
+OUTCOME: executed
