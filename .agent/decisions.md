@@ -1,5 +1,43 @@
 # Decisions
 
+## 2026-07-31: F053 T002 — `remedy job report` gains modes, it does not replace one
+`remedy job report <id>` already existed: a progress/evidence view with
+`--json`, asserted on by tests/cli/test_open_decisions_view.py,
+tests/orchestration/test_job_fulfillment.py and referenced as a next-action
+string inside job.py itself. The R2 block asked for that command to render the
+F053 run report, which would have changed the output of a covered command.
+
+Resolved the same way F047 resolved the identical `job resume` collision (see
+the 2026-07-26 entry below): ONE command, several modes on the same name.
+`--final` and `--interim` render the F053 report; the bare invocation and
+`--json` behave exactly as before. A test asserts the catalog registers
+`job.report` exactly once and that the bare view still prints the pre-F053
+output. The dispatch lambda is one line away from the replacement reading if
+the reviewer prefers it; flagged in the handback rather than decided silently.
+
+## 2026-07-31: F053 T002 — the report writer hangs off _apply_terminal
+Every terminal transition in `run_cycles` already funnels through
+`_apply_terminal`, so hooking the writer there makes "exactly one report per
+terminal job" true by construction instead of by remembering to call a writer
+on five separate break paths. `REPORTED_TERMINALS` names the five that end a
+run; `max_cycles_reached` is deliberately excluded because it maps to
+JOB_RUNNING — the job still has pending work, and a "final" report would lie
+about the run being over.
+
+The cost is that `_apply_terminal` now performs I/O. It is contained:
+`write_final_report` never raises, records its own failure on the job under
+`report_error`, and returns None. A run that finished is finished whether or
+not its account could be written — the report is an account of the run, not a
+gate on it. `write_report=False` keeps a terminal transition available without
+a write, for callers that only want the state change.
+
+## 2026-07-31: F053 T002 — the report file is overwritten, never appended
+One fixed `report.md` in the job's evidence area, beside the `cycles/`
+directory rather than in an area of its own. A resumed job that finishes again
+REGENERATES the file, so it always describes the run as it actually ended
+(feature-file acceptance). Red-proved in a throwaway worktree: switching the
+write to an append fails three tests.
+
 ## 2026-07-31: F053 — the STATUS mirror is an INPUT, not a read (inspect finding)
 The feature file states that ALL inputs already exist as structured data. The
 inspect step disproved that for exactly one source: the milestone distance and

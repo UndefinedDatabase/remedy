@@ -3,33 +3,31 @@
 ## Goal
 Every run produces ONE human-readable account: what was attempted, what
 succeeded, what is blocked and why, what it cost, what needs answering,
-and the single recommended next action. The report is a pure RENDERER
-over existing structured sources — it computes nothing new, and a
-missing source renders "not recorded", never a guessed value (P6,
-docs/roadmap/features/T1_F053.md).
+and the single recommended next action. A pure RENDERER over existing
+structured sources; a missing source renders "not recorded", never a
+guessed value (P6, docs/roadmap/features/T1_F053.md).
 
 ## Current Step
-R1 complete, awaiting review. Claim + state reset, source inspection
-(STEP 2), and T001 (renderer + next-action rule table + three golden
-terminal fixtures) are committed and pushed on
-`feature/f053-run-report`. Gates green: test_run_report.py 44 ·
-tests/docs 293 · canary 42.
+R2 complete, awaiting review. R1 verdict (PASS), R-0160 and DECISION D2
+persisted; the feature-file amendment applied; T002 built in three
+slices — STATUS-mirror producer, terminal-state hook, interim + CLI.
+Gates green: test_run_report 66 · test_job_report 18 · tests/docs 293 ·
+canary 42. Plus test_run_report_hook 22 and test_self_healing_cycles 50.
 
 ## Next Steps
-- Reviewer verdict on R1. The worker writes no verdict and merges
-  nothing.
-- Open question for the reviewer (STEP 2 finding): no production reader
-  of `docs/roadmap/STATUS.md` exists, so the milestone distance and the
-  capability lines have no producer. `ReportSources.status_mirror` is
-  the input seam; both sections render "not recorded" until a producer
-  lands. Needs a routing decision — T002, a new slice, or a feature-file
-  amendment.
-- T002 (next round): terminal-state hook (every terminal path writes
-  exactly one report, regenerated not appended) + interim mode against a
-  running fake job + `remedy job report <id>` CLI with `--json` + the
-  evidence-area source collection this round deliberately did not wire.
+- Reviewer verdict on R2.
+- Reviewer call on the SLICE 3 deviation: the block asked for bare
+  `remedy job report <id>` to render the F053 report; that would change
+  the output of a command three existing test files assert on, so the
+  new modes sit behind `--final` / `--interim`. One line in the dispatch
+  lambda flips it if the reviewer prefers replacement.
+- Reviewer call on the capability-line volume: the self-repo ledger has
+  28 accepted entries, so a self-run's Capabilities section renders 28
+  "Can now" lines. Faithful to the ledger, but no A9 cap was ordered for
+  that section. Candidate follow-up, not applied unilaterally.
+- Then: closure round (not started — no closure work this round).
 
 ## Risks
-- The six terminal statuses in `long_run_executor.TERMINAL_*` are the
-  T002 hook surface; `max_cycles_reached` maps to JOB_RUNNING and is NOT
-  a terminal report trigger. Enumerated in the handoff.
+- `_apply_terminal` now performs I/O. It is guarded (never raises,
+  records report_error, continues) and test_self_healing_cycles stayed
+  at 50, but it is the one behavioral change inside the run loop.
