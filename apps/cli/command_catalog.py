@@ -112,7 +112,7 @@ GROUPS: dict[str, GroupDef] = {
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
     "policy": GroupDef("policy", "Policy", "Inspect execution policies.", user_facing=False),
-    "mission": GroupDef("mission", "Mission", "Mission contract facade for bounded run loops (internal).", user_facing=False),
+    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
     "approval": GroupDef("approval", "Approval", "Execution approval policy.", user_facing=False),
     "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness.", user_facing=False),
     "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
@@ -1600,6 +1600,46 @@ CATALOG: tuple[CommandEntry, ...] = (
         ),
         supports_json=True,
         related=("mission.run", "dogfood.morning-report"),
+    ),
+
+    # ── mission (F056: the persistent goal above a chain of jobs) ────────
+    CommandEntry(
+        command_id="mission.start",
+        group_id="mission",
+        subcommand="start",
+        description="Create a mission — a persistent goal above the jobs that will serve it (explicit; never automatic).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("goal", "The persistent goal this mission exists for"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.list", "mission.show"),
+    ),
+    CommandEntry(
+        command_id="mission.list",
+        group_id="mission",
+        subcommand="list",
+        description="List missions (scoped to the current project by default; unreadable records are skipped and counted).",
+        action_class="read_only",
+        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
+        supports_json=True,
+        related=("mission.start", "mission.show"),
+    ),
+    CommandEntry(
+        command_id="mission.show",
+        group_id="mission",
+        subcommand="show",
+        description="Show one mission and its job chain, each job with the state the job store reports now.",
+        action_class="read_only",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.list", "mission.start"),
     ),
 
     # ── doctor (product spine health check) ──────────────────────────────
