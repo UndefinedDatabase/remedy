@@ -78,11 +78,15 @@ class TestCatalogIntegration:
             assert cmd_id in ids, f"{cmd_id} missing from catalog"
 
     def test_mission_commands_in_catalog(self):
+        """The facade's own two commands live in the mission group.
+
+        A subset, not the whole group: F056 added the persistent-goal
+        commands (start/continue/list/show) to the same group, and this
+        test guards the facade's entries, not the group's size.
+        """
         from apps.cli.command_catalog import CATALOG
-        mission_cmds = [c for c in CATALOG if c.group_id == "mission"]
-        assert len(mission_cmds) == 2
-        ids = {c.command_id for c in mission_cmds}
-        assert ids == {"mission.run", "mission.report"}
+        ids = {c.command_id for c in CATALOG if c.group_id == "mission"}
+        assert {"mission.run", "mission.report"} <= ids
 
     def test_all_facade_commands_have_handlers(self):
         from apps.cli.command_catalog import CATALOG
