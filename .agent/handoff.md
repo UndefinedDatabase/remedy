@@ -1,113 +1,83 @@
-# Handoff — F053 · R4 (worker)
+# Handoff — F053 · R5 (worker)
 
 `feature/f053-run-report`, pushed. No verdict written, nothing merged, no
-closure work. **STOPPED at gate step 3 per the block's stop rule** — a
-DIFFERENT id is red. Ruling needed (below).
+closure work. **GATE GREEN** — full suite 14610 passed, 0 failed.
 
 ## Range
-Review of 875a1990..HEAD.
+Review of 1ae0c42d..HEAD.
 
 ## Commits
 
-### 4a7705bb chore(f053): persist R3 verdict (gate red) + register R-0162
+### 326075f9 chore(f053): persist R4 verdict (gate still red) + amend R-0162
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +64/-30 | R4 step, R3 FAIL verdict, R-0161 Resolved + R-0162 (f053-r4-1/2/3) |
-| .agent/authored/f053-r4-{1,2,3}.md | +45 | authored texts, verbatim |
-| .agent/last_block.md | +93/-76 | R4 block, OUTCOME pending |
+| .agent/live_review.md | +48/-14 | R5 step, R4 FAIL verdict, R-0162 amended (f053-r5-1/2/3) |
+| .agent/authored/f053-r5-{1,2,3}.md | +36 | authored texts, verbatim |
+| .agent/last_block.md | +62/-46 | R5 block, OUTCOME pending |
 
-### 39c4334e chore(f053): repair context.md contract + codify gate lessons (R-0162)
+### 0e599d11 chore(f053): context.md satisfies its full reader list (R-0162)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/context.md | +53/-53 | replaced entirely with f053-r4-4 |
-| docs/agents/planner_reviewer_prompt.md | +6 | §4 item 11 extended to context.md (f053-r4-5) |
-| docs/agents/integration_gate.md | +8/-2 | step 3 parity clause → COPY, never symlink (f053-r4-6) |
-| .agent/authored/f053-r4-{4,5,6}.md | +51 | authored texts, verbatim |
+| .agent/context.md | +24/-16 | replaced entirely with f053-r5-4 |
+| docs/agents/planner_reviewer_prompt.md | +17/-6 | §4 item 11 context.md paragraph → grep-every-reader rule (f053-r5-5) |
+| .agent/authored/f053-r5-{4,5}.md | +55 | authored texts, verbatim |
 
 ### handoff commit (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/{handoff,plan,decisions,last_block}.md | rewrite/+22 | this file; R4 stopped + ruling; two-test finding; OUTCOME executed |
+| .agent/{handoff,plan,last_block}.md | rewrite | this file; R5 done, gate green; OUTCOME executed |
 
 No feature code changed this round. No commit exceeded 500 lines.
 
 ## External actions
-`git push` x2 -> 875a1990..39c4334e. No PR. No worktrees created;
-`git worktree list` shows only the primary.
+`git push` x2 -> 1ae0c42d..0e599d11. No PR (closure is R6). No worktrees
+created; `git worktree list` shows only the primary.
 
-## Verification (gate confirmation, in the ordered sequence)
-    GATE 1  $ pytest "…::test_context_md_no_stale_steps" -q
-            1 passed in 0.06s                                  exit 0
-    GATE 2  $ pytest tests/ui_server/test_dashboard_contract.py -q
-            70 passed in 3.03s                                 exit 0
-    GATE 3  $ python3 -m pytest -n auto -q
-            1 failed, 14609 passed, 19 skipped in 118.45s (0:01:58)  exit 1
-            FAILED tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
-    GATE 4  NOT RUN — stop rule ("any failure: record raw, STOP").
-    GATE 5  NOT RUN — same.
-Wall clock 118s, under ~5 min. Counts reconcile with the block's
-expectation exactly: 14609 + 1 = 14610 collected non-skipped; the
-expected id is green, a different one is red. Serial re-run of the red
-id: `1 failed in 0.03s`, exit 1 → deterministic, not an xdist flake.
-Both un-run gates ran INSIDE gate 3 and produced no FAILED line, but
-their standalone counts (293 / 42) were deliberately not re-collected.
+## Verification (gate confirmation, ordered sequence — no red, none skipped)
+    GATE 1  $ pytest tests/regression/test_resource_safety.py \
+                     tests/ui_server/test_dashboard_contract.py -q
+            91 passed in 13.76s                                exit 0
+    GATE 2  $ python3 -m pytest -n auto -q
+            14610 passed, 19 skipped in 134.08s (0:02:14)      exit 0
+            grep -c '^FAILED' → 0
+    GATE 3  $ pytest tests/docs/ -q         293 passed          exit 0
+    GATE 4  $ pytest tests/cli/test_golden_path.py -q  42 passed exit 0
+Wall clock 134s, under ~5 min. Count matches the block exactly; R3's
+branch run was 14609 + 1 failed, so the same 14610 non-skipped tests now
+all pass. Pre-commit self-review (before commit B landed): both reader
+files + test_test_runner.py → 142 passed, exit 0.
 
-## R-0162 is fixed; a second contract on the same file is not
-The authored `.agent/context.md` (f053-r4-4) fixes the "Steps" token —
-gate 1 and gate 2 prove it. It trips a SECOND test in a different file:
-
-    tests/regression/test_resource_safety.py:117
-    TestContextIncludesResourceSafety::test_context_mentions_resource_safety
-    assert "resource" in text.lower() or "pytest" in text.lower()
-
-The authored text contains NEITHER token: `grep -ci resource` → 0,
-`grep -ci pytest` → 0. The R1 version passed this only incidentally — it
-carried a "## Gates" section naming pytest commands.
-
-Every test that reads `.agent/context.md`, so one authored text can
-satisfy all of them:
-| test | requirement |
-|---|---|
-| dashboard_contract.py:201 test_context_md_references_current_branch | `## Active Branch`, `feature/` present; two stale slugs absent |
-| dashboard_contract.py:214 test_no_stale_branch_references_in_context | `feature/steps-74`, `PR #33` absent |
-| dashboard_contract.py:439 test_context_md_no_stale_steps | `Steps` present; two stale slugs absent |
-| regression/test_resource_safety.py:117 test_context_mentions_resource_safety | `resource` OR `pytest` present ← THE RED ONE |
-f053-r4-4 satisfies the first three and misses only the fourth.
+## Independent validation of the authored context.md
+Not taken on trust — re-derived before committing.
+`grep -rln "context\.md" tests/ --include=*.py` → 13 test files. Tokens
+in the applied file: `Steps` 2 · `## Active Branch` 2 · `feature/` 2 ·
+`resource` 2 · `pytest` 6 · roadmap F-id 2 · stale slugs 0. The
+"resource"/"pytest" token red in R4 is now carried by the
+"## Gates (round verification, pytest)" section.
 
 ## Authored-text proofs
-All six sha256-verified BEFORE use, applied by `cp`, never retyped:
-r4-1 `786cb71d…f286fe` · r4-2 `c882a6ae…c1dcb4` · r4-3 `20f781cf…16de3c` ·
-r4-4 `68721627…ac374e` · r4-5 `939c30e3…975122` · r4-6 `1d4f0dd0…cc89e5`
-— all equal the block's BEGIN-marker digests. Saved-copy `cmp` vs the
-verified scratchpad originals: exit 0 x6. APPLIED-REGION cmp: exit 0 x6,
-each occurring exactly once — r4-1/2/3 in .agent/live_review.md, r4-5 in
-docs/agents/planner_reviewer_prompt.md, r4-6 in
-docs/agents/integration_gate.md; `.agent/context.md` is byte-identical to
-r4-4 (whole-file cmp exit 0).
+All five sha256-verified BEFORE use, applied by `cp`, never retyped:
+r5-1 `da152b16…30d0af` · r5-2 `f0f54f52…8aea9b` · r5-3 `7646eb49…a72da0` ·
+r5-4 `bdbc9538…4290d5` · r5-5 `a0b444ee…0ad64e` — all equal the block's
+BEGIN-marker digests. Saved-copy `cmp`: exit 0 x5. APPLIED-REGION cmp:
+exit 0 x5, each exactly once — r5-1/2/3 in live_review.md, r5-5 in
+planner_reviewer_prompt.md (the applied r4-5 block gone: 0 remaining).
+`.agent/context.md` byte-identical to r5-4 (whole-file cmp exit 0 vs
+both the saved copy and the scratchpad original).
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| COMMIT A verdict + R-0162 | done | 3 regions, cmp 0 each |
-| COMMIT B context.md + 2 doc amendments | done | 3 regions, cmp 0 each; Done: R-0162 |
-| Gate 1 failed id | done | 1 passed, exit 0 |
-| Gate 2 whole contract file | done | 70 passed, exit 0 |
-| Gate 3 full suite | done | 1 failed / 14609 passed — NOT green |
-| Gate 4 tests/docs 293 | skipped | stop rule after gate 3 red |
-| Gate 5 canary 42 | skipped | stop rule after gate 3 red |
+| COMMIT A verdict + amended R-0162 | done | 3 regions, cmp 0 each |
+| COMMIT B context.md + §4 item 11 rewrite | done | 2 regions, cmp 0 each; Done: R-0162 |
+| Gate 1 both reader files | done | 91 passed, exit 0 |
+| Gate 2 full suite | done | 14610 passed, 19 skipped, 0 failed |
+| Gate 3 tests/docs | done | 293 passed, exit 0 |
+| Gate 4 canary | done | 42 passed, exit 0 |
 
 ## Deviations & assumptions
-- Stopped after gate 3 and did not fix the new red, as the block
-  requires. RULING NEEDED: a corrected authored `.agent/context.md`
-  carrying `resource` or `pytest` (restoring a Gates line naming the
-  pytest commands is the smallest change and is what R1 had). §4 item 11
-  should name this token alongside "Steps", or the next authored
-  context.md reintroduces the same red.
-- Recorded in `.agent/decisions.md`: the state-file contract for one
-  path is spread across at least two test files, so grepping only the
-  test that is currently failing is how a repair round produces the next
-  red. Grep every reader of the path before authoring a replacement.
+None. Every ordered step ran, nothing skipped, no stop rule fired.
+R-0162 resolved; no finding open from this round.
 
 ## Next
-Reviewer verdict on R4 + a corrected context.md text, then re-run gate
-steps 3-5. Closure stays R5, its own round.
+Reviewer verdict on R5 + the gate. Closure is R6, its own round.

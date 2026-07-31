@@ -8,32 +8,21 @@ structured sources; a missing source renders "not recorded", never a
 guessed value (P6, docs/roadmap/features/T1_F053.md).
 
 ## Current Step
-R4 STOPPED at gate step 3, per the block's stop rule. Commits A and B
-landed: R3 verdict + R-0162 persisted, context.md replaced with the
-authored text, §4 item 11 extended, gate step 3 amended to COPY.
-R-0162 is fixed — its id passes and the whole contract file is green.
-The full suite is NOT green: one different id now fails.
+R5 complete, awaiting review. GATE GREEN. R4 verdict and the amended
+R-0162 persisted; context.md replaced with the corrected authored text
+and validated against its full reader list; §4 item 11 rewritten with
+the grep-every-reader rule. Full suite 14610 passed / 19 skipped /
+0 failed (134s), docs 293, canary 42, reader files 91 — all exit 0.
 
 ## Next Steps
-- RULING NEEDED — the authored context.md (f053-r4-4) trips a SECOND
-  state-file contract test:
-  `tests/regression/test_resource_safety.py::
-  TestContextIncludesResourceSafety::test_context_mentions_resource_safety`
-  asserts `"resource" in text.lower() or "pytest" in text.lower()` on
-  `.agent/context.md` (test file line 117). The authored text contains
-  neither token (0 occurrences of each); the R1 version passed only
-  because it carried a "## Gates" section naming pytest commands.
-  Deterministic, serial-reproducible. NOT fixed here — the block forbids
-  further fixes after the first red.
-  Repair: a corrected authored context.md carrying either token — e.g.
-  restoring a Gates line naming the pytest commands, or a Resource
-  safety line. §4 item 11 should name this token too, alongside "Steps".
-- Then re-run gate steps 3-5.
-- Closure is R5, its own round, opened by the reviewer only after the
-  gate confirms green.
+- Reviewer verdict on R5 and the gate. R-0162 is fixed; no finding is
+  open from this round.
+- R6 closure, its own round, opened by the reviewer: STATUS line,
+  evidence job, fresh review zip, PR. Not started here — no closure work
+  of any kind was done this round.
 
 ## Risks
-- Third round in a row where a reviewer-authored `.agent` state text
-  turns a contract test red (R-0162 was the "Steps" token; this is the
-  "resource"/"pytest" token in a different test file). §4 item 11 now
-  covers one token for context.md but not this one.
+- None open. T001+T002 are complete and the integration gate is
+  confirmed green at 0e599d11. The two remaining reviewer calls from R2
+  were both ruled on and applied (--final/--interim modes accepted;
+  capability cap added in R3).
