@@ -1,5 +1,47 @@
 # Decisions
 
+## 2026-07-31: F053 — the STATUS mirror is an INPUT, not a read (inspect finding)
+The feature file states that ALL inputs already exist as structured data. The
+inspect step disproved that for exactly one source: the milestone distance and
+the capability lines are specified to come from "the STATUS mirror", and there
+is NO production reader of `docs/roadmap/STATUS.md` anywhere in `packages/`.
+The only production references to that path are a write FENCE
+(`scope_fences.py:80`, "execution ledger (operator territory)") and a noise-
+filter comment (`evidence_index.py:113`). `self_dogfood._detect_roadmap`
+(self_dogfood.py:350) is registry-only by its own docstring — it tests module
+existence, it does not read the ledger. Every other source the report renders
+was confirmed present and is listed in the run_report.py module docstring.
+
+Rather than write a STATUS parser inside a Tier 1 report feature (it is a
+different concern, and the file is fenced operator territory),
+`ReportSources.status_mirror` is the input seam and both dependent sections
+render "not recorded" until a producer exists. That is the feature's own rule
+for a missing source, applied to its own gap rather than papered over. The
+routing of that producer — T002, a new slice, or a feature-file amendment — is
+a reviewer decision, raised in the handback rather than decided by the worker.
+
+## 2026-07-31: F053 T001 — render_report keeps its specified signature, plus a sources seam
+`T1_F053.md` Design fixes `render_report(job, mode=final|interim) -> str`, but a
+renderer that reaches for a job and a data root cannot have byte-stable
+goldens. The module therefore splits in two: `render_report_from_sources` is
+the pure function (no clock, no disk, no randomness — the caller supplies
+`rendered_at`), and `render_report(job, mode, *, sources=None)` keeps the
+specified signature and collects when nothing is injected. The goldens test
+the pure half. Determinism is pinned by a double-render test rather than left
+as a property nobody checks.
+
+`collect_report_sources` deliberately reads ONLY the in-memory job this round.
+The evidence-area sources (cycle records, postmortems, manifest) land with the
+terminal-state writer in T002, so T001 adds no new disk reads and no new
+failure modes to the run loop.
+
+## 2026-07-31: F053 T001 — momentum is unknown with no cycles, never forward
+The mechanical definition covers "closes items" and "recurs", but not the
+zero-cycle case. Defaulting that to forward would print a green momentum line
+for a run that produced no evidence at all — an invented judgement of exactly
+the kind P6 forbids. `momentum_flag` returns `unknown` and the section renders
+"not recorded".
+
 ## 2026-07-30: F052 — which existing repair loop the cycle triggers
 The inspect step found TWO repair worlds. The ping-pong loop
 (`pingpong_loop.run_pingpong`) does run bounded repair rounds, but it drives
