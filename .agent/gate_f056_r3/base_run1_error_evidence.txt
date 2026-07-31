@@ -1,0 +1,15 @@
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
