@@ -21,11 +21,14 @@ an invented value (docs/roadmap/features/T1_F053.md).
   RED: one branch-only state-file id (R-0162); all six comm -23
   ids attributed + empirically confirmed. Done (gate outcome
   carried to R4).
-- R4: persist R3 verdict + register R-0162 + resolve R-0161; apply
-  the authored context.md replacement + the §4 item 11 extension +
-  the gate-doc COPY amendment; re-run the failed id, then the FULL
-  suite (gate confirmation) — green required, else STOP.
-  In progress.
+- R4: persist R3 verdict + register R-0162; context.md repair 1 —
+  fixed the "Steps" reader, tripped the resource-safety reader
+  (reviewer-authored text, incomplete reader list); gate stopped
+  at step 3 per the stop rule. Done (outcome carried to R5).
+- R5: persist R4 verdict; apply the CORRECTED context.md (full
+  reader list, validated against all 13 assertions) + the §4
+  item 11 grep-every-reader rewrite; re-run gate steps 3-5 (full
+  suite + docs + canary) — green required, else STOP. In progress.
 
 ## Findings
 - Open: R-0160 (process, Low, registered 2026-07-31): the R1
@@ -56,14 +59,15 @@ an invented value (docs/roadmap/features/T1_F053.md).
   auto-renders); capability lines cap at 10 via _capped with the
   honest count line (CALL-2 ruling).
   Done: R-0161 (commit c2d9f790 — guard + tests; cap 9e0b4035).
-- Open: R-0162 (process, Low, registered 2026-07-31): the R1
-  context.md rewrite dropped the "Steps" token
-  (test_context_md_no_stale_steps, serial-reproducible, branch-only
-  at the gate) — third instance of the state-file contract class
-  (F046 plan.md, F047 live_review.md). Fix (R4): authored
-  context.md replacement carrying a "## Steps (round map)" section,
-  plus the §4 item 11 extension so every ordered context.md rewrite
-  carries the token from now on. Not feature-code coupled.
+- Open: R-0162 (process, Low, registered 2026-07-31; AMENDED after
+  R4): the R1 context.md rewrite dropped the "Steps" token; the R4
+  repair (reviewer-authored) fixed that reader and tripped a second
+  one — test_context_mentions_resource_safety asserts "resource" or
+  "pytest" in the same file; context.md's real-file readers span 4
+  test files with 13 assertions. Fix (R5): corrected authored
+  replacement validated against the FULL reader list before
+  emission, plus the §4 item 11 rewrite adding the
+  grep-every-reader rule. Not feature-code coupled.
 - Next free ID: R-0163.
 
 ## Verdicts
@@ -130,3 +134,21 @@ an invented value (docs/roadmap/features/T1_F053.md).
   symlink side effect is accepted as benign (gitignored artifact,
   tree clean, ui_server suite green) and the gate doc now orders
   COPY, never symlink. LAST_REVIEWED_SHA stays 1a5af0d.
+- R4: FAIL — GATE STILL RED, REVIEWER FAULT (reviewer,
+  2026-07-31). Range 875a199..1ae0c42. Worker execution flawless:
+  all 6 authored texts cmp 0 (saved copy AND applied region), the
+  stop rule honored exactly, and the handback enumerated every
+  reader of context.md — that enumeration became the fix's map.
+  The red id moved because the R4 context.md text the REVIEWER
+  authored satisfied the dashboard contract but not
+  test_context_mentions_resource_safety ("resource"/"pytest" in
+  the same file) — an incomplete-reader-list error on the
+  authoring side. Reviewer's own verification: the new red id
+  reproduced serially (1 failed, 0.03s); gate-1/2 greens accepted
+  from raw transcripts; counts reconcile (14609 + 1 = 14610); the
+  reviewer then enumerated ALL real-file context.md readers
+  itself (4 test files, 13 assertions) and validated the R5
+  replacement against every one BEFORE authoring it into the
+  block. R-0162 stays Open for R5; the grep-every-reader rule is
+  codified in the §4 item 11 rewrite. LAST_REVIEWED_SHA stays
+  1a5af0d.
