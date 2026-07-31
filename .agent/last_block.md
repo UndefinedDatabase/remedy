@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 
 # Received block — F056 R2 (SPLIT round, post-PASS remainder)
 

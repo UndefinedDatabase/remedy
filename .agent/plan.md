@@ -9,11 +9,12 @@ jobs are structurally forced to verify the previous state FIRST
 plan-approval payload item defaulting to NO).
 
 ## Current Step
-R1 PASS (78f5f608..e8c3c147). R2 (SPLIT): persist the ledger, then
-fix R-0163 — amend the feature file's CLI line (authored bytes) and
-add the status-transition surface `remedy mission
-achieve/abandon/pause` as thin wrappers over set_mission_status.
-No new transition rules; mission_state.py itself needs no change.
+R1 PASS (78f5f608..e8c3c147). R2 COMPLETE, handed back: ledger
+persisted, R-0163 fixed — feature-file CLI line amended and
+`remedy mission achieve/abandon/pause` shipped as thin wrappers
+over set_mission_status. No new transition rules; mission_state.py
+unchanged. All three ordered gates green; tree clean; nothing
+pushed.
 
 ## Next Steps
 - Reviewer gates R2 (e8c3c147..HEAD).

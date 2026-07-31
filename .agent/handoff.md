@@ -1,100 +1,58 @@
 ## Range
 
-Review of 78f5f608..HEAD (branch feature/f056-missions)
+Review of e8c3c147..HEAD (branch feature/f056-missions)
 
 ## Commits
 
-### 0eefae30 chore(f056): claim STATUS, reset live review, reset agent state
+### ca630978 chore(f056): persist the R1 verdict and register R-0163
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | F056 claimed `[~]` (authored, byte-copy) |
-| .agent/live_review.md | +21/-39 | full replacement (authored, byte-copy) |
-| .agent/authored/f056-r1-{1,2}.md | +26 | the two authored texts, saved verbatim |
-| .agent/{plan,context}.md | +90/-114 | rewritten for feature+branch (R-0162) |
-| .agent/last_block.md | +153/-49 | received block verbatim, OUTCOME pending |
+| .agent/live_review.md | +43/-5 | full replacement (authored f056-r2-1, byte-copy) |
+| .agent/authored/f056-r2-{1,2}.md | +55 | both authored texts, saved verbatim |
+| .agent/plan.md | +8/-7 | Current Step / Next Steps for R2 |
+| .agent/last_block.md | +109/-124 | received block verbatim, OUTCOME pending |
 
-### 97ee09d4 feat(f056): add the mission record and its project-scoped store
+### 59282bf8 feat(f056): add the mission status-transition commands (R-0163)
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/mission_state.py | +365 | record, store, listing, goal immutability |
-| packages/orchestration/data_paths.py | +9 | missions_dir(), the queue_dir convention |
+| docs/roadmap/features/T1_F056.md | +3/-1 | CLI line amended (authored f056-r2-2, byte-copy) |
+| apps/cli/command_catalog.py | +44 | mission.achieve/abandon/pause entries |
+| apps/cli/commands/mission_cmd.py | +62 | one shared body over set_mission_status |
+| tests/cli/test_mission_cmd.py | +135/-1 | catalog, per-verb happy path, JSON, prefix, errors |
+| .agent/live_review.md | +4 | `Done: R-0163` appended to the finding |
 
-### 0c0a3233 test(f056): cover the record, listing order and goal immutability
+### <handoff commit> chore(f056): handback R2 (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_mission_state.py | +228 | round-trip, order, scoping, corruption, immutability |
-
-### f94f135c feat(f056): link jobs into a mission chain and render it
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/mission_state.py | +155/-2 | link validators, status, id resolve, rendering |
-| tests/orchestration/test_mission_state.py | +227 | both validators, missing/unreadable job labels |
-
-### eedda00b feat(f056): wire remedy mission start, list and show
-| Path | +/- | Reason |
-|---|---|---|
-| apps/cli/commands/mission_cmd.py | +174 | three handlers, F148 scoping, --json |
-| apps/cli/command_catalog.py, commands/__init__.py | +43/-2 | mission.start/list/show, group description, registration |
-| tests/cli/test_mission_cmd.py | +282 | catalog, scoping, corruption, missing job |
-
-### ee1a738f feat(f056): offer the mission opt-in in the approval, defaulting to no
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/schemas/models.py | +5 | JobIntake.mission_candidate (additive) |
-| packages/orchestration/intake.py | +33/-1 | phrase heuristic + prompt line |
-| packages/orchestration/decision_queue.py | +20/-1 | mission_offer on the existing fp:approval |
-| apps/cli/commands/decision.py, command_catalog.py | +79/-1 | --as-mission opt-in, its refusals, show rendering |
-| tests/{orchestration,cli}/test_mission_*.py | +299 | offer/hint tests + negative do-flow proof |
-
-### 945ff11b feat(f056): inject the verify task a follow-up plan must begin with
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/mission_state.py | +302/-1 | build/inject/assert verify-first, runner, record |
-| tests/{orchestration/test_mission_state,cli/test_mission_cmd}.py | +154/-5 | structure via dag_schedule, runner outcomes |
-
-### 8518c074 feat(f056): add mission continue and the verify-first execution path
-| Path | +/- | Reason |
-|---|---|---|
-| packages/orchestration/mission_state.py | +154 | continue_mission, execute_mission_followup |
-| apps/cli/commands/mission_cmd.py, command_catalog.py | +69/-4 | mission.continue and its handler |
-| tests/cli/test_mission_cmd.py | +90 | continue surface + refusals |
-
-### decd970e + c9077a31 (tests only)
-| Path | +/- | Reason |
-|---|---|---|
-| tests/orchestration/test_mission_state.py | +187/-14 | decd970e: two-job fixture end to end |
-| tests/cli/test_worker_facade_cmd.py | +8/-4 | c9077a31: facade guard by name, not group size |
+| .agent/{handoff,last_block,plan}.md | rewritten | this file; OUTCOME executed; round recorded complete |
 
 ## External actions
 
-`gh pr list --state open --json number,headRefName,baseRefName,isDraft` -> `[]`; nothing merged. `git checkout main && git pull` -> already up to date at 78f5f608; `git checkout -b feature/f056-missions`.
-No push, no PR, no merge, no worktree — SPLIT round.
+None. No push, no PR, no merge, no `gh` call, no worktree — SPLIT round on the existing branch; the block ordered no Open PR Gate this round.
 
 ## Verification
 
-    pytest tests/docs/ -q         (state commit, and again at round close)  293 passed  exit 0
-    pytest tests/orchestration/test_mission_state.py tests/cli/test_mission_cmd.py -q
-        T001 gate 64 passed exit 0  ·  T003 gate (same command) 117 passed exit 0
-    T002 gate: that command plus tests/schemas/test_job_intake.py, tests/test_command_catalog.py,
-        tests/orchestration/{test_intake,test_bundled_clarification}.py,
-        tests/cli/{test_plan_approval,test_decision_answers}.py -q      260 passed  exit 0
-    pytest tests/cli/test_golden_path.py -q   (canary)           42 passed  exit 0
-    pytest -n auto -q   (full suite)      14727 passed, 19 skipped          exit 0
+    pytest tests/orchestration/test_mission_state.py tests/cli/test_mission_cmd.py \
+           tests/cli/test_worker_facade_cmd.py tests/test_command_catalog.py -q
+        201 passed in 23.84s                                              exit 0
+    pytest tests/docs/ -q            (feature file touched)
+        293 passed in 0.26s                                               exit 0
+    pytest tests/cli/test_golden_path.py -q      (canary)
+        42 passed in 19.71s                                               exit 0
     git status --porcelain -> empty
 
 ## Authored-text proofs
 
-- f056-r1-1: `sha256sum` of the saved file = 617f083e…1ca0dd, matches its BEGIN marker. Its bytes occur in docs/roadmap/STATUS.md exactly once (disk-to-disk substring check).
-- f056-r1-2: `sha256sum` = 0fc3cbd8…7c95593, matches. `cmp .agent/live_review.md .agent/authored/f056-r1-2.md` -> identical.
+- f056-r2-1: `sha256sum .agent/authored/f056-r2-1.md` = 009a5442…a3fd67, matches its BEGIN marker. Applied by `cp` to .agent/live_review.md; `cmp` returned 0 (identical) at commit ca630978. The ledger now differs from the authored file by exactly the four appended `Done: R-0163` lines, added in 59282bf8 as the block ordered; the `## Verdicts` section is untouched.
+- f056-r2-2: `sha256sum .agent/authored/f056-r2-2.md` = ae3d8e9d…2ee3a17, matches. Its bytes occur in docs/roadmap/features/T1_F056.md exactly once (disk-to-disk substring check); the two replaced lines are gone.
 
 ## Deviations & assumptions
 
-- A9: achieve/abandon/pause CLI subcommands NOT added — the ordered CLI list was start/continue/list/show. `set_mission_status` exists and is tested; the transition surface awaits a reviewer order.
-- A9: a previous job with no recorded verification does NOT block the follow-up; it is recorded `unverifiable` and named in the message, never as a pass. Blocking would make the path unusable on pre-F056 jobs.
-- A9: `execute_mission_followup` never marks work COMPLETED itself; a caller-supplied `work_runner` does. Running follow-up work is the orchestrator loop's job (out of scope).
-- The `mission` group keeps `user_facing=False`; only its description changed — help visibility was not ordered. In-scope repair: tests/cli/test_worker_facade_cmd.py asserted that group holds exactly 2 commands; it now guards the facade's two entries by name.
-- Pre-existing, untouched: ruff UP035 in packages/orchestration/dag_schedule.py. No commit exceeds the 500-line cap — the bundle is 9 commits for that reason.
+- The handler dispatch passes the VERB (`"achieve"`), not the status constant: the handler table is built at import time while this module imports mission_state lazily, so `_status_for_verb` resolves the constant inside the call. No status string is duplicated.
+- No transition rules added, as ordered: any valid status may follow any other. A test pins that (`achieve → pause → abandon → achieve`), and another pins that linking a job or continuing the chain leaves the status alone.
+- `mission_state.py` unchanged, as the block stated. The `mission` group is still `user_facing=False` — unchanged from R1, not ordered. Pre-existing and untouched: ruff UP035 in packages/orchestration/dag_schedule.py.
+- No full-suite run this round: the block ordered three gates; the integration gate is its own later round.
 
 ## Next
 
-Reviewer gates R1 (Review of 78f5f608..HEAD).
+Reviewer gates R2 (Review of e8c3c147..HEAD); the integration-gate round and the closure round follow as their own rounds.
