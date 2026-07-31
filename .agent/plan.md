@@ -9,14 +9,14 @@ jobs are structurally forced to verify the previous state FIRST
 plan-approval payload item defaulting to NO).
 
 ## Current Step
-R1 (LARGE, SPLIT round): T001 mission record + store + link /
-list / show + unit tests → T002 intake mission-candidate hint +
-approval opt-in (default NO) → T003 `mission continue` + injected
-verify-first task + two-job fixture end-to-end. Per-slice gates,
-stop-on-red.
+R1 (LARGE, SPLIT round) COMPLETE, handed back: T001 record + store
++ link/list/show, T002 intake hint + approval opt-in (default NO),
+T003 `mission continue` + injected verify-first + the two-job
+fixture end-to-end. Every slice gate, the canary, the docs gate and
+the full suite green; tree clean; nothing pushed.
 
 ## Next Steps
-- Reviewer gates R1; repair rounds as found.
+- Reviewer gates R1 (78f5f608..HEAD); repair rounds as found.
 - Closure (STATUS `[x]`, evidence zip) is its own later round.
 
 ## Risks
