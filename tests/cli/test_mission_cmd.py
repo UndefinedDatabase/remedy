@@ -493,3 +493,93 @@ class TestPlainDoFlowCreatesNoMission:
 
         assert _missions_on_disk(data_root) == []
 
+
+class TestContinue:
+    """F056 T003 — the follow-up job, and the verify task injected in front."""
+
+    def _green_job(self, data_root: Path, project_id: str, mission_id: str,
+                   *, command: str = "check the importer") -> str:
+        script = (
+            "import sys; sys.path.insert(0, '.');"
+            "from packages.core.models import Job, RunState;"
+            "from packages.orchestration.storage import save_job;"
+            "from packages.orchestration.mission_state import link_job_to_mission;"
+            f"job = Job(name='job one', state=RunState('completed'),"
+            f"  project_id={project_id!r}, metadata={{'verify_command': {command!r}}});"
+            "save_job(job);"
+            f"link_job_to_mission({project_id!r}, {mission_id!r}, str(job.id), 'initial');"
+            "print(job.id)"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", script], cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=60,
+            env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
+        )
+        assert proc.returncode == 0, proc.stderr
+        return proc.stdout.strip().splitlines()[-1]
+
+    def test_continue_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        assert get_command("mission.continue").action_class == "write_metadata"
+        assert "mission.continue" in collect_all_handlers()
+
+    def test_the_follow_up_plan_begins_with_the_verify_task(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        self._green_job(data_root, project_id, mission_id)
+
+        body = json.loads(_run(["mission", "continue", mission_id,
+                                "Add the CSV path", "--project", project_id,
+                                "--json"], data_root).stdout)
+
+        assert body["role"] == "follow_up"
+        assert body["verify_first_task"]["verify_command"] == "check the importer"
+        assert body["tasks"][0] == body["verify_first_task"]["description"]
+        assert body["tasks"][1] == "Add the CSV path"
+
+    def test_the_text_output_names_the_injected_task(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        self._green_job(data_root, project_id, mission_id)
+
+        out = _run(["mission", "continue", mission_id, "Add the CSV path",
+                    "--project", project_id], data_root).stdout
+
+        assert "Task 1 (injected)" in out
+        assert "cannot start until that task completes" in out
+
+    def test_the_new_job_joins_the_chain(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+        first = self._green_job(data_root, project_id, mission_id)
+        body = json.loads(_run(["mission", "continue", mission_id,
+                                "Add the CSV path", "--project", project_id,
+                                "--json"], data_root).stdout)
+
+        shown = _run(["mission", "show", mission_id, "--project", project_id],
+                     data_root).stdout
+
+        assert shown.index(first) < shown.index(body["job_id"])
+        assert "follow_up" in shown
+
+    def test_the_first_job_of_an_empty_mission_has_no_verify_task(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep the importer working")
+
+        body = json.loads(_run(["mission", "continue", mission_id,
+                                "Write the importer", "--project", project_id,
+                                "--json"], data_root).stdout)
+
+        assert body["role"] == "initial"
+        assert body["verify_first_task"] is None
+
+    def test_continuing_an_unknown_mission_is_an_error_not_a_crash(self, project):
+        data_root, project_id = project
+        proc = _run(["mission", "continue", "0" * 32, "Add the CSV path",
+                     "--project", project_id], data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+        assert "Traceback" not in proc.stderr

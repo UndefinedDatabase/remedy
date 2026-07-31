@@ -1634,6 +1634,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.start", "mission.show"),
     ),
     CommandEntry(
+        command_id="mission.continue",
+        group_id="mission",
+        subcommand="continue",
+        description="Add the next job to a mission — its plan always begins with a task that verifies the previous job's Definition of Done.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("next_step", "What this next job should do"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.start"),
+    ),
+    CommandEntry(
         command_id="mission.show",
         group_id="mission",
         subcommand="show",

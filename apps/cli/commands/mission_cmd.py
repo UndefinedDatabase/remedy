@@ -1,8 +1,9 @@
-"""`remedy mission` — the persistent goal above a chain of jobs (F056 T001).
+"""`remedy mission` — the persistent goal above a chain of jobs (F056).
 
-``start`` creates a mission, ``list`` shows the ones this project has, and
-``show`` renders one mission's chain with each linked job's state as the job
-store reports it right now.
+``start`` creates a mission, ``list`` shows the ones this project has, ``show``
+renders one mission's chain with each linked job's state as the job store
+reports it right now, and ``continue`` adds the next job — with a task that
+verifies the previous one already sitting at the head of its plan.
 
 Creation is ALWAYS explicit.  There is no code path here that a run can trip
 over: a mission exists because someone typed ``remedy mission start``, or
@@ -155,6 +156,49 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         print(line)
 
 
+def _cmd_mission_continue(mission_id: str, next_step: str, *,
+                          project: str | None = None,
+                          json_output: bool = False) -> None:
+    from packages.orchestration.mission_state import (
+        MissionError,
+        continue_mission,
+        is_verify_task,
+    )
+
+    project_id = _resolve_project_id(project)
+    mission = _load_mission_or_exit(project_id, mission_id)
+
+    try:
+        job = continue_mission(project_id, mission.id, next_step)
+    except MissionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    verify = job.tasks[0] if job.tasks and is_verify_task(job.tasks[0]) else None
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "mission_id": mission.id,
+            "job_id": str(job.id),
+            "role": job.metadata.get("mission_role", ""),
+            "verify_first_task": (
+                {"description": verify.description,
+                 "verify_command": verify.inputs.get("verify_command", "")}
+                if verify is not None else None),
+            "tasks": [t.description for t in job.tasks],
+        }, sort_keys=True))
+        return
+
+    print(str(job.id))
+    print(f"  Mission: {mission.id[:12]}  ({job.metadata.get('mission_role', '')})")
+    if verify is not None:
+        print(f"  Task 1 (injected): {verify.description}")
+        print("  The follow-up work cannot start until that task completes.")
+    else:
+        print("  First job of this mission — there is no previous state to verify.")
+    print(f"  Chain: remedy mission show {mission.id[:12]}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "mission.start": lambda args: _cmd_mission_start(
         args.goal,
@@ -164,6 +208,12 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "mission.list": lambda args: _cmd_mission_list(
         project=getattr(args, "project", None),
         all_projects=getattr(args, "all_projects", False),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.continue": lambda args: _cmd_mission_continue(
+        args.mission_id,
+        args.next_step,
+        project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),
     "mission.show": lambda args: _cmd_mission_show(

@@ -817,3 +817,157 @@ def read_mission_verify_record(job_id: str) -> dict[str, Any] | None:
     except (OSError, ValueError):
         return None
 
+
+#: The task type a follow-up's own work carries, so the verify task and the
+#: work it gates are distinguishable in a plan without reading descriptions.
+MISSION_FOLLOW_UP_TASK_TYPE = "mission_follow_up"
+
+
+def build_follow_up_task(next_step: str) -> Any:
+    """The single work task a ``mission continue`` step asks for.
+
+    Deliberately ONE task: planning a follow-up into a DAG is the planner's
+    job, not this module's.  What this module owns is that whatever the plan
+    turns out to be, verification comes first.
+    """
+    from packages.core.models import RunState, Task
+
+    return Task(
+        description=str(next_step).strip(),
+        inputs={"task_type": MISSION_FOLLOW_UP_TASK_TYPE},
+        status=RunState.PENDING,
+    )
+
+
+def continue_mission(project_id: str, mission_id: str, next_step: str, *,
+                     now: datetime | None = None,
+                     root: Path | None = None) -> Any:
+    """Create the next job in a mission's chain and link it.
+
+    With a previous job in the chain, the new job's plan is built verify-first
+    and then validated as such: the injected verify task is task 0 and the work
+    declares it as a dependency, so ``dag_schedule.ready_set`` withholds the
+    work until the verification has COMPLETED.
+
+    On an empty mission there is nothing to verify yet, so this creates the
+    ``initial`` job with the work alone — an honest plan, not a verify task
+    pointed at a job that does not exist.
+    """
+    from packages.core.models import Job, RunState
+    from packages.orchestration.storage import (
+        JobNotFoundError,
+        JobStoreError,
+        load_job,
+        save_job,
+    )
+
+    text = str(next_step).strip()
+    if not text:
+        raise MissionError("a follow-up needs a step to take")
+
+    mission = load_mission(project_id, mission_id, root)
+    previous = mission.latest_link()
+
+    work = build_follow_up_task(text)
+    if previous is None:
+        tasks = [work]
+        role = MISSION_ROLE_INITIAL
+    else:
+        try:
+            previous_job = load_job(UUID(previous.job_id))
+        except (ValueError, JobNotFoundError) as exc:
+            raise MissionError(
+                f"the previous job {previous.job_id} is gone, so its Definition "
+                f"of Done cannot be verified — a follow-up would be starting "
+                f"blind") from exc
+        except JobStoreError as exc:
+            raise MissionError(
+                f"the previous job {previous.job_id} cannot be read, so its "
+                f"Definition of Done cannot be verified: {exc}") from exc
+        tasks = inject_verify_first(previous_job, [work])
+        role = MISSION_ROLE_FOLLOW_UP
+
+    # Built verify-first above; CHECKED here, so the rule cannot be skipped by
+    # a future caller that assembles the plan some other way.
+    if role == MISSION_ROLE_FOLLOW_UP:
+        assert_verify_first(tasks)
+
+    job = Job(
+        name=text[:80],
+        mission=mission.goal,
+        user_prompt=text,
+        project_id=str(mission.project_id),
+        tasks=tasks,
+        state=RunState.PLANNED,
+        metadata={"mission_id": mission.id, "mission_role": role},
+    )
+    save_job(job)
+    link_job_to_mission(project_id, mission.id, str(job.id), role, now=now,
+                        root=root)
+    return job
+
+
+def execute_mission_followup(job: Any, *, cwd: Path | None = None,
+                             runner: Any = None, work_runner: Any = None,
+                             now: datetime | None = None) -> MissionFollowupRun:
+    """Run a follow-up job verify-FIRST, and let the work start only if it passed.
+
+    The ordering is not a convention here: the verify task is task 0, the work
+    declares it as a dependency, and readiness is computed by
+    ``dag_schedule.ready_set`` — the scheduler the multi-cycle executor already
+    uses.  A failed verification therefore leaves the work unreachable rather
+    than merely discouraged.
+
+    ``work_runner`` is how a caller executes one work task; it takes the task
+    and returns True when the task completed.  It is REQUIRED to do the work —
+    this module never marks a task completed on its own, because it has not
+    observed anything that would justify the claim.
+    """
+    from packages.core.models import RunState
+    from packages.orchestration.dag_schedule import blocked_downstream, ready_set
+    from packages.orchestration.storage import save_job
+
+    assert_verify_first(list(job.tasks))
+    verify_task = job.tasks[0]
+
+    outcome = run_verify_task(verify_task, cwd=cwd, now=now, runner=runner)
+    run = MissionFollowupRun(
+        mission_id=str((getattr(job, "metadata", None) or {}).get("mission_id", "")),
+        job_id=str(job.id),
+        verify=outcome,
+        steps=[f"verify:{outcome.result}"],
+    )
+
+    if not outcome.follow_up_may_start:
+        verify_task.status = RunState.FAILED
+        blocked = blocked_downstream(list(job.tasks), [verify_task.id])
+        job.state = RunState.FAILED
+        run.message = (
+            f"{outcome.detail} — the follow-up never started "
+            f"({len(blocked)} task(s) blocked behind it)")
+        save_job(job)
+        write_mission_verify_record(run)
+        return run
+
+    verify_task.status = RunState.COMPLETED
+    for task in job.tasks[1:]:
+        if task.id not in ready_set(list(job.tasks)):
+            continue
+        if work_runner is None:
+            break
+        if work_runner(task):
+            task.status = RunState.COMPLETED
+            run.steps.append(f"work:{task.description}")
+    run.follow_up_started = len(run.steps) > 1
+    run.message = (
+        "verification passed; the follow-up work ran"
+        if run.follow_up_started else
+        "verification passed; the follow-up work is ready to run")
+    if outcome.result == VERIFY_RESULT_UNVERIFIABLE:
+        run.message = f"{outcome.detail}; " + run.message.split("; ", 1)[-1]
+    job.state = (RunState.COMPLETED
+                 if all(t.status == RunState.COMPLETED for t in job.tasks)
+                 else RunState.PLANNED)
+    save_job(job)
+    write_mission_verify_record(run)
+    return run
