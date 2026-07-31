@@ -1,17 +1,3 @@
-# Live Review — Paydown micro-round 2026-07-31 (F052→F053 boundary)
-
-Branch: feature/paydown-0731
-Scope: codify the digest fallback for transport proofs and the
-practice-requires-pointer rule (planner_reviewer_prompt.md); resolve
-the carried VT run_id closure candidate (STATUS_closure_protocol.md);
-fix R-0159 (worktree-safe dogfood branch guard) + gate-doc cleanup.
-Same-session merge on PASS (standing operator approval, 2026-07-31).
-
-## Steps
-- R1: Open PR Gate (#167) → Items 1–3 + candidate pass → gates
-  (tests/docs + canary + touched test files) → handback.
-
-## Findings
 - Resolved: R-0159 (process, Low) 2026-07-31: the dogfood branch
   guard now resolves HEAD for both repo forms — a `.git` directory
   and a linked worktree's gitfile pointer (stdlib-only, still no
@@ -30,6 +16,3 @@ Same-session merge on PASS (standing operator approval, 2026-07-31).
   entire fix; an ID would be born resolved). Reversal: any later
   relay may register the class if it recurs.
 - Next free ID: R-0160.
-
-## Verdicts
-- R1: PENDING (reviewer).
