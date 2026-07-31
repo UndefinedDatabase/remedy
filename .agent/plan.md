@@ -9,17 +9,18 @@ jobs are structurally forced to verify the previous state FIRST
 plan-approval payload item defaulting to NO).
 
 ## Current Step
-R1 PASS (78f5f608..e8c3c147). R2 COMPLETE, handed back: ledger
-persisted, R-0163 fixed — feature-file CLI line amended and
-`remedy mission achieve/abandon/pause` shipped as thin wrappers
-over set_mission_status. No new transition rules; mission_state.py
-unchanged. All three ordered gates green; tree clean; nothing
-pushed.
+R1 PASS (78f5f608..e8c3c147), R2 PASS (e8c3c147..1725cc60, R-0163
+Resolved). R3 (SPLIT): persist the ledger, then run the integration
+gate per docs/agents/integration_gate.md — full suite at HEAD, full
+suite at the merge base in a throwaway worktree on a throwaway
+branch with UI build-artifact parity, comm comparison, attribution
+of every id. This round FIXES nothing: a red gate is a result to
+report, and any repair is its own later round.
 
 ## Next Steps
-- Reviewer gates R2 (e8c3c147..HEAD).
-- Integration-gate round, then closure (STATUS `[x]`, evidence
-  zip) — each its own later round.
+- Reviewer issues the R3 gate verdict (1725cc60..HEAD).
+- Closure round (STATUS `[x]`, evidence job + fresh review zip, PR)
+  — its own round.
 
 ## Risks
 - `mission` CLI group already exists (internal run-loop facade):
