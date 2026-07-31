@@ -783,6 +783,26 @@ class TestBigRuns:
         tasks = _section(render_report_from_sources(_green_sources()), "Tasks")
         assert "more tasks" not in tasks
 
+    def test_capability_lines_cap_with_an_honest_count(self):
+        """CALL-2 ruling: capabilities grow with the ROADMAP, not the run."""
+        sources = ReportSources(
+            job_name="mature",
+            status_mirror=StatusMirror(
+                milestone="F075", remaining_to_milestone=3,
+                accepted_capabilities=tuple(f"feature {i}" for i in range(30))))
+        capabilities = _section(render_report_from_sources(sources), "Capabilities")
+        can_now = [line for line in capabilities.splitlines()
+                   if line.startswith("- Can now: ")]
+        assert len(can_now) == 10
+        assert "… and 20 more accepted features (see evidence)" in capabilities
+
+    def test_the_goldens_are_below_the_capability_cap(self):
+        """One accepted capability: capped output must be identical to before."""
+        capabilities = _section(render_report_from_sources(_green_sources()),
+                                "Capabilities")
+        assert "- Can now: plan and execute a job" in capabilities
+        assert "more accepted features" not in capabilities
+
 
 class TestLanguageAndQuoting:
     """Reports are English; the mission is quoted as-is (A9)."""

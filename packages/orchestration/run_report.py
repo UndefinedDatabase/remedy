@@ -67,6 +67,10 @@ MAX_TASK_LINES = 20
 #: The same cap for the two other unbounded lists a big run can produce.
 MAX_BLOCKED_LINES = 20
 MAX_CYCLE_LINES = 20
+#: Capability lines cap lower than the rest (CALL-2 ruling, F053 R2 review):
+#: they grow with the ROADMAP, not with the run, so an uncapped list would
+#: eventually dwarf the account of the run it is attached to.
+MAX_CAPABILITY_LINES = 10
 
 #: The final report's filename inside the job's evidence area (F053 T002).
 #: FIXED, and the writer overwrites it: the acceptance rule is exactly one
@@ -548,13 +552,19 @@ def _capability_lines(sources: ReportSources) -> list[str]:
     if mirror is None:
         lines += [f"- Can now: {NOT_RECORDED} (no STATUS mirror)"]
     elif mirror.accepted_capabilities:
-        # P1: ONLY accepted [x] state may appear here.
-        lines += [f"- Can now: {c}" for c in mirror.accepted_capabilities]
+        # P1: ONLY accepted [x] state may appear here.  A9: capped like every
+        # other unbounded list — the ledger has 28 accepted entries today and
+        # roughly 250 at roadmap end, and a report that lists them all is no
+        # longer a summary of THIS run.
+        lines += _capped([f"- Can now: {c}" for c in mirror.accepted_capabilities],
+                         MAX_CAPABILITY_LINES, "accepted features")
     else:
         lines += ["- Can now: nothing accepted yet"]
     if mirror is not None:
         # [~] state is work, not capability.  It never crosses into "can now".
-        lines += [f"- In progress: {c}" for c in mirror.in_progress_capabilities]
+        lines += _capped(
+            [f"- In progress: {c}" for c in mirror.in_progress_capabilities],
+            MAX_CAPABILITY_LINES, "accepted features")
     lines.append(f"- Can next: {_text(sources.next_capability)}")
     lines.append("")
     return lines
