@@ -1,5 +1,28 @@
 # Decisions
 
+## 2026-07-31: F053 R4 — `.agent/context.md` is pinned by TWO tests, not one
+R-0162 was diagnosed as the "Steps" token, and the authored replacement fixed
+exactly that: `test_context_md_no_stale_steps` passes and the whole
+`test_dashboard_contract.py` file is green (70 passed). But `.agent/context.md`
+is asserted on by a SECOND contract test in a different file:
+
+    tests/regression/test_resource_safety.py:117
+    TestContextIncludesResourceSafety::test_context_mentions_resource_safety
+    assert "resource" in text.lower() or "pytest" in text.lower()
+
+The authored text carries neither token (0 occurrences of each), so the full
+suite went from one red id to a different one. The R1 version had passed this
+test only incidentally — it carried a "## Gates" section naming pytest
+commands, which satisfied the substring without anyone having decided to.
+
+Not fixed in R4: the round block forbids further fixes after the first red, so
+this is handed back for a corrected authored text. Recorded because the lesson
+is bigger than the token: the state-file contract for a given file is spread
+across at least two test files, and grepping only the one that just failed is
+how a repair round produces the next red. Before authoring any `.agent` state
+replacement, grep the whole suite for reads of that path — not just the test
+that is currently failing.
+
 ## 2026-07-31: F053 R3 gate — base parity by symlink is defeated by the UI auto-build
 The gate doc offers two ways to handle the environment-coupled base failures:
 restore `apps/ui/node_modules` + `apps/ui/dist` parity in the throwaway base

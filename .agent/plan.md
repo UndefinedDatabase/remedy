@@ -8,26 +8,32 @@ structured sources; a missing source renders "not recorded", never a
 guessed value (P6, docs/roadmap/features/T1_F053.md).
 
 ## Current Step
-R3 complete, awaiting review. R2 verdict (PASS), R-0161 and DECISION D3
-persisted; gate-doc step 2 amended; R-0161 fixed (--final refuses a
-non-terminal run); capability lines capped (A9). Integration gate run in
-full: branch 1 failure, base 6, all attributed.
+R4 STOPPED at gate step 3, per the block's stop rule. Commits A and B
+landed: R3 verdict + R-0162 persisted, context.md replaced with the
+authored text, §4 item 11 extended, gate step 3 amended to COPY.
+R-0162 is fixed — its id passes and the whole contract file is green.
+The full suite is NOT green: one different id now fails.
 
 ## Next Steps
-- Reviewer verdict on R3 and the gate.
-- RULING NEEDED — the one branch-only gate failure:
-  `test_dashboard_contract.py::TestLiveReviewAndAgentStateRefs::
-  test_context_md_no_stale_steps` asserts the substring "Steps" in
-  `.agent/context.md`. The R1 rewrite of that file dropped the section
-  carrying it. Reproducible serially, passes at base, NOT coupled to
-  feature code — the same state-file contract class as the F046 plan.md
-  and F047 live_review.md repairs (.agent/decisions.md 2026-07-26).
-  NOT fixed here: the round block forbids fixes inside the gate round.
-  One-line repair: give `.agent/context.md` a real `## Next Steps`
-  section. Needs a reviewer-authored text or an explicit go-ahead.
-- Then R4 closure — its own round, not started.
+- RULING NEEDED — the authored context.md (f053-r4-4) trips a SECOND
+  state-file contract test:
+  `tests/regression/test_resource_safety.py::
+  TestContextIncludesResourceSafety::test_context_mentions_resource_safety`
+  asserts `"resource" in text.lower() or "pytest" in text.lower()` on
+  `.agent/context.md` (test file line 117). The authored text contains
+  neither token (0 occurrences of each); the R1 version passed only
+  because it carried a "## Gates" section naming pytest commands.
+  Deterministic, serial-reproducible. NOT fixed here — the block forbids
+  further fixes after the first red.
+  Repair: a corrected authored context.md carrying either token — e.g.
+  restoring a Gates line naming the pytest commands, or a Resource
+  safety line. §4 item 11 should name this token too, alongside "Steps".
+- Then re-run gate steps 3-5.
+- Closure is R5, its own round, opened by the reviewer only after the
+  gate confirms green.
 
 ## Risks
-- The gate cannot be declared clean while that one id is red. Everything
-  else is green: 14609 passed on the branch, and every base-only id is
-  attributed to the UI-artifact environment class with empirical proof.
+- Third round in a row where a reviewer-authored `.agent` state text
+  turns a contract test red (R-0162 was the "Steps" token; this is the
+  "resource"/"pytest" token in a different test file). §4 item 11 now
+  covers one token for context.md but not this one.

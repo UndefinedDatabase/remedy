@@ -40,4 +40,4 @@ the reviewer. Closure is R5, its own round — the reviewer opens it only
 after this gate confirms green.
 Authored texts f053-r4-{1..6} (sha256 verified before use, saved
 verbatim under .agent/authored/, applied by copy).
-OUTCOME: pending
+OUTCOME: executed
