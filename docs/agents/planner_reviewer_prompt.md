@@ -106,6 +106,14 @@ transit and the edit had to be reconstructed). Until now this rule
 lived only in reviewer session memory — exactly the A1 trap (§0)
 this rule class keeps falling into; from here the disk carries it.
 
+**Practice requires a pointer (operator ruling 2026-07-31):** any
+phrase in a brief, verdict, or block that appeals to "project
+practice", a "standing rule", "per convention", or session memory
+MUST cite the governing doc file (and section) inline — a practice
+invoked without a doc pointer is treated as an unpersisted lesson,
+and the reviewer registers it as a finding candidate in that same
+brief.
+
 **(4) Feature-done banner** — when, and only when, the closure round is
 verified complete (closure PR created, all checks in the protocol met),
 end the response with:
@@ -208,6 +216,15 @@ end the response with:
    marker so the worker can verify receipt before saving (R-0148).
    Order the disk-to-disk comparison; a proof computed against a
    reconstructed copy is a false verification claim (R-0147 class).
+   Digest fallback (operator ruling 2026-07-31, F052-R3 precedent):
+   when the reviewer's scratchpad originals are unavailable at
+   review time (session tmp death, window restart), the transport
+   proof falls back to recomputing sha256 over the COMMITTED
+   .agent/authored/ files and comparing against the BEGIN-marker
+   digests recorded in the reviewer's own emitted block; the verdict
+   text states that the fallback was used, so the evidence chain
+   stays honest. cmp-against-scratchpad remains the primary proof
+   whenever the originals exist.
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
     `git worktree` at HEAD, never in the primary checkout. The primary

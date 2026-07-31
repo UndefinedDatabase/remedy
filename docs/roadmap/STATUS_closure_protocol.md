@@ -45,6 +45,12 @@
    `len(node_ids) == selected` (run `--collect-only` for real ids);
    (b) `test_files` entries are files, never directories (expand
    `tests/docs/` to the actual file paths).
+   A third, from the F052 BLOCKED_EVIDENCE attempt (caught by the
+   packaging validator, fixed at authoring time): (c) the
+   VerificationTests `run_id` must match `^vr-\d{4,}$`
+   (`build_review_manifest._VT_RUN_ID_RE`) — a rejected
+   VerificationTests document yields `vt_passed = None`, which
+   fails the final-verifier confirmation.
 2. **Review zip (worker) — MANDATORY, fresh, never skipped.** Build via the
    canonical sequence below. Verify committed_review_subject spans
    BASE..HEAD and the zip import check passes. Record `package <filename>`
