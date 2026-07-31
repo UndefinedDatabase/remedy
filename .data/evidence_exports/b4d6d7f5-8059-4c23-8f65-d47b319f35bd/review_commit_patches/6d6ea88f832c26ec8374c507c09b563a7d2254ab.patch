@@ -1,0 +1,314 @@
+6d6ea88f832c26ec8374c507c09b563a7d2254ab
+diff --git a/packages/orchestration/run_report.py b/packages/orchestration/run_report.py
+index 395804b9..aa288a90 100644
+--- a/packages/orchestration/run_report.py
++++ b/packages/orchestration/run_report.py
+@@ -39,6 +39,7 @@ Sources (all pre-existing; see ``collect_report_sources``):
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass, field
++from datetime import datetime, timezone
+ from typing import Any
+ 
+ # ---------------------------------------------------------------------------
+@@ -341,3 +342,300 @@ def recommended_next_action(sources: ReportSources) -> NextAction:
+                       f"No recommendation — the run state is {NOT_RECORDED}")
+ 
+ 
++# ---------------------------------------------------------------------------
++# Sections
++# ---------------------------------------------------------------------------
++
++
++def _header_lines(sources: ReportSources, mode: str, rendered_at: str) -> list[str]:
++    lines: list[str] = []
++    if mode == MODE_INTERIM:
++        lines.append(f"> **{INTERIM_BANNER.format(ts=_text(rendered_at))}**")
++        lines.append("")
++    lines.append(f"# Run report — {_text(sources.job_name)}")
++    lines.append("")
++    lines.append(f"- Job: `{_text(sources.job_id)}`")
++    lines.append(f"- Project: {_text(sources.project_id)}")
++    # Quoted as-is: the mission may be in any language; the report is English
++    # around it, and translating an operator's own words would be a rewrite.
++    lines.append(f"- Mission: {_text(sources.mission)}")
++    lines.append(f"- State: {_text(sources.state)}")
++    lines.append(f"- Terminal status: {_text(sources.terminal_status)}")
++    if sources.stop_reason:
++        lines.append(f"- Stop reason: {sources.stop_reason}")
++    lines.append(f"- Duration: {_text(sources.duration_text)}")
++    lines.append("")
++    return lines
++
++
++def _task_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Tasks", ""]
++    if not sources.tasks:
++        lines += [f"Tasks: {NOT_RECORDED}.", ""]
++        return lines
++    body = [
++        f"- `{t.task_id}` — {_text(t.description)} — **{_text(t.status)}**"
++        + (f" — {_link('evidence', t.evidence_ref)}" if t.evidence_ref else "")
++        for t in sources.tasks
++    ]
++    lines += _capped(body, MAX_TASK_LINES, "tasks")
++    lines.append("")
++    return lines
++
++
++def _blocked_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Blocked", ""]
++    if not sources.blocked:
++        lines += ["Nothing blocked.", ""]
++        return lines
++    body: list[str] = []
++    for item in sources.blocked:
++        parts = [f"- `{item.task_id}` — {_text(item.reason)}"]
++        parts.append(f" — class: {_text(item.failure_class)}")
++        if item.evidence_ref:
++            parts.append(f" — {_link('postmortem', item.evidence_ref)}")
++        body.append("".join(parts))
++        if item.answer_command:
++            body.append(f"  - answer with: `{item.answer_command}`")
++    lines += _capped(body, MAX_BLOCKED_LINES, "blocked items")
++    lines.append("")
++    return lines
++
++
++def _decision_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Open decisions", ""]
++    if sources.open_decision_count is None:
++        lines += [f"Open decisions: {NOT_RECORDED}.", ""]
++        return lines
++    if not sources.open_decision_count:
++        lines += ["No open decisions.", ""]
++        return lines
++    # Rendered verbatim from decision_queue.render_open_decisions_lines so the
++    # report and `remedy job status` cannot drift apart.
++    lines += list(sources.open_decision_lines) or [
++        f"Open decisions: {sources.open_decision_count} (detail {NOT_RECORDED})"]
++    lines.append("")
++    return lines
++
++
++def _cost_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Cost", ""]
++    if not sources.token_description:
++        # No actuals is a normal outcome, not a zero.  A rendered "0 tokens"
++        # would be an invented measurement.
++        lines += [f"Tokens: {NOT_RECORDED} (no actuals persisted for this run).", ""]
++        return lines
++    basis = ", ".join(sources.cost_basis) if sources.cost_basis else NOT_RECORDED
++    lines.append(f"- Tokens: {sources.token_description} — basis: {basis}")
++    if sources.elapsed_seconds is None:
++        lines.append(f"- Elapsed: {NOT_RECORDED} — basis: {NOT_RECORDED}")
++    else:
++        lines.append(
++            f"- Elapsed: {sources.elapsed_seconds:.1f}s — basis: budget counters")
++    lines.append("")
++    return lines
++
++
++def _cycle_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Cycles", ""]
++    if not sources.cycle_records:
++        lines += [f"Cycles: {NOT_RECORDED}.", ""]
++        return lines
++    body: list[str] = []
++    for record in sources.cycle_records:
++        index = _as_int(record.get("cycle_index"))
++        verify = _text(str(record.get("verify_result") or ""))
++        parts = [
++            f"- Cycle {index}: {_as_int(record.get('tasks_completed'))} completed, "
++            f"{_as_int(record.get('tasks_failed'))} failed, "
++            f"{_as_int(record.get('tasks_escalated'))} escalated — verify: {verify}"
++        ]
++        klass = str(record.get("verify_failure_class") or "")
++        if klass:
++            parts.append(f" — failure class: {klass}")
++        body.append("".join(parts))
++        # F052 risk visibility: a heal is never implied by a green cycle, and a
++        # heal that changed no file is a flake suspect a human must see.
++        if record.get("healed_after_repair"):
++            rounds = _as_int(record.get("repair_rounds_used"))
++            note = f"  - healed after {rounds} repair round(s)"
++            if record.get("healed_without_changes"):
++                note += " — WITHOUT file changes (flake suspect)"
++            body.append(note)
++        summary = str(record.get("repair_summary") or "")
++        if summary:
++            body.append(f"  - repair: {summary}")
++    lines += _capped(body, MAX_CYCLE_LINES, "cycles")
++    lines.append("")
++    return lines
++
++
++def _assumption_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Open assumptions", ""]
++    if not sources.open_assumptions:
++        lines.append(
++            "No open assumptions."
++            if sources.assumptions_ref
++            else f"Open assumptions: {NOT_RECORDED}.")
++        if sources.assumptions_ref:
++            lines.append("")
++            lines.append(f"Assumption log: {_link('assumptions', sources.assumptions_ref)}")
++        lines.append("")
++        return lines
++    lines += [f"- {a}" for a in sources.open_assumptions]
++    if sources.assumptions_ref:
++        lines.append(f"- Full log: {_link('assumptions', sources.assumptions_ref)}")
++    lines.append("")
++    return lines
++
++
++def _momentum_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Momentum", ""]
++    flag = momentum_flag(list(sources.cycle_records))
++    if flag == MOMENTUM_UNKNOWN:
++        lines += [f"Momentum: {NOT_RECORDED} (no cycle records).", ""]
++        return lines
++    if flag == MOMENTUM_CIRCLING:
++        lines.append("⚠️ **Circling** — the same failure recurred, or open items "
++                     "did not decrease over a round.")
++        lines.append(f"- {CIRCLING_ESCALATION}")
++        lines.append("")
++        return lines
++    lines += ["✅ Forward — every round closed items and nothing recurred.", ""]
++    return lines
++
++
++def _milestone_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Milestone", ""]
++    mirror = sources.status_mirror
++    if mirror is None:
++        # Computed from the STATUS mirror or not at all — a hand-maintained
++        # count is the exact thing this feature exists to prevent.
++        lines += [f"Milestone distance: {NOT_RECORDED} (no STATUS mirror).", ""]
++        return lines
++    lines.append(
++        f"- {mirror.remaining_to_milestone} features remain to {mirror.milestone}")
++    lines.append("")
++    return lines
++
++
++def _capability_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Capabilities", ""]
++    mirror = sources.status_mirror
++    if mirror is None:
++        lines += [f"- Can now: {NOT_RECORDED} (no STATUS mirror)"]
++    elif mirror.accepted_capabilities:
++        # P1: ONLY accepted [x] state may appear here.
++        lines += [f"- Can now: {c}" for c in mirror.accepted_capabilities]
++    else:
++        lines += ["- Can now: nothing accepted yet"]
++    if mirror is not None:
++        # [~] state is work, not capability.  It never crosses into "can now".
++        lines += [f"- In progress: {c}" for c in mirror.in_progress_capabilities]
++    lines.append(f"- Can next: {_text(sources.next_capability)}")
++    lines.append("")
++    return lines
++
++
++def _reference_lines(sources: ReportSources) -> list[str]:
++    lines = ["## References", ""]
++    lines.append(f"- Plan: {_link('plan', sources.plan_ref) if sources.plan_ref else NOT_RECORDED}")
++    lines.append(
++        f"- Run manifest: "
++        f"{_link('run_manifest.json', sources.manifest_ref) if sources.manifest_ref else NOT_RECORDED}")
++    lines.append("")
++    return lines
++
++
++# ---------------------------------------------------------------------------
++# Public entry point
++# ---------------------------------------------------------------------------
++
++
++def render_report_from_sources(sources: ReportSources, *,
++                               mode: str = MODE_FINAL,
++                               rendered_at: str = "") -> str:
++    """The renderer proper: structured sources in, markdown out.
++
++    Deterministic by construction — no clock, no disk, no randomness.  The
++    only time value is *rendered_at*, which the caller supplies, so two
++    renders of the same sources are byte-identical.
++    """
++    if mode not in VALID_MODES:
++        raise ReportError(f"unknown report mode: {mode!r}")
++    if mode == MODE_INTERIM and not rendered_at:
++        raise ReportError("interim mode requires rendered_at — an unlabeled "
++                          "snapshot cannot be told apart from a final report")
++
++    lines: list[str] = []
++    lines += _header_lines(sources, mode, rendered_at)
++    lines += _task_lines(sources)
++    lines += _blocked_lines(sources)
++    lines += _decision_lines(sources)
++    lines += _cost_lines(sources)
++    lines += _cycle_lines(sources)
++    lines += _assumption_lines(sources)
++    lines += _momentum_lines(sources)
++    lines += _milestone_lines(sources)
++    lines += _capability_lines(sources)
++    lines += _reference_lines(sources)
++    for note in sources.notes:
++        lines.append(f"> {note}")
++    if sources.notes:
++        lines.append("")
++    lines.append("## Recommended next action")
++    lines.append("")
++    lines.append(recommended_next_action(sources).render())
++    lines.append("")
++    return "\n".join(lines)
++
++
++def render_report(job: Any, mode: str = MODE_FINAL, *,
++                  sources: ReportSources | None = None,
++                  rendered_at: str = "") -> str:
++    """Render the report for *job* (T1_F053.md Design signature).
++
++    *sources* overrides collection, which is how the goldens stay pure: tests
++    hand in fixtures instead of a data root.  When it is None the sources are
++    collected from the job and its evidence area, best effort — a source that
++    cannot be read is a ``not recorded`` line, never a raised exception, and
++    never a substituted value.
++    """
++    if mode not in VALID_MODES:
++        raise ReportError(f"unknown report mode: {mode!r}")
++    if sources is None:
++        sources = collect_report_sources(job)
++    if mode == MODE_INTERIM and not rendered_at:
++        rendered_at = datetime.now(timezone.utc).isoformat()
++    return render_report_from_sources(sources, mode=mode, rendered_at=rendered_at)
++
++
++def collect_report_sources(job: Any) -> ReportSources:
++    """Gather the report's sources off an in-memory job.
++
++    Only the sources that live ON the job are read here.  The evidence-area
++    sources (cycle records, postmortems, manifest) are wired by F053 T002
++    together with the terminal-state writer, so this round adds no new disk
++    reads and no new failure modes to the run loop.
++    """
++    tasks = tuple(
++        TaskOutcome(
++            task_id=str(getattr(t, "id", ""))[:8],
++            description=str(getattr(t, "description", "") or ""),
++            status=getattr(getattr(t, "status", None), "value",
++                           str(getattr(t, "status", "") or "")),
++        )
++        for t in (getattr(job, "tasks", None) or ())
++    )
++    metadata = getattr(job, "metadata", None) or {}
++    return ReportSources(
++        job_id=str(getattr(job, "id", "") or ""),
++        job_name=str(getattr(job, "name", "") or ""),
++        project_id=str(getattr(job, "project_id", "") or ""),
++        mission=str(getattr(job, "mission", "") or ""),
++        state=getattr(getattr(job, "state", None), "value",
++                      str(getattr(job, "state", "") or "")),
++        terminal_status=str(metadata.get("cycle_terminal_status", "") or ""),
++        stop_reason=str(metadata.get("cycle_stop_reason", "") or ""),
++        tasks=tasks,
++    )

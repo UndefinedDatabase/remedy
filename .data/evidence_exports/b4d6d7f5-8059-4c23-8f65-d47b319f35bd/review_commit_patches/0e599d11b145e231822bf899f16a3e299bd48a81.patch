@@ -1,0 +1,144 @@
+0e599d11b145e231822bf899f16a3e299bd48a81
+diff --git a/.agent/authored/f053-r5-4.md b/.agent/authored/f053-r5-4.md
+new file mode 100644
+index 00000000..86538acd
+--- /dev/null
++++ b/.agent/authored/f053-r5-4.md
+@@ -0,0 +1,45 @@
++# Context — F053 Final & interim report
++
++## Active Branch
++`feature/f053-run-report`
++Base commit: `15105dbe` (main after PR #168 merge)
++
++## Steps (round map)
++R1 T001 renderer + goldens (PASS) · R2 T002 producer/hook/CLI
++(PASS) · R3 fixes + integration gate (RED: R-0162) · R4 repair 1
++(incomplete — a second context.md reader) · R5 repair 2 + gate
++re-run · R6 closure, its own round.
++
++## Scope
++T001+T002 landed: run_report.py (pure renderer + evidence sources +
++the one writer), status_mirror.py (read-only ledger parser), the
++terminal hook in long_run_executor._apply_terminal, and
++remedy job report --final/--interim/--json. R5 changes NO feature
++code: this state file + one doc amendment + gate re-run only.
++
++## Gates (round verification, pytest)
++python3 -m pytest -n auto -q                        full suite
++python3 -m pytest tests/docs/ -q                    293
++python3 -m pytest tests/cli/test_golden_path.py -q  42 (canary)
++Resource safety: everything runs through these pytest wrappers;
++no unbounded subprocess fan-out from state-file tooling.
++
++## Constraints
++- Pure renderer (P6): every number names its basis; a missing
++  source renders "not recorded"; never computes or guesses.
++- Deterministic ordering — double render byte-identical.
++- Milestone distance from the STATUS mirror (status_mirror.py),
++  never hand-maintained. "Can now" cites ONLY accepted [x] state.
++- Reports are English; mission text quoted as-is; every unbounded
++  list caps with an honest "and N more" line (A9).
++- Reviewer-authored texts under .agent/authored/ are applied by
++  copy and sha256-verified before use; never hand-edited.
++- Commits stay under 500-line diffs (AGENTS.md).
++- context.md satisfies its FULL test reader list: a "Steps"
++  section, "## Active Branch" with a feature/ slug, a roadmap
++  F-id, and this pytest/resource line (R-0162; reader rule in
++  planner_reviewer_prompt.md §4 item 11).
++
++## Do not touch
++Notification delivery, UI rendering, cost calibration.
++docs/roadmap/ROADMAP.md; STATUS entries other than the F053 line.
+diff --git a/.agent/authored/f053-r5-5.md b/.agent/authored/f053-r5-5.md
+new file mode 100644
+index 00000000..6f72c50a
+--- /dev/null
++++ b/.agent/authored/f053-r5-5.md
+@@ -0,0 +1,11 @@
++    The same contract class covers `.agent/context.md`, whose
++    readers span MULTIPLE test files: the dashboard contract
++    asserts the substring "Steps" plus "## Active Branch" with a
++    `feature/` slug, test_test_runner.py asserts a roadmap F-id,
++    and tests/regression/test_resource_safety.py asserts
++    "resource" or "pytest" — all in the same one file. Before
++    authoring ANY state-file replacement, grep every test that
++    reads that path (rg -ln '<filename>' tests/), collect the full
++    assertion list, and validate the draft against ALL of it, not
++    only the test currently red (R-0162, F053 R3+R4 lesson: the
++    first repair fixed one reader and tripped another).
+diff --git a/.agent/context.md b/.agent/context.md
+index cddbe675..86538acd 100644
+--- a/.agent/context.md
++++ b/.agent/context.md
+@@ -6,16 +6,23 @@ Base commit: `15105dbe` (main after PR #168 merge)
+ 
+ ## Steps (round map)
+ R1 T001 renderer + goldens (PASS) · R2 T002 producer/hook/CLI
+-(PASS) · R3 fixes + integration gate (gate RED: one state-file
+-contract id, R-0162) · R4 repair + full-suite re-run (gate
+-confirmation) · R5 closure, its own round.
++(PASS) · R3 fixes + integration gate (RED: R-0162) · R4 repair 1
++(incomplete — a second context.md reader) · R5 repair 2 + gate
++re-run · R6 closure, its own round.
+ 
+ ## Scope
+ T001+T002 landed: run_report.py (pure renderer + evidence sources +
+ the one writer), status_mirror.py (read-only ledger parser), the
+ terminal hook in long_run_executor._apply_terminal, and
+-remedy job report --final/--interim/--json. R4 changes NO feature
+-code: state-file repair + doc amendments + gate re-run only.
++remedy job report --final/--interim/--json. R5 changes NO feature
++code: this state file + one doc amendment + gate re-run only.
++
++## Gates (round verification, pytest)
++python3 -m pytest -n auto -q                        full suite
++python3 -m pytest tests/docs/ -q                    293
++python3 -m pytest tests/cli/test_golden_path.py -q  42 (canary)
++Resource safety: everything runs through these pytest wrappers;
++no unbounded subprocess fan-out from state-file tooling.
+ 
+ ## Constraints
+ - Pure renderer (P6): every number names its basis; a missing
+@@ -28,9 +35,10 @@ code: state-file repair + doc amendments + gate re-run only.
+ - Reviewer-authored texts under .agent/authored/ are applied by
+   copy and sha256-verified before use; never hand-edited.
+ - Commits stay under 500-line diffs (AGENTS.md).
+-- State files keep their contract tokens: plan.md "## Goal" +
+-  "## Next Steps", live_review.md "## Steps", context.md a "Steps"
+-  section (this file; R-0162).
++- context.md satisfies its FULL test reader list: a "Steps"
++  section, "## Active Branch" with a feature/ slug, a roadmap
++  F-id, and this pytest/resource line (R-0162; reader rule in
++  planner_reviewer_prompt.md §4 item 11).
+ 
+ ## Do not touch
+ Notification delivery, UI rendering, cost calibration.
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index 43cc8346..3244658c 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -242,12 +242,17 @@ end the response with:
+     effect (F251 D4 lesson: authored texts flipped four contract
+     tests in both directions across rounds). The D4 design question
+     itself — fixture-based vs live-coupled — stays with F252.
+-    The same contract class covers `.agent/context.md`: the
+-    dashboard contract tests assert the substring "Steps" there
+-    too, so any context.md rewrite the reviewer authors or orders
+-    carries a "## Steps (round map)" section (R-0162, F053 R3 gate
+-    lesson — third instance of the class after F046 plan.md and
+-    F047 live_review.md).
++    The same contract class covers `.agent/context.md`, whose
++    readers span MULTIPLE test files: the dashboard contract
++    asserts the substring "Steps" plus "## Active Branch" with a
++    `feature/` slug, test_test_runner.py asserts a roadmap F-id,
++    and tests/regression/test_resource_safety.py asserts
++    "resource" or "pytest" — all in the same one file. Before
++    authoring ANY state-file replacement, grep every test that
++    reads that path (rg -ln '<filename>' tests/), collect the full
++    assertion list, and validate the draft against ALL of it, not
++    only the test currently red (R-0162, F053 R3+R4 lesson: the
++    first repair fixed one reader and tripped another).
+ 12. Before diagnosing a relay gap ("the block never reached the
+     worker"), read .agent/last_block.md and its git history. A
+     recorded refusal means delivered-and-refused: re-emit CORRECTED

@@ -1,0 +1,2716 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 58a34454..752ce792 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -416,13 +416,25 @@ CATALOG: tuple[CommandEntry, ...] = (
+         supports_json=True,
+         related=("job.summary", "job.show"),
+     ),
++    # ONE command, three modes on the same name (the F047 `job resume`
++    # pattern): bare and --json keep the existing progress view exactly as it
++    # was; --final renders the F053 run report of a terminal job; --interim
++    # renders the labeled snapshot of a run still in progress.
+     CommandEntry(
+         command_id="job.report",
+         group_id="job",
+         subcommand="report",
+-        description="Read-only report of job progress, tasks, and evidence.",
++        description=("Read-only report of job progress, tasks, and evidence "
++                     "(--final / --interim render the F053 run report)."),
+         action_class="read_only",
+-        args=(_JOB_ID, _JSON_OPT),
++        args=(
++            _JOB_ID,
++            ArgDef("--final", "Render the F053 final run report (markdown)",
++                   required=False, is_option=True, is_flag=True),
++            ArgDef("--interim", "Render a labeled snapshot of a running job",
++                   required=False, is_option=True, is_flag=True),
++            _JSON_OPT,
++        ),
+         supports_json=True,
+         related=("job.status", "job.summary"),
+     ),
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 7c399775..0c7f9f1a 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1665,6 +1665,71 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+         print(f'  Next:      {next_action}')
+ 
+ 
++def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
++                        json_output: bool = False) -> None:
++    """The F053 run report: one human-readable account of a run.
++
++    `--final` renders the account of a terminal job; `--interim` renders the
++    same structure for a run still in progress, headed by a loud snapshot
++    label.  Both are strictly READ-ONLY — the interim path in particular never
++    writes and never mutates job state, because rendering a progress snapshot
++    must not perturb the run it is describing.
++
++    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
++    Rendering one anyway would produce an unbannered report of a run that is
++    still moving — exactly the mislabeled snapshot the interim banner exists to
++    prevent, one typo away. The refusal names the state and points at
++    `--interim`; it never renders anyway and never silently switches mode,
++    because a command that quietly does something else than asked is how a
++    snapshot gets mistaken for a final account.
++    """
++    import json as _json
++    from dataclasses import asdict
++
++    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
++    from packages.orchestration.run_report import (
++        MODE_FINAL,
++        MODE_INTERIM,
++        build_report_sources,
++        render_report,
++    )
++
++    job_id = resolve_job_id(job_id_str)
++    try:
++        job = load_job(job_id)
++    except JobNotFoundError:
++        # A clean error, never a traceback: an unknown id is a normal thing for
++        # a human to type.
++        if json_output:
++            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
++        else:
++            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
++        sys.exit(1)
++
++    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
++    if not interim and terminal not in REPORTED_TERMINALS:
++        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
++        if json_output:
++            print(_json.dumps({
++                'error': 'run_not_terminal',
++                'job_id': str(job.id),
++                'state': state,
++                'terminal_status': terminal,
++                'hint': 'use --interim for a snapshot',
++            }))
++        else:
++            print(f'Error: run still in progress (state: {state}) — '
++                  'use --interim for a snapshot', file=sys.stderr)
++        sys.exit(1)
++
++    sources = build_report_sources(job)
++    if json_output:
++        print(_json.dumps(asdict(sources), indent=2, sort_keys=True, default=str))
++        return
++    print(render_report(job, MODE_INTERIM if interim else MODE_FINAL,
++                        sources=sources))
++
++
+ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+     """Job report -- safe read-only report of job progress and evidence."""
+     import json as _json
+@@ -2123,9 +2188,21 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         args.job_id,
+         json_output=getattr(args, "json", False),
+     ),
+-    "job.report": lambda args: _cmd_job_report(
+-        args.job_id,
+-        json_output=getattr(args, "json", False),
++    # `remedy job report` has three modes and ONE name (the F047 `job resume`
++    # pattern, see .agent/decisions.md): --final/--interim render the F053 run
++    # report; without either flag the existing progress view runs UNCHANGED, so
++    # no existing invocation changes behavior.
++    "job.report": lambda args: (
++        _cmd_job_run_report(
++            args.job_id,
++            interim=getattr(args, "interim", False),
++            json_output=getattr(args, "json", False),
++        )
++        if (getattr(args, "final", False) or getattr(args, "interim", False))
++        else _cmd_job_report(
++            args.job_id,
++            json_output=getattr(args, "json", False),
++        )
+     ),
+     "job.fences": lambda args: _cmd_job_fences(
+         args.job_id,
+diff --git a/docs/agents/integration_gate.md b/docs/agents/integration_gate.md
+index 7ff6a7a7..fddf7ce9 100644
+--- a/docs/agents/integration_gate.md
++++ b/docs/agents/integration_gate.md
+@@ -10,8 +10,13 @@
+    Record: raw tail, full FAILED list, exit code, wall time.
+    `grep '^FAILED' <log> | sort > branch_failed.txt`
+ 2. **Base run.** Identical command in a throwaway `git worktree` at the
+-   merge base; same records; `base_failed.txt`. Remove + prune the
+-   worktree and prove with `git worktree list`.
++   merge base; same records; `base_failed.txt`. Create the worktree ON
++   a throwaway BRANCH (`git worktree add -b tmp/base-gate <path>
++   <merge-base>`): the self-dogfood branch guard refuses a detached
++   HEAD by design, so a detached base worktree fails the
++   guard-dependent ids (DECISION D3, F053 R2 review, 2026-07-31).
++   Remove + prune the worktree (and delete the tmp branch) and prove
++   with `git worktree list`.
+ 3. **Compare.** `comm -13 base_failed.txt branch_failed.txt` = branch-only
+    failures. Report `comm -23` too — failures the branch fixed.
+    Environment-coupled base failures (R-0155 amendment, operator
+@@ -21,9 +26,13 @@
+    holds only a `.vite` cache). Affected ids fail at base and land
+    in `comm -23` on every gate run — where a GENUINE base failure in
+    those same files would be masked. Therefore: either restore
+-   parity before the base run (share or copy the primary checkout's
++   parity before the base run (COPY the primary checkout's
+    `apps/ui/node_modules` and `apps/ui/dist` into the base
+-   worktree, or run the same install/build there), or attribute
++   worktree — never symlink them: the UI auto-build runs
++   npm install and writes THROUGH a symlink into the primary
++   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` keeps
++   the base run from rebuilding; or run the same install/build
++   there), or attribute
+    EVERY `comm -23` id to the environment class by direct evidence
+    (the missing artifact named per id). An unattributed `comm -23`
+    id counts as a genuine base failure and blocks the gate verdict.
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index afab449a..3244658c 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -242,6 +242,17 @@ end the response with:
+     effect (F251 D4 lesson: authored texts flipped four contract
+     tests in both directions across rounds). The D4 design question
+     itself — fixture-based vs live-coupled — stays with F252.
++    The same contract class covers `.agent/context.md`, whose
++    readers span MULTIPLE test files: the dashboard contract
++    asserts the substring "Steps" plus "## Active Branch" with a
++    `feature/` slug, test_test_runner.py asserts a roadmap F-id,
++    and tests/regression/test_resource_safety.py asserts
++    "resource" or "pytest" — all in the same one file. Before
++    authoring ANY state-file replacement, grep every test that
++    reads that path (rg -ln '<filename>' tests/), collect the full
++    assertion list, and validate the draft against ALL of it, not
++    only the test currently red (R-0162, F053 R3+R4 lesson: the
++    first repair fixed one reader and tripped another).
+ 12. Before diagnosing a relay gap ("the block never reached the
+     worker"), read .agent/last_block.md and its git history. A
+     recorded refusal means delivered-and-refused: re-emit CORRECTED
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 03f27b69..a031bcb5 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -36,7 +36,7 @@
+ - [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job f987e3f1-bbe1-45ce-b964-c23805ecb5e6 · package remedy-review-20260730-145728-READY_FOR_REVIEW.zip · SHA-256 3d04713f33072ce544ab4c0a430e82fc8edeee85bcb0aaa007fa48ef9ee4d8c0 · accepted HEAD 2fd7d6b949b98022b977aa48c0191bbf0efceec1)
+ - [x] F051 — Escalate instead of block (unattended) (T001–T003 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job 785d275a-2f78-4b44-bd29-f8764ff95bb8 · package remedy-review-20260730-172315-READY_FOR_REVIEW.zip · SHA-256 e85932c425acf204d8e9c24a030d4988aecbe4d3779dc5b4a57193f4f7c0648a · accepted HEAD 54df8f7a1adea2f3d140efef22e2e6f991aea6ff)
+ - [x] F052 — Self-healing test rounds (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 3b0b36c3-35c9-4b08-9f33-9d901bea839e · package remedy-review-20260731-095109-READY_FOR_REVIEW.zip · SHA-256 2f3fd6032cdaceca4461702b128b77a300485eb171a704081df18852d6224efe · accepted HEAD 2203610776926c76956423346c889503516f08d4)
+-- [ ] F053 — Final & interim report
++- [~] F053 — Final & interim report
+ - [ ] F056 — Missions: persistent goal, jobs as execution units
+ - [ ] F061 — Definition-of-Done compiler
+ - [ ] F062 — Product smoke as the closing gate
+diff --git a/docs/roadmap/features/T1_F053.md b/docs/roadmap/features/T1_F053.md
+index e4bb7828..8f30053e 100644
+--- a/docs/roadmap/features/T1_F053.md
++++ b/docs/roadmap/features/T1_F053.md
+@@ -16,6 +16,21 @@ rendering, and the run manifest. The report is a pure RENDERER over those
+ sources — it computes nothing new and never guesses; a missing source
+ renders as "not recorded", not as a made-up value.
+ 
++> **Amendment (DECISION D2, reviewer, 2026-07-31):** the premise
++> that ALL inputs already exist is wrong for one source — no
++> production reader of docs/roadmap/STATUS.md exists (R1 inspect
++> evidence). T002 therefore ADDS the producer: a read-only parser
++> module (packages/orchestration/status_mirror.py) that builds
++> run_report.StatusMirror from the ledger when the target repo
++> carries docs/roadmap/STATUS.md, else None — the report renders
++> "not recorded" for non-self runs, which have no milestone. The
++> next-action rule table gains one rule: stopped-by-operator →
++> "Resume the run (or close it) — it stopped on request, nothing is
++> broken", ranked between open-decision and blocked-failed.
++> Reversal: any later relay may split the producer into its own
++> feature; the ReportSources.status_mirror input seam is unchanged
++> either way.
++
+ ## Design (suggested shape)
+ Module `run_report.py`:
+ - `render_report(job, mode=final|interim) -> str` (markdown, deterministic
+@@ -73,3 +88,42 @@ terminal path they hooked.
+ ## Do not touch
+ Notification delivery, UI rendering, cost calibration. Suggested tests:
+ tests/orchestration/test_run_report.py, tests/cli/test_job_report.py.
++
++## Built State (accepted 2026-07-31)
++- packages/orchestration/run_report.py: pure renderer —
++  render_report_from_sources (no clock/disk/randomness) +
++  render_report(job, mode) wrapper; ReportSources / TaskOutcome /
++  BlockedItem / StatusMirror; momentum_flag
++  (forward|circling|unknown, unknown for zero cycle records);
++  NEXT_ACTION_RULES priority open-decision > stopped-by-operator >
++  blocked-failed > all-green > indeterminate, rule id + condition
++  rendered with the recommendation; every unbounded list capped
++  with an honest count line (tasks/blocked/cycles 20, capability
++  lines 10); every absent source renders "not recorded" (P6);
++  build_report_sources adds evidence-area sources (cycle records
++  incl. F052 healed/repair fields, budget actuals verbatim via
++  BudgetCounters.token_description, open decisions with answer
++  commands); write_final_report is the ONE writer — report.md in
++  the job evidence area beside cycles/, regenerated never
++  appended, never raises (failure recorded under report_error,
++  cleared on the next success).
++- packages/orchestration/status_mirror.py (DECISION D2):
++  read-only docs/roadmap/STATUS.md parser → StatusMirror;
++  None on missing file, unparseable ledger, or missing milestone
++  — never a guess; non-self repos render "not recorded".
++- long_run_executor._apply_terminal: REPORTED_TERMINALS =
++  {all_green, stopped_by_operator, budget_exhausted,
++  deadline_reached, blocked} each write the report through the
++  single seam; max_cycles_reached deliberately excluded (job
++  still has work).
++- CLI: remedy job report <id> --final | --interim | --json on the
++  existing job.report entry (bare progress view unchanged, F047
++  one-command pattern); --final refused unless
++  cycle_terminal_status is in REPORTED_TERMINALS (R-0161);
++  --interim never mutates state and writes no file.
++- Tests: tests/orchestration/test_run_report.py (68),
++  tests/orchestration/test_run_report_hook.py (22),
++  tests/cli/test_job_report.py (30). Suite baseline 14610/0/19.
++- Decisions: D2 (status-mirror producer added in T002), D3
++  (integration-gate base worktree on a branch, codified in
++  docs/agents/integration_gate.md).
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index 5d1b1d73..7a8b3880 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -856,8 +856,30 @@ def _terminal_from_stop(reason: str, source: str) -> str:
+     return TERMINAL_BUDGET_EXHAUSTED
+ 
+ 
+-def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
+-    """Write the terminal status onto the job and return the job status."""
++#: F053 T002: the terminal statuses that end a run and therefore get a final
++#: report.  ``max_cycles_reached`` is deliberately absent — it maps to
++#: JOB_RUNNING, the job has pending work and simply ran out of cycle budget, so
++#: writing a "final" report for it would be a lie about the run being over.
++REPORTED_TERMINALS: frozenset[str] = frozenset({
++    TERMINAL_ALL_GREEN,
++    TERMINAL_STOPPED_BY_OPERATOR,
++    TERMINAL_BUDGET_EXHAUSTED,
++    TERMINAL_DEADLINE_REACHED,
++    TERMINAL_BLOCKED,
++})
++
++
++def _apply_terminal(job: Job, terminal_status: str, stop_reason: str, *,
++                    write_report: bool = True) -> str:
++    """Write the terminal status onto the job and return the job status.
++
++    This is also the ONE place a final run report is written (F053 T002).
++    Every terminal transition passes through here, so hooking the report here
++    is what makes "exactly one report per terminal job" true by construction
++    rather than by remembering to call a writer on five separate paths.
++    The write happens after the terminal metadata is on the job, so the report
++    describes the state the job is about to be saved with.
++    """
+     job_status = TERMINAL_JOB_STATUS[terminal_status]
+     run_state = TERMINAL_RUN_STATE[terminal_status]
+     if run_state is not None:
+@@ -868,6 +890,12 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
+         job.metadata["cycle_stop_reason"] = stop_reason
+     else:
+         job.metadata.pop("cycle_stop_reason", None)
++    if write_report and terminal_status in REPORTED_TERMINALS:
++        from packages.orchestration.run_report import write_final_report
++
++        # Never raises, and records its own failure on the job: a run that
++        # finished is finished whether or not its account could be written.
++        write_final_report(job)
+     return job_status
+ 
+ 
+diff --git a/packages/orchestration/run_report.py b/packages/orchestration/run_report.py
+new file mode 100644
+index 00000000..0afa2249
+--- /dev/null
++++ b/packages/orchestration/run_report.py
+@@ -0,0 +1,822 @@
++"""F053 T001 — the one human-readable account of a run.
++
++Every run produces ONE report: what was attempted, what succeeded, what is
++blocked and why, what it cost, what needs answering, and the single
++recommended next action.
++
++This module is a pure RENDERER.  It computes nothing new and it never
++guesses: every value it prints already exists as structured data somewhere
++else, and a source that is absent renders as ``not recorded`` rather than as
++a plausible number (P6).  That rule is what makes the report safe to read
++without opening the evidence — a reader can trust that a number they see was
++measured, and that a number they do not see was not.
++
++Deliberate absences (searched-for behavior that is NOT here):
++  * Remedy deliberately does not RE-COMPUTE costs, durations, or verdicts in
++    this module — `budget_guard.BudgetCounters.token_description` and the
++    cycle records own those, and a second arithmetic path would be a second
++    truth.
++  * Remedy deliberately does not write the report from here.  The terminal
++    -state writer and the ``remedy job report`` CLI are F053 T002; this
++    module only turns sources into text.
++  * Remedy deliberately does not read ``docs/roadmap/STATUS.md`` here.  The
++    milestone distance and the capability lines come from a STATUS mirror
++    passed IN (``ReportSources.status_mirror``); no production reader of that
++    file exists yet, so both sections render ``not recorded`` until one does.
++
++Sources (all pre-existing; see ``collect_report_sources``):
++  job/task state      packages/core/models.py  Job.state / Task.status
++  cycle summaries     long_run_executor.read_cycle_records (incl. the F052
++                      healed_after_repair / repair_rounds_used fields)
++  postmortems         failure_postmortem.read_postmortem
++  open decisions      decision_queue.list_decisions / open_decisions
++  token actuals       budget_guard.BudgetCounters (persisted job actuals)
++  assumption log      flight_plan.render_assumptions_md and
++                      escalation.render_escalation_assumptions_md
++  run manifest        run_manifest.read_run_manifest
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass, field, replace
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import Any
++
++# ---------------------------------------------------------------------------
++# Modes
++# ---------------------------------------------------------------------------
++
++#: The report written once at a terminal state (F053 T002 calls it).
++MODE_FINAL = "final"
++#: The snapshot of a run that is still going.  Never mutates state.
++MODE_INTERIM = "interim"
++VALID_MODES = frozenset({MODE_FINAL, MODE_INTERIM})
++
++#: What a missing source renders as.  One spelling, everywhere: a reader who
++#: greps the report for this string finds every gap in one pass.
++NOT_RECORDED = "not recorded"
++
++#: The loud interim banner.  A snapshot that could be mistaken for a final
++#: report is worse than no snapshot at all.
++INTERIM_BANNER = "INTERIM SNAPSHOT — run still in progress (rendered at {ts})"
++
++#: A9: per-task lines cap at a readable count; the evidence area is the
++#: archive, the report is the summary.
++MAX_TASK_LINES = 20
++#: The same cap for the two other unbounded lists a big run can produce.
++MAX_BLOCKED_LINES = 20
++MAX_CYCLE_LINES = 20
++#: Capability lines cap lower than the rest (CALL-2 ruling, F053 R2 review):
++#: they grow with the ROADMAP, not with the run, so an uncapped list would
++#: eventually dwarf the account of the run it is attached to.
++MAX_CAPABILITY_LINES = 10
++
++#: The final report's filename inside the job's evidence area (F053 T002).
++#: FIXED, and the writer overwrites it: the acceptance rule is exactly one
++#: report per terminal job, REGENERATED on resume-then-finish, never appended.
++#: It sits beside the cycle records, in the same evidence area, so there is no
++#: second evidence convention to learn.
++REPORT_FILENAME = "report.md"
++
++#: Where a report-write failure is recorded on the job.  The report is an
++#: ACCOUNT of the run, not a gate on it — failing to write one must never turn
++#: a finished run into a failed one.
++REPORT_ERROR_METADATA_KEY = "report_error"
++
++
++class ReportError(ValueError):
++    """The renderer was called with an argument it cannot honour."""
++
++
++# ---------------------------------------------------------------------------
++# Momentum (mechanically defined — T1_F053.md)
++# ---------------------------------------------------------------------------
++
++MOMENTUM_FORWARD = "forward"
++MOMENTUM_CIRCLING = "circling"
++MOMENTUM_UNKNOWN = "unknown"
++
++#: The escalation a circling run proposes.  Named, not implied: "circling"
++#: without a proposal is an observation nobody can act on.
++CIRCLING_ESCALATION = (
++    "Escalate: cut the next round into smaller slices, re-plan the failing "
++    "branch, or ask a human for a decision."
++)
++
++
++def _open_item_count(record: dict[str, Any]) -> int:
++    """Open items a cycle left behind: failures plus escalations.
++
++    Escalations are counted because a branch waiting on a question is not
++    done — but they stay a SEPARATE number everywhere they are rendered
++    (CycleRecord.tasks_escalated), because a question is not a failure.
++    """
++    return _as_int(record.get("tasks_failed")) + _as_int(record.get("tasks_escalated"))
++
++
++def momentum_flag(cycle_records: list[dict[str, Any]] | None) -> str:
++    """forward | circling | unknown, from the cycle records alone.
++
++    Mechanical definition (T1_F053.md):
++      circling  — the same non-empty verify failure class appears in >= 2
++                  cycles, OR open items did not decrease across a round.
++      forward   — every round closed items and no failure class recurred.
++      unknown   — no cycle records: nothing to judge, and a guess here would
++                  be exactly the invented value P6 forbids.
++    """
++    records = list(cycle_records or [])
++    if not records:
++        return MOMENTUM_UNKNOWN
++
++    seen_classes: dict[str, int] = {}
++    for record in records:
++        klass = str(record.get("verify_failure_class") or "")
++        if klass:
++            seen_classes[klass] = seen_classes.get(klass, 0) + 1
++    if any(count >= 2 for count in seen_classes.values()):
++        return MOMENTUM_CIRCLING
++
++    previous = None
++    for record in records:
++        current = _open_item_count(record)
++        if previous is not None and current > 0 and current >= previous:
++            return MOMENTUM_CIRCLING
++        previous = current
++    return MOMENTUM_FORWARD
++
++
++# ---------------------------------------------------------------------------
++# Next-action rule table
++# ---------------------------------------------------------------------------
++
++#: The report ends with EXACTLY ONE recommended next action, chosen by this
++#: table, first match wins.  The table is data so the rule that fired can be
++#: named in the report itself — a recommendation whose reason is invisible is
++#: not reviewable.
++#:
++#:   (rule id, condition, action template)
++#:
++#: Order is the priority order from T1_F053.md: an open decision outranks a
++#: failure, because the run cannot proceed past a question no matter what
++#: else is repaired.
++NEXT_ACTION_RULES: tuple[tuple[str, str], ...] = (
++    ("open-decision", "an open decision is waiting for an answer"),
++    # F053 T002 (DECISION D2): an operator stop outranks the blocked rule.
++    # A run somebody stopped on purpose is not a broken run, and telling its
++    # operator to go read a postmortem would be a false alarm.
++    ("stopped-by-operator", "the run stopped on operator request"),
++    ("blocked-failed", "the run is blocked or a task failed"),
++    ("all-green", "every task completed and nothing is open"),
++    ("indeterminate", "no rule matched the recorded state"),
++)
++
++#: rule id -> the condition that fires it.  The table is load-bearing: a
++#: NextAction whose rule id is not in it cannot be rendered.
++NEXT_ACTION_CONDITIONS: dict[str, str] = dict(NEXT_ACTION_RULES)
++
++
++@dataclass(frozen=True)
++class NextAction:
++    """The single recommended next action plus the rule that produced it."""
++
++    rule_id: str
++    action: str
++
++    def __post_init__(self) -> None:
++        if self.rule_id not in NEXT_ACTION_CONDITIONS:
++            raise ReportError(f"next action uses an undocumented rule: {self.rule_id!r}")
++
++    def render(self) -> str:
++        """The action, with the rule and the condition that chose it.
++
++        The condition is printed because a recommendation a reader cannot
++        audit is a recommendation they have to take on trust.
++        """
++        return (f"{self.action}  _(rule: {self.rule_id} — "
++                f"{NEXT_ACTION_CONDITIONS[self.rule_id]})_")
++
++
++# ---------------------------------------------------------------------------
++# Sources
++# ---------------------------------------------------------------------------
++
++
++@dataclass(frozen=True)
++class StatusMirror:
++    """The roadmap ledger, already parsed, handed to the renderer.
++
++    Deliberately an INPUT and not a read: this module never parses
++    ``docs/roadmap/STATUS.md`` itself (that file is operator territory —
++    scope_fences.BUILTIN_DENY).  Until a producer exists, both sections this
++    feeds render ``not recorded``.
++
++    remaining_to_milestone: features still unchecked up to ``milestone``.
++    accepted_capabilities:  ONLY accepted ``[x]`` state (P1) — what Remedy
++                            can do NOW.
++    in_progress_capabilities: ``[~]`` state; always rendered as in progress,
++                            never as a capability.
++    """
++
++    milestone: str
++    remaining_to_milestone: int
++    accepted_capabilities: tuple[str, ...] = ()
++    in_progress_capabilities: tuple[str, ...] = ()
++
++
++@dataclass(frozen=True)
++class TaskOutcome:
++    """One task's one-line result, already resolved to text and a link."""
++
++    task_id: str
++    description: str
++    status: str
++    #: Relative path into the evidence area, or "" when nothing was written.
++    #: Relative on purpose: an absolute path is unusable in a moved bundle.
++    evidence_ref: str = ""
++
++
++@dataclass(frozen=True)
++class BlockedItem:
++    """A task that is blocked, and the one thing a human can do about it."""
++
++    task_id: str
++    reason: str
++    #: failure_postmortem.FailureClass value, or "" when no postmortem exists.
++    failure_class: str = ""
++    #: For a decision: the EXACT command that answers it
++    #: (escalation.task_decision_answer_command).  Never abbreviated — a
++    #: command that is not shown in full cannot be pasted.
++    answer_command: str = ""
++    evidence_ref: str = ""
++
++
++@dataclass(frozen=True)
++class ReportSources:
++    """Everything the report renders, already structured.
++
++    Every field is optional and every absent field renders ``not recorded``.
++    Passing this in is what makes the renderer pure and its goldens stable:
++    no clock, no disk, no provider.
++    """
++
++    job_id: str = ""
++    job_name: str = ""
++    project_id: str = ""
++    mission: str = ""
++    state: str = ""
++    terminal_status: str = ""
++    stop_reason: str = ""
++    started_at: str = ""
++    ended_at: str = ""
++    duration_text: str = ""
++    tasks: tuple[TaskOutcome, ...] = ()
++    blocked: tuple[BlockedItem, ...] = ()
++    #: budget_guard.BudgetCounters.token_description() — carried VERBATIM,
++    #: including its ">= N tokens (M provider calls unmeasured)" notation.
++    token_description: str = ""
++    #: Where that number came from (BudgetCounters.actual_sources).  Every
++    #: cost line names its basis (P6); a cost without a basis is not printed.
++    cost_basis: tuple[str, ...] = ()
++    elapsed_seconds: float | None = None
++    cycle_records: tuple[dict[str, Any], ...] = ()
++    open_decision_lines: tuple[str, ...] = ()
++    open_decision_count: int | None = None
++    open_assumptions: tuple[str, ...] = ()
++    assumptions_ref: str = ""
++    manifest_ref: str = ""
++    plan_ref: str = ""
++    status_mirror: StatusMirror | None = None
++    #: F053 next feature capability line ("can next"), supplied by the caller.
++    next_capability: str = ""
++    notes: tuple[str, ...] = field(default_factory=tuple)
++
++
++# ---------------------------------------------------------------------------
++# Small helpers — every one of them refuses to invent a value
++# ---------------------------------------------------------------------------
++
++
++def _as_int(value: Any) -> int:
++    """An int, or 0 for anything that is not one.  Never raises into a render."""
++    if isinstance(value, bool) or not isinstance(value, int):
++        return 0
++    return value
++
++
++def _text(value: str | None) -> str:
++    """The value, or the missing-source marker.  The only place that decides."""
++    value = (value or "").strip()
++    return value or NOT_RECORDED
++
++
++def _link(label: str, ref: str) -> str:
++    """A markdown link when there is a target, otherwise the bare label."""
++    ref = (ref or "").strip()
++    if not ref:
++        return label
++    return f"[{label}]({ref})"
++
++
++def _capped(lines: list[str], limit: int, noun: str) -> list[str]:
++    """The first *limit* lines plus an honest count of what was dropped (A9).
++
++    Never a silent truncation: a report that quietly shows 20 of 200 tasks
++    reads as a complete report and is not one.
++    """
++    if len(lines) <= limit:
++        return lines
++    dropped = len(lines) - limit
++    return lines[:limit] + [f"- … and {dropped} more {noun} (see evidence)"]
++
++
++# ---------------------------------------------------------------------------
++# Next action
++# ---------------------------------------------------------------------------
++
++
++def recommended_next_action(sources: ReportSources) -> NextAction:
++    """The one next action, by NEXT_ACTION_RULES, first match wins."""
++    if sources.open_decision_count:
++        command = ""
++        for item in sources.blocked:
++            if item.answer_command:
++                command = item.answer_command
++                break
++        action = "Answer the open decision"
++        if command:
++            action = f"Answer the open decision: `{command}`"
++        return NextAction("open-decision", action)
++
++    terminal = (sources.terminal_status or "").strip().lower()
++    if terminal == "stopped_by_operator":
++        return NextAction(
++            "stopped-by-operator",
++            "Resume the run (or close it) — it stopped on request, "
++            "nothing is broken")
++
++    blocked_state = terminal in {"blocked", "budget_exhausted", "deadline_reached"}
++    if sources.blocked or blocked_state:
++        ref = next((b.evidence_ref for b in sources.blocked if b.evidence_ref), "")
++        target = _link("the postmortem", ref) if ref else "the postmortem"
++        return NextAction("blocked-failed", f"Inspect {target} and repair the blocked task")
++
++    if sources.tasks and all(
++            t.status.strip().lower() == "completed" for t in sources.tasks):
++        return NextAction("all-green", "Review and merge the branch")
++
++    return NextAction("indeterminate",
++                      f"No recommendation — the run state is {NOT_RECORDED}")
++
++
++# ---------------------------------------------------------------------------
++# Sections
++# ---------------------------------------------------------------------------
++
++
++def _header_lines(sources: ReportSources, mode: str, rendered_at: str) -> list[str]:
++    lines: list[str] = []
++    if mode == MODE_INTERIM:
++        lines.append(f"> **{INTERIM_BANNER.format(ts=_text(rendered_at))}**")
++        lines.append("")
++    lines.append(f"# Run report — {_text(sources.job_name)}")
++    lines.append("")
++    lines.append(f"- Job: `{_text(sources.job_id)}`")
++    lines.append(f"- Project: {_text(sources.project_id)}")
++    # Quoted as-is: the mission may be in any language; the report is English
++    # around it, and translating an operator's own words would be a rewrite.
++    lines.append(f"- Mission: {_text(sources.mission)}")
++    lines.append(f"- State: {_text(sources.state)}")
++    lines.append(f"- Terminal status: {_text(sources.terminal_status)}")
++    if sources.stop_reason:
++        lines.append(f"- Stop reason: {sources.stop_reason}")
++    lines.append(f"- Duration: {_text(sources.duration_text)}")
++    lines.append("")
++    return lines
++
++
++def _task_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Tasks", ""]
++    if not sources.tasks:
++        lines += [f"Tasks: {NOT_RECORDED}.", ""]
++        return lines
++    body = [
++        f"- `{t.task_id}` — {_text(t.description)} — **{_text(t.status)}**"
++        + (f" — {_link('evidence', t.evidence_ref)}" if t.evidence_ref else "")
++        for t in sources.tasks
++    ]
++    lines += _capped(body, MAX_TASK_LINES, "tasks")
++    lines.append("")
++    return lines
++
++
++def _blocked_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Blocked", ""]
++    if not sources.blocked:
++        lines += ["Nothing blocked.", ""]
++        return lines
++    body: list[str] = []
++    for item in sources.blocked:
++        parts = [f"- `{item.task_id}` — {_text(item.reason)}"]
++        parts.append(f" — class: {_text(item.failure_class)}")
++        if item.evidence_ref:
++            parts.append(f" — {_link('postmortem', item.evidence_ref)}")
++        body.append("".join(parts))
++        if item.answer_command:
++            body.append(f"  - answer with: `{item.answer_command}`")
++    lines += _capped(body, MAX_BLOCKED_LINES, "blocked items")
++    lines.append("")
++    return lines
++
++
++def _decision_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Open decisions", ""]
++    if sources.open_decision_count is None:
++        lines += [f"Open decisions: {NOT_RECORDED}.", ""]
++        return lines
++    if not sources.open_decision_count:
++        lines += ["No open decisions.", ""]
++        return lines
++    # Rendered verbatim from decision_queue.render_open_decisions_lines so the
++    # report and `remedy job status` cannot drift apart.
++    lines += list(sources.open_decision_lines) or [
++        f"Open decisions: {sources.open_decision_count} (detail {NOT_RECORDED})"]
++    lines.append("")
++    return lines
++
++
++def _cost_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Cost", ""]
++    if not sources.token_description:
++        # No actuals is a normal outcome, not a zero.  A rendered "0 tokens"
++        # would be an invented measurement.
++        lines += [f"Tokens: {NOT_RECORDED} (no actuals persisted for this run).", ""]
++        return lines
++    basis = ", ".join(sources.cost_basis) if sources.cost_basis else NOT_RECORDED
++    lines.append(f"- Tokens: {sources.token_description} — basis: {basis}")
++    if sources.elapsed_seconds is None:
++        lines.append(f"- Elapsed: {NOT_RECORDED} — basis: {NOT_RECORDED}")
++    else:
++        lines.append(
++            f"- Elapsed: {sources.elapsed_seconds:.1f}s — basis: budget counters")
++    lines.append("")
++    return lines
++
++
++def _cycle_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Cycles", ""]
++    if not sources.cycle_records:
++        lines += [f"Cycles: {NOT_RECORDED}.", ""]
++        return lines
++    body: list[str] = []
++    for record in sources.cycle_records:
++        index = _as_int(record.get("cycle_index"))
++        verify = _text(str(record.get("verify_result") or ""))
++        parts = [
++            f"- Cycle {index}: {_as_int(record.get('tasks_completed'))} completed, "
++            f"{_as_int(record.get('tasks_failed'))} failed, "
++            f"{_as_int(record.get('tasks_escalated'))} escalated — verify: {verify}"
++        ]
++        klass = str(record.get("verify_failure_class") or "")
++        if klass:
++            parts.append(f" — failure class: {klass}")
++        body.append("".join(parts))
++        # F052 risk visibility: a heal is never implied by a green cycle, and a
++        # heal that changed no file is a flake suspect a human must see.
++        if record.get("healed_after_repair"):
++            rounds = _as_int(record.get("repair_rounds_used"))
++            note = f"  - healed after {rounds} repair round(s)"
++            if record.get("healed_without_changes"):
++                note += " — WITHOUT file changes (flake suspect)"
++            body.append(note)
++        summary = str(record.get("repair_summary") or "")
++        if summary:
++            body.append(f"  - repair: {summary}")
++    lines += _capped(body, MAX_CYCLE_LINES, "cycles")
++    lines.append("")
++    return lines
++
++
++def _assumption_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Open assumptions", ""]
++    if not sources.open_assumptions:
++        lines.append(
++            "No open assumptions."
++            if sources.assumptions_ref
++            else f"Open assumptions: {NOT_RECORDED}.")
++        if sources.assumptions_ref:
++            lines.append("")
++            lines.append(f"Assumption log: {_link('assumptions', sources.assumptions_ref)}")
++        lines.append("")
++        return lines
++    lines += [f"- {a}" for a in sources.open_assumptions]
++    if sources.assumptions_ref:
++        lines.append(f"- Full log: {_link('assumptions', sources.assumptions_ref)}")
++    lines.append("")
++    return lines
++
++
++def _momentum_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Momentum", ""]
++    flag = momentum_flag(list(sources.cycle_records))
++    if flag == MOMENTUM_UNKNOWN:
++        lines += [f"Momentum: {NOT_RECORDED} (no cycle records).", ""]
++        return lines
++    if flag == MOMENTUM_CIRCLING:
++        lines.append("⚠️ **Circling** — the same failure recurred, or open items "
++                     "did not decrease over a round.")
++        lines.append(f"- {CIRCLING_ESCALATION}")
++        lines.append("")
++        return lines
++    lines += ["✅ Forward — every round closed items and nothing recurred.", ""]
++    return lines
++
++
++def _milestone_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Milestone", ""]
++    mirror = sources.status_mirror
++    if mirror is None:
++        # Computed from the STATUS mirror or not at all — a hand-maintained
++        # count is the exact thing this feature exists to prevent.
++        lines += [f"Milestone distance: {NOT_RECORDED} (no STATUS mirror).", ""]
++        return lines
++    lines.append(
++        f"- {mirror.remaining_to_milestone} features remain to {mirror.milestone}")
++    lines.append("")
++    return lines
++
++
++def _capability_lines(sources: ReportSources) -> list[str]:
++    lines = ["## Capabilities", ""]
++    mirror = sources.status_mirror
++    if mirror is None:
++        lines += [f"- Can now: {NOT_RECORDED} (no STATUS mirror)"]
++    elif mirror.accepted_capabilities:
++        # P1: ONLY accepted [x] state may appear here.  A9: capped like every
++        # other unbounded list — the ledger has 28 accepted entries today and
++        # roughly 250 at roadmap end, and a report that lists them all is no
++        # longer a summary of THIS run.
++        lines += _capped([f"- Can now: {c}" for c in mirror.accepted_capabilities],
++                         MAX_CAPABILITY_LINES, "accepted features")
++    else:
++        lines += ["- Can now: nothing accepted yet"]
++    if mirror is not None:
++        # [~] state is work, not capability.  It never crosses into "can now".
++        lines += _capped(
++            [f"- In progress: {c}" for c in mirror.in_progress_capabilities],
++            MAX_CAPABILITY_LINES, "accepted features")
++    lines.append(f"- Can next: {_text(sources.next_capability)}")
++    lines.append("")
++    return lines
++
++
++def _reference_lines(sources: ReportSources) -> list[str]:
++    lines = ["## References", ""]
++    lines.append(f"- Plan: {_link('plan', sources.plan_ref) if sources.plan_ref else NOT_RECORDED}")
++    lines.append(
++        f"- Run manifest: "
++        f"{_link('run_manifest.json', sources.manifest_ref) if sources.manifest_ref else NOT_RECORDED}")
++    lines.append("")
++    return lines
++
++
++# ---------------------------------------------------------------------------
++# Public entry point
++# ---------------------------------------------------------------------------
++
++
++def render_report_from_sources(sources: ReportSources, *,
++                               mode: str = MODE_FINAL,
++                               rendered_at: str = "") -> str:
++    """The renderer proper: structured sources in, markdown out.
++
++    Deterministic by construction — no clock, no disk, no randomness.  The
++    only time value is *rendered_at*, which the caller supplies, so two
++    renders of the same sources are byte-identical.
++    """
++    if mode not in VALID_MODES:
++        raise ReportError(f"unknown report mode: {mode!r}")
++    if mode == MODE_INTERIM and not rendered_at:
++        raise ReportError("interim mode requires rendered_at — an unlabeled "
++                          "snapshot cannot be told apart from a final report")
++
++    lines: list[str] = []
++    lines += _header_lines(sources, mode, rendered_at)
++    lines += _task_lines(sources)
++    lines += _blocked_lines(sources)
++    lines += _decision_lines(sources)
++    lines += _cost_lines(sources)
++    lines += _cycle_lines(sources)
++    lines += _assumption_lines(sources)
++    lines += _momentum_lines(sources)
++    lines += _milestone_lines(sources)
++    lines += _capability_lines(sources)
++    lines += _reference_lines(sources)
++    for note in sources.notes:
++        lines.append(f"> {note}")
++    if sources.notes:
++        lines.append("")
++    lines.append("## Recommended next action")
++    lines.append("")
++    lines.append(recommended_next_action(sources).render())
++    lines.append("")
++    return "\n".join(lines)
++
++
++def render_report(job: Any, mode: str = MODE_FINAL, *,
++                  sources: ReportSources | None = None,
++                  rendered_at: str = "") -> str:
++    """Render the report for *job* (T1_F053.md Design signature).
++
++    *sources* overrides collection, which is how the goldens stay pure: tests
++    hand in fixtures instead of a data root.  When it is None the sources are
++    collected from the job and its evidence area, best effort — a source that
++    cannot be read is a ``not recorded`` line, never a raised exception, and
++    never a substituted value.
++    """
++    if mode not in VALID_MODES:
++        raise ReportError(f"unknown report mode: {mode!r}")
++    if sources is None:
++        sources = collect_report_sources(job)
++    if mode == MODE_INTERIM and not rendered_at:
++        rendered_at = datetime.now(timezone.utc).isoformat()
++    return render_report_from_sources(sources, mode=mode, rendered_at=rendered_at)
++
++
++def _job_repo_root(job: Any) -> str:
++    """The repository this job ran against, or "" when that is not knowable.
++
++    ``packages.core.models.Job`` carries no repo path — the persisted
++    ``pingpong_job.JobPlan`` does (``repo_path``), which is the same source the
++    cycle loop reads its budget actuals from.  An unreadable or absent plan is
++    not an error here: it means the milestone is simply not knowable, and the
++    report says "not recorded" rather than guessing a repository.
++    """
++    try:
++        from packages.orchestration.pingpong_job import load_job_plan
++
++        plan = load_job_plan(str(getattr(job, "id", "") or ""))
++    except Exception:  # noqa: BLE001 — a report must not depend on the plan store
++        return ""
++    return str(getattr(plan, "repo_path", "") or "") if plan is not None else ""
++
++
++def collect_report_sources(job: Any) -> ReportSources:
++    """Gather the report's sources off an in-memory job.
++
++    The STATUS mirror is read here when — and only when — a repo root is
++    knowable and that repo carries the ledger (F053 T002, DECISION D2); a run
++    against somebody else's repository has no milestone and renders
++    "not recorded".  The remaining evidence-area sources (cycle records,
++    postmortems, manifest) are attached by the terminal-state writer.
++    """
++    from packages.orchestration.status_mirror import read_status_mirror
++
++    tasks = tuple(
++        TaskOutcome(
++            task_id=str(getattr(t, "id", ""))[:8],
++            description=str(getattr(t, "description", "") or ""),
++            status=getattr(getattr(t, "status", None), "value",
++                           str(getattr(t, "status", "") or "")),
++        )
++        for t in (getattr(job, "tasks", None) or ())
++    )
++    metadata = getattr(job, "metadata", None) or {}
++    return ReportSources(
++        job_id=str(getattr(job, "id", "") or ""),
++        job_name=str(getattr(job, "name", "") or ""),
++        project_id=str(getattr(job, "project_id", "") or ""),
++        mission=str(getattr(job, "mission", "") or ""),
++        state=getattr(getattr(job, "state", None), "value",
++                      str(getattr(job, "state", "") or "")),
++        terminal_status=str(metadata.get("cycle_terminal_status", "") or ""),
++        stop_reason=str(metadata.get("cycle_stop_reason", "") or ""),
++        tasks=tasks,
++        status_mirror=read_status_mirror(_job_repo_root(job) or None),
++    )
++
++
++# ---------------------------------------------------------------------------
++# Evidence-area sources and the ONE writer (T002)
++# ---------------------------------------------------------------------------
++
++
++def _evidence_sources(job: Any) -> dict[str, Any]:
++    """Evidence-area sources for a job, each read independently.
++
++    Every read is guarded on its own: one unreadable source must not cost the
++    report the others.  A source that cannot be read is simply absent, and
++    absent renders "not recorded" — the same rule everywhere (P6).
++    """
++    job_id = str(getattr(job, "id", "") or "")
++    extra: dict[str, Any] = {}
++
++    try:
++        from packages.orchestration.long_run_executor import read_cycle_records
++
++        extra["cycle_records"] = tuple(read_cycle_records(job_id))
++    except Exception:  # noqa: BLE001 — an account of the run, not a gate on it
++        pass
++
++    # Costs come from the actuals the job runner persisted — the same source
++    # `remedy job budget` reads.  The unmeasured notation is carried verbatim
++    # from BudgetCounters; this module never re-derives a token number.
++    try:
++        from packages.orchestration.budget_guard import (
++            counters_from_persisted,
++            decode_persisted_budget_actuals,
++        )
++        from packages.orchestration.pingpong_job import load_job_plan
++
++        plan = load_job_plan(job_id)
++        actuals = getattr(plan, "budget_actuals", None) if plan is not None else None
++        if actuals is not None:
++            counters = counters_from_persisted(
++                decode_persisted_budget_actuals(
++                    actuals,
++                    first_running_at=getattr(plan, "first_running_at", "") or None))
++            extra["token_description"] = counters.token_description()
++            extra["cost_basis"] = tuple(counters.actual_sources)
++            extra["elapsed_seconds"] = counters.elapsed_seconds
++    except Exception:  # noqa: BLE001 — no actuals is "not recorded", never a zero
++        pass
++
++    try:
++        from packages.orchestration.decision_queue import (
++            list_decisions,
++            open_decisions,
++            render_open_decisions_lines,
++        )
++
++        decisions = list_decisions(job, [])
++        still_open = open_decisions(decisions)
++        extra["open_decision_count"] = len(still_open)
++        extra["open_decision_lines"] = tuple(render_open_decisions_lines(decisions))
++        extra["blocked"] = tuple(
++            BlockedItem(
++                task_id=d.related_node_id or d.id,
++                reason=d.safe_summary,
++                failure_class=d.type,
++                answer_command=d.next_actions[0] if d.next_actions else "",
++            )
++            for d in still_open
++        )
++    except Exception:  # noqa: BLE001
++        pass
++
++    return extra
++
++
++def build_report_sources(job: Any) -> ReportSources:
++    """The full source set: what lives on the job, plus its evidence area.
++
++    This is what both the terminal writer and the CLI render from, so a final
++    report and an interim snapshot of the same job describe it the same way.
++    """
++    base = collect_report_sources(job)
++    extra = _evidence_sources(job)
++    if not extra:
++        return base
++    return replace(base, **extra)
++
++
++def report_path(job_id: str) -> Path:
++    """Where this job's one report lives.
++
++    Built on the same ``job_evidence_dir`` every other job-level record uses —
++    the report sits beside the ``cycles/`` directory, not in an area of its own.
++    """
++    from packages.orchestration.pingpong_job import job_evidence_dir
++    from packages.orchestration.safe_points import validate_job_id
++
++    return Path(job_evidence_dir(validate_job_id(job_id))) / REPORT_FILENAME
++
++
++def write_final_report(job: Any, *, sources: ReportSources | None = None) -> Path | None:
++    """Write THE final report for *job*, returning its path (or None on failure).
++
++    One writer, one file, overwritten in place: a job that is resumed and then
++    finishes again REGENERATES its report rather than appending to it, so the
++    file always describes the run as it actually ended (F053 acceptance).
++
++    Never raises. A failure is recorded on the job under
++    ``REPORT_ERROR_METADATA_KEY`` and the run carries on — the report is an
++    account of the run, and losing the account must not lose the run.
++    """
++    try:
++        job_id = str(getattr(job, "id", "") or "")
++        text = render_report_from_sources(
++            sources if sources is not None else build_report_sources(job),
++            mode=MODE_FINAL)
++        path = report_path(job_id)
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_text(text, encoding="utf-8")
++    except Exception as exc:  # noqa: BLE001 — see docstring
++        metadata = getattr(job, "metadata", None)
++        if isinstance(metadata, dict):
++            metadata[REPORT_ERROR_METADATA_KEY] = f"{type(exc).__name__}: {exc}"
++        return None
++    metadata = getattr(job, "metadata", None)
++    if isinstance(metadata, dict):
++        metadata.pop(REPORT_ERROR_METADATA_KEY, None)
++    return path
+diff --git a/packages/orchestration/status_mirror.py b/packages/orchestration/status_mirror.py
+new file mode 100644
+index 00000000..828b2566
+--- /dev/null
++++ b/packages/orchestration/status_mirror.py
+@@ -0,0 +1,130 @@
++"""F053 T002 — the STATUS-mirror producer (DECISION D2).
++
++The run report's milestone distance and capability lines are specified to come
++from "the STATUS mirror".  When F053 T001 was built no such producer existed:
++`docs/roadmap/STATUS.md` had no production reader anywhere in ``packages/``,
++only a write fence (``scope_fences.BUILTIN_DENY``) declaring it operator
++territory.  This module is that missing reader, added by DECISION D2
++(docs/roadmap/features/T1_F053.md, "How it fits" amendment).
++
++Read-only by construction: it opens the ledger, parses it, and returns a
++``run_report.StatusMirror``.  It never writes that file — the fence stands, and
++this module does not weaken it.
++
++The honest-absence rule is the same one the report itself follows (P6): a
++missing file, an unparseable ledger, or a ledger with no milestone line yields
++``None``, and the report renders "not recorded".  A run against somebody
++else's repository has no Remedy roadmap and therefore has no milestone — that
++is a fact about the run, not a gap to fill with a plausible number.
++
++Deliberate absences:
++  * Remedy deliberately does not WRITE docs/roadmap/STATUS.md from any agent
++    code path — it is the operator's execution ledger (A4).
++  * Remedy deliberately does not hand-maintain the milestone distance: the
++    number is counted from the ledger on every render, so it cannot go stale.
++"""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++from packages.orchestration.run_report import StatusMirror
++
++#: Where the ledger lives inside a repository that has one.
++STATUS_RELPATH = "docs/roadmap/STATUS.md"
++
++#: One ledger entry: `- [x] F012 — Deterministic runs (…evidence…)`.
++#: The four states are fixed by the ledger's own grammar banner:
++#: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
++_ENTRY_RE = re.compile(r"^- \[([ x~!])\] (F\d+) — (.*)$")
++
++#: How the milestone line names itself.  The ledger marks exactly one.
++_MILESTONE_MARKER = "MILESTONE GATE"
++
++STATE_TODO = " "
++STATE_IN_PROGRESS = "~"
++STATE_DONE = "x"
++STATE_BLOCKED = "!"
++
++#: The states that still count as work remaining toward the milestone.
++#: Blocked (`[!]`) is deliberately NOT counted here — the amendment names
++#: `[ ]`/`[~]` and a blocked line needs a human, not a countdown.
++_UNCHECKED = frozenset({STATE_TODO, STATE_IN_PROGRESS})
++
++
++def _title(raw: str) -> str:
++    """The feature's own name, without its evidence parenthetical.
++
++    `Deterministic runs (PR #123 · evidence: …)` -> `Deterministic runs`.
++    The parenthetical is provenance, not capability, and a "can now" line
++    carrying a zip filename tells a reader nothing they can use.
++    """
++    head = raw.split(" (", 1)[0]
++    return head.strip()
++
++
++def parse_status_ledger(text: str, *, milestone_id: str = "") -> StatusMirror | None:
++    """Parse ledger *text* into a StatusMirror, or None if it cannot be trusted.
++
++    *milestone_id* pins the milestone (e.g. ``"F075"``); when empty, the single
++    line marked ``MILESTONE GATE`` is used.  Returns None — never a guess —
++    when the text has no parseable entries or names no milestone.
++    """
++    entries: list[tuple[int, str, str, str]] = []
++    for index, line in enumerate(text.splitlines()):
++        match = _ENTRY_RE.match(line)
++        if match:
++            state, feature_id, raw = match.groups()
++            entries.append((index, state, feature_id, _title(raw)))
++    if not entries:
++        return None
++
++    milestone_index = -1
++    milestone_name = ""
++    for index, _state, feature_id, title in entries:
++        if milestone_id:
++            if feature_id == milestone_id:
++                milestone_index, milestone_name = index, feature_id
++                break
++        elif _MILESTONE_MARKER in title:
++            milestone_index, milestone_name = index, feature_id
++            break
++    if milestone_index < 0:
++        # A ledger without the milestone it is being measured against cannot
++        # answer "how far", and an unanchored count would be meaningless.
++        return None
++
++    remaining = sum(1 for index, state, _fid, _t in entries
++                    if index <= milestone_index and state in _UNCHECKED)
++    # P1: only accepted [x] state may become a "can now" line; [~] is work.
++    accepted = tuple(title for _i, state, _fid, title in entries
++                     if state == STATE_DONE and title)
++    in_progress = tuple(title for _i, state, _fid, title in entries
++                        if state == STATE_IN_PROGRESS and title)
++    return StatusMirror(
++        milestone=milestone_name,
++        remaining_to_milestone=remaining,
++        accepted_capabilities=accepted,
++        in_progress_capabilities=in_progress,
++    )
++
++
++def read_status_mirror(repo_root: str | Path | None,
++                       *, milestone_id: str = "") -> StatusMirror | None:
++    """The StatusMirror for *repo_root*, or None when it has no ledger.
++
++    Never raises into a render: an unreadable ledger is indistinguishable from
++    an absent one as far as the report is concerned, and both render
++    "not recorded".
++    """
++    if not repo_root:
++        return None
++    try:
++        path = Path(repo_root) / STATUS_RELPATH
++        if not path.is_file():
++            return None
++        text = path.read_text(encoding="utf-8")
++    except (OSError, ValueError, UnicodeDecodeError):
++        return None
++    return parse_status_ledger(text, milestone_id=milestone_id)
+diff --git a/tests/cli/test_job_report.py b/tests/cli/test_job_report.py
+new file mode 100644
+index 00000000..5fa97aef
+--- /dev/null
++++ b/tests/cli/test_job_report.py
+@@ -0,0 +1,288 @@
++"""F053 T002 — `remedy job report` renders the run report.
++
++Three modes on ONE command name (the F047 `job resume` pattern): bare and
++`--json` keep the pre-existing progress view exactly as it was, `--final`
++renders the F053 account of a terminal run, `--interim` renders the same
++structure for a run still going, loudly labeled.
++
++The property this file exists to defend: rendering a snapshot must not perturb
++the run it is describing.
++"""
++
++from __future__ import annotations
++
++import json
++from datetime import datetime, timezone
++from pathlib import Path
++
++import pytest
++
++from apps.cli.command_catalog import CATALOG, get_command
++from apps.cli.commands.job import _cmd_job_run_report
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.run_report import report_path
++from packages.orchestration.storage import save_job
++
++pytestmark = pytest.mark.integration
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=UTC)
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++def saved_job(*, state: RunState = RunState.COMPLETED,
++              terminal: str = "all_green",
++              task_status: RunState = RunState.COMPLETED) -> Job:
++    job = Job(
++        name="report-job",
++        user_prompt="build the thing",
++        mission="Build the thing",
++        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
++               for i in range(2)],
++        state=state,
++        metadata={"target_repo": "/tmp/repo", "cycle_terminal_status": terminal},
++    )
++    for task in job.tasks:
++        task.status = task_status
++    save_job(job)
++    return job
++
++
++class TestFinalMode:
++
++    def test_it_renders_the_run_report(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id))
++        out = capsys.readouterr().out
++        assert "# Run report — report-job" in out
++        assert "- Terminal status: all_green" in out
++        assert "## Recommended next action" in out
++
++    def test_it_is_not_labeled_as_a_snapshot(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id))
++        assert "INTERIM SNAPSHOT" not in capsys.readouterr().out
++
++    def test_a_short_job_id_prefix_resolves(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id)[:8])
++        assert "# Run report — report-job" in capsys.readouterr().out
++
++    def test_it_reads_disk_sources_not_only_the_job(self, capsys):
++        """The mission and both task lines come from the persisted job."""
++        job = saved_job()
++        _cmd_job_run_report(str(job.id))
++        out = capsys.readouterr().out
++        assert "- Mission: Build the thing" in out
++        assert out.count("- `") >= 2
++
++
++class TestInterimMode:
++
++    def test_it_renders_the_loud_snapshot_label(self, capsys):
++        job = saved_job(state=RunState.RUNNING, terminal="",
++                        task_status=RunState.PENDING)
++        _cmd_job_run_report(str(job.id), interim=True)
++        first = capsys.readouterr().out.splitlines()[0]
++        assert first.startswith("> **INTERIM SNAPSHOT — run still in progress")
++        assert "rendered at" in first
++
++    def test_it_keeps_the_same_section_structure_as_final(self, capsys):
++        """Compared on a TERMINAL job — --final refuses a moving run (R-0161),
++        and interim is legal on any job, so this is the one state where both
++        modes render and their structure can be compared at all."""
++        job = saved_job()
++        _cmd_job_run_report(str(job.id), interim=True)
++        interim = capsys.readouterr().out
++        _cmd_job_run_report(str(job.id))
++        final = capsys.readouterr().out
++        assert _headings(interim) == _headings(final)
++
++    def test_interim_never_mutates_job_state(self, capsys):
++        """The whole point: looking at a running job must not disturb it."""
++        job = saved_job(state=RunState.RUNNING, terminal="",
++                        task_status=RunState.PENDING)
++        before = _job_file(job).read_bytes()
++        _cmd_job_run_report(str(job.id), interim=True)
++        capsys.readouterr()
++        assert _job_file(job).read_bytes() == before
++
++    def test_interim_writes_no_report_file(self, capsys):
++        """Only the terminal hook writes report.md — never a render."""
++        job = saved_job(state=RunState.RUNNING, terminal="",
++                        task_status=RunState.PENDING)
++        _cmd_job_run_report(str(job.id), interim=True)
++        capsys.readouterr()
++        assert not report_path(str(job.id)).exists()
++
++    def test_final_mode_writes_no_report_file_either(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id))
++        capsys.readouterr()
++        assert not report_path(str(job.id)).exists()
++
++
++class TestFinalRefusesANonTerminalRun:
++    """R-0161: --final on a moving run would be an unbannered snapshot."""
++
++    def _running(self) -> Job:
++        return saved_job(state=RunState.RUNNING, terminal="",
++                         task_status=RunState.PENDING)
++
++    def test_it_refuses_with_a_clean_error(self, capsys):
++        job = self._running()
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report(str(job.id))
++        assert exc.value.code == 1
++        captured = capsys.readouterr()
++        assert captured.err.strip() == (
++            "Error: run still in progress (state: running) — "
++            "use --interim for a snapshot")
++        assert "Traceback" not in captured.err
++
++    def test_it_renders_nothing_at_all(self, capsys):
++        """Never render anyway: a refusal that still prints is not a refusal."""
++        job = self._running()
++        with pytest.raises(SystemExit):
++            _cmd_job_run_report(str(job.id))
++        assert capsys.readouterr().out == ""
++
++    def test_it_never_silently_switches_to_interim(self, capsys):
++        job = self._running()
++        with pytest.raises(SystemExit):
++            _cmd_job_run_report(str(job.id))
++        assert "INTERIM SNAPSHOT" not in capsys.readouterr().out
++
++    def test_json_mode_reports_run_not_terminal(self, capsys):
++        job = self._running()
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report(str(job.id), json_output=True)
++        assert exc.value.code == 1
++        payload = json.loads(capsys.readouterr().out)
++        assert payload["error"] == "run_not_terminal"
++        assert payload["state"] == "running"
++        assert payload["terminal_status"] == ""
++        assert payload["hint"] == "use --interim for a snapshot"
++
++    def test_interim_on_the_same_job_still_works(self, capsys):
++        """The refusal is scoped to --final; the snapshot path is untouched."""
++        job = self._running()
++        _cmd_job_run_report(str(job.id), interim=True)
++        assert "INTERIM SNAPSHOT" in capsys.readouterr().out
++
++    @pytest.mark.parametrize("terminal", [
++        "all_green", "stopped_by_operator", "budget_exhausted",
++        "deadline_reached", "blocked",
++    ])
++    def test_every_reported_terminal_is_allowed(self, terminal, capsys):
++        job = saved_job(terminal=terminal)
++        _cmd_job_run_report(str(job.id))
++        out = capsys.readouterr().out
++        assert "# Run report — report-job" in out
++        assert f"- Terminal status: {terminal}" in out
++
++    def test_max_cycles_reached_is_refused_like_any_non_terminal(self, capsys):
++        """It is not in REPORTED_TERMINALS; the job still has work."""
++        job = saved_job(state=RunState.RUNNING, terminal="max_cycles_reached",
++                        task_status=RunState.PENDING)
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report(str(job.id))
++        assert exc.value.code == 1
++        assert "run still in progress" in capsys.readouterr().err
++
++    def test_the_guard_reads_the_executor_s_own_set(self):
++        """No second list of terminals to drift out of sync."""
++        from packages.orchestration.long_run_executor import REPORTED_TERMINALS
++
++        assert "all_green" in REPORTED_TERMINALS
++        assert "max_cycles_reached" not in REPORTED_TERMINALS
++
++
++class TestJsonMode:
++
++    def test_it_emits_the_structured_sources(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id), json_output=True)
++        payload = json.loads(capsys.readouterr().out)
++        assert payload["job_name"] == "report-job"
++        assert payload["terminal_status"] == "all_green"
++        assert len(payload["tasks"]) == 2
++        assert "status_mirror" in payload
++
++    def test_the_json_is_not_the_rendered_markdown(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id), json_output=True)
++        out = capsys.readouterr().out
++        assert "# Run report" not in out
++
++    def test_json_and_interim_agree_on_the_sources(self, capsys):
++        job = saved_job()
++        _cmd_job_run_report(str(job.id), json_output=True)
++        payload = json.loads(capsys.readouterr().out)
++        _cmd_job_run_report(str(job.id), interim=True)
++        text = capsys.readouterr().out
++        assert payload["job_name"] in text
++
++
++class TestUnknownJob:
++
++    def test_it_exits_cleanly_without_a_traceback(self, capsys):
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report("ffffffff-ffff-4fff-8fff-ffffffffffff")
++        assert exc.value.code == 1
++        captured = capsys.readouterr()
++        assert "Error: job not found" in captured.err
++        assert "Traceback" not in captured.err
++
++    def test_json_mode_reports_the_error_as_json(self, capsys):
++        with pytest.raises(SystemExit):
++            _cmd_job_run_report("ffffffff-ffff-4fff-8fff-ffffffffffff",
++                                json_output=True)
++        payload = json.loads(capsys.readouterr().out)
++        assert payload["error"] == "job_not_found"
++
++
++class TestOneCommandThreeModes:
++    """The F047 lesson: extend the existing name, never shadow it."""
++
++    def test_the_catalog_registers_job_report_exactly_once(self):
++        matches = [e for e in CATALOG if e.command_id == "job.report"]
++        assert len(matches) == 1, matches
++
++    def test_the_command_declares_both_new_flags(self):
++        names = [a.name for a in get_command("job.report").args]
++        assert "--final" in names and "--interim" in names
++        assert "--json" in names          # the pre-existing option survives
++
++    def test_the_new_flags_are_flags_not_valued_options(self):
++        for arg in get_command("job.report").args:
++            if arg.name in ("--final", "--interim"):
++                assert arg.is_flag, arg.name
++                assert not arg.required, arg.name
++
++    def test_the_bare_progress_view_is_untouched(self, capsys):
++        """No existing invocation changes behavior."""
++        from apps.cli.commands.job import _cmd_job_report
++
++        job = saved_job()
++        _cmd_job_report(str(job.id))
++        out = capsys.readouterr().out
++        assert "Job Report:" in out           # the pre-F053 view
++        assert "# Run report" not in out
++
++
++def _headings(text: str) -> list[str]:
++    return [line for line in text.splitlines() if line.startswith("## ")]
++
++
++def _job_file(job: Job) -> Path:
++    from packages.orchestration.data_paths import jobs_dir
++
++    return jobs_dir() / f"{job.id}.json"
+diff --git a/tests/orchestration/test_run_report.py b/tests/orchestration/test_run_report.py
+new file mode 100644
+index 00000000..8e3ecc5f
+--- /dev/null
++++ b/tests/orchestration/test_run_report.py
+@@ -0,0 +1,892 @@
++"""F053 T001 — the run report renders honestly, or it renders "not recorded".
++
++The three goldens are the contract: a green run, a blocked run with an open
++decision, and a budget-exhausted run.  Everything else here defends the one
++rule that makes the report worth reading — every number names its basis, and
++a number that was never measured is never printed.
++"""
++
++from __future__ import annotations
++
++import re
++
++import pytest
++
++from packages.orchestration.run_report import (
++    CIRCLING_ESCALATION,
++    MODE_FINAL,
++    MODE_INTERIM,
++    MOMENTUM_CIRCLING,
++    MOMENTUM_FORWARD,
++    MOMENTUM_UNKNOWN,
++    NEXT_ACTION_CONDITIONS,
++    NEXT_ACTION_RULES,
++    NOT_RECORDED,
++    BlockedItem,
++    NextAction,
++    ReportError,
++    ReportSources,
++    StatusMirror,
++    TaskOutcome,
++    momentum_flag,
++    recommended_next_action,
++    render_report,
++    render_report_from_sources,
++)
++from packages.orchestration.status_mirror import (
++    parse_status_ledger,
++    read_status_mirror,
++)
++
++pytestmark = pytest.mark.unit
++
++
++# ---------------------------------------------------------------------------
++# Fixtures — three terminal states, built as data, never read from disk
++# ---------------------------------------------------------------------------
++
++
++def _green_sources() -> ReportSources:
++    """All tasks completed, one clean cycle, actuals fully measured."""
++    return ReportSources(
++        job_id="11111111-1111-4111-8111-111111111111",
++        job_name="green run",
++        project_id="remedy",
++        mission="Add the run report",
++        state="completed",
++        terminal_status="all_green",
++        duration_text="4m 12s",
++        tasks=(
++            TaskOutcome("aaaaaaaa", "Write the renderer", "completed",
++                        evidence_ref="tasks/aaaaaaaa/output.md"),
++            TaskOutcome("bbbbbbbb", "Write the tests", "completed",
++                        evidence_ref="tasks/bbbbbbbb/output.md"),
++        ),
++        token_description="4200 tokens",
++        cost_basis=("pingpong_actuals",),
++        elapsed_seconds=252.0,
++        cycle_records=(
++            {"cycle_index": 1, "tasks_completed": 2, "tasks_failed": 0,
++             "tasks_escalated": 0, "verify_result": "passed",
++             "verify_failure_class": ""},
++        ),
++        open_decision_count=0,
++        assumptions_ref="assumptions.md",
++        plan_ref="plan.md",
++        manifest_ref="run_manifest.json",
++        status_mirror=StatusMirror(
++            milestone="F075",
++            remaining_to_milestone=21,
++            accepted_capabilities=("plan and execute a job",),
++            in_progress_capabilities=("write a run report",),
++        ),
++        next_capability="report every run without being asked",
++    )
++
++
++def _blocked_decision_sources() -> ReportSources:
++    """A task raised a question; its branch waits, and the report says how."""
++    answer = ('remedy decision resolve 22222222 td:cccccccc '
++              '--reason "<your answer>"')
++    return ReportSources(
++        job_id="22222222-2222-4222-8222-222222222222",
++        job_name="blocked run",
++        project_id="remedy",
++        mission="Migrate the store",
++        state="paused",
++        terminal_status="blocked",
++        stop_reason="task raised a decision",
++        duration_text="1m 30s",
++        tasks=(
++            TaskOutcome("cccccccc", "Choose the migration order", "paused",
++                        evidence_ref="tasks/cccccccc/output.md"),
++            TaskOutcome("dddddddd", "Apply the migration", "pending"),
++        ),
++        blocked=(
++            BlockedItem(
++                task_id="cccccccc",
++                reason="needs a decision on the migration order",
++                failure_class="needs_decision",
++                answer_command=answer,
++                evidence_ref="tasks/cccccccc/postmortem.json",
++            ),
++        ),
++        token_description="1800 tokens",
++        cost_basis=("pingpong_actuals",),
++        elapsed_seconds=90.0,
++        cycle_records=(
++            {"cycle_index": 1, "tasks_completed": 0, "tasks_failed": 0,
++             "tasks_escalated": 1, "verify_result": "not_run",
++             "verify_failure_class": ""},
++        ),
++        open_decision_lines=(
++            "Open decisions: 1 — the run needs an answer",
++            "  [blocker] task_decision td:cccccccc: needs a decision on the "
++            "migration order",
++            f"    -> {answer}",
++        ),
++        open_decision_count=1,
++        open_assumptions=("A9: unmeasured provider calls count as unmeasured",),
++        assumptions_ref="assumptions.md",
++        plan_ref="plan.md",
++        manifest_ref="run_manifest.json",
++        status_mirror=StatusMirror(
++            milestone="F075", remaining_to_milestone=21,
++            accepted_capabilities=("plan and execute a job",)),
++        next_capability="answer decisions from the CLI",
++    )
++
++
++def _budget_sources() -> ReportSources:
++    """Stopped on budget, with unmeasured provider calls and a healed cycle."""
++    return ReportSources(
++        job_id="33333333-3333-4333-8333-333333333333",
++        job_name="budget run",
++        project_id="remedy",
++        mission="Refactor the verifier",
++        state="paused",
++        terminal_status="budget_exhausted",
++        stop_reason="budget_exhausted:tokens",
++        duration_text="12m 05s",
++        tasks=(
++            TaskOutcome("eeeeeeee", "Refactor the verifier", "failed",
++                        evidence_ref="tasks/eeeeeeee/output.md"),
++        ),
++        blocked=(
++            BlockedItem(
++                task_id="eeeeeeee",
++                reason="budget exhausted before the task finished",
++                failure_class="budget_exhausted",
++                evidence_ref="tasks/eeeeeeee/postmortem.json",
++            ),
++        ),
++        # The unmeasured notation is carried VERBATIM from
++        # budget_guard.BudgetCounters.token_description().
++        token_description=">= 91000 tokens (3 provider calls unmeasured)",
++        cost_basis=("pingpong_actuals", "provider_evidence"),
++        elapsed_seconds=725.0,
++        cycle_records=(
++            {"cycle_index": 1, "tasks_completed": 0, "tasks_failed": 1,
++             "tasks_escalated": 0, "verify_result": "failed",
++             "verify_failure_class": "test_failed",
++             "repair_rounds_used": 2, "healed_after_repair": True,
++             "healed_without_changes": True,
++             "repair_summary": "2 rounds; verify passed again"},
++        ),
++        open_decision_count=0,
++        assumptions_ref="assumptions.md",
++        plan_ref="plan.md",
++        manifest_ref="run_manifest.json",
++        status_mirror=StatusMirror(
++            milestone="F075", remaining_to_milestone=21,
++            accepted_capabilities=("plan and execute a job",)),
++        next_capability="raise the budget and resume",
++        notes=("Normalization: 1 provider response was re-encoded to UTF-8.",),
++    )
++
++
++# ---------------------------------------------------------------------------
++# Golden reports
++# ---------------------------------------------------------------------------
++
++
++GOLDEN_GREEN = """\
++# Run report — green run
++
++- Job: `11111111-1111-4111-8111-111111111111`
++- Project: remedy
++- Mission: Add the run report
++- State: completed
++- Terminal status: all_green
++- Duration: 4m 12s
++
++## Tasks
++
++- `aaaaaaaa` — Write the renderer — **completed** — [evidence](tasks/aaaaaaaa/output.md)
++- `bbbbbbbb` — Write the tests — **completed** — [evidence](tasks/bbbbbbbb/output.md)
++
++## Blocked
++
++Nothing blocked.
++
++## Open decisions
++
++No open decisions.
++
++## Cost
++
++- Tokens: 4200 tokens — basis: pingpong_actuals
++- Elapsed: 252.0s — basis: budget counters
++
++## Cycles
++
++- Cycle 1: 2 completed, 0 failed, 0 escalated — verify: passed
++
++## Open assumptions
++
++No open assumptions.
++
++Assumption log: [assumptions](assumptions.md)
++
++## Momentum
++
++✅ Forward — every round closed items and nothing recurred.
++
++## Milestone
++
++- 21 features remain to F075
++
++## Capabilities
++
++- Can now: plan and execute a job
++- In progress: write a run report
++- Can next: report every run without being asked
++
++## References
++
++- Plan: [plan](plan.md)
++- Run manifest: [run_manifest.json](run_manifest.json)
++
++## Recommended next action
++
++Review and merge the branch  _(rule: all-green — every task completed and nothing is open)_
++"""
++
++
++GOLDEN_BLOCKED = """\
++# Run report — blocked run
++
++- Job: `22222222-2222-4222-8222-222222222222`
++- Project: remedy
++- Mission: Migrate the store
++- State: paused
++- Terminal status: blocked
++- Stop reason: task raised a decision
++- Duration: 1m 30s
++
++## Tasks
++
++- `cccccccc` — Choose the migration order — **paused** — [evidence](tasks/cccccccc/output.md)
++- `dddddddd` — Apply the migration — **pending**
++
++## Blocked
++
++- `cccccccc` — needs a decision on the migration order — class: needs_decision — [postmortem](tasks/cccccccc/postmortem.json)
++  - answer with: `remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"`
++
++## Open decisions
++
++Open decisions: 1 — the run needs an answer
++  [blocker] task_decision td:cccccccc: needs a decision on the migration order
++    -> remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"
++
++## Cost
++
++- Tokens: 1800 tokens — basis: pingpong_actuals
++- Elapsed: 90.0s — basis: budget counters
++
++## Cycles
++
++- Cycle 1: 0 completed, 0 failed, 1 escalated — verify: not_run
++
++## Open assumptions
++
++- A9: unmeasured provider calls count as unmeasured
++- Full log: [assumptions](assumptions.md)
++
++## Momentum
++
++✅ Forward — every round closed items and nothing recurred.
++
++## Milestone
++
++- 21 features remain to F075
++
++## Capabilities
++
++- Can now: plan and execute a job
++- Can next: answer decisions from the CLI
++
++## References
++
++- Plan: [plan](plan.md)
++- Run manifest: [run_manifest.json](run_manifest.json)
++
++## Recommended next action
++
++Answer the open decision: `remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"`  _(rule: open-decision — an open decision is waiting for an answer)_
++"""
++
++
++GOLDEN_BUDGET = """\
++# Run report — budget run
++
++- Job: `33333333-3333-4333-8333-333333333333`
++- Project: remedy
++- Mission: Refactor the verifier
++- State: paused
++- Terminal status: budget_exhausted
++- Stop reason: budget_exhausted:tokens
++- Duration: 12m 05s
++
++## Tasks
++
++- `eeeeeeee` — Refactor the verifier — **failed** — [evidence](tasks/eeeeeeee/output.md)
++
++## Blocked
++
++- `eeeeeeee` — budget exhausted before the task finished — class: budget_exhausted — [postmortem](tasks/eeeeeeee/postmortem.json)
++
++## Open decisions
++
++No open decisions.
++
++## Cost
++
++- Tokens: >= 91000 tokens (3 provider calls unmeasured) — basis: pingpong_actuals, provider_evidence
++- Elapsed: 725.0s — basis: budget counters
++
++## Cycles
++
++- Cycle 1: 0 completed, 1 failed, 0 escalated — verify: failed — failure class: test_failed
++  - healed after 2 repair round(s) — WITHOUT file changes (flake suspect)
++  - repair: 2 rounds; verify passed again
++
++## Open assumptions
++
++No open assumptions.
++
++Assumption log: [assumptions](assumptions.md)
++
++## Momentum
++
++✅ Forward — every round closed items and nothing recurred.
++
++## Milestone
++
++- 21 features remain to F075
++
++## Capabilities
++
++- Can now: plan and execute a job
++- Can next: raise the budget and resume
++
++## References
++
++- Plan: [plan](plan.md)
++- Run manifest: [run_manifest.json](run_manifest.json)
++
++> Normalization: 1 provider response was re-encoded to UTF-8.
++
++## Recommended next action
++
++Inspect [the postmortem](tasks/eeeeeeee/postmortem.json) and repair the blocked task  _(rule: blocked-failed — the run is blocked or a task failed)_
++"""
++
++
++class TestGoldenReports:
++    """The three fixture terminals from T1_F053.md Acceptance."""
++
++    def test_green_terminal_matches_golden(self):
++        assert render_report_from_sources(_green_sources()) == GOLDEN_GREEN
++
++    def test_blocked_with_decision_matches_golden(self):
++        assert render_report_from_sources(_blocked_decision_sources()) == GOLDEN_BLOCKED
++
++    def test_budget_terminal_matches_golden(self):
++        assert render_report_from_sources(_budget_sources()) == GOLDEN_BUDGET
++
++
++class TestCostBasis:
++    """Every number names where it came from, or it is not a number (P6)."""
++
++    @pytest.mark.parametrize("sources", [
++        _green_sources(), _blocked_decision_sources(), _budget_sources(),
++    ])
++    def test_every_cost_line_carries_a_basis(self, sources):
++        cost_lines = [
++            line for line in render_report_from_sources(sources).splitlines()
++            if line.startswith("- Tokens:") or line.startswith("- Elapsed:")
++        ]
++        assert cost_lines, "the cost section rendered no lines at all"
++        for line in cost_lines:
++            assert " — basis: " in line, f"cost line without a basis: {line}"
++
++    def test_unmeasured_notation_is_carried_verbatim(self):
++        """The notation comes from BudgetCounters.token_description(); the
++        report never re-words it, because a re-worded caveat is a new claim."""
++        report = render_report_from_sources(_budget_sources())
++        assert ">= 91000 tokens (3 provider calls unmeasured)" in report
++
++
++class TestMissingSourcesAreNotInvented:
++    """The negative test: nothing is filled in, ever."""
++
++    def test_missing_actuals_render_not_recorded(self):
++        sources = ReportSources(job_name="no actuals", token_description="")
++        report = render_report_from_sources(sources)
++        assert f"Tokens: {NOT_RECORDED}" in report
++
++    def test_missing_actuals_never_render_a_zero(self):
++        """A zero is a measurement. A run with no actuals made none."""
++        sources = ReportSources(job_name="no actuals", token_description="")
++        cost = _section(render_report_from_sources(sources), "Cost")
++        assert not re.search(r"\b0 tokens\b", cost), cost
++        assert "0.0s" not in cost, cost
++
++    def test_every_absent_source_names_itself(self):
++        """An empty ReportSources renders a report made only of gaps — and
++        every gap says so rather than rendering an empty section."""
++        report = render_report_from_sources(ReportSources())
++        for heading in ("Tasks", "Open decisions", "Cost", "Cycles",
++                        "Open assumptions", "Momentum", "Milestone",
++                        "Capabilities"):
++            assert NOT_RECORDED in _section(report, heading), heading
++
++    def test_missing_status_mirror_does_not_invent_a_milestone(self):
++        report = render_report_from_sources(ReportSources(job_name="x"))
++        milestone = _section(report, "Milestone")
++        assert NOT_RECORDED in milestone
++        assert not re.search(r"\d+ features remain", milestone), milestone
++
++    def test_in_progress_state_never_becomes_a_capability(self):
++        """P1: only accepted [x] state may say "can now"."""
++        sources = ReportSources(
++            job_name="x",
++            status_mirror=StatusMirror(
++                milestone="F075", remaining_to_milestone=3,
++                accepted_capabilities=(),
++                in_progress_capabilities=("write a run report",)))
++        capabilities = _section(render_report_from_sources(sources), "Capabilities")
++        assert "- In progress: write a run report" in capabilities
++        assert "- Can now: write a run report" not in capabilities
++        assert "- Can now: nothing accepted yet" in capabilities
++
++
++class TestInterimMode:
++    """A snapshot that could pass for a final report is the whole risk."""
++
++    def test_interim_renders_the_loud_label(self):
++        report = render_report_from_sources(
++            _green_sources(), mode=MODE_INTERIM,
++            rendered_at="2026-07-31T10:00:00+00:00")
++        assert report.splitlines()[0] == (
++            "> **INTERIM SNAPSHOT — run still in progress "
++            "(rendered at 2026-07-31T10:00:00+00:00)**")
++
++    def test_final_mode_has_no_interim_label(self):
++        assert "INTERIM SNAPSHOT" not in render_report_from_sources(_green_sources())
++
++    def test_interim_keeps_the_same_structure(self):
++        """Same sections, same order — only the banner differs."""
++        final = render_report_from_sources(_green_sources())
++        interim = render_report_from_sources(
++            _green_sources(), mode=MODE_INTERIM, rendered_at="2026-07-31T10:00:00+00:00")
++        assert _headings(interim) == _headings(final)
++
++    def test_interim_without_a_timestamp_is_refused(self):
++        with pytest.raises(ReportError, match="rendered_at"):
++            render_report_from_sources(_green_sources(), mode=MODE_INTERIM)
++
++    def test_interim_does_not_mutate_the_sources(self):
++        sources = _green_sources()
++        before = repr(sources)
++        render_report_from_sources(sources, mode=MODE_INTERIM,
++                                   rendered_at="2026-07-31T10:00:00+00:00")
++        assert repr(sources) == before
++
++
++class TestDeterminism:
++    """No clock, no disk, no randomness — twice is the same bytes."""
++
++    @pytest.mark.parametrize("sources", [
++        _green_sources(), _blocked_decision_sources(), _budget_sources(),
++    ])
++    def test_double_render_is_byte_identical(self, sources):
++        assert render_report_from_sources(sources) == render_report_from_sources(sources)
++
++    def test_double_render_of_interim_is_byte_identical(self):
++        ts = "2026-07-31T10:00:00+00:00"
++        first = render_report_from_sources(_green_sources(), mode=MODE_INTERIM,
++                                           rendered_at=ts)
++        second = render_report_from_sources(_green_sources(), mode=MODE_INTERIM,
++                                            rendered_at=ts)
++        assert first == second
++
++    def test_rebuilt_fixtures_render_identically(self):
++        """Two independently built fixtures with the same content agree —
++        catches ordering that depends on object identity."""
++        assert render_report_from_sources(_green_sources()) == \
++            render_report_from_sources(_green_sources())
++
++
++class TestStatusMirrorProducer:
++    """F053 T002 / DECISION D2 — the ledger reader the feature presumed existed.
++
++    The fixture is the self-repo's ledger SHAPE, not the file itself: pinning
++    the real STATUS.md would make these tests fail every time the roadmap
++    advances, which is a test that measures the calendar.
++    """
++
++    LEDGER = """\
++# REMEDY STATUS — Execution-Order Truth
++
++> Grammar: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
++
++## Tier 0 — Foundation & Trust Core
++
++- [x] F001 — Adaptive provider timeouts (PR #123 · commit 4856006 · PASS)
++- [x] F003 — Real token/cost measurement (PR #123 · evidence: some.zip)
++- [~] F053 — Final & interim report
++- [ ] F056 — Missions: persistent goal
++- [ ] F075 — MILESTONE GATE: 10 flawless self-runs
++- [ ] F080 — Machine-readable roadmap mirror
++"""
++
++    def test_milestone_and_distance_come_from_the_ledger(self):
++        mirror = parse_status_ledger(self.LEDGER)
++        assert mirror is not None
++        assert mirror.milestone == "F075"
++        # F053 [~], F056 [ ], F075 [ ] — the milestone counts itself in.
++        assert mirror.remaining_to_milestone == 3
++
++    def test_entries_after_the_milestone_are_not_counted(self):
++        """F080 sits below the gate and must not inflate the distance."""
++        assert parse_status_ledger(self.LEDGER).remaining_to_milestone == 3
++
++    def test_capabilities_split_accepted_from_in_progress(self):
++        """P1 again, at the source: [x] is capability, [~] is work."""
++        mirror = parse_status_ledger(self.LEDGER)
++        assert mirror.accepted_capabilities == (
++            "Adaptive provider timeouts", "Real token/cost measurement")
++        assert mirror.in_progress_capabilities == ("Final & interim report",)
++
++    def test_evidence_parenthetical_is_stripped_from_capabilities(self):
++        """A "can now" line carrying a zip filename helps nobody."""
++        for capability in parse_status_ledger(self.LEDGER).accepted_capabilities:
++            assert "PR #" not in capability
++            assert ".zip" not in capability
++
++    def test_an_explicit_milestone_id_overrides_the_gate_line(self):
++        mirror = parse_status_ledger(self.LEDGER, milestone_id="F056")
++        assert mirror.milestone == "F056"
++        assert mirror.remaining_to_milestone == 2
++
++    def test_blocked_entries_do_not_count_toward_the_distance(self):
++        ledger = self.LEDGER.replace("- [ ] F056 — Missions: persistent goal",
++                                     "- [!] F056 — Missions: persistent goal")
++        assert parse_status_ledger(ledger).remaining_to_milestone == 2
++
++    @pytest.mark.parametrize("text,why", [
++        ("", "empty file"),
++        ("# STATUS\n\nNothing here at all.\n", "no entries"),
++        ("- [ ] F001 — Something\n- [x] F002 — Something else\n", "no milestone"),
++    ])
++    def test_an_untrustworthy_ledger_yields_none_not_a_guess(self, text, why):
++        assert parse_status_ledger(text) is None, why
++
++    def test_a_missing_repo_or_ledger_yields_none(self, tmp_path):
++        assert read_status_mirror(None) is None
++        assert read_status_mirror("") is None
++        assert read_status_mirror(tmp_path) is None          # repo without a ledger
++
++    def test_a_real_repo_root_is_read(self, tmp_path):
++        ledger = tmp_path / "docs" / "roadmap"
++        ledger.mkdir(parents=True)
++        (ledger / "STATUS.md").write_text(self.LEDGER, encoding="utf-8")
++        mirror = read_status_mirror(tmp_path)
++        assert mirror is not None and mirror.milestone == "F075"
++
++    def test_an_unreadable_ledger_never_raises_into_a_render(self, tmp_path):
++        """A directory where the file should be: absent, not an exception."""
++        (tmp_path / "docs" / "roadmap" / "STATUS.md").mkdir(parents=True)
++        assert read_status_mirror(tmp_path) is None
++
++    def test_the_mirror_feeds_the_report_sections(self, tmp_path):
++        ledger = tmp_path / "docs" / "roadmap"
++        ledger.mkdir(parents=True)
++        (ledger / "STATUS.md").write_text(self.LEDGER, encoding="utf-8")
++        sources = ReportSources(job_name="x",
++                                status_mirror=read_status_mirror(tmp_path))
++        report = render_report_from_sources(sources)
++        assert "- 3 features remain to F075" in _section(report, "Milestone")
++        capabilities = _section(report, "Capabilities")
++        assert "- Can now: Adaptive provider timeouts" in capabilities
++        assert "- In progress: Final & interim report" in capabilities
++        assert "- Can now: Final & interim report" not in capabilities
++
++    def test_a_repo_without_a_ledger_renders_not_recorded(self, tmp_path):
++        sources = ReportSources(job_name="x",
++                                status_mirror=read_status_mirror(tmp_path))
++        assert NOT_RECORDED in _section(render_report_from_sources(sources),
++                                        "Milestone")
++
++
++class TestStoppedByOperatorRule:
++    """DECISION D2: a run stopped on purpose is not a broken run."""
++
++    def _stopped(self, **overrides) -> ReportSources:
++        base = dict(job_name="stopped run", terminal_status="stopped_by_operator",
++                    stop_reason="operator requested stop",
++                    tasks=(TaskOutcome("aaaaaaaa", "Do the thing", "paused"),))
++        base.update(overrides)
++        return ReportSources(**base)
++
++    def test_an_operator_stop_gets_its_own_rule(self):
++        assert recommended_next_action(self._stopped()).rule_id == "stopped-by-operator"
++
++    def test_the_action_is_the_amendment_wording(self):
++        action = recommended_next_action(self._stopped()).action
++        assert action == ("Resume the run (or close it) — it stopped on "
++                          "request, nothing is broken")
++
++    def test_it_never_sends_the_operator_to_a_postmortem(self):
++        """The false alarm this rule exists to prevent."""
++        report = render_report_from_sources(self._stopped())
++        assert "postmortem" not in _section(report, "Recommended next action")
++
++    def test_an_open_decision_still_outranks_it(self):
++        """Ranked BETWEEN open-decision and blocked-failed — so it loses here."""
++        sources = self._stopped(open_decision_count=1)
++        assert recommended_next_action(sources).rule_id == "open-decision"
++
++    def test_it_outranks_the_blocked_rule(self):
++        """…and wins here, even with a blocked item present."""
++        sources = self._stopped(blocked=(
++            BlockedItem("aaaaaaaa", "stopped mid-flight", failure_class="stopped"),))
++        assert recommended_next_action(sources).rule_id == "stopped-by-operator"
++
++    def test_other_stop_terminals_still_route_to_the_postmortem(self):
++        for terminal in ("blocked", "budget_exhausted", "deadline_reached"):
++            sources = self._stopped(terminal_status=terminal)
++            assert recommended_next_action(sources).rule_id == "blocked-failed", terminal
++
++    def test_the_rule_table_order_is_the_documented_priority(self):
++        ids = [rule_id for rule_id, _condition in NEXT_ACTION_RULES]
++        assert ids == ["open-decision", "stopped-by-operator", "blocked-failed",
++                       "all-green", "indeterminate"]
++
++    def test_the_new_rule_is_documented_like_every_other(self):
++        assert NEXT_ACTION_CONDITIONS["stopped-by-operator"] == (
++            "the run stopped on operator request")
++
++
++class TestNextActionRuleTable:
++    """Exactly one recommendation, and its rule is documented."""
++
++    def test_exactly_one_recommendation_line(self):
++        for sources in (_green_sources(), _blocked_decision_sources(),
++                        _budget_sources()):
++            body = _section(render_report_from_sources(sources),
++                            "Recommended next action")
++            lines = [line for line in body.splitlines() if line.strip()]
++            assert len(lines) == 1, lines
++
++    def test_open_decision_outranks_a_failure(self):
++        """A run that is both blocked AND awaiting an answer asks for the
++        answer: no repair gets past an unanswered question."""
++        sources = _blocked_decision_sources()
++        assert recommended_next_action(sources).rule_id == "open-decision"
++
++    def test_blocked_without_a_decision_points_at_the_postmortem(self):
++        assert recommended_next_action(_budget_sources()).rule_id == "blocked-failed"
++
++    def test_all_green_recommends_the_branch(self):
++        assert recommended_next_action(_green_sources()).rule_id == "all-green"
++
++    def test_unknown_state_is_indeterminate_not_a_guess(self):
++        action = recommended_next_action(ReportSources())
++        assert action.rule_id == "indeterminate"
++        assert NOT_RECORDED in action.action
++
++    def test_every_rule_id_is_documented(self):
++        for sources in (_green_sources(), _blocked_decision_sources(),
++                        _budget_sources(), ReportSources()):
++            assert recommended_next_action(sources).rule_id in NEXT_ACTION_CONDITIONS
++
++    def test_an_undocumented_rule_cannot_be_built(self):
++        with pytest.raises(ReportError, match="undocumented rule"):
++            NextAction("made-up", "do something")
++
++    def test_the_answer_command_is_never_abbreviated(self):
++        """A command that is not shown in full cannot be pasted."""
++        report = render_report_from_sources(_blocked_decision_sources())
++        command = ('remedy decision resolve 22222222 td:cccccccc '
++                   '--reason "<your answer>"')
++        # Blocked item, open-decisions block, recommendation — in full each time.
++        assert report.count(command) == 3
++        assert "…" not in report
++
++
++class TestMomentumFlag:
++    """The mechanical definition, not a feeling."""
++
++    def test_no_cycles_is_unknown(self):
++        assert momentum_flag([]) == MOMENTUM_UNKNOWN
++        assert momentum_flag(None) == MOMENTUM_UNKNOWN
++
++    def test_closing_items_is_forward(self):
++        records = [
++            {"cycle_index": 1, "tasks_failed": 3, "tasks_escalated": 0},
++            {"cycle_index": 2, "tasks_failed": 1, "tasks_escalated": 0},
++            {"cycle_index": 3, "tasks_failed": 0, "tasks_escalated": 0},
++        ]
++        assert momentum_flag(records) == MOMENTUM_FORWARD
++
++    def test_a_recurring_failure_class_is_circling(self):
++        records = [
++            {"cycle_index": 1, "tasks_failed": 2, "verify_failure_class": "test_failed"},
++            {"cycle_index": 2, "tasks_failed": 1, "verify_failure_class": "test_failed"},
++        ]
++        assert momentum_flag(records) == MOMENTUM_CIRCLING
++
++    def test_open_items_not_decreasing_is_circling(self):
++        records = [
++            {"cycle_index": 1, "tasks_failed": 2, "tasks_escalated": 0},
++            {"cycle_index": 2, "tasks_failed": 2, "tasks_escalated": 0},
++        ]
++        assert momentum_flag(records) == MOMENTUM_CIRCLING
++
++    def test_circling_renders_a_warning_and_an_escalation(self):
++        sources = ReportSources(
++            job_name="circling",
++            cycle_records=(
++                {"cycle_index": 1, "tasks_failed": 2,
++                 "verify_failure_class": "test_failed"},
++                {"cycle_index": 2, "tasks_failed": 2,
++                 "verify_failure_class": "test_failed"},
++            ))
++        momentum = _section(render_report_from_sources(sources), "Momentum")
++        assert "Circling" in momentum
++        assert CIRCLING_ESCALATION in momentum
++
++    def test_a_heal_is_never_silent(self):
++        """F052 risk visibility: a healed cycle says so in the report."""
++        cycles = _section(render_report_from_sources(_budget_sources()), "Cycles")
++        assert "healed after 2 repair round(s)" in cycles
++        assert "WITHOUT file changes (flake suspect)" in cycles
++
++
++class TestBigRuns:
++    """A9: the report is a summary; the evidence area is the archive."""
++
++    def test_task_lines_cap_with_an_honest_count(self):
++        sources = ReportSources(
++            job_name="huge",
++            tasks=tuple(TaskOutcome(f"t{i:04d}", f"task {i}", "completed")
++                        for i in range(60)))
++        tasks = _section(render_report_from_sources(sources), "Tasks")
++        assert "… and 40 more tasks (see evidence)" in tasks
++        assert len([line for line in tasks.splitlines() if line.startswith("- `")]) == 20
++
++    def test_a_short_list_is_never_capped(self):
++        tasks = _section(render_report_from_sources(_green_sources()), "Tasks")
++        assert "more tasks" not in tasks
++
++    def test_capability_lines_cap_with_an_honest_count(self):
++        """CALL-2 ruling: capabilities grow with the ROADMAP, not the run."""
++        sources = ReportSources(
++            job_name="mature",
++            status_mirror=StatusMirror(
++                milestone="F075", remaining_to_milestone=3,
++                accepted_capabilities=tuple(f"feature {i}" for i in range(30))))
++        capabilities = _section(render_report_from_sources(sources), "Capabilities")
++        can_now = [line for line in capabilities.splitlines()
++                   if line.startswith("- Can now: ")]
++        assert len(can_now) == 10
++        assert "… and 20 more accepted features (see evidence)" in capabilities
++
++    def test_the_goldens_are_below_the_capability_cap(self):
++        """One accepted capability: capped output must be identical to before."""
++        capabilities = _section(render_report_from_sources(_green_sources()),
++                                "Capabilities")
++        assert "- Can now: plan and execute a job" in capabilities
++        assert "more accepted features" not in capabilities
++
++
++class TestLanguageAndQuoting:
++    """Reports are English; the mission is quoted as-is (A9)."""
++
++    def test_report_is_english_for_a_non_english_mission(self):
++        sources = ReportSources(
++            job_name="lauf",
++            mission="Baue den Bericht und prüfe die Kosten",
++            tasks=(TaskOutcome("aaaaaaaa", "Renderer schreiben", "completed"),))
++        report = render_report_from_sources(sources)
++        assert "# Run report — lauf" in report
++        assert "## Recommended next action" in report
++        assert "- Mission: Baue den Bericht und prüfe die Kosten" in report
++
++    def test_task_descriptions_are_quoted_not_translated(self):
++        sources = ReportSources(
++            job_name="lauf",
++            tasks=(TaskOutcome("aaaaaaaa", "Renderer schreiben", "completed"),))
++        assert "Renderer schreiben" in render_report_from_sources(sources)
++
++
++class TestRenderReportEntryPoint:
++    """render_report(job, mode) is the signature T1_F053.md specifies."""
++
++    def test_render_report_accepts_injected_sources(self):
++        report = render_report(object(), MODE_FINAL, sources=_green_sources())
++        assert report == GOLDEN_GREEN
++
++    def test_render_report_rejects_an_unknown_mode(self):
++        with pytest.raises(ReportError, match="unknown report mode"):
++            render_report(object(), "summary", sources=_green_sources())
++
++    def test_render_report_collects_from_a_job_when_no_sources_given(self):
++        job = _FakeJob()
++        report = render_report(job)
++        assert "# Run report — fake job" in report
++        assert "- `abcdefgh` — Do the thing — **completed**" in report
++        assert "- Terminal status: all_green" in report
++
++    def test_interim_mode_supplies_its_own_timestamp(self):
++        """render_report may reach for the clock; the pure renderer may not."""
++        report = render_report(_FakeJob(), MODE_INTERIM)
++        assert report.splitlines()[0].startswith("> **INTERIM SNAPSHOT")
++
++
++# ---------------------------------------------------------------------------
++# Helpers
++# ---------------------------------------------------------------------------
++
++
++class _FakeTask:
++    def __init__(self, task_id: str, description: str, status: str):
++        self.id = task_id
++        self.description = description
++        self.status = status
++
++
++class _FakeJob:
++    """The duck-typed shape collect_report_sources reads off a core Job."""
++
++    def __init__(self):
++        self.id = "44444444-4444-4444-8444-444444444444"
++        self.name = "fake job"
++        self.project_id = "remedy"
++        self.mission = "Do the thing"
++        self.state = "completed"
++        self.tasks = [_FakeTask("abcdefghijkl", "Do the thing", "completed")]
++        self.metadata = {"cycle_terminal_status": "all_green"}
++
++
++def _headings(report: str) -> list[str]:
++    return [line for line in report.splitlines() if line.startswith("## ")]
++
++
++def _section(report: str, heading: str) -> str:
++    """The body under ``## <heading>``, up to the next ``## `` heading."""
++    lines = report.splitlines()
++    try:
++        start = lines.index(f"## {heading}")
++    except ValueError:  # pragma: no cover - a failed lookup is the assertion
++        raise AssertionError(f"no section {heading!r} in report:\n{report}") from None
++    body: list[str] = []
++    for line in lines[start + 1:]:
++        if line.startswith("## "):
++            break
++        body.append(line)
++    return "\n".join(body)
+diff --git a/tests/orchestration/test_run_report_hook.py b/tests/orchestration/test_run_report_hook.py
+new file mode 100644
+index 00000000..3a96fac3
+--- /dev/null
++++ b/tests/orchestration/test_run_report_hook.py
+@@ -0,0 +1,231 @@
++"""F053 T002 — every terminal path writes exactly one final report.
++
++The acceptance rule this file pins: one report file per terminal job,
++REGENERATED on resume-then-finish rather than appended to, written from the
++single terminal-state hook so no path can be forgotten — and never, under any
++failure, allowed to kill the run it is only describing.
++"""
++
++from __future__ import annotations
++
++from datetime import datetime, timedelta, timezone
++from pathlib import Path
++
++import pytest
++
++import packages.orchestration.long_run_executor as lre
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.long_run_executor import (
++    REPORTED_TERMINALS,
++    TERMINAL_ALL_GREEN,
++    TERMINAL_BLOCKED,
++    TERMINAL_BUDGET_EXHAUSTED,
++    TERMINAL_DEADLINE_REACHED,
++    TERMINAL_MAX_CYCLES_REACHED,
++    TERMINAL_STOPPED_BY_OPERATOR,
++    _apply_terminal,
++)
++from packages.orchestration.run_report import (
++    REPORT_ERROR_METADATA_KEY,
++    REPORT_FILENAME,
++    report_path,
++    write_final_report,
++)
++
++pytestmark = pytest.mark.integration
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 31, 9, 0, 0, tzinfo=UTC)
++
++#: The five terminals that end a run. Enumerated explicitly rather than
++#: derived, so adding a terminal without deciding whether it reports is a
++#: test failure and not a silent gap.
++ALL_TERMINALS = (
++    TERMINAL_ALL_GREEN,
++    TERMINAL_STOPPED_BY_OPERATOR,
++    TERMINAL_BUDGET_EXHAUSTED,
++    TERMINAL_DEADLINE_REACHED,
++    TERMINAL_BLOCKED,
++)
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    """The report lands in the evidence area — never the real data root."""
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++def make_job(task_count: int = 1) -> Job:
++    return Job(
++        name="reporting-job",
++        user_prompt="build the thing",
++        tasks=[Task(description=f"task {i}", inputs={"task_type": "documentation"})
++               for i in range(task_count)],
++        state=RunState.PLANNED,
++    )
++
++
++class TestEveryTerminalPathWritesOneReport:
++
++    @pytest.mark.parametrize("terminal", ALL_TERMINALS)
++    def test_each_terminal_writes_exactly_one_report(self, terminal):
++        job = make_job()
++        _apply_terminal(job, terminal, "some reason")
++        path = report_path(str(job.id))
++        assert path.is_file(), f"{terminal} wrote no report"
++        assert path.name == REPORT_FILENAME
++        siblings = list(path.parent.glob("report*"))
++        assert siblings == [path], siblings
++
++    @pytest.mark.parametrize("terminal", ALL_TERMINALS)
++    def test_the_report_names_the_terminal_it_was_written_for(self, terminal):
++        job = make_job()
++        _apply_terminal(job, terminal, "some reason")
++        text = report_path(str(job.id)).read_text(encoding="utf-8")
++        assert f"- Terminal status: {terminal}" in text
++        assert "INTERIM SNAPSHOT" not in text          # a final report, not a snapshot
++
++    def test_the_reported_set_is_exactly_the_five_terminals(self):
++        assert REPORTED_TERMINALS == frozenset(ALL_TERMINALS)
++
++    def test_max_cycles_reached_is_not_terminal_and_writes_nothing(self):
++        """The job still has work; a "final" report would lie about that."""
++        job = make_job()
++        _apply_terminal(job, TERMINAL_MAX_CYCLES_REACHED, "")
++        assert not report_path(str(job.id)).exists()
++
++    def test_the_report_sits_beside_the_cycle_records(self):
++        job = make_job()
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        expected = lre.cycle_evidence_dir(str(job.id)).parent / REPORT_FILENAME
++        assert report_path(str(job.id)) == expected
++
++    def test_the_stop_reason_reaches_the_report(self):
++        job = make_job()
++        _apply_terminal(job, TERMINAL_BUDGET_EXHAUSTED, "budget_exhausted:tokens")
++        text = report_path(str(job.id)).read_text(encoding="utf-8")
++        assert "- Stop reason: budget_exhausted:tokens" in text
++
++
++class TestRegeneratedNotAppended:
++    """Finish → resume → finish leaves ONE file, holding the latest run."""
++
++    def test_a_second_terminal_regenerates_the_same_file(self):
++        job = make_job()
++        _apply_terminal(job, TERMINAL_BLOCKED, "no_ready_tasks")
++        first = report_path(str(job.id)).read_text(encoding="utf-8")
++        assert "- Terminal status: blocked" in first
++
++        # …resume, finish for real.
++        for task in job.tasks:
++            task.status = RunState.COMPLETED
++        job.state = RunState.COMPLETED
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++
++        path = report_path(str(job.id))
++        assert list(path.parent.glob("report*")) == [path]
++        second = path.read_text(encoding="utf-8")
++        assert "- Terminal status: all_green" in second
++        assert "- Terminal status: blocked" not in second, "appended instead of regenerated"
++
++    def test_the_file_never_grows_by_concatenation(self):
++        job = make_job()
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        once = report_path(str(job.id)).read_text(encoding="utf-8")
++        for _ in range(3):
++            _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        assert report_path(str(job.id)).read_text(encoding="utf-8") == once
++
++    def test_exactly_one_report_heading_per_file(self):
++        job = make_job()
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        text = report_path(str(job.id)).read_text(encoding="utf-8")
++        assert text.count("# Run report — ") == 1
++
++
++class TestAReportFailureNeverKillsTheRun:
++    """The report is an account of the run, not a gate on it."""
++
++    def test_a_write_failure_is_recorded_and_swallowed(self, monkeypatch):
++        job = make_job()
++
++        def boom(*_args, **_kwargs):
++            raise OSError("disk gone")
++
++        monkeypatch.setattr("packages.orchestration.run_report.report_path", boom)
++        assert write_final_report(job) is None
++        assert "OSError: disk gone" in job.metadata[REPORT_ERROR_METADATA_KEY]
++
++    def test_the_terminal_transition_still_completes(self, monkeypatch):
++        job = make_job()
++
++        def boom(*_args, **_kwargs):
++            raise OSError("disk gone")
++
++        monkeypatch.setattr("packages.orchestration.run_report.report_path", boom)
++        status = _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        assert status == lre.TERMINAL_JOB_STATUS[TERMINAL_ALL_GREEN]
++        assert job.state == RunState.COMPLETED
++        assert job.metadata["cycle_terminal_status"] == TERMINAL_ALL_GREEN
++
++    def test_a_later_success_clears_the_recorded_error(self, monkeypatch):
++        job = make_job()
++
++        def boom(*_args, **_kwargs):
++            raise OSError("disk gone")
++
++        monkeypatch.setattr("packages.orchestration.run_report.report_path", boom)
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        assert REPORT_ERROR_METADATA_KEY in job.metadata
++
++        monkeypatch.undo()
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "")
++        assert REPORT_ERROR_METADATA_KEY not in job.metadata
++
++    def test_write_report_false_skips_the_writer_entirely(self):
++        """The seam that lets a caller apply a terminal without an account."""
++        job = make_job()
++        _apply_terminal(job, TERMINAL_ALL_GREEN, "", write_report=False)
++        assert not report_path(str(job.id)).exists()
++
++
++class TestThroughTheRealLoop:
++    """The hook is reached by run_cycles itself, not only when called directly."""
++
++    def test_a_completed_run_leaves_a_report(self):
++        job = make_job()
++
++        def completing_step(current_job: Job, provider_call) -> lre.TaskAttempt:
++            task = next((t for t in current_job.tasks
++                         if t.status == RunState.PENDING), None)
++            if task is None:
++                return lre.TaskAttempt()
++            task.status = RunState.COMPLETED
++            if all(t.status == RunState.COMPLETED for t in current_job.tasks):
++                current_job.state = RunState.COMPLETED
++            return lre.TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++        result = lre.run_cycles(
++            job, lre.CycleLimits(max_cycles=2), lambda _ctx: None,
++            task_step=completing_step, clock=_FakeClock(),
++            save=lambda _job: None, record_checkpoint=False)
++        assert result.terminal_status == TERMINAL_ALL_GREEN
++        text = report_path(str(job.id)).read_text(encoding="utf-8")
++        assert "- Terminal status: all_green" in text
++        assert "## Recommended next action" in text
++
++
++class _FakeClock:
++    def __init__(self, start: datetime = T0,
++                 step: timedelta = timedelta(seconds=1)) -> None:
++        self.now = start
++        self.step = step
++
++    def __call__(self) -> datetime:
++        current = self.now
++        self.now = self.now + self.step
++        return current

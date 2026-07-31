@@ -1,0 +1,191 @@
+diff --git a/apps/cli/command_catalog.py b/apps/cli/command_catalog.py
+index 58a34454..752ce792 100644
+--- a/apps/cli/command_catalog.py
++++ b/apps/cli/command_catalog.py
+@@ -416,13 +416,25 @@ CATALOG: tuple[CommandEntry, ...] = (
+         supports_json=True,
+         related=("job.summary", "job.show"),
+     ),
++    # ONE command, three modes on the same name (the F047 `job resume`
++    # pattern): bare and --json keep the existing progress view exactly as it
++    # was; --final renders the F053 run report of a terminal job; --interim
++    # renders the labeled snapshot of a run still in progress.
+     CommandEntry(
+         command_id="job.report",
+         group_id="job",
+         subcommand="report",
+-        description="Read-only report of job progress, tasks, and evidence.",
++        description=("Read-only report of job progress, tasks, and evidence "
++                     "(--final / --interim render the F053 run report)."),
+         action_class="read_only",
+-        args=(_JOB_ID, _JSON_OPT),
++        args=(
++            _JOB_ID,
++            ArgDef("--final", "Render the F053 final run report (markdown)",
++                   required=False, is_option=True, is_flag=True),
++            ArgDef("--interim", "Render a labeled snapshot of a running job",
++                   required=False, is_option=True, is_flag=True),
++            _JSON_OPT,
++        ),
+         supports_json=True,
+         related=("job.status", "job.summary"),
+     ),
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 7c399775..0c7f9f1a 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1665,6 +1665,71 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
+         print(f'  Next:      {next_action}')
+ 
+ 
++def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
++                        json_output: bool = False) -> None:
++    """The F053 run report: one human-readable account of a run.
++
++    `--final` renders the account of a terminal job; `--interim` renders the
++    same structure for a run still in progress, headed by a loud snapshot
++    label.  Both are strictly READ-ONLY — the interim path in particular never
++    writes and never mutates job state, because rendering a progress snapshot
++    must not perturb the run it is describing.
++
++    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
++    Rendering one anyway would produce an unbannered report of a run that is
++    still moving — exactly the mislabeled snapshot the interim banner exists to
++    prevent, one typo away. The refusal names the state and points at
++    `--interim`; it never renders anyway and never silently switches mode,
++    because a command that quietly does something else than asked is how a
++    snapshot gets mistaken for a final account.
++    """
++    import json as _json
++    from dataclasses import asdict
++
++    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
++    from packages.orchestration.run_report import (
++        MODE_FINAL,
++        MODE_INTERIM,
++        build_report_sources,
++        render_report,
++    )
++
++    job_id = resolve_job_id(job_id_str)
++    try:
++        job = load_job(job_id)
++    except JobNotFoundError:
++        # A clean error, never a traceback: an unknown id is a normal thing for
++        # a human to type.
++        if json_output:
++            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
++        else:
++            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
++        sys.exit(1)
++
++    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
++    if not interim and terminal not in REPORTED_TERMINALS:
++        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
++        if json_output:
++            print(_json.dumps({
++                'error': 'run_not_terminal',
++                'job_id': str(job.id),
++                'state': state,
++                'terminal_status': terminal,
++                'hint': 'use --interim for a snapshot',
++            }))
++        else:
++            print(f'Error: run still in progress (state: {state}) — '
++                  'use --interim for a snapshot', file=sys.stderr)
++        sys.exit(1)
++
++    sources = build_report_sources(job)
++    if json_output:
++        print(_json.dumps(asdict(sources), indent=2, sort_keys=True, default=str))
++        return
++    print(render_report(job, MODE_INTERIM if interim else MODE_FINAL,
++                        sources=sources))
++
++
+ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
+     """Job report -- safe read-only report of job progress and evidence."""
+     import json as _json
+@@ -2123,9 +2188,21 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+         args.job_id,
+         json_output=getattr(args, "json", False),
+     ),
+-    "job.report": lambda args: _cmd_job_report(
+-        args.job_id,
+-        json_output=getattr(args, "json", False),
++    # `remedy job report` has three modes and ONE name (the F047 `job resume`
++    # pattern, see .agent/decisions.md): --final/--interim render the F053 run
++    # report; without either flag the existing progress view runs UNCHANGED, so
++    # no existing invocation changes behavior.
++    "job.report": lambda args: (
++        _cmd_job_run_report(
++            args.job_id,
++            interim=getattr(args, "interim", False),
++            json_output=getattr(args, "json", False),
++        )
++        if (getattr(args, "final", False) or getattr(args, "interim", False))
++        else _cmd_job_report(
++            args.job_id,
++            json_output=getattr(args, "json", False),
++        )
+     ),
+     "job.fences": lambda args: _cmd_job_fences(
+         args.job_id,
+diff --git a/docs/agents/integration_gate.md b/docs/agents/integration_gate.md
+index 7ff6a7a7..fddf7ce9 100644
+--- a/docs/agents/integration_gate.md
++++ b/docs/agents/integration_gate.md
+@@ -10,8 +10,13 @@
+    Record: raw tail, full FAILED list, exit code, wall time.
+    `grep '^FAILED' <log> | sort > branch_failed.txt`
+ 2. **Base run.** Identical command in a throwaway `git worktree` at the
+-   merge base; same records; `base_failed.txt`. Remove + prune the
+-   worktree and prove with `git worktree list`.
++   merge base; same records; `base_failed.txt`. Create the worktree ON
++   a throwaway BRANCH (`git worktree add -b tmp/base-gate <path>
++   <merge-base>`): the self-dogfood branch guard refuses a detached
++   HEAD by design, so a detached base worktree fails the
++   guard-dependent ids (DECISION D3, F053 R2 review, 2026-07-31).
++   Remove + prune the worktree (and delete the tmp branch) and prove
++   with `git worktree list`.
+ 3. **Compare.** `comm -13 base_failed.txt branch_failed.txt` = branch-only
+    failures. Report `comm -23` too — failures the branch fixed.
+    Environment-coupled base failures (R-0155 amendment, operator
+@@ -21,9 +26,13 @@
+    holds only a `.vite` cache). Affected ids fail at base and land
+    in `comm -23` on every gate run — where a GENUINE base failure in
+    those same files would be masked. Therefore: either restore
+-   parity before the base run (share or copy the primary checkout's
++   parity before the base run (COPY the primary checkout's
+    `apps/ui/node_modules` and `apps/ui/dist` into the base
+-   worktree, or run the same install/build there), or attribute
++   worktree — never symlink them: the UI auto-build runs
++   npm install and writes THROUGH a symlink into the primary
++   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` keeps
++   the base run from rebuilding; or run the same install/build
++   there), or attribute
+    EVERY `comm -23` id to the environment class by direct evidence
+    (the missing artifact named per id). An unattributed `comm -23`
+    id counts as a genuine base failure and blocks the gate verdict.
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index afab449a..3244658c 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -242,6 +242,17 @@ end the response with:
+     effect (F251 D4 lesson: authored texts flipped four contract
+     tests in both directions across rounds). The D4 design question
+     itself — fixture-based vs live-coupled — stays with F252.
++    The same contract class covers `.agent/context.md`, whose
++    readers span MULTIPLE test files: the dashboard contract
++    asserts the substring "Steps" plus "## Active Branch" with a
++    `feature/` slug, test_test_runner.py asserts a roadmap F-id,
++    and tests/regression/test_resource_safety.py asserts
++    "resource" or "pytest" — all in the same one file. Before
++    authoring ANY state-file replacement, grep every test that
++    reads that path (rg -ln '<filename>' tests/), collect the full
++    assertion list, and validate the draft against ALL of it, not
++    only the test currently red (R-0162, F053 R3+R4 lesson: the
++    first repair fixed one reader and tripped another).
+ 12. Before diagnosing a relay gap ("the block never reached the
+     worker"), read .agent/last_block.md and its git history. A
+     recorded refusal means delivered-and-refused: re-emit CORRECTED

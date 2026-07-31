@@ -1,0 +1,148 @@
+c2d9f7901d2dd1f58c83f405de4ab98266172cbd
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 2a51f5df..0c7f9f1a 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -1674,10 +1674,19 @@ def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
+     label.  Both are strictly READ-ONLY — the interim path in particular never
+     writes and never mutates job state, because rendering a progress snapshot
+     must not perturb the run it is describing.
++
++    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
++    Rendering one anyway would produce an unbannered report of a run that is
++    still moving — exactly the mislabeled snapshot the interim banner exists to
++    prevent, one typo away. The refusal names the state and points at
++    `--interim`; it never renders anyway and never silently switches mode,
++    because a command that quietly does something else than asked is how a
++    snapshot gets mistaken for a final account.
+     """
+     import json as _json
+     from dataclasses import asdict
+ 
++    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
+     from packages.orchestration.run_report import (
+         MODE_FINAL,
+         MODE_INTERIM,
+@@ -1697,6 +1706,22 @@ def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
+             print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+         sys.exit(1)
+ 
++    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
++    if not interim and terminal not in REPORTED_TERMINALS:
++        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
++        if json_output:
++            print(_json.dumps({
++                'error': 'run_not_terminal',
++                'job_id': str(job.id),
++                'state': state,
++                'terminal_status': terminal,
++                'hint': 'use --interim for a snapshot',
++            }))
++        else:
++            print(f'Error: run still in progress (state: {state}) — '
++                  'use --interim for a snapshot', file=sys.stderr)
++        sys.exit(1)
++
+     sources = build_report_sources(job)
+     if json_output:
+         print(_json.dumps(asdict(sources), indent=2, sort_keys=True, default=str))
+diff --git a/tests/cli/test_job_report.py b/tests/cli/test_job_report.py
+index 81ac394c..5fa97aef 100644
+--- a/tests/cli/test_job_report.py
++++ b/tests/cli/test_job_report.py
+@@ -95,8 +95,10 @@ class TestInterimMode:
+         assert "rendered at" in first
+ 
+     def test_it_keeps_the_same_section_structure_as_final(self, capsys):
+-        job = saved_job(state=RunState.RUNNING, terminal="",
+-                        task_status=RunState.PENDING)
++        """Compared on a TERMINAL job — --final refuses a moving run (R-0161),
++        and interim is legal on any job, so this is the one state where both
++        modes render and their structure can be compared at all."""
++        job = saved_job()
+         _cmd_job_run_report(str(job.id), interim=True)
+         interim = capsys.readouterr().out
+         _cmd_job_run_report(str(job.id))
+@@ -127,6 +129,82 @@ class TestInterimMode:
+         assert not report_path(str(job.id)).exists()
+ 
+ 
++class TestFinalRefusesANonTerminalRun:
++    """R-0161: --final on a moving run would be an unbannered snapshot."""
++
++    def _running(self) -> Job:
++        return saved_job(state=RunState.RUNNING, terminal="",
++                         task_status=RunState.PENDING)
++
++    def test_it_refuses_with_a_clean_error(self, capsys):
++        job = self._running()
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report(str(job.id))
++        assert exc.value.code == 1
++        captured = capsys.readouterr()
++        assert captured.err.strip() == (
++            "Error: run still in progress (state: running) — "
++            "use --interim for a snapshot")
++        assert "Traceback" not in captured.err
++
++    def test_it_renders_nothing_at_all(self, capsys):
++        """Never render anyway: a refusal that still prints is not a refusal."""
++        job = self._running()
++        with pytest.raises(SystemExit):
++            _cmd_job_run_report(str(job.id))
++        assert capsys.readouterr().out == ""
++
++    def test_it_never_silently_switches_to_interim(self, capsys):
++        job = self._running()
++        with pytest.raises(SystemExit):
++            _cmd_job_run_report(str(job.id))
++        assert "INTERIM SNAPSHOT" not in capsys.readouterr().out
++
++    def test_json_mode_reports_run_not_terminal(self, capsys):
++        job = self._running()
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report(str(job.id), json_output=True)
++        assert exc.value.code == 1
++        payload = json.loads(capsys.readouterr().out)
++        assert payload["error"] == "run_not_terminal"
++        assert payload["state"] == "running"
++        assert payload["terminal_status"] == ""
++        assert payload["hint"] == "use --interim for a snapshot"
++
++    def test_interim_on_the_same_job_still_works(self, capsys):
++        """The refusal is scoped to --final; the snapshot path is untouched."""
++        job = self._running()
++        _cmd_job_run_report(str(job.id), interim=True)
++        assert "INTERIM SNAPSHOT" in capsys.readouterr().out
++
++    @pytest.mark.parametrize("terminal", [
++        "all_green", "stopped_by_operator", "budget_exhausted",
++        "deadline_reached", "blocked",
++    ])
++    def test_every_reported_terminal_is_allowed(self, terminal, capsys):
++        job = saved_job(terminal=terminal)
++        _cmd_job_run_report(str(job.id))
++        out = capsys.readouterr().out
++        assert "# Run report — report-job" in out
++        assert f"- Terminal status: {terminal}" in out
++
++    def test_max_cycles_reached_is_refused_like_any_non_terminal(self, capsys):
++        """It is not in REPORTED_TERMINALS; the job still has work."""
++        job = saved_job(state=RunState.RUNNING, terminal="max_cycles_reached",
++                        task_status=RunState.PENDING)
++        with pytest.raises(SystemExit) as exc:
++            _cmd_job_run_report(str(job.id))
++        assert exc.value.code == 1
++        assert "run still in progress" in capsys.readouterr().err
++
++    def test_the_guard_reads_the_executor_s_own_set(self):
++        """No second list of terminals to drift out of sync."""
++        from packages.orchestration.long_run_executor import REPORTED_TERMINALS
++
++        assert "all_green" in REPORTED_TERMINALS
++        assert "max_cycles_reached" not in REPORTED_TERMINALS
++
++
+ class TestJsonMode:
+ 
+     def test_it_emits_the_structured_sources(self, capsys):

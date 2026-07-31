@@ -1,0 +1,290 @@
+fd5698b61fbfe22296d34bfa6d72de434b0e036a
+diff --git a/.agent/authored/f053-r3-1.md b/.agent/authored/f053-r3-1.md
+new file mode 100644
+index 00000000..29600988
+--- /dev/null
++++ b/.agent/authored/f053-r3-1.md
+@@ -0,0 +1,9 @@
++- R2 (LARGE): persist R1 verdict + register R-0160 + DECISION D2 +
++  feature-file amendment; T002 complete — STATUS-mirror producer,
++  terminal-state hook (one report per terminal, regenerated),
++  interim against a running fake job, CLI job report + --json,
++  tests. Done.
++- R3: persist R2 verdict + register R-0161 + DECISION D3; fix
++  R-0161 (--final guard) + capability cap (A9); then the
++  integration gate per docs/agents/integration_gate.md.
++  In progress.
+diff --git a/.agent/authored/f053-r3-2.md b/.agent/authored/f053-r3-2.md
+new file mode 100644
+index 00000000..955fa839
+--- /dev/null
++++ b/.agent/authored/f053-r3-2.md
+@@ -0,0 +1,23 @@
++- R2: PASS (reviewer, 2026-07-31). Range 840d2b7..1a5af0d (content
++  through 4e5713ab; handback 1a5af0d after). All 4 authored texts
++  cmp 0 disk-to-disk against the reviewer originals (primary proof;
++  planner_reviewer_prompt.md §4 item 9); each applied region occurs
++  exactly once (reviewer's own count proof). Reviewer's own runs:
++  run_report + hook + CLI 106, self_healing_cycles 50 (executor
++  regression clean), tests/docs 293, canary 42, ruff clean — all
++  exit 0. Diff read fully bottom-up: status_mirror.py is genuinely
++  read-only and None-on-doubt; live spot-check against the real
++  ledger agrees with the reviewer's own hand count (F075,
++  remaining 8, accepted 28, in-progress F053 only). Terminal hook
++  verified: single seam _apply_terminal, REPORTED_TERMINALS pinned
++  to exactly five, max_cycles_reached excluded with its own test,
++  regenerate-never-append pinned, a write failure never kills the
++  run, and the real-loop test reaches the hook through run_cycles.
++  Worker red-proofs ran in a disposable worktree — R-0160 honored.
++  RULING deviation 1 ACCEPTED: --final/--interim on the existing
++  job.report command (F047 one-command precedent; bare view pinned
++  unchanged by a test). RULING deviation 2 NOT accepted as-is:
++  28 un-capped "Can now" lines violate the report-is-a-summary
++  rule (A9) — cap ordered in R3. R-0161 registered: --final on a
++  still-running job renders an unbannered report.
++  LAST_REVIEWED_SHA = 1a5af0d.
+diff --git a/.agent/authored/f053-r3-3.md b/.agent/authored/f053-r3-3.md
+new file mode 100644
+index 00000000..a6010cb2
+--- /dev/null
++++ b/.agent/authored/f053-r3-3.md
+@@ -0,0 +1,19 @@
++- Open: R-0161 (product, Low, registered 2026-07-31): `remedy job
++  report <id> --final` on a job that is NOT at a reported terminal
++  renders a report with no INTERIM banner — the exact
++  mislabeled-snapshot risk the banner exists to prevent, one typo
++  away. Fix (R3): refuse --final unless the job's
++  cycle_terminal_status is in REPORTED_TERMINALS; clean error (also
++  as JSON under --json) naming the state and pointing to --interim;
++  never auto-render. Plus the CALL-2 ruling attached here:
++  accepted-capability lines cap via _capped with an honest "and N
++  more" line (A9 — the report is a summary; 28 lines today, ~250 at
++  roadmap end).
++- DECISION D3 (2026-07-31, reviewer, practice-requires-pointer §2):
++  integration_gate.md step 2 gains the base-worktree-on-a-BRANCH
++  sentence — the dogfood branch guard refuses a detached HEAD by
++  design, so a detached base worktree fails the guard-dependent ids
++  for a new named cause (paydown-0731 negative-control evidence).
++  Until now that lived only in session memory — exactly the A1
++  class the §2 rule exists to catch. Reversal: revert the doc line.
++- Next free ID: R-0162.
+diff --git a/.agent/authored/f053-r3-4.md b/.agent/authored/f053-r3-4.md
+new file mode 100644
+index 00000000..f1de5236
+--- /dev/null
++++ b/.agent/authored/f053-r3-4.md
+@@ -0,0 +1,8 @@
++2. **Base run.** Identical command in a throwaway `git worktree` at the
++   merge base; same records; `base_failed.txt`. Create the worktree ON
++   a throwaway BRANCH (`git worktree add -b tmp/base-gate <path>
++   <merge-base>`): the self-dogfood branch guard refuses a detached
++   HEAD by design, so a detached base worktree fails the
++   guard-dependent ids (DECISION D3, F053 R2 review, 2026-07-31).
++   Remove + prune the worktree (and delete the tmp branch) and prove
++   with `git worktree list`.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index db2d17d6..736db262 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,54 +1,60 @@
+-Round f053-r2 (LARGE) — persist R1 verdict, then T002 COMPLETE.
+-Read docs/roadmap/features/T1_F053.md again INCLUDING the amendment
+-applied in commit A; it wins over the block summary.
++Round f053-r3 — persist R2 verdict, two small fixes, then the
++INTEGRATION GATE per docs/agents/integration_gate.md (read COMPLETELY,
++including the amended step 2 applied in commit A; it wins over the block
++summary). No closure work of any kind this round; never merge anything.
+ 
+-COMMIT A (first, own commit, before any T002 code): in
+-.agent/live_review.md replace the R1 "In progress." Steps bullet with
+-f053-r2-1, "- R1: PENDING (reviewer)." with f053-r2-2, and
+-"- Next free ID: R-0160." with f053-r2-3; append f053-r2-4 at the end
+-of the "## How it fits" section of docs/roadmap/features/T1_F053.md.
+-cmp proofs for all four regions. Touches docs/roadmap/** → the docs
+-gate is mandatory (planner_reviewer_prompt.md §3 item 5).
++COMMIT A (first, own commit, before any fix): in .agent/live_review.md
++replace the R2 "In progress." Steps bullet with f053-r3-1, append
++f053-r3-2 to "## Verdicts" after the R1 entry, replace
++"- Next free ID: R-0161." with f053-r3-3; in
++docs/agents/integration_gate.md replace the ENTIRE step-2 item with
++f053-r3-4. cmp proofs for all four regions.
+ 
+-T002 in slices, each its own commit(s), that slice's tests run before
+-the next starts; STOP on red and hand back with the failure raw.
+-SLICE 1 — STATUS-mirror producer (DECISION D2):
+-packages/orchestration/status_mirror.py, read-only, parses
+-docs/roadmap/STATUS.md of a given repo root into
+-run_report.StatusMirror (milestone = F075 MILESTONE GATE line or a
+-passed-in id; remaining = unchecked [ ]/[~] through the milestone
+-inclusive; accepted/in-progress capability lines from [x]/[~]).
+-Missing file, unparseable ledger, or no milestone line → None, never
+-a guess. Wired into collect_report_sources only where a repo root is
+-knowable; absent → status_mirror=None. Plus the stopped-by-operator
+-rule in NEXT_ACTION_RULES, worded exactly as the amendment, ranked
+-between open-decision and blocked-failed, with table +
+-golden-consistency test updates. Verify: test_run_report.py.
+-SLICE 2 — terminal-state hook at long_run_executor._apply_terminal:
+-every terminal transition (all_green, stopped_by_operator,
+-budget_exhausted, deadline_reached, blocked) writes EXACTLY ONE final
+-report into the job's evidence area, fixed filename, REGENERATED on
+-resume-then-finish, never appended. max_cycles_reached is NOT
+-terminal and writes nothing. A report-write failure never kills the
+-run: record and continue. Verify: new hook tests +
+-test_self_healing_cycles.py (50).
+-SLICE 3 — interim + CLI: `remedy job report <id>` on the job command
+-group; final report of a terminal job from disk sources; `--interim`
+-renders the labeled snapshot of a running job and never mutates state
+-(asserted); `--json` emits the structured sources; unknown job →
+-clean error, no traceback. Verify: tests/cli/test_job_report.py.
++COMMIT B — fix R-0161 (--final guard): apps/cli/commands/job.py
++_cmd_job_run_report refuses --final when the job's metadata
++cycle_terminal_status is NOT in long_run_executor.REPORTED_TERMINALS —
++exit 1, stderr "Error: run still in progress (state: <state>) — use
++--interim for a snapshot"; with --json {"error": "run_not_terminal",
++...}. Never auto-render, never auto-switch mode. --interim and the
++--json source dump are unchanged. Tests in tests/cli/test_job_report.py
++(refusal text + json, allowed terminal still renders); mark
++Done: R-0161 in the commit body. Verify: test_job_report.py.
+ 
+-DO NOT TOUCH: notification delivery, UI rendering, cost calibration.
+-No closure work of any kind this round.
+-Round gate: test_run_report.py green · test_job_report.py green ·
+-tests/docs 293 · canary 42 — raw tails + exit codes in the handback.
+-Handback per docs/agents/handback_template.md: per-commit
+-changed-files tables, item-status table (commit A + slices 1-3 +
+-gates), authored-text proofs (sha256sum + cmp), enumeration of every
+-terminal path hooked. Red-proofs ONLY in a disposable git worktree on
+-a branch, never the primary checkout (R-0160 is open on exactly
+-this). Never write ## Verdicts content beyond applying f053-r2-2
+-verbatim; never merge anything. Then await the reviewer.
+-Authored texts f053-r2-{1,2,3,4} (sha256 verified before use, saved
++COMMIT C — capability cap (CALL-2 ruling, A9):
++run_report._capability_lines caps the "Can now" lines with _capped
++(MAX_CAPABILITY_LINES = 10, honest "… and N more" pattern, noun
++"accepted features"); in-progress lines share the cap. Goldens
++unaffected (1 line). One test: 30 accepted → 10 lines + count line.
++Verify: test_run_report.py.
++
++INTEGRATION GATE exactly per docs/agents/integration_gate.md:
++1. Branch run `python3 -m pytest -n auto -q` at HEAD — raw tail, full
++   FAILED list, exit code, wall time; branch_failed.txt.
++2. Base run at the merge base with origin/main (15105dbe) in a
++   throwaway worktree ON A BRANCH per the amended step 2
++   (git worktree add -b tmp/base-gate <path> 15105dbe); same records;
++   base_failed.txt. Remove + prune + delete the tmp branch;
++   git worktree list proof.
++3. comm -13 (branch-only) and comm -23 (branch-fixed), BOTH raw.
++   Environment-coupled attribution per the doc: parity targets are
++   apps/ui/node_modules + apps/ui/dist only (restore parity, or
++   attribute EVERY comm -23 id by direct evidence per id). The former
++   .git-directory class is GONE (R-0159 fixed) — a dogfood-id failure
++   at base is NOT attributable to it any more.
++4. Serial re-run of every branch-only id; classify per the doc (F046
++   pattern). A reproducible branch-only failure coupled to feature code
++   = BLOCKER: STOP and hand back raw. No fixes inside the gate round
++   beyond commits B/C, which land BEFORE the gate runs.
++5. Wall clock; over ~5 min → note for a perf pass.
++
++Round gate: test_job_report.py green · test_run_report.py green · full
++suite (gate) · tests/docs 293 · canary 42 — raw tails + exit codes in
++the handback. Handback per docs/agents/handback_template.md: per-commit
++tables, item-status table (A, B, C, gate steps 1-5), authored-text
++proofs, branch/base FAILED lists + both comm outputs verbatim, per-id
++attribution table, wall clocks. Red-proofs only in a disposable worktree
++ON a branch. Do NOT write ## Verdicts beyond applying f053-r3-2
++verbatim. Closure is R4, its own round, never started here.
++Authored texts f053-r3-{1,2,3,4} (sha256 verified before use, saved
+ verbatim under .agent/authored/, applied by copy).
+-OUTCOME: executed
++OUTCOME: pending
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index a6a0ceb2..f267f678 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -15,7 +15,11 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   feature-file amendment; T002 complete — STATUS-mirror producer,
+   terminal-state hook (one report per terminal, regenerated),
+   interim against a running fake job, CLI job report + --json,
+-  tests. In progress.
++  tests. Done.
++- R3: persist R2 verdict + register R-0161 + DECISION D3; fix
++  R-0161 (--final guard) + capability cap (A9); then the
++  integration gate per docs/agents/integration_gate.md.
++  In progress.
+ 
+ ## Findings
+ - Open: R-0160 (process, Low, registered 2026-07-31): the R1
+@@ -40,7 +44,25 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   separate feature (rejected: two sections of THIS feature's report
+   depend on it). Reversal: any later relay may split the producer
+   out; the ReportSources.status_mirror seam is unchanged either way.
+-- Next free ID: R-0161.
++- Open: R-0161 (product, Low, registered 2026-07-31): `remedy job
++  report <id> --final` on a job that is NOT at a reported terminal
++  renders a report with no INTERIM banner — the exact
++  mislabeled-snapshot risk the banner exists to prevent, one typo
++  away. Fix (R3): refuse --final unless the job's
++  cycle_terminal_status is in REPORTED_TERMINALS; clean error (also
++  as JSON under --json) naming the state and pointing to --interim;
++  never auto-render. Plus the CALL-2 ruling attached here:
++  accepted-capability lines cap via _capped with an honest "and N
++  more" line (A9 — the report is a summary; 28 lines today, ~250 at
++  roadmap end).
++- DECISION D3 (2026-07-31, reviewer, practice-requires-pointer §2):
++  integration_gate.md step 2 gains the base-worktree-on-a-BRANCH
++  sentence — the dogfood branch guard refuses a detached HEAD by
++  design, so a detached base worktree fails the guard-dependent ids
++  for a new named cause (paydown-0731 negative-control evidence).
++  Until now that lived only in session memory — exactly the A1
++  class the §2 rule exists to catch. Reversal: revert the doc line.
++- Next free ID: R-0162.
+ 
+ ## Verdicts
+ - R1: PASS (reviewer, 2026-07-31). Range 15105dbe..840d2b7
+@@ -63,3 +85,26 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   tree clean, honestly declared) → R-0160 registered: the
+   worktree-only mutation rule binds only the reviewer today (§4
+   item 10). LAST_REVIEWED_SHA = 840d2b7.
++- R2: PASS (reviewer, 2026-07-31). Range 840d2b7..1a5af0d (content
++  through 4e5713ab; handback 1a5af0d after). All 4 authored texts
++  cmp 0 disk-to-disk against the reviewer originals (primary proof;
++  planner_reviewer_prompt.md §4 item 9); each applied region occurs
++  exactly once (reviewer's own count proof). Reviewer's own runs:
++  run_report + hook + CLI 106, self_healing_cycles 50 (executor
++  regression clean), tests/docs 293, canary 42, ruff clean — all
++  exit 0. Diff read fully bottom-up: status_mirror.py is genuinely
++  read-only and None-on-doubt; live spot-check against the real
++  ledger agrees with the reviewer's own hand count (F075,
++  remaining 8, accepted 28, in-progress F053 only). Terminal hook
++  verified: single seam _apply_terminal, REPORTED_TERMINALS pinned
++  to exactly five, max_cycles_reached excluded with its own test,
++  regenerate-never-append pinned, a write failure never kills the
++  run, and the real-loop test reaches the hook through run_cycles.
++  Worker red-proofs ran in a disposable worktree — R-0160 honored.
++  RULING deviation 1 ACCEPTED: --final/--interim on the existing
++  job.report command (F047 one-command precedent; bare view pinned
++  unchanged by a test). RULING deviation 2 NOT accepted as-is:
++  28 un-capped "Can now" lines violate the report-is-a-summary
++  rule (A9) — cap ordered in R3. R-0161 registered: --final on a
++  still-running job renders an unbannered report.
++  LAST_REVIEWED_SHA = 1a5af0d.
+diff --git a/docs/agents/integration_gate.md b/docs/agents/integration_gate.md
+index 7ff6a7a7..eec48185 100644
+--- a/docs/agents/integration_gate.md
++++ b/docs/agents/integration_gate.md
+@@ -10,8 +10,13 @@
+    Record: raw tail, full FAILED list, exit code, wall time.
+    `grep '^FAILED' <log> | sort > branch_failed.txt`
+ 2. **Base run.** Identical command in a throwaway `git worktree` at the
+-   merge base; same records; `base_failed.txt`. Remove + prune the
+-   worktree and prove with `git worktree list`.
++   merge base; same records; `base_failed.txt`. Create the worktree ON
++   a throwaway BRANCH (`git worktree add -b tmp/base-gate <path>
++   <merge-base>`): the self-dogfood branch guard refuses a detached
++   HEAD by design, so a detached base worktree fails the
++   guard-dependent ids (DECISION D3, F053 R2 review, 2026-07-31).
++   Remove + prune the worktree (and delete the tmp branch) and prove
++   with `git worktree list`.
+ 3. **Compare.** `comm -13 base_failed.txt branch_failed.txt` = branch-only
+    failures. Report `comm -23` too — failures the branch fixed.
+    Environment-coupled base failures (R-0155 amendment, operator

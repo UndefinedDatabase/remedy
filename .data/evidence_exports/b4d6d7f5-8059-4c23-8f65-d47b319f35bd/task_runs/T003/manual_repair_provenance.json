@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "packages/orchestration/status_mirror.py",
+  "tests/cli/test_job_report.py",
+  "tests/orchestration/test_run_report.py",
+  "tests/orchestration/test_run_report_hook.py"
+ ],
+ "diff_sha256": "3252f90b2297242dd7fd4a0ef3e34fe9b3fbd48cb6aa370e62a47179e0dda525",
+ "job_id": "b4d6d7f5-8059-4c23-8f65-d47b319f35bd",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "3252f90b2297242dd7fd4a0ef3e34fe9b3fbd48cb6aa370e62a47179e0dda525",
+ "safe_diff_sha256": "493dfc30fba580e8636e70dfa5d8829f0716a0031bf32d0c945f2674f27cb5a0",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "packages/orchestration/status_mirror.py",
+  "tests/cli/test_job_report.py",
+  "tests/orchestration/test_run_report.py",
+  "tests/orchestration/test_run_report_hook.py"
+ ],
+ "timestamp": "2026-07-31T13:01:28+00:00",
+ "tracked_diff_sha256": "493dfc30fba580e8636e70dfa5d8829f0716a0031bf32d0c945f2674f27cb5a0",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

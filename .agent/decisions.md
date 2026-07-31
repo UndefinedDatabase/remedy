@@ -1,5 +1,130 @@
 # Decisions
 
+## 2026-07-31: F053 R4 — `.agent/context.md` is pinned by TWO tests, not one
+R-0162 was diagnosed as the "Steps" token, and the authored replacement fixed
+exactly that: `test_context_md_no_stale_steps` passes and the whole
+`test_dashboard_contract.py` file is green (70 passed). But `.agent/context.md`
+is asserted on by a SECOND contract test in a different file:
+
+    tests/regression/test_resource_safety.py:117
+    TestContextIncludesResourceSafety::test_context_mentions_resource_safety
+    assert "resource" in text.lower() or "pytest" in text.lower()
+
+The authored text carries neither token (0 occurrences of each), so the full
+suite went from one red id to a different one. The R1 version had passed this
+test only incidentally — it carried a "## Gates" section naming pytest
+commands, which satisfied the substring without anyone having decided to.
+
+Not fixed in R4: the round block forbids further fixes after the first red, so
+this is handed back for a corrected authored text. Recorded because the lesson
+is bigger than the token: the state-file contract for a given file is spread
+across at least two test files, and grepping only the one that just failed is
+how a repair round produces the next red. Before authoring any `.agent` state
+replacement, grep the whole suite for reads of that path — not just the test
+that is currently failing.
+
+## 2026-07-31: F053 R3 gate — base parity by symlink is defeated by the UI auto-build
+The gate doc offers two ways to handle the environment-coupled base failures:
+restore `apps/ui/node_modules` + `apps/ui/dist` parity in the throwaway base
+worktree, or attribute every `comm -23` id by direct evidence. Parity was
+attempted first, by symlinking both from the primary checkout.
+
+It did not hold. The ui_server tests trigger an auto-build, that auto-build ran
+`npm install` inside the base worktree, and npm REPLACED the `node_modules`
+symlink with a real (partial, exit-217) install — so the base run failed the
+same six ids anyway. Two consequences worth recording:
+
+1. The symlink is also a WRITE path. The auto-build wrote through the `dist`
+   symlink into the PRIMARY checkout's `apps/ui/dist`, rebuilding it. `dist` is
+   gitignored so the repo stayed clean and `tests/ui_server/` still passes 259,
+   but a throwaway worktree sharing a writable artifact directory with the
+   primary is not the isolation it looks like. A copy, not a symlink, is the
+   safer reading of the doc's "share or copy".
+2. Attribution was therefore done properly instead, and empirically: with the
+   symlink restored AND `REMEDY_UI_NO_AUTO_BUILD=1`, all six ids pass at base
+   (17 passed). That is per-id direct evidence that none of them is a genuine
+   base failure, which is what the doc actually asks for.
+
+## 2026-07-31: F053 T002 — `remedy job report` gains modes, it does not replace one
+`remedy job report <id>` already existed: a progress/evidence view with
+`--json`, asserted on by tests/cli/test_open_decisions_view.py,
+tests/orchestration/test_job_fulfillment.py and referenced as a next-action
+string inside job.py itself. The R2 block asked for that command to render the
+F053 run report, which would have changed the output of a covered command.
+
+Resolved the same way F047 resolved the identical `job resume` collision (see
+the 2026-07-26 entry below): ONE command, several modes on the same name.
+`--final` and `--interim` render the F053 report; the bare invocation and
+`--json` behave exactly as before. A test asserts the catalog registers
+`job.report` exactly once and that the bare view still prints the pre-F053
+output. The dispatch lambda is one line away from the replacement reading if
+the reviewer prefers it; flagged in the handback rather than decided silently.
+
+## 2026-07-31: F053 T002 — the report writer hangs off _apply_terminal
+Every terminal transition in `run_cycles` already funnels through
+`_apply_terminal`, so hooking the writer there makes "exactly one report per
+terminal job" true by construction instead of by remembering to call a writer
+on five separate break paths. `REPORTED_TERMINALS` names the five that end a
+run; `max_cycles_reached` is deliberately excluded because it maps to
+JOB_RUNNING — the job still has pending work, and a "final" report would lie
+about the run being over.
+
+The cost is that `_apply_terminal` now performs I/O. It is contained:
+`write_final_report` never raises, records its own failure on the job under
+`report_error`, and returns None. A run that finished is finished whether or
+not its account could be written — the report is an account of the run, not a
+gate on it. `write_report=False` keeps a terminal transition available without
+a write, for callers that only want the state change.
+
+## 2026-07-31: F053 T002 — the report file is overwritten, never appended
+One fixed `report.md` in the job's evidence area, beside the `cycles/`
+directory rather than in an area of its own. A resumed job that finishes again
+REGENERATES the file, so it always describes the run as it actually ended
+(feature-file acceptance). Red-proved in a throwaway worktree: switching the
+write to an append fails three tests.
+
+## 2026-07-31: F053 — the STATUS mirror is an INPUT, not a read (inspect finding)
+The feature file states that ALL inputs already exist as structured data. The
+inspect step disproved that for exactly one source: the milestone distance and
+the capability lines are specified to come from "the STATUS mirror", and there
+is NO production reader of `docs/roadmap/STATUS.md` anywhere in `packages/`.
+The only production references to that path are a write FENCE
+(`scope_fences.py:80`, "execution ledger (operator territory)") and a noise-
+filter comment (`evidence_index.py:113`). `self_dogfood._detect_roadmap`
+(self_dogfood.py:350) is registry-only by its own docstring — it tests module
+existence, it does not read the ledger. Every other source the report renders
+was confirmed present and is listed in the run_report.py module docstring.
+
+Rather than write a STATUS parser inside a Tier 1 report feature (it is a
+different concern, and the file is fenced operator territory),
+`ReportSources.status_mirror` is the input seam and both dependent sections
+render "not recorded" until a producer exists. That is the feature's own rule
+for a missing source, applied to its own gap rather than papered over. The
+routing of that producer — T002, a new slice, or a feature-file amendment — is
+a reviewer decision, raised in the handback rather than decided by the worker.
+
+## 2026-07-31: F053 T001 — render_report keeps its specified signature, plus a sources seam
+`T1_F053.md` Design fixes `render_report(job, mode=final|interim) -> str`, but a
+renderer that reaches for a job and a data root cannot have byte-stable
+goldens. The module therefore splits in two: `render_report_from_sources` is
+the pure function (no clock, no disk, no randomness — the caller supplies
+`rendered_at`), and `render_report(job, mode, *, sources=None)` keeps the
+specified signature and collects when nothing is injected. The goldens test
+the pure half. Determinism is pinned by a double-render test rather than left
+as a property nobody checks.
+
+`collect_report_sources` deliberately reads ONLY the in-memory job this round.
+The evidence-area sources (cycle records, postmortems, manifest) land with the
+terminal-state writer in T002, so T001 adds no new disk reads and no new
+failure modes to the run loop.
+
+## 2026-07-31: F053 T001 — momentum is unknown with no cycles, never forward
+The mechanical definition covers "closes items" and "recurs", but not the
+zero-cycle case. Defaulting that to forward would print a green momentum line
+for a run that produced no evidence at all — an invented judgement of exactly
+the kind P6 forbids. `momentum_flag` returns `unknown` and the section renders
+"not recorded".
+
 ## 2026-07-30: F052 — which existing repair loop the cycle triggers
 The inspect step found TWO repair worlds. The ping-pong loop
 (`pingpong_loop.run_pingpong`) does run bounded repair rounds, but it drives

@@ -1,0 +1,253 @@
+4a7705bb7fe0cd34c98e5f6225e9a934149b19fd
+diff --git a/.agent/authored/f053-r4-1.md b/.agent/authored/f053-r4-1.md
+new file mode 100644
+index 00000000..10dbfea6
+--- /dev/null
++++ b/.agent/authored/f053-r4-1.md
+@@ -0,0 +1,10 @@
++- R3: persist R2 verdict + register R-0161 + DECISION D3; fix
++  R-0161 (--final guard) + capability cap (A9); integration gate
++  RED: one branch-only state-file id (R-0162); all six comm -23
++  ids attributed + empirically confirmed. Done (gate outcome
++  carried to R4).
++- R4: persist R3 verdict + register R-0162 + resolve R-0161; apply
++  the authored context.md replacement + the §4 item 11 extension +
++  the gate-doc COPY amendment; re-run the failed id, then the FULL
++  suite (gate confirmation) — green required, else STOP.
++  In progress.
+diff --git a/.agent/authored/f053-r4-2.md b/.agent/authored/f053-r4-2.md
+new file mode 100644
+index 00000000..a877953f
+--- /dev/null
++++ b/.agent/authored/f053-r4-2.md
+@@ -0,0 +1,20 @@
++- R3: FAIL — INTEGRATION GATE RED (reviewer, 2026-07-31). Range
++  1a5af0d..875a199 (content through 9e0b403). Commits A/B/C are
++  sound: all 4 authored texts cmp 0 disk-to-disk (primary proof;
++  planner_reviewer_prompt.md §4 item 9), applied regions exactly
++  once; --final guard and capability cap verified by the reviewer's
++  own runs (98 CLI + renderer tests), tests/docs 293, canary 42,
++  ruff clean — all exit 0. Gate: branch 1 failed / 14609 passed
++  (126s); base in a worktree ON a branch 6 failed / 14484 passed
++  (107s); totals reconcile exactly (+120 = the F053 test files).
++  comm -23 = 6, all UI-artifact environment class, attributed per
++  id AND confirmed empirically (parity + no-auto-build → 17 passed
++  at base). comm -13 = 1: test_context_md_no_stale_steps —
++  serial-reproducible, reproduced by the reviewer's own run;
++  state-file contract, NOT feature code. The worker's refusal to
++  fix inside the gate round was CORRECT (the block forbade it);
++  the failure is real, so the gate cannot PASS. R-0162 registered;
++  the R4 full-suite re-run is the gate confirmation. The declared
++  symlink side effect is accepted as benign (gitignored artifact,
++  tree clean, ui_server suite green) and the gate doc now orders
++  COPY, never symlink. LAST_REVIEWED_SHA stays 1a5af0d.
+diff --git a/.agent/authored/f053-r4-3.md b/.agent/authored/f053-r4-3.md
+new file mode 100644
+index 00000000..e68c1d2d
+--- /dev/null
++++ b/.agent/authored/f053-r4-3.md
+@@ -0,0 +1,15 @@
++- Resolved: R-0161 (product, Low) 2026-07-31: --final is refused
++  unless the job's cycle_terminal_status is in REPORTED_TERMINALS
++  (clean text + JSON error naming the state, --interim hint, never
++  auto-renders); capability lines cap at 10 via _capped with the
++  honest count line (CALL-2 ruling).
++  Done: R-0161 (commit c2d9f790 — guard + tests; cap 9e0b4035).
++- Open: R-0162 (process, Low, registered 2026-07-31): the R1
++  context.md rewrite dropped the "Steps" token
++  (test_context_md_no_stale_steps, serial-reproducible, branch-only
++  at the gate) — third instance of the state-file contract class
++  (F046 plan.md, F047 live_review.md). Fix (R4): authored
++  context.md replacement carrying a "## Steps (round map)" section,
++  plus the §4 item 11 extension so every ordered context.md rewrite
++  carries the token from now on. Not feature-code coupled.
++- Next free ID: R-0163.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index 249b6cd9..e849511a 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,60 +1,43 @@
+-Round f053-r3 — persist R2 verdict, two small fixes, then the
+-INTEGRATION GATE per docs/agents/integration_gate.md (read COMPLETELY,
+-including the amended step 2 applied in commit A; it wins over the block
+-summary). No closure work of any kind this round; never merge anything.
++Round f053-r4 — REPAIR (gate confirmation). Findings persist FIRST, then
++fix, then the full suite; STOP on any red. No closure work; never merge
++anything.
+ 
+-COMMIT A (first, own commit, before any fix): in .agent/live_review.md
+-replace the R2 "In progress." Steps bullet with f053-r3-1, append
+-f053-r3-2 to "## Verdicts" after the R1 entry, replace
+-"- Next free ID: R-0161." with f053-r3-3; in
+-docs/agents/integration_gate.md replace the ENTIRE step-2 item with
+-f053-r3-4. cmp proofs for all four regions.
++COMMIT A (first, own commit): in .agent/live_review.md replace the R3
++"In progress." Steps bullet with f053-r4-1, append f053-r4-2 to
++"## Verdicts" after the R2 entry, replace the block from
++"- Open: R-0161 (product, Low," through "- Next free ID: R-0162." with
++f053-r4-3. cmp proofs.
+ 
+-COMMIT B — fix R-0161 (--final guard): apps/cli/commands/job.py
+-_cmd_job_run_report refuses --final when the job's metadata
+-cycle_terminal_status is NOT in long_run_executor.REPORTED_TERMINALS —
+-exit 1, stderr "Error: run still in progress (state: <state>) — use
+---interim for a snapshot"; with --json {"error": "run_not_terminal",
+-...}. Never auto-render, never auto-switch mode. --interim and the
+---json source dump are unchanged. Tests in tests/cli/test_job_report.py
+-(refusal text + json, allowed terminal still renders); mark
+-Done: R-0161 in the commit body. Verify: test_job_report.py.
++COMMIT B — fix R-0162 + doc amendments:
++- .agent/context.md replaced ENTIRELY with f053-r4-4 (cmp 0 against the
++  saved copy).
++- docs/agents/planner_reviewer_prompt.md §4 item 11: f053-r4-5 inserted
++  directly AFTER the sentence ending "stays with F252." (same
++  indentation, part of item 11).
++- docs/agents/integration_gate.md step 3: the three lines "parity before
++  the base run (share or copy the primary checkout's / `apps/ui/
++  node_modules` and `apps/ui/dist` into the base / worktree, or run the
++  same install/build there), or attribute" replaced with f053-r4-6.
++cmp proofs for all three regions. Mark Done: R-0162 in the commit body.
+ 
+-COMMIT C — capability cap (CALL-2 ruling, A9):
+-run_report._capability_lines caps the "Can now" lines with _capped
+-(MAX_CAPABILITY_LINES = 10, honest "… and N more" pattern, noun
+-"accepted features"); in-progress lines share the cap. Goldens
+-unaffected (1 line). One test: 30 accepted → 10 lines + count line.
+-Verify: test_run_report.py.
++GATE CONFIRMATION, in this order, STOP at the first red:
++1. pytest "tests/ui_server/test_dashboard_contract.py::
++   TestLiveReviewAndAgentStateRefs::test_context_md_no_stale_steps" -q
++   → must pass.
++2. pytest tests/ui_server/test_dashboard_contract.py -q → whole file
++   green (guards against a new token regression).
++3. pytest -n auto -q → FULL suite; expected 14610 passed, 19 skipped,
++   0 failed. Raw tail, exit code, wall time. Any failure: record raw,
++   STOP, hand back — no further fixes in this round.
++4. pytest tests/docs/ -q → 293.
++5. pytest tests/cli/test_golden_path.py -q → 42.
+ 
+-INTEGRATION GATE exactly per docs/agents/integration_gate.md:
+-1. Branch run `python3 -m pytest -n auto -q` at HEAD — raw tail, full
+-   FAILED list, exit code, wall time; branch_failed.txt.
+-2. Base run at the merge base with origin/main (15105dbe) in a
+-   throwaway worktree ON A BRANCH per the amended step 2
+-   (git worktree add -b tmp/base-gate <path> 15105dbe); same records;
+-   base_failed.txt. Remove + prune + delete the tmp branch;
+-   git worktree list proof.
+-3. comm -13 (branch-only) and comm -23 (branch-fixed), BOTH raw.
+-   Environment-coupled attribution per the doc: parity targets are
+-   apps/ui/node_modules + apps/ui/dist only (restore parity, or
+-   attribute EVERY comm -23 id by direct evidence per id). The former
+-   .git-directory class is GONE (R-0159 fixed) — a dogfood-id failure
+-   at base is NOT attributable to it any more.
+-4. Serial re-run of every branch-only id; classify per the doc (F046
+-   pattern). A reproducible branch-only failure coupled to feature code
+-   = BLOCKER: STOP and hand back raw. No fixes inside the gate round
+-   beyond commits B/C, which land BEFORE the gate runs.
+-5. Wall clock; over ~5 min → note for a perf pass.
+-
+-Round gate: test_job_report.py green · test_run_report.py green · full
+-suite (gate) · tests/docs 293 · canary 42 — raw tails + exit codes in
+-the handback. Handback per docs/agents/handback_template.md: per-commit
+-tables, item-status table (A, B, C, gate steps 1-5), authored-text
+-proofs, branch/base FAILED lists + both comm outputs verbatim, per-id
+-attribution table, wall clocks. Red-proofs only in a disposable worktree
+-ON a branch. Do NOT write ## Verdicts beyond applying f053-r3-2
+-verbatim. Closure is R4, its own round, never started here.
+-Authored texts f053-r3-{1,2,3,4} (sha256 verified before use, saved
++Handback per docs/agents/handback_template.md: per-commit tables,
++item-status table (A, B, gate 1-5), authored-text proofs (sha256sum +
++saved-copy cmp + applied-region cmp), full-suite raw tail + wall clock.
++Do NOT write ## Verdicts beyond applying f053-r4-2 verbatim. Then await
++the reviewer. Closure is R5, its own round — the reviewer opens it only
++after this gate confirms green.
++Authored texts f053-r4-{1..6} (sha256 verified before use, saved
+ verbatim under .agent/authored/, applied by copy).
+-OUTCOME: executed
++OUTCOME: pending
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index f267f678..7fcc6c40 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -17,8 +17,14 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   interim against a running fake job, CLI job report + --json,
+   tests. Done.
+ - R3: persist R2 verdict + register R-0161 + DECISION D3; fix
+-  R-0161 (--final guard) + capability cap (A9); then the
+-  integration gate per docs/agents/integration_gate.md.
++  R-0161 (--final guard) + capability cap (A9); integration gate
++  RED: one branch-only state-file id (R-0162); all six comm -23
++  ids attributed + empirically confirmed. Done (gate outcome
++  carried to R4).
++- R4: persist R3 verdict + register R-0162 + resolve R-0161; apply
++  the authored context.md replacement + the §4 item 11 extension +
++  the gate-doc COPY amendment; re-run the failed id, then the FULL
++  suite (gate confirmation) — green required, else STOP.
+   In progress.
+ 
+ ## Findings
+@@ -44,25 +50,21 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   separate feature (rejected: two sections of THIS feature's report
+   depend on it). Reversal: any later relay may split the producer
+   out; the ReportSources.status_mirror seam is unchanged either way.
+-- Open: R-0161 (product, Low, registered 2026-07-31): `remedy job
+-  report <id> --final` on a job that is NOT at a reported terminal
+-  renders a report with no INTERIM banner — the exact
+-  mislabeled-snapshot risk the banner exists to prevent, one typo
+-  away. Fix (R3): refuse --final unless the job's
+-  cycle_terminal_status is in REPORTED_TERMINALS; clean error (also
+-  as JSON under --json) naming the state and pointing to --interim;
+-  never auto-render. Plus the CALL-2 ruling attached here:
+-  accepted-capability lines cap via _capped with an honest "and N
+-  more" line (A9 — the report is a summary; 28 lines today, ~250 at
+-  roadmap end).
+-- DECISION D3 (2026-07-31, reviewer, practice-requires-pointer §2):
+-  integration_gate.md step 2 gains the base-worktree-on-a-BRANCH
+-  sentence — the dogfood branch guard refuses a detached HEAD by
+-  design, so a detached base worktree fails the guard-dependent ids
+-  for a new named cause (paydown-0731 negative-control evidence).
+-  Until now that lived only in session memory — exactly the A1
+-  class the §2 rule exists to catch. Reversal: revert the doc line.
+-- Next free ID: R-0162.
++- Resolved: R-0161 (product, Low) 2026-07-31: --final is refused
++  unless the job's cycle_terminal_status is in REPORTED_TERMINALS
++  (clean text + JSON error naming the state, --interim hint, never
++  auto-renders); capability lines cap at 10 via _capped with the
++  honest count line (CALL-2 ruling).
++  Done: R-0161 (commit c2d9f790 — guard + tests; cap 9e0b4035).
++- Open: R-0162 (process, Low, registered 2026-07-31): the R1
++  context.md rewrite dropped the "Steps" token
++  (test_context_md_no_stale_steps, serial-reproducible, branch-only
++  at the gate) — third instance of the state-file contract class
++  (F046 plan.md, F047 live_review.md). Fix (R4): authored
++  context.md replacement carrying a "## Steps (round map)" section,
++  plus the §4 item 11 extension so every ordered context.md rewrite
++  carries the token from now on. Not feature-code coupled.
++- Next free ID: R-0163.
+ 
+ ## Verdicts
+ - R1: PASS (reviewer, 2026-07-31). Range 15105dbe..840d2b7
+@@ -108,3 +110,23 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   rule (A9) — cap ordered in R3. R-0161 registered: --final on a
+   still-running job renders an unbannered report.
+   LAST_REVIEWED_SHA = 1a5af0d.
++- R3: FAIL — INTEGRATION GATE RED (reviewer, 2026-07-31). Range
++  1a5af0d..875a199 (content through 9e0b403). Commits A/B/C are
++  sound: all 4 authored texts cmp 0 disk-to-disk (primary proof;
++  planner_reviewer_prompt.md §4 item 9), applied regions exactly
++  once; --final guard and capability cap verified by the reviewer's
++  own runs (98 CLI + renderer tests), tests/docs 293, canary 42,
++  ruff clean — all exit 0. Gate: branch 1 failed / 14609 passed
++  (126s); base in a worktree ON a branch 6 failed / 14484 passed
++  (107s); totals reconcile exactly (+120 = the F053 test files).
++  comm -23 = 6, all UI-artifact environment class, attributed per
++  id AND confirmed empirically (parity + no-auto-build → 17 passed
++  at base). comm -13 = 1: test_context_md_no_stale_steps —
++  serial-reproducible, reproduced by the reviewer's own run;
++  state-file contract, NOT feature code. The worker's refusal to
++  fix inside the gate round was CORRECT (the block forbade it);
++  the failure is real, so the gate cannot PASS. R-0162 registered;
++  the R4 full-suite re-run is the gate confirmation. The declared
++  symlink side effect is accepted as benign (gitignored artifact,
++  tree clean, ui_server suite green) and the gate doc now orders
++  COPY, never symlink. LAST_REVIEWED_SHA stays 1a5af0d.

@@ -1,0 +1,735 @@
+{
+ "base_commit": "15105dbe070c722f0e7cd44aff065b6fed6e1635",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f053-r1-1.md",
+    ".agent/authored/f053-r1-2.md",
+    ".agent/context.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "9cc1185b0207bd45ee393b5d47004a5a02b0c7e4",
+   "parents": [
+    "15105dbe070c722f0e7cd44aff065b6fed6e1635"
+   ],
+   "patch_sha256": "af64a64fa96bd9c3511a178b00dba32b84efaa91178ad8e5fdcfc476e085c038",
+   "subject": "chore(f053): claim F053 + state reset",
+   "tree": "547bfa58c4fbaaeaf500c93e7d055a3dd339229f"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/run_report.py"
+   ],
+   "commit": "9c46258b0370344a789d799ba748c0f87576b251",
+   "parents": [
+    "9cc1185b0207bd45ee393b5d47004a5a02b0c7e4"
+   ],
+   "patch_sha256": "ababf4d487871a74a0922f463ed8b8c520646b395c339516db855ed8b5f18b75",
+   "subject": "feat(f053): run report model + momentum and next-action rules",
+   "tree": "e657c760a8eea9065b84be93879ea838acae6725"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/run_report.py"
+   ],
+   "commit": "6d6ea88f832c26ec8374c507c09b563a7d2254ab",
+   "parents": [
+    "9c46258b0370344a789d799ba748c0f87576b251"
+   ],
+   "patch_sha256": "e807ba05b2008ae6fda55f76de4206cd5a04f553f103001200ff1f70ca899945",
+   "subject": "feat(f053): render the run report as deterministic markdown",
+   "tree": "86ef321130da81063935b388484b142cdd0a90fe"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_run_report.py"
+   ],
+   "commit": "3d943b2511a8e41610a19e3cdb140107a67c671d",
+   "parents": [
+    "6d6ea88f832c26ec8374c507c09b563a7d2254ab"
+   ],
+   "patch_sha256": "bdca75e55acc1a0c28033e04f7b1b7ecc20e81aa23938e3b511f43543dfcfc40",
+   "subject": "test(f053): three golden run reports and the not-recorded rule",
+   "tree": "34df375edb59825ee1f100c084b984f88dc965c5"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_run_report.py"
+   ],
+   "commit": "551b6ec6eb9c2a982b1cd7266bfaaa46f565ce8a",
+   "parents": [
+    "3d943b2511a8e41610a19e3cdb140107a67c671d"
+   ],
+   "patch_sha256": "58b4ab0a2be310fa62b21a2c49e6ab284cb572f5ce9aa927a18e5ad474159967",
+   "subject": "test(f053): interim label, determinism, rule table and momentum",
+   "tree": "21dd02d285284b423c6016410330e9757fb31dd1"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/plan.md"
+   ],
+   "commit": "0ea37fb56531bb38036932b26f80b482095a379a",
+   "parents": [
+    "551b6ec6eb9c2a982b1cd7266bfaaa46f565ce8a"
+   ],
+   "patch_sha256": "dcbde8192a83046238f7345508a615e2a0c39deeeb722f2775824908c40143a2",
+   "subject": "chore(f053): handback R1",
+   "tree": "ff79eaceaf26a7c1e47ce0f1b5cd974d0e60de12"
+  },
+  {
+   "changed_files": [
+    ".agent/last_block.md"
+   ],
+   "commit": "840d2b7bb58e7e3907594fe5c21695fe63845b6e",
+   "parents": [
+    "0ea37fb56531bb38036932b26f80b482095a379a"
+   ],
+   "patch_sha256": "b3e29a9c38e4aa6c3c090d6c956a5322ff0523bf17ecbd83cf00572a29879840",
+   "subject": "chore(f053): mark the R1 block executed",
+   "tree": "90f0f00da321cd828dd371b01ec4712fbb89d74b"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r2-1.md",
+    ".agent/authored/f053-r2-2.md",
+    ".agent/authored/f053-r2-3.md",
+    ".agent/authored/f053-r2-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    "docs/roadmap/features/T1_F053.md"
+   ],
+   "commit": "e9d33e5e21ade37b41e754ffaf5e2a99c98c5ff5",
+   "parents": [
+    "840d2b7bb58e7e3907594fe5c21695fe63845b6e"
+   ],
+   "patch_sha256": "47bcb7784b56ffa2ce0ae2d62a1018c7c857b27040ceae1af5fb4b3a8b33f5a4",
+   "subject": "chore(f053): persist R1 verdict (PASS) + register R-0160 + DECISION D2",
+   "tree": "8a5216e951756cda802c13ceaad7dd026cdc2286"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/run_report.py",
+    "packages/orchestration/status_mirror.py",
+    "tests/orchestration/test_run_report.py"
+   ],
+   "commit": "bd67b3e6c49453696b60ef0561f321c4c1b608cb",
+   "parents": [
+    "e9d33e5e21ade37b41e754ffaf5e2a99c98c5ff5"
+   ],
+   "patch_sha256": "f720ea434107b4d754be57c1f7dc6406b22dd68e4dceffeed0b91854ede32431",
+   "subject": "feat(f053): STATUS-mirror producer + stopped-by-operator rule",
+   "tree": "655a49a97b965ed3003456a4eee6e2d34460e194"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py",
+    "packages/orchestration/run_report.py",
+    "tests/orchestration/test_run_report_hook.py"
+   ],
+   "commit": "7665ba4d296b052df370f5e96b2b712d92a7e612",
+   "parents": [
+    "bd67b3e6c49453696b60ef0561f321c4c1b608cb"
+   ],
+   "patch_sha256": "ec066c4fe7d2ec00dbd0f248406a5798450566232ac8f09c45a980311d1ce87d",
+   "subject": "feat(f053): write one final report at every terminal state",
+   "tree": "2cc24faeda93ec44442d1506a97c353772c24729"
+  },
+  {
+   "changed_files": [
+    "apps/cli/command_catalog.py",
+    "apps/cli/commands/job.py",
+    "tests/cli/test_job_report.py"
+   ],
+   "commit": "4e5713ab8294b596ac8eb72a909622881fd5490b",
+   "parents": [
+    "7665ba4d296b052df370f5e96b2b712d92a7e612"
+   ],
+   "patch_sha256": "2e9104053ebbe7f5df03ea2db103fe72967b304e08e4fd47690d63eb3e172487",
+   "subject": "feat(f053): render the run report from remedy job report",
+   "tree": "0242575f6aeddc78ec9ecfefd14909a4c43e1b42"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/last_block.md",
+    ".agent/plan.md"
+   ],
+   "commit": "1a5af0dac7240f4e84f3ca911b10977c1bda8f74",
+   "parents": [
+    "4e5713ab8294b596ac8eb72a909622881fd5490b"
+   ],
+   "patch_sha256": "f9d60cc080921bc46ff411991be738f3b116153723535086bacb2d77d12f0cbb",
+   "subject": "chore(f053): handback R2",
+   "tree": "8df4e03c92cfd443324efb725ff7549f4dd9ec60"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r3-1.md",
+    ".agent/authored/f053-r3-2.md",
+    ".agent/authored/f053-r3-3.md",
+    ".agent/authored/f053-r3-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    "docs/agents/integration_gate.md"
+   ],
+   "commit": "fd5698b61fbfe22296d34bfa6d72de434b0e036a",
+   "parents": [
+    "1a5af0dac7240f4e84f3ca911b10977c1bda8f74"
+   ],
+   "patch_sha256": "4790e03a84e4c0eaa24d294e670fc020d7b1b6364aa8afa7da49df2c209ffa5c",
+   "subject": "chore(f053): persist R2 verdict (PASS) + register R-0161 + DECISION D3",
+   "tree": "bd4a13ac7ac195e6834cfc080e3de28138068d34"
+  },
+  {
+   "changed_files": [
+    "apps/cli/commands/job.py",
+    "tests/cli/test_job_report.py"
+   ],
+   "commit": "c2d9f7901d2dd1f58c83f405de4ab98266172cbd",
+   "parents": [
+    "fd5698b61fbfe22296d34bfa6d72de434b0e036a"
+   ],
+   "patch_sha256": "41e7c5eb9f3b341225a3f641c5b50c0a24f334deb50da816bdfba16c2c07875d",
+   "subject": "fix(f053): refuse job report --final on a run still in progress",
+   "tree": "8792f41845e1bc40c5304bd9b45c184212ddca31"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/run_report.py",
+    "tests/orchestration/test_run_report.py"
+   ],
+   "commit": "9e0b4035782ef93ae162faa8fac5c080a113bc31",
+   "parents": [
+    "c2d9f7901d2dd1f58c83f405de4ab98266172cbd"
+   ],
+   "patch_sha256": "7d3c81fcca8e467ab01086ab5111b7cf71ce2773d90d9b6ca7cee7071fef9f4c",
+   "subject": "feat(f053): cap the capability lines like every other list",
+   "tree": "81187fe0a295e5ba53fa033930ceb2dace0831cc"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/last_block.md",
+    ".agent/plan.md"
+   ],
+   "commit": "875a19901a8b82126aad930db837dc9d22eeab90",
+   "parents": [
+    "9e0b4035782ef93ae162faa8fac5c080a113bc31"
+   ],
+   "patch_sha256": "e1da3ce39c80a72aade679f0eb936ca5a8c7afe45adcfa0941fadec70da707e5",
+   "subject": "chore(f053): handback R3 + integration gate results",
+   "tree": "72e97101495c92b5881a3db7c3fc25460c222df6"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r4-1.md",
+    ".agent/authored/f053-r4-2.md",
+    ".agent/authored/f053-r4-3.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "4a7705bb7fe0cd34c98e5f6225e9a934149b19fd",
+   "parents": [
+    "875a19901a8b82126aad930db837dc9d22eeab90"
+   ],
+   "patch_sha256": "2019d915428f0e61ad7c9a1e0e78efd3ec90d5a525a475584b99fa0ccbf05261",
+   "subject": "chore(f053): persist R3 verdict (gate red) + register R-0162",
+   "tree": "953d1a53f065e3bdd36815e7516c89a4a6f094d3"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r4-4.md",
+    ".agent/authored/f053-r4-5.md",
+    ".agent/authored/f053-r4-6.md",
+    ".agent/context.md",
+    "docs/agents/integration_gate.md",
+    "docs/agents/planner_reviewer_prompt.md"
+   ],
+   "commit": "39c4334e0100fe4d485d2f78decd8fbee294f2c2",
+   "parents": [
+    "4a7705bb7fe0cd34c98e5f6225e9a934149b19fd"
+   ],
+   "patch_sha256": "7ad6d4df3315e06f1de3bcdddfa629c3086cd52c326238cd2bdfbe7faaa69287",
+   "subject": "chore(f053): repair context.md contract + codify gate lessons (R-0162)",
+   "tree": "4b035da6a1bba39f2f2939e8a98e23d3c423ae8e"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/last_block.md",
+    ".agent/plan.md"
+   ],
+   "commit": "1ae0c42d7ba31bd5e4fa9367bdb6235489773f3c",
+   "parents": [
+    "39c4334e0100fe4d485d2f78decd8fbee294f2c2"
+   ],
+   "patch_sha256": "3d33bf71309f2cbbfa0b0cdc24bf10a3ad02db2cc82657e6b7d2810d5f7cc84f",
+   "subject": "chore(f053): handback R4 \u2014 gate stopped on a second context.md contract",
+   "tree": "370fced6b2f0b6548aec95fcd2d1c67196f353a8"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r5-1.md",
+    ".agent/authored/f053-r5-2.md",
+    ".agent/authored/f053-r5-3.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "326075f94438a5e5dd8b25672a1bb90a42426455",
+   "parents": [
+    "1ae0c42d7ba31bd5e4fa9367bdb6235489773f3c"
+   ],
+   "patch_sha256": "f234b052038395705947c88f5d519eb13eda42f83bd3dc29c3f79e349ab962e6",
+   "subject": "chore(f053): persist R4 verdict (gate still red) + amend R-0162",
+   "tree": "02faaa331b269103a7ec7b822dd17d36abc8e2d1"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r5-4.md",
+    ".agent/authored/f053-r5-5.md",
+    ".agent/context.md",
+    "docs/agents/planner_reviewer_prompt.md"
+   ],
+   "commit": "0e599d11b145e231822bf899f16a3e299bd48a81",
+   "parents": [
+    "326075f94438a5e5dd8b25672a1bb90a42426455"
+   ],
+   "patch_sha256": "5e412a8c3cbc1e674c879bffb50ee8ee092d3523a25f16e3e31d141095fe34d5",
+   "subject": "chore(f053): context.md satisfies its full reader list (R-0162)",
+   "tree": "a1f7289dcdecdc919003fe3d56c35d3ae742cad4"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md",
+    ".agent/plan.md"
+   ],
+   "commit": "cf954599e573ffc07e4c0ddb7e24a776fa09e897",
+   "parents": [
+    "0e599d11b145e231822bf899f16a3e299bd48a81"
+   ],
+   "patch_sha256": "5fc651c23ccb48f9dabbb9f24f796e96ed30bef47e3b91296a8e41808a653a16",
+   "subject": "chore(f053): handback R5 \u2014 integration gate confirmed green",
+   "tree": "14c14f54d12b5762ce36c8c81a0628c363b01a9d"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f053-r6-1.md",
+    ".agent/authored/f053-r6-2.md",
+    ".agent/authored/f053-r6-3.md",
+    ".agent/authored/f053-r6-4.md",
+    ".agent/authored/f053-r6-5.md",
+    ".agent/authored/f053-r6-6.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    "docs/roadmap/features/T1_F053.md"
+   ],
+   "commit": "8cca01f4150ba14791de367e78cd9b39599c299d",
+   "parents": [
+    "cf954599e573ffc07e4c0ddb7e24a776fa09e897"
+   ],
+   "patch_sha256": "ea7024c87e566b2b0b10e5e3c75c7fd8126bd70f2ae128a1b86e96717cd79aa9",
+   "subject": "chore(f053): persist R5 verdict (integration gate PASS) + Built State",
+   "tree": "42efabaea31b7d437b245adf307a88577dfc1fda"
+  }
+ ],
+ "files": [
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "37a08edcde375c7605054e627db10ed3bd0a787f123ab0b6e66163986009cdfc",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r1-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "730f5c7cda09a13ad3fe6730567936a7d35deb924f4339a4a47345e2a77c9e01",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r1-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "24c1c0f81da60d97c3ee5aa753c10b0948c72f24e87985061a2ce4b7f8da99f0",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r2-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "013e1ea20110d1f4313a7f86eeb6100a6e5850fc7d7e63fa55efa788275df8e3",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r2-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "c327fea1ebfb8905107f990c855d43b221f5616feab75da64b74fac942818b09",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r2-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "3a4bfea893be2ae251f35e973648ab09d23149f28949c10d3c0f4ed84109f24f",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r2-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "d0df7eca479cef745f56dc3432d819bd3664383ba03dc85399ec06cffa3005b7",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r3-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7cbf3bc2571e5ce3fb366c60ee64824977f80a4707bb3ea2c5c6b4474dd733b5",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r3-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "6b59aa65b5c56b71a81f0c574244cc79ba9c75a056d78e1c723d054fd8c7f7a4",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r3-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "b261f51a57b1c58575b0169a0b4cf9c20c28825a8275de3b84e5b491cccf6fc1",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r3-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "786cb71de89ea1d827fe05bf289b51cca42b71facb7583f6cb19f70427f286fe",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r4-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "c882a6ae19746a20d13bcffee5befacb59ab04c0e52e8dcca6c309b9a1c1dcb4",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r4-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "20f781cfc53acbad17eaf0ae2780f307c5c8cfb6a49d8be4eb4cb7635016de3c",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r4-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "68721627e5c9aef7d8e472807bb3aeed80565f23ecdbaee6d6e6217e02ac374e",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r4-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "939c30e3dfaf014210bd2b76da19a73621b2d11199b8a99b1b75640a17975122",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r4-5.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "1d4f0dd06697f3b9135de3d98f5ce69596edf83eb1200e2fb79ace1e63cc89e5",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r4-6.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "da152b16086641673a0b2eb714d7d2d20410aa54e789258c0165a0b94230d0af",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r5-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "f0f54f529ac12a7eb1b2cc1d959e3e7be6a6d6300ee17b8cc0554471508aea9b",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r5-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7646eb494d8c7a62bf787e29554af67c05c0d54440a7f1af29871aeb28a72da0",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r5-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "bdbc9538db9ecde40dd1f76ccd665771ba8e2beb294721a435a9bcd744290d5e",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r5-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "a0b444eeee7abbc59ced761c6fada4f5897079ec505fc05be6991677090ad64e",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r5-5.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "f3ac7338e67041a3436d5ce60484d0c163ff5deb424cc04757bf9e886a5abc1c",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r6-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "5e5a3c67be266f1f4e71a605e79c147a082299c3a734c284d2bb6572134906e2",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r6-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "5a00c6b8bbc9a05d7d7e7b9bf4dec95ba7e26f8fa3f214f1b26625c72659592e",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r6-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "522b68078d966e35f86a1ad920c1f6a2aa9e37d5161f38aba04eb9c8b527c421",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r6-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "d67291ac1b962d41f478c9225fd0127e049abe08d8b1972e6020c36617eaf684",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r6-5.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "c9a0539a6b71648166770e2d9d9ace290c0463443dc7c34115c9fbc359a86131",
+   "kind": "regular",
+   "path": ".agent/authored/f053-r6-6.md",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "4578786fb07d38d091b64f8cc6ead23ec52b255ce0c7642e659b94ada75fb616",
+   "current_mode": "100644",
+   "current_sha256": "bdbc9538db9ecde40dd1f76ccd665771ba8e2beb294721a435a9bcd744290d5e",
+   "kind": "regular",
+   "path": ".agent/context.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "3d8f95bb1363333f1982bcfd404d528aa11149da5efc250a4334ea6ee7d56d91",
+   "current_mode": "100644",
+   "current_sha256": "c5843259aeefcf47b56e4b0d1c1dad0fa1b7c99df8db34dd305069fea8bcceec",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "e02740daca913641cc2d557f7a953e226a18abcb7fc025f07c57f11520f65ae3",
+   "current_mode": "100644",
+   "current_sha256": "2417088a9b29d008c62dd47a9dbb023621281301e62f50315860555044f3893a",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "eb33eed4b606658409423c19fc9b9e9fdc6fd6baac4d72ed0fced89d218e9858",
+   "current_mode": "100644",
+   "current_sha256": "15d5cf8ce173646ea622df7424b70b498bff2bef43cd861c5223fbf29ead3850",
+   "kind": "regular",
+   "path": ".agent/last_block.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "ba179813e79799eb31de06fe9f91a41ee71a6341782c8783591a641453e5cec8",
+   "current_mode": "100644",
+   "current_sha256": "67edfc4d4064077a6a8014aae7f0b52b9b1a6fa35f32cba2f7d327d23c80a55f",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "9e5d10d02e76cdee5aa5f19d48f8ca1f2e81c93a88ac50a649eab71d2c965fad",
+   "current_mode": "100644",
+   "current_sha256": "f40a9eecbffce818a97dd9411543dd9f8cab3754b8991eeffa3fa9a47b1675ad",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "c24b226a8b394310a1c99a8354b5ad4947fc9c7bbb9106ad21c701ec28124e78",
+   "current_mode": "100644",
+   "current_sha256": "f7ec9f3508b84d8c0b42f26961a764a1ea8d9c2e2301b3bf12fbb6335315781b",
+   "kind": "regular",
+   "path": "apps/cli/command_catalog.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "85b775fc710deb0fbfbac110258a4314a0b0578a6910d78f6d51c911c0dea4a7",
+   "current_mode": "100644",
+   "current_sha256": "187895ca9df5a3bf8ab25a4c8131a55c631274bdf0db4e5beb1aa0cf795c9a78",
+   "kind": "regular",
+   "path": "apps/cli/commands/job.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "d8bd6b5bce43981fe8995cf7102e423bfc764d0826657a6f6a4d77ebb6a39e79",
+   "current_mode": "100644",
+   "current_sha256": "8bb52dfab3a136f4efcb48701cffa6a29313cc06ee5bbeb726be3916e768c6a7",
+   "kind": "regular",
+   "path": "docs/agents/integration_gate.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "96a2a0b85e4ac97f4ed13836dc712e250d344ceb3c84148a60bcca7e597df37d",
+   "current_mode": "100644",
+   "current_sha256": "d708b11b00cf7f067e518c206ec222593692a991eb456c8f817057b01e701b53",
+   "kind": "regular",
+   "path": "docs/agents/planner_reviewer_prompt.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "9dccf2532b9744765f7e773826dd61f67bec597ac2299a547b01955c06e0ed54",
+   "current_mode": "100644",
+   "current_sha256": "eeef7dbe08dd14f201462b790f8f6028c235bb076a837e81936fa8915fabb669",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "2e34583c0db3f1f5f4f97b053c220d30f76570b5fd202b170db3315db569c2ea",
+   "current_mode": "100644",
+   "current_sha256": "4a191d2bca5c60e943ffbec1d1dbb7c99b1c5ff5ad353782bda75ae30011a79c",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F053.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "849eacc590fb6641001e3e2f643eef7fc220b149c7f73ad9d59fc0d257298dd6",
+   "current_mode": "100644",
+   "current_sha256": "fe47db025c2cd92e8135500e071526045e65ab951a7359f40f5bfada130d026f",
+   "kind": "regular",
+   "path": "packages/orchestration/long_run_executor.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7e4b66aa76290394fa48da7514e99ea901d5d0b9e0e1fcc6a8ad3c8b7cc8bef3",
+   "kind": "regular",
+   "path": "packages/orchestration/run_report.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "9c5ba55b2fc1b939e513cf5818126d7af2d65bff2363184da09b550be41e72fa",
+   "kind": "regular",
+   "path": "packages/orchestration/status_mirror.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "e681a956bbcae3958639d0eaafeb6673f6bab6b9eef89072bf7a8b32563a7cc7",
+   "kind": "regular",
+   "path": "tests/cli/test_job_report.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "707f00a59834a792f2acbd7f547e8289161d55763e77f977400222d0644b3c06",
+   "kind": "regular",
+   "path": "tests/orchestration/test_run_report.py",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "b9e1d60d192b0db62516ef32ada10b764fa9edb6da1daad7a6c382ea9f3db2ac",
+   "kind": "regular",
+   "path": "tests/orchestration/test_run_report_hook.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "8cca01f4150ba14791de367e78cd9b39599c299d",
+ "subject_v": 1
+}

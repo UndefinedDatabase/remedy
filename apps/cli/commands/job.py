@@ -1665,6 +1665,71 @@ def _cmd_job_status(job_id_str: str, *, json_output: bool = False) -> None:
         print(f'  Next:      {next_action}')
 
 
+def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
+                        json_output: bool = False) -> None:
+    """The F053 run report: one human-readable account of a run.
+
+    `--final` renders the account of a terminal job; `--interim` renders the
+    same structure for a run still in progress, headed by a loud snapshot
+    label.  Both are strictly READ-ONLY — the interim path in particular never
+    writes and never mutates job state, because rendering a progress snapshot
+    must not perturb the run it is describing.
+
+    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
+    Rendering one anyway would produce an unbannered report of a run that is
+    still moving — exactly the mislabeled snapshot the interim banner exists to
+    prevent, one typo away. The refusal names the state and points at
+    `--interim`; it never renders anyway and never silently switches mode,
+    because a command that quietly does something else than asked is how a
+    snapshot gets mistaken for a final account.
+    """
+    import json as _json
+    from dataclasses import asdict
+
+    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
+    from packages.orchestration.run_report import (
+        MODE_FINAL,
+        MODE_INTERIM,
+        build_report_sources,
+        render_report,
+    )
+
+    job_id = resolve_job_id(job_id_str)
+    try:
+        job = load_job(job_id)
+    except JobNotFoundError:
+        # A clean error, never a traceback: an unknown id is a normal thing for
+        # a human to type.
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
+    if not interim and terminal not in REPORTED_TERMINALS:
+        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+        if json_output:
+            print(_json.dumps({
+                'error': 'run_not_terminal',
+                'job_id': str(job.id),
+                'state': state,
+                'terminal_status': terminal,
+                'hint': 'use --interim for a snapshot',
+            }))
+        else:
+            print(f'Error: run still in progress (state: {state}) — '
+                  'use --interim for a snapshot', file=sys.stderr)
+        sys.exit(1)
+
+    sources = build_report_sources(job)
+    if json_output:
+        print(_json.dumps(asdict(sources), indent=2, sort_keys=True, default=str))
+        return
+    print(render_report(job, MODE_INTERIM if interim else MODE_FINAL,
+                        sources=sources))
+
+
 def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
     """Job report -- safe read-only report of job progress and evidence."""
     import json as _json
@@ -2123,9 +2188,21 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
-    "job.report": lambda args: _cmd_job_report(
-        args.job_id,
-        json_output=getattr(args, "json", False),
+    # `remedy job report` has three modes and ONE name (the F047 `job resume`
+    # pattern, see .agent/decisions.md): --final/--interim render the F053 run
+    # report; without either flag the existing progress view runs UNCHANGED, so
+    # no existing invocation changes behavior.
+    "job.report": lambda args: (
+        _cmd_job_run_report(
+            args.job_id,
+            interim=getattr(args, "interim", False),
+            json_output=getattr(args, "json", False),
+        )
+        if (getattr(args, "final", False) or getattr(args, "interim", False))
+        else _cmd_job_report(
+            args.job_id,
+            json_output=getattr(args, "json", False),
+        )
     ),
     "job.fences": lambda args: _cmd_job_fences(
         args.job_id,

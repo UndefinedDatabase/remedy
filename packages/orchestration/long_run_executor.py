@@ -856,8 +856,30 @@ def _terminal_from_stop(reason: str, source: str) -> str:
     return TERMINAL_BUDGET_EXHAUSTED
 
 
-def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
-    """Write the terminal status onto the job and return the job status."""
+#: F053 T002: the terminal statuses that end a run and therefore get a final
+#: report.  ``max_cycles_reached`` is deliberately absent — it maps to
+#: JOB_RUNNING, the job has pending work and simply ran out of cycle budget, so
+#: writing a "final" report for it would be a lie about the run being over.
+REPORTED_TERMINALS: frozenset[str] = frozenset({
+    TERMINAL_ALL_GREEN,
+    TERMINAL_STOPPED_BY_OPERATOR,
+    TERMINAL_BUDGET_EXHAUSTED,
+    TERMINAL_DEADLINE_REACHED,
+    TERMINAL_BLOCKED,
+})
+
+
+def _apply_terminal(job: Job, terminal_status: str, stop_reason: str, *,
+                    write_report: bool = True) -> str:
+    """Write the terminal status onto the job and return the job status.
+
+    This is also the ONE place a final run report is written (F053 T002).
+    Every terminal transition passes through here, so hooking the report here
+    is what makes "exactly one report per terminal job" true by construction
+    rather than by remembering to call a writer on five separate paths.
+    The write happens after the terminal metadata is on the job, so the report
+    describes the state the job is about to be saved with.
+    """
     job_status = TERMINAL_JOB_STATUS[terminal_status]
     run_state = TERMINAL_RUN_STATE[terminal_status]
     if run_state is not None:
@@ -868,6 +890,12 @@ def _apply_terminal(job: Job, terminal_status: str, stop_reason: str) -> str:
         job.metadata["cycle_stop_reason"] = stop_reason
     else:
         job.metadata.pop("cycle_stop_reason", None)
+    if write_report and terminal_status in REPORTED_TERMINALS:
+        from packages.orchestration.run_report import write_final_report
+
+        # Never raises, and records its own failure on the job: a run that
+        # finished is finished whether or not its account could be written.
+        write_final_report(job)
     return job_status
 
 

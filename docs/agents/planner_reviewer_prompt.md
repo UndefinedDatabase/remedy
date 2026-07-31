@@ -242,6 +242,17 @@ end the response with:
     effect (F251 D4 lesson: authored texts flipped four contract
     tests in both directions across rounds). The D4 design question
     itself — fixture-based vs live-coupled — stays with F252.
+    The same contract class covers `.agent/context.md`, whose
+    readers span MULTIPLE test files: the dashboard contract
+    asserts the substring "Steps" plus "## Active Branch" with a
+    `feature/` slug, test_test_runner.py asserts a roadmap F-id,
+    and tests/regression/test_resource_safety.py asserts
+    "resource" or "pytest" — all in the same one file. Before
+    authoring ANY state-file replacement, grep every test that
+    reads that path (rg -ln '<filename>' tests/), collect the full
+    assertion list, and validate the draft against ALL of it, not
+    only the test currently red (R-0162, F053 R3+R4 lesson: the
+    first repair fixed one reader and tripped another).
 12. Before diagnosing a relay gap ("the block never reached the
     worker"), read .agent/last_block.md and its git history. A
     recorded refusal means delivered-and-refused: re-emit CORRECTED

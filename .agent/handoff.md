@@ -1,69 +1,119 @@
-# Handback — paydown0731-r1 (single-session micro-round)
+# Handoff — F053 · R6 CLOSURE (worker)
+
+`feature/f053-run-report`, pushed. Nothing merged. STATUS `[x]`, README
+synced, PR open. Closure protocol v4 followed in order.
 
 ## Range
-Review of b63f9665..HEAD (`feature/paydown-0731`). Open PR Gate first:
-PR #167 merged (b63f9665), main synced, branch created from it.
+Review of cf954599..HEAD.
 
 ## Commits
-### 13c6053a chore(paydown0731): persist round state + authored texts
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | reset | round ledger from r1-1 (copy, cmp 0) |
-| .agent/plan.md, .agent/last_block.md | rewrite | round state |
-| .agent/authored/paydown0731-r1-{1..8}.md | +8 files | authored texts |
 
-### b2f95bd2 docs(agents): codify digest fallback + practice-requires-pointer
+### 8cca01f4 chore(f053): persist R5 verdict (integration gate PASS) + Built State
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +17 | Item 1 (§4 item 9, r1-2) + Item 2 (§2, r1-3) |
+| .agent/live_review.md | +44/-14 | R6 step, R5 PASS verdict, R-0162 Resolved (f053-r6-1/2/3) |
+| docs/roadmap/features/T1_F053.md | +39 | Built State appended (f053-r6-4) — precondition 4 |
+| .agent/authored/f053-r6-{1..6}.md | +84 | six authored texts, verbatim |
+| .agent/last_block.md | +93/-47 | R6 block, OUTCOME pending |
+**This is the accepted HEAD: 8cca01f4150ba14791de367e78cd9b39599c299d**
 
-### 408c89c9 docs(roadmap): closure protocol — VT run_id pitfall (c)
+### 140f3848 chore(f053): commit closure evidence (after READY zip)
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS_closure_protocol.md | +6 | candidate resolved (r1-4) |
+| .data/evidence_exports/b4d6d7f5-…/ | 80 files | evidence export, committed AFTER the READY zip (F147 ordering) |
 
-### 23a06611 fix(orchestration): dogfood guard accepts worktree gitfile (R-0159)
+### closure commit chore(f053): close F053 — STATUS [x] + README sync
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/self_dogfood_execution.py | +27/-5 | _git_head_file() both .git forms (r1-6) |
-| tests/orchestration/test_self_dogfood_execution.py | +51 | TestCurrentBranchRepoForms (r1-7) + import (r1-8) |
+| docs/roadmap/STATUS.md | +1/-1 | F053 `[~]`→`[x]` (substituted f053-r6-5) |
+| README.md | +4/-3 | 3 edits from f053-r6-6, SAME commit as STATUS (R-0151 pin) |
+| .agent/{handoff,plan,last_block}.md | rewrite | final state; OUTCOME executed |
 
-### 21aa8e88 docs(agents): integration gate — drop git-directory class
-| Path | +/- | Reason |
-|---|---|---|
-| docs/agents/integration_gate.md | +5/-8 | attribution set cleanup (r1-5) |
-
-### 835291a2 chore(paydown0731): resolve R-0159 + candidate in the ledger
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +19/-16 | r1-9 applied; .agent/authored/paydown0731-r1-9.md added |
+## External actions
+`git push` x3 → cf954599..HEAD. Evidence job built via
+`create_manual_completion_bundle(review_feature_id="f053")`.
+Zip: `bash scripts/make_review_zip.sh --evidence-dir <path>` → exit 0.
+`gh pr create --base main` → run AFTER this commit, since Rule A4
+keeps the STATUS edit last on the branch; the number is in the
+completion report and the PR is NOT merged.
 
 ## Verification
-- `pytest tests/docs/ -q` → 293 passed, exit 0.
-- `pytest tests/cli/test_golden_path.py -q` → 42 passed, exit 0 (canary).
-- `pytest tests/orchestration/test_self_dogfood_execution.py
-  tests/cli/test_self_dogfood_execution_cli.py -q` → 30 passed (24+6).
-- R-0159 repro: throwaway linked worktree at HEAD on branch
-  tmp/r0159-proof (`.git` = gitfile) → the 6 CLI ids 6/6 green;
-  negative control: DETACHED worktree → 2 failed (guard still refuses
-  detached HEAD — default safety preserved). Worktree removed + pruned,
-  tmp branch deleted; `git worktree list` shows primary only.
+    STEP 1  $ pytest tests/docs/ -q            293 passed      exit 0
+    STEP 2  $ integrity check --json  passed=true, fail_count=0, checks=5
+            git status --porcelain → empty; rev-list @{u}...HEAD → "0 0"
+    STEP 3  $ pytest tests/orchestration/test_run_report.py -q       68  exit 0
+            $ pytest tests/orchestration/test_run_report_hook.py -q  22  exit 0
+            $ pytest tests/cli/test_job_report.py -q                 30  exit 0
+            $ pytest tests/cli/test_golden_path.py -q                42  exit 0
+            total_passed 162; final_verifier test_status passed=162 failed=0
+    STEP 6  $ pytest tests/docs/ -q            293 passed      exit 0
+            $ pytest tests/cli/test_golden_path.py -q  42 passed exit 0
+            $ grep -c '^- \[x\]' docs/roadmap/STATUS.md → 29
+Producer pitfalls all cleared: run_ids `vr-0001..vr-0004` match
+`^vr-\d{4,}$`; node_ids collected with `--collect-only` and
+`len(node_ids) == selected == passed` for all four runs; `test_files`
+are FILES; `output_hash` = sha256 of the EXACT stored `stdout_summary`
+(computed over `out[-2000:]`, the same slice the producer stores);
+base_commit full-length; full closed-schema gate set emitted.
+
+## Evidence job & package
+Evidence job `b4d6d7f5-8059-4c23-8f65-d47b319f35bd`
+package `remedy-review-20260731-150146-READY_FOR_REVIEW.zip`
+SHA-256 `64bcc0c5a97b6ce0c742db1feff61f55fb7b583fb24b9cb6ca864c40bc0a7b6c`
+(script JSON and independent `sha256sum` agree byte-for-byte).
+PACKAGE_STATUS=READY_FOR_REVIEW · EVIDENCE_AUTHORITATIVE=true ·
+REVIEW_SUBJECT_ALIGNMENT=PASS · ready_gate_matrix.ok=true,
+blocking_reasons [] · packaging_warnings [] · alignment issues [] ·
+hash_mismatches [] · rejected_candidate_count 0 ·
+`ZipFile.testzip()` → None · member_count 1683.
+committed_review_subject: base `15105dbe070c722f0e7cd44aff065b6fed6e1635`
+→ head `8cca01f4150ba14791de367e78cd9b39599c299d`, base_is_ancestor true.
+accepted HEAD := manifest head_commit = commit A. ✔ equal.
+
+## Provenance of every substituted value (f053-r6-5)
+| Placeholder | Value | Source |
+|---|---|---|
+| `<JOB_ID>` | b4d6d7f5-8059-4c23-8f65-d47b319f35bd | create_manual_completion_bundle return |
+| `<ZIP_FILENAME>` | remedy-review-20260731-150146-READY_FOR_REVIEW.zip | script JSON `final_path` |
+| `<ZIP_SHA256>` | 64bcc0c5…0a7b6c | script JSON `final_sha256` = independent `sha256sum` |
+| `<HEAD_SHA>` | 8cca01f4150ba14791de367e78cd9b39599c299d | manifest `committed_review_subject.head_commit` |
+Each placeholder occurred exactly once (1→0 each); the original
+`.agent/authored/f053-r6-5.md` was NOT modified (cmp exit 0 vs the
+scratchpad original). Byte-identity proof of the applied line:
+`grep '^- \[x\] F053' docs/roadmap/STATUS.md` cmp'd against the
+substituted copy → exit 0.
 
 ## Authored-text proofs
-All 9 files cmp 0 disk-to-disk vs the reviewer scratchpad originals:
-64beb5ce r1-1 · 3c64498b r1-2 · 8e49471b r1-3 · 9c628273 r1-4 ·
-89259e78 r1-5 · b5acafcf r1-6 · afc9c864 r1-7 · 17ea74bb r1-8 ·
-a5c3f867 r1-9 (full digests in the shell transcript; files in
-.agent/authored/). All payloads applied by file copy, never retyped.
+All six sha256-verified BEFORE use, applied by `cp`, never retyped:
+r6-1 `f3ac7338…5abc1c` · r6-2 `5e5a3c67…4906e2` · r6-3 `5a00c6b8…59592e` ·
+r6-4 `522b6807…27c421` · r6-5 `d67291ac…eaf684` · r6-6 `c9a0539a…a86131`
+— all equal the block's BEGIN-marker digests. r6-5 arrived hard-wrapped
+(4th instance of the known class) and was rejoined with a single space;
+the rehash matched on the first attempt. Saved-copy `cmp`: exit 0 x6.
+APPLIED-REGION cmp: exit 0 x4 (r6-1/2/3 in live_review.md, r6-4 in
+T1_F053.md), each exactly once. r6-5 proved by the grep/cmp above; r6-6's
+three edits each FROM 1→0 and TO present after.
+
+## Item status
+| Item | Status | Reason |
+|---|---|---|
+| STEP 1 commit A (verdict + Built State) | done | 4 regions cmp 0; docs 293 |
+| STEP 2 preconditions | done | integrity PASS/0, tree clean, "0 0" |
+| STEP 3 evidence job | done | 4 real runs, 162 passed, job b4d6d7f5 |
+| STEP 4 READY zip | done | READY_FOR_REVIEW, testzip None, head = commit A |
+| STEP 5 evidence commit | done | after the zip (F147 ordering) |
+| STEP 6 final commit | done | STATUS+README+.agent only; 293 / 42 / 29 |
+| STEP 7 PR (not merged) | done | created after the closure commit (Rule A4); number in the completion report |
 
 ## Deviations & assumptions
-1. Items 1+2 share one commit (same file, same A1-trap rule class).
-2. Candidate resolved inline as DECISION D1 (no ID spent) per the
-   closure-candidate rule; R-0160 remains the next free ID.
-
-Item status: | Item 1 done | Item 2 done | Item 3 done | candidate
-pass done | no skips.
+- None. Every protocol step ran in order and every precondition held.
+- Open findings: 1 — R-0160 (process, Low, documented, routed to the
+  next paydown micro-round). Not a closure blocker per the block.
+- Runtime actuals: 6 rounds (R1–R6); the four closure verifications ran
+  in ~15s wall total; models/tokens/cost `not-measured` — this feature
+  produced no provider calls (operator-attested manual completion,
+  provider_call_count 0), so a number here would be invented.
 
 ## Next
-Reviewer verdict; on PASS merge same-session (standing operator
-approval 2026-07-31), then F053 per Rule A5 (fresh window).
+Reviewer closes the session with the feature-done banner. The PR merges
+at the next feature's start via the Open PR Gate. Rule A5 selects F056.

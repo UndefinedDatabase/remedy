@@ -1,0 +1,172 @@
+39c4334e0100fe4d485d2f78decd8fbee294f2c2
+diff --git a/.agent/authored/f053-r4-4.md b/.agent/authored/f053-r4-4.md
+new file mode 100644
+index 00000000..cddbe675
+--- /dev/null
++++ b/.agent/authored/f053-r4-4.md
+@@ -0,0 +1,37 @@
++# Context — F053 Final & interim report
++
++## Active Branch
++`feature/f053-run-report`
++Base commit: `15105dbe` (main after PR #168 merge)
++
++## Steps (round map)
++R1 T001 renderer + goldens (PASS) · R2 T002 producer/hook/CLI
++(PASS) · R3 fixes + integration gate (gate RED: one state-file
++contract id, R-0162) · R4 repair + full-suite re-run (gate
++confirmation) · R5 closure, its own round.
++
++## Scope
++T001+T002 landed: run_report.py (pure renderer + evidence sources +
++the one writer), status_mirror.py (read-only ledger parser), the
++terminal hook in long_run_executor._apply_terminal, and
++remedy job report --final/--interim/--json. R4 changes NO feature
++code: state-file repair + doc amendments + gate re-run only.
++
++## Constraints
++- Pure renderer (P6): every number names its basis; a missing
++  source renders "not recorded"; never computes or guesses.
++- Deterministic ordering — double render byte-identical.
++- Milestone distance from the STATUS mirror (status_mirror.py),
++  never hand-maintained. "Can now" cites ONLY accepted [x] state.
++- Reports are English; mission text quoted as-is; every unbounded
++  list caps with an honest "and N more" line (A9).
++- Reviewer-authored texts under .agent/authored/ are applied by
++  copy and sha256-verified before use; never hand-edited.
++- Commits stay under 500-line diffs (AGENTS.md).
++- State files keep their contract tokens: plan.md "## Goal" +
++  "## Next Steps", live_review.md "## Steps", context.md a "Steps"
++  section (this file; R-0162).
++
++## Do not touch
++Notification delivery, UI rendering, cost calibration.
++docs/roadmap/ROADMAP.md; STATUS entries other than the F053 line.
+diff --git a/.agent/authored/f053-r4-5.md b/.agent/authored/f053-r4-5.md
+new file mode 100644
+index 00000000..6854070d
+--- /dev/null
++++ b/.agent/authored/f053-r4-5.md
+@@ -0,0 +1,6 @@
++    The same contract class covers `.agent/context.md`: the
++    dashboard contract tests assert the substring "Steps" there
++    too, so any context.md rewrite the reviewer authors or orders
++    carries a "## Steps (round map)" section (R-0162, F053 R3 gate
++    lesson — third instance of the class after F046 plan.md and
++    F047 live_review.md).
+diff --git a/.agent/authored/f053-r4-6.md b/.agent/authored/f053-r4-6.md
+new file mode 100644
+index 00000000..c1c23049
+--- /dev/null
++++ b/.agent/authored/f053-r4-6.md
+@@ -0,0 +1,7 @@
++   parity before the base run (COPY the primary checkout's
++   `apps/ui/node_modules` and `apps/ui/dist` into the base
++   worktree — never symlink them: the UI auto-build runs
++   npm install and writes THROUGH a symlink into the primary
++   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` keeps
++   the base run from rebuilding; or run the same install/build
++   there), or attribute
+diff --git a/.agent/context.md b/.agent/context.md
+index 838ae32e..cddbe675 100644
+--- a/.agent/context.md
++++ b/.agent/context.md
+@@ -4,35 +4,34 @@
+ `feature/f053-run-report`
+ Base commit: `15105dbe` (main after PR #168 merge)
+ 
++## Steps (round map)
++R1 T001 renderer + goldens (PASS) · R2 T002 producer/hook/CLI
++(PASS) · R3 fixes + integration gate (gate RED: one state-file
++contract id, R-0162) · R4 repair + full-suite re-run (gate
++confirmation) · R5 closure, its own round.
++
+ ## Scope
+-T001 only this round: `packages/orchestration/run_report.py` as a pure
+-renderer plus `tests/orchestration/test_run_report.py`. The inspect
+-step (STEP 2) is read-only evidence gathering; it wires nothing.
++T001+T002 landed: run_report.py (pure renderer + evidence sources +
++the one writer), status_mirror.py (read-only ledger parser), the
++terminal hook in long_run_executor._apply_terminal, and
++remedy job report --final/--interim/--json. R4 changes NO feature
++code: state-file repair + doc amendments + gate re-run only.
+ 
+ ## Constraints
+-- Pure renderer (P6): every number names its basis; a missing source
+-  renders "not recorded"; the renderer never computes or guesses a
+-  value that is not already structured data.
+-- Deterministic ordering — double render must be byte-identical.
+-- Milestone distance comes from the STATUS mirror, never
+-  hand-maintained. Momentum flag uses the mechanical definition in
+-  T1_F053.md. "can now" capability lines cite ONLY accepted `[x]`
+-  state.
+-- Reports are English regardless of mission language; mission text is
+-  quoted as-is. Per-task lines cap with an "and N more" line (A9).
+-- Reviewer-authored texts under `.agent/authored/` are applied by copy
+-  and sha256-verified before use; STATUS.md and live_review.md are
+-  such texts this round and are never hand-edited.
+-- Commits stay under 500-line diffs (AGENTS.md); multiple commits per
+-  round are expected.
+-
+-## Gates
+-`python3 -m pytest tests/orchestration/test_run_report.py -q` green ·
+-`tests/docs/` 293 · canary `tests/cli/test_golden_path.py` 42. Round
+-touches docs/roadmap/** → the docs gate applies
+-(docs/agents/planner_reviewer_prompt.md §3 item 5).
++- Pure renderer (P6): every number names its basis; a missing
++  source renders "not recorded"; never computes or guesses.
++- Deterministic ordering — double render byte-identical.
++- Milestone distance from the STATUS mirror (status_mirror.py),
++  never hand-maintained. "Can now" cites ONLY accepted [x] state.
++- Reports are English; mission text quoted as-is; every unbounded
++  list caps with an honest "and N more" line (A9).
++- Reviewer-authored texts under .agent/authored/ are applied by
++  copy and sha256-verified before use; never hand-edited.
++- Commits stay under 500-line diffs (AGENTS.md).
++- State files keep their contract tokens: plan.md "## Goal" +
++  "## Next Steps", live_review.md "## Steps", context.md a "Steps"
++  section (this file; R-0162).
+ 
+ ## Do not touch
+-Notification delivery, UI rendering, cost calibration (feature file
+-Do-not-touch). No CLI and no terminal-state hook — both are T002.
+-`docs/roadmap/ROADMAP.md`; STATUS entries other than the F053 line.
++Notification delivery, UI rendering, cost calibration.
++docs/roadmap/ROADMAP.md; STATUS entries other than the F053 line.
+diff --git a/docs/agents/integration_gate.md b/docs/agents/integration_gate.md
+index eec48185..fddf7ce9 100644
+--- a/docs/agents/integration_gate.md
++++ b/docs/agents/integration_gate.md
+@@ -26,9 +26,13 @@
+    holds only a `.vite` cache). Affected ids fail at base and land
+    in `comm -23` on every gate run — where a GENUINE base failure in
+    those same files would be masked. Therefore: either restore
+-   parity before the base run (share or copy the primary checkout's
++   parity before the base run (COPY the primary checkout's
+    `apps/ui/node_modules` and `apps/ui/dist` into the base
+-   worktree, or run the same install/build there), or attribute
++   worktree — never symlink them: the UI auto-build runs
++   npm install and writes THROUGH a symlink into the primary
++   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` keeps
++   the base run from rebuilding; or run the same install/build
++   there), or attribute
+    EVERY `comm -23` id to the environment class by direct evidence
+    (the missing artifact named per id). An unattributed `comm -23`
+    id counts as a genuine base failure and blocks the gate verdict.
+diff --git a/docs/agents/planner_reviewer_prompt.md b/docs/agents/planner_reviewer_prompt.md
+index afab449a..43cc8346 100644
+--- a/docs/agents/planner_reviewer_prompt.md
++++ b/docs/agents/planner_reviewer_prompt.md
+@@ -242,6 +242,12 @@ end the response with:
+     effect (F251 D4 lesson: authored texts flipped four contract
+     tests in both directions across rounds). The D4 design question
+     itself — fixture-based vs live-coupled — stays with F252.
++    The same contract class covers `.agent/context.md`: the
++    dashboard contract tests assert the substring "Steps" there
++    too, so any context.md rewrite the reviewer authors or orders
++    carries a "## Steps (round map)" section (R-0162, F053 R3 gate
++    lesson — third instance of the class after F046 plan.md and
++    F047 live_review.md).
+ 12. Before diagnosing a relay gap ("the block never reached the
+     worker"), read .agent/last_block.md and its git history. A
+     recorded refusal means delivered-and-refused: re-emit CORRECTED

@@ -1,0 +1,396 @@
+bd67b3e6c49453696b60ef0561f321c4c1b608cb
+diff --git a/packages/orchestration/run_report.py b/packages/orchestration/run_report.py
+index aa288a90..df31797d 100644
+--- a/packages/orchestration/run_report.py
++++ b/packages/orchestration/run_report.py
+@@ -145,6 +145,10 @@ def momentum_flag(cycle_records: list[dict[str, Any]] | None) -> str:
+ #: else is repaired.
+ NEXT_ACTION_RULES: tuple[tuple[str, str], ...] = (
+     ("open-decision", "an open decision is waiting for an answer"),
++    # F053 T002 (DECISION D2): an operator stop outranks the blocked rule.
++    # A run somebody stopped on purpose is not a broken run, and telling its
++    # operator to go read a postmortem would be a false alarm.
++    ("stopped-by-operator", "the run stopped on operator request"),
+     ("blocked-failed", "the run is blocked or a task failed"),
+     ("all-green", "every task completed and nothing is open"),
+     ("indeterminate", "no rule matched the recorded state"),
+@@ -327,8 +331,14 @@ def recommended_next_action(sources: ReportSources) -> NextAction:
+             action = f"Answer the open decision: `{command}`"
+         return NextAction("open-decision", action)
+ 
+-    blocked_state = (sources.terminal_status or "").strip().lower() in {
+-        "blocked", "budget_exhausted", "deadline_reached", "stopped_by_operator"}
++    terminal = (sources.terminal_status or "").strip().lower()
++    if terminal == "stopped_by_operator":
++        return NextAction(
++            "stopped-by-operator",
++            "Resume the run (or close it) — it stopped on request, "
++            "nothing is broken")
++
++    blocked_state = terminal in {"blocked", "budget_exhausted", "deadline_reached"}
+     if sources.blocked or blocked_state:
+         ref = next((b.evidence_ref for b in sources.blocked if b.evidence_ref), "")
+         target = _link("the postmortem", ref) if ref else "the postmortem"
+@@ -610,14 +620,35 @@ def render_report(job: Any, mode: str = MODE_FINAL, *,
+     return render_report_from_sources(sources, mode=mode, rendered_at=rendered_at)
+ 
+ 
++def _job_repo_root(job: Any) -> str:
++    """The repository this job ran against, or "" when that is not knowable.
++
++    ``packages.core.models.Job`` carries no repo path — the persisted
++    ``pingpong_job.JobPlan`` does (``repo_path``), which is the same source the
++    cycle loop reads its budget actuals from.  An unreadable or absent plan is
++    not an error here: it means the milestone is simply not knowable, and the
++    report says "not recorded" rather than guessing a repository.
++    """
++    try:
++        from packages.orchestration.pingpong_job import load_job_plan
++
++        plan = load_job_plan(str(getattr(job, "id", "") or ""))
++    except Exception:  # noqa: BLE001 — a report must not depend on the plan store
++        return ""
++    return str(getattr(plan, "repo_path", "") or "") if plan is not None else ""
++
++
+ def collect_report_sources(job: Any) -> ReportSources:
+     """Gather the report's sources off an in-memory job.
+ 
+-    Only the sources that live ON the job are read here.  The evidence-area
+-    sources (cycle records, postmortems, manifest) are wired by F053 T002
+-    together with the terminal-state writer, so this round adds no new disk
+-    reads and no new failure modes to the run loop.
++    The STATUS mirror is read here when — and only when — a repo root is
++    knowable and that repo carries the ledger (F053 T002, DECISION D2); a run
++    against somebody else's repository has no milestone and renders
++    "not recorded".  The remaining evidence-area sources (cycle records,
++    postmortems, manifest) are attached by the terminal-state writer.
+     """
++    from packages.orchestration.status_mirror import read_status_mirror
++
+     tasks = tuple(
+         TaskOutcome(
+             task_id=str(getattr(t, "id", ""))[:8],
+@@ -638,4 +669,5 @@ def collect_report_sources(job: Any) -> ReportSources:
+         terminal_status=str(metadata.get("cycle_terminal_status", "") or ""),
+         stop_reason=str(metadata.get("cycle_stop_reason", "") or ""),
+         tasks=tasks,
++        status_mirror=read_status_mirror(_job_repo_root(job) or None),
+     )
+diff --git a/packages/orchestration/status_mirror.py b/packages/orchestration/status_mirror.py
+new file mode 100644
+index 00000000..828b2566
+--- /dev/null
++++ b/packages/orchestration/status_mirror.py
+@@ -0,0 +1,130 @@
++"""F053 T002 — the STATUS-mirror producer (DECISION D2).
++
++The run report's milestone distance and capability lines are specified to come
++from "the STATUS mirror".  When F053 T001 was built no such producer existed:
++`docs/roadmap/STATUS.md` had no production reader anywhere in ``packages/``,
++only a write fence (``scope_fences.BUILTIN_DENY``) declaring it operator
++territory.  This module is that missing reader, added by DECISION D2
++(docs/roadmap/features/T1_F053.md, "How it fits" amendment).
++
++Read-only by construction: it opens the ledger, parses it, and returns a
++``run_report.StatusMirror``.  It never writes that file — the fence stands, and
++this module does not weaken it.
++
++The honest-absence rule is the same one the report itself follows (P6): a
++missing file, an unparseable ledger, or a ledger with no milestone line yields
++``None``, and the report renders "not recorded".  A run against somebody
++else's repository has no Remedy roadmap and therefore has no milestone — that
++is a fact about the run, not a gap to fill with a plausible number.
++
++Deliberate absences:
++  * Remedy deliberately does not WRITE docs/roadmap/STATUS.md from any agent
++    code path — it is the operator's execution ledger (A4).
++  * Remedy deliberately does not hand-maintain the milestone distance: the
++    number is counted from the ledger on every render, so it cannot go stale.
++"""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++from packages.orchestration.run_report import StatusMirror
++
++#: Where the ledger lives inside a repository that has one.
++STATUS_RELPATH = "docs/roadmap/STATUS.md"
++
++#: One ledger entry: `- [x] F012 — Deterministic runs (…evidence…)`.
++#: The four states are fixed by the ledger's own grammar banner:
++#: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
++_ENTRY_RE = re.compile(r"^- \[([ x~!])\] (F\d+) — (.*)$")
++
++#: How the milestone line names itself.  The ledger marks exactly one.
++_MILESTONE_MARKER = "MILESTONE GATE"
++
++STATE_TODO = " "
++STATE_IN_PROGRESS = "~"
++STATE_DONE = "x"
++STATE_BLOCKED = "!"
++
++#: The states that still count as work remaining toward the milestone.
++#: Blocked (`[!]`) is deliberately NOT counted here — the amendment names
++#: `[ ]`/`[~]` and a blocked line needs a human, not a countdown.
++_UNCHECKED = frozenset({STATE_TODO, STATE_IN_PROGRESS})
++
++
++def _title(raw: str) -> str:
++    """The feature's own name, without its evidence parenthetical.
++
++    `Deterministic runs (PR #123 · evidence: …)` -> `Deterministic runs`.
++    The parenthetical is provenance, not capability, and a "can now" line
++    carrying a zip filename tells a reader nothing they can use.
++    """
++    head = raw.split(" (", 1)[0]
++    return head.strip()
++
++
++def parse_status_ledger(text: str, *, milestone_id: str = "") -> StatusMirror | None:
++    """Parse ledger *text* into a StatusMirror, or None if it cannot be trusted.
++
++    *milestone_id* pins the milestone (e.g. ``"F075"``); when empty, the single
++    line marked ``MILESTONE GATE`` is used.  Returns None — never a guess —
++    when the text has no parseable entries or names no milestone.
++    """
++    entries: list[tuple[int, str, str, str]] = []
++    for index, line in enumerate(text.splitlines()):
++        match = _ENTRY_RE.match(line)
++        if match:
++            state, feature_id, raw = match.groups()
++            entries.append((index, state, feature_id, _title(raw)))
++    if not entries:
++        return None
++
++    milestone_index = -1
++    milestone_name = ""
++    for index, _state, feature_id, title in entries:
++        if milestone_id:
++            if feature_id == milestone_id:
++                milestone_index, milestone_name = index, feature_id
++                break
++        elif _MILESTONE_MARKER in title:
++            milestone_index, milestone_name = index, feature_id
++            break
++    if milestone_index < 0:
++        # A ledger without the milestone it is being measured against cannot
++        # answer "how far", and an unanchored count would be meaningless.
++        return None
++
++    remaining = sum(1 for index, state, _fid, _t in entries
++                    if index <= milestone_index and state in _UNCHECKED)
++    # P1: only accepted [x] state may become a "can now" line; [~] is work.
++    accepted = tuple(title for _i, state, _fid, title in entries
++                     if state == STATE_DONE and title)
++    in_progress = tuple(title for _i, state, _fid, title in entries
++                        if state == STATE_IN_PROGRESS and title)
++    return StatusMirror(
++        milestone=milestone_name,
++        remaining_to_milestone=remaining,
++        accepted_capabilities=accepted,
++        in_progress_capabilities=in_progress,
++    )
++
++
++def read_status_mirror(repo_root: str | Path | None,
++                       *, milestone_id: str = "") -> StatusMirror | None:
++    """The StatusMirror for *repo_root*, or None when it has no ledger.
++
++    Never raises into a render: an unreadable ledger is indistinguishable from
++    an absent one as far as the report is concerned, and both render
++    "not recorded".
++    """
++    if not repo_root:
++        return None
++    try:
++        path = Path(repo_root) / STATUS_RELPATH
++        if not path.is_file():
++            return None
++        text = path.read_text(encoding="utf-8")
++    except (OSError, ValueError, UnicodeDecodeError):
++        return None
++    return parse_status_ledger(text, milestone_id=milestone_id)
+diff --git a/tests/orchestration/test_run_report.py b/tests/orchestration/test_run_report.py
+index 05fafd1b..55743a5b 100644
+--- a/tests/orchestration/test_run_report.py
++++ b/tests/orchestration/test_run_report.py
+@@ -20,6 +20,7 @@ from packages.orchestration.run_report import (
+     MOMENTUM_FORWARD,
+     MOMENTUM_UNKNOWN,
+     NEXT_ACTION_CONDITIONS,
++    NEXT_ACTION_RULES,
+     NOT_RECORDED,
+     BlockedItem,
+     NextAction,
+@@ -32,6 +33,10 @@ from packages.orchestration.run_report import (
+     render_report,
+     render_report_from_sources,
+ )
++from packages.orchestration.status_mirror import (
++    parse_status_ledger,
++    read_status_mirror,
++)
+ 
+ pytestmark = pytest.mark.unit
+ 
+@@ -515,6 +520,157 @@ class TestDeterminism:
+             render_report_from_sources(_green_sources())
+ 
+ 
++class TestStatusMirrorProducer:
++    """F053 T002 / DECISION D2 — the ledger reader the feature presumed existed.
++
++    The fixture is the self-repo's ledger SHAPE, not the file itself: pinning
++    the real STATUS.md would make these tests fail every time the roadmap
++    advances, which is a test that measures the calendar.
++    """
++
++    LEDGER = """\
++# REMEDY STATUS — Execution-Order Truth
++
++> Grammar: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
++
++## Tier 0 — Foundation & Trust Core
++
++- [x] F001 — Adaptive provider timeouts (PR #123 · commit 4856006 · PASS)
++- [x] F003 — Real token/cost measurement (PR #123 · evidence: some.zip)
++- [~] F053 — Final & interim report
++- [ ] F056 — Missions: persistent goal
++- [ ] F075 — MILESTONE GATE: 10 flawless self-runs
++- [ ] F080 — Machine-readable roadmap mirror
++"""
++
++    def test_milestone_and_distance_come_from_the_ledger(self):
++        mirror = parse_status_ledger(self.LEDGER)
++        assert mirror is not None
++        assert mirror.milestone == "F075"
++        # F053 [~], F056 [ ], F075 [ ] — the milestone counts itself in.
++        assert mirror.remaining_to_milestone == 3
++
++    def test_entries_after_the_milestone_are_not_counted(self):
++        """F080 sits below the gate and must not inflate the distance."""
++        assert parse_status_ledger(self.LEDGER).remaining_to_milestone == 3
++
++    def test_capabilities_split_accepted_from_in_progress(self):
++        """P1 again, at the source: [x] is capability, [~] is work."""
++        mirror = parse_status_ledger(self.LEDGER)
++        assert mirror.accepted_capabilities == (
++            "Adaptive provider timeouts", "Real token/cost measurement")
++        assert mirror.in_progress_capabilities == ("Final & interim report",)
++
++    def test_evidence_parenthetical_is_stripped_from_capabilities(self):
++        """A "can now" line carrying a zip filename helps nobody."""
++        for capability in parse_status_ledger(self.LEDGER).accepted_capabilities:
++            assert "PR #" not in capability
++            assert ".zip" not in capability
++
++    def test_an_explicit_milestone_id_overrides_the_gate_line(self):
++        mirror = parse_status_ledger(self.LEDGER, milestone_id="F056")
++        assert mirror.milestone == "F056"
++        assert mirror.remaining_to_milestone == 2
++
++    def test_blocked_entries_do_not_count_toward_the_distance(self):
++        ledger = self.LEDGER.replace("- [ ] F056 — Missions: persistent goal",
++                                     "- [!] F056 — Missions: persistent goal")
++        assert parse_status_ledger(ledger).remaining_to_milestone == 2
++
++    @pytest.mark.parametrize("text,why", [
++        ("", "empty file"),
++        ("# STATUS\n\nNothing here at all.\n", "no entries"),
++        ("- [ ] F001 — Something\n- [x] F002 — Something else\n", "no milestone"),
++    ])
++    def test_an_untrustworthy_ledger_yields_none_not_a_guess(self, text, why):
++        assert parse_status_ledger(text) is None, why
++
++    def test_a_missing_repo_or_ledger_yields_none(self, tmp_path):
++        assert read_status_mirror(None) is None
++        assert read_status_mirror("") is None
++        assert read_status_mirror(tmp_path) is None          # repo without a ledger
++
++    def test_a_real_repo_root_is_read(self, tmp_path):
++        ledger = tmp_path / "docs" / "roadmap"
++        ledger.mkdir(parents=True)
++        (ledger / "STATUS.md").write_text(self.LEDGER, encoding="utf-8")
++        mirror = read_status_mirror(tmp_path)
++        assert mirror is not None and mirror.milestone == "F075"
++
++    def test_an_unreadable_ledger_never_raises_into_a_render(self, tmp_path):
++        """A directory where the file should be: absent, not an exception."""
++        (tmp_path / "docs" / "roadmap" / "STATUS.md").mkdir(parents=True)
++        assert read_status_mirror(tmp_path) is None
++
++    def test_the_mirror_feeds_the_report_sections(self, tmp_path):
++        ledger = tmp_path / "docs" / "roadmap"
++        ledger.mkdir(parents=True)
++        (ledger / "STATUS.md").write_text(self.LEDGER, encoding="utf-8")
++        sources = ReportSources(job_name="x",
++                                status_mirror=read_status_mirror(tmp_path))
++        report = render_report_from_sources(sources)
++        assert "- 3 features remain to F075" in _section(report, "Milestone")
++        capabilities = _section(report, "Capabilities")
++        assert "- Can now: Adaptive provider timeouts" in capabilities
++        assert "- In progress: Final & interim report" in capabilities
++        assert "- Can now: Final & interim report" not in capabilities
++
++    def test_a_repo_without_a_ledger_renders_not_recorded(self, tmp_path):
++        sources = ReportSources(job_name="x",
++                                status_mirror=read_status_mirror(tmp_path))
++        assert NOT_RECORDED in _section(render_report_from_sources(sources),
++                                        "Milestone")
++
++
++class TestStoppedByOperatorRule:
++    """DECISION D2: a run stopped on purpose is not a broken run."""
++
++    def _stopped(self, **overrides) -> ReportSources:
++        base = dict(job_name="stopped run", terminal_status="stopped_by_operator",
++                    stop_reason="operator requested stop",
++                    tasks=(TaskOutcome("aaaaaaaa", "Do the thing", "paused"),))
++        base.update(overrides)
++        return ReportSources(**base)
++
++    def test_an_operator_stop_gets_its_own_rule(self):
++        assert recommended_next_action(self._stopped()).rule_id == "stopped-by-operator"
++
++    def test_the_action_is_the_amendment_wording(self):
++        action = recommended_next_action(self._stopped()).action
++        assert action == ("Resume the run (or close it) — it stopped on "
++                          "request, nothing is broken")
++
++    def test_it_never_sends_the_operator_to_a_postmortem(self):
++        """The false alarm this rule exists to prevent."""
++        report = render_report_from_sources(self._stopped())
++        assert "postmortem" not in _section(report, "Recommended next action")
++
++    def test_an_open_decision_still_outranks_it(self):
++        """Ranked BETWEEN open-decision and blocked-failed — so it loses here."""
++        sources = self._stopped(open_decision_count=1)
++        assert recommended_next_action(sources).rule_id == "open-decision"
++
++    def test_it_outranks_the_blocked_rule(self):
++        """…and wins here, even with a blocked item present."""
++        sources = self._stopped(blocked=(
++            BlockedItem("aaaaaaaa", "stopped mid-flight", failure_class="stopped"),))
++        assert recommended_next_action(sources).rule_id == "stopped-by-operator"
++
++    def test_other_stop_terminals_still_route_to_the_postmortem(self):
++        for terminal in ("blocked", "budget_exhausted", "deadline_reached"):
++            sources = self._stopped(terminal_status=terminal)
++            assert recommended_next_action(sources).rule_id == "blocked-failed", terminal
++
++    def test_the_rule_table_order_is_the_documented_priority(self):
++        ids = [rule_id for rule_id, _condition in NEXT_ACTION_RULES]
++        assert ids == ["open-decision", "stopped-by-operator", "blocked-failed",
++                       "all-green", "indeterminate"]
++
++    def test_the_new_rule_is_documented_like_every_other(self):
++        assert NEXT_ACTION_CONDITIONS["stopped-by-operator"] == (
++            "the run stopped on operator request")
++
++
+ class TestNextActionRuleTable:
+     """Exactly one recommendation, and its rule is documented."""
+ 

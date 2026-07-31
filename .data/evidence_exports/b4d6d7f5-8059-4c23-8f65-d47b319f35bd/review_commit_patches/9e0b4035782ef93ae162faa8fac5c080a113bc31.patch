@@ -1,0 +1,70 @@
+9e0b4035782ef93ae162faa8fac5c080a113bc31
+diff --git a/packages/orchestration/run_report.py b/packages/orchestration/run_report.py
+index 94df9780..0afa2249 100644
+--- a/packages/orchestration/run_report.py
++++ b/packages/orchestration/run_report.py
+@@ -67,6 +67,10 @@ MAX_TASK_LINES = 20
+ #: The same cap for the two other unbounded lists a big run can produce.
+ MAX_BLOCKED_LINES = 20
+ MAX_CYCLE_LINES = 20
++#: Capability lines cap lower than the rest (CALL-2 ruling, F053 R2 review):
++#: they grow with the ROADMAP, not with the run, so an uncapped list would
++#: eventually dwarf the account of the run it is attached to.
++MAX_CAPABILITY_LINES = 10
+ 
+ #: The final report's filename inside the job's evidence area (F053 T002).
+ #: FIXED, and the writer overwrites it: the acceptance rule is exactly one
+@@ -548,13 +552,19 @@ def _capability_lines(sources: ReportSources) -> list[str]:
+     if mirror is None:
+         lines += [f"- Can now: {NOT_RECORDED} (no STATUS mirror)"]
+     elif mirror.accepted_capabilities:
+-        # P1: ONLY accepted [x] state may appear here.
+-        lines += [f"- Can now: {c}" for c in mirror.accepted_capabilities]
++        # P1: ONLY accepted [x] state may appear here.  A9: capped like every
++        # other unbounded list — the ledger has 28 accepted entries today and
++        # roughly 250 at roadmap end, and a report that lists them all is no
++        # longer a summary of THIS run.
++        lines += _capped([f"- Can now: {c}" for c in mirror.accepted_capabilities],
++                         MAX_CAPABILITY_LINES, "accepted features")
+     else:
+         lines += ["- Can now: nothing accepted yet"]
+     if mirror is not None:
+         # [~] state is work, not capability.  It never crosses into "can now".
+-        lines += [f"- In progress: {c}" for c in mirror.in_progress_capabilities]
++        lines += _capped(
++            [f"- In progress: {c}" for c in mirror.in_progress_capabilities],
++            MAX_CAPABILITY_LINES, "accepted features")
+     lines.append(f"- Can next: {_text(sources.next_capability)}")
+     lines.append("")
+     return lines
+diff --git a/tests/orchestration/test_run_report.py b/tests/orchestration/test_run_report.py
+index 55743a5b..8e3ecc5f 100644
+--- a/tests/orchestration/test_run_report.py
++++ b/tests/orchestration/test_run_report.py
+@@ -783,6 +783,26 @@ class TestBigRuns:
+         tasks = _section(render_report_from_sources(_green_sources()), "Tasks")
+         assert "more tasks" not in tasks
+ 
++    def test_capability_lines_cap_with_an_honest_count(self):
++        """CALL-2 ruling: capabilities grow with the ROADMAP, not the run."""
++        sources = ReportSources(
++            job_name="mature",
++            status_mirror=StatusMirror(
++                milestone="F075", remaining_to_milestone=3,
++                accepted_capabilities=tuple(f"feature {i}" for i in range(30))))
++        capabilities = _section(render_report_from_sources(sources), "Capabilities")
++        can_now = [line for line in capabilities.splitlines()
++                   if line.startswith("- Can now: ")]
++        assert len(can_now) == 10
++        assert "… and 20 more accepted features (see evidence)" in capabilities
++
++    def test_the_goldens_are_below_the_capability_cap(self):
++        """One accepted capability: capped output must be identical to before."""
++        capabilities = _section(render_report_from_sources(_green_sources()),
++                                "Capabilities")
++        assert "- Can now: plan and execute a job" in capabilities
++        assert "more accepted features" not in capabilities
++
+ 
+ class TestLanguageAndQuoting:
+     """Reports are English; the mission is quoted as-is (A9)."""
