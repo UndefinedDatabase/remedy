@@ -138,4 +138,4 @@ F050 DAG scheduling, F051 escalate instead of block,
 F052 self-healing test rounds.
 --- END f052-r4-4 ---
 
-OUTCOME: pending
+OUTCOME: executed
