@@ -1,28 +1,27 @@
-# Plan — F053 Final & interim report (Tier 1)
+# Plan — F053 Final & interim report (Tier 1) — CLOSED
 
 ## Goal
 Every run produces ONE human-readable account: what was attempted, what
 succeeded, what is blocked and why, what it cost, what needs answering,
 and the single recommended next action. A pure RENDERER over existing
 structured sources; a missing source renders "not recorded", never a
-guessed value (P6, docs/roadmap/features/T1_F053.md).
+guessed value (P6, docs/roadmap/features/T1_F053.md). DONE.
 
 ## Current Step
-R5 complete, awaiting review. GATE GREEN. R4 verdict and the amended
-R-0162 persisted; context.md replaced with the corrected authored text
-and validated against its full reader list; §4 item 11 rewritten with
-the grep-every-reader rule. Full suite 14610 passed / 19 skipped /
-0 failed (134s), docs 293, canary 42, reader files 91 — all exit 0.
+R6 closure complete, awaiting reviewer. STATUS.md carries `[x] F053`
+with evidence job b4d6d7f5-8059-4c23-8f65-d47b319f35bd, package
+remedy-review-20260731-150146-READY_FOR_REVIEW.zip, accepted HEAD
+8cca01f4150ba14791de367e78cd9b39599c299d. README synced in the same
+commit. PR open against main, NOT merged.
 
 ## Next Steps
-- Reviewer verdict on R5 and the gate. R-0162 is fixed; no finding is
-  open from this round.
-- R6 closure, its own round, opened by the reviewer: STATUS line,
-  evidence job, fresh review zip, PR. Not started here — no closure work
-  of any kind was done this round.
+- Reviewer closes the session with the feature-done banner.
+- The PR merges at the NEXT feature's start via the AGENTS.md Open PR
+  Gate — that gap is the operator's manual-review window.
+- Next feature by Rule A5: F056 (Missions: persistent goal, jobs as
+  execution units), in a fresh window.
+- Carry-forward: R-0160 (process, Low, documented) — agent-wide
+  worktree-only red-proofs, routed to the next paydown micro-round.
 
 ## Risks
-- None open. T001+T002 are complete and the integration gate is
-  confirmed green at 0e599d11. The two remaining reviewer calls from R2
-  were both ruled on and applied (--final/--interim modes accepted;
-  capability cap added in R3).
+- None blocking. One open Low finding (R-0160), documented and routed.

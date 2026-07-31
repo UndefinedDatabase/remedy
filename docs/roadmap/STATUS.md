@@ -36,7 +36,7 @@
 - [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job f987e3f1-bbe1-45ce-b964-c23805ecb5e6 · package remedy-review-20260730-145728-READY_FOR_REVIEW.zip · SHA-256 3d04713f33072ce544ab4c0a430e82fc8edeee85bcb0aaa007fa48ef9ee4d8c0 · accepted HEAD 2fd7d6b949b98022b977aa48c0191bbf0efceec1)
 - [x] F051 — Escalate instead of block (unattended) (T001–T003 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job 785d275a-2f78-4b44-bd29-f8764ff95bb8 · package remedy-review-20260730-172315-READY_FOR_REVIEW.zip · SHA-256 e85932c425acf204d8e9c24a030d4988aecbe4d3779dc5b4a57193f4f7c0648a · accepted HEAD 54df8f7a1adea2f3d140efef22e2e6f991aea6ff)
 - [x] F052 — Self-healing test rounds (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 3b0b36c3-35c9-4b08-9f33-9d901bea839e · package remedy-review-20260731-095109-READY_FOR_REVIEW.zip · SHA-256 2f3fd6032cdaceca4461702b128b77a300485eb171a704081df18852d6224efe · accepted HEAD 2203610776926c76956423346c889503516f08d4)
-- [~] F053 — Final & interim report
+- [x] F053 — Final & interim report (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job b4d6d7f5-8059-4c23-8f65-d47b319f35bd · package remedy-review-20260731-150146-READY_FOR_REVIEW.zip · SHA-256 64bcc0c5a97b6ce0c742db1feff61f55fb7b583fb24b9cb6ca864c40bc0a7b6c · accepted HEAD 8cca01f4150ba14791de367e78cd9b39599c299d)
 - [ ] F056 — Missions: persistent goal, jobs as execution units
 - [ ] F061 — Definition-of-Done compiler
 - [ ] F062 — Product smoke as the closing gate

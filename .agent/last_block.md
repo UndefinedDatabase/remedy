@@ -61,4 +61,4 @@ runtime actuals (observed; not-measured beats a guess), evidence job +
 package + SHA-256. Report the PR number. Then await the reviewer.
 Authored texts f053-r6-{1..6} (sha256 verified before use, saved
 verbatim under .agent/authored/, applied by copy).
-OUTCOME: pending
+OUTCOME: executed
