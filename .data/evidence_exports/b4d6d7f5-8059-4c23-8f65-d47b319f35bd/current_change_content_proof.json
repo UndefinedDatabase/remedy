@@ -1,0 +1,22 @@
+{
+ "base_commit": "15105dbe070c722f0e7cd44aff065b6fed6e1635",
+ "file_count": 12,
+ "file_hashes": {
+  "apps/cli/command_catalog.py": "f7ec9f3508b84d8c0b42f26961a764a1ea8d9c2e2301b3bf12fbb6335315781b",
+  "apps/cli/commands/job.py": "187895ca9df5a3bf8ab25a4c8131a55c631274bdf0db4e5beb1aa0cf795c9a78",
+  "docs/agents/integration_gate.md": "8bb52dfab3a136f4efcb48701cffa6a29313cc06ee5bbeb726be3916e768c6a7",
+  "docs/agents/planner_reviewer_prompt.md": "d708b11b00cf7f067e518c206ec222593692a991eb456c8f817057b01e701b53",
+  "docs/roadmap/STATUS.md": "eeef7dbe08dd14f201462b790f8f6028c235bb076a837e81936fa8915fabb669",
+  "docs/roadmap/features/T1_F053.md": "4a191d2bca5c60e943ffbec1d1dbb7c99b1c5ff5ad353782bda75ae30011a79c",
+  "packages/orchestration/long_run_executor.py": "fe47db025c2cd92e8135500e071526045e65ab951a7359f40f5bfada130d026f",
+  "packages/orchestration/run_report.py": "7e4b66aa76290394fa48da7514e99ea901d5d0b9e0e1fcc6a8ad3c8b7cc8bef3",
+  "packages/orchestration/status_mirror.py": "9c5ba55b2fc1b939e513cf5818126d7af2d65bff2363184da09b550be41e72fa",
+  "tests/cli/test_job_report.py": "e681a956bbcae3958639d0eaafeb6673f6bab6b9eef89072bf7a8b32563a7cc7",
+  "tests/orchestration/test_run_report.py": "707f00a59834a792f2acbd7f547e8289161d55763e77f977400222d0644b3c06",
+  "tests/orchestration/test_run_report_hook.py": "b9e1d60d192b0db62516ef32ada10b764fa9edb6da1daad7a6c382ea9f3db2ac"
+ },
+ "head_commit": "8cca01f4150ba14791de367e78cd9b39599c299d",
+ "schema_version": "1.1.0",
+ "tombstone_count": 0,
+ "tombstones": {}
+}

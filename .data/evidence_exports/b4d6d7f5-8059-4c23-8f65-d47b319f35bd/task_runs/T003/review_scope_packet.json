@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "packages/orchestration/status_mirror.py",
+  "tests/cli/test_job_report.py",
+  "tests/orchestration/test_run_report.py",
+  "tests/orchestration/test_run_report_hook.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_title": "Task T003"
+}

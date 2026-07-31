@@ -1,0 +1,275 @@
+551b6ec6eb9c2a982b1cd7266bfaaa46f565ce8a
+diff --git a/tests/orchestration/test_run_report.py b/tests/orchestration/test_run_report.py
+index 57ff6f67..05fafd1b 100644
+--- a/tests/orchestration/test_run_report.py
++++ b/tests/orchestration/test_run_report.py
+@@ -13,11 +13,23 @@ import re
+ import pytest
+ 
+ from packages.orchestration.run_report import (
++    CIRCLING_ESCALATION,
++    MODE_FINAL,
++    MODE_INTERIM,
++    MOMENTUM_CIRCLING,
++    MOMENTUM_FORWARD,
++    MOMENTUM_UNKNOWN,
++    NEXT_ACTION_CONDITIONS,
+     NOT_RECORDED,
+     BlockedItem,
++    NextAction,
++    ReportError,
+     ReportSources,
+     StatusMirror,
+     TaskOutcome,
++    momentum_flag,
++    recommended_next_action,
++    render_report,
+     render_report_from_sources,
+ )
+ 
+@@ -446,11 +458,245 @@ class TestMissingSourcesAreNotInvented:
+         assert "- Can now: nothing accepted yet" in capabilities
+ 
+ 
++class TestInterimMode:
++    """A snapshot that could pass for a final report is the whole risk."""
++
++    def test_interim_renders_the_loud_label(self):
++        report = render_report_from_sources(
++            _green_sources(), mode=MODE_INTERIM,
++            rendered_at="2026-07-31T10:00:00+00:00")
++        assert report.splitlines()[0] == (
++            "> **INTERIM SNAPSHOT — run still in progress "
++            "(rendered at 2026-07-31T10:00:00+00:00)**")
++
++    def test_final_mode_has_no_interim_label(self):
++        assert "INTERIM SNAPSHOT" not in render_report_from_sources(_green_sources())
++
++    def test_interim_keeps_the_same_structure(self):
++        """Same sections, same order — only the banner differs."""
++        final = render_report_from_sources(_green_sources())
++        interim = render_report_from_sources(
++            _green_sources(), mode=MODE_INTERIM, rendered_at="2026-07-31T10:00:00+00:00")
++        assert _headings(interim) == _headings(final)
++
++    def test_interim_without_a_timestamp_is_refused(self):
++        with pytest.raises(ReportError, match="rendered_at"):
++            render_report_from_sources(_green_sources(), mode=MODE_INTERIM)
++
++    def test_interim_does_not_mutate_the_sources(self):
++        sources = _green_sources()
++        before = repr(sources)
++        render_report_from_sources(sources, mode=MODE_INTERIM,
++                                   rendered_at="2026-07-31T10:00:00+00:00")
++        assert repr(sources) == before
++
++
++class TestDeterminism:
++    """No clock, no disk, no randomness — twice is the same bytes."""
++
++    @pytest.mark.parametrize("sources", [
++        _green_sources(), _blocked_decision_sources(), _budget_sources(),
++    ])
++    def test_double_render_is_byte_identical(self, sources):
++        assert render_report_from_sources(sources) == render_report_from_sources(sources)
++
++    def test_double_render_of_interim_is_byte_identical(self):
++        ts = "2026-07-31T10:00:00+00:00"
++        first = render_report_from_sources(_green_sources(), mode=MODE_INTERIM,
++                                           rendered_at=ts)
++        second = render_report_from_sources(_green_sources(), mode=MODE_INTERIM,
++                                            rendered_at=ts)
++        assert first == second
++
++    def test_rebuilt_fixtures_render_identically(self):
++        """Two independently built fixtures with the same content agree —
++        catches ordering that depends on object identity."""
++        assert render_report_from_sources(_green_sources()) == \
++            render_report_from_sources(_green_sources())
++
++
++class TestNextActionRuleTable:
++    """Exactly one recommendation, and its rule is documented."""
++
++    def test_exactly_one_recommendation_line(self):
++        for sources in (_green_sources(), _blocked_decision_sources(),
++                        _budget_sources()):
++            body = _section(render_report_from_sources(sources),
++                            "Recommended next action")
++            lines = [line for line in body.splitlines() if line.strip()]
++            assert len(lines) == 1, lines
++
++    def test_open_decision_outranks_a_failure(self):
++        """A run that is both blocked AND awaiting an answer asks for the
++        answer: no repair gets past an unanswered question."""
++        sources = _blocked_decision_sources()
++        assert recommended_next_action(sources).rule_id == "open-decision"
++
++    def test_blocked_without_a_decision_points_at_the_postmortem(self):
++        assert recommended_next_action(_budget_sources()).rule_id == "blocked-failed"
++
++    def test_all_green_recommends_the_branch(self):
++        assert recommended_next_action(_green_sources()).rule_id == "all-green"
++
++    def test_unknown_state_is_indeterminate_not_a_guess(self):
++        action = recommended_next_action(ReportSources())
++        assert action.rule_id == "indeterminate"
++        assert NOT_RECORDED in action.action
++
++    def test_every_rule_id_is_documented(self):
++        for sources in (_green_sources(), _blocked_decision_sources(),
++                        _budget_sources(), ReportSources()):
++            assert recommended_next_action(sources).rule_id in NEXT_ACTION_CONDITIONS
++
++    def test_an_undocumented_rule_cannot_be_built(self):
++        with pytest.raises(ReportError, match="undocumented rule"):
++            NextAction("made-up", "do something")
++
++    def test_the_answer_command_is_never_abbreviated(self):
++        """A command that is not shown in full cannot be pasted."""
++        report = render_report_from_sources(_blocked_decision_sources())
++        command = ('remedy decision resolve 22222222 td:cccccccc '
++                   '--reason "<your answer>"')
++        # Blocked item, open-decisions block, recommendation — in full each time.
++        assert report.count(command) == 3
++        assert "…" not in report
++
++
++class TestMomentumFlag:
++    """The mechanical definition, not a feeling."""
++
++    def test_no_cycles_is_unknown(self):
++        assert momentum_flag([]) == MOMENTUM_UNKNOWN
++        assert momentum_flag(None) == MOMENTUM_UNKNOWN
++
++    def test_closing_items_is_forward(self):
++        records = [
++            {"cycle_index": 1, "tasks_failed": 3, "tasks_escalated": 0},
++            {"cycle_index": 2, "tasks_failed": 1, "tasks_escalated": 0},
++            {"cycle_index": 3, "tasks_failed": 0, "tasks_escalated": 0},
++        ]
++        assert momentum_flag(records) == MOMENTUM_FORWARD
++
++    def test_a_recurring_failure_class_is_circling(self):
++        records = [
++            {"cycle_index": 1, "tasks_failed": 2, "verify_failure_class": "test_failed"},
++            {"cycle_index": 2, "tasks_failed": 1, "verify_failure_class": "test_failed"},
++        ]
++        assert momentum_flag(records) == MOMENTUM_CIRCLING
++
++    def test_open_items_not_decreasing_is_circling(self):
++        records = [
++            {"cycle_index": 1, "tasks_failed": 2, "tasks_escalated": 0},
++            {"cycle_index": 2, "tasks_failed": 2, "tasks_escalated": 0},
++        ]
++        assert momentum_flag(records) == MOMENTUM_CIRCLING
++
++    def test_circling_renders_a_warning_and_an_escalation(self):
++        sources = ReportSources(
++            job_name="circling",
++            cycle_records=(
++                {"cycle_index": 1, "tasks_failed": 2,
++                 "verify_failure_class": "test_failed"},
++                {"cycle_index": 2, "tasks_failed": 2,
++                 "verify_failure_class": "test_failed"},
++            ))
++        momentum = _section(render_report_from_sources(sources), "Momentum")
++        assert "Circling" in momentum
++        assert CIRCLING_ESCALATION in momentum
++
++    def test_a_heal_is_never_silent(self):
++        """F052 risk visibility: a healed cycle says so in the report."""
++        cycles = _section(render_report_from_sources(_budget_sources()), "Cycles")
++        assert "healed after 2 repair round(s)" in cycles
++        assert "WITHOUT file changes (flake suspect)" in cycles
++
++
++class TestBigRuns:
++    """A9: the report is a summary; the evidence area is the archive."""
++
++    def test_task_lines_cap_with_an_honest_count(self):
++        sources = ReportSources(
++            job_name="huge",
++            tasks=tuple(TaskOutcome(f"t{i:04d}", f"task {i}", "completed")
++                        for i in range(60)))
++        tasks = _section(render_report_from_sources(sources), "Tasks")
++        assert "… and 40 more tasks (see evidence)" in tasks
++        assert len([line for line in tasks.splitlines() if line.startswith("- `")]) == 20
++
++    def test_a_short_list_is_never_capped(self):
++        tasks = _section(render_report_from_sources(_green_sources()), "Tasks")
++        assert "more tasks" not in tasks
++
++
++class TestLanguageAndQuoting:
++    """Reports are English; the mission is quoted as-is (A9)."""
++
++    def test_report_is_english_for_a_non_english_mission(self):
++        sources = ReportSources(
++            job_name="lauf",
++            mission="Baue den Bericht und prüfe die Kosten",
++            tasks=(TaskOutcome("aaaaaaaa", "Renderer schreiben", "completed"),))
++        report = render_report_from_sources(sources)
++        assert "# Run report — lauf" in report
++        assert "## Recommended next action" in report
++        assert "- Mission: Baue den Bericht und prüfe die Kosten" in report
++
++    def test_task_descriptions_are_quoted_not_translated(self):
++        sources = ReportSources(
++            job_name="lauf",
++            tasks=(TaskOutcome("aaaaaaaa", "Renderer schreiben", "completed"),))
++        assert "Renderer schreiben" in render_report_from_sources(sources)
++
++
++class TestRenderReportEntryPoint:
++    """render_report(job, mode) is the signature T1_F053.md specifies."""
++
++    def test_render_report_accepts_injected_sources(self):
++        report = render_report(object(), MODE_FINAL, sources=_green_sources())
++        assert report == GOLDEN_GREEN
++
++    def test_render_report_rejects_an_unknown_mode(self):
++        with pytest.raises(ReportError, match="unknown report mode"):
++            render_report(object(), "summary", sources=_green_sources())
++
++    def test_render_report_collects_from_a_job_when_no_sources_given(self):
++        job = _FakeJob()
++        report = render_report(job)
++        assert "# Run report — fake job" in report
++        assert "- `abcdefgh` — Do the thing — **completed**" in report
++        assert "- Terminal status: all_green" in report
++
++    def test_interim_mode_supplies_its_own_timestamp(self):
++        """render_report may reach for the clock; the pure renderer may not."""
++        report = render_report(_FakeJob(), MODE_INTERIM)
++        assert report.splitlines()[0].startswith("> **INTERIM SNAPSHOT")
++
++
+ # ---------------------------------------------------------------------------
+ # Helpers
+ # ---------------------------------------------------------------------------
+ 
+ 
++class _FakeTask:
++    def __init__(self, task_id: str, description: str, status: str):
++        self.id = task_id
++        self.description = description
++        self.status = status
++
++
++class _FakeJob:
++    """The duck-typed shape collect_report_sources reads off a core Job."""
++
++    def __init__(self):
++        self.id = "44444444-4444-4444-8444-444444444444"
++        self.name = "fake job"
++        self.project_id = "remedy"
++        self.mission = "Do the thing"
++        self.state = "completed"
++        self.tasks = [_FakeTask("abcdefghijkl", "Do the thing", "completed")]
++        self.metadata = {"cycle_terminal_status": "all_green"}
++
++
+ def _headings(report: str) -> list[str]:
+     return [line for line in report.splitlines() if line.startswith("## ")]
+ 

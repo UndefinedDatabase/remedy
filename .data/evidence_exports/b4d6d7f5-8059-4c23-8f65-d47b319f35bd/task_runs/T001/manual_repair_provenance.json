@@ -1,0 +1,28 @@
+{
+ "changed_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/agents/planner_reviewer_prompt.md"
+ ],
+ "diff_sha256": "2239a32ab8da8ea8cf45659661eea19c8ee7680b8bec71640f551522260b2854",
+ "job_id": "b4d6d7f5-8059-4c23-8f65-d47b319f35bd",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "2239a32ab8da8ea8cf45659661eea19c8ee7680b8bec71640f551522260b2854",
+ "safe_diff_sha256": "2a08d2fd86d3b7ab5e919ee1060443b27e8156a55d12e31f3c9eb416a6bc46b6",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/command_catalog.py",
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/agents/planner_reviewer_prompt.md"
+ ],
+ "timestamp": "2026-07-31T13:01:28+00:00",
+ "tracked_diff_sha256": "2a08d2fd86d3b7ab5e919ee1060443b27e8156a55d12e31f3c9eb416a6bc46b6",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

@@ -1,0 +1,11 @@
+{
+ "changed_files": [
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F053.md",
+  "packages/orchestration/long_run_executor.py",
+  "packages/orchestration/run_report.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

@@ -1,0 +1,337 @@
+8cca01f4150ba14791de367e78cd9b39599c299d
+diff --git a/.agent/authored/f053-r6-1.md b/.agent/authored/f053-r6-1.md
+new file mode 100644
+index 00000000..ebc17d0f
+--- /dev/null
++++ b/.agent/authored/f053-r6-1.md
+@@ -0,0 +1,7 @@
++- R5: persist R4 verdict; corrected context.md (full reader list)
++  + §4 item 11 grep-every-reader rewrite; gate confirmation GREEN
++  (full suite 14610/0/19, docs 293, canary 42). Done.
++- R6: closure per docs/roadmap/STATUS_closure_protocol.md v4:
++  Built State + persist R5 verdict, preconditions, evidence job,
++  READY zip, evidence commit, then ONE final commit = STATUS [x] +
++  README sync + final .agent state. In progress.
+diff --git a/.agent/authored/f053-r6-2.md b/.agent/authored/f053-r6-2.md
+new file mode 100644
+index 00000000..1f5d1577
+--- /dev/null
++++ b/.agent/authored/f053-r6-2.md
+@@ -0,0 +1,16 @@
++- R5: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-31). Range
++  1ae0c42..cf95459 (content through 0e599d1). All 5 authored texts
++  cmp 0 disk-to-disk (saved copy AND applied region; the r4-5
++  paragraph fully replaced, 0 remaining); .agent/context.md
++  byte-identical to r5-4. Reviewer's OWN full-suite run at the
++  handback HEAD: 14610 passed, 0 failed, 19 skipped (2:17) — the
++  branch-only failure set is empty; the R3 base evidence (6
++  attributed UI-artifact ids) stands. Worker gates consistent with
++  the reviewer's runs: reader files 91, full suite 14610/0/19
++  (2:14), docs 293, canary 42. R-0162 Resolved (context.md full
++  reader list + the §4 item 11 grep-every-reader rule; Done
++  0e599d11). New suite baseline 14610/0/19. Closure preconditions:
++  latest verdict PASS; open findings: R-0160 only (documented Low,
++  routed to the next paydown round); Built State lands in the R6
++  persist commit before the closure commit (precondition 4); tree
++  clean. LAST_REVIEWED_SHA = cf95459.
+diff --git a/.agent/authored/f053-r6-3.md b/.agent/authored/f053-r6-3.md
+new file mode 100644
+index 00000000..9ccff719
+--- /dev/null
++++ b/.agent/authored/f053-r6-3.md
+@@ -0,0 +1,9 @@
++- Resolved: R-0162 (process, Low) 2026-07-31: .agent/context.md
++  now satisfies its FULL real-file reader list (4 test files, 13
++  assertions — "Steps" section, "## Active Branch" + feature/
++  slug, roadmap F-id, pytest/resource line), and §4 item 11
++  carries the grep-every-reader rule so a state-file replacement
++  is validated against ALL readers before emission.
++  Done: R-0162 (commit 0e599d11 — corrected text + rule; gate
++  confirmation 14610/0/19).
++- Next free ID: R-0163.
+diff --git a/.agent/authored/f053-r6-4.md b/.agent/authored/f053-r6-4.md
+new file mode 100644
+index 00000000..d453801e
+--- /dev/null
++++ b/.agent/authored/f053-r6-4.md
+@@ -0,0 +1,38 @@
++## Built State (accepted 2026-07-31)
++- packages/orchestration/run_report.py: pure renderer —
++  render_report_from_sources (no clock/disk/randomness) +
++  render_report(job, mode) wrapper; ReportSources / TaskOutcome /
++  BlockedItem / StatusMirror; momentum_flag
++  (forward|circling|unknown, unknown for zero cycle records);
++  NEXT_ACTION_RULES priority open-decision > stopped-by-operator >
++  blocked-failed > all-green > indeterminate, rule id + condition
++  rendered with the recommendation; every unbounded list capped
++  with an honest count line (tasks/blocked/cycles 20, capability
++  lines 10); every absent source renders "not recorded" (P6);
++  build_report_sources adds evidence-area sources (cycle records
++  incl. F052 healed/repair fields, budget actuals verbatim via
++  BudgetCounters.token_description, open decisions with answer
++  commands); write_final_report is the ONE writer — report.md in
++  the job evidence area beside cycles/, regenerated never
++  appended, never raises (failure recorded under report_error,
++  cleared on the next success).
++- packages/orchestration/status_mirror.py (DECISION D2):
++  read-only docs/roadmap/STATUS.md parser → StatusMirror;
++  None on missing file, unparseable ledger, or missing milestone
++  — never a guess; non-self repos render "not recorded".
++- long_run_executor._apply_terminal: REPORTED_TERMINALS =
++  {all_green, stopped_by_operator, budget_exhausted,
++  deadline_reached, blocked} each write the report through the
++  single seam; max_cycles_reached deliberately excluded (job
++  still has work).
++- CLI: remedy job report <id> --final | --interim | --json on the
++  existing job.report entry (bare progress view unchanged, F047
++  one-command pattern); --final refused unless
++  cycle_terminal_status is in REPORTED_TERMINALS (R-0161);
++  --interim never mutates state and writes no file.
++- Tests: tests/orchestration/test_run_report.py (68),
++  tests/orchestration/test_run_report_hook.py (22),
++  tests/cli/test_job_report.py (30). Suite baseline 14610/0/19.
++- Decisions: D2 (status-mirror producer added in T002), D3
++  (integration-gate base worktree on a branch, codified in
++  docs/agents/integration_gate.md).
+diff --git a/.agent/authored/f053-r6-5.md b/.agent/authored/f053-r6-5.md
+new file mode 100644
+index 00000000..3fb6f985
+--- /dev/null
++++ b/.agent/authored/f053-r6-5.md
+@@ -0,0 +1 @@
++- [x] F053 — Final & interim report (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job <JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <HEAD_SHA>)
+diff --git a/.agent/authored/f053-r6-6.md b/.agent/authored/f053-r6-6.md
+new file mode 100644
+index 00000000..4ce19533
+--- /dev/null
++++ b/.agent/authored/f053-r6-6.md
+@@ -0,0 +1,13 @@
++EDIT 1 — replace this exact line:
++28 of 252 registered items accepted. Next: F053 (Final & interim report).
++with:
++29 of 252 registered items accepted. Next: F056 (Missions: persistent goal, jobs as execution units).
++EDIT 2 — replace this exact line:
++| 1 | Self-Build Bootstrap | 12 | 22 |
++with:
++| 1 | Self-Build Bootstrap | 13 | 22 |
++EDIT 3 — replace this exact line:
++F052 self-healing test rounds.
++with these two lines:
++F052 self-healing test rounds,
++F053 final & interim report.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index 9a0e663c..77326723 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,39 +1,64 @@
+-Round f053-r5 — REPAIR 2 (gate confirmation, second attempt). Findings
+-persist FIRST, then the fix, then gate steps 3-5; STOP on any red.
+-No closure work; never merge anything.
++Round f053-r6 — CLOSURE per docs/roadmap/STATUS_closure_protocol.md (v4);
++that file wins over the block summary. Never merge anything this round.
++f053-r6-5 is ONE ~200-char line that arrives hard-wrapped: rejoin the
++fragments with a single space, re-hash, use only after the hash matches
++(known recoverable class, 4th instance). f053-r6-6's EDIT-1 TO-line may
++wrap the same way — same recovery.
+ 
+-COMMIT A (first, own commit): in .agent/live_review.md replace the R4
+-"In progress." Steps bullet with f053-r5-1, append f053-r5-2 to
+-"## Verdicts" after the R3 entry, replace the block from
+-"- Open: R-0162 (process, Low," through "- Next free ID: R-0163." with
+-f053-r5-3. cmp proofs.
++STEP 1 — COMMIT A: in .agent/live_review.md replace the R5 "In progress."
++Steps bullet with f053-r6-1, append f053-r6-2 to "## Verdicts" after the
++R4 entry, replace the block from "- Open: R-0162 (process, Low," through
++"- Next free ID: R-0163." with f053-r6-3; append f053-r6-4 at the END of
++docs/roadmap/features/T1_F053.md. cmp proofs for all four. Record the
++commit's FULL sha — it is the expected accepted HEAD. Touches
++docs/roadmap/** → docs gate now: tests/docs 293, exit 0.
+ 
+-COMMIT B — corrected fix:
+-- .agent/context.md replaced ENTIRELY with f053-r5-4 (whole-file cmp 0
+-  against the saved copy). Pre-validated against all 13 real-file
+-  assertions.
+-- docs/agents/planner_reviewer_prompt.md §4 item 11: replace the
+-  six-line block beginning "    The same contract class covers
+-  `.agent/context.md`: the" (the applied r4-5 text, starting on the line
+-  after "stays with F252.") with f053-r5-5.
+-cmp proofs for both regions. Mark Done: R-0162 in the commit body.
++STEP 2 — PRECONDITIONS (abort closure on any failure):
++integrity check --json → PASS, fail_count 0 (raw JSON summary recorded);
++git status --porcelain empty; push; git rev-list --left-right --count
++@{u}...HEAD → "0 0". R-0160 is a documented Low risk, not a blocker.
+ 
+-GATE CONFIRMATION, in this order, STOP at the first red:
+-1. pytest tests/regression/test_resource_safety.py
+-   tests/ui_server/test_dashboard_contract.py -q → both context.md
+-   reader files green.
+-2. pytest -n auto -q → FULL suite; expected 14610 passed, 19 skipped,
+-   0 failed. Raw tail, exit code, wall time. Any failure: record raw,
+-   STOP, hand back.
+-3. pytest tests/docs/ -q → 293.
+-4. pytest tests/cli/test_golden_path.py -q → 42.
++STEP 3 — EVIDENCE JOB: create_manual_completion_bundle(
++review_feature_id="f053", ...), fresh job id, base commit FULL sha
++15105dbe070c722f0e7cd44aff065b6fed6e1635, head = commit A. Four REAL
++verification runs executed now with exit codes: test_run_report 68,
++test_run_report_hook 22, test_job_report 30, canary 42. Producer
++pitfalls per the protocol's step-1 list, incl. (c) run_id ^vr-\d{4,}$;
++node_ids via --collect-only with len(node_ids) == selected; test_files
++are FILES; output_hash = sha256 of the EXACT stored stdout_summary
++bytes; full-length base_commit; full closed-schema gate set.
+ 
+-Handback per docs/agents/handback_template.md: per-commit tables,
+-item-status table (A, B, gate 1-4), authored-text proofs (sha256sum +
+-saved-copy cmp + applied-region cmp), full-suite raw tail + wall clock.
+-Do NOT write ## Verdicts beyond applying f053-r5-2 verbatim. Then await
+-the reviewer. Closure is R6, its own round — the reviewer opens it only
+-after this gate confirms green.
+-Authored texts f053-r5-{1..5} (sha256 verified before use, saved
++STEP 4 — READY ZIP from the clean tree, BEFORE any evidence commit:
++bash scripts/make_review_zip.sh --evidence-dir <path> (or --job-id).
++Requires PACKAGE_STATUS=READY_FOR_REVIEW, EVIDENCE_AUTHORITATIVE=true,
++validation_errors empty, committed_review_subject spanning
++15105dbe070c722f0e7cd44aff065b6fed6e1635..<commit A>, base_is_ancestor
++true, ZipFile.testzip() → None. Record filename + SHA-256 (script JSON
++AND independent sha256sum). accepted HEAD := manifest
++committed_review_subject.head_commit, must equal commit A. A failing zip
++build is a closure BLOCKER: record the raw error and STOP.
++
++STEP 5 — EVIDENCE COMMIT (only after the READY zip exists): git add -f
++the evidence export dir.
++
++STEP 6 — FINAL COMMIT = exactly STATUS.md + README.md + .agent/.
++Substitute into a COPY of f053-r6-5 (each placeholder exactly once,
++grep -c 1→0 each, original untouched): <JOB_ID>, <ZIP_FILENAME>,
++<ZIP_SHA256>, <HEAD_SHA> = manifest head_commit. Replace the unique
++STATUS.md line "- [~] F053 — Final & interim report" with it (old 1→0,
++new 1; cmp of the grepped line against the substituted copy → 0). Apply
++the three README edits from f053-r6-6 exactly (each FROM 1→0, each TO
++present). Provenance table per substituted value in the handback.
++Rewrite .agent/handoff.md + flip OUTCOME to executed. Post-edit gates:
++tests/docs 293 exit 0 (count pin 29==29), canary 42;
++grep -c '^- \[x\]' docs/roadmap/STATUS.md → 29.
++
++STEP 7 — PR, NOT merged: gh pr create --base main --title "F053 — Final
++& interim report (T001–T002)", body per AGENTS.md: what/why, DECISIONS
++D2 + D3, changed-files table, verdicts R1–R5 (R3+R4 FAIL honestly named,
++gate PASS at R5), open findings 1 (R-0160, Low, routed to paydown),
++runtime actuals (observed; not-measured beats a guess), evidence job +
++package + SHA-256. Report the PR number. Then await the reviewer.
++Authored texts f053-r6-{1..6} (sha256 verified before use, saved
+ verbatim under .agent/authored/, applied by copy).
+-OUTCOME: executed
++OUTCOME: pending
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 77364a63..fd607972 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -25,10 +25,13 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   fixed the "Steps" reader, tripped the resource-safety reader
+   (reviewer-authored text, incomplete reader list); gate stopped
+   at step 3 per the stop rule. Done (outcome carried to R5).
+-- R5: persist R4 verdict; apply the CORRECTED context.md (full
+-  reader list, validated against all 13 assertions) + the §4
+-  item 11 grep-every-reader rewrite; re-run gate steps 3-5 (full
+-  suite + docs + canary) — green required, else STOP. In progress.
++- R5: persist R4 verdict; corrected context.md (full reader list)
++  + §4 item 11 grep-every-reader rewrite; gate confirmation GREEN
++  (full suite 14610/0/19, docs 293, canary 42). Done.
++- R6: closure per docs/roadmap/STATUS_closure_protocol.md v4:
++  Built State + persist R5 verdict, preconditions, evidence job,
++  READY zip, evidence commit, then ONE final commit = STATUS [x] +
++  README sync + final .agent state. In progress.
+ 
+ ## Findings
+ - Open: R-0160 (process, Low, registered 2026-07-31): the R1
+@@ -59,15 +62,14 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   auto-renders); capability lines cap at 10 via _capped with the
+   honest count line (CALL-2 ruling).
+   Done: R-0161 (commit c2d9f790 — guard + tests; cap 9e0b4035).
+-- Open: R-0162 (process, Low, registered 2026-07-31; AMENDED after
+-  R4): the R1 context.md rewrite dropped the "Steps" token; the R4
+-  repair (reviewer-authored) fixed that reader and tripped a second
+-  one — test_context_mentions_resource_safety asserts "resource" or
+-  "pytest" in the same file; context.md's real-file readers span 4
+-  test files with 13 assertions. Fix (R5): corrected authored
+-  replacement validated against the FULL reader list before
+-  emission, plus the §4 item 11 rewrite adding the
+-  grep-every-reader rule. Not feature-code coupled.
++- Resolved: R-0162 (process, Low) 2026-07-31: .agent/context.md
++  now satisfies its FULL real-file reader list (4 test files, 13
++  assertions — "Steps" section, "## Active Branch" + feature/
++  slug, roadmap F-id, pytest/resource line), and §4 item 11
++  carries the grep-every-reader rule so a state-file replacement
++  is validated against ALL readers before emission.
++  Done: R-0162 (commit 0e599d11 — corrected text + rule; gate
++  confirmation 14610/0/19).
+ - Next free ID: R-0163.
+ 
+ ## Verdicts
+@@ -152,3 +154,19 @@ an invented value (docs/roadmap/features/T1_F053.md).
+   block. R-0162 stays Open for R5; the grep-every-reader rule is
+   codified in the §4 item 11 rewrite. LAST_REVIEWED_SHA stays
+   1a5af0d.
++- R5: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-31). Range
++  1ae0c42..cf95459 (content through 0e599d1). All 5 authored texts
++  cmp 0 disk-to-disk (saved copy AND applied region; the r4-5
++  paragraph fully replaced, 0 remaining); .agent/context.md
++  byte-identical to r5-4. Reviewer's OWN full-suite run at the
++  handback HEAD: 14610 passed, 0 failed, 19 skipped (2:17) — the
++  branch-only failure set is empty; the R3 base evidence (6
++  attributed UI-artifact ids) stands. Worker gates consistent with
++  the reviewer's runs: reader files 91, full suite 14610/0/19
++  (2:14), docs 293, canary 42. R-0162 Resolved (context.md full
++  reader list + the §4 item 11 grep-every-reader rule; Done
++  0e599d11). New suite baseline 14610/0/19. Closure preconditions:
++  latest verdict PASS; open findings: R-0160 only (documented Low,
++  routed to the next paydown round); Built State lands in the R6
++  persist commit before the closure commit (precondition 4); tree
++  clean. LAST_REVIEWED_SHA = cf95459.
+diff --git a/docs/roadmap/features/T1_F053.md b/docs/roadmap/features/T1_F053.md
+index 59bb6cb5..8f30053e 100644
+--- a/docs/roadmap/features/T1_F053.md
++++ b/docs/roadmap/features/T1_F053.md
+@@ -88,3 +88,42 @@ terminal path they hooked.
+ ## Do not touch
+ Notification delivery, UI rendering, cost calibration. Suggested tests:
+ tests/orchestration/test_run_report.py, tests/cli/test_job_report.py.
++
++## Built State (accepted 2026-07-31)
++- packages/orchestration/run_report.py: pure renderer —
++  render_report_from_sources (no clock/disk/randomness) +
++  render_report(job, mode) wrapper; ReportSources / TaskOutcome /
++  BlockedItem / StatusMirror; momentum_flag
++  (forward|circling|unknown, unknown for zero cycle records);
++  NEXT_ACTION_RULES priority open-decision > stopped-by-operator >
++  blocked-failed > all-green > indeterminate, rule id + condition
++  rendered with the recommendation; every unbounded list capped
++  with an honest count line (tasks/blocked/cycles 20, capability
++  lines 10); every absent source renders "not recorded" (P6);
++  build_report_sources adds evidence-area sources (cycle records
++  incl. F052 healed/repair fields, budget actuals verbatim via
++  BudgetCounters.token_description, open decisions with answer
++  commands); write_final_report is the ONE writer — report.md in
++  the job evidence area beside cycles/, regenerated never
++  appended, never raises (failure recorded under report_error,
++  cleared on the next success).
++- packages/orchestration/status_mirror.py (DECISION D2):
++  read-only docs/roadmap/STATUS.md parser → StatusMirror;
++  None on missing file, unparseable ledger, or missing milestone
++  — never a guess; non-self repos render "not recorded".
++- long_run_executor._apply_terminal: REPORTED_TERMINALS =
++  {all_green, stopped_by_operator, budget_exhausted,
++  deadline_reached, blocked} each write the report through the
++  single seam; max_cycles_reached deliberately excluded (job
++  still has work).
++- CLI: remedy job report <id> --final | --interim | --json on the
++  existing job.report entry (bare progress view unchanged, F047
++  one-command pattern); --final refused unless
++  cycle_terminal_status is in REPORTED_TERMINALS (R-0161);
++  --interim never mutates state and writes no file.
++- Tests: tests/orchestration/test_run_report.py (68),
++  tests/orchestration/test_run_report_hook.py (22),
++  tests/cli/test_job_report.py (30). Suite baseline 14610/0/19.
++- Decisions: D2 (status-mirror producer added in T002), D3
++  (integration-gate base worktree on a branch, codified in
++  docs/agents/integration_gate.md).

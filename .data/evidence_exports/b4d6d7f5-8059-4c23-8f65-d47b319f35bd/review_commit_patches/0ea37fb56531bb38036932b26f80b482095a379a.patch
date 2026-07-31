@@ -1,0 +1,267 @@
+0ea37fb56531bb38036932b26f80b482095a379a
+diff --git a/.agent/decisions.md b/.agent/decisions.md
+index f63b4903..dad73ea8 100644
+--- a/.agent/decisions.md
++++ b/.agent/decisions.md
+@@ -1,5 +1,47 @@
+ # Decisions
+ 
++## 2026-07-31: F053 — the STATUS mirror is an INPUT, not a read (inspect finding)
++The feature file states that ALL inputs already exist as structured data. The
++inspect step disproved that for exactly one source: the milestone distance and
++the capability lines are specified to come from "the STATUS mirror", and there
++is NO production reader of `docs/roadmap/STATUS.md` anywhere in `packages/`.
++The only production references to that path are a write FENCE
++(`scope_fences.py:80`, "execution ledger (operator territory)") and a noise-
++filter comment (`evidence_index.py:113`). `self_dogfood._detect_roadmap`
++(self_dogfood.py:350) is registry-only by its own docstring — it tests module
++existence, it does not read the ledger. Every other source the report renders
++was confirmed present and is listed in the run_report.py module docstring.
++
++Rather than write a STATUS parser inside a Tier 1 report feature (it is a
++different concern, and the file is fenced operator territory),
++`ReportSources.status_mirror` is the input seam and both dependent sections
++render "not recorded" until a producer exists. That is the feature's own rule
++for a missing source, applied to its own gap rather than papered over. The
++routing of that producer — T002, a new slice, or a feature-file amendment — is
++a reviewer decision, raised in the handback rather than decided by the worker.
++
++## 2026-07-31: F053 T001 — render_report keeps its specified signature, plus a sources seam
++`T1_F053.md` Design fixes `render_report(job, mode=final|interim) -> str`, but a
++renderer that reaches for a job and a data root cannot have byte-stable
++goldens. The module therefore splits in two: `render_report_from_sources` is
++the pure function (no clock, no disk, no randomness — the caller supplies
++`rendered_at`), and `render_report(job, mode, *, sources=None)` keeps the
++specified signature and collects when nothing is injected. The goldens test
++the pure half. Determinism is pinned by a double-render test rather than left
++as a property nobody checks.
++
++`collect_report_sources` deliberately reads ONLY the in-memory job this round.
++The evidence-area sources (cycle records, postmortems, manifest) land with the
++terminal-state writer in T002, so T001 adds no new disk reads and no new
++failure modes to the run loop.
++
++## 2026-07-31: F053 T001 — momentum is unknown with no cycles, never forward
++The mechanical definition covers "closes items" and "recurs", but not the
++zero-cycle case. Defaulting that to forward would print a green momentum line
++for a run that produced no evidence at all — an invented judgement of exactly
++the kind P6 forbids. `momentum_flag` returns `unknown` and the section renders
++"not recorded".
++
+ ## 2026-07-30: F052 — which existing repair loop the cycle triggers
+ The inspect step found TWO repair worlds. The ping-pong loop
+ (`pingpong_loop.run_pingpong`) does run bounded repair rounds, but it drives
+diff --git a/.agent/handoff.md b/.agent/handoff.md
+index a242a522..f0e6c9c7 100644
+--- a/.agent/handoff.md
++++ b/.agent/handoff.md
+@@ -1,69 +1,108 @@
+-# Handback — paydown0731-r1 (single-session micro-round)
++# Handoff — F053 · R1 (worker)
++
++`feature/f053-run-report`, pushed. No verdict written, nothing merged.
+ 
+ ## Range
+-Review of b63f9665..HEAD (`feature/paydown-0731`). Open PR Gate first:
+-PR #167 merged (b63f9665), main synced, branch created from it.
++Review of 15105dbe..HEAD.
+ 
+ ## Commits
+-### 13c6053a chore(paydown0731): persist round state + authored texts
++
++### 9cc1185b chore(f053): claim F053 + state reset
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/live_review.md | reset | round ledger from r1-1 (copy, cmp 0) |
+-| .agent/plan.md, .agent/last_block.md | rewrite | round state |
+-| .agent/authored/paydown0731-r1-{1..8}.md | +8 files | authored texts |
++| docs/roadmap/STATUS.md | +1/-1 | F053 `[ ]`→`[~]` (authored f053-r1-1) |
++| .agent/live_review.md | +20/-52 | replaced (authored f053-r1-2) |
++| .agent/authored/f053-r1-{1,2}.md | +21 | authored texts, verbatim |
++| .agent/{plan,context,last_block}.md | +139/-134 | reset for F053 |
+ 
+-### b2f95bd2 docs(agents): codify digest fallback + practice-requires-pointer
++### 9c46258b feat(f053): run report model + momentum and next-action rules
+ | Path | +/- | Reason |
+ |---|---|---|
+-| docs/agents/planner_reviewer_prompt.md | +17 | Item 1 (§4 item 9, r1-2) + Item 2 (§2, r1-3) |
++| packages/orchestration/run_report.py | +343 | ReportSources/TaskOutcome/BlockedItem/StatusMirror, momentum_flag, NEXT_ACTION_RULES |
+ 
+-### 408c89c9 docs(roadmap): closure protocol — VT run_id pitfall (c)
++### 6d6ea88f feat(f053): render the run report as deterministic markdown
+ | Path | +/- | Reason |
+ |---|---|---|
+-| docs/roadmap/STATUS_closure_protocol.md | +6 | candidate resolved (r1-4) |
++| packages/orchestration/run_report.py | +298 | sections, render_report_from_sources, render_report, collect_report_sources |
+ 
+-### 23a06611 fix(orchestration): dogfood guard accepts worktree gitfile (R-0159)
++### 3d943b25 test(f053): three golden run reports and the not-recorded rule
+ | Path | +/- | Reason |
+ |---|---|---|
+-| packages/orchestration/self_dogfood_execution.py | +27/-5 | _git_head_file() both .git forms (r1-6) |
+-| tests/orchestration/test_self_dogfood_execution.py | +51 | TestCurrentBranchRepoForms (r1-7) + import (r1-8) |
++| tests/orchestration/test_run_report.py | +470 | fixtures, 3 goldens, basis + negative tests |
+ 
+-### 21aa8e88 docs(agents): integration gate — drop git-directory class
++### 551b6ec6 test(f053): interim label, determinism, rule table and momentum
+ | Path | +/- | Reason |
+ |---|---|---|
+-| docs/agents/integration_gate.md | +5/-8 | attribution set cleanup (r1-5) |
++| tests/orchestration/test_run_report.py | +246 | interim, determinism, rule table, momentum, A9 cap, language |
+ 
+-### 835291a2 chore(paydown0731): resolve R-0159 + candidate in the ledger
++### handoff commit (self-reference, R-0149 pattern)
+ | Path | +/- | Reason |
+ |---|---|---|
+-| .agent/live_review.md | +19/-16 | r1-9 applied; .agent/authored/paydown0731-r1-9.md added |
++| .agent/handoff.md · plan.md · decisions.md | rewrite/+45 | this file; R1 done + next; 3 F053 decisions |
++
++Split note: run_report.py (641) and test_run_report.py (716) each exceed 500
++lines as one diff; both SPLIT at a real seam, not declared oversize — each half
++imports, lints and passes alone. No oversize commit in F053.
++
++## External actions
++`gh pr list --state open` → `[]`. `git push -u origin feature/f053-run-report`
++→ new branch; `git push` → 9cc1185b..551b6ec6. No PR (not the closure round).
++No worktrees added/removed.
+ 
+ ## Verification
+-- `pytest tests/docs/ -q` → 293 passed, exit 0.
+-- `pytest tests/cli/test_golden_path.py -q` → 42 passed, exit 0 (canary).
+-- `pytest tests/orchestration/test_self_dogfood_execution.py
+-  tests/cli/test_self_dogfood_execution_cli.py -q` → 30 passed (24+6).
+-- R-0159 repro: throwaway linked worktree at HEAD on branch
+-  tmp/r0159-proof (`.git` = gitfile) → the 6 CLI ids 6/6 green;
+-  negative control: DETACHED worktree → 2 failed (guard still refuses
+-  detached HEAD — default safety preserved). Worktree removed + pruned,
+-  tmp branch deleted; `git worktree list` shows primary only.
++    $ pytest tests/orchestration/test_run_report.py -q → 44 passed, exit 0
++    $ pytest tests/docs/ -q                            → 293 passed, exit 0
++    $ pytest tests/cli/test_golden_path.py -q (canary)  → 42 passed, exit 0
++    $ ruff check run_report.py test_run_report.py       → All checks passed, exit 0
++Red proof (mutation in the primary checkout, reverted via `git checkout --`,
++`git status --porcelain` clean after): an invented `Tokens: 0 tokens — basis:
++budget counters` replacing the missing-actuals branch failed 3 tests (…render_
++not_recorded, …never_render_a_zero, every_absent_source_names_itself), 41
++passed. Restored → 44 passed.
+ 
+ ## Authored-text proofs
+-All 9 files cmp 0 disk-to-disk vs the reviewer scratchpad originals:
+-64beb5ce r1-1 · 3c64498b r1-2 · 8e49471b r1-3 · 9c628273 r1-4 ·
+-89259e78 r1-5 · b5acafcf r1-6 · afc9c864 r1-7 · 17ea74bb r1-8 ·
+-a5c3f867 r1-9 (full digests in the shell transcript; files in
+-.agent/authored/). All payloads applied by file copy, never retyped.
++sha256-verified BEFORE use, applied by `cp`, never retyped. Committed files:
++f053-r1-1 `37a08edc…09cdfc`, f053-r1-2 `730f5c7c…7c9e01` — both equal the round
++block's BEGIN-marker digests. `cmp` disk-to-disk vs the verified scratchpad
++originals: exit 0 both; `cmp .agent/live_review.md f053-r1-2.md` exit 0.
++STATUS.md: old-count 0 / new-count 1 after replace; only line 39 changed.
+ 
+-## Deviations & assumptions
+-1. Items 1+2 share one commit (same file, same A1-trap rule class).
+-2. Candidate resolved inline as DECISION D1 (no ID spent) per the
+-   closure-candidate rule; R-0160 remains the next free ID.
++## Item status
++| Item | Status | Reason |
++|---|---|---|
++| STEP 0 Open PR Gate | done | `[]` |
++| STEP 1 claim + branch + state reset | done | |
++| STEP 2 inspect report sources | done | map + finding below |
++| STEP 3 T001 renderer + rule table + goldens | done | |
++| Round gates (3) | done | 44 / 293 / 42, all exit 0 |
++
++## STEP 2 result
++Source map with file:line evidence is committed in the
++`packages/orchestration/run_report.py` module docstring — job/task state, cycle
++summaries (incl. F052 healed/repair fields), postmortems, decisions, token
++actuals, assumptions, plan rendering, manifest: all present, except one.
++
++FINDING — "ALL inputs already exist as structured data" is FALSE for the STATUS
++mirror: NO production reader of `docs/roadmap/STATUS.md` exists. Only a write
++FENCE (`scope_fences.py:80`) and a noise comment (`evidence_index.py:113`) refer
++to it; `self_dogfood.py:350 _detect_roadmap` is registry-only per its docstring.
++So the milestone distance and the `[x]`-only capability lines have no producer;
++`ReportSources.status_mirror` is the input seam and both render "not recorded".
++Routing is a reviewer call. Detail: `.agent/decisions.md`.
+ 
+-Item status: | Item 1 done | Item 2 done | Item 3 done | candidate
+-pass done | no skips.
++Terminal states (`long_run_executor.py:100-125`, applied at `:859
++_apply_terminal` — the single T002 hook point; nothing wired this round):
++`all_green`→COMPLETED; `stopped_by_operator`, `budget_exhausted`,
++`deadline_reached`, `blocked`→PAUSED; `max_cycles_reached`→JOB_RUNNING, NOT a
++terminal trigger. T002's one-report-per-terminal-job rule covers the first five.
++
++## Deviations & assumptions
++- `render_report` gained a keyword-only `sources=` seam (positional signature
++  unchanged) so goldens stay pure. `.agent/decisions.md` 2026-07-31.
++- Momentum with zero cycle records = `unknown`, not `forward` — the definition
++  omits the empty case and forward would be invented. Same file.
++- Untouched per the feature file: notification delivery, UI rendering, cost
++  calibration. No CLI, no terminal-state hook (both T002).
+ 
+ ## Next
+-Reviewer verdict; on PASS merge same-session (standing operator
+-approval 2026-07-31), then F053 per Rule A5 (fresh window).
++Reviewer verdict on R1 + the routing decision on the STATUS-mirror producer.
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 90b6f175..2144e51b 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,28 +1,35 @@
+ # Plan — F053 Final & interim report (Tier 1)
+ 
+ ## Goal
+-Every run produces ONE human-readable account: what was attempted,
+-what succeeded, what is blocked and why, what it cost, what needs
+-answering, and the single recommended next action. The report is a
+-pure RENDERER over existing structured sources — it computes nothing
+-new, and a missing source renders "not recorded", never a guessed
+-value (P6, docs/roadmap/features/T1_F053.md).
++Every run produces ONE human-readable account: what was attempted, what
++succeeded, what is blocked and why, what it cost, what needs answering,
++and the single recommended next action. The report is a pure RENDERER
++over existing structured sources — it computes nothing new, and a
++missing source renders "not recorded", never a guessed value (P6,
++docs/roadmap/features/T1_F053.md).
+ 
+ ## Current Step
+-R1 — claim + state reset (this commit), then inspect the report
+-sources with file:line evidence, then T001: renderer +
+-next-action rule table + three golden terminal fixtures.
++R1 complete, awaiting review. Claim + state reset, source inspection
++(STEP 2), and T001 (renderer + next-action rule table + three golden
++terminal fixtures) are committed and pushed on
++`feature/f053-run-report`. Gates green: test_run_report.py 44 ·
++tests/docs 293 · canary 42.
+ 
+ ## Next Steps
+-- STEP 2: name the exact module + accessor for every rendered source;
+-  confirm or disprove the all-inputs-exist claim; enumerate every
+-  terminal state the persistence path reaches (T002 input only).
+-- STEP 3 (T001): packages/orchestration/run_report.py
+-  `render_report(job, mode=final|interim)` +
+-  tests/orchestration/test_run_report.py (three goldens, basis on
+-  every cost line, "not recorded" negative test, interim label,
+-  deterministic double-render).
+-- Gates: test_run_report.py green · tests/docs 293 · canary 42.
+-- Handback per docs/agents/handback_template.md; reviewer writes the
+-  verdict, not the worker.
+-- T002 (later round): terminal-state hook + interim mode + CLI.
++- Reviewer verdict on R1. The worker writes no verdict and merges
++  nothing.
++- Open question for the reviewer (STEP 2 finding): no production reader
++  of `docs/roadmap/STATUS.md` exists, so the milestone distance and the
++  capability lines have no producer. `ReportSources.status_mirror` is
++  the input seam; both sections render "not recorded" until a producer
++  lands. Needs a routing decision — T002, a new slice, or a feature-file
++  amendment.
++- T002 (next round): terminal-state hook (every terminal path writes
++  exactly one report, regenerated not appended) + interim mode against a
++  running fake job + `remedy job report <id>` CLI with `--json` + the
++  evidence-area source collection this round deliberately did not wire.
++
++## Risks
++- The six terminal statuses in `long_run_executor.TERMINAL_*` are the
++  T002 hook surface; `max_cycles_reached` maps to JOB_RUNNING and is NOT
++  a terminal report trigger. Enumerated in the handoff.
