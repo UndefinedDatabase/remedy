@@ -19,7 +19,7 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState, Task
+from packages.core.models import Job, RunState
 from packages.orchestration.dag_schedule import blocked_downstream, ready_set
 from packages.orchestration.decision_queue import list_decisions
 from packages.orchestration.intake import heuristic_intake, mission_candidate_hint
@@ -45,8 +45,11 @@ from packages.orchestration.mission_state import (
     MissionNotFoundError,
     MissionVerifyFirstError,
     assert_verify_first,
+    build_follow_up_task,
     build_verify_first_task,
+    continue_mission,
     create_mission,
+    execute_mission_followup,
     inject_verify_first,
     is_verify_task,
     link_job_to_mission,
@@ -57,6 +60,7 @@ from packages.orchestration.mission_state import (
     mission_for_job,
     mission_record_path,
     project_ids_with_missions,
+    read_mission_verify_record,
     render_mission_chain,
     render_mission_row,
     resolve_mission_id,
@@ -66,7 +70,7 @@ from packages.orchestration.mission_state import (
     set_mission_status,
 )
 from packages.orchestration.schemas.models import JobIntake
-from packages.orchestration.storage import save_job
+from packages.orchestration.storage import load_job, save_job
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
 _PROJECT = "proj-alpha"
@@ -556,12 +560,6 @@ class TestMissionOfferInThePlanApproval:
         assert len(approvals) == 1
 
 
-def _work_task():
-    """A plain follow-up work task, the thing the verify task must precede."""
-    return Task(description="Add the CSV path",
-                inputs={"task_type": "mission_follow_up"})
-
-
 class TestVerifyFirstStructure:
     """F056 T003 — verification is a task in the plan, not a request in a prompt."""
 
@@ -591,7 +589,7 @@ class TestVerifyFirstStructure:
 
     def test_injection_puts_verify_first_and_makes_work_depend_on_it(self):
         previous = self._previous_job()
-        tasks = inject_verify_first(previous, [_work_task()])
+        tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
 
         assert is_verify_task(tasks[0])
         assert tasks[1].inputs["flight"]["depends_on"] == [
@@ -600,7 +598,7 @@ class TestVerifyFirstStructure:
     def test_the_scheduler_withholds_the_work_until_verify_completes(self):
         """The enforcement is the existing DAG scheduler, not a convention."""
         previous = self._previous_job()
-        tasks = inject_verify_first(previous, [_work_task()])
+        tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
 
         ready = ready_set(tasks)
 
@@ -608,21 +606,21 @@ class TestVerifyFirstStructure:
 
     def test_the_work_becomes_ready_once_verify_completed(self):
         previous = self._previous_job()
-        tasks = inject_verify_first(previous, [_work_task()])
+        tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
         tasks[0].status = RunState.COMPLETED
 
         assert ready_set(tasks) == [tasks[1].id]
 
     def test_a_failed_verify_blocks_the_work_downstream(self):
         previous = self._previous_job()
-        tasks = inject_verify_first(previous, [_work_task()])
+        tasks = inject_verify_first(previous, [build_follow_up_task("Add the CSV path")])
         tasks[0].status = RunState.FAILED
 
         assert blocked_downstream(tasks, [tasks[0].id]) == {tasks[1].id}
 
     def test_a_plan_that_does_not_start_with_verify_is_refused(self):
         with pytest.raises(MissionVerifyFirstError):
-            assert_verify_first([_work_task()])
+            assert_verify_first([build_follow_up_task("Add the CSV path")])
 
     def test_an_empty_plan_is_refused(self):
         with pytest.raises(MissionVerifyFirstError):
@@ -631,7 +629,7 @@ class TestVerifyFirstStructure:
     def test_work_that_does_not_depend_on_verify_is_refused(self):
         previous = self._previous_job()
         verify = build_verify_first_task(previous)
-        loose = _work_task()
+        loose = build_follow_up_task("Add the CSV path")
         loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
 
         with pytest.raises(MissionVerifyFirstError):
@@ -690,3 +688,178 @@ class TestVerifyTaskExecution:
 
         assert seen == [["pytest", "tests/importer", "-q"]]
 
+
+class TestTwoJobFixtureEndToEnd:
+    """The acceptance fixture: job 1 green -> continue -> verify runs FIRST.
+
+    The ordering claim is asserted from the evidence record the run writes,
+    not from prose: ``steps[0]`` is the verification, and the work only ever
+    appears after it.
+    """
+
+    def _mission_with_a_green_first_job(self, tmp_path, command: str):
+        job_one = Job(name="job one", state=RunState.COMPLETED,
+                      project_id=_PROJECT, metadata={"verify_command": command})
+        save_job(job_one)
+        mission = create_mission(_PROJECT, "Keep the importer working",
+                                 root=tmp_path)
+        link_job_to_mission(_PROJECT, mission.id, str(job_one.id),
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+        return mission, job_one
+
+    @pytest.fixture(autouse=True)
+    def _data_root(self, tmp_path, monkeypatch):
+        """continue_mission and the executor use the default data root."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+
+    def test_verify_runs_first_and_then_the_follow_up_work_runs(self, tmp_path):
+        mission, job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+        ran: list[str] = []
+
+        run = execute_mission_followup(
+            job_two,
+            runner=lambda argv, cwd: (0, "importer still fine"),
+            work_runner=lambda task: (ran.append(task.description), True)[1],
+        )
+
+        assert run.steps[0] == f"verify:{VERIFY_RESULT_PASSED}"
+        assert run.steps[1] == "work:Add the CSV path"
+        assert ran == ["Add the CSV path"]
+        assert run.follow_up_started is True
+
+    def test_a_broken_previous_state_stops_the_follow_up_before_it_starts(
+            self, tmp_path):
+        mission, job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+        ran: list[str] = []
+
+        run = execute_mission_followup(
+            job_two,
+            runner=lambda argv, cwd: (1, "ImporterError: schema drifted"),
+            work_runner=lambda task: (ran.append(task.description), True)[1],
+        )
+
+        assert run.steps == [f"verify:{VERIFY_RESULT_FAILED}"]
+        assert ran == []
+        assert run.follow_up_started is False
+
+    def test_the_failure_message_names_what_broke(self, tmp_path):
+        mission, _job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+
+        run = execute_mission_followup(
+            job_two, runner=lambda argv, cwd: (1, "ImporterError: schema drifted"),
+            work_runner=lambda task: True)
+
+        assert "check the importer" in run.message
+        assert "exited 1" in run.message
+        assert "the follow-up never started" in run.message
+        assert "ImporterError: schema drifted" in run.verify.output_tail
+
+    def test_the_ordering_is_readable_from_the_evidence_record(self, tmp_path):
+        mission, _job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+
+        execute_mission_followup(
+            job_two, runner=lambda argv, cwd: (0, "fine"),
+            work_runner=lambda task: True)
+
+        record = read_mission_verify_record(str(job_two.id))
+        assert record["steps"][0].startswith("verify:")
+        assert record["verify"]["command"] == "check the importer"
+        assert record["verify"]["follow_up_may_start"] is True
+
+    def test_a_failed_verify_leaves_the_work_task_unstarted_on_the_job(
+            self, tmp_path):
+        mission, _job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+
+        execute_mission_followup(job_two, runner=lambda argv, cwd: (1, "broken"),
+                                 work_runner=lambda task: True)
+
+        reloaded = load_job(job_two.id)
+        assert reloaded.tasks[0].status == RunState.FAILED
+        assert reloaded.tasks[1].status == RunState.PENDING
+
+    def test_the_lineage_is_correct_in_the_chain(self, tmp_path):
+        mission, job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+
+        chain = load_mission(_PROJECT, mission.id, root=tmp_path)
+
+        assert [(link.job_id, link.role) for link in chain.job_links] == [
+            (str(job_one.id), MISSION_ROLE_INITIAL),
+            (str(job_two.id), MISSION_ROLE_FOLLOW_UP),
+        ]
+        rendered = "\n".join(render_mission_chain(chain))
+        assert rendered.index(str(job_one.id)) < rendered.index(str(job_two.id))
+
+    def test_the_follow_up_plan_is_verify_first(self, tmp_path):
+        mission, job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+
+        assert is_verify_task(job_two.tasks[0])
+        assert job_two.tasks[0].inputs["previous_job_id"] == str(job_one.id)
+        assert job_two.tasks[1].description == "Add the CSV path"
+
+    def test_the_first_job_of_an_empty_mission_has_nothing_to_verify(self, tmp_path):
+        mission = create_mission(_PROJECT, "Keep the importer working",
+                                 root=tmp_path)
+
+        job = continue_mission(_PROJECT, mission.id, "Write the importer",
+                               root=tmp_path)
+
+        assert not is_verify_task(job.tasks[0])
+        assert job.metadata["mission_role"] == MISSION_ROLE_INITIAL
+
+    def test_a_gone_previous_job_refuses_rather_than_verifying_blind(self, tmp_path):
+        mission, job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+        (tmp_path / "jobs" / f"{job_one.id}.json").unlink()
+
+        with pytest.raises(MissionError) as exc:
+            continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                             root=tmp_path)
+
+        assert "starting blind" in str(exc.value)
+
+    def test_an_empty_next_step_is_refused(self, tmp_path):
+        mission, _job_one = self._mission_with_a_green_first_job(
+            tmp_path, "check the importer")
+
+        with pytest.raises(MissionError):
+            continue_mission(_PROJECT, mission.id, "   ", root=tmp_path)
+
+    def test_an_unverifiable_previous_job_is_reported_not_claimed_green(
+            self, tmp_path):
+        """A9: nothing to verify does not block, and is never called a pass."""
+        job_one = Job(name="job one", state=RunState.COMPLETED,
+                      project_id=_PROJECT)
+        save_job(job_one)
+        mission = create_mission(_PROJECT, "Keep it working", root=tmp_path)
+        link_job_to_mission(_PROJECT, mission.id, str(job_one.id),
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+        job_two = continue_mission(_PROJECT, mission.id, "Add the CSV path",
+                                   root=tmp_path)
+
+        run = execute_mission_followup(job_two, work_runner=lambda task: True)
+
+        assert run.verify.result == VERIFY_RESULT_UNVERIFIABLE
+        assert "nothing was verified" in run.message
+        assert run.follow_up_started is True
