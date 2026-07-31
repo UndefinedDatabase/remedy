@@ -9,18 +9,18 @@ jobs are structurally forced to verify the previous state FIRST
 plan-approval payload item defaulting to NO).
 
 ## Current Step
-R1 PASS (78f5f608..e8c3c147), R2 PASS (e8c3c147..1725cc60, R-0163
-Resolved). R3 COMPLETE, handed back: integration gate run per
-docs/agents/integration_gate.md. Branch 14744 passed exit 0 with
-zero FAILED; base at 78f5f608 in a throwaway worktree with UI
-artifact parity; comm -13 EMPTY, every comm -23 id attributed to
-the environment class and shown non-reproducible. No repair was
-indicated and none was done. Evidence in .agent/gate_f056_r3/.
+R1/R2/R3 all PASS; R3 carries the INTEGRATION GATE PASS and the
+full-suite claim (LAST_REVIEWED_SHA b41a4b53). R4 (SPLIT closure)
+per docs/roadmap/STATUS_closure_protocol.md v4: ledger → Built
+State → preconditions (integrity check, clean tree, push) →
+evidence job (feature-scoped f056) → fresh review zip → closure
+commit (STATUS [x] + README sync + final .agent state) → PR.
+No merge: the PR merges at the next feature's Open PR Gate.
 
 ## Next Steps
-- Reviewer issues the R3 gate verdict (1725cc60..HEAD).
-- Closure round (STATUS `[x]`, evidence job + fresh review zip, PR)
-  — its own round.
+- Reviewer verifies closure (b41a4b53..HEAD) and ends the session
+  with the feature-done banner.
+- The closure PR merges at the next feature's Open PR Gate.
 
 ## Risks
 - `mission` CLI group already exists (internal run-loop facade):
