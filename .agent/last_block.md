@@ -1,64 +1,51 @@
-Round f053-r6 — CLOSURE per docs/roadmap/STATUS_closure_protocol.md (v4);
-that file wins over the block summary. Never merge anything this round.
-f053-r6-5 is ONE ~200-char line that arrives hard-wrapped: rejoin the
-fragments with a single space, re-hash, use only after the hash matches
-(known recoverable class, 4th instance). f053-r6-6's EDIT-1 TO-line may
-wrap the same way — same recovery.
+OUTCOME: pending
 
-STEP 1 — COMMIT A: in .agent/live_review.md replace the R5 "In progress."
-Steps bullet with f053-r6-1, append f053-r6-2 to "## Verdicts" after the
-R4 entry, replace the block from "- Open: R-0162 (process, Low," through
-"- Next free ID: R-0163." with f053-r6-3; append f053-r6-4 at the END of
-docs/roadmap/features/T1_F053.md. cmp proofs for all four. Record the
-commit's FULL sha — it is the expected accepted HEAD. Touches
-docs/roadmap/** → docs gate now: tests/docs 293, exit 0.
+# Received block — operator override 2026-07-31 (single-session micro-round)
 
-STEP 2 — PRECONDITIONS (abort closure on any failure):
-integrity check --json → PASS, fail_count 0 (raw JSON summary recorded);
-git status --porcelain empty; push; git rev-list --left-right --count
-@{u}...HEAD → "0 0". R-0160 is a documented Low risk, not a blocker.
+Read docs/agents/planner_reviewer_prompt.md and act accordingly, with
+this operator override: at the current feature boundary, run ONE small
+micro-round (chore branch, authored texts per fidelity protocol, full
+evidence discipline, standing operator approval for same-session
+merge). Sequence: (0) if a closure PR waits, Open PR Gate first per
+protocol — skip if none; (1) this round, including the normal
+register-or-resolve pass over any carried closure CANDIDATES;
+(2) merge on PASS; (3) continue per STATUS.md to whatever Rule A5
+selects next.
+Gate: tests/docs/ + canary. Expected ledger effect: R-0160 RESOLVED.
 
-STEP 3 — EVIDENCE JOB: create_manual_completion_bundle(
-review_feature_id="f053", ...), fresh job id, base commit FULL sha
-15105dbe070c722f0e7cd44aff065b6fed6e1635, head = commit A. Four REAL
-verification runs executed now with exit codes: test_run_report 68,
-test_run_report_hook 22, test_job_report 30, canary 42. Producer
-pitfalls per the protocol's step-1 list, incl. (c) run_id ^vr-\d{4,}$;
-node_ids via --collect-only with len(node_ids) == selected; test_files
-are FILES; output_hash = sha256 of the EXACT stored stdout_summary
-bytes; full-length base_commit; full closed-schema gate set.
+Item 1 — Named round types: production code never merges
+self-certified. File: docs/agents/planner_reviewer_prompt.md (the
+section governing rounds/blocks). Presence check: any rule naming
+round types or restricting single-session execution. If absent, add,
+tagged "operator ruling 2026-07-31, paydown0731 precedent": SPLIT
+(default, mandatory for packages/, apps/, any production code path,
+all feature work; production code never merges self-certified) vs
+SINGLE-SESSION MICRO-ROUND (change set limited to docs/, tests/,
+.agent/**, roadmap files; full fidelity ritual + evidence discipline
+unchanged; labeled; standing approval covers only this type).
+Retroactive note: paydown0731 ratified as founding precedent EXCEPT
+its production-code commit (R-0159 guard fix class) — that kind
+requires SPLIT from now on.
 
-STEP 4 — READY ZIP from the clean tree, BEFORE any evidence commit:
-bash scripts/make_review_zip.sh --evidence-dir <path> (or --job-id).
-Requires PACKAGE_STATUS=READY_FOR_REVIEW, EVIDENCE_AUTHORITATIVE=true,
-validation_errors empty, committed_review_subject spanning
-15105dbe070c722f0e7cd44aff065b6fed6e1635..<commit A>, base_is_ancestor
-true, ZipFile.testzip() → None. Record filename + SHA-256 (script JSON
-AND independent sha256sum). accepted HEAD := manifest
-committed_review_subject.head_commit, must equal commit A. A failing zip
-build is a closure BLOCKER: record the raw error and STOP.
+Item 2 — Symmetrize the worktree-only mutation rule (R-0160).
+Files: planner_reviewer_prompt.md §4 item 10 + split_workflow.md
+worker bootstrap bullet. If reviewer-only, amend both, tagged
+"R-0160 fix, operator ruling 2026-07-31": destructive verification
+only in disposable worktrees for EVERY role; primary checkout
+porcelain-empty at every handback and every verdict. Then RESOLVE
+R-0160 with the doc commit as evidence (honest-conduct note
+preserved).
 
-STEP 5 — EVIDENCE COMMIT (only after the READY zip exists): git add -f
-the evidence export dir.
+Item 3 — Relay semantics: "no questions" never means "no relays".
+File: planner_reviewer_prompt.md §2 at the never-ask rule. If absent,
+add one sentence, tagged "operator ruling 2026-07-31": never-ask bars
+questions/menus/tasks at the operator — it does NOT reduce required
+relays, and no directive phrase licenses collapsing SPLIT into
+single-session; round type governed solely by Item 1's change-set
+rule.
 
-STEP 6 — FINAL COMMIT = exactly STATUS.md + README.md + .agent/.
-Substitute into a COPY of f053-r6-5 (each placeholder exactly once,
-grep -c 1→0 each, original untouched): <JOB_ID>, <ZIP_FILENAME>,
-<ZIP_SHA256>, <HEAD_SHA> = manifest head_commit. Replace the unique
-STATUS.md line "- [~] F053 — Final & interim report" with it (old 1→0,
-new 1; cmp of the grepped line against the substituted copy → 0). Apply
-the three README edits from f053-r6-6 exactly (each FROM 1→0, each TO
-present). Provenance table per substituted value in the handback.
-Rewrite .agent/handoff.md + flip OUTCOME to executed. Post-edit gates:
-tests/docs 293 exit 0 (count pin 29==29), canary 42;
-grep -c '^- \[x\]' docs/roadmap/STATUS.md → 29.
-
-STEP 7 — PR, NOT merged: gh pr create --base main --title "F053 — Final
-& interim report (T001–T002)", body per AGENTS.md: what/why, DECISIONS
-D2 + D3, changed-files table, verdicts R1–R5 (R3+R4 FAIL honestly named,
-gate PASS at R5), open findings 1 (R-0160, Low, routed to paydown),
-runtime actuals (observed; not-measured beats a guess), evidence job +
-package + SHA-256. Report the PR number. Then await the reviewer.
-Authored texts f053-r6-{1..6} (sha256 verified before use, saved
-verbatim under .agent/authored/, applied by copy).
-OUTCOME: executed
+Constraints: token caps respected; AGENTS.md wins on conflict;
+handback per template; every applied string in sha256-stamped blocks;
+if ALL presence checks already satisfied and R-0160 resolved, skip
+round, note in one line, proceed to step (3). No questions to the
+operator at any point.
