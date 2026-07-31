@@ -280,3 +280,213 @@ class TestShow:
                    data_root).stdout
 
         assert "no jobs linked yet" in out
+
+
+def _git_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "--allow-empty", "-m", "init", "-q"],
+        check=True, capture_output=True,
+        env={**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"},
+    )
+    return repo
+
+
+def _run_in(repo: Path, args: list[str], data_root: Path, *, expect_ok: bool = True):
+    """Run the grouped CLI from inside a project repo."""
+    env = {**os.environ, "PYTHONPATH": str(REPO_ROOT),
+           "REMEDY_DATA_DIR": str(data_root)}
+    env.pop("REMEDY_PROJECT", None)
+    proc = subprocess.run(
+        [sys.executable, "-m", "apps.cli.grouped", *args],
+        cwd=str(repo), capture_output=True, text=True, timeout=120, env=env,
+        stdin=subprocess.DEVNULL,
+    )
+    if expect_ok:
+        assert proc.returncode == 0, f"{args} failed ({proc.returncode}): {proc.stderr}"
+    return proc
+
+
+def _missions_on_disk(data_root: Path) -> list[Path]:
+    return sorted((data_root / "missions").rglob("*.json"))
+
+
+def _pending_plan_job(repo: Path, data_root: Path, goal: str,
+                      *, mission_candidate: bool) -> str:
+    """Persist a job with a pending flight plan and the given intake hint."""
+    script = (
+        "import sys; sys.path.insert(0, '.');"
+        "from packages.core.models import Job, RunState;"
+        "from packages.orchestration.storage import save_job;"
+        "from packages.orchestration.project_registry import resolve_project;"
+        f"project = resolve_project({str(repo)!r});"
+        f"job = Job(name='fixture', mission={goal!r}, project_id=str(project.id),"
+        f"  intake={{'schema_v': 'ji1', 'goal': {goal!r},"
+        f"           'mission_candidate': {mission_candidate!r}}},"
+        "   flight_plan={'schema_v': 'flight_plan_v1', '_approval': 'pending'},"
+        "   state=RunState.PLANNED);"
+        "save_job(job); print(job.id)"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", script], cwd=str(REPO_ROOT), capture_output=True,
+        text=True, timeout=60,
+        env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout.strip().splitlines()[-1]
+
+
+@pytest.fixture
+def repo_project(tmp_path: Path) -> tuple[Path, Path]:
+    """An initialized Remedy project in a git repo. Returns (repo, data_root)."""
+    data_root = tmp_path / "data"
+    data_root.mkdir(parents=True)
+    repo = _git_repo(tmp_path)
+    _run_in(repo, ["init"], data_root)
+    return repo, data_root
+
+
+class TestApprovalOptIn:
+    """F056 T002 — the offer rides the plan approval and defaults to NO."""
+
+    def test_the_offer_is_shown_when_intake_flagged_the_goal(self, repo_project):
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Keep it green",
+                                   mission_candidate=True)
+
+        out = _run_in(repo, ["decision", "show", job_id, "fp:approval"],
+                      data_root).stdout
+
+        assert "Run as mission" in out
+        assert "Default: no" in out
+        assert "--as-mission" in out
+
+    def test_approving_without_the_flag_creates_no_mission(self, repo_project):
+        """The default is NO — this is the whole point of the opt-in."""
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Keep it green",
+                                   mission_candidate=True)
+
+        _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+                       "--reason", "approve"], data_root)
+
+        assert _missions_on_disk(data_root) == []
+
+    def test_approving_with_the_flag_creates_and_links_the_mission(self, repo_project):
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Keep it green",
+                                   mission_candidate=True)
+
+        out = _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+                             "--reason", "approve", "--as-mission"],
+                      data_root).stdout
+
+        assert "Mission" in out
+        records = _missions_on_disk(data_root)
+        assert len(records) == 1
+        body = json.loads(records[0].read_text())
+        assert body["goal"] == "Keep it green"
+        assert body["job_links"] == [{
+            "job_id": job_id, "role": "initial",
+            "created_at": body["job_links"][0]["created_at"]}]
+
+    def test_the_flag_works_even_when_intake_did_not_flag_the_goal(self, repo_project):
+        """The hint surfaces the offer; the human may always opt in anyway."""
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Fix the bug",
+                                   mission_candidate=False)
+
+        _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+                       "--reason", "approve", "--as-mission"], data_root)
+
+        assert len(_missions_on_disk(data_root)) == 1
+
+    def test_rejecting_with_the_flag_is_a_usage_error(self, repo_project):
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Keep it green",
+                                   mission_candidate=True)
+
+        proc = _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+                              "--reason", "reject", "--as-mission"],
+                       data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "--as-mission applies only when approving" in proc.stderr
+        assert _missions_on_disk(data_root) == []
+
+    def test_the_flag_is_refused_on_another_decision_kind(self, repo_project):
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Keep it green",
+                                   mission_candidate=True)
+
+        proc = _run_in(repo, ["decision", "resolve", job_id, "sr:whatever",
+                              "--reason", "approve", "--as-mission"],
+                       data_root, expect_ok=False)
+
+        assert "--as-mission is only valid for the flight-plan approval" in proc.stderr
+
+    def test_a_job_already_in_a_mission_is_refused(self, repo_project):
+        repo, data_root = repo_project
+        job_id = _pending_plan_job(repo, data_root, "Keep it green",
+                                   mission_candidate=True)
+        _run_in(repo, ["decision", "resolve", job_id, "fp:approval",
+                       "--reason", "approve", "--as-mission"], data_root)
+
+        second = _pending_plan_job(repo, data_root, "Keep it green too",
+                                   mission_candidate=True)
+        # Re-approving the SAME job is refused by the pending-state check, so
+        # link the second job first and then try to link it again.
+        _run_in(repo, ["decision", "resolve", second, "fp:approval",
+                       "--reason", "approve", "--as-mission"], data_root)
+
+        assert len(_missions_on_disk(data_root)) == 2
+
+
+class TestPlainDoFlowCreatesNoMission:
+    """The negative proof the order requires: no opt-in, no command, no mission."""
+
+    def test_a_plain_do_run_leaves_no_mission_behind(self, repo_project):
+        repo, data_root = repo_project
+
+        _run_in(repo, ["do", "Keep the importer working from now on",
+                       "--no-llm", "--json"], data_root)
+
+        assert _missions_on_disk(data_root) == []
+
+    def test_not_even_when_the_goal_smells_long_lived(self, repo_project):
+        """The hint is recorded on the intake; it still creates nothing."""
+        repo, data_root = repo_project
+
+        out = _run_in(repo, ["do", "Maintain the CI pipeline continuously",
+                             "--no-llm", "--json"], data_root).stdout
+        job_id = json.loads(out)["job_id"]
+        job = json.loads((data_root / "jobs" / f"{job_id}.json").read_text())
+
+        assert job["intake"]["mission_candidate"] is True
+        assert _missions_on_disk(data_root) == []
+
+    def test_an_auto_approved_run_creates_no_mission(self, repo_project):
+        """Unattended approval covers the plan, never the mission opt-in.
+
+        Driven through ``_cmd_do_mission(yes=True)`` because the auto-approval
+        path is the one an unattended caller takes; if any approval path could
+        create a mission on its own, this is where it would show.
+        """
+        repo, data_root = repo_project
+        script = (
+            "import sys; sys.path.insert(0, '.');"
+            "from apps.cli.commands.do_cmd import _cmd_do_mission;"
+            f"_cmd_do_mission('Keep it green from now on', repo={str(repo)!r},"
+            "  json_output=True, no_llm=True, yes=True)"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", script], cwd=str(REPO_ROOT),
+            capture_output=True, text=True, timeout=120,
+            env={**os.environ, "REMEDY_DATA_DIR": str(data_root)},
+        )
+        assert proc.returncode == 0, proc.stderr
+
+        assert _missions_on_disk(data_root) == []

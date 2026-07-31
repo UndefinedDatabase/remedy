@@ -123,6 +123,11 @@ class JobIntake(_Structured):
     truncated_input: bool = False
     clarifications: list[IntakeClarification] = Field(default_factory=list)
     dropped_clarifications: int = 0
+    #: F056: this goal smells like it outlives one job.  A HINT ONLY — it
+    #: surfaces the "run as mission?" offer in the plan approval, which
+    #: defaults to NO.  Nothing is created because this is true (P2).
+    #: Additive: payloads written before F056 load unchanged as False.
+    mission_candidate: bool = False
 
 
 TokenBand = Literal["S", "M", "L", "XL"]

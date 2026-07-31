@@ -167,6 +167,12 @@ _ANSWER_OPT = ArgDef(
     'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
     required=False, is_option=True, is_repeatable=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
+#: F056: the plan-approval opt-in. Its ABSENCE is the default — approving
+#: without it creates no mission, which is the whole point of the opt-in.
+_AS_MISSION_FLAG = ArgDef(
+    "--as-mission",
+    "When approving: also create a mission for this goal and link this job as its initial job",
+    required=False, is_option=True, is_flag=True)
 _PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
 _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
 
@@ -2398,6 +2404,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("decision_id", "Decision ID"),
             _REASON_OPT,
             _ANSWER_OPT,
+            _AS_MISSION_FLAG,
         ),
     ),
     CommandEntry(

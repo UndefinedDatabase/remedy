@@ -5,7 +5,7 @@ from __future__ import annotations
 import json as _json
 import sys
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from packages.orchestration.data_paths import resolve_job_id
 
@@ -83,6 +83,13 @@ def _cmd_decision_show(job_id_str: str, decision_id: str, *, json_output: bool =
             print(f"  Question {q.get('id', '')}: {q.get('question', '')}")
             print(f"    Default: {q.get('default_answer', '')}")
             print(f"    Impact: {q.get('impact', '')}")
+        offer = d.payload.get("mission_offer")
+        if offer:
+            # F056: the default is printed because it is what happens when the
+            # operator says nothing — silence must never read as consent.
+            print(f"  Question mission: {offer.get('question', '')}")
+            print(f"    Default: {offer.get('default', 'no')} "
+                  f"(add --as-mission to opt in)")
         if d.next_actions:
             print("  Next actions:")
             for a in d.next_actions:
@@ -126,18 +133,72 @@ def parse_answer_options(
     return answers
 
 
+def _create_mission_for_job(job: Any) -> None:
+    """F056: the plan-approval opt-in, taken.  Only ever reached via --as-mission.
+
+    Creates the mission and links this job as its ``initial`` job.  A failure
+    here is reported and exits non-zero rather than leaving an approved plan
+    with a half-built mission behind it.
+    """
+    from packages.orchestration.mission_state import (
+        MISSION_ROLE_INITIAL,
+        MissionError,
+        create_mission,
+        link_job_to_mission,
+        mission_for_job,
+    )
+
+    project_id = str(getattr(job, "project_id", "") or "")
+    if not project_id:
+        print("Error: this job has no project, so it cannot start a mission.\n"
+              "  Register one with: remedy init", file=sys.stderr)
+        sys.exit(1)
+
+    existing = mission_for_job(str(job.id))
+    if existing is not None:
+        print(f"Error: job {str(job.id)[:8]} already belongs to mission "
+              f"{existing.id[:12]} — one job, one mission.", file=sys.stderr)
+        sys.exit(1)
+
+    intake = getattr(job, "intake", None)
+    goal = ""
+    if isinstance(intake, dict):
+        goal = str(intake.get("goal", "") or "")
+    goal = goal or str(getattr(job, "mission", "") or "") or str(job.name)
+
+    try:
+        mission = create_mission(project_id, goal)
+        link_job_to_mission(project_id, mission.id, str(job.id),
+                            MISSION_ROLE_INITIAL)
+    except MissionError as exc:
+        print(f"Error: could not start the mission: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Mission {mission.id} started for this goal.")
+    print(f"  Goal:  {mission.goal}")
+    print(f"  Chain: remedy mission show {mission.id[:12]}")
+
+
 def _cmd_decision_resolve(
     job_id_str: str,
     decision_id: str,
     *,
     reason: str | None = None,
     answer: list[str] | None = None,
+    as_mission: bool = False,
 ) -> None:
     # ``--answer`` bundles the flight plan's clarification questions; a task
     # decision carries exactly one question, answered through --reason.
     if answer and not decision_id.startswith("fp:"):
         print(
             f"Error: --answer is only valid for the flight-plan approval "
+            f"decision, not {decision_id!r}.",
+            file=sys.stderr)
+        sys.exit(1)
+    # F056: same rule for the mission opt-in — it belongs to the plan approval.
+    if as_mission and not decision_id.startswith("fp:"):
+        print(
+            f"Error: --as-mission is only valid for the flight-plan approval "
             f"decision, not {decision_id!r}.",
             file=sys.stderr)
         sys.exit(1)
@@ -251,6 +312,11 @@ def _cmd_decision_resolve(
                 "Error: --answer applies only when approving the plan.",
                 file=sys.stderr)
             sys.exit(1)
+        if as_mission and reason != "approve":
+            print(
+                "Error: --as-mission applies only when approving the plan.",
+                file=sys.stderr)
+            sys.exit(1)
         try:
             answers = parse_answer_options(answer, questions)
         except AnswerParseError as exc:
@@ -275,6 +341,10 @@ def _cmd_decision_resolve(
                 print(f"  {qid} ({source}): "
                       f"{answers.get(qid, q['default_answer'])}")
             print(f"Assumption log: {log_path}")
+            # F056: last, and only on an explicit --as-mission. An approval
+            # without the flag leaves no mission behind — the default is NO.
+            if as_mission:
+                _create_mission_for_job(job)
         else:
             fp["_approval"] = "rejected"
             job.flight_plan = fp
@@ -309,6 +379,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         args.decision_id,
         reason=getattr(args, "reason", None),
         answer=getattr(args, "answer", None),
+        as_mission=getattr(args, "as_mission", False),
     ),
     "decision.explain": lambda args: _cmd_decision_explain(args.job_id),
 }

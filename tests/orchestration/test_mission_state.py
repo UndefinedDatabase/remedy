@@ -20,6 +20,8 @@ from uuid import uuid4
 import pytest
 
 from packages.core.models import Job, RunState
+from packages.orchestration.decision_queue import list_decisions
+from packages.orchestration.intake import heuristic_intake, mission_candidate_hint
 from packages.orchestration.mission_state import (
     MAX_MISSION_GOAL_CHARS,
     MISSING_JOB_LABEL,
@@ -51,6 +53,7 @@ from packages.orchestration.mission_state import (
     save_mission,
     set_mission_status,
 )
+from packages.orchestration.schemas.models import JobIntake
 from packages.orchestration.storage import save_job
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
@@ -453,3 +456,89 @@ class TestMissionChainRendering:
         assert MISSION_STATUS_ACTIVE in row
         assert "1 job(s)" in row
         assert "Ship the importer" in row
+
+
+class TestMissionCandidateHint:
+    """F056 T002 — intake's hint. It offers a choice; it never makes one."""
+
+    def test_a_standing_commitment_is_flagged(self):
+        assert mission_candidate_hint(
+            "Keep the importer working from now on") is True
+
+    def test_a_multi_stage_effort_is_flagged(self):
+        assert mission_candidate_hint(
+            "Migrate the database in stages over the next quarter") is True
+
+    def test_a_one_shot_fix_is_not_flagged(self):
+        assert mission_candidate_hint("Fix the login bug") is False
+
+    def test_the_hint_is_case_insensitive(self):
+        assert mission_candidate_hint("MAINTAIN the CI pipeline") is True
+
+    def test_heuristic_intake_carries_the_hint(self):
+        flagged = heuristic_intake("Keep it green, continuously.")
+        plain = heuristic_intake("Fix the login bug.")
+
+        assert flagged.value.mission_candidate is True
+        assert plain.value.mission_candidate is False
+
+    def test_the_field_defaults_to_false_for_older_payloads(self):
+        """Additive field: an intake written before F056 loads unchanged."""
+        intake = JobIntake.model_validate({"schema_v": "ji1", "goal": "Ship it"})
+
+        assert intake.mission_candidate is False
+
+
+class TestMissionOfferInThePlanApproval:
+    """The offer rides the existing approval decision and defaults to NO."""
+
+    def test_a_flagged_intake_adds_the_offer_to_the_payload(self):
+        job = Job(name="t", flight_plan={"_approval": "pending"},
+                  intake={"schema_v": "ji1", "goal": "Keep it green",
+                          "mission_candidate": True})
+
+        decision = [d for d in list_decisions(job, [])
+                    if d.type == "flight_plan_approval"][0]
+
+        assert decision.payload["mission_offer"]["default"] == "no"
+        assert decision.payload["mission_offer"]["goal"] == "Keep it green"
+
+    def test_the_offer_names_the_opt_in_flag(self):
+        job = Job(name="t", flight_plan={"_approval": "pending"},
+                  intake={"schema_v": "ji1", "goal": "Keep it green",
+                          "mission_candidate": True})
+
+        decision = [d for d in list_decisions(job, [])
+                    if d.type == "flight_plan_approval"][0]
+
+        assert any("--as-mission" in action for action in decision.next_actions)
+
+    def test_an_unflagged_intake_gets_no_offer(self):
+        job = Job(name="t", flight_plan={"_approval": "pending"},
+                  intake={"schema_v": "ji1", "goal": "Fix the bug",
+                          "mission_candidate": False})
+
+        decision = [d for d in list_decisions(job, [])
+                    if d.type == "flight_plan_approval"][0]
+
+        assert "mission_offer" not in decision.payload
+        assert not any("--as-mission" in a for a in decision.next_actions)
+
+    def test_a_job_without_intake_gets_no_offer(self):
+        job = Job(name="t", flight_plan={"_approval": "pending"})
+
+        decision = [d for d in list_decisions(job, [])
+                    if d.type == "flight_plan_approval"][0]
+
+        assert "mission_offer" not in decision.payload
+
+    def test_the_offer_is_one_touchpoint_not_a_second_decision(self):
+        """No new human touchpoint: the offer rides the approval that exists."""
+        job = Job(name="t", flight_plan={"_approval": "pending"},
+                  intake={"schema_v": "ji1", "goal": "Keep it green",
+                          "mission_candidate": True})
+
+        approvals = [d for d in list_decisions(job, [])
+                     if d.type == "flight_plan_approval"]
+
+        assert len(approvals) == 1

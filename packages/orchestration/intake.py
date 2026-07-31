@@ -38,7 +38,10 @@ Rules:
 - constraints: explicit limitations or requirements
 - acceptance_hints: how to verify completion
 - truncated_input: true only if the mission text is visibly cut off
-- clarifications: open questions with default answers and impact"""
+- clarifications: open questions with default answers and impact
+- mission_candidate: true only if this goal plainly outlives a single job
+  (ongoing upkeep, a multi-stage effort, a standing commitment). It creates
+  nothing on its own — it only offers the choice to a human."""
 
 _PATH_PATTERN = re.compile(
     r'(?:[\w.-]+/)+[\w.-]+'
@@ -97,6 +100,34 @@ def _extract_context_refs(text: str) -> list[str]:
     return refs
 
 
+#: Phrases that mark a goal as outliving one job (F056).  Deliberately
+#: PHRASES, not single words: "keep" alone appears in half of all goals, while
+#: "keep it green" is a standing commitment.  A false positive costs one extra
+#: line in the approval payload; the offer still defaults to NO, and nothing is
+#: created without a human yes — so the list may be generous, but the ACTION
+#: never is.
+_MISSION_CANDIDATE_MARKERS = (
+    "ongoing", "long-term", "long term", "over time", "from now on",
+    "continuously", "continuous", "keep it working", "keep it green",
+    "keep working", "keep them working", "keep passing", "stay green",
+    "every day", "every week", "every month", "daily", "weekly", "monthly",
+    "maintain", "monitor", "watch for", "step by step", "multi-step",
+    "in stages", "in phases", "phase 1", "phase one", "milestone",
+    "over the next", "until it is", "until they are",
+)
+
+
+def mission_candidate_hint(mission: str) -> bool:
+    """Does this goal smell like it outlives a single job? (F056)
+
+    A HINT, never a decision.  A true answer only surfaces the "run as
+    mission?" item in the plan-approval payload, where it defaults to NO.  No
+    caller of this function creates anything.
+    """
+    text = str(mission).lower()
+    return any(marker in text for marker in _MISSION_CANDIDATE_MARKERS)
+
+
 def _truncate_clarifications(intake: JobIntake) -> JobIntake:
     """Keep at most MAX_CLARIFICATIONS, recording the drop count."""
     if len(intake.clarifications) <= MAX_CLARIFICATIONS:
@@ -116,6 +147,7 @@ def heuristic_intake(mission: str) -> IntakeResult:
         goal=_first_sentence(mission),
         context_refs=_extract_context_refs(mission),
         truncated_input=was_truncated,
+        mission_candidate=mission_candidate_hint(mission),
     )
     return IntakeResult(value=value, source="heuristic")
 
