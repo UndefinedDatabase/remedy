@@ -145,6 +145,10 @@ def momentum_flag(cycle_records: list[dict[str, Any]] | None) -> str:
 #: else is repaired.
 NEXT_ACTION_RULES: tuple[tuple[str, str], ...] = (
     ("open-decision", "an open decision is waiting for an answer"),
+    # F053 T002 (DECISION D2): an operator stop outranks the blocked rule.
+    # A run somebody stopped on purpose is not a broken run, and telling its
+    # operator to go read a postmortem would be a false alarm.
+    ("stopped-by-operator", "the run stopped on operator request"),
     ("blocked-failed", "the run is blocked or a task failed"),
     ("all-green", "every task completed and nothing is open"),
     ("indeterminate", "no rule matched the recorded state"),
@@ -327,8 +331,14 @@ def recommended_next_action(sources: ReportSources) -> NextAction:
             action = f"Answer the open decision: `{command}`"
         return NextAction("open-decision", action)
 
-    blocked_state = (sources.terminal_status or "").strip().lower() in {
-        "blocked", "budget_exhausted", "deadline_reached", "stopped_by_operator"}
+    terminal = (sources.terminal_status or "").strip().lower()
+    if terminal == "stopped_by_operator":
+        return NextAction(
+            "stopped-by-operator",
+            "Resume the run (or close it) — it stopped on request, "
+            "nothing is broken")
+
+    blocked_state = terminal in {"blocked", "budget_exhausted", "deadline_reached"}
     if sources.blocked or blocked_state:
         ref = next((b.evidence_ref for b in sources.blocked if b.evidence_ref), "")
         target = _link("the postmortem", ref) if ref else "the postmortem"
@@ -610,14 +620,35 @@ def render_report(job: Any, mode: str = MODE_FINAL, *,
     return render_report_from_sources(sources, mode=mode, rendered_at=rendered_at)
 
 
+def _job_repo_root(job: Any) -> str:
+    """The repository this job ran against, or "" when that is not knowable.
+
+    ``packages.core.models.Job`` carries no repo path — the persisted
+    ``pingpong_job.JobPlan`` does (``repo_path``), which is the same source the
+    cycle loop reads its budget actuals from.  An unreadable or absent plan is
+    not an error here: it means the milestone is simply not knowable, and the
+    report says "not recorded" rather than guessing a repository.
+    """
+    try:
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        plan = load_job_plan(str(getattr(job, "id", "") or ""))
+    except Exception:  # noqa: BLE001 — a report must not depend on the plan store
+        return ""
+    return str(getattr(plan, "repo_path", "") or "") if plan is not None else ""
+
+
 def collect_report_sources(job: Any) -> ReportSources:
     """Gather the report's sources off an in-memory job.
 
-    Only the sources that live ON the job are read here.  The evidence-area
-    sources (cycle records, postmortems, manifest) are wired by F053 T002
-    together with the terminal-state writer, so this round adds no new disk
-    reads and no new failure modes to the run loop.
+    The STATUS mirror is read here when — and only when — a repo root is
+    knowable and that repo carries the ledger (F053 T002, DECISION D2); a run
+    against somebody else's repository has no milestone and renders
+    "not recorded".  The remaining evidence-area sources (cycle records,
+    postmortems, manifest) are attached by the terminal-state writer.
     """
+    from packages.orchestration.status_mirror import read_status_mirror
+
     tasks = tuple(
         TaskOutcome(
             task_id=str(getattr(t, "id", ""))[:8],
@@ -638,4 +669,5 @@ def collect_report_sources(job: Any) -> ReportSources:
         terminal_status=str(metadata.get("cycle_terminal_status", "") or ""),
         stop_reason=str(metadata.get("cycle_stop_reason", "") or ""),
         tasks=tasks,
+        status_mirror=read_status_mirror(_job_repo_root(job) or None),
     )

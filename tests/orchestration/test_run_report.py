@@ -20,6 +20,7 @@ from packages.orchestration.run_report import (
     MOMENTUM_FORWARD,
     MOMENTUM_UNKNOWN,
     NEXT_ACTION_CONDITIONS,
+    NEXT_ACTION_RULES,
     NOT_RECORDED,
     BlockedItem,
     NextAction,
@@ -31,6 +32,10 @@ from packages.orchestration.run_report import (
     recommended_next_action,
     render_report,
     render_report_from_sources,
+)
+from packages.orchestration.status_mirror import (
+    parse_status_ledger,
+    read_status_mirror,
 )
 
 pytestmark = pytest.mark.unit
@@ -513,6 +518,157 @@ class TestDeterminism:
         catches ordering that depends on object identity."""
         assert render_report_from_sources(_green_sources()) == \
             render_report_from_sources(_green_sources())
+
+
+class TestStatusMirrorProducer:
+    """F053 T002 / DECISION D2 — the ledger reader the feature presumed existed.
+
+    The fixture is the self-repo's ledger SHAPE, not the file itself: pinning
+    the real STATUS.md would make these tests fail every time the roadmap
+    advances, which is a test that measures the calendar.
+    """
+
+    LEDGER = """\
+# REMEDY STATUS — Execution-Order Truth
+
+> Grammar: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
+
+## Tier 0 — Foundation & Trust Core
+
+- [x] F001 — Adaptive provider timeouts (PR #123 · commit 4856006 · PASS)
+- [x] F003 — Real token/cost measurement (PR #123 · evidence: some.zip)
+- [~] F053 — Final & interim report
+- [ ] F056 — Missions: persistent goal
+- [ ] F075 — MILESTONE GATE: 10 flawless self-runs
+- [ ] F080 — Machine-readable roadmap mirror
+"""
+
+    def test_milestone_and_distance_come_from_the_ledger(self):
+        mirror = parse_status_ledger(self.LEDGER)
+        assert mirror is not None
+        assert mirror.milestone == "F075"
+        # F053 [~], F056 [ ], F075 [ ] — the milestone counts itself in.
+        assert mirror.remaining_to_milestone == 3
+
+    def test_entries_after_the_milestone_are_not_counted(self):
+        """F080 sits below the gate and must not inflate the distance."""
+        assert parse_status_ledger(self.LEDGER).remaining_to_milestone == 3
+
+    def test_capabilities_split_accepted_from_in_progress(self):
+        """P1 again, at the source: [x] is capability, [~] is work."""
+        mirror = parse_status_ledger(self.LEDGER)
+        assert mirror.accepted_capabilities == (
+            "Adaptive provider timeouts", "Real token/cost measurement")
+        assert mirror.in_progress_capabilities == ("Final & interim report",)
+
+    def test_evidence_parenthetical_is_stripped_from_capabilities(self):
+        """A "can now" line carrying a zip filename helps nobody."""
+        for capability in parse_status_ledger(self.LEDGER).accepted_capabilities:
+            assert "PR #" not in capability
+            assert ".zip" not in capability
+
+    def test_an_explicit_milestone_id_overrides_the_gate_line(self):
+        mirror = parse_status_ledger(self.LEDGER, milestone_id="F056")
+        assert mirror.milestone == "F056"
+        assert mirror.remaining_to_milestone == 2
+
+    def test_blocked_entries_do_not_count_toward_the_distance(self):
+        ledger = self.LEDGER.replace("- [ ] F056 — Missions: persistent goal",
+                                     "- [!] F056 — Missions: persistent goal")
+        assert parse_status_ledger(ledger).remaining_to_milestone == 2
+
+    @pytest.mark.parametrize("text,why", [
+        ("", "empty file"),
+        ("# STATUS\n\nNothing here at all.\n", "no entries"),
+        ("- [ ] F001 — Something\n- [x] F002 — Something else\n", "no milestone"),
+    ])
+    def test_an_untrustworthy_ledger_yields_none_not_a_guess(self, text, why):
+        assert parse_status_ledger(text) is None, why
+
+    def test_a_missing_repo_or_ledger_yields_none(self, tmp_path):
+        assert read_status_mirror(None) is None
+        assert read_status_mirror("") is None
+        assert read_status_mirror(tmp_path) is None          # repo without a ledger
+
+    def test_a_real_repo_root_is_read(self, tmp_path):
+        ledger = tmp_path / "docs" / "roadmap"
+        ledger.mkdir(parents=True)
+        (ledger / "STATUS.md").write_text(self.LEDGER, encoding="utf-8")
+        mirror = read_status_mirror(tmp_path)
+        assert mirror is not None and mirror.milestone == "F075"
+
+    def test_an_unreadable_ledger_never_raises_into_a_render(self, tmp_path):
+        """A directory where the file should be: absent, not an exception."""
+        (tmp_path / "docs" / "roadmap" / "STATUS.md").mkdir(parents=True)
+        assert read_status_mirror(tmp_path) is None
+
+    def test_the_mirror_feeds_the_report_sections(self, tmp_path):
+        ledger = tmp_path / "docs" / "roadmap"
+        ledger.mkdir(parents=True)
+        (ledger / "STATUS.md").write_text(self.LEDGER, encoding="utf-8")
+        sources = ReportSources(job_name="x",
+                                status_mirror=read_status_mirror(tmp_path))
+        report = render_report_from_sources(sources)
+        assert "- 3 features remain to F075" in _section(report, "Milestone")
+        capabilities = _section(report, "Capabilities")
+        assert "- Can now: Adaptive provider timeouts" in capabilities
+        assert "- In progress: Final & interim report" in capabilities
+        assert "- Can now: Final & interim report" not in capabilities
+
+    def test_a_repo_without_a_ledger_renders_not_recorded(self, tmp_path):
+        sources = ReportSources(job_name="x",
+                                status_mirror=read_status_mirror(tmp_path))
+        assert NOT_RECORDED in _section(render_report_from_sources(sources),
+                                        "Milestone")
+
+
+class TestStoppedByOperatorRule:
+    """DECISION D2: a run stopped on purpose is not a broken run."""
+
+    def _stopped(self, **overrides) -> ReportSources:
+        base = dict(job_name="stopped run", terminal_status="stopped_by_operator",
+                    stop_reason="operator requested stop",
+                    tasks=(TaskOutcome("aaaaaaaa", "Do the thing", "paused"),))
+        base.update(overrides)
+        return ReportSources(**base)
+
+    def test_an_operator_stop_gets_its_own_rule(self):
+        assert recommended_next_action(self._stopped()).rule_id == "stopped-by-operator"
+
+    def test_the_action_is_the_amendment_wording(self):
+        action = recommended_next_action(self._stopped()).action
+        assert action == ("Resume the run (or close it) — it stopped on "
+                          "request, nothing is broken")
+
+    def test_it_never_sends_the_operator_to_a_postmortem(self):
+        """The false alarm this rule exists to prevent."""
+        report = render_report_from_sources(self._stopped())
+        assert "postmortem" not in _section(report, "Recommended next action")
+
+    def test_an_open_decision_still_outranks_it(self):
+        """Ranked BETWEEN open-decision and blocked-failed — so it loses here."""
+        sources = self._stopped(open_decision_count=1)
+        assert recommended_next_action(sources).rule_id == "open-decision"
+
+    def test_it_outranks_the_blocked_rule(self):
+        """…and wins here, even with a blocked item present."""
+        sources = self._stopped(blocked=(
+            BlockedItem("aaaaaaaa", "stopped mid-flight", failure_class="stopped"),))
+        assert recommended_next_action(sources).rule_id == "stopped-by-operator"
+
+    def test_other_stop_terminals_still_route_to_the_postmortem(self):
+        for terminal in ("blocked", "budget_exhausted", "deadline_reached"):
+            sources = self._stopped(terminal_status=terminal)
+            assert recommended_next_action(sources).rule_id == "blocked-failed", terminal
+
+    def test_the_rule_table_order_is_the_documented_priority(self):
+        ids = [rule_id for rule_id, _condition in NEXT_ACTION_RULES]
+        assert ids == ["open-decision", "stopped-by-operator", "blocked-failed",
+                       "all-green", "indeterminate"]
+
+    def test_the_new_rule_is_documented_like_every_other(self):
+        assert NEXT_ACTION_CONDITIONS["stopped-by-operator"] == (
+            "the run stopped on operator request")
 
 
 class TestNextActionRuleTable:
