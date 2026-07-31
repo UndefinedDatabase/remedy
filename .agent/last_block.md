@@ -14,4 +14,4 @@ ledger effect: R-0159 RESOLVED; candidate resolved inline as a
 DECISION; next free ID stays R-0160. Authored texts
 paydown0731-r1-{1..8} (sha256 in .agent/authored/, cmp-verified
 against the reviewer scratchpad originals at apply time).
-OUTCOME: pending
+OUTCOME: executed
