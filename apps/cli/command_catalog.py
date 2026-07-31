@@ -416,13 +416,25 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("job.summary", "job.show"),
     ),
+    # ONE command, three modes on the same name (the F047 `job resume`
+    # pattern): bare and --json keep the existing progress view exactly as it
+    # was; --final renders the F053 run report of a terminal job; --interim
+    # renders the labeled snapshot of a run still in progress.
     CommandEntry(
         command_id="job.report",
         group_id="job",
         subcommand="report",
-        description="Read-only report of job progress, tasks, and evidence.",
+        description=("Read-only report of job progress, tasks, and evidence "
+                     "(--final / --interim render the F053 run report)."),
         action_class="read_only",
-        args=(_JOB_ID, _JSON_OPT),
+        args=(
+            _JOB_ID,
+            ArgDef("--final", "Render the F053 final run report (markdown)",
+                   required=False, is_option=True, is_flag=True),
+            ArgDef("--interim", "Render a labeled snapshot of a running job",
+                   required=False, is_option=True, is_flag=True),
+            _JSON_OPT,
+        ),
         supports_json=True,
         related=("job.status", "job.summary"),
     ),
