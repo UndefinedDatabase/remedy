@@ -1674,10 +1674,19 @@ def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
     label.  Both are strictly READ-ONLY — the interim path in particular never
     writes and never mutates job state, because rendering a progress snapshot
     must not perturb the run it is describing.
+
+    `--final` REFUSES a job that has not reached a reported terminal (R-0161).
+    Rendering one anyway would produce an unbannered report of a run that is
+    still moving — exactly the mislabeled snapshot the interim banner exists to
+    prevent, one typo away. The refusal names the state and points at
+    `--interim`; it never renders anyway and never silently switches mode,
+    because a command that quietly does something else than asked is how a
+    snapshot gets mistaken for a final account.
     """
     import json as _json
     from dataclasses import asdict
 
+    from packages.orchestration.long_run_executor import REPORTED_TERMINALS
     from packages.orchestration.run_report import (
         MODE_FINAL,
         MODE_INTERIM,
@@ -1695,6 +1704,22 @@ def _cmd_job_run_report(job_id_str: str, *, interim: bool = False,
             print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
         else:
             print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    terminal = str((job.metadata or {}).get('cycle_terminal_status', '') or '')
+    if not interim and terminal not in REPORTED_TERMINALS:
+        state = job.state.value if hasattr(job.state, 'value') else str(job.state)
+        if json_output:
+            print(_json.dumps({
+                'error': 'run_not_terminal',
+                'job_id': str(job.id),
+                'state': state,
+                'terminal_status': terminal,
+                'hint': 'use --interim for a snapshot',
+            }))
+        else:
+            print(f'Error: run still in progress (state: {state}) — '
+                  'use --interim for a snapshot', file=sys.stderr)
         sys.exit(1)
 
     sources = build_report_sources(job)

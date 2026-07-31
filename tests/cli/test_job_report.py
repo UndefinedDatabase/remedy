@@ -95,8 +95,10 @@ class TestInterimMode:
         assert "rendered at" in first
 
     def test_it_keeps_the_same_section_structure_as_final(self, capsys):
-        job = saved_job(state=RunState.RUNNING, terminal="",
-                        task_status=RunState.PENDING)
+        """Compared on a TERMINAL job — --final refuses a moving run (R-0161),
+        and interim is legal on any job, so this is the one state where both
+        modes render and their structure can be compared at all."""
+        job = saved_job()
         _cmd_job_run_report(str(job.id), interim=True)
         interim = capsys.readouterr().out
         _cmd_job_run_report(str(job.id))
@@ -125,6 +127,82 @@ class TestInterimMode:
         _cmd_job_run_report(str(job.id))
         capsys.readouterr()
         assert not report_path(str(job.id)).exists()
+
+
+class TestFinalRefusesANonTerminalRun:
+    """R-0161: --final on a moving run would be an unbannered snapshot."""
+
+    def _running(self) -> Job:
+        return saved_job(state=RunState.RUNNING, terminal="",
+                         task_status=RunState.PENDING)
+
+    def test_it_refuses_with_a_clean_error(self, capsys):
+        job = self._running()
+        with pytest.raises(SystemExit) as exc:
+            _cmd_job_run_report(str(job.id))
+        assert exc.value.code == 1
+        captured = capsys.readouterr()
+        assert captured.err.strip() == (
+            "Error: run still in progress (state: running) — "
+            "use --interim for a snapshot")
+        assert "Traceback" not in captured.err
+
+    def test_it_renders_nothing_at_all(self, capsys):
+        """Never render anyway: a refusal that still prints is not a refusal."""
+        job = self._running()
+        with pytest.raises(SystemExit):
+            _cmd_job_run_report(str(job.id))
+        assert capsys.readouterr().out == ""
+
+    def test_it_never_silently_switches_to_interim(self, capsys):
+        job = self._running()
+        with pytest.raises(SystemExit):
+            _cmd_job_run_report(str(job.id))
+        assert "INTERIM SNAPSHOT" not in capsys.readouterr().out
+
+    def test_json_mode_reports_run_not_terminal(self, capsys):
+        job = self._running()
+        with pytest.raises(SystemExit) as exc:
+            _cmd_job_run_report(str(job.id), json_output=True)
+        assert exc.value.code == 1
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["error"] == "run_not_terminal"
+        assert payload["state"] == "running"
+        assert payload["terminal_status"] == ""
+        assert payload["hint"] == "use --interim for a snapshot"
+
+    def test_interim_on_the_same_job_still_works(self, capsys):
+        """The refusal is scoped to --final; the snapshot path is untouched."""
+        job = self._running()
+        _cmd_job_run_report(str(job.id), interim=True)
+        assert "INTERIM SNAPSHOT" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("terminal", [
+        "all_green", "stopped_by_operator", "budget_exhausted",
+        "deadline_reached", "blocked",
+    ])
+    def test_every_reported_terminal_is_allowed(self, terminal, capsys):
+        job = saved_job(terminal=terminal)
+        _cmd_job_run_report(str(job.id))
+        out = capsys.readouterr().out
+        assert "# Run report — report-job" in out
+        assert f"- Terminal status: {terminal}" in out
+
+    def test_max_cycles_reached_is_refused_like_any_non_terminal(self, capsys):
+        """It is not in REPORTED_TERMINALS; the job still has work."""
+        job = saved_job(state=RunState.RUNNING, terminal="max_cycles_reached",
+                        task_status=RunState.PENDING)
+        with pytest.raises(SystemExit) as exc:
+            _cmd_job_run_report(str(job.id))
+        assert exc.value.code == 1
+        assert "run still in progress" in capsys.readouterr().err
+
+    def test_the_guard_reads_the_executor_s_own_set(self):
+        """No second list of terminals to drift out of sync."""
+        from packages.orchestration.long_run_executor import REPORTED_TERMINALS
+
+        assert "all_green" in REPORTED_TERMINALS
+        assert "max_cycles_reached" not in REPORTED_TERMINALS
 
 
 class TestJsonMode:
