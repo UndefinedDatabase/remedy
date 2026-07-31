@@ -17,8 +17,14 @@ an invented value (docs/roadmap/features/T1_F053.md).
   interim against a running fake job, CLI job report + --json,
   tests. Done.
 - R3: persist R2 verdict + register R-0161 + DECISION D3; fix
-  R-0161 (--final guard) + capability cap (A9); then the
-  integration gate per docs/agents/integration_gate.md.
+  R-0161 (--final guard) + capability cap (A9); integration gate
+  RED: one branch-only state-file id (R-0162); all six comm -23
+  ids attributed + empirically confirmed. Done (gate outcome
+  carried to R4).
+- R4: persist R3 verdict + register R-0162 + resolve R-0161; apply
+  the authored context.md replacement + the §4 item 11 extension +
+  the gate-doc COPY amendment; re-run the failed id, then the FULL
+  suite (gate confirmation) — green required, else STOP.
   In progress.
 
 ## Findings
@@ -44,25 +50,21 @@ an invented value (docs/roadmap/features/T1_F053.md).
   separate feature (rejected: two sections of THIS feature's report
   depend on it). Reversal: any later relay may split the producer
   out; the ReportSources.status_mirror seam is unchanged either way.
-- Open: R-0161 (product, Low, registered 2026-07-31): `remedy job
-  report <id> --final` on a job that is NOT at a reported terminal
-  renders a report with no INTERIM banner — the exact
-  mislabeled-snapshot risk the banner exists to prevent, one typo
-  away. Fix (R3): refuse --final unless the job's
-  cycle_terminal_status is in REPORTED_TERMINALS; clean error (also
-  as JSON under --json) naming the state and pointing to --interim;
-  never auto-render. Plus the CALL-2 ruling attached here:
-  accepted-capability lines cap via _capped with an honest "and N
-  more" line (A9 — the report is a summary; 28 lines today, ~250 at
-  roadmap end).
-- DECISION D3 (2026-07-31, reviewer, practice-requires-pointer §2):
-  integration_gate.md step 2 gains the base-worktree-on-a-BRANCH
-  sentence — the dogfood branch guard refuses a detached HEAD by
-  design, so a detached base worktree fails the guard-dependent ids
-  for a new named cause (paydown-0731 negative-control evidence).
-  Until now that lived only in session memory — exactly the A1
-  class the §2 rule exists to catch. Reversal: revert the doc line.
-- Next free ID: R-0162.
+- Resolved: R-0161 (product, Low) 2026-07-31: --final is refused
+  unless the job's cycle_terminal_status is in REPORTED_TERMINALS
+  (clean text + JSON error naming the state, --interim hint, never
+  auto-renders); capability lines cap at 10 via _capped with the
+  honest count line (CALL-2 ruling).
+  Done: R-0161 (commit c2d9f790 — guard + tests; cap 9e0b4035).
+- Open: R-0162 (process, Low, registered 2026-07-31): the R1
+  context.md rewrite dropped the "Steps" token
+  (test_context_md_no_stale_steps, serial-reproducible, branch-only
+  at the gate) — third instance of the state-file contract class
+  (F046 plan.md, F047 live_review.md). Fix (R4): authored
+  context.md replacement carrying a "## Steps (round map)" section,
+  plus the §4 item 11 extension so every ordered context.md rewrite
+  carries the token from now on. Not feature-code coupled.
+- Next free ID: R-0163.
 
 ## Verdicts
 - R1: PASS (reviewer, 2026-07-31). Range 15105dbe..840d2b7
@@ -108,3 +110,23 @@ an invented value (docs/roadmap/features/T1_F053.md).
   rule (A9) — cap ordered in R3. R-0161 registered: --final on a
   still-running job renders an unbannered report.
   LAST_REVIEWED_SHA = 1a5af0d.
+- R3: FAIL — INTEGRATION GATE RED (reviewer, 2026-07-31). Range
+  1a5af0d..875a199 (content through 9e0b403). Commits A/B/C are
+  sound: all 4 authored texts cmp 0 disk-to-disk (primary proof;
+  planner_reviewer_prompt.md §4 item 9), applied regions exactly
+  once; --final guard and capability cap verified by the reviewer's
+  own runs (98 CLI + renderer tests), tests/docs 293, canary 42,
+  ruff clean — all exit 0. Gate: branch 1 failed / 14609 passed
+  (126s); base in a worktree ON a branch 6 failed / 14484 passed
+  (107s); totals reconcile exactly (+120 = the F053 test files).
+  comm -23 = 6, all UI-artifact environment class, attributed per
+  id AND confirmed empirically (parity + no-auto-build → 17 passed
+  at base). comm -13 = 1: test_context_md_no_stale_steps —
+  serial-reproducible, reproduced by the reviewer's own run;
+  state-file contract, NOT feature code. The worker's refusal to
+  fix inside the gate round was CORRECT (the block forbade it);
+  the failure is real, so the gate cannot PASS. R-0162 registered;
+  the R4 full-suite re-run is the gate confirmation. The declared
+  symlink side effect is accepted as benign (gitignored artifact,
+  tree clean, ui_server suite green) and the gate doc now orders
+  COPY, never symlink. LAST_REVIEWED_SHA stays 1a5af0d.
