@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-29 of 252 registered items accepted. Next: F056 (Missions: persistent goal, jobs as execution units).
+30 of 252 registered items accepted. Next: F061 (Definition-of-Done compiler).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 13 | 22 |
+| 1 | Self-Build Bootstrap | 14 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |

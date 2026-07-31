@@ -1,60 +1,67 @@
 ## Range
 
-Review of 1725cc60..HEAD (branch feature/f056-missions)
+Review of b41a4b53..HEAD (branch feature/f056-missions) — F056 CLOSED, PR open, not merged.
 
 ## Commits
 
-### c66b9695 chore(f056): persist the R2 verdict and the R-0163 resolution
+### 895334bb chore(f056): persist the R3 integration-gate verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +26/-26 | full replacement (authored f056-r3-1, byte-copy) |
-| .agent/authored/f056-r3-1.md | +59 | authored text, saved verbatim |
-| .agent/{plan,last_block}.md | +99/-97 | Step/Next for R3; received block verbatim, OUTCOME pending |
+| .agent/live_review.md | +29/-2 | full replacement (authored f056-r4-1, byte-copy) |
+| .agent/authored/f056-r4-{1,2,3,4}.md | +126 | all four authored texts, saved verbatim |
+| .agent/{plan,last_block}.md | +109/-119 | Step/Next for closure; block verbatim, OUTCOME pending |
 
-### 31519b29 chore(f056): record the R3 integration-gate evidence
+### eaa86f51 docs(f056): record the accepted Built State in the feature file
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/gate_f056_r3/ | +86 | README (run table, per-id attribution) + FAILED lists, comm outputs, tails, error evidence |
+| docs/roadmap/features/T1_F056.md | +38 | authored f056-r4-2 appended (precondition 4) |
 
-### <handoff commit> chore(f056): handback R3 (self-reference, R-0149 pattern)
+### <closure commit> chore(f056): close F056 — STATUS [x] + README sync
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/{handoff,last_block,plan}.md | rewritten | this file; OUTCOME executed; round complete |
+| docs/roadmap/STATUS.md | +1/-1 | authored f056-r4-3, four placeholders filled |
+| README.md | +2/-2 | authored f056-r4-4 EDIT 1 + 2 (same commit — R-0154 pin) |
+| .agent/{handoff,last_block,plan}.md | rewritten | this file; OUTCOME executed |
 
 ## External actions
 
-`git worktree add -b tmp/base-gate-f056r3 <scratchpad>/base_wt 78f5f608`, then `git worktree remove --force`, `git worktree prune`, `git branch -D tmp/base-gate-f056r3`. Proof: `git worktree list` -> `/home/decodeux/Repos/remedy  c66b9695 [feature/f056-missions]` (sole entry); `git branch --list 'tmp/*'` -> 0; path gone from disk. No push, no PR, no merge, no `gh` call.
+`git push -u origin feature/f056-missions` (precondition 5); `bash scripts/make_review_zip.sh --evidence-dir remedy-job-evidence-f056` twice (see Verification); second push + `gh pr create --base main` AFTER the closure commit, since Rule A4 makes the STATUS edit the last commit — PR number in the completion report, NOT merged (it merges at the next feature's Open PR Gate). No worktree, no merge.
 
 ## Verification
 
-    BRANCH @ c66b9695:  python3 -m pytest -n auto -q
-        14744 passed, 19 skipped in 144.73s   exit 0  wall 146s  FAILED: 0 ids
-    BASE @ 78f5f608 (throwaway worktree on throwaway branch; apps/ui/node_modules
-    + apps/ui/dist COPIED not symlinked; REMEDY_UI_NO_AUTO_BUILD=1), same command:
-      run 1:  8 failed, 14602 passed, 19 skipped in 150.47s   exit 1   wall 151s
-      run 2:  14610 passed, 19 skipped in 112.62s             exit 0   wall 115s
-    comm -13 -> EMPTY (no branch-only failure);  comm -23 -> 8 ids (run 1), 0 (run 2)
-    tests/docs/ -q (state-file readers) -> 293 passed, exit 0; porcelain -> empty
+    remedy integrity check --json  passed=true (handler_import, live_review_verdict,
+        plan_consistency, relevant_untracked, high_blockers_open all pass)
+    git status --porcelain  empty (before push, and at handback)
+    pytest tests/docs/ -q  293 passed exit 0 (Built State commit, and closure commit)
+    pytest tests/cli/test_golden_path.py -q  42 passed exit 0 (canary)
+    bundle's run: pytest tests/orchestration/test_mission_state.py
+        tests/cli/test_mission_cmd.py -q -> 134 passed exit 0 (134 node ids == selected)
 
-Attribution of all 8 `comm -23` ids (list + evidence in
-`.agent/gate_f056_r3/README.md`): all in `test_live_state.py::TestUIServerIntegration`, each failing
-"Server did not start in time" with captured stderr `ERROR: React UI not
-built.` — the build-artifact class of §3, artifact `apps/ui/dist`. Three checks
-with parity in place: the class serially 16 passed; the class under `-n auto`
-in isolation 260 passed; the full base suite re-run 14610 passed exit 0.
-Non-reproducible, confined to the first full run in the fresh worktree, and
-touching no F056 code — environment class, not a genuine base failure.
-Flake debt: branch-only failures = 0, so the >10 threshold is not met.
+Evidence job `057a2de1dde14778` (feature-scoped f056, create_manual_completion_bundle): authority_count 14, commit_count 19, tasks T001/T002/T003, total_passed 134, PASS_WITH_RISKS.
+
+ZIP ATTEMPT 1 — FAILED, recorded per split_workflow: `remedy-review-20260731-210316-BLOCKED_EVIDENCE.zip`, is_valid_current_run=false, raw validation_errors "verification_tests.json runs[0] test_files is not sorted" / "runs[0] output_hash does not match sha256(stdout_summary)" — both MY authoring errors (unsorted test_files; output_hash over the untruncated log, while the validator recomputes sha256 over the stored 2000-char stdout_summary). Rebuilt corrected; the BLOCKED zip and its evidence dir were deleted, so no invalid package survives.
+
+ZIP ATTEMPT 2 — READY:
+    package  remedy-review-20260731-210415-READY_FOR_REVIEW.zip
+    SHA-256  b732f0bdd0a334a62091b127f4efbd392f612de98ec2a687f27e1ef36fd7e555
+    READY_FOR_REVIEW · evidence_authoritative true · is_valid_current_run true ·
+    validation_errors [] · ready_gate_matrix ok=true, blocking_reasons [] ·
+    final_verifier_reproducible true · zipfile.testzip() -> None, 1709 members
+    committed_review_subject 78f5f608e729e8f62ae02cb4ceb185f9f0a01033 ..
+      eaa86f51c5ae72ed4e310cdeb249eba3142c7e7c (19 commits) — spans BASE..head
 
 ## Authored-text proofs
 
-- f056-r3-1: `sha256sum .agent/authored/f056-r3-1.md` = 0eb32273…828668, matches its BEGIN marker. Applied by `cp`; `cmp .agent/live_review.md .agent/authored/f056-r3-1.md` returned 0. No `Done:` line was ordered this round, so the ledger stays byte-identical to the authored file; `## Verdicts` untouched.
+- f056-r4-1 `50877ed4…be39b6`, r4-2 `d482b646…b3523d`, r4-3 `f5259a5e…fa34e71`, r4-4 `3000cba1…c8a9b7c` — every saved file's `sha256sum` matches its BEGIN marker. r4-1: `cmp` against .agent/live_review.md -> 0. r4-2: its bytes occur in docs/roadmap/features/T1_F056.md exactly once, and the file ENDS with them.
+- r4-3 (grep proof): the applied STATUS line, with the four filled values substituted back to their placeholders, is byte-identical to the authored file — verified programmatically, True. Applied line: `- [x] F056 — Missions: persistent goal, jobs as execution units (T001–T003 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 057a2de1dde14778 · package remedy-review-20260731-210415-READY_FOR_REVIEW.zip · SHA-256 b732f0bd…7e555 · accepted HEAD eaa86f51c5ae72ed4e310cdeb249eba3142c7e7c)`. No other STATUS line touched.
+- r4-4 (grep proof): README:19 `30 of 252 registered items accepted. Next: F061 (Definition-of-Done compiler).` and README:24 `| 1 | Self-Build Bootstrap | 14 | 22 |` — both byte-identical to the authored EDIT targets; both replaced lines are gone.
 
 ## Deviations & assumptions
 
-- Gate logs live in `.agent/gate_f056_r3/`, NOT `.agent/Evidence/` — .gitignore excludes the latter as ephemeral, and this evidence must travel with the branch. Committed: FAILED lists, comm outputs, run tails, error evidence. The multi-megabyte raw pytest logs stayed in the session scratchpad.
-- A SECOND full base run was not ordered; it was run because run 1's 8 `comm -23` ids would otherwise rest on assertion alone, and §3 demands direct evidence per id. No repair work, as ordered — and none was indicated: the branch run is clean. Wall times (146s / 151s / 115s) are under the §5 ~5 min threshold, so no perf note is due.
+- The evidence dir and zip were NOT committed: `.gitignore` excludes `remedy-job-evidence-*/` and `remedy-review-*`, and the last four closures (F050–F053) likewise committed only STATUS + README + .agent state. The protocol's "evidence-dir commit after the READY zip" is a no-op under current policy; the durable pointer is the package filename + SHA-256 in the STATUS line. Both artifacts sit at the repo root.
+- f056-r4-3 arrived line-wrapped by transport; the single-line form hashes to the marker value and the wrapped form does not, so the single line is the authored text (R-0148 guard, resolved by the hash, not by judgement).
+- The failed first zip is recorded above in full rather than quietly retried. PR created after the closure commit (Rule A4), following the F053 precedent.
 
 ## Next
 
-Reviewer issues the R3 gate verdict (Review of 1725cc60..HEAD); closure follows as its own round.
+Reviewer verifies closure and ends the session with the feature-done banner. The PR merges at the next feature's Open PR Gate; Rule A5 selects F061.

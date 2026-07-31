@@ -9,13 +9,12 @@ jobs are structurally forced to verify the previous state FIRST
 plan-approval payload item defaulting to NO).
 
 ## Current Step
-R1/R2/R3 all PASS; R3 carries the INTEGRATION GATE PASS and the
-full-suite claim (LAST_REVIEWED_SHA b41a4b53). R4 (SPLIT closure)
-per docs/roadmap/STATUS_closure_protocol.md v4: ledger → Built
-State → preconditions (integrity check, clean tree, push) →
-evidence job (feature-scoped f056) → fresh review zip → closure
-commit (STATUS [x] + README sync + final .agent state) → PR.
-No merge: the PR merges at the next feature's Open PR Gate.
+R1/R2/R3 all PASS. R4 CLOSURE COMPLETE, handed back: Built State
+recorded, preconditions green (integrity passed=true, clean tree,
+branch pushed), evidence job 057a2de1dde14778, package
+remedy-review-20260731-210415-READY_FOR_REVIEW.zip (READY, first
+attempt BLOCKED and recorded), STATUS [x] + README sync landed as
+the last content commit, PR open and NOT merged.
 
 ## Next Steps
 - Reviewer verifies closure (b41a4b53..HEAD) and ends the session

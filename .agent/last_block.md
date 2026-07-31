@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 
 # Received block — F056 R4 (SPLIT closure round)
 
