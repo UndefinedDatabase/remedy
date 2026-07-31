@@ -1,4 +1,6 @@
-"""CLI tests: `remedy mission start|list|show|continue` (F056 T001–T003).
+"""CLI tests: `remedy mission start|list|show|continue|achieve|abandon|pause`.
+
+F056 T001–T003 plus the R-0163 status-transition surface.
 
 The surface, not the store: the store's own behaviour is proven in
 tests/orchestration/test_mission_state.py. What matters here is that the
@@ -583,3 +585,135 @@ class TestContinue:
         assert proc.returncode == 1
         assert "no mission" in proc.stderr
         assert "Traceback" not in proc.stderr
+
+
+class TestStatusTransitions:
+    """R-0163 — the explicit command surface the feature file promises.
+
+    The verb names the status. There is no transition table: any valid
+    status may follow any other, because the human typing the command is
+    the authority. Nothing in Remedy moves a mission's status on its own.
+    """
+
+    _VERBS = (("achieve", "achieved"), ("abandon", "abandoned"),
+              ("pause", "paused"))
+
+    def test_the_transition_commands_are_in_the_catalog(self):
+        from apps.cli.command_catalog import CATALOG
+
+        ids = {entry.command_id for entry in CATALOG}
+        assert {"mission.achieve", "mission.abandon", "mission.pause"} <= ids
+
+    def test_every_transition_writes_metadata_and_has_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        handlers = collect_all_handlers()
+        for verb, _status in self._VERBS:
+            command_id = f"mission.{verb}"
+            assert get_command(command_id).action_class == "write_metadata"
+            assert get_command(command_id).supports_json is True
+            assert command_id in handlers
+
+    def test_no_transition_command_may_execute_or_mutate_the_repo(self):
+        from apps.cli.command_catalog import get_command
+
+        for verb, _status in self._VERBS:
+            entry = get_command(f"mission.{verb}")
+            assert entry.may_execute_commands is False
+            assert entry.may_mutate_repo is False
+
+    @pytest.mark.parametrize("verb,status", _VERBS)
+    def test_the_verb_sets_the_status_it_names(self, project, verb, status):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        out = _run(["mission", verb, mission_id, "--project", project_id],
+                   data_root).stdout
+
+        assert mission_id in out
+        assert f"Status: {status}" in out
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["status"] == status
+
+    @pytest.mark.parametrize("verb,status", _VERBS)
+    def test_the_json_shape_matches_show(self, project, verb, status):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        body = json.loads(_run(["mission", verb, mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+
+        assert body["version"] == 1
+        assert body["mission"]["id"] == mission_id
+        assert body["mission"]["status"] == status
+        assert body["mission"]["goal"] == "Keep it working"
+
+    def test_a_transition_accepts_a_unique_prefix(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        _run(["mission", "pause", mission_id[:8], "--project", project_id],
+             data_root)
+
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["status"] == "paused"
+
+    @pytest.mark.parametrize("verb,_status", _VERBS)
+    def test_an_unknown_mission_is_an_error_not_a_crash(self, project, verb,
+                                                        _status):
+        data_root, project_id = project
+        proc = _run(["mission", verb, "0" * 32, "--project", project_id],
+                    data_root, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+        assert "Traceback" not in proc.stderr
+
+    def test_any_status_may_follow_any_other(self, project):
+        """No transition table: the human is the authority on the state."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+
+        for verb in ("achieve", "pause", "abandon", "achieve"):
+            _run(["mission", verb, mission_id, "--project", project_id],
+                 data_root)
+
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["status"] == "achieved"
+
+    def test_a_transition_touches_neither_the_goal_nor_the_chain(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        job_id = _link_job(data_root, project_id, mission_id, role="initial")
+
+        _run(["mission", "abandon", mission_id, "--project", project_id],
+             data_root)
+
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["goal"] == "Keep it working"
+        assert [link["job_id"] for link in shown["mission"]["job_links"]] == [job_id]
+
+    def test_a_transition_without_a_project_exits_three(self, tmp_path):
+        data_root = tmp_path / "data"
+        data_root.mkdir(parents=True)
+        proc = _run(["mission", "pause", "0" * 32], data_root, expect_ok=False)
+
+        assert proc.returncode == 3
+        assert "remedy init" in proc.stderr
+
+    def test_nothing_moves_a_status_without_one_of_these_commands(self, project):
+        """Linking a job, and continuing the chain, leave the status alone."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Keep it working")
+        _link_job(data_root, project_id, mission_id, role="initial")
+        _run(["mission", "continue", mission_id, "Add the CSV path",
+              "--project", project_id, "--json"], data_root)
+
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["status"] == "active"

@@ -30,6 +30,10 @@ start`). Closure is its own later round.
   F070 (leaves the module's promise dead until then); a single
   set-status subcommand (one verb where the feature file names
   three). Reversible by any later relay.
+  Done: R-0163 (worker, R2) — feature-file CLI line amended with the
+  authored bytes; mission achieve/abandon/pause added as thin
+  wrappers over set_mission_status (no transition table, nothing
+  auto-transitions); catalog, handlers and tests green.
 - Next free ID: R-0164.
 
 ## Verdicts

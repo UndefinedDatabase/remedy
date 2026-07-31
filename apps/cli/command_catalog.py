@@ -1662,6 +1662,50 @@ CATALOG: tuple[CommandEntry, ...] = (
         supports_json=True,
         related=("mission.list", "mission.start"),
     ),
+    # Status transitions are their own explicit subcommands (R-0163): the verb
+    # names the status, and nothing else in Remedy ever moves it.
+    CommandEntry(
+        command_id="mission.achieve",
+        group_id="mission",
+        subcommand="achieve",
+        description="Mark a mission achieved — an explicit human judgement, never inferred from its jobs.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.list"),
+    ),
+    CommandEntry(
+        command_id="mission.abandon",
+        group_id="mission",
+        subcommand="abandon",
+        description="Mark a mission abandoned — the goal is dropped; its jobs and their evidence stay.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.list"),
+    ),
+    CommandEntry(
+        command_id="mission.pause",
+        group_id="mission",
+        subcommand="pause",
+        description="Mark a mission paused — the goal still stands, work on it does not.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.list"),
+    ),
 
     # ── doctor (product spine health check) ──────────────────────────────
     CommandEntry(

@@ -4,6 +4,8 @@
 renders one mission's chain with each linked job's state as the job store
 reports it right now, and ``continue`` adds the next job — with a task that
 verifies the previous one already sitting at the head of its plan.
+``achieve``/``abandon``/``pause`` are the explicit status transitions — the
+only way a mission's status ever moves.
 
 Creation is ALWAYS explicit.  There is no code path here that a run can trip
 over: a mission exists because someone typed ``remedy mission start``, or
@@ -156,6 +158,51 @@ def _cmd_mission_show(mission_id: str, *, project: str | None = None,
         print(line)
 
 
+def _status_for_verb(verb: str) -> str:
+    """The status a transition verb names.  The verb IS the rule."""
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_ABANDONED,
+        MISSION_STATUS_ACHIEVED,
+        MISSION_STATUS_PAUSED,
+    )
+
+    return {
+        "achieve": MISSION_STATUS_ACHIEVED,
+        "abandon": MISSION_STATUS_ABANDONED,
+        "pause": MISSION_STATUS_PAUSED,
+    }[verb]
+
+
+def _cmd_mission_set_status(mission_id: str, verb: str, *,
+                            project: str | None = None,
+                            json_output: bool = False) -> None:
+    """The body behind ``achieve``, ``abandon`` and ``pause``.
+
+    A thin wrapper over ``mission_state.set_mission_status``: the verb names
+    the status, and that is the whole rule.  There is deliberately NO
+    transition table here — any valid status may follow any other, because a
+    human typing the command is the authority on what the mission's state is.
+    Nothing in Remedy moves a mission between statuses on its own (F056).
+    """
+    from packages.orchestration.mission_state import MissionError, set_mission_status
+
+    project_id = _resolve_project_id(project)
+    mission = _load_mission_or_exit(project_id, mission_id)
+
+    try:
+        updated = set_mission_status(project_id, mission.id, _status_for_verb(verb))
+    except MissionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    if json_output:
+        print(_json.dumps({"version": 1, "mission": _mission_json(updated)},
+                          sort_keys=True))
+        return
+    print(updated.id)
+    print(f"  Status: {updated.status}")
+
+
 def _cmd_mission_continue(mission_id: str, next_step: str, *,
                           project: str | None = None,
                           json_output: bool = False) -> None:
@@ -218,6 +265,21 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     ),
     "mission.show": lambda args: _cmd_mission_show(
         args.mission_id,
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.achieve": lambda args: _cmd_mission_set_status(
+        args.mission_id, "achieve",
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.abandon": lambda args: _cmd_mission_set_status(
+        args.mission_id, "abandon",
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
+    "mission.pause": lambda args: _cmd_mission_set_status(
+        args.mission_id, "pause",
         project=getattr(args, "project", None),
         json_output=getattr(args, "json", False),
     ),
