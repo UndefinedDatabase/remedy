@@ -185,6 +185,11 @@ order: AGENTS.md, then docs/agents/worker_conventions.md, then this block.
   "Handing back to Window 1 for review of <LAST_SHA>..<HEAD>."
 - Never fabricate data, never imply live state over mocks, never claim
   green you did not observe. "Should work" is not a status.
+- Mutation red-proofs and any other deliberately destructive
+  verification run ONLY inside disposable git worktrees — never in
+  the primary checkout; git status --porcelain == empty at every
+  handback (R-0160 fix, operator ruling 2026-07-31; the same rule
+  binds the reviewer in planner_reviewer_prompt.md §4 item 10).
 ```
 
 ## Session hygiene
