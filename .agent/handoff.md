@@ -1,58 +1,60 @@
 ## Range
 
-Review of e8c3c147..HEAD (branch feature/f056-missions)
+Review of 1725cc60..HEAD (branch feature/f056-missions)
 
 ## Commits
 
-### ca630978 chore(f056): persist the R1 verdict and register R-0163
+### c66b9695 chore(f056): persist the R2 verdict and the R-0163 resolution
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +43/-5 | full replacement (authored f056-r2-1, byte-copy) |
-| .agent/authored/f056-r2-{1,2}.md | +55 | both authored texts, saved verbatim |
-| .agent/plan.md | +8/-7 | Current Step / Next Steps for R2 |
-| .agent/last_block.md | +109/-124 | received block verbatim, OUTCOME pending |
+| .agent/live_review.md | +26/-26 | full replacement (authored f056-r3-1, byte-copy) |
+| .agent/authored/f056-r3-1.md | +59 | authored text, saved verbatim |
+| .agent/{plan,last_block}.md | +99/-97 | Step/Next for R3; received block verbatim, OUTCOME pending |
 
-### 59282bf8 feat(f056): add the mission status-transition commands (R-0163)
+### 31519b29 chore(f056): record the R3 integration-gate evidence
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T1_F056.md | +3/-1 | CLI line amended (authored f056-r2-2, byte-copy) |
-| apps/cli/command_catalog.py | +44 | mission.achieve/abandon/pause entries |
-| apps/cli/commands/mission_cmd.py | +62 | one shared body over set_mission_status |
-| tests/cli/test_mission_cmd.py | +135/-1 | catalog, per-verb happy path, JSON, prefix, errors |
-| .agent/live_review.md | +4 | `Done: R-0163` appended to the finding |
+| .agent/gate_f056_r3/ | +86 | README (run table, per-id attribution) + FAILED lists, comm outputs, tails, error evidence |
 
-### <handoff commit> chore(f056): handback R2 (self-reference, R-0149 pattern)
+### <handoff commit> chore(f056): handback R3 (self-reference, R-0149 pattern)
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/{handoff,last_block,plan}.md | rewritten | this file; OUTCOME executed; round recorded complete |
+| .agent/{handoff,last_block,plan}.md | rewritten | this file; OUTCOME executed; round complete |
 
 ## External actions
 
-None. No push, no PR, no merge, no `gh` call, no worktree — SPLIT round on the existing branch; the block ordered no Open PR Gate this round.
+`git worktree add -b tmp/base-gate-f056r3 <scratchpad>/base_wt 78f5f608`, then `git worktree remove --force`, `git worktree prune`, `git branch -D tmp/base-gate-f056r3`. Proof: `git worktree list` -> `/home/decodeux/Repos/remedy  c66b9695 [feature/f056-missions]` (sole entry); `git branch --list 'tmp/*'` -> 0; path gone from disk. No push, no PR, no merge, no `gh` call.
 
 ## Verification
 
-    pytest tests/orchestration/test_mission_state.py tests/cli/test_mission_cmd.py \
-           tests/cli/test_worker_facade_cmd.py tests/test_command_catalog.py -q
-        201 passed in 23.84s                                              exit 0
-    pytest tests/docs/ -q            (feature file touched)
-        293 passed in 0.26s                                               exit 0
-    pytest tests/cli/test_golden_path.py -q      (canary)
-        42 passed in 19.71s                                               exit 0
-    git status --porcelain -> empty
+    BRANCH @ c66b9695:  python3 -m pytest -n auto -q
+        14744 passed, 19 skipped in 144.73s   exit 0  wall 146s  FAILED: 0 ids
+    BASE @ 78f5f608 (throwaway worktree on throwaway branch; apps/ui/node_modules
+    + apps/ui/dist COPIED not symlinked; REMEDY_UI_NO_AUTO_BUILD=1), same command:
+      run 1:  8 failed, 14602 passed, 19 skipped in 150.47s   exit 1   wall 151s
+      run 2:  14610 passed, 19 skipped in 112.62s             exit 0   wall 115s
+    comm -13 -> EMPTY (no branch-only failure);  comm -23 -> 8 ids (run 1), 0 (run 2)
+    tests/docs/ -q (state-file readers) -> 293 passed, exit 0; porcelain -> empty
+
+Attribution of all 8 `comm -23` ids (list + evidence in
+`.agent/gate_f056_r3/README.md`): all in `test_live_state.py::TestUIServerIntegration`, each failing
+"Server did not start in time" with captured stderr `ERROR: React UI not
+built.` — the build-artifact class of §3, artifact `apps/ui/dist`. Three checks
+with parity in place: the class serially 16 passed; the class under `-n auto`
+in isolation 260 passed; the full base suite re-run 14610 passed exit 0.
+Non-reproducible, confined to the first full run in the fresh worktree, and
+touching no F056 code — environment class, not a genuine base failure.
+Flake debt: branch-only failures = 0, so the >10 threshold is not met.
 
 ## Authored-text proofs
 
-- f056-r2-1: `sha256sum .agent/authored/f056-r2-1.md` = 009a5442…a3fd67, matches its BEGIN marker. Applied by `cp` to .agent/live_review.md; `cmp` returned 0 (identical) at commit ca630978. The ledger now differs from the authored file by exactly the four appended `Done: R-0163` lines, added in 59282bf8 as the block ordered; the `## Verdicts` section is untouched.
-- f056-r2-2: `sha256sum .agent/authored/f056-r2-2.md` = ae3d8e9d…2ee3a17, matches. Its bytes occur in docs/roadmap/features/T1_F056.md exactly once (disk-to-disk substring check); the two replaced lines are gone.
+- f056-r3-1: `sha256sum .agent/authored/f056-r3-1.md` = 0eb32273…828668, matches its BEGIN marker. Applied by `cp`; `cmp .agent/live_review.md .agent/authored/f056-r3-1.md` returned 0. No `Done:` line was ordered this round, so the ledger stays byte-identical to the authored file; `## Verdicts` untouched.
 
 ## Deviations & assumptions
 
-- The handler dispatch passes the VERB (`"achieve"`), not the status constant: the handler table is built at import time while this module imports mission_state lazily, so `_status_for_verb` resolves the constant inside the call. No status string is duplicated.
-- No transition rules added, as ordered: any valid status may follow any other. A test pins that (`achieve → pause → abandon → achieve`), and another pins that linking a job or continuing the chain leaves the status alone.
-- `mission_state.py` unchanged, as the block stated. The `mission` group is still `user_facing=False` — unchanged from R1, not ordered. Pre-existing and untouched: ruff UP035 in packages/orchestration/dag_schedule.py.
-- No full-suite run this round: the block ordered three gates; the integration gate is its own later round.
+- Gate logs live in `.agent/gate_f056_r3/`, NOT `.agent/Evidence/` — .gitignore excludes the latter as ephemeral, and this evidence must travel with the branch. Committed: FAILED lists, comm outputs, run tails, error evidence. The multi-megabyte raw pytest logs stayed in the session scratchpad.
+- A SECOND full base run was not ordered; it was run because run 1's 8 `comm -23` ids would otherwise rest on assertion alone, and §3 demands direct evidence per id. No repair work, as ordered — and none was indicated: the branch run is clean. Wall times (146s / 151s / 115s) are under the §5 ~5 min threshold, so no perf note is due.
 
 ## Next
 
-Reviewer gates R2 (Review of e8c3c147..HEAD); the integration-gate round and the closure round follow as their own rounds.
+Reviewer issues the R3 gate verdict (Review of 1725cc60..HEAD); closure follows as its own round.

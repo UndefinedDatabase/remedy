@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed
 
 # Received block — F056 R3 (SPLIT round, integration gate)
 
