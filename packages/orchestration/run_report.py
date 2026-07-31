@@ -1,0 +1,343 @@
+"""F053 T001 — the one human-readable account of a run.
+
+Every run produces ONE report: what was attempted, what succeeded, what is
+blocked and why, what it cost, what needs answering, and the single
+recommended next action.
+
+This module is a pure RENDERER.  It computes nothing new and it never
+guesses: every value it prints already exists as structured data somewhere
+else, and a source that is absent renders as ``not recorded`` rather than as
+a plausible number (P6).  That rule is what makes the report safe to read
+without opening the evidence — a reader can trust that a number they see was
+measured, and that a number they do not see was not.
+
+Deliberate absences (searched-for behavior that is NOT here):
+  * Remedy deliberately does not RE-COMPUTE costs, durations, or verdicts in
+    this module — `budget_guard.BudgetCounters.token_description` and the
+    cycle records own those, and a second arithmetic path would be a second
+    truth.
+  * Remedy deliberately does not write the report from here.  The terminal
+    -state writer and the ``remedy job report`` CLI are F053 T002; this
+    module only turns sources into text.
+  * Remedy deliberately does not read ``docs/roadmap/STATUS.md`` here.  The
+    milestone distance and the capability lines come from a STATUS mirror
+    passed IN (``ReportSources.status_mirror``); no production reader of that
+    file exists yet, so both sections render ``not recorded`` until one does.
+
+Sources (all pre-existing; see ``collect_report_sources``):
+  job/task state      packages/core/models.py  Job.state / Task.status
+  cycle summaries     long_run_executor.read_cycle_records (incl. the F052
+                      healed_after_repair / repair_rounds_used fields)
+  postmortems         failure_postmortem.read_postmortem
+  open decisions      decision_queue.list_decisions / open_decisions
+  token actuals       budget_guard.BudgetCounters (persisted job actuals)
+  assumption log      flight_plan.render_assumptions_md and
+                      escalation.render_escalation_assumptions_md
+  run manifest        run_manifest.read_run_manifest
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# Modes
+# ---------------------------------------------------------------------------
+
+#: The report written once at a terminal state (F053 T002 calls it).
+MODE_FINAL = "final"
+#: The snapshot of a run that is still going.  Never mutates state.
+MODE_INTERIM = "interim"
+VALID_MODES = frozenset({MODE_FINAL, MODE_INTERIM})
+
+#: What a missing source renders as.  One spelling, everywhere: a reader who
+#: greps the report for this string finds every gap in one pass.
+NOT_RECORDED = "not recorded"
+
+#: The loud interim banner.  A snapshot that could be mistaken for a final
+#: report is worse than no snapshot at all.
+INTERIM_BANNER = "INTERIM SNAPSHOT — run still in progress (rendered at {ts})"
+
+#: A9: per-task lines cap at a readable count; the evidence area is the
+#: archive, the report is the summary.
+MAX_TASK_LINES = 20
+#: The same cap for the two other unbounded lists a big run can produce.
+MAX_BLOCKED_LINES = 20
+MAX_CYCLE_LINES = 20
+
+
+class ReportError(ValueError):
+    """The renderer was called with an argument it cannot honour."""
+
+
+# ---------------------------------------------------------------------------
+# Momentum (mechanically defined — T1_F053.md)
+# ---------------------------------------------------------------------------
+
+MOMENTUM_FORWARD = "forward"
+MOMENTUM_CIRCLING = "circling"
+MOMENTUM_UNKNOWN = "unknown"
+
+#: The escalation a circling run proposes.  Named, not implied: "circling"
+#: without a proposal is an observation nobody can act on.
+CIRCLING_ESCALATION = (
+    "Escalate: cut the next round into smaller slices, re-plan the failing "
+    "branch, or ask a human for a decision."
+)
+
+
+def _open_item_count(record: dict[str, Any]) -> int:
+    """Open items a cycle left behind: failures plus escalations.
+
+    Escalations are counted because a branch waiting on a question is not
+    done — but they stay a SEPARATE number everywhere they are rendered
+    (CycleRecord.tasks_escalated), because a question is not a failure.
+    """
+    return _as_int(record.get("tasks_failed")) + _as_int(record.get("tasks_escalated"))
+
+
+def momentum_flag(cycle_records: list[dict[str, Any]] | None) -> str:
+    """forward | circling | unknown, from the cycle records alone.
+
+    Mechanical definition (T1_F053.md):
+      circling  — the same non-empty verify failure class appears in >= 2
+                  cycles, OR open items did not decrease across a round.
+      forward   — every round closed items and no failure class recurred.
+      unknown   — no cycle records: nothing to judge, and a guess here would
+                  be exactly the invented value P6 forbids.
+    """
+    records = list(cycle_records or [])
+    if not records:
+        return MOMENTUM_UNKNOWN
+
+    seen_classes: dict[str, int] = {}
+    for record in records:
+        klass = str(record.get("verify_failure_class") or "")
+        if klass:
+            seen_classes[klass] = seen_classes.get(klass, 0) + 1
+    if any(count >= 2 for count in seen_classes.values()):
+        return MOMENTUM_CIRCLING
+
+    previous = None
+    for record in records:
+        current = _open_item_count(record)
+        if previous is not None and current > 0 and current >= previous:
+            return MOMENTUM_CIRCLING
+        previous = current
+    return MOMENTUM_FORWARD
+
+
+# ---------------------------------------------------------------------------
+# Next-action rule table
+# ---------------------------------------------------------------------------
+
+#: The report ends with EXACTLY ONE recommended next action, chosen by this
+#: table, first match wins.  The table is data so the rule that fired can be
+#: named in the report itself — a recommendation whose reason is invisible is
+#: not reviewable.
+#:
+#:   (rule id, condition, action template)
+#:
+#: Order is the priority order from T1_F053.md: an open decision outranks a
+#: failure, because the run cannot proceed past a question no matter what
+#: else is repaired.
+NEXT_ACTION_RULES: tuple[tuple[str, str], ...] = (
+    ("open-decision", "an open decision is waiting for an answer"),
+    ("blocked-failed", "the run is blocked or a task failed"),
+    ("all-green", "every task completed and nothing is open"),
+    ("indeterminate", "no rule matched the recorded state"),
+)
+
+#: rule id -> the condition that fires it.  The table is load-bearing: a
+#: NextAction whose rule id is not in it cannot be rendered.
+NEXT_ACTION_CONDITIONS: dict[str, str] = dict(NEXT_ACTION_RULES)
+
+
+@dataclass(frozen=True)
+class NextAction:
+    """The single recommended next action plus the rule that produced it."""
+
+    rule_id: str
+    action: str
+
+    def __post_init__(self) -> None:
+        if self.rule_id not in NEXT_ACTION_CONDITIONS:
+            raise ReportError(f"next action uses an undocumented rule: {self.rule_id!r}")
+
+    def render(self) -> str:
+        """The action, with the rule and the condition that chose it.
+
+        The condition is printed because a recommendation a reader cannot
+        audit is a recommendation they have to take on trust.
+        """
+        return (f"{self.action}  _(rule: {self.rule_id} — "
+                f"{NEXT_ACTION_CONDITIONS[self.rule_id]})_")
+
+
+# ---------------------------------------------------------------------------
+# Sources
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class StatusMirror:
+    """The roadmap ledger, already parsed, handed to the renderer.
+
+    Deliberately an INPUT and not a read: this module never parses
+    ``docs/roadmap/STATUS.md`` itself (that file is operator territory —
+    scope_fences.BUILTIN_DENY).  Until a producer exists, both sections this
+    feeds render ``not recorded``.
+
+    remaining_to_milestone: features still unchecked up to ``milestone``.
+    accepted_capabilities:  ONLY accepted ``[x]`` state (P1) — what Remedy
+                            can do NOW.
+    in_progress_capabilities: ``[~]`` state; always rendered as in progress,
+                            never as a capability.
+    """
+
+    milestone: str
+    remaining_to_milestone: int
+    accepted_capabilities: tuple[str, ...] = ()
+    in_progress_capabilities: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TaskOutcome:
+    """One task's one-line result, already resolved to text and a link."""
+
+    task_id: str
+    description: str
+    status: str
+    #: Relative path into the evidence area, or "" when nothing was written.
+    #: Relative on purpose: an absolute path is unusable in a moved bundle.
+    evidence_ref: str = ""
+
+
+@dataclass(frozen=True)
+class BlockedItem:
+    """A task that is blocked, and the one thing a human can do about it."""
+
+    task_id: str
+    reason: str
+    #: failure_postmortem.FailureClass value, or "" when no postmortem exists.
+    failure_class: str = ""
+    #: For a decision: the EXACT command that answers it
+    #: (escalation.task_decision_answer_command).  Never abbreviated — a
+    #: command that is not shown in full cannot be pasted.
+    answer_command: str = ""
+    evidence_ref: str = ""
+
+
+@dataclass(frozen=True)
+class ReportSources:
+    """Everything the report renders, already structured.
+
+    Every field is optional and every absent field renders ``not recorded``.
+    Passing this in is what makes the renderer pure and its goldens stable:
+    no clock, no disk, no provider.
+    """
+
+    job_id: str = ""
+    job_name: str = ""
+    project_id: str = ""
+    mission: str = ""
+    state: str = ""
+    terminal_status: str = ""
+    stop_reason: str = ""
+    started_at: str = ""
+    ended_at: str = ""
+    duration_text: str = ""
+    tasks: tuple[TaskOutcome, ...] = ()
+    blocked: tuple[BlockedItem, ...] = ()
+    #: budget_guard.BudgetCounters.token_description() — carried VERBATIM,
+    #: including its ">= N tokens (M provider calls unmeasured)" notation.
+    token_description: str = ""
+    #: Where that number came from (BudgetCounters.actual_sources).  Every
+    #: cost line names its basis (P6); a cost without a basis is not printed.
+    cost_basis: tuple[str, ...] = ()
+    elapsed_seconds: float | None = None
+    cycle_records: tuple[dict[str, Any], ...] = ()
+    open_decision_lines: tuple[str, ...] = ()
+    open_decision_count: int | None = None
+    open_assumptions: tuple[str, ...] = ()
+    assumptions_ref: str = ""
+    manifest_ref: str = ""
+    plan_ref: str = ""
+    status_mirror: StatusMirror | None = None
+    #: F053 next feature capability line ("can next"), supplied by the caller.
+    next_capability: str = ""
+    notes: tuple[str, ...] = field(default_factory=tuple)
+
+
+# ---------------------------------------------------------------------------
+# Small helpers — every one of them refuses to invent a value
+# ---------------------------------------------------------------------------
+
+
+def _as_int(value: Any) -> int:
+    """An int, or 0 for anything that is not one.  Never raises into a render."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 0
+    return value
+
+
+def _text(value: str | None) -> str:
+    """The value, or the missing-source marker.  The only place that decides."""
+    value = (value or "").strip()
+    return value or NOT_RECORDED
+
+
+def _link(label: str, ref: str) -> str:
+    """A markdown link when there is a target, otherwise the bare label."""
+    ref = (ref or "").strip()
+    if not ref:
+        return label
+    return f"[{label}]({ref})"
+
+
+def _capped(lines: list[str], limit: int, noun: str) -> list[str]:
+    """The first *limit* lines plus an honest count of what was dropped (A9).
+
+    Never a silent truncation: a report that quietly shows 20 of 200 tasks
+    reads as a complete report and is not one.
+    """
+    if len(lines) <= limit:
+        return lines
+    dropped = len(lines) - limit
+    return lines[:limit] + [f"- … and {dropped} more {noun} (see evidence)"]
+
+
+# ---------------------------------------------------------------------------
+# Next action
+# ---------------------------------------------------------------------------
+
+
+def recommended_next_action(sources: ReportSources) -> NextAction:
+    """The one next action, by NEXT_ACTION_RULES, first match wins."""
+    if sources.open_decision_count:
+        command = ""
+        for item in sources.blocked:
+            if item.answer_command:
+                command = item.answer_command
+                break
+        action = "Answer the open decision"
+        if command:
+            action = f"Answer the open decision: `{command}`"
+        return NextAction("open-decision", action)
+
+    blocked_state = (sources.terminal_status or "").strip().lower() in {
+        "blocked", "budget_exhausted", "deadline_reached", "stopped_by_operator"}
+    if sources.blocked or blocked_state:
+        ref = next((b.evidence_ref for b in sources.blocked if b.evidence_ref), "")
+        target = _link("the postmortem", ref) if ref else "the postmortem"
+        return NextAction("blocked-failed", f"Inspect {target} and repair the blocked task")
+
+    if sources.tasks and all(
+            t.status.strip().lower() == "completed" for t in sources.tasks):
+        return NextAction("all-green", "Review and merge the branch")
+
+    return NextAction("indeterminate",
+                      f"No recommendation — the run state is {NOT_RECORDED}")
+
+
