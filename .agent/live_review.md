@@ -25,10 +25,13 @@ an invented value (docs/roadmap/features/T1_F053.md).
   fixed the "Steps" reader, tripped the resource-safety reader
   (reviewer-authored text, incomplete reader list); gate stopped
   at step 3 per the stop rule. Done (outcome carried to R5).
-- R5: persist R4 verdict; apply the CORRECTED context.md (full
-  reader list, validated against all 13 assertions) + the §4
-  item 11 grep-every-reader rewrite; re-run gate steps 3-5 (full
-  suite + docs + canary) — green required, else STOP. In progress.
+- R5: persist R4 verdict; corrected context.md (full reader list)
+  + §4 item 11 grep-every-reader rewrite; gate confirmation GREEN
+  (full suite 14610/0/19, docs 293, canary 42). Done.
+- R6: closure per docs/roadmap/STATUS_closure_protocol.md v4:
+  Built State + persist R5 verdict, preconditions, evidence job,
+  READY zip, evidence commit, then ONE final commit = STATUS [x] +
+  README sync + final .agent state. In progress.
 
 ## Findings
 - Open: R-0160 (process, Low, registered 2026-07-31): the R1
@@ -59,15 +62,14 @@ an invented value (docs/roadmap/features/T1_F053.md).
   auto-renders); capability lines cap at 10 via _capped with the
   honest count line (CALL-2 ruling).
   Done: R-0161 (commit c2d9f790 — guard + tests; cap 9e0b4035).
-- Open: R-0162 (process, Low, registered 2026-07-31; AMENDED after
-  R4): the R1 context.md rewrite dropped the "Steps" token; the R4
-  repair (reviewer-authored) fixed that reader and tripped a second
-  one — test_context_mentions_resource_safety asserts "resource" or
-  "pytest" in the same file; context.md's real-file readers span 4
-  test files with 13 assertions. Fix (R5): corrected authored
-  replacement validated against the FULL reader list before
-  emission, plus the §4 item 11 rewrite adding the
-  grep-every-reader rule. Not feature-code coupled.
+- Resolved: R-0162 (process, Low) 2026-07-31: .agent/context.md
+  now satisfies its FULL real-file reader list (4 test files, 13
+  assertions — "Steps" section, "## Active Branch" + feature/
+  slug, roadmap F-id, pytest/resource line), and §4 item 11
+  carries the grep-every-reader rule so a state-file replacement
+  is validated against ALL readers before emission.
+  Done: R-0162 (commit 0e599d11 — corrected text + rule; gate
+  confirmation 14610/0/19).
 - Next free ID: R-0163.
 
 ## Verdicts
@@ -152,3 +154,19 @@ an invented value (docs/roadmap/features/T1_F053.md).
   block. R-0162 stays Open for R5; the grep-every-reader rule is
   codified in the §4 item 11 rewrite. LAST_REVIEWED_SHA stays
   1a5af0d.
+- R5: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-31). Range
+  1ae0c42..cf95459 (content through 0e599d1). All 5 authored texts
+  cmp 0 disk-to-disk (saved copy AND applied region; the r4-5
+  paragraph fully replaced, 0 remaining); .agent/context.md
+  byte-identical to r5-4. Reviewer's OWN full-suite run at the
+  handback HEAD: 14610 passed, 0 failed, 19 skipped (2:17) — the
+  branch-only failure set is empty; the R3 base evidence (6
+  attributed UI-artifact ids) stands. Worker gates consistent with
+  the reviewer's runs: reader files 91, full suite 14610/0/19
+  (2:14), docs 293, canary 42. R-0162 Resolved (context.md full
+  reader list + the §4 item 11 grep-every-reader rule; Done
+  0e599d11). New suite baseline 14610/0/19. Closure preconditions:
+  latest verdict PASS; open findings: R-0160 only (documented Low,
+  routed to the next paydown round); Built State lands in the R6
+  persist commit before the closure commit (precondition 4); tree
+  clean. LAST_REVIEWED_SHA = cf95459.
