@@ -1,5 +1,27 @@
 # Decisions
 
+## 2026-07-31: F053 R3 gate — base parity by symlink is defeated by the UI auto-build
+The gate doc offers two ways to handle the environment-coupled base failures:
+restore `apps/ui/node_modules` + `apps/ui/dist` parity in the throwaway base
+worktree, or attribute every `comm -23` id by direct evidence. Parity was
+attempted first, by symlinking both from the primary checkout.
+
+It did not hold. The ui_server tests trigger an auto-build, that auto-build ran
+`npm install` inside the base worktree, and npm REPLACED the `node_modules`
+symlink with a real (partial, exit-217) install — so the base run failed the
+same six ids anyway. Two consequences worth recording:
+
+1. The symlink is also a WRITE path. The auto-build wrote through the `dist`
+   symlink into the PRIMARY checkout's `apps/ui/dist`, rebuilding it. `dist` is
+   gitignored so the repo stayed clean and `tests/ui_server/` still passes 259,
+   but a throwaway worktree sharing a writable artifact directory with the
+   primary is not the isolation it looks like. A copy, not a symlink, is the
+   safer reading of the doc's "share or copy".
+2. Attribution was therefore done properly instead, and empirically: with the
+   symlink restored AND `REMEDY_UI_NO_AUTO_BUILD=1`, all six ids pass at base
+   (17 passed). That is per-id direct evidence that none of them is a genuine
+   base failure, which is what the doc actually asks for.
+
 ## 2026-07-31: F053 T002 — `remedy job report` gains modes, it does not replace one
 `remedy job report <id>` already existed: a progress/evidence view with
 `--json`, asserted on by tests/cli/test_open_decisions_view.py,
