@@ -1,0 +1,30 @@
+[
+ {
+  "safe_diff_files": [
+   "apps/cli/commands/job.py",
+   "docs/agents/integration_gate.md",
+   "docs/roadmap/STATUS.md"
+  ],
+  "status": "pending",
+  "task_id": "T001",
+  "title": "Task T001"
+ },
+ {
+  "safe_diff_files": [
+   "docs/roadmap/features/T1_F052.md",
+   "packages/orchestration/config.py",
+   "packages/orchestration/long_run_executor.py"
+  ],
+  "status": "pending",
+  "task_id": "T002",
+  "title": "Task T002"
+ },
+ {
+  "safe_diff_files": [
+   "tests/orchestration/test_self_healing_cycles.py"
+  ],
+  "status": "pending",
+  "task_id": "T003",
+  "title": "Task T003"
+ }
+]

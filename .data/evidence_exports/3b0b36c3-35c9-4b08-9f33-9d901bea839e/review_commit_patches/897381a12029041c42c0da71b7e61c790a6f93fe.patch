@@ -1,0 +1,347 @@
+897381a12029041c42c0da71b7e61c790a6f93fe
+diff --git a/.agent/authored/f052-r2-1.md b/.agent/authored/f052-r2-1.md
+new file mode 100644
+index 0000000..d696f57
+--- /dev/null
++++ b/.agent/authored/f052-r2-1.md
+@@ -0,0 +1,5 @@
++- R1 (LARGE): claim + state reset + inspect report + T001 + T002.
++  Done.
++- R2: persist R1 verdict + DECISION D1 + feature-file amendment +
++  Built State + integration gate per docs/agents/integration_gate.md
++  (R-0155 amendment in force). In progress.
+diff --git a/.agent/authored/f052-r2-2.md b/.agent/authored/f052-r2-2.md
+new file mode 100644
+index 0000000..245043a
+--- /dev/null
++++ b/.agent/authored/f052-r2-2.md
+@@ -0,0 +1,11 @@
++- DECISION D1 (2026-07-30, §4.7, reviewer): the executing repair
++  loop F052 triggers is builder_bridge.run_builder_bridge_loop, NOT
++  the ping-pong loop the feature file's "How it fits" names —
++  ping-pong is unreachable from run_cycles (own-reviewer findings,
++  no injection seam, JobPlan world) and the core-Job repair_loop
++  v0/v1/v2 modules are human-gated proposal flows by contract.
++  Alternatives considered: adapt ping-pong (rejected: a new seam is
++  a new mechanism, A6); a cycle-local loop (rejected: A6, verbatim).
++  Reversal: any later relay may re-route the trigger once ping-pong
++  gains a findings-injection seam; the repair= seam in run_cycles
++  keeps that a one-function swap.
+diff --git a/.agent/authored/f052-r2-3.md b/.agent/authored/f052-r2-3.md
+new file mode 100644
+index 0000000..abc7c5d
+--- /dev/null
++++ b/.agent/authored/f052-r2-3.md
+@@ -0,0 +1,13 @@
++- R1: PASS (reviewer, 2026-07-30). Range 92c998c..21638c6. All 3
++  authored texts cmp 0 disk-to-disk; STATUS claim one line exactly.
++  Reviewer's own runs: test_self_healing_cycles 50 passed;
++  tests/orchestration 8788 passed, 7 skipped (-n auto, 1:57);
++  tests/docs 293; canary 42. Mutation check in a throwaway worktree
++  (round cap < mutated to <=) killed by 3 tests incl.
++  test_exactly_two_rounds_not_one_not_three; worktree removed +
++  pruned. A6 verified: no repair-loop internals touched, trigger
++  reuses builder_bridge + repair_context intake (DECISION D1).
++  Deviations 1-4 accepted (4-commit split; CycleLimits field default
++  0 vs config 2, deliberate + documented; budget attribution proven
++  on the default seam; bridge loop monkeypatched in unit round —
++  real behavior belongs to the gate). LAST_REVIEWED_SHA = 21638c6.
+diff --git a/.agent/authored/f052-r2-4.md b/.agent/authored/f052-r2-4.md
+new file mode 100644
+index 0000000..2f3f8fe
+--- /dev/null
++++ b/.agent/authored/f052-r2-4.md
+@@ -0,0 +1,8 @@
++Amendment (DECISION D1, 2026-07-30): the "ping-pong machinery" named
++above has no findings-injection seam and is not reachable from the
++cycle executor; the EXISTING executing repair loop F052 triggers is
++`builder_bridge.run_builder_bridge_loop` (findings intake via
++`repair_context.build_repair_context`, `max_cycles=1` per round so
++the cycle re-runs its own verify between rounds). The A6 rule stood:
++no second repair mechanism was built. Details: .agent/decisions.md
++and live_review D1.
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index a796c25..88cd920 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,129 +1,117 @@
+-You are the worker (Window 2), fresh session. Feature: F052 —
+-Self-healing test rounds. Round id: f052-r1 (LARGE bundle). Read
+-AGENTS.md and docs/roadmap/features/T1_F052.md COMPLETELY before any
+-code. Save THIS ENTIRE block to .agent/last_block.md first
+-(OUTCOME: pending → executed at handback). Hash-stamp rule is in force:
+-every applied string below travels in a sha256-stamped block.
++Round f052-r2: persist the R1 PASS verdict + DECISION D1, amend the
++feature file, record Built State, then run the integration gate.
++Save this block to .agent/last_block.md first (OUTCOME: pending →
++executed at handback). Verify each authored text's sha256 BEFORE use
++(wrapped lines: rejoin with a single space, re-hash; persistent
++mismatch = STOP).
+ 
+-STEP 0 — OPEN PR GATE
+-gh pr list --state open --json number,headRefName,isDraft
+-Reviewer verified this is empty; if NOT empty now → STOP, hand back.
+-git checkout main && git pull --ff-only
++STEP 1 — COMMIT A (persist verdict + DECISION)
++Save the four authored texts below to .agent/authored/<name>.md.
++In .agent/live_review.md:
++- replace the two-line R1 Steps bullet ("- R1 (LARGE): ... In
++  progress.") with the BODY of f052-r2-1.md;
++- replace the Findings line "- (none yet)" with the BODY of
++  f052-r2-2.md;
++- replace the line "- R1: PENDING (reviewer)." with the BODY of
++  f052-r2-3.md.
++cmp proof per applied region. Commit .agent/live_review.md,
++.agent/authored/f052-r2-*.md, .agent/last_block.md as:
++chore(f052): persist R1 verdict (PASS) + DECISION D1
++Push.
+ 
+-STEP 1 — BRANCH + CLAIM (commit A)
+-git checkout -b feature/f052-self-healing-rounds
+-Save the three authored texts below to .agent/authored/<name>.md,
+-verify each sha256 BEFORE use (wrapped lines: rejoin with a single
+-space, re-hash; persistent mismatch = STOP).
+-- Replace the unique STATUS.md line "- [ ] F052 — Self-healing test
+-  rounds" with the single line of f052-r1-3.md (grep -c proofs: old
+-  1→0, new 0→1; touch no other line).
+-- Copy f052-r1-1.md over .agent/live_review.md, f052-r1-2.md over
+-  .agent/plan.md (cmp -> 0 proofs).
+-Commit STATUS.md + .agent/{live_review,plan,last_block}.md +
+-.agent/authored/f052-r1-*.md as:
+-chore(f052): claim F052 + state reset
+-Push -u origin feature/f052-self-healing-rounds.
++STEP 2 — COMMIT B (feature file: amendment + Built State)
++In docs/roadmap/features/T1_F052.md:
++- insert the BODY of f052-r2-4.md as its own paragraph at the END of
++  the "## How it fits" section (blank line before and after);
++- append a "## Built State" section — write it YOURSELF, strictly
++  factual, from the committed diff only: VerifyOutcome + normalization,
++  verify failure classes (config/unknown, deny green, never repaired),
++  cycles.repair_rounds (config default 2, CycleLimits field default 0 —
++  deliberate, documented), findings payload via
++  repair_context.build_repair_context, default_repair_step through
++  run_builder_bridge_loop (max_cycles=1), exact cap, stop probe between
++  rounds, ledger events cycle_repair_round/cycle_healed, CycleRecord
++  fields, render_cycle_summary_line + CLI print, healed-without-changes
++  flaky flag, test file (50 tests). No claims beyond the diff.
++Gates for this docs commit run at handback (step 4). Commit:
++docs(f052): How-it-fits amendment (D1) + Built State
++Push.
+ 
+-── STEP T001–T002/2 — F052 (LARGE) ────────────────────────────
+-Goal:        Whole feature except closure: verify-failure → bounded
+-             auto-repair through the EXISTING repair loop.
+-Bundle (strict order, stop-on-red between items):
+-  1. INSPECT (no code, findings go in the handback): where a cycle's
+-     verify failure surfaces; the exact function/entry point by which
+-     the EXISTING ping-pong repair loop accepts findings; where its
+-     round cap is configured; how budgets count repair calls; the
+-     postmortem test-failure class name. If NO existing repair path
+-     is reachable from cycle verify, STOP and hand back — that is a
+-     spec finding, not something to solve by building a new loop.
+-  2. T001: verify→findings→repair trigger + cap (config key
+-     cycles.repair_rounds, default 2) + healed path. Findings payload
+-     from the test output: failing test ids, tail of failure text,
+-     this cycle's changed files as hint. Re-run verify after each
+-     repair round. Healed → cycle completes normally; cycle evidence
+-     records "healed after N repair rounds" and reports show it.
+-     Fixture: a one-line assertion break heals in round one.
+-  3. T002: stubborn fixture (fake provider never fixes) → EXACTLY two
+-     rounds, then the existing test-failure classification; the
+-     postmortem references the repair-round evidence. Budget
+-     attribution asserted via actuals. A stop request between repair
+-     rounds stops cleanly at the existing safe points (assert, don't
+-     assume). Edge cases (A9): verify failing for non-test reasons
+-     (missing command, config) → classified config/unknown, NO repair
+-     rounds; a heal that changed no files records "healed without
+-     changes (flaky?)".
+-Change:      Trigger/wiring + tests only. New tests in
+-             tests/orchestration/test_self_healing_cycles.py.
+-Constraints: Do-not-touch: the repair loop's internals, flaky-test
+-             quarantine, review policies. NO new repair entry point —
+-             any diff adding one will be rejected in review (A6).
+-             Repair rounds flow through existing fences, budgets,
+-             stop safe points. Commits small (<500 lines), one
+-             logical step each.
+-Done when:   All green with raw tails + exit codes in the handback:
+-             python3 -m pytest tests/orchestration/test_self_healing_cycles.py -q
+-             python3 -m pytest tests/orchestration/ -q
+-             python3 -m pytest tests/docs/ -q            (expect 293)
+-             python3 -m pytest tests/cli/test_golden_path.py -q (42)
+-             plus a visible transcript line showing the healed-cycle
+-             evidence in a status/report rendering.
+-Handback:    completion report + rewrite .agent/handoff.md per
+-             docs/agents/handback_template.md (range main..HEAD,
+-             per-commit changed-files tables, inspect findings from
+-             item 1, sha256sum output of the three authored files,
+-             gate transcripts, deviations honest). Flip OUTCOME to
+-             executed. Commit: chore(f052): handback R1. Push. Do
+-             NOT create a PR yet — the reviewer orders it after the
+-             integration gate. Never merge anything.
+-──────────────────────────────────────────────────────────────
++STEP 3 — INTEGRATION GATE per docs/agents/integration_gate.md
++Merge base: c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8. The R-0155
++amendment is IN FORCE (its first live application): before the base
++run, restore environment parity in the base worktree — share or copy
++the primary checkout's ROOT node_modules and apps/ui/dist into it (or
++run the same install/build there). Record HOW parity was restored.
++Then: branch run `python3 -m pytest -n auto -q` (raw tail, FAILED
++list, exit code, wall time) → branch_failed.txt; base run identically
++in the throwaway worktree → base_failed.txt; comm -13 and comm -23;
++serial re-run + classification for EVERY branch-only id (F046
++pattern); an unattributed comm -23 id counts as a genuine base
++failure and blocks the verdict — under parity the comm -23 set should
++be near-empty; explain every remaining id. Remove + prune the
++worktree (git worktree list proof). Wall clock over ~5 min → note for
++a perf pass. You do NOT issue the gate verdict — record everything;
++the reviewer issues it.
+ 
+---- BEGIN f052-r1-1 sha256=8ba4dc102c31225686db256ac05863a8cf266a09525d6d936f0339bfc3990c96 ---
+-# Live Review — F052 Self-healing test rounds (Tier 1)
++STEP 4 — GATES + HANDBACK
++python3 -m pytest tests/docs/ -q                    (expect 293)
++python3 -m pytest tests/cli/test_golden_path.py -q  (expect 42)
++Rewrite .agent/handoff.md per docs/agents/handback_template.md:
++range 21638c6..HEAD, per-commit tables, sha256sum output of the four
++authored files, cmp proofs, the FULL gate records (both raw tails,
++failure lists, parity method, per-id attribution), gate transcripts,
++deviations. Flip OUTCOME to executed. Commit:
++chore(f052): handback R2 (integration gate records)
++Push. No PR yet; never merge. Closure is NOT part of this round.
+ 
+-Branch: feature/f052-self-healing-rounds
+-Scope: cycle verify failure → bounded auto-repair via the EXISTING
+-repair loop (no second mechanism, A6): findings payload from test
+-output, cap cycles.repair_rounds (default 2), healed path with a
+-visible evidence line, stubborn path with the existing test-failure
+-classification + linked repair evidence, budget attribution, safe-
+-point stop between rounds (docs/roadmap/features/T1_F052.md).
+-
+-## Steps
++--- BEGIN f052-r2-1 sha256=18191e99e68643978c3deb8a115fe17a0724dc66253d51a94f7588313b93b5df ---
+ - R1 (LARGE): claim + state reset + inspect report + T001 + T002.
+-  In progress.
+-
+-## Findings
+-- (none yet)
+-- Next free ID: R-0158.
+-
+-## Verdicts
+-- R1: PENDING (reviewer).
+---- END f052-r1-1 ---
+-
+---- BEGIN f052-r1-2 sha256=7c57cbadbe37f2dc61111c457fac71370cbf0f116361fc5fbaf137edd62c01d4 ---
+-# Plan — F052 Self-healing test rounds
++  Done.
++- R2: persist R1 verdict + DECISION D1 + feature-file amendment +
++  Built State + integration gate per docs/agents/integration_gate.md
++  (R-0155 amendment in force). In progress.
++--- END f052-r2-1 ---
+ 
+-## Goal
+-Trivial test breakage no longer kills unattended cycles: on a cycle
+-verify failure, up to cycles.repair_rounds (default 2) bounded
+-auto-repair rounds run through the EXISTING repair loop, verify
+-re-runs after each round, healed cycles record "healed after N
+-repair rounds" visibly, stubborn breaks fail after exactly two
+-rounds with the existing test-failure classification and linked
+-repair evidence, and repair cost lands on the job budget. DONE per
+-docs/roadmap/features/T1_F052.md: a one-line break heals in round
+-one; a stubborn break stops after exactly two rounds with an honest
+-trail; costs attributed via actuals.
++--- BEGIN f052-r2-2 sha256=bd8975dc0d697872a6259009bd52bffdf470900e3e7e25760e517e64929f7365 ---
++- DECISION D1 (2026-07-30, §4.7, reviewer): the executing repair
++  loop F052 triggers is builder_bridge.run_builder_bridge_loop, NOT
++  the ping-pong loop the feature file's "How it fits" names —
++  ping-pong is unreachable from run_cycles (own-reviewer findings,
++  no injection seam, JobPlan world) and the core-Job repair_loop
++  v0/v1/v2 modules are human-gated proposal flows by contract.
++  Alternatives considered: adapt ping-pong (rejected: a new seam is
++  a new mechanism, A6); a cycle-local loop (rejected: A6, verbatim).
++  Reversal: any later relay may re-route the trigger once ping-pong
++  gains a findings-injection seam; the repair= seam in run_cycles
++  keeps that a one-function swap.
++--- END f052-r2-2 ---
+ 
+-## Next Steps
+-- R1 (LARGE): inspect repair-loop intake → T001 trigger + cap +
+-  healed path → T002 stubborn path + budget + stop request.
+-- Then: integration gate round; closure its own round (never
+-  bundled).
+---- END f052-r1-2 ---
++--- BEGIN f052-r2-3 sha256=651db15ca9c3b850a75205ce8bb77c18bc001bf9232ddef50fba22385bdeb42c ---
++- R1: PASS (reviewer, 2026-07-30). Range 92c998c..21638c6. All 3
++  authored texts cmp 0 disk-to-disk; STATUS claim one line exactly.
++  Reviewer's own runs: test_self_healing_cycles 50 passed;
++  tests/orchestration 8788 passed, 7 skipped (-n auto, 1:57);
++  tests/docs 293; canary 42. Mutation check in a throwaway worktree
++  (round cap < mutated to <=) killed by 3 tests incl.
++  test_exactly_two_rounds_not_one_not_three; worktree removed +
++  pruned. A6 verified: no repair-loop internals touched, trigger
++  reuses builder_bridge + repair_context intake (DECISION D1).
++  Deviations 1-4 accepted (4-commit split; CycleLimits field default
++  0 vs config 2, deliberate + documented; budget attribution proven
++  on the default seam; bridge loop monkeypatched in unit round —
++  real behavior belongs to the gate). LAST_REVIEWED_SHA = 21638c6.
++--- END f052-r2-3 ---
+ 
+---- BEGIN f052-r1-3 sha256=7c0b8fd0a7679e9bc26f46548733ebf29d3e97d4d33b8a539c0cac0eef67d137 ---
+-- [~] F052 — Self-healing test rounds
+---- END f052-r1-3 ---
++--- BEGIN f052-r2-4 sha256=9926c85c9579fc8af181657bc8fd4bb13e41e32c92089c62b8cf1a83ec518e8f ---
++Amendment (DECISION D1, 2026-07-30): the "ping-pong machinery" named
++above has no findings-injection seam and is not reachable from the
++cycle executor; the EXISTING executing repair loop F052 triggers is
++`builder_bridge.run_builder_bridge_loop` (findings intake via
++`repair_context.build_repair_context`, `max_cycles=1` per round so
++the cycle re-runs its own verify between rounds). The A6 rule stood:
++no second repair mechanism was built. Details: .agent/decisions.md
++and live_review D1.
++--- END f052-r2-4 ---
+ 
+-OUTCOME: executed
++OUTCOME: pending
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 69d1b24..eba2210 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -10,11 +10,36 @@ point stop between rounds (docs/roadmap/features/T1_F052.md).
+ 
+ ## Steps
+ - R1 (LARGE): claim + state reset + inspect report + T001 + T002.
+-  In progress.
++  Done.
++- R2: persist R1 verdict + DECISION D1 + feature-file amendment +
++  Built State + integration gate per docs/agents/integration_gate.md
++  (R-0155 amendment in force). In progress.
+ 
+ ## Findings
+-- (none yet)
++- DECISION D1 (2026-07-30, §4.7, reviewer): the executing repair
++  loop F052 triggers is builder_bridge.run_builder_bridge_loop, NOT
++  the ping-pong loop the feature file's "How it fits" names —
++  ping-pong is unreachable from run_cycles (own-reviewer findings,
++  no injection seam, JobPlan world) and the core-Job repair_loop
++  v0/v1/v2 modules are human-gated proposal flows by contract.
++  Alternatives considered: adapt ping-pong (rejected: a new seam is
++  a new mechanism, A6); a cycle-local loop (rejected: A6, verbatim).
++  Reversal: any later relay may re-route the trigger once ping-pong
++  gains a findings-injection seam; the repair= seam in run_cycles
++  keeps that a one-function swap.
+ - Next free ID: R-0158.
+ 
+ ## Verdicts
+-- R1: PENDING (reviewer).
++- R1: PASS (reviewer, 2026-07-30). Range 92c998c..21638c6. All 3
++  authored texts cmp 0 disk-to-disk; STATUS claim one line exactly.
++  Reviewer's own runs: test_self_healing_cycles 50 passed;
++  tests/orchestration 8788 passed, 7 skipped (-n auto, 1:57);
++  tests/docs 293; canary 42. Mutation check in a throwaway worktree
++  (round cap < mutated to <=) killed by 3 tests incl.
++  test_exactly_two_rounds_not_one_not_three; worktree removed +
++  pruned. A6 verified: no repair-loop internals touched, trigger
++  reuses builder_bridge + repair_context intake (DECISION D1).
++  Deviations 1-4 accepted (4-commit split; CycleLimits field default
++  0 vs config 2, deliberate + documented; budget attribution proven
++  on the default seam; bridge loop monkeypatched in unit round —
++  real behavior belongs to the gate). LAST_REVIEWED_SHA = 21638c6.

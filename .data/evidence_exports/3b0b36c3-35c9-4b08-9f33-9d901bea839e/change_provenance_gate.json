@@ -1,0 +1,86 @@
+{
+ "content_hash_verified": true,
+ "covered_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F052.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "current_hashes": {
+  "apps/cli/commands/job.py": "85b775fc710deb0fbfbac110258a4314a0b0578a6910d78f6d51c911c0dea4a7",
+  "docs/agents/integration_gate.md": "524d06c7ae6e6b8ea68b971207a0b802c70d99494671ac45baf1547745bf836a",
+  "docs/roadmap/STATUS.md": "57ccc52975113613ab6483b8581b8b2bc26c774cc16ce30c0717f0d4e5c92bf7",
+  "docs/roadmap/features/T1_F052.md": "ab06769f056a966e6d5fcf61456f66b9bdcba3236b4e580fc7e76dc78b1d6f6b",
+  "packages/orchestration/config.py": "d4e221f8d6b807b7572a57c43ff3c449ceda2d8d8cc1b6503d1604052893038e",
+  "packages/orchestration/long_run_executor.py": "849eacc590fb6641001e3e2f643eef7fc220b149c7f73ad9d59fc0d257298dd6",
+  "tests/orchestration/test_self_healing_cycles.py": "7f78736261e81391575a3dd937bc2d9a9ba33533a4683e98ae69651ebe2b9f82"
+ },
+ "current_job_id": "3b0b36c3-35c9-4b08-9f33-9d901bea839e",
+ "dirty_files": [],
+ "evidence_covered_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F052.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "evidence_hashes": {
+  "apps/cli/commands/job.py": "85b775fc710deb0fbfbac110258a4314a0b0578a6910d78f6d51c911c0dea4a7",
+  "docs/agents/integration_gate.md": "524d06c7ae6e6b8ea68b971207a0b802c70d99494671ac45baf1547745bf836a",
+  "docs/roadmap/STATUS.md": "57ccc52975113613ab6483b8581b8b2bc26c774cc16ce30c0717f0d4e5c92bf7",
+  "docs/roadmap/features/T1_F052.md": "ab06769f056a966e6d5fcf61456f66b9bdcba3236b4e580fc7e76dc78b1d6f6b",
+  "packages/orchestration/config.py": "d4e221f8d6b807b7572a57c43ff3c449ceda2d8d8cc1b6503d1604052893038e",
+  "packages/orchestration/long_run_executor.py": "849eacc590fb6641001e3e2f643eef7fc220b149c7f73ad9d59fc0d257298dd6",
+  "tests/orchestration/test_self_healing_cycles.py": "7f78736261e81391575a3dd937bc2d9a9ba33533a4683e98ae69651ebe2b9f82"
+ },
+ "evidence_sources": [
+  "workspace.diff",
+  "current_change_content_proof.json",
+  "task_runs/T001/safe.diff",
+  "task_runs/T002/safe.diff",
+  "task_runs/T003/safe.diff"
+ ],
+ "excluded_files": [
+  ".agent/authored/f052-r1-1.md",
+  ".agent/authored/f052-r1-2.md",
+  ".agent/authored/f052-r1-3.md",
+  ".agent/authored/f052-r2-1.md",
+  ".agent/authored/f052-r2-2.md",
+  ".agent/authored/f052-r2-3.md",
+  ".agent/authored/f052-r2-4.md",
+  ".agent/authored/f052-r3-1.md",
+  ".agent/authored/f052-r3-2.md",
+  ".agent/authored/f052-r3-3.md",
+  ".agent/authored/f052-r3-4.md",
+  ".agent/authored/f052-r3-5.md",
+  ".agent/authored/f052-r4-1.md",
+  ".agent/authored/f052-r4-2.md",
+  ".agent/authored/f052-r4-3.md",
+  ".agent/authored/f052-r4-4.md",
+  ".agent/decisions.md",
+  ".agent/handoff.md",
+  ".agent/last_block.md",
+  ".agent/live_review.md",
+  ".agent/plan.md"
+ ],
+ "hash_mismatches": [],
+ "issues": [],
+ "schema_version": "1.0.0",
+ "source_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F052.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "stale_apply_proofs": [],
+ "uncovered_files": [],
+ "verdict": "PASS"
+}

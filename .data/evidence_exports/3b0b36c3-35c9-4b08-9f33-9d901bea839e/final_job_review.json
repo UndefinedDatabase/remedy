@@ -1,0 +1,58 @@
+{
+ "actual_changed_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F052.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "changed_files_match": true,
+ "completion_mode": "manual_operator_repair",
+ "completion_provider_call_count": 0,
+ "expected_changed_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md",
+  "docs/roadmap/features/T1_F052.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py",
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "findings": [],
+ "human_final_reviewer_required": true,
+ "job_id": "3b0b36c3-35c9-4b08-9f33-9d901bea839e",
+ "linked_prior_job_ids": [],
+ "linked_prior_job_summaries": [],
+ "per_task_changed_files": {
+  "T001": [
+   "apps/cli/commands/job.py",
+   "docs/agents/integration_gate.md",
+   "docs/roadmap/STATUS.md"
+  ],
+  "T002": [
+   "docs/roadmap/features/T1_F052.md",
+   "packages/orchestration/config.py",
+   "packages/orchestration/long_run_executor.py"
+  ],
+  "T003": [
+   "tests/orchestration/test_self_healing_cycles.py"
+  ]
+ },
+ "prior_execution_provider_call_count": 0,
+ "review_mode": "operator_attested_manual_completion",
+ "root_verification": {
+  "exit_code": 0,
+  "failed": 0,
+  "passed": 448
+ },
+ "schema_version": "1.0.0",
+ "superseded_prior_run_ids": [],
+ "task_verdicts": {
+  "T001": "operator_attested",
+  "T002": "operator_attested",
+  "T003": "operator_attested"
+ },
+ "verdict": "PASS"
+}
