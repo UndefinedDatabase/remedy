@@ -38,8 +38,9 @@ Sources (all pre-existing; see ``collect_report_sources``):
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -66,6 +67,18 @@ MAX_TASK_LINES = 20
 #: The same cap for the two other unbounded lists a big run can produce.
 MAX_BLOCKED_LINES = 20
 MAX_CYCLE_LINES = 20
+
+#: The final report's filename inside the job's evidence area (F053 T002).
+#: FIXED, and the writer overwrites it: the acceptance rule is exactly one
+#: report per terminal job, REGENERATED on resume-then-finish, never appended.
+#: It sits beside the cycle records, in the same evidence area, so there is no
+#: second evidence convention to learn.
+REPORT_FILENAME = "report.md"
+
+#: Where a report-write failure is recorded on the job.  The report is an
+#: ACCOUNT of the run, not a gate on it — failing to write one must never turn
+#: a finished run into a failed one.
+REPORT_ERROR_METADATA_KEY = "report_error"
 
 
 class ReportError(ValueError):
@@ -671,3 +684,129 @@ def collect_report_sources(job: Any) -> ReportSources:
         tasks=tasks,
         status_mirror=read_status_mirror(_job_repo_root(job) or None),
     )
+
+
+# ---------------------------------------------------------------------------
+# Evidence-area sources and the ONE writer (T002)
+# ---------------------------------------------------------------------------
+
+
+def _evidence_sources(job: Any) -> dict[str, Any]:
+    """Evidence-area sources for a job, each read independently.
+
+    Every read is guarded on its own: one unreadable source must not cost the
+    report the others.  A source that cannot be read is simply absent, and
+    absent renders "not recorded" — the same rule everywhere (P6).
+    """
+    job_id = str(getattr(job, "id", "") or "")
+    extra: dict[str, Any] = {}
+
+    try:
+        from packages.orchestration.long_run_executor import read_cycle_records
+
+        extra["cycle_records"] = tuple(read_cycle_records(job_id))
+    except Exception:  # noqa: BLE001 — an account of the run, not a gate on it
+        pass
+
+    # Costs come from the actuals the job runner persisted — the same source
+    # `remedy job budget` reads.  The unmeasured notation is carried verbatim
+    # from BudgetCounters; this module never re-derives a token number.
+    try:
+        from packages.orchestration.budget_guard import (
+            counters_from_persisted,
+            decode_persisted_budget_actuals,
+        )
+        from packages.orchestration.pingpong_job import load_job_plan
+
+        plan = load_job_plan(job_id)
+        actuals = getattr(plan, "budget_actuals", None) if plan is not None else None
+        if actuals is not None:
+            counters = counters_from_persisted(
+                decode_persisted_budget_actuals(
+                    actuals,
+                    first_running_at=getattr(plan, "first_running_at", "") or None))
+            extra["token_description"] = counters.token_description()
+            extra["cost_basis"] = tuple(counters.actual_sources)
+            extra["elapsed_seconds"] = counters.elapsed_seconds
+    except Exception:  # noqa: BLE001 — no actuals is "not recorded", never a zero
+        pass
+
+    try:
+        from packages.orchestration.decision_queue import (
+            list_decisions,
+            open_decisions,
+            render_open_decisions_lines,
+        )
+
+        decisions = list_decisions(job, [])
+        still_open = open_decisions(decisions)
+        extra["open_decision_count"] = len(still_open)
+        extra["open_decision_lines"] = tuple(render_open_decisions_lines(decisions))
+        extra["blocked"] = tuple(
+            BlockedItem(
+                task_id=d.related_node_id or d.id,
+                reason=d.safe_summary,
+                failure_class=d.type,
+                answer_command=d.next_actions[0] if d.next_actions else "",
+            )
+            for d in still_open
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    return extra
+
+
+def build_report_sources(job: Any) -> ReportSources:
+    """The full source set: what lives on the job, plus its evidence area.
+
+    This is what both the terminal writer and the CLI render from, so a final
+    report and an interim snapshot of the same job describe it the same way.
+    """
+    base = collect_report_sources(job)
+    extra = _evidence_sources(job)
+    if not extra:
+        return base
+    return replace(base, **extra)
+
+
+def report_path(job_id: str) -> Path:
+    """Where this job's one report lives.
+
+    Built on the same ``job_evidence_dir`` every other job-level record uses —
+    the report sits beside the ``cycles/`` directory, not in an area of its own.
+    """
+    from packages.orchestration.pingpong_job import job_evidence_dir
+    from packages.orchestration.safe_points import validate_job_id
+
+    return Path(job_evidence_dir(validate_job_id(job_id))) / REPORT_FILENAME
+
+
+def write_final_report(job: Any, *, sources: ReportSources | None = None) -> Path | None:
+    """Write THE final report for *job*, returning its path (or None on failure).
+
+    One writer, one file, overwritten in place: a job that is resumed and then
+    finishes again REGENERATES its report rather than appending to it, so the
+    file always describes the run as it actually ended (F053 acceptance).
+
+    Never raises. A failure is recorded on the job under
+    ``REPORT_ERROR_METADATA_KEY`` and the run carries on — the report is an
+    account of the run, and losing the account must not lose the run.
+    """
+    try:
+        job_id = str(getattr(job, "id", "") or "")
+        text = render_report_from_sources(
+            sources if sources is not None else build_report_sources(job),
+            mode=MODE_FINAL)
+        path = report_path(job_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 — see docstring
+        metadata = getattr(job, "metadata", None)
+        if isinstance(metadata, dict):
+            metadata[REPORT_ERROR_METADATA_KEY] = f"{type(exc).__name__}: {exc}"
+        return None
+    metadata = getattr(job, "metadata", None)
+    if isinstance(metadata, dict):
+        metadata.pop(REPORT_ERROR_METADATA_KEY, None)
+    return path
