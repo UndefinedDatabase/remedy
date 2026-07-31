@@ -1,38 +1,38 @@
-# Context — F252 Standing-red paydown
+# Context — F053 Final & interim report
 
 ## Active Branch
-`feature/f252-standing-red-paydown`
-Base commit: `7baff1d` (main after PR #160 merge)
+`feature/f053-run-report`
+Base commit: `15105dbe` (main after PR #168 merge)
 
 ## Scope
-Every id in `.agent/f251_baseline/class_map.txt` reaches an explicit
-terminal state, one class per slice. R1 closed D8, D10, D11. R2 covers
-R-0152 plus D9, D7, D5, D13, the two stopped F-A ids, D6, the D4
-remainder, D1, D14, D3 (park), D12.
-
-## Next Steps
-See `.agent/plan.md` for the round's ordered slices; this file records the
-boundaries they run inside.
+T001 only this round: `packages/orchestration/run_report.py` as a pure
+renderer plus `tests/orchestration/test_run_report.py`. The inspect
+step (STEP 2) is read-only evidence gathering; it wires nothing.
 
 ## Constraints
-- F251's quarantine rules unchanged: never deletion, never blanket
-  directory skips, never weakened assertions; a marker needs a reason
-  string and a backlog reference per test.
-- A class whose honest fix exceeds its bucket stops and reports.
-- Reviewer-authored texts under `.agent/authored/` are applied by copy and
-  sha256-verified before any commit; `plan.md` and `live_review.md` are
+- Pure renderer (P6): every number names its basis; a missing source
+  renders "not recorded"; the renderer never computes or guesses a
+  value that is not already structured data.
+- Deterministic ordering — double render must be byte-identical.
+- Milestone distance comes from the STATUS mirror, never
+  hand-maintained. Momentum flag uses the mechanical definition in
+  T1_F053.md. "can now" capability lines cite ONLY accepted `[x]`
+  state.
+- Reports are English regardless of mission language; mission text is
+  quoted as-is. Per-task lines cap with an "and N more" line (A9).
+- Reviewer-authored texts under `.agent/authored/` are applied by copy
+  and sha256-verified before use; STATUS.md and live_review.md are
   such texts this round and are never hand-edited.
-- Every slice ends green against the baseline subset rule plus the
-  `tests/cli/test_golden_path.py` canary, then commits and pushes.
+- Commits stay under 500-line diffs (AGENTS.md); multiple commits per
+  round are expected.
 
-## Resource safety
-Tests run in ONE session at a time through `scripts/remedy_pytest.sh`;
-never a background pytest, never a second parallel suite — see
-`docs/reviewer-safety.md`. The real-runtime tests additionally hold a
-cross-worker file lock and bind a per-worker port, never the product
-default 5173.
+## Gates
+`python3 -m pytest tests/orchestration/test_run_report.py -q` green ·
+`tests/docs/` 293 · canary `tests/cli/test_golden_path.py` 42. Round
+touches docs/roadmap/** → the docs gate applies
+(docs/agents/planner_reviewer_prompt.md §3 item 5).
 
 ## Do not touch
-`docs/roadmap/ROADMAP.md`; STATUS entries other than the F252 line;
-closure artifacts (evidence job, review zip, `[x]`) — those belong to a
-later reviewer-gated round.
+Notification delivery, UI rendering, cost calibration (feature file
+Do-not-touch). No CLI and no terminal-state hook — both are T002.
+`docs/roadmap/ROADMAP.md`; STATUS entries other than the F053 line.
