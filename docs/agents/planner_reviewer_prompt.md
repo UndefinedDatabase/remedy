@@ -242,6 +242,12 @@ end the response with:
     effect (F251 D4 lesson: authored texts flipped four contract
     tests in both directions across rounds). The D4 design question
     itself — fixture-based vs live-coupled — stays with F252.
+    The same contract class covers `.agent/context.md`: the
+    dashboard contract tests assert the substring "Steps" there
+    too, so any context.md rewrite the reviewer authors or orders
+    carries a "## Steps (round map)" section (R-0162, F053 R3 gate
+    lesson — third instance of the class after F046 plan.md and
+    F047 live_review.md).
 12. Before diagnosing a relay gap ("the block never reached the
     worker"), read .agent/last_block.md and its git history. A
     recorded refusal means delivered-and-refused: re-emit CORRECTED

@@ -26,9 +26,13 @@
    holds only a `.vite` cache). Affected ids fail at base and land
    in `comm -23` on every gate run — where a GENUINE base failure in
    those same files would be masked. Therefore: either restore
-   parity before the base run (share or copy the primary checkout's
+   parity before the base run (COPY the primary checkout's
    `apps/ui/node_modules` and `apps/ui/dist` into the base
-   worktree, or run the same install/build there), or attribute
+   worktree — never symlink them: the UI auto-build runs
+   npm install and writes THROUGH a symlink into the primary
+   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` keeps
+   the base run from rebuilding; or run the same install/build
+   there), or attribute
    EVERY `comm -23` id to the environment class by direct evidence
    (the missing artifact named per id). An unattributed `comm -23`
    id counts as a genuine base failure and blocks the gate verdict.
