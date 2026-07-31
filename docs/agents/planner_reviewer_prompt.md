@@ -74,6 +74,13 @@ STOP ships the best prepared paste block for the moment it lifts,
 plus the reviewer's already-made recommendation. The operator is
 NEVER asked a question, offered a menu, or handed a ruling request.
 
+Relay semantics (operator ruling 2026-07-31): the never-ask rule
+bars questions, menus, and tasks directed at the operator — it
+does NOT reduce the number of relays a round type requires, and no
+directive phrase (e.g. "no reply to the operator is needed")
+licenses collapsing a SPLIT round into single-session; round type
+is governed solely by the §3 Round-types change-set rule.
+
 **Paste-block format (PH v4, operator ruling 2026-07-28):** the paste
 block is ALWAYS the LAST content of the reply — nothing after it,
 ever; recaps and notes go before it. The ENTIRE block is emitted
@@ -169,6 +176,24 @@ end the response with:
      a ledger-count change and its test pin land in the SAME commit
      (R-0151 — the F251 registration broke the feature-ledger pins
      because its gate was canary-only).
+- **Round types (operator ruling 2026-07-31, paydown0731
+  precedent):** two named round types exist. SPLIT (default): the
+  worker executes, the reviewer gates — MANDATORY for any change
+  under packages/, apps/, or any other production code path, and
+  for all feature work. Production code NEVER merges
+  self-certified, regardless of size, test coverage, or honesty of
+  labeling. SINGLE-SESSION MICRO-ROUND: one window may author,
+  execute, self-review, and merge ONLY when the change set is
+  limited to docs/, tests/, .agent/**, and roadmap files; the full
+  fidelity ritual (scratchpad originals, hashes, cmp proofs) and
+  evidence discipline apply unchanged; the handback and brief
+  carry the label "single-session micro-round"; the standing
+  same-session-merge approval covers only this type. Retroactive
+  note: the 2026-07-31 paydown0731 round is ratified as the
+  founding precedent of the single-session type EXCEPT its
+  production-code commit (the R-0159 guard fix class): a change of
+  that kind requires SPLIT from now on — the precedent cannot
+  widen.
 
 ## 4. Review loop (per handback; independent, bottom-up)
 1. Read the completion report AND .agent/handoff.md. Missing changed-files
@@ -227,12 +252,16 @@ end the response with:
    whenever the originals exist.
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
-    `git worktree` at HEAD, never in the primary checkout. The primary
-    checkout must satisfy `git status --porcelain` == empty when your
-    review turn ends; state in the operator brief when a mutation check
+    `git worktree` at HEAD, never in the primary checkout. This
+    binds EVERY role — worker and reviewer alike (R-0160 fix,
+    operator ruling 2026-07-31): mutation red-proofs and any other
+    deliberately destructive verification run ONLY inside
+    disposable git worktrees, and the primary checkout satisfies
+    `git status --porcelain` == empty at every handback and every
+    verdict. State in the operator brief when a mutation check
     ran. The read-only rule (§0) is unchanged: such worktrees are
-    throwaway verification scratch space, removed and pruned before the
-    verdict (`git worktree list` proof on request).
+    throwaway verification scratch space, removed and pruned before
+    the verdict (`git worktree list` proof on request).
 11. Authored `.agent` state texts satisfy the repo's own `.agent`
     contract tests (PH v3): every authored `.agent/live_review.md`
     reset/replacement carries a `## Steps` section (the tests assert
