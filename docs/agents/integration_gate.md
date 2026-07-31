@@ -10,8 +10,13 @@
    Record: raw tail, full FAILED list, exit code, wall time.
    `grep '^FAILED' <log> | sort > branch_failed.txt`
 2. **Base run.** Identical command in a throwaway `git worktree` at the
-   merge base; same records; `base_failed.txt`. Remove + prune the
-   worktree and prove with `git worktree list`.
+   merge base; same records; `base_failed.txt`. Create the worktree ON
+   a throwaway BRANCH (`git worktree add -b tmp/base-gate <path>
+   <merge-base>`): the self-dogfood branch guard refuses a detached
+   HEAD by design, so a detached base worktree fails the
+   guard-dependent ids (DECISION D3, F053 R2 review, 2026-07-31).
+   Remove + prune the worktree (and delete the tmp branch) and prove
+   with `git worktree list`.
 3. **Compare.** `comm -13 base_failed.txt branch_failed.txt` = branch-only
    failures. Report `comm -23` too — failures the branch fixed.
    Environment-coupled base failures (R-0155 amendment, operator
