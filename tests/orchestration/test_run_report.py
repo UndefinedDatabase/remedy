@@ -1,0 +1,470 @@
+"""F053 T001 — the run report renders honestly, or it renders "not recorded".
+
+The three goldens are the contract: a green run, a blocked run with an open
+decision, and a budget-exhausted run.  Everything else here defends the one
+rule that makes the report worth reading — every number names its basis, and
+a number that was never measured is never printed.
+"""
+
+from __future__ import annotations
+
+import re
+
+import pytest
+
+from packages.orchestration.run_report import (
+    NOT_RECORDED,
+    BlockedItem,
+    ReportSources,
+    StatusMirror,
+    TaskOutcome,
+    render_report_from_sources,
+)
+
+pytestmark = pytest.mark.unit
+
+
+# ---------------------------------------------------------------------------
+# Fixtures — three terminal states, built as data, never read from disk
+# ---------------------------------------------------------------------------
+
+
+def _green_sources() -> ReportSources:
+    """All tasks completed, one clean cycle, actuals fully measured."""
+    return ReportSources(
+        job_id="11111111-1111-4111-8111-111111111111",
+        job_name="green run",
+        project_id="remedy",
+        mission="Add the run report",
+        state="completed",
+        terminal_status="all_green",
+        duration_text="4m 12s",
+        tasks=(
+            TaskOutcome("aaaaaaaa", "Write the renderer", "completed",
+                        evidence_ref="tasks/aaaaaaaa/output.md"),
+            TaskOutcome("bbbbbbbb", "Write the tests", "completed",
+                        evidence_ref="tasks/bbbbbbbb/output.md"),
+        ),
+        token_description="4200 tokens",
+        cost_basis=("pingpong_actuals",),
+        elapsed_seconds=252.0,
+        cycle_records=(
+            {"cycle_index": 1, "tasks_completed": 2, "tasks_failed": 0,
+             "tasks_escalated": 0, "verify_result": "passed",
+             "verify_failure_class": ""},
+        ),
+        open_decision_count=0,
+        assumptions_ref="assumptions.md",
+        plan_ref="plan.md",
+        manifest_ref="run_manifest.json",
+        status_mirror=StatusMirror(
+            milestone="F075",
+            remaining_to_milestone=21,
+            accepted_capabilities=("plan and execute a job",),
+            in_progress_capabilities=("write a run report",),
+        ),
+        next_capability="report every run without being asked",
+    )
+
+
+def _blocked_decision_sources() -> ReportSources:
+    """A task raised a question; its branch waits, and the report says how."""
+    answer = ('remedy decision resolve 22222222 td:cccccccc '
+              '--reason "<your answer>"')
+    return ReportSources(
+        job_id="22222222-2222-4222-8222-222222222222",
+        job_name="blocked run",
+        project_id="remedy",
+        mission="Migrate the store",
+        state="paused",
+        terminal_status="blocked",
+        stop_reason="task raised a decision",
+        duration_text="1m 30s",
+        tasks=(
+            TaskOutcome("cccccccc", "Choose the migration order", "paused",
+                        evidence_ref="tasks/cccccccc/output.md"),
+            TaskOutcome("dddddddd", "Apply the migration", "pending"),
+        ),
+        blocked=(
+            BlockedItem(
+                task_id="cccccccc",
+                reason="needs a decision on the migration order",
+                failure_class="needs_decision",
+                answer_command=answer,
+                evidence_ref="tasks/cccccccc/postmortem.json",
+            ),
+        ),
+        token_description="1800 tokens",
+        cost_basis=("pingpong_actuals",),
+        elapsed_seconds=90.0,
+        cycle_records=(
+            {"cycle_index": 1, "tasks_completed": 0, "tasks_failed": 0,
+             "tasks_escalated": 1, "verify_result": "not_run",
+             "verify_failure_class": ""},
+        ),
+        open_decision_lines=(
+            "Open decisions: 1 — the run needs an answer",
+            "  [blocker] task_decision td:cccccccc: needs a decision on the "
+            "migration order",
+            f"    -> {answer}",
+        ),
+        open_decision_count=1,
+        open_assumptions=("A9: unmeasured provider calls count as unmeasured",),
+        assumptions_ref="assumptions.md",
+        plan_ref="plan.md",
+        manifest_ref="run_manifest.json",
+        status_mirror=StatusMirror(
+            milestone="F075", remaining_to_milestone=21,
+            accepted_capabilities=("plan and execute a job",)),
+        next_capability="answer decisions from the CLI",
+    )
+
+
+def _budget_sources() -> ReportSources:
+    """Stopped on budget, with unmeasured provider calls and a healed cycle."""
+    return ReportSources(
+        job_id="33333333-3333-4333-8333-333333333333",
+        job_name="budget run",
+        project_id="remedy",
+        mission="Refactor the verifier",
+        state="paused",
+        terminal_status="budget_exhausted",
+        stop_reason="budget_exhausted:tokens",
+        duration_text="12m 05s",
+        tasks=(
+            TaskOutcome("eeeeeeee", "Refactor the verifier", "failed",
+                        evidence_ref="tasks/eeeeeeee/output.md"),
+        ),
+        blocked=(
+            BlockedItem(
+                task_id="eeeeeeee",
+                reason="budget exhausted before the task finished",
+                failure_class="budget_exhausted",
+                evidence_ref="tasks/eeeeeeee/postmortem.json",
+            ),
+        ),
+        # The unmeasured notation is carried VERBATIM from
+        # budget_guard.BudgetCounters.token_description().
+        token_description=">= 91000 tokens (3 provider calls unmeasured)",
+        cost_basis=("pingpong_actuals", "provider_evidence"),
+        elapsed_seconds=725.0,
+        cycle_records=(
+            {"cycle_index": 1, "tasks_completed": 0, "tasks_failed": 1,
+             "tasks_escalated": 0, "verify_result": "failed",
+             "verify_failure_class": "test_failed",
+             "repair_rounds_used": 2, "healed_after_repair": True,
+             "healed_without_changes": True,
+             "repair_summary": "2 rounds; verify passed again"},
+        ),
+        open_decision_count=0,
+        assumptions_ref="assumptions.md",
+        plan_ref="plan.md",
+        manifest_ref="run_manifest.json",
+        status_mirror=StatusMirror(
+            milestone="F075", remaining_to_milestone=21,
+            accepted_capabilities=("plan and execute a job",)),
+        next_capability="raise the budget and resume",
+        notes=("Normalization: 1 provider response was re-encoded to UTF-8.",),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Golden reports
+# ---------------------------------------------------------------------------
+
+
+GOLDEN_GREEN = """\
+# Run report — green run
+
+- Job: `11111111-1111-4111-8111-111111111111`
+- Project: remedy
+- Mission: Add the run report
+- State: completed
+- Terminal status: all_green
+- Duration: 4m 12s
+
+## Tasks
+
+- `aaaaaaaa` — Write the renderer — **completed** — [evidence](tasks/aaaaaaaa/output.md)
+- `bbbbbbbb` — Write the tests — **completed** — [evidence](tasks/bbbbbbbb/output.md)
+
+## Blocked
+
+Nothing blocked.
+
+## Open decisions
+
+No open decisions.
+
+## Cost
+
+- Tokens: 4200 tokens — basis: pingpong_actuals
+- Elapsed: 252.0s — basis: budget counters
+
+## Cycles
+
+- Cycle 1: 2 completed, 0 failed, 0 escalated — verify: passed
+
+## Open assumptions
+
+No open assumptions.
+
+Assumption log: [assumptions](assumptions.md)
+
+## Momentum
+
+✅ Forward — every round closed items and nothing recurred.
+
+## Milestone
+
+- 21 features remain to F075
+
+## Capabilities
+
+- Can now: plan and execute a job
+- In progress: write a run report
+- Can next: report every run without being asked
+
+## References
+
+- Plan: [plan](plan.md)
+- Run manifest: [run_manifest.json](run_manifest.json)
+
+## Recommended next action
+
+Review and merge the branch  _(rule: all-green — every task completed and nothing is open)_
+"""
+
+
+GOLDEN_BLOCKED = """\
+# Run report — blocked run
+
+- Job: `22222222-2222-4222-8222-222222222222`
+- Project: remedy
+- Mission: Migrate the store
+- State: paused
+- Terminal status: blocked
+- Stop reason: task raised a decision
+- Duration: 1m 30s
+
+## Tasks
+
+- `cccccccc` — Choose the migration order — **paused** — [evidence](tasks/cccccccc/output.md)
+- `dddddddd` — Apply the migration — **pending**
+
+## Blocked
+
+- `cccccccc` — needs a decision on the migration order — class: needs_decision — [postmortem](tasks/cccccccc/postmortem.json)
+  - answer with: `remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"`
+
+## Open decisions
+
+Open decisions: 1 — the run needs an answer
+  [blocker] task_decision td:cccccccc: needs a decision on the migration order
+    -> remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"
+
+## Cost
+
+- Tokens: 1800 tokens — basis: pingpong_actuals
+- Elapsed: 90.0s — basis: budget counters
+
+## Cycles
+
+- Cycle 1: 0 completed, 0 failed, 1 escalated — verify: not_run
+
+## Open assumptions
+
+- A9: unmeasured provider calls count as unmeasured
+- Full log: [assumptions](assumptions.md)
+
+## Momentum
+
+✅ Forward — every round closed items and nothing recurred.
+
+## Milestone
+
+- 21 features remain to F075
+
+## Capabilities
+
+- Can now: plan and execute a job
+- Can next: answer decisions from the CLI
+
+## References
+
+- Plan: [plan](plan.md)
+- Run manifest: [run_manifest.json](run_manifest.json)
+
+## Recommended next action
+
+Answer the open decision: `remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"`  _(rule: open-decision — an open decision is waiting for an answer)_
+"""
+
+
+GOLDEN_BUDGET = """\
+# Run report — budget run
+
+- Job: `33333333-3333-4333-8333-333333333333`
+- Project: remedy
+- Mission: Refactor the verifier
+- State: paused
+- Terminal status: budget_exhausted
+- Stop reason: budget_exhausted:tokens
+- Duration: 12m 05s
+
+## Tasks
+
+- `eeeeeeee` — Refactor the verifier — **failed** — [evidence](tasks/eeeeeeee/output.md)
+
+## Blocked
+
+- `eeeeeeee` — budget exhausted before the task finished — class: budget_exhausted — [postmortem](tasks/eeeeeeee/postmortem.json)
+
+## Open decisions
+
+No open decisions.
+
+## Cost
+
+- Tokens: >= 91000 tokens (3 provider calls unmeasured) — basis: pingpong_actuals, provider_evidence
+- Elapsed: 725.0s — basis: budget counters
+
+## Cycles
+
+- Cycle 1: 0 completed, 1 failed, 0 escalated — verify: failed — failure class: test_failed
+  - healed after 2 repair round(s) — WITHOUT file changes (flake suspect)
+  - repair: 2 rounds; verify passed again
+
+## Open assumptions
+
+No open assumptions.
+
+Assumption log: [assumptions](assumptions.md)
+
+## Momentum
+
+✅ Forward — every round closed items and nothing recurred.
+
+## Milestone
+
+- 21 features remain to F075
+
+## Capabilities
+
+- Can now: plan and execute a job
+- Can next: raise the budget and resume
+
+## References
+
+- Plan: [plan](plan.md)
+- Run manifest: [run_manifest.json](run_manifest.json)
+
+> Normalization: 1 provider response was re-encoded to UTF-8.
+
+## Recommended next action
+
+Inspect [the postmortem](tasks/eeeeeeee/postmortem.json) and repair the blocked task  _(rule: blocked-failed — the run is blocked or a task failed)_
+"""
+
+
+class TestGoldenReports:
+    """The three fixture terminals from T1_F053.md Acceptance."""
+
+    def test_green_terminal_matches_golden(self):
+        assert render_report_from_sources(_green_sources()) == GOLDEN_GREEN
+
+    def test_blocked_with_decision_matches_golden(self):
+        assert render_report_from_sources(_blocked_decision_sources()) == GOLDEN_BLOCKED
+
+    def test_budget_terminal_matches_golden(self):
+        assert render_report_from_sources(_budget_sources()) == GOLDEN_BUDGET
+
+
+class TestCostBasis:
+    """Every number names where it came from, or it is not a number (P6)."""
+
+    @pytest.mark.parametrize("sources", [
+        _green_sources(), _blocked_decision_sources(), _budget_sources(),
+    ])
+    def test_every_cost_line_carries_a_basis(self, sources):
+        cost_lines = [
+            line for line in render_report_from_sources(sources).splitlines()
+            if line.startswith("- Tokens:") or line.startswith("- Elapsed:")
+        ]
+        assert cost_lines, "the cost section rendered no lines at all"
+        for line in cost_lines:
+            assert " — basis: " in line, f"cost line without a basis: {line}"
+
+    def test_unmeasured_notation_is_carried_verbatim(self):
+        """The notation comes from BudgetCounters.token_description(); the
+        report never re-words it, because a re-worded caveat is a new claim."""
+        report = render_report_from_sources(_budget_sources())
+        assert ">= 91000 tokens (3 provider calls unmeasured)" in report
+
+
+class TestMissingSourcesAreNotInvented:
+    """The negative test: nothing is filled in, ever."""
+
+    def test_missing_actuals_render_not_recorded(self):
+        sources = ReportSources(job_name="no actuals", token_description="")
+        report = render_report_from_sources(sources)
+        assert f"Tokens: {NOT_RECORDED}" in report
+
+    def test_missing_actuals_never_render_a_zero(self):
+        """A zero is a measurement. A run with no actuals made none."""
+        sources = ReportSources(job_name="no actuals", token_description="")
+        cost = _section(render_report_from_sources(sources), "Cost")
+        assert not re.search(r"\b0 tokens\b", cost), cost
+        assert "0.0s" not in cost, cost
+
+    def test_every_absent_source_names_itself(self):
+        """An empty ReportSources renders a report made only of gaps — and
+        every gap says so rather than rendering an empty section."""
+        report = render_report_from_sources(ReportSources())
+        for heading in ("Tasks", "Open decisions", "Cost", "Cycles",
+                        "Open assumptions", "Momentum", "Milestone",
+                        "Capabilities"):
+            assert NOT_RECORDED in _section(report, heading), heading
+
+    def test_missing_status_mirror_does_not_invent_a_milestone(self):
+        report = render_report_from_sources(ReportSources(job_name="x"))
+        milestone = _section(report, "Milestone")
+        assert NOT_RECORDED in milestone
+        assert not re.search(r"\d+ features remain", milestone), milestone
+
+    def test_in_progress_state_never_becomes_a_capability(self):
+        """P1: only accepted [x] state may say "can now"."""
+        sources = ReportSources(
+            job_name="x",
+            status_mirror=StatusMirror(
+                milestone="F075", remaining_to_milestone=3,
+                accepted_capabilities=(),
+                in_progress_capabilities=("write a run report",)))
+        capabilities = _section(render_report_from_sources(sources), "Capabilities")
+        assert "- In progress: write a run report" in capabilities
+        assert "- Can now: write a run report" not in capabilities
+        assert "- Can now: nothing accepted yet" in capabilities
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _headings(report: str) -> list[str]:
+    return [line for line in report.splitlines() if line.startswith("## ")]
+
+
+def _section(report: str, heading: str) -> str:
+    """The body under ``## <heading>``, up to the next ``## `` heading."""
+    lines = report.splitlines()
+    try:
+        start = lines.index(f"## {heading}")
+    except ValueError:  # pragma: no cover - a failed lookup is the assertion
+        raise AssertionError(f"no section {heading!r} in report:\n{report}") from None
+    body: list[str] = []
+    for line in lines[start + 1:]:
+        if line.startswith("## "):
+            break
+        body.append(line)
+    return "\n".join(body)
