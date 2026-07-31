@@ -1,10 +1,12 @@
-"""CLI tests: `remedy mission start|list|show` (F056 T001).
+"""CLI tests: `remedy mission start|list|show|continue` (F056 T001–T003).
 
 The surface, not the store: the store's own behaviour is proven in
 tests/orchestration/test_mission_state.py. What matters here is that the
 catalog carries the commands, that scoping follows the F148 rules, that the
-listing is honest about records it cannot read, and that `show` renders a
-chain whose jobs are gone without crashing.
+listing is honest about records it cannot read, that `show` renders a chain
+whose jobs are gone without crashing, that the plan-approval opt-in defaults
+to NO, and that `continue` hands back a plan whose first task verifies the
+previous job.
 
 Every test runs the real grouped CLI in a subprocess against a tmp_path data
 root, so the assertions are made on what an operator actually sees.
@@ -490,3 +492,4 @@ class TestPlainDoFlowCreatesNoMission:
         assert proc.returncode == 0, proc.stderr
 
         assert _missions_on_disk(data_root) == []
+

@@ -39,13 +39,17 @@ Honesty rules this module holds to:
 * Listings never crash.  A record that will not parse is skipped and COUNTED
   (``list_missions_safe``), exactly as ``storage.list_jobs_safe`` does for
   jobs; a link whose job is gone renders ``(missing job)`` rather than raising.
+
+Verify-first (T003) lives at the bottom of this module: a follow-up job's plan
+is REQUIRED to begin with a verify task, and that requirement is enforced by
+building the plan that way and validating it, never by asking a model nicely.
 """
 
 from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -117,6 +121,15 @@ class MissionJobAlreadyLinkedError(MissionError):
 
 class MissionLinkRoleError(MissionError):
     """The role does not fit the chain: exactly one initial job, and it is first."""
+
+
+class MissionVerifyFirstError(MissionError):
+    """A follow-up plan does not begin with the injected verify task.
+
+    Raised by :func:`assert_verify_first`.  This is the structural half of the
+    verify-first rule: the plan is BUILT verify-first and then CHECKED to be,
+    so a caller cannot ship a follow-up whose verification is optional.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -516,3 +529,291 @@ def render_mission_row(mission: Mission) -> str:
     goal = mission.goal.replace("\n", " ").strip()[:60]
     return (f"{mission.id[:12]}  {mission.status:<9}  "
             f"{len(mission.job_links):>2} job(s)  {goal}")
+
+
+# ---------------------------------------------------------------------------
+# Verify-first follow-ups (T003)
+# ---------------------------------------------------------------------------
+
+#: The planned id the injected verify task always carries, and which every
+#: follow-up task in the same plan declares as its dependency.  Because
+#: ``dag_schedule.ready_set`` withholds a task until every dependency is
+#: COMPLETED, a failed verification makes the follow-up work unreachable — the
+#: rule is enforced by the scheduler that already exists, not by a prompt.
+MISSION_VERIFY_PLANNED_ID = "M000"
+MISSION_VERIFY_TASK_TYPE = "mission_verify"
+
+#: What a follow-up job records when the previous job left no runnable
+#: verification behind.  A9 default: it is reported as unverified — loudly and
+#: by name — and never as a passed verification.
+VERIFY_RESULT_PASSED = "passed"
+VERIFY_RESULT_FAILED = "failed"
+VERIFY_RESULT_UNVERIFIABLE = "unverifiable"
+
+#: Where a follow-up's verify record lands: the job's own evidence area, one
+#: directory over from the cycle and checkpoint records.
+MISSION_VERIFY_FILENAME = "mission_verify.json"
+
+
+def resolve_verify_command(job: Any) -> str:
+    """The command that re-checks a finished job's Definition of Done.
+
+    Looked up in the order a job records it: an explicit
+    ``metadata["verify_command"]`` first, then the flight plan's own
+    ``verify_command``.  Returns "" when the job recorded none — which is
+    reported as :data:`VERIFY_RESULT_UNVERIFIABLE`, never as a pass.
+    """
+    metadata = getattr(job, "metadata", None)
+    if isinstance(metadata, dict):
+        command = str(metadata.get("verify_command", "") or "").strip()
+        if command:
+            return command
+    plan = getattr(job, "flight_plan", None)
+    if isinstance(plan, dict):
+        command = str(plan.get("verify_command", "") or "").strip()
+        if command:
+            return command
+    return ""
+
+
+def build_verify_first_task(previous_job: Any) -> Any:
+    """The verify task injected at the head of every follow-up plan.
+
+    It re-runs the PREVIOUS job's Definition of Done against the CURRENT state
+    of the world.  It is a task, not an instruction: it occupies position 0 of
+    the plan and every other task depends on it.
+    """
+    from packages.core.models import AcceptanceCheck, RunState, Task
+
+    previous_id = str(getattr(previous_job, "id", "") or "")
+    command = resolve_verify_command(previous_job)
+    described = command or "no verification command recorded"
+    return Task(
+        description=(
+            f"Verify the previous job's Definition of Done still holds "
+            f"(job {previous_id}): {described}"),
+        acceptance_checks=[AcceptanceCheck(
+            description=(
+                "The previous job's recorded verification passes against the "
+                "current state before any follow-up work starts."))],
+        inputs={
+            "task_type": MISSION_VERIFY_TASK_TYPE,
+            "verify_command": command,
+            "previous_job_id": previous_id,
+            "flight": {
+                "planned_id": MISSION_VERIFY_PLANNED_ID,
+                "title": "Verify previous state",
+                "depends_on": [],
+                "est_tokens_band": "S",
+                "files_hint": [],
+            },
+        },
+        status=RunState.PENDING,
+    )
+
+
+def is_verify_task(task: Any) -> bool:
+    """True for the injected verify task, identified by its task type."""
+    inputs = getattr(task, "inputs", None)
+    if not isinstance(inputs, dict):
+        return False
+    return inputs.get("task_type") == MISSION_VERIFY_TASK_TYPE
+
+
+def inject_verify_first(previous_job: Any, follow_up_tasks: list[Any]) -> list[Any]:
+    """Return the follow-up plan with verification structurally in front.
+
+    Every follow-up task is rewritten to declare the verify task as a
+    dependency, so the existing scheduler — not this module, and not a prompt —
+    is what keeps the work from starting before the check passes.
+    """
+    verify = build_verify_first_task(previous_job)
+    planned: list[Any] = [verify]
+    for index, task in enumerate(follow_up_tasks, start=1):
+        flight = dict(task.inputs.get("flight") or {})
+        declared = [str(dep) for dep in (flight.get("depends_on") or [])]
+        if MISSION_VERIFY_PLANNED_ID not in declared:
+            declared.insert(0, MISSION_VERIFY_PLANNED_ID)
+        flight["depends_on"] = declared
+        flight.setdefault("planned_id", f"M{index:03d}")
+        flight.setdefault("title", task.description[:60])
+        flight.setdefault("est_tokens_band", "M")
+        flight.setdefault("files_hint", [])
+        inputs = dict(task.inputs)
+        inputs["flight"] = flight
+        planned.append(task.model_copy(update={"inputs": inputs}))
+    return planned
+
+
+def assert_verify_first(tasks: list[Any]) -> None:
+    """Refuse a follow-up plan that does not begin with the verify task.
+
+    The second half of the structural rule: plans are built verify-first by
+    :func:`inject_verify_first` and then CHECKED here, so no caller can ship a
+    follow-up whose verification is merely suggested.
+    """
+    if not tasks:
+        raise MissionVerifyFirstError(
+            "a follow-up plan must begin with the injected verify task, but it "
+            "has no tasks at all")
+    if not is_verify_task(tasks[0]):
+        raise MissionVerifyFirstError(
+            "a follow-up plan must begin with the injected verify task "
+            f"(task_type {MISSION_VERIFY_TASK_TYPE!r}); the plan starts with: "
+            f"{getattr(tasks[0], 'description', '?')!r}")
+    for task in tasks[1:]:
+        flight = task.inputs.get("flight") if isinstance(task.inputs, dict) else None
+        declared = list((flight or {}).get("depends_on") or [])
+        if MISSION_VERIFY_PLANNED_ID not in [str(d) for d in declared]:
+            raise MissionVerifyFirstError(
+                f"follow-up task {getattr(task, 'description', '?')!r} does not "
+                f"depend on the verify task {MISSION_VERIFY_PLANNED_ID} — it "
+                f"could start before the previous state was verified")
+
+
+@dataclass(frozen=True)
+class MissionVerifyOutcome:
+    """What running one follow-up's verify task actually established."""
+
+    result: str
+    command: str
+    exit_code: int | None
+    output_tail: str
+    previous_job_id: str
+    checked_at: str
+    #: True only when the follow-up work is allowed to start.  An unverifiable
+    #: previous job does not block (there is nothing to fail), but it is
+    #: recorded as unverified, never as passed.
+    follow_up_may_start: bool = False
+    detail: str = ""
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "result": self.result,
+            "command": self.command,
+            "exit_code": self.exit_code,
+            "output_tail": self.output_tail,
+            "previous_job_id": self.previous_job_id,
+            "checked_at": self.checked_at,
+            "follow_up_may_start": self.follow_up_may_start,
+            "detail": self.detail,
+        }
+
+
+@dataclass
+class MissionFollowupRun:
+    """The evidence record of one follow-up execution, in order.
+
+    ``steps`` is the ordered list of what ran.  The verify task is always
+    ``steps[0]``; a reader asserting verify-first ordering reads it from here
+    rather than from a claim in prose.
+    """
+
+    mission_id: str
+    job_id: str
+    verify: MissionVerifyOutcome
+    steps: list[str] = field(default_factory=list)
+    follow_up_started: bool = False
+    message: str = ""
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "schema_version": MISSION_SCHEMA_VERSION,
+            "mission_id": self.mission_id,
+            "job_id": self.job_id,
+            "verify": self.verify.to_json(),
+            "steps": list(self.steps),
+            "follow_up_started": self.follow_up_started,
+            "message": self.message,
+        }
+
+
+def _tail(text: str, limit: int = 800) -> str:
+    stripped = (text or "").strip()
+    return stripped if len(stripped) <= limit else "…" + stripped[-limit:]
+
+
+def run_verify_task(task: Any, *, cwd: Path | None = None,
+                    now: datetime | None = None,
+                    runner: Any = None) -> MissionVerifyOutcome:
+    """Run the injected verify task and report what it established.
+
+    ``runner`` exists for tests and for callers that already own a sandboxed
+    executor; it takes ``(argv, cwd)`` and returns ``(exit_code, output)``.
+    The default runs the recorded command as an argv list — never through a
+    shell, so a recorded command cannot become a recorded shell injection.
+    """
+    inputs = task.inputs if isinstance(getattr(task, "inputs", None), dict) else {}
+    command = str(inputs.get("verify_command", "") or "").strip()
+    previous_job_id = str(inputs.get("previous_job_id", "") or "")
+    stamp = _utc_now_iso(now)
+
+    if not command:
+        return MissionVerifyOutcome(
+            result=VERIFY_RESULT_UNVERIFIABLE,
+            command="", exit_code=None, output_tail="",
+            previous_job_id=previous_job_id, checked_at=stamp,
+            follow_up_may_start=True,
+            detail=(f"job {previous_job_id} recorded no verification command — "
+                    f"nothing was verified"),
+        )
+
+    import shlex
+
+    argv = shlex.split(command)
+    if runner is None:
+        def runner(argv: list[str], cwd: Path | None):  # noqa: E306
+            import subprocess
+
+            completed = subprocess.run(
+                argv, cwd=str(cwd) if cwd else None, capture_output=True,
+                text=True, timeout=900,
+            )
+            return (completed.returncode,
+                    (completed.stdout or "") + (completed.stderr or ""))
+
+    try:
+        exit_code, output = runner(argv, cwd)
+    except Exception as exc:  # noqa: BLE001 — a broken command is a failed verify
+        return MissionVerifyOutcome(
+            result=VERIFY_RESULT_FAILED, command=command, exit_code=None,
+            output_tail=_tail(f"{type(exc).__name__}: {exc}"),
+            previous_job_id=previous_job_id, checked_at=stamp,
+            follow_up_may_start=False,
+            detail=f"verification command could not run: {type(exc).__name__}: {exc}",
+        )
+
+    passed = int(exit_code) == 0
+    return MissionVerifyOutcome(
+        result=VERIFY_RESULT_PASSED if passed else VERIFY_RESULT_FAILED,
+        command=command, exit_code=int(exit_code), output_tail=_tail(output),
+        previous_job_id=previous_job_id, checked_at=stamp,
+        follow_up_may_start=passed,
+        detail=("" if passed else
+                f"the previous job's verification now fails: `{command}` exited "
+                f"{int(exit_code)}"),
+    )
+
+
+def mission_verify_record_path(job_id: str) -> Path:
+    """Where a follow-up job's verify record lands, inside its evidence area."""
+    from packages.orchestration.pingpong_job import job_evidence_dir
+
+    return Path(job_evidence_dir(str(job_id))) / MISSION_VERIFY_FILENAME
+
+
+def write_mission_verify_record(run: MissionFollowupRun) -> Path:
+    """Persist the follow-up run record atomically, next to the job's evidence."""
+    path = mission_verify_record_path(run.job_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(path, json.dumps(run.to_json(), indent=2, sort_keys=True))
+    return path
+
+
+def read_mission_verify_record(job_id: str) -> dict[str, Any] | None:
+    """The follow-up run record for a job, or None when it never ran."""
+    try:
+        return json.loads(mission_verify_record_path(job_id).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+

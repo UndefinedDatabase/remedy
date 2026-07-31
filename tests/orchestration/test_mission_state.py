@@ -19,7 +19,8 @@ from uuid import uuid4
 
 import pytest
 
-from packages.core.models import Job, RunState
+from packages.core.models import Job, RunState, Task
+from packages.orchestration.dag_schedule import blocked_downstream, ready_set
 from packages.orchestration.decision_queue import list_decisions
 from packages.orchestration.intake import heuristic_intake, mission_candidate_hint
 from packages.orchestration.mission_state import (
@@ -31,14 +32,23 @@ from packages.orchestration.mission_state import (
     MISSION_STATUS_ABANDONED,
     MISSION_STATUS_ACHIEVED,
     MISSION_STATUS_ACTIVE,
+    MISSION_VERIFY_PLANNED_ID,
     UNREADABLE_JOB_LABEL,
+    VERIFY_RESULT_FAILED,
+    VERIFY_RESULT_PASSED,
+    VERIFY_RESULT_UNVERIFIABLE,
     Mission,
     MissionError,
     MissionGoalImmutableError,
     MissionJobAlreadyLinkedError,
     MissionLinkRoleError,
     MissionNotFoundError,
+    MissionVerifyFirstError,
+    assert_verify_first,
+    build_verify_first_task,
     create_mission,
+    inject_verify_first,
+    is_verify_task,
     link_job_to_mission,
     list_missions,
     list_missions_safe,
@@ -50,6 +60,8 @@ from packages.orchestration.mission_state import (
     render_mission_chain,
     render_mission_row,
     resolve_mission_id,
+    resolve_verify_command,
+    run_verify_task,
     save_mission,
     set_mission_status,
 )
@@ -542,3 +554,139 @@ class TestMissionOfferInThePlanApproval:
                      if d.type == "flight_plan_approval"]
 
         assert len(approvals) == 1
+
+
+def _work_task():
+    """A plain follow-up work task, the thing the verify task must precede."""
+    return Task(description="Add the CSV path",
+                inputs={"task_type": "mission_follow_up"})
+
+
+class TestVerifyFirstStructure:
+    """F056 T003 — verification is a task in the plan, not a request in a prompt."""
+
+    def _previous_job(self, command: str = "true") -> Job:
+        return Job(name="previous", metadata={"verify_command": command})
+
+    def test_the_verify_task_is_built_from_the_previous_job(self):
+        previous = self._previous_job("pytest tests/importer")
+        task = build_verify_first_task(previous)
+
+        assert is_verify_task(task)
+        assert task.inputs["verify_command"] == "pytest tests/importer"
+        assert task.inputs["previous_job_id"] == str(previous.id)
+        assert str(previous.id) in task.description
+
+    def test_a_previous_job_without_a_command_says_so(self):
+        task = build_verify_first_task(Job(name="previous"))
+
+        assert task.inputs["verify_command"] == ""
+        assert "no verification command recorded" in task.description
+
+    def test_the_command_may_come_from_the_flight_plan(self):
+        previous = Job(name="previous",
+                       flight_plan={"verify_command": "make smoke"})
+
+        assert resolve_verify_command(previous) == "make smoke"
+
+    def test_injection_puts_verify_first_and_makes_work_depend_on_it(self):
+        previous = self._previous_job()
+        tasks = inject_verify_first(previous, [_work_task()])
+
+        assert is_verify_task(tasks[0])
+        assert tasks[1].inputs["flight"]["depends_on"] == [
+            MISSION_VERIFY_PLANNED_ID]
+
+    def test_the_scheduler_withholds_the_work_until_verify_completes(self):
+        """The enforcement is the existing DAG scheduler, not a convention."""
+        previous = self._previous_job()
+        tasks = inject_verify_first(previous, [_work_task()])
+
+        ready = ready_set(tasks)
+
+        assert ready == [tasks[0].id]
+
+    def test_the_work_becomes_ready_once_verify_completed(self):
+        previous = self._previous_job()
+        tasks = inject_verify_first(previous, [_work_task()])
+        tasks[0].status = RunState.COMPLETED
+
+        assert ready_set(tasks) == [tasks[1].id]
+
+    def test_a_failed_verify_blocks_the_work_downstream(self):
+        previous = self._previous_job()
+        tasks = inject_verify_first(previous, [_work_task()])
+        tasks[0].status = RunState.FAILED
+
+        assert blocked_downstream(tasks, [tasks[0].id]) == {tasks[1].id}
+
+    def test_a_plan_that_does_not_start_with_verify_is_refused(self):
+        with pytest.raises(MissionVerifyFirstError):
+            assert_verify_first([_work_task()])
+
+    def test_an_empty_plan_is_refused(self):
+        with pytest.raises(MissionVerifyFirstError):
+            assert_verify_first([])
+
+    def test_work_that_does_not_depend_on_verify_is_refused(self):
+        previous = self._previous_job()
+        verify = build_verify_first_task(previous)
+        loose = _work_task()
+        loose.inputs["flight"] = {"planned_id": "M001", "depends_on": []}
+
+        with pytest.raises(MissionVerifyFirstError):
+            assert_verify_first([verify, loose])
+
+
+class TestVerifyTaskExecution:
+
+    def _task(self, command: str):
+        return build_verify_first_task(
+            Job(name="previous", metadata={"verify_command": command}))
+
+    def test_a_passing_command_lets_the_follow_up_start(self):
+        outcome = run_verify_task(self._task("check the thing"),
+                                  runner=lambda argv, cwd: (0, "all good"))
+
+        assert outcome.result == VERIFY_RESULT_PASSED
+        assert outcome.follow_up_may_start is True
+        assert outcome.exit_code == 0
+
+    def test_a_failing_command_names_what_broke(self):
+        outcome = run_verify_task(self._task("check the thing"),
+                                  runner=lambda argv, cwd: (1, "2 tests failed"))
+
+        assert outcome.result == VERIFY_RESULT_FAILED
+        assert outcome.follow_up_may_start is False
+        assert "check the thing" in outcome.detail
+        assert "exited 1" in outcome.detail
+        assert "2 tests failed" in outcome.output_tail
+
+    def test_a_command_that_cannot_run_is_a_failure_not_a_pass(self):
+        def _explode(argv, cwd):
+            raise FileNotFoundError("no such command: check")
+
+        outcome = run_verify_task(self._task("check"), runner=_explode)
+
+        assert outcome.result == VERIFY_RESULT_FAILED
+        assert outcome.follow_up_may_start is False
+        assert "could not run" in outcome.detail
+
+    def test_no_recorded_command_is_reported_unverified_never_passed(self):
+        outcome = run_verify_task(build_verify_first_task(Job(name="previous")))
+
+        assert outcome.result == VERIFY_RESULT_UNVERIFIABLE
+        assert outcome.result != VERIFY_RESULT_PASSED
+        assert "nothing was verified" in outcome.detail
+
+    def test_the_command_is_split_into_argv_not_handed_to_a_shell(self):
+        seen: list[list[str]] = []
+
+        def _record(argv, cwd):
+            seen.append(argv)
+            return (0, "")
+
+        run_verify_task(self._task("pytest tests/importer -q"), runner=_record)
+
+        assert seen == [["pytest", "tests/importer", "-q"]]
+
