@@ -133,14 +133,27 @@ LEDGER_EVENT_QUEUE_PULL = "queue_pull"
 #: F051: a task raised a question, and what happened to it.
 LEDGER_EVENT_TASK_NEEDS_DECISION = "task_needs_decision"
 LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
+#: F052: one event per repair round that really ran, and one when a cycle healed.
+LEDGER_EVENT_CYCLE_REPAIR_ROUND = "cycle_repair_round"
+LEDGER_EVENT_CYCLE_HEALED = "cycle_healed"
 
 #: Verify-step outcomes.  "not_run" is recorded verbatim — a cycle that ran no
 #: verification never claims a passing one.
 VERIFY_NOT_RUN = "not_run"
 VERIFY_PASSED = "passed"
 VERIFY_FAILED = "failed"
+#: F052: the verify step itself could not run (command missing, bad config), and
+#: the outcome where nothing said which.  These are NOT test failures — they deny
+#: green like any failure, but they say something different about the run, and
+#: F052's self-healing never spends a repair round on them.
+VERIFY_CONFIG_ERROR = "config"
+VERIFY_UNKNOWN_ERROR = "unknown"
 #: Verify outcomes that deny the job the all_green status.
-_VERIFY_DENIES_GREEN = frozenset({VERIFY_FAILED, "timeout"})
+_VERIFY_DENIES_GREEN = frozenset(
+    {VERIFY_FAILED, "timeout", VERIFY_CONFIG_ERROR, VERIFY_UNKNOWN_ERROR})
+#: The ONLY verify outcome a repair round may be spent on (F052).  Repairing a
+#: broken harness spends provider money on a problem no patch can fix.
+_VERIFY_REPAIRABLE = frozenset({VERIFY_FAILED})
 
 #: Rollout rule (F046): one cycle until the F075 milestone gate flips it.
 DEFAULT_MAX_CYCLES = 1
@@ -151,10 +164,15 @@ DEFAULT_BATCH_SIZE = 1
 #: F075 milestone gate raises this, via an explicit change with an ADR.
 CYCLE_SAFETY_CAP = 1
 
+#: F052 rollout rule: two bounded repair rounds on a failed verify, and never
+#: more — the rounds are provider work like any other and stop where it stops.
+DEFAULT_REPAIR_ROUNDS = 2
+
 #: Config keys this feature owns.
 CONFIG_KEY_MAX_CYCLES = "cycles.max_cycles"
 CONFIG_KEY_BATCH_SIZE = "cycles.batch_size"
 CONFIG_KEY_VERIFY_COMMAND = "cycles.verify_command"
+CONFIG_KEY_REPAIR_ROUNDS = "cycles.repair_rounds"
 
 #: Where a cycle's own evidence record lands, and how it is named.
 CYCLE_EVIDENCE_DIRNAME = "cycles"
@@ -179,25 +197,78 @@ class CycleLimits:
                     budget half of the safe point (operator stop still applies).
     verify_command: recorded on every cycle record and passed to the verify
                     callable; None means "no override configured".
+    repair_rounds:  F052 — how many bounded repair rounds a FAILED verify may
+                    spend before the cycle keeps its failure.  0 disables
+                    self-healing.
+
+                    This field defaults to 0 while the CONFIG key defaults to
+                    ``DEFAULT_REPAIR_ROUNDS`` on purpose: a caller that builds
+                    its limits by hand asked for exactly the bounds it named,
+                    and silently spending provider calls it never requested is
+                    the one thing an auto-repair feature must not do.  The
+                    product surface goes through ``limits_from_config``, which
+                    supplies the configured default.
     """
 
     max_cycles: int = DEFAULT_MAX_CYCLES
     batch_size: int = DEFAULT_BATCH_SIZE
     budgets: JobBudgets | None = None
     verify_command: str | None = None
+    repair_rounds: int = 0
 
     def __post_init__(self) -> None:
         if self.max_cycles < 0:
             raise ValueError(f"max_cycles must be >= 0, got {self.max_cycles}")
         if self.batch_size < 1:
             raise ValueError(f"batch_size must be >= 1, got {self.batch_size}")
+        if self.repair_rounds < 0:
+            raise ValueError(f"repair_rounds must be >= 0, got {self.repair_rounds}")
 
 
 ProviderCall = Callable[[TaskExecutionContext], BuilderOutput]
 #: (job, provider_call) -> TaskAttempt.  Executes exactly ONE ready task.
 TaskStep = Callable[[Job, ProviderCall], "TaskAttempt"]
-#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings.
-VerifyStep = Callable[[Job, int, str | None], str]
+#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings, or a
+#: :class:`VerifyOutcome` when the step can also report WHAT failed (F052).
+#: Returning a bare string is the pre-F052 contract and stays supported.
+VerifyStep = Callable[[Job, int, str | None], "str | VerifyOutcome"]
+#: (job, cycle_index, findings) -> RepairOutcome.  ONE repair round (F052).
+RepairStep = Callable[[Job, int, dict[str, Any]], "RepairOutcome"]
+
+
+@dataclass(frozen=True)
+class VerifyOutcome:
+    """What a verify step observed, for steps that can say more than pass/fail.
+
+    A bare ``"failed"`` says a cycle is broken but not what broke, which is
+    exactly what a later reader — or a repair round — needs.  Steps written
+    before F052 keep returning the string; the loop normalizes both shapes
+    through :func:`as_verify_outcome`, so no existing caller changes.
+    """
+
+    result: str
+    #: The tail of the failure text, already bounded by the step that owns it.
+    output: str = ""
+    failing_test_ids: tuple[str, ...] = ()
+    #: Files this cycle changed — the hint a later reader starts from.
+    changed_files: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class RepairOutcome:
+    """What ONE repair round did (F052).
+
+    ``ran`` is False when the round never started — no repair path is reachable
+    in this deployment, for instance.  A round that did not start is never
+    counted against the cap and never claimed in the evidence: an uncounted
+    round would make "exactly two rounds" unprovable, and a claimed one would
+    be a lie about money that was never spent.
+    """
+
+    ran: bool = False
+    changed_files: tuple[str, ...] = ()
+    stop_reason: str = ""
+    error: str = ""
 
 
 @dataclass(frozen=True)
@@ -260,6 +331,21 @@ class CycleRecord:
     awaiting_downstream_task_ids: tuple[str, ...] = ()
     #: F051: the decisions this cycle raised, in the order they were raised.
     open_decision_ids: tuple[str, ...] = ()
+    #: F052: the failure class of a verify that did not pass, from the EXISTING
+    #: classifier (``failure_postmortem.classify``) rather than a second
+    #: vocabulary.  Empty when the verify passed or never ran.
+    verify_failure_class: str = ""
+    #: F052: repair rounds this cycle actually spent on a FAILED verify.
+    repair_rounds_used: int = 0
+    #: F052: the verify passed again after those rounds.  Silent healing hides
+    #: risk, so a heal is recorded and rendered rather than implied by a green
+    #: cycle.
+    healed_after_repair: bool = False
+    #: F052 (A9): the heal changed no file.  A test that starts passing on its
+    #: own is a flake suspect, and a human has to be able to see that.
+    healed_without_changes: bool = False
+    #: F052: the one-line account of the repair phase, ready to render.
+    repair_summary: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -279,6 +365,11 @@ class CycleRecord:
             "awaiting_task_ids": list(self.awaiting_task_ids),
             "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
             "open_decision_ids": list(self.open_decision_ids),
+            "verify_failure_class": self.verify_failure_class,
+            "repair_rounds_used": self.repair_rounds_used,
+            "healed_after_repair": self.healed_after_repair,
+            "healed_without_changes": self.healed_without_changes,
+            "repair_summary": self.repair_summary,
         }
 
 
@@ -620,11 +711,14 @@ def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
         config = get_config()
     resolved = resolve_max_cycles(cycles_flag, config.get(CONFIG_KEY_MAX_CYCLES))
     batch_size = config.get(CONFIG_KEY_BATCH_SIZE) or DEFAULT_BATCH_SIZE
+    repair_rounds = config.get(CONFIG_KEY_REPAIR_ROUNDS)
     return (
         CycleLimits(
             max_cycles=resolved.max_cycles,
             batch_size=int(batch_size),
             verify_command=config.get(CONFIG_KEY_VERIFY_COMMAND) or None,
+            repair_rounds=(DEFAULT_REPAIR_ROUNDS if repair_rounds is None
+                           else int(repair_rounds)),
         ),
         resolved,
     )
@@ -881,6 +975,241 @@ def _emit(log: Any, event: str, **meta: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
+# What a failed verify actually means (F052)
+# ---------------------------------------------------------------------------
+
+
+def as_verify_outcome(value: str | VerifyOutcome) -> VerifyOutcome:
+    """Normalize whatever a verify step returned.
+
+    Every verify step written before F052 returns a bare VERIFY_* string, and
+    they must all keep working untouched — so the richer shape is accepted, not
+    required.
+    """
+    if isinstance(value, VerifyOutcome):
+        return value
+    return VerifyOutcome(result=str(value))
+
+
+def cycle_verify_failure_class(verify_result: str) -> str:
+    """Classify a non-passing verify through the EXISTING classifier (F010).
+
+    No second vocabulary and no second enum: a failed test is the classifier's
+    ``test_failed``, a verify step that could not run at all is its ``config``,
+    and anything else is honestly ``unknown``.  A passing or never-run verify has
+    no failure class — an empty string, not a guess.
+    """
+    from packages.orchestration.failure_postmortem import FailureSignals, classify
+
+    if verify_result in (VERIFY_PASSED, VERIFY_NOT_RUN, ""):
+        return ""
+    if verify_result == VERIFY_FAILED:
+        signals = FailureSignals(terminal_status="test_failed")
+    elif verify_result == VERIFY_CONFIG_ERROR:
+        signals = FailureSignals(error_class="config")
+    else:
+        signals = FailureSignals(error_text=verify_result)
+    return classify(signals).failure_class.value
+
+
+def render_cycle_summary_line(record: CycleRecord) -> str:
+    """One human-readable line per cycle, for status and report renderings.
+
+    A cycle that did not verify says WHY in the same breath: "verify=failed"
+    alone sends a reader to the logs, "failure_class=config" sends them to the
+    harness instead of to a test they were never going to fix.  A cycle that
+    only went green because repair rounds fixed it says THAT too — silent
+    healing hides risk (F052).
+    """
+    line = (f"cycle {record.cycle_index}: verify={record.verify_result} "
+            f"tasks={record.tasks_completed}/{record.tasks_attempted}")
+    if record.repair_summary:
+        line += f" | {record.repair_summary}"
+    if record.verify_failure_class:
+        line += f" | failure_class={record.verify_failure_class}"
+    return line
+
+
+# ---------------------------------------------------------------------------
+# Self-healing test rounds (F052)
+# ---------------------------------------------------------------------------
+
+
+def build_cycle_repair_findings(job: Job, cycle_index: int,
+                                outcome: VerifyOutcome,
+                                *, executed_task_ids: Collection[str] = (),
+                                round_number: int = 1) -> dict[str, Any]:
+    """The findings payload ONE repair round is given.
+
+    Built on the EXISTING repair-context builder
+    (``repair_context.build_repair_context``), so a repair round receives
+    findings in exactly the shape the repair loop already consumes.  F052 adds
+    only what a cycle knows and a task-level failure did not: which test ids
+    failed, the tail of the failure text, and the files this cycle changed as a
+    hint.
+
+    No raw stdout beyond the tail the verify step already bounded — that is the
+    repair-context module's rule, and it is kept here.
+    """
+    from packages.orchestration.repair_context import build_repair_context
+
+    test_event = {"metadata": {"exit_code": 1, "passed": False,
+                               "cycle": cycle_index}}
+    findings = build_repair_context(job.id, test_event, [])
+    findings.update({
+        "source": "cycle_verify",
+        "cycle_index": cycle_index,
+        "repair_round": round_number,
+        "failing_test_ids": list(outcome.failing_test_ids),
+        "failure_tail": outcome.output,
+        "changed_files": list(outcome.changed_files) or list(executed_task_ids),
+    })
+    return findings
+
+
+def default_repair_step(job: Job, cycle_index: int, findings: dict[str, Any],
+                        *, provider_call: ProviderCall) -> RepairOutcome:
+    """ONE repair round, run through the EXISTING bounded repair loop.
+
+    F052 adds no repair mechanism of its own (feature file A6): this hands the
+    findings to ``builder_bridge.run_builder_bridge_loop`` — the loop that
+    already turns a builder output into a parsed patch, an approved intent, an
+    apply and a test — with ``max_cycles=1``, because the ROUND CAP belongs to
+    the cycle (``cycles.repair_rounds``) and the cycle re-runs its own verify
+    after every round.
+
+    The provider call is the cycle's OWN counted seam, so a repair round is
+    counted by the budgets and stopped by the safe points exactly like any other
+    provider work.  When the repair loop is not reachable in this deployment the
+    round honestly did not run: nothing is counted and nothing is claimed.
+    """
+    from packages.orchestration.builder_bridge import run_builder_bridge_loop
+    from packages.orchestration.data_paths import resolve_data_root
+    from packages.orchestration.workspace import LocalWorkspaceRuntime
+
+    task = next((t for t in job.tasks if t.status != RunState.COMPLETED),
+                job.tasks[0] if job.tasks else None)
+    if task is None:
+        return RepairOutcome(ran=False, error="repair_no_task")
+
+    def build_fn(repair_context: dict[str, Any] | None) -> BuilderOutput:
+        return provider_call(TaskExecutionContext(
+            job_id=job.id,
+            job_prompt=job.user_prompt,
+            task_id=task.id,
+            task_type=task.inputs.get("task_type", "unknown"),
+            task_description=task.description,
+            prior_task_summaries=[json.dumps(repair_context or findings,
+                                             sort_keys=True)],
+        ))
+
+    try:
+        repo_path = LocalWorkspaceRuntime(job_id=job.id).workspace.root
+        loop = run_builder_bridge_loop(
+            build_fn, repo_path,
+            job=job, data_dir=resolve_data_root(), max_cycles=1,
+        )
+    except Exception as exc:  # noqa: BLE001 — an unreachable repair path is not a crash
+        return RepairOutcome(ran=False, error=f"{type(exc).__name__}: {exc}")
+
+    changed: tuple[str, ...] = ()
+    parse = getattr(loop.final_result, "parse_result", None)
+    if parse is not None:
+        changed = tuple(getattr(parse, "target_paths", ()) or ())
+    return RepairOutcome(ran=loop.cycles_run > 0, changed_files=changed,
+                         stop_reason=loop.stop_reason)
+
+
+@dataclass(frozen=True)
+class RepairPhase:
+    """What the whole repair phase of ONE cycle did."""
+
+    outcome: VerifyOutcome
+    rounds_used: int = 0
+    healed: bool = False
+    healed_without_changes: bool = False
+    errors: tuple[str, ...] = ()
+    #: The stop observed BETWEEN two rounds, if one was.  The cycle still
+    #: records everything it already did; the loop then terminates on it.
+    stop: Any = None
+
+    @property
+    def summary(self) -> str:
+        """The one line the evidence and every report carry."""
+        if self.rounds_used == 0:
+            return ""
+        rounds = (f"{self.rounds_used} repair round"
+                  + ("" if self.rounds_used == 1 else "s"))
+        if self.healed and self.healed_without_changes:
+            return f"healed without changes (flaky?) after {rounds}"
+        if self.healed:
+            return f"healed after {rounds}"
+        return f"not healed after {rounds}"
+
+
+def _run_repair_rounds(job: Job, cycle_index: int, outcome: VerifyOutcome, *,
+                       limits: CycleLimits,
+                       verify_step: VerifyStep,
+                       repair_step: RepairStep,
+                       stop_probe: Callable[[], Any],
+                       executed_ids: Collection[str] = (),
+                       log: Any = None) -> RepairPhase:
+    """Up to ``limits.repair_rounds`` bounded repair rounds on a FAILED verify.
+
+    Every rule here comes from the feature file:
+
+    * only a FAILED verify is repaired — a missing command or a bad config is
+      classified and left alone (A9);
+    * the verify step re-runs after EVERY round, so "healed" always means the
+      real verify passed, never that a repair round claimed success;
+    * the cap is exact — a round that did not run is not counted, so "exactly
+      two rounds" stays provable;
+    * a stop request is honored BETWEEN rounds, at the same safe point the cycle
+      loop itself uses.  A round already in flight is never interrupted.
+    """
+    if outcome.result not in _VERIFY_REPAIRABLE or limits.repair_rounds <= 0:
+        return RepairPhase(outcome=outcome)
+
+    errors: list[str] = []
+    rounds = 0
+    while rounds < limits.repair_rounds:
+        stop = stop_probe()
+        if stop is not None and getattr(stop, "should_stop", False):
+            return RepairPhase(outcome=outcome, rounds_used=rounds,
+                               errors=tuple(errors), stop=stop)
+
+        findings = build_cycle_repair_findings(
+            job, cycle_index, outcome,
+            executed_task_ids=executed_ids, round_number=rounds + 1)
+        repair = repair_step(job, cycle_index, findings)
+        if not repair.ran:
+            if repair.error:
+                errors.append(f"repair_not_run: {repair.error}")
+            break
+
+        rounds += 1
+        _emit(log, LEDGER_EVENT_CYCLE_REPAIR_ROUND,
+              cycle_index=cycle_index, repair_round=rounds,
+              failing_test_ids=list(outcome.failing_test_ids),
+              changed_files=list(repair.changed_files),
+              stop_reason=repair.stop_reason)
+
+        outcome = as_verify_outcome(
+            verify_step(job, cycle_index, limits.verify_command))
+        if outcome.result == VERIFY_PASSED:
+            phase = RepairPhase(outcome=outcome, rounds_used=rounds, healed=True,
+                                healed_without_changes=not repair.changed_files,
+                                errors=tuple(errors))
+            _emit(log, LEDGER_EVENT_CYCLE_HEALED,
+                  cycle_index=cycle_index, repair_rounds_used=rounds,
+                  healed_without_changes=phase.healed_without_changes,
+                  summary=phase.summary)
+            return phase
+
+    return RepairPhase(outcome=outcome, rounds_used=rounds, errors=tuple(errors))
+
+
+# ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
 
@@ -892,6 +1221,7 @@ def run_cycles(
     *,
     task_step: TaskStep | None = None,
     verify: VerifyStep | None = None,
+    repair: RepairStep | None = None,
     clock: Callable[[], datetime] | None = None,
     save: Callable[[Job], None] | None = None,
     log: Any = None,
@@ -911,6 +1241,9 @@ def run_cycles(
       task_step  one ready task through run_next_task + verify + finalize
       verify     the per-cycle verify step; the default runs nothing and
                  records ``not_run``
+      repair     ONE repair round for a FAILED verify (F052); the default runs
+                 the existing bounded repair loop through the counted provider
+                 seam
       clock      the only source of "now" — the loop never sleeps
       save       ``storage.save_job``
       log        anything with ``.log(event, **meta)`` (a RunLogWriter); when
@@ -931,9 +1264,12 @@ It defaults to one past whatever this job already recorded, so a resumed run
 continues the job's numbering instead of overwriting the records the previous
 process left (F047).  ``max_cycles`` still bounds this invocation only.
 
-    A failed verify ends the cycle with its failure recorded and denies the job
-    the all_green status; self-healing is a later feature.  A task step that
-    fails ends the cycle too — the task runner has already rolled the task back
+    A failed verify spends up to ``limits.repair_rounds`` bounded repair rounds
+    before the cycle keeps its failure (F052): every round runs through the
+    existing repair loop on the counted provider seam, the verify step re-runs
+    after each one, and a heal is recorded loudly instead of being implied by a
+    green cycle.  A verify that failed for a non-test reason is classified and
+    never repaired.  A task step that fails ends the cycle too — the task runner has already rolled the task back
     to PENDING, so the next cycle (if the budget allows one) retries it.
 
     ``unattended`` (F051) decides what a safe default is worth.  Attended (the
@@ -972,6 +1308,26 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
         nonlocal provider_calls
         provider_calls += 1
         return provider_call(context)
+
+    #: F052: a repair round IS provider work, so it runs through the same counted
+    #: seam — its cost lands on the job's budget with no separate accounting.
+    repair_step: RepairStep = repair or (
+        lambda j, idx, findings: default_repair_step(
+            j, idx, findings, provider_call=counted_provider_call))
+
+    def repair_stop_probe() -> Any:
+        """The safe point BETWEEN two repair rounds — the same evaluation the
+        cycle loop makes, so a stop is honored identically wherever it lands."""
+        at = now_fn()
+        return _should_stop(
+            str(job.id),
+            budgets=limits.budgets,
+            counters=_default_counters(
+                job, now=at, started_at=loop_started_at,
+                provider_calls=provider_calls),
+            now=at,
+            control_root_path=control_root_path,
+        )
 
     while True:
         now = now_fn()
@@ -1080,9 +1436,22 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
                             else target)
             break
 
-        last_verify = verify_step(job, cycle_index, limits.verify_command)
+        verify_outcome = as_verify_outcome(
+            verify_step(job, cycle_index, limits.verify_command))
+
+        # F052 self-healing.  Only a FAILED verify is repairable; everything else
+        # that denies green is classified and kept.  The phase re-runs the verify
+        # step itself, so the outcome it returns is always the LAST real one.
+        phase = _run_repair_rounds(
+            job, cycle_index, verify_outcome,
+            limits=limits, verify_step=verify_step, repair_step=repair_step,
+            stop_probe=repair_stop_probe,
+            executed_ids=executed_ids, log=log)
+        verify_outcome = phase.outcome
+        last_verify = verify_outcome.result
         if last_verify == VERIFY_FAILED:
             errors.append("verify_failed")
+        errors.extend(phase.errors)
 
         ended_at = now_fn()
         counters = _default_counters(
@@ -1109,6 +1478,11 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
                 str(task_id)
                 for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
             open_decision_ids=tuple(raised_decision_ids),
+            verify_failure_class=cycle_verify_failure_class(last_verify),
+            repair_rounds_used=phase.rounds_used,
+            healed_after_repair=phase.healed,
+            healed_without_changes=phase.healed_without_changes,
+            repair_summary=phase.summary,
         )
         cycles.append(record)
 
@@ -1125,6 +1499,14 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
             _write_cycle_checkpoint(job, record, limits, blocked_ids=blocked_ids,
                                     awaiting_ids=awaiting_ids)
         _emit(log, LEDGER_EVENT_CYCLE_COMPLETED, **record.to_json())
+
+        # F052: a stop observed BETWEEN two repair rounds ends the run — but only
+        # after this cycle's evidence is on disk.  The rounds already spent are
+        # part of that record, so a returning human can see what the stop cut off.
+        if phase.stop is not None:
+            terminal = _terminal_from_stop(phase.stop.reason, phase.stop.source)
+            stop_reason = phase.stop.reason
+            break
 
     job_status = _apply_terminal(job, terminal, stop_reason)
     save_fn(job)

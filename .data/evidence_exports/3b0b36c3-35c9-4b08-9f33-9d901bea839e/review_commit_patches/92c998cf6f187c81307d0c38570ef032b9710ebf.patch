@@ -1,0 +1,341 @@
+92c998cf6f187c81307d0c38570ef032b9710ebf
+diff --git a/.agent/authored/f052-r1-1.md b/.agent/authored/f052-r1-1.md
+new file mode 100644
+index 0000000..69d1b24
+--- /dev/null
++++ b/.agent/authored/f052-r1-1.md
+@@ -0,0 +1,20 @@
++# Live Review — F052 Self-healing test rounds (Tier 1)
++
++Branch: feature/f052-self-healing-rounds
++Scope: cycle verify failure → bounded auto-repair via the EXISTING
++repair loop (no second mechanism, A6): findings payload from test
++output, cap cycles.repair_rounds (default 2), healed path with a
++visible evidence line, stubborn path with the existing test-failure
++classification + linked repair evidence, budget attribution, safe-
++point stop between rounds (docs/roadmap/features/T1_F052.md).
++
++## Steps
++- R1 (LARGE): claim + state reset + inspect report + T001 + T002.
++  In progress.
++
++## Findings
++- (none yet)
++- Next free ID: R-0158.
++
++## Verdicts
++- R1: PENDING (reviewer).
+diff --git a/.agent/authored/f052-r1-2.md b/.agent/authored/f052-r1-2.md
+new file mode 100644
+index 0000000..4690389
+--- /dev/null
++++ b/.agent/authored/f052-r1-2.md
+@@ -0,0 +1,19 @@
++# Plan — F052 Self-healing test rounds
++
++## Goal
++Trivial test breakage no longer kills unattended cycles: on a cycle
++verify failure, up to cycles.repair_rounds (default 2) bounded
++auto-repair rounds run through the EXISTING repair loop, verify
++re-runs after each round, healed cycles record "healed after N
++repair rounds" visibly, stubborn breaks fail after exactly two
++rounds with the existing test-failure classification and linked
++repair evidence, and repair cost lands on the job budget. DONE per
++docs/roadmap/features/T1_F052.md: a one-line break heals in round
++one; a stubborn break stops after exactly two rounds with an honest
++trail; costs attributed via actuals.
++
++## Next Steps
++- R1 (LARGE): inspect repair-loop intake → T001 trigger + cap +
++  healed path → T002 stubborn path + budget + stop request.
++- Then: integration gate round; closure its own round (never
++  bundled).
+diff --git a/.agent/authored/f052-r1-3.md b/.agent/authored/f052-r1-3.md
+new file mode 100644
+index 0000000..86a2da3
+--- /dev/null
++++ b/.agent/authored/f052-r1-3.md
+@@ -0,0 +1 @@
++- [~] F052 — Self-healing test rounds
+diff --git a/.agent/last_block.md b/.agent/last_block.md
+index d8674cc..20c186c 100644
+--- a/.agent/last_block.md
++++ b/.agent/last_block.md
+@@ -1,46 +1,129 @@
+-Round paydown0730-r1: reviewer verdict PASS. Two actions: persist the
+-verdict, then merge PR #166 on the standing operator approval
+-(2026-07-30). Save this block to .agent/last_block.md first
+-(OUTCOME: pending → executed at the end).
+-
+-STEP 1 — PERSIST VERDICT
+-Save the authored text below (bytes between the markers, exclusive;
+-trailing newline included) to .agent/authored/paydown0730-r1-9.md and
+-verify the sha256 BEFORE use (wrapped lines: rejoin with single space,
+-re-hash; persistent mismatch = STOP). Then in .agent/live_review.md
+-replace the line "- R1: PENDING (reviewer)." with the BODY of that
+-file. cmp proof of the applied region. Commit .agent/live_review.md,
+-.agent/authored/paydown0730-r1-9.md and .agent/last_block.md as:
+-chore(paydown0730): persist R1 verdict (PASS)
+-git push.
+-
+-STEP 2 — MERGE (standing operator approval, same-session)
+-gh pr merge 166 --merge --delete-branch
++You are the worker (Window 2), fresh session. Feature: F052 —
++Self-healing test rounds. Round id: f052-r1 (LARGE bundle). Read
++AGENTS.md and docs/roadmap/features/T1_F052.md COMPLETELY before any
++code. Save THIS ENTIRE block to .agent/last_block.md first
++(OUTCOME: pending → executed at handback). Hash-stamp rule is in force:
++every applied string below travels in a sha256-stamped block.
++
++STEP 0 — OPEN PR GATE
++gh pr list --state open --json number,headRefName,isDraft
++Reviewer verified this is empty; if NOT empty now → STOP, hand back.
+ git checkout main && git pull --ff-only
+-Record the merge commit sha. Confirm: git status clean,
+-gh pr list --state open → empty.
+-
+-STEP 3 — REPORT
+-Append a 5-line note to .agent/handoff.md (round closed, merge sha,
+-open findings 0, next free ID R-0158, next: F052 per Rule A5 in a
+-FRESH window). Flip OUTCOME to executed. Commit on main is NOT needed
+-for this note — leave the working tree clean instead: put the note in
+-the commit message of nothing; if the tree would go dirty, skip the
+-note entirely and report it in chat only. Done — this window closes;
+-F052 starts in a new session.
+-
+---- BEGIN paydown0730-r1-9 sha256=f0c37b4fb569d219c5902e4936fd741d2c7cbe63ddc4ef4965ae09e38e6cd07e ---
+-- R1: PASS (reviewer, 2026-07-30). Range 631be59..08029de. All 8
+-  authored texts cmp 0 disk-to-disk against the reviewer originals;
+-  every payload verified at its anchor in the real diff; ledger
+-  resolutions carry the correct shas (bc4b032 = count-pin test,
+-  9fdebad = gate amendment; git log binding checked). Reviewer's own
+-  gate runs: tests/docs 293 passed, canary 42 passed. Reviewer's own
+-  negative control (count faked to 29 in a throwaway worktree) went
+-  red at the pin's assertion; worktree removed + pruned. Open PR
+-  Gate executed correctly (#165 → merge 631be59). PR #166 merges
+-  same-session on standing operator approval (2026-07-30).
+-  LAST_REVIEWED_SHA = 08029de.
+---- END paydown0730-r1-9 ---
+-
+-OUTCOME: executed
++
++STEP 1 — BRANCH + CLAIM (commit A)
++git checkout -b feature/f052-self-healing-rounds
++Save the three authored texts below to .agent/authored/<name>.md,
++verify each sha256 BEFORE use (wrapped lines: rejoin with a single
++space, re-hash; persistent mismatch = STOP).
++- Replace the unique STATUS.md line "- [ ] F052 — Self-healing test
++  rounds" with the single line of f052-r1-3.md (grep -c proofs: old
++  1→0, new 0→1; touch no other line).
++- Copy f052-r1-1.md over .agent/live_review.md, f052-r1-2.md over
++  .agent/plan.md (cmp -> 0 proofs).
++Commit STATUS.md + .agent/{live_review,plan,last_block}.md +
++.agent/authored/f052-r1-*.md as:
++chore(f052): claim F052 + state reset
++Push -u origin feature/f052-self-healing-rounds.
++
++── STEP T001–T002/2 — F052 (LARGE) ────────────────────────────
++Goal:        Whole feature except closure: verify-failure → bounded
++             auto-repair through the EXISTING repair loop.
++Bundle (strict order, stop-on-red between items):
++  1. INSPECT (no code, findings go in the handback): where a cycle's
++     verify failure surfaces; the exact function/entry point by which
++     the EXISTING ping-pong repair loop accepts findings; where its
++     round cap is configured; how budgets count repair calls; the
++     postmortem test-failure class name. If NO existing repair path
++     is reachable from cycle verify, STOP and hand back — that is a
++     spec finding, not something to solve by building a new loop.
++  2. T001: verify→findings→repair trigger + cap (config key
++     cycles.repair_rounds, default 2) + healed path. Findings payload
++     from the test output: failing test ids, tail of failure text,
++     this cycle's changed files as hint. Re-run verify after each
++     repair round. Healed → cycle completes normally; cycle evidence
++     records "healed after N repair rounds" and reports show it.
++     Fixture: a one-line assertion break heals in round one.
++  3. T002: stubborn fixture (fake provider never fixes) → EXACTLY two
++     rounds, then the existing test-failure classification; the
++     postmortem references the repair-round evidence. Budget
++     attribution asserted via actuals. A stop request between repair
++     rounds stops cleanly at the existing safe points (assert, don't
++     assume). Edge cases (A9): verify failing for non-test reasons
++     (missing command, config) → classified config/unknown, NO repair
++     rounds; a heal that changed no files records "healed without
++     changes (flaky?)".
++Change:      Trigger/wiring + tests only. New tests in
++             tests/orchestration/test_self_healing_cycles.py.
++Constraints: Do-not-touch: the repair loop's internals, flaky-test
++             quarantine, review policies. NO new repair entry point —
++             any diff adding one will be rejected in review (A6).
++             Repair rounds flow through existing fences, budgets,
++             stop safe points. Commits small (<500 lines), one
++             logical step each.
++Done when:   All green with raw tails + exit codes in the handback:
++             python3 -m pytest tests/orchestration/test_self_healing_cycles.py -q
++             python3 -m pytest tests/orchestration/ -q
++             python3 -m pytest tests/docs/ -q            (expect 293)
++             python3 -m pytest tests/cli/test_golden_path.py -q (42)
++             plus a visible transcript line showing the healed-cycle
++             evidence in a status/report rendering.
++Handback:    completion report + rewrite .agent/handoff.md per
++             docs/agents/handback_template.md (range main..HEAD,
++             per-commit changed-files tables, inspect findings from
++             item 1, sha256sum output of the three authored files,
++             gate transcripts, deviations honest). Flip OUTCOME to
++             executed. Commit: chore(f052): handback R1. Push. Do
++             NOT create a PR yet — the reviewer orders it after the
++             integration gate. Never merge anything.
++──────────────────────────────────────────────────────────────
++
++--- BEGIN f052-r1-1 sha256=8ba4dc102c31225686db256ac05863a8cf266a09525d6d936f0339bfc3990c96 ---
++# Live Review — F052 Self-healing test rounds (Tier 1)
++
++Branch: feature/f052-self-healing-rounds
++Scope: cycle verify failure → bounded auto-repair via the EXISTING
++repair loop (no second mechanism, A6): findings payload from test
++output, cap cycles.repair_rounds (default 2), healed path with a
++visible evidence line, stubborn path with the existing test-failure
++classification + linked repair evidence, budget attribution, safe-
++point stop between rounds (docs/roadmap/features/T1_F052.md).
++
++## Steps
++- R1 (LARGE): claim + state reset + inspect report + T001 + T002.
++  In progress.
++
++## Findings
++- (none yet)
++- Next free ID: R-0158.
++
++## Verdicts
++- R1: PENDING (reviewer).
++--- END f052-r1-1 ---
++
++--- BEGIN f052-r1-2 sha256=7c57cbadbe37f2dc61111c457fac71370cbf0f116361fc5fbaf137edd62c01d4 ---
++# Plan — F052 Self-healing test rounds
++
++## Goal
++Trivial test breakage no longer kills unattended cycles: on a cycle
++verify failure, up to cycles.repair_rounds (default 2) bounded
++auto-repair rounds run through the EXISTING repair loop, verify
++re-runs after each round, healed cycles record "healed after N
++repair rounds" visibly, stubborn breaks fail after exactly two
++rounds with the existing test-failure classification and linked
++repair evidence, and repair cost lands on the job budget. DONE per
++docs/roadmap/features/T1_F052.md: a one-line break heals in round
++one; a stubborn break stops after exactly two rounds with an honest
++trail; costs attributed via actuals.
++
++## Next Steps
++- R1 (LARGE): inspect repair-loop intake → T001 trigger + cap +
++  healed path → T002 stubborn path + budget + stop request.
++- Then: integration gate round; closure its own round (never
++  bundled).
++--- END f052-r1-2 ---
++
++--- BEGIN f052-r1-3 sha256=7c0b8fd0a7679e9bc26f46548733ebf29d3e97d4d33b8a539c0cac0eef67d137 ---
++- [~] F052 — Self-healing test rounds
++--- END f052-r1-3 ---
++
++OUTCOME: pending
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 5d98718..69d1b24 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -1,40 +1,20 @@
+-# Live Review — Paydown micro-round 2026-07-30 (F051→F052 boundary)
++# Live Review — F052 Self-healing test rounds (Tier 1)
+ 
+-Branch: feature/paydown-0730
+-Scope: docs/process paydown — codify the sha256-everything transport
+-rule (planner_reviewer_prompt.md) and the closure-candidate ledger
+-rule (STATUS_closure_protocol.md); add the F051 producer pitfalls;
+-fix R-0155 (integration-gate baseline gap) and R-0156 (README
+-accepted-count pin). Same-session merge on PASS (standing operator
+-approval, 2026-07-30).
++Branch: feature/f052-self-healing-rounds
++Scope: cycle verify failure → bounded auto-repair via the EXISTING
++repair loop (no second mechanism, A6): findings payload from test
++output, cap cycles.repair_rounds (default 2), healed path with a
++visible evidence line, stubborn path with the existing test-failure
++classification + linked repair evidence, budget attribution, safe-
++point stop between rounds (docs/roadmap/features/T1_F052.md).
+ 
+ ## Steps
+-- R1: Open PR Gate (#165) → Items 1–5 → gates (tests/docs + canary)
+-  → handback.
++- R1 (LARGE): claim + state reset + inspect report + T001 + T002.
++  In progress.
+ 
+ ## Findings
+-- Resolved: R-0155 (process, Low) 2026-07-30: integration_gate.md
+-  now requires base-environment parity (root node_modules +
+-  apps/ui/dist) or per-id direct-evidence attribution; an
+-  unattributed comm -23 id counts as a genuine base failure and
+-  blocks the gate verdict.
+-  Done: R-0155 (commit 9fdebad — the doc diff is the evidence).
+-- Resolved: R-0156 (process, Medium) 2026-07-30: tests/docs now pins
+-  the README accepted-count against the STATUS [x] count; the pin
+-  landed green (counts agree at 27) with a red negative control
+-  proving it bites.
+-  Done: R-0156 (commit bc4b032 — test + red-proof transcript).
++- (none yet)
+ - Next free ID: R-0158.
+ 
+ ## Verdicts
+-- R1: PASS (reviewer, 2026-07-30). Range 631be59..08029de. All 8
+-  authored texts cmp 0 disk-to-disk against the reviewer originals;
+-  every payload verified at its anchor in the real diff; ledger
+-  resolutions carry the correct shas (bc4b032 = count-pin test,
+-  9fdebad = gate amendment; git log binding checked). Reviewer's own
+-  gate runs: tests/docs 293 passed, canary 42 passed. Reviewer's own
+-  negative control (count faked to 29 in a throwaway worktree) went
+-  red at the pin's assertion; worktree removed + pruned. Open PR
+-  Gate executed correctly (#165 → merge 631be59). PR #166 merges
+-  same-session on standing operator approval (2026-07-30).
+-  LAST_REVIEWED_SHA = 08029de.
++- R1: PENDING (reviewer).
+diff --git a/.agent/plan.md b/.agent/plan.md
+index 84d4832..4690389 100644
+--- a/.agent/plan.md
++++ b/.agent/plan.md
+@@ -1,13 +1,19 @@
+-# Plan — Paydown micro-round 2026-07-30
++# Plan — F052 Self-healing test rounds
+ 
+ ## Goal
+-One reviewer-gated docs/process paydown round at the F051→F052
+-boundary: codify the sha256-everything transport rule and the
+-closure-candidate ledger rule, add the F051 producer pitfalls, fix
+-R-0155 (integration-gate baseline gap) and R-0156 (README
+-accepted-count pin). Same-session merge on PASS (standing operator
+-approval, 2026-07-30).
++Trivial test breakage no longer kills unattended cycles: on a cycle
++verify failure, up to cycles.repair_rounds (default 2) bounded
++auto-repair rounds run through the EXISTING repair loop, verify
++re-runs after each round, healed cycles record "healed after N
++repair rounds" visibly, stubborn breaks fail after exactly two
++rounds with the existing test-failure classification and linked
++repair evidence, and repair cost lands on the job budget. DONE per
++docs/roadmap/features/T1_F052.md: a one-line break heals in round
++one; a stubborn break stops after exactly two rounds with an honest
++trail; costs attributed via actuals.
+ 
+ ## Next Steps
+-- R1 handback → reviewer verdict → merge on PASS.
+-- Then Rule A5: F052 — Self-healing test rounds (fresh window).
++- R1 (LARGE): inspect repair-loop intake → T001 trigger + cap +
++  healed path → T002 stubborn path + budget + stop request.
++- Then: integration gate round; closure its own round (never
++  bundled).
+diff --git a/docs/roadmap/STATUS.md b/docs/roadmap/STATUS.md
+index 9ba0953..9a53819 100644
+--- a/docs/roadmap/STATUS.md
++++ b/docs/roadmap/STATUS.md
+@@ -35,7 +35,7 @@
+ - [x] F252 — Standing-red paydown (154 ids, 13 classes) (R1–R3 complete; accepted 2026-07-29 · live review PASS — ACCEPTED · Evidence job d9a16173-0283-40a1-957a-1ee9b7b39343 · package remedy-review-20260729-153036-READY_FOR_REVIEW.zip · SHA-256 7dfb5a511f2a4110997910e24d64ff09ea1d4c3ddf894623edf2569d6a58c6d8 · accepted HEAD d543d445cd1f9ecb6d092e64fe670881bc6fff67)
+ - [x] F050 — DAG scheduling (T001–T002 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job f987e3f1-bbe1-45ce-b964-c23805ecb5e6 · package remedy-review-20260730-145728-READY_FOR_REVIEW.zip · SHA-256 3d04713f33072ce544ab4c0a430e82fc8edeee85bcb0aaa007fa48ef9ee4d8c0 · accepted HEAD 2fd7d6b949b98022b977aa48c0191bbf0efceec1)
+ - [x] F051 — Escalate instead of block (unattended) (T001–T003 complete; accepted 2026-07-30 · live review PASS — ACCEPTED · Evidence job 785d275a-2f78-4b44-bd29-f8764ff95bb8 · package remedy-review-20260730-172315-READY_FOR_REVIEW.zip · SHA-256 e85932c425acf204d8e9c24a030d4988aecbe4d3779dc5b4a57193f4f7c0648a · accepted HEAD 54df8f7a1adea2f3d140efef22e2e6f991aea6ff)
+-- [ ] F052 — Self-healing test rounds
++- [~] F052 — Self-healing test rounds
+ - [ ] F053 — Final & interim report
+ - [ ] F056 — Missions: persistent goal, jobs as execution units
+ - [ ] F061 — Definition-of-Done compiler

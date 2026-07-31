@@ -1,0 +1,26 @@
+{
+ "changed_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md"
+ ],
+ "diff_sha256": "0fb26610058c233858f8b8045c388c9b083763f1eb310e082ed3c0b0b317561a",
+ "job_id": "3b0b36c3-35c9-4b08-9f33-9d901bea839e",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T001",
+ "provenance_sha256": "0fb26610058c233858f8b8045c388c9b083763f1eb310e082ed3c0b0b317561a",
+ "safe_diff_sha256": "06add9024619473ee122a6ed04be5f26c1796fe27b3fee1a8978441c98c4ca2a",
+ "schema_version": "1.0.0",
+ "task_id": "T001",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "apps/cli/commands/job.py",
+  "docs/agents/integration_gate.md",
+  "docs/roadmap/STATUS.md"
+ ],
+ "timestamp": "2026-07-31T07:51:04.551387+00:00",
+ "tracked_diff_sha256": "06add9024619473ee122a6ed04be5f26c1796fe27b3fee1a8978441c98c4ca2a",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

@@ -1,0 +1,207 @@
+{
+ "base_commit": "c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8",
+ "chain_v": 1,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f052-r1-1.md",
+    ".agent/authored/f052-r1-2.md",
+    ".agent/authored/f052-r1-3.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "92c998cf6f187c81307d0c38570ef032b9710ebf",
+   "parents": [
+    "c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8"
+   ],
+   "patch_sha256": "b22f527e5d2c0dad080eeb398b403266e86bc09a2380010aa49803b200217bce",
+   "subject": "chore(f052): claim F052 + state reset",
+   "tree": "cbf0b815d4e02fc8984944759de038702f48138b"
+  },
+  {
+   "changed_files": [
+    "apps/cli/commands/job.py",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "7b27e5d88813df41d83ba06b7cdbfc0cdebf56ac",
+   "parents": [
+    "92c998cf6f187c81307d0c38570ef032b9710ebf"
+   ],
+   "patch_sha256": "b10df860215370ede157e91c64a1f7024e6d4a90bee6e4d8ae1628ed09ac9377",
+   "subject": "feat(f052): classify a failed cycle verify and render it (VerifyOutcome)",
+   "tree": "1df4884b8c234d9ee8abc03b671b8e5518879cac"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/config.py",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "b97cde3ba384d1e8643dab1fe145eacf7545bae1",
+   "parents": [
+    "7b27e5d88813df41d83ba06b7cdbfc0cdebf56ac"
+   ],
+   "patch_sha256": "24a5d359612abaf31c6bbe347d64ac6f92706ea009988df81f8a59b07af0e134",
+   "subject": "feat(f052): repair-round seam, findings payload and round cap (cycles.repair_rounds)",
+   "tree": "157a64aecd477ced57e21105b6cfc5c4fbbcce5c"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "e29da456cc2da538a13d89c084c0d63b279c66b6",
+   "parents": [
+    "b97cde3ba384d1e8643dab1fe145eacf7545bae1"
+   ],
+   "patch_sha256": "4a4aa6d2b48ea86991c765e6548fee3ce96927c1ec8e64f166afacf607a402df",
+   "subject": "feat(f052): trigger the existing bounded repair loop from a failed cycle verify",
+   "tree": "ae77a4cbe84367478eafe8f2e31d76ee2f435c54"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "e295fcbf167750a3de941f6825f237ce92e9f36d",
+   "parents": [
+    "e29da456cc2da538a13d89c084c0d63b279c66b6"
+   ],
+   "patch_sha256": "c54fe22cfee978e37567756f2d37b774f391381940a64a78ea5e57aeab7a9101",
+   "subject": "test(f052): stubborn path, budget attribution, stop between rounds, A9 edges",
+   "tree": "37a2a35e7987f6d9453525997576a5520a83337a"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/last_block.md",
+    ".agent/plan.md"
+   ],
+   "commit": "21638c6833be7fa4f0e324477a075b75eab218b7",
+   "parents": [
+    "e295fcbf167750a3de941f6825f237ce92e9f36d"
+   ],
+   "patch_sha256": "e43b29e3f730db679a4f7093a85dc4180affcddfbd5a74c04d936cb53328b016",
+   "subject": "chore(f052): handback R1",
+   "tree": "4deb4f06d469aeeec2769118a9b2469fc50147c2"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f052-r2-1.md",
+    ".agent/authored/f052-r2-2.md",
+    ".agent/authored/f052-r2-3.md",
+    ".agent/authored/f052-r2-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "897381a12029041c42c0da71b7e61c790a6f93fe",
+   "parents": [
+    "21638c6833be7fa4f0e324477a075b75eab218b7"
+   ],
+   "patch_sha256": "cb897db38f0041008d08c03220532cd8cfcf0f308d327cae266d75c941d0cb36",
+   "subject": "chore(f052): persist R1 verdict (PASS) + DECISION D1",
+   "tree": "8675f296b7bb60deee70f8b83a0f07dcdc402424"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F052.md"
+   ],
+   "commit": "a712dc0f656c7484c17d416953b7fcdf73930534",
+   "parents": [
+    "897381a12029041c42c0da71b7e61c790a6f93fe"
+   ],
+   "patch_sha256": "d18b7c6aec16e9f4debb91f3061b0f659b58845ca19f00991b57842d724586c7",
+   "subject": "docs(f052): How-it-fits amendment (D1) + Built State",
+   "tree": "31684027986cdc4206719453e9b41f065d7be614"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "d410ce5eceb1c76e27c66c29374af24f20628d50",
+   "parents": [
+    "a712dc0f656c7484c17d416953b7fcdf73930534"
+   ],
+   "patch_sha256": "e7f9e7e68da07ac1f2f4dd5438352246d9d23bcf3e27a4924b3a56024a1d863c",
+   "subject": "chore(f052): handback R2 (integration gate records)",
+   "tree": "7220117c6ff5ac48d3952c90bdbd3161d29e8294"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f052-r3-1.md",
+    ".agent/authored/f052-r3-2.md",
+    ".agent/authored/f052-r3-3.md",
+    ".agent/authored/f052-r3-4.md",
+    ".agent/authored/f052-r3-5.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "3779bf6c3cddbe871ed4881dd97bb5827bcb06e3",
+   "parents": [
+    "d410ce5eceb1c76e27c66c29374af24f20628d50"
+   ],
+   "patch_sha256": "36fb8413b4cca4628d90eaffb16ebf9e49cf16a2c7b17e866dd3d66c862cc868",
+   "subject": "chore(f052): persist R2 verdict (integration gate PASS) + register R-0158/R-0159",
+   "tree": "a38e35d67ee2aa320a9de93740049002212246f8"
+  },
+  {
+   "changed_files": [
+    "docs/agents/integration_gate.md"
+   ],
+   "commit": "f9dadc0cd55e3a596382d7e9cb865689a9439a22",
+   "parents": [
+    "3779bf6c3cddbe871ed4881dd97bb5827bcb06e3"
+   ],
+   "patch_sha256": "6136df34d77b5faaa5e67d25f9f68cba747979c7c1f51c48ecf6a0f52ec5c278",
+   "subject": "docs(agents): integration gate \u2014 parity path correction + .git-dir class (R-0158)",
+   "tree": "f35bc6e2fc55a8ec554e078f9b4a00cdfc1ca3bf"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "fc9d71cc82d610d6440da8014b7511505d681e97",
+   "parents": [
+    "f9dadc0cd55e3a596382d7e9cb865689a9439a22"
+   ],
+   "patch_sha256": "9d9b02f90eaa41ddfd1fd1728703e78ccf6a16a63d065d2952a1b926e0a78b59",
+   "subject": "chore(f052): resolve R-0158 in the ledger",
+   "tree": "25718324ec81a47da556e3ee211d7687cd87284e"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "7262f5b31271d9ac4ba35bc52094ea06d9b0ce0b",
+   "parents": [
+    "fc9d71cc82d610d6440da8014b7511505d681e97"
+   ],
+   "patch_sha256": "15b238615233e0b7371cd478d9a8b7fed1c7e1184ea623f3126d99a2f6967a4f",
+   "subject": "chore(f052): handback R3",
+   "tree": "8bba718d97be578dcc491aac434f869e2bcac80a"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f052-r4-1.md",
+    ".agent/authored/f052-r4-2.md",
+    ".agent/authored/f052-r4-3.md",
+    ".agent/authored/f052-r4-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "2203610776926c76956423346c889503516f08d4",
+   "parents": [
+    "7262f5b31271d9ac4ba35bc52094ea06d9b0ce0b"
+   ],
+   "patch_sha256": "6b6a36b83fc4657dec684997a5bbe339d0d497d076c2a87207bca0d055107bcb",
+   "subject": "chore(f052): persist R3 verdict (PASS)",
+   "tree": "e7431b184dcd5a039af42c9ac64dfc5ed7ffa62c"
+  }
+ ],
+ "head_commit": "2203610776926c76956423346c889503516f08d4"
+}

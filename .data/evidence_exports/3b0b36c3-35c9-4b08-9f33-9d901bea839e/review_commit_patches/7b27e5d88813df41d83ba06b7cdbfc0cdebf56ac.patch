@@ -1,0 +1,408 @@
+7b27e5d88813df41d83ba06b7cdbfc0cdebf56ac
+diff --git a/apps/cli/commands/job.py b/apps/cli/commands/job.py
+index 3198c0f..7c39977 100644
+--- a/apps/cli/commands/job.py
++++ b/apps/cli/commands/job.py
+@@ -751,6 +751,12 @@ def _cmd_job_run_cycles(
+             f"{' reason=' + result.stop_reason if result.stop_reason else ''}"
+             f"  log={log.path}"
+         )
++        # F052: a cycle that did not verify says WHY on the same screen — a
++        # reader must not have to open the log to learn that the harness, not a
++        # test, is what broke.
++        from packages.orchestration.long_run_executor import render_cycle_summary_line
++        for record in result.cycles:
++            print(f"  {render_cycle_summary_line(record)}")
+     if result.terminal_status not in ("all_green", "max_cycles_reached"):
+         sys.exit(1)
+ 
+diff --git a/packages/orchestration/long_run_executor.py b/packages/orchestration/long_run_executor.py
+index 939fd23..75150b4 100644
+--- a/packages/orchestration/long_run_executor.py
++++ b/packages/orchestration/long_run_executor.py
+@@ -139,8 +139,15 @@ LEDGER_EVENT_DECISION_ANSWERED = "task_decision_answered"
+ VERIFY_NOT_RUN = "not_run"
+ VERIFY_PASSED = "passed"
+ VERIFY_FAILED = "failed"
++#: F052: the verify step itself could not run (command missing, bad config), and
++#: the outcome where nothing said which.  These are NOT test failures — they deny
++#: green like any failure, but they say something different about the run, and
++#: F052's self-healing never spends a repair round on them.
++VERIFY_CONFIG_ERROR = "config"
++VERIFY_UNKNOWN_ERROR = "unknown"
+ #: Verify outcomes that deny the job the all_green status.
+-_VERIFY_DENIES_GREEN = frozenset({VERIFY_FAILED, "timeout"})
++_VERIFY_DENIES_GREEN = frozenset(
++    {VERIFY_FAILED, "timeout", VERIFY_CONFIG_ERROR, VERIFY_UNKNOWN_ERROR})
+ 
+ #: Rollout rule (F046): one cycle until the F075 milestone gate flips it.
+ DEFAULT_MAX_CYCLES = 1
+@@ -196,8 +203,28 @@ class CycleLimits:
+ ProviderCall = Callable[[TaskExecutionContext], BuilderOutput]
+ #: (job, provider_call) -> TaskAttempt.  Executes exactly ONE ready task.
+ TaskStep = Callable[[Job, ProviderCall], "TaskAttempt"]
+-#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings.
+-VerifyStep = Callable[[Job, int, str | None], str]
++#: (job, cycle_index, verify_command) -> one of the VERIFY_* strings, or a
++#: :class:`VerifyOutcome` when the step can also report WHAT failed (F052).
++#: Returning a bare string is the pre-F052 contract and stays supported.
++VerifyStep = Callable[[Job, int, str | None], "str | VerifyOutcome"]
++
++
++@dataclass(frozen=True)
++class VerifyOutcome:
++    """What a verify step observed, for steps that can say more than pass/fail.
++
++    A bare ``"failed"`` says a cycle is broken but not what broke, which is
++    exactly what a later reader — or a repair round — needs.  Steps written
++    before F052 keep returning the string; the loop normalizes both shapes
++    through :func:`as_verify_outcome`, so no existing caller changes.
++    """
++
++    result: str
++    #: The tail of the failure text, already bounded by the step that owns it.
++    output: str = ""
++    failing_test_ids: tuple[str, ...] = ()
++    #: Files this cycle changed — the hint a later reader starts from.
++    changed_files: tuple[str, ...] = ()
+ 
+ 
+ @dataclass(frozen=True)
+@@ -260,6 +287,10 @@ class CycleRecord:
+     awaiting_downstream_task_ids: tuple[str, ...] = ()
+     #: F051: the decisions this cycle raised, in the order they were raised.
+     open_decision_ids: tuple[str, ...] = ()
++    #: F052: the failure class of a verify that did not pass, from the EXISTING
++    #: classifier (``failure_postmortem.classify``) rather than a second
++    #: vocabulary.  Empty when the verify passed or never ran.
++    verify_failure_class: str = ""
+ 
+     def to_json(self) -> dict[str, Any]:
+         return {
+@@ -279,6 +310,7 @@ class CycleRecord:
+             "awaiting_task_ids": list(self.awaiting_task_ids),
+             "awaiting_downstream_task_ids": list(self.awaiting_downstream_task_ids),
+             "open_decision_ids": list(self.open_decision_ids),
++            "verify_failure_class": self.verify_failure_class,
+         }
+ 
+ 
+@@ -880,6 +912,58 @@ def _emit(log: Any, event: str, **meta: Any) -> None:
+         pass
+ 
+ 
++# ---------------------------------------------------------------------------
++# What a failed verify actually means (F052)
++# ---------------------------------------------------------------------------
++
++
++def as_verify_outcome(value: str | VerifyOutcome) -> VerifyOutcome:
++    """Normalize whatever a verify step returned.
++
++    Every verify step written before F052 returns a bare VERIFY_* string, and
++    they must all keep working untouched — so the richer shape is accepted, not
++    required.
++    """
++    if isinstance(value, VerifyOutcome):
++        return value
++    return VerifyOutcome(result=str(value))
++
++
++def cycle_verify_failure_class(verify_result: str) -> str:
++    """Classify a non-passing verify through the EXISTING classifier (F010).
++
++    No second vocabulary and no second enum: a failed test is the classifier's
++    ``test_failed``, a verify step that could not run at all is its ``config``,
++    and anything else is honestly ``unknown``.  A passing or never-run verify has
++    no failure class — an empty string, not a guess.
++    """
++    from packages.orchestration.failure_postmortem import FailureSignals, classify
++
++    if verify_result in (VERIFY_PASSED, VERIFY_NOT_RUN, ""):
++        return ""
++    if verify_result == VERIFY_FAILED:
++        signals = FailureSignals(terminal_status="test_failed")
++    elif verify_result == VERIFY_CONFIG_ERROR:
++        signals = FailureSignals(error_class="config")
++    else:
++        signals = FailureSignals(error_text=verify_result)
++    return classify(signals).failure_class.value
++
++
++def render_cycle_summary_line(record: CycleRecord) -> str:
++    """One human-readable line per cycle, for status and report renderings.
++
++    A cycle that did not verify says WHY in the same breath: "verify=failed"
++    alone sends a reader to the logs, "failure_class=config" sends them to the
++    harness instead of to a test they were never going to fix.
++    """
++    line = (f"cycle {record.cycle_index}: verify={record.verify_result} "
++            f"tasks={record.tasks_completed}/{record.tasks_attempted}")
++    if record.verify_failure_class:
++        line += f" | failure_class={record.verify_failure_class}"
++    return line
++
++
+ # ---------------------------------------------------------------------------
+ # The loop
+ # ---------------------------------------------------------------------------
+@@ -1080,7 +1164,9 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+                             else target)
+             break
+ 
+-        last_verify = verify_step(job, cycle_index, limits.verify_command)
++        verify_outcome = as_verify_outcome(
++            verify_step(job, cycle_index, limits.verify_command))
++        last_verify = verify_outcome.result
+         if last_verify == VERIFY_FAILED:
+             errors.append("verify_failed")
+ 
+@@ -1109,6 +1195,7 @@ process left (F047).  ``max_cycles`` still bounds this invocation only.
+                 str(task_id)
+                 for task_id in awaiting_downstream_tasks(job, awaiting_ids)),
+             open_decision_ids=tuple(raised_decision_ids),
++            verify_failure_class=cycle_verify_failure_class(last_verify),
+         )
+         cycles.append(record)
+ 
+diff --git a/tests/orchestration/test_self_healing_cycles.py b/tests/orchestration/test_self_healing_cycles.py
+new file mode 100644
+index 0000000..bbb8ea3
+--- /dev/null
++++ b/tests/orchestration/test_self_healing_cycles.py
+@@ -0,0 +1,235 @@
++"""F052 — self-healing test rounds.
++
++A cycle whose verify step fails spends up to ``cycles.repair_rounds`` bounded
++repair rounds through the EXISTING repair loop before the cycle keeps its
++failure.  This file pins that contract.
++
++First, the part every later step stands on: a failed verify has to say WHAT
++failed.  A bare ``"failed"`` cannot be repaired (there is nothing to hand a
++repair round) and cannot be reported honestly (a missing test command and a
++broken assertion read identically).  So the verify seam may return a
++``VerifyOutcome``, the failure is classified through the EXISTING classifier,
++and the cycle renders that class where a human sees it.
++
++Nothing here sleeps and nothing here calls a provider.
++"""
++from __future__ import annotations
++
++from datetime import datetime, timedelta, timezone
++from pathlib import Path
++
++import pytest
++
++import packages.orchestration.long_run_executor as lre
++from packages.core.models import Job, RunState, Task
++from packages.orchestration.builder_models import TaskExecutionContext
++from packages.orchestration.long_run_executor import (
++    VERIFY_CONFIG_ERROR,
++    VERIFY_FAILED,
++    VERIFY_NOT_RUN,
++    VERIFY_PASSED,
++    VERIFY_UNKNOWN_ERROR,
++    CycleLimits,
++    TaskAttempt,
++    VerifyOutcome,
++    as_verify_outcome,
++    cycle_verify_failure_class,
++    read_cycle_records,
++    render_cycle_summary_line,
++    run_cycles,
++)
++
++UTC = timezone.utc
++T0 = datetime(2026, 7, 30, 9, 0, 0, tzinfo=UTC)
++
++
++# ---------------------------------------------------------------------------
++# Fixtures and fakes
++# ---------------------------------------------------------------------------
++
++
++@pytest.fixture(autouse=True)
++def isolate_data_root(tmp_path: Path, monkeypatch) -> Path:
++    """Every cycle writes evidence — no test may reach the real data root."""
++    data_dir = tmp_path / "remedy_data"
++    data_dir.mkdir()
++    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
++    return data_dir
++
++
++@pytest.fixture
++def control_root(tmp_path: Path) -> Path:
++    root = tmp_path / "control"
++    root.mkdir()
++    return root
++
++
++def make_job(task_count: int = 1) -> Job:
++    return Job(
++        name="healing-job",
++        user_prompt="build the thing",
++        tasks=[
++            Task(description=f"task {i}", inputs={"task_type": "documentation"})
++            for i in range(task_count)
++        ],
++        state=RunState.PLANNED,
++    )
++
++
++class FakeClock:
++    def __init__(self, start: datetime = T0,
++                 step: timedelta = timedelta(seconds=1)) -> None:
++        self.now = start
++        self.step = step
++
++    def __call__(self) -> datetime:
++        current = self.now
++        self.now = self.now + self.step
++        return current
++
++
++def completing_step(job: Job, provider_call) -> TaskAttempt:
++    """Completes the first PENDING task, through the provider seam."""
++    task = next((t for t in job.tasks if t.status == RunState.PENDING), None)
++    if task is None:
++        return TaskAttempt()
++    provider_call(TaskExecutionContext(
++        job_id=job.id,
++        job_prompt=job.user_prompt,
++        task_id=task.id,
++        task_type=task.inputs.get("task_type", "unknown"),
++        task_description=task.description,
++    ))
++    task.status = RunState.COMPLETED
++    if all(t.status == RunState.COMPLETED for t in job.tasks):
++        job.state = RunState.COMPLETED
++    return TaskAttempt(task_id=task.id, executed=True, verified=True)
++
++
++def no_save(job: Job) -> None:
++    return None
++
++
++# ---------------------------------------------------------------------------
++# The verify seam may say more than pass/fail
++# ---------------------------------------------------------------------------
++
++
++class TestVerifyOutcome:
++    def test_a_bare_string_normalizes_to_an_outcome(self):
++        outcome = as_verify_outcome(VERIFY_FAILED)
++        assert outcome.result == VERIFY_FAILED
++        assert outcome.output == ""
++        assert outcome.failing_test_ids == ()
++        assert outcome.changed_files == ()
++
++    def test_an_outcome_passes_through_unchanged(self):
++        original = VerifyOutcome(result=VERIFY_FAILED, output="E   assert 4 == 5",
++                                 failing_test_ids=("tests/test_calc.py::test_add",))
++        assert as_verify_outcome(original) is original
++
++    def test_a_pre_f052_verify_step_still_drives_the_loop(self, control_root):
++        """Every verify step written before F052 returns a plain string."""
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1), lambda _ctx: None,
++            task_step=completing_step, verify=lambda j, i, c: VERIFY_FAILED,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles[0].verify_result == VERIFY_FAILED
++        assert "verify_failed" in result.cycles[0].errors
++
++    def test_a_rich_verify_step_drives_the_loop_the_same_way(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1), lambda _ctx: None,
++            task_step=completing_step,
++            verify=lambda j, i, c: VerifyOutcome(
++                result=VERIFY_FAILED, output="E   assert 4 == 5",
++                failing_test_ids=("tests/test_calc.py::test_add",)),
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles[0].verify_result == VERIFY_FAILED
++        assert "verify_failed" in result.cycles[0].errors
++
++
++# ---------------------------------------------------------------------------
++# A failed verify is classified, not just flagged
++# ---------------------------------------------------------------------------
++
++
++class TestVerifyFailureClassification:
++    def test_a_failing_test_is_the_classifier_s_test_failed(self):
++        assert cycle_verify_failure_class(VERIFY_FAILED) == "test_failed"
++
++    def test_a_harness_problem_is_config_not_a_test_failure(self):
++        """A9: a missing command or a bad config is not something a patch fixes."""
++        assert cycle_verify_failure_class(VERIFY_CONFIG_ERROR) == "config"
++
++    def test_an_unrecognized_outcome_is_honestly_unknown(self):
++        assert cycle_verify_failure_class(VERIFY_UNKNOWN_ERROR) == "unknown"
++        assert cycle_verify_failure_class("something nobody mapped") == "unknown"
++
++    def test_a_passing_or_never_run_verify_has_no_failure_class(self):
++        assert cycle_verify_failure_class(VERIFY_PASSED) == ""
++        assert cycle_verify_failure_class(VERIFY_NOT_RUN) == ""
++        assert cycle_verify_failure_class("") == ""
++
++    def test_the_harness_outcomes_deny_the_job_all_green(self):
++        assert lre._is_green(make_job(0), VERIFY_CONFIG_ERROR) is False
++        job = make_job(1)
++        job.tasks[0].status = RunState.COMPLETED
++        assert lre._is_green(job, VERIFY_CONFIG_ERROR) is False
++        assert lre._is_green(job, VERIFY_UNKNOWN_ERROR) is False
++        assert lre._is_green(job, VERIFY_PASSED) is True
++
++    def test_the_cycle_record_carries_the_class(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1), lambda _ctx: None,
++            task_step=completing_step,
++            verify=lambda j, i, c: VERIFY_CONFIG_ERROR,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++            record_checkpoint=False,
++        )
++        assert result.cycles[0].verify_failure_class == "config"
++        assert read_cycle_records(str(job.id))[0]["verify_failure_class"] == "config"
++
++    def test_a_green_cycle_records_no_class(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1), lambda _ctx: None,
++            task_step=completing_step, verify=lambda j, i, c: VERIFY_PASSED,
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles[0].verify_failure_class == ""
++
++
++# ---------------------------------------------------------------------------
++# What a human sees
++# ---------------------------------------------------------------------------
++
++
++class TestCycleSummaryRendering:
++    def _record(self, **kw) -> lre.CycleRecord:
++        base = dict(cycle_index=1, tasks_attempted=1, tasks_completed=1,
++                    tasks_failed=0, verify_result=VERIFY_PASSED, tokens_so_far=0,
++                    started_at="", ended_at="")
++        base.update(kw)
++        return lre.CycleRecord(**base)
++
++    def test_a_green_cycle_renders_without_a_failure_class(self):
++        line = render_cycle_summary_line(self._record())
++        assert line == "cycle 1: verify=passed tasks=1/1"
++
++    def test_a_harness_failure_names_its_class_on_the_line(self):
++        line = render_cycle_summary_line(self._record(
++            verify_result=VERIFY_CONFIG_ERROR, verify_failure_class="config",
++            tasks_completed=0))
++        assert "verify=config" in line
++        assert "failure_class=config" in line
++
++    def test_a_test_failure_names_its_class_on_the_line(self):
++        line = render_cycle_summary_line(self._record(
++            verify_result=VERIFY_FAILED, verify_failure_class="test_failed"))
++        assert "failure_class=test_failed" in line

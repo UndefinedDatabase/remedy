@@ -1,0 +1,22 @@
+{
+ "changed_files": [
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "diff_sha256": "57bf9c1e623f9b5641235cff3e14f9bab537ca65569a8ce8d962b9afb5254099",
+ "job_id": "3b0b36c3-35c9-4b08-9f33-9d901bea839e",
+ "manual_operator_repair": true,
+ "no_provider_calls": true,
+ "note": "operator-attested manual completion - T003",
+ "provenance_sha256": "57bf9c1e623f9b5641235cff3e14f9bab537ca65569a8ce8d962b9afb5254099",
+ "safe_diff_sha256": "bc3e4c8239649fea3275a7fbaa822756dce05d5d2ca1460b29039c7b20e22123",
+ "schema_version": "1.0.0",
+ "task_id": "T003",
+ "task_scope_known": true,
+ "task_scoped_files": [
+  "tests/orchestration/test_self_healing_cycles.py"
+ ],
+ "timestamp": "2026-07-31T07:51:04.551387+00:00",
+ "tracked_diff_sha256": "bc3e4c8239649fea3275a7fbaa822756dce05d5d2ca1460b29039c7b20e22123",
+ "untracked_file_hashes": [],
+ "workspace_scope": "task"
+}

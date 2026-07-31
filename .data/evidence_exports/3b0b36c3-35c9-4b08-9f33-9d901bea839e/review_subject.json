@@ -1,0 +1,456 @@
+{
+ "base_commit": "c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8",
+ "base_is_ancestor": true,
+ "commits": [
+  {
+   "changed_files": [
+    ".agent/authored/f052-r1-1.md",
+    ".agent/authored/f052-r1-2.md",
+    ".agent/authored/f052-r1-3.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md",
+    ".agent/plan.md",
+    "docs/roadmap/STATUS.md"
+   ],
+   "commit": "92c998cf6f187c81307d0c38570ef032b9710ebf",
+   "parents": [
+    "c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8"
+   ],
+   "patch_sha256": "b22f527e5d2c0dad080eeb398b403266e86bc09a2380010aa49803b200217bce",
+   "subject": "chore(f052): claim F052 + state reset",
+   "tree": "cbf0b815d4e02fc8984944759de038702f48138b"
+  },
+  {
+   "changed_files": [
+    "apps/cli/commands/job.py",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "7b27e5d88813df41d83ba06b7cdbfc0cdebf56ac",
+   "parents": [
+    "92c998cf6f187c81307d0c38570ef032b9710ebf"
+   ],
+   "patch_sha256": "b10df860215370ede157e91c64a1f7024e6d4a90bee6e4d8ae1628ed09ac9377",
+   "subject": "feat(f052): classify a failed cycle verify and render it (VerifyOutcome)",
+   "tree": "1df4884b8c234d9ee8abc03b671b8e5518879cac"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/config.py",
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "b97cde3ba384d1e8643dab1fe145eacf7545bae1",
+   "parents": [
+    "7b27e5d88813df41d83ba06b7cdbfc0cdebf56ac"
+   ],
+   "patch_sha256": "24a5d359612abaf31c6bbe347d64ac6f92706ea009988df81f8a59b07af0e134",
+   "subject": "feat(f052): repair-round seam, findings payload and round cap (cycles.repair_rounds)",
+   "tree": "157a64aecd477ced57e21105b6cfc5c4fbbcce5c"
+  },
+  {
+   "changed_files": [
+    "packages/orchestration/long_run_executor.py",
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "e29da456cc2da538a13d89c084c0d63b279c66b6",
+   "parents": [
+    "b97cde3ba384d1e8643dab1fe145eacf7545bae1"
+   ],
+   "patch_sha256": "4a4aa6d2b48ea86991c765e6548fee3ce96927c1ec8e64f166afacf607a402df",
+   "subject": "feat(f052): trigger the existing bounded repair loop from a failed cycle verify",
+   "tree": "ae77a4cbe84367478eafe8f2e31d76ee2f435c54"
+  },
+  {
+   "changed_files": [
+    "tests/orchestration/test_self_healing_cycles.py"
+   ],
+   "commit": "e295fcbf167750a3de941f6825f237ce92e9f36d",
+   "parents": [
+    "e29da456cc2da538a13d89c084c0d63b279c66b6"
+   ],
+   "patch_sha256": "c54fe22cfee978e37567756f2d37b774f391381940a64a78ea5e57aeab7a9101",
+   "subject": "test(f052): stubborn path, budget attribution, stop between rounds, A9 edges",
+   "tree": "37a2a35e7987f6d9453525997576a5520a83337a"
+  },
+  {
+   "changed_files": [
+    ".agent/decisions.md",
+    ".agent/handoff.md",
+    ".agent/last_block.md",
+    ".agent/plan.md"
+   ],
+   "commit": "21638c6833be7fa4f0e324477a075b75eab218b7",
+   "parents": [
+    "e295fcbf167750a3de941f6825f237ce92e9f36d"
+   ],
+   "patch_sha256": "e43b29e3f730db679a4f7093a85dc4180affcddfbd5a74c04d936cb53328b016",
+   "subject": "chore(f052): handback R1",
+   "tree": "4deb4f06d469aeeec2769118a9b2469fc50147c2"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f052-r2-1.md",
+    ".agent/authored/f052-r2-2.md",
+    ".agent/authored/f052-r2-3.md",
+    ".agent/authored/f052-r2-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "897381a12029041c42c0da71b7e61c790a6f93fe",
+   "parents": [
+    "21638c6833be7fa4f0e324477a075b75eab218b7"
+   ],
+   "patch_sha256": "cb897db38f0041008d08c03220532cd8cfcf0f308d327cae266d75c941d0cb36",
+   "subject": "chore(f052): persist R1 verdict (PASS) + DECISION D1",
+   "tree": "8675f296b7bb60deee70f8b83a0f07dcdc402424"
+  },
+  {
+   "changed_files": [
+    "docs/roadmap/features/T1_F052.md"
+   ],
+   "commit": "a712dc0f656c7484c17d416953b7fcdf73930534",
+   "parents": [
+    "897381a12029041c42c0da71b7e61c790a6f93fe"
+   ],
+   "patch_sha256": "d18b7c6aec16e9f4debb91f3061b0f659b58845ca19f00991b57842d724586c7",
+   "subject": "docs(f052): How-it-fits amendment (D1) + Built State",
+   "tree": "31684027986cdc4206719453e9b41f065d7be614"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "d410ce5eceb1c76e27c66c29374af24f20628d50",
+   "parents": [
+    "a712dc0f656c7484c17d416953b7fcdf73930534"
+   ],
+   "patch_sha256": "e7f9e7e68da07ac1f2f4dd5438352246d9d23bcf3e27a4924b3a56024a1d863c",
+   "subject": "chore(f052): handback R2 (integration gate records)",
+   "tree": "7220117c6ff5ac48d3952c90bdbd3161d29e8294"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f052-r3-1.md",
+    ".agent/authored/f052-r3-2.md",
+    ".agent/authored/f052-r3-3.md",
+    ".agent/authored/f052-r3-4.md",
+    ".agent/authored/f052-r3-5.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "3779bf6c3cddbe871ed4881dd97bb5827bcb06e3",
+   "parents": [
+    "d410ce5eceb1c76e27c66c29374af24f20628d50"
+   ],
+   "patch_sha256": "36fb8413b4cca4628d90eaffb16ebf9e49cf16a2c7b17e866dd3d66c862cc868",
+   "subject": "chore(f052): persist R2 verdict (integration gate PASS) + register R-0158/R-0159",
+   "tree": "a38e35d67ee2aa320a9de93740049002212246f8"
+  },
+  {
+   "changed_files": [
+    "docs/agents/integration_gate.md"
+   ],
+   "commit": "f9dadc0cd55e3a596382d7e9cb865689a9439a22",
+   "parents": [
+    "3779bf6c3cddbe871ed4881dd97bb5827bcb06e3"
+   ],
+   "patch_sha256": "6136df34d77b5faaa5e67d25f9f68cba747979c7c1f51c48ecf6a0f52ec5c278",
+   "subject": "docs(agents): integration gate \u2014 parity path correction + .git-dir class (R-0158)",
+   "tree": "f35bc6e2fc55a8ec554e078f9b4a00cdfc1ca3bf"
+  },
+  {
+   "changed_files": [
+    ".agent/live_review.md"
+   ],
+   "commit": "fc9d71cc82d610d6440da8014b7511505d681e97",
+   "parents": [
+    "f9dadc0cd55e3a596382d7e9cb865689a9439a22"
+   ],
+   "patch_sha256": "9d9b02f90eaa41ddfd1fd1728703e78ccf6a16a63d065d2952a1b926e0a78b59",
+   "subject": "chore(f052): resolve R-0158 in the ledger",
+   "tree": "25718324ec81a47da556e3ee211d7687cd87284e"
+  },
+  {
+   "changed_files": [
+    ".agent/handoff.md",
+    ".agent/last_block.md"
+   ],
+   "commit": "7262f5b31271d9ac4ba35bc52094ea06d9b0ce0b",
+   "parents": [
+    "fc9d71cc82d610d6440da8014b7511505d681e97"
+   ],
+   "patch_sha256": "15b238615233e0b7371cd478d9a8b7fed1c7e1184ea623f3126d99a2f6967a4f",
+   "subject": "chore(f052): handback R3",
+   "tree": "8bba718d97be578dcc491aac434f869e2bcac80a"
+  },
+  {
+   "changed_files": [
+    ".agent/authored/f052-r4-1.md",
+    ".agent/authored/f052-r4-2.md",
+    ".agent/authored/f052-r4-3.md",
+    ".agent/authored/f052-r4-4.md",
+    ".agent/last_block.md",
+    ".agent/live_review.md"
+   ],
+   "commit": "2203610776926c76956423346c889503516f08d4",
+   "parents": [
+    "7262f5b31271d9ac4ba35bc52094ea06d9b0ce0b"
+   ],
+   "patch_sha256": "6b6a36b83fc4657dec684997a5bbe339d0d497d076c2a87207bca0d055107bcb",
+   "subject": "chore(f052): persist R3 verdict (PASS)",
+   "tree": "e7431b184dcd5a039af42c9ac64dfc5ed7ffa62c"
+  }
+ ],
+ "files": [
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "8ba4dc102c31225686db256ac05863a8cf266a09525d6d936f0339bfc3990c96",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r1-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7c57cbadbe37f2dc61111c457fac71370cbf0f116361fc5fbaf137edd62c01d4",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r1-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7c0b8fd0a7679e9bc26f46548733ebf29d3e97d4d33b8a539c0cac0eef67d137",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r1-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "18191e99e68643978c3deb8a115fe17a0724dc66253d51a94f7588313b93b5df",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r2-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "bd8975dc0d697872a6259009bd52bffdf470900e3e7e25760e517e64929f7365",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r2-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "651db15ca9c3b850a75205ce8bb77c18bc001bf9232ddef50fba22385bdeb42c",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r2-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "9926c85c9579fc8af181657bc8fd4bb13e41e32c92089c62b8cf1a83ec518e8f",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r2-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "6895916ba53c8eea285e38c7abbc33f1147df6357d11e03f4ceeb06c7acf39d5",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r3-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "8140e4314ef5c606fe9e5ae557a32337bb6b84e11ffa11f570c623437f3b668f",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r3-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "a48b560a7cac4429738b1114f77506042df829cc1afa307fca4cad21c7d4c8d4",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r3-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "0b4fe00e52a49baa5f770b5730e9cd5315210c74800c3019cc5120f79e3be661",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r3-4.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "04d8fd85e39a33cda1f5de64521eeb7451b906e527f77e197c9c97b3cfdd799e",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r3-5.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "e5909491774e623f16538547b204434d668da66bdf28254298de79ad2f9b9d1e",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r4-1.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "11ae30109473b2241ca0d923c2402e5f0418ed4d8050c58dee24aa81475e2142",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r4-2.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "41ccf661801fe161526987590dd0130a1b7a9b9af235eb2e1858314e5f3671e6",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r4-3.md",
+   "status": "added"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "21d715683e3943f00b6a04beceffac0fd7e06c7a49a79f728dcfba46456b2e42",
+   "kind": "regular",
+   "path": ".agent/authored/f052-r4-4.md",
+   "status": "added"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "cab279e0f79462b966abac8190760e173639d8b99c688990d0afdc8b41880a15",
+   "current_mode": "100644",
+   "current_sha256": "3d8f95bb1363333f1982bcfd404d528aa11149da5efc250a4334ea6ee7d56d91",
+   "kind": "regular",
+   "path": ".agent/decisions.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "a7cd5a0559e411a6ae8ec3904379e41e0f22a1620216be3ad3c87da9dda7a0f2",
+   "current_mode": "100644",
+   "current_sha256": "a46fa67fcc84ffdec2d265bf17751f3470a5debf5522baf89fe3435ada1fc791",
+   "kind": "regular",
+   "path": ".agent/handoff.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "1b6a758bca84405a9c6f926f542773f0ce4dcd6e8d6cd167348508855e491acd",
+   "current_mode": "100644",
+   "current_sha256": "98b546be56f07c5c230d8be5f37bb0286022f3992b3b059ea217241bba5a7750",
+   "kind": "regular",
+   "path": ".agent/last_block.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "a85dd1bf52117d13930e77708506a94b7b713edb9f9077a3a2f6442eb5edcea5",
+   "current_mode": "100644",
+   "current_sha256": "ba7d770ab18c25080d592a18b33dfaace3641f6ce3abfabd3fa807e857968e9e",
+   "kind": "regular",
+   "path": ".agent/live_review.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "59f9de7b5ecbeed94f84f529854890ec5df1de326937b41ce24f5a93e7f641a4",
+   "current_mode": "100644",
+   "current_sha256": "23cb27c5e4610b7158245edec0c43b2b69e251f8e25c565b6acbde997e185409",
+   "kind": "regular",
+   "path": ".agent/plan.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8d08b90c7940b45960506c3d7ee221d01a3f57c0abd4ebcf82d116ffb86b44a6",
+   "current_mode": "100644",
+   "current_sha256": "85b775fc710deb0fbfbac110258a4314a0b0578a6910d78f6d51c911c0dea4a7",
+   "kind": "regular",
+   "path": "apps/cli/commands/job.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "2e5536eeb87795de546486c9c5accb884154d2823cf95c408a9c878a19991226",
+   "current_mode": "100644",
+   "current_sha256": "524d06c7ae6e6b8ea68b971207a0b802c70d99494671ac45baf1547745bf836a",
+   "kind": "regular",
+   "path": "docs/agents/integration_gate.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "f125d4014f1203f60e79d2f8a3a10aba05c8852ebfc6e4f59bfc34deb6c26079",
+   "current_mode": "100644",
+   "current_sha256": "57ccc52975113613ab6483b8581b8b2bc26c774cc16ce30c0717f0d4e5c92bf7",
+   "kind": "regular",
+   "path": "docs/roadmap/STATUS.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "7f978c076a509c3d93f67d08bbc52255943369d762b693d12e83628fba5a56b4",
+   "current_mode": "100644",
+   "current_sha256": "ab06769f056a966e6d5fcf61456f66b9bdcba3236b4e580fc7e76dc78b1d6f6b",
+   "kind": "regular",
+   "path": "docs/roadmap/features/T1_F052.md",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "8ce239c4ed72a3a9688a08edc1a52d2e04c7c440cfac2a30e78528da631fe386",
+   "current_mode": "100644",
+   "current_sha256": "d4e221f8d6b807b7572a57c43ff3c449ceda2d8d8cc1b6503d1604052893038e",
+   "kind": "regular",
+   "path": "packages/orchestration/config.py",
+   "status": "modified"
+  },
+  {
+   "base_kind": "regular",
+   "base_mode": "100644",
+   "base_sha256": "ba49f87b2f0ccdfbfeea6f9c9eae660aa20bd7c350bec720bdad38d17ccd92f1",
+   "current_mode": "100644",
+   "current_sha256": "849eacc590fb6641001e3e2f643eef7fc220b149c7f73ad9d59fc0d257298dd6",
+   "kind": "regular",
+   "path": "packages/orchestration/long_run_executor.py",
+   "status": "modified"
+  },
+  {
+   "base_sha256": null,
+   "current_mode": "100644",
+   "current_sha256": "7f78736261e81391575a3dd937bc2d9a9ba33533a4683e98ae69651ebe2b9f82",
+   "kind": "regular",
+   "path": "tests/orchestration/test_self_healing_cycles.py",
+   "status": "added"
+  }
+ ],
+ "head_commit": "2203610776926c76956423346c889503516f08d4",
+ "subject_v": 1
+}

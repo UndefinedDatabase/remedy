@@ -1,0 +1,26 @@
+fc9d71cc82d610d6440da8014b7511505d681e97
+diff --git a/.agent/live_review.md b/.agent/live_review.md
+index 02d809a..98aaadf 100644
+--- a/.agent/live_review.md
++++ b/.agent/live_review.md
+@@ -30,14 +30,12 @@ point stop between rounds (docs/roadmap/features/T1_F052.md).
+   Reversal: any later relay may re-route the trigger once ping-pong
+   gains a findings-injection seam; the repair= seam in run_cycles
+   keeps that a one-function swap.
+-- Open: R-0158 (process, Low, in the reviewer's own text): the
+-  R-0155 amendment in docs/agents/integration_gate.md names the
+-  ROOT `node_modules` as a parity target, but that path holds only
+-  a `.vite` cache (0 packages, 20K); the real dependency tree is
+-  `apps/ui/node_modules` (205 entries, 305M) — raw base error
+-  "Cannot find package 'vitest'". The first live gate application
+-  proved it (pre-parity 10 base failures → 2 after copying the
+-  right tree). Fix: path correction this round.
++- Resolved: R-0158 (process, Low) 2026-07-30: integration_gate.md
++  now names `apps/ui/node_modules` (+ `apps/ui/dist`) as the parity
++  targets, notes the ROOT `node_modules` is only a `.vite` cache,
++  and folds the non-restorable `.git`-directory class (R-0159) into
++  the attribution rule.
++  Done: R-0158 (commit f9dadc0 — the doc diff is the evidence).
+ - Open: R-0159 (process, Low): the 2 ids in
+   tests/cli/test_self_dogfood_execution_cli.py cannot pass in ANY
+   linked worktree — self_dogfood_execution.current_branch() reads

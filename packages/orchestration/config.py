@@ -329,6 +329,20 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="cycles.repair_rounds",
+        env_var="REMEDY_CYCLES_REPAIR_ROUNDS",
+        description=(
+            "Bounded auto-repair rounds a FAILED cycle verify may spend before "
+            "the cycle keeps its failure (F052). DEFAULT 2. Rounds run through "
+            "the existing repair loop and obey the same fences, budgets and "
+            "stop requests as any other provider work; 0 disables self-healing. "
+            "A verify that failed for a non-test reason (missing command, bad "
+            "config) is classified and never repaired."
+        ),
+        value_type=int,
+        default=2,
+    ),
+    ConfigKeySpec(
         key="cycles.checkpoint_retention",
         env_var="REMEDY_CYCLES_CHECKPOINT_RETENTION",
         description=(

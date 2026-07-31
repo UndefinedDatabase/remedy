@@ -1,0 +1,17 @@
+{
+ "base_commit": "c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8",
+ "file_count": 7,
+ "file_hashes": {
+  "apps/cli/commands/job.py": "85b775fc710deb0fbfbac110258a4314a0b0578a6910d78f6d51c911c0dea4a7",
+  "docs/agents/integration_gate.md": "524d06c7ae6e6b8ea68b971207a0b802c70d99494671ac45baf1547745bf836a",
+  "docs/roadmap/STATUS.md": "57ccc52975113613ab6483b8581b8b2bc26c774cc16ce30c0717f0d4e5c92bf7",
+  "docs/roadmap/features/T1_F052.md": "ab06769f056a966e6d5fcf61456f66b9bdcba3236b4e580fc7e76dc78b1d6f6b",
+  "packages/orchestration/config.py": "d4e221f8d6b807b7572a57c43ff3c449ceda2d8d8cc1b6503d1604052893038e",
+  "packages/orchestration/long_run_executor.py": "849eacc590fb6641001e3e2f643eef7fc220b149c7f73ad9d59fc0d257298dd6",
+  "tests/orchestration/test_self_healing_cycles.py": "7f78736261e81391575a3dd937bc2d9a9ba33533a4683e98ae69651ebe2b9f82"
+ },
+ "head_commit": "2203610776926c76956423346c889503516f08d4",
+ "schema_version": "1.1.0",
+ "tombstone_count": 0,
+ "tombstones": {}
+}

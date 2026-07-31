@@ -1,0 +1,10 @@
+{
+ "changed_files": [
+  "docs/roadmap/features/T1_F052.md",
+  "packages/orchestration/config.py",
+  "packages/orchestration/long_run_executor.py"
+ ],
+ "schema_version": "1.0.0",
+ "task_id": "T002",
+ "task_title": "Task T002"
+}

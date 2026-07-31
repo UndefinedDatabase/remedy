@@ -1,5 +1,42 @@
 # Decisions
 
+## 2026-07-30: F052 — which existing repair loop the cycle triggers
+The inspect step found TWO repair worlds. The ping-pong loop
+(`pingpong_loop.run_pingpong`) does run bounded repair rounds, but it drives
+them from its OWN reviewer inside one invocation, has no seam to inject
+externally built findings, and belongs to the `pingpong_job.JobPlan` model —
+none of its inputs (repo path, builder/reviewer providers, test command) exist
+at the `run_cycles` seam, which works on `packages.core.models.Job`. The two
+core-Job repair modules are human-gated PROPOSAL flows by explicit contract
+(`repair_loop` v0/v1: "No real provider. No automatic apply. No test
+execution."; `repair_loop_v2`: "NO model/provider/worker execution").
+
+The loop that IS reachable and does execute is
+`builder_bridge.run_builder_bridge_loop` — same core-Job world, takes a
+`build_fn(repair_context) -> BuilderOutput` compatible with the cycle's
+provider seam, already emits `repair_loop_cycle_started` /
+`repair_context_created` / `repair_loop_succeeded` evidence, and already
+consumes `repair_context.build_repair_context` findings. F052 therefore
+TRIGGERS that loop with `max_cycles=1` per cycle-level round: the round cap
+belongs to the cycle (`cycles.repair_rounds`) so the cycle can re-run its own
+verify after each round, which the feature file requires. No second repair
+mechanism was written (A6).
+
+## 2026-07-30: F052 — CycleLimits.repair_rounds defaults to 0, the config key to 2
+Defaulting the dataclass field to 2 silently turned every existing direct
+`CycleLimits(...)` construction into a self-healing one, spending provider
+calls the caller never asked for. The product surface goes through
+`limits_from_config`, which supplies the configured default (2), so the shipped
+behavior is the feature; a hand-built limits object gets exactly the bounds it
+named. The divergence is deliberate and documented on the field.
+
+## 2026-07-30: F052 R1 — the bundle was committed as four commits, not two
+The T001+T002 diff came to 875 lines, over the AGENTS.md 500-line commit limit,
+and it was genuinely separable rather than inseparable — so it was split into
+four green steps instead of declaring an oversize commit: verify
+classification, the repair seam + findings payload + cap, the loop trigger, and
+the T002 assertions. Each step is independently green.
+
 ## 2026-07-26: F047 gate — live_review.md needs a real "## Steps" section
 The integration gate produced exactly two reproducible branch-only failures,
 both asserting `"Steps" in .agent/live_review.md`

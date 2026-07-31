@@ -1,0 +1,288 @@
+e295fcbf167750a3de941f6825f237ce92e9f36d
+diff --git a/tests/orchestration/test_self_healing_cycles.py b/tests/orchestration/test_self_healing_cycles.py
+index 0396fde..539b328 100644
+--- a/tests/orchestration/test_self_healing_cycles.py
++++ b/tests/orchestration/test_self_healing_cycles.py
+@@ -21,7 +21,7 @@ from pathlib import Path
+ import pytest
+ 
+ import packages.orchestration.long_run_executor as lre
+-from packages.core.models import Job, RunState, Task
++from packages.core.models import Job, JobBudgets, RunState, Task
+ from packages.orchestration.builder_models import BuilderOutput, TaskExecutionContext
+ from packages.orchestration.config import get_key_spec
+ from packages.orchestration.long_run_executor import (
+@@ -29,6 +29,8 @@ from packages.orchestration.long_run_executor import (
+     LEDGER_EVENT_CYCLE_HEALED,
+     LEDGER_EVENT_CYCLE_REPAIR_ROUND,
+     TERMINAL_ALL_GREEN,
++    TERMINAL_BUDGET_EXHAUSTED,
++    TERMINAL_STOPPED_BY_OPERATOR,
+     VERIFY_CONFIG_ERROR,
+     VERIFY_FAILED,
+     VERIFY_NOT_RUN,
+@@ -47,6 +49,7 @@ from packages.orchestration.long_run_executor import (
+     render_cycle_summary_line,
+     run_cycles,
+ )
++from packages.orchestration.safe_points import request_stop
+ 
+ UTC = timezone.utc
+ T0 = datetime(2026, 7, 30, 9, 0, 0, tzinfo=UTC)
+@@ -633,3 +636,256 @@ class TestDefaultRepairSeamUsesTheExistingLoop:
+         )
+         assert result.cycles[0].repair_rounds_used == 0
+         assert any("RuntimeError" in e for e in result.cycles[0].errors)
++
++
++# ---------------------------------------------------------------------------
++# T002 — the stubborn path, budgets, the stop between rounds, edge cases
++# ---------------------------------------------------------------------------
++
++
++class TestStubbornBreakStopsAfterExactlyTwoRounds:
++    def test_exactly_two_rounds_not_one_not_three(self, control_root):
++        job = make_job(1)
++        repair = FakeRepair()
++        log = RecordingLog()
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=BreakingVerify(heals_after=None),
++            repair=repair, clock=FakeClock(), save=no_save,
++            control_root_path=control_root, log=log,
++        )
++
++        cycle = result.cycles[0]
++        assert cycle.repair_rounds_used == 2
++        assert len(repair.findings) == 2
++        assert len(log.of(LEDGER_EVENT_CYCLE_REPAIR_ROUND)) == 2
++        assert log.of(LEDGER_EVENT_CYCLE_HEALED) == []
++        assert cycle.healed_after_repair is False
++        assert cycle.repair_summary == "not healed after 2 repair rounds"
++
++    def test_the_failure_keeps_the_existing_test_failure_classification(
++            self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=BreakingVerify(heals_after=None),
++            repair=FakeRepair(), clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        cycle = result.cycles[0]
++        assert cycle.verify_result == VERIFY_FAILED
++        assert cycle.verify_failure_class == "test_failed"
++        assert "verify_failed" in cycle.errors
++
++    def test_the_postmortem_references_the_repair_round_evidence(self, control_root):
++        """The rounds live in the cycle record, and that record is a legal
++        post-mortem evidence reference — so the failure account links to what
++        the repair phase actually did, in the EXISTING record shape."""
++        from packages.orchestration.failure_postmortem import (
++            SCOPE_JOB,
++            FailureClass,
++            PostmortemV1,
++        )
++
++        job = make_job(1)
++        run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=BreakingVerify(heals_after=None),
++            repair=FakeRepair(), clock=FakeClock(), save=no_save,
++            control_root_path=control_root, record_checkpoint=False,
++        )
++        record = read_cycle_records(str(job.id))[0]
++        ref = f"cycles/cycle_{record['cycle_index']:04d}.json"
++
++        payload = PostmortemV1(
++            failure_class=FailureClass(record["verify_failure_class"]),
++            signal_source="terminal_status",
++            job_id=str(job.id), scope=SCOPE_JOB,
++            terminal_status="test_failed",
++            evidence_refs=(ref,),
++        ).to_json()
++
++        assert payload["failure_class"] == "test_failed"
++        assert payload["evidence_refs"] == [ref]
++        assert record["repair_rounds_used"] == 2
++
++
++class TestRepairCostLandsOnTheBudget:
++    """Budget attribution over the PRODUCTION path.
++
++    These use the DEFAULT repair seam — the one that runs the existing repair
++    loop through the cycle's counted provider call — because that is the only
++    seam whose cost the budget can see.  An injected fake calling some other
++    provider would prove nothing about attribution.
++    """
++
++    @staticmethod
++    def _bridge_calling_build_fn(monkeypatch):
++        class FakeLoopResult:
++            cycles_run = 1
++            stop_reason = ""
++            final_result = None
++
++        def fake_loop(build_fn, repo_path, *, job, data_dir, max_cycles=3, **kw):
++            build_fn(None)
++            return FakeLoopResult()
++
++        monkeypatch.setattr(
++            "packages.orchestration.builder_bridge.run_builder_bridge_loop",
++            fake_loop)
++
++    def test_repair_calls_are_counted_like_any_provider_call(
++            self, control_root, monkeypatch):
++        self._bridge_calling_build_fn(monkeypatch)
++        job = make_job(1)
++        calls: list[str] = []
++
++        def provider(context: TaskExecutionContext) -> BuilderOutput:
++            calls.append(context.task_type)
++            return BuilderOutput(summary="x", proposed_changes=["y"])
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=5, repair_rounds=2,
++                             budgets=JobBudgets(max_provider_calls=3)),
++            provider,
++            task_step=completing_step, verify=BreakingVerify(heals_after=None),
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++
++        # One task call plus two repair calls exhaust a 3-call budget: the
++        # repair rounds were counted, not run for free.
++        assert len(calls) == 3
++        assert result.cycles[0].repair_rounds_used == 2
++        assert result.terminal_status == TERMINAL_BUDGET_EXHAUSTED
++        assert result.stop_reason == "budget_exhausted:max_provider_calls"
++
++    def test_the_budget_stops_the_phase_between_rounds(
++            self, control_root, monkeypatch):
++        self._bridge_calling_build_fn(monkeypatch)
++        job = make_job(1)
++
++        def provider(context: TaskExecutionContext) -> BuilderOutput:
++            return BuilderOutput(summary="x", proposed_changes=["y"])
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=5,
++                             budgets=JobBudgets(max_provider_calls=2)),
++            provider,
++            task_step=completing_step, verify=BreakingVerify(heals_after=None),
++            clock=FakeClock(), save=no_save, control_root_path=control_root,
++        )
++        # Task call + one repair call = the budget; the second round never began,
++        # even though four more were allowed.
++        assert result.cycles[0].repair_rounds_used == 1
++        assert result.terminal_status == TERMINAL_BUDGET_EXHAUSTED
++
++
++class TestStopRequestBetweenRepairRounds:
++    def test_a_stop_between_rounds_stops_cleanly_at_the_safe_point(
++            self, control_root):
++        """Asserted, not assumed: the round in flight finishes, the next never
++        starts, and this cycle's evidence still lands."""
++        job = make_job(1)
++        rounds_started: list[int] = []
++
++        def repair_then_stop(j, idx, findings) -> RepairOutcome:
++            rounds_started.append(findings["repair_round"])
++            request_stop(str(j.id), reason="operator asked",
++                         control_root_path=control_root)
++            return RepairOutcome(ran=True, changed_files=("calc.py",))
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=5), lambda _ctx: None,
++            task_step=completing_step, verify=BreakingVerify(heals_after=None),
++            repair=repair_then_stop, clock=FakeClock(), save=no_save,
++            control_root_path=control_root, record_checkpoint=False,
++        )
++
++        assert rounds_started == [1]
++        assert result.terminal_status == TERMINAL_STOPPED_BY_OPERATOR
++        assert "operator_stop" in result.stop_reason
++        assert result.job.state == RunState.PAUSED
++        # The interrupted phase is still on disk, with the round it did spend.
++        assert read_cycle_records(str(job.id))[0]["repair_rounds_used"] == 1
++
++    def test_a_stop_before_the_first_round_spends_nothing(self, control_root):
++        job = make_job(1)
++        repair = FakeRepair()
++
++        class StoppingVerify(BreakingVerify):
++            def __call__(self, j, cycle_index, verify_command):
++                out = super().__call__(j, cycle_index, verify_command)
++                request_stop(str(j.id), reason="operator asked",
++                             control_root_path=control_root)
++                return out
++
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=StoppingVerify(heals_after=None),
++            repair=repair, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert repair.findings == []
++        assert result.cycles[0].repair_rounds_used == 0
++        assert result.terminal_status == TERMINAL_STOPPED_BY_OPERATOR
++
++
++class TestEdgeCases:
++    """Feature file A9."""
++
++    def test_a_harness_failure_spends_no_repair_round(self, control_root):
++        job = make_job(1)
++        repair = FakeRepair()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=lambda j, i, c: VERIFY_CONFIG_ERROR,
++            repair=repair, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert repair.findings == []
++        assert result.cycles[0].repair_rounds_used == 0
++        assert result.cycles[0].verify_failure_class == "config"
++
++    def test_an_unknown_verify_failure_spends_no_repair_round(self, control_root):
++        job = make_job(1)
++        repair = FakeRepair()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=lambda j, i, c: VERIFY_UNKNOWN_ERROR,
++            repair=repair, clock=FakeClock(), save=no_save,
++            control_root_path=control_root,
++        )
++        assert repair.findings == []
++        assert result.cycles[0].verify_failure_class == "unknown"
++
++    def test_a_heal_that_changed_nothing_is_flagged_as_a_flake_suspect(
++            self, control_root):
++        job = make_job(1)
++        log = RecordingLog()
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=BreakingVerify(heals_after=1),
++            repair=FakeRepair(changed_files=()), clock=FakeClock(), save=no_save,
++            control_root_path=control_root, log=log, record_checkpoint=False,
++        )
++        cycle = result.cycles[0]
++        assert cycle.healed_after_repair is True
++        assert cycle.healed_without_changes is True
++        assert cycle.repair_summary == (
++            "healed without changes (flaky?) after 1 repair round")
++        assert log.of(LEDGER_EVENT_CYCLE_HEALED)[0]["healed_without_changes"] is True
++        # And a human reading the report sees it, not just the JSON.
++        assert "flaky?" in render_cycle_summary_line(cycle)
++        assert read_cycle_records(str(job.id))[0]["healed_without_changes"] is True
++
++    def test_a_heal_that_changed_files_is_not_flagged(self, control_root):
++        job = make_job(1)
++        result = run_cycles(
++            job, CycleLimits(max_cycles=1, repair_rounds=2), lambda _ctx: None,
++            task_step=completing_step, verify=BreakingVerify(heals_after=1),
++            repair=FakeRepair(changed_files=("calc.py",)), clock=FakeClock(),
++            save=no_save, control_root_path=control_root,
++        )
++        assert result.cycles[0].healed_without_changes is False
++        assert "flaky?" not in result.cycles[0].repair_summary

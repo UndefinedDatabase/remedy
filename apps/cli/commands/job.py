@@ -751,6 +751,12 @@ def _cmd_job_run_cycles(
             f"{' reason=' + result.stop_reason if result.stop_reason else ''}"
             f"  log={log.path}"
         )
+        # F052: a cycle that did not verify says WHY on the same screen — a
+        # reader must not have to open the log to learn that the harness, not a
+        # test, is what broke.
+        from packages.orchestration.long_run_executor import render_cycle_summary_line
+        for record in result.cycles:
+            print(f"  {render_cycle_summary_line(record)}")
     if result.terminal_status not in ("all_green", "max_cycles_reached"):
         sys.exit(1)
 
