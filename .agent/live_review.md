@@ -16,7 +16,11 @@ point stop between rounds (docs/roadmap/features/T1_F052.md).
   (R-0155 amendment in force). Done.
 - R3: persist R2 verdict; register R-0158 + R-0159; fix R-0158
   (integration_gate.md path correction); closure stays its own
-  round. In progress.
+  round. Done.
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md v4:
+  preconditions, evidence job, READY zip, evidence commit, then ONE
+  final commit = STATUS [x] + README sync + final .agent state.
+  In progress.
 
 ## Findings
 - DECISION D1 (2026-07-30, §4.7, reviewer): the executing repair
@@ -75,3 +79,17 @@ point stop between rounds (docs/roadmap/features/T1_F052.md).
   apps/ui/node_modules) → R-0158 registered. New suite baseline
   14486/0/19 (+51 = 50 self-healing + 1 count pin). Wall clock
   under budget, no perf pass. LAST_REVIEWED_SHA = d410ce5.
+- R3: PASS (reviewer, 2026-07-31). Range d410ce5..7262f5b. All 5
+  authored texts verified against the recorded BEGIN digests by the
+  reviewer's own sha256sum recompute (the reviewer scratchpad died
+  between rounds — the digest fallback per project practice, not a
+  worker fault); registrations and the R-0158 resolution applied
+  byte-exact, Done sha f9dadc0 confirmed against the real doc diff.
+  integration_gate.md paragraph replacement verified: parity
+  targets corrected to apps/ui/node_modules + apps/ui/dist, ROOT
+  node_modules named a .vite cache, non-restorable .git-directory
+  class folded into the attribution rule. R-0159 deliberately Open
+  (documented Low). Reviewer's own gates: tests/docs 293, canary
+  42. Closure preconditions met: latest verdict PASS, all findings
+  Resolved or documented risk, Built State current, tree clean.
+  LAST_REVIEWED_SHA = 7262f5b.

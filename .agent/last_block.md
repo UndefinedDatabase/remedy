@@ -1,129 +1,141 @@
-Round f052-r3: persist the R2 gate verdict, register R-0158 + R-0159,
-fix R-0158 in docs/agents/integration_gate.md, resolve it. Closure is
-NOT part of this round — it follows as its own round. Save this block
-to .agent/last_block.md first (OUTCOME: pending → executed at
-handback). Verify each authored text's sha256 BEFORE use (wrapped
-lines: rejoin with a single space, re-hash; persistent mismatch =
-STOP).
+Round f052-r4 — CLOSURE per docs/roadmap/STATUS_closure_protocol.md
+(v4). Read that file COMPLETELY before starting; it wins over this
+summary on any detail. Save this block to .agent/last_block.md first
+(OUTCOME: pending → executed at handback). Verify each authored
+text's sha256 BEFORE use. f052-r4-3 is ONE 208-char line and WILL
+arrive hard-wrapped: rejoin the fragments with a single space,
+re-hash, use only after the hash matches (known recoverable class,
+3rd instance). Never merge anything this round.
 
-STEP 1 — COMMIT A (persist FIRST: verdict + registrations)
-Save the five authored texts below to .agent/authored/<name>.md.
+STEP 1 — COMMIT A (persist R3 verdict)
+Save the four authored texts below to .agent/authored/<name>.md.
 In .agent/live_review.md:
-- replace the R2 Steps bullet ("- R2: ... In progress.") with the
-  BODY of f052-r3-1.md;
-- replace the line "- Next free ID: R-0158." with the BODY of
-  f052-r3-2.md (registers R-0158 + R-0159, sets next free R-0160);
-- append the BODY of f052-r3-3.md to the "## Verdicts" section,
-  directly after the R1 PASS entry.
-cmp proof per applied region. Commit .agent/live_review.md,
-.agent/authored/f052-r3-*.md, .agent/last_block.md as:
-chore(f052): persist R2 verdict (integration gate PASS) + register
-R-0158/R-0159
+- replace the R3 Steps bullet ("- R3: ... In progress.") with the
+  BODY of f052-r4-1.md;
+- append the BODY of f052-r4-2.md to "## Verdicts" after the R2
+  entry.
+cmp proofs. Commit .agent/live_review.md, .agent/authored/
+f052-r4-*.md, .agent/last_block.md as:
+chore(f052): persist R3 verdict (PASS)
+Push. Record this commit's FULL sha — it is the expected accepted
+HEAD (the zip manifest must confirm it).
+
+STEP 2 — PRECONDITIONS (abort closure on any failure)
+python3 -m apps.cli.grouped integrity check --json → must PASS with
+fail_count 0 (record the raw JSON summary). git status --porcelain
+empty. git push; git rev-list --left-right --count @{u}...HEAD →
+"0 0". R-0159 is Low → not a blocker (documented risk).
+
+STEP 3 — EVIDENCE JOB
+packages.orchestration.job_evidence.create_manual_completion_bundle(
+review_feature_id="f052", ...), fresh job id, base commit FULL sha
+c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8, head = commit A. Four REAL
+verification runs, executed now, exit codes recorded:
+  pytest tests/orchestration/test_self_healing_cycles.py -q  (50)
+  pytest tests/cli/test_golden_path.py -q                    (42)
+  pytest tests/docs/ -q                                     (293)
+  (plus any run the producer requires)
+Producer pitfalls — ALL cumulative lessons apply: node_ids from
+--collect-only with len(node_ids) == selected per run; test_files
+are FILES, never directories (expand tests/docs/); output_hash =
+sha256 of the EXACT stored stdout_summary bytes (pre-truncate to the
+producer window and let the producer derive the hash — F050/F051
+lesson); full-length base_commit; gate set = the full closed schema
+(final_verifier, fresh_evidence, artifact_contract,
+change_provenance, manifest_integrity, postmortem_integrity,
+commit_execution, runtime_integration). Record job id + total
+passed.
+
+STEP 4 — READY ZIP (from the clean tree, BEFORE any evidence commit)
+bash scripts/make_review_zip.sh --evidence-dir <path>  (or --job-id)
+Requirements: PACKAGE_STATUS=READY_FOR_REVIEW,
+EVIDENCE_AUTHORITATIVE=true, validation_errors empty,
+committed_review_subject spans
+c0a3b34ad3951cf1d195c39a7a3aff32ba4068d8..<commit A>, base_is_
+ancestor true, ZipFile.testzip() → None. Record filename + SHA-256
+(script JSON + independent sha256sum). accepted HEAD := the
+manifest's committed_review_subject.head_commit — must equal commit
+A. A failing zip build is a closure BLOCKER: record the raw error in
+the handback and STOP (no [x], no further commits except handback).
+
+STEP 5 — EVIDENCE COMMIT (only after the READY zip exists)
+git add -f the evidence export dir; commit:
+chore(f052): commit closure evidence (after READY zip)
+
+STEP 6 — FINAL COMMIT (exactly STATUS.md + README.md + .agent/)
+Substitute in a COPY of f052-r4-3.md (each placeholder exactly once;
+grep -c 1→0 each; original file untouched): <JOB_ID> from step 3,
+<ZIP_FILENAME> + <ZIP_SHA256> from the script JSON (independent
+sha256sum must agree), <HEAD_SHA> = the manifest head_commit.
+Replace the unique STATUS.md line "- [~] F052 — Self-healing test
+rounds" with the substituted line (old 1→0, new 1 after; cmp of the
+grepped line against the substituted copy → 0). Apply the three
+README edits from f052-r4-4.md exactly as written (each FROM 1
+before/0 after, each TO present after; the R-0151 count pin makes
+STATUS+README land in this SAME commit by construction).
+Provenance table per substituted value in the handback. Rewrite
+.agent/handoff.md per the template + flip OUTCOME to executed.
+Post-edit gates, raw tails: pytest tests/docs/ -q (must be 293,
+exit 0 — the count pin now checks 28==28) and pytest
+tests/cli/test_golden_path.py -q (42). grep -c '^- \[x\]'
+docs/roadmap/STATUS.md → 28. Commit:
+chore(f052): close F052 — STATUS [x] + README sync
 Push.
 
-STEP 2 — COMMIT B (R-0158 fix)
-In docs/agents/integration_gate.md, replace the ENTIRE paragraph that
-runs from the line containing "Environment-coupled base failures
-(R-0155 amendment, operator" through the line ending "gate verdict."
-(inclusive) with the BODY of f052-r3-4.md. Proofs:
-grep -c "path corrected per R-0158" 0→1;
-grep -c 'the ROOT `node_modules`, `apps/ui/dist`' 1→0.
-Commit:
-docs(agents): integration gate — parity path correction + .git-dir
-class (R-0158)
-Record this commit's short sha as SHA_R0158. Push.
+STEP 7 — PR (NOT merged)
+gh pr create --base main --title "F052 — Self-healing test rounds
+(T001–T002)" — body per AGENTS.md: what/why, DECISION D1, changed-
+files table, verdicts R1–R3, open findings: 1 (R-0159, Low,
+documented), runtime actuals (observed; tokens/cost not-measured
+unless the ledger has them), evidence job + package + SHA-256.
+The PR merges at the NEXT feature's start via the Open PR Gate.
+Report the PR number in the handback. Done — await the reviewer.
 
-STEP 3 — COMMIT C (resolution)
-Substitute <SHA_R0158> in a COPY of f052-r3-5.md (grep -c 1→0; the
-original authored file stays untouched). Replace the ENTIRE
-"- Open: R-0158 ..." bullet in .agent/live_review.md with the
-substituted BODY. cmp proof. Commit:
-chore(f052): resolve R-0158 in the ledger
-Push.
-
-STEP 4 — GATES + HANDBACK
-python3 -m pytest tests/docs/ -q                    (expect 293)
-python3 -m pytest tests/cli/test_golden_path.py -q  (expect 42)
-Raw tails + exit codes. Rewrite .agent/handoff.md per the template:
-range d410ce5..HEAD, per-commit tables, sha256sum output of the five
-authored files, cmp proofs, gate transcripts, deviations. Flip
-OUTCOME to executed. Commit: chore(f052): handback R3. Push.
-No PR yet; never merge. R-0159 stays Open as a documented Low risk.
-
---- BEGIN f052-r3-1 sha256=6895916ba53c8eea285e38c7abbc33f1147df6357d11e03f4ceeb06c7acf39d5 ---
-- R2: persist R1 verdict + DECISION D1 + feature-file amendment +
-  Built State + integration gate per docs/agents/integration_gate.md
-  (R-0155 amendment in force). Done.
+--- BEGIN f052-r4-1 sha256=e5909491774e623f16538547b204434d668da66bdf28254298de79ad2f9b9d1e ---
 - R3: persist R2 verdict; register R-0158 + R-0159; fix R-0158
   (integration_gate.md path correction); closure stays its own
-  round. In progress.
---- END f052-r3-1 ---
+  round. Done.
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md v4:
+  preconditions, evidence job, READY zip, evidence commit, then ONE
+  final commit = STATUS [x] + README sync + final .agent state.
+  In progress.
+--- END f052-r4-1 ---
 
---- BEGIN f052-r3-2 sha256=8140e4314ef5c606fe9e5ae557a32337bb6b84e11ffa11f570c623437f3b668f ---
-- Open: R-0158 (process, Low, in the reviewer's own text): the
-  R-0155 amendment in docs/agents/integration_gate.md names the
-  ROOT `node_modules` as a parity target, but that path holds only
-  a `.vite` cache (0 packages, 20K); the real dependency tree is
-  `apps/ui/node_modules` (205 entries, 305M) — raw base error
-  "Cannot find package 'vitest'". The first live gate application
-  proved it (pre-parity 10 base failures → 2 after copying the
-  right tree). Fix: path correction this round.
-- Open: R-0159 (process, Low): the 2 ids in
-  tests/cli/test_self_dogfood_execution_cli.py cannot pass in ANY
-  linked worktree — self_dogfood_execution.current_branch() reads
-  Path(".git")/"HEAD", and a worktree's .git is a regular FILE, so
-  the guard answers main_branch_unsafe/blocked. They land in
-  comm -23 on every gate run. Fix: read the real HEAD (e.g. via
-  git rev-parse) — its own reviewer-gated micro-round; documented
-  Low risk until then.
-- Next free ID: R-0160.
---- END f052-r3-2 ---
+--- BEGIN f052-r4-2 sha256=11ae30109473b2241ca0d923c2402e5f0418ed4d8050c58dee24aa81475e2142 ---
+- R3: PASS (reviewer, 2026-07-31). Range d410ce5..7262f5b. All 5
+  authored texts verified against the recorded BEGIN digests by the
+  reviewer's own sha256sum recompute (the reviewer scratchpad died
+  between rounds — the digest fallback per project practice, not a
+  worker fault); registrations and the R-0158 resolution applied
+  byte-exact, Done sha f9dadc0 confirmed against the real doc diff.
+  integration_gate.md paragraph replacement verified: parity
+  targets corrected to apps/ui/node_modules + apps/ui/dist, ROOT
+  node_modules named a .vite cache, non-restorable .git-directory
+  class folded into the attribution rule. R-0159 deliberately Open
+  (documented Low). Reviewer's own gates: tests/docs 293, canary
+  42. Closure preconditions met: latest verdict PASS, all findings
+  Resolved or documented risk, Built State current, tree clean.
+  LAST_REVIEWED_SHA = 7262f5b.
+--- END f052-r4-2 ---
 
---- BEGIN f052-r3-3 sha256=a48b560a7cac4429738b1114f77506042df829cc1afa307fca4cad21c7d4c8d4 ---
-- R2: PASS — INTEGRATION GATE PASS (reviewer, 2026-07-30). Range
-  21638c6..d410ce5. All 4 authored texts cmp 0 disk-to-disk; Built
-  State verified strictly factual against the r1 diff; amendment
-  placed at the end of How it fits. Gate: reviewer's own full run
-  at d410ce5 — 14486 passed, 0 failed, 19 skipped, 2:11 — makes the
-  branch-only failure set empty by construction; the worker's
-  branch run matches (14486/0/19, 2:01). comm -13 = 0. comm -23 =
-  2, attributed by direct evidence and REPRODUCED by the reviewer
-  (worktree .git is a regular file → dogfood guard unsafe → 2
-  failed; primary checkout 6/6 green). Parity per the R-0155
-  amendment caught the amendment's own wrong path (ROOT
-  node_modules holds only .vite; the real tree is
-  apps/ui/node_modules) → R-0158 registered. New suite baseline
-  14486/0/19 (+51 = 50 self-healing + 1 count pin). Wall clock
-  under budget, no perf pass. LAST_REVIEWED_SHA = d410ce5.
---- END f052-r3-3 ---
+--- BEGIN f052-r4-3 sha256=41ccf661801fe161526987590dd0130a1b7a9b9af235eb2e1858314e5f3671e6 ---
+- [x] F052 — Self-healing test rounds (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job <JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <HEAD_SHA>)
+--- END f052-r4-3 ---
 
---- BEGIN f052-r3-4 sha256=0b4fe00e52a49baa5f770b5730e9cd5315210c74800c3019cc5120f79e3be661 ---
-   Environment-coupled base failures (R-0155 amendment, operator
-   approved 2026-07-30; path corrected per R-0158): the throwaway
-   base worktree lacks artifacts the suite needs — build outputs
-   (`apps/ui/node_modules`, `apps/ui/dist`; the ROOT `node_modules`
-   holds only a `.vite` cache) and a real `.git` DIRECTORY (a
-   linked worktree's `.git` is a file, which the self-dogfood guard
-   reads as unsafe — R-0159). Affected ids fail at base and land in
-   `comm -23` on every gate run — where a GENUINE base failure in
-   those same files would be masked. Therefore: either restore
-   parity before the base run (share or copy the primary checkout's
-   `apps/ui/node_modules` and `apps/ui/dist` into the base
-   worktree, or run the same install/build there), or attribute
-   EVERY `comm -23` id to the environment class by direct evidence
-   (the missing artifact named per id). Ids whose missing artifact
-   CANNOT be restored in a worktree (the `.git`-directory class)
-   are attributed with that named cause. An unattributed `comm -23`
-   id counts as a genuine base failure and blocks the gate verdict.
---- END f052-r3-4 ---
+--- BEGIN f052-r4-4 sha256=21d715683e3943f00b6a04beceffac0fd7e06c7a49a79f728dcfba46456b2e42 ---
+EDIT 1 — replace this exact line:
+27 of 252 registered items accepted. Next: F052 (Self-healing test rounds).
+with:
+28 of 252 registered items accepted. Next: F053 (Final & interim report).
+EDIT 2 — replace this exact line:
+| 1 | Self-Build Bootstrap | 11 | 22 |
+with:
+| 1 | Self-Build Bootstrap | 12 | 22 |
+EDIT 3 — replace this exact line:
+F050 DAG scheduling, F051 escalate instead of block.
+with these two lines:
+F050 DAG scheduling, F051 escalate instead of block,
+F052 self-healing test rounds.
+--- END f052-r4-4 ---
 
---- BEGIN f052-r3-5 sha256=04d8fd85e39a33cda1f5de64521eeb7451b906e527f77e197c9c97b3cfdd799e ---
-- Resolved: R-0158 (process, Low) 2026-07-30: integration_gate.md
-  now names `apps/ui/node_modules` (+ `apps/ui/dist`) as the parity
-  targets, notes the ROOT `node_modules` is only a `.vite` cache,
-  and folds the non-restorable `.git`-directory class (R-0159) into
-  the attribution rule.
-  Done: R-0158 (commit <SHA_R0158> — the doc diff is the evidence).
---- END f052-r3-5 ---
-
-OUTCOME: executed
+OUTCOME: pending
