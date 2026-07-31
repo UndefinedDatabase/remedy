@@ -45,11 +45,11 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from packages.orchestration.data_paths import missions_dir
 from packages.orchestration.storage import _atomic_write_job as _atomic_write
@@ -363,3 +363,156 @@ def create_mission(project_id: str, goal: str, *,
     save_mission(mission, root)
     return mission
 
+
+# ---------------------------------------------------------------------------
+# Linking jobs
+# ---------------------------------------------------------------------------
+
+
+def mission_for_job(job_id: str, root: Path | None = None) -> Mission | None:
+    """The mission this job belongs to, or None.
+
+    Scans every project's mission area, because job ids are globally unique and
+    "already linked" must not depend on which project the caller asked about.
+    """
+    wanted = str(job_id)
+    for project_id in project_ids_with_missions(root):
+        for mission in list_missions(project_id, root):
+            if wanted in mission.job_ids():
+                return mission
+    return None
+
+
+def link_job_to_mission(project_id: str, mission_id: str, job_id: str,
+                        role: str = MISSION_ROLE_FOLLOW_UP, *,
+                        now: datetime | None = None,
+                        root: Path | None = None) -> Mission:
+    """Append a job to a mission's chain, enforcing both link validators.
+
+    * One job belongs to at most one mission — an already-linked job is
+      refused, whichever mission holds it.
+    * A chain begins with exactly one ``initial`` job; every later link is a
+      ``follow_up``.
+    """
+    if role not in MISSION_ROLES:
+        raise MissionLinkRoleError(
+            f"unknown mission job role {role!r} (expected one of "
+            f"{', '.join(MISSION_ROLES)})")
+
+    mission = load_mission(project_id, mission_id, root)
+    holder = mission_for_job(job_id, root)
+    if holder is not None:
+        raise MissionJobAlreadyLinkedError(str(job_id), holder.id)
+
+    if mission.job_links and role == MISSION_ROLE_INITIAL:
+        raise MissionLinkRoleError(
+            f"mission {mission.id} already has an initial job "
+            f"({mission.job_links[0].job_id}) — later jobs are follow_up")
+    if not mission.job_links and role != MISSION_ROLE_INITIAL:
+        raise MissionLinkRoleError(
+            f"mission {mission.id} has no jobs yet — the first link is "
+            f"{MISSION_ROLE_INITIAL}, not {role}")
+
+    link = MissionJobLink(job_id=str(job_id), role=role,
+                          created_at=_utc_now_iso(now))
+    updated = replace(mission, job_links=(*mission.job_links, link))
+    save_mission(updated, root)
+    return updated
+
+
+def set_mission_status(project_id: str, mission_id: str, status: str,
+                       root: Path | None = None) -> Mission:
+    """Set a mission's status.  Only ever called by an explicit human command.
+
+    Deliberately absent: any rule that moves a mission to ``achieved`` because
+    its jobs finished.  A finished job is not an achieved goal, and this
+    feature does not pretend otherwise — see the module docstring.
+    """
+    if status not in MISSION_STATUSES:
+        raise MissionError(
+            f"unknown mission status {status!r} (expected one of "
+            f"{', '.join(MISSION_STATUSES)})")
+    mission = load_mission(project_id, mission_id, root)
+    updated = replace(mission, status=status)
+    save_mission(updated, root)
+    return updated
+
+
+def resolve_mission_id(project_id: str, raw: str,
+                       root: Path | None = None) -> str:
+    """Full id, or a unique prefix — the same affordance job and queue ids have.
+
+    Returns the input unchanged when nothing matches, so the caller's own
+    not-found path produces the error message.
+    """
+    candidate = str(raw).strip()
+    matches = [m.id for m in list_missions(project_id, root)
+               if m.id.startswith(candidate)]
+    if candidate in matches:
+        return candidate
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise MissionError(
+            f"ambiguous mission id prefix {raw!r} matches {len(matches)} "
+            f"missions: {', '.join(sorted(m[:12] for m in matches))}")
+    return candidate
+
+
+# ---------------------------------------------------------------------------
+# Rendering the chain
+# ---------------------------------------------------------------------------
+
+
+def mission_job_state_label(job_id: str) -> str:
+    """A linked job's terminal state, read from the job store at render time.
+
+    Never raises: a job that was deleted renders ``(missing job)`` and one
+    whose file will not parse renders ``(unreadable job)``.  Those are
+    different facts and get different labels.
+    """
+    from packages.orchestration.storage import load_job_safe
+
+    try:
+        uuid = UUID(str(job_id))
+    except (AttributeError, TypeError, ValueError):
+        return MISSING_JOB_LABEL
+    try:
+        job, degraded = load_job_safe(uuid)
+    except Exception:  # noqa: BLE001 — a listing never dies of a bad record
+        return UNREADABLE_JOB_LABEL
+    if job is not None:
+        return str(getattr(job.state, "value", job.state))
+    return UNREADABLE_JOB_LABEL if degraded else MISSING_JOB_LABEL
+
+
+def render_mission_chain(mission: Mission) -> list[str]:
+    """The lines ``remedy mission show`` prints for one mission.
+
+    Chain order is link order — the order the jobs were added, which is the
+    order they ran.  Each line carries the job's state as the job store reports
+    it RIGHT NOW, so the rendering cannot drift from the jobs it describes.
+    """
+    lines = [
+        f"Mission {mission.id}",
+        f"  Status: {mission.status}",
+        f"  Goal:   {mission.goal}",
+    ]
+    if mission.dossier_ref:
+        lines.append(f"  Dossier: {mission.dossier_ref}")
+    if not mission.job_links:
+        lines.append("  Chain:  (no jobs linked yet)")
+        return lines
+    lines.append("  Chain:")
+    for index, link in enumerate(mission.job_links, start=1):
+        lines.append(
+            f"    {index}. {link.job_id}  {link.role:<9}  "
+            f"{mission_job_state_label(link.job_id)}")
+    return lines
+
+
+def render_mission_row(mission: Mission) -> str:
+    """One line of ``remedy mission list``."""
+    goal = mission.goal.replace("\n", " ").strip()[:60]
+    return (f"{mission.id[:12]}  {mission.status:<9}  "
+            f"{len(mission.job_links):>2} job(s)  {goal}")

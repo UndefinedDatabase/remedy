@@ -15,27 +15,43 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 import pytest
 
+from packages.core.models import Job, RunState
 from packages.orchestration.mission_state import (
     MAX_MISSION_GOAL_CHARS,
+    MISSING_JOB_LABEL,
+    MISSION_ROLE_FOLLOW_UP,
+    MISSION_ROLE_INITIAL,
     MISSION_SCHEMA_VERSION,
     MISSION_STATUS_ABANDONED,
+    MISSION_STATUS_ACHIEVED,
     MISSION_STATUS_ACTIVE,
+    UNREADABLE_JOB_LABEL,
     Mission,
     MissionError,
     MissionGoalImmutableError,
+    MissionJobAlreadyLinkedError,
+    MissionLinkRoleError,
     MissionNotFoundError,
     create_mission,
+    link_job_to_mission,
     list_missions,
     list_missions_safe,
     load_mission,
     mission_dir_for_project,
+    mission_for_job,
     mission_record_path,
     project_ids_with_missions,
+    render_mission_chain,
+    render_mission_row,
+    resolve_mission_id,
     save_mission,
+    set_mission_status,
 )
+from packages.orchestration.storage import save_job
 
 _T0 = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
 _PROJECT = "proj-alpha"
@@ -226,3 +242,214 @@ class TestMissionGoalImmutability:
 
         assert first.id != second.id
         assert len(list_missions(_PROJECT, root=tmp_path)) == 2
+
+
+class TestMissionJobLinking:
+
+    def test_the_first_link_is_the_initial_job(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        job_id = str(uuid4())
+
+        updated = link_job_to_mission(_PROJECT, mission.id, job_id,
+                                      MISSION_ROLE_INITIAL, now=_T0, root=tmp_path)
+
+        assert [(link.job_id, link.role) for link in updated.job_links] == [
+            (job_id, MISSION_ROLE_INITIAL)]
+        assert updated.job_links[0].created_at == _T0.isoformat()
+
+    def test_the_chain_keeps_link_order(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        first, second, third = str(uuid4()), str(uuid4()), str(uuid4())
+        link_job_to_mission(_PROJECT, mission.id, first, MISSION_ROLE_INITIAL,
+                            now=_at(0), root=tmp_path)
+        link_job_to_mission(_PROJECT, mission.id, second, MISSION_ROLE_FOLLOW_UP,
+                            now=_at(5), root=tmp_path)
+        updated = link_job_to_mission(_PROJECT, mission.id, third,
+                                      MISSION_ROLE_FOLLOW_UP, now=_at(10),
+                                      root=tmp_path)
+
+        assert list(updated.job_ids()) == [first, second, third]
+        assert updated.latest_link().job_id == third
+
+    def test_a_job_belongs_to_at_most_one_mission(self, tmp_path):
+        first = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        second = create_mission(_PROJECT, "Ship the exporter", root=tmp_path)
+        job_id = str(uuid4())
+        link_job_to_mission(_PROJECT, first.id, job_id, MISSION_ROLE_INITIAL,
+                            root=tmp_path)
+
+        with pytest.raises(MissionJobAlreadyLinkedError) as exc:
+            link_job_to_mission(_PROJECT, second.id, job_id,
+                                MISSION_ROLE_INITIAL, root=tmp_path)
+
+        assert exc.value.mission_id == first.id
+
+    def test_the_one_mission_rule_holds_across_projects(self, tmp_path):
+        """Job ids are globally unique, so the validator cannot be project-local."""
+        mine = create_mission(_PROJECT, "My goal", root=tmp_path)
+        theirs = create_mission(_OTHER_PROJECT, "Their goal", root=tmp_path)
+        job_id = str(uuid4())
+        link_job_to_mission(_PROJECT, mine.id, job_id, MISSION_ROLE_INITIAL,
+                            root=tmp_path)
+
+        with pytest.raises(MissionJobAlreadyLinkedError):
+            link_job_to_mission(_OTHER_PROJECT, theirs.id, job_id,
+                                MISSION_ROLE_INITIAL, root=tmp_path)
+
+    def test_a_second_initial_job_is_refused(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        link_job_to_mission(_PROJECT, mission.id, str(uuid4()),
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+
+        with pytest.raises(MissionLinkRoleError):
+            link_job_to_mission(_PROJECT, mission.id, str(uuid4()),
+                                MISSION_ROLE_INITIAL, root=tmp_path)
+
+    def test_a_chain_cannot_start_with_a_follow_up(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        with pytest.raises(MissionLinkRoleError):
+            link_job_to_mission(_PROJECT, mission.id, str(uuid4()),
+                                MISSION_ROLE_FOLLOW_UP, root=tmp_path)
+
+    def test_an_unknown_role_is_refused(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        with pytest.raises(MissionLinkRoleError):
+            link_job_to_mission(_PROJECT, mission.id, str(uuid4()), "whatever",
+                                root=tmp_path)
+
+    def test_linking_into_an_unknown_mission_raises_not_found(self, tmp_path):
+        with pytest.raises(MissionNotFoundError):
+            link_job_to_mission(_PROJECT, "0" * 32, str(uuid4()),
+                                MISSION_ROLE_INITIAL, root=tmp_path)
+
+    def test_mission_for_job_finds_the_holder(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        job_id = str(uuid4())
+        link_job_to_mission(_PROJECT, mission.id, job_id, MISSION_ROLE_INITIAL,
+                            root=tmp_path)
+
+        assert mission_for_job(job_id, root=tmp_path).id == mission.id
+
+    def test_mission_for_an_unlinked_job_is_none(self, tmp_path):
+        create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        assert mission_for_job(str(uuid4()), root=tmp_path) is None
+
+
+class TestMissionStatusTransitions:
+
+    def test_status_is_set_only_by_an_explicit_call(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        updated = set_mission_status(_PROJECT, mission.id,
+                                     MISSION_STATUS_ACHIEVED, root=tmp_path)
+
+        assert updated.status == MISSION_STATUS_ACHIEVED
+        assert load_mission(_PROJECT, mission.id,
+                            root=tmp_path).status == MISSION_STATUS_ACHIEVED
+
+    def test_an_unknown_status_is_refused(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        with pytest.raises(MissionError):
+            set_mission_status(_PROJECT, mission.id, "finished", root=tmp_path)
+
+    def test_linking_jobs_never_moves_the_status_on_its_own(self, tmp_path):
+        """Nothing in this feature auto-transitions a mission."""
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        link_job_to_mission(_PROJECT, mission.id, str(uuid4()),
+                            MISSION_ROLE_INITIAL, root=tmp_path)
+        updated = link_job_to_mission(_PROJECT, mission.id, str(uuid4()),
+                                      MISSION_ROLE_FOLLOW_UP, root=tmp_path)
+
+        assert updated.status == MISSION_STATUS_ACTIVE
+
+
+class TestMissionIdResolution:
+
+    def test_a_unique_prefix_resolves(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        assert resolve_mission_id(_PROJECT, mission.id[:8],
+                                  root=tmp_path) == mission.id
+
+    def test_an_ambiguous_prefix_is_refused(self, tmp_path):
+        first = create_mission(_PROJECT, "One", root=tmp_path)
+        second = Mission(id=first.id[:4] + "f" * 28, project_id=_PROJECT,
+                         goal="Two", created_at=first.created_at)
+        save_mission(second, root=tmp_path)
+
+        with pytest.raises(MissionError):
+            resolve_mission_id(_PROJECT, first.id[:4], root=tmp_path)
+
+    def test_an_unknown_prefix_comes_back_unchanged(self, tmp_path):
+        assert resolve_mission_id(_PROJECT, "nothing", root=tmp_path) == "nothing"
+
+
+class TestMissionChainRendering:
+
+    def test_the_chain_renders_each_job_with_its_state(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="job one", state=RunState.COMPLETED)
+        save_job(job, root=tmp_path)
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        linked = link_job_to_mission(_PROJECT, mission.id, str(job.id),
+                                     MISSION_ROLE_INITIAL, root=tmp_path)
+
+        rendered = "\n".join(render_mission_chain(linked))
+
+        assert str(job.id) in rendered
+        assert "completed" in rendered
+        assert MISSING_JOB_LABEL not in rendered
+
+    def test_a_deleted_job_renders_as_missing_and_never_crashes(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="job one", state=RunState.COMPLETED)
+        save_job(job, root=tmp_path)
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        linked = link_job_to_mission(_PROJECT, mission.id, str(job.id),
+                                     MISSION_ROLE_INITIAL, root=tmp_path)
+        (tmp_path / "jobs" / f"{job.id}.json").unlink()
+
+        rendered = "\n".join(render_mission_chain(linked))
+
+        assert MISSING_JOB_LABEL in rendered
+
+    def test_an_unreadable_job_is_not_reported_as_missing(
+            self, tmp_path, monkeypatch):
+        """Deleted and corrupt are different facts and get different labels."""
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        job = Job(name="job one", state=RunState.COMPLETED)
+        save_job(job, root=tmp_path)
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        linked = link_job_to_mission(_PROJECT, mission.id, str(job.id),
+                                     MISSION_ROLE_INITIAL, root=tmp_path)
+        (tmp_path / "jobs" / f"{job.id}.json").write_text("{ not json")
+
+        rendered = "\n".join(render_mission_chain(linked))
+
+        assert UNREADABLE_JOB_LABEL in rendered
+        assert MISSING_JOB_LABEL not in rendered
+
+    def test_an_empty_mission_renders_without_a_chain(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+
+        rendered = "\n".join(render_mission_chain(mission))
+
+        assert "no jobs linked yet" in rendered
+        assert mission.goal in rendered
+
+    def test_the_row_carries_id_status_and_job_count(self, tmp_path):
+        mission = create_mission(_PROJECT, "Ship the importer", root=tmp_path)
+        linked = link_job_to_mission(_PROJECT, mission.id, str(uuid4()),
+                                     MISSION_ROLE_INITIAL, root=tmp_path)
+
+        row = render_mission_row(linked)
+
+        assert mission.id[:12] in row
+        assert MISSION_STATUS_ACTIVE in row
+        assert "1 job(s)" in row
+        assert "Ship the importer" in row
