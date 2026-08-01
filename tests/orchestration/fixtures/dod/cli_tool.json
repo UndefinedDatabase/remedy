@@ -1,0 +1,128 @@
+{
+  "name": "cli_tool",
+  "note": "Long goal: ship an export CLI and keep it working. The provider covers two lines and marks the wheel build non-blocking; the two uncovered lines name no test path, so they collapse into ONE generated check rather than two identical processes.",
+  "intake": {
+    "schema_v": "ji1",
+    "goal": "Ship the remedy export CLI end to end and keep it working",
+    "context_refs": ["apps/cli", "tests/cli/test_export.py"],
+    "constraints": ["the export must never overwrite an existing file"],
+    "acceptance_hints": ["export writes a zip", "the command is documented"],
+    "mission_candidate": true
+  },
+  "plan": {
+    "schema_v": "flight_plan_v1",
+    "tasks": [
+      {
+        "id": "T001",
+        "title": "Export command",
+        "goal": "Write the export archive safely",
+        "acceptance": [
+          "tests/cli/test_export.py::test_writes_zip passes",
+          "the command refuses to overwrite an existing file"
+        ],
+        "est_tokens_band": "L",
+        "depends_on": [],
+        "files_hint": ["apps/cli/commands/export.py"]
+      },
+      {
+        "id": "T002",
+        "title": "Reference docs",
+        "goal": "Document the command where users look",
+        "acceptance": ["the command appears in the CLI reference"],
+        "est_tokens_band": "S",
+        "depends_on": ["T001"],
+        "files_hint": ["docs/guides/cli.md"]
+      },
+      {
+        "id": "T003",
+        "title": "Packaging",
+        "goal": "Ship the command in the wheel",
+        "acceptance": ["python3 -m build produces a wheel"],
+        "est_tokens_band": "M",
+        "depends_on": ["T001"],
+        "files_hint": ["pyproject.toml"]
+      }
+    ],
+    "risks": ["the doc line is prose — no runnable check follows from it"]
+  },
+  "provider_draft": {
+    "schema_v": "dod_draft_v1",
+    "checks": [
+      {
+        "id": "cli-export",
+        "kind": "pytest",
+        "spec": {"selector": "tests/cli/test_export.py::test_writes_zip"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0"],
+        "description": "export writes a zip"
+      },
+      {
+        "id": "cli-wheel",
+        "kind": "custom_cmd",
+        "spec": {"argv": ["python3", "-m", "build", "--wheel"]},
+        "blocking": false,
+        "acceptance_refs": ["T003:0"],
+        "description": "wheel builds (reported, not gating)"
+      }
+    ]
+  },
+  "golden_dod": {
+    "schema_v": "dod_v1",
+    "compiled": true,
+    "origin": "provider",
+    "checks": [
+      {
+        "id": "cli-export",
+        "kind": "pytest",
+        "spec": {"selector": "tests/cli/test_export.py::test_writes_zip"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0"],
+        "description": "export writes a zip",
+        "source": "compiled"
+      },
+      {
+        "id": "cli-wheel",
+        "kind": "custom_cmd",
+        "spec": {"argv": ["python3", "-m", "build", "--wheel"]},
+        "blocking": false,
+        "acceptance_refs": ["T003:0"],
+        "description": "wheel builds (reported, not gating)",
+        "source": "compiled"
+      },
+      {
+        "id": "acc-001",
+        "kind": "pytest",
+        "spec": {"selector": "tests"},
+        "blocking": true,
+        "acceptance_refs": ["T001:1", "T002:0"],
+        "description": "the command refuses to overwrite an existing file",
+        "source": "plan_acceptance"
+      }
+    ]
+  },
+  "golden_fallback_dod": {
+    "schema_v": "dod_v1",
+    "compiled": false,
+    "origin": "deterministic",
+    "checks": [
+      {
+        "id": "acc-001",
+        "kind": "pytest",
+        "spec": {"selector": "tests/cli/test_export.py::test_writes_zip"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0"],
+        "description": "tests/cli/test_export.py::test_writes_zip passes",
+        "source": "plan_acceptance"
+      },
+      {
+        "id": "acc-002",
+        "kind": "pytest",
+        "spec": {"selector": "tests"},
+        "blocking": true,
+        "acceptance_refs": ["T001:1", "T002:0", "T003:0"],
+        "description": "the command refuses to overwrite an existing file",
+        "source": "plan_acceptance"
+      }
+    ]
+  }
+}

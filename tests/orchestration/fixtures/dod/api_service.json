@@ -1,0 +1,172 @@
+{
+  "name": "api_service",
+  "note": "Long goal: keep a payments API releasable. The provider covers every acceptance line and uses all four T002 runner kinds plus runtime_flow — which is schema-valid here but has no runner until T003.",
+  "intake": {
+    "schema_v": "ji1",
+    "goal": "Harden the payments API service so it stays releasable: contract tests, lint, release build, and a live health flow",
+    "context_refs": ["packages/api", "tests/api"],
+    "constraints": ["no calls to the real payment provider"],
+    "acceptance_hints": ["contract tests pass", "the service answers /health"],
+    "mission_candidate": true
+  },
+  "plan": {
+    "schema_v": "flight_plan_v1",
+    "tasks": [
+      {
+        "id": "T001",
+        "title": "Contract tests",
+        "goal": "Pin the request/response contract",
+        "acceptance": [
+          "tests/api/test_contracts.py passes",
+          "a schema change without a version bump fails"
+        ],
+        "est_tokens_band": "L",
+        "depends_on": [],
+        "files_hint": ["tests/api/test_contracts.py"]
+      },
+      {
+        "id": "T002",
+        "title": "Lint gate",
+        "goal": "Keep the API package lint-clean",
+        "acceptance": ["ruff reports no findings on packages/api"],
+        "est_tokens_band": "S",
+        "depends_on": ["T001"],
+        "files_hint": ["packages/api"]
+      },
+      {
+        "id": "T003",
+        "title": "Release build",
+        "goal": "Produce the release image",
+        "acceptance": ["the release image builds"],
+        "est_tokens_band": "M",
+        "depends_on": ["T002"],
+        "files_hint": ["Makefile"]
+      },
+      {
+        "id": "T004",
+        "title": "Health smoke flow",
+        "goal": "Prove the built service actually answers",
+        "acceptance": ["the running service answers GET /health with 200"],
+        "est_tokens_band": "M",
+        "depends_on": ["T003"],
+        "files_hint": []
+      }
+    ],
+    "risks": ["the release build needs a container runtime on the host"]
+  },
+  "provider_draft": {
+    "schema_v": "dod_draft_v1",
+    "checks": [
+      {
+        "id": "api-tests",
+        "kind": "pytest",
+        "spec": {"selector": "tests/api/test_contracts.py"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0", "T001:1"],
+        "description": "contract tests"
+      },
+      {
+        "id": "api-lint",
+        "kind": "lint",
+        "spec": {"tool": "ruff", "args": ["check"], "paths": ["packages/api"]},
+        "blocking": true,
+        "acceptance_refs": ["T002:0"],
+        "description": "ruff on the api package"
+      },
+      {
+        "id": "api-build",
+        "kind": "build",
+        "spec": {"tool": "make", "args": ["release-image"]},
+        "blocking": true,
+        "acceptance_refs": ["T003:0"],
+        "description": "release image build"
+      },
+      {
+        "id": "api-smoke",
+        "kind": "runtime_flow",
+        "spec": {
+          "steps": [
+            {"action": "start service"},
+            {"action": "GET /health", "expect": "200"}
+          ]
+        },
+        "blocking": true,
+        "acceptance_refs": ["T004:0"],
+        "description": "health flow on the running service"
+      }
+    ]
+  },
+  "golden_dod": {
+    "schema_v": "dod_v1",
+    "compiled": true,
+    "origin": "provider",
+    "checks": [
+      {
+        "id": "api-tests",
+        "kind": "pytest",
+        "spec": {"selector": "tests/api/test_contracts.py"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0", "T001:1"],
+        "description": "contract tests",
+        "source": "compiled"
+      },
+      {
+        "id": "api-lint",
+        "kind": "lint",
+        "spec": {"tool": "ruff", "args": ["check"], "paths": ["packages/api"]},
+        "blocking": true,
+        "acceptance_refs": ["T002:0"],
+        "description": "ruff on the api package",
+        "source": "compiled"
+      },
+      {
+        "id": "api-build",
+        "kind": "build",
+        "spec": {"tool": "make", "args": ["release-image"]},
+        "blocking": true,
+        "acceptance_refs": ["T003:0"],
+        "description": "release image build",
+        "source": "compiled"
+      },
+      {
+        "id": "api-smoke",
+        "kind": "runtime_flow",
+        "spec": {
+          "steps": [
+            {"action": "start service"},
+            {"action": "GET /health", "expect": "200"}
+          ]
+        },
+        "blocking": true,
+        "acceptance_refs": ["T004:0"],
+        "description": "health flow on the running service",
+        "source": "compiled"
+      }
+    ]
+  },
+  "golden_fallback_dod": {
+    "schema_v": "dod_v1",
+    "compiled": false,
+    "origin": "deterministic",
+    "checks": [
+      {
+        "id": "acc-001",
+        "kind": "pytest",
+        "spec": {"selector": "tests/api/test_contracts.py"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0"],
+        "description": "tests/api/test_contracts.py passes",
+        "source": "plan_acceptance"
+      },
+      {
+        "id": "acc-002",
+        "kind": "pytest",
+        "spec": {"selector": "tests"},
+        "blocking": true,
+        "acceptance_refs": ["T001:1", "T002:0", "T003:0", "T004:0"],
+        "description": "a schema change without a version bump fails",
+        "source": "plan_acceptance"
+      }
+    ]
+  }
+}
