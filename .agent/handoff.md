@@ -1,106 +1,88 @@
-# Handoff — F061 R2 (R-0164 + T003 + T004)
+# Handoff — F061 R3 (R-0165 + dod_v1 registration + integration gate)
 
-Review of `785f8cbd..HEAD` (branch `feature/f061-dod-compiler`), HEAD `d76a8f32`.
+Review of `ef60758b..HEAD` (branch `feature/f061-dod-compiler`), HEAD `c8905920`.
 
-The feature's build work is complete: T001–T004 all landed. Every ordered gate
-ran green; no gate went red at any point, so the block ran to the end.
+All ordered gates green. The integration gate ran on branch AND base: both
+sides are fully green, so there are no branch-only failures to attribute and
+no base-only failures to explain. No closure artifacts were produced — no
+STATUS edit, no README edit, no evidence job, no zip.
 
 ---
 
 ## Commits
 
-### 1 — `67c9253d` chore(f061): persist R1 verdict + register R-0164
+### 1 — `0665728e` chore(f061): persist R2 verdict + register R-0165
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `.agent/authored/f061-r2-1.md` | +52/-0 | authored live_review text |
-| `.agent/authored/f061-r2-2.md` | +34/-0 | authored plan text |
-| `.agent/authored/f061-r2-3.md` | +61/-0 | authored context text |
-| `.agent/context.md` | +37/-31 | full replacement, byte copy of f061-r2-3 |
-| `.agent/last_block.md` | +200/-171 | this round's block recorded verbatim |
-| `.agent/live_review.md` | +34/-5 | full replacement, byte copy of f061-r2-1 |
-| `.agent/plan.md` | +18/-16 | full replacement, byte copy of f061-r2-2 |
+| `.agent/authored/f061-r3-1.md` | +73/-0 | authored live_review text |
+| `.agent/authored/f061-r3-2.md` | +34/-0 | authored plan text |
+| `.agent/authored/f061-r3-3.md` | +60/-0 | authored context text |
+| `.agent/context.md` | +33/-34 | full replacement, byte copy of f061-r3-3 |
+| `.agent/last_block.md` | +192/-212 | this round's block recorded verbatim |
+| `.agent/live_review.md` | +59/-39 | full replacement, byte copy of f061-r3-1 |
+| `.agent/plan.md` | +22/-22 | full replacement, byte copy of f061-r3-2 |
 
-### 2 — `af5c39d7` fix(f061): refuse flag-shaped selector, tool and argv[0] (R-0164)
-
-| path | +/- | reason |
-| --- | --- | --- |
-| `packages/orchestration/dod_schema.py` | +20/-2 | `_reject_flag_shaped` applied to the three named fields |
-| `tests/orchestration/test_dod_compiler.py` | +41/-0 | one negative test per field, plus the whitespace and the still-legal cases |
-
-### 3 — `b1013412` chore(f061): mark R-0164 done in the finding ledger
+### 2 — `d5604c51` fix(f061): compile-time runtime_flow step validation (R-0165)
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `.agent/live_review.md` | +1/-0 | the ordered `Done: R-0164 (commit af5c39d7).` line, nothing else |
+| `packages/orchestration/dod_schema.py` | +59/-6 | `_validate_flow_step`: action, path, closed key set, typed expectations |
+| `tests/orchestration/test_dod_compiler.py` | +63/-1 | one negative test per rule, plus the index-naming and still-legal pins |
+| `tests/orchestration/test_dod_runners.py` | +20/-3 | three runner tests now build a pre-rule stored DoD (see deviation 2) |
 
-### 4 — `09a8597e` feat(f061): runtime_flow runner on the F007 harness
-
-| path | +/- | reason |
-| --- | --- | --- |
-| `packages/orchestration/dod_runners.py` | +331/-35 | flow runner; registry now dispatches executors, `ARGV_BUILDERS` keeps the argv kinds |
-| `tests/orchestration/fixtures/dod/flow_app.py` | +57/-0 | the tiny harness-startable fixture app (stdlib only) |
-
-### 5 — `5aefa675` test(f061): runtime_flow proven red and green
+### 3 — `491448fb` chore(f061): mark R-0165 done in the finding ledger
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `tests/orchestration/fixtures/dod/api_service.json` | +5/-5 | api-smoke steps moved to the v1 action vocabulary (draft + golden together) |
-| `tests/orchestration/test_dod_runners.py` | +217/-14 | the flow suite; the loud-unsupported-kind class rewritten around a kind with no runner |
+| `.agent/live_review.md` | +1/-0 | the ordered `Done: R-0165 (commit d5604c51).` line, nothing else |
 
-### 6 — `52cc9ff9` feat(f061): job-end DoD gate
-
-| path | +/- | reason |
-| --- | --- | --- |
-| `packages/orchestration/dod_gate.py` | +289/-0 | the gate rule, evidence-area storage, the matrix |
-| `packages/orchestration/job_fulfillment.py` | +33/-0 | the ONE seam + three additive record fields |
-
-### 7 — `43b29c62` feat(f061): report check matrix and `remedy job dod`
+### 4 — `aebc3c11` feat(f061): register dod_v1 in SCHEMA_REGISTRY
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `apps/cli/command_catalog.py` | +11/-0 | the `job.dod` catalog entry |
-| `apps/cli/commands/job.py` | +79/-0 | `_cmd_job_dod` + its dispatch entry |
-| `packages/orchestration/run_report.py` | +77/-0 | `DoDCheckRow`, the matrix section, the collection side |
-| `tests/orchestration/test_run_report.py` | +12/-0 | the three report goldens gain the new section |
+| `packages/orchestration/structured_base.py` | +39/-0 | `_Strict`/`_Structured` moved here so the registration is not a cycle (see deviation 1) |
+| `packages/orchestration/schemas/models.py` | +15/-20 | bases re-exported from the new leaf; `DOD_SCHEMA_V: DoD` added to the registry |
+| `packages/orchestration/dod_schema.py` | +6/-5 | bases imported from the leaf; the stale R1 "not registered" note replaced |
+| `tests/orchestration/schemas/test_schemas.py` | +17/-0 | registry entry + the deliberate `dod_draft_v1` absence |
 
-### 8 — `d76a8f32` test(f061): gate rule, matrix, end-to-end, CLI
+### 5 — `c8905920` chore(f061): record the R3 integration-gate evidence
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `tests/orchestration/test_dod_gate.py` | +481/-0 | gate rule, storage, matrix, report section, end-to-end hold/release, CLI |
+| `.agent/gate_f061_r3/README.md` | +61/-0 | the gate's own account: runs, comparison, parity, teardown |
+| `.agent/gate_f061_r3/{branch,base}_failed.txt` | +0/-0 | both empty — the raw failure sets |
+| `.agent/gate_f061_r3/{branch,base}_only.txt` | +0/-0 | both empty — the two `comm` outputs |
+| `.agent/gate_f061_r3/{branch,base}_tail.txt` | +2/-0 each | the run tails and wall clock |
 
-Every commit is under the 500-line limit; no oversize exception is claimed for
-this feature.
+Every commit is under the 500-line limit.
 
 ---
 
-## The T004 seam (declared, as ordered)
+## The `dod_draft_v1` decision (as ordered)
 
-**Chosen seam: `job_fulfillment.run_job_fulfill`, immediately after
-`JobFulfillmentContract.check()` and before `if passed and
-record.staging_promoted:`** (`packages/orchestration/job_fulfillment.py:996`).
+**Registered: `dod_v1` only. `dod_draft_v1` is deliberately NOT registered.**
 
-Why this one, and why only this one:
+Decided by reading `schemas/models.py` and its test:
 
-* `job.state = RunState.COMPLETED` is written in exactly one place in the
-  fulfillment spine — inside the branch this line guards. Nothing can reach
-  terminal green without passing the gate first, so the interception is
-  provable by reading the branch rather than by hoping the call sites were all
-  found.
-* It sits AFTER promotion, so the checks run against the code as it will
-  actually be, not against a pre-promotion snapshot.
-* Holding is expressed by setting `passed = False` and appending one blocker,
-  which routes into the EXISTING blocked branch: `record.status = BLOCKED`,
-  staging discarded, `next_safe_action` set, and `job.state` left untouched.
-  No second "blocked" mechanism was invented, and no lifecycle behaviour
-  outside this one branch changed.
-* `run_job_gate` returns `None` when the job has no stored DoD, so every
-  existing job and every existing test behaves exactly as before. The gate can
-  only ever turn a green job blocked — never the reverse.
+* The registry's own docstring says it is "the single source of truth for which
+  contract a tag means" — its job is resolving a tag a READER encounters. A
+  `dod_v1` payload is persisted (`<job evidence>/dod.json`) and therefore has
+  to be resolvable from its tag alone. A `dod_draft_v1` payload never leaves
+  `dod_compiler.compile_dod`'s own provider call: it is validated, converted to
+  `DoDCheck`s, and discarded. Nothing ever loads one back.
+* No existing entry is a draft or intermediate shape. `ReviewVerdict`,
+  `PlannerPlan`, `JobIntake` and `FlightPlan` are each the FINAL contract of
+  their step, and `DesignSpec` is a prepared placeholder — so the registry's
+  conventions do not include provider-facing draft schemas. The block's
+  condition for registering it is therefore not met.
+* The registry's compactness test caps tags at 6 characters with a documented
+  exemption list (`flight_plan_v1`, itself persisted in job JSON). `dod_v1` is
+  exactly 6 and needs no exemption; `dod_draft_v1` is 12 and would have forced
+  a documented guard to be widened for a tag nobody resolves.
 
-`dod_gate.py` holds all the decision logic; the seam is 33 lines including the
-three additive record fields and the timeline event.
+`test_the_provider_facing_dod_draft_is_not_registered` pins the absence with
+that reasoning, so a later round changes it deliberately rather than by drift.
 
 ---
 
@@ -111,186 +93,179 @@ three additive record fields and the timeline event.
 ```
 $ python3 -m pytest tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q
 ........................................................................ [100%]
-72 passed in 13.92s
+72 passed in 13.94s
 EXIT=0
 ```
 
-### Phase 2 — R-0164, re-running the R1 gate
-
-```
-$ python3 -m pytest tests/orchestration/test_dod_compiler.py tests/orchestration/test_dod_runners.py -q
-........................................................................ [ 75%]
-.......................                                                  [100%]
-95 passed in 1.97s
-EXIT=0
-
-$ python3 -m pytest tests/cli/test_golden_path.py -q
-..........................................                               [100%]
-42 passed in 14.92s
-EXIT=0
-```
-
-### T003 gate
-
-```
-$ python3 -m pytest tests/orchestration/test_dod_compiler.py tests/orchestration/test_dod_runners.py -q
-........................................................................ [ 66%]
-....................................                                     [100%]
-108 passed in 6.07s
-EXIT=0
-
-$ python3 -m pytest tests/cli/test_golden_path.py -q
-..........................................                               [100%]
-42 passed in 15.11s
-EXIT=0
-```
-
-### T004 gate
-
-```
-$ python3 -m pytest tests/orchestration/test_dod_gate.py -q
-................................                                         [100%]
-32 passed in 2.06s
-EXIT=0
-
-$ python3 -m pytest tests/cli/test_golden_path.py -q
-..........................................                               [100%]
-42 passed in 15.40s
-EXIT=0
-```
-
-### Done-when set (at `d76a8f32`)
+### Phase 3 gate
 
 ```
 $ python3 -m pytest tests/orchestration/test_dod_compiler.py tests/orchestration/test_dod_runners.py tests/orchestration/test_dod_gate.py -q
-........................................................................ [ 51%]
-....................................................................     [100%]
-140 passed in 8.18s
+........................................................................ [ 46%]
+........................................................................ [ 93%]
+..........                                                               [100%]
+154 passed in 8.16s
+EXIT=0
+
+$ python3 -m pytest tests/orchestration/schemas -q
+..............................................                           [100%]
+46 passed in 0.12s
 EXIT=0
 
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 ..........................................                               [100%]
-42 passed in 15.40s
+42 passed in 15.06s
 EXIT=0
+```
 
-$ python3 -m pytest tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q
-........................................................................ [100%]
-72 passed in 13.56s
+### Phase 4 — integration gate (`docs/agents/integration_gate.md`)
+
+Merge base: `git merge-base HEAD main` → `1869d89a`. Branch HEAD at run time:
+`aebc3c11`.
+
+**Step 1 — branch run**, from the repo root:
+
+```
+$ python3 -m pytest -n auto -q
+........................................................................ [ 99%]
+...............                                                          [100%]
+14900 passed, 19 skipped in 140.76s (0:02:20)
 EXIT=0
+WALL=141.20 s
 
+$ grep '^FAILED' branch_run.log | sort > branch_failed.txt
+$ wc -l < branch_failed.txt
+0
+```
+
+**Step 2 — base run**, identical command, throwaway worktree ON a throwaway
+branch (a detached base worktree fails the self-dogfood branch guard by design,
+DECISION D3):
+
+```
+$ git worktree add -b tmp/base-gate <path> 1869d89a
+Preparing worktree (new branch 'tmp/base-gate')
+HEAD is now at 1869d89a Merge pull request #171 from UndefinedDatabase/feature/f056-missions
+
+$ cp -r apps/ui/node_modules <path>/apps/ui/node_modules
+$ cp -r apps/ui/dist        <path>/apps/ui/dist
+
+$ cd <path> && git rev-parse HEAD && git branch --show-current
+1869d89a22718dce0f16c25289f927e8374571bb
+tmp/base-gate
+
+$ REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+........................................................................ [ 99%]
+...                                                                      [100%]
+14744 passed, 19 skipped in 137.49s (0:02:17)
+EXIT=0
+WALL=137.94 s
+
+$ grep '^FAILED' base_run.log | sort > base_failed.txt
+$ wc -l < base_failed.txt
+0
+```
+
+Parity was RESTORED before the base run (COPIED, never symlinked — the UI
+auto-build runs npm install and writes through a symlink into the primary
+checkout, F053 R3 evidence), which is the first of the two options the gate
+doc's R-0155 amendment allows. That is why the base run has no UI
+build-artifact failures to attribute.
+
+**Step 3 — compare:**
+
+```
+$ comm -13 base_failed.txt branch_failed.txt      # branch-only failures
+(no output)  — 0 lines
+
+$ comm -23 base_failed.txt branch_failed.txt      # failures the branch fixed
+(no output)  — 0 lines
+```
+
+**Step 4 — attribution:** nothing to attribute. `comm -13` is EMPTY, so the
+branch introduces no failure and no per-id serial re-run is required. `comm
+-23` is EMPTY, so there is no base failure needing an environment-class
+attribution either — an unattributed `comm -23` id would have blocked the
+verdict, and there are none.
+
+Test-count delta 14900 − 14744 = **+156**, which is F061's own additions across
+R1–R3 and nothing else.
+
+**Teardown:**
+
+```
+$ git worktree remove --force <path>
+$ git worktree prune
+$ git branch -D tmp/base-gate
+Deleted branch tmp/base-gate (was 1869d89a).
+
+$ git worktree list
+/home/decodeux/Repos/remedy  aebc3c11 [feature/f061-dod-compiler]
+
+$ ls -d <path>
+ls: cannot access '<path>': No such file or directory
+```
+
+**Step 5 — budget:** 140.76s branch, 137.49s base. Neither run crosses the
+gate doc's ~5 min note threshold. The verdict itself is the reviewer's.
+
+### Final state
+
+```
 $ git status --porcelain
 (no output)
 ```
 
-### Beyond the ordered gates — the suites this round's seam touches
-
-Run because T004 edits `job_fulfillment.py`, `run_report.py` and the CLI, and a
-gate that only proves its own tests green would prove very little:
+### Lint
 
 ```
-$ python3 -m pytest tests/orchestration/test_job_fulfillment.py tests/orchestration/test_fence_production_e2e.py tests/orchestration/test_run_report.py -q
-........................................................................ [ 36%]
-........................................................................ [ 73%]
-.....................................................                    [100%]
-197 passed in 7.87s
-EXIT=0
-
-$ python3 -m pytest tests/cli/ -q
-[...]
-1231 passed in 197.06s (0:03:17)
-EXIT=0
-
-$ python3 -m pytest tests/docs/ -q
-........................................................................ [ 98%]
-.....                                                                    [100%]
-293 passed in 0.19s
-EXIT=0
+$ python3 -m ruff check packages/orchestration/ tests/orchestration/schemas/
+UP035 [*] Import from `collections.abc` instead: `Iterable`, `Mapping`, `Sequence`
+  --> packages/orchestration/dag_schedule.py:36:1
+Found 1 error.
 ```
 
-The full-suite integration gate remains its own later round.
-
-### Two reds seen during authoring, both fixed before the gates above
-
-Recorded because they changed real files.
-
-1. Adding the report section broke four goldens in `test_run_report.py`:
-
-```
-$ python3 -m pytest tests/orchestration/test_run_report.py -q
-E       AssertionError: assert '# Run report...g is open)_\n' == '# Run report...g is open)_\n'
-E         + ## Definition of Done
-E         + Definition of Done: not recorded....
-4 failed, 64 passed in 0.10s
-```
-
-The first repair attempt dropped a blank line and the same four stayed red;
-the second inserted the section with the section spacing the renderer actually
-produces. Now `68 passed`. See deviation 5 for why the goldens were edited at
-all rather than the section suppressed.
-
-2. The timeline reader is named `load_run_events`, not `read_run_events`:
-
-```
-E       ImportError: cannot import name 'read_run_events' from 'packages.orchestration.timeline'
-1 failed, 31 passed in 2.14s
-```
-
-Fixed in the test.
-
-### Lint (not an ordered gate; recorded as evidence)
-
-```
-$ python3 -m ruff check packages/orchestration/dod_schema.py packages/orchestration/dod_runners.py packages/orchestration/dod_gate.py packages/orchestration/run_report.py packages/orchestration/job_fulfillment.py apps/cli/commands/job.py apps/cli/command_catalog.py
-All checks passed!
-```
-
-### Worktrees
-
-No disposable worktree was created: no mutation red-proof was run this round.
-Every red path is proven by a real failing process, a real 500 response, or a
-real unreadable file — not by mutating a module.
-
-```
-$ git worktree list
-/home/decodeux/Repos/remedy  d76a8f32 [feature/f061-dod-compiler]
-```
+PRE-EXISTING and untouched by this round — `git stash` + re-run reproduces the
+same single error at base. `dag_schedule.py` is not in this round's scope, so
+it was left alone rather than swept up in a feature commit. Every file this
+round touched is ruff-clean.
 
 ---
 
 ## Authored-text proofs
 
 ```
-$ sha256sum .agent/authored/f061-r2-1.md .agent/authored/f061-r2-2.md .agent/authored/f061-r2-3.md
-47c01f1e8de3a1eb39cf9b69fc40fb57bc0a2b817c8ae91460eabefa958e7d6f  .agent/authored/f061-r2-1.md
-a762a076567ea05419052e469b78f256768ba80458a8e98ad765c3c71b88162f  .agent/authored/f061-r2-2.md
-3b808727fb2ec4412a9c24277dcd3fcd8328771c31909311adf15c48b10f23a3  .agent/authored/f061-r2-3.md
+$ sha256sum .agent/authored/f061-r3-1.md .agent/authored/f061-r3-2.md .agent/authored/f061-r3-3.md
+afdddec6f97e2ceb59783c34fb17d2b3a65bd2a49ccf008af47a26cfdd1b4339  .agent/authored/f061-r3-1.md
+0ff1ba92934894f37735f412fae47fc66e9e92746e71693db58dfd9b273b8a46  .agent/authored/f061-r3-2.md
+4501430fe7acd484b3a260eda414ebe62b9fe5bcd0b84c8d9307739350f6f250  .agent/authored/f061-r3-3.md
 ```
 
-All three match their BEGIN-marker hashes exactly. As in R1 the payloads
+All three match their BEGIN-marker hashes exactly. As in R1/R2 the payloads
 arrived two-space indented from the transport; the unindented form hashes to
 the marker value and the indented form does not, so the unindented text is the
 authored text (R-0148 transport-wrap guard, resolved in favour of the hash).
 
 ```
-$ cmp .agent/authored/f061-r2-2.md .agent/plan.md ; echo EXIT=$?
+$ cmp .agent/authored/f061-r3-2.md .agent/plan.md ; echo EXIT=$?
 EXIT=0
-$ cmp .agent/authored/f061-r2-3.md .agent/context.md ; echo EXIT=$?
+$ cmp .agent/authored/f061-r3-3.md .agent/context.md ; echo EXIT=$?
 EXIT=0
 ```
 
-`live_review.md` differs from its authored file by EXACTLY the one line the
-block ordered appended, and by nothing else:
+`live_review.md` differs from its authored file by EXACTLY the one ordered
+line:
 
 ```
-$ diff .agent/authored/f061-r2-1.md .agent/live_review.md
-30a31
->   Done: R-0164 (commit af5c39d7).
+$ diff .agent/authored/f061-r3-1.md .agent/live_review.md
+41a42
+>   Done: R-0165 (commit d5604c51).
 ```
 
-`docs/roadmap/` was not touched this round, as ordered:
+`docs/` untouched, as ordered:
 
 ```
-$ git diff --stat 785f8cbd..HEAD -- docs/
+$ git diff --stat ef60758b..HEAD -- docs/
 (no output)
 ```
 
@@ -298,129 +273,103 @@ $ git diff --stat 785f8cbd..HEAD -- docs/
 
 ## What was built
 
-**R-0164** — `validate_check_spec` now refuses a value whose first
-non-whitespace character is `-` in the three positions that name a THING
-rather than an option: a pytest `selector`, a lint/build `tool`, and
-`custom_cmd` `argv[0]`. The message names the field and quotes the offending
-value. A dash elsewhere is untouched: `npm-run`, `tests/test_a-b.py` and an
-`args` list of `["-x"]` all still validate, and a test pins that.
+**R-0165 — compile-time runtime_flow step validation.** `_validate_flow_step`
+enforces the v1 vocabulary where the feature file says detectable nonsense
+belongs — at compile time: the action must be `open`, `path` must be a
+non-empty string starting with `/`, the step key set is closed to
+`{action, path, expect_status, expect_text}`, `expect_status` must be an
+integer status code (a bool is refused explicitly — `True` is an `int` in
+Python but is not a status), and `expect_text` must be a string. Every message
+names the step INDEX, because a flow can carry a dozen steps and "invalid step"
+would send a reader through all of them.
 
-**T003 — the runtime_flow runner.** A flow check drives the F007 harness:
-`runtime_config.resolve_spec` answers how this project starts (explicit
-`.remedy/config.toml` `[runtime]`, else exactly one detected runtime, else it
-blocks honestly), `choose_port` picks the port without evicting a squatter, the
-app is launched with the supervisor's own discipline (argv list, never a shell,
-`start_new_session=True` so the family can be killed whole), `http_probe`
-answers readiness, the declarative steps run in order, and
-`stop_process_tree` stops the family in a `finally` — on success, on a red
-step, and on an exception alike. A survivor is red with reason
-`app_stop_failed`, so a leaked process can never read as a clean run.
+The runner's own guard is untouched (`git status --porcelain
+packages/orchestration/dod_runners.py` was empty across the fix commit): it
+remains the defence for DoDs stored before this rule existed.
 
-v1 has exactly one action: `open` a path, optionally asserting `expect_status`
-and/or `expect_text`. Anything else is red with `unknown_flow_action` — an
-unrecognised action is never treated as satisfied. Named reds:
-`runtime_not_configured`, `app_start_failed`, `app_not_ready`,
-`flow_step_failed`, `unknown_flow_action`, `app_stop_failed`, `timeout`.
+The fixtures and their goldens needed NO edit — `git status --porcelain
+tests/orchestration/fixtures/` stayed empty throughout, as the block required.
 
-The registry now dispatches EXECUTORS (all five kinds); `ARGV_BUILDERS` keeps
-the four single-process kinds. The loud-failure guarantee moved with it: a kind
-with no runner still raises `UnsupportedCheckKindError`, now proven with a
-synthetic kind rather than with `runtime_flow`, so the guarantee protects the
-NEXT kind added instead of expiring with this round.
-
-**T004 — the gate.** `evaluate_dod` runs every check (never stopping at the
-first red — a partial matrix hides work) and applies one rule: any red BLOCKING
-check holds; non-blocking reds are recorded in `reported_red` and gate nothing.
-An unrunnable kind is red with reason `no_runner` and holds if blocking — the
-gate degrades to honest, never to green. An unreadable stored DoD holds too:
-fail closed.
-
-The DoD and the gate result live in the job's evidence area under the data root
-(`dod.json`, `dod_result.json`), never in the user's repo — asserted in a test.
-The report renders the matrix from the recorded evidence and says `not
-recorded` for a job that was never gated. `remedy job dod <id>` prints the same
-matrix and is strictly read-only — a test asserts that invoking it does not
-produce a gate result.
+**dod_v1 registration.** `SCHEMA_REGISTRY` now maps `dod_v1 -> DoD`, in
+`schemas/models.py`, by that module importing `dod_schema` — not as an import
+side effect from `dod_schema`. See deviation 1 for the cycle that had to be
+broken to make that possible, which is the same cycle that caused R1 to defer
+this item.
 
 ---
 
 ## Deviations & assumptions (A9)
 
-1. **The app spec comes from the project's runtime configuration, not from the
-   check.** The flow spec carries steps only; `resolve_spec(worktree)` answers
-   how to start the app. Rationale: the DoD should not re-invent what F007
-   already owns, and it keeps the schema unchanged (see 3). Consequence: a
-   runtime_flow check on a project with no runtime configuration is red with
-   `runtime_not_configured` rather than unrunnable-by-schema.
+1. **The registration required extracting the shared bases into a new leaf
+   module, `packages/orchestration/structured_base.py`.** This is more than the
+   "one line" the block anticipated, and it is why R1 deferred the item.
 
-2. **The v1 action vocabulary is enforced by the RUNNER, not the schema.** The
-   block scoped `dod_schema.py` to the R-0164 guard, so `validate_check_spec`
-   still only requires a step to be an object with a non-empty `action`. An
-   unknown action is therefore caught at run time, red and named, rather than
-   at compile time. If the reviewer prefers compile-time rejection, that is a
-   small follow-up in `_SPEC_KEYS`/step validation.
+   The cycle is real and I proved it before working around it: `dod_schema`
+   imported `_Strict`/`_Structured` from `schemas.models`, so `models`
+   importing `DoD` closed a loop. Importing `dod_schema` first produced:
 
-3. **The `api_service` fixture's api-smoke steps were rewritten** from the R1
-   placeholders (`{"action": "start service"}`, `{"action": "GET /health"}`) to
-   the v1 vocabulary, in the provider draft and the golden DoD together. The
-   block ordered that flow proven red and green, which is only possible against
-   a concrete vocabulary. The fixture's `note` was updated to match.
+   ```
+   ImportError: cannot import name 'DOD_SCHEMA_V' from partially initialized
+   module 'packages.orchestration.dod_schema' (most likely due to a circular
+   import)
+   ```
 
-4. **The flow's application log goes to a private temporary directory**, not to
-   a pipe and not to the evidence area. A pipe would need a log-pump thread to
-   avoid a chatty app blocking on a full buffer; an ephemeral flow does not
-   have the supervisor's lifetime to run one. The tail is folded into the
-   evidence `output_tail` and the temporary directory is removed. A test
-   asserts the worktree is byte-for-byte unchanged by a flow run.
+   A `schemas/base.py` does NOT fix it — importing any module under that
+   package runs `schemas/__init__.py`, which imports `models`, re-entering the
+   same loop (I tried it, and it failed the same way). The base module has to
+   sit OUTSIDE the package, which is why it landed at
+   `packages/orchestration/structured_base.py`. `models` re-exports both names,
+   so every existing `from ...schemas.models import _Strict` still works, and
+   the dependency is now one-directional:
+   `structured_base ← dod_schema ← models`.
 
-5. **Four report goldens in `tests/orchestration/test_run_report.py` were
-   updated.** Adding an ordered section to `run_report.py` necessarily changes
-   every golden. The alternative — rendering the section only when a DoD
-   exists — would have left existing goldens untouched but would break the
-   module's own documented rule that every absent source renders `not
-   recorded`, which is what lets a reader tell "no DoD" from "DoD forgotten".
-   The convention was kept and the goldens updated; each gains exactly the
-   three-line `not recorded` section.
+   Verified from all four entry points (`dod_schema`, `schemas`,
+   `schemas.models`, `dod_compiler` imported first): each resolves and
+   `SCHEMA_REGISTRY['dod_v1'] is DoD`.
 
-6. **The gate holds via the existing blocked branch** rather than a new
-   terminal state: `passed = False` plus one `dod_blocking_red:<ids>` blocker.
-   This is why "held open" and "contract failed" look the same to every
-   existing reader, and why the blocker string carries a distinguishing prefix.
+2. **Three tests in `test_dod_runners.py` were adjusted** — a file not named in
+   this round's scope. R-0165 makes their inputs unconstructible: they built
+   flow checks with an unknown action or a missing path through the validating
+   `DoDCheck(...)` constructor, which now refuses them.
 
-7. **Three additive fields on `JobFulfillmentRecord`** (`dod_released`,
-   `dod_blocking_red`, `dod_reported_red`). `dod_released` is `None` for a job
-   that was never gated, which is distinct from `False`; records written before
-   this feature load unchanged.
+   The runner code is untouched. What changed is how those tests obtain their
+   input: a new `legacy_flow()` helper builds the check via `model_construct`,
+   with a docstring saying it represents a DoD STORED before R-0165 — which is
+   exactly what the runner's surviving guard defends. The tests now prove the
+   guard against the only input that can still reach it. The third test simply
+   uses a valid step, since it only needed *a* runtime_flow check.
 
-8. **A blocking check that holds the job discards staging**, because that is
-   what the existing blocked branch does with a contract failure. "Releases
-   after the fix" therefore means re-running fulfillment, which the end-to-end
-   test does explicitly on the same job.
+3. **One R2 parametrize case in `test_dod_compiler.py` was re-pointed.** The
+   case `{"steps": [{"expect": "200"}]}` asserted the "non-empty 'action'"
+   message; with a closed key set it is now caught one rule earlier, by the
+   unknown-key check. The step is still refused — with a more specific message.
+   The case now uses `{"path": "/x"}`, which has only legal keys and still
+   proves the missing-action rule. No fixture or golden was involved, so the
+   block's STOP condition (which is scoped to fixtures and goldens) did not
+   fire.
 
-9. **`remedy job dod` shows the LAST recorded run and never runs checks.** A
-   command that silently started a test suite would be a surprise from a read
-   command; a test pins the read-only behaviour. A job whose gate has not run
-   lists its checks as `not run` rather than printing an empty table.
+4. **`expect_status` accepts an int-valued float** (`200.0`), because JSON
+   round-trips can produce one; a non-integral float (`200.5`) and a bool are
+   both refused. Pinned by tests either way.
 
-10. **`run_checks` still returns evidence without a verdict.** All the deciding
-    lives in `dod_gate.evaluate_dod`. That separation is what let T002's runners
-    be proven red and green with no job anywhere near them, and it is preserved.
+5. **The pre-existing ruff error in `dag_schedule.py` was left alone.** It
+   reproduces at base and the file is outside this round's scope; fixing it
+   inside a feature commit would mix an unrelated cleanup into the diff.
 
-11. **No mutation red-proofs were run**, so no disposable worktree was created
-    or pruned.
+6. **No mutation red-proofs were run**, so the only worktree created was the
+   integration gate's, and it was removed, pruned, and its branch deleted —
+   proven with `git worktree list`.
 
 ---
 
 ## Open items for the next round
 
-- The integration gate round (`docs/agents/integration_gate.md`) — the full
-  suite has not been run this round; the scoped and adjacent suites above have.
-- Closure per `docs/roadmap/STATUS_closure_protocol.md`; `docs/roadmap/` is
-  untouched so far and STATUS still reads `[~]`.
-- Still open from R1: registering `dod_v1` in `SCHEMA_REGISTRY` (a one-line
-  follow-up the reviewer accepted deferring), and — new — deciding whether the
-  flow action vocabulary should move into compile-time validation (deviation 2).
-- Nothing compiles a `runtime_flow` check yet: the compiler emits pytest checks
-  for uncovered acceptance lines, and a provider may propose a flow. Generated
-  flow specs written into the evidence area are therefore not yet a surface
-  this feature touches.
+- **Closure** per `docs/roadmap/STATUS_closure_protocol.md` — its own round:
+  Built State in the feature file, preconditions, evidence job, fresh review
+  zip, STATUS `[x]` + README sync as the last commit, PR. `docs/roadmap/` is
+  still untouched and STATUS still reads `[~]`.
+- Nothing compiles a DoD at job creation yet: the gate is wired and proven, but
+  production wiring that CALLS `compile_dod` is downstream scope (F062
+  registers standard checks into the seam; F069/F070 consume it). Worth naming
+  explicitly in the Built State so the feature is not read as claiming more
+  than it does.

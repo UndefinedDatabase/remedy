@@ -1,4 +1,8 @@
-OUTCOME: pending
+OUTCOME: executed — R-0165 fixed, dod_v1 registered in SCHEMA_REGISTRY,
+integration gate run on branch AND base: both fully green (branch 14900 passed
+/ 19 skipped, base 14744 / 19, exit 0 both), comm -13 and comm -23 both EMPTY,
+worktree removed + pruned. No closure artifacts. See .agent/handoff.md and
+.agent/gate_f061_r3/ for the raw evidence and six A9 deviations.
 
 You are the WORKER for F061 — Definition-of-Done compiler (Tier 1), round R3.
   Authority: AGENTS.md. R2 is reviewed PASS. This round: R-0165 fix, the dod_v1
