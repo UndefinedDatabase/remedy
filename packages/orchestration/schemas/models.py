@@ -13,7 +13,15 @@ from __future__ import annotations
 
 from typing import ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
+
+# The shared bases live in `structured_base` — a leaf module outside this
+# package — so a contract defined elsewhere (the DoD) can use them without
+# importing THIS module, which is what lets this module import that contract to
+# register its tag. Both names are re-exported, so every existing
+# `from ...schemas.models import _Strict` keeps working unchanged.
+from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
+from packages.orchestration.structured_base import _Strict, _Structured
 
 #: Compact schema version tags. Keep these short — they travel in every prompt.
 REVIEW_VERDICT_SCHEMA_V = "rv1"
@@ -25,25 +33,6 @@ FLIGHT_PLAN_SCHEMA_V = "flight_plan_v1"
 Verdict = Literal["pass", "fail", "needs_repair", "blocked"]
 Severity = Literal["blocker", "high", "medium", "low"]
 Confidence = Literal["low", "medium", "high"]
-
-
-class _Strict(BaseModel):
-    """Base that rejects any field the schema did not declare."""
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class _Structured(_Strict):
-    """A top-level structured response.
-
-    ``schema_v`` is a REQUIRED field (a bare ``Literal`` with no default) so a
-    response that omits it is a validation failure, not a silently defaulted
-    value. The model's version is read from the ``SCHEMA_V`` class constant — the
-    validator never depends on a field default to know its own version.
-    """
-
-    #: The compact version this model enforces. Set by each concrete subclass.
-    SCHEMA_V: ClassVar[str]
 
 
 class ReviewFinding(_Strict):
@@ -248,6 +237,12 @@ SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     DESIGN_SPEC_SCHEMA_V: DesignSpec,
     JOB_INTAKE_SCHEMA_V: JobIntake,
     FLIGHT_PLAN_SCHEMA_V: FlightPlan,
+    # F061: the compiled Definition of Done. Registered because a dod_v1
+    # payload is PERSISTED (a job's evidence area) and therefore has to be
+    # resolvable from its tag alone. Its provider-facing draft contract
+    # (dod_draft_v1) is not registered: it never leaves the compiler's own
+    # call and no reader ever resolves that tag.
+    DOD_SCHEMA_V: DoD,
 }
 
 

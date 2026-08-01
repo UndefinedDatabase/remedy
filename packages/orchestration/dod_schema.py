@@ -25,10 +25,11 @@ to a runner: an unknown kind, an empty pytest selector, an empty custom argv,
 a runtime_flow with no steps, an unknown spec key, a duplicate check id, or a
 ``cwd`` that escapes the worktree are all refused here.
 
-Note (scope, F061 R1): this module deliberately does NOT mutate
-``schemas.models.SCHEMA_REGISTRY``. Registration would edit a file outside
-this round's declared change scope; :data:`DOD_SCHEMA_V` and :class:`DoD` are
-exported so a later round can register the tag in one line.
+``dod_v1`` is registered in ``schemas.models.SCHEMA_REGISTRY`` (F061 R3) — by
+that module, importing this one, never as a side effect of importing here. The
+shared bases therefore come from :mod:`packages.orchestration.structured_base`
+rather than from ``schemas.models``: that is what keeps the dependency
+one-directional.
 """
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import Field, model_validator
 
-from packages.orchestration.schemas.models import _Strict, _Structured
+from packages.orchestration.structured_base import _Strict, _Structured
 
 #: Compact schema version tags (F005 convention: short, they travel in prompts).
 DOD_SCHEMA_V = "dod_v1"
