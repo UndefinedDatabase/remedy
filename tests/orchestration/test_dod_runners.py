@@ -289,7 +289,8 @@ class TestUnsupportedKindFailsLoud:
     def test_runtime_flow_has_no_argv_form(self):
         """It starts an application; there is no single command to name."""
         with pytest.raises(UnsupportedCheckKindError) as exc:
-            build_argv(check("runtime_flow", {"steps": [{"action": "open"}]}))
+            build_argv(check("runtime_flow",
+                             {"steps": [{"action": "open", "path": "/"}]}))
         assert "argv" in str(exc.value)
 
 
@@ -338,6 +339,20 @@ def flow_worktree(tmp_path: Path) -> Path:
 
 def flow(*steps: dict, **kw) -> DoDCheck:
     return check("runtime_flow", {"steps": list(steps)}, **kw)
+
+
+def legacy_flow(*steps: dict) -> DoDCheck:
+    """A flow check as it could arrive from a DoD STORED before R-0165.
+
+    Since R-0165 the schema refuses these steps at compile time, so a valid
+    construction cannot produce one. The runner's own guard is precisely the
+    defence for definitions written before that rule existed — proving it
+    therefore requires building the check past validation, which is what a
+    stored payload effectively does when it is loaded.
+    """
+    return DoDCheck.model_construct(
+        id="c1", kind="runtime_flow", spec={"steps": list(steps)},
+        blocking=True, acceptance_refs=[], description="", source="compiled")
 
 
 class TestRuntimeFlowRunner:
@@ -425,14 +440,16 @@ class TestRuntimeFlowRunner:
         assert "cannot start this project" in ev.output_tail
 
     def test_an_unknown_action_is_red_never_satisfied(self, flow_worktree: Path):
-        ev = run_check(flow({"action": "click the button"}),
+        """A pre-R-0165 stored DoD reaching the runner: red, never satisfied."""
+        ev = run_check(legacy_flow({"action": "click the button"}),
                        flow_worktree, timeout_sec=60)
         assert ev.status == STATUS_FAILED
         assert ev.reason == REASON_UNKNOWN_FLOW_ACTION
         assert FLOW_ACTION_OPEN in ev.output_tail
 
     def test_an_open_step_without_a_path_is_red(self, flow_worktree: Path):
-        ev = run_check(flow({"action": "open"}), flow_worktree, timeout_sec=60)
+        ev = run_check(legacy_flow({"action": "open"}), flow_worktree,
+                       timeout_sec=60)
         assert ev.status == STATUS_FAILED
         assert ev.reason == REASON_UNKNOWN_FLOW_ACTION
         assert "needs a 'path'" in ev.output_tail

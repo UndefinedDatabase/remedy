@@ -76,6 +76,14 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
     "runtime_flow": frozenset({"steps"}),
 }
 
+#: The v1 runtime_flow vocabulary (R-0165). One action, and a closed set of
+#: keys per step: a flow step that names something else is nonsense the
+#: compiler can detect, so it is refused here rather than discovered by the
+#: runner an hour into a job. The runner keeps its own guard — it defends DoDs
+#: stored before this rule existed.
+FLOW_ACTION_OPEN = "open"
+_FLOW_STEP_KEYS = frozenset({"action", "path", "expect_status", "expect_text"})
+
 
 class DoDSpecError(ValueError):
     """A check spec is detectably unrunnable."""
@@ -169,12 +177,57 @@ def validate_check_spec(kind: str, spec: dict[str, Any]) -> None:
         if not isinstance(steps, list) or not steps:
             raise DoDSpecError("runtime_flow spec needs a non-empty 'steps' list")
         for i, step in enumerate(steps):
-            if not isinstance(step, dict):
-                raise DoDSpecError(f"runtime_flow steps[{i}] must be an object")
-            action = step.get("action")
-            if not isinstance(action, str) or not action.strip():
-                raise DoDSpecError(
-                    f"runtime_flow steps[{i}] needs a non-empty 'action'")
+            _validate_flow_step(i, step)
+
+
+def _validate_flow_step(i: int, step: Any) -> None:
+    """One runtime_flow step, against the v1 vocabulary (R-0165).
+
+    Every message names the step index and the rule it broke, because a flow
+    can carry a dozen steps and "invalid step" would send a reader looking
+    through all of them.
+    """
+    if not isinstance(step, dict):
+        raise DoDSpecError(f"runtime_flow steps[{i}] must be an object")
+
+    unknown = sorted(set(step) - _FLOW_STEP_KEYS)
+    if unknown:
+        raise DoDSpecError(
+            f"runtime_flow steps[{i}] has unknown key(s): {', '.join(unknown)} "
+            f"(v1 step keys: {', '.join(sorted(_FLOW_STEP_KEYS))})")
+
+    action = step.get("action")
+    if not isinstance(action, str) or not action.strip():
+        raise DoDSpecError(f"runtime_flow steps[{i}] needs a non-empty 'action'")
+    if action.strip() != FLOW_ACTION_OPEN:
+        raise DoDSpecError(
+            f"runtime_flow steps[{i}] action {action!r} is not supported "
+            f"(v1 actions: {FLOW_ACTION_OPEN})")
+
+    path = step.get("path")
+    if not isinstance(path, str) or not path.strip():
+        raise DoDSpecError(
+            f"runtime_flow steps[{i}] needs a non-empty 'path' string")
+    if not path.strip().startswith("/"):
+        raise DoDSpecError(
+            f"runtime_flow steps[{i}] 'path' must start with '/', got {path!r}")
+
+    if "expect_status" in step:
+        status = step["expect_status"]
+        # bool is an int in Python, and `expect_status: true` is not a status.
+        if isinstance(status, bool) or not isinstance(status, (int, float)):
+            raise DoDSpecError(
+                f"runtime_flow steps[{i}] 'expect_status' must be an integer "
+                f"status code, got {status!r}")
+        if isinstance(status, float) and not status.is_integer():
+            raise DoDSpecError(
+                f"runtime_flow steps[{i}] 'expect_status' must be an integer "
+                f"status code, got {status!r}")
+
+    if "expect_text" in step and not isinstance(step["expect_text"], str):
+        raise DoDSpecError(
+            f"runtime_flow steps[{i}] 'expect_text' must be a string, "
+            f"got {step['expect_text']!r}")
 
 
 def _validate_check_id(value: str) -> str:

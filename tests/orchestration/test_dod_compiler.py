@@ -192,7 +192,10 @@ class TestNonsenseSpecRejection:
         ("custom_cmd", {"argv": []}, "non-empty 'argv'"),
         ("custom_cmd", {"argv": ["", "x"]}, "argv[0] must be a non-empty"),
         ("runtime_flow", {"steps": []}, "non-empty 'steps'"),
-        ("runtime_flow", {"steps": [{"expect": "200"}]}, "non-empty 'action'"),
+        # R-0165 tightened this: a step key set is closed now, so the old
+        # {"expect": "200"} case is caught by the unknown-key rule first. A
+        # step with only legal keys still proves the missing-action rule.
+        ("runtime_flow", {"steps": [{"path": "/x"}]}, "non-empty 'action'"),
         ("pytest", {"selector": "tests", "typo": 1}, "unknown key"),
     ])
     def test_unrunnable_spec_is_refused_at_compile_time(self, kind, spec, needle):
@@ -246,6 +249,65 @@ class TestNonsenseSpecRejection:
         assert DraftCheck(
             id="c2", kind="pytest",
             spec={"selector": "tests/test_a-b.py", "args": ["-x"]}).spec["args"] == ["-x"]
+
+    # R-0165: the runtime_flow v1 step vocabulary, refused at COMPILE time
+    # rather than discovered by the runner an hour into a job. The runner
+    # keeps its own guard for DoDs stored before this rule existed.
+
+    def _flow(self, *steps: dict) -> DraftCheck:
+        return DraftCheck(id="c1", kind="runtime_flow", spec={"steps": list(steps)})
+
+    def test_a_valid_v1_step_still_validates(self):
+        check = self._flow({"action": "open", "path": "/health",
+                            "expect_status": 200, "expect_text": "ok"})
+        assert check.spec["steps"][0]["path"] == "/health"
+
+    def test_an_unknown_action_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "click the button", "path": "/"})
+        message = str(exc.value)
+        assert "steps[0]" in message
+        assert "'click the button' is not supported" in message
+
+    def test_a_step_without_a_path_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "open"})
+        assert "steps[0] needs a non-empty 'path'" in str(exc.value)
+
+    @pytest.mark.parametrize("path", ["health", "http://elsewhere/health", ""])
+    def test_a_path_that_does_not_start_with_a_slash_is_refused(self, path):
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "open", "path": path})
+        assert "steps[0]" in str(exc.value)
+
+    def test_an_unknown_step_key_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "open", "path": "/", "expect": "200"})
+        message = str(exc.value)
+        assert "steps[0] has unknown key(s): expect" in message
+
+    @pytest.mark.parametrize("status", ["200", None, True, 200.5])
+    def test_a_non_integer_expect_status_is_refused(self, status):
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "open", "path": "/", "expect_status": status})
+        assert "'expect_status' must be an integer" in str(exc.value)
+
+    def test_an_int_valued_float_status_is_accepted(self):
+        check = self._flow({"action": "open", "path": "/", "expect_status": 200.0})
+        assert check.spec["steps"][0]["expect_status"] == 200.0
+
+    def test_a_non_string_expect_text_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "open", "path": "/", "expect_text": 200})
+        assert "'expect_text' must be a string" in str(exc.value)
+
+    def test_the_failing_step_index_is_named(self):
+        """A flow has many steps; "invalid step" would send a reader hunting."""
+        with pytest.raises(Exception) as exc:
+            self._flow({"action": "open", "path": "/health"},
+                       {"action": "open", "path": "/status"},
+                       {"action": "open", "path": "nope"})
+        assert "steps[2]" in str(exc.value)
 
     @pytest.mark.parametrize("cwd", ["/etc", "../outside", "a/../../b"])
     def test_cwd_may_not_escape_the_worktree(self, cwd):
