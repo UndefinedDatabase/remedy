@@ -14,23 +14,32 @@ nothing runs outside the temporary worktree the test built.
 """
 from __future__ import annotations
 
+import json
+import shutil
 import sys
 from pathlib import Path
 
 import pytest
 
 from packages.orchestration.dod_runners import (
+    ARGV_BUILDERS,
     CHECK_TIMEOUT_DEFAULT_SEC,
     DEFAULT_ALLOWED_EXECUTABLES,
+    FLOW_ACTION_OPEN,
     MAX_OUTPUT_TAIL_CHARS,
     PYTEST_PYTHON,
+    REASON_APP_NOT_READY,
+    REASON_APP_START_FAILED,
     REASON_CWD_MISSING,
     REASON_CWD_OUTSIDE_WORKTREE,
     REASON_EXECUTABLE_NOT_ALLOWED,
+    REASON_FLOW_STEP_FAILED,
     REASON_NONE,
     REASON_NONZERO_EXIT,
+    REASON_RUNTIME_NOT_CONFIGURED,
     REASON_TIMEOUT,
     REASON_TOOL_UNAVAILABLE,
+    REASON_UNKNOWN_FLOW_ACTION,
     RUNNER_REGISTRY,
     STATUS_FAILED,
     STATUS_PASSED,
@@ -234,38 +243,232 @@ class TestNeverASilentPass:
 
 
 # ---------------------------------------------------------------------------
-# runtime_flow: schema-valid, but no runner in this round
+# A kind with no runner still fails LOUD (the guarantee outlives T003)
 # ---------------------------------------------------------------------------
 
-class TestRuntimeFlowFailsLoud:
-    def test_registry_has_no_runtime_flow_entry(self):
-        assert set(RUNNER_REGISTRY) == {"pytest", "lint", "build", "custom_cmd"}
-        assert "runtime_flow" not in RUNNER_REGISTRY
+def unsupported_check(kind: str = "telepathy") -> DoDCheck:
+    """A check whose kind the schema would refuse — built past validation.
 
-    def test_runner_for_raises(self):
+    The point is the REGISTRY's behaviour, not the schema's: if a kind is ever
+    added to CheckKind without a runner, this is what must happen to it.
+    """
+    return DoDCheck.model_construct(
+        id="unsupported", kind=kind, spec={}, blocking=True,
+        acceptance_refs=[], description="", source="compiled")
+
+
+class TestUnsupportedKindFailsLoud:
+    def test_registry_covers_exactly_the_five_schema_kinds(self):
+        assert set(RUNNER_REGISTRY) == {
+            "pytest", "lint", "build", "custom_cmd", "runtime_flow"}
+        assert set(ARGV_BUILDERS) == {"pytest", "lint", "build", "custom_cmd"}
+
+    def test_runner_for_raises_on_a_kind_with_no_runner(self):
         with pytest.raises(UnsupportedCheckKindError) as exc:
-            runner_for("runtime_flow")
-        assert "runtime_flow" in str(exc.value)
+            runner_for("telepathy")
+        assert "telepathy" in str(exc.value)
 
-    def test_running_the_check_raises_rather_than_returning_a_result(
+    def test_running_such_a_check_raises_rather_than_returning_a_result(
             self, worktree: Path):
-        flow = check("runtime_flow", {"steps": [{"action": "open /health"}]})
         with pytest.raises(UnsupportedCheckKindError):
-            run_check(flow, worktree)
+            run_check(unsupported_check(), worktree)
 
     def test_a_dod_containing_one_fails_loud_too(self, worktree: Path):
         """No partial evidence that could be mistaken for a completed run."""
-        dod = DoD(
+        dod = DoD.model_construct(
             schema_v=DOD_SCHEMA_V, compiled=True, origin="provider",
             checks=[
                 DoDCheck(id="ok", kind="custom_cmd", spec={"argv": EXIT_OK},
                          source="compiled"),
-                DoDCheck(id="flow", kind="runtime_flow",
-                         spec={"steps": [{"action": "open /"}]}, source="compiled"),
+                unsupported_check(),
             ],
         )
         with pytest.raises(UnsupportedCheckKindError):
             run_checks(dod, worktree)
+
+    def test_runtime_flow_has_no_argv_form(self):
+        """It starts an application; there is no single command to name."""
+        with pytest.raises(UnsupportedCheckKindError) as exc:
+            build_argv(check("runtime_flow", {"steps": [{"action": "open"}]}))
+        assert "argv" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# runtime_flow (T003) — against the fixture app, red and green
+# ---------------------------------------------------------------------------
+
+FLOW_APP = Path(__file__).parent / "fixtures" / "dod" / "flow_app.py"
+
+
+def write_runtime_config(root: Path, *, cmd: list[str], health_path: str = "/health",
+                         ready_timeout_s: float = 20.0,
+                         env: dict[str, str] | None = None) -> None:
+    """The F007 runtime configuration the harness reads to start this project."""
+    conf = root / ".remedy"
+    conf.mkdir(exist_ok=True)
+    argv = ", ".join(json.dumps(a) for a in cmd)
+    lines = [
+        "[runtime]",
+        f"cmd = [{argv}]",
+        'cwd = "."',
+        "port = 5173",
+        f'health_path = "{health_path}"',
+        f"ready_timeout_s = {ready_timeout_s}",
+    ]
+    if env:
+        lines.append("[runtime.env]")
+        lines += [f"{k} = {json.dumps(v)}" for k, v in env.items()]
+    (conf / "config.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def tmp_worktree(root: Path) -> Path:
+    """A directory holding a copy of the fixture app, ready for a config."""
+    root.mkdir(parents=True, exist_ok=True)
+    shutil.copy(FLOW_APP, root / "flow_app.py")
+    return root
+
+
+@pytest.fixture
+def flow_worktree(tmp_path: Path) -> Path:
+    """A project the runtime harness can start: the fixture app + its config."""
+    root = tmp_worktree(tmp_path / "app")
+    write_runtime_config(root, cmd=[sys.executable, "flow_app.py"])
+    return root
+
+
+def flow(*steps: dict, **kw) -> DoDCheck:
+    return check("runtime_flow", {"steps": list(steps)}, **kw)
+
+
+class TestRuntimeFlowRunner:
+    def test_green_flow_against_the_fixture_app(self, flow_worktree: Path):
+        ev = run_check(
+            flow({"action": "open", "path": "/health", "expect_status": 200},
+                 {"action": "open", "path": "/status", "expect_text": "ready: yes"}),
+            flow_worktree, timeout_sec=60)
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert ev.reason == REASON_NONE
+        assert ev.exit_code == 0
+        assert "step 1: open /health -> 200 OK" in ev.output_tail
+        assert "step 2: open /status -> 200 OK" in ev.output_tail
+
+    def test_red_when_a_step_expectation_fails(self, flow_worktree: Path):
+        """The api-smoke shape: the app runs, but the flow's assertion does not hold."""
+        ev = run_check(
+            flow({"action": "open", "path": "/broken", "expect_status": 200}),
+            flow_worktree, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_FLOW_STEP_FAILED
+        assert "-> 500, expected 200" in ev.output_tail
+
+    def test_red_when_expected_text_is_absent(self, flow_worktree: Path):
+        ev = run_check(
+            flow({"action": "open", "path": "/health",
+                  "expect_text": "this text is not there"}),
+            flow_worktree, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_FLOW_STEP_FAILED
+        assert "does not contain" in ev.output_tail
+
+    def test_the_api_service_fixture_flow_runs_red_and_green(
+            self, flow_worktree: Path):
+        """The golden fixture's own api-smoke spec, executed for real."""
+        fixture = json.loads(
+            (Path(__file__).parent / "fixtures" / "dod" / "api_service.json")
+            .read_text(encoding="utf-8"))
+        smoke = next(c for c in fixture["golden_dod"]["checks"]
+                     if c["id"] == "api-smoke")
+        smoke_check = DoDCheck.model_validate(smoke)
+
+        green = run_check(smoke_check, flow_worktree, timeout_sec=60)
+        assert green.status == STATUS_PASSED, green.output_tail
+
+        # The SAME flow against an app that starts and is ready, but whose
+        # /health now answers 500: the flow's own assertion fails. Readiness is
+        # moved to /status so this is a red STEP, not a red startup.
+        broken = tmp_worktree(flow_worktree.parent / "broken-app")
+        write_runtime_config(
+            broken, cmd=[sys.executable, "flow_app.py"], health_path="/status",
+            env={"REMEDY_FLOW_APP_BREAK_HEALTH": "1"})
+        red = run_check(smoke_check, broken, timeout_sec=60)
+        assert red.status == STATUS_FAILED, red.output_tail
+        assert red.reason == REASON_FLOW_STEP_FAILED
+        assert "-> 500, expected 200" in red.output_tail
+
+    def test_app_that_never_becomes_ready_is_red(self, tmp_path: Path):
+        shutil.copy(FLOW_APP, tmp_path / "flow_app.py")
+        write_runtime_config(
+            tmp_path, cmd=[sys.executable, "flow_app.py"],
+            health_path="/never-served", ready_timeout_s=2.0)
+        ev = run_check(flow({"action": "open", "path": "/health"}),
+                       tmp_path, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_APP_NOT_READY
+        assert "never became ready" in ev.output_tail
+
+    def test_app_that_exits_immediately_is_red(self, tmp_path: Path):
+        write_runtime_config(
+            tmp_path, cmd=[sys.executable, "-c", "raise SystemExit(9)"],
+            ready_timeout_s=5.0)
+        ev = run_check(flow({"action": "open", "path": "/health"}),
+                       tmp_path, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_APP_START_FAILED
+        assert "exited before it answered" in ev.output_tail
+
+    def test_a_project_with_no_runtime_configuration_is_red_not_a_pass(
+            self, tmp_path: Path):
+        ev = run_check(flow({"action": "open", "path": "/health"}), tmp_path)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_RUNTIME_NOT_CONFIGURED
+        assert ev.exit_code is None
+        assert "cannot start this project" in ev.output_tail
+
+    def test_an_unknown_action_is_red_never_satisfied(self, flow_worktree: Path):
+        ev = run_check(flow({"action": "click the button"}),
+                       flow_worktree, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_UNKNOWN_FLOW_ACTION
+        assert FLOW_ACTION_OPEN in ev.output_tail
+
+    def test_an_open_step_without_a_path_is_red(self, flow_worktree: Path):
+        ev = run_check(flow({"action": "open"}), flow_worktree, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_UNKNOWN_FLOW_ACTION
+        assert "needs a 'path'" in ev.output_tail
+
+    def test_the_app_is_always_stopped_afterwards(self, flow_worktree: Path):
+        """Green or red, no process is left behind and no port stays bound."""
+        import socket
+
+        ev = run_check(flow({"action": "open", "path": "/health"}),
+                       flow_worktree, timeout_sec=60)
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert "the application family was stopped" in ev.output_tail
+
+        port = int(ev.output_tail.split("port=")[1].split(")")[0])
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(2.0)
+            assert sock.connect_ex(("127.0.0.1", port)) != 0, (
+                "the fixture app is still accepting connections")
+
+    def test_evidence_names_the_app_command_and_the_step_log(
+            self, flow_worktree: Path):
+        ev = run_check(flow({"action": "open", "path": "/health"}),
+                       flow_worktree, timeout_sec=60)
+        assert ev.kind == "runtime_flow"
+        assert ev.argv[0] == sys.executable
+        assert "flow_app.py" in ev.command
+        assert ev.duration_ms >= 0
+        assert "--- application log ---" in ev.output_tail
+        assert "flow-app: listening on" in ev.output_tail
+
+    def test_nothing_is_written_into_the_worktree(self, flow_worktree: Path):
+        """The flow log is private and temporary — never the user's repo."""
+        before = sorted(p.name for p in flow_worktree.iterdir())
+        run_check(flow({"action": "open", "path": "/health"}),
+                  flow_worktree, timeout_sec=60)
+        assert sorted(p.name for p in flow_worktree.iterdir()) == before
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 {
   "name": "api_service",
-  "note": "Long goal: keep a payments API releasable. The provider covers every acceptance line and uses all four T002 runner kinds plus runtime_flow — which is schema-valid here but has no runner until T003.",
+  "note": "Long goal: keep a payments API releasable. The provider covers every acceptance line and uses all five check kinds; api-smoke is the runtime_flow proven red and green against the flow_app fixture in T003.",
   "intake": {
     "schema_v": "ji1",
     "goal": "Harden the payments API service so it stays releasable: contract tests, lint, release build, and a live health flow",
@@ -86,8 +86,8 @@
         "kind": "runtime_flow",
         "spec": {
           "steps": [
-            {"action": "start service"},
-            {"action": "GET /health", "expect": "200"}
+            {"action": "open", "path": "/health", "expect_status": 200},
+            {"action": "open", "path": "/status", "expect_text": "ready"}
           ]
         },
         "blocking": true,
@@ -133,8 +133,8 @@
         "kind": "runtime_flow",
         "spec": {
           "steps": [
-            {"action": "start service"},
-            {"action": "GET /health", "expect": "200"}
+            {"action": "open", "path": "/health", "expect_status": 200},
+            {"action": "open", "path": "/status", "expect_text": "ready"}
           ]
         },
         "blocking": true,
