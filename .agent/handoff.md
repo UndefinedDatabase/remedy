@@ -23,9 +23,8 @@ single-session micro-round (§3), docs/** + .agent/** only. Verdict: PASS.
 | `.agent/decisions.md` | +31 | the three DECISIONs |
 | `.agent/authored/paydown0801-r1-3.md` | +1/-1 | v2 rewrap (deviation 1) |
 
-### 3 — final commit: chore(paydown0801): handback R1
-Grouped self-reference table (R-0149): `.agent/handoff.md` rewrite +
-`.agent/last_block.md` OUTCOME → executed; nothing else.
+### 3 — final commits: handback R1 + cap trims (grouped, R-0149)
+`.agent/handoff.md` rewrite + `.agent/last_block.md` OUTCOME → executed.
 
 ## External actions
 
@@ -58,4 +57,4 @@ appended exactly once, `decisions.md` ends with the payload bytes.
 ## Next
 
 Merge PR #173 (standing approval), then F062 per Rule A5 in a fresh
-Window-1 session; candidates file empty at claim. One trim commit: 61→60.
+Window-1 session; candidates file empty at claim. Trim commits: 2 (smell).
