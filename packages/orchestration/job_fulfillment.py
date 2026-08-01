@@ -89,6 +89,13 @@ class JobFulfillmentRecord(BaseModel):
     promotion_files: list[str] = Field(default_factory=list)
     changed_target_files: list[str] = Field(default_factory=list)
 
+    # Definition-of-Done gate (F061 T004). Additive: a record written before
+    # this feature loads unchanged, and a job with no DoD keeps the defaults.
+    #: None = the job was never gated (no DoD); True/False = the gate's verdict.
+    dod_released: bool | None = None
+    dod_blocking_red: list[str] = Field(default_factory=list)
+    dod_reported_red: list[str] = Field(default_factory=list)
+
 
 # ---------------------------------------------------------------------------
 # JobFulfillmentContract
@@ -985,6 +992,32 @@ def run_job_fulfill(
         contract = JobFulfillmentContract()
         passed, blockers = contract.check(record)
         record.contract_blockers = (record.contract_blockers or []) + blockers
+
+        # ── DEFINITION OF DONE (F061 T004) ────────────────────────────
+        # The ONE seam where the DoD gate meets the job lifecycle. It sits
+        # here because `job.state = RunState.COMPLETED` below is reachable
+        # only through the branch this guards, so nothing can go green past
+        # it. A job with no stored DoD returns None and changes nothing.
+        from packages.orchestration.dod_gate import gate_blocker, run_job_gate
+
+        dod_result = run_job_gate(job_id, repo_root)
+        if dod_result is not None:
+            record.dod_released = dod_result.released
+            record.dod_blocking_red = list(dod_result.blocking_red)
+            record.dod_reported_red = list(dod_result.reported_red)
+            append_run_event(data_dir, UUID(job_id), event="dod_gate_evaluated",
+                             metadata={
+                                 "fulfillment_id": record.fulfillment_id,
+                                 "released": dod_result.released,
+                                 "blocking_red": list(dod_result.blocking_red),
+                                 "reported_red": list(dod_result.reported_red),
+                             })
+            if not dod_result.released:
+                # Held, not failed: the job stays open with the existing
+                # blocked machinery, and the matrix says which checks and why.
+                record.contract_blockers = (
+                    record.contract_blockers or []) + [gate_blocker(dod_result)]
+                passed = False
 
         if passed and record.staging_promoted:
             discard_staging(staging_ws, "promoted")
