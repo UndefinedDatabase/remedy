@@ -44,6 +44,7 @@ HTTP-level — no browser dependency (reject any diff adding one).
   "disabled by config" text; pin with a test that a disabled run
   starts nothing (argv empty, duration 0, marker file untouched) and
   is not green. Compile-time contribution stays as is.
+  Done: R-0167 (commit b6efe456).
 - Next free ID: R-0168.
 
 ## Verdicts
