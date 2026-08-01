@@ -39,6 +39,7 @@ compiled=false.
   step keys {action, path, expect_status, expect_text}; negative
   tests per rule; the runner's run-time guard stays (defence for
   stored DoDs written before this rule).
+  Done: R-0165 (commit d5604c51).
 - Next free ID: R-0166.
 
 ## Verdicts
