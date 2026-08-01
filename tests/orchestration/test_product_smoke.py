@@ -40,6 +40,7 @@ from packages.orchestration.dod_compiler import (
 from packages.orchestration.dod_gate import evaluate_dod, store_dod
 from packages.orchestration.dod_runners import (
     REASON_NONE,
+    REASON_SMOKE_DIRTY_CONSOLE,
     REASON_SMOKE_NOT_APPLICABLE,
     REASON_SMOKE_PATH_FAILED,
     REASON_SMOKE_START_FAILED,
@@ -51,19 +52,25 @@ from packages.orchestration.dod_runners import (
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, SMOKE_CHECK_NAMES, DoD, DoDCheck
 from packages.orchestration.product_smoke import (
     CHECK_ID_APP_STARTS,
+    CHECK_ID_CLEAN_CONSOLE,
     CHECK_ID_CORE_PATHS,
+    CONSOLE_ERROR_PATTERNS,
     MAX_EXTRACTED_PATHS,
     NOT_APPLICABLE_MESSAGE,
     PASSED_ON_RETRY,
     SMOKE_APP_STARTS,
     SMOKE_CHECKS,
+    SMOKE_CLEAN_CONSOLE,
     SMOKE_CORE_PATHS,
     SMOKE_PROVIDER_NAME,
+    error_patterns,
     extract_paths,
     is_registered,
     register,
     resolve_runtime,
+    scan_console,
     smoke_checks,
+    smoke_config,
     unregister,
 )
 from packages.orchestration.schemas.models import FlightPlan
@@ -78,22 +85,24 @@ BROKEN_APP = FIXTURES / "broken_start_app.py"
 # ---------------------------------------------------------------------------
 
 def write_runtime_config(root: Path, *, cmd: list[str], health_path: str = "/health",
-                         ready_timeout_s: float = 20.0, port: int = 5273) -> None:
+                         ready_timeout_s: float = 20.0, port: int = 5273,
+                         env: dict[str, str] | None = None) -> None:
     """The F007 runtime configuration the harness reads to start this project."""
     conf = root / ".remedy"
     conf.mkdir(exist_ok=True)
     argv = ", ".join(json.dumps(a) for a in cmd)
-    (conf / "config.toml").write_text(
-        "\n".join([
-            "[runtime]",
-            f"cmd = [{argv}]",
-            'cwd = "."',
-            f"port = {port}",
-            f'health_path = "{health_path}"',
-            f"ready_timeout_s = {ready_timeout_s}",
-        ]) + "\n",
-        encoding="utf-8",
-    )
+    lines = [
+        "[runtime]",
+        f"cmd = [{argv}]",
+        'cwd = "."',
+        f"port = {port}",
+        f'health_path = "{health_path}"',
+        f"ready_timeout_s = {ready_timeout_s}",
+    ]
+    if env:
+        lines.append("[runtime.env]")
+        lines += [f"{k} = {json.dumps(v)}" for k, v in env.items()]
+    (conf / "config.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def project(root: Path, app: Path, **kw) -> Path:
@@ -196,7 +205,8 @@ class TestRegistration:
         # id, the compiler owns uniqueness and provenance. Order is the block's:
         # the app must start before probing it means anything.
         assert [c.id for c in smoke] == [f"std-{CHECK_ID_APP_STARTS}",
-                                         f"std-{CHECK_ID_CORE_PATHS}"]
+                                         f"std-{CHECK_ID_CORE_PATHS}",
+                                         f"std-{CHECK_ID_CLEAN_CONSOLE}"]
         assert all(c.source == "standard" for c in smoke)
         assert all(c.blocking is True for c in smoke)
 
@@ -579,8 +589,8 @@ class TestPathExtraction:
             plan=simple_plan(), worktree_root=str(root))
         checks = smoke_checks(ctx)
 
-        assert [c.spec["smoke"] for c in checks] == [SMOKE_APP_STARTS,
-                                                     SMOKE_CORE_PATHS]
+        assert [c.spec["smoke"] for c in checks] == [
+            SMOKE_APP_STARTS, SMOKE_CORE_PATHS, SMOKE_CLEAN_CONSOLE]
         assert [p["path"] for p in checks[1].spec["paths"]] == ["/health", "/orders"]
         assert checks[1].blocking is True
 
@@ -667,3 +677,192 @@ class TestCorePathsRun:
         ev = run_check(paths_check({"path": "/health"}, blocking=False), bare)
         assert ev.reason == REASON_SMOKE_NOT_APPLICABLE
         assert NOT_APPLICABLE_MESSAGE in ev.output_tail
+
+
+# ---------------------------------------------------------------------------
+# T003 — clean_console + the smoke config table
+# ---------------------------------------------------------------------------
+
+NOISY_APP = FIXTURES / "noisy_app.py"
+
+
+def console_check(*, blocking: bool = True) -> DoDCheck:
+    return DoDCheck(
+        id=CHECK_ID_CLEAN_CONSOLE, kind="product_smoke",
+        spec={"smoke": SMOKE_CLEAN_CONSOLE, "retry": False},
+        blocking=blocking, source="standard")
+
+
+class TestConsolePatterns:
+    def test_the_base_list_is_small_and_documented(self):
+        assert 0 < len(CONSOLE_ERROR_PATTERNS) <= 10
+        assert "Traceback (most recent call last)" in CONSOLE_ERROR_PATTERNS
+        assert "ERROR" in CONSOLE_ERROR_PATTERNS
+        # Documented in the module, so extending it is a reviewable decision.
+        doc = Path("packages/orchestration/product_smoke.py").read_text("utf-8")
+        for pattern in CONSOLE_ERROR_PATTERNS:
+            assert pattern in doc
+
+    def test_matching_is_case_sensitive(self):
+        assert scan_console("ERROR boom", CONSOLE_ERROR_PATTERNS)
+        assert not scan_console("error in prose is not a fatal",
+                                CONSOLE_ERROR_PATTERNS)
+        assert not scan_console("Errors are handled gracefully",
+                                CONSOLE_ERROR_PATTERNS)
+
+    def test_the_matched_lines_come_back_for_quoting(self):
+        hits = scan_console("fine\nERROR could not warm the cache\nfine",
+                            CONSOLE_ERROR_PATTERNS)
+        assert hits == [("ERROR", "ERROR could not warm the cache")]
+
+    def test_a_clean_stream_has_no_hits(self):
+        assert scan_console("app: listening on 127.0.0.1:8080\napp: GET / 200",
+                            CONSOLE_ERROR_PATTERNS) == []
+
+
+class TestSmokeConfig:
+    def test_defaults_are_the_documented_ones(self, monkeypatch):
+        for var in ("REMEDY_SMOKE_ENABLED", "REMEDY_SMOKE_PATHS",
+                    "REMEDY_SMOKE_ERROR_PATTERNS", "REMEDY_SMOKE_READY_TIMEOUT_S"):
+            monkeypatch.delenv(var, raising=False)
+        cfg = smoke_config()
+        assert cfg["enabled"] is True
+        assert cfg["paths"] == [] and cfg["error_patterns"] == []
+        assert cfg["ready_timeout_s"] is None
+
+    def test_config_EXTENDS_the_pattern_list_never_replaces_it(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_ERROR_PATTERNS", "ORA-00942,my-fatal")
+        patterns = error_patterns()
+        assert patterns[:len(CONSOLE_ERROR_PATTERNS)] == CONSOLE_ERROR_PATTERNS
+        assert "ORA-00942" in patterns and "my-fatal" in patterns
+
+    def test_the_base_guarantees_cannot_be_configured_away(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_ERROR_PATTERNS", "only-this")
+        assert "ERROR" in error_patterns()
+
+    def test_a_path_override_replaces_the_extracted_routes(self, tmp_path,
+                                                           monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_PATHS", "/orders,/empty")
+        register()
+        root = project(tmp_path / "app", PATHS_APP)
+        checks = smoke_checks(StandardCheckContext(
+            intake={"goal": "the /ignored-by-override page"},
+            plan=simple_plan(), worktree_root=str(root)))
+        paths = [p["path"] for p in checks[1].spec["paths"]]
+        assert paths == ["/health", "/orders", "/empty"]
+
+    def test_disabled_reports_itself_and_does_not_gate(self, tmp_path, monkeypatch):
+        """A switched-off smoke is a reported fact, not an absent row."""
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        root = project(tmp_path / "app", GOOD_APP)
+        checks = smoke_checks(StandardCheckContext(
+            intake={}, plan=simple_plan(), worktree_root=str(root)))
+        assert len(checks) == 1
+        assert checks[0].blocking is False
+        assert "disabled by config" in checks[0].description
+
+
+class TestCleanConsoleRun:
+    def test_a_quiet_app_passes(self, tmp_path):
+        root = project(tmp_path / "quiet", NOISY_APP,
+                       env={"REMEDY_NOISY_APP_QUIET": "1"})
+        ev = run_check(console_check(), root, timeout_sec=60)
+
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert ev.reason == REASON_NONE
+
+    def test_a_noisy_app_is_red_with_the_lines_QUOTED(self, tmp_path):
+        root = project(tmp_path / "noisy", NOISY_APP)
+        ev = run_check(console_check(), root, timeout_sec=60)
+
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_SMOKE_DIRTY_CONSOLE
+        assert "error marker(s) in the app console" in ev.output_tail
+        # The real lines, quoted with the pattern that matched them.
+        assert "[Traceback (most recent call last)] Traceback (most recent call last):" \
+            in ev.output_tail
+        assert "[ERROR] ERROR could not warm the cache; serving cold" in ev.output_tail
+
+    def test_a_configured_pattern_makes_an_otherwise_clean_app_red(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_ERROR_PATTERNS", "listening on")
+        root = project(tmp_path / "quiet", NOISY_APP,
+                       env={"REMEDY_NOISY_APP_QUIET": "1"})
+        ev = run_check(console_check(), root, timeout_sec=60)
+
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_SMOKE_DIRTY_CONSOLE
+        assert "[listening on]" in ev.output_tail
+
+    def test_the_app_is_stopped_even_when_the_console_is_dirty(self, tmp_path):
+        root = project(tmp_path / "noisy", NOISY_APP)
+        ev = run_check(console_check(), root, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert "the application family was stopped" in ev.output_tail
+
+        port = int(ev.output_tail.split("port=")[1].split(")")[0])
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(2.0)
+            assert sock.connect_ex(("127.0.0.1", port)) != 0
+
+    def test_it_holds_a_job_open_when_blocking(self, tmp_path):
+        dod = DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic",
+                  checks=[console_check(blocking=True)])
+        result = evaluate_dod(dod, project(tmp_path / "noisy", NOISY_APP))
+        assert result.released is False
+        assert result.blocking_red == (CHECK_ID_CLEAN_CONSOLE,)
+
+    def test_a_project_without_a_runtime_is_not_applicable(self, tmp_path):
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        ev = run_check(console_check(blocking=False), bare)
+        assert ev.reason == REASON_SMOKE_NOT_APPLICABLE
+
+
+class TestThreeOrderedChecks:
+    def test_the_block_contributes_all_three_in_order(self, tmp_path):
+        register()
+        root = project(tmp_path / "app", PATHS_APP)
+        result = compile_dod({"goal": "the /orders page"}, simple_plan(), None,
+                             worktree_root=str(root))
+        smoke = [c for c in result.dod.checks if c.kind == "product_smoke"]
+
+        assert [c.spec["smoke"] for c in smoke] == [
+            SMOKE_APP_STARTS, SMOKE_CORE_PATHS, SMOKE_CLEAN_CONSOLE]
+        assert [c.id for c in smoke] == [
+            f"std-{CHECK_ID_APP_STARTS}", f"std-{CHECK_ID_CORE_PATHS}",
+            f"std-{CHECK_ID_CLEAN_CONSOLE}"]
+        assert all(c.blocking for c in smoke)
+
+    def test_all_three_rows_are_green_for_a_healthy_app(self, tmp_path):
+        root = project(tmp_path / "quiet", NOISY_APP,
+                       env={"REMEDY_NOISY_APP_QUIET": "1"})
+        dod = DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic",
+                  checks=[smoke_check(), paths_check({"path": "/health"}),
+                          console_check()])
+        result = evaluate_dod(dod, root, timeout_sec=90)
+
+        assert result.released is True, [e.output_tail for e in result.evidence
+                                         if not e.green]
+        assert [e.status for e in result.evidence] == [STATUS_PASSED] * 3
+
+
+def test_no_zombie_processes_after_every_outcome(tmp_path):
+    """Teardown always — across green, path-red and console-red alike."""
+    cases = [
+        (project(tmp_path / "ok", PATHS_APP), paths_check({"path": "/health"})),
+        (project(tmp_path / "pathred", PATHS_APP), paths_check({"path": "/broken"})),
+        (project(tmp_path / "noisered", NOISY_APP), console_check()),
+    ]
+    ports = []
+    for root, check in cases:
+        ev = run_check(check, root, timeout_sec=90)
+        if "port=" in ev.output_tail:
+            ports.append(int(ev.output_tail.split("port=")[1].split(")")[0]))
+
+    assert len(ports) == 3
+    time.sleep(0.2)
+    for port in ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(2.0)
+            assert sock.connect_ex(("127.0.0.1", port)) != 0, f"port {port} open"
