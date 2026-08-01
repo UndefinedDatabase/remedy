@@ -1,375 +1,379 @@
-# Handoff — F061 R3 (R-0165 + dod_v1 registration + integration gate)
+# Handoff — F061 R4 (CLOSURE)
 
-Review of `ef60758b..HEAD` (branch `feature/f061-dod-compiler`), HEAD `c8905920`.
+Review of `f6a05214..HEAD` (branch `feature/f061-dod-compiler`).
+Accepted HEAD (the head the zip and the verdict cover): `8dc6086c`.
 
-All ordered gates green. The integration gate ran on branch AND base: both
-sides are fully green, so there are no branch-only failures to attribute and
-no base-only failures to explain. No closure artifacts were produced — no
-STATUS edit, no README edit, no evidence job, no zip.
+F061 is closed: STATUS `[x]`, README synced in the same commit, Built State in
+the feature file, evidence job built and validated READY, review zip
+READY_FOR_REVIEW. The PR is open and **NOT merged** — it merges at the next
+feature's Open PR Gate.
 
 ---
 
 ## Commits
 
-### 1 — `0665728e` chore(f061): persist R2 verdict + register R-0165
+### 1 — `16fd64ac` chore(f061): persist the R3 integration-gate verdict
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `.agent/authored/f061-r3-1.md` | +73/-0 | authored live_review text |
-| `.agent/authored/f061-r3-2.md` | +34/-0 | authored plan text |
-| `.agent/authored/f061-r3-3.md` | +60/-0 | authored context text |
-| `.agent/context.md` | +33/-34 | full replacement, byte copy of f061-r3-3 |
-| `.agent/last_block.md` | +192/-212 | this round's block recorded verbatim |
-| `.agent/live_review.md` | +59/-39 | full replacement, byte copy of f061-r3-1 |
-| `.agent/plan.md` | +22/-22 | full replacement, byte copy of f061-r3-2 |
+| `.agent/authored/f061-r4-1.md` | +75/-0 | authored live_review text |
+| `.agent/authored/f061-r4-2.md` | +43/-0 | authored Built State text |
+| `.agent/authored/f061-r4-3.md` | +4/-0 | authored STATUS FROM/TO template |
+| `.agent/authored/f061-r4-4.md` | +8/-0 | authored README edits |
+| `.agent/live_review.md` | +50/-49 | full replacement, byte copy of f061-r4-1 |
+| `.agent/last_block.md` | +205/-231 | this round's block recorded verbatim |
 
-### 2 — `d5604c51` fix(f061): compile-time runtime_flow step validation (R-0165)
-
-| path | +/- | reason |
-| --- | --- | --- |
-| `packages/orchestration/dod_schema.py` | +59/-6 | `_validate_flow_step`: action, path, closed key set, typed expectations |
-| `tests/orchestration/test_dod_compiler.py` | +63/-1 | one negative test per rule, plus the index-naming and still-legal pins |
-| `tests/orchestration/test_dod_runners.py` | +20/-3 | three runner tests now build a pre-rule stored DoD (see deviation 2) |
-
-### 3 — `491448fb` chore(f061): mark R-0165 done in the finding ledger
+### 2 — `03df53fb` docs(f061): record the accepted Built State in the feature file
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `.agent/live_review.md` | +1/-0 | the ordered `Done: R-0165 (commit d5604c51).` line, nothing else |
+| `docs/roadmap/features/T1_F061.md` | +43/-0 | f061-r4-2 byte-appended (precondition 4) |
 
-### 4 — `aebc3c11` feat(f061): register dod_v1 in SCHEMA_REGISTRY
-
-| path | +/- | reason |
-| --- | --- | --- |
-| `packages/orchestration/structured_base.py` | +39/-0 | `_Strict`/`_Structured` moved here so the registration is not a cycle (see deviation 1) |
-| `packages/orchestration/schemas/models.py` | +15/-20 | bases re-exported from the new leaf; `DOD_SCHEMA_V: DoD` added to the registry |
-| `packages/orchestration/dod_schema.py` | +6/-5 | bases imported from the leaf; the stale R1 "not registered" note replaced |
-| `tests/orchestration/schemas/test_schemas.py` | +17/-0 | registry entry + the deliberate `dod_draft_v1` absence |
-
-### 5 — `c8905920` chore(f061): record the R3 integration-gate evidence
+### 3 — `8dc6086c` test(f061): package-safe parametrize ids for the cwd-escape cases
 
 | path | +/- | reason |
 | --- | --- | --- |
-| `.agent/gate_f061_r3/README.md` | +61/-0 | the gate's own account: runs, comparison, parity, teardown |
-| `.agent/gate_f061_r3/{branch,base}_failed.txt` | +0/-0 | both empty — the raw failure sets |
-| `.agent/gate_f061_r3/{branch,base}_only.txt` | +0/-0 | both empty — the two `comm` outputs |
-| `.agent/gate_f061_r3/{branch,base}_tail.txt` | +2/-0 each | the run tails and wall clock |
+| `tests/orchestration/test_dod_compiler.py` | +8/-1 | explicit ids so no node id reads as a local absolute path (deviation 1) |
 
-Every commit is under the 500-line limit.
+### 4 — `<closure>` chore(f061): close F061 — STATUS [x] + README sync
+
+| path | +/- | reason |
+| --- | --- | --- |
+| `docs/roadmap/STATUS.md` | +1/-1 | the F061 line only, `[~]` → `[x]` with the four recorded values |
+| `README.md` | +2/-2 | the two authored ledger edits (R-0154 pin: same commit as STATUS) |
+| `.agent/handoff.md` | rewrite | this report |
+| `.agent/last_block.md` | +N/-N | OUTCOME appended |
+
+The closure commit touches exactly `docs/roadmap/STATUS.md`, `README.md` and
+`.agent/` — nothing else.
 
 ---
 
-## The `dod_draft_v1` decision (as ordered)
+## Phase 2 gate — Built State
 
-**Registered: `dod_v1` only. `dod_draft_v1` is deliberately NOT registered.**
-
-Decided by reading `schemas/models.py` and its test:
-
-* The registry's own docstring says it is "the single source of truth for which
-  contract a tag means" — its job is resolving a tag a READER encounters. A
-  `dod_v1` payload is persisted (`<job evidence>/dod.json`) and therefore has
-  to be resolvable from its tag alone. A `dod_draft_v1` payload never leaves
-  `dod_compiler.compile_dod`'s own provider call: it is validated, converted to
-  `DoDCheck`s, and discarded. Nothing ever loads one back.
-* No existing entry is a draft or intermediate shape. `ReviewVerdict`,
-  `PlannerPlan`, `JobIntake` and `FlightPlan` are each the FINAL contract of
-  their step, and `DesignSpec` is a prepared placeholder — so the registry's
-  conventions do not include provider-facing draft schemas. The block's
-  condition for registering it is therefore not met.
-* The registry's compactness test caps tags at 6 characters with a documented
-  exemption list (`flight_plan_v1`, itself persisted in job JSON). `dod_v1` is
-  exactly 6 and needs no exemption; `dod_draft_v1` is 12 and would have forced
-  a documented guard to be widened for a tag nobody resolves.
-
-`test_the_provider_facing_dod_draft_is_not_registered` pins the absence with
-that reasoning, so a later round changes it deliberately rather than by drift.
-
----
-
-## Verification transcripts (raw)
-
-### Phase 1 gate — state-file readers
+Byte-append verified before committing: the authored bytes occur in the file
+**exactly once**, the file **ends** with them, and the prior content is intact
+as a prefix.
 
 ```
-$ python3 -m pytest tests/regression/test_resource_safety.py tests/orchestration/test_test_runner.py -q
-........................................................................ [100%]
-72 passed in 13.94s
-EXIT=0
-```
-
-### Phase 3 gate
-
-```
-$ python3 -m pytest tests/orchestration/test_dod_compiler.py tests/orchestration/test_dod_runners.py tests/orchestration/test_dod_gate.py -q
-........................................................................ [ 46%]
-........................................................................ [ 93%]
-..........                                                               [100%]
-154 passed in 8.16s
-EXIT=0
-
-$ python3 -m pytest tests/orchestration/schemas -q
-..............................................                           [100%]
-46 passed in 0.12s
+$ python3 -m pytest tests/docs/ -q
+........................................................................ [ 98%]
+.....                                                                    [100%]
+293 passed in 0.19s
 EXIT=0
 
 $ python3 -m pytest tests/cli/test_golden_path.py -q
 ..........................................                               [100%]
-42 passed in 15.06s
+42 passed in 15.18s
 EXIT=0
 ```
 
-### Phase 4 — integration gate (`docs/agents/integration_gate.md`)
-
-Merge base: `git merge-base HEAD main` → `1869d89a`. Branch HEAD at run time:
-`aebc3c11`.
-
-**Step 1 — branch run**, from the repo root:
+## Phase 3 — preconditions
 
 ```
-$ python3 -m pytest -n auto -q
-........................................................................ [ 99%]
-...............                                                          [100%]
-14900 passed, 19 skipped in 140.76s (0:02:20)
+$ remedy integrity check --json
+{
+  "version": 1,
+  "passed": true,
+  "fail_count": 0,
+  "check_count": 5,
+  "checks": [
+    {"name": "handler_import",     "status": "pass", "message": "handlers=320"},
+    {"name": "live_review_verdict","status": "pass", "message": "- R1: PASS (SPLIT round, 2026-08-01). Range 1869d89a..785f8cbd."},
+    {"name": "plan_consistency",   "status": "pass", "message": "unchecked=0, context_complete=False"},
+    {"name": "relevant_untracked", "status": "pass", "message": "untracked=0, relevant=0"},
+    {"name": "high_blockers_open", "status": "pass", "message": "no open blocker/high findings"}
+  ]
+}
 EXIT=0
-WALL=141.20 s
 
-$ grep '^FAILED' branch_run.log | sort > branch_failed.txt
-$ wc -l < branch_failed.txt
-0
-```
+$ git status --porcelain
+(no output)
 
-**Step 2 — base run**, identical command, throwaway worktree ON a throwaway
-branch (a detached base worktree fails the self-dogfood branch guard by design,
-DECISION D3):
-
-```
-$ git worktree add -b tmp/base-gate <path> 1869d89a
-Preparing worktree (new branch 'tmp/base-gate')
-HEAD is now at 1869d89a Merge pull request #171 from UndefinedDatabase/feature/f056-missions
-
-$ cp -r apps/ui/node_modules <path>/apps/ui/node_modules
-$ cp -r apps/ui/dist        <path>/apps/ui/dist
-
-$ cd <path> && git rev-parse HEAD && git branch --show-current
-1869d89a22718dce0f16c25289f927e8374571bb
-tmp/base-gate
-
-$ REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
-........................................................................ [ 99%]
-...                                                                      [100%]
-14744 passed, 19 skipped in 137.49s (0:02:17)
+$ git push -u origin feature/f061-dod-compiler
+ * [new branch]        feature/f061-dod-compiler -> feature/f061-dod-compiler
 EXIT=0
-WALL=137.94 s
-
-$ grep '^FAILED' base_run.log | sort > base_failed.txt
-$ wc -l < base_failed.txt
-0
 ```
 
-Parity was RESTORED before the base run (COPIED, never symlinked — the UI
-auto-build runs npm install and writes through a symlink into the primary
-checkout, F053 R3 evidence), which is the first of the two options the gate
-doc's R-0155 amendment allows. That is why the base run has no UI
-build-artifact failures to attribute.
+## Phase 4 — evidence job
 
-**Step 3 — compare:**
+**Evidence job `c5185517fa2443bf`.**
 
-```
-$ comm -13 base_failed.txt branch_failed.txt      # branch-only failures
-(no output)  — 0 lines
-
-$ comm -23 base_failed.txt branch_failed.txt      # failures the branch fixed
-(no output)  — 0 lines
-```
-
-**Step 4 — attribution:** nothing to attribute. `comm -13` is EMPTY, so the
-branch introduces no failure and no per-id serial re-run is required. `comm
--23` is EMPTY, so there is no base failure needing an environment-class
-attribution either — an unattributed `comm -23` id would have blocked the
-verdict, and there are none.
-
-Test-count delta 14900 − 14744 = **+156**, which is F061's own additions across
-R1–R3 and nothing else.
-
-**Teardown:**
+Producer: `job_evidence.create_manual_completion_bundle(review_feature_id="f061", …)`
+at `base_commit=1869d89a22718dce0f16c25289f927e8374571bb`,
+`head_commit=8dc6086c4da87ca2ec63c33c3e17904c29ee394d`.
 
 ```
-$ git worktree remove --force <path>
-$ git worktree prune
-$ git branch -D tmp/base-gate
-Deleted branch tmp/base-gate (was 1869d89a).
-
-$ git worktree list
-/home/decodeux/Repos/remedy  aebc3c11 [feature/f061-dod-compiler]
-
-$ ls -d <path>
-ls: cannot access '<path>': No such file or directory
+{"authority_count": 21, "commit_count": 27,
+ "head_commit": "8dc6086c4da87ca2ec63c33c3e17904c29ee394d",
+ "job_id": "c5185517fa2443bf", "manual_completion": true,
+ "operator_attested_tasks": ["T001", "T002", "T003"],
+ "partition": {"T001": 7, "T002": 7, "T003": 7},
+ "total_passed": 196, "verdict": "PASS_WITH_RISKS"}
 ```
 
-**Step 5 — budget:** 140.76s branch, 137.49s base. Neither run crosses the
-gate doc's ~5 min note threshold. The verdict itself is the reviewer's.
+Two real verification runs, both executed at this head:
 
-### Final state
+| run_id | command | exit | passed | node_ids |
+| --- | --- | --- | --- | --- |
+| `vr-0001` | `pytest tests/orchestration/test_dod_{compiler,runners,gate}.py -q` | 0 | 154 | 154 |
+| `vr-0002` | `pytest tests/cli/test_golden_path.py -q` | 0 | 42 | 42 |
+
+Every listed producer pitfall was handled at AUTHORING time, and asserted
+before the producer was called:
+
+* `test_files` sorted, files only — each `Path(f).is_file()` asserted; no
+  directory entries;
+* `output_hash` **omitted deliberately** so the producer derives it from the
+  STORED 2000-char `stdout_summary` (`job_evidence.py:1637-1644`) — supplying
+  one computed over the untruncated log is the documented trap;
+* real node ids from `--collect-only`, with `len(node_ids) == passed` asserted
+  per run;
+* `run_id` matched against `^vr-\d{4,}$`;
+* full-length 40-char `base_commit`.
+
+Coordinator validation over the produced bytes, BEFORE any zip was built:
+
+```
+ready_gate_matrix ok: True
+blocking_reasons: []
+validate_manual_completion: []
+is_valid_current_run: True
+validation_errors: []
+final_verifier reproducibility: VERIFIED_EQUAL
+token_truth authority: VERIFIED_EQUAL
+```
+
+### The rejected first bundle (recorded before the retry, as ordered)
+
+The first bundle — built at `03df53fb`, the original accepted HEAD — was
+REJECTED by that same pre-zip validation. Raw output:
+
+```
+ready_gate_matrix ok: False
+blocking_reasons: [
+ 'final_verifier_report.json test_status.passed cannot be confirmed: the VerificationTests total is missing or invalid',
+ 'verification_tests.json field verification_tests.runs[0].node_ids[39] carries a local absolute path',
+ 'verification_tests.json field verification_tests.runs[0].node_ids[40] carries a local absolute path',
+ 'verification_tests.json field verification_tests.runs[0].node_ids[41] carries a local absolute path']
+is_valid_current_run: False
+```
+
+The three ids:
+
+```
+39 tests/orchestration/test_dod_compiler.py::TestNonsenseSpecRejection::test_cwd_may_not_escape_the_worktree[/etc]
+40 …::test_cwd_may_not_escape_the_worktree[../outside]
+41 …::test_cwd_may_not_escape_the_worktree[a/../../b]
+```
+
+No zip was built from it. The rejected evidence dir was **deleted** before the
+rebuild (`rm -rf`), and the bundle was regenerated from scratch at the new head
+after the fix in commit 3. See deviation 1.
+
+## Phase 5 — review zip
+
+Built from a clean tree at `8dc6086c`, branch pushed first.
 
 ```
 $ git status --porcelain
 (no output)
+$ bash scripts/make_review_zip.sh --evidence-dir <evidence dir>
+{"member_count": 1750, "authoritative_count": 21, "symlink_count": 0,
+ "tombstone_count": 0,
+ "final_path": "remedy-review-20260801-190945-READY_FOR_REVIEW.zip",
+ "final_sha256": "486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8",
+ "publication_capability": "SUPPORTED", "package_status": "READY_FOR_REVIEW",
+ "evidence_authoritative": true, "review_subject_alignment": "PASS",
+ "manifest_sha256": "b116f33cc1d9b05e0cf8af5abb19b46986ea5f98f5889cdf48700bf7386b23e3"}
+
+REVIEW_PACKAGE_CREATED=true
+PACKAGE_STATUS=READY_FOR_REVIEW
+REVIEW_SUBJECT_ALIGNMENT=PASS
+EVIDENCE_AUTHORITATIVE=true
+Commit: 8dc6086c4da87ca2ec63c33c3e17904c29ee394d
+EXIT=0
 ```
 
-### Lint
+**package `remedy-review-20260801-190945-READY_FOR_REVIEW.zip`**
+**SHA-256 `486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8`**
+
+Recomputed independently from disk:
 
 ```
-$ python3 -m ruff check packages/orchestration/ tests/orchestration/schemas/
-UP035 [*] Import from `collections.abc` instead: `Iterable`, `Mapping`, `Sequence`
-  --> packages/orchestration/dag_schedule.py:36:1
-Found 1 error.
+$ sha256sum remedy-review-20260801-190945-READY_FOR_REVIEW.zip
+486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8  remedy-review-20260801-190945-READY_FOR_REVIEW.zip
 ```
 
-PRE-EXISTING and untouched by this round — `git stash` + re-run reproduces the
-same single error at base. `dag_schedule.py` is not in this round's scope, so
-it was left alone rather than swept up in a feature commit. Every file this
-round touched is ruff-clean.
+Required properties, each checked against the packaged bytes:
+
+| requirement | result |
+| --- | --- |
+| READY_FOR_REVIEW | `PACKAGE_STATUS=READY_FOR_REVIEW` |
+| is_valid_current_run true | True (pre-zip coordinator validation) |
+| validation_errors [] | `[]` |
+| ready_gate_matrix ok=true | True, `blocking_reasons: []` |
+| committed_review_subject spans BASE..accepted HEAD | `base_commit 1869d89a22718dce0f16c25289f927e8374571bb` → `head_commit 8dc6086c4da87ca2ec63c33c3e17904c29ee394d` (from the packaged `evidence/current/review_subject.json`) |
+| zip import check | see below |
+
+Zip integrity and import check over the PACKAGED sources (extracted to a
+temporary directory, imported there, then removed):
+
+```
+$ python3 -c "zipfile … testzip()"
+zip integrity testzip: OK (no bad member)
+
+$ cd <extracted> && python3 -c "import packages.orchestration.dod_{schema,compiler,runners,gate}; …"
+packaged modules import OK
+dod_v1 registered in packaged sources: True
+EXIT=0
+```
+
+## Phase 6 gates
+
+```
+$ python3 -m pytest tests/docs/ -q
+293 passed
+EXIT=0
+
+$ python3 -m pytest tests/cli/test_golden_path.py -q
+42 passed
+EXIT=0
+```
 
 ---
 
 ## Authored-text proofs
 
 ```
-$ sha256sum .agent/authored/f061-r3-1.md .agent/authored/f061-r3-2.md .agent/authored/f061-r3-3.md
-afdddec6f97e2ceb59783c34fb17d2b3a65bd2a49ccf008af47a26cfdd1b4339  .agent/authored/f061-r3-1.md
-0ff1ba92934894f37735f412fae47fc66e9e92746e71693db58dfd9b273b8a46  .agent/authored/f061-r3-2.md
-4501430fe7acd484b3a260eda414ebe62b9fe5bcd0b84c8d9307739350f6f250  .agent/authored/f061-r3-3.md
+$ sha256sum .agent/authored/f061-r4-1.md .agent/authored/f061-r4-2.md .agent/authored/f061-r4-3.md .agent/authored/f061-r4-4.md
+1d12e62d274729984399ec5050b594c1be42f2dca56075a4505f277a23edec10  .agent/authored/f061-r4-1.md
+c3a5bd8da1cb98c31ce26d6811c3b66a770c128fa6cb78c5e50d8d601c186165  .agent/authored/f061-r4-2.md
+45212872599183cb674e4d2795395a0761e0d71b57361cca4cbbb9fbbbed152d  .agent/authored/f061-r4-3.md
+0dbdb6eed0f24a458c3beaf33fc182fadf5d8fdb25579d11bdf7f9811d3f3876  .agent/authored/f061-r4-4.md
 ```
 
-All three match their BEGIN-marker hashes exactly. As in R1/R2 the payloads
-arrived two-space indented from the transport; the unindented form hashes to
-the marker value and the indented form does not, so the unindented text is the
-authored text (R-0148 transport-wrap guard, resolved in favour of the hash).
+All four match their BEGIN-marker hashes.
+
+**Transport wrap (R-0148), f061-r4-3:** its TO line arrived wrapped across
+three lines. Both candidate forms were hashed before anything was written:
 
 ```
-$ cmp .agent/authored/f061-r3-2.md .agent/plan.md ; echo EXIT=$?
+wrapped      28a2bf4956ebec25de3b8d510b8313e081ace0626f840c2e6946daefad546342
+single-line  45212872599183cb674e4d2795395a0761e0d71b57361cca4cbbb9fbbbed152d  MATCH
+```
+
+The single-line form is therefore the authored text — the same resolution the
+F056 r4-3 precedent recorded, decided by the hash rather than by appearance.
+
+```
+$ cmp .agent/authored/f061-r4-1.md .agent/live_review.md ; echo EXIT=$?
 EXIT=0
-$ cmp .agent/authored/f061-r3-3.md .agent/context.md ; echo EXIT=$?
-EXIT=0
 ```
 
-`live_review.md` differs from its authored file by EXACTLY the one ordered
-line:
+**STATUS grep proof.** The FROM/TO strings were read out of the saved authored
+file (`splitlines()[1]` and `[3]`), never retyped. Substituting the four
+recorded values BACK into the applied line reproduces the authored TO line
+byte-for-byte:
 
 ```
-$ diff .agent/authored/f061-r3-1.md .agent/live_review.md
-41a42
->   Done: R-0165 (commit d5604c51).
+round-trip identical to authored TO line: True
+
+FROM count after: 0
+TO   count after: 1
+$ git diff --numstat docs/roadmap/STATUS.md
+1	1	docs/roadmap/STATUS.md
 ```
 
-`docs/` untouched, as ordered:
+Applied line:
 
 ```
-$ git diff --stat ef60758b..HEAD -- docs/
-(no output)
+- [x] F061 — Definition-of-Done compiler (T001–T004 complete; accepted 2026-08-01 · live review PASS — ACCEPTED · Evidence job c5185517fa2443bf · package remedy-review-20260801-190945-READY_FOR_REVIEW.zip · SHA-256 486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8 · accepted HEAD 8dc6086c4da87ca2ec63c33c3e17904c29ee394d)
 ```
 
----
+**README grep proof** — both authored edits, each FROM gone and each TO present
+exactly once:
 
-## What was built
-
-**R-0165 — compile-time runtime_flow step validation.** `_validate_flow_step`
-enforces the v1 vocabulary where the feature file says detectable nonsense
-belongs — at compile time: the action must be `open`, `path` must be a
-non-empty string starting with `/`, the step key set is closed to
-`{action, path, expect_status, expect_text}`, `expect_status` must be an
-integer status code (a bool is refused explicitly — `True` is an `int` in
-Python but is not a status), and `expect_text` must be a string. Every message
-names the step INDEX, because a flow can carry a dozen steps and "invalid step"
-would send a reader through all of them.
-
-The runner's own guard is untouched (`git status --porcelain
-packages/orchestration/dod_runners.py` was empty across the fix commit): it
-remains the defence for DoDs stored before this rule existed.
-
-The fixtures and their goldens needed NO edit — `git status --porcelain
-tests/orchestration/fixtures/` stayed empty throughout, as the block required.
-
-**dod_v1 registration.** `SCHEMA_REGISTRY` now maps `dod_v1 -> DoD`, in
-`schemas/models.py`, by that module importing `dod_schema` — not as an import
-side effect from `dod_schema`. See deviation 1 for the cycle that had to be
-broken to make that possible, which is the same cycle that caused R1 to defer
-this item.
+```
+FROM gone: True | TO once: True  <- 31 of 252 registered items accepted. Next: F062 (Product smoke as the closing gate).
+FROM gone: True | TO once: True  <- | 1 | Self-Build Bootstrap | 15 | 22 |
+$ git diff --numstat README.md
+2	2	README.md
+```
 
 ---
 
 ## Deviations & assumptions (A9)
 
-1. **The registration required extracting the shared bases into a new leaf
-   module, `packages/orchestration/structured_base.py`.** This is more than the
-   "one line" the block anticipated, and it is why R1 deferred the item.
+1. **Accepted HEAD is `8dc6086c`, not commit 2 (`03df53fb`).** The block set
+   accepted HEAD = commit 2, assuming no further content commit. The first
+   evidence bundle, built at `03df53fb`, was rejected by the packaging
+   validator because three R1-era parametrize cases produce node ids that read
+   as local absolute paths (`…test_cwd_may_not_escape_the_worktree[/etc]`).
 
-   The cycle is real and I proved it before working around it: `dod_schema`
-   imported `_Strict`/`_Structured` from `schemas.models`, so `models`
-   importing `DoD` closed a loop. Importing `dod_schema` first produced:
+   I fixed the cause rather than working around it: the three cases now carry
+   explicit ids (`absolute`, `parent-escape`, `nested-escape`). This is a
+   genuine improvement — a node id embedding `/etc` is hostile to any tooling
+   that scans a bundle for leaked paths — and it changes no assertion; the
+   suite is still 154 passed.
 
-   ```
-   ImportError: cannot import name 'DOD_SCHEMA_V' from partially initialized
-   module 'packages.orchestration.dod_schema' (most likely due to a circular
-   import)
-   ```
+   The protocol supports this ordering: "the zip is built from a clean tree
+   after all CONTENT commits — the reviewed head the manifest records as
+   accepted HEAD." Commit 3 is that content commit, so the zip, the manifest's
+   `committed_review_subject.head_commit`, and the STATUS line all name
+   `8dc6086c` consistently. **The reviewer should confirm this substitution**,
+   since it changes a value the block specified.
 
-   A `schemas/base.py` does NOT fix it — importing any module under that
-   package runs `schemas/__init__.py`, which imports `models`, re-entering the
-   same loop (I tried it, and it failed the same way). The base module has to
-   sit OUTSIDE the package, which is why it landed at
-   `packages/orchestration/structured_base.py`. `models` re-exports both names,
-   so every existing `from ...schemas.models import _Strict` still works, and
-   the dependency is now one-directional:
-   `structured_base ← dod_schema ← models`.
+   Rejected alternatives, both dishonest: narrowing the verification run to
+   deselect the three tests (hiding evidence to satisfy a validator), or
+   hand-editing the produced `verification_tests.json`.
 
-   Verified from all four entry points (`dod_schema`, `schemas`,
-   `schemas.models`, `dod_compiler` imported first): each resolves and
-   `SCHEMA_REGISTRY['dod_v1'] is DoD`.
+2. **The rejected bundle was deleted before the rebuild**, and no zip was ever
+   built from it — so there is no failed package to report, only a failed
+   pre-zip validation, recorded above with its raw `blocking_reasons`.
 
-2. **Three tests in `test_dod_runners.py` were adjusted** — a file not named in
-   this round's scope. R-0165 makes their inputs unconstructible: they built
-   flow checks with an unknown action or a missing path through the validating
-   `DoDCheck(...)` constructor, which now refuses them.
+3. **`output_hash` was deliberately omitted** from the verification runs so the
+   producer derives it from the stored 2000-char `stdout_summary`. Supplying it
+   by hand is exactly how the documented pitfall is hit.
 
-   The runner code is untouched. What changed is how those tests obtain their
-   input: a new `legacy_flow()` helper builds the check via `model_construct`,
-   with a docstring saying it represents a DoD STORED before R-0165 — which is
-   exactly what the runner's surviving guard defends. The tests now prove the
-   guard against the only input that can still reach it. The third test simply
-   uses a valid step, since it only needed *a* runtime_flow check.
+4. **The "zip import check" was interpreted as an import smoke over the
+   packaged sources**, since no dedicated import-check script exists in
+   `scripts/`. I extracted the zip to a temporary directory, imported the four
+   F061 modules from the packaged tree, confirmed `dod_v1` resolves there, and
+   removed the directory. `testzip()` reported no bad member.
 
-3. **One R2 parametrize case in `test_dod_compiler.py` was re-pointed.** The
-   case `{"steps": [{"expect": "200"}]}` asserted the "non-empty 'action'"
-   message; with a closed key set it is now caught one rule earlier, by the
-   unknown-key check. The step is still refused — with a more specific message.
-   The case now uses `{"path": "/x"}`, which has only legal keys and still
-   proves the missing-action rule. No fixture or golden was involved, so the
-   block's STOP condition (which is scoped to fixtures and goldens) did not
-   fire.
+5. **`verdict: PASS_WITH_RISKS`** is what the manual-completion producer emits
+   for an operator-attested bundle (its documented value for this path, matching
+   the reference shape test) — it is not a new risk finding. Open findings
+   remain 0; R-0164 and R-0165 are both Resolved.
 
-4. **`expect_status` accepts an int-valued float** (`200.0`), because JSON
-   round-trips can produce one; a non-integral float (`200.5`) and a bool are
-   both refused. Pinned by tests either way.
+6. **Evidence dir kept outside the repo** (session scratch), so it never enters
+   the base..HEAD review subject — the F147 attempt-2 lesson. Nothing was
+   committed from it; `git status --porcelain` stayed empty throughout.
 
-5. **The pre-existing ruff error in `dag_schedule.py` was left alone.** It
-   reproduces at base and the file is outside this round's scope; fixing it
-   inside a feature commit would mix an unrelated cleanup into the diff.
-
-6. **No mutation red-proofs were run**, so the only worktree created was the
-   integration gate's, and it was removed, pruned, and its branch deleted —
-   proven with `git worktree list`.
+7. **The pre-existing `dag_schedule.py` ruff error** (R3 deviation 5) is still
+   present and still out of scope. It reproduces at base.
 
 ---
 
-## Open items for the next round
+## Closure-candidate findings
 
-- **Closure** per `docs/roadmap/STATUS_closure_protocol.md` — its own round:
-  Built State in the feature file, preconditions, evidence job, fresh review
-  zip, STATUS `[x]` + README sync as the last commit, PR. `docs/roadmap/` is
-  still untouched and STATUS still reads `[~]`.
-- Nothing compiles a DoD at job creation yet: the gate is wired and proven, but
-  production wiring that CALLS `compile_dod` is downstream scope (F062
-  registers standard checks into the seam; F069/F070 consume it). Worth naming
-  explicitly in the Built State so the feature is not read as claiming more
-  than it does.
+None raised during this closure round.
+
+---
+
+## Runtime actuals
+
+4 rounds (R1–R4) on 2026-08-01. R3 integration gate: branch 14900 passed / 19
+skipped in 140.76s, base 14744 / 19 in 137.49s, both exit 0. Tokens/cost:
+**not-measured** — the ledger has no per-round token record for this feature.
+
+## Honest boundary
+
+DoD compilation is **not yet wired into job creation**. The schema, compiler,
+all five runners, the gate seam, the report matrix and the CLI are built and
+proven; what does not exist yet is a production caller of `compile_dod` at real
+job start. F062 registers the product-smoke standard check into the seam, and
+F069/F070 wire compilation into the mission/orchestrator flow. The Built State
+section records this in the feature file so the closure cannot be read as
+claiming more than was built.

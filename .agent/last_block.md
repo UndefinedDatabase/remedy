@@ -1,4 +1,11 @@
-OUTCOME: pending
+OUTCOME: executed — F061 CLOSED. Built State appended, preconditions green
+(integrity passed=true, tree clean, branch pushed), Evidence job
+c5185517fa2443bf, package remedy-review-20260801-190945-READY_FOR_REVIEW.zip
+SHA-256 486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8,
+STATUS [x] + README synced in one commit, PR opened and NOT merged.
+Deviation: accepted HEAD is 8dc6086c (one extra content commit — the first
+evidence bundle was rejected for path-shaped node ids; fixed at the source and
+rebuilt). See .agent/handoff.md for raw transcripts and seven A9 deviations.
 
 You are the WORKER for F061 — Definition-of-Done compiler (Tier 1), round R4:
   CLOSURE per docs/roadmap/STATUS_closure_protocol.md (v4) — read it and follow
