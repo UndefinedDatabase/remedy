@@ -1,0 +1,2 @@
+WALL=141.20 s
+14900 passed, 19 skipped in 140.76s (0:02:20)
