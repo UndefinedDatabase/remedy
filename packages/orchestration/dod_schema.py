@@ -50,7 +50,8 @@ TRACEABILITY_RULE = "every plan acceptance line traceable to a check id"
 
 #: What a check runs. ``runtime_flow`` is schema-valid from R1 on, but has no
 #: runner until T003 — the runner registry fails loud on it rather than passing.
-CheckKind = Literal["pytest", "lint", "build", "runtime_flow", "custom_cmd"]
+CheckKind = Literal["pytest", "lint", "build", "runtime_flow", "custom_cmd",
+                    "product_smoke"]
 
 #: Where a check came from. ``compiled`` = proposed by the provider from user
 #: intent; ``plan_acceptance`` = generated to cover a plan acceptance line;
@@ -75,6 +76,10 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
     "build": frozenset({"tool", "args", "paths"}),
     "custom_cmd": frozenset({"argv"}),
     "runtime_flow": frozenset({"steps"}),
+    # F062: the product-smoke block. ``smoke`` names WHICH smoke check this is;
+    # the block that emits it and the runner that executes it agree on the
+    # vocabulary, so an unknown name is refused here rather than at run time.
+    "product_smoke": frozenset({"smoke", "retry"}),
 }
 
 #: The v1 runtime_flow vocabulary (R-0165). One action, and a closed set of
@@ -84,6 +89,11 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
 #: stored before this rule existed.
 FLOW_ACTION_OPEN = "open"
 _FLOW_STEP_KEYS = frozenset({"action", "path", "expect_status", "expect_text"})
+
+#: The product-smoke check names (F062). Kept here, not imported from
+#: ``product_smoke``, so the schema stays a leaf: the block imports the schema,
+#: never the other way round.
+SMOKE_CHECK_NAMES: tuple[str, ...] = ("app_starts",)
 
 
 class DoDSpecError(ValueError):
@@ -179,6 +189,15 @@ def validate_check_spec(kind: str, spec: dict[str, Any]) -> None:
             raise DoDSpecError("runtime_flow spec needs a non-empty 'steps' list")
         for i, step in enumerate(steps):
             _validate_flow_step(i, step)
+    elif kind == "product_smoke":
+        smoke = _require_nonempty_str(spec, "smoke", kind)
+        if smoke.strip() not in SMOKE_CHECK_NAMES:
+            raise DoDSpecError(
+                f"product_smoke spec 'smoke' names an unknown check: "
+                f"{smoke!r} (known: {', '.join(SMOKE_CHECK_NAMES)})")
+        if "retry" in spec and not isinstance(spec["retry"], bool):
+            raise DoDSpecError(
+                f"product_smoke spec 'retry' must be a bool, got {spec['retry']!r}")
 
 
 def _validate_flow_step(i: int, step: Any) -> None:
