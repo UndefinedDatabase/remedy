@@ -58,4 +58,4 @@ appended exactly once, `decisions.md` ends with the payload bytes.
 ## Next
 
 Merge PR #173 (standing approval), then F062 per Rule A5 in a fresh
-Window-1 session; `.agent/candidates.md` is empty at claim time.
+Window-1 session; candidates file empty at claim. One trim commit: 61→60.
