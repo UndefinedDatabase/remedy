@@ -1,4 +1,10 @@
-OUTCOME: pending
+OUTCOME: executed — F062 CLOSED. Built State recorded; integrity passed true;
+Evidence job 76ee4cb7318e409e; package
+remedy-review-20260801-214231-READY_FOR_REVIEW.zip SHA-256
+46e684f5954a32c92994781a734bf3c26d830ba288e63d48fe4d5dc441b8ab29;
+STATUS [x] + README synced in one commit; PR #174 open, NOT merged.
+Accepted HEAD 52a283cf (one extra content commit — the first evidence bundle
+was rejected for a path-shaped node id; fixed at the source and rebuilt).
 
 You are the Remedy worker (Window 2) for feature F062, round R4: CLOSURE per
   docs/roadmap/STATUS_closure_protocol.md (v4) — read it and follow it
