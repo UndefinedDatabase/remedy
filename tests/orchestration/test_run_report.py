@@ -209,6 +209,10 @@ GOLDEN_GREEN = """\
 
 Nothing blocked.
 
+## Definition of Done
+
+Definition of Done: not recorded.
+
 ## Open decisions
 
 No open decisions.
@@ -274,6 +278,10 @@ GOLDEN_BLOCKED = """\
 - `cccccccc` — needs a decision on the migration order — class: needs_decision — [postmortem](tasks/cccccccc/postmortem.json)
   - answer with: `remedy decision resolve 22222222 td:cccccccc --reason "<your answer>"`
 
+## Definition of Done
+
+Definition of Done: not recorded.
+
 ## Open decisions
 
 Open decisions: 1 — the run needs an answer
@@ -336,6 +344,10 @@ GOLDEN_BUDGET = """\
 ## Blocked
 
 - `eeeeeeee` — budget exhausted before the task finished — class: budget_exhausted — [postmortem](tasks/eeeeeeee/postmortem.json)
+
+## Definition of Done
+
+Definition of Done: not recorded.
 
 ## Open decisions
 

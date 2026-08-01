@@ -457,6 +457,17 @@ CATALOG: tuple[CommandEntry, ...] = (
     ),
 
     CommandEntry(
+        command_id="job.dod",
+        group_id="job",
+        subcommand="dod",
+        description="Show the Definition-of-Done check matrix for a job (F061).",
+        action_class="read_only",
+        args=(_JOB_ID, _JSON_OPT),
+        supports_json=True,
+        related=("job.report", "job.status"),
+    ),
+
+    CommandEntry(
         command_id="job.fulfill",
         group_id="job",
         subcommand="fulfill",

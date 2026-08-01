@@ -252,6 +252,19 @@ class BlockedItem:
 
 
 @dataclass(frozen=True)
+class DoDCheckRow:
+    """One row of the Definition-of-Done matrix, already resolved to text."""
+
+    check_id: str
+    kind: str
+    blocking: bool
+    status: str
+    #: Named reason for a red check; "" when it passed.
+    reason: str = ""
+    duration_ms: int = 0
+
+
+@dataclass(frozen=True)
 class ReportSources:
     """Everything the report renders, already structured.
 
@@ -289,6 +302,10 @@ class ReportSources:
     status_mirror: StatusMirror | None = None
     #: F053 next feature capability line ("can next"), supplied by the caller.
     next_capability: str = ""
+    #: F061 T004 — the Definition-of-Done matrix, one row per check.
+    dod_checks: tuple[DoDCheckRow, ...] = ()
+    #: The gate's verdict: None when the job was never gated (no DoD).
+    dod_released: bool | None = None
     notes: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -425,6 +442,42 @@ def _blocked_lines(sources: ReportSources) -> list[str]:
         if item.answer_command:
             body.append(f"  - answer with: `{item.answer_command}`")
     lines += _capped(body, MAX_BLOCKED_LINES, "blocked items")
+    lines.append("")
+    return lines
+
+
+def _dod_lines(sources: ReportSources) -> list[str]:
+    """The Definition-of-Done matrix (F061 T004).
+
+    A job nobody compiled a DoD for renders ``not recorded`` — the same rule as
+    every other absent source (P6). A gated job gets the full matrix, including
+    the non-blocking reds, which are reported here precisely because they did
+    NOT gate anything.
+    """
+    lines = ["## Definition of Done", ""]
+    if not sources.dod_checks:
+        lines += [f"Definition of Done: {NOT_RECORDED}.", ""]
+        return lines
+
+    if sources.dod_released is True:
+        lines += ["Every blocking check is green — the gate released.", ""]
+    elif sources.dod_released is False:
+        blocking_red = [c.check_id for c in sources.dod_checks
+                        if c.blocking and c.status != "passed"]
+        lines += [
+            "The gate is HOLDING this job open: "
+            f"{len(blocking_red)} blocking check(s) red "
+            f"({', '.join(blocking_red) or 'unnamed'}).", ""]
+
+    lines.append("| check | kind | blocking | status | reason | duration |")
+    lines.append("| --- | --- | --- | --- | --- | --- |")
+    body = [
+        f"| `{_text(c.check_id)}` | {_text(c.kind)} "
+        f"| {'yes' if c.blocking else 'no'} | **{_text(c.status)}** "
+        f"| {_text(c.reason) if c.reason else '-'} | {_as_int(c.duration_ms)}ms |"
+        for c in sources.dod_checks
+    ]
+    lines += _capped(body, MAX_TASK_LINES, "checks")
     lines.append("")
     return lines
 
@@ -604,6 +657,7 @@ def render_report_from_sources(sources: ReportSources, *,
     lines += _header_lines(sources, mode, rendered_at)
     lines += _task_lines(sources)
     lines += _blocked_lines(sources)
+    lines += _dod_lines(sources)
     lines += _decision_lines(sources)
     lines += _cost_lines(sources)
     lines += _cycle_lines(sources)
@@ -739,6 +793,29 @@ def _evidence_sources(job: Any) -> dict[str, Any]:
             extra["cost_basis"] = tuple(counters.actual_sources)
             extra["elapsed_seconds"] = counters.elapsed_seconds
     except Exception:  # noqa: BLE001 — no actuals is "not recorded", never a zero
+        pass
+
+    # F061 T004: the gate persists its last run beside the report. Absent file
+    # = the job was never gated, which renders "not recorded" — never a green.
+    try:
+        from packages.orchestration.dod_gate import load_gate_result
+
+        recorded = load_gate_result(job_id)
+        if recorded is not None:
+            extra["dod_released"] = bool(recorded.get("released"))
+            extra["dod_checks"] = tuple(
+                DoDCheckRow(
+                    check_id=str(c.get("check_id", "")),
+                    kind=str(c.get("kind", "")),
+                    blocking=bool(c.get("blocking")),
+                    status=str(c.get("status", "")),
+                    reason=str(c.get("reason", "") or ""),
+                    duration_ms=_as_int(c.get("duration_ms")),
+                )
+                for c in (recorded.get("checks") or [])
+                if isinstance(c, dict)
+            )
+    except Exception:  # noqa: BLE001 — an unreadable gate record is "not recorded"
         pass
 
     try:
