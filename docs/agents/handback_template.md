@@ -36,7 +36,9 @@ the commit that writes it (R-0149 pattern).
 ## External actions
 
 Every push, PR create/edit/merge, gh command, worktree add/remove —
-command + outcome. `None` if none.
+command + outcome. PR create entries include the resulting PR
+number (DECISION 2026-08-01 — the F056 closure handoff omitted it).
+`None` if none.
 
 ## Verification
 
