@@ -38,7 +38,7 @@
 - [x] F052 — Self-healing test rounds (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 3b0b36c3-35c9-4b08-9f33-9d901bea839e · package remedy-review-20260731-095109-READY_FOR_REVIEW.zip · SHA-256 2f3fd6032cdaceca4461702b128b77a300485eb171a704081df18852d6224efe · accepted HEAD 2203610776926c76956423346c889503516f08d4)
 - [x] F053 — Final & interim report (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job b4d6d7f5-8059-4c23-8f65-d47b319f35bd · package remedy-review-20260731-150146-READY_FOR_REVIEW.zip · SHA-256 64bcc0c5a97b6ce0c742db1feff61f55fb7b583fb24b9cb6ca864c40bc0a7b6c · accepted HEAD 8cca01f4150ba14791de367e78cd9b39599c299d)
 - [x] F056 — Missions: persistent goal, jobs as execution units (T001–T003 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 057a2de1dde14778 · package remedy-review-20260731-210415-READY_FOR_REVIEW.zip · SHA-256 b732f0bdd0a334a62091b127f4efbd392f612de98ec2a687f27e1ef36fd7e555 · accepted HEAD eaa86f51c5ae72ed4e310cdeb249eba3142c7e7c)
-- [ ] F061 — Definition-of-Done compiler
+- [~] F061 — Definition-of-Done compiler
 - [ ] F062 — Product smoke as the closing gate
 - [ ] F069 — Mission compiler
 - [ ] F070 — Orchestrator loop inside Remedy
