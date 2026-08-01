@@ -21,12 +21,9 @@ additions, readiness window); then the integration gate per
 docs/agents/integration_gate.md. Per-slice verification, stop-on-red.
 
 ## Next Steps
-- R2: T002 core_paths_respond + path extraction hand-off from the DoD
-  compiler + fixtures (ok, wrong status, missing marker).
-- R3: T003 clean_console + the documented pattern list +
-  teardown-always (no zombie processes even on red); then the
-  integration gate per docs/agents/integration_gate.md.
-- R4: closure per docs/roadmap/STATUS_closure_protocol.md.
+- R3: closure per docs/roadmap/STATUS_closure_protocol.md (its own
+  round: Built State, preconditions, evidence job, review zip,
+  STATUS [x] + README sync, PR).
 
 ## Risks
 - The harness owns process semantics; the smoke only ORCHESTRATES its
