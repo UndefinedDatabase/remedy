@@ -18,7 +18,9 @@ HTTP-level — no browser dependency (reject any diff adding one).
   even on red) + the smoke config table; THEN the integration gate
   per docs/agents/integration_gate.md — per-slice verification,
   stop-on-red.
-- R3: closure per docs/roadmap/STATUS_closure_protocol.md.
+- R3: repair — R-0167 (a disabled smoke must not start the app) +
+  scoped re-verification.
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Findings
 - R-0166 (process, Low) 2026-08-01: handback form, two defects:
@@ -31,7 +33,18 @@ HTTP-level — no browser dependency (reject any diff adding one).
   Fix: push as the FIRST action of R2; every later handback follows
   a push and tables ALL commits (grouped self-reference allowed).
   Done: R-0166 (pushed; this handback tables all commits).
-- Next free ID: R-0167.
+- R-0167 (behavior, Low) 2026-08-01: `smoke.enabled = false` does not
+  stop execution. The block contributes the honest "disabled by
+  config" row (compile-time, pinned by test), but its spec is an
+  ordinary `app_starts`, so `_run_product_smoke` still STARTS the
+  app at run time — the off switch reports correctly yet still costs
+  a full start-probe-stop cycle. Fix: the runner consults
+  `smoke_config()["enabled"]` and refuses EARLY (no process started,
+  mirroring the not-applicable path) with a distinct reason and the
+  "disabled by config" text; pin with a test that a disabled run
+  starts nothing (argv empty, duration 0, marker file untouched) and
+  is not green. Compile-time contribution stays as is.
+- Next free ID: R-0168.
 
 ## Verdicts
 - R1: PASS (SPLIT round, 2026-08-01). Range b836d364..1e3e58b0 plus
@@ -48,3 +61,20 @@ HTTP-level — no browser dependency (reject any diff adding one).
   _run_app_once extraction sharing the process discipline, harness
   semantics untouched. R-0166 registered (handback form, Low).
   LAST_REVIEWED_SHA = 30177869.
+- R2: PASS — INTEGRATION GATE PASS (LARGE round, 2026-08-01). Range
+  30177869..4d78cd12 (10 commits, all tabled). Reviewer re-ran:
+  scoped 237 + canary 42, exit 0; OWN full suite at HEAD 14969
+  passed / 19 skipped, exit 0 — matching the branch evidence in
+  .agent/gate_f062_r2/; base 14900/19 exit 0 (worker raw, count
+  delta +69 = exactly test_product_smoke.py); both comm directions
+  EMPTY, nothing to attribute, flake debt 0. Transport cmp 0
+  disk-to-disk (three texts, scratchpad originals); the worker's
+  stray-blank-line application fumble was reverted pre-commit and
+  disclosed. R-0166 verified fixed (pushed head = branch head, all
+  commits tabled) — Done stands. Deviations 1–4 accepted:
+  not-applicable/disabled contribute ONE honest row; path and
+  console failures are never retried; clean_console judged before
+  any pass; paths REPLACE while error_patterns only ADD. R-0167
+  registered (disabled smoke still starts the app, Low). Only this
+  round carries the full-suite claim: FULL SUITE GREEN.
+  LAST_REVIEWED_SHA = 4d78cd12.
