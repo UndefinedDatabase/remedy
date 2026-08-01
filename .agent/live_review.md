@@ -30,6 +30,7 @@ HTTP-level — no browser dependency (reject any diff adding one).
   exception allows a grouped self-reference table, not an omission.
   Fix: push as the FIRST action of R2; every later handback follows
   a push and tables ALL commits (grouped self-reference allowed).
+  Done: R-0166 (pushed; this handback tables all commits).
 - Next free ID: R-0167.
 
 ## Verdicts
