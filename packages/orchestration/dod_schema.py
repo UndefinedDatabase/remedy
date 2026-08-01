@@ -101,6 +101,21 @@ def _require_nonempty_str(spec: dict[str, Any], key: str, kind: str) -> str:
     return value
 
 
+def _reject_flag_shaped(value: str, field: str, kind: str) -> None:
+    """Refuse a leading-dash value in a position that names a THING, not an option.
+
+    R-0164: a pytest selector of ``"-x"``, or a tool/argv[0] of ``"--version"``,
+    is well-formed as a string but is an OPTION, not a test path or a program.
+    Left alone it lands in the argv where a selector or an executable belongs
+    and silently changes what runs — exactly the detectable nonsense the feature
+    file orders refused at compile time.
+    """
+    if value.lstrip().startswith("-"):
+        raise DoDSpecError(
+            f"{kind} spec {field!r} must name a target, not an option: "
+            f"{value!r} starts with '-'")
+
+
 def _validate_cwd(spec: dict[str, Any]) -> None:
     """A spec cwd stays inside the worktree — checked before anything runs."""
     if "cwd" not in spec:
@@ -135,10 +150,12 @@ def validate_check_spec(kind: str, spec: dict[str, Any]) -> None:
     _validate_cwd(spec)
 
     if kind == "pytest":
-        _require_nonempty_str(spec, "selector", kind)
+        _reject_flag_shaped(
+            _require_nonempty_str(spec, "selector", kind), "selector", kind)
         _require_str_list(spec, "args", kind)
     elif kind in ("lint", "build"):
-        _require_nonempty_str(spec, "tool", kind)
+        _reject_flag_shaped(
+            _require_nonempty_str(spec, "tool", kind), "tool", kind)
         _require_str_list(spec, "args", kind)
         _require_str_list(spec, "paths", kind)
     elif kind == "custom_cmd":
@@ -146,6 +163,7 @@ def validate_check_spec(kind: str, spec: dict[str, Any]) -> None:
         if not isinstance(argv, list) or not argv:
             raise DoDSpecError("custom_cmd spec needs a non-empty 'argv' list")
         _require_str_list(spec, "argv", kind)
+        _reject_flag_shaped(str(argv[0]), "argv[0]", kind)
     elif kind == "runtime_flow":
         steps = spec.get("steps")
         if not isinstance(steps, list) or not steps:

@@ -206,6 +206,47 @@ class TestNonsenseSpecRejection:
                 "id": "c1", "kind": "telepathy", "spec": {}})
         assert "kind" in str(exc.value)
 
+    # R-0164: a leading dash in a position that names a THING, not an option.
+    # Left alone, "-x" lands in the argv where a selector or a program belongs
+    # and silently changes what runs.
+
+    def test_flag_shaped_pytest_selector_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            DraftCheck(id="c1", kind="pytest", spec={"selector": "-x"})
+        message = str(exc.value)
+        assert "'selector'" in message
+        assert "'-x'" in message
+
+    @pytest.mark.parametrize("kind", ["lint", "build"])
+    def test_flag_shaped_tool_is_refused(self, kind):
+        with pytest.raises(Exception) as exc:
+            DraftCheck(id="c1", kind=kind, spec={"tool": "--version"})
+        message = str(exc.value)
+        assert "'tool'" in message
+        assert "'--version'" in message
+
+    def test_flag_shaped_custom_cmd_program_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            DraftCheck(id="c1", kind="custom_cmd",
+                       spec={"argv": ["--help", "please"]})
+        message = str(exc.value)
+        assert "'argv[0]'" in message
+        assert "'--help'" in message
+
+    def test_leading_whitespace_does_not_smuggle_a_flag_through(self):
+        with pytest.raises(Exception) as exc:
+            DraftCheck(id="c1", kind="pytest", spec={"selector": "  -x"})
+        assert "'selector'" in str(exc.value)
+
+    def test_a_dash_after_the_first_character_is_still_fine(self):
+        """Only the FIRST token position is constrained — real names have dashes."""
+        assert DraftCheck(
+            id="c1", kind="custom_cmd",
+            spec={"argv": ["npm-run", "--silent", "test"]}).spec["argv"][1] == "--silent"
+        assert DraftCheck(
+            id="c2", kind="pytest",
+            spec={"selector": "tests/test_a-b.py", "args": ["-x"]}).spec["args"] == ["-x"]
+
     @pytest.mark.parametrize("cwd", ["/etc", "../outside", "a/../../b"])
     def test_cwd_may_not_escape_the_worktree(self, cwd):
         with pytest.raises(Exception) as exc:
