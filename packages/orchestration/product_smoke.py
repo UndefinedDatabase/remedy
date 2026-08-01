@@ -93,6 +93,10 @@ _FILE_SUFFIXES = (".py", ".md", ".json", ".toml", ".yaml", ".yml", ".txt",
 #: the honest third answer.
 NOT_APPLICABLE_MESSAGE = "smoke: not applicable (no runtime configured)"
 
+#: What a project whose smoke is switched OFF is told. One constant, shared by
+#: the compile-time row and the run-time refusal, so the two can never drift.
+DISABLED_MESSAGE = "smoke: disabled by config (smoke.enabled = false)"
+
 #: Recorded when the first attempt failed and the retry succeeded — a pass
 #: that is visibly less trustworthy than a first-attempt pass (A9).
 PASSED_ON_RETRY = "passed on retry"
@@ -273,9 +277,7 @@ def smoke_checks(ctx: StandardCheckContext) -> list[DraftCheck]:
     if not config["enabled"]:
         # Switched off for a project that HAS an app. Say so — a disabled
         # smoke is a reported fact, not an absent row and not a pass.
-        return [app_starts_check(
-            blocking=False,
-            description="smoke: disabled by config (smoke.enabled = false)")]
+        return [app_starts_check(blocking=False, description=DISABLED_MESSAGE)]
 
     # Ordered: the app must start before probing it is meaningful, and the
     # console is judged over the output the whole run produced.

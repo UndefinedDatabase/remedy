@@ -99,6 +99,10 @@ REASON_SMOKE_NOT_APPLICABLE = "smoke_not_applicable"
 REASON_SMOKE_START_FAILED = "smoke_start_failed"
 REASON_SMOKE_PATH_FAILED = "smoke_path_failed"
 REASON_SMOKE_DIRTY_CONSOLE = "smoke_dirty_console"
+#: R-0167: the off switch actually switches things off — a disabled smoke
+#: refuses BEFORE any process starts, distinct from not-applicable so a
+#: reader can tell "no app here" from "we chose not to look".
+REASON_SMOKE_DISABLED = "smoke_disabled"
 
 #: How many matched console lines a red clean_console quotes. Enough to
 #: act on, bounded so one screaming app cannot flood the evidence.
@@ -652,14 +656,18 @@ def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
 
     A project with no runnable app is NOT gated: the check reports
     ``smoke_not_applicable`` and, being contributed non-blocking, is reported
-    without holding anything. Never silently green.
+    without holding anything. Never silently green. A smoke switched off by
+    config refuses the same way — ``smoke_disabled``, before any process
+    starts — so the off switch costs nothing and still says so.
     """
     from packages.orchestration.product_smoke import (
+        DISABLED_MESSAGE,
         NOT_APPLICABLE_MESSAGE,
         PASSED_ON_RETRY,
         RETRY_BACKOFF_SECONDS,
         resolve_runtime,
         scan_console,
+        smoke_config,
     )
 
     started = time.monotonic()
@@ -671,6 +679,13 @@ def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
         return _refused(
             check, REASON_SMOKE_NOT_APPLICABLE, [], "",
             f"{NOT_APPLICABLE_MESSAGE}: {why}")
+
+    # R-0167: refuse BEFORE anything is started. A switched-off smoke that
+    # still paid for a full start-probe-stop cycle was reporting honestly and
+    # behaving otherwise. Ordered after the not-applicable check so a project
+    # with no runtime still reports "no runtime", not "disabled".
+    if not smoke_config()["enabled"]:
+        return _refused(check, REASON_SMOKE_DISABLED, [], "", DISABLED_MESSAGE)
 
     # Each smoke check needs the app up; what it does once up is its own body.
     # `app_starts` has none — for it, the successful readiness probe IS the

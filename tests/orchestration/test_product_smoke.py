@@ -41,6 +41,7 @@ from packages.orchestration.dod_gate import evaluate_dod, store_dod
 from packages.orchestration.dod_runners import (
     REASON_NONE,
     REASON_SMOKE_DIRTY_CONSOLE,
+    REASON_SMOKE_DISABLED,
     REASON_SMOKE_NOT_APPLICABLE,
     REASON_SMOKE_PATH_FAILED,
     REASON_SMOKE_START_FAILED,
@@ -55,6 +56,7 @@ from packages.orchestration.product_smoke import (
     CHECK_ID_CLEAN_CONSOLE,
     CHECK_ID_CORE_PATHS,
     CONSOLE_ERROR_PATTERNS,
+    DISABLED_MESSAGE,
     MAX_EXTRACTED_PATHS,
     NOT_APPLICABLE_MESSAGE,
     PASSED_ON_RETRY,
@@ -866,3 +868,134 @@ def test_no_zombie_processes_after_every_outcome(tmp_path):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(2.0)
             assert sock.connect_ex(("127.0.0.1", port)) != 0, f"port {port} open"
+
+
+# ---------------------------------------------------------------------------
+# R-0167 — a disabled smoke must not start the app
+# ---------------------------------------------------------------------------
+
+class TestDisabledStartsNothing:
+    """The off switch has to switch things OFF, not just report that it did."""
+
+    def _marker_project(self, tmp_path: Path) -> tuple[Path, Path]:
+        """A project whose app TOUCHES a marker file the moment it starts.
+
+        The marker is the proof: asserting on it is a real process fact, not a
+        claim about the runner's own bookkeeping.
+        """
+        root = tmp_path / "marker"
+        root.mkdir()
+        marker = root / "started.txt"
+        (root / "marker_app.py").write_text(
+            "import os, sys\n"
+            f"open({str(marker)!r}, 'w').write('started')\n"
+            "from http.server import BaseHTTPRequestHandler, HTTPServer\n"
+            "class H(BaseHTTPRequestHandler):\n"
+            "    def do_GET(self):\n"
+            "        self.send_response(200); self.send_header('Content-Length','2')\n"
+            "        self.end_headers(); self.wfile.write(b'ok')\n"
+            "    def log_message(self, *a): pass\n"
+            "s = HTTPServer(('127.0.0.1', int(os.environ.get('PORT','0'))), H)\n"
+            "sys.stdout.write('marker-app: listening\\n'); sys.stdout.flush()\n"
+            "s.serve_forever()\n",
+            encoding="utf-8")
+        write_runtime_config(root, cmd=[sys.executable, "marker_app.py"],
+                             ready_timeout_s=8.0)
+        return root, marker
+
+    def test_disabled_starts_no_process_at_all(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        root, marker = self._marker_project(tmp_path)
+
+        ev = run_check(smoke_check(), root, timeout_sec=60)
+
+        assert not marker.exists(), "the app was started despite smoke.enabled=false"
+        assert ev.argv == ()
+        assert ev.command == ""
+        assert ev.exit_code is None
+        assert ev.duration_ms == 0
+
+    def test_disabled_is_not_green_and_quotes_the_reason(self, tmp_path,
+                                                         monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        root, _ = self._marker_project(tmp_path)
+
+        ev = run_check(smoke_check(), root, timeout_sec=60)
+
+        assert ev.status == STATUS_FAILED and ev.green is False
+        assert ev.reason == REASON_SMOKE_DISABLED
+        assert "disabled by config" in ev.output_tail
+        assert ev.reason != REASON_SMOKE_NOT_APPLICABLE, (
+            "a switched-off smoke is not the same fact as a project with no app")
+
+    def test_the_enabled_default_still_runs_the_app(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("REMEDY_SMOKE_ENABLED", raising=False)
+        root, marker = self._marker_project(tmp_path)
+
+        ev = run_check(smoke_check(), root, timeout_sec=60)
+
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert marker.exists(), "the default must still start the app"
+        assert ev.argv and ev.duration_ms > 0
+
+    def test_no_runtime_still_reports_not_applicable_even_when_disabled(
+            self, tmp_path, monkeypatch):
+        """Ordering: 'no app here' outranks 'we chose not to look'."""
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        bare = tmp_path / "bare"
+        bare.mkdir()
+
+        ev = run_check(smoke_check(blocking=False), bare)
+
+        assert ev.reason == REASON_SMOKE_NOT_APPLICABLE
+        assert NOT_APPLICABLE_MESSAGE in ev.output_tail
+
+    def test_every_smoke_kind_refuses_early_when_disabled(self, tmp_path,
+                                                          monkeypatch):
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        root, marker = self._marker_project(tmp_path)
+
+        for check in (smoke_check(), paths_check({"path": "/health"}),
+                      console_check()):
+            ev = run_check(check, root, timeout_sec=60)
+            assert ev.reason == REASON_SMOKE_DISABLED, check.spec["smoke"]
+            assert ev.argv == ()
+        assert not marker.exists()
+
+    def test_a_stored_blocking_check_still_gates_by_its_own_flag(
+            self, tmp_path, monkeypatch):
+        """No gating-machinery change: the row's blocking flag decides, as ever.
+
+        A DoD stored while the smoke was enabled carries blocking=True. Turning
+        the smoke off does not silently release it — the refusal is red, and a
+        red BLOCKING row holds the job exactly as before.
+        """
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        root, _ = self._marker_project(tmp_path)
+
+        held = evaluate_dod(
+            DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic",
+                checks=[smoke_check(blocking=True)]), root)
+        assert held.released is False
+        assert held.blocking_red == (CHECK_ID_APP_STARTS,)
+
+        # The row the block itself contributes while disabled is non-blocking,
+        # so that one reports without holding anything.
+        reported = evaluate_dod(
+            DoD(schema_v=DOD_SCHEMA_V, compiled=False, origin="deterministic",
+                checks=[smoke_check(blocking=False)]), root)
+        assert reported.released is True
+        assert reported.reported_red == (CHECK_ID_APP_STARTS,)
+
+    def test_the_disabled_text_is_one_shared_constant(self, tmp_path,
+                                                      monkeypatch):
+        """The compile-time row and the run-time refusal cannot drift apart."""
+        monkeypatch.setenv("REMEDY_SMOKE_ENABLED", "false")
+        root, _ = self._marker_project(tmp_path)
+
+        contributed = smoke_checks(StandardCheckContext(
+            intake={}, plan=simple_plan(), worktree_root=str(root)))
+        ev = run_check(smoke_check(), root, timeout_sec=60)
+
+        assert contributed[0].description == DISABLED_MESSAGE
+        assert DISABLED_MESSAGE in ev.output_tail
