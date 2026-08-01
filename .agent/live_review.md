@@ -28,6 +28,7 @@ fallback labeled compiled=false.
   Fix: refuse values starting with "-" for pytest selector, lint/build
   tool, and custom_cmd argv[0] in validate_check_spec; one negative
   test per field.
+  Done: R-0164 (commit af5c39d7).
 - Next free ID: R-0165.
 
 ## Verdicts
