@@ -1,0 +1,137 @@
+{
+  "name": "docs_site",
+  "note": "Long goal: a documentation site that must KEEP building and keep its links green. The provider covers the build and the link suite; the nav regression line is left for the compiler to cover.",
+  "intake": {
+    "schema_v": "ji1",
+    "goal": "Keep the documentation site building and its internal links green over time",
+    "context_refs": ["docs/", "mkdocs.yml"],
+    "constraints": ["no network access during checks"],
+    "acceptance_hints": ["mkdocs build succeeds", "no broken internal links"],
+    "mission_candidate": true
+  },
+  "plan": {
+    "schema_v": "flight_plan_v1",
+    "tasks": [
+      {
+        "id": "T001",
+        "title": "Link checker",
+        "goal": "Fail the build on a broken internal link",
+        "acceptance": [
+          "tests/docs/test_links.py passes for every internal link",
+          "a broken link fails the build"
+        ],
+        "est_tokens_band": "M",
+        "depends_on": [],
+        "files_hint": ["tests/docs/test_links.py"]
+      },
+      {
+        "id": "T002",
+        "title": "Strict site build",
+        "goal": "Build the site with warnings promoted to errors",
+        "acceptance": ["mkdocs build completes without warnings"],
+        "est_tokens_band": "S",
+        "depends_on": ["T001"],
+        "files_hint": ["mkdocs.yml"]
+      },
+      {
+        "id": "T003",
+        "title": "Nav regression guard",
+        "goal": "Pin the navigation tree so a reorder is visible",
+        "acceptance": ["tests/docs/test_nav.py passes"],
+        "est_tokens_band": "S",
+        "depends_on": ["T002"],
+        "files_hint": ["tests/docs/test_nav.py"]
+      }
+    ],
+    "risks": ["mkdocs strict mode surfaces pre-existing warnings"]
+  },
+  "provider_draft": {
+    "schema_v": "dod_draft_v1",
+    "checks": [
+      {
+        "id": "docs-build",
+        "kind": "build",
+        "spec": {"tool": "mkdocs", "args": ["build", "--strict"]},
+        "blocking": true,
+        "acceptance_refs": ["T002:0"],
+        "description": "strict mkdocs build"
+      },
+      {
+        "id": "docs-links",
+        "kind": "pytest",
+        "spec": {"selector": "tests/docs/test_links.py"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0", "T001:1"],
+        "description": "internal link checks"
+      }
+    ]
+  },
+  "golden_dod": {
+    "schema_v": "dod_v1",
+    "compiled": true,
+    "origin": "provider",
+    "checks": [
+      {
+        "id": "docs-build",
+        "kind": "build",
+        "spec": {"tool": "mkdocs", "args": ["build", "--strict"]},
+        "blocking": true,
+        "acceptance_refs": ["T002:0"],
+        "description": "strict mkdocs build",
+        "source": "compiled"
+      },
+      {
+        "id": "docs-links",
+        "kind": "pytest",
+        "spec": {"selector": "tests/docs/test_links.py"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0", "T001:1"],
+        "description": "internal link checks",
+        "source": "compiled"
+      },
+      {
+        "id": "acc-001",
+        "kind": "pytest",
+        "spec": {"selector": "tests/docs/test_nav.py"},
+        "blocking": true,
+        "acceptance_refs": ["T003:0"],
+        "description": "tests/docs/test_nav.py passes",
+        "source": "plan_acceptance"
+      }
+    ]
+  },
+  "golden_fallback_dod": {
+    "schema_v": "dod_v1",
+    "compiled": false,
+    "origin": "deterministic",
+    "checks": [
+      {
+        "id": "acc-001",
+        "kind": "pytest",
+        "spec": {"selector": "tests/docs/test_links.py"},
+        "blocking": true,
+        "acceptance_refs": ["T001:0"],
+        "description": "tests/docs/test_links.py passes for every internal link",
+        "source": "plan_acceptance"
+      },
+      {
+        "id": "acc-002",
+        "kind": "pytest",
+        "spec": {"selector": "tests"},
+        "blocking": true,
+        "acceptance_refs": ["T001:1", "T002:0"],
+        "description": "a broken link fails the build",
+        "source": "plan_acceptance"
+      },
+      {
+        "id": "acc-003",
+        "kind": "pytest",
+        "spec": {"selector": "tests/docs/test_nav.py"},
+        "blocking": true,
+        "acceptance_refs": ["T003:0"],
+        "description": "tests/docs/test_nav.py passes",
+        "source": "plan_acceptance"
+      }
+    ]
+  }
+}

@@ -6,6 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from packages.orchestration.dod_schema import (
+    DOD_DRAFT_SCHEMA_V,
+    DOD_SCHEMA_V,
+    DoD,
+)
 from packages.orchestration.schemas import (
     DESIGN_SPEC_SCHEMA_V,
     PARSE_ERROR_CLASS,
@@ -37,6 +42,7 @@ class TestSchemaVersioning:
         (ReviewVerdict, REVIEW_VERDICT_SCHEMA_V),
         (PlannerPlan, PLANNER_PLAN_SCHEMA_V),
         (DesignSpec, DESIGN_SPEC_SCHEMA_V),
+        (DoD, DOD_SCHEMA_V),
     ])
     def test_every_model_declares_schema_v(self, model, tag):
         assert schema_v_of(model) == tag
@@ -48,6 +54,17 @@ class TestSchemaVersioning:
         assert SCHEMA_REGISTRY[REVIEW_VERDICT_SCHEMA_V] is ReviewVerdict
         assert SCHEMA_REGISTRY[PLANNER_PLAN_SCHEMA_V] is PlannerPlan
         assert SCHEMA_REGISTRY[DESIGN_SPEC_SCHEMA_V] is DesignSpec
+        assert SCHEMA_REGISTRY[DOD_SCHEMA_V] is DoD
+
+    def test_the_provider_facing_dod_draft_is_not_registered(self):
+        """Only contracts a reader must resolve from a tag belong in the registry.
+
+        A ``dod_v1`` payload is persisted in a job's evidence area, so its tag
+        has to resolve. ``dod_draft_v1`` never leaves the compiler's own call —
+        registering it would put a tag nobody resolves in the one place that
+        claims to be the source of truth for what a tag means.
+        """
+        assert DOD_DRAFT_SCHEMA_V not in SCHEMA_REGISTRY
 
     def test_tags_are_compact(self):
         # flight_plan_v1 (14 chars) deliberately uses a descriptive tag;

@@ -1833,6 +1833,81 @@ def _cmd_job_report(job_id_str: str, *, json_output: bool = False) -> None:
             print(f'  Next:      {report["next_safe_action"]}')
 
 
+def _cmd_job_dod(job_id_str: str, *, json_output: bool = False) -> None:
+    """`remedy job dod <id>` — the Definition-of-Done matrix, live (F061 T004).
+
+    Strictly READ-ONLY: it prints the last recorded gate run and never runs a
+    check itself. A job with no DoD says so plainly rather than printing an
+    empty table, because an empty matrix reads like "nothing failed".
+    """
+    import json as _json
+
+    from packages.orchestration.dod_gate import (
+        MATRIX_HEADER,
+        load_dod,
+        load_gate_result,
+        matrix_rows,
+    )
+
+    job_id = resolve_job_id(job_id_str)
+    try:
+        load_job(job_id)
+    except JobNotFoundError:
+        if json_output:
+            print(_json.dumps({'error': 'job_not_found', 'job_id': job_id_str}))
+        else:
+            print(f'Error: job not found: {job_id_str}', file=sys.stderr)
+        sys.exit(1)
+
+    jid = str(job_id)
+    dod = load_dod(jid)
+    recorded = load_gate_result(jid)
+
+    if json_output:
+        print(_json.dumps({
+            'job_id': jid,
+            'compiled': None if dod is None else dod.compiled,
+            'origin': None if dod is None else dod.origin,
+            'check_count': 0 if dod is None else len(dod.checks),
+            'gate': recorded,
+        }, indent=2, sort_keys=True))
+        return
+
+    if dod is None:
+        print(f'Job {jid}: no Definition of Done has been compiled.')
+        return
+
+    label = 'compiled' if dod.compiled else 'deterministic (compiled=false)'
+    print(f'Definition of Done for job {jid} — {label}, '
+          f'{len(dod.checks)} check(s), {len(dod.blocking_checks)} blocking')
+    print()
+
+    if recorded is None:
+        print('The gate has not run yet — no check has produced evidence.')
+        for check in dod.checks:
+            print(f'  {check.id:<24} {check.kind:<14} '
+                  f'{"blocking" if check.blocking else "reported"}  not run')
+        return
+
+    rows = matrix_rows(recorded)
+    widths = [max(len(MATRIX_HEADER[i]), *(len(r[i]) for r in rows))
+              for i in range(len(MATRIX_HEADER))]
+    print('  '.join(h.ljust(widths[i]) for i, h in enumerate(MATRIX_HEADER)))
+    print('  '.join('-' * w for w in widths))
+    for row in rows:
+        print('  '.join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
+    print()
+
+    if recorded.get('released'):
+        print('Gate: RELEASED — every blocking check is green.')
+    else:
+        blocking = ', '.join(recorded.get('blocking_red') or []) or 'unnamed'
+        print(f'Gate: HOLDING — blocking check(s) red: {blocking}')
+    reported = recorded.get('reported_red') or []
+    if reported:
+        print(f'Non-blocking reds (reported, not gating): {", ".join(reported)}')
+
+
 def _cmd_job_fulfill(
     job_id_str: str,
     *,
@@ -2205,6 +2280,10 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         )
     ),
     "job.fences": lambda args: _cmd_job_fences(
+        args.job_id,
+        json_output=getattr(args, "json", False),
+    ),
+    "job.dod": lambda args: _cmd_job_dod(
         args.job_id,
         json_output=getattr(args, "json", False),
     ),
