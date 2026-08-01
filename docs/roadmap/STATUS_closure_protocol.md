@@ -60,10 +60,12 @@
    NO_EVIDENCE package (code-only snapshot); the STATUS line then omits the
    Evidence-job segment and records the NO_EVIDENCE package + SHA-256.
    Build order (wording aligned with accepted F252/F050 practice,
-   2026-07-30): the zip is built from a clean tree after all CONTENT
-   commits — the reviewed head the manifest records as accepted HEAD.
-   The evidence-dir commit and the final closure commit (STATUS/README/
-   final .agent state) follow the READY zip. A package built from a
+   2026-07-30; evidence-dir rule per DECISION 2026-08-01): the zip is
+   built from a clean tree after all CONTENT commits — the reviewed
+   head the manifest records as accepted HEAD. The final closure
+   commit (STATUS/README/final .agent state) follows the READY zip;
+   the evidence dir itself is NEVER committed (see "Evidence dir is
+   not committed" below). A package built from a
    dirty tree is invalid. The zip attempt's outcome — package +
    SHA-256, or the raw error — is recorded in the handoff BEFORE
    handback, always.
@@ -107,6 +109,21 @@ resolves it inline as a DECISION per planner_reviewer_prompt.md §4
 item 7. This keeps the ledger monotonic across the session boundary
 and keeps the operator-facing narrative in agreement with the disk.
 
+Disk vehicle (operator ruling 2026-08-01, F056-candidate loss): at
+closure, any candidate findings are ALSO written to
+`.agent/candidates.md` — one entry each: description, source
+feature, date — inside the closure commit. `.agent/**` is already
+within the closure commit's allowed path set, so the R-0154
+exact-paths rule is unchanged. The chat brief keeps listing
+candidates as before, but the FILE, not the brief, is the carrier
+of record: a brief-only candidate is exactly what the F056 closure
+lost. The Window-1 session bootstrap reads `.agent/candidates.md`;
+if it is non-empty, the FIRST reviewed round registers each entry
+(next free ID) or resolves it inline as a §4.7 DECISION, and
+empties the file in that same round. A non-empty candidates file at
+feature-claim time is itself a block condition
+(planner_reviewer_prompt.md §1).
+
 ## Canonical zip build sequence
 Explicit evidence selection is mandatory. Deprecated root-dir auto-selection
 (mtime-based `remedy-job-evidence-*` scanning) is disabled — the script
@@ -136,11 +153,16 @@ SHA-256 hashes.
 **Output:** The script prints the final zip filename and SHA-256. Record both
 in the STATUS line (`package <filename>` and `SHA-256 <hash>`).
 
-**Evidence-dir commit ordering:** the evidence dir is committed
-AFTER the READY zip exists, never before. A pre-committed
-evidence dir puts evidence files into the base..HEAD review
-subject and the package builds BLOCKED_EVIDENCE ("evidence is
-not authoritative") — F147 attempt-2 lesson.
+**Evidence dir is not committed (DECISION 2026-08-01, settling the
+F056 closure candidate "evidence-protocol drift"):** `.gitignore`
+excludes `remedy-job-evidence-*/`, and the F050–F061 closures
+committed no evidence dir. The durable pointer is the package name +
+SHA-256 + evidence job id in the STATUS line — exactly what every
+closure since F050 records. Keep the dir outside the review subject
+(session scratch is fine): a pre-committed evidence dir puts
+evidence files into the base..HEAD review subject and the package
+builds BLOCKED_EVIDENCE ("evidence is not authoritative") — F147
+attempt-2 lesson.
 
 ## Failure honesty
 If any precondition fails, the feature does NOT close. In order: another
