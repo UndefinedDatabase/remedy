@@ -39,7 +39,7 @@
 - [x] F053 — Final & interim report (T001–T002 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job b4d6d7f5-8059-4c23-8f65-d47b319f35bd · package remedy-review-20260731-150146-READY_FOR_REVIEW.zip · SHA-256 64bcc0c5a97b6ce0c742db1feff61f55fb7b583fb24b9cb6ca864c40bc0a7b6c · accepted HEAD 8cca01f4150ba14791de367e78cd9b39599c299d)
 - [x] F056 — Missions: persistent goal, jobs as execution units (T001–T003 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 057a2de1dde14778 · package remedy-review-20260731-210415-READY_FOR_REVIEW.zip · SHA-256 b732f0bdd0a334a62091b127f4efbd392f612de98ec2a687f27e1ef36fd7e555 · accepted HEAD eaa86f51c5ae72ed4e310cdeb249eba3142c7e7c)
 - [x] F061 — Definition-of-Done compiler (T001–T004 complete; accepted 2026-08-01 · live review PASS — ACCEPTED · Evidence job c5185517fa2443bf · package remedy-review-20260801-190945-READY_FOR_REVIEW.zip · SHA-256 486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8 · accepted HEAD 8dc6086c4da87ca2ec63c33c3e17904c29ee394d)
-- [ ] F062 — Product smoke as the closing gate
+- [~] F062 — Product smoke as the closing gate
 - [ ] F069 — Mission compiler
 - [ ] F070 — Orchestrator loop inside Remedy
 - [ ] F071 — Mission dossier
