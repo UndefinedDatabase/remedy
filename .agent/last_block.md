@@ -1,4 +1,4 @@
-OUTCOME: pending
+OUTCOME: executed — round complete, PR #173 open, merge next per standing approval.
 
 Operator directive 2026-08-01 (single-session micro-round, standing
 same-session-merge approval; not a relayed Window-1 paste block):
