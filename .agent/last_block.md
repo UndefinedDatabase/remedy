@@ -1,4 +1,7 @@
-OUTCOME: pending
+OUTCOME: executed — R-0167 fixed: a disabled smoke refuses before any process
+starts (new REASON_SMOKE_DISABLED, ordered after not-applicable), proven by a
+marker-file test and a mutation red-proof. Scoped 244 + canary 42, exit 0.
+Branch pushed; worktree removed + pruned. See .agent/handoff.md.
 
 You are the Remedy worker (Window 2) for feature F062, round R3 (repair).
   Rules in priority order: AGENTS.md, docs/agents/worker_conventions.md, this
