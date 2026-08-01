@@ -43,12 +43,37 @@ SMOKE_PROVIDER_NAME = "product_smoke"
 #: ``core_paths_respond`` and T003 ``clean_console``.
 SMOKE_APP_STARTS = "app_starts"
 SMOKE_CORE_PATHS = "core_paths_respond"
-SMOKE_CHECKS: tuple[str, ...] = (SMOKE_APP_STARTS, SMOKE_CORE_PATHS)
+SMOKE_CLEAN_CONSOLE = "clean_console"
+SMOKE_CHECKS: tuple[str, ...] = (
+    SMOKE_APP_STARTS, SMOKE_CORE_PATHS, SMOKE_CLEAN_CONSOLE)
 
 #: Check ids. Stable, because they appear in the report matrix and in a held
 #: job's blocker list.
 CHECK_ID_APP_STARTS = "smoke-app-starts"
 CHECK_ID_CORE_PATHS = "smoke-core-paths"
+CHECK_ID_CLEAN_CONSOLE = "smoke-clean-console"
+
+#: The DOCUMENTED base error markers scanned in the app's captured output.
+#: Deliberately small and CASE-SENSITIVE: "error" inside ordinary prose is not
+#: a fatal, and a list that matches everything would be ignored by everyone.
+#: Extending it is CONFIG (``smoke.error_patterns``), not code — and config
+#: only ADDS, so nothing here can be configured away.
+#:
+#:   Traceback (most recent call last)  — a Python traceback header
+#:   ERROR                             — the conventional level marker
+#:   CRITICAL / FATAL                  — higher levels
+#:   Unhandled exception               — .NET/Node style fatal
+#:   panic:                            — Go runtime panic
+#:   Segmentation fault                — a native crash
+CONSOLE_ERROR_PATTERNS: tuple[str, ...] = (
+    "Traceback (most recent call last)",
+    "ERROR",
+    "CRITICAL",
+    "FATAL",
+    "Unhandled exception",
+    "panic:",
+    "Segmentation fault",
+)
 
 #: How many extracted routes ride along with the health path. A probe set is
 #: meant to be a SMALL proof the product answers, not a crawl.
@@ -155,6 +180,73 @@ def core_paths_check(*, paths: list[dict[str, Any]], blocking: bool,
     )
 
 
+def clean_console_check(*, blocking: bool, description: str) -> DraftCheck:
+    """The ``clean_console`` draft check, as the block contributes it."""
+    return DraftCheck(
+        id=CHECK_ID_CLEAN_CONSOLE,
+        kind="product_smoke",
+        spec={"smoke": SMOKE_CLEAN_CONSOLE},
+        blocking=blocking,
+        description=description,
+    )
+
+
+def smoke_config() -> dict[str, Any]:
+    """The smoke's config table, resolved. Never raises — a broken config
+    falls back to the documented defaults rather than taking a job down."""
+    out: dict[str, Any] = {
+        "enabled": True, "paths": [], "error_patterns": [],
+        "ready_timeout_s": None,
+    }
+    try:
+        from packages.orchestration.config import get_config
+        cfg = get_config()
+    except Exception:  # noqa: BLE001 - config unavailable = documented defaults
+        return out
+
+    def _get(key: str, default: Any) -> Any:
+        try:
+            value = cfg.get(f"smoke.{key}")
+        except Exception:  # noqa: BLE001
+            return default
+        return default if value is None else value
+
+    out["enabled"] = bool(_get("enabled", True))
+    out["paths"] = [str(p) for p in (_get("paths", []) or [])]
+    out["error_patterns"] = [str(p) for p in (_get("error_patterns", []) or [])]
+    window = _get("ready_timeout_s", None)
+    out["ready_timeout_s"] = float(window) if window is not None else None
+    return out
+
+
+def error_patterns() -> tuple[str, ...]:
+    """The base pattern list PLUS any configured additions, in that order.
+
+    Config extends; it never replaces. A project can teach the smoke about its
+    own framework's fatal, but cannot switch off the base guarantees.
+    """
+    extra = [p for p in smoke_config()["error_patterns"]
+             if p and p not in CONSOLE_ERROR_PATTERNS]
+    return CONSOLE_ERROR_PATTERNS + tuple(extra)
+
+
+def scan_console(text: str, patterns: tuple[str, ...] | None = None
+                 ) -> list[tuple[str, str]]:
+    """``(pattern, line)`` for every console line matching a marker.
+
+    Case-sensitive, and it returns the LINES so a red check can quote what it
+    actually saw instead of asserting that something was wrong.
+    """
+    active = patterns if patterns is not None else error_patterns()
+    hits: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        for pattern in active:
+            if pattern in line:
+                hits.append((pattern, line.strip()))
+                break
+    return hits
+
+
 def smoke_checks(ctx: StandardCheckContext) -> list[DraftCheck]:
     """The standard-check provider registered into the DoD compiler's seam.
 
@@ -177,9 +269,20 @@ def smoke_checks(ctx: StandardCheckContext) -> list[DraftCheck]:
             blocking=False,
             description=f"{NOT_APPLICABLE_MESSAGE}: {reason}")]
 
-    # Ordered: the app must start before probing it is meaningful.
+    config = smoke_config()
+    if not config["enabled"]:
+        # Switched off for a project that HAS an app. Say so — a disabled
+        # smoke is a reported fact, not an absent row and not a pass.
+        return [app_starts_check(
+            blocking=False,
+            description="smoke: disabled by config (smoke.enabled = false)")]
+
+    # Ordered: the app must start before probing it is meaningful, and the
+    # console is judged over the output the whole run produced.
+    override = [p for p in config["paths"] if str(p).startswith("/")]
+    routes = override or extract_paths(ctx)
     probe_paths: list[dict[str, Any]] = [{"path": spec.health_path}]
-    for route in extract_paths(ctx):
+    for route in routes:
         if route != spec.health_path:
             probe_paths.append({"path": route})
 
@@ -193,6 +296,10 @@ def smoke_checks(ctx: StandardCheckContext) -> list[DraftCheck]:
             blocking=True,
             description=(f"{SMOKE_CORE_PATHS}: "
                          f"{', '.join(p['path'] for p in probe_paths)}")),
+        clean_console_check(
+            blocking=True,
+            description=(f"{SMOKE_CLEAN_CONSOLE}: "
+                         f"{len(error_patterns())} error markers")),
     ]
 
 

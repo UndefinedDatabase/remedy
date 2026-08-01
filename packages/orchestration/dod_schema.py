@@ -93,7 +93,8 @@ _FLOW_STEP_KEYS = frozenset({"action", "path", "expect_status", "expect_text"})
 #: The product-smoke check names (F062). Kept here, not imported from
 #: ``product_smoke``, so the schema stays a leaf: the block imports the schema,
 #: never the other way round.
-SMOKE_CHECK_NAMES: tuple[str, ...] = ("app_starts", "core_paths_respond")
+SMOKE_CHECK_NAMES: tuple[str, ...] = (
+    "app_starts", "core_paths_respond", "clean_console")
 
 #: Keys one entry of a ``core_paths_respond`` probe set may carry. Closed, and
 #: validated at compile time: a probe naming something else is nonsense the

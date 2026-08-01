@@ -268,6 +268,49 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="smoke.enabled",
+        env_var="REMEDY_SMOKE_ENABLED",
+        description=(
+            "Contribute the product-smoke DoD block for projects that have a "
+            "runnable app (F062). A project with no runtime is reported as "
+            "not applicable either way — this switch does not make it green."
+        ),
+        value_type=bool,
+        default=True,
+    ),
+    ConfigKeySpec(
+        key="smoke.paths",
+        env_var="REMEDY_SMOKE_PATHS",
+        description=(
+            "Override the core_paths_respond probe set (F062). When set, these "
+            "paths REPLACE the extracted ones; the configured health path is "
+            "still probed first."
+        ),
+        value_type=list,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="smoke.error_patterns",
+        env_var="REMEDY_SMOKE_ERROR_PATTERNS",
+        description=(
+            "ADDITIONAL case-sensitive console error markers for clean_console "
+            "(F062). Config extends the documented base list; it never "
+            "replaces it, so the base guarantees cannot be configured away."
+        ),
+        value_type=list,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="smoke.ready_timeout_s",
+        env_var="REMEDY_SMOKE_READY_TIMEOUT_S",
+        description=(
+            "Readiness window for the smoke's app_starts check (F062). Unset "
+            "means the runtime spec's own ready_timeout_s is used."
+        ),
+        value_type=float,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="planning.granularity.enabled",
         env_var="REMEDY_PLANNING_GRANULARITY_ENABLED",
         description=(

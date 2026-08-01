@@ -98,6 +98,11 @@ REASON_UNKNOWN_FLOW_ACTION = "unknown_flow_action"
 REASON_SMOKE_NOT_APPLICABLE = "smoke_not_applicable"
 REASON_SMOKE_START_FAILED = "smoke_start_failed"
 REASON_SMOKE_PATH_FAILED = "smoke_path_failed"
+REASON_SMOKE_DIRTY_CONSOLE = "smoke_dirty_console"
+
+#: How many matched console lines a red clean_console quotes. Enough to
+#: act on, bounded so one screaming app cannot flood the evidence.
+MAX_QUOTED_CONSOLE_LINES = 20
 
 #: The ONLY flow action v1 understands: open a path and assert on the answer.
 #: A step naming anything else is red — the vocabulary grows deliberately, and
@@ -524,6 +529,9 @@ class _AppRun:
     reason: str
     #: The human sentence for ``reason`` — what a reader is actually told.
     detail: str = ""
+    #: Everything the application wrote while it ran. The clean_console check
+    #: judges THIS, not a paraphrase of it.
+    console: str = ""
 
 
 def _run_app_once(spec: Any, deadline: float, log: list[str],
@@ -552,11 +560,12 @@ def _run_app_once(spec: Any, deadline: float, log: list[str],
         except OSError as exc:
             detail = f"could not open the app log: {exc}"
             log.append(detail)
-            return _AppRun(argv, REASON_APP_START_FAILED, detail)
+            return _AppRun(argv, REASON_APP_START_FAILED, detail, "")
 
         proc = None
         reason = REASON_NONE
         detail = ""
+        console = ""
         try:
             try:
                 proc = subprocess.Popen(  # noqa: S603 - argv list, never a shell
@@ -600,11 +609,12 @@ def _run_app_once(spec: Any, deadline: float, log: list[str],
                 handle.close()
             with contextlib.suppress(OSError):
                 app_tail, _ = _tail(app_log.read_bytes())
+                console = app_tail
                 if app_tail.strip():
                     log.append("--- application log ---")
                     log.append(app_tail)
 
-    return _AppRun(argv, reason, detail)
+    return _AppRun(argv, reason, detail, console)
 
 
 def _run_runtime_flow(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
@@ -649,6 +659,7 @@ def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
         PASSED_ON_RETRY,
         RETRY_BACKOFF_SECONDS,
         resolve_runtime,
+        scan_console,
     )
 
     started = time.monotonic()
@@ -681,6 +692,22 @@ def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             time.sleep(RETRY_BACKOFF_SECONDS)
         run = _run_app_once(spec, deadline, log, body)
         if not run.reason:
+            # The app came up. For clean_console the question is what it
+            # PRINTED while doing so — judged before this counts as a pass.
+            if smoke == "clean_console":
+                hits = scan_console(run.console)
+                if hits:
+                    log.append(
+                        f"{len(hits)} error marker(s) in the app console:")
+                    for pattern, line in hits[:MAX_QUOTED_CONSOLE_LINES]:
+                        log.append(f"  [{pattern}] {line}")
+                    if len(hits) > MAX_QUOTED_CONSOLE_LINES:
+                        log.append(
+                            f"  … and {len(hits) - MAX_QUOTED_CONSOLE_LINES} more")
+                    # A dirty console is a product fact, not a flaky start:
+                    # retrying would only print it again.
+                    return _harness_evidence(
+                        check, run.argv, REASON_SMOKE_DIRTY_CONSOLE, log, started)
             if attempt > 1:
                 log.append(PASSED_ON_RETRY)
             return _harness_evidence(check, run.argv, REASON_NONE, log, started)
