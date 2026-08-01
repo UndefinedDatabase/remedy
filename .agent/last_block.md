@@ -1,4 +1,8 @@
-OUTCOME: pending
+OUTCOME: executed — F062 claimed [~]; T001 delivered (product_smoke block
+registered into the F061 seam, app_starts runner with bounded retry and
+teardown-always, not-applicable non-gating, two real fixture apps). All three
+ordered gates green; broken-start red→green proven by mutation in a throwaway
+worktree (removed + pruned). No push, no PR. See .agent/handoff.md.
 
 You are the Remedy worker (Window 2) for feature F062, round R1. Rules, in
   priority order: AGENTS.md, then docs/agents/worker_conventions.md, then this
