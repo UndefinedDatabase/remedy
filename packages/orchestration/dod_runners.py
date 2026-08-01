@@ -97,6 +97,7 @@ REASON_UNKNOWN_FLOW_ACTION = "unknown_flow_action"
 #: gates nothing — it is never a pass.
 REASON_SMOKE_NOT_APPLICABLE = "smoke_not_applicable"
 REASON_SMOKE_START_FAILED = "smoke_start_failed"
+REASON_SMOKE_PATH_FAILED = "smoke_path_failed"
 
 #: The ONLY flow action v1 understands: open a path and assert on the answer.
 #: A step naming anything else is red — the vocabulary grows deliberately, and
@@ -452,6 +453,46 @@ def _walk_steps(steps: list[Any], base_url: str, deadline: float,
     return ""
 
 
+def _walk_smoke_paths(paths: list[Any], base_url: str, deadline: float,
+                      log: list[str]) -> str:
+    """Probe the smoke's core paths. Returns "" or a red reason.
+
+    Stricter than a runtime_flow step by design: where a flow only asserts what
+    it declares, a smoke path with NO declared expectation must still answer
+    with an OK status. "It responded 500" is not a product that responds.
+    """
+    for i, entry in enumerate(paths, 1):
+        if time.monotonic() >= deadline:
+            log.append(f"path {i}: not reached — the smoke ran out of time")
+            return REASON_TIMEOUT
+
+        path = str(entry.get("path", "") or "")
+        remaining = max(0.1, min(FLOW_STEP_TIMEOUT_S, deadline - time.monotonic()))
+        status, body, error = _http_get(base_url + path, timeout=remaining)
+        if error or status == 0:
+            log.append(f"path {path} -> no response ({error})")
+            return REASON_SMOKE_PATH_FAILED
+
+        expected = entry.get("expect_status")
+        if expected is not None:
+            if int(expected) != status:
+                log.append(f"path {path} -> {status}, expected {expected}")
+                return REASON_SMOKE_PATH_FAILED
+        elif not (READY_STATUS_MIN <= status <= READY_STATUS_MAX):
+            log.append(f"path {path} -> {status}, expected an OK status")
+            return REASON_SMOKE_PATH_FAILED
+
+        marker = entry.get("expect_text")
+        if marker is not None and str(marker) not in body:
+            log.append(
+                f"path {path} -> {status}, but the body does not contain "
+                f"{str(marker)!r}")
+            return REASON_SMOKE_PATH_FAILED
+
+        log.append(f"path {path} -> {status} OK")
+    return ""
+
+
 def _stop_app(proc: Any, log: list[str]) -> str:
     """Stop the application family. Always called, also on failure.
 
@@ -620,6 +661,16 @@ def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             check, REASON_SMOKE_NOT_APPLICABLE, [], "",
             f"{NOT_APPLICABLE_MESSAGE}: {why}")
 
+    # Each smoke check needs the app up; what it does once up is its own body.
+    # `app_starts` has none — for it, the successful readiness probe IS the
+    # check.
+    smoke = str(check.spec.get("smoke", "")).strip()
+    body = None
+    if smoke == "core_paths_respond":
+        def body(base_url: str) -> str:  # noqa: E306 - paired with the branch
+            return _walk_smoke_paths(
+                check.spec["paths"], base_url, deadline, log)
+
     attempts = 2 if bool(check.spec.get("retry", True)) else 1
     run = _AppRun([], REASON_NONE)
     for attempt in range(1, attempts + 1):
@@ -628,11 +679,19 @@ def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
                 f"attempt {attempt - 1} failed; retrying once after "
                 f"{RETRY_BACKOFF_SECONDS}s backoff")
             time.sleep(RETRY_BACKOFF_SECONDS)
-        run = _run_app_once(spec, deadline, log, None)
+        run = _run_app_once(spec, deadline, log, body)
         if not run.reason:
             if attempt > 1:
                 log.append(PASSED_ON_RETRY)
             return _harness_evidence(check, run.argv, REASON_NONE, log, started)
+        if run.reason == REASON_SMOKE_PATH_FAILED:
+            # The app came up; a path answered wrongly. Retrying the START
+            # would not change that, and would hide a real product failure.
+            break
+
+    if run.reason == REASON_SMOKE_PATH_FAILED:
+        return _harness_evidence(
+            check, run.argv, REASON_SMOKE_PATH_FAILED, log, started)
 
     # Concrete, not vague: the finding names the probe reason the harness gave.
     log.append(f"start failed: {run.detail or run.reason}")

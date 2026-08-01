@@ -26,6 +26,7 @@ v1 is HTTP level, deliberately. Clickable browser flows stay in the DoD's
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -41,11 +42,27 @@ SMOKE_PROVIDER_NAME = "product_smoke"
 #: The smoke checks, in the order they run. v1 ships only the first; T002 adds
 #: ``core_paths_respond`` and T003 ``clean_console``.
 SMOKE_APP_STARTS = "app_starts"
-SMOKE_CHECKS: tuple[str, ...] = (SMOKE_APP_STARTS,)
+SMOKE_CORE_PATHS = "core_paths_respond"
+SMOKE_CHECKS: tuple[str, ...] = (SMOKE_APP_STARTS, SMOKE_CORE_PATHS)
 
 #: Check ids. Stable, because they appear in the report matrix and in a held
 #: job's blocker list.
 CHECK_ID_APP_STARTS = "smoke-app-starts"
+CHECK_ID_CORE_PATHS = "smoke-core-paths"
+
+#: How many extracted routes ride along with the health path. A probe set is
+#: meant to be a SMALL proof the product answers, not a crawl.
+MAX_EXTRACTED_PATHS = 5
+
+#: A route mentioned in intent or plan text: a slash-led, URL-shaped token.
+_ROUTE_PATTERN = re.compile(r"/[A-Za-z0-9_\-./{}:]*")
+
+#: Slash-led tokens that are NOT routes. A filesystem path and a source file
+#: both start with "/" or carry an extension; probing them would be nonsense.
+_FS_ROOTS = ("/home/", "/etc/", "/usr/", "/var/", "/tmp/", "/opt/", "/root/",
+             "/bin/", "/sbin/", "/lib/", "/proc/", "/dev/", "/mnt/", "/srv/")
+_FILE_SUFFIXES = (".py", ".md", ".json", ".toml", ".yaml", ".yml", ".txt",
+                  ".lock", ".cfg", ".ini", ".sh", ".ts", ".tsx", ".js")
 
 #: What a project without a runnable app is told. Not an error and not a pass:
 #: the honest third answer.
@@ -85,6 +102,59 @@ def app_starts_check(*, blocking: bool, description: str) -> DraftCheck:
     )
 
 
+def _is_route(token: str) -> bool:
+    """Does this slash-led token name an HTTP route rather than a file?"""
+    if not token.startswith("/"):
+        return False
+    if token.startswith(_FS_ROOTS):
+        return False
+    lowered = token.lower().rstrip("/.,;:)")
+    return not lowered.endswith(_FILE_SUFFIXES)
+
+
+def extract_paths(ctx: StandardCheckContext) -> list[str]:
+    """Routes the DoD compiler's material mentions, in first-seen order.
+
+    The hand-off the feature file describes: intent and plan text name the
+    paths this work is about ("/", the feature's route), and the smoke probes
+    those alongside the configured health path. Extraction is deliberately
+    conservative — a slash-led token that looks like a filesystem path or a
+    source file is not a route, and a wrong guess would probe nonsense.
+    """
+    intake = ctx.intake or {}
+    sources: list[str] = [str(intake.get("goal", "") or "")]
+    for key in ("acceptance_hints", "constraints", "context_refs"):
+        sources.extend(str(v) for v in (intake.get(key) or []))
+    for task in getattr(ctx.plan, "tasks", []) or []:
+        sources.append(str(getattr(task, "goal", "") or ""))
+        sources.append(str(getattr(task, "title", "") or ""))
+        sources.extend(str(a) for a in (getattr(task, "acceptance", []) or []))
+
+    found: list[str] = []
+    for text in sources:
+        for match in _ROUTE_PATTERN.finditer(text):
+            token = match.group().rstrip(".,;:)\"'")
+            if len(token) > 1:
+                token = token.rstrip("/") or "/"
+            if _is_route(token) and token not in found:
+                found.append(token)
+                if len(found) >= MAX_EXTRACTED_PATHS:
+                    return found
+    return found
+
+
+def core_paths_check(*, paths: list[dict[str, Any]], blocking: bool,
+                     description: str) -> DraftCheck:
+    """The ``core_paths_respond`` draft check, as the block contributes it."""
+    return DraftCheck(
+        id=CHECK_ID_CORE_PATHS,
+        kind="product_smoke",
+        spec={"smoke": SMOKE_CORE_PATHS, "paths": paths},
+        blocking=blocking,
+        description=description,
+    )
+
+
 def smoke_checks(ctx: StandardCheckContext) -> list[DraftCheck]:
     """The standard-check provider registered into the DoD compiler's seam.
 
@@ -99,14 +169,31 @@ def smoke_checks(ctx: StandardCheckContext) -> list[DraftCheck]:
 
     spec, reason = resolve_runtime(worktree)
     if spec is None:
+        # ONE honest row for the whole block. The later checks are not
+        # contributed at all: `core_paths_respond` would need a probe set, and
+        # a project with no app has no paths — inventing one to fill a row is
+        # exactly the fabricated value this block exists to avoid.
         return [app_starts_check(
             blocking=False,
             description=f"{NOT_APPLICABLE_MESSAGE}: {reason}")]
 
-    return [app_starts_check(
-        blocking=True,
-        description=(f"{SMOKE_APP_STARTS}: the app starts and answers "
-                     f"{spec.health_path}"))]
+    # Ordered: the app must start before probing it is meaningful.
+    probe_paths: list[dict[str, Any]] = [{"path": spec.health_path}]
+    for route in extract_paths(ctx):
+        if route != spec.health_path:
+            probe_paths.append({"path": route})
+
+    return [
+        app_starts_check(
+            blocking=True,
+            description=(f"{SMOKE_APP_STARTS}: the app starts and answers "
+                         f"{spec.health_path}")),
+        core_paths_check(
+            paths=probe_paths,
+            blocking=True,
+            description=(f"{SMOKE_CORE_PATHS}: "
+                         f"{', '.join(p['path'] for p in probe_paths)}")),
+    ]
 
 
 def register(*, replace: bool = False) -> None:
