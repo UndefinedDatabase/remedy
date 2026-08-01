@@ -525,14 +525,21 @@ class TestCorePathsVocabulary:
                      spec={"smoke": SMOKE_CORE_PATHS}, source="standard")
         assert "non-empty 'paths'" in str(exc.value)
 
+    # Explicit ids: the raw params carry slashes, and a node id that reads as a
+    # local absolute path is refused by the evidence packaging validator (and
+    # is hostile to any tooling that scans a bundle for leaked paths).
     @pytest.mark.parametrize("entry,needle", [
-        ({"path": "orders"}, "must start with '/'"),
-        ({"path": ""}, "needs a non-empty 'path'"),
-        ({}, "needs a non-empty 'path'"),
-        ({"path": "/x", "expect_status": "200"}, "must be an integer"),
-        ({"path": "/x", "expect_status": True}, "must be an integer"),
-        ({"path": "/x", "expect_text": 1}, "must be a string"),
-        ({"path": "/x", "expect": "200"}, "unknown key(s): expect"),
+        pytest.param({"path": "orders"}, "must start with '/'", id="no-slash"),
+        pytest.param({"path": ""}, "needs a non-empty 'path'", id="empty-path"),
+        pytest.param({}, "needs a non-empty 'path'", id="missing-path"),
+        pytest.param({"path": "/x", "expect_status": "200"},
+                     "must be an integer", id="status-str"),
+        pytest.param({"path": "/x", "expect_status": True},
+                     "must be an integer", id="status-bool"),
+        pytest.param({"path": "/x", "expect_text": 1},
+                     "must be a string", id="text-int"),
+        pytest.param({"path": "/x", "expect": "200"},
+                     "unknown key(s): expect", id="unknown-key"),
     ])
     def test_a_nonsense_probe_is_refused_at_compile_time(self, entry, needle):
         with pytest.raises(Exception) as exc:
