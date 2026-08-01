@@ -1,34 +1,33 @@
-# Plan — F061 Definition-of-Done compiler
+# Plan — paydown-0801 (single-session micro-round)
 
 ## Goal
-"Done" stops being vibes: user intent plus the Flight Plan compile
-into a machine-checkable DoD — a versioned list of concrete checks
-(pytest, lint, build, runtime_flow, custom_cmd) with blocking flags —
-and a job only ends green when all blocking checks pass. T001–T004
-are built and reviewed PASS: schema, compiler with deterministic
-fallback, four process runners plus the runtime_flow runner on the
-F007 harness, and the job-end gate with report matrix and
-`remedy job dod`.
+Close the closure-candidate carry gap structurally (disk vehicle
+.agent/candidates.md) and settle the two F056 candidates that were
+dropped (evidence-protocol drift; PR-number reporting). Operator
+ruling 2026-08-01, F056-candidate loss. Change set: docs/roadmap/**,
+docs/agents/**, .agent/** only — micro-round scope per
+planner_reviewer_prompt.md §3.
 
 ## Current Step
-R3: fix R-0165 (runtime_flow v1 step vocabulary validated at compile
-time: action == "open", path starts with "/", closed step-key set;
-the runner's run-time guard stays), register dod_v1 in
-SCHEMA_REGISTRY (accepted R1 open item), re-run the scoped gates,
-then the integration gate per docs/agents/integration_gate.md —
-branch full suite vs base full suite, failure classes attributed,
-only this round may claim "full suite green".
+Apply authored texts paydown0801-r1-1..7 (committed under
+.agent/authored/, sha256-verified):
+1. STATUS_closure_protocol.md — disk-vehicle rule in
+   Closure-candidate findings (r1-1); build-order sentence (r1-2);
+   evidence-dir block rewritten to "not committed" (r1-3).
+2. planner_reviewer_prompt.md §1 — bootstrap step 4 reads
+   .agent/candidates.md (r1-4).
+3. handback_template.md — External actions carries the PR number
+   (r1-5).
+4. Create .agent/candidates.md empty carrier (r1-6).
+5. Append the three DECISIONs to .agent/decisions.md (r1-7).
 
 ## Next Steps
-- Closure per docs/roadmap/STATUS_closure_protocol.md (own round:
-  Built State, preconditions, evidence job, fresh review zip,
-  STATUS [x] + README sync, PR).
+- Gates: python3 -m pytest tests/docs/ -q + canary
+  tests/cli/test_golden_path.py -q.
+- Handback per handback_template.md, label single-session
+  micro-round; push; PR; merge on PASS (standing approval).
+- Then F062 per Rule A5 (fresh Window-1 session bootstrap).
 
 ## Risks
-- The integration gate compares against base in a throwaway
-  worktree — UI build-artifact parity (copy apps/ui/node_modules +
-  apps/ui/dist, REMEDY_UI_NO_AUTO_BUILD=1) per the F056 R3
-  precedent; a branch-only failure is a normal repair round.
-- Production wiring that COMPILES a DoD at job creation is
-  downstream scope (F062 product smoke registers standard checks;
-  F069/F070 consume the seam) — not part of this feature's Done.
+Docs-structure pins in tests/docs/ could trip on wording; gate
+catches it. No production code touched.

@@ -1,52 +1,34 @@
-# Context — F061 Definition-of-Done compiler (Tier 1)
+# Context — paydown-0801 micro-round (post-F061, pre-F062)
 
 ## Active Branch
-`feature/f061-dod-compiler`
-Base commit: main after PR #171 merge (F056)
+`feature/paydown-0801`
+Base commit: main after PR #172 merge (F061, Open PR Gate 2026-08-01)
 
 ## Steps (round map)
-R1 (LARGE, PASS): claim + T001 schema/compiler/fallback/fixtures/
-traceability + T002 runners red+green per kind.
-R2 (LARGE, PASS): R-0164 fix + T003 runtime_flow runner + T004
-job-end gate + matrix + CLI + end-to-end hold/release.
-R3: R-0165 fix + dod_v1 SCHEMA_REGISTRY registration + integration
-gate per docs/agents/integration_gate.md. Closure is its own later
-round.
+R1 (single-session micro-round): closure-candidate disk vehicle
+(.agent/candidates.md) + settle the two dropped F056 candidates as
+DECISIONs. Then merge on PASS; next feature per Rule A5 is F062.
 
 ## Scope
-`packages/orchestration/dod_schema.py` (R-0165 step validation),
-`packages/orchestration/schemas/models.py` (register dod_v1, one
-line + its registry test), `tests/orchestration/test_dod_compiler.py`
-(negative tests), the integration-gate evidence, and `.agent/`
-state. Nothing beyond.
+docs/roadmap/STATUS_closure_protocol.md,
+docs/agents/planner_reviewer_prompt.md,
+docs/agents/handback_template.md, and `.agent/` state (authored
+texts, candidates.md, decisions.md, plan/handoff/last_block).
+Nothing beyond; no production code.
 
 ## Gates (round verification, pytest)
-python3 -m pytest tests/orchestration/test_dod_compiler.py \
-    tests/orchestration/test_dod_runners.py \
-    tests/orchestration/test_dod_gate.py -q     scoped gate
-python3 -m pytest tests/orchestration/schemas -q  registry gate
+python3 -m pytest tests/docs/ -q            docs-round gate
 python3 -m pytest tests/cli/test_golden_path.py -q  canary
-Integration gate: full suite with pytest -n auto, branch AND base,
-per docs/agents/integration_gate.md — only this round claims "full
-suite green".
 Resource safety: everything runs through these pytest wrappers; no
 unbounded subprocess fan-out from gate tooling.
 
 ## Constraints
-- R-0165: compile-time step validation (action == "open", path
-  starts with "/", closed key set {action, path, expect_status,
-  expect_text}); the runner's unknown_flow_action guard STAYS as
-  defence for previously stored DoDs.
-- dod_v1 registration follows the existing SCHEMA_REGISTRY pattern
-  in schemas/models.py — registration lives in that module, not as
-  an import side effect elsewhere.
-- Fixture steps already use the v1 vocabulary; goldens must not
-  need changes — if one does, STOP and report instead of editing.
-- Base-parity in the integration gate: copy apps/ui/node_modules +
-  apps/ui/dist into the throwaway worktree,
-  REMEDY_UI_NO_AUTO_BUILD=1 (F056 R3 precedent).
-- Reviewer-authored texts under .agent/authored/ are applied by copy
-  and sha256-verified before use; never hand-edited.
+- Round type: SINGLE-SESSION MICRO-ROUND (planner_reviewer_prompt.md
+  §3) — change set limited to docs/, tests/, .agent/**, roadmap
+  files; full fidelity ritual applies (scratchpad originals, sha256,
+  cmp disk-to-disk).
+- Authored texts under .agent/authored/ are applied by copy and
+  sha256-verified before use; never hand-edited.
 - Commits stay under 500-line diffs (AGENTS.md).
 - context.md satisfies its FULL test reader list: a "Steps" section,
   "## Active Branch" with a feature/ slug, a roadmap F-id, and this
@@ -54,7 +36,5 @@ unbounded subprocess fan-out from gate tooling.
   planner_reviewer_prompt.md §4 item 11).
 
 ## Do not touch
-Visual regression, deep browser automation, Tier-11 verification
-depth. docs/roadmap/ROADMAP.md and all of docs/roadmap/STATUS.md
-this round. Job-lifecycle behavior beyond the existing gate seam.
-No closure artifacts this round.
+Production code (packages/, apps/). docs/roadmap/ROADMAP.md and
+docs/roadmap/STATUS.md this round. Feature files. Evidence tooling.
