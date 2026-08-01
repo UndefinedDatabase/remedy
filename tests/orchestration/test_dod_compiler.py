@@ -309,7 +309,14 @@ class TestNonsenseSpecRejection:
                        {"action": "open", "path": "nope"})
         assert "steps[2]" in str(exc.value)
 
-    @pytest.mark.parametrize("cwd", ["/etc", "../outside", "a/../../b"])
+    # Explicit ids: the raw values are path-shaped, and a node id that reads as
+    # a local absolute path is refused by the evidence packaging validator (and
+    # is hostile to any tooling that scans a bundle for leaked paths).
+    @pytest.mark.parametrize("cwd", [
+        pytest.param("/etc", id="absolute"),
+        pytest.param("../outside", id="parent-escape"),
+        pytest.param("a/../../b", id="nested-escape"),
+    ])
     def test_cwd_may_not_escape_the_worktree(self, cwd):
         with pytest.raises(Exception) as exc:
             DraftCheck(id="c1", kind="pytest",
