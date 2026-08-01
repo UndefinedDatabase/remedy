@@ -11,15 +11,14 @@ configured → "smoke: not applicable (no runtime configured)", honest
 and non-gating, never silently green.
 
 ## Current Step
-R1 (SPLIT): claim F062, then T001 — register the product-smoke
-standard block into the seam F061 left in the DoD compiler; compile it
-into ordered blocking checks (this round: app_starts only). app_starts
-orchestrates the F007 harness verbs (start, readiness probe within the
-configured window, teardown ALWAYS) with one retry after a short
-backoff recorded as "passed on retry", and a port conflict reported as
-a start failure carrying the harness's own reason. Two REAL fixture
-mini-apps in the test tree: one starting clean, one whose unit tests
-are green but whose startup is broken.
+R2 (LARGE): R-0166 fix (push first), then T002 core_paths_respond —
+closed probe vocabulary, path hand-off from intent/plan, OK-status
+rule, fixtures for ok / wrong status / missing marker; then T003
+clean_console — a small documented CASE-SENSITIVE pattern base that
+config EXTENDS but never replaces, red with the matched lines quoted,
+plus the smoke config table (enabled, paths override, error-pattern
+additions, readiness window); then the integration gate per
+docs/agents/integration_gate.md. Per-slice verification, stop-on-red.
 
 ## Next Steps
 - R2: T002 core_paths_respond + path extraction hand-off from the DoD

@@ -5,13 +5,13 @@
 Base commit: main after PR #173 merge (paydown-0801), `b836d364`
 
 ## Steps (round map)
-R1 (SPLIT): claim `[~]` + state reset → T001 product-smoke standard
-block registered into the DoD compiler's seam, app_starts check, the
-not-applicable path, and two real fixture mini-apps (clean start /
-green tests with broken startup).
-R2: T002 core_paths_respond + path extraction hand-off + fixtures.
-R3: T003 clean_console + pattern list + teardown-always; then the
-integration gate. R4: closure — its own round.
+R1 (SPLIT, PASS): claim `[~]` + T001 — block registered into the DoD
+compiler's seam, app_starts, the not-applicable path, two real
+fixture mini-apps.
+R2 (LARGE): R-0166 fix (push) → T002 core_paths_respond → T003
+clean_console + the smoke config table → the integration gate per
+docs/agents/integration_gate.md.
+R3: closure — its own round.
 
 ## Scope
 `packages/orchestration/**` (the product-smoke block and its
@@ -21,9 +21,13 @@ under `tests/`, `docs/roadmap/STATUS.md` (claim line only), and
 `.agent/` state. Nothing beyond.
 
 ## Gates (round verification, pytest)
-python3 -m pytest tests/orchestration/test_product_smoke.py -q  T001 gate
-python3 -m pytest tests/docs/ -q                                docs gate
-python3 -m pytest tests/cli/test_golden_path.py -q              canary
+python3 -m pytest tests/orchestration/test_product_smoke.py \
+    tests/orchestration/test_dod_runners.py \
+    tests/orchestration/test_dod_compiler.py \
+    tests/orchestration/schemas -q                    scoped slice gate
+python3 -m pytest tests/cli/test_golden_path.py -q    canary
+Integration gate: full suite with pytest -n auto, branch AND base,
+per docs/agents/integration_gate.md.
 Resource safety: everything runs through these pytest wrappers; no
 unbounded subprocess fan-out from smoke or fixture tooling — every
 fixture app is started through the harness verbs and torn down on
