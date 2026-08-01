@@ -1,37 +1,41 @@
-# Context — F053 Final & interim report
+# Context — F056 Missions (Tier 1)
 
 ## Active Branch
-`feature/f053-run-report`
-Base commit: `15105dbe` (main after PR #168 merge)
+`feature/f056-missions`
+Base commit: `78f5f608` (main after PR #170 merge)
 
 ## Steps (round map)
-R1 T001 renderer + goldens (PASS) · R2 T002 producer/hook/CLI
-(PASS) · R3 fixes + integration gate (RED: R-0162) · R4 repair 1
-(incomplete — a second context.md reader) · R5 repair 2 + gate
-re-run · R6 closure, its own round.
+R1 (LARGE): STATUS claim `[~]` + state reset → T001 record/store/
+link/list/show → T002 intake hint + approval opt-in (default NO) →
+T003 continue + injected verify-first + two-job fixture e2e.
+Closure is its own later round.
 
 ## Scope
-T001+T002 landed: run_report.py (pure renderer + evidence sources +
-the one writer), status_mirror.py (read-only ledger parser), the
-terminal hook in long_run_executor._apply_terminal, and
-remedy job report --final/--interim/--json. R5 changes NO feature
-code: this state file + one doc amendment + gate re-run only.
+`packages/orchestration/mission_state.py` (new), CLI wiring for
+`remedy mission start|continue|list|show`, the intake
+mission-candidate hint, the plan-approval payload opt-in, plus
+`tests/orchestration/test_mission_state.py` and
+`tests/cli/test_mission_cmd.py`. Also `docs/roadmap/STATUS.md` and
+`.agent/` state. Nothing beyond.
 
 ## Gates (round verification, pytest)
-python3 -m pytest -n auto -q                        full suite
-python3 -m pytest tests/docs/ -q                    293
-python3 -m pytest tests/cli/test_golden_path.py -q  42 (canary)
-Resource safety: everything runs through these pytest wrappers;
-no unbounded subprocess fan-out from state-file tooling.
+python3 -m pytest tests/orchestration/test_mission_state.py \
+    tests/cli/test_mission_cmd.py -q     per-slice gate
+python3 -m pytest tests/cli/test_golden_path.py -q   canary
+python3 -m pytest tests/docs/ -q                     docs gate
+Resource safety: everything runs through these pytest wrappers; no
+unbounded subprocess fan-out from state-file tooling.
 
 ## Constraints
-- Pure renderer (P6): every number names its basis; a missing
-  source renders "not recorded"; never computes or guesses.
-- Deterministic ordering — double render byte-identical.
-- Milestone distance from the STATUS mirror (status_mirror.py),
-  never hand-maintained. "Can now" cites ONLY accepted [x] state.
-- Reports are English; mission text quoted as-is; every unbounded
-  list caps with an honest "and N more" line (A9).
+- Missions never auto-create: opt-in defaults to NO; a plain
+  do-flow creates none (negative test required).
+- Mission goals are immutable — a changed goal is a new mission.
+- One job belongs to at most one mission (validator).
+- A linked job that no longer exists renders "(missing job)";
+  listings never crash, corrupt records are skipped and counted.
+- Nothing auto-transitions mission status in this feature.
+- Storage like other entities: atomic JSON per record under a
+  project-scoped area of the data root.
 - Reviewer-authored texts under .agent/authored/ are applied by
   copy and sha256-verified before use; never hand-edited.
 - Commits stay under 500-line diffs (AGENTS.md).
@@ -41,5 +45,6 @@ no unbounded subprocess fan-out from state-file tooling.
   planner_reviewer_prompt.md §4 item 11).
 
 ## Do not touch
-Notification delivery, UI rendering, cost calibration.
-docs/roadmap/ROADMAP.md; STATUS entries other than the F053 line.
+The orchestrator loop (later feature), lineage UI, dossier CONTENT
+— only reserve the field. docs/roadmap/ROADMAP.md; STATUS entries
+other than the F056 line.

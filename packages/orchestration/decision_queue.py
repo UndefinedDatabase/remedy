@@ -253,6 +253,20 @@ def list_decisions(
                 f"remedy decision resolve {job_id[:8]} fp:approval --reason approve",
                 f"remedy decision resolve {job_id[:8]} fp:approval --reason reject",
             ]
+            # F056: intake may hint that this goal outlives one job.  The offer
+            # rides THIS decision — no second human touchpoint — and it defaults
+            # to NO: approving without --as-mission creates nothing.
+            _intake = getattr(job, "intake", None)
+            _mission_offer: dict[str, Any] = {}
+            if isinstance(_intake, dict) and _intake.get("mission_candidate"):
+                _mission_offer = {
+                    "question": "Run as mission (a persistent goal above this job)?",
+                    "default": "no",
+                    "goal": str(_intake.get("goal", "") or ""),
+                }
+                _actions.append(
+                    f"remedy decision resolve {job_id[:8]} fp:approval "
+                    f"--reason approve --as-mission")
             _summary = "Flight plan awaiting approval."
             if _questions:
                 _summary = (
@@ -262,6 +276,11 @@ def list_decisions(
                 _actions.insert(1, (
                     f"remedy decision resolve {job_id[:8]} fp:approval "
                     f"--reason approve --answer {_questions[0]['id']}=\"...\""))
+            _payload: dict[str, Any] = {}
+            if _questions:
+                _payload["clarifications"] = _questions
+            if _mission_offer:
+                _payload["mission_offer"] = _mission_offer
             decisions.append(HumanDecision(
                 id="fp:approval",
                 type="flight_plan_approval",
@@ -275,7 +294,7 @@ def list_decisions(
                 next_actions=tuple(_actions),
                 created_at="",
                 resolved_at=None,
-                payload={"clarifications": _questions} if _questions else {},
+                payload=_payload,
             ))
         elif _fp_approval == "approved" and _flight_plan.get("_approval_audit"):
             audit = _flight_plan["_approval_audit"]

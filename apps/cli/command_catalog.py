@@ -112,7 +112,7 @@ GROUPS: dict[str, GroupDef] = {
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
     "brain": GroupDef("brain", "Brain", "Inspect the project brain graph.", user_facing=False),
     "policy": GroupDef("policy", "Policy", "Inspect execution policies.", user_facing=False),
-    "mission": GroupDef("mission", "Mission", "Mission contract facade for bounded run loops (internal).", user_facing=False),
+    "mission": GroupDef("mission", "Mission", "Persistent goals above jobs, and the bounded run-loop facade (internal).", user_facing=False),
     "approval": GroupDef("approval", "Approval", "Execution approval policy.", user_facing=False),
     "readiness": GroupDef("readiness", "Readiness", "Inspect autonomy readiness.", user_facing=False),
     "context": GroupDef("context", "Context", "Context pack and coverage.", user_facing=False),
@@ -167,6 +167,12 @@ _ANSWER_OPT = ArgDef(
     'Answer one bundled clarification: --answer q1="use PostgreSQL" (repeatable)',
     required=False, is_option=True, is_repeatable=True)
 _APPLY_ID_OPT = ArgDef("--apply-id", "Explicit apply_id (overrides intent_id lookup)", required=False, is_option=True)
+#: F056: the plan-approval opt-in. Its ABSENCE is the default — approving
+#: without it creates no mission, which is the whole point of the opt-in.
+_AS_MISSION_FLAG = ArgDef(
+    "--as-mission",
+    "When approving: also create a mission for this goal and link this job as its initial job",
+    required=False, is_option=True, is_flag=True)
 _PROJECT_SCOPE_OPT = ArgDef("--project", "Scope to project (slug or UUID)", required=False, is_option=True)
 _ALL_PROJECTS_FLAG = ArgDef("--all-projects", "Show jobs from all projects", required=False, is_option=True, is_flag=True)
 
@@ -1602,6 +1608,105 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.run", "dogfood.morning-report"),
     ),
 
+    # ── mission (F056: the persistent goal above a chain of jobs) ────────
+    CommandEntry(
+        command_id="mission.start",
+        group_id="mission",
+        subcommand="start",
+        description="Create a mission — a persistent goal above the jobs that will serve it (explicit; never automatic).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("goal", "The persistent goal this mission exists for"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.list", "mission.show"),
+    ),
+    CommandEntry(
+        command_id="mission.list",
+        group_id="mission",
+        subcommand="list",
+        description="List missions (scoped to the current project by default; unreadable records are skipped and counted).",
+        action_class="read_only",
+        args=(_PROJECT_SCOPE_OPT, _ALL_PROJECTS_FLAG, _JSON_OPT),
+        supports_json=True,
+        related=("mission.start", "mission.show"),
+    ),
+    CommandEntry(
+        command_id="mission.continue",
+        group_id="mission",
+        subcommand="continue",
+        description="Add the next job to a mission — its plan always begins with a task that verifies the previous job's Definition of Done.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("next_step", "What this next job should do"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.start"),
+    ),
+    CommandEntry(
+        command_id="mission.show",
+        group_id="mission",
+        subcommand="show",
+        description="Show one mission and its job chain, each job with the state the job store reports now.",
+        action_class="read_only",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.list", "mission.start"),
+    ),
+    # Status transitions are their own explicit subcommands (R-0163): the verb
+    # names the status, and nothing else in Remedy ever moves it.
+    CommandEntry(
+        command_id="mission.achieve",
+        group_id="mission",
+        subcommand="achieve",
+        description="Mark a mission achieved — an explicit human judgement, never inferred from its jobs.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.list"),
+    ),
+    CommandEntry(
+        command_id="mission.abandon",
+        group_id="mission",
+        subcommand="abandon",
+        description="Mark a mission abandoned — the goal is dropped; its jobs and their evidence stay.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.list"),
+    ),
+    CommandEntry(
+        command_id="mission.pause",
+        group_id="mission",
+        subcommand="pause",
+        description="Mark a mission paused — the goal still stands, work on it does not.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.list"),
+    ),
+
     # ── doctor (product spine health check) ──────────────────────────────
     CommandEntry(
         command_id="doctor.core",
@@ -2358,6 +2463,7 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("decision_id", "Decision ID"),
             _REASON_OPT,
             _ANSWER_OPT,
+            _AS_MISSION_FLAG,
         ),
     ),
     CommandEntry(

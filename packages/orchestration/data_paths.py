@@ -110,6 +110,15 @@ def queue_dir(root: Path | None = None) -> Path:
     return (root if root is not None else resolve_data_root()) / "queue"
 
 
+def missions_dir(root: Path | None = None) -> Path:
+    """Return the mission storage area (<root>/missions).
+
+    F056: one directory per project below this, holding one atomic JSON file
+    per mission record; see ``packages/orchestration/mission_state.py``.
+    """
+    return (root if root is not None else resolve_data_root()) / "missions"
+
+
 def control_dir(root: Path | None = None) -> Path:
     """Return the control area (<root>/control).
 

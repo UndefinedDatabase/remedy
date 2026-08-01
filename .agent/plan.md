@@ -1,19 +1,28 @@
-# Plan — Paydown micro-round 2026-07-31b
+# Plan — F056 Missions: persistent goal, jobs as execution units
 
 ## Goal
-Operator-directed SINGLE-SESSION MICRO-ROUND at the F053→F056
-boundary: codify the two named round types (SPLIT / single-session
-micro-round) in planner_reviewer_prompt.md §3, symmetrize the
-worktree-only mutation rule for every role (§4 item 10 +
-split_workflow.md worker bootstrap), add the relay-semantics
-sentence to §2, resolve carried R-0160 in the ledger, merge
-same-session on PASS (standing operator approval, 2026-07-31).
-Change set: docs/agents/** + .agent/** only — no production code.
+Give goals that outlive one job a first-class home: a MISSION holds
+the persistent goal and links an ordered chain of jobs. Follow-up
+jobs are structurally forced to verify the previous state FIRST
+(injected verify task, not prompt hope). Missions never auto-create
+— explicit human opt-in only (`remedy mission start`, or a
+plan-approval payload item defaulting to NO).
 
 ## Current Step
-R1 — apply Items 1–3 + closure-candidate pass (none carried), run
-gates (tests/docs + canary), handback, self-review, merge.
+R1/R2/R3 all PASS. R4 CLOSURE COMPLETE, handed back: Built State
+recorded, preconditions green (integrity passed=true, clean tree,
+branch pushed), evidence job 057a2de1dde14778, package
+remedy-review-20260731-210415-READY_FOR_REVIEW.zip (READY, first
+attempt BLOCKED and recorded), STATUS [x] + README sync landed as
+the last content commit, PR open and NOT merged.
 
 ## Next Steps
-- After merge: F056 — Missions (Rule A5), fresh window, SPLIT
-  rounds.
+- Reviewer verifies closure (b41a4b53..HEAD) and ends the session
+  with the feature-done banner.
+- The closure PR merges at the next feature's Open PR Gate.
+
+## Risks
+- `mission` CLI group already exists (internal run-loop facade):
+  new subcommands join it rather than shadow it.
+- Verify-first must be enforced by structure (task injection +
+  validator), never by prompt text.
