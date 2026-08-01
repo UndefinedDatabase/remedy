@@ -41,6 +41,7 @@ from packages.orchestration.dod_gate import evaluate_dod, store_dod
 from packages.orchestration.dod_runners import (
     REASON_NONE,
     REASON_SMOKE_NOT_APPLICABLE,
+    REASON_SMOKE_PATH_FAILED,
     REASON_SMOKE_START_FAILED,
     RUNNER_REGISTRY,
     STATUS_FAILED,
@@ -50,10 +51,15 @@ from packages.orchestration.dod_runners import (
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, SMOKE_CHECK_NAMES, DoD, DoDCheck
 from packages.orchestration.product_smoke import (
     CHECK_ID_APP_STARTS,
+    CHECK_ID_CORE_PATHS,
+    MAX_EXTRACTED_PATHS,
     NOT_APPLICABLE_MESSAGE,
     PASSED_ON_RETRY,
     SMOKE_APP_STARTS,
+    SMOKE_CHECKS,
+    SMOKE_CORE_PATHS,
     SMOKE_PROVIDER_NAME,
+    extract_paths,
     is_registered,
     register,
     resolve_runtime,
@@ -187,10 +193,12 @@ class TestRegistration:
 
         smoke = [c for c in result.dod.checks if c.kind == "product_smoke"]
         # The compiler namespaces standard ids (F061): a provider proposes an
-        # id, the compiler owns uniqueness and provenance.
-        assert [c.id for c in smoke] == [f"std-{CHECK_ID_APP_STARTS}"]
-        assert smoke[0].source == "standard"
-        assert smoke[0].blocking is True
+        # id, the compiler owns uniqueness and provenance. Order is the block's:
+        # the app must start before probing it means anything.
+        assert [c.id for c in smoke] == [f"std-{CHECK_ID_APP_STARTS}",
+                                         f"std-{CHECK_ID_CORE_PATHS}"]
+        assert all(c.source == "standard" for c in smoke)
+        assert all(c.blocking is True for c in smoke)
 
     def test_the_schema_knows_the_kind_and_its_runner_exists(self):
         assert SMOKE_APP_STARTS in SMOKE_CHECK_NAMES
@@ -478,3 +486,184 @@ def test_no_zombie_processes_after_the_suite(tmp_path):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(2.0)
             assert sock.connect_ex(("127.0.0.1", port)) != 0, f"port {port} still open"
+
+
+# ---------------------------------------------------------------------------
+# T002 — core_paths_respond
+# ---------------------------------------------------------------------------
+
+PATHS_APP = FIXTURES / "paths_app.py"
+
+
+def paths_check(*paths: dict, blocking: bool = True) -> DoDCheck:
+    return DoDCheck(
+        id=CHECK_ID_CORE_PATHS, kind="product_smoke",
+        spec={"smoke": SMOKE_CORE_PATHS, "paths": list(paths), "retry": False},
+        blocking=blocking, source="standard")
+
+
+class TestCorePathsVocabulary:
+    def test_the_name_is_in_both_closed_vocabularies(self):
+        assert SMOKE_CORE_PATHS in SMOKE_CHECKS
+        assert SMOKE_CORE_PATHS in SMOKE_CHECK_NAMES
+
+    def test_a_probe_set_is_required(self):
+        with pytest.raises(Exception) as exc:
+            DoDCheck(id="c1", kind="product_smoke",
+                     spec={"smoke": SMOKE_CORE_PATHS}, source="standard")
+        assert "non-empty 'paths'" in str(exc.value)
+
+    @pytest.mark.parametrize("entry,needle", [
+        ({"path": "orders"}, "must start with '/'"),
+        ({"path": ""}, "needs a non-empty 'path'"),
+        ({}, "needs a non-empty 'path'"),
+        ({"path": "/x", "expect_status": "200"}, "must be an integer"),
+        ({"path": "/x", "expect_status": True}, "must be an integer"),
+        ({"path": "/x", "expect_text": 1}, "must be a string"),
+        ({"path": "/x", "expect": "200"}, "unknown key(s): expect"),
+    ])
+    def test_a_nonsense_probe_is_refused_at_compile_time(self, entry, needle):
+        with pytest.raises(Exception) as exc:
+            paths_check(entry)
+        assert needle in str(exc.value)
+
+    def test_the_failing_entry_index_is_named(self):
+        with pytest.raises(Exception) as exc:
+            paths_check({"path": "/a"}, {"path": "/b"}, {"path": "nope"})
+        assert "paths[2]" in str(exc.value)
+
+    def test_paths_do_not_apply_to_app_starts(self):
+        with pytest.raises(Exception) as exc:
+            DoDCheck(id="c1", kind="product_smoke",
+                     spec={"smoke": SMOKE_APP_STARTS, "paths": [{"path": "/"}]},
+                     source="standard")
+        assert "does not apply" in str(exc.value)
+
+
+class TestPathExtraction:
+    def _ctx(self, *, goal: str = "", hints=(), acceptance=("done",)):
+        plan = FlightPlan.model_validate({
+            "schema_v": "flight_plan_v1",
+            "tasks": [{"id": "T001", "title": "t", "goal": "g",
+                       "acceptance": list(acceptance), "est_tokens_band": "S"}],
+        })
+        return StandardCheckContext(
+            intake={"goal": goal, "acceptance_hints": list(hints)},
+            plan=plan, worktree_root="/nonexistent")
+
+    def test_routes_are_taken_from_intent_and_plan(self):
+        found = extract_paths(self._ctx(
+            goal="serve /orders and /orders/new",
+            hints=["the dashboard at / must render"],
+            acceptance=["GET /reports returns the table"]))
+        assert found[:2] == ["/orders", "/orders/new"]
+        assert "/reports" in found and "/" in found
+
+    def test_filesystem_paths_and_source_files_are_not_routes(self):
+        found = extract_paths(self._ctx(
+            goal="edit /home/user/app.py and tests/x.py",
+            hints=["see /etc/hosts", "docs/guide.md"],
+            acceptance=["update /srv/data/config.toml"]))
+        assert found == [], f"probing these would be nonsense: {found}"
+
+    def test_extraction_is_deduped_ordered_and_capped(self):
+        found = extract_paths(self._ctx(
+            goal=" ".join(f"/r{i}" for i in range(12)) + " /r0"))
+        assert found == [f"/r{i}" for i in range(MAX_EXTRACTED_PATHS)]
+
+    def test_the_block_probes_the_health_path_plus_extracted_routes(self, tmp_path):
+        register()
+        root = project(tmp_path / "app", PATHS_APP)
+        ctx = StandardCheckContext(
+            intake={"goal": "the /orders page must load"},
+            plan=simple_plan(), worktree_root=str(root))
+        checks = smoke_checks(ctx)
+
+        assert [c.spec["smoke"] for c in checks] == [SMOKE_APP_STARTS,
+                                                     SMOKE_CORE_PATHS]
+        assert [p["path"] for p in checks[1].spec["paths"]] == ["/health", "/orders"]
+        assert checks[1].blocking is True
+
+    def test_not_applicable_contributes_no_probe_set(self, tmp_path):
+        """No app means no paths — a filler probe would be an invented value."""
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        checks = smoke_checks(StandardCheckContext(
+            intake={"goal": "/orders"}, plan=simple_plan(),
+            worktree_root=str(bare)))
+        assert [c.spec["smoke"] for c in checks] == [SMOKE_APP_STARTS]
+        assert checks[0].blocking is False
+
+
+class TestCorePathsRun:
+    def test_ok_paths_pass(self, tmp_path):
+        root = project(tmp_path / "app", PATHS_APP)
+        ev = run_check(
+            paths_check({"path": "/health"},
+                        {"path": "/orders", "expect_text": "orders: 2 open"}),
+            root, timeout_sec=60)
+
+        assert ev.status == STATUS_PASSED, ev.output_tail
+        assert "path /health -> 200 OK" in ev.output_tail
+        assert "path /orders -> 200 OK" in ev.output_tail
+
+    def test_a_wrong_status_is_red(self, tmp_path):
+        root = project(tmp_path / "app", PATHS_APP)
+        ev = run_check(paths_check({"path": "/broken"}), root, timeout_sec=60)
+
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_SMOKE_PATH_FAILED
+        assert "path /broken -> 500, expected an OK status" in ev.output_tail
+
+    def test_a_declared_status_that_does_not_match_is_red(self, tmp_path):
+        root = project(tmp_path / "app", PATHS_APP)
+        ev = run_check(paths_check({"path": "/health", "expect_status": 204}),
+                       root, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert "-> 200, expected 204" in ev.output_tail
+
+    def test_a_missing_marker_is_red(self, tmp_path):
+        root = project(tmp_path / "app", PATHS_APP)
+        ev = run_check(
+            paths_check({"path": "/empty", "expect_text": "orders"}),
+            root, timeout_sec=60)
+
+        assert ev.status == STATUS_FAILED
+        assert ev.reason == REASON_SMOKE_PATH_FAILED
+        assert "does not contain 'orders'" in ev.output_tail
+
+    def test_an_unknown_path_is_red_not_a_pass(self, tmp_path):
+        root = project(tmp_path / "app", PATHS_APP)
+        ev = run_check(paths_check({"path": "/nope"}), root, timeout_sec=60)
+        assert ev.status == STATUS_FAILED
+        assert "-> 404, expected an OK status" in ev.output_tail
+
+    def test_a_path_failure_is_not_retried(self, tmp_path):
+        """The app came up; retrying the START would hide a product failure."""
+        root = project(tmp_path / "app", PATHS_APP)
+        check = DoDCheck(
+            id=CHECK_ID_CORE_PATHS, kind="product_smoke",
+            spec={"smoke": SMOKE_CORE_PATHS, "paths": [{"path": "/broken"}],
+                  "retry": True},
+            blocking=True, source="standard")
+        ev = run_check(check, root, timeout_sec=90)
+
+        assert ev.reason == REASON_SMOKE_PATH_FAILED
+        assert "retrying once after" not in ev.output_tail
+
+    def test_the_app_is_stopped_after_a_path_failure(self, tmp_path):
+        root = project(tmp_path / "app", PATHS_APP)
+        ev = run_check(paths_check({"path": "/broken"}), root, timeout_sec=60)
+        assert "the application family was stopped" in ev.output_tail
+
+        port = int(ev.output_tail.split("port=")[1].split(")")[0])
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(2.0)
+            assert sock.connect_ex(("127.0.0.1", port)) != 0
+
+    def test_a_project_without_a_runtime_is_not_applicable(self, tmp_path):
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        ev = run_check(paths_check({"path": "/health"}, blocking=False), bare)
+        assert ev.reason == REASON_SMOKE_NOT_APPLICABLE
+        assert NOT_APPLICABLE_MESSAGE in ev.output_tail
