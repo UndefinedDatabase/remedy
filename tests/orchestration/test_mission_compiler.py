@@ -1,6 +1,6 @@
-"""F069 T001 — the MissionPlan schema and the compiler that fills it.
+"""F069 — the MissionPlan schema, the compiler, and the DoD hand-off.
 
-What the order requires proof of:
+What the order requires proof of (T001 schema/compiler, T002 hand-off):
 
   * the schema round-trips through JSON unchanged, and refuses a plan that
     claims to be compiled when it was not;
@@ -12,7 +12,11 @@ What the order requires proof of:
     structures — on the provider path AND on the no-provider path;
   * a fallback plan is labeled ``compiled=false`` / ``origin="deterministic"``
     on every route into it — no provider, provider error, unparseable answer;
-  * compiling has ZERO side effects: nothing is written, nothing is started.
+  * every milestone carries a DoD reference compiled by the F061 compiler —
+    no second mechanism — and the plan persists on the mission record as an
+    ADDITIVE optional field that pre-F069 records survive unchanged;
+  * compiling has ZERO side effects and planning end to end creates ZERO jobs,
+    starts no process and touches no worktree.
 
 No provider is contacted: every "LLM" here is a local callable returning
 recorded text.
@@ -20,15 +24,25 @@ recorded text.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
+from packages.orchestration.data_paths import jobs_dir
+from packages.orchestration.dod_compiler import DoDCompileResult
+from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
 from packages.orchestration.mission_compiler import (
     DETERMINISTIC_MILESTONE_ID,
+    MISSION_PLAN_FILENAME,
+    attach_milestone_dods,
     build_mission_prompt,
+    compile_milestone_dod,
     compile_mission_plan,
     deterministic_mission_plan,
+    milestone_flight_plan,
+    render_mission_plan_md,
+    write_mission_plan_md,
 )
 from packages.orchestration.mission_plan_schema import (
     MAX_MISSION_MILESTONES,
@@ -39,6 +53,19 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlanDraft,
     looks_like_task_list,
 )
+from packages.orchestration.mission_state import (
+    MISSION_SCHEMA_VERSION,
+    Mission,
+    MissionError,
+    create_mission,
+    list_missions,
+    load_mission,
+    mission_evidence_dir,
+    mission_record_path,
+    set_mission_plan,
+)
+from packages.orchestration.storage import list_jobs_safe
+from packages.orchestration.worktrees import WORKTREE_DIRNAME
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "mission"
 #: Plain identifiers — they become pytest parametrize ids, and an id carrying a
@@ -425,3 +452,280 @@ class TestCompilingChangesNothing:
             fixture["mission"], replaying(fixture["provider_draft"]))
 
         assert json.dumps(fixture["mission"], sort_keys=True) == before
+
+
+# ---------------------------------------------------------------------------
+# T002 — the per-milestone DoD hand-off
+# ---------------------------------------------------------------------------
+
+def compiled_fixture_plan(name: str = "payments_platform"):
+    fixture = load_fixture(name)
+    result = compile_mission_plan(
+        fixture["mission"], replaying(fixture["provider_draft"]))
+    return fixture, result.plan
+
+
+class TestMilestoneFlightPlanView:
+    def test_one_task_per_outline_plus_the_outcome_task(self):
+        _fixture, plan = compiled_fixture_plan()
+        ms = plan.milestones[0]
+
+        view = milestone_flight_plan(ms)
+
+        assert len(view.tasks) == len(ms.jobs_draft) + 1
+        assert [t.id for t in view.tasks] == [
+            "M001-J001", "M001-J002", "M001-DONE"]
+
+    def test_the_outcome_task_carries_the_milestone_goal_and_waits_for_all(self):
+        _fixture, plan = compiled_fixture_plan()
+        ms = plan.milestones[0]
+
+        outcome = milestone_flight_plan(ms).tasks[-1]
+
+        assert outcome.acceptance == [ms.goal]
+        assert outcome.depends_on == ["M001-J001", "M001-J002"]
+
+    def test_a_milestone_with_no_outlines_still_projects_a_valid_plan(self):
+        ms = Milestone.model_validate(milestone("M009"))
+        view = milestone_flight_plan(ms)
+        assert [t.id for t in view.tasks] == ["M009-DONE"]
+        assert view.tasks[0].depends_on == []
+
+
+class TestMilestoneDodHandoff:
+    def test_every_milestone_gets_a_dod_reference_and_a_file(self, tmp_path):
+        fixture, plan = compiled_fixture_plan()
+        assert plan.milestones_without_dod  # nothing referenced yet
+
+        attached = attach_milestone_dods(
+            plan, goal=fixture["mission"]["goal"], evidence_dir=tmp_path)
+
+        assert attached.milestones_without_dod == ()
+        for ms in attached.milestones:
+            assert ms.dod_ref == f"dod_{ms.id}.json"
+            assert (tmp_path / ms.dod_ref).is_file()
+
+    def test_the_reference_is_relative_so_a_moved_data_root_still_resolves(
+            self, tmp_path):
+        fixture, plan = compiled_fixture_plan()
+        attached = attach_milestone_dods(
+            plan, goal=fixture["mission"]["goal"], evidence_dir=tmp_path)
+        for ms in attached.milestones:
+            assert not Path(ms.dod_ref).is_absolute()
+            assert "/" not in ms.dod_ref
+
+    def test_the_written_dod_is_a_real_dod_v1_artifact(self, tmp_path):
+        fixture, plan = compiled_fixture_plan()
+        attached = attach_milestone_dods(
+            plan, goal=fixture["mission"]["goal"], evidence_dir=tmp_path)
+
+        body = json.loads(
+            (tmp_path / attached.milestones[0].dod_ref).read_text(encoding="utf-8"))
+        dod = DoD.model_validate(body)
+        assert dod.schema_v == DOD_SCHEMA_V
+        assert dod.checks
+
+    def test_the_dod_comes_from_the_f061_compiler_not_a_second_mechanism(self):
+        """Rule A6: the milestone DoD is compiled, and its traceability holds."""
+        fixture, plan = compiled_fixture_plan()
+        ms = plan.milestones[0]
+
+        result = compile_milestone_dod(fixture["mission"]["goal"], ms)
+
+        assert isinstance(result, DoDCompileResult)
+        assert result.traceability is not None
+        assert result.traceability.ok
+        assert result.dod.origin == "deterministic"
+
+    def test_a_provider_backed_milestone_dod_is_labeled_compiled(self):
+        fixture, plan = compiled_fixture_plan()
+        ms = plan.milestones[0]
+        draft = {
+            "schema_v": "dod_draft_v1",
+            "checks": [{
+                "id": "contract", "kind": "pytest",
+                "spec": {"selector": "tests/payments"},
+                "blocking": True, "acceptance_refs": [], "description": "d",
+            }],
+        }
+
+        result = compile_milestone_dod(
+            fixture["mission"]["goal"], ms, replaying(draft))
+
+        assert result.source == "llm"
+        assert result.dod.compiled is True
+
+
+class TestRendering:
+    def test_the_rendering_is_deterministic(self, tmp_path):
+        fixture, plan = compiled_fixture_plan()
+        attached = attach_milestone_dods(
+            plan, goal=fixture["mission"]["goal"], evidence_dir=tmp_path)
+
+        first = render_mission_plan_md(attached, fixture["mission"]["goal"])
+        second = render_mission_plan_md(attached, fixture["mission"]["goal"])
+        assert first == second
+
+    def test_the_rendering_names_every_milestone_and_its_dod(self, tmp_path):
+        fixture, plan = compiled_fixture_plan()
+        attached = attach_milestone_dods(
+            plan, goal=fixture["mission"]["goal"], evidence_dir=tmp_path)
+
+        text = render_mission_plan_md(attached, fixture["mission"]["goal"])
+        for ms in attached.milestones:
+            assert ms.id in text
+            assert ms.goal in text
+            assert ms.dod_ref in text
+
+    def test_the_rendering_says_draft_jobs_are_not_runnable(self):
+        _fixture, plan = compiled_fixture_plan()
+        text = render_mission_plan_md(plan)
+        assert "nothing is runnable" in text or "nothing here is" in text
+        assert "not compiled yet" in text  # dod_ref still empty
+
+    def test_a_deterministic_plan_is_rendered_as_the_degraded_route_it_is(self):
+        text = render_mission_plan_md(deterministic_mission_plan("keep it green"))
+        assert "degraded route" in text
+
+    def test_the_file_lands_in_the_evidence_area_and_keeps_prior_versions(
+            self, tmp_path):
+        _fixture, plan = compiled_fixture_plan()
+
+        first = write_mission_plan_md(plan, tmp_path)
+        second = write_mission_plan_md(plan, tmp_path, version=2)
+
+        assert first.name == MISSION_PLAN_FILENAME
+        assert second.name == "mission_plan_v2.md"
+        assert first.is_file() and second.is_file()
+
+
+# ---------------------------------------------------------------------------
+# T002 — persistence on the mission record (additive, optional)
+# ---------------------------------------------------------------------------
+
+class TestPersistence:
+    def test_a_plan_round_trips_through_the_mission_record(self, tmp_path,
+                                                           monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        fixture, plan = compiled_fixture_plan()
+        mission = create_mission("proj", fixture["mission"]["goal"])
+
+        set_mission_plan("proj", mission.id, plan.model_dump())
+
+        again = load_mission("proj", mission.id)
+        assert again.mission_plan is not None
+        assert MissionPlan.model_validate(again.mission_plan) == plan
+
+    def test_the_field_is_additive_a_record_without_it_still_loads(self):
+        """Every mission written before F069 must load unchanged."""
+        pre_f069 = {
+            "schema_version": 1, "id": "m1", "project_id": "p1",
+            "goal": "keep it green", "status": "active", "job_links": [],
+            "dossier_ref": "", "created_at": "2026-01-01T00:00:00+00:00",
+        }
+        mission = Mission.from_json(pre_f069)
+        assert mission.mission_plan is None
+        # ...and writing it back produces the SAME bytes it came in with.
+        assert mission.to_json() == pre_f069
+
+    def test_the_schema_version_did_not_move_for_an_additive_field(self):
+        assert MISSION_SCHEMA_VERSION == 1
+
+    def test_a_non_object_plan_body_is_refused(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        mission = create_mission("proj", "keep it green")
+        with pytest.raises(MissionError):
+            set_mission_plan("proj", mission.id, ["not", "an", "object"])
+
+    def test_a_corrupt_plan_body_on_disk_is_refused_not_guessed(self):
+        with pytest.raises(ValueError) as exc:
+            Mission.from_json({
+                "schema_version": 1, "id": "m1", "project_id": "p1",
+                "goal": "g", "status": "active", "job_links": [],
+                "mission_plan": "a string, not a plan",
+            })
+        assert "mission_plan must be an object" in str(exc.value)
+
+    def test_the_evidence_dir_is_a_sibling_that_cannot_disturb_listings(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        mission = create_mission("proj", "keep it green")
+
+        evidence = mission_evidence_dir("proj", mission.id)
+        evidence.mkdir(parents=True, exist_ok=True)
+        (evidence / MISSION_PLAN_FILENAME).write_text("x", encoding="utf-8")
+
+        assert [m.id for m in list_missions("proj")] == [mission.id]
+        assert mission_record_path("proj", mission.id).is_file()
+
+
+# ---------------------------------------------------------------------------
+# T002 — the no-autostart guarantee
+# ---------------------------------------------------------------------------
+
+class TestNoAutostart:
+    """Compiling a mission plan starts NOTHING. Pinned, not promised."""
+
+    def test_planning_a_mission_end_to_end_creates_zero_jobs(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        fixture = load_fixture("payments_platform")
+        mission = create_mission("proj", fixture["mission"]["goal"])
+
+        result = compile_mission_plan(
+            mission, replaying(fixture["provider_draft"]))
+        attached = attach_milestone_dods(
+            result.plan, goal=mission.goal,
+            evidence_dir=mission_evidence_dir("proj", mission.id))
+        write_mission_plan_md(
+            attached, mission_evidence_dir("proj", mission.id), mission.goal)
+        set_mission_plan("proj", mission.id, attached.model_dump())
+
+        jobs, _degraded, _skipped = list_jobs_safe()
+        assert jobs == []
+        assert not jobs_dir().exists() or list(jobs_dir().iterdir()) == []
+        assert load_mission("proj", mission.id).job_links == ()
+
+    def test_planning_touches_no_worktree(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.chdir(tmp_path)
+        fixture = load_fixture("payments_platform")
+        mission = create_mission("proj", fixture["mission"]["goal"])
+
+        result = compile_mission_plan(
+            mission, replaying(fixture["provider_draft"]))
+        attach_milestone_dods(
+            result.plan, goal=mission.goal,
+            evidence_dir=mission_evidence_dir("proj", mission.id))
+
+        assert not (tmp_path / WORKTREE_DIRNAME).exists()
+
+    def test_planning_starts_no_process(self, tmp_path, monkeypatch):
+        """The process fact, not an inference from the absence of imports."""
+        import subprocess
+
+        def refuse(*args, **kwargs):
+            raise AssertionError(
+                "compiling a mission plan must not start a process")
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        monkeypatch.setattr(subprocess, "run", refuse)
+        monkeypatch.setattr(subprocess, "Popen", refuse)
+        monkeypatch.setattr(subprocess, "call", refuse)
+        monkeypatch.setattr(os, "system", refuse)
+
+        fixture = load_fixture("payments_platform")
+        mission = create_mission("proj", fixture["mission"]["goal"])
+        result = compile_mission_plan(
+            mission, replaying(fixture["provider_draft"]))
+        attached = attach_milestone_dods(
+            result.plan, goal=mission.goal,
+            evidence_dir=mission_evidence_dir("proj", mission.id))
+        set_mission_plan("proj", mission.id, attached.model_dump())
+
+    def test_a_draft_outline_never_becomes_a_task(self):
+        """The one-way door: an outline has no shape a scheduler could run."""
+        _fixture, plan = compiled_fixture_plan()
+        for ms in plan.milestones:
+            for draft in ms.jobs_draft:
+                assert set(draft.model_dump()) == {"title", "goal", "est_band"}
