@@ -1,5 +1,31 @@
 # Decisions
 
+## 2026-08-02: F069 T003 — "in progress" is per-MISSION, because the record has no
+## per-milestone attribution
+The order's rule is "a milestone counts as in progress as soon as any real job
+attributable to it exists on the mission record". The record cannot express
+that attribution: `MissionJobLink` carries `job_id`, `role` and `created_at`,
+and nothing else. Adding a milestone id to the link means changing job
+creation — explicitly in this feature's Do-not-touch list.
+
+The conservative reading was taken instead and documented at the rule's home
+(`mission_compiler.milestones_in_progress`): once ANY job is linked to the
+mission, EVERY milestone of its current plan counts as in progress, and a
+recompile is refused. A mission with no plan yet has no milestones, so the
+FIRST compilation is always allowed even when jobs are already linked. Erring
+this way costs a refused recompile; erring the other way would rewrite the
+route under work already running. Recorded as a declared deviation.
+
+## 2026-08-02: F069 T002 — the milestone DoD goes through a flight-plan VIEW
+Rule A6 makes `compile_dod` the only DoD mechanism, and it takes
+`(intake, FlightPlan)`. A milestone is not a flight plan, so
+`milestone_flight_plan` projects one: one task per `jobs_draft` outline, plus a
+final task whose single acceptance line IS the milestone's outcome and which
+depends on all of them. The projection is never persisted and never scheduled —
+it lives for the length of one `compile_dod` call. The alternative was writing a
+milestone-shaped DoD builder here, which is precisely the second mechanism A6
+forbids.
+
 ## 2026-08-02: F069 T001 — `mission_plan_v1` needed the compact-tag exemption widened
 `tests/orchestration/schemas/test_schemas.py::test_tags_are_compact` pins every
 registered `schema_v` at <= 6 chars, with `flight_plan_v1` (14) as the one named

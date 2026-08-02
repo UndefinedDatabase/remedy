@@ -11,14 +11,13 @@ every milestone carries a DoD reference, and draft jobs NEVER
 autostart.
 
 ## Current Step
-R1 (SPLIT, LARGE bundle): claim, then T001 schema `mission_plan_v1` +
-milestone-DAG validation + compiler + honest deterministic fallback +
-three long-goal fixtures with golden milestone structures; then T002
-per-milestone DoD hand-off through the F061 compiler (A6, no second
-mechanism) + additive persistence on the mission record +
-mission_plan.md rendering + the no-autostart guarantee; then T003 CLI
-`remedy mission plan <id>` + recompile versioning + in-progress
-refusal. Per-slice verification, stop-on-red.
+R1 (SPLIT, LARGE bundle) COMPLETE — awaiting review. T001 schema
+`mission_plan_v1` + milestone-DAG validation + compiler + deterministic
+fallback + three long-goal golden fixtures; T002 per-milestone DoD
+hand-off through the F061 compiler (A6) + additive persistence on the
+mission record + mission_plan.md rendering + the no-autostart
+guarantee; T003 CLI `remedy mission plan <id>` + recompile versioning
++ in-progress refusal. All slice gates exit 0; branch pushed.
 
 ## Next Steps
 - Integration gate per docs/agents/integration_gate.md.
