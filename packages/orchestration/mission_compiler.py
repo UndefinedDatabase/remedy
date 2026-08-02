@@ -1,4 +1,4 @@
-"""F069 T001 — compile a mission's prose goal into a MissionPlan.
+"""F069 — compile a mission's prose goal into a MissionPlan.
 
 A mission holds a long goal and nothing else.  :func:`compile_mission_plan` —
 the feature file's ``compile(mission)`` — turns that prose into the structured
@@ -25,15 +25,21 @@ Two guarantees this module holds to, both pinned by tests:
   dishonest combination, so the label cannot drift from the truth.
 
 The per-milestone Definition of Done is compiled by the F061 compiler and
-stored in ``dod_ref`` (T002).  There is no second DoD mechanism here (Rule A6);
-until that hand-off runs, every ``dod_ref`` is empty and says so.
+stored in ``dod_ref`` (:func:`attach_milestone_dods`).  There is no second DoD
+mechanism here (Rule A6); until that hand-off runs, every ``dod_ref`` is empty
+and says so.  ``compile_mission_plan`` itself writes NOTHING — persistence,
+the DoD files and the rendered ``mission_plan.md`` are separate, explicit calls,
+which is what keeps "compiling starts nothing" a property rather than a habit.
 """
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
+from packages.orchestration.dod_compiler import DoDCompileResult, compile_dod
 from packages.orchestration.mission_plan_schema import (
     MAX_MISSION_MILESTONES,
     MISSION_PLAN_DRAFT_SCHEMA_V,
@@ -43,6 +49,8 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlanDraft,
 )
 from packages.orchestration.prompt_facts import repo_facts_block
+from packages.orchestration.schemas.models import FLIGHT_PLAN_SCHEMA_V, FlightPlan
+from packages.orchestration.storage import _atomic_write_job as _atomic_write
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
 #: The id the deterministic fallback's single milestone carries.
@@ -248,3 +256,194 @@ def _fallback(goal: str, *, hint: str) -> MissionCompileResult:
         source="deterministic",
         error_hint=hint,
     )
+
+
+# ---------------------------------------------------------------------------
+# T002 — the per-milestone DoD hand-off
+# ---------------------------------------------------------------------------
+
+#: The id the synthetic "milestone reached" task carries inside the per-
+#: milestone flight-plan VIEW. It never becomes a real task; see
+#: :func:`milestone_flight_plan`.
+MILESTONE_OUTCOME_TASK_SUFFIX = "-DONE"
+
+#: Band for that synthetic task. A milestone outcome is never small, and the
+#: band is required by the flight-plan schema — it is not an estimate anyone
+#: acts on, because nothing runs this view.
+_OUTCOME_TASK_BAND = "L"
+
+
+def milestone_dod_filename(milestone_id: str) -> str:
+    """The file one milestone's compiled DoD is written to, inside the evidence area."""
+    return f"dod_{milestone_id}.json"
+
+
+def milestone_flight_plan(milestone: Milestone) -> FlightPlan:
+    """A per-milestone flight plan — the VIEW the F061 DoD compiler consumes.
+
+    Rule A6 says the DoD compiler is the only DoD mechanism, and that compiler
+    takes ``(intake, FlightPlan)``. A milestone is not a flight plan, so one is
+    projected from it: one task per draft job outline, plus a final task whose
+    acceptance line IS the milestone's own outcome and which depends on all of
+    them.
+
+    This projection is NEVER persisted and never scheduled. It exists for the
+    length of one ``compile_dod`` call, so that the milestone's DoD is compiled
+    by the existing mechanism instead of by a second one written here.
+    """
+    tasks: list[dict[str, Any]] = []
+    for index, draft in enumerate(milestone.jobs_draft, start=1):
+        tasks.append({
+            "id": f"{milestone.id}-J{index:03d}",
+            "title": draft.title,
+            "goal": draft.goal,
+            "acceptance": [draft.goal],
+            "depends_on": [],
+            "est_tokens_band": draft.est_band,
+            "files_hint": [],
+        })
+    tasks.append({
+        "id": f"{milestone.id}{MILESTONE_OUTCOME_TASK_SUFFIX}",
+        "title": f"Milestone {milestone.id} reached",
+        "goal": milestone.goal,
+        "acceptance": [milestone.goal],
+        "depends_on": [t["id"] for t in tasks],
+        "est_tokens_band": _OUTCOME_TASK_BAND,
+        "files_hint": [],
+    })
+    return FlightPlan.model_validate({
+        "schema_v": FLIGHT_PLAN_SCHEMA_V,
+        "tasks": tasks,
+    })
+
+
+def compile_milestone_dod(
+    goal: str,
+    milestone: Milestone,
+    call_fn: Callable[[str, int], str] | None = None,
+    *,
+    on_call: Callable[[int, str, bool, str], None] | None = None,
+) -> DoDCompileResult:
+    """Compile ONE milestone's Definition of Done through the F061 compiler.
+
+    There is no second DoD mechanism here (Rule A6): this builds the intake and
+    the flight-plan view and hands both to ``compile_dod``, which owns the
+    provider call, the fallback and the traceability rule.
+    """
+    intake = {
+        "goal": milestone.goal,
+        "mission_goal": goal,
+        "context_refs": [],
+        "constraints": [],
+        "acceptance_hints": [d.goal for d in milestone.jobs_draft],
+    }
+    return compile_dod(intake, milestone_flight_plan(milestone), call_fn,
+                       on_call=on_call)
+
+
+def attach_milestone_dods(
+    plan: MissionPlan,
+    *,
+    goal: str,
+    evidence_dir: Path,
+    call_fn: Callable[[str, int], str] | None = None,
+) -> MissionPlan:
+    """Compile a DoD for every milestone, write it, and fill in ``dod_ref``.
+
+    Each DoD lands in ``evidence_dir`` as ``dod_<milestone id>.json`` and the
+    milestone's ``dod_ref`` records that filename — RELATIVE, so a mission
+    whose data root moves keeps a reference that still resolves.
+
+    Writing evidence is not execution: no job is created and nothing starts.
+    """
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    milestones: list[Milestone] = []
+    for ms in plan.milestones:
+        result = compile_milestone_dod(goal, ms, call_fn)
+        filename = milestone_dod_filename(ms.id)
+        _atomic_write(
+            evidence_dir / filename,
+            json.dumps(result.dod.model_dump(), indent=2, sort_keys=True))
+        milestones.append(ms.model_copy(update={"dod_ref": filename}))
+    return plan.model_copy(update={"milestones": milestones})
+
+
+# ---------------------------------------------------------------------------
+# T002 — rendering
+# ---------------------------------------------------------------------------
+
+MISSION_PLAN_FILENAME = "mission_plan.md"
+
+
+def render_mission_plan_md(plan: MissionPlan, goal: str = "") -> str:
+    """Render a MissionPlan to deterministic, stably ordered markdown.
+
+    Same shape as ``flight_plan.render_plan_md``: no clock, no randomness, no
+    disk — the same plan renders to the same bytes every time.
+    """
+    lines: list[str] = ["# Mission Plan", ""]
+    lines.append(f"Schema: {plan.schema_v}")
+    lines.append(f"Milestones: {len(plan.milestones)}")
+    lines.append(f"Origin: {plan.origin}"
+                 f"{'' if plan.compiled else ' (no provider — degraded route)'}")
+    lines.append("")
+
+    if goal:
+        lines.append("## Goal")
+        lines.append("")
+        lines.append(" ".join(str(goal).split()))
+        lines.append("")
+
+    lines.append("## Milestones")
+    lines.append("")
+    for index, ms in enumerate(plan.milestones, 1):
+        deps = ", ".join(ms.depends_on) if ms.depends_on else "none"
+        lines.append(f"### {index}. {ms.id}")
+        lines.append("")
+        lines.append(f"**Outcome:** {ms.goal}")
+        lines.append(f"**Depends on:** {deps}")
+        lines.append(f"**DoD:** {ms.dod_ref or 'not compiled yet'}")
+        if ms.rationale:
+            lines.append(f"**Why:** {ms.rationale}")
+        lines.append("")
+        if ms.jobs_draft:
+            lines.append("**Draft jobs** — outlines only; nothing here is "
+                         "runnable and nothing starts on its own:")
+            for draft in ms.jobs_draft:
+                lines.append(f"- [{draft.est_band}] {draft.title} — {draft.goal}")
+            lines.append("")
+
+    lines.append("## Risks")
+    lines.append("")
+    if plan.risks:
+        for risk in plan.risks:
+            lines.append(f"- {risk}")
+    else:
+        lines.append("None recorded.")
+    lines.append("")
+
+    lines.append("## Assumptions")
+    lines.append("")
+    if plan.assumptions:
+        for assumption in plan.assumptions:
+            lines.append(f"- {assumption}")
+    else:
+        lines.append("None recorded.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
+                          goal: str = "", version: int = 1) -> Path:
+    """Write the rendered plan into the mission's evidence area.
+
+    Prior versions are KEPT, exactly as ``flight_plan.write_plan_md`` keeps
+    ``plan.md`` / ``plan_v2.md``: a recompile must never destroy the plan a
+    human already read and acted on.
+    """
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    filename = (MISSION_PLAN_FILENAME if version == 1
+                else f"mission_plan_v{version}.md")
+    path = evidence_dir / filename
+    path.write_text(render_mission_plan_md(plan, goal), encoding="utf-8")
+    return path
