@@ -1,5 +1,31 @@
 # Decisions
 
+## 2026-08-02: F069 T001 — `mission_plan_v1` needed the compact-tag exemption widened
+`tests/orchestration/schemas/test_schemas.py::test_tags_are_compact` pins every
+registered `schema_v` at <= 6 chars, with `flight_plan_v1` (14) as the one named
+exemption. The F069 order fixes the tag as `mission_plan_v1` (15), so the guard
+went red the moment the tag was registered.
+
+Resolved by widening the NAMED exemption set to two entries and raising the
+exempted bound to 15 — not by raising the general limit, and not by renaming the
+ordered tag. Both exempted tags name a PLAN a human reads in evidence, where
+`fp1`/`mp1` would be a riddle; every other tag still has to stay compact. The
+guard's intent (tags travel in prompts, so keep them cheap) is intact, and the
+exemption list stays a list a reviewer can read at a glance.
+
+## 2026-08-02: F069 T001 — the MissionPlan schema is a LEAF module, like the DoD's
+`mission_plan_schema.py` sits beside `dod_schema.py` and imports only
+`structured_base` + pydantic, so `schemas/models.py` can import it to register
+`mission_plan_v1` in `SCHEMA_REGISTRY` without a cycle. That registration is
+required for the same reason the DoD's is: a `mission_plan_v1` payload is
+PERSISTED (on the mission record), so its tag has to resolve from the registry
+alone. `mission_plan_draft_v1` is deliberately NOT registered — it never leaves
+the compiler's own call.
+
+Consequence: the token-band literal is spelled out in the leaf rather than
+imported from `schemas.models` (which imports this module). Same four bands,
+documented at the definition.
+
 ## 2026-07-31: F053 R4 — `.agent/context.md` is pinned by TWO tests, not one
 R-0162 was diagnosed as the "Steps" token, and the authored replacement fixed
 exactly that: `test_context_md_no_stale_steps` passes and the whole

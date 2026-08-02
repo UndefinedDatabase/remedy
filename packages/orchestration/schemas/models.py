@@ -21,6 +21,10 @@ from pydantic import Field, model_validator
 # register its tag. Both names are re-exported, so every existing
 # `from ...schemas.models import _Strict` keeps working unchanged.
 from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
+from packages.orchestration.mission_plan_schema import (
+    MISSION_PLAN_SCHEMA_V,
+    MissionPlan,
+)
 from packages.orchestration.structured_base import _Strict, _Structured
 
 #: Compact schema version tags. Keep these short — they travel in every prompt.
@@ -243,6 +247,12 @@ SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     # (dod_draft_v1) is not registered: it never leaves the compiler's own
     # call and no reader ever resolves that tag.
     DOD_SCHEMA_V: DoD,
+    # F069: the compiled mission plan. Registered for the same reason the DoD
+    # is — a mission_plan_v1 payload is PERSISTED (on the mission record) and
+    # therefore has to be resolvable from its tag alone. Its provider-facing
+    # draft contract (mission_plan_draft_v1) is not registered: it never leaves
+    # the compiler's own call and no reader ever resolves that tag.
+    MISSION_PLAN_SCHEMA_V: MissionPlan,
 }
 
 
