@@ -1,33 +1,36 @@
-# Plan — paydown-0801 (single-session micro-round)
+# Plan — F062 Product smoke as the closing gate
 
 ## Goal
-Close the closure-candidate carry gap structurally (disk vehicle
-.agent/candidates.md) and settle the two F056 candidates that were
-dropped (evidence-protocol drift; PR-number reporting). Operator
-ruling 2026-08-01, F056-candidate loss. Change set: docs/roadmap/**,
-docs/agents/**, .agent/** only — micro-round scope per
-planner_reviewer_prompt.md §3.
+Green tests can still mean a broken product. For jobs touching a
+runnable app, a standard DoD block proves the app STARTS, its core
+paths RESPOND, and the console stream is free of errors, before the
+job may end green. DONE when a fixture app with green unit tests but a
+broken startup keeps its job OPEN and the smoke's finding reads
+concretely ("start failed: <probe reason>"), not vaguely. No runtime
+configured → "smoke: not applicable (no runtime configured)", honest
+and non-gating, never silently green.
 
 ## Current Step
-Apply authored texts paydown0801-r1-1..7 (committed under
-.agent/authored/, sha256-verified):
-1. STATUS_closure_protocol.md — disk-vehicle rule in
-   Closure-candidate findings (r1-1); build-order sentence (r1-2);
-   evidence-dir block rewritten to "not committed" (r1-3).
-2. planner_reviewer_prompt.md §1 — bootstrap step 4 reads
-   .agent/candidates.md (r1-4).
-3. handback_template.md — External actions carries the PR number
-   (r1-5).
-4. Create .agent/candidates.md empty carrier (r1-6).
-5. Append the three DECISIONs to .agent/decisions.md (r1-7).
+R2 (LARGE): R-0166 fix (push first), then T002 core_paths_respond —
+closed probe vocabulary, path hand-off from intent/plan, OK-status
+rule, fixtures for ok / wrong status / missing marker; then T003
+clean_console — a small documented CASE-SENSITIVE pattern base that
+config EXTENDS but never replaces, red with the matched lines quoted,
+plus the smoke config table (enabled, paths override, error-pattern
+additions, readiness window); then the integration gate per
+docs/agents/integration_gate.md. Per-slice verification, stop-on-red.
 
 ## Next Steps
-- Gates: python3 -m pytest tests/docs/ -q + canary
-  tests/cli/test_golden_path.py -q.
-- Handback per handback_template.md, label single-session
-  micro-round; push; PR; merge on PASS (standing approval).
-- Then F062 per Rule A5 (fresh Window-1 session bootstrap).
+- R3: closure per docs/roadmap/STATUS_closure_protocol.md (its own
+  round: Built State, preconditions, evidence job, review zip,
+  STATUS [x] + README sync, PR).
 
 ## Risks
-Docs-structure pins in tests/docs/ could trip on wording; gate
-catches it. No production code touched.
+- The harness owns process semantics; the smoke only ORCHESTRATES its
+  existing verbs. A diff changing harness process behaviour is out of
+  scope.
+- v1 is HTTP-level on purpose. Any diff pulling in a browser
+  dependency is rejected at self-review; clickable flows stay in the
+  DoD's runtime_flow kind.
+- Teardown must run on every outcome, including failure and retry — a
+  leaked process is a red result, never a quiet one.

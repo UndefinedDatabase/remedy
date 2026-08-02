@@ -92,6 +92,21 @@ REASON_APP_NOT_READY = "app_not_ready"
 REASON_APP_STOP_FAILED = "app_stop_failed"
 REASON_FLOW_STEP_FAILED = "flow_step_failed"
 REASON_UNKNOWN_FLOW_ACTION = "unknown_flow_action"
+#: product_smoke (F062). ``not_applicable`` is the honest third answer for a
+#: project with no runnable app: reported, and contributed non-blocking so it
+#: gates nothing — it is never a pass.
+REASON_SMOKE_NOT_APPLICABLE = "smoke_not_applicable"
+REASON_SMOKE_START_FAILED = "smoke_start_failed"
+REASON_SMOKE_PATH_FAILED = "smoke_path_failed"
+REASON_SMOKE_DIRTY_CONSOLE = "smoke_dirty_console"
+#: R-0167: the off switch actually switches things off — a disabled smoke
+#: refuses BEFORE any process starts, distinct from not-applicable so a
+#: reader can tell "no app here" from "we chose not to look".
+REASON_SMOKE_DISABLED = "smoke_disabled"
+
+#: How many matched console lines a red clean_console quotes. Enough to
+#: act on, bounded so one screaming app cannot flood the evidence.
+MAX_QUOTED_CONSOLE_LINES = 20
 
 #: The ONLY flow action v1 understands: open a path and assert on the answer.
 #: A step naming anything else is red — the vocabulary grows deliberately, and
@@ -359,9 +374,13 @@ def _decode(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-def _flow_evidence(check: DoDCheck, argv: list[str], reason: str,
-                   log: list[str], started: float) -> CheckEvidence:
-    """One flow result. The step log IS the output tail."""
+def _harness_evidence(check: DoDCheck, argv: list[str], reason: str,
+                      log: list[str], started: float) -> CheckEvidence:
+    """One harness-driven result — a runtime_flow or a product-smoke check.
+
+    Neither is a single process with an exit code, so the run LOG is the
+    evidence: it carries what was started, what answered, and what stopped.
+    """
     tail, truncated = _tail("\n".join(log).encode("utf-8") + b"\n")
     passed = reason == REASON_NONE
     return CheckEvidence(
@@ -443,6 +462,46 @@ def _walk_steps(steps: list[Any], base_url: str, deadline: float,
     return ""
 
 
+def _walk_smoke_paths(paths: list[Any], base_url: str, deadline: float,
+                      log: list[str]) -> str:
+    """Probe the smoke's core paths. Returns "" or a red reason.
+
+    Stricter than a runtime_flow step by design: where a flow only asserts what
+    it declares, a smoke path with NO declared expectation must still answer
+    with an OK status. "It responded 500" is not a product that responds.
+    """
+    for i, entry in enumerate(paths, 1):
+        if time.monotonic() >= deadline:
+            log.append(f"path {i}: not reached — the smoke ran out of time")
+            return REASON_TIMEOUT
+
+        path = str(entry.get("path", "") or "")
+        remaining = max(0.1, min(FLOW_STEP_TIMEOUT_S, deadline - time.monotonic()))
+        status, body, error = _http_get(base_url + path, timeout=remaining)
+        if error or status == 0:
+            log.append(f"path {path} -> no response ({error})")
+            return REASON_SMOKE_PATH_FAILED
+
+        expected = entry.get("expect_status")
+        if expected is not None:
+            if int(expected) != status:
+                log.append(f"path {path} -> {status}, expected {expected}")
+                return REASON_SMOKE_PATH_FAILED
+        elif not (READY_STATUS_MIN <= status <= READY_STATUS_MAX):
+            log.append(f"path {path} -> {status}, expected an OK status")
+            return REASON_SMOKE_PATH_FAILED
+
+        marker = entry.get("expect_text")
+        if marker is not None and str(marker) not in body:
+            log.append(
+                f"path {path} -> {status}, but the body does not contain "
+                f"{str(marker)!r}")
+            return REASON_SMOKE_PATH_FAILED
+
+        log.append(f"path {path} -> {status} OK")
+    return ""
+
+
 def _stop_app(proc: Any, log: list[str]) -> str:
     """Stop the application family. Always called, also on failure.
 
@@ -466,6 +525,102 @@ def _stop_app(proc: Any, log: list[str]) -> str:
     return ""
 
 
+@dataclass
+class _AppRun:
+    """One start-probe-stop cycle against the harness."""
+
+    argv: list[str]
+    reason: str
+    #: The human sentence for ``reason`` — what a reader is actually told.
+    detail: str = ""
+    #: Everything the application wrote while it ran. The clean_console check
+    #: judges THIS, not a paraphrase of it.
+    console: str = ""
+
+
+def _run_app_once(spec: Any, deadline: float, log: list[str],
+                  body: Callable[[str], str] | None) -> _AppRun:
+    """Start the app, wait for readiness, run ``body``, and ALWAYS stop it.
+
+    The single place that owns the harness process discipline for a DoD check:
+    ``choose_port``, start in its own session, ``_wait_ready``, then
+    ``stop_process_tree`` in a ``finally`` — on success, on failure, and on an
+    exception alike. ``runtime_flow`` passes the step walker as ``body``; the
+    product-smoke ``app_starts`` check passes ``None``, because for it the
+    successful readiness probe IS the check.
+    """
+    port = choose_port(spec.port, spec.host)
+    argv = spec.resolved_cmd(port)
+    base_url = f"http://{spec.host}:{port}"
+    log.append(f"$ {' '.join(argv)}  (cwd={spec.cwd}, port={port})")
+
+    # The app's own output goes to a private temporary file, never a pipe: an
+    # ephemeral run has no log-pump thread to drain a pipe, and a chatty app
+    # would block on a full one. It is never written into the user's repo.
+    with tempfile.TemporaryDirectory(prefix="remedy-dod-app-") as tmp:
+        app_log = Path(tmp) / "app.log"
+        try:
+            handle = app_log.open("wb")
+        except OSError as exc:
+            detail = f"could not open the app log: {exc}"
+            log.append(detail)
+            return _AppRun(argv, REASON_APP_START_FAILED, detail, "")
+
+        proc = None
+        reason = REASON_NONE
+        detail = ""
+        console = ""
+        try:
+            try:
+                proc = subprocess.Popen(  # noqa: S603 - argv list, never a shell
+                    argv, cwd=spec.cwd, env=spec.resolved_env(port),
+                    stdout=handle, stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
+                    # Its own session, so the family can be killed whole without
+                    # this process signalling itself — the supervisor's rule.
+                    start_new_session=True,
+                )
+            except (OSError, ValueError) as exc:
+                detail = f"the application could not be started: {exc}"
+                log.append(detail)
+                reason = REASON_APP_START_FAILED
+            else:
+                ready_deadline = min(
+                    deadline, time.monotonic() + spec.ready_timeout_s)
+                reason = _wait_ready(
+                    proc, base_url + spec.health_path, ready_deadline)
+                if reason == REASON_APP_START_FAILED:
+                    detail = (f"the application exited before it answered "
+                              f"{spec.health_path} (exit code {proc.returncode})")
+                    log.append(detail)
+                elif reason:
+                    detail = (f"the application never became ready on "
+                              f"{spec.health_path} within {spec.ready_timeout_s}s")
+                    log.append(detail)
+                else:
+                    log.append(f"ready on {spec.health_path}")
+                    if body is not None:
+                        reason = body(base_url)
+        finally:
+            # ALWAYS stopped: success, red outcome, or an exception on the way
+            # out. A stop failure only overrides a reason when the run itself
+            # was green — a leaked process must never read as a clean run.
+            if proc is not None:
+                stop_reason = _stop_app(proc, log)
+                if not reason and stop_reason:
+                    reason, detail = stop_reason, "the application family survived cleanup"
+            with contextlib.suppress(Exception):
+                handle.close()
+            with contextlib.suppress(OSError):
+                app_tail, _ = _tail(app_log.read_bytes())
+                console = app_tail
+                if app_tail.strip():
+                    log.append("--- application log ---")
+                    log.append(app_tail)
+
+    return _AppRun(argv, reason, detail, console)
+
+
 def _run_runtime_flow(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
     """Drive the F007 runtime harness through one declarative flow.
 
@@ -485,71 +640,105 @@ def _run_runtime_flow(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
             check, REASON_RUNTIME_NOT_CONFIGURED, [], "",
             f"the runtime harness cannot start this project: {exc}")
 
-    port = choose_port(spec.port, spec.host)
-    argv = spec.resolved_cmd(port)
-    base_url = f"http://{spec.host}:{port}"
-    log.append(f"$ {' '.join(argv)}  (cwd={spec.cwd}, port={port})")
+    run = _run_app_once(
+        spec, deadline, log,
+        lambda base_url: _walk_steps(check.spec["steps"], base_url, deadline, log))
+    return _harness_evidence(check, run.argv, run.reason, log, started)
 
-    # The app's own output goes to a private temporary file, never a pipe: an
-    # ephemeral flow has no log-pump thread to drain a pipe, and a chatty app
-    # would block on a full one. It is never written into the user's repo.
-    with tempfile.TemporaryDirectory(prefix="remedy-dod-flow-") as tmp:
-        app_log = Path(tmp) / "app.log"
-        try:
-            handle = app_log.open("wb")
-        except OSError as exc:
-            return _flow_evidence(
-                check, argv, REASON_APP_START_FAILED,
-                log + [f"could not open the flow log: {exc}"], started)
 
-        proc = None
-        reason = REASON_NONE
-        try:
-            try:
-                proc = subprocess.Popen(  # noqa: S603 - argv list, never a shell
-                    argv, cwd=spec.cwd, env=spec.resolved_env(port),
-                    stdout=handle, stderr=subprocess.STDOUT,
-                    stdin=subprocess.DEVNULL,
-                    # Its own session, so the family can be killed whole without
-                    # this process signalling itself — the supervisor's rule.
-                    start_new_session=True,
-                )
-            except (OSError, ValueError) as exc:
-                log.append(f"the application could not be started: {exc}")
-                reason = REASON_APP_START_FAILED
-            else:
-                ready_deadline = min(
-                    deadline, time.monotonic() + spec.ready_timeout_s)
-                reason = _wait_ready(
-                    proc, base_url + spec.health_path, ready_deadline)
-                if reason == REASON_APP_START_FAILED:
+def _run_product_smoke(check: DoDCheck, ctx: _RunContext) -> CheckEvidence:
+    """F062 — the product-smoke block's checks.
+
+    v1 runs ``app_starts``: the app the project declares actually starts and
+    answers its health path inside the configured readiness window. A flaky
+    start gets ONE retry after a short backoff, and a pass that needed it says
+    so (``passed on retry``) rather than reading like a clean first attempt.
+
+    A project with no runnable app is NOT gated: the check reports
+    ``smoke_not_applicable`` and, being contributed non-blocking, is reported
+    without holding anything. Never silently green. A smoke switched off by
+    config refuses the same way — ``smoke_disabled``, before any process
+    starts — so the off switch costs nothing and still says so.
+    """
+    from packages.orchestration.product_smoke import (
+        DISABLED_MESSAGE,
+        NOT_APPLICABLE_MESSAGE,
+        PASSED_ON_RETRY,
+        RETRY_BACKOFF_SECONDS,
+        resolve_runtime,
+        scan_console,
+        smoke_config,
+    )
+
+    started = time.monotonic()
+    deadline = started + ctx.timeout_sec
+    log: list[str] = []
+
+    spec, why = resolve_runtime(ctx.root)
+    if spec is None:
+        return _refused(
+            check, REASON_SMOKE_NOT_APPLICABLE, [], "",
+            f"{NOT_APPLICABLE_MESSAGE}: {why}")
+
+    # R-0167: refuse BEFORE anything is started. A switched-off smoke that
+    # still paid for a full start-probe-stop cycle was reporting honestly and
+    # behaving otherwise. Ordered after the not-applicable check so a project
+    # with no runtime still reports "no runtime", not "disabled".
+    if not smoke_config()["enabled"]:
+        return _refused(check, REASON_SMOKE_DISABLED, [], "", DISABLED_MESSAGE)
+
+    # Each smoke check needs the app up; what it does once up is its own body.
+    # `app_starts` has none — for it, the successful readiness probe IS the
+    # check.
+    smoke = str(check.spec.get("smoke", "")).strip()
+    body = None
+    if smoke == "core_paths_respond":
+        def body(base_url: str) -> str:  # noqa: E306 - paired with the branch
+            return _walk_smoke_paths(
+                check.spec["paths"], base_url, deadline, log)
+
+    attempts = 2 if bool(check.spec.get("retry", True)) else 1
+    run = _AppRun([], REASON_NONE)
+    for attempt in range(1, attempts + 1):
+        if attempt > 1:
+            log.append(
+                f"attempt {attempt - 1} failed; retrying once after "
+                f"{RETRY_BACKOFF_SECONDS}s backoff")
+            time.sleep(RETRY_BACKOFF_SECONDS)
+        run = _run_app_once(spec, deadline, log, body)
+        if not run.reason:
+            # The app came up. For clean_console the question is what it
+            # PRINTED while doing so — judged before this counts as a pass.
+            if smoke == "clean_console":
+                hits = scan_console(run.console)
+                if hits:
                     log.append(
-                        f"the application exited before it answered "
-                        f"{spec.health_path} (exit code {proc.returncode})")
-                elif reason:
-                    log.append(
-                        f"the application never became ready on "
-                        f"{spec.health_path} within {spec.ready_timeout_s}s")
-                else:
-                    log.append(f"ready on {spec.health_path}")
-                    reason = _walk_steps(
-                        check.spec["steps"], base_url, deadline, log)
-        finally:
-            # ALWAYS stopped: success, red step, or an exception on the way out.
-            # A stop failure only overrides a reason when the flow itself was
-            # green — a leaked process must never read as a clean run.
-            if proc is not None:
-                stop_reason = _stop_app(proc, log)
-                reason = reason or stop_reason
-            with contextlib.suppress(Exception):
-                handle.close()
-            with contextlib.suppress(OSError):
-                app_tail, _ = _tail(app_log.read_bytes())
-                if app_tail.strip():
-                    log.append("--- application log ---")
-                    log.append(app_tail)
+                        f"{len(hits)} error marker(s) in the app console:")
+                    for pattern, line in hits[:MAX_QUOTED_CONSOLE_LINES]:
+                        log.append(f"  [{pattern}] {line}")
+                    if len(hits) > MAX_QUOTED_CONSOLE_LINES:
+                        log.append(
+                            f"  … and {len(hits) - MAX_QUOTED_CONSOLE_LINES} more")
+                    # A dirty console is a product fact, not a flaky start:
+                    # retrying would only print it again.
+                    return _harness_evidence(
+                        check, run.argv, REASON_SMOKE_DIRTY_CONSOLE, log, started)
+            if attempt > 1:
+                log.append(PASSED_ON_RETRY)
+            return _harness_evidence(check, run.argv, REASON_NONE, log, started)
+        if run.reason == REASON_SMOKE_PATH_FAILED:
+            # The app came up; a path answered wrongly. Retrying the START
+            # would not change that, and would hide a real product failure.
+            break
 
-    return _flow_evidence(check, argv, reason, log, started)
+    if run.reason == REASON_SMOKE_PATH_FAILED:
+        return _harness_evidence(
+            check, run.argv, REASON_SMOKE_PATH_FAILED, log, started)
+
+    # Concrete, not vague: the finding names the probe reason the harness gave.
+    log.append(f"start failed: {run.detail or run.reason}")
+    return _harness_evidence(
+        check, run.argv, REASON_SMOKE_START_FAILED, log, started)
 
 
 #: kind -> executor. Every kind the schema accepts and this build can run.
@@ -559,6 +748,7 @@ RUNNER_REGISTRY: dict[str, Callable[[DoDCheck, _RunContext], CheckEvidence]] = {
     "build": _run_process_check,
     "custom_cmd": _run_process_check,
     "runtime_flow": _run_runtime_flow,
+    "product_smoke": _run_product_smoke,
 }
 
 

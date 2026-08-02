@@ -258,9 +258,12 @@ def unsupported_check(kind: str = "telepathy") -> DoDCheck:
 
 
 class TestUnsupportedKindFailsLoud:
-    def test_registry_covers_exactly_the_five_schema_kinds(self):
+    def test_registry_covers_exactly_the_schema_kinds(self):
+        # F062 added `product_smoke`; the invariant is unchanged — every kind
+        # the schema accepts has a runner, and only those.
         assert set(RUNNER_REGISTRY) == {
-            "pytest", "lint", "build", "custom_cmd", "runtime_flow"}
+            "pytest", "lint", "build", "custom_cmd", "runtime_flow",
+            "product_smoke"}
         assert set(ARGV_BUILDERS) == {"pytest", "lint", "build", "custom_cmd"}
 
     def test_runner_for_raises_on_a_kind_with_no_runner(self):

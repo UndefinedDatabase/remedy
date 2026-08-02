@@ -1,75 +1,95 @@
-# Live Review — F061 Definition-of-Done compiler (Tier 1)
+# Live Review — F062 Product smoke as the closing gate (Tier 1)
 
-Branch: feature/f061-dod-compiler
-Scope: user intent + Flight Plan compile into a machine-checkable DoD
-(versioned schema; checks with blocking flags); runners execute checks
-with per-check evidence; the job-end gate holds a job open on a red
-blocking check. Compiler is an LLM step with intake/plan discipline:
-schema-enforced, parse-retried, honest deterministic fallback labeled
-compiled=false.
+Branch: feature/f062-product-smoke
+Scope: a standard DoD block proving a runnable app STARTS, its core
+paths RESPOND, and the console stream is clean, before a job may end
+green; not-applicable (no runtime) reported honestly, never silently
+green; fixtures are real mini-apps in the test tree. v1 is
+HTTP-level — no browser dependency (reject any diff adding one).
 
 ## Steps
-- R1 (LARGE): T001 schema + compiler + fallback + fixtures +
-  traceability, T002 runners red+green per kind — PASS.
-- R2 (LARGE): R-0164 fix, T003 runtime_flow runner + T004 job-end
-  gate + report matrix + `remedy job dod` + end-to-end — PASS.
-- R3: R-0165 fix, dod_v1 SCHEMA_REGISTRY registration, integration
-  gate per docs/agents/integration_gate.md — PASS.
-- R4: closure per docs/roadmap/STATUS_closure_protocol.md v4:
-  Built State → preconditions → evidence job → fresh review zip →
-  closure commit (STATUS [x] + README sync + final .agent state) →
-  PR (merge deferred to the next feature's Open PR Gate).
+- R1 (SPLIT): claim + T001 — standard-block registration +
+  app_starts + not-applicable path + fixture apps (green-tests/
+  broken-start job held open with a concrete probe reason).
+- R2 (LARGE, operator LARGE-mode 2026-08-01): T002
+  core_paths_respond + path extraction hand-off + fixtures (ok,
+  wrong status, missing marker); THEN T003 clean_console +
+  documented pattern list + teardown-always (no zombie processes
+  even on red) + the smoke config table; THEN the integration gate
+  per docs/agents/integration_gate.md — per-slice verification,
+  stop-on-red.
+- R3: repair — R-0167 (a disabled smoke must not start the app) +
+  scoped re-verification.
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Findings
-- Resolved: R-0164 (hardening, Low) 2026-08-01: flag-shaped first
-  tokens (pytest selector, lint/build tool, custom_cmd argv[0])
-  passed compile-time validation. Fixed: _reject_flag_shaped on the
-  three fields + negative tests. Done: R-0164 (commit af5c39d7).
-- Resolved: R-0165 (hardening, Low) 2026-08-01: the runtime_flow v1
-  vocabulary was runner-enforced only; the schema accepted any step
-  with a non-empty action. Fixed: _validate_flow_step (action ==
-  "open", path starts with "/", closed key set, typed expectations,
-  index-named messages); the runner guard stays as defence for DoDs
-  stored before the rule, proven via legacy_flow/model_construct.
-  Done: R-0165 (commit d5604c51).
-- Next free ID: R-0166.
+- R-0166 (process, Low) 2026-08-01: handback form, two defects:
+  (a) branch not pushed at handback (split_workflow.md single-writer
+  rule: hand back only with a clean, committed, PUSHED branch;
+  AGENTS.md Push Discipline); (b) the handoff commit (30177869) is
+  absent from the handoff's Commits section and Range names HEAD
+  1e3e58b0 while the branch head is the handoff commit — the R-0149
+  exception allows a grouped self-reference table, not an omission.
+  Fix: push as the FIRST action of R2; every later handback follows
+  a push and tables ALL commits (grouped self-reference allowed).
+  Done: R-0166 (pushed; this handback tables all commits).
+- R-0167 (behavior, Low) 2026-08-01: `smoke.enabled = false` does not
+  stop execution. The block contributes the honest "disabled by
+  config" row (compile-time, pinned by test), but its spec is an
+  ordinary `app_starts`, so `_run_product_smoke` still STARTS the
+  app at run time — the off switch reports correctly yet still costs
+  a full start-probe-stop cycle. Fix: the runner consults
+  `smoke_config()["enabled"]` and refuses EARLY (no process started,
+  mirroring the not-applicable path) with a distinct reason and the
+  "disabled by config" text; pin with a test that a disabled run
+  starts nothing (argv empty, duration 0, marker file untouched) and
+  is not green. Compile-time contribution stays as is.
+  Done: R-0167 (commit b6efe456).
+- Next free ID: R-0168.
 
 ## Verdicts
-- R1: PASS (SPLIT round, 2026-08-01). Range 1869d89a..785f8cbd.
-  Scoped 89 + docs 293 + canary 42, all reviewer-run, exit 0;
-  transport cmp 0 disk-to-disk (all four texts, scratchpad
-  originals); A9 deviations 1–10 accepted; R-0164 registered.
-  LAST_REVIEWED_SHA = 785f8cbd.
-- R2: PASS (SPLIT round, 2026-08-01). Range 785f8cbd..ef60758b.
-  Reviewer re-ran: scoped 140 + adjacent 177, exit 0. Seam audited
-  in situ: RunState.COMPLETED reachable only through the gate-guarded
-  branch; hold routes through the existing blocked machinery; no-DoD
-  returns None (additive). End-to-end drives the real
-  run_job_fulfill (hold, release, matrix, timeline event).
-  Deviations 1–11 accepted; R-0164 verified fixed; R-0165
-  registered. LAST_REVIEWED_SHA = ef60758b.
-- R3: PASS — INTEGRATION GATE PASS (reviewer, 2026-08-01). Range
-  ef60758b..f6a05214. Branch full suite: worker 14900 passed / 19
-  skipped exit 0 @ aebc3c11; the reviewer's OWN run at HEAD 14900
-  passed / 19 skipped, exit 0 in 138s. Base @ merge base 1869d89a in
-  a throwaway worktree on a throwaway branch (parity restored by
-  COPYING apps/ui/node_modules + apps/ui/dist,
-  REMEDY_UI_NO_AUTO_BUILD=1): 14744 passed / 19 skipped, exit 0 —
-  fully green, so comm -13 AND comm -23 are both EMPTY; nothing to
-  attribute on either side. Count delta +156 = F061's own tests.
-  Flake debt 0 (threshold >10 not met). R-0165 verified fixed in the
-  diff and marked Done; dod_v1 registered with the structured_base
-  extraction accepted (cycle proven with the raw ImportError, both
-  in-package alternatives shown failing, re-exports keep every
-  existing import working, verified from all four entry points);
-  dod_draft_v1 deliberately NOT registered — the registry resolves
-  tags readers encounter, and no reader ever loads a draft; the
-  absence is pinned by test. Deviations 1–6 accepted, incl. the
-  pre-existing dag_schedule.py ruff error left alone (reproduced at
-  base) and the legacy_flow test adjustment (the only way to reach
-  the runner's surviving guard post-R-0165). Transport: all three
-  texts cmp 0 disk-to-disk; live_review differs by exactly the
-  ordered Done line. Gate worktree removed + pruned, tmp branch
-  deleted, `git worktree list` proof recorded. Only this round
-  carries the full-suite claim: FULL SUITE GREEN.
-  LAST_REVIEWED_SHA = f6a05214.
+- R1: PASS (SPLIT round, 2026-08-01). Range b836d364..1e3e58b0 plus
+  handoff commit 30177869 (handoff+last_block only, verified).
+  Reviewer re-ran: smoke 27, dod suites+schemas 200, docs 293,
+  canary 42 — all exit 0, matching the handback transcripts.
+  Transport cmp 0 disk-to-disk against scratchpad originals (both
+  texts); STATUS claim FROM 1→0 / TO 0→1. Spot-checks: primary
+  worktree only, no registration-by-import (fresh-process providers
+  empty), no leaked runtime configs, 7 commits in range as tabled.
+  Deviations 1–5 accepted: new check kind product_smoke; kind-set
+  pin 5→6; additive StandardCheckContext.worktree_root;
+  not-applicable = non-blocking red in reported_red (P6);
+  _run_app_once extraction sharing the process discipline, harness
+  semantics untouched. R-0166 registered (handback form, Low).
+  LAST_REVIEWED_SHA = 30177869.
+- R2: PASS — INTEGRATION GATE PASS (LARGE round, 2026-08-01). Range
+  30177869..4d78cd12 (10 commits, all tabled). Reviewer re-ran:
+  scoped 237 + canary 42, exit 0; OWN full suite at HEAD 14969
+  passed / 19 skipped, exit 0 — matching the branch evidence in
+  .agent/gate_f062_r2/; base 14900/19 exit 0 (worker raw, count
+  delta +69 = exactly test_product_smoke.py); both comm directions
+  EMPTY, nothing to attribute, flake debt 0. Transport cmp 0
+  disk-to-disk (three texts, scratchpad originals); the worker's
+  stray-blank-line application fumble was reverted pre-commit and
+  disclosed. R-0166 verified fixed (pushed head = branch head, all
+  commits tabled) — Done stands. Deviations 1–4 accepted:
+  not-applicable/disabled contribute ONE honest row; path and
+  console failures are never retried; clean_console judged before
+  any pass; paths REPLACE while error_patterns only ADD. R-0167
+  registered (disabled smoke still starts the app, Low). Only this
+  round carries the full-suite claim: FULL SUITE GREEN.
+  LAST_REVIEWED_SHA = 4d78cd12.
+- R3: PASS (repair round, 2026-08-01). Range 4d78cd12..b2c17ea1
+  (4 commits, all tabled). Reviewer re-ran: scoped 244 + canary 42,
+  exit 0. Fix verified in situ: REASON_SMOKE_DISABLED refusal sits
+  AFTER not-applicable and BEFORE any start; DISABLED_MESSAGE one
+  shared constant; compile-time row unchanged; 7 pinned tests incl.
+  the marker-file process fact; red-proof in a throwaway worktree
+  (refusal deleted → 5 failed, marker file present) accepted.
+  Transport: cmp 0 disk-to-disk all three texts (scratchpad
+  originals); the r3-3 END-marker strip was recovered correctly by
+  the hash gate — the transport fault was the relay's, the recovery
+  was per protocol. Deviations 1–4 accepted (shared constant; order
+  after not-applicable; all kinds refuse; gating untouched).
+  R-0167 verified fixed and Done (commit b6efe456). Open findings 0.
+  LAST_REVIEWED_SHA = b2c17ea1.

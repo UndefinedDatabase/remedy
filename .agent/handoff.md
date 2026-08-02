@@ -1,60 +1,80 @@
-# Handoff — paydown-0801 R1 (single-session micro-round)
+# Handoff — F062 R4 (CLOSURE)
 
 ## Range
-
-Review of `617af80b..HEAD` (branch `feature/paydown-0801`), round type
-single-session micro-round (§3), docs/** + .agent/** only. Verdict: PASS.
+Review of `b2c17ea1..HEAD`; accepted HEAD `52a283cf` (deviation 1). F062 closed:
+STATUS `[x]`, README synced same commit, Built State recorded, zip verified.
 
 ## Commits
-
-### 1 — `46390e82` chore(paydown0801): persist round state + authored texts
-| path | +/- | reason |
+### 4bc84da3 chore(f062): persist the R3 verdict
+| Path | +/- | Reason |
 | --- | --- | --- |
-| `.agent/authored/paydown0801-r1-{1..7}.md` | +143 | authored texts, sha256-verified |
-| `.agent/plan.md`, `.agent/context.md`, `.agent/last_block.md` | rewrites | round bookkeeping |
+| `.agent/authored/f062-r4-{1..4}.md`, `live_review.md`, `last_block.md` | +249/-96 | four authored texts sha256-verified; r4-1 applied; R4 block verbatim |
 
-### 2 — `5b4dcfe1` chore(paydown0801): candidates carrier + closure-protocol amendments
-| path | +/- | reason |
+### ba4f94db docs(f062): record the accepted Built State
+| Path | +/- | Reason |
 | --- | --- | --- |
-| `docs/roadmap/STATUS_closure_protocol.md` | +31/-9 | disk-vehicle rule; evidence dir NOT committed |
-| `docs/agents/planner_reviewer_prompt.md` | +7/-1 | bootstrap step 4 reads .agent/candidates.md |
-| `docs/agents/handback_template.md` | +3/-1 | PR create entries include the PR number |
-| `.agent/candidates.md` | +10 | carrier of record, created empty |
-| `.agent/decisions.md` | +31 | the three DECISIONs |
-| `.agent/authored/paydown0801-r1-3.md` | +1/-1 | v2 rewrap (deviation 1) |
+| `docs/roadmap/features/T1_F062.md` | +47 | f062-r4-2 byte-appended (precondition 4) |
 
-### 3 — final commits: handback R1 + cap trims (grouped, R-0149)
-`.agent/handoff.md` rewrite + `.agent/last_block.md` OUTCOME → executed.
+### 52a283cf test(f062): package-safe parametrize ids
+| Path | +/- | Reason |
+| --- | --- | --- |
+| `tests/orchestration/test_product_smoke.py` | +14/-7 | explicit ids so no node id reads as a local absolute path (deviation 1) |
+
+### Final closure commit + handoff (grouped self-reference, R-0149)
+| Path | +/- | Reason |
+| --- | --- | --- |
+| `docs/roadmap/STATUS.md`, `README.md`, `.agent/{handoff,last_block}.md` | +3/-3 + rewrite | STATUS `[x]` with the four filled values; both README edits (R-0154, same commit); this report; OUTCOME executed |
 
 ## External actions
-
-- `gh pr merge 172 --merge --delete-branch` → merged (Open PR Gate, F061).
-- `git push -u origin feature/paydown-0801` → ok.
-- `gh pr create` → **PR #173** (this branch → main).
+- `git push` after each commit and before handback (head == remote).
+- `gh pr create --base main` → **PR #174**, NOT merged (merges at the next Open
+  PR Gate); created before the closure commit — deviation 2.
+- No worktrees this round; `git worktree list` → primary only.
 
 ## Verification
+    $ pytest tests/docs/ -q 293 passed EXIT=0 · test_golden_path.py 42 EXIT=0
+    $ pytest .../test_product_smoke.py -q  76 passed EXIT=0
+    $ remedy integrity check --json  passed true, 5/5   $ porcelain (empty)
+      candidates.md: "No open candidates."
+Evidence job **76ee4cb7318e409e**, built outside the repo, never committed.
+Pre-zip: `ready_gate_matrix ok True`, `blocking_reasons []`,
+`is_valid_current_run True`, `validation_errors []`, final-verifier and
+token-truth `VERIFIED_EQUAL`. **The FIRST bundle was rejected** — raw:
 
-    $ python3 -m pytest tests/docs/ -q                    293 passed  EXIT=0
-    $ python3 -m pytest tests/cli/test_golden_path.py -q   42 passed  EXIT=0
-    $ git status --porcelain                              (empty)
+    ok: False; blocking_reasons: ['...VerificationTests total is missing or
+    invalid', 'verification_tests.json field runs[0].node_ids[29] carries a
+    local absolute path']  ← [entry0-must start with '/']
+
+No zip was built from it; dir deleted, rebuilt after the cause fix. Package
+**remedy-review-20260801-214231-READY_FOR_REVIEW.zip** · SHA-256
+**46e684f5954a32c92994781a734bf3c26d830ba288e63d48fe4d5dc441b8ab29**
+(recomputed from disk): READY_FOR_REVIEW · alignment PASS · evidence
+authoritative · subject `b836d364..52a283cf` · `testzip()` clean · import smoke
+over the PACKAGED sources (modules import, runner registered, no registration
+by import, `ps.register()` works); tmp extract removed.
 
 ## Authored-text proofs
-
-sha256 of `.agent/authored/paydown0801-r1-{1..7}.md` (leading 8 hex):
-9de20e35 · ac24efef · 14dbb5ea (v2) · fcf4f4d0 · bda48497 · f9549979 ·
-6c896ef3. cmp scratchpad original ↔ committed file: EXIT=0, all 7.
-Application, disk-to-disk: r1-1..5 TO-block occurs exactly once in its
-target, FROM gone (r1-1's TO embeds its FROM as prefix — the count-1
-hit IS the TO); r1-6 `cmp` ↔ `.agent/candidates.md` EXIT=0; r1-7
-appended exactly once, `decisions.md` ends with the payload bytes.
+`f062-r4-1` 913c9ac0… · `-2` 6993425a… · `-3` 97d38c08… · `-4` 93add0b0…, all
+matching their BEGIN markers. r4-3's TO arrived transport-wrapped; both forms
+hashed before writing, single-line matched (R-0148). r4-1's TO embeds its FROM,
+occurring once in `live_review.md`. STATUS: FROM 1→0, TO 0→1, numstat `1 1`;
+substituting the four values back reproduces the authored TO byte-for-byte.
+README: both FROM gone, both TO once, numstat `2 2`.
 
 ## Deviations & assumptions
-
-1. r1-3 re-authored as v2 (14dbb5ea) before the content commit: v1's
-   wrap opened a line with "+ SHA-256" (renders as a markdown bullet).
-   Wrap-only change; v1 (269436ea) reverted, only v2 applied.
+1. **Accepted HEAD is `52a283cf`, not commit 2.** A parametrize needle
+   (`"must start with '/'"`) put a slash inside a node id, which the validator
+   reads as a local absolute path. I fixed the cause (explicit `pytest.param`
+   ids) rather than trimming the run — a content commit, so zip, manifest and
+   STATUS all name `52a283cf`. Same class as F061 R4. **Please confirm.**
+2. **PR created before the closure commit**, so the template's "PR entries
+   carry the number" rule is met here; Rule A4 holds (closure commit last, PR
+   picked it up on push).
+3. **My pre-flight guard was too narrow** (caught `[/` and `..`, not a slash
+   mid-parameter); tightened to reject ANY slash in a bracketed param id.
+4. **`output_hash` omitted** so the producer derives it; evidence dir outside
+   the repo per the amended protocol. `PASS_WITH_RISKS` is the producer's
+   documented value here, not a new risk. Open findings 0.
 
 ## Next
-
-Merge PR #173 (standing approval), then F062 per Rule A5 in a fresh
-Window-1 session; candidates file empty at claim. Trim commits: 2 (smell).
+F062 closure complete — PR #174 open, awaiting the next Open PR Gate.

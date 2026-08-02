@@ -164,6 +164,12 @@ class StandardCheckContext:
 
     intake: dict[str, Any]
     plan: FlightPlan
+    #: The project the DoD is being compiled for, when the caller knows it.
+    #: Additive (F062): a provider that needs to inspect the project — e.g. to
+    #: ask whether it has a runnable app at all — reads this; empty means the
+    #: compiler was given no project context, and a provider must not invent
+    #: one.
+    worktree_root: str = ""
 
 
 #: name -> provider. A plain ordered mapping: registration order decides check
@@ -272,6 +278,7 @@ def deterministic_dod(
     *,
     intake: dict[str, Any] | None = None,
     default_selector: str = DEFAULT_TEST_SELECTOR,
+    worktree_root: str = "",
 ) -> DoD:
     """Build the honest no-provider DoD from the plan's acceptance lines.
 
@@ -283,7 +290,9 @@ def deterministic_dod(
     checks = acceptance_checks(
         plan_acceptance_lines(plan), taken=taken, default_selector=default_selector)
     checks.extend(_standard_checks_as_compiled(
-        StandardCheckContext(intake=dict(intake or {}), plan=plan), taken=taken))
+        StandardCheckContext(intake=dict(intake or {}), plan=plan,
+                             worktree_root=str(worktree_root or "")),
+        taken=taken))
     return DoD(
         schema_v=DOD_SCHEMA_V,
         checks=checks,
@@ -370,6 +379,7 @@ def compile_dod(
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
     default_selector: str = DEFAULT_TEST_SELECTOR,
+    worktree_root: str = "",
 ) -> DoDCompileResult:
     """Compile intake + plan into a DoD, merging the three check sources.
 
@@ -383,7 +393,8 @@ def compile_dod(
     lines = plan_acceptance_lines(plan)
 
     if call_fn is None:
-        return _fallback(plan, intake, default_selector, hint="no provider")
+        return _fallback(plan, intake, default_selector, hint="no provider",
+                         worktree_root=worktree_root)
 
     try:
         outcome: StructuredOutcome = run_structured_call(
@@ -395,10 +406,12 @@ def compile_dod(
         )
     except Exception as exc:
         return _fallback(
-            plan, intake, default_selector, hint=f"provider error: {exc}")
+            plan, intake, default_selector, hint=f"provider error: {exc}",
+            worktree_root=worktree_root)
 
     if not outcome.ok:
-        result = _fallback(plan, intake, default_selector, hint=outcome.hint)
+        result = _fallback(plan, intake, default_selector, hint=outcome.hint,
+                           worktree_root=worktree_root)
         result.calls = outcome.calls
         result.call_log = outcome.call_log
         return result
@@ -420,7 +433,9 @@ def compile_dod(
     checks.extend(acceptance_checks(
         uncovered, taken=taken, default_selector=default_selector))
     checks.extend(_standard_checks_as_compiled(
-        StandardCheckContext(intake=dict(intake or {}), plan=plan), taken=taken))
+        StandardCheckContext(intake=dict(intake or {}), plan=plan,
+                             worktree_root=str(worktree_root or "")),
+        taken=taken))
 
     dod = DoD(
         schema_v=DOD_SCHEMA_V, checks=checks, compiled=True, origin="provider")
@@ -439,9 +454,11 @@ def _fallback(
     default_selector: str,
     *,
     hint: str,
+    worktree_root: str = "",
 ) -> DoDCompileResult:
     dod = deterministic_dod(
-        plan, intake=intake, default_selector=default_selector)
+        plan, intake=intake, default_selector=default_selector,
+        worktree_root=worktree_root)
     return DoDCompileResult(
         dod=dod,
         source="deterministic",

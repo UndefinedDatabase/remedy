@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-31 of 252 registered items accepted. Next: F062 (Product smoke as the closing gate).
+32 of 252 registered items accepted. Next: F069 (Mission compiler).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 15 | 22 |
+| 1 | Self-Build Bootstrap | 16 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |

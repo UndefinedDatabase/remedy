@@ -50,7 +50,8 @@ TRACEABILITY_RULE = "every plan acceptance line traceable to a check id"
 
 #: What a check runs. ``runtime_flow`` is schema-valid from R1 on, but has no
 #: runner until T003 — the runner registry fails loud on it rather than passing.
-CheckKind = Literal["pytest", "lint", "build", "runtime_flow", "custom_cmd"]
+CheckKind = Literal["pytest", "lint", "build", "runtime_flow", "custom_cmd",
+                    "product_smoke"]
 
 #: Where a check came from. ``compiled`` = proposed by the provider from user
 #: intent; ``plan_acceptance`` = generated to cover a plan acceptance line;
@@ -75,6 +76,10 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
     "build": frozenset({"tool", "args", "paths"}),
     "custom_cmd": frozenset({"argv"}),
     "runtime_flow": frozenset({"steps"}),
+    # F062: the product-smoke block. ``smoke`` names WHICH smoke check this is;
+    # the block that emits it and the runner that executes it agree on the
+    # vocabulary, so an unknown name is refused here rather than at run time.
+    "product_smoke": frozenset({"smoke", "retry", "paths"}),
 }
 
 #: The v1 runtime_flow vocabulary (R-0165). One action, and a closed set of
@@ -84,6 +89,17 @@ _SPEC_KEYS: dict[str, frozenset[str]] = {
 #: stored before this rule existed.
 FLOW_ACTION_OPEN = "open"
 _FLOW_STEP_KEYS = frozenset({"action", "path", "expect_status", "expect_text"})
+
+#: The product-smoke check names (F062). Kept here, not imported from
+#: ``product_smoke``, so the schema stays a leaf: the block imports the schema,
+#: never the other way round.
+SMOKE_CHECK_NAMES: tuple[str, ...] = (
+    "app_starts", "core_paths_respond", "clean_console")
+
+#: Keys one entry of a ``core_paths_respond`` probe set may carry. Closed, and
+#: validated at compile time: a probe naming something else is nonsense the
+#: compiler can detect.
+_SMOKE_PATH_KEYS = frozenset({"path", "expect_status", "expect_text"})
 
 
 class DoDSpecError(ValueError):
@@ -179,6 +195,64 @@ def validate_check_spec(kind: str, spec: dict[str, Any]) -> None:
             raise DoDSpecError("runtime_flow spec needs a non-empty 'steps' list")
         for i, step in enumerate(steps):
             _validate_flow_step(i, step)
+    elif kind == "product_smoke":
+        smoke = _require_nonempty_str(spec, "smoke", kind)
+        if smoke.strip() not in SMOKE_CHECK_NAMES:
+            raise DoDSpecError(
+                f"product_smoke spec 'smoke' names an unknown check: "
+                f"{smoke!r} (known: {', '.join(SMOKE_CHECK_NAMES)})")
+        if "retry" in spec and not isinstance(spec["retry"], bool):
+            raise DoDSpecError(
+                f"product_smoke spec 'retry' must be a bool, got {spec['retry']!r}")
+        if smoke.strip() == "core_paths_respond":
+            paths = spec.get("paths")
+            if not isinstance(paths, list) or not paths:
+                raise DoDSpecError(
+                    "product_smoke 'core_paths_respond' needs a non-empty "
+                    "'paths' list")
+            for i, entry in enumerate(paths):
+                _validate_smoke_path(i, entry)
+        elif "paths" in spec:
+            raise DoDSpecError(
+                f"product_smoke spec 'paths' does not apply to {smoke!r}")
+
+
+def _validate_smoke_path(i: int, entry: Any) -> None:
+    """One entry of a ``core_paths_respond`` probe set (F062 T002).
+
+    Same shape discipline as a runtime_flow step, minus the action: a path
+    that must start with ``/``, and optional typed expectations. Messages name
+    the entry index, because a probe set carries several.
+    """
+    if not isinstance(entry, dict):
+        raise DoDSpecError(f"product_smoke paths[{i}] must be an object")
+
+    unknown = sorted(set(entry) - _SMOKE_PATH_KEYS)
+    if unknown:
+        raise DoDSpecError(
+            f"product_smoke paths[{i}] has unknown key(s): {', '.join(unknown)} "
+            f"(known: {', '.join(sorted(_SMOKE_PATH_KEYS))})")
+
+    path = entry.get("path")
+    if not isinstance(path, str) or not path.strip():
+        raise DoDSpecError(
+            f"product_smoke paths[{i}] needs a non-empty 'path' string")
+    if not path.strip().startswith("/"):
+        raise DoDSpecError(
+            f"product_smoke paths[{i}] 'path' must start with '/', got {path!r}")
+
+    if "expect_status" in entry:
+        status = entry["expect_status"]
+        # bool is an int in Python, and `expect_status: true` is not a status.
+        if isinstance(status, bool) or not isinstance(status, int):
+            raise DoDSpecError(
+                f"product_smoke paths[{i}] 'expect_status' must be an integer "
+                f"status code, got {status!r}")
+
+    if "expect_text" in entry and not isinstance(entry["expect_text"], str):
+        raise DoDSpecError(
+            f"product_smoke paths[{i}] 'expect_text' must be a string, "
+            f"got {entry['expect_text']!r}")
 
 
 def _validate_flow_step(i: int, step: Any) -> None:
