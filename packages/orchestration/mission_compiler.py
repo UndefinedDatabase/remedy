@@ -135,6 +135,20 @@ def mission_goal(mission: Any) -> str:
     return str(goal or "").strip()
 
 
+@dataclass
+class MissionPlanOutcome:
+    """What one ``remedy mission plan`` run produced (T003)."""
+
+    mission: Any
+    plan: MissionPlan
+    #: 1 for the first compilation, 2 for the first recompile, and so on.
+    version: int
+    source: str
+    error_hint: str = ""
+    plan_path: Path | None = None
+    evidence_dir: Path | None = None
+
+
 def build_mission_prompt(goal: str, *, project_facts: str = "") -> str:
     """The provider prompt for one mission goal.
 
@@ -447,3 +461,136 @@ def write_mission_plan_md(plan: MissionPlan, evidence_dir: Path,
     path = evidence_dir / filename
     path.write_text(render_mission_plan_md(plan, goal), encoding="utf-8")
     return path
+
+
+# ---------------------------------------------------------------------------
+# T003 — planning a persisted mission: versioning and the in-progress refusal
+# ---------------------------------------------------------------------------
+
+#: Keys the PERSISTED plan body carries beyond the model's own fields. The
+#: flight-plan replan precedent (``flight_plan.replan``) established this
+#: spelling, and reusing it means one versioning convention in the codebase
+#: rather than two.
+PLAN_VERSIONS_KEY = "_versions"
+PLAN_VERSION_KEY = "_version"
+
+
+class MissionPlanInProgressError(Exception):
+    """A recompile was refused because work on the current plan has begun."""
+
+
+def mission_plan_of(mission: Any) -> MissionPlan | None:
+    """The MissionPlan persisted on a mission record, or None.
+
+    The persisted body carries the versioning keys alongside the model's own
+    fields, and the model forbids unknown fields — so they are stripped here,
+    in the one place that knows they exist.
+    """
+    body = getattr(mission, "mission_plan", None)
+    if not isinstance(body, dict) or not body:
+        return None
+    return MissionPlan.model_validate(
+        {k: v for k, v in body.items() if not k.startswith("_")})
+
+
+def plan_version_of(mission: Any) -> int:
+    """Which version the persisted plan is, or 0 when there is none."""
+    body = getattr(mission, "mission_plan", None)
+    if not isinstance(body, dict) or not body:
+        return 0
+    return int(body.get(PLAN_VERSION_KEY, 1))
+
+
+def milestones_in_progress(mission: Any) -> tuple[str, ...]:
+    """Which milestones of the persisted plan count as already in progress.
+
+    THE RULE, stated where it lives: a milestone counts as in progress as soon
+    as any real job attributable to it exists on the mission record.
+
+    A mission record attributes a job to the MISSION, not to a milestone —
+    ``MissionJobLink`` carries a job id, a role and a timestamp, and nothing
+    else.  With no per-milestone attribution available, the conservative
+    reading is the only honest one: once ANY job is linked to the mission,
+    every milestone of its current plan is treated as in progress.  Adding a
+    milestone id to the link would mean changing job creation, which this
+    feature must not touch.
+
+    Erring this way costs a refused recompile; erring the other way would
+    silently rewrite the plan under work already running.  A mission with no
+    plan yet has no milestones, so nothing is in progress and the FIRST
+    compilation is always allowed.
+    """
+    plan = mission_plan_of(mission)
+    if plan is None or not getattr(mission, "job_links", ()):
+        return ()
+    return tuple(m.id for m in plan.milestones)
+
+
+def plan_mission(
+    project_id: str,
+    mission_id: str,
+    call_fn: Callable[[str, int], str] | None = None,
+    *,
+    root: Path | None = None,
+    on_call: Callable[[int, str, bool, str], None] | None = None,
+) -> MissionPlanOutcome:
+    """Compile (or recompile) a mission's plan, persist it, render it.
+
+    A recompile KEEPS every prior version — the old body moves into
+    ``_versions`` and the previous ``mission_plan.md`` stays on disk beside the
+    new ``mission_plan_v<n>.md``, exactly as a flight-plan replan keeps
+    ``plan.md``.  A plan a human already read and acted on is never destroyed.
+
+    Recompiling is REFUSED once any milestone is in progress
+    (:func:`milestones_in_progress`): rewriting the route under running work
+    would leave that work serving a plan that no longer exists.
+
+    Nothing here starts anything.  It compiles, it writes evidence, and it
+    updates one record.
+    """
+    from packages.orchestration.mission_state import (
+        load_mission,
+        mission_evidence_dir,
+        set_mission_plan,
+    )
+
+    mission = load_mission(project_id, mission_id, root)
+
+    in_progress = milestones_in_progress(mission)
+    if in_progress:
+        raise MissionPlanInProgressError(
+            f"mission {mission.id} cannot be replanned: "
+            f"{len(in_progress)} milestone(s) are already in progress "
+            f"({', '.join(in_progress)}) because "
+            f"{len(mission.job_links)} job(s) are linked to this mission. "
+            f"Start a new mission for a different route, or achieve/abandon "
+            f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
+
+    result = compile_mission_plan(mission, call_fn, on_call=on_call)
+    evidence_dir = mission_evidence_dir(project_id, mission.id, root)
+    plan = attach_milestone_dods(
+        result.plan, goal=mission.goal, evidence_dir=evidence_dir,
+        call_fn=call_fn)
+
+    previous = mission.mission_plan if isinstance(mission.mission_plan, dict) else None
+    versions = list((previous or {}).get(PLAN_VERSIONS_KEY, []))
+    if previous:
+        versions.append(previous)
+    version = len(versions) + 1
+
+    body = plan.model_dump()
+    body[PLAN_VERSIONS_KEY] = versions
+    body[PLAN_VERSION_KEY] = version
+
+    path = write_mission_plan_md(plan, evidence_dir, mission.goal, version=version)
+    updated = set_mission_plan(project_id, mission.id, body, root)
+
+    return MissionPlanOutcome(
+        mission=updated,
+        plan=plan,
+        version=version,
+        source=result.source,
+        error_hint=result.error_hint,
+        plan_path=path,
+        evidence_dir=evidence_dir,
+    )
