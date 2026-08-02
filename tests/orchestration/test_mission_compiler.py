@@ -1,6 +1,7 @@
 """F069 — the MissionPlan schema, the compiler, and the DoD hand-off.
 
-What the order requires proof of (T001 schema/compiler, T002 hand-off):
+What the order requires proof of (T001 schema/compiler, T002 hand-off,
+T003 version retention and the in-progress refusal):
 
   * the schema round-trips through JSON unchanged, and refuses a plan that
     claims to be compiled when it was not;
@@ -16,7 +17,9 @@ What the order requires proof of (T001 schema/compiler, T002 hand-off):
     no second mechanism — and the plan persists on the mission record as an
     ADDITIVE optional field that pre-F069 records survive unchanged;
   * compiling has ZERO side effects and planning end to end creates ZERO jobs,
-    starts no process and touches no worktree.
+    starts no process and touches no worktree;
+  * a recompile keeps every prior version, and is REFUSED — changing nothing on
+    disk — once any milestone counts as in progress.
 
 No provider is contacted: every "LLM" here is a local callable returning
 recorded text.
@@ -35,12 +38,19 @@ from packages.orchestration.dod_schema import DOD_SCHEMA_V, DoD
 from packages.orchestration.mission_compiler import (
     DETERMINISTIC_MILESTONE_ID,
     MISSION_PLAN_FILENAME,
+    PLAN_VERSION_KEY,
+    PLAN_VERSIONS_KEY,
+    MissionPlanInProgressError,
     attach_milestone_dods,
     build_mission_prompt,
     compile_milestone_dod,
     compile_mission_plan,
     deterministic_mission_plan,
     milestone_flight_plan,
+    milestones_in_progress,
+    mission_plan_of,
+    plan_mission,
+    plan_version_of,
     render_mission_plan_md,
     write_mission_plan_md,
 )
@@ -58,6 +68,7 @@ from packages.orchestration.mission_state import (
     Mission,
     MissionError,
     create_mission,
+    link_job_to_mission,
     list_missions,
     load_mission,
     mission_evidence_dir,
@@ -729,3 +740,130 @@ class TestNoAutostart:
         for ms in plan.milestones:
             for draft in ms.jobs_draft:
                 assert set(draft.model_dump()) == {"title", "goal", "est_band"}
+
+
+# ---------------------------------------------------------------------------
+# T003 — planning a persisted mission: version retention and the refusal
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def planned_mission(tmp_path, monkeypatch):
+    """A persisted mission plus the recorded provider answer for its goal."""
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+    fixture = load_fixture("payments_platform")
+    mission = create_mission("proj", fixture["mission"]["goal"])
+    return mission, replaying(fixture["provider_draft"])
+
+
+class TestPlanMission:
+    def test_the_first_compilation_is_version_one(self, planned_mission):
+        mission, call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, call_fn)
+
+        assert outcome.version == 1
+        assert outcome.source == "llm"
+        assert plan_version_of(outcome.mission) == 1
+        assert outcome.plan_path.name == MISSION_PLAN_FILENAME
+
+    def test_the_persisted_body_round_trips_back_into_the_model(
+            self, planned_mission):
+        mission, call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, call_fn)
+
+        stored = mission_plan_of(load_mission("proj", mission.id))
+        assert stored == outcome.plan
+
+    def test_a_recompile_retains_every_prior_version(self, planned_mission):
+        mission, call_fn = planned_mission
+
+        plan_mission("proj", mission.id, call_fn)
+        plan_mission("proj", mission.id, call_fn)
+        third = plan_mission("proj", mission.id, call_fn)
+
+        assert third.version == 3
+        versions = third.mission.mission_plan[PLAN_VERSIONS_KEY]
+        assert [v[PLAN_VERSION_KEY] for v in versions] == [1, 2]
+
+    def test_a_retained_version_is_still_a_valid_plan(self, planned_mission):
+        mission, call_fn = planned_mission
+        plan_mission("proj", mission.id, call_fn)
+        second = plan_mission("proj", mission.id, call_fn)
+
+        prior = second.mission.mission_plan[PLAN_VERSIONS_KEY][0]
+        assert MissionPlan.model_validate(
+            {k: v for k, v in prior.items() if not k.startswith("_")})
+
+    def test_each_version_renders_its_own_file_and_keeps_the_earlier_one(
+            self, planned_mission):
+        mission, call_fn = planned_mission
+
+        first = plan_mission("proj", mission.id, call_fn)
+        second = plan_mission("proj", mission.id, call_fn)
+
+        assert first.plan_path.is_file()
+        assert second.plan_path.name == "mission_plan_v2.md"
+        assert second.plan_path.is_file()
+
+    def test_planning_without_a_provider_persists_the_degraded_route(
+            self, planned_mission):
+        mission, _call_fn = planned_mission
+
+        outcome = plan_mission("proj", mission.id, None)
+
+        assert outcome.source == "deterministic"
+        assert outcome.plan.compiled is False
+        assert len(outcome.plan.milestones) == 1
+        assert outcome.plan.milestones[0].dod_ref
+
+
+class TestInProgressRule:
+    def test_nothing_is_in_progress_before_a_plan_exists(self, planned_mission):
+        mission, _call_fn = planned_mission
+        link_job_to_mission("proj", mission.id, "job-a", "initial")
+
+        assert milestones_in_progress(load_mission("proj", mission.id)) == ()
+
+    def test_nothing_is_in_progress_while_no_job_is_linked(self, planned_mission):
+        mission, call_fn = planned_mission
+        outcome = plan_mission("proj", mission.id, call_fn)
+
+        assert milestones_in_progress(outcome.mission) == ()
+
+    def test_one_linked_job_puts_every_milestone_in_progress(self, planned_mission):
+        """The conservative rule: the record attributes jobs to the MISSION."""
+        mission, call_fn = planned_mission
+        outcome = plan_mission("proj", mission.id, call_fn)
+        link_job_to_mission("proj", mission.id, "job-a", "initial")
+
+        in_progress = milestones_in_progress(load_mission("proj", mission.id))
+        assert in_progress == tuple(m.id for m in outcome.plan.milestones)
+
+    def test_a_recompile_is_refused_once_a_milestone_is_in_progress(
+            self, planned_mission):
+        mission, call_fn = planned_mission
+        plan_mission("proj", mission.id, call_fn)
+        link_job_to_mission("proj", mission.id, "job-a", "initial")
+
+        with pytest.raises(MissionPlanInProgressError) as exc:
+            plan_mission("proj", mission.id, call_fn)
+        assert "cannot be replanned" in str(exc.value)
+        assert "already in progress" in str(exc.value)
+
+    def test_the_refusal_changes_nothing_on_disk(self, planned_mission):
+        mission, call_fn = planned_mission
+        plan_mission("proj", mission.id, call_fn)
+        link_job_to_mission("proj", mission.id, "job-a", "initial")
+        record = mission_record_path("proj", mission.id)
+        before = record.read_text(encoding="utf-8")
+        evidence_before = sorted(
+            p.name for p in mission_evidence_dir("proj", mission.id).iterdir())
+
+        with pytest.raises(MissionPlanInProgressError):
+            plan_mission("proj", mission.id, call_fn)
+
+        assert record.read_text(encoding="utf-8") == before
+        assert sorted(
+            p.name for p in mission_evidence_dir("proj", mission.id).iterdir()
+        ) == evidence_before
