@@ -1,0 +1,122 @@
+{
+  "name": "docs_portal",
+  "note": "Long goal: a documentation portal that stops going stale. Two milestones, a simple linear dependency \u2014 the smallest honest DAG, and the fixture that proves a short plan is not a degraded one.",
+  "mission": {
+    "goal": "Our documentation portal drifts out of date within weeks of every release, and support keeps answering questions the docs already claim to cover. The pages themselves are not bad; the problem is that nothing connects a shipped change to the page that describes it, so nobody notices when a page becomes a lie. What we want, eventually, is a portal where a stale page is detected by the build rather than by an annoyed customer, and where the person shipping a change is told which pages their change makes wrong. Rewriting the portal's design or changing the static site generator is explicitly not wanted."
+  },
+  "provider_draft": {
+    "schema_v": "mission_plan_draft_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "every documentation page is linked to the code it describes",
+        "rationale": "Staleness cannot be detected before the link between page and code exists.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Introduce a page-to-source reference",
+            "goal": "Each page declares the modules or endpoints it documents",
+            "est_band": "M"
+          },
+          {
+            "title": "Backfill references for the existing pages",
+            "goal": "Every current page carries a reference or an explicit none",
+            "est_band": "L"
+          }
+        ]
+      },
+      {
+        "id": "M002",
+        "goal": "the build fails on a page the code has outgrown",
+        "rationale": "A check a human has to remember to run is a check that does not exist.",
+        "depends_on": [
+          "M001"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Add the staleness gate to the docs build",
+            "goal": "A referenced symbol that moved or vanished fails the build",
+            "est_band": "M"
+          }
+        ]
+      }
+    ],
+    "risks": [
+      "Pages that document behaviour rather than a symbol may have no natural reference."
+    ],
+    "assumptions": [
+      "The static site generator and the portal design stay as they are."
+    ]
+  },
+  "golden_plan": {
+    "schema_v": "mission_plan_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "every documentation page is linked to the code it describes",
+        "rationale": "Staleness cannot be detected before the link between page and code exists.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Introduce a page-to-source reference",
+            "goal": "Each page declares the modules or endpoints it documents",
+            "est_band": "M"
+          },
+          {
+            "title": "Backfill references for the existing pages",
+            "goal": "Every current page carries a reference or an explicit none",
+            "est_band": "L"
+          }
+        ],
+        "dod_ref": ""
+      },
+      {
+        "id": "M002",
+        "goal": "the build fails on a page the code has outgrown",
+        "rationale": "A check a human has to remember to run is a check that does not exist.",
+        "depends_on": [
+          "M001"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Add the staleness gate to the docs build",
+            "goal": "A referenced symbol that moved or vanished fails the build",
+            "est_band": "M"
+          }
+        ],
+        "dod_ref": ""
+      }
+    ],
+    "risks": [
+      "Pages that document behaviour rather than a symbol may have no natural reference."
+    ],
+    "assumptions": [
+      "The static site generator and the portal design stay as they are."
+    ],
+    "compiled": true,
+    "origin": "provider"
+  },
+  "golden_fallback_plan": {
+    "schema_v": "mission_plan_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "The mission goal is met in full: Our documentation portal drifts out of date within weeks of every release, and support keeps answering questions the docs already claim to cover. The pages themselves are not bad; the problem is that nothing connects a shipped change to the page that describes it, so nobody notices when a page becomes a lie. What we want, eventually, is a portal where a stale page is detected by the build rather than by an annoyed customer, and where the person shipping a change is told which pages their change makes wrong. Rewriting the portal's design or changing the static site generator is explicitly not wanted.",
+        "rationale": "No provider produced a plan, so the whole mission goal is carried as one milestone. This is a degraded route, not a considered decomposition.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Our documentation portal drifts out of date within weeks of every release, and s",
+            "goal": "Our documentation portal drifts out of date within weeks of every release, and support keeps answering questions the docs already claim to cover. The pages themselves are not bad; the problem is that nothing connects a shipped change to the page that describes it, so nobody notices when a page becomes a lie. What we want, eventually, is a portal where a stale page is detected by the build rather than by an annoyed customer, and where the person shipping a change is told which pages their change makes wrong. Rewriting the portal's design or changing the static site generator is explicitly not wanted.",
+            "est_band": "XL"
+          }
+        ],
+        "dod_ref": ""
+      }
+    ],
+    "risks": [],
+    "assumptions": [],
+    "compiled": false,
+    "origin": "deterministic"
+  }
+}

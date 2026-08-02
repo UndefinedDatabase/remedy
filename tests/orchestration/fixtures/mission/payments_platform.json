@@ -1,0 +1,200 @@
+{
+  "name": "payments_platform",
+  "note": "Long goal: keep a payments service releasable over months. The provider returns a four-milestone DAG that fans out from one foundation milestone and converges on release readiness \u2014 the shape a real mission has.",
+  "mission": {
+    "goal": "Keep the payments service releasable on any weekday without a heroic effort. Today a release takes two engineers most of a day: the contract tests are flaky, nobody trusts the staging environment, the release checklist lives in someone's head, and every rollback so far has been manual. Over the next few months this should become boring: a green pipeline, a documented and rehearsed rollback, and a staging environment whose result actually predicts production. Do not change the payment provider integration itself \u2014 that contract is fixed by the vendor and is out of scope."
+  },
+  "provider_draft": {
+    "schema_v": "mission_plan_draft_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "the payments contract tests are deterministic and trusted",
+        "rationale": "Nothing downstream can be trusted while the contract suite is flaky.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Quarantine and diagnose the flaky contract tests",
+            "goal": "Identify why the payments contract suite is non-deterministic",
+            "est_band": "L"
+          },
+          {
+            "title": "Pin the vendor sandbox responses",
+            "goal": "Replace live sandbox calls with recorded responses",
+            "est_band": "M"
+          }
+        ]
+      },
+      {
+        "id": "M002",
+        "goal": "staging results predict production results",
+        "rationale": "A staging environment nobody believes is a cost with no benefit.",
+        "depends_on": [
+          "M001"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Close the staging/production config drift",
+            "goal": "Make staging config differ from production only where it must",
+            "est_band": "L"
+          }
+        ]
+      },
+      {
+        "id": "M003",
+        "goal": "a rollback is a rehearsed, documented, single command",
+        "rationale": "Manual rollbacks are the reason releases feel risky.",
+        "depends_on": [
+          "M001"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Write the rollback runbook",
+            "goal": "One page: what to run, what to check, who to tell",
+            "est_band": "S"
+          },
+          {
+            "title": "Rehearse a rollback against staging",
+            "goal": "Prove the runbook works before it is needed",
+            "est_band": "M"
+          }
+        ]
+      },
+      {
+        "id": "M004",
+        "goal": "any weekday release is a boring, one-person operation",
+        "rationale": "The mission's actual outcome, reachable only after the rest.",
+        "depends_on": [
+          "M002",
+          "M003"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Collapse the release checklist into the pipeline",
+            "goal": "Every manual checklist step becomes a pipeline gate",
+            "est_band": "L"
+          }
+        ]
+      }
+    ],
+    "risks": [
+      "The vendor sandbox may not support recorded responses for every endpoint.",
+      "Staging drift may be caused by infrastructure the team does not own."
+    ],
+    "assumptions": [
+      "The vendor payment integration itself stays untouched, as the goal states.",
+      "Existing release tooling is extended rather than replaced."
+    ]
+  },
+  "golden_plan": {
+    "schema_v": "mission_plan_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "the payments contract tests are deterministic and trusted",
+        "rationale": "Nothing downstream can be trusted while the contract suite is flaky.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Quarantine and diagnose the flaky contract tests",
+            "goal": "Identify why the payments contract suite is non-deterministic",
+            "est_band": "L"
+          },
+          {
+            "title": "Pin the vendor sandbox responses",
+            "goal": "Replace live sandbox calls with recorded responses",
+            "est_band": "M"
+          }
+        ],
+        "dod_ref": ""
+      },
+      {
+        "id": "M002",
+        "goal": "staging results predict production results",
+        "rationale": "A staging environment nobody believes is a cost with no benefit.",
+        "depends_on": [
+          "M001"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Close the staging/production config drift",
+            "goal": "Make staging config differ from production only where it must",
+            "est_band": "L"
+          }
+        ],
+        "dod_ref": ""
+      },
+      {
+        "id": "M003",
+        "goal": "a rollback is a rehearsed, documented, single command",
+        "rationale": "Manual rollbacks are the reason releases feel risky.",
+        "depends_on": [
+          "M001"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Write the rollback runbook",
+            "goal": "One page: what to run, what to check, who to tell",
+            "est_band": "S"
+          },
+          {
+            "title": "Rehearse a rollback against staging",
+            "goal": "Prove the runbook works before it is needed",
+            "est_band": "M"
+          }
+        ],
+        "dod_ref": ""
+      },
+      {
+        "id": "M004",
+        "goal": "any weekday release is a boring, one-person operation",
+        "rationale": "The mission's actual outcome, reachable only after the rest.",
+        "depends_on": [
+          "M002",
+          "M003"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Collapse the release checklist into the pipeline",
+            "goal": "Every manual checklist step becomes a pipeline gate",
+            "est_band": "L"
+          }
+        ],
+        "dod_ref": ""
+      }
+    ],
+    "risks": [
+      "The vendor sandbox may not support recorded responses for every endpoint.",
+      "Staging drift may be caused by infrastructure the team does not own."
+    ],
+    "assumptions": [
+      "The vendor payment integration itself stays untouched, as the goal states.",
+      "Existing release tooling is extended rather than replaced."
+    ],
+    "compiled": true,
+    "origin": "provider"
+  },
+  "golden_fallback_plan": {
+    "schema_v": "mission_plan_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "The mission goal is met in full: Keep the payments service releasable on any weekday without a heroic effort. Today a release takes two engineers most of a day: the contract tests are flaky, nobody trusts the staging environment, the release checklist lives in someone's head, and every rollback so far has been manual. Over the next few months this should become boring: a green pipeline, a documented and rehearsed rollback, and a staging environment whose result actually predicts production. Do not change the payment provider integration itself \u2014 that contract is fixed by the vendor and is out of scope.",
+        "rationale": "No provider produced a plan, so the whole mission goal is carried as one milestone. This is a degraded route, not a considered decomposition.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Keep the payments service releasable on any weekday without a heroic effort. Tod",
+            "goal": "Keep the payments service releasable on any weekday without a heroic effort. Today a release takes two engineers most of a day: the contract tests are flaky, nobody trusts the staging environment, the release checklist lives in someone's head, and every rollback so far has been manual. Over the next few months this should become boring: a green pipeline, a documented and rehearsed rollback, and a staging environment whose result actually predicts production. Do not change the payment provider integration itself \u2014 that contract is fixed by the vendor and is out of scope.",
+            "est_band": "XL"
+          }
+        ],
+        "dod_ref": ""
+      }
+    ],
+    "risks": [],
+    "assumptions": [],
+    "compiled": false,
+    "origin": "deterministic"
+  }
+}
