@@ -1,36 +1,34 @@
-# Plan — F062 Product smoke as the closing gate
+# Plan — F069 Mission compiler
+
+Branch: feature/f069-mission-compiler
 
 ## Goal
-Green tests can still mean a broken product. For jobs touching a
-runnable app, a standard DoD block proves the app STARTS, its core
-paths RESPOND, and the console stream is free of errors, before the
-job may end green. DONE when a fixture app with green unit tests but a
-broken startup keeps its job OPEN and the smoke's finding reads
-concretely ("start failed: <probe reason>"), not vaguely. No runtime
-configured → "smoke: not applicable (no runtime configured)", honest
-and non-gating, never silently green.
+A long prose goal compiles into a MissionPlan — ordered milestones,
+each with its own compiled DoD and draft job outlines — so the
+orchestrator loop has a structured route instead of improvising. DONE
+when three long fixture goals compile into sensible milestone plans,
+every milestone carries a DoD reference, and draft jobs NEVER
+autostart.
 
 ## Current Step
-R2 (LARGE): R-0166 fix (push first), then T002 core_paths_respond —
-closed probe vocabulary, path hand-off from intent/plan, OK-status
-rule, fixtures for ok / wrong status / missing marker; then T003
-clean_console — a small documented CASE-SENSITIVE pattern base that
-config EXTENDS but never replaces, red with the matched lines quoted,
-plus the smoke config table (enabled, paths override, error-pattern
-additions, readiness window); then the integration gate per
-docs/agents/integration_gate.md. Per-slice verification, stop-on-red.
+R1 (SPLIT, LARGE bundle): claim, then T001 schema `mission_plan_v1` +
+milestone-DAG validation + compiler + honest deterministic fallback +
+three long-goal fixtures with golden milestone structures; then T002
+per-milestone DoD hand-off through the F061 compiler (A6, no second
+mechanism) + additive persistence on the mission record +
+mission_plan.md rendering + the no-autostart guarantee; then T003 CLI
+`remedy mission plan <id>` + recompile versioning + in-progress
+refusal. Per-slice verification, stop-on-red.
 
 ## Next Steps
-- R3: closure per docs/roadmap/STATUS_closure_protocol.md (its own
-  round: Built State, preconditions, evidence job, review zip,
-  STATUS [x] + README sync, PR).
+- Integration gate per docs/agents/integration_gate.md.
+- Closure per docs/roadmap/STATUS_closure_protocol.md (own round).
 
 ## Risks
-- The harness owns process semantics; the smoke only ORCHESTRATES its
-  existing verbs. A diff changing harness process behaviour is out of
-  scope.
-- v1 is HTTP-level on purpose. Any diff pulling in a browser
-  dependency is rejected at self-review; clickable flows stay in the
-  DoD's runtime_flow kind.
-- Teardown must run on every outcome, including failure and retry — a
-  leaked process is a red result, never a quiet one.
+- The compiler must have ZERO execution side effects: no jobs, no
+  starts, no worktree touches. Pinned by a negative test.
+- Persistence must stay additive/optional on the mission record; a
+  silent schema-version bump would break mission_state consumers.
+- Prompt-building helpers are reused, not copied — a copied helper is
+  extracted into a shared one instead (feature file, Orchestrator
+  brief).
