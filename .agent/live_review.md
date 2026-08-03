@@ -60,6 +60,7 @@ dossier is the stable PREFIX of the orchestrator prompt.
   REPLACES its line. Behavior is correct (one home per fact); the
   sentence is wrong. Fix: the docstring states the merge-by-id
   semantics.
+  Done: R-0174
 - Next free ID: R-0175.
 
 ## Verdicts

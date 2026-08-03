@@ -205,6 +205,15 @@ class TestAppendMechanics:
         assert dossier.version == 1
         assert append_facts(dossier, IterationFacts()).version == 2
 
+    def test_a_restated_decision_replaces_its_line(self):
+        # R-0174: decisions merge by id like every other list — a restated
+        # decision does not become a second decision.
+        dossier = append_facts(_dossier(), IterationFacts(
+            decisions=[DossierItem(id="D001", text="use the existing writer",
+                                   resolved=True, outcome="revisited")]))
+        assert [d.id for d in dossier.decisions] == ["D001"]
+        assert dossier.decisions[0].outcome == "revisited"
+
     def test_decisions_render_only_the_recent_few(self):
         dossier = _dossier()
         for index in range(MAX_RECENT_DECISIONS + 3):

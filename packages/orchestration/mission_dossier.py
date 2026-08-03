@@ -212,10 +212,14 @@ def render_dossier(dossier: MissionDossier) -> str:
 class IterationFacts:
     """What one iteration adds to the dossier.
 
-    Milestones and risks are keyed by id: a fact whose id is already present
-    REPLACES that line (a milestone's state changes; a risk is restated), which
-    is what keeps "one line each" true across any number of iterations. A new
-    id appends. Decisions always append — they are a history.
+    ALL THREE lists are keyed by id and merged the same way: a fact whose id is
+    already present REPLACES that line in place (a milestone's state changes, a
+    risk is restated, a decision's outcome arrives later), and a new id
+    appends at the end. That is what keeps "one line each" true across any
+    number of iterations, and it is the same one-home-per-fact rule the rest of
+    the module holds to — a restated decision does not become a second decision.
+    The DECISIONS section renders the most recent :data:`MAX_RECENT_DECISIONS`
+    of the accumulated record.
     """
 
     milestones: Sequence[DossierItem] = ()
