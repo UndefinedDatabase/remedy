@@ -1,0 +1,719 @@
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [  0%]
+........................................................................ [  0%]
+........................................................................ [  1%]
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+.................................s.......................s.............. [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 12%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 31%]
+..........ss....................................sss..................... [ 32%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 36%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 48%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+................................................................s...ss.. [ 60%]
+..........s.ss.......................................................... [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+............................................s........................... [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 72%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 84%]
+.........................................................s.............. [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+.......................s............................................s... [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 92%]
+......................................................s......s.......... [ 93%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................................................................ [ 96%]
+........................FF.............................................. [ 97%]
+...................................................F......F......F...... [ 97%]
+....................F..F....................F........................... [ 98%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+........................................................................ [ 99%]
+...................                                                      [100%]
+=================================== FAILURES ===================================
+__________ TestUIServerIntegration.test_server_starts_and_writes_info __________
+[gw14] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x75083daa7760>
+
+    def test_server_starts_and_writes_info(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x75083daa7760>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x75083c04feb0>
+t = <Thread(Thread-1 (run), stopped daemon 128678223144512)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+______________ TestUIServerIntegration.test_url_is_localhost_only ______________
+[gw11] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x78d0e31508b0>
+
+    def test_url_is_localhost_only(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:179: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x78d0e31508b0>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x78d0e1740790>
+t = <Thread(Thread-1 (run), stopped daemon 132838512801344)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+________ TestUIServerIntegration.test_api_valid_token_returns_dashboard ________
+[gw13] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x70d67c2f1e40>
+
+    def test_api_valid_token_returns_dashboard(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:218: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x70d67c2f1e40>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x70d67b150af0>
+t = <Thread(Thread-1 (run), stopped daemon 124066477893184)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+______________ TestUIServerIntegration.test_api_invalid_token_403 ______________
+[gw7] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7a37f8d8dde0>
+
+    def test_api_invalid_token_403(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:210: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7a37f8d8dde0>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x7a37f7f47880>
+t = <Thread(Thread-1 (run), stopped daemon 134380785759808)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+__________________ TestUIServerIntegration.test_put_rejected ___________________
+[gw9] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7ced2bbaea10>
+
+    def test_put_rejected(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:255: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7ced2bbaea10>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x7ced2a3f6290>
+t = <Thread(Thread-93 (run), stopped daemon 137358041667136)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+_____________ TestUIServerIntegration.test_dashboard_no_raw_leaks ______________
+[gw1] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7f6ec16bec20>
+
+    def test_dashboard_no_raw_leaks(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x7f6ec16bec20>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x7f6ebfbf3400>
+t = <Thread(Thread-1 (run), stopped daemon 140113637013056)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+_________________ TestUIServerIntegration.test_brain_endpoint __________________
+[gw0] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x71ffc6591900>
+
+    def test_brain_endpoint(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:291: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x71ffc6591900>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x71ffc5637400>
+t = <Thread(Thread-1 (run), stopped daemon 125343323010624)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+_______________ TestUIServerIntegration.test_readiness_endpoint ________________
+[gw12] linux -- Python 3.10.12 /usr/bin/python3
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x721d55795510>
+
+    def test_readiness_endpoint(self):
+>       port, token, t = self._start_server()
+
+tests/ui_server/test_live_state.py:310: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.ui_server.test_live_state.TestUIServerIntegration object at 0x721d55795510>
+kwargs = {}, _s = <module 'secrets' from '/usr/lib/python3.10/secrets.py'>
+run = <function TestUIServerIntegration._start_server.<locals>.run at 0x721d4f0ccf70>
+t = <Thread(Thread-17 (run), stopped daemon 125470299268672)>, _ = 49
+
+    def _start_server(self, **kwargs):
+        """Start server in background thread, return (port, token, thread)."""
+        import secrets as _s
+    
+        from packages.orchestration.ui_server import start_ui_server
+    
+        info_file = str(self.tmp_path / "server_info.json")
+        token = _s.token_urlsafe(16)
+    
+        def run():
+            try:
+                start_ui_server(
+                    self.job_id,
+                    host="127.0.0.1",
+                    port=0,
+                    token=token,
+                    open_browser=False,
+                    info_file=info_file,
+                    **kwargs,
+                )
+            except (SystemExit, KeyboardInterrupt):
+                pass
+    
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+    
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+=========================== short test summary info ============================
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_valid_token_returns_dashboard
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_readiness_endpoint
+8 failed, 14968 passed, 19 skipped in 162.04s (0:02:42)

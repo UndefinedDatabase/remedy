@@ -38,10 +38,17 @@ perf pass is flagged.
 
 | File | Contents |
 | --- | --- |
-| `branch_run.log` / `base_run.log` | full raw pytest output |
+| `branch_run.txt` / `base_run.txt` | full raw pytest output |
 | `branch_failed.txt` (empty) / `base_failed.txt` | sorted `^FAILED` lists |
 | `branch_only.txt` (empty) / `base_only.txt` | the two `comm` outputs |
 | `branch_exit.txt` / `base_exit.txt` | exit code + wall seconds |
-| `base_only_rerun.log` | base re-run of the 8 ids with `dist` present |
+| `base_only_rerun.txt` | base re-run of the 8 ids with `dist` present |
 | `attribution.md` | per-id attribution for every `comm -23` id |
 | `worktree_teardown.txt` | removal + prune + `git worktree list` proof |
+
+> **Extension note (F069 R3).** These three raw-output files were written as
+> `*.log` during R2 and were therefore silently excluded from that round's
+> commit by `.gitignore:59 (*.log)` — the ordered raw tails never reached the
+> repository. They are renamed to `.txt` and committed here, which also clears
+> the review-zip packaging guard (it rejects any `.log` member). The bytes are
+> the originals from the R2 runs; nothing was re-run to produce them.
