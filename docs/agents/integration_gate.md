@@ -16,7 +16,10 @@
    HEAD by design, so a detached base worktree fails the
    guard-dependent ids (DECISION D3, F053 R2 review, 2026-07-31).
    Remove + prune the worktree (and delete the tmp branch) and prove
-   with `git worktree list`.
+   with `git worktree list`. Gate evidence files use `.txt` names,
+   never `.log`: `.gitignore` drops `*.log` silently and the
+   review-zip guard rejects any `\.log$` member (R-0169, F069 R3
+   deviation 1).
 3. **Compare.** `comm -13 base_failed.txt branch_failed.txt` = branch-only
    failures. Report `comm -23` too — failures the branch fixed.
    Environment-coupled base failures (R-0155 amendment, operator
@@ -30,9 +33,13 @@
    `apps/ui/node_modules` and `apps/ui/dist` into the base
    worktree — never symlink them: the UI auto-build runs
    npm install and writes THROUGH a symlink into the primary
-   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` keeps
-   the base run from rebuilding; or run the same install/build
-   there), or attribute
+   checkout (F053 R3 evidence); `REMEDY_UI_NO_AUTO_BUILD=1` is set
+   for the base run but NOT trusted alone — a spawned build path
+   ignored it once (R-0169, F069 R2: dist/ rewritten mid-run).
+   VERIFY the neutralization: hash `apps/ui/dist` before and after
+   the base run; a changed hash voids the parity claim and forces
+   per-id attribution; or run the same install/build there), or
+   attribute
    EVERY `comm -23` id to the environment class by direct evidence
    (the missing artifact named per id). An unattributed `comm -23`
    id counts as a genuine base failure and blocks the gate verdict.

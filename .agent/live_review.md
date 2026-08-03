@@ -35,6 +35,7 @@ R-0144, R-0146, R-0147, R-0148 classes) is an acceptance criterion.
   the two integration_gate.md amendments authored as f070-r2-4
   (dist/ hash parity verification; .txt evidence names) — applied
   in R2's docs slice.
+  Done: R-0169
 - R-0170 (behavior, Low) 2026-08-03: evaluate_move checks a
   declare_mission_achieved claim only against OPEN milestones. A
   mission with NO compiled plan has milestone_ids() == (), so
