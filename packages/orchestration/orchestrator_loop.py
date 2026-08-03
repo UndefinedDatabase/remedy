@@ -368,6 +368,22 @@ def read_ledger(project_id: str, mission_id: str,
     return entries
 
 
+def next_iteration_index(project_id: str, mission_id: str,
+                         root: Path | None = None) -> int:
+    """The number the next iteration takes: one past the highest recorded.
+
+    Iteration numbering belongs to the MISSION, not to one ``run_mission``
+    invocation — the same lesson F047 learned for cycle numbering
+    (``long_run_executor.next_cycle_index``). A second run that restarted at 1
+    would leave a ledger reading 1,2,3,1,2 and a reader with no way to order
+    it. Reading the highest number already on disk costs one file read and
+    keeps the audit trail sequential across any number of runs.
+    """
+    numbers = [int(e.get("iteration", 0) or 0)
+               for e in read_ledger(project_id, mission_id, root)]
+    return (max(numbers) if numbers else 0) + 1
+
+
 def render_ledger(entries: Sequence[dict[str, Any]]) -> str:
     """The audit trail as a human reads it — every decision, without the code.
 
@@ -733,7 +749,12 @@ def run_mission(
         append_ledger_entry(pid, mission_id, entry, root, now=now)
         result.entries.append(entry)
 
-    for iteration in range(1, bounds.max_iterations + 1):
+    # Ledger numbering continues the MISSION's sequence; ``step`` counts this
+    # invocation, which is what ``limits`` bounds.
+    base = next_iteration_index(pid, mission_id, root)
+
+    for step in range(1, bounds.max_iterations + 1):
+        iteration = base + step - 1
         # ── safe point: human overrides win before any work of this iteration
         signal = stop_requested(mission_id, control_root_path=control_root_path)
         if signal is not None:
@@ -746,14 +767,14 @@ def run_mission(
                                                  "usage": None,
                                                  "usage_source": USAGE_UNMEASURED})
             result.terminal, result.detail = TERMINAL_STOPPED, outcome.detail
-            result.iterations = iteration - 1
+            result.iterations = step - 1
             return result
 
         mission = load_mission(pid, mission_id, root)
         if mission.status != MISSION_STATUS_ACTIVE:
             result.terminal = TERMINAL_NOT_ACTIVE
             result.detail = f"mission status is {mission.status}"
-            result.iterations = iteration - 1
+            result.iterations = step - 1
             return result
 
         # The dossier is refreshed BEFORE the context is assembled, so the
@@ -768,7 +789,7 @@ def run_mission(
             last_report=last_report(mission) if last_report else "",
             open_decisions=open_mission_decisions(mission),
             feedback=feedback)
-        result.iterations = iteration
+        result.iterations = step
 
         if call_fn is None:
             outcome = MoveOutcome(
