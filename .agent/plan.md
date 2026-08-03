@@ -11,16 +11,18 @@ every milestone carries a DoD reference, and draft jobs NEVER
 autostart.
 
 ## Current Step
-R1 (SPLIT, LARGE bundle) COMPLETE — awaiting review. T001 schema
-`mission_plan_v1` + milestone-DAG validation + compiler + deterministic
-fallback + three long-goal golden fixtures; T002 per-milestone DoD
-hand-off through the F061 compiler (A6) + additive persistence on the
-mission record + mission_plan.md rendering + the no-autostart
-guarantee; T003 CLI `remedy mission plan <id>` + recompile versioning
-+ in-progress refusal. All slice gates exit 0; branch pushed.
+R2 (SPLIT, LARGE), R1 accepted PASS at 83ddb4cb: persist the R1 verdict
++ R-0168 (own commit); fix R-0168 — cap `jobs_draft` at a named
+MAX_MILESTONE_DRAFT_JOBS = 8 and require non-empty DraftJob
+title/goal, so a bad provider draft fails INSIDE run_structured_call
+(one retry, then the honest deterministic fallback) instead of raising
+out of attach_milestone_dods; name the cap in the provider prompt; pin
+with tests. THEN the integration gate per
+docs/agents/integration_gate.md, evidence under .agent/gate_f069_r2/.
+Stop-on-red throughout. No closure work this round.
 
 ## Next Steps
-- Integration gate per docs/agents/integration_gate.md.
+- Reviewer's gate verdict on the integration-gate evidence.
 - Closure per docs/roadmap/STATUS_closure_protocol.md (own round).
 
 ## Risks
