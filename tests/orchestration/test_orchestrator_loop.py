@@ -26,6 +26,7 @@ import json
 
 import pytest
 
+from packages.orchestration.mission_compiler import mission_plan_of
 from packages.orchestration.mission_plan_schema import (
     MISSION_PLAN_SCHEMA_V,
     Milestone,
@@ -37,17 +38,29 @@ from packages.orchestration.mission_state import (
     set_mission_plan,
 )
 from packages.orchestration.orchestrator_loop import (
+    LEDGER_FILENAME,
+    MILESTONES_DONE_KEY,
     PROTOCOL_DOC_RELATIVE,
     PROTOCOL_VERSION,
     SECTION_DECISIONS,
     SECTION_DOSSIER,
     SECTION_PLAN,
     SECTION_REPORT,
+    USAGE_UNMEASURED,
+    LedgerEntry,
+    all_milestones_done,
+    append_ledger_entry,
     assemble_context,
     build_orchestrator_system_prompt,
     context_digest,
+    done_milestones,
+    ledger_path,
+    mark_milestone_done,
+    measure_call_cost,
     orchestrator_protocol_text,
     protocol_document_path,
+    read_ledger,
+    render_ledger,
     render_mission_dossier,
 )
 from packages.orchestration.orchestrator_move_schema import (
@@ -280,3 +293,155 @@ class TestContextAssembly:
         ctx = assemble_context(mission)
         assert ctx.digest == context_digest(ctx.text)
         assert ctx.digest.startswith("sha256:")
+
+
+# ---------------------------------------------------------------------------
+# the ledger
+# ---------------------------------------------------------------------------
+
+
+def _entry(iteration: int, kind: str = "wait_on_decisions", **outcome):
+    return LedgerEntry(
+        iteration=iteration,
+        context_digest=f"sha256:{iteration:064d}",
+        move={"schema_v": ORCHESTRATOR_MOVE_SCHEMA_V, "kind": kind,
+              "payload": {}, "rationale": f"because {iteration}"},
+        outcome=outcome or {"status": "waiting", "detail": ""},
+        cost={"calls": 1, "usage": None, "usage_source": USAGE_UNMEASURED},
+    )
+
+
+class TestTheLedger:
+    def test_entries_append_and_read_back_in_order(self, tmp_path, mission):
+        for i in (1, 2, 3):
+            append_ledger_entry(PROJECT, mission.id, _entry(i), tmp_path)
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert [e["iteration"] for e in entries] == [1, 2, 3]
+
+    def test_appending_never_rewrites_what_is_already_there(self, tmp_path,
+                                                            mission):
+        append_ledger_entry(PROJECT, mission.id, _entry(1), tmp_path)
+        first = ledger_path(PROJECT, mission.id, tmp_path).read_text()
+        append_ledger_entry(PROJECT, mission.id, _entry(2), tmp_path)
+        after = ledger_path(PROJECT, mission.id, tmp_path).read_text()
+        assert after.startswith(first)
+
+    def test_the_ledger_lives_in_the_missions_own_evidence_area(self, tmp_path,
+                                                                mission):
+        path = ledger_path(PROJECT, mission.id, tmp_path)
+        assert path.name == LEDGER_FILENAME
+        assert path.parent.name == "evidence"
+
+    def test_every_entry_carries_the_audit_fields(self, tmp_path, mission):
+        append_ledger_entry(PROJECT, mission.id, _entry(1), tmp_path)
+        body = read_ledger(PROJECT, mission.id, tmp_path)[0]
+        for key in ("iteration", "context_digest", "move", "outcome", "cost",
+                    "protocol_version", "recorded_at"):
+            assert key in body, f"ledger entry is missing {key}"
+        assert body["recorded_at"]
+        assert body["protocol_version"] == PROTOCOL_VERSION
+
+    def test_a_torn_line_costs_one_entry_not_the_history(self, tmp_path,
+                                                        mission):
+        append_ledger_entry(PROJECT, mission.id, _entry(1), tmp_path)
+        path = ledger_path(PROJECT, mission.id, tmp_path)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write('{"iteration": 2, "move"\n')  # killed mid-write
+        append_ledger_entry(PROJECT, mission.id, _entry(3), tmp_path)
+        assert [e["iteration"]
+                for e in read_ledger(PROJECT, mission.id, tmp_path)] == [1, 3]
+
+    def test_no_ledger_reads_as_empty(self, tmp_path, mission):
+        assert read_ledger(PROJECT, mission.id, tmp_path) == []
+
+    def test_the_render_reconstructs_the_decision_without_code(self, tmp_path,
+                                                              mission):
+        append_ledger_entry(
+            PROJECT, mission.id,
+            LedgerEntry(
+                iteration=1,
+                context_digest="sha256:abc",
+                move={"schema_v": ORCHESTRATOR_MOVE_SCHEMA_V,
+                      "kind": "dispatch_job",
+                      "payload": {"milestone_id": "M001", "step": "write it"},
+                      "rationale": "M001 is ready"},
+                outcome={"status": "dispatched", "detail": "job 1234"},
+                cost={"calls": 1, "usage": None,
+                      "usage_source": USAGE_UNMEASURED}),
+            tmp_path)
+        text = render_ledger(read_ledger(PROJECT, mission.id, tmp_path))
+        for expected in ("dispatch_job", "M001", "write it", "M001 is ready",
+                         "dispatched", "job 1234", "sha256:abc",
+                         USAGE_UNMEASURED):
+            assert expected in text, f"the rendered ledger hides {expected!r}"
+
+    def test_an_empty_ledger_renders_honestly(self):
+        assert render_ledger([]) == "No ledger entries."
+
+
+class TestCostActuals:
+    def test_unmeasured_cost_is_recorded_as_unmeasured(self):
+        class _Outcome:
+            last_text = '{"schema_v": "om1", "kind": "wait_on_decisions"}'
+            calls = 1
+            parse_retried = False
+            schema_v = ORCHESTRATOR_MOVE_SCHEMA_V
+
+        cost = measure_call_cost(_Outcome())
+        assert cost["usage"] is None
+        assert cost["usage_source"] == USAGE_UNMEASURED
+        assert cost["calls"] == 1
+
+    def test_a_measured_usage_block_is_parsed_by_the_existing_parser(self):
+        class _Outcome:
+            last_text = json.dumps({
+                "type": "result", "subtype": "success", "is_error": False,
+                "result": '{"schema_v": "om1", "kind": "wait_on_decisions"}',
+                "usage": {"input_tokens": 120, "output_tokens": 30,
+                          "cache_read_input_tokens": 4,
+                          "cache_creation_input_tokens": 2},
+                "total_cost_usd": 0.01, "num_turns": 1, "duration_ms": 5,
+                "session_id": "s1"})
+            calls = 1
+            parse_retried = False
+            schema_v = ORCHESTRATOR_MOVE_SCHEMA_V
+
+        cost = measure_call_cost(_Outcome())
+        assert cost["usage_source"] == "measured"
+        assert cost["usage"]["input_tokens"] == 120
+        assert cost["usage"]["output_tokens"] == 30
+
+
+# ---------------------------------------------------------------------------
+# milestone bookkeeping — additive, through the existing writer
+# ---------------------------------------------------------------------------
+
+
+class TestMilestoneBookkeeping:
+    def test_marking_done_is_additive_on_the_plan_body(self, tmp_path, mission):
+        updated = mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        assert done_milestones(updated) == ("M001",)
+        # The plan itself is untouched: the bookkeeping key is stripped by the
+        # existing reader, so no MissionPlan schema change was needed.
+        plan = mission_plan_of(updated)
+        assert [m.id for m in plan.milestones] == ["M001", "M002"]
+        assert MILESTONES_DONE_KEY in (updated.mission_plan or {})
+
+    def test_marking_twice_does_not_duplicate(self, tmp_path, mission):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        updated = mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        assert done_milestones(updated) == ("M001",)
+
+    def test_all_done_only_when_every_milestone_is(self, tmp_path, mission):
+        assert all_milestones_done(mission) is False
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        partial = load_mission(PROJECT, mission.id, tmp_path)
+        assert all_milestones_done(partial) is False
+        mark_milestone_done(PROJECT, mission.id, "M002", tmp_path)
+        full = load_mission(PROJECT, mission.id, tmp_path)
+        assert all_milestones_done(full) is True
+
+    def test_a_mission_without_a_plan_cannot_mark_a_milestone(self, tmp_path):
+        m = create_mission(PROJECT, "no plan here", root=tmp_path)
+        with pytest.raises(ValueError):
+            mark_milestone_done(PROJECT, m.id, "M001", tmp_path)

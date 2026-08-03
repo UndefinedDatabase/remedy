@@ -27,16 +27,28 @@ Three disciplines this module holds to:
 * **Human overrides win instantly.** A stop request and the mission's open
   decisions are read EVERY iteration, at the safe point between iterations —
   so a stop lands within one iteration rather than at the end of a run.
-* **The ledger is the account.** One append-only entry per iteration — added
-  in the next commit of this slice, together with the milestone bookkeeping.
+* **The ledger is the account.** One append-only entry per iteration carrying
+  the iteration number, the context digest, the move, the outcome and the
+  measured cost. Unmeasured cost is recorded as unmeasured; nothing is
+  estimated into the record and passed off as an actual.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from packages.orchestration.mission_state import (
+    MISSION_STATUS_ACHIEVED,
+    mission_evidence_dir,
+)
+from packages.orchestration.orchestrator_move_schema import (
+    ORCHESTRATOR_MOVE_SCHEMA_V,
+)
 
 # ---------------------------------------------------------------------------
 # The protocol document — read, never written
@@ -257,3 +269,236 @@ def _as_uuid(raw: Any) -> Any:
     from uuid import UUID
 
     return raw if isinstance(raw, UUID) else UUID(str(raw))
+
+
+# ---------------------------------------------------------------------------
+# The decision ledger — append-only
+# ---------------------------------------------------------------------------
+
+#: One line per iteration, in the mission's own evidence area. JSONL because
+#: the file is APPENDED to and must stay readable after a process dies
+#: mid-write: a torn last line costs one entry, never the whole history.
+LEDGER_FILENAME = "ledger.jsonl"
+
+#: What ``cost.usage_source`` says when nothing measured the call. P6: an
+#: unmeasured cost is reported as unmeasured, never estimated into an actual.
+USAGE_UNMEASURED = "unmeasured"
+
+
+def ledger_path(project_id: str, mission_id: str,
+                root: Path | None = None) -> Path:
+    """Where one mission's decision ledger lives."""
+    return mission_evidence_dir(project_id, mission_id, root) / LEDGER_FILENAME
+
+
+@dataclass(frozen=True)
+class LedgerEntry:
+    """One iteration's account. Everything a human needs to audit the decision."""
+
+    iteration: int
+    context_digest: str
+    move: dict[str, Any]
+    outcome: dict[str, Any]
+    cost: dict[str, Any] = field(default_factory=dict)
+    protocol_version: str = PROTOCOL_VERSION
+    recorded_at: str = ""
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "iteration": self.iteration,
+            "context_digest": self.context_digest,
+            "move": dict(self.move),
+            "outcome": dict(self.outcome),
+            "cost": dict(self.cost),
+            "protocol_version": self.protocol_version,
+            "recorded_at": self.recorded_at,
+        }
+
+
+def _utc_now_iso(now: datetime | None = None) -> str:
+    return (now or datetime.now(timezone.utc)).isoformat()
+
+
+def append_ledger_entry(project_id: str, mission_id: str, entry: LedgerEntry,
+                        root: Path | None = None,
+                        *, now: datetime | None = None) -> Path:
+    """Append one entry. Never rewrites, never truncates, never reorders.
+
+    Append-only is the point: a ledger a later iteration could edit would prove
+    nothing about the iterations before it.
+    """
+    path = ledger_path(project_id, mission_id, root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = entry.to_json()
+    if not body["recorded_at"]:
+        body["recorded_at"] = _utc_now_iso(now)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(body, sort_keys=True) + "\n")
+    return path
+
+
+def read_ledger(project_id: str, mission_id: str,
+                root: Path | None = None) -> list[dict[str, Any]]:
+    """Every entry, in order. A torn or unreadable line is SKIPPED, not raised.
+
+    A ledger is forensic evidence: one bad line must not make the other
+    entries unreadable. Skipped lines are visible by their absent iteration
+    numbers, which is the honest signal.
+    """
+    path = ledger_path(project_id, mission_id, root)
+    if not path.is_file():
+        return []
+    entries: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            body = json.loads(text)
+        except ValueError:
+            continue
+        if isinstance(body, dict):
+            entries.append(body)
+    return entries
+
+
+def render_ledger(entries: Sequence[dict[str, Any]]) -> str:
+    """The audit trail as a human reads it — every decision, without the code.
+
+    The acceptance bar for this renderer is that a reader can reconstruct what
+    the loop decided and why WITHOUT opening a source file, so every entry
+    prints its move, its payload, its outcome and its cost.
+    """
+    if not entries:
+        return "No ledger entries."
+    lines: list[str] = []
+    for body in entries:
+        move = body.get("move") or {}
+        outcome = body.get("outcome") or {}
+        cost = body.get("cost") or {}
+        lines.append(
+            f"[{body.get('iteration', '?')}] {move.get('kind', 'unknown')} "
+            f"-> {outcome.get('status', 'unknown')}")
+        if move.get("rationale"):
+            lines.append(f"    why: {move['rationale']}")
+        payload = move.get("payload") or {}
+        for key in sorted(payload):
+            lines.append(f"    {key}: {payload[key]}")
+        if outcome.get("detail"):
+            lines.append(f"    outcome: {outcome['detail']}")
+        usage = cost.get("usage")
+        if usage:
+            lines.append(
+                f"    cost: {cost.get('calls', 0)} call(s), "
+                f"{usage.get('input_tokens', 0)} in / "
+                f"{usage.get('output_tokens', 0)} out tokens")
+        else:
+            lines.append(
+                f"    cost: {cost.get('calls', 0)} call(s), tokens "
+                f"{cost.get('usage_source', USAGE_UNMEASURED)}")
+        lines.append(f"    context: {body.get('context_digest', '')}")
+        lines.append(f"    protocol: {body.get('protocol_version', '')}"
+                     f"  at {body.get('recorded_at', '')}")
+    return "\n".join(lines)
+
+
+def measure_call_cost(outcome: Any) -> dict[str, Any]:
+    """Cost actuals for one orchestrator call, measured or honestly absent.
+
+    ``outcome`` is a
+    :class:`~packages.orchestration.structured_outputs.StructuredOutcome`. When
+    the raw response carries a usage block (the claude CLI's JSON envelope), the
+    EXISTING parser reads it; otherwise the entry says the tokens were not
+    measured. Remedy never writes an estimate into a field named ``usage``.
+    """
+    from packages.orchestration.token_actuals import parse_cli_result
+
+    raw = str(getattr(outcome, "last_text", "") or "")
+    actuals = parse_cli_result(raw) if raw else None
+    cost: dict[str, Any] = {
+        "calls": int(getattr(outcome, "calls", 0) or 0),
+        "parse_retried": bool(getattr(outcome, "parse_retried", False)),
+        "response_chars": len(raw),
+        "schema_v": str(getattr(outcome, "schema_v", ORCHESTRATOR_MOVE_SCHEMA_V)),
+    }
+    if actuals is None:
+        cost["usage"] = None
+        cost["usage_source"] = USAGE_UNMEASURED
+        return cost
+    cost["usage"] = {
+        "input_tokens": actuals.input_tokens,
+        "output_tokens": actuals.output_tokens,
+        "cache_read": actuals.cache_read,
+        "cache_creation": actuals.cache_creation,
+        "total_cost_usd": actuals.total_cost_usd,
+    }
+    cost["usage_source"] = "measured"
+    return cost
+
+
+# ---------------------------------------------------------------------------
+# Milestone bookkeeping — persisted through the EXISTING mission-plan writer
+# ---------------------------------------------------------------------------
+
+#: Key the persisted plan body carries for milestones the loop marked done.
+#: Underscore-prefixed like the flight-plan precedent's ``_version`` /
+#: ``_versions``, which ``mission_compiler.mission_plan_of`` already strips —
+#: so this is ADDITIVE, needs no MissionPlan schema change and no
+#: MISSION_SCHEMA_VERSION bump.
+MILESTONES_DONE_KEY = "_milestones_done"
+
+
+def done_milestones(mission: Any) -> tuple[str, ...]:
+    """Which milestones of the persisted plan are recorded as done."""
+    body = getattr(mission, "mission_plan", None)
+    if not isinstance(body, dict):
+        return ()
+    done = body.get(MILESTONES_DONE_KEY) or []
+    if not isinstance(done, list):
+        return ()
+    return tuple(str(m) for m in done)
+
+
+def mark_milestone_done(project_id: str, mission_id: str, milestone_id: str,
+                        root: Path | None = None) -> Any:
+    """Record a milestone as done, through the existing ``set_mission_plan``.
+
+    No second persistence mechanism (A6): the milestone list rides on the plan
+    body the mission record already stores, so one writer owns the record.
+    """
+    from packages.orchestration.mission_state import load_mission, set_mission_plan
+
+    mission = load_mission(project_id, mission_id, root)
+    body = dict(mission.mission_plan or {})
+    if not body:
+        raise ValueError(
+            f"mission {mission_id} has no compiled plan, so milestone "
+            f"{milestone_id!r} cannot be marked done")
+    done = [str(m) for m in (body.get(MILESTONES_DONE_KEY) or [])]
+    if milestone_id not in done:
+        done.append(milestone_id)
+    body[MILESTONES_DONE_KEY] = done
+    return set_mission_plan(project_id, mission_id, body, root)
+
+
+def milestone_ids(mission: Any) -> tuple[str, ...]:
+    """Every milestone id of the persisted plan, in plan order."""
+    from packages.orchestration.mission_compiler import mission_plan_of
+
+    plan = mission_plan_of(mission)
+    return () if plan is None else tuple(m.id for m in plan.milestones)
+
+
+def all_milestones_done(mission: Any) -> bool:
+    """True when the plan has milestones and every one of them is done."""
+    ids = milestone_ids(mission)
+    return bool(ids) and set(ids) <= set(done_milestones(mission))
+
+
+def mission_achieved(project_id: str, mission_id: str,
+                     root: Path | None = None) -> Any:
+    """Set the mission to achieved through the existing status writer."""
+    from packages.orchestration.mission_state import set_mission_status
+
+    return set_mission_status(project_id, mission_id, MISSION_STATUS_ACHIEVED,
+                              root)
