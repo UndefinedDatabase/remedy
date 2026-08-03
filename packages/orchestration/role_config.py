@@ -41,6 +41,13 @@ _PROVIDER_DEFAULT_MODELS: dict[str, str] = {
 DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
 
 #: Roles that Remedy knows how to configure.
+#:
+#: ``orchestrator`` (F070) is the mission loop's decision layer. It is listed
+#: here so the loop's calls resolve without the unknown-role warning — and for
+#: nothing else: its built-in defaults are deliberately the SAME as every other
+#: role's, because raising the orchestrator to a top-tier model is a
+#: CONFIGURATION act (`orchestrator.model`), not a change to the routing policy
+#: in docs/agents/model_routing_policy.md.
 KNOWN_ROLES: tuple[str, ...] = (
     "builder",
     "reviewer",
@@ -48,6 +55,7 @@ KNOWN_ROLES: tuple[str, ...] = (
     "design_worker",
     "test_worker",
     "final_verifier",
+    "orchestrator",
 )
 
 #: Resolvable fields on a RoleConfig, in declaration order.

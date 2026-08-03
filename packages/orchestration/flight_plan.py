@@ -602,6 +602,43 @@ def flight_plan_approval_open(job: Any) -> bool:
     return flight_plan_blocks_execution(job) is not None
 
 
+#: What ``_approval_audit.mode`` records for an unattended approval. One
+#: spelling, so a reader of a persisted job can tell an audited auto-approval
+#: from a human one without knowing which caller wrote it.
+AUTO_APPROVAL_MODE = "auto_yes"
+
+#: The audit reason that accompanies it.
+AUTO_APPROVAL_REASON = "auto-approved via --yes"
+
+
+def auto_approve_flight_plan(
+    flight_plan_body: dict[str, Any],
+    evidence_dir: Path,
+    *,
+    reason: str = AUTO_APPROVAL_REASON,
+) -> dict[str, Any]:
+    """Apply the unattended approval to a flight-plan body. Audited, never silent.
+
+    THE ``--yes`` semantics, in one place (F034): every open clarification runs
+    on its documented default, the approval is stamped with an audit record
+    naming the mode, and the assumption log is written to the job's evidence
+    area. Unattended is not the same as undocumented — a reader of that log can
+    see every question that was answered without a human.
+
+    Returns a NEW body; the caller persists it. Writing the job is deliberately
+    NOT done here, because the two callers (``remedy do --yes`` and the
+    orchestrator loop) own their own persistence and their own ledger entries.
+    """
+    body = dict(flight_plan_body)
+    if body.get("clarifications_resolved"):
+        body["clarifications_resolved"] = apply_clarification_answers(
+            body.get("clarifications_resolved"), None)
+    body["_approval"] = "approved"
+    body["_approval_audit"] = {"mode": AUTO_APPROVAL_MODE, "reason": reason}
+    write_assumptions_md(body.get("clarifications_resolved"), evidence_dir)
+    return body
+
+
 class ReplanRejectedError(Exception):
     """Raised when replanning is rejected (e.g. after task completion)."""
 

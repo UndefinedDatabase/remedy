@@ -1,0 +1,25 @@
+{
+  "source": "d3f929ce (authored text phv1-r1-10, docs/README.md table row)",
+  "finding_class": "R-0148",
+  "why": "authored text arrived hard-wrapped by transport and was applied verbatim in its broken form",
+  "handback": {
+    "commits": [
+      "ac97215"
+    ],
+    "reported_commits": [
+      "ac97215"
+    ],
+    "changed_files_tables": {
+      "ac97215": [
+        "docs/README.md"
+      ]
+    },
+    "authored_texts": [
+      {
+        "name": "phv1-r1-10",
+        "declared_sha256": "1a3188d4b175711236087ae0a83db3bfa7d60627fa3c7a1a0a28b031f980a684",
+        "applied_text": "| [integration_gate.md](agents/integration_gate.md) | Canonical full-suite integration-gate procedure (referenced by paste\nblocks) |"
+      }
+    ]
+  }
+}

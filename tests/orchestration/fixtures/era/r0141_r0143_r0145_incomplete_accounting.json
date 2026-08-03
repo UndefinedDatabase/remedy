@@ -1,0 +1,26 @@
+{
+  "source": "2db44f95 (R-0141, R-0143) and add00a21 (R-0145)",
+  "finding_class": "R-0141/R-0143/R-0145",
+  "why": "the handback does not account for its own review range",
+  "handback": {
+    "commits": [
+      "dcb8b1a",
+      "cd13645",
+      "65fbdba"
+    ],
+    "reported_commits": [
+      "dcb8b1a",
+      "65fbdba"
+    ],
+    "changed_files_tables": {
+      "dcb8b1a": [
+        "packages/orchestration/task_granularity.py"
+      ],
+      "65fbdba": []
+    },
+    "external_actions": [
+      "created PR #152"
+    ],
+    "reported_actions": []
+  }
+}

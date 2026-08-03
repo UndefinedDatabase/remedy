@@ -197,8 +197,15 @@ def run_intake(
 
 def make_structured_call_fn(
     model_cls: type[BaseModel],
+    *,
+    model: str | None = None,
 ) -> Callable[[str, int], str] | None:
     """Build an Ollama-backed call_fn bound to ``model_cls``, or None.
+
+    ``model`` overrides the planner's configured model for this call_fn only —
+    the F070 orchestrator role names a top-tier model through
+    ``orchestrator.model`` without changing anything for any other caller.
+    Omitted, the planner resolves the model exactly as it always has.
 
     Ollama enforces the schema NATIVELY (``format=``), so the schema bound
     here decides the SHAPE of every response the returned callable can
@@ -212,7 +219,7 @@ def make_structured_call_fn(
     """
     try:
         from packages.providers.ollama_planner.provider import OllamaPlanner
-        planner = OllamaPlanner()
+        planner = OllamaPlanner(model=model) if model else OllamaPlanner()
     except Exception:
         return None
 

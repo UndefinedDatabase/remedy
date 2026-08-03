@@ -1,5 +1,168 @@
 # Decisions
 
+## 2026-08-03: F070 T003 — `mission run` gains a MODE, it does not replace one
+`remedy mission run` already existed: a facade over the dogfood run loop
+(`dogfood_run.run_mission_loop`), keyed on a RUN id, covered by
+tests/cli/test_worker_facade_cmd.py. F070's feature file mandates the same
+spelling — `remedy mission run <id> [--iterations N]` — for the orchestrator
+loop, keyed on a MISSION id. Same collision F047 hit with `job resume`
+(2026-07-26), same resolution: ONE command, two modes on the same name, and a
+test asserting the catalog registers `mission.run` exactly once.
+
+The discriminator is RESOLVED, never guessed from the id's shape: if the
+positional names a mission record in the selected project, the orchestrator
+loop runs; otherwise the pre-F070 facade runs untouched. Every failure to
+resolve (no project, no mission area, ambiguous prefix) means "not a mission",
+so the older path stays the default in every uncertain case and no existing
+invocation changes behavior. `--iterations` and `--no-llm` are additive and
+apply to the mission mode only.
+
+`remedy mission ledger <id>` is a new command id with no collision, read-only,
+beside `mission show`.
+
+## 2026-08-03: F070 T003 — `make_structured_call_fn` gained an optional model
+The CLI must build the orchestrator's provider call through the SAME factory
+the mission plan command uses (ordered), and `orchestrator.model` must
+actually select the model — otherwise the config key documents an intention
+rather than a behavior. The factory took no model, so it gained an OPTIONAL
+`model=` that forwards to `OllamaPlanner(model=...)`. Omitted, every existing
+caller resolves the model exactly as before; the parameter's only production
+user is the orchestrator role. This is a config surface, not a routing-policy
+change — `docs/agents/model_routing_policy.md` is still untouched.
+
+## 2026-08-03: F070 T003 — iteration numbering belongs to the MISSION
+Found by the e2e fixture, not by review: a mission run twice left a ledger
+numbered 1,2,3,4,1,2,3. `next_iteration_index` now reads the highest number on
+disk and the loop starts one past it, exactly as F047 fixed cycle numbering
+(`long_run_executor.next_cycle_index`, decisions.md 2026-07-26) after a
+resumed run overwrote the killed process's records. `step` still counts the
+current invocation — that is what `limits` bounds and what
+`MissionRunResult.iterations` reports.
+
+## 2026-08-03: F070 R1 — the branch was rebuilt to keep every commit under 500 lines
+Two commits landed over the AGENTS.md 500-line limit — the context-assembly
+commit at 541 and the era-corpus commit at 712 changed lines. AGENTS.md allows a
+declared oversize commit only when it is the ONLY one in its feature, and
+neither was inseparable, so they were split rather than declared.
+
+The branch was rebuilt from `170e2691` and force-pushed (it had no PR and no
+other consumer). Each oversize commit became two: protocol reader + move-schema
+tests / context assembly, and era detectors + fixtures / era detector tests.
+The evaluate-step commit was split the same way when it measured 506. Proof
+that nothing was lost: `git diff f070-oversize-backup HEAD` is EMPTY — the
+rebuilt tip is byte-identical to the pre-rebuild tip. The backup branch existed
+only to carry that proof and was deleted once it passed; both facts are in the
+handback's external actions.
+
+## 2026-08-03: F070 T002 — milestone attribution is read from the loop's OWN ledger
+The evaluator has to know which job served which milestone, and the mission
+record cannot say: `MissionJobLink` carries a job id, a role and a timestamp,
+and F069 recorded (2026-08-02) why adding a milestone id there would mean
+changing job creation.
+
+It does not have to. Every `dispatch_job` ledger entry ALREADY stores the
+milestone id (in the move payload) beside the job id it produced (in the
+outcome), because the ledger records the whole decision. `dispatched_job_for`
+reads the attribution back out of the loop's own artifact. Cost: none — job
+creation stays exactly as F056 left it, and no schema moves. Limit: a milestone
+dispatched outside the loop is invisible to it, which is correct — the loop
+evaluates what the loop decided.
+
+## 2026-08-03: F070 T001 — the CLI is deferred to T003, deliberately
+The order permits `remedy mission run <id> [--iterations N]` and
+`remedy mission ledger <id>` to land in T003 if they fit more cleanly there,
+and they do: T003 is the end-to-end round whose acceptance IS a mission running
+unattended and a human reading its ledger, so the commands get exercised by
+their own acceptance criterion instead of by a test written to have one. R1 is
+already a fourteen-commit bundle; adding a CLI surface here would widen it
+without the end-to-end fixture that gives the surface its shape.
+
+Everything the commands need is public and stable now: `run_mission`,
+`loop_limits_from_config`, `read_ledger` and `render_ledger`. The deferral is a
+routing choice, not a missing capability.
+
+## 2026-08-03: F070 T001 — the protocol document lives in docs/agents/
+`docs/agents/orchestrator_protocol.md`, registered in `docs/README.md`. The
+orchestrator is a ROLE, and that directory already holds the role contracts
+(`worker_conventions.md`, `reviewer_conventions.md`,
+`planner_reviewer_prompt.md`). Putting the internalized orchestrator's job
+description beside the human roles' own is what makes the A7 handover legible:
+the same reader compares the two in one place.
+
+The alternative, `docs/system/`, describes what IS BUILT; this document is an
+instruction to a model, not a description of a mechanism. `packages/` was
+rejected outright — a prompt in code is the thing this feature exists to stop.
+
+## 2026-08-03: F070 T001 — `orchestrator` joins KNOWN_ROLES; routing policy untouched
+The loop calls `resolve_role_config("orchestrator")`, and an unknown role there
+warns (some tests run with `warnings.simplefilter("error")`), so the role is
+registered. Its built-in defaults are deliberately IDENTICAL to every other
+role's — `test_each_known_role_resolves` pins that — because raising the
+orchestrator to a top-tier model is a CONFIGURATION act through the new
+`orchestrator.model` key, not a change to
+`docs/agents/model_routing_policy.md`, which this feature must not touch.
+
+`tests/orchestration/test_role_config.py::test_all_six_roles_present` pinned
+the tuple exactly and was renamed to `..._seven_...` with the new entry added.
+Declared here rather than done quietly: a pinned contract test changed, and the
+contract it pins genuinely grew by one role.
+
+## 2026-08-03: F070 Phase 2 — the verb map (inspection only, no production code)
+Recorded BEFORE any F070 code. Rule A6: the loop SEQUENCES these; a diff that
+reimplements one is a defect. Every verb the order enumerates exists.
+
+| Verb the loop needs | file:symbol |
+|---|---|
+| mission record load | `mission_state.py:load_mission` / `save_mission` / `resolve_mission_id` |
+| mission plan read | `mission_compiler.py:mission_plan_of` / `plan_version_of` |
+| mission plan write | `mission_state.py:set_mission_plan` |
+| mission status write | `mission_state.py:set_mission_status` |
+| mission↔job link | `mission_state.py:link_job_to_mission` / `mission_for_job` |
+| dispatch a job into a mission | `mission_state.py:continue_mission` (creates the job, builds it verify-first, links it) |
+| run a dispatched follow-up | `mission_state.py:execute_mission_followup` |
+| intake | `intake.py:run_intake` (+ `heuristic_intake` fallback) |
+| flight-plan generation | `flight_plan.py:plan_job_llm` → `map_flight_plan_to_tasks` |
+| plan approval gate state | `flight_plan.py:flight_plan_blocks_execution` / `flight_plan_approval_open` |
+| plan approval (human) | `apps/cli/commands/decision.py` `fp:approval` resolve path |
+| plan approval (--yes / auto) | `apps/cli/commands/do_cmd.py:298-318` — INLINE, see the extraction note below |
+| multi-cycle executor entry | `long_run_executor.py:run_cycles` (+ `limits_from_config`, `CycleLimits`) |
+| DoD compile (F061) | `dod_compiler.py:compile_dod`; per-milestone wrapper `mission_compiler.py:compile_milestone_dod` / `attach_milestone_dods` |
+| DoD evaluation | `dod_gate.py:evaluate_dod` / `run_job_gate` / `load_dod` / `load_gate_result` |
+| report writer | `run_report.py:write_final_report` (+ `collect_report_sources`, `render_report`) |
+| escalation | `escalation.py:enqueue_task_decision` / `answer_task_decision` / `open_task_decisions` / `answered_task_decisions` |
+| open decisions view | `decision_queue.py:list_decisions` / `open_decisions` |
+| postmortems | `failure_postmortem.py:write_postmortem` / `build_job_rollup` / `classify` |
+| config lookup for a model role | `role_config.py:resolve_role_config` (+ `KNOWN_ROLES`); config keys via `config.py:get_config().get(<key>)` |
+| stop-request check | `safe_points.py:stop_requested` / `should_stop` / `consume_stop` |
+| structured call + schema registry | `structured_outputs.py:run_structured_call`; `schemas/models.py:SCHEMA_REGISTRY`; `schemas/validation.py:validate_response` |
+
+Two gaps found by the inspection, neither of them a missing verb:
+
+1. **`--yes` auto-approval is not a verb yet.** The semantics the loop needs
+   (approve the flight plan, run every open clarification on its documented
+   default, write the assumption log, stamp `_approval_audit.mode="auto_yes"`)
+   exist only INLINE in `do_cmd.py`. A6 says extract, not copy — so it is
+   extracted into `flight_plan.py` and `do_cmd.py` is switched to call it, in
+   its OWN commit (AGENTS.md: never mix refactoring with a feature).
+2. **The dossier does not exist.** F071 (Mission dossier) is unclaimed;
+   `Mission.dossier_ref` is documented as RESERVED and is `""` on every record.
+   The dossier is NOT in this phase's enumerated verb list, so this is not an
+   If-Blocked stop — but the order still requires "dossier first" in the
+   context prefix and a dossier update every iteration. Resolution below.
+
+## 2026-08-03: F070 T001 — the dossier is a SEAM, not a document this feature invents
+The loop takes a `dossier` callable (a port) and calls it first, so the
+cache-stable prefix discipline is real from day one. Its DEFAULT renders the
+facts the mission record already holds (goal, status, plan origin, milestone
+outcomes, done/open counts) — it invents no new document, no new file format
+and no new persistence, and it says on its face that it is a stand-in until
+F071 lands. `Mission.dossier_ref` is read when non-empty and preferred over
+the stand-in, which is exactly the hand-off point F071 plugs into.
+
+The alternative — writing a dossier document here — would be building F071
+inside F070 and would be the second mechanism A6 forbids.
+Recorded as a declared assumption; flagged in the handback.
+
 ## 2026-08-03: F069 R2 gate — copying apps/ui/dist is necessary but not sufficient
 The doc's §3 remedy (COPY `apps/ui/node_modules` and `apps/ui/dist`, never
 symlink, plus `REMEDY_UI_NO_AUTO_BUILD=1`) was followed exactly, and eight

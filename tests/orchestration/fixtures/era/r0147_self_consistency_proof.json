@@ -1,0 +1,27 @@
+{
+  "source": "15c7ebe0 (F047 closure round, PROOF 1)",
+  "finding_class": "R-0147",
+  "why": "the proof asserts byte-identity but was checked against the applied text, not the authored one",
+  "handback": {
+    "commits": [
+      "350275b"
+    ],
+    "reported_commits": [
+      "350275b"
+    ],
+    "changed_files_tables": {
+      "350275b": [
+        ".agent/live_review.md"
+      ]
+    },
+    "proofs": [
+      {
+        "name": "PROOF 1 \u2014 authored gate verdict present verbatim",
+        "needle": "Integration gate: full suite re-run, branch and base. The entry carries the 'full suite' claim. LAST_REVIEWED_SHA = 3b257f6.",
+        "authoritative": "Integration gate: full suite re-run, branch and base. The entry carries the 'full suite' claim.",
+        "compared_against": "Integration gate: full suite re-run, branch and base. The entry carries the 'full suite' claim.",
+        "asserted": true
+      }
+    ]
+  }
+}

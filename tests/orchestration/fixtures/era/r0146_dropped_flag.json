@@ -1,0 +1,25 @@
+{
+  "source": "269195fe (F047 round 1, remedy job resume --dry-run)",
+  "finding_class": "R-0146",
+  "why": "an advertised flag is never passed through, so a preview executes",
+  "handback": {
+    "commits": [
+      "fd93b31"
+    ],
+    "reported_commits": [
+      "fd93b31"
+    ],
+    "changed_files_tables": {
+      "fd93b31": [
+        "apps/cli/commands/job.py"
+      ]
+    },
+    "advertised_flags": [
+      "--dry-run",
+      "--checkpoint"
+    ],
+    "passed_flags": [
+      "--checkpoint"
+    ]
+  }
+}

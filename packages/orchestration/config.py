@@ -423,6 +423,32 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=60,
     ),
     ConfigKeySpec(
+        key="orchestrator.model",
+        env_var="REMEDY_ORCHESTRATOR_MODEL",
+        description=(
+            "Model for the mission orchestrator role (F070). Quality at the "
+            "decision layer is the point, so this is where a top-tier model is "
+            "named. Unset means the role resolves exactly like every other one "
+            "— this key is the ONLY orchestrator-specific routing surface, and "
+            "docs/agents/model_routing_policy.md is unchanged by it."
+        ),
+        value_type=str,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="orchestrator.max_iterations",
+        env_var="REMEDY_ORCHESTRATOR_MAX_ITERATIONS",
+        description=(
+            "How many iterations one `remedy mission run` may take (F070). "
+            "Conservative by default: an unattended loop that mis-decides is "
+            "cheaper to stop early than to let run. Reaching the limit is a "
+            "NORMAL terminal with an honest status, never a failure and never "
+            "a silent continuation."
+        ),
+        value_type=int,
+        default=10,
+    ),
+    ConfigKeySpec(
         key="planning.granularity.merge_group_size",
         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
         description=(

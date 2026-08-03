@@ -1,0 +1,21 @@
+{
+  "source": "a00445af (F034 integration-gate round, commit 1b891fb)",
+  "finding_class": "R-0144",
+  "why": "a verdict entry the reviewer never authored, while review was open",
+  "handback": {
+    "commits": [
+      "1b891fb"
+    ],
+    "reported_commits": [
+      "1b891fb"
+    ],
+    "changed_files_tables": {
+      "1b891fb": [
+        ".agent/live_review.md"
+      ]
+    },
+    "verdict_text": "Integration gate (0891b8d..1b891fb): PASS.",
+    "verdict_author": "worker",
+    "review_pending": true
+  }
+}

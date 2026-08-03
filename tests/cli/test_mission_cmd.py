@@ -886,3 +886,151 @@ class TestInProgressRefusal:
         body = json.loads(_plan(data_root, project_id, mission_id).stdout)
 
         assert body["plan_version"] == 1
+
+
+# ---------------------------------------------------------------------------
+# F070 T003 — `remedy mission run` (orchestrator mode) and `mission ledger`
+# ---------------------------------------------------------------------------
+
+
+def _plan_no_llm(data_root: Path, project_id: str, mission_id: str):
+    return _run(["mission", "plan", mission_id, "--project", project_id,
+                 "--no-llm", "--json"], data_root)
+
+
+class TestTheCatalogCarriesTheLoopCommands:
+    def test_mission_run_is_registered_exactly_once(self):
+        from apps.cli.command_catalog import CATALOG
+
+        assert len([c for c in CATALOG if c.command_id == "mission.run"]) == 1
+
+    def test_mission_ledger_is_registered_exactly_once(self):
+        from apps.cli.command_catalog import CATALOG
+
+        assert len([c for c in CATALOG
+                    if c.command_id == "mission.ledger"]) == 1
+
+    def test_mission_run_declares_the_iterations_flag(self):
+        from apps.cli.command_catalog import get_command
+
+        names = {a.name for a in get_command("mission.run").args}
+        assert "--iterations" in names
+        assert "--no-llm" in names
+
+
+class TestMissionRunInOrchestratorMode:
+    def test_a_mission_id_runs_the_orchestrator_loop(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        body = json.loads(_run(["mission", "run", mission_id, "--project",
+                                project_id, "--no-llm", "--json"],
+                               data_root).stdout)
+        assert body["mission_id"] == mission_id
+        assert body["terminal"] == "no_provider"
+        assert body["iterations"] == 1
+
+    def test_no_provider_is_an_honest_terminal_not_a_fake_run(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        out = _run(["mission", "run", mission_id, "--project", project_id,
+                    "--no-llm"], data_root).stdout
+        assert "no_provider" in out
+        assert "Remedy does not invent a run" in out
+        # Nothing was decided, so the mission is untouched.
+        record = json.loads(
+            (data_root / "missions" / project_id / f"{mission_id}.json")
+            .read_text(encoding="utf-8"))
+        assert record["status"] == "active"
+        assert record["job_links"] == []
+
+    def test_the_iterations_flag_bounds_the_run(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        body = json.loads(_run(["mission", "run", mission_id, "--project",
+                                project_id, "--no-llm", "--iterations", "3",
+                                "--json"], data_root).stdout)
+        assert body["max_iterations"] == 3
+
+    def test_a_nonsense_iteration_bound_is_a_usage_error(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+
+        proc = _run(["mission", "run", mission_id, "--project", project_id,
+                     "--no-llm", "--iterations", "0"], data_root,
+                    expect_ok=False)
+        assert proc.returncode == 2
+        assert "max_iterations" in proc.stderr
+
+    def test_an_unknown_id_still_reaches_the_pre_f070_facade(self, project):
+        """A run id that names no mission must behave exactly as before."""
+        data_root, project_id = project
+        proc = _run(["mission", "run", "not-a-mission-id", "--project",
+                     project_id, "--json"], data_root, expect_ok=False)
+        # The dogfood facade owns this path; what matters is that the
+        # orchestrator loop did NOT claim it.
+        assert "no_provider" not in proc.stdout
+
+
+class TestMissionLedger:
+    def test_an_unrun_mission_has_an_empty_ledger(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        out = _run(["mission", "ledger", mission_id, "--project", project_id],
+                   data_root).stdout
+        assert "Iterations recorded: 0" in out
+        assert "No ledger entries." in out
+
+    def test_the_ledger_renders_what_the_run_recorded(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+        _run(["mission", "run", mission_id, "--project", project_id,
+              "--no-llm"], data_root)
+
+        out = _run(["mission", "ledger", mission_id, "--project", project_id],
+                   data_root).stdout
+        assert "Iterations recorded: 1" in out
+        assert "no_provider" in out
+        assert "[1]" in out
+
+    def test_the_json_view_carries_the_entries(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+        _run(["mission", "run", mission_id, "--project", project_id,
+              "--no-llm"], data_root)
+
+        body = json.loads(_run(["mission", "ledger", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+        assert body["mission_id"] == mission_id
+        assert len(body["entries"]) == 1
+        assert body["entries"][0]["iteration"] == 1
+        assert body["entries"][0]["context_digest"].startswith("sha256:")
+
+    def test_the_ledger_is_read_only(self, project):
+        """Rendering the trail must not change the mission or add entries."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan_no_llm(data_root, project_id, mission_id)
+        _run(["mission", "run", mission_id, "--project", project_id,
+              "--no-llm"], data_root)
+        record = (data_root / "missions" / project_id / f"{mission_id}.json")
+        before = record.read_text(encoding="utf-8")
+
+        _run(["mission", "ledger", mission_id, "--project", project_id],
+             data_root)
+        _run(["mission", "ledger", mission_id, "--project", project_id],
+             data_root)
+
+        assert record.read_text(encoding="utf-8") == before
+        body = json.loads(_run(["mission", "ledger", mission_id, "--project",
+                                project_id, "--json"], data_root).stdout)
+        assert len(body["entries"]) == 1

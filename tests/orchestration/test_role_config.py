@@ -119,7 +119,7 @@ class TestAllRoles:
         assert cfg.model == DEFAULT_MODEL
         assert cfg.effort == DEFAULT_EFFORT
 
-    def test_all_six_roles_present(self):
+    def test_all_seven_roles_present(self):
         assert KNOWN_ROLES == (
             "builder",
             "reviewer",
@@ -127,6 +127,10 @@ class TestAllRoles:
             "design_worker",
             "test_worker",
             "final_verifier",
+            # F070: the mission orchestrator. Same built-in defaults as every
+            # other role — the top-tier model is a config act, not a routing
+            # policy change (test_each_known_role_resolves pins that).
+            "orchestrator",
         )
 
     def test_per_role_config_is_independent(self):

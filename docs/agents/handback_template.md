@@ -6,10 +6,13 @@
 > second occurrence within one feature is High and blocks until a
 > compliant handback exists. (A wholly missing changed-files table remains
 > the R-0070 block condition.) Stay within the AGENTS.md handoff cap —
-> ≤60 lines, ≤100 when per-commit tables of >5 commits require it — by
+> ≤60 lines, ≤100 when per-commit tables of >5 commits require it,
+> ≤160 when a LARGE bundle's >10-commit tables require it
+> (DECISION 2026-08-03, F070 R1 precedent: 16 commits) — by
 > trimming transcripts to command + exit code + decisive lines and by
 > summarizing evidence directories — never by dropping a section.
-> Hard cap: this file stays ≤800 tokens (P4 token thrift).
+> Hard cap: this file stays ≤800 tokens — ≤1600 in the >10-commit
+> LARGE case (P4 token thrift).
 > Write-once rule (PH v3): draft the handback in the session
 > scratchpad, measure it there (`wc -l`) against the cap, then write
 > and commit `.agent/handoff.md` ONCE — trim commits against the cap
