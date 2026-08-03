@@ -18,7 +18,9 @@ What the order requires proof of (T001 structure and update mechanics):
   * the compression rules are ASSERTIONS, not prose — open items survive,
     resolved items merge away, the goal stays byte-identical to iteration one;
   * a compression that breaks a rule is REFUSED and returns the dossier
-    untouched — the rules are checked, not believed.
+    untouched — the rules are checked, not believed;
+  * a failed compression (no provider, bad answer, broken rule, an exception)
+    leaves the previous dossier plus the raw facts and an honest flag.
 
 No provider is contacted: every "LLM" here is a local callable returning
 recorded text.
@@ -35,10 +37,12 @@ import pytest
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.mission_dossier import (
     COMPRESSION_INVALID_ANSWER,
+    COMPRESSION_NO_PROVIDER,
     COMPRESSION_OK,
     COMPRESSION_PROVIDER_ERROR,
     COMPRESSION_RULE_VIOLATION,
     COMPRESSION_RULES,
+    COMPRESSION_WITHIN_BUDGET,
     CONFIG_KEY_MAX_TOKENS,
     DEFAULT_MAX_TOKENS,
     DOSSIER_COMPRESSION_SCHEMA_V,
@@ -71,6 +75,7 @@ from packages.orchestration.mission_dossier import (
     render_dossier_body,
     resolve_risk,
     start_dossier,
+    update,
     write_dossier_version,
 )
 
@@ -542,3 +547,86 @@ class TestRuleViolationsAreRefused:
         assert result.status == COMPRESSION_PROVIDER_ERROR
         assert "the provider is down" in result.detail
         assert result.dossier == _bloated()
+
+
+class TestFailedCompressionLeavesTheHonestFlag:
+    NEW_FACT = "the smoke needs a second fixture project"
+
+    def _facts(self):
+        return IterationFacts(
+            risks=[DossierItem(id="R500", text=self.NEW_FACT)])
+
+    def _assert_honest(self, result):
+        assert result.over_budget is True
+        text = render_dossier(result.dossier)
+        # The raw facts are there, the flag is there, nothing was cut.
+        assert self.NEW_FACT in text
+        assert "OVER BUDGET" in text
+        assert "Nothing was truncated" in text
+        assert str(result.budget) in result.dossier.budget_note
+        assert result.tokens.basis in result.dossier.budget_note
+
+    def test_no_provider_leaves_the_flag(self):
+        result = update(_bloated(), self._facts(), budget=50)
+        assert result.status == COMPRESSION_NO_PROVIDER
+        self._assert_honest(result)
+
+    def test_an_unparseable_answer_leaves_the_flag(self):
+        result = update(_bloated(), self._facts(), budget=50,
+                        call_fn=_Provider("not json at all"))
+        assert result.status == COMPRESSION_INVALID_ANSWER
+        self._assert_honest(result)
+
+    def test_a_broken_rule_leaves_the_flag(self):
+        dossier = _bloated()
+        result = update(dossier, self._facts(), budget=50,
+                        call_fn=_Provider(_answer(dossier, risks=[])))
+        assert result.status == COMPRESSION_RULE_VIOLATION
+        self._assert_honest(result)
+
+    def test_a_provider_that_raises_leaves_the_flag(self):
+        def explode(prompt, attempt):
+            raise RuntimeError("the provider is down")
+
+        result = update(_bloated(), self._facts(), budget=50, call_fn=explode)
+        assert result.status == COMPRESSION_PROVIDER_ERROR
+        assert "the provider is down" in result.detail
+        self._assert_honest(result)
+
+    def test_a_compression_that_did_not_free_enough_room_still_says_so(self):
+        dossier = _bloated()
+        result = update(dossier, IterationFacts(), budget=1,
+                        call_fn=_Provider(_answer(dossier)))
+        assert result.status == COMPRESSION_OK
+        assert result.over_budget is True
+        assert "still over budget" in result.dossier.budget_note
+
+    def test_the_failure_path_never_truncates_the_open_items(self):
+        dossier = _bloated()
+        result = update(dossier, self._facts(), budget=50,
+                        call_fn=_Provider("not json at all"))
+        surviving = {item.id for item in open_items(result.dossier)}
+        assert {item.id for item in open_items(dossier)} <= surviving
+        assert "R500" in surviving
+
+
+class TestUpdateWithinBudget:
+    def test_a_dossier_that_fits_makes_no_call_and_carries_no_flag(self):
+        provider = _Provider("should never be called")
+        result = update(_dossier(), IterationFacts(next_step="do M001"),
+                        budget=DEFAULT_MAX_TOKENS, call_fn=provider)
+        assert result.status == COMPRESSION_WITHIN_BUDGET
+        assert provider.prompts == []
+        assert result.over_budget is False
+        assert result.calls == 0
+
+    def test_the_budget_still_comes_from_config_when_none_is_passed(self):
+        config = _Config(**{CONFIG_KEY_MAX_TOKENS: 4242})
+        result = update(_dossier(), IterationFacts(), config=config)
+        assert result.budget == 4242
+
+    def test_an_update_advances_exactly_one_version(self):
+        dossier = _bloated()
+        result = update(dossier, IterationFacts(), budget=50,
+                        call_fn=_Provider(_answer(dossier)))
+        assert result.dossier.version == dossier.version + 1

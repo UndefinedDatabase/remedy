@@ -15,9 +15,9 @@ The disciplines this module holds to:
   shape of the schema rather than a sentence in a prompt.
 * **Nothing is ever truncated.** Over budget, ONE schema-validated provider
   call rewrites the overweight sections under explicit rules. A compression
-  that fails — no provider, a bad answer, a broken rule — returns the document
-  unchanged for the caller to flag. An honest over-budget dossier is worth
-  more than a quietly shortened one.
+  that fails — no provider, a bad answer, a broken rule — keeps the previous
+  dossier with the new facts appended and FLAGS it. An honest over-budget
+  dossier is worth more than a quietly shortened one.
 * **One home per fact.** A risk that closes moves to DECISIONS with its
   outcome rather than being written down twice (A9).
 * **The counting basis is labeled, never invented.** The budget counts through
@@ -620,3 +620,78 @@ def compress_dossier(dossier: MissionDossier,
     return CompressionResult(
         ok=True, dossier=_rebuild(dossier, answer), status=COMPRESSION_OK,
         calls=outcome.calls, cost=cost)
+
+
+@dataclass(frozen=True)
+class DossierUpdate:
+    """One iteration's update: the new dossier and how it met its budget."""
+
+    dossier: MissionDossier
+    tokens: DossierTokenCount
+    budget: int
+    status: str
+    detail: str = ""
+    calls: int = 0
+    cost: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def over_budget(self) -> bool:
+        return self.dossier.over_budget
+
+
+def _flag(dossier: MissionDossier, count: DossierTokenCount, budget: int,
+          reason: str) -> MissionDossier:
+    """Mark a dossier as over budget, saying by how much and why."""
+    return replace(
+        dossier, over_budget=True,
+        budget_note=(f"{count.tokens} tokens against a {budget}-token budget "
+                     f"(basis: {count.basis}); {reason}"))
+
+
+def update(dossier: MissionDossier, facts: IterationFacts, *,
+           call_fn: Callable[[str, int], str] | None = None,
+           budget: int | None = None,
+           config: Any = None,
+           on_call: Callable[[int, str, bool, str], None] | None = None,
+           ) -> DossierUpdate:
+    """Append one iteration's facts and keep the document inside its budget.
+
+    Within budget: the appended dossier, no call, no flag. Over budget: ONE
+    compression call. If that call fails for ANY reason — no provider, a bad
+    answer, a rule violation, an exception — the result is the previous
+    dossier with the raw facts appended and an honest over-budget flag. It is
+    never a truncation, and a compression that ran but did not free enough
+    room still says so.
+    """
+    limit = dossier_budget_from_config(config, max_tokens=budget)
+    appended = replace(append_facts(dossier, facts),
+                       over_budget=False, budget_note="")
+    count = dossier_tokens(appended)
+    if count.tokens <= limit:
+        return DossierUpdate(dossier=appended, tokens=count, budget=limit,
+                             status=COMPRESSION_WITHIN_BUDGET)
+
+    if call_fn is None:
+        reason = "no provider was given, so no compression was attempted"
+        return DossierUpdate(
+            dossier=_flag(appended, count, limit, reason), tokens=count,
+            budget=limit, status=COMPRESSION_NO_PROVIDER, detail=reason)
+
+    result = compress_dossier(appended, call_fn, on_call=on_call)
+    if not result.ok:
+        return DossierUpdate(
+            dossier=_flag(appended, count, limit, result.detail), tokens=count,
+            budget=limit, status=result.status, detail=result.detail,
+            calls=result.calls, cost=result.cost)
+
+    recount = dossier_tokens(result.dossier)
+    if recount.tokens > limit:
+        reason = "the compression ran but the document is still over budget"
+        return DossierUpdate(
+            dossier=_flag(result.dossier, recount, limit, reason),
+            tokens=recount, budget=limit, status=COMPRESSION_OK, detail=reason,
+            calls=result.calls, cost=result.cost)
+
+    return DossierUpdate(dossier=result.dossier, tokens=recount, budget=limit,
+                         status=COMPRESSION_OK, calls=result.calls,
+                         cost=result.cost)
