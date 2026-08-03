@@ -1,5 +1,35 @@
 # Decisions
 
+## 2026-08-03: F071 R3 — the version fast-forward, the ONE exception to one-update-one-version
+The R1 decision "one update produces exactly ONE version" still describes the
+normal path and is still pinned by a test. R-0175 found the case it does not
+cover: `refresh_mission_dossier` writes `dossier_v<N>.md` before
+`dossier_state.json`, so a process that dies between the two leaves the archive
+one ahead of the live state. The next refresh then recomputes a version number
+the archive already holds, and — as soon as any fact has drifted, which one new
+ledger entry is enough to cause — the R-0173 never-overwrite guard raises. It
+raises again on every retry: the mission is wedged until a human deletes
+evidence files.
+
+Three options were available and two are wrong. Making the guard lenient would
+undo R-0173 and let audit evidence be destroyed. Writing the state file first
+would only move the tear (state ahead of archive, a version number silently
+skipped, and a rendered document no archived file matches). So: RECONCILE
+before writing. `latest = latest_dossier_version(...)`; if the updated
+dossier's version is `<= latest`, fast-forward it to `latest + 1`.
+
+What this costs: in a torn run one version number is consumed without a
+corresponding update, so version numbers are a monotonic high-water mark rather
+than an update counter. What it buys: the archive stays append-only, the
+never-overwrite guard stays intact and untouched, and a torn write HEALS on the
+next refresh instead of wedging the mission. That trade matches the module's
+own stance elsewhere — `load_dossier_state` treats an unreadable state file as
+absent for exactly the same reason: degraded, but never a dead loop.
+
+The failure class is the one the F075 gauntlet names (harness death mid-write,
+operator addition 2026-08-03); the reconcile is what makes this module survive
+it rather than merely detect it.
+
 ## 2026-08-03: F071 R2 — the compression rule check judges the REBUILT document
 R-0172's root cause was a mismatch of levels: the check read the answer's raw
 id lists while `_rebuild` carried items PER SECTION, so an open risk returned

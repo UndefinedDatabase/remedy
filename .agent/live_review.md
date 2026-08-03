@@ -64,6 +64,7 @@ published as a reusable deliverable (F079 reuses it).
   archive plus differing facts → refresh succeeds at latest+1
   with prior files untouched; the following refresh continues
   normally.
+  Done: R-0175
 - Next free ID: R-0176.
 
 ## Verdicts

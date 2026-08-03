@@ -884,6 +884,96 @@ class TestRefreshAdvancesTheMaintainedDocument:
         assert {i.id for i in open_items(result.dossier)} == {"M001", "M002"}
 
 
+class TestATornWriteHealsItself:
+    """R-0175: a death between the version write and the state write.
+
+    The archive ends up one ahead of the live state. Once any fact drifts, the
+    recomputed version number collides with a stored one and the R-0173 guard
+    would raise — on that refresh and on every retry, wedging the mission.
+    Reconciling against the archive before writing makes the next refresh heal
+    it, and costs nothing but a version number.
+    """
+
+    def _wedge(self, tmp_path, mission):
+        """Advance twice, then rewind ONLY the live state — the torn write."""
+        import dataclasses
+
+        from packages.orchestration.orchestrator_loop import (
+            LedgerEntry,
+            append_ledger_entry,
+        )
+
+        for _ in range(2):
+            refresh_mission_dossier(PROJECT, mission.id, mission, root=tmp_path)
+        stale = load_dossier_state(PROJECT, mission.id, tmp_path)
+        save_dossier_state(PROJECT, mission.id,
+                           dataclasses.replace(stale, version=stale.version - 1),
+                           tmp_path)
+        # One new ledger entry is enough to make the facts differ, so the
+        # recomputed version would carry DIFFERENT bytes.
+        append_ledger_entry(PROJECT, mission.id, LedgerEntry(
+            iteration=1, context_digest="d", move={"kind": "dispatch_job"},
+            outcome={"status": "dispatched"}), tmp_path)
+        return stale
+
+    def test_a_stale_state_with_drifted_facts_still_refreshes(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        self._wedge(tmp_path, mission)
+        latest = latest_dossier_version(PROJECT, mission.id, tmp_path)
+        result = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                         root=tmp_path)
+        assert result.dossier.version == latest + 1
+
+    def test_the_prior_versions_are_left_untouched(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        self._wedge(tmp_path, mission)
+        before = {v: dossier_version_path(PROJECT, mission.id, v,
+                                          tmp_path).read_text()
+                  for v in dossier_versions(PROJECT, mission.id, tmp_path)}
+        refresh_mission_dossier(PROJECT, mission.id, mission, root=tmp_path)
+        for version, text in before.items():
+            assert dossier_version_path(
+                PROJECT, mission.id, version, tmp_path).read_text() == text
+
+    def test_the_following_refresh_continues_normally(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        self._wedge(tmp_path, mission)
+        healed = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                         root=tmp_path)
+        after = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                        root=tmp_path)
+        assert after.dossier.version == healed.dossier.version + 1
+        assert dossier_versions(PROJECT, mission.id, tmp_path) == [2, 3, 4, 5]
+
+    def test_the_archive_stays_append_only_across_the_heal(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        self._wedge(tmp_path, mission)
+        before = dossier_versions(PROJECT, mission.id, tmp_path)
+        refresh_mission_dossier(PROJECT, mission.id, mission, root=tmp_path)
+        after = dossier_versions(PROJECT, mission.id, tmp_path)
+        assert after[:len(before)] == before
+        assert len(after) == len(before) + 1
+
+    def test_the_healed_state_is_what_was_archived(self, tmp_path):
+        # The returned update, the state file and the version file agree —
+        # the loop renders result.dossier into the live file.
+        mission = _mission(tmp_path, ("M001", ()))
+        self._wedge(tmp_path, mission)
+        result = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                         root=tmp_path)
+        assert load_dossier_state(PROJECT, mission.id, tmp_path) == result.dossier
+        assert newest_dossier_text(PROJECT, mission.id, tmp_path) == \
+            render_dossier(result.dossier)
+
+    def test_an_untorn_run_still_advances_one_version_per_update(self, tmp_path):
+        # The fast-forward is an exception path, not the normal one.
+        mission = _mission(tmp_path, ("M001", ()))
+        versions = [refresh_mission_dossier(PROJECT, mission.id, mission,
+                                            root=tmp_path).dossier.version
+                    for _ in range(3)]
+        assert versions == [2, 3, 4]
+
+
 # ---------------------------------------------------------------------------
 # T003 — the recall harness (a reusable deliverable; F079 reuses it)
 # ---------------------------------------------------------------------------

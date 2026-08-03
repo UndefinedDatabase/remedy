@@ -900,11 +900,23 @@ def refresh_mission_dossier(project_id: str, mission_id: str, mission: Any, *,
     """Advance the mission's dossier by one iteration and store the new version.
 
     Load the live state (or start one from the mission's goal) -> append this
-    iteration's facts -> enforce the budget -> write ``dossier_v<N>.md`` and
-    the state file. ``call_fn`` is the COMPRESSION provider; omitted, an
-    over-budget dossier keeps its honest flag rather than making a call the
-    loop's own budget never authorized.
+    iteration's facts -> enforce the budget -> RECONCILE the version against
+    the archive -> write ``dossier_v<N>.md`` and the state file. ``call_fn`` is
+    the COMPRESSION provider; omitted, an over-budget dossier keeps its honest
+    flag rather than making a call the loop's own budget never authorized.
+
+    R-0175 — the reconcile step, and why it is here. The version file is
+    written before the state file, so a process that dies between the two
+    leaves the archive one ahead of the live state. Without reconciliation the
+    next refresh recomputes a version number the archive already holds; as soon
+    as any fact has drifted, the never-overwrite guard (R-0173) raises — on
+    that refresh and on every retry after it, wedging the mission until a
+    human deletes evidence files. Fast-forwarding past the archive's high-water
+    mark costs one number and lets a torn write heal itself, while the archive
+    stays append-only and the guard stays intact.
     """
+    import dataclasses
+
     from packages.orchestration.mission_compiler import mission_goal
     from packages.orchestration.orchestrator_loop import (
         done_milestones,
@@ -919,6 +931,13 @@ def refresh_mission_dossier(project_id: str, mission_id: str, mission: Any, *,
         ledger=read_ledger(project_id, mission_id, root))
     result = update(current, facts, call_fn=call_fn, budget=budget,
                     config=config)
+
+    latest = latest_dossier_version(project_id, mission_id, root)
+    if result.dossier.version <= latest:
+        result = dataclasses.replace(
+            result,
+            dossier=dataclasses.replace(result.dossier, version=latest + 1))
+
     write_dossier_version(project_id, mission_id, result.dossier, root)
     save_dossier_state(project_id, mission_id, result.dossier, root)
     return result
