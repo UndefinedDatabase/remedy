@@ -1,5 +1,44 @@
 # Decisions
 
+## 2026-08-03: F070 T003 — `mission run` gains a MODE, it does not replace one
+`remedy mission run` already existed: a facade over the dogfood run loop
+(`dogfood_run.run_mission_loop`), keyed on a RUN id, covered by
+tests/cli/test_worker_facade_cmd.py. F070's feature file mandates the same
+spelling — `remedy mission run <id> [--iterations N]` — for the orchestrator
+loop, keyed on a MISSION id. Same collision F047 hit with `job resume`
+(2026-07-26), same resolution: ONE command, two modes on the same name, and a
+test asserting the catalog registers `mission.run` exactly once.
+
+The discriminator is RESOLVED, never guessed from the id's shape: if the
+positional names a mission record in the selected project, the orchestrator
+loop runs; otherwise the pre-F070 facade runs untouched. Every failure to
+resolve (no project, no mission area, ambiguous prefix) means "not a mission",
+so the older path stays the default in every uncertain case and no existing
+invocation changes behavior. `--iterations` and `--no-llm` are additive and
+apply to the mission mode only.
+
+`remedy mission ledger <id>` is a new command id with no collision, read-only,
+beside `mission show`.
+
+## 2026-08-03: F070 T003 — `make_structured_call_fn` gained an optional model
+The CLI must build the orchestrator's provider call through the SAME factory
+the mission plan command uses (ordered), and `orchestrator.model` must
+actually select the model — otherwise the config key documents an intention
+rather than a behavior. The factory took no model, so it gained an OPTIONAL
+`model=` that forwards to `OllamaPlanner(model=...)`. Omitted, every existing
+caller resolves the model exactly as before; the parameter's only production
+user is the orchestrator role. This is a config surface, not a routing-policy
+change — `docs/agents/model_routing_policy.md` is still untouched.
+
+## 2026-08-03: F070 T003 — iteration numbering belongs to the MISSION
+Found by the e2e fixture, not by review: a mission run twice left a ledger
+numbered 1,2,3,4,1,2,3. `next_iteration_index` now reads the highest number on
+disk and the loop starts one past it, exactly as F047 fixed cycle numbering
+(`long_run_executor.next_cycle_index`, decisions.md 2026-07-26) after a
+resumed run overwrote the killed process's records. `step` still counts the
+current invocation — that is what `limits` bounds and what
+`MissionRunResult.iterations` reports.
+
 ## 2026-08-03: F070 R1 — the branch was rebuilt to keep every commit under 500 lines
 Two commits landed over the AGENTS.md 500-line limit — the context-assembly
 commit at 541 and the era-corpus commit at 712 changed lines. AGENTS.md allows a

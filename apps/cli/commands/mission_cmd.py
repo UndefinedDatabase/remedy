@@ -312,7 +312,116 @@ def _cmd_mission_continue(mission_id: str, next_step: str, *,
     print(f"  Chain: remedy mission show {mission.id[:12]}")
 
 
+def _orchestrator_call_fn():
+    """The orchestrator role's provider call_fn, or None when there is none.
+
+    The SAME factory the mission plan command uses (``make_structured_call_fn``),
+    bound to the move schema and to the model named by ``orchestrator.model``.
+    Returning None is not a failure mode to work around — it is the honest
+    "no provider" the loop turns into a terminal, never a fake run.
+    """
+    from packages.orchestration.config import get_config
+    from packages.orchestration.intake import make_structured_call_fn
+    from packages.orchestration.orchestrator_move_schema import OrchestratorMove
+
+    return make_structured_call_fn(
+        OrchestratorMove, model=get_config().get("orchestrator.model") or None)
+
+
+def _cmd_mission_run_loop(mission_id: str, *, project: str | None = None,
+                          iterations: str | None = None,
+                          json_output: bool = False,
+                          no_llm: bool = False) -> None:
+    """``remedy mission run <id>`` — run the F070 orchestrator loop.
+
+    One iteration is: assemble the mission's context, take ONE
+    schema-validated move from the orchestrator-role model, execute it through
+    Remedy's existing verbs, append a ledger entry. The loop stops on a
+    terminal move, the iteration limit, a stop request, or a refusal that had
+    to be escalated — every one of them an honest status, printed here.
+    """
+    from packages.orchestration.orchestrator_loop import (
+        TERMINAL_NO_PROVIDER,
+        loop_limits_from_config,
+        read_ledger,
+        render_ledger,
+        run_mission,
+    )
+
+    project_id = _resolve_project_id(project)
+    mission = _load_mission_or_exit(project_id, mission_id)
+
+    try:
+        limits = loop_limits_from_config(
+            iterations_flag=int(iterations) if iterations else None)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_USAGE)
+
+    call_fn = None if no_llm else _orchestrator_call_fn()
+    result = run_mission(mission.id, limits, project_id=project_id,
+                         call_fn=call_fn)
+    entries = read_ledger(project_id, mission.id)
+
+    if json_output:
+        print(_json.dumps({
+            "version": 1,
+            "mission_id": mission.id,
+            "terminal": result.terminal,
+            "detail": result.detail,
+            "iterations": result.iterations,
+            "max_iterations": limits.max_iterations,
+            "ledger_entries": len(entries),
+        }, sort_keys=True))
+        return
+
+    print(mission.id)
+    print(f"  Terminal: {result.terminal}")
+    if result.detail:
+        print(f"  {result.detail}")
+    print(f"  Iterations this run: {result.iterations} "
+          f"(limit {limits.max_iterations})")
+    if result.terminal == TERMINAL_NO_PROVIDER:
+        print("  No orchestrator provider is available, so nothing was "
+              "decided. Remedy does not invent a run.")
+    if result.entries:
+        print("")
+        print(render_ledger([e.to_json() for e in result.entries]))
+    print(f"  Full ledger: remedy mission ledger {mission.id[:12]}")
+
+
+def _cmd_mission_ledger(mission_id: str, *, project: str | None = None,
+                        json_output: bool = False) -> None:
+    """``remedy mission ledger <id>`` — the mission's decision trail, in full.
+
+    Read-only. Renders every iteration the loop ever recorded for this
+    mission, across every run, so a human can reconstruct what was decided
+    without opening a source file.
+    """
+    from packages.orchestration.orchestrator_loop import read_ledger, render_ledger
+
+    project_id = _resolve_project_id(project)
+    mission = _load_mission_or_exit(project_id, mission_id)
+    entries = read_ledger(project_id, mission.id)
+
+    if json_output:
+        print(_json.dumps({"version": 1, "mission_id": mission.id,
+                           "entries": entries}, sort_keys=True))
+        return
+
+    print(mission.id)
+    print(f"  Goal: {mission.goal}")
+    print(f"  Iterations recorded: {len(entries)}")
+    print("")
+    print(render_ledger(entries))
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "mission.ledger": lambda args: _cmd_mission_ledger(
+        args.mission_id,
+        project=getattr(args, "project", None),
+        json_output=getattr(args, "json", False),
+    ),
     "mission.start": lambda args: _cmd_mission_start(
         args.goal,
         project=getattr(args, "project", None),

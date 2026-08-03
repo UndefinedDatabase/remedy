@@ -291,11 +291,53 @@ def _cmd_worker_disable(ns: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _names_a_mission(candidate: str, project_flag: str | None) -> bool:
+    """True when this id resolves to a mission record in the selected project.
+
+    A lookup, never a guess about the id's shape. Any failure to resolve — no
+    project, no mission area, an ambiguous prefix — means "not a mission", so
+    the pre-F070 path stays the default in every uncertain case.
+    """
+    try:
+        from apps.cli.commands.mission_cmd import _resolve_project_id
+        from packages.orchestration.mission_state import list_missions
+
+        project_id = _resolve_project_id(project_flag)
+        return any(m.id == candidate or m.id.startswith(candidate)
+                   for m in list_missions(project_id))
+    except SystemExit:
+        return False
+    except Exception:
+        return False
+
+
 def _cmd_mission_run(ns: argparse.Namespace) -> None:
+    """One command, two modes on the same name — the F047 `job resume` pattern.
+
+    `remedy mission run` predates F070 as a facade over the dogfood run loop,
+    keyed on a RUN id. F070's feature file mandates the same spelling for the
+    orchestrator loop, keyed on a MISSION id. The two are different objects,
+    so the mode is RESOLVED rather than guessed: if the positional names a
+    mission record in the selected project, the orchestrator loop runs;
+    otherwise the dogfood facade runs exactly as it always did. A dogfood run
+    id never resolves to a mission, so no existing invocation changes.
+    """
     from packages.orchestration.dogfood_run import run_mission_loop
     run_id = getattr(ns, "run_id", "")
     if not run_id:
         _err("run_id required")
+
+    if _names_a_mission(run_id, getattr(ns, "project", None)):
+        from apps.cli.commands.mission_cmd import _cmd_mission_run_loop
+        _cmd_mission_run_loop(
+            run_id,
+            project=getattr(ns, "project", None),
+            iterations=getattr(ns, "iterations", None),
+            json_output=getattr(ns, "json", False),
+            no_llm=getattr(ns, "no_llm", False),
+        )
+        return
+
     job_id = getattr(ns, "job_id", "") or ""
     max_steps = int(getattr(ns, "max_steps", None) or 10)
     max_seconds = int(getattr(ns, "max_seconds", None) or 300)
