@@ -1,4 +1,4 @@
-"""F071 — the mission dossier: structure, budget and versioning.
+"""F071 — the mission dossier: structure, budget, versioning, compression.
 
 What the order requires proof of (T001 structure and update mechanics):
 
@@ -14,19 +14,34 @@ What the order requires proof of (T001 structure and update mechanics):
     carries the basis that produced it (P6) — no invented counter;
   * every version is stored as dossier_v<N>.md and no version is overwritten;
   * the over-budget flag is honest: it is metadata, never counted against the
-    budget it reports on, and never a truncation.
+    budget it reports on, and never a truncation;
+  * the compression rules are ASSERTIONS, not prose — open items survive,
+    resolved items merge away, the goal stays byte-identical to iteration one;
+  * a compression that breaks a rule is REFUSED and returns the dossier
+    untouched — the rules are checked, not believed.
+
+No provider is contacted: every "LLM" here is a local callable returning
+recorded text.
 
 Every test that writes goes to ``tmp_path`` with the mission root passed
 explicitly via ``root=``, so the repository's real data root is never touched.
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from packages.orchestration.config import get_key_spec
 from packages.orchestration.mission_dossier import (
+    COMPRESSION_INVALID_ANSWER,
+    COMPRESSION_OK,
+    COMPRESSION_PROVIDER_ERROR,
+    COMPRESSION_RULE_VIOLATION,
+    COMPRESSION_RULES,
     CONFIG_KEY_MAX_TOKENS,
     DEFAULT_MAX_TOKENS,
+    DOSSIER_COMPRESSION_SCHEMA_V,
     DOSSIER_SECTIONS,
     DOSSIER_TOKEN_BASIS,
     DOSSIER_TOKEN_CONFIDENCE,
@@ -38,9 +53,12 @@ from packages.orchestration.mission_dossier import (
     SECTION_MILESTONES,
     SECTION_NEXT,
     SECTION_RISKS,
+    DossierCompression,
     DossierItem,
     IterationFacts,
     append_facts,
+    build_compression_prompt,
+    compress_dossier,
     count_dossier_tokens,
     dossier_budget_from_config,
     dossier_sections,
@@ -347,3 +365,180 @@ class TestVersioning:
         stray = dossier_version_path(PROJECT, MISSION, 2, tmp_path).parent
         (stray / "dossier_vNEXT.md").write_text("not a version", encoding="utf-8")
         assert dossier_versions(PROJECT, MISSION, tmp_path) == [2]
+
+
+# ---------------------------------------------------------------------------
+# T002 — the compression call, its rules, and the honest failure path
+# ---------------------------------------------------------------------------
+
+
+def _answer(dossier, *, milestones=None, risks=None, decisions=None,
+            next_step="keep going"):
+    """A compression answer as a provider would return it: JSON text.
+
+    Defaults to the well-behaved rewrite — every open item kept, every
+    resolved risk merged away — so each test only has to state its own
+    deviation from the rules.
+    """
+    if milestones is None:
+        milestones = [{"id": m.id, "text": "short"} for m in dossier.milestones]
+    if risks is None:
+        risks = [{"id": r.id, "text": "short"}
+                 for r in dossier.risks if not r.resolved]
+    if decisions is None:
+        decisions = [{"id": d.id, "text": "short"}
+                     for d in dossier.decisions[-1:]]
+    return json.dumps({
+        "schema_v": DOSSIER_COMPRESSION_SCHEMA_V,
+        "milestones": milestones,
+        "risks": risks,
+        "decisions": decisions,
+        "next_step": next_step,
+    })
+
+
+class _Provider:
+    """A fake provider: returns recorded text and counts how often it is called."""
+
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.prompts = []
+
+    def __call__(self, prompt, attempt):
+        self.prompts.append(prompt)
+        return self.replies[min(attempt, len(self.replies) - 1)]
+
+
+def _bloated():
+    """A dossier well past any small budget, with one risk already resolved."""
+    dossier = append_facts(_dossier(), IterationFacts(
+        risks=[DossierItem(id=f"R1{i:02d}", text="a long standing risk " * 12)
+               for i in range(10)],
+        decisions=[DossierItem(id=f"D1{i:02d}", text="a recorded call " * 12,
+                               resolved=True, outcome="held")
+                   for i in range(4)]))
+    return resolve_risk(dossier, "R001", "the migration is reversible")
+
+
+class TestCompressionRulesAreTheContract:
+    def test_the_three_rules_are_recorded_verbatim(self):
+        assert COMPRESSION_RULES == (
+            "merge resolved risks away",
+            "keep every open item",
+            "never drop the goal",
+        )
+
+    def test_every_rule_is_quoted_into_the_prompt(self):
+        prompt = build_compression_prompt(_bloated())
+        for rule in COMPRESSION_RULES:
+            assert rule in prompt
+
+    def test_the_prompt_names_the_ids_that_must_survive(self):
+        dossier = _bloated()
+        prompt = build_compression_prompt(dossier)
+        for item in open_items(dossier):
+            assert item.id in prompt
+
+    def test_never_drop_the_goal_is_the_shape_of_the_schema(self):
+        # Not a prompt request: the provider has no field to answer with.
+        assert "goal" not in DossierCompression.model_fields
+
+    def test_the_draft_contract_is_not_registered(self):
+        from packages.orchestration.schemas.models import SCHEMA_REGISTRY
+
+        # A compression answer is never persisted under its tag — what reaches
+        # disk is the rewritten dossier markdown.
+        assert DOSSIER_COMPRESSION_SCHEMA_V not in SCHEMA_REGISTRY
+
+
+class TestCompressionHoldsToTheRules:
+    def test_open_items_survive_compression(self):
+        dossier = _bloated()
+        expected = {item.id for item in open_items(dossier)}
+        result = compress_dossier(dossier, _Provider(_answer(dossier)))
+        assert result.status == COMPRESSION_OK
+        assert {item.id for item in open_items(result.dossier)} == expected
+
+    def test_resolved_items_merge_away(self):
+        dossier = _bloated()
+        result = compress_dossier(dossier, _Provider(_answer(dossier)))
+        assert "R001" not in {r.id for r in result.dossier.risks}
+        assert "R001" not in dict(dossier_sections(result.dossier))[SECTION_RISKS]
+        # Merged away, not lost: its outcome is still on the record.
+        assert "R001" in {d.id for d in result.dossier.decisions}
+
+    def test_the_goal_is_byte_identical_to_iteration_one(self):
+        first = start_dossier(GOAL)
+        dossier = _bloated()
+        result = compress_dossier(dossier, _Provider(_answer(dossier)))
+        assert result.dossier.goal == first.goal
+        assert dict(dossier_sections(result.dossier))[SECTION_GOAL] == \
+            dict(dossier_sections(first))[SECTION_GOAL]
+
+    def test_compression_is_exactly_one_provider_call(self):
+        dossier = _bloated()
+        provider = _Provider(_answer(dossier))
+        result = compress_dossier(dossier, provider)
+        assert len(provider.prompts) == 1
+        assert result.calls == 1
+
+    def test_even_an_unparseable_answer_is_not_retried(self):
+        provider = _Provider("not json at all")
+        result = compress_dossier(_bloated(), provider)
+        assert len(provider.prompts) == 1
+        assert result.status == COMPRESSION_INVALID_ANSWER
+
+    def test_the_document_actually_gets_smaller(self):
+        dossier = _bloated()
+        result = compress_dossier(dossier, _Provider(_answer(dossier)))
+        assert dossier_tokens(result.dossier).tokens < dossier_tokens(dossier).tokens
+
+    def test_a_compression_cannot_promote_a_milestone_to_done(self):
+        dossier = _bloated()
+        result = compress_dossier(dossier, _Provider(_answer(dossier)))
+        # The answer carries text only; state is carried over, not granted.
+        assert [m.resolved for m in result.dossier.milestones] == [False, False]
+
+
+class TestRuleViolationsAreRefused:
+    def test_dropping_an_open_item_is_refused(self):
+        dossier = _bloated()
+        kept = [{"id": r.id, "text": "short"}
+                for r in dossier.risks if not r.resolved][1:]
+        result = compress_dossier(
+            dossier, _Provider(_answer(dossier, risks=kept)))
+        assert result.status == COMPRESSION_RULE_VIOLATION
+        assert "keep every open item" in result.detail
+
+    def test_keeping_a_resolved_risk_in_risks_is_refused(self):
+        dossier = _bloated()
+        risks = [{"id": r.id, "text": "short"} for r in dossier.risks]
+        result = compress_dossier(
+            dossier, _Provider(_answer(dossier, risks=risks)))
+        assert result.status == COMPRESSION_RULE_VIOLATION
+        assert "merge resolved risks away" in result.detail
+
+    def test_an_invented_fact_is_refused(self):
+        dossier = _bloated()
+        risks = [{"id": r.id, "text": "short"}
+                 for r in dossier.risks if not r.resolved]
+        risks.append({"id": "R999", "text": "a risk nobody recorded"})
+        result = compress_dossier(
+            dossier, _Provider(_answer(dossier, risks=risks)))
+        assert result.status == COMPRESSION_RULE_VIOLATION
+        assert "R999" in result.detail
+
+    def test_a_refused_compression_returns_the_dossier_untouched(self):
+        dossier = _bloated()
+        result = compress_dossier(dossier, _Provider(_answer(dossier, risks=[])))
+        assert result.ok is False
+        assert result.dossier == dossier
+
+    def test_a_provider_that_raises_is_a_status_not_an_exception(self):
+        def explode(prompt, attempt):
+            raise RuntimeError("the provider is down")
+
+        result = compress_dossier(_bloated(), explode)
+        assert result.status == COMPRESSION_PROVIDER_ERROR
+        assert "the provider is down" in result.detail
+        assert result.dossier == _bloated()

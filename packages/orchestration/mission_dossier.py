@@ -7,12 +7,17 @@ taken from config.
 
     GOAL · MILESTONES · RISKS · DECISIONS · NEXT
 
-Three disciplines this module holds to:
+The disciplines this module holds to:
 
 * **The goal is immutable.** It is copied ONCE, by :func:`start_dossier`, and
-  nothing after that can change it.
-* **Nothing is ever dropped silently.** Updating APPENDS; the only way a fact
-  leaves a section is by being resolved into another one, on the record.
+  nothing after that can change it. The compression contract has no ``goal``
+  field at all (:class:`DossierCompression`), so "never drop the goal" is the
+  shape of the schema rather than a sentence in a prompt.
+* **Nothing is ever truncated.** Over budget, ONE schema-validated provider
+  call rewrites the overweight sections under explicit rules. A compression
+  that fails — no provider, a bad answer, a broken rule — returns the document
+  unchanged for the caller to flag. An honest over-budget dossier is worth
+  more than a quietly shortened one.
 * **One home per fact.** A risk that closes moves to DECISIONS with its
   outcome rather than being written down twice (A9).
 * **The counting basis is labeled, never invented.** The budget counts through
@@ -30,12 +35,15 @@ reordering would invalidate a provider's prompt cache for no gain.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar, Literal
+
+from pydantic import Field
 
 from packages.orchestration.mission_state import mission_evidence_dir
+from packages.orchestration.structured_base import _Strict, _Structured
 
 # ---------------------------------------------------------------------------
 # The sections — fixed set, fixed order
@@ -389,3 +397,226 @@ def latest_dossier_version(project_id: str, mission_id: str,
     """The newest stored version, or 0 when nothing is stored yet."""
     versions = dossier_versions(project_id, mission_id, root)
     return versions[-1] if versions else 0
+
+
+# ---------------------------------------------------------------------------
+# T002 — compression: the ONE provider call, under explicit rules
+# ---------------------------------------------------------------------------
+
+#: The provider-facing contract. NOT registered in ``schemas.models``: a
+#: compression answer never leaves this module's own call and is never
+#: persisted under its tag — what reaches disk is the rewritten dossier
+#: markdown. Same reasoning as ``dod_draft_v1`` / ``mission_plan_draft_v1``.
+DOSSIER_COMPRESSION_SCHEMA_V = "dossier_compress_draft_v1"
+
+#: The rules the compression runs under, VERBATIM. They are quoted into the
+#: prompt and enforced afterwards by :func:`compression_rule_violation` — a
+#: rule that only ever appeared in a prompt would be a hope, not a constraint.
+COMPRESSION_RULES: tuple[str, ...] = (
+    "merge resolved risks away",
+    "keep every open item",
+    "never drop the goal",
+)
+
+
+class CompressedItem(_Strict):
+    """One rewritten line, keyed by the id of a fact that is ALREADY recorded.
+
+    Deliberately carries no state field. The provider rewrites TEXT; whether a
+    milestone is done or a risk is closed is carried over from the previous
+    dossier, so a compression cannot promote a milestone to done or reopen a
+    risk. The authority boundary is the schema's shape, as it is for the
+    orchestrator's move.
+    """
+
+    id: str
+    text: str
+
+
+class DossierCompression(_Structured):
+    """A rewritten dossier (schema ``dossier_compress_draft_v1``).
+
+    There is NO ``goal`` field, and that absence is the enforcement of "never
+    drop the goal": the provider has no channel through which to change,
+    shorten or omit it. Nothing in the prompt can widen the contract.
+    """
+
+    SCHEMA_V: ClassVar[str] = DOSSIER_COMPRESSION_SCHEMA_V
+    schema_v: Literal["dossier_compress_draft_v1"]  # required: no default
+    milestones: list[CompressedItem] = Field(default_factory=list)
+    risks: list[CompressedItem] = Field(default_factory=list)
+    decisions: list[CompressedItem] = Field(default_factory=list)
+    next_step: str = ""
+
+
+_COMPRESSION_PROMPT_TEMPLATE = """\
+You are compressing a mission dossier that has grown past its token budget.
+Rewrite it SHORTER while keeping everything that still matters.
+
+## Current dossier
+
+{body}
+
+## Rules
+- {rules}
+
+Concretely:
+- Every id below must appear in your answer, with its line rewritten shorter:
+  {required}
+- Use ONLY ids that already appear in the dossier above. Never invent one.
+- These ids are resolved and must NOT appear in "risks" — fold what is worth
+  keeping about them into a shorter "decisions" line instead:
+  {resolved}
+- Answer with one line per id: {{"id": "...", "text": "..."}}.
+- next_step is the single next step. Keep it or restate it shorter.
+
+You are not given the mission goal to rewrite, and you must not restate it:
+it is preserved outside this call.
+"""
+
+
+def build_compression_prompt(dossier: MissionDossier) -> str:
+    """The prompt for the one compression call, with the rules quoted verbatim."""
+    required = ", ".join(item.id for item in open_items(dossier)) or "(none)"
+    resolved = ", ".join(
+        r.id for r in dossier.risks if r.resolved) or "(none)"
+    return _COMPRESSION_PROMPT_TEMPLATE.format(
+        body=render_dossier_body(dossier),
+        rules="\n- ".join(COMPRESSION_RULES),
+        required=required,
+        resolved=resolved,
+    )
+
+
+def compression_rule_violation(previous: MissionDossier,
+                               answer: DossierCompression) -> str:
+    """Why this answer breaks the rules, or "" when it holds to them.
+
+    Checked, not believed. "keep every open item" and "merge resolved risks
+    away" are both verified against the dossier that went IN, so a compression
+    that quietly loses an open risk is refused rather than written to disk.
+    """
+    known = {item.id for item in
+             (*previous.milestones, *previous.risks, *previous.decisions)}
+    returned = {item.id for item in
+                (*answer.milestones, *answer.risks, *answer.decisions)}
+    invented = sorted(returned - known)
+    if invented:
+        return (f"the answer invents fact(s) the dossier never recorded: "
+                f"{', '.join(invented)}")
+
+    kept = {item.id for item in (*answer.milestones, *answer.risks)}
+    lost = sorted(item.id for item in open_items(previous)
+                  if item.id not in kept)
+    if lost:
+        return (f"{COMPRESSION_RULES[1]}: open item(s) {', '.join(lost)} were "
+                f"dropped")
+
+    resolved_ids = {r.id for r in previous.risks if r.resolved}
+    still_there = sorted(
+        item.id for item in answer.risks if item.id in resolved_ids)
+    if still_there:
+        return (f"{COMPRESSION_RULES[0]}: resolved risk(s) "
+                f"{', '.join(still_there)} are still listed as risks")
+    return ""
+
+
+@dataclass(frozen=True)
+class CompressionResult:
+    """What the one compression call produced — or honestly did not."""
+
+    ok: bool
+    dossier: MissionDossier
+    status: str
+    detail: str = ""
+    calls: int = 0
+    cost: dict[str, Any] = field(default_factory=dict)
+
+
+#: The dossier fit; no call was made.
+COMPRESSION_WITHIN_BUDGET = "within_budget"
+#: The rewrite happened and held to the rules.
+COMPRESSION_OK = "compressed"
+#: No provider was given, so there was nothing to compress WITH.
+COMPRESSION_NO_PROVIDER = "no_provider"
+#: The provider answered with something that is not a valid compression.
+COMPRESSION_INVALID_ANSWER = "invalid_answer"
+#: The answer validated but broke one of the explicit rules.
+COMPRESSION_RULE_VIOLATION = "rule_violation"
+#: The provider call itself raised.
+COMPRESSION_PROVIDER_ERROR = "provider_error"
+
+
+def _rebuild(previous: MissionDossier,
+             answer: DossierCompression) -> MissionDossier:
+    """The compressed dossier: rewritten text, carried-over state, SAME goal.
+
+    The goal is copied from ``previous`` — the same string object the dossier
+    started with — so "byte-identical to iteration one" is true by
+    construction rather than by the provider's cooperation.
+    """
+    def carry(current: Sequence[DossierItem],
+              rewritten: Sequence[CompressedItem]) -> tuple[DossierItem, ...]:
+        by_id = {item.id: item for item in current}
+        return tuple(replace(by_id[item.id], text=item.text)
+                     for item in rewritten if item.id in by_id)
+
+    return replace(
+        previous,
+        milestones=carry(previous.milestones, answer.milestones),
+        # A resolved risk is not re-listed here — it lives in DECISIONS with
+        # its outcome, which is where the compression was told to fold it.
+        risks=carry(previous.risks, answer.risks),
+        decisions=carry(previous.decisions, answer.decisions),
+        next_step=answer.next_step.strip() or previous.next_step,
+    )
+
+
+def compress_dossier(dossier: MissionDossier,
+                     call_fn: Callable[[str, int], str],
+                     *,
+                     on_call: Callable[[int, str, bool, str], None] | None = None,
+                     ) -> CompressionResult:
+    """Rewrite an over-budget dossier in ONE schema-validated provider call.
+
+    Exactly one call: ``allow_parse_retry=False``. The feature specifies a
+    single compression call, and a retry would make the "one call" claim false
+    while buying nothing — the honest over-budget fallback is already a
+    complete, correct document, so there is nothing to salvage a second call
+    for.
+
+    Every failure route returns the dossier UNCHANGED with a status saying
+    which route it was. Nothing here truncates; the caller flags.
+    """
+    from packages.orchestration.orchestrator_loop import measure_call_cost
+    from packages.orchestration.structured_outputs import run_structured_call
+
+    try:
+        outcome = run_structured_call(
+            DossierCompression,
+            build_compression_prompt(dossier),
+            call_fn,
+            on_call=on_call,
+            allow_parse_retry=False)
+    except Exception as exc:
+        return CompressionResult(
+            ok=False, dossier=dossier, status=COMPRESSION_PROVIDER_ERROR,
+            detail=f"the compression call raised: {exc}")
+
+    cost = measure_call_cost(outcome)
+    if not outcome.ok:
+        return CompressionResult(
+            ok=False, dossier=dossier, status=COMPRESSION_INVALID_ANSWER,
+            detail=f"parse-class failure: {outcome.hint}".strip(),
+            calls=outcome.calls, cost=cost)
+
+    answer: DossierCompression = outcome.value
+    violation = compression_rule_violation(dossier, answer)
+    if violation:
+        return CompressionResult(
+            ok=False, dossier=dossier, status=COMPRESSION_RULE_VIOLATION,
+            detail=violation, calls=outcome.calls, cost=cost)
+
+    return CompressionResult(
+        ok=True, dossier=_rebuild(dossier, answer), status=COMPRESSION_OK,
+        calls=outcome.calls, cost=cost)
