@@ -15,6 +15,20 @@ What the order requires proof of (T001):
   * each move kind is exercised at least once;
   * a stop request between iterations halts the loop within one iteration.
 
+And of T002:
+
+  * every ADVANCING move is evaluated before it executes — a job for an
+    already-done milestone, a milestone claim whose job never finished or
+    whose Definition of Done was not met, and an "achieved" claim with open
+    milestones are all refused with a recorded reason;
+  * a refused move re-prompts ONCE with that reason as feedback and a second
+    refusal escalates through the existing escalation verb — never a silent
+    loop;
+  * the dossier update call runs every iteration;
+  * every era fixture class (R-0141/43/45, R-0144, R-0146, R-0147, R-0148)
+    is flagged by the evaluate step and the loop refuses to advance on it —
+    the detector-level tests live in ``test_era_integrity.py``.
+
 Every provider here is a local callable returning recorded text — no network,
 no process, no real model. Every test writes into ``tmp_path``: the mission
 root is passed explicitly via ``root=``, so the repository's real data root is
@@ -23,6 +37,7 @@ never touched.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -42,6 +57,7 @@ from packages.orchestration.mission_state import (
 from packages.orchestration.orchestrator_loop import (
     CONFIG_KEY_MAX_ITERATIONS,
     DEFAULT_MAX_ITERATIONS,
+    DOSSIER_FILENAME,
     LEDGER_FILENAME,
     MILESTONES_DONE_KEY,
     OUTCOME_REFUSED,
@@ -71,6 +87,7 @@ from packages.orchestration.orchestrator_loop import (
     build_orchestrator_prompt,
     build_orchestrator_system_prompt,
     context_digest,
+    dispatched_job_for,
     done_milestones,
     escalate_repeated_refusal,
     evaluate_dispatch,
@@ -918,3 +935,131 @@ class TestRefusalRePromptsOnceThenEscalates:
         reason = escalate_repeated_refusal(PROJECT, mission.id, "refused twice",
                                            root=tmp_path)
         assert "no job is linked" in reason
+
+
+class TestTheDossierIsUpdatedEveryIteration:
+    def test_the_update_call_runs_once_per_iteration(self, tmp_path, mission,
+                                                     dispatched):
+        seen: list[str] = []
+        run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="work")),
+            root=tmp_path, dispatch=dispatched,
+            update_dossier=lambda p, m, mission: seen.append(m),
+            control_root_path=tmp_path / "control")
+        assert seen == [mission.id] * 3
+
+    def test_the_default_update_writes_the_dossier_beside_the_ledger(
+            self, tmp_path, mission, dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
+            dispatch=dispatched, control_root_path=tmp_path / "control")
+        path = ledger_path(PROJECT, mission.id, tmp_path).parent / DOSSIER_FILENAME
+        assert path.is_file()
+        assert "Ship the thing" in path.read_text()
+
+    def test_the_update_tracks_the_mission_as_it_changes(self, tmp_path,
+                                                         mission, dispatched):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
+            dispatch=dispatched, control_root_path=tmp_path / "control")
+        text = (ledger_path(PROJECT, mission.id, tmp_path).parent
+                / DOSSIER_FILENAME).read_text()
+        assert "M001 [done]" in text
+        assert "M002 [open]" in text
+
+
+# ---------------------------------------------------------------------------
+# T002 — the era corpus stops the loop
+# ---------------------------------------------------------------------------
+
+ERA_FIXTURES = Path(__file__).parent / "fixtures" / "era"
+
+#: One entry per finding class. The detector tests live in
+#: test_era_integrity.py; THESE assert the loop refuses to advance on them.
+ERA_CORPUS = sorted(p.name for p in ERA_FIXTURES.glob("*.json"))
+
+
+def _era_handback(name: str):
+    body = json.loads((ERA_FIXTURES / name).read_text(encoding="utf-8"))
+    return body["finding_class"], body["handback"]
+
+
+class TestTheEraCorpusRefusesToAdvance:
+    @pytest.mark.parametrize("name", ERA_CORPUS)
+    def test_a_defective_handback_blocks_the_milestone(self, tmp_path, mission,
+                                                       dispatched, name):
+        finding_class, handback = _era_handback(name)
+
+        def evidence(project_id, mission_id, milestone_id):
+            # Everything else about this milestone is impeccable: the job
+            # finished and its Definition of Done was met. Only the handback
+            # carries the era defect, so nothing but the corpus can refuse it.
+            return MilestoneEvidence(job_id="j1", job_state="completed",
+                                     gate_released=True, handback=handback)
+
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_milestone_done",
+                                         milestone_id="M001")),
+            root=tmp_path, dispatch=dispatched, evidence=evidence,
+            escalate=lambda p, m, r: "d1",
+            control_root_path=tmp_path / "control")
+
+        # Flagged, named, and the milestone did NOT advance.
+        first = result.entries[0].outcome
+        assert first["status"] == OUTCOME_REFUSED
+        assert "refuses to advance" in first["detail"]
+        assert finding_class in first["detail"], (
+            f"{name} was refused without naming its finding class")
+        assert done_milestones(load_mission(PROJECT, mission.id, tmp_path)) == ()
+
+    @pytest.mark.parametrize("name", ERA_CORPUS)
+    def test_a_defective_handback_also_blocks_a_dispatch(self, tmp_path,
+                                                         mission, dispatched,
+                                                         name):
+        finding_class, handback = _era_handback(name)
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="carry on")),
+            root=tmp_path, dispatch=dispatched,
+            evidence=lambda p, m, ms: MilestoneEvidence(handback=handback),
+            control_root_path=tmp_path / "control")
+        assert result.entries[0].outcome["status"] == OUTCOME_REFUSED
+        assert finding_class in result.entries[0].outcome["detail"]
+        assert dispatched.seen == []
+
+    def test_a_clean_handback_does_not_block_anything(self, tmp_path, mission,
+                                                      dispatched):
+        clean = {"commits": ["aaa"], "reported_commits": ["aaa"],
+                 "changed_files_tables": {"aaa": ["packages/x.py"]}}
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_milestone_done",
+                                         milestone_id="M001")),
+            root=tmp_path, dispatch=dispatched,
+            evidence=lambda p, m, ms: MilestoneEvidence(
+                job_id="j1", job_state="completed", gate_released=True,
+                handback=clean),
+            control_root_path=tmp_path / "control")
+        assert done_milestones(
+            load_mission(PROJECT, mission.id, tmp_path)) == ("M001",)
+
+
+class TestMilestoneAttributionComesFromTheLedger:
+    def test_the_ledger_records_which_job_served_which_milestone(
+            self, tmp_path, mission, dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="build M001")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert dispatched_job_for(PROJECT, mission.id, "M001",
+                                  tmp_path) == "job-0001"
+        assert dispatched_job_for(PROJECT, mission.id, "M002", tmp_path) == ""

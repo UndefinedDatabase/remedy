@@ -501,6 +501,31 @@ def all_milestones_done(mission: Any) -> bool:
     return bool(ids) and set(ids) <= set(done_milestones(mission))
 
 
+#: Where the rendered dossier snapshot is refreshed, in the mission's own
+#: evidence area beside its plan and its ledger.
+DOSSIER_FILENAME = "dossier.md"
+
+
+def update_mission_dossier(project_id: str, mission_id: str, mission: Any,
+                           root: Path | None = None) -> Path:
+    """Refresh the mission's dossier. Called EVERY iteration.
+
+    Until F071 lands this writes the rendered stand-in — a snapshot of what the
+    mission record already says, labeled as a stand-in. It is a real write of a
+    real file, not a placeholder that pretends to be one, and it deliberately
+    does not claim F071's maintained-document semantics (a curated, token-
+    budgeted narrative). ``Mission.dossier_ref``, when F071 fills it, is what a
+    caller passes through the loop's ``dossier`` seam instead.
+    """
+    path = mission_evidence_dir(project_id, mission_id, root) / DOSSIER_FILENAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        render_mission_dossier(
+            mission, done_milestones=done_milestones(mission)) + "\n",
+        encoding="utf-8")
+    return path
+
+
 def mission_achieved(project_id: str, mission_id: str,
                      root: Path | None = None) -> Any:
     """Set the mission to achieved through the existing status writer."""
@@ -644,6 +669,7 @@ def run_mission(
     last_report: Callable[[Any], str] | None = None,
     evidence: Callable[[str, str, str], MilestoneEvidence] | None = None,
     escalate: Callable[[str, str, str], str] | None = None,
+    update_dossier: Callable[[str, str, Any], Any] | None = None,
     control_root_path: Path | None = None,
     repo_root: Path | None = None,
     on_call: Callable[[int, str, bool, str], None] | None = None,
@@ -667,6 +693,7 @@ def run_mission(
       ``dispatch``        how a job is created for a milestone
                           (``mission_state.continue_mission``)
       ``dossier``         how the mission's dossier renders (F071 plugs in here)
+      ``update_dossier``  the dossier refresh, called every iteration
       ``evidence``        how a milestone's job state, DoD gate and handback are
                           observed (:func:`collect_milestone_evidence`)
       ``escalate``        how a twice-refused move reaches a human
@@ -691,6 +718,8 @@ def run_mission(
                               terminal=TERMINAL_ITERATION_LIMIT)
     observe = evidence or (
         lambda p, m, ms: collect_milestone_evidence(p, m, ms, root))
+    refresh = update_dossier or (
+        lambda p, m, mission: update_mission_dossier(p, m, mission, root))
     hand_over = escalate or (
         lambda p, m, reason: escalate_repeated_refusal(p, m, reason, root=root,
                                                        now=now))
@@ -726,6 +755,11 @@ def run_mission(
             result.detail = f"mission status is {mission.status}"
             result.iterations = iteration - 1
             return result
+
+        # The dossier is refreshed BEFORE the context is assembled, so the
+        # prompt's first section and the mission's own dossier file describe
+        # the same state rather than drifting an iteration apart.
+        refresh(pid, mission_id, mission)
 
         context = assemble_context(
             mission,
