@@ -92,6 +92,7 @@ from packages.orchestration.orchestrator_loop import (
     escalate_repeated_refusal,
     evaluate_dispatch,
     evaluate_milestone_done,
+    evaluate_move,
     ledger_path,
     loop_limits_from_config,
     mark_milestone_done,
@@ -1063,3 +1064,68 @@ class TestMilestoneAttributionComesFromTheLedger:
         assert dispatched_job_for(PROJECT, mission.id, "M001",
                                   tmp_path) == "job-0001"
         assert dispatched_job_for(PROJECT, mission.id, "M002", tmp_path) == ""
+
+
+class TestAPlanLessMissionCannotBeDeclaredAchieved:
+    """R-0170 — "no milestones are open" is not evidence that a goal is met.
+
+    A mission with no compiled plan has ``milestone_ids() == ()``, so the
+    open-milestone check found nothing to object to and the claim executed:
+    one iteration, zero evidence, status achieved. ``all_milestones_done``
+    already required ``bool(ids)``; the claim is now held to the same bar.
+    """
+
+    @pytest.fixture()
+    def plan_less(self, tmp_path):
+        return create_mission(PROJECT, "A goal with no plan", root=tmp_path)
+
+    def test_the_claim_is_refused_with_a_recorded_reason(self, tmp_path,
+                                                          plan_less, dispatched):
+        result = run_mission(
+            plan_less.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_mission_achieved")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        outcome = result.entries[0].outcome
+        assert outcome["status"] == OUTCOME_REFUSED
+        assert "no compiled plan" in outcome["detail"]
+
+    def test_the_mission_stays_active(self, tmp_path, plan_less, dispatched):
+        run_mission(
+            plan_less.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_mission_achieved")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert load_mission(PROJECT, plan_less.id, tmp_path).status == "active"
+
+    def test_a_second_claim_escalates_and_never_executes(self, tmp_path,
+                                                          plan_less, dispatched):
+        escalated: list[str] = []
+        result = run_mission(
+            plan_less.id, LoopLimits(max_iterations=5), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_mission_achieved")),
+            root=tmp_path, dispatch=dispatched,
+            escalate=lambda p, m, reason: escalated.append(reason) or "d1",
+            control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_ESCALATED
+        assert len(escalated) == 1 and "no compiled plan" in escalated[0]
+        assert result.iterations == 2
+        assert load_mission(PROJECT, plan_less.id, tmp_path).status == "active"
+
+    def test_the_evaluator_says_so_directly(self, plan_less):
+        move = OrchestratorMove.model_validate_json(
+            _move_json("declare_mission_achieved"))
+        reason = evaluate_move(plan_less, move, observe=_no_evidence,
+                               project_id=PROJECT, mission_id=plan_less.id)
+        assert "no compiled plan" in reason
+
+    def test_a_planned_mission_with_every_milestone_done_still_passes(
+            self, tmp_path, mission):
+        """The fix refuses ABSENCE of a plan, not a legitimately finished one."""
+        for milestone in ("M001", "M002"):
+            mark_milestone_done(PROJECT, mission.id, milestone, tmp_path)
+        updated = load_mission(PROJECT, mission.id, tmp_path)
+        move = OrchestratorMove.model_validate_json(
+            _move_json("declare_mission_achieved"))
+        assert evaluate_move(updated, move, observe=_no_evidence,
+                             project_id=PROJECT, mission_id=mission.id) == ""

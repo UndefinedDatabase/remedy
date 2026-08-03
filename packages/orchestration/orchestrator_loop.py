@@ -1177,8 +1177,16 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
             observe(project_id, mission_id, milestone_id))
 
     if kind == MOVE_DECLARE_MISSION_ACHIEVED:
-        open_ones = [m for m in milestone_ids(mission)
-                     if m not in set(done_milestones(mission))]
+        ids = milestone_ids(mission)
+        # R-0170: no plan means no milestones, and "no milestones are open"
+        # is not evidence that the goal is met — it is the absence of any
+        # evidence at all. `all_milestones_done` already requires bool(ids)
+        # for exactly this reason; the claim is held to the same bar.
+        if not ids:
+            return ("the mission has no compiled plan — nothing evidences "
+                    "the goal, so it cannot be declared achieved "
+                    "(compile a mission plan first)")
+        open_ones = [m for m in ids if m not in set(done_milestones(mission))]
         if open_ones:
             return (f"the mission cannot be achieved while "
                     f"{len(open_ones)} milestone(s) are still open: "

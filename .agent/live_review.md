@@ -46,6 +46,7 @@ R-0144, R-0146, R-0147, R-0148 classes) is an acceptance criterion.
   compiled plan — nothing evidences the goal"); pin with tests: a
   plan-less achieved claim is refused with a recorded reason, and
   a second refusal escalates, never executes.
+  Done: R-0170
 - R-0171 (accounting, Low) 2026-08-03: the R1 handback commit
   b053516a also modified .agent/decisions.md (+5/-2, the
   backup-branch deletion note) but its grouped table lists only
