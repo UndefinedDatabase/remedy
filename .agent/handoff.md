@@ -1,58 +1,100 @@
-# Handback — reg0803 R1 (single-session micro-round)
+# Handoff — F071 Mission dossier · R1 (SPLIT, LARGE)
 
 ## Range
-Review of 29570038..HEAD (branch feature/registration-0803).
+Review of 097e4959..\<HEAD\> · feature/f071-mission-dossier
 
-## Commits
-### 6aa88f81 chore(reg0803): persist round state + authored texts
+## Commits — paths: pkg=`packages/orchestration/`, t=`tests/orchestration/`
+
+### 4b5f940d chore(f071): claim F071 and reset agent state for R1
 | Path | +/- | Reason |
-| .agent/authored/reg0803-r1-1..6.md | +158 | authored originals |
-| .agent/plan.md | rewrite | round plan (## Goal + ## Next Steps kept) |
-### a61abf54 docs(roadmap): register F253 headless API contract + ledger pin 253
+|---|---|---|
+| .agent/authored/f071-r1-1..4.md | +94 | reviewer texts, sha256-verified |
+| .agent/live_review · plan · context.md | +89/-260 | authored replacements |
+| docs/roadmap/STATUS.md | +1/-1 | F071 `[ ]` -> `[~]` |
+
+### 31684c88 feat(f071): mission dossier structure and update mechanics (T001)
 | Path | +/- | Reason |
-| docs/roadmap/features/T12_F253.md | +67 | detail file (binding scope) |
-| docs/roadmap/STATUS.md | +1 | Tier-12 line `- [ ] F253 —` |
-| docs/roadmap/ROADMAP.md | +7/-2 | Tier-12 summary, 8→9 features |
-| tests/docs/test_docs_consistency.py | +6/-5 | ledger pin 252→253 |
-| README.md | +1/-1 | denominator 252→253 (R-0156 pin) |
-| .agent/authored/reg0803-r1-7.md | +5 | authored README edit |
-### 2ad6e5d5 docs(roadmap): F075 harness-failure injection class
+|---|---|---|
+| pkg/mission_dossier.py | +263 | new: 5 fixed sections, merge-by-id append, resolve_risk |
+| t/test_mission_dossier.py | +189 | ordering, goal immutability, append, one-home-per-fact |
+
+### 64306334 feat(f071): dossier token budget, labeled counting basis and versioning (T001)
 | Path | +/- | Reason |
-| docs/roadmap/features/T1_F075.md | +11 | operator addition 2026-08-03 |
-### (this commit) chore(reg0803): handback R1
-| .agent/handoff.md + .agent/authored/reg0803-r1-8.md | grouped, R-0149 self-reference |
+|---|---|---|
+| pkg/config.py | +13 | new key `dossier.max_tokens` (int, 3000) |
+| pkg/mission_dossier.py | +130/-6 | budget, DossierTokenCount + basis, dossier_v\<N\>.md |
+| t/test_mission_dossier.py | +170/-6 | budget precedence, basis label, versioning, flag-is-metadata |
 
-## External actions
-Open PR Gate: `gh pr merge 176 --merge --delete-branch` → merged, main
-at 29570038. Push + PR create + merge of THIS branch follow this
-commit under the standing same-session-merge approval for the
-micro-round type; PR number lands in the merge commit.
+### c0124741 feat(f071): dossier compression call, rules and schema (T002)
+| Path | +/- | Reason |
+|---|---|---|
+| pkg/mission_dossier.py | +245/-9 | DossierCompression (no goal field), prompt, rule enforcement, compress_dossier |
+| t/test_mission_dossier.py | +199/-9 | rules verbatim; open items survive, resolved merge, violations refused |
 
-## Verification
-- `python3 -m pytest tests/docs/ -q` → exit 0, `293 passed in 0.25s`
-  (run after each of commits a61abf54 and 2ad6e5d5).
-- Canary `python3 -m pytest tests/cli/test_golden_path.py -q` →
-  exit 0, `42 passed in 19.38s`.
-- `git status --porcelain` empty at handback (R-0160 symmetry).
+### fd989184 feat(f071): budget-disciplined dossier update with honest over-budget flag (T002)
+| Path | +/- | Reason |
+|---|---|---|
+| pkg/mission_dossier.py | +81/-4 | update(), DossierUpdate, _flag |
+| t/test_mission_dossier.py | +90/-4 | honest flag on every failure route; in-budget makes no call |
 
-## Authored-text proofs
-Scratchpad originals cmp'd byte-identical against committed
-.agent/authored/reg0803-r1-{1..8}.md (primary proof, no fallback).
-Applied regions verified disk-to-disk: r1-1 full-file cmp OK
-(T12_F253.md); r1-2/3/4/5/7 TO-blocks APPLIED-EXACT in STATUS.md,
-test_docs_consistency.py, ROADMAP.md, T1_F075.md, README.md;
-r1-6 full-file cmp OK (plan.md).
+### dc809a21 chore(f071): record R1 decisions and sync plan
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +55 | four F071 design decisions |
+| .agent/plan.md | +28/-11 | current step -> R1 delivered |
+
+### \<handoff sha\> chore(f071): handback R1 — self-reference (R-0149)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | this file |
 
 ## Item status
 | Item | Status | Reason |
-| Item 1 F253 registration | done | presence check: absent (F188/F189 = DoD kinds for target repos; F200/F201 = transport/consumer) |
-| Item 2 F075 injection class | done | presence check: only provider-flakiness edge note existed, no fixture class |
-| Carried closure candidates | done | .agent/candidates.md empty — register-or-resolve pass: nothing to register |
+|---|---|---|
+| T001 structure/update/budget/versioning + tests | done | split 31684c88 + 64306334 (500-line rule) |
+| T002 compression call/rules/schema + fake-provider tests | done | split c0124741 + fd989184 (500-line rule) |
+
+## External actions
+- `gh pr list --state open …` -> `[]` — Open PR Gate: zero open PRs.
+- `git worktree add --detach <scratch>/wt-f071 HEAD` -> ok; `remove --force` -> ok; `worktree list` = primary only.
+- `git push -u origin feature/f071-mission-dossier` -> exit 0, new branch. No PR (comes at closure).
+
+## Verification
+```
+pytest t/test_mission_dossier.py -q          64 passed  EXIT=0
+pytest tests/cli/test_golden_path.py -q      42 passed  EXIT=0   (canary)
+pytest t/test_config.py t/test_orchestrator_loop.py -q  162 passed  EXIT=0
+pytest tests/docs/ -q                       293 passed  EXIT=0
+ruff check <the two F071 files>       All checks passed  EXIT=0
+```
+Mutation red-proofs (disposable worktree at HEAD, each restored): drop
+keep-every-open-item 1F · drop merge-resolved-risks-away 1F · goal rewritten 1F ·
+truncate-not-flag 5F · reorder sections 3F · overwrite version file 2F ·
+baseline 64 passed. `git status --porcelain` empty at handback.
+
+## Authored-text proofs
+sha256 of all four `.agent/authored/f071-r1-<n>.md` match the BEGIN digests
+(`ca3d0283…` `6dd2dcb8…` `42e6b074…` `ee2bedf3…`). `cmp` authored vs applied in
+4b5f940d: live_review 0, plan 0, context 0. STATUS `grep -c`: FROM 1->0, TO 0->1.
 
 ## Deviations & assumptions
-ROADMAP.md edit authorized by the F251/F252 registration precedent
-(commit 7d4b586e touched ROADMAP.md); scope = Tier-12 summary only.
+1. T001 and T002 each split into TWO commits (single commits: 760 / 585 lines).
+   Split, not declared oversize; each slice is code + tests and green alone.
+2. `compress_dossier` passes `allow_parse_retry=False` — the order says ONE
+   call; the shared engine would otherwise make two. decisions.md.
+3. `DossierCompression` has NO `goal` field — "never drop the goal" is enforced
+   by schema shape; the other two rules post-validation by
+   `compression_rule_violation`, which refuses the answer.
+4. Budget counts on the labeled ESTIMATE basis (`token_economy.estimate_text_tokens`),
+   not a call's `UsageActuals`: a prompt's measured tokens are not this
+   document's size. decisions.md.
+5. `orchestrator_loop.py` unchanged (R1); imported lazily, read-only, for
+   `measure_call_cost` — R2 integration cannot cycle.
+6. Assumption: one update produces exactly ONE version. decisions.md.
+7. DECLARED: 100 lines (cap met) but ~1.2k tokens vs the ≤800 cap — the seven
+   mandatory per-commit tables are ~600 tokens alone. Transcripts are already
+   command+exit only. Reported, not met by dropping a section.
 
 ## Next
-Merge on PASS, then F071 (Mission dossier) per Rule A5 in a fresh
-session (SPLIT rounds).
+Reviewer verdict on R1. On PASS: R2 — T003 loop integration through the existing
+`dossier` seam + recall harness + integration gate.
