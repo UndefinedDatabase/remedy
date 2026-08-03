@@ -1,127 +1,95 @@
-# Handoff — F071 Mission dossier · R3 (SPLIT, LARGE repair+gate)
+# Handoff — F071 Mission dossier · R4 (CLOSURE)
 
 ## Range
-Review of 097e4959..\<HEAD\> · feature/f071-mission-dossier · 21 commits.
-LAST_REVIEWED_SHA stayed 097e4959 on the R2 FAIL: R1+R2 are re-tabled grouped
-(accepted at R2), every R3 commit has its own table.
+Review of 1121142a..\<HEAD\> · 4 new commits · ACCEPTED_HEAD = acb02acd.
 
-## Commits — paths: pkg=`packages/orchestration/`, t=`tests/orchestration/`
-
-### R1 range 097e4959..a2e06afc — grouped, unchanged since the R1 handback
-| Commit | Paths | +/- |
-|---|---|---|
-| 4b5f940d claim + authored state | .agent state + docs/roadmap/STATUS.md | +160/-196 |
-| 31684c88 T001 structure | pkg+t mission_dossier | +452 |
-| 64306334 T001 budget+versioning | pkg/config + pkg+t mission_dossier | +307/-6 |
-| c0124741 T002 compression | pkg+t mission_dossier | +435/-9 |
-| fd989184 T002 update+flag | pkg+t mission_dossier | +167/-4 |
-| dc809a21 R1 decisions+plan | .agent/decisions.md + plan.md | +72/-11 |
-| a2e06afc handback R1 | .agent/handoff.md | +84/-42 |
-
-### R2 range a2e06afc..9698306e — grouped, unchanged since the R2 handback
-| Commit | Paths | +/- |
-|---|---|---|
-| 06a37117 persist R1 verdict | .agent/authored/f071-r2-1 + live_review | +137/-19 |
-| 90141a5d R-0172 fix | pkg+t mission_dossier + live_review | +121/-40 |
-| e3575f71 R-0173 fix | pkg+t mission_dossier + live_review | +41/-2 |
-| 55139dab R-0174 fix | pkg+t mission_dossier + live_review | +18/-4 |
-| 2925abd6 T003 state/facts/refresh | pkg+t mission_dossier | +341/-1 |
-| 544dffff T003 loop wiring | pkg+t orchestrator_loop | +159/-20 |
-| 993c0fc9 T003 recall harness | pkg+t mission_dossier | +251/-1 |
-| 0bdda1ed harness negative control | t mission_dossier | +17 |
-| 3ce0332d R2 decisions+plan | .agent/decisions.md + plan.md | +68/-19 |
-| 9698306e handback R2 | .agent/handoff.md | +101/-58 |
-
-### cde1f07b chore(f071): persist R2 verdict and finding R-0175 (FAIL)
+## Commits
+### a0eeff86 persist the R3 PASS + gate verdict, register R-0176/R-0177
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f071-r3-1.md | +87 | reviewer text, sha256-verified |
-| .agent/live_review.md | +127/-59 | authored full replacement |
+| .agent/authored/f071-r4-1..5.md | +181 | 5 reviewer texts, sha256-verified |
+| .agent/live_review.md | +143/-75 | authored full replacement |
 
-### c4068b85 fix(f071): reconcile the dossier version against the archive before writing (R-0175)
+### b8b9c043 docs(agents): gate run logs live outside the repo (R-0176)
 | Path | +/- | Reason |
 |---|---|---|
-| pkg/mission_dossier.py | +27/-4 | `refresh_mission_dossier` fast-forwards past `latest_dossier_version` before write |
-| t/test_mission_dossier.py | +90 | `TestATornWriteHealsItself` — six tests |
-| .agent/decisions.md | +30 | fast-forward as the explicit exception |
-| .agent/live_review.md | +1 | Done: R-0175 |
+| docs/agents/integration_gate.md | +9/-1 | authored FROM→TO |
+| .agent/live_review.md | +1 | Done: R-0176 |
 
-### 8db010f0 chore(f071): integration gate evidence for R3
+### acb02acd docs(f071): record the accepted Built State ← ACCEPTED_HEAD
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/gate_f071_r3/ | +81 | 8 files: run tails, failed/comm lists, dist hashes, attribution |
-| .agent/decisions.md | +19 | gate evidence written outside the repo during the run |
+| docs/roadmap/features/T1_F071.md | +58 | f071-r4-3 appended verbatim at EOF |
 
-### 532dc6e8 chore(f071): sync plan after the R3 integration gate
+### \<closure sha\> chore(f071): close F071 — STATUS [x] + README sync
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +19/-19 | current step -> R3 delivered, gate PASS |
-
-### \<handoff sha\> chore(f071): handback R3 — self-reference (R-0149)
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewritten | this file |
+| docs/roadmap/STATUS.md | +1/-1 | f071-r4-4, 4 placeholders substituted |
+| README.md | +3/-3 | f071-r4-5 pairs 1-3 (pair 3 = R-0177) |
+| .agent/live_review · plan · context · handoff.md | rewritten | Done: R-0177 + final state (R-0149 self-ref) |
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| R-0175 | done | c4068b85 — reconcile before write; reproduced, fixed, pinned |
-| gate-run | done | branch + base full suites, both exit 0, comm both EMPTY |
-| gate-evidence | done | .agent/gate_f071_r3/, .txt names, attribution |
+| R-0176 | done | b8b9c043 |
+| R-0177 | done | closure commit — README tier-12 row Total 9 |
+| Built State | done | acb02acd |
+| Evidence job | done | b3b98e3ee1d10668 |
+| Review zip | done | READY_FOR_REVIEW, subject 097e4959..acb02acd |
+| STATUS [x] + README | done | closure commit, exact path set |
+| PR | done | created right after this commit, open, NOT merged |
 
 ## External actions
-- `git worktree add -b tmp/base-gate <scratch>/base-gate 097e4959` -> ok.
-- `worktree remove --force` + `prune` + `branch -D tmp/base-gate` -> ok; `worktree list` = primary only, no `tmp/*`.
-- `git push` -> exit 0, 9698306e..532dc6e8. No PR (closure creates it).
+- `make_review_zip.sh --evidence-dir <scratch>/remedy-job-evidence-f071` -> exit 0.
+- `git push` x2 -> exit 0. `gh pr create` runs AFTER this commit (Rule A4: the STATUS edit is the last commit), so the number is reported in the session handback, not here. NOT merged — the next feature's Open PR Gate merges it.
 
 ## Verification
-R2 gate re-run BEFORE the integration gate:
 ```
-pytest t/test_mission_dossier.py -q       103 passed  EXIT=0
-pytest t/test_orchestrator_loop.py -q     106 passed  EXIT=0
-pytest tests/cli/test_golden_path.py -q    42 passed  EXIT=0
+pytest tests/docs/ -q  293 EXIT=0 | canary 42 EXIT=0 | (re-run after closure commit: same)
+remedy integrity check --json  passed=true, fail_count=0, 5/5
+git status --porcelain  empty before evidence AND at handback
 ```
-**INTEGRATION GATE** (docs/agents/integration_gate.md):
-```
-branch c4068b85  pytest -n auto -q   15383 passed, 19 skipped  EXIT=0  149.72s
-base   097e4959  pytest -n auto -q   15274 passed, 19 skipped  EXIT=0  165.58s
-                 (REMEDY_UI_NO_AUTO_BUILD=1, throwaway branch worktree)
-comm -13 (branch-only)  EMPTY      comm -23 (fixed by branch)  EMPTY
-dist parity  5ff2033a…  before == after  UNCHANGED
-```
-+109 tests vs base — the F071 R1-R3 additions, all passing. Flake debt 0;
-step-4 per-id attribution does not apply (no branch-only ids). Both runs under
-the ~5 min threshold. `git status --porcelain` empty at handback.
-
-R-0175 reproduced BEFORE the fix in a scratch root: stale state + one ledger
-entry -> `ValueError: … dossier_v3.md already holds a different dossier
-version 3`, same on every retry — permanently wedged. After the fix: version 4
-then 5, `dossier_v3.md` byte-identical.
+Evidence job `b3b98e3ee1d10668` — feature-scoped, zero provider calls, 4 runs /
+544 passed / 0 failed (dossier 103 · loop 106 · canary 42 · docs 293). Real
+`--collect-only` node ids, `len(node_ids)==selected`, 0 skipped; test_files are
+FILES (tests/docs/ expanded to 293); run_id `vr-0001..0004`; full-length
+base_commit; output_hash == sha256(stdout_summary) verified all 4. READY gate
+`ok:True`, blocking `[]`.
+Package `remedy-review-20260803-190339-READY_FOR_REVIEW.zip`
+SHA-256 `aa117e26a55b0ab1b1941d881a4ed510967c2d1669be021abda30ab0f6e9e99e`,
+built from the clean tree at acb02acd; committed_review_subject
+097e4959..acb02acd, 25 commits, base_is_ancestor true; 1881 members. Evidence
+dir stayed in session scratch — NOT committed.
 
 ## Authored-text proofs
-`.agent/authored/f071-r3-1.md` sha256 `8dcfb986…` matches the BEGIN digest.
-`cmp` authored vs applied live_review.md as committed in cde1f07b: 0. The
-`Done: R-0175` line was appended in the fixing commit, not at apply time.
+All five sha256 match their BEGIN digests (`5cce9c84` `90f443cc` `1358d51e`
+`c90535f5` `2e199533`). r4-1 `cmp` vs live_review.md -> 0. r4-2 FROM 1→0,
+TO 0→1. r4-3 `doc.endswith(authored)` True, occurrences 1. r4-4 FROM 1→0,
+TO 0→1, STATUS diff exactly 1 insertion/1 deletion — **and re-substituting
+JOB_ID/ZIP_FILENAME/ZIP_SHA256/ACCEPTED_HEAD back reproduces the authored
+template byte for byte (True)**. r4-5 three pairs, each FROM 1→0, TO 0→1.
 
 ## Deviations & assumptions
-1. **Gate procedure hazard, reported not amended.** The FIRST branch run wrote
-   its log inside the repo and reported 4 failures — 2 in
-   `test_run_manifest_logical_identity`, 2 in
-   `test_job_rerun_workspace_identity`, all comparing
-   `remedy_worktree_digest`. The log was appended to WHILE the suite ran, so
-   the digest genuinely changed mid-run: the tests were right, the harness was
-   wrong. Re-run with evidence in the scratchpad, copied in afterwards: 15383
-   passed, exit 0. `integration_gate.md` constrains evidence NAMES (.txt,
-   R-0169) but not LOCATION during the run. Doc NOT amended — that call is the
-   reviewer's. In attribution.txt + decisions.md to register or discard.
-2. Version numbers become a monotonic high-water mark, not an update counter:
-   a torn run consumes one number. Explicit exception to the R1
-   one-update-one-version decision; the normal path is still pinned.
-3. Gate run logs stored TRIMMED to exactly the records integration_gate.md
-   asks for (header, FAILED list, raw tail, exit code, wall time) — 17 KB of
-   progress dots each otherwise.
-4. No closure work: no STATUS edit, no Built State, no evidence zip, no PR.
+1. **f071-r4-4 digest mismatched on transcription — STOPPED, applied nothing.**
+   Got `e93dd811ccbff7772b8ba9d153ba0d26d9229d544f46f2f4d7477d5bc588f0d0`,
+   expected `c90535f5…`. Cause: the STATUS TO line is ONE line, displayed
+   wrapped; I had transcribed the wrap as a newline. Resolved by HASHING
+   candidates only — joining the two display lines with one space reproduces
+   `c90535f5…`. Applied only after the digest matched.
+2. Final-verifier verdict `PASS_WITH_RISKS`, not PASS — standard zero-provider
+   attested outcome (`token_measurement_confidence: low`,
+   `human_final_reviewer_required: true`); `unresolved_findings []`,
+   `missing_evidence []`, 544 passed. The STATUS line records the LIVE REVIEW
+   verdict (PASS), which is what the template asks for.
+3. `.agent/context.md` refreshed in the closure commit with plan/handoff — all
+   inside the allowed `.agent/` path set.
+4. `.agent/candidates.md` left empty: this closure raised no candidates.
+5. Cap: the round order grants LARGE cap rules — 95 lines (≤160), ~1.2k tokens
+   (≤1600), both met, no section dropped. The base ≤60/≤800 cap would not fit
+   4 mandatory per-commit tables plus the protocol's mandatory grep proofs.
+6. The PR number is absent from this file by construction: Rule A4 puts the
+   STATUS edit last, so the PR is created after this commit is written.
 
 ## Next
-Reviewer verdict on R3 (gate verdict is the reviewer's alone). On PASS: R4 —
-closure per docs/roadmap/STATUS_closure_protocol.md.
+F071 closed on disk; PR open and unmerged by design. Rule A5 selects F075 in a
+fresh session; its Open PR Gate merges this PR.

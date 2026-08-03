@@ -58,6 +58,7 @@ reusable harness.
   accepted count and denominator are pinned, R-0156). Fix: the
   row reads Total 9 — applied inside the closure commit's README
   sync (f071-r4-5). Done when the closure commit lands.
+  Done: R-0177
 - Next free ID: R-0178.
 
 ## Verdicts
