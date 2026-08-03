@@ -25,6 +25,10 @@ from packages.orchestration.mission_plan_schema import (
     MISSION_PLAN_SCHEMA_V,
     MissionPlan,
 )
+from packages.orchestration.orchestrator_move_schema import (
+    ORCHESTRATOR_MOVE_SCHEMA_V,
+    OrchestratorMove,
+)
 from packages.orchestration.structured_base import _Strict, _Structured
 
 #: Compact schema version tags. Keep these short — they travel in every prompt.
@@ -253,6 +257,13 @@ SCHEMA_REGISTRY: dict[str, type[_Structured]] = {
     # draft contract (mission_plan_draft_v1) is not registered: it never leaves
     # the compiler's own call and no reader ever resolves that tag.
     MISSION_PLAN_SCHEMA_V: MissionPlan,
+    # F070: one orchestrator decision. Registered because every move is
+    # PERSISTED in the mission's decision ledger and a reader resolves it from
+    # the tag alone. There is no separate provider-facing draft: the model the
+    # orchestrator answers with IS the model the ledger stores, which is what
+    # makes the authority boundary (no kind creates missions or edits goals)
+    # the same object at both ends.
+    ORCHESTRATOR_MOVE_SCHEMA_V: OrchestratorMove,
 }
 
 
