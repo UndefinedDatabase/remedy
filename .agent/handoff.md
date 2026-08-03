@@ -1,142 +1,159 @@
-# Handback — F070 R1 (SPLIT, LARGE bundle: gate + claim + verb map + T001 + T002)
+# Handback — F070 R2 (SPLIT, LARGE: findings + R-0170 + docs + T003 + gate)
 
 ## Range
-Review of `afbe2639`..`d5428fb5` on `feature/f070-orchestrator-loop`.
+Review of `b053516a`..`58969e5d` on `feature/f070-orchestrator-loop`.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1 Open PR Gate + merge #175 | done | |
-| 2 branch | done | |
-| 3 save authored 1-4 + sha256 | done | 4/4 match BEGIN digests |
-| 4 apply 1-3 by copy, 4 FROM→TO | done | |
-| 5 context.md vs full reader list | done | 7 assertions collected from 13 readers |
-| 6 claim commit + docs gate + canary | done | |
-| 7 verb map | done | every enumerated verb exists; 2 gaps resolved, not blocking |
-| 8 move schema + unknown-kind test | done | |
-| 9 context assembly, dossier first | done | dossier is a seam (F071 absent) |
-| 10 loop skeleton | done | |
-| 11 ledger writer + CLI | deviated | ledger done; CLI deferred to T003 (permitted, recorded) |
-| 12 protocol document | done | `docs/agents/orchestrator_protocol.md` |
-| 13 T001 tests + verify | done | |
-| 14 evaluation + A9 refuse/re-prompt/escalate | done | |
-| 15 dossier update every iteration | done | |
-| 16 era corpus + one test per class | done | 5 classes, real commits cited |
+| 1 save 4 authored + sha256 | done | 4/4 match BEGIN digests |
+| 2 apply r2-1/r2-2 by copy | done | r2-3/r2-4 held for Phase C as ordered |
+| 3 commit + docs gate + canary | done | |
+| 4 R-0170 fix + `Done:` append | done | |
+| 5 R-0170 tests + verify | done | |
+| 6 apply r2-3 (handback cap) | done | both FROM 1→0, TO 0→1 |
+| 7 apply r2-4 (gate hardening) + `Done:` append | done | both FROM 1→0, TO 0→1 |
+| 8 docs gate + canary | done | |
+| 9 T003 e2e fixture mission | done | scenario exactly as ordered |
+| 10 CLI run + ledger | done | `mission.run` gains a MODE (F047 pattern) |
+| 11 push at phase boundaries | done | |
+| 12 integration gate + evidence | done | branch 0 / base 0, dist hash unchanged |
 
 ## Commits
-### 29184761 chore(f070): claim F070 and reset agent state for R1
+### 0abc0e74 chore(f070): persist the R1 PASS verdict and findings R-0169..R-0171
 | Path | +/- | Reason |
-| .agent/authored/f070-r1-1..4.md | +104/-0 | reviewer-authored texts, verified |
-| .agent/live_review.md · plan.md · candidates.md | +72/-110 | applied by copy |
-| .agent/context.md | +53/-46 | worker-authored for F070 |
-| docs/roadmap/STATUS.md | +1/-1 | claim `[ ]`→`[~]` |
-### 8bdec7df docs(f070): record the Phase 2 verb map before any loop code
-| .agent/decisions.md | +56/-0 | verb map, inspection only |
-### 170e2691 refactor(f070): extract the --yes auto-approval into flight_plan
-| apps/cli/commands/do_cmd.py | +6/-16 | calls the extracted verb |
-| packages/orchestration/flight_plan.py | +37/-0 | `auto_approve_flight_plan` (A6) |
-### 6095fb87 feat(f070): add the OrchestratorMove schema, protocol doc and role config
-| packages/orchestration/orchestrator_move_schema.py | +112/-0 | `om1`, the authority boundary |
-| packages/orchestration/schemas/models.py | +11/-0 | registers `om1` |
-| docs/agents/orchestrator_protocol.md | +78/-0 | the versioned protocol |
-| docs/README.md | +2/-0 | index rows |
-| packages/orchestration/config.py | +26/-0 | `orchestrator.model`, `.max_iterations` |
-| packages/orchestration/role_config.py | +8/-0 | `orchestrator` role, same defaults |
-| tests/orchestration/test_role_config.py | +5/-1 | pinned tuple grew by one |
-### daaa0845 feat(f070): add the protocol reader and pin the move schema
-| packages/orchestration/orchestrator_loop.py | +83/-0 | read-only protocol reader |
-| tests/orchestration/test_orchestrator_loop.py | +214/-0 | schema + protocol tests |
-### ff8160d0 feat(f070): assemble the orchestrator context, dossier first
-| packages/orchestration/orchestrator_loop.py | +176/-0 | dossier-first assembly |
-| tests/orchestration/test_orchestrator_loop.py | +68/-0 | prefix stability pinned |
-### 27e34fa9 feat(f070): add the append-only decision ledger and milestone bookkeeping
-| packages/orchestration/orchestrator_loop.py | +248/-3 | JSONL ledger, cost actuals |
-| tests/orchestration/test_orchestrator_loop.py | +165/-0 | append-only, torn line |
-### d7e6fc35 feat(f070): add run_mission — the loop skeleton over the existing verbs
-| packages/orchestration/orchestrator_loop.py | +342/-0 | `run_mission`, `execute_move` |
-| tests/orchestration/test_orchestrator_loop.py | +129/-0 | every move kind once |
-### 088ea46c test(f070): pin the stop-within-one-iteration and ledger-coverage rules
-| tests/orchestration/test_orchestrator_loop.py | +172/-0 | stop, ledger, prompt |
-### ee232980 feat(f070): add the era fixture corpus and its integrity detectors
-| packages/orchestration/era_integrity.py | +319/-0 | 5 detectors |
-| tests/orchestration/fixtures/era/*.json (5) | +124/-0 | minimal reproductions |
-### 5ac42a38 test(f070): one detector test per era finding class, plus its repaired twin
-| tests/orchestration/test_era_integrity.py | +269/-0 | 43 tests |
-### 476a159e feat(f070): add the evaluators that check an orchestrator's claim
-| packages/orchestration/orchestrator_loop.py | +219/-0 | dispatch/done evaluators |
-| tests/orchestration/test_orchestrator_loop.py | +64/-0 | refusal reasons |
-### 6a39fc0e feat(f070): refuse, re-prompt once, then escalate — never a silent loop
-| packages/orchestration/orchestrator_loop.py | +94/-7 | refusal wiring, escalation |
-| tests/orchestration/test_orchestrator_loop.py | +115/-7 | A9 edge; 2 T001 tests tightened |
-### 2b28f15a feat(f070): refresh the dossier every iteration; pin the era corpus in the loop
-| packages/orchestration/orchestrator_loop.py | +34/-0 | dossier update call |
-| tests/orchestration/test_orchestrator_loop.py | +145/-0 | 5 classes × refuses-to-advance |
-### d5428fb5 docs(f070): record the T001/T002 decisions and the branch rebuild
-| .agent/decisions.md | +67/-0 | 5 decisions |
-### (this commit) chore(f070): handback R1
-| .agent/handoff.md | rewrite | this file (R-0149 self-reference exception) |
+| .agent/authored/f070-r2-1..4.md | +164/-0 | the four authored texts, verified |
+| .agent/live_review.md | +63/-29 | r2-1 applied by copy |
+| .agent/plan.md | +17/-13 | r2-2 applied by copy |
+### 08bd8c5e fix(f070): refuse an achieved claim on a mission with no compiled plan
+| packages/orchestration/orchestrator_loop.py | +10/-2 | R-0170: `not ids` refusal |
+| tests/orchestration/test_orchestrator_loop.py | +66/-0 | 6 tests, loop-level |
+| .agent/live_review.md | +1/-0 | `Done: R-0170` append only |
+### c2b07445 docs(f070): amend the handback cap and harden the integration gate
+| docs/agents/handback_template.md | +5/-2 | r2-3, the R-0149 DECISION |
+| docs/agents/integration_gate.md | +11/-4 | r2-4, R-0169 hardening |
+| .agent/live_review.md | +1/-0 | `Done: R-0169` append only |
+### 762fe3e2 feat(f070): the two-milestone mission runs end to end, unattended
+| packages/orchestration/orchestrator_loop.py | +25/-4 | `next_iteration_index` (F047 pattern) |
+| tests/orchestration/test_mission_e2e.py | +411/-0 | 24 tests, no evidence-seam override |
+### 7fcc3ebc feat(f070): add remedy mission run (orchestrator mode) and mission ledger
+| apps/cli/commands/mission_cmd.py | +109/-0 | run-loop + ledger handlers |
+| apps/cli/commands/worker_facade_cmd.py | +42/-0 | resolved mode branch |
+| apps/cli/command_catalog.py | +20/-3 | `--iterations`, `--no-llm`, `mission.ledger` |
+| packages/orchestration/intake.py | +8/-1 | optional `model=` on the shared factory |
+| tests/cli/test_mission_cmd.py | +148/-0 | 12 tests incl. catalog uniqueness |
+| .agent/decisions.md | +39/-0 | 3 decisions |
+### 58969e5d chore(f070): integration-gate evidence for R2
+| .agent/gate_f070_r2/ | +966/-0 | 17 files (raw runs, comms, hashes, README) |
+### (this commit) chore(f070): handback R2
+| .agent/handoff.md | rewrite | this file (self-reference exception) |
+
+### R-0171 correction — R1's final commit `b053516a`, omitted from its table
+| .agent/handoff.md | +134/-65 | the R1 handback (was tabled) |
+| .agent/decisions.md | +3/-2 | backup-branch deletion note (WAS OMITTED) |
+Note: the finding cites `+5/-2` for that file; `git show --numstat` reports
+`+3/-2`. Reporting the measured value.
 
 ## External actions
-- `gh pr list --state open …` → exactly PR #175, `feature/f069-mission-compiler`→`main`, non-draft.
-- `gh pr merge 175 --merge --delete-branch` → merged as `afbe2639` on `main`; branch deleted.
-- `git checkout main && git pull --ff-only` → up to date at `afbe2639`, porcelain empty.
-- `git checkout -b feature/f070-orchestrator-loop`.
-- `git push -u origin feature/f070-orchestrator-loop` (new branch) + pushes at phase boundaries.
-- `git branch f070-oversize-backup` (at `08b77ba2`) — created before the rebuild, used for the byte-identity proof below, then `git branch -D` once that proof passed. Local only; never pushed.
-- `git push --force-with-lease origin feature/f070-orchestrator-loop` → `+ 56af5046...d5428fb5 (forced update)`. Rebuild reason below.
-- No PR created for F070 (SPLIT round: production code merges only after reviewer PASS).
-- No worktree added or removed. No mutation/red-proof runs.
+- `git push origin feature/f070-orchestrator-loop` after each phase (A, B, C, D, E). No force-push this round.
+- `git worktree add -b tmp/base-gate-f070 <scratchpad>/base-wt afbe2639` for the base run.
+- `git worktree remove --force` + `git worktree prune` + `git branch -D tmp/base-gate-f070`.
+- `cp -r apps/ui/node_modules apps/ui/dist` into the base worktree (COPY, never symlink).
+- No PR created (SPLIT round). No gh commands. No mutation/red-proof runs.
 
 ## Verification
-Phase 1 (claim):
 ```
-$ python3 -m pytest tests/docs/ -q          → 293 passed in 0.25s      exit 0
-$ python3 -m pytest tests/cli/test_golden_path.py -q → 42 passed in 19.27s  exit 0
+PHASE A  pytest tests/docs/ -q                    293 passed          exit 0
+         pytest tests/cli/test_golden_path.py -q   42 passed          exit 0
+PHASE B  pytest tests/orchestration/test_orchestrator_loop.py -q
+                                                  100 passed          exit 0
+         pytest tests/cli/test_golden_path.py -q   42 passed          exit 0
+PHASE C  pytest tests/docs/ -q                    293 passed          exit 0
+         pytest tests/cli/test_golden_path.py -q   42 passed          exit 0
+PHASE D  pytest tests/orchestration/test_mission_e2e.py -q
+                                                   24 passed          exit 0
+         pytest tests/cli/test_mission_cmd.py -q    78 passed          exit 0
+         pytest tests/cli/test_golden_path.py -q    42 passed          exit 0
+         runner tests/orchestration/ -n auto   RED twice — see below
+         pytest tests/orchestration/test_product_smoke.py -q (serial)
+                                                   76 passed          exit 0
+PHASE E  runner -n auto -q (branch)     15274 passed, 0 failed        exit 0
+         runner -n auto -q (base afbe2639, parity copy, NO_AUTO_BUILD=1)
+                                        15094 passed, 0 failed        exit 0
+         comm -13 (branch-only) = empty ; comm -23 (base-only) = empty
+         dist/ hash before == after (5ff2033a…) — neutralization held
 ```
-Phase 3 (T001 slice gate, then canary):
-```
-$ python3 -m pytest tests/orchestration/test_orchestrator_loop.py -q
-  65 passed in 0.31s                                                  exit 0
-$ python3 -m pytest tests/cli/test_golden_path.py -q → 42 passed in 21.20s  exit 0
-```
-Phase 4 (T002 slice gate, then canary) — at the rebuilt tip `d5428fb5`:
-```
-$ python3 scripts/remedy_pytest_runner.py tests/orchestration/ -q -n auto
-  9439 passed, 7 skipped in 79.88s                                    exit 0
-$ python3 -m pytest tests/cli/test_golden_path.py -q → 42 passed in 19.60s  exit 0
-$ python3 -m pytest tests/docs/ -q                   → 293 passed in 0.25s  exit 0
-$ python3 -m ruff check <every touched file>         → All checks passed!
-```
-At the tip: `test_orchestrator_loop.py` 95 passed, `test_era_integrity.py` 43 passed.
+The Phase D scoped gate went red twice with a DIFFERENT failing set each time,
+all in `tests/orchestration/test_product_smoke.py`: run 1 three ids
+(`TestAppStartsGreen::test_a_clean_app_passes`, `::test_the_app_is_always_stopped`,
+`TestRetryAndPortConflict::test_a_flaky_start_passes_on_retry_and_says_so`),
+run 2 one different id (`TestCorePathsRun::test_ok_paths_pass`) with run 1's
+three passing. Serially that file is 76/76 and the Phase E branch full suite has
+zero failures — the xdist-flake class of integration_gate.md step 4 (F135/F052).
+No F070 file is involved. Raw logs: `.agent/gate_f070_r2/scoped_slice_run{1,2}.txt`.
 
 ## Authored-text proofs
-`sha256sum .agent/authored/f070-r1-*.md` — all four equal their BEGIN digests:
+`sha256sum .agent/authored/f070-r2-*.md` — all four equal their BEGIN digests:
 ```
-839416ae503d12226b24f4a3e3e0e5faacb874f69abcec4954f97b1c4df168ba  f070-r1-1.md
-fc8cae6827860c82f661943d63ecebdc00b49e38e477a0a5637830bcb31e7515  f070-r1-2.md
-0db64faaa2cdbee1e187f444b7c458ce92dd8d23d95046720cabbe9d5f7cb3d6  f070-r1-3.md
-9998ad4f2ffe5d7efb0038be4aa8465c6330c980a05c9c00465ac523e0aca94c  f070-r1-4.md
+8f10901bd053cc6c81bbf3e4713dbb9b5a18524657040cbff7a6d2697ae9dfe4  f070-r2-1.md
+d357c08a7e0bfc6e2b6514018b734d29851b58800fe19dcb8ac533151291db43  f070-r2-2.md
+7655458d7cad32fccd5d8cd6c1a486f02c3528a26d1c1d141957769b19b557e2  f070-r2-3.md
+fae3c5a06a699f0093ec61d98970b15e9be5b2cb446d4fcd48febb63a63c5f34  f070-r2-4.md
 ```
-Disk-to-disk (`cp`, never retyped); committed-file digest vs authored digest:
+Disk-to-disk (`cp`), applied-file digest vs authored digest, at commit 0abc0e74:
 ```
-f070-r1-1.md -> .agent/live_review.md  IDENTICAL (839416ae…)
-f070-r1-2.md -> .agent/plan.md         IDENTICAL (fc8cae68…)
-f070-r1-3.md -> .agent/candidates.md   IDENTICAL (0db64fea…)
+f070-r2-1.md -> .agent/live_review.md  IDENTICAL (8f10901b…)
+f070-r2-2.md -> .agent/plan.md         IDENTICAL (d357c08a…)
 ```
-f070-r1-4.md (FROM→TO, applied by a script reading the saved file):
-FROM count before edit = 1, after = 0; TO count after = 1. At the tip:
-`grep -c '^- \[~\] F070 — Orchestrator loop inside Remedy$' docs/roadmap/STATUS.md` → 1;
-the `[ ]` form → 0.
+r2-3 / r2-4 (FROM→TO, applied by a script that PARSES the saved file — the
+replacement text is never retyped):
+```
+handback_template.md  EDIT 1  FROM 1 -> 0, TO 0 -> 1
+handback_template.md  EDIT 2  FROM 1 -> 0, TO 0 -> 1
+integration_gate.md   EDIT 1  FROM 1 -> 0, TO 0 -> 1
+integration_gate.md   EDIT 2  FROM 1 -> 0, TO 0 -> 1
+```
+The only edits to `.agent/live_review.md` after Phase A are the two ordered
+`Done: R-0169` / `Done: R-0170` appends (+1 line each). No verdict written.
+
+## Gate evidence
+`.agent/gate_f070_r2/` — 17 files, every one `.txt` or `.md`, none gitignored,
+README lists them all. Branch/base raw runs, exit codes, both (empty) FAILED
+lists, both (empty) comm sets, the dist/ hashes and their verdict, the two red
+scoped runs, the serial re-run, and the worktree teardown proof
+(`git worktree list` shows only the primary checkout).
 
 ## Deviations & assumptions
-1. **CLI deferred to T003** (permitted by the order; decisions.md 2026-08-03). `run_mission`, `loop_limits_from_config`, `read_ledger`, `render_ledger` are public and stable.
-2. **The dossier is a SEAM, not a document.** F071 is unbuilt and `Mission.dossier_ref` is RESERVED/empty. The loop calls a dossier port first (cache-stable prefix) and its default renders the mission record's own facts, labeled a stand-in; the per-iteration update writes that snapshot to `dossier.md`. Writing F071's maintained document here would be the second mechanism A6 forbids. Not an If-Blocked: the dossier is not in Phase 2's enumerated verb list.
-3. **`--yes` auto-approval extracted** from `do_cmd.py` into `flight_plan.auto_approve_flight_plan` in its own commit (A6 says extract, not copy). No behavior change; `test_plan_approval.py` 27 passed.
-4. **`orchestrator` added to `KNOWN_ROLES`**, defaults unchanged; `test_all_six_roles_present` renamed to `..._seven_...`. A pinned contract test changed — declared, not quiet. Routing policy doc untouched.
-5. **Two T001 tests tightened** by T002's evaluator (a milestone-done and an achieved claim now must bring evidence). Tightened, not weakened.
-6. **Branch rebuilt and force-pushed.** Two commits had landed at 541 and 712 changed lines; AGENTS.md permits one declared oversize commit per feature and neither was inseparable, so all three over-limit commits were split instead. Proof nothing was lost: `git diff f070-oversize-backup HEAD --stat` is EMPTY (byte-identical trees). Every commit in the range is now ≤471 changed lines.
-7. **Handoff exceeds the ≤100-line cap** (15 commits × per-commit tables + the mandatory item-status table). This is the R-0149 collision, routed to planning and still open. No section dropped.
-8. Milestone attribution is read from the loop's own ledger, not from `MissionJobLink` — job creation untouched (decisions.md).
+1. **`mission run` gains a MODE, it does not replace one.** The name already
+   belonged to the pre-F070 dogfood facade keyed on a run id; the feature file
+   mandates the same spelling for a mission id. Resolved as F047 resolved
+   `job resume`: one command, two modes, mode RESOLVED by looking the id up as
+   a mission (never guessed from its shape), every failure to resolve keeping
+   the old path. A test pins catalog uniqueness; the facade's own tests pass.
+2. **`make_structured_call_fn` gained an optional `model=`** so
+   `orchestrator.model` actually selects a model instead of documenting an
+   intention. Additive; every existing caller is unchanged. Config surface, not
+   a routing-policy change.
+3. **Ledger iteration numbering now continues across runs** (`next_iteration_index`).
+   Found BY the e2e, not by review: two runs left a ledger numbered 1,2,3,4,1,2,3.
+   Same fix F047 made for cycle numbering. Not ordered; recorded in decisions.md.
+4. **One e2e assertion was corrected during authoring**: the escalated decision
+   cannot appear in a run-1 prompt, because it is raised while iteration 4 is
+   deciding and that iteration's context was already assembled. Replaced with
+   what is true — exactly one decision genuinely open at the pause, and run 2's
+   first prompt showing it resolved.
+5. **The gate-evidence commit `58969e5d` is 966 lines** — the feature's first
+   and only oversize commit (R1 split all three of its own). Inseparability: it
+   is one evidence artifact set that the gate procedure requires committed
+   whole; 880 of those lines are raw pytest transcripts, and splitting them
+   across commits would leave the evidence non-atomic and unverifiable as a set.
+6. **R-0171 correction row** is above, with a measured-vs-cited discrepancy
+   noted honestly rather than silently adopting the finding's figure.
+7. Phase D's scoped gate red is recorded as evidence, not waved away: two runs,
+   two different failing sets, serial green, full-suite green, no F070 file
+   involved. If the reviewer reads it as a blocker instead, the CLI commit is
+   the only one that would need to move.
 
 ## Next
-Reviewer verdict for R1. On PASS: T003 (end-to-end two-milestone fixture mission + the `remedy mission run` / `mission ledger` CLI) as its own round.
+Reviewer gate verdict for R2. On PASS: closure per
+`docs/roadmap/STATUS_closure_protocol.md`, its own round.
