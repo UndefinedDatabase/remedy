@@ -502,3 +502,345 @@ def mission_achieved(project_id: str, mission_id: str,
 
     return set_mission_status(project_id, mission_id, MISSION_STATUS_ACHIEVED,
                               root)
+
+
+# ---------------------------------------------------------------------------
+# Limits
+# ---------------------------------------------------------------------------
+
+#: Config key for the iteration bound. Conservative on purpose — an unattended
+#: loop that mis-decides is cheaper to stop early than to let run.
+CONFIG_KEY_MAX_ITERATIONS = "orchestrator.max_iterations"
+
+#: Used when no config is readable at all. Matches the key's own default.
+DEFAULT_MAX_ITERATIONS = 10
+
+
+@dataclass(frozen=True)
+class LoopLimits:
+    """What bounds one ``run_mission`` invocation."""
+
+    max_iterations: int = DEFAULT_MAX_ITERATIONS
+
+
+def loop_limits_from_config(config: Any = None, *,
+                            iterations_flag: int | None = None) -> LoopLimits:
+    """Flag beats config beats default — the same precedence the executor uses."""
+    if iterations_flag is not None:
+        requested = int(iterations_flag)
+    else:
+        if config is None:
+            from packages.orchestration.config import get_config
+
+            config = get_config()
+        value = config.get(CONFIG_KEY_MAX_ITERATIONS)
+        requested = DEFAULT_MAX_ITERATIONS if value is None else int(value)
+    if requested < 1:
+        raise ValueError(f"max_iterations must be >= 1, got {requested}")
+    return LoopLimits(max_iterations=requested)
+
+
+# ---------------------------------------------------------------------------
+# Terminals — every one of them an honest status
+# ---------------------------------------------------------------------------
+
+#: The mission goal is met and the record says so.
+TERMINAL_ACHIEVED = "achieved"
+#: The orchestrator gave up and recorded why.
+TERMINAL_ABORTED = "aborted"
+#: A human has to answer something before anything else can happen.
+TERMINAL_WAITING = "waiting_on_decisions"
+#: A stop request was pending at a safe point.
+TERMINAL_STOPPED = "stopped"
+#: The iteration bound was reached. A NORMAL terminal, not a failure — the
+#: mission is simply not finished, and the status says exactly that.
+TERMINAL_ITERATION_LIMIT = "iteration_limit"
+#: There is no provider, so there is no decision to execute.
+TERMINAL_NO_PROVIDER = "no_provider"
+#: The provider answered, twice, with something that is not a valid move.
+TERMINAL_INVALID_MOVE = "invalid_move"
+#: The mission record is not active (paused, achieved or abandoned already).
+TERMINAL_NOT_ACTIVE = "mission_not_active"
+
+
+@dataclass(frozen=True)
+class MoveOutcome:
+    """What executing one move produced."""
+
+    status: str
+    detail: str = ""
+    terminal: bool = False
+    job_id: str = ""
+
+    def to_json(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"status": self.status, "detail": self.detail}
+        if self.job_id:
+            body["job_id"] = self.job_id
+        return body
+
+
+@dataclass
+class MissionRunResult:
+    """What one ``run_mission`` invocation did."""
+
+    mission_id: str
+    project_id: str
+    terminal: str
+    detail: str = ""
+    iterations: int = 0
+    entries: list[LedgerEntry] = field(default_factory=list)
+
+
+def resolve_mission_project(mission_id: str, root: Path | None = None) -> str:
+    """Which project holds this mission.
+
+    ``run_mission`` is specified as ``run_mission(mission_id, limits)`` — no
+    project argument — so the project is looked up from the mission area on
+    disk through the existing listing verbs. A caller that already knows it
+    passes it and skips this entirely.
+    """
+    from packages.orchestration.mission_state import (
+        MissionNotFoundError,
+        list_missions_safe,
+        project_ids_with_missions,
+    )
+
+    for project_id in project_ids_with_missions(root):
+        missions, _degraded, _skipped = list_missions_safe(project_id, root)
+        for mission in missions:
+            if mission.id == mission_id:
+                return project_id
+    raise MissionNotFoundError(
+        f"no project holds a mission with id {mission_id!r}")
+
+
+def build_orchestrator_prompt(context: OrchestratorContext,
+                              repo_root: Path | None = None) -> str:
+    """The full prompt for one iteration: the generated protocol, then the state.
+
+    The protocol block leads because it never changes within a run; the
+    dossier-first context follows. Both halves of the prefix are therefore
+    stable, which is what makes the cache discipline worth having.
+    """
+    return (f"{build_orchestrator_system_prompt(repo_root)}\n\n"
+            f"# Mission state\n\n{context.text}")
+
+
+def run_mission(
+    mission_id: str,
+    limits: LoopLimits | None = None,
+    *,
+    project_id: str | None = None,
+    call_fn: Callable[[str, int], str] | None = None,
+    root: Path | None = None,
+    dossier: Callable[[Any], str] | None = None,
+    dispatch: Callable[..., Any] | None = None,
+    last_report: Callable[[Any], str] | None = None,
+    control_root_path: Path | None = None,
+    repo_root: Path | None = None,
+    on_call: Callable[[int, str, bool, str], None] | None = None,
+    now: datetime | None = None,
+) -> MissionRunResult:
+    """Run one mission until it terminates, its limits run out, or it is stopped.
+
+    One iteration is: safe point -> assemble context -> ONE provider call for a
+    schema-validated move -> execute that move through the existing verbs ->
+    append a ledger entry. The safe point is evaluated BEFORE any work of an
+    iteration begins, so a stop request lands within one iteration and a human
+    override never waits for the run to finish.
+
+    Seams, all defaulting to the production path:
+      ``dispatch``     how a job is created for a milestone
+                       (``mission_state.continue_mission``)
+      ``dossier``      how the mission's dossier renders (F071 plugs in here)
+      ``last_report``  the account of the most recent dispatched job
+      ``call_fn``      the orchestrator provider call; ``None`` means there is
+                       no provider, which is a terminal and not an exception
+
+    Every iteration leaves a ledger entry — including the ones that end the
+    run — so the audit trail has no gaps where a decision used to be.
+    """
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_ACTIVE,
+        load_mission,
+    )
+    from packages.orchestration.orchestrator_move_schema import OrchestratorMove
+    from packages.orchestration.safe_points import consume_stop, stop_requested
+    from packages.orchestration.structured_outputs import run_structured_call
+
+    bounds = limits or loop_limits_from_config()
+    pid = project_id or resolve_mission_project(mission_id, root)
+    result = MissionRunResult(mission_id=mission_id, project_id=pid,
+                              terminal=TERMINAL_ITERATION_LIMIT)
+
+    def _record(iteration: int, digest: str, move: dict[str, Any],
+                outcome: MoveOutcome, cost: dict[str, Any]) -> None:
+        entry = LedgerEntry(iteration=iteration, context_digest=digest,
+                            move=move, outcome=outcome.to_json(), cost=cost)
+        append_ledger_entry(pid, mission_id, entry, root, now=now)
+        result.entries.append(entry)
+
+    for iteration in range(1, bounds.max_iterations + 1):
+        # ── safe point: human overrides win before any work of this iteration
+        signal = stop_requested(mission_id, control_root_path=control_root_path)
+        if signal is not None:
+            consume_stop(mission_id, control_root_path=control_root_path)
+            outcome = MoveOutcome(
+                status=TERMINAL_STOPPED,
+                detail=f"stop requested: {getattr(signal, 'reason', '')}".strip(),
+                terminal=True)
+            _record(iteration, "", {}, outcome, {"calls": 0,
+                                                 "usage": None,
+                                                 "usage_source": USAGE_UNMEASURED})
+            result.terminal, result.detail = TERMINAL_STOPPED, outcome.detail
+            result.iterations = iteration - 1
+            return result
+
+        mission = load_mission(pid, mission_id, root)
+        if mission.status != MISSION_STATUS_ACTIVE:
+            result.terminal = TERMINAL_NOT_ACTIVE
+            result.detail = f"mission status is {mission.status}"
+            result.iterations = iteration - 1
+            return result
+
+        context = assemble_context(
+            mission,
+            done_milestones=done_milestones(mission),
+            dossier=dossier,
+            last_report=last_report(mission) if last_report else "",
+            open_decisions=open_mission_decisions(mission))
+        result.iterations = iteration
+
+        if call_fn is None:
+            outcome = MoveOutcome(
+                status=TERMINAL_NO_PROVIDER,
+                detail="no orchestrator provider is configured, so no move "
+                       "was decided",
+                terminal=True)
+            _record(iteration, context.digest, {}, outcome,
+                    {"calls": 0, "usage": None,
+                     "usage_source": USAGE_UNMEASURED})
+            result.terminal, result.detail = TERMINAL_NO_PROVIDER, outcome.detail
+            return result
+
+        call = run_structured_call(
+            OrchestratorMove,
+            build_orchestrator_prompt(context, repo_root),
+            call_fn,
+            on_call=on_call,
+            allow_parse_retry=True)
+        cost = measure_call_cost(call)
+
+        if not call.ok:
+            outcome = MoveOutcome(
+                status=TERMINAL_INVALID_MOVE,
+                detail=f"parse-class failure: {call.hint}".strip(),
+                terminal=True)
+            _record(iteration, context.digest, {}, outcome, cost)
+            result.terminal, result.detail = TERMINAL_INVALID_MOVE, outcome.detail
+            return result
+
+        move: OrchestratorMove = call.value
+        outcome = execute_move(pid, mission_id, move, root=root,
+                               dispatch=dispatch, now=now)
+        _record(iteration, context.digest, move.model_dump(), outcome, cost)
+        if outcome.terminal:
+            result.terminal, result.detail = outcome.status, outcome.detail
+            return result
+
+    result.terminal = TERMINAL_ITERATION_LIMIT
+    result.detail = (f"reached the {bounds.max_iterations}-iteration limit "
+                     f"with the mission still active")
+    return result
+
+
+def execute_move(project_id: str, mission_id: str, move: Any, *,
+                 root: Path | None = None,
+                 dispatch: Callable[..., Any] | None = None,
+                 now: datetime | None = None) -> MoveOutcome:
+    """Execute ONE move through Remedy's existing verbs. No verb is reinvented here.
+
+    The dispatch path goes through ``mission_state.continue_mission`` — which
+    creates the job, builds its plan verify-first and links it to the mission —
+    and then applies the audited unattended approval through
+    ``flight_plan.auto_approve_flight_plan`` when the job has an open plan gate.
+    """
+    from packages.orchestration.mission_state import (
+        MISSION_STATUS_ABANDONED,
+        continue_mission,
+        set_mission_status,
+    )
+    from packages.orchestration.orchestrator_move_schema import (
+        MOVE_ABORT_WITH_REASON,
+        MOVE_DECLARE_MILESTONE_DONE,
+        MOVE_DECLARE_MISSION_ACHIEVED,
+        MOVE_DISPATCH_JOB,
+        MOVE_WAIT_ON_DECISIONS,
+    )
+
+    payload = dict(getattr(move, "payload", {}) or {})
+    kind = getattr(move, "kind", "")
+
+    if kind == MOVE_WAIT_ON_DECISIONS:
+        return MoveOutcome(
+            status=TERMINAL_WAITING,
+            detail="the orchestrator is waiting on a human decision",
+            terminal=True)
+
+    if kind == MOVE_ABORT_WITH_REASON:
+        set_mission_status(project_id, mission_id, MISSION_STATUS_ABANDONED,
+                           root)
+        return MoveOutcome(status=TERMINAL_ABORTED,
+                           detail=payload.get("reason", ""), terminal=True)
+
+    if kind == MOVE_DECLARE_MISSION_ACHIEVED:
+        mission_achieved(project_id, mission_id, root)
+        return MoveOutcome(status=TERMINAL_ACHIEVED,
+                           detail="every milestone is done and the mission "
+                                  "goal is met",
+                           terminal=True)
+
+    if kind == MOVE_DECLARE_MILESTONE_DONE:
+        milestone_id = payload["milestone_id"]
+        mark_milestone_done(project_id, mission_id, milestone_id, root)
+        return MoveOutcome(status="milestone_done",
+                           detail=f"milestone {milestone_id} recorded as done")
+
+    if kind == MOVE_DISPATCH_JOB:
+        create = dispatch or continue_mission
+        job = create(project_id, mission_id, payload["step"], root=root,
+                     now=now)
+        approved = _auto_approve_if_gated(job)
+        detail = f"job {job.id} dispatched for {payload['milestone_id']}"
+        if approved:
+            detail += " (plan auto-approved, audited)"
+        return MoveOutcome(status="dispatched", detail=detail,
+                           job_id=str(job.id))
+
+    # Unreachable through the schema: `kind` is a closed Literal, so anything
+    # else failed validation long before it reached here. Kept as a loud
+    # failure rather than a silent no-op in case the two ever drift.
+    raise ValueError(f"unknown orchestrator move kind: {kind!r}")
+
+
+def _auto_approve_if_gated(job: Any) -> bool:
+    """Apply the audited unattended approval when the job's plan gate is open.
+
+    Unattended missions run under ``--yes`` semantics (feature file): every
+    open clarification takes its documented default and the approval carries an
+    audit record. The semantics are NOT reimplemented here — this calls the
+    helper ``remedy do --yes`` uses.
+    """
+    from packages.orchestration.data_paths import job_evidence_export_dir
+    from packages.orchestration.flight_plan import (
+        auto_approve_flight_plan,
+        flight_plan_approval_open,
+    )
+    from packages.orchestration.storage import save_job
+
+    if not flight_plan_approval_open(job):
+        return False
+    job.flight_plan = auto_approve_flight_plan(
+        dict(job.flight_plan or {}), job_evidence_export_dir(str(job.id)))
+    save_job(job)
+    return True

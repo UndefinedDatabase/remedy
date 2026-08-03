@@ -38,6 +38,8 @@ from packages.orchestration.mission_state import (
     set_mission_plan,
 )
 from packages.orchestration.orchestrator_loop import (
+    CONFIG_KEY_MAX_ITERATIONS,
+    DEFAULT_MAX_ITERATIONS,
     LEDGER_FILENAME,
     MILESTONES_DONE_KEY,
     PROTOCOL_DOC_RELATIVE,
@@ -46,8 +48,13 @@ from packages.orchestration.orchestrator_loop import (
     SECTION_DOSSIER,
     SECTION_PLAN,
     SECTION_REPORT,
+    TERMINAL_ABORTED,
+    TERMINAL_ACHIEVED,
+    TERMINAL_ITERATION_LIMIT,
+    TERMINAL_WAITING,
     USAGE_UNMEASURED,
     LedgerEntry,
+    LoopLimits,
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
@@ -55,6 +62,7 @@ from packages.orchestration.orchestrator_loop import (
     context_digest,
     done_milestones,
     ledger_path,
+    loop_limits_from_config,
     mark_milestone_done,
     measure_call_cost,
     orchestrator_protocol_text,
@@ -62,6 +70,7 @@ from packages.orchestration.orchestrator_loop import (
     read_ledger,
     render_ledger,
     render_mission_dossier,
+    run_mission,
 )
 from packages.orchestration.orchestrator_move_schema import (
     MAX_PAYLOAD_VALUE_CHARS,
@@ -445,3 +454,123 @@ class TestMilestoneBookkeeping:
         m = create_mission(PROJECT, "no plan here", root=tmp_path)
         with pytest.raises(ValueError):
             mark_milestone_done(PROJECT, m.id, "M001", tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# the loop
+# ---------------------------------------------------------------------------
+
+
+class _FakeJob:
+    """The smallest thing the dispatch seam has to return: an id and no plan."""
+
+    def __init__(self, job_id: str = "job-0001"):
+        self.id = job_id
+        self.flight_plan = None
+
+
+def _scripted(*responses: str):
+    """A fake provider that replays a fixed script, one answer per call."""
+    calls: list[str] = []
+
+    def call_fn(prompt: str, attempt: int) -> str:
+        calls.append(prompt)
+        index = min(len(calls) - 1, len(responses) - 1)
+        return responses[index]
+
+    call_fn.prompts = calls  # type: ignore[attr-defined]
+    return call_fn
+
+
+@pytest.fixture()
+def dispatched():
+    """Records every dispatch the loop makes, without creating real jobs."""
+    seen: list[tuple[str, str, str]] = []
+
+    def dispatch(project_id, mission_id, step, *, root=None, now=None):
+        seen.append((project_id, mission_id, step))
+        return _FakeJob(f"job-{len(seen):04d}")
+
+    dispatch.seen = seen  # type: ignore[attr-defined]
+    return dispatch
+
+
+class TestLoopLimits:
+    def test_the_flag_beats_config(self):
+        assert loop_limits_from_config(iterations_flag=3).max_iterations == 3
+
+    def test_the_config_key_supplies_the_default(self):
+        class _Config:
+            def get(self, key):
+                return 4 if key == CONFIG_KEY_MAX_ITERATIONS else None
+
+        assert loop_limits_from_config(_Config()).max_iterations == 4
+
+    def test_an_absent_config_value_falls_back_to_the_conservative_default(self):
+        class _Config:
+            def get(self, key):
+                return None
+
+        assert (loop_limits_from_config(_Config()).max_iterations
+                == DEFAULT_MAX_ITERATIONS)
+
+    def test_a_nonsense_bound_is_refused(self):
+        with pytest.raises(ValueError):
+            loop_limits_from_config(iterations_flag=0)
+
+
+class TestEveryMoveKindIsExercised:
+    def test_wait_on_decisions_terminates_waiting(self, tmp_path, mission,
+                                                  dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
+            dispatch=dispatched, control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_WAITING
+        assert result.iterations == 1
+
+    def test_dispatch_job_goes_through_the_dispatch_verb(self, tmp_path,
+                                                         mission, dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="build M001")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert dispatched.seen == [(PROJECT, mission.id, "build M001")]
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+        assert result.entries[0].outcome["status"] == "dispatched"
+        assert result.entries[0].outcome["job_id"] == "job-0001"
+
+    def test_declare_milestone_done_records_the_milestone(self, tmp_path,
+                                                          mission, dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_milestone_done",
+                                         milestone_id="M001")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert done_milestones(
+            load_mission(PROJECT, mission.id, tmp_path)) == ("M001",)
+
+    def test_declare_mission_achieved_sets_the_record(self, tmp_path, mission,
+                                                      dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_mission_achieved")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_ACHIEVED
+        assert load_mission(PROJECT, mission.id, tmp_path).status == "achieved"
+
+    def test_abort_with_reason_abandons_and_records_why(self, tmp_path,
+                                                        mission, dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=_scripted(_move_json("abort_with_reason",
+                                         reason="the plan is unbuildable")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_ABORTED
+        assert result.detail == "the plan is unbuildable"
+        assert load_mission(PROJECT, mission.id, tmp_path).status == "abandoned"
