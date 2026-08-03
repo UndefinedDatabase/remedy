@@ -22,7 +22,10 @@ What the order requires proof of (T001 structure and update mechanics):
     REBUILT document so an open item cannot be lost by crossing sections
     (R-0172);
   * a failed compression (no provider, bad answer, broken rule, an exception)
-    leaves the previous dossier plus the raw facts and an honest flag.
+    leaves the previous dossier plus the raw facts and an honest flag;
+  * (T003) the live state round-trips through JSON, the iteration's facts come
+    from artifacts Remedy ALREADY records — the compiled plan and the decision
+    ledger — and each refresh stores exactly one new version.
 
 No provider is contacted: every "LLM" here is a local callable returning
 recorded text.
@@ -52,8 +55,10 @@ from packages.orchestration.mission_dossier import (
     DOSSIER_TOKEN_BASIS,
     DOSSIER_TOKEN_CONFIDENCE,
     DOSSIER_VERSION_TEMPLATE,
+    ITERATION_ID_TEMPLATE,
     MAX_RECENT_DECISIONS,
     NO_NEXT_STEP,
+    PLAN_RISK_ID_TEMPLATE,
     SECTION_DECISIONS,
     SECTION_GOAL,
     SECTION_MILESTONES,
@@ -68,15 +73,23 @@ from packages.orchestration.mission_dossier import (
     compression_rule_violation,
     count_dossier_tokens,
     dossier_budget_from_config,
+    dossier_of_json,
     dossier_sections,
+    dossier_state_path,
+    dossier_to_json,
     dossier_tokens,
     dossier_version_path,
     dossier_versions,
     latest_dossier_version,
+    load_dossier_state,
+    mission_iteration_facts,
+    newest_dossier_text,
     open_items,
+    refresh_mission_dossier,
     render_dossier,
     render_dossier_body,
     resolve_risk,
+    save_dossier_state,
     start_dossier,
     update,
     write_dossier_version,
@@ -726,3 +739,138 @@ class TestUpdateWithinBudget:
         result = update(dossier, IterationFacts(), budget=50,
                         call_fn=_Provider(_answer(dossier)))
         assert result.dossier.version == dossier.version + 1
+
+
+# ---------------------------------------------------------------------------
+# T003 — the live state, the facts, the refresh
+# ---------------------------------------------------------------------------
+
+
+def _mission(tmp_path, *milestones, risks=(), goal="Ship the thing"):
+    from packages.orchestration.mission_plan_schema import (
+        MISSION_PLAN_SCHEMA_V,
+        Milestone,
+        MissionPlan,
+    )
+    from packages.orchestration.mission_state import (
+        create_mission,
+        load_mission,
+        set_mission_plan,
+    )
+
+    record = create_mission(PROJECT, goal, root=tmp_path)
+    plan = MissionPlan(
+        schema_v=MISSION_PLAN_SCHEMA_V,
+        milestones=[Milestone(id=mid, goal=f"The outcome of {mid} holds",
+                              rationale=f"{mid} exists", depends_on=list(deps),
+                              jobs_draft=[{"title": f"{mid} work",
+                                           "goal": f"do {mid}",
+                                           "est_band": "M"}])
+                    for mid, deps in milestones],
+        risks=list(risks), compiled=True, origin="provider")
+    set_mission_plan(PROJECT, record.id, plan.model_dump(), tmp_path)
+    return load_mission(PROJECT, record.id, tmp_path)
+
+
+class TestTheLiveState:
+    def test_the_state_round_trips_through_json(self):
+        dossier = resolve_risk(_bloated(), "R002", "closed on review")
+        assert dossier_of_json(dossier_to_json(dossier)) == dossier
+
+    def test_saving_then_loading_returns_the_same_dossier(self, tmp_path):
+        dossier = _bloated()
+        save_dossier_state(PROJECT, MISSION, dossier, tmp_path)
+        assert load_dossier_state(PROJECT, MISSION, tmp_path) == dossier
+
+    def test_no_state_reads_as_absent_not_as_an_error(self, tmp_path):
+        assert load_dossier_state(PROJECT, MISSION, tmp_path) is None
+
+    def test_an_unreadable_state_reads_as_absent(self, tmp_path):
+        path = dossier_state_path(PROJECT, MISSION, tmp_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{ not json", encoding="utf-8")
+        assert load_dossier_state(PROJECT, MISSION, tmp_path) is None
+
+    def test_the_newest_version_text_is_what_the_prompt_would_use(self, tmp_path):
+        dossier = _dossier()
+        write_dossier_version(PROJECT, MISSION, dossier, tmp_path)
+        assert newest_dossier_text(PROJECT, MISSION, tmp_path) == \
+            render_dossier(dossier)
+
+    def test_no_stored_version_renders_as_empty(self, tmp_path):
+        assert newest_dossier_text(PROJECT, MISSION, tmp_path) == ""
+
+
+class TestFactsComeFromRecordedArtifacts:
+    def test_milestones_carry_their_state_and_their_blocker(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()), ("M002", ("M001",)))
+        facts = mission_iteration_facts(mission)
+        assert [(m.id, m.resolved) for m in facts.milestones] == \
+            [("M001", False), ("M002", False)]
+        assert "depends on M001" in facts.milestones[1].outcome
+
+    def test_a_done_milestone_is_marked_resolved(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()), ("M002", ("M001",)))
+        facts = mission_iteration_facts(mission, done_milestones=("M001",))
+        assert facts.milestones[0].resolved is True
+        assert facts.milestones[1].outcome == ""
+
+    def test_plan_risks_keep_a_stable_id_across_iterations(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()),
+                           risks=["the migration is not reversible"])
+        first = mission_iteration_facts(mission)
+        again = mission_iteration_facts(mission)
+        assert [r.id for r in first.risks] == [r.id for r in again.risks]
+        assert first.risks[0].id == PLAN_RISK_ID_TEMPLATE.format(index=1)
+
+    def test_the_ledger_becomes_the_decisions(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        facts = mission_iteration_facts(mission, ledger=[
+            {"iteration": 1, "move": {"kind": "dispatch_job"},
+             "outcome": {"status": "dispatched"}}])
+        assert facts.decisions[0].id == ITERATION_ID_TEMPLATE.format(iteration=1)
+        assert facts.decisions[0].text == "dispatch_job"
+        assert facts.decisions[0].outcome == "dispatched"
+
+    def test_the_next_step_is_the_first_ready_open_milestone(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()), ("M002", ("M001",)))
+        assert mission_iteration_facts(mission).next_step.startswith(
+            "advance milestone M001")
+
+    def test_with_everything_done_the_next_step_says_so(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        facts = mission_iteration_facts(mission, done_milestones=("M001",))
+        assert "every milestone is done" in facts.next_step
+
+
+class TestRefreshAdvancesTheMaintainedDocument:
+    def test_the_first_refresh_starts_from_the_missions_goal(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        result = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                         root=tmp_path)
+        assert result.dossier.goal == "Ship the thing"
+        assert dossier_versions(PROJECT, mission.id, tmp_path) == [2]
+
+    def test_each_refresh_stores_exactly_one_new_version(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        for _ in range(3):
+            refresh_mission_dossier(PROJECT, mission.id, mission, root=tmp_path)
+        assert dossier_versions(PROJECT, mission.id, tmp_path) == [2, 3, 4]
+
+    def test_the_goal_survives_every_refresh_byte_identical(self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()))
+        first = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                        root=tmp_path).dossier.goal
+        for _ in range(4):
+            latest = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                             root=tmp_path).dossier.goal
+        assert latest == first
+
+    def test_a_tight_budget_with_no_provider_flags_rather_than_truncates(
+            self, tmp_path):
+        mission = _mission(tmp_path, ("M001", ()), ("M002", ("M001",)))
+        result = refresh_mission_dossier(PROJECT, mission.id, mission,
+                                         root=tmp_path, budget=1)
+        assert result.status == COMPRESSION_NO_PROVIDER
+        assert result.over_budget is True
+        assert {i.id for i in open_items(result.dossier)} == {"M001", "M002"}

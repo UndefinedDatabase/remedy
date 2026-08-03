@@ -35,6 +35,7 @@ reordering would invalidate a provider's prompt cache for no gain.
 """
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -730,3 +731,194 @@ def update(dossier: MissionDossier, facts: IterationFacts, *,
     return DossierUpdate(dossier=result.dossier, tokens=recount, budget=limit,
                          status=COMPRESSION_OK, calls=result.calls,
                          cost=result.cost)
+
+
+# ---------------------------------------------------------------------------
+# T003 — loop integration: the maintained document drives the live prompt
+# ---------------------------------------------------------------------------
+
+#: The live STRUCTURED state, beside the versioned markdown in the mission's
+#: evidence area. The ``dossier_v<N>.md`` files are the human-readable audit
+#: trail — diffable, never overwritten — and this file is what the next
+#: iteration loads to keep appending. Remedy deliberately does NOT parse the
+#: markdown back: a second representation that has to round-trip is a second
+#: source of truth, and a compression's result would be at the mercy of a
+#: renderer change.
+DOSSIER_STATE_FILENAME = "dossier_state.json"
+
+
+def dossier_state_path(project_id: str, mission_id: str,
+                       root: Path | None = None) -> Path:
+    """Where one mission's live dossier state lives."""
+    return (mission_evidence_dir(project_id, mission_id, root)
+            / DOSSIER_STATE_FILENAME)
+
+
+def _item_json(item: DossierItem) -> dict[str, Any]:
+    return {"id": item.id, "text": item.text, "resolved": item.resolved,
+            "outcome": item.outcome}
+
+
+def _item_of(body: Any) -> DossierItem:
+    return DossierItem(id=str(body.get("id", "")), text=str(body.get("text", "")),
+                       resolved=bool(body.get("resolved", False)),
+                       outcome=str(body.get("outcome", "") or ""))
+
+
+def dossier_to_json(dossier: MissionDossier) -> dict[str, Any]:
+    """The dossier as a plain dict — the state file's whole content."""
+    return {
+        "goal": dossier.goal,
+        "milestones": [_item_json(m) for m in dossier.milestones],
+        "risks": [_item_json(r) for r in dossier.risks],
+        "decisions": [_item_json(d) for d in dossier.decisions],
+        "next_step": dossier.next_step,
+        "version": dossier.version,
+        "over_budget": dossier.over_budget,
+        "budget_note": dossier.budget_note,
+    }
+
+
+def dossier_of_json(body: dict[str, Any]) -> MissionDossier:
+    """Rebuild a dossier from :func:`dossier_to_json`'s output."""
+    return MissionDossier(
+        goal=str(body.get("goal", "")),
+        milestones=tuple(_item_of(m) for m in body.get("milestones") or ()),
+        risks=tuple(_item_of(r) for r in body.get("risks") or ()),
+        decisions=tuple(_item_of(d) for d in body.get("decisions") or ()),
+        next_step=str(body.get("next_step", "") or ""),
+        version=int(body.get("version", 1) or 1),
+        over_budget=bool(body.get("over_budget", False)),
+        budget_note=str(body.get("budget_note", "") or ""),
+    )
+
+
+def save_dossier_state(project_id: str, mission_id: str,
+                       dossier: MissionDossier,
+                       root: Path | None = None) -> Path:
+    """Persist the live state. Rewritten every iteration — the versions archive."""
+    path = dossier_state_path(project_id, mission_id, root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(dossier_to_json(dossier), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
+    return path
+
+
+def load_dossier_state(project_id: str, mission_id: str,
+                       root: Path | None = None) -> MissionDossier | None:
+    """The live state, or None when this mission has no dossier yet.
+
+    An unreadable state file reads as ABSENT rather than raising: a mission
+    whose dossier cannot be loaded still gets a fresh one built from its own
+    record, which is degraded but never a dead loop.
+    """
+    path = dossier_state_path(project_id, mission_id, root)
+    if not path.is_file():
+        return None
+    try:
+        body = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(body, dict) or not body.get("goal"):
+        return None
+    return dossier_of_json(body)
+
+
+def newest_dossier_text(project_id: str, mission_id: str,
+                        root: Path | None = None) -> str:
+    """The newest stored version's text — what the live prompt uses. "" if none."""
+    version = latest_dossier_version(project_id, mission_id, root)
+    if not version:
+        return ""
+    path = dossier_version_path(project_id, mission_id, version, root)
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+#: Id prefix for a risk carried over from the compiled mission plan. Prefixed
+#: and index-stable so the same plan risk keeps the same id across iterations —
+#: an id that moved would look like a new fact every time.
+PLAN_RISK_ID_TEMPLATE = "PR{index:03d}"
+
+#: Id prefix for one recorded loop iteration in DECISIONS.
+ITERATION_ID_TEMPLATE = "I{iteration:03d}"
+
+
+def mission_iteration_facts(mission: Any, *,
+                            done_milestones: Sequence[str] = (),
+                            ledger: Sequence[dict[str, Any]] = (),
+                            ) -> IterationFacts:
+    """One iteration's facts, read from the mission record and its own ledger.
+
+    Every fact here is ALREADY recorded somewhere Remedy owns — the compiled
+    plan and the append-only decision ledger. Nothing is invented for the
+    dossier, so a dossier line can always be traced back to the artifact that
+    produced it.
+    """
+    from packages.orchestration.mission_compiler import mission_plan_of
+
+    plan = mission_plan_of(mission)
+    done = set(done_milestones)
+    milestones: list[DossierItem] = []
+    risks: list[DossierItem] = []
+    next_step = ""
+    if plan is not None:
+        for ms in plan.milestones:
+            unmet = sorted(set(ms.depends_on) - done)
+            milestones.append(DossierItem(
+                id=ms.id, text=ms.goal, resolved=ms.id in done,
+                outcome=(f"depends on {', '.join(unmet)}" if unmet else "")))
+            if ms.id not in done and not unmet and not next_step:
+                next_step = f"advance milestone {ms.id}: {ms.goal}"
+        risks = [
+            DossierItem(id=PLAN_RISK_ID_TEMPLATE.format(index=index), text=text)
+            for index, text in enumerate(plan.risks, start=1)]
+    if not next_step:
+        next_step = ("every milestone is done — decide whether the mission "
+                     "goal is met")
+
+    decisions = [
+        DossierItem(
+            id=ITERATION_ID_TEMPLATE.format(
+                iteration=int(entry.get("iteration", 0) or 0)),
+            text=str((entry.get("move") or {}).get("kind", "") or "no move"),
+            resolved=True,
+            outcome=str((entry.get("outcome") or {}).get("status", "") or ""))
+        for entry in ledger]
+    return IterationFacts(milestones=milestones, risks=risks,
+                          decisions=decisions, next_step=next_step)
+
+
+def refresh_mission_dossier(project_id: str, mission_id: str, mission: Any, *,
+                            root: Path | None = None,
+                            call_fn: Callable[[str, int], str] | None = None,
+                            budget: int | None = None,
+                            config: Any = None) -> DossierUpdate:
+    """Advance the mission's dossier by one iteration and store the new version.
+
+    Load the live state (or start one from the mission's goal) -> append this
+    iteration's facts -> enforce the budget -> write ``dossier_v<N>.md`` and
+    the state file. ``call_fn`` is the COMPRESSION provider; omitted, an
+    over-budget dossier keeps its honest flag rather than making a call the
+    loop's own budget never authorized.
+    """
+    from packages.orchestration.mission_compiler import mission_goal
+    from packages.orchestration.orchestrator_loop import (
+        done_milestones,
+        read_ledger,
+    )
+
+    current = load_dossier_state(project_id, mission_id, root)
+    if current is None:
+        current = start_dossier(mission_goal(mission) or f"mission {mission_id}")
+    facts = mission_iteration_facts(
+        mission, done_milestones=done_milestones(mission),
+        ledger=read_ledger(project_id, mission_id, root))
+    result = update(current, facts, call_fn=call_fn, budget=budget,
+                    config=config)
+    write_dossier_version(project_id, mission_id, result.dossier, root)
+    save_dossier_state(project_id, mission_id, result.dossier, root)
+    return result
