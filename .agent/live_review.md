@@ -42,6 +42,7 @@ dossier is the stable PREFIX of the orchestrator prompt.
   risk under "milestones" refused with "keep every open item" in
   the detail; open milestone under "risks" refused; a refused
   answer leaves the dossier untouched.
+  Done: R-0172
 - R-0173 (product, Low) 2026-08-03: write_dossier_version
   overwrites an existing dossier_v<N>.md silently (unconditional
   write_text) while the module doc and its own docstring promise

@@ -488,37 +488,77 @@ def build_compression_prompt(dossier: MissionDossier) -> str:
     )
 
 
-def compression_rule_violation(previous: MissionDossier,
-                               answer: DossierCompression) -> str:
-    """Why this answer breaks the rules, or "" when it holds to them.
+def _rebuild(previous: MissionDossier,
+             answer: DossierCompression) -> MissionDossier:
+    """The compressed dossier: rewritten text, carried-over state, SAME goal.
 
-    Checked, not believed. "keep every open item" and "merge resolved risks
-    away" are both verified against the dossier that went IN, so a compression
-    that quietly loses an open risk is refused rather than written to disk.
+    The goal is copied from ``previous`` — the same string object the dossier
+    started with — so "byte-identical to iteration one" is true by
+    construction rather than by the provider's cooperation.
+    """
+    def carry(current: Sequence[DossierItem],
+              rewritten: Sequence[CompressedItem]) -> tuple[DossierItem, ...]:
+        by_id = {item.id: item for item in current}
+        return tuple(replace(by_id[item.id], text=item.text)
+                     for item in rewritten if item.id in by_id)
+
+    return replace(
+        previous,
+        milestones=carry(previous.milestones, answer.milestones),
+        # A resolved risk is not re-listed here — it lives in DECISIONS with
+        # its outcome, which is where the compression was told to fold it.
+        risks=carry(previous.risks, answer.risks),
+        decisions=carry(previous.decisions, answer.decisions),
+        next_step=answer.next_step.strip() or previous.next_step,
+    )
+
+
+def _check_rules(previous: MissionDossier, answer: DossierCompression,
+                 ) -> tuple[str, MissionDossier]:
+    """``(violation, rebuilt)`` — the rule check and the document it judged.
+
+    R-0172: "keep every open item" is verified against the REBUILT document,
+    never against the answer's raw id lists. ``_rebuild`` carries items PER
+    SECTION, so an open risk returned under ``milestones`` is present in the
+    answer and absent from the rebuild — checking the answer would pass it and
+    then silently drop the item, which is the exact failure this module exists
+    to prevent. The rebuild is what would reach disk, so the rebuild is what
+    gets judged.
     """
     known = {item.id for item in
              (*previous.milestones, *previous.risks, *previous.decisions)}
     returned = {item.id for item in
                 (*answer.milestones, *answer.risks, *answer.decisions)}
     invented = sorted(returned - known)
+    rebuilt = _rebuild(previous, answer)
     if invented:
         return (f"the answer invents fact(s) the dossier never recorded: "
-                f"{', '.join(invented)}")
+                f"{', '.join(invented)}"), rebuilt
 
-    kept = {item.id for item in (*answer.milestones, *answer.risks)}
+    kept = {item.id for item in (*rebuilt.milestones, *rebuilt.risks)}
     lost = sorted(item.id for item in open_items(previous)
                   if item.id not in kept)
     if lost:
         return (f"{COMPRESSION_RULES[1]}: open item(s) {', '.join(lost)} were "
-                f"dropped")
+                f"dropped"), rebuilt
 
     resolved_ids = {r.id for r in previous.risks if r.resolved}
     still_there = sorted(
-        item.id for item in answer.risks if item.id in resolved_ids)
+        item.id for item in rebuilt.risks if item.id in resolved_ids)
     if still_there:
         return (f"{COMPRESSION_RULES[0]}: resolved risk(s) "
-                f"{', '.join(still_there)} are still listed as risks")
-    return ""
+                f"{', '.join(still_there)} are still listed as risks"), rebuilt
+    return "", rebuilt
+
+
+def compression_rule_violation(previous: MissionDossier,
+                               answer: DossierCompression) -> str:
+    """Why this answer breaks the rules, or "" when it holds to them.
+
+    Checked, not believed — and checked against the document the answer would
+    actually produce. See :func:`_check_rules`.
+    """
+    return _check_rules(previous, answer)[0]
 
 
 @dataclass(frozen=True)
@@ -545,31 +585,6 @@ COMPRESSION_INVALID_ANSWER = "invalid_answer"
 COMPRESSION_RULE_VIOLATION = "rule_violation"
 #: The provider call itself raised.
 COMPRESSION_PROVIDER_ERROR = "provider_error"
-
-
-def _rebuild(previous: MissionDossier,
-             answer: DossierCompression) -> MissionDossier:
-    """The compressed dossier: rewritten text, carried-over state, SAME goal.
-
-    The goal is copied from ``previous`` — the same string object the dossier
-    started with — so "byte-identical to iteration one" is true by
-    construction rather than by the provider's cooperation.
-    """
-    def carry(current: Sequence[DossierItem],
-              rewritten: Sequence[CompressedItem]) -> tuple[DossierItem, ...]:
-        by_id = {item.id: item for item in current}
-        return tuple(replace(by_id[item.id], text=item.text)
-                     for item in rewritten if item.id in by_id)
-
-    return replace(
-        previous,
-        milestones=carry(previous.milestones, answer.milestones),
-        # A resolved risk is not re-listed here — it lives in DECISIONS with
-        # its outcome, which is where the compression was told to fold it.
-        risks=carry(previous.risks, answer.risks),
-        decisions=carry(previous.decisions, answer.decisions),
-        next_step=answer.next_step.strip() or previous.next_step,
-    )
 
 
 def compress_dossier(dossier: MissionDossier,
@@ -611,14 +626,16 @@ def compress_dossier(dossier: MissionDossier,
             calls=outcome.calls, cost=cost)
 
     answer: DossierCompression = outcome.value
-    violation = compression_rule_violation(dossier, answer)
+    # The rebuild is judged and then returned — the SAME object, so nothing
+    # can pass the rule check and then be rebuilt differently (R-0172).
+    violation, rebuilt = _check_rules(dossier, answer)
     if violation:
         return CompressionResult(
             ok=False, dossier=dossier, status=COMPRESSION_RULE_VIOLATION,
             detail=violation, calls=outcome.calls, cost=cost)
 
     return CompressionResult(
-        ok=True, dossier=_rebuild(dossier, answer), status=COMPRESSION_OK,
+        ok=True, dossier=rebuilt, status=COMPRESSION_OK,
         calls=outcome.calls, cost=cost)
 
 

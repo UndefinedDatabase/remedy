@@ -18,7 +18,9 @@ What the order requires proof of (T001 structure and update mechanics):
   * the compression rules are ASSERTIONS, not prose — open items survive,
     resolved items merge away, the goal stays byte-identical to iteration one;
   * a compression that breaks a rule is REFUSED and returns the dossier
-    untouched — the rules are checked, not believed;
+    untouched — the rules are checked, not believed, and checked against the
+    REBUILT document so an open item cannot be lost by crossing sections
+    (R-0172);
   * a failed compression (no provider, bad answer, broken rule, an exception)
     leaves the previous dossier plus the raw facts and an honest flag.
 
@@ -63,6 +65,7 @@ from packages.orchestration.mission_dossier import (
     append_facts,
     build_compression_prompt,
     compress_dossier,
+    compression_rule_violation,
     count_dossier_tokens,
     dossier_budget_from_config,
     dossier_sections,
@@ -547,6 +550,66 @@ class TestRuleViolationsAreRefused:
         assert result.status == COMPRESSION_PROVIDER_ERROR
         assert "the provider is down" in result.detail
         assert result.dossier == _bloated()
+
+
+class TestOpenItemsCannotBeLostAcrossSections:
+    """R-0172: the rule check judges the REBUILT document, not the answer.
+
+    ``_rebuild`` carries items per SECTION, so an open item returned under the
+    wrong section is present in the answer and absent from the rebuild.
+    Checking the answer would pass it and then silently drop the item.
+    """
+
+    def test_an_open_risk_returned_under_milestones_is_refused(self):
+        dossier = _bloated()
+        risks = [{"id": r.id, "text": "short"}
+                 for r in dossier.risks if not r.resolved]
+        moved, kept = risks[0], risks[1:]
+        milestones = [{"id": m.id, "text": "short"} for m in dossier.milestones]
+        result = compress_dossier(dossier, _Provider(_answer(
+            dossier, milestones=[*milestones, moved], risks=kept)))
+        assert result.status == COMPRESSION_RULE_VIOLATION
+        assert "keep every open item" in result.detail
+        assert moved["id"] in result.detail
+
+    def test_an_open_milestone_returned_under_risks_is_refused(self):
+        dossier = _bloated()
+        milestones = [{"id": m.id, "text": "short"} for m in dossier.milestones]
+        risks = [{"id": r.id, "text": "short"}
+                 for r in dossier.risks if not r.resolved]
+        result = compress_dossier(dossier, _Provider(_answer(
+            dossier, milestones=milestones[1:],
+            risks=[*risks, milestones[0]])))
+        assert result.status == COMPRESSION_RULE_VIOLATION
+        assert "keep every open item" in result.detail
+        assert milestones[0]["id"] in result.detail
+
+    def test_a_section_crossing_answer_leaves_the_dossier_untouched(self):
+        dossier = _bloated()
+        risks = [{"id": r.id, "text": "short"}
+                 for r in dossier.risks if not r.resolved]
+        milestones = [{"id": m.id, "text": "short"} for m in dossier.milestones]
+        result = compress_dossier(dossier, _Provider(_answer(
+            dossier, milestones=[*milestones, risks[0]], risks=risks[1:])))
+        assert result.ok is False
+        assert result.dossier == dossier
+        assert {i.id for i in open_items(result.dossier)} == \
+            {i.id for i in open_items(dossier)}
+
+    def test_the_rule_check_judges_what_would_reach_disk(self):
+        # The public predicate and the compressed result agree, because both
+        # go through the same rebuild.
+        dossier = _bloated()
+        answer = DossierCompression(
+            schema_v=DOSSIER_COMPRESSION_SCHEMA_V,
+            milestones=[{"id": m.id, "text": "short"}
+                        for m in dossier.milestones],
+            risks=[{"id": r.id, "text": "short"}
+                   for r in dossier.risks if not r.resolved],
+            decisions=[], next_step="onwards")
+        assert compression_rule_violation(dossier, answer) == ""
+        result = compress_dossier(dossier, _Provider(_answer(dossier)))
+        assert result.status == COMPRESSION_OK
 
 
 class TestFailedCompressionLeavesTheHonestFlag:
