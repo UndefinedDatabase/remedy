@@ -61,6 +61,7 @@ from packages.orchestration.orchestrator_loop import (
     USAGE_UNMEASURED,
     LedgerEntry,
     LoopLimits,
+    MilestoneEvidence,
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
@@ -68,6 +69,8 @@ from packages.orchestration.orchestrator_loop import (
     build_orchestrator_system_prompt,
     context_digest,
     done_milestones,
+    evaluate_dispatch,
+    evaluate_milestone_done,
     ledger_path,
     loop_limits_from_config,
     mark_milestone_done,
@@ -746,3 +749,64 @@ class TestProjectResolution:
     def test_an_unknown_mission_id_is_refused(self, tmp_path):
         with pytest.raises(MissionNotFoundError):
             resolve_mission_project("deadbeef", tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# T002 — the evaluate step
+# ---------------------------------------------------------------------------
+
+
+def _no_evidence(project_id, mission_id, milestone_id):
+    return MilestoneEvidence()
+
+
+class TestEvaluateDispatch:
+    def test_a_job_for_an_already_done_milestone_is_refused(self, tmp_path,
+                                                            mission):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        updated = load_mission(PROJECT, mission.id, tmp_path)
+        reason = evaluate_dispatch(updated, "M001")
+        assert "already done" in reason
+
+    def test_a_milestone_outside_the_plan_is_refused(self, mission):
+        assert "not in this mission's plan" in evaluate_dispatch(mission, "M009")
+
+    def test_a_milestone_with_unmet_dependencies_is_refused(self, mission):
+        assert "depends on M001" in evaluate_dispatch(mission, "M002")
+
+    def test_a_ready_milestone_is_allowed(self, mission):
+        assert evaluate_dispatch(mission, "M001") == ""
+
+
+class TestEvaluateMilestoneDone:
+    def test_a_claim_with_no_dispatched_job_is_refused(self, mission):
+        reason = evaluate_milestone_done(mission, "M001", MilestoneEvidence())
+        assert "no job was ever dispatched" in reason
+
+    def test_a_claim_on_a_running_job_is_refused(self, mission):
+        reason = evaluate_milestone_done(
+            mission, "M001",
+            MilestoneEvidence(job_id="j1", job_state="running"))
+        assert "not terminal" in reason
+
+    def test_a_claim_whose_dod_is_not_met_is_refused(self, mission):
+        reason = evaluate_milestone_done(
+            mission, "M001",
+            MilestoneEvidence(job_id="j1", job_state="completed",
+                              gate_released=False,
+                              gate_blocker="2 blocking checks failed"))
+        assert "Definition of Done" in reason
+        assert "2 blocking checks failed" in reason
+
+    def test_a_job_without_a_stored_dod_is_not_gated(self, mission):
+        """The F061 gate is additive: no DoD means no gate, not a refusal."""
+        assert evaluate_milestone_done(
+            mission, "M001",
+            MilestoneEvidence(job_id="j1", job_state="completed",
+                              gate_released=None)) == ""
+
+    def test_a_met_claim_is_allowed(self, mission):
+        assert evaluate_milestone_done(
+            mission, "M001",
+            MilestoneEvidence(job_id="j1", job_state="completed",
+                              gate_released=True)) == ""

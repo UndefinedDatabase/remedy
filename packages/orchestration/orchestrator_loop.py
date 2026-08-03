@@ -844,3 +844,222 @@ def _auto_approve_if_gated(job: Any) -> bool:
         dict(job.flight_plan or {}), job_evidence_export_dir(str(job.id)))
     save_job(job)
     return True
+
+
+# ---------------------------------------------------------------------------
+# T002 — the evaluate step
+# ---------------------------------------------------------------------------
+
+#: A move the evaluator refused. Not terminal on its own: the loop re-prompts
+#: once with the reason, and only a SECOND refusal escalates.
+OUTCOME_REFUSED = "refused"
+
+#: A second refusal in a row reached a human through the escalation verb.
+TERMINAL_ESCALATED = "escalated"
+
+#: Job states that end a dispatched job's life. A milestone cannot be declared
+#: done while its job is still running — "not finished" is not "met".
+TERMINAL_JOB_STATES = ("completed", "failed", "cancelled")
+
+
+@dataclass(frozen=True)
+class MilestoneEvidence:
+    """What the loop can observe about one milestone's dispatched work.
+
+    ``gate_released`` is ``None`` when the job stored no DoD — the F061 gate is
+    additive, and a job without a definition of done is not gated at all.
+    """
+
+    job_id: str = ""
+    job_state: str = ""
+    gate_released: bool | None = None
+    gate_blocker: str = ""
+    handback: Any = None
+
+
+def dispatched_job_for(project_id: str, mission_id: str, milestone_id: str,
+                       root: Path | None = None) -> str:
+    """The job the loop last dispatched for this milestone, from its own ledger.
+
+    The mission record attributes a job to the MISSION, not to a milestone
+    (``MissionJobLink`` carries a job id, a role and a timestamp — F069 recorded
+    why). The loop's own ledger DOES carry the attribution, because every
+    ``dispatch_job`` entry stores the milestone id it was for beside the job id
+    it produced. Reading it here means the attribution costs no change to job
+    creation, which stays exactly as F056 left it.
+    """
+    job_id = ""
+    for entry in read_ledger(project_id, mission_id, root):
+        move = entry.get("move") or {}
+        if move.get("kind") != "dispatch_job":
+            continue
+        if (move.get("payload") or {}).get("milestone_id") != milestone_id:
+            continue
+        job_id = str((entry.get("outcome") or {}).get("job_id", "") or "")
+    return job_id
+
+
+def collect_milestone_evidence(project_id: str, mission_id: str,
+                               milestone_id: str,
+                               root: Path | None = None) -> MilestoneEvidence:
+    """Read a milestone's evidence through the existing job and gate verbs."""
+    from packages.orchestration.dod_gate import load_gate_result
+    from packages.orchestration.storage import load_job
+
+    job_id = dispatched_job_for(project_id, mission_id, milestone_id, root)
+    if not job_id:
+        return MilestoneEvidence()
+
+    state = ""
+    handback: Any = None
+    try:
+        job = load_job(_as_uuid(job_id))
+    except Exception:
+        # An unreadable job is an ABSENT observation, never a passing one.
+        return MilestoneEvidence(job_id=job_id)
+    state = str(getattr(getattr(job, "state", ""), "value", getattr(job, "state", "")))
+    handback = (getattr(job, "metadata", None) or {}).get("handback")
+
+    gate = load_gate_result(job_id)
+    if gate is None:
+        return MilestoneEvidence(job_id=job_id, job_state=state,
+                                 handback=handback)
+    return MilestoneEvidence(
+        job_id=job_id, job_state=state,
+        gate_released=bool(gate.get("released")),
+        gate_blocker=str(gate.get("error", "") or ""),
+        handback=handback)
+
+
+def evaluate_dispatch(mission: Any, milestone_id: str,
+                      evidence: MilestoneEvidence | None = None) -> str:
+    """Refusal reason for a proposed dispatch, or "" when it may proceed.
+
+    The A9 edge lives here: a job proposed for an ALREADY-DONE milestone is
+    refused with a recorded reason rather than quietly dispatched. So is work
+    on a milestone whose dependencies are not met — the plan's DAG is a
+    constraint, not a suggestion.
+    """
+    ids = milestone_ids(mission)
+    if milestone_id not in ids:
+        return (f"milestone {milestone_id!r} is not in this mission's plan "
+                f"({', '.join(ids) or 'no milestones'})")
+    done = set(done_milestones(mission))
+    if milestone_id in done:
+        return (f"milestone {milestone_id} is already done — a job for a "
+                f"finished milestone is refused")
+    unmet = _unmet_dependencies(mission, milestone_id, done)
+    if unmet:
+        return (f"milestone {milestone_id} depends on {', '.join(unmet)}, "
+                f"which is not done yet")
+    return _era_refusal(evidence)
+
+
+def evaluate_milestone_done(mission: Any, milestone_id: str,
+                            evidence: MilestoneEvidence | None = None) -> str:
+    """Refusal reason for a ``declare_milestone_done`` claim, or "".
+
+    A claim is checked, not believed: the dispatched job must have reached a
+    terminal state, its Definition of Done must have been met where one exists,
+    and its handback must be free of the era's known defects.
+    """
+    ids = milestone_ids(mission)
+    if milestone_id not in ids:
+        return (f"milestone {milestone_id!r} is not in this mission's plan "
+                f"({', '.join(ids) or 'no milestones'})")
+    done = set(done_milestones(mission))
+    if milestone_id in done:
+        return f"milestone {milestone_id} is already recorded as done"
+    unmet = _unmet_dependencies(mission, milestone_id, done)
+    if unmet:
+        return (f"milestone {milestone_id} cannot be done while "
+                f"{', '.join(unmet)} is not")
+
+    ev = evidence or MilestoneEvidence()
+    if not ev.job_id:
+        return (f"no job was ever dispatched for milestone {milestone_id}, so "
+                f"there is nothing whose outcome could meet its Definition of "
+                f"Done")
+    if ev.job_state not in TERMINAL_JOB_STATES:
+        return (f"the job dispatched for milestone {milestone_id} is in state "
+                f"{ev.job_state or 'unknown'!r}, which is not terminal")
+    if ev.gate_released is False:
+        return (f"the Definition of Done for milestone {milestone_id} is not "
+                f"met: {ev.gate_blocker or 'the gate did not release'}")
+    return _era_refusal(ev)
+
+
+def _unmet_dependencies(mission: Any, milestone_id: str,
+                        done: set[str]) -> list[str]:
+    from packages.orchestration.mission_compiler import mission_plan_of
+
+    plan = mission_plan_of(mission)
+    if plan is None:
+        return []
+    for ms in plan.milestones:
+        if ms.id == milestone_id:
+            return sorted(set(ms.depends_on) - done)
+    return []
+
+
+def _era_refusal(evidence: MilestoneEvidence | None) -> str:
+    """Refuse to advance on any handback carrying an era-class defect.
+
+    The five classes are the external-orchestration era's own failure modes
+    (see :mod:`packages.orchestration.era_integrity`). Each was caught by a
+    human reviewer at the time; the loop has no human, so it refuses instead.
+    """
+    from packages.orchestration.era_integrity import (
+        detect_era_defects,
+        render_defects,
+    )
+
+    if evidence is None or evidence.handback is None:
+        return ""
+    defects = detect_era_defects(evidence.handback)
+    if not defects:
+        return ""
+    return (f"the handback carries {len(defects)} integrity defect(s) from "
+            f"known finding classes, so the loop refuses to advance: "
+            f"{render_defects(defects)}")
+
+
+def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
+                  project_id: str, mission_id: str) -> str:
+    """Refusal reason for one move, or "" when it may be executed.
+
+    Only the two ADVANCING moves are evaluated. ``wait_on_decisions``,
+    ``abort_with_reason`` and ``declare_mission_achieved`` are the loop's ways
+    of stopping, and refusing a stop would be the silent loop this feature
+    exists to prevent — except that claiming the mission is achieved while
+    milestones are still open is itself an advance, and is checked.
+    """
+    from packages.orchestration.orchestrator_move_schema import (
+        MOVE_DECLARE_MILESTONE_DONE,
+        MOVE_DECLARE_MISSION_ACHIEVED,
+        MOVE_DISPATCH_JOB,
+    )
+
+    payload = dict(getattr(move, "payload", {}) or {})
+    kind = getattr(move, "kind", "")
+
+    if kind == MOVE_DISPATCH_JOB:
+        milestone_id = payload.get("milestone_id", "")
+        return evaluate_dispatch(
+            mission, milestone_id,
+            observe(project_id, mission_id, milestone_id))
+
+    if kind == MOVE_DECLARE_MILESTONE_DONE:
+        milestone_id = payload.get("milestone_id", "")
+        return evaluate_milestone_done(
+            mission, milestone_id,
+            observe(project_id, mission_id, milestone_id))
+
+    if kind == MOVE_DECLARE_MISSION_ACHIEVED:
+        open_ones = [m for m in milestone_ids(mission)
+                     if m not in set(done_milestones(mission))]
+        if open_ones:
+            return (f"the mission cannot be achieved while "
+                    f"{len(open_ones)} milestone(s) are still open: "
+                    f"{', '.join(open_ones)}")
+    return ""
