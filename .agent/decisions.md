@@ -1,5 +1,72 @@
 # Decisions
 
+## 2026-08-03: F070 R1 — the branch was rebuilt to keep every commit under 500 lines
+Two commits landed over the AGENTS.md 500-line limit — the context-assembly
+commit at 541 and the era-corpus commit at 712 changed lines. AGENTS.md allows a
+declared oversize commit only when it is the ONLY one in its feature, and
+neither was inseparable, so they were split rather than declared.
+
+The branch was rebuilt from `170e2691` and force-pushed (it had no PR and no
+other consumer). Each oversize commit became two: protocol reader + move-schema
+tests / context assembly, and era detectors + fixtures / era detector tests.
+The evaluate-step commit was split the same way when it measured 506. Proof
+that nothing was lost: `git diff f070-oversize-backup HEAD` is EMPTY — the
+rebuilt tip is byte-identical to the pre-rebuild tip. The backup branch is
+listed in the handback's external actions.
+
+## 2026-08-03: F070 T002 — milestone attribution is read from the loop's OWN ledger
+The evaluator has to know which job served which milestone, and the mission
+record cannot say: `MissionJobLink` carries a job id, a role and a timestamp,
+and F069 recorded (2026-08-02) why adding a milestone id there would mean
+changing job creation.
+
+It does not have to. Every `dispatch_job` ledger entry ALREADY stores the
+milestone id (in the move payload) beside the job id it produced (in the
+outcome), because the ledger records the whole decision. `dispatched_job_for`
+reads the attribution back out of the loop's own artifact. Cost: none — job
+creation stays exactly as F056 left it, and no schema moves. Limit: a milestone
+dispatched outside the loop is invisible to it, which is correct — the loop
+evaluates what the loop decided.
+
+## 2026-08-03: F070 T001 — the CLI is deferred to T003, deliberately
+The order permits `remedy mission run <id> [--iterations N]` and
+`remedy mission ledger <id>` to land in T003 if they fit more cleanly there,
+and they do: T003 is the end-to-end round whose acceptance IS a mission running
+unattended and a human reading its ledger, so the commands get exercised by
+their own acceptance criterion instead of by a test written to have one. R1 is
+already a fourteen-commit bundle; adding a CLI surface here would widen it
+without the end-to-end fixture that gives the surface its shape.
+
+Everything the commands need is public and stable now: `run_mission`,
+`loop_limits_from_config`, `read_ledger` and `render_ledger`. The deferral is a
+routing choice, not a missing capability.
+
+## 2026-08-03: F070 T001 — the protocol document lives in docs/agents/
+`docs/agents/orchestrator_protocol.md`, registered in `docs/README.md`. The
+orchestrator is a ROLE, and that directory already holds the role contracts
+(`worker_conventions.md`, `reviewer_conventions.md`,
+`planner_reviewer_prompt.md`). Putting the internalized orchestrator's job
+description beside the human roles' own is what makes the A7 handover legible:
+the same reader compares the two in one place.
+
+The alternative, `docs/system/`, describes what IS BUILT; this document is an
+instruction to a model, not a description of a mechanism. `packages/` was
+rejected outright — a prompt in code is the thing this feature exists to stop.
+
+## 2026-08-03: F070 T001 — `orchestrator` joins KNOWN_ROLES; routing policy untouched
+The loop calls `resolve_role_config("orchestrator")`, and an unknown role there
+warns (some tests run with `warnings.simplefilter("error")`), so the role is
+registered. Its built-in defaults are deliberately IDENTICAL to every other
+role's — `test_each_known_role_resolves` pins that — because raising the
+orchestrator to a top-tier model is a CONFIGURATION act through the new
+`orchestrator.model` key, not a change to
+`docs/agents/model_routing_policy.md`, which this feature must not touch.
+
+`tests/orchestration/test_role_config.py::test_all_six_roles_present` pinned
+the tuple exactly and was renamed to `..._seven_...` with the new entry added.
+Declared here rather than done quietly: a pinned contract test changed, and the
+contract it pins genuinely grew by one role.
+
 ## 2026-08-03: F070 Phase 2 — the verb map (inspection only, no production code)
 Recorded BEFORE any F070 code. Rule A6: the loop SEQUENCES these; a diff that
 reimplements one is a defect. Every verb the order enumerates exists.
