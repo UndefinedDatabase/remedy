@@ -2,7 +2,8 @@
 
 A long mission dies of context bloat unless something maintains a small,
 structured account of it. That account is this module's document: five sections
-in a fixed order, each holding one kind of fact.
+in a fixed order, each holding one kind of fact, under a hard token budget
+taken from config.
 
     GOAL · MILESTONES · RISKS · DECISIONS · NEXT
 
@@ -14,6 +15,14 @@ Three disciplines this module holds to:
   leaves a section is by being resolved into another one, on the record.
 * **One home per fact.** A risk that closes moves to DECISIONS with its
   outcome rather than being written down twice (A9).
+* **The counting basis is labeled, never invented.** The budget counts through
+  the EXISTING seam (``token_economy.estimate_text_tokens``) and carries the
+  actuals feature's own confidence vocabulary with every count (P6). Remedy
+  deliberately does NOT ship a tokenizer for this — see
+  :data:`DOSSIER_TOKEN_BASIS`.
+* **Over budget is flagged, never truncated.** A document that does not fit
+  says so, in the file, and stays complete. Every version is kept as
+  ``dossier_v<N>.md`` so a human can audit what changed between two of them.
 
 Section ORDER is fixed for cache friendliness: the dossier is the stable prefix
 of the orchestrator prompt (``orchestrator_loop.assemble_context``), so a
@@ -23,6 +32,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
+from pathlib import Path
+from typing import Any
+
+from packages.orchestration.mission_state import mission_evidence_dir
 
 # ---------------------------------------------------------------------------
 # The sections — fixed set, fixed order
@@ -261,3 +274,118 @@ def append_facts(dossier: MissionDossier,
     for risk_id, outcome in facts.resolved_risks:
         updated = resolve_risk(updated, risk_id, outcome)
     return updated
+
+
+# ---------------------------------------------------------------------------
+# The budget — config key, existing counting seam, labeled basis (P6)
+# ---------------------------------------------------------------------------
+
+#: Config key for the hard budget. Conservative by default: the dossier is the
+#: prompt PREFIX every iteration pays for, so its cost is recurring.
+CONFIG_KEY_MAX_TOKENS = "dossier.max_tokens"
+
+#: Used when no config is readable at all. Matches the key's own default.
+DEFAULT_MAX_TOKENS = 3000
+
+#: WHAT counted, named so a reader never has to guess. Remedy deliberately does
+#: NOT ship a tokenizer for the dossier: F003 established that a count with no
+#: provider-measured usage behind it is a character heuristic, and inventing a
+#: second counter here would only make the number look more authoritative than
+#: it is (P6). A provider call's measured actuals are recorded separately, as
+#: that CALL's cost — never as this document's size.
+DOSSIER_TOKEN_BASIS = "estimate:chars_per_token (token_economy.estimate_text_tokens)"
+
+#: The confidence vocabulary is the actuals feature's own
+#: (``token_measurement``): a character heuristic is ``low``, always.
+DOSSIER_TOKEN_CONFIDENCE = "low"
+
+
+@dataclass(frozen=True)
+class DossierTokenCount:
+    """A token count that always says what basis produced it."""
+
+    tokens: int
+    basis: str = DOSSIER_TOKEN_BASIS
+    confidence: str = DOSSIER_TOKEN_CONFIDENCE
+
+    def to_json(self) -> dict[str, Any]:
+        return {"tokens": self.tokens, "basis": self.basis,
+                "confidence": self.confidence}
+
+
+def count_dossier_tokens(text: str) -> DossierTokenCount:
+    """Count one text through the EXISTING seam, labeled with its basis."""
+    from packages.orchestration.token_economy import estimate_text_tokens
+
+    return DossierTokenCount(tokens=estimate_text_tokens(text))
+
+
+def dossier_tokens(dossier: MissionDossier) -> DossierTokenCount:
+    """What this dossier's BODY costs — the number the budget is checked against."""
+    return count_dossier_tokens(render_dossier_body(dossier))
+
+
+def dossier_budget_from_config(config: Any = None, *,
+                               max_tokens: int | None = None) -> int:
+    """Flag beats config beats default — the precedence the loop's limits use."""
+    if max_tokens is not None:
+        requested = int(max_tokens)
+    else:
+        if config is None:
+            from packages.orchestration.config import get_config
+
+            config = get_config()
+        value = config.get(CONFIG_KEY_MAX_TOKENS)
+        requested = DEFAULT_MAX_TOKENS if value is None else int(value)
+    if requested < 1:
+        raise ValueError(f"dossier budget must be >= 1 token, got {requested}")
+    return requested
+
+
+# ---------------------------------------------------------------------------
+# Versioning — every rewrite auditable
+# ---------------------------------------------------------------------------
+
+#: One file per version, in the mission's own evidence area beside its plan and
+#: its ledger. Versions are never overwritten: a human auditing what a
+#: compression dropped needs the version before it to still exist.
+DOSSIER_VERSION_TEMPLATE = "dossier_v{version}.md"
+
+
+def dossier_version_path(project_id: str, mission_id: str, version: int,
+                         root: Path | None = None) -> Path:
+    """Where one version of one mission's dossier lives."""
+    return (mission_evidence_dir(project_id, mission_id, root)
+            / DOSSIER_VERSION_TEMPLATE.format(version=int(version)))
+
+
+def write_dossier_version(project_id: str, mission_id: str,
+                          dossier: MissionDossier,
+                          root: Path | None = None) -> Path:
+    """Store this version. The live prompt uses the newest; the rest are evidence."""
+    path = dossier_version_path(project_id, mission_id, dossier.version, root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_dossier(dossier), encoding="utf-8")
+    return path
+
+
+def dossier_versions(project_id: str, mission_id: str,
+                     root: Path | None = None) -> list[int]:
+    """Every stored version number, ascending. Unreadable names are skipped."""
+    directory = mission_evidence_dir(project_id, mission_id, root)
+    if not directory.is_dir():
+        return []
+    prefix, suffix = DOSSIER_VERSION_TEMPLATE.split("{version}")
+    found: list[int] = []
+    for path in directory.glob(f"{prefix}*{suffix}"):
+        raw = path.name[len(prefix):-len(suffix)]
+        if raw.isdigit():
+            found.append(int(raw))
+    return sorted(found)
+
+
+def latest_dossier_version(project_id: str, mission_id: str,
+                           root: Path | None = None) -> int:
+    """The newest stored version, or 0 when nothing is stored yet."""
+    versions = dossier_versions(project_id, mission_id, root)
+    return versions[-1] if versions else 0

@@ -449,6 +449,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=10,
     ),
     ConfigKeySpec(
+        key="dossier.max_tokens",
+        env_var="REMEDY_DOSSIER_MAX_TOKENS",
+        description=(
+            "Hard token budget for a mission's dossier (F071). Conservative by "
+            "default: the dossier is the PREFIX of every orchestrator prompt, "
+            "so its size is a cost the mission pays once per iteration. Over "
+            "budget the dossier is rewritten by compression, never truncated — "
+            "a compression that fails leaves an honest over-budget flag."
+        ),
+        value_type=int,
+        default=3000,
+    ),
+    ConfigKeySpec(
         key="planning.granularity.merge_group_size",
         env_var="REMEDY_PLANNING_GRANULARITY_MERGE_GROUP_SIZE",
         description=(

@@ -1,4 +1,4 @@
-"""F071 — the mission dossier: structure and update mechanics.
+"""F071 — the mission dossier: structure, budget and versioning.
 
 What the order requires proof of (T001 structure and update mechanics):
 
@@ -9,17 +9,28 @@ What the order requires proof of (T001 structure and update mechanics):
   * update() APPENDS: a fact whose id is already present replaces that line
     (one line per milestone, always), a new id appends, decisions accumulate;
   * a risk that closes moves to DECISIONS with its outcome and leaves the
-    open-only RISKS section — one home per fact (A9).
+    open-only RISKS section — one home per fact (A9);
+  * the budget comes from config with a conservative default, and every count
+    carries the basis that produced it (P6) — no invented counter;
+  * every version is stored as dossier_v<N>.md and no version is overwritten;
+  * the over-budget flag is honest: it is metadata, never counted against the
+    budget it reports on, and never a truncation.
 
-Nothing here touches a provider or the filesystem: the append mechanics are
-pure, which is exactly why they are testable without either.
+Every test that writes goes to ``tmp_path`` with the mission root passed
+explicitly via ``root=``, so the repository's real data root is never touched.
 """
 from __future__ import annotations
 
 import pytest
 
+from packages.orchestration.config import get_key_spec
 from packages.orchestration.mission_dossier import (
+    CONFIG_KEY_MAX_TOKENS,
+    DEFAULT_MAX_TOKENS,
     DOSSIER_SECTIONS,
+    DOSSIER_TOKEN_BASIS,
+    DOSSIER_TOKEN_CONFIDENCE,
+    DOSSIER_VERSION_TEMPLATE,
     MAX_RECENT_DECISIONS,
     NO_NEXT_STEP,
     SECTION_DECISIONS,
@@ -30,14 +41,34 @@ from packages.orchestration.mission_dossier import (
     DossierItem,
     IterationFacts,
     append_facts,
+    count_dossier_tokens,
+    dossier_budget_from_config,
     dossier_sections,
+    dossier_tokens,
+    dossier_version_path,
+    dossier_versions,
+    latest_dossier_version,
     open_items,
+    render_dossier,
     render_dossier_body,
     resolve_risk,
     start_dossier,
+    write_dossier_version,
 )
 
+PROJECT = "proj-f071"
+MISSION = "mission-f071"
 GOAL = "The payments API stays releasable while the ledger is rewritten"
+
+
+class _Config:
+    """The smallest thing that behaves like RemedyConfig for one key."""
+
+    def __init__(self, **values):
+        self._values = values
+
+    def get(self, key):
+        return self._values.get(key)
 
 
 def _dossier():
@@ -187,3 +218,132 @@ class TestOneHomePerFact:
     def test_open_items_are_the_not_done_milestones_and_open_risks(self):
         dossier = resolve_risk(_dossier(), "R001", "closed")
         assert {i.id for i in open_items(dossier)} == {"M001", "M002", "R002"}
+
+
+# ---------------------------------------------------------------------------
+# T001 — the budget: config seam, labeled counting basis (P6)
+# ---------------------------------------------------------------------------
+
+
+class TestBudget:
+    def test_the_config_key_exists_with_the_conservative_default(self):
+        spec = get_key_spec(CONFIG_KEY_MAX_TOKENS)
+        assert spec is not None
+        assert spec.env_var == "REMEDY_DOSSIER_MAX_TOKENS"
+        assert spec.value_type is int
+        assert spec.default == DEFAULT_MAX_TOKENS == 3000
+
+    def test_config_supplies_the_budget(self):
+        config = _Config(**{CONFIG_KEY_MAX_TOKENS: 1234})
+        assert dossier_budget_from_config(config) == 1234
+
+    def test_an_explicit_value_beats_config(self):
+        config = _Config(**{CONFIG_KEY_MAX_TOKENS: 1234})
+        assert dossier_budget_from_config(config, max_tokens=42) == 42
+
+    def test_an_unset_key_falls_back_to_the_default(self):
+        assert dossier_budget_from_config(_Config()) == DEFAULT_MAX_TOKENS
+
+    def test_a_nonsense_budget_is_refused_rather_than_clamped(self):
+        with pytest.raises(ValueError):
+            dossier_budget_from_config(_Config(), max_tokens=0)
+
+
+class TestCountingBasisIsLabeled:
+    def test_every_count_says_what_produced_it(self):
+        count = count_dossier_tokens("some dossier text")
+        assert count.basis == DOSSIER_TOKEN_BASIS
+        assert count.confidence == DOSSIER_TOKEN_CONFIDENCE == "low"
+        assert count.to_json()["basis"] == DOSSIER_TOKEN_BASIS
+
+    def test_the_basis_names_the_existing_seam_it_reuses(self):
+        assert "token_economy.estimate_text_tokens" in DOSSIER_TOKEN_BASIS
+
+    def test_the_count_is_the_existing_seams_own_number(self):
+        from packages.orchestration.token_economy import estimate_text_tokens
+
+        text = render_dossier_body(_dossier())
+        assert dossier_tokens(_dossier()).tokens == estimate_text_tokens(text)
+
+    def test_a_bigger_dossier_counts_higher(self):
+        small = _dossier()
+        big = append_facts(small, IterationFacts(
+            risks=[DossierItem(id=f"R1{i:02d}", text="x" * 200)
+                   for i in range(20)]))
+        assert dossier_tokens(big).tokens > dossier_tokens(small).tokens
+
+
+class TestOverBudgetFlagIsHonest:
+    def test_the_flag_is_metadata_and_is_not_counted_against_the_budget(self):
+        import dataclasses
+
+        clean = _dossier()
+        flagged = dataclasses.replace(
+            clean, over_budget=True, budget_note="over by 400 tokens")
+        assert dossier_tokens(flagged).tokens == dossier_tokens(clean).tokens
+        assert "OVER BUDGET" not in render_dossier_body(flagged)
+
+    def test_the_written_document_shows_the_flag_and_says_nothing_was_cut(self):
+        import dataclasses
+
+        flagged = dataclasses.replace(
+            _dossier(), over_budget=True, budget_note="compression failed")
+        text = render_dossier(flagged)
+        assert "OVER BUDGET — compression failed" in text
+        assert "Nothing was truncated" in text
+
+    def test_a_dossier_within_budget_carries_no_flag(self):
+        assert "OVER BUDGET" not in render_dossier(_dossier())
+
+
+# ---------------------------------------------------------------------------
+# T001 — versioning
+# ---------------------------------------------------------------------------
+
+
+class TestVersioning:
+    def test_a_version_is_stored_under_its_own_name(self, tmp_path):
+        path = write_dossier_version(PROJECT, MISSION, _dossier(), tmp_path)
+        assert path.name == DOSSIER_VERSION_TEMPLATE.format(version=2)
+        assert path.read_text(encoding="utf-8") == render_dossier(_dossier())
+
+    def test_versions_live_in_the_missions_own_evidence_area(self, tmp_path):
+        path = dossier_version_path(PROJECT, MISSION, 3, tmp_path)
+        assert path.parent.name == "evidence"
+        assert MISSION in path.parts
+
+    def test_no_version_is_ever_overwritten(self, tmp_path):
+        first = _dossier()
+        write_dossier_version(PROJECT, MISSION, first, tmp_path)
+        before = dossier_version_path(
+            PROJECT, MISSION, first.version, tmp_path).read_text()
+        second = append_facts(first, IterationFacts(next_step="something else"))
+        write_dossier_version(PROJECT, MISSION, second, tmp_path)
+        after = dossier_version_path(
+            PROJECT, MISSION, first.version, tmp_path).read_text()
+        assert after == before
+        assert dossier_versions(PROJECT, MISSION, tmp_path) == [2, 3]
+
+    def test_the_newest_version_is_findable(self, tmp_path):
+        assert latest_dossier_version(PROJECT, MISSION, tmp_path) == 0
+        dossier = _dossier()
+        for _ in range(3):
+            write_dossier_version(PROJECT, MISSION, dossier, tmp_path)
+            dossier = append_facts(dossier, IterationFacts())
+        assert latest_dossier_version(PROJECT, MISSION, tmp_path) == 4
+
+    def test_the_layout_is_diff_friendly_one_item_per_line(self, tmp_path):
+        text = write_dossier_version(
+            PROJECT, MISSION, _dossier(), tmp_path).read_text(encoding="utf-8")
+        milestone_lines = [line for line in text.splitlines()
+                           if line.startswith("- M")]
+        assert milestone_lines == [
+            "- M001 [open] the ledger is rewritten",
+            "- M002 [open] the API stays releasable",
+        ]
+
+    def test_a_foreign_file_in_the_area_is_not_read_as_a_version(self, tmp_path):
+        write_dossier_version(PROJECT, MISSION, _dossier(), tmp_path)
+        stray = dossier_version_path(PROJECT, MISSION, 2, tmp_path).parent
+        (stray / "dossier_vNEXT.md").write_text("not a version", encoding="utf-8")
+        assert dossier_versions(PROJECT, MISSION, tmp_path) == [2]
