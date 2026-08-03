@@ -14,26 +14,27 @@ stays under budget across many iterations, survives recall checks,
 and the dossier is the asserted prompt prefix.
 
 ## Current Step
-R1 (SPLIT, LARGE bundle) DELIVERED — awaiting reviewer verdict.
-T001 (structure, update mechanics, budget + labeled basis,
-versioning) and T002 (compression call, rules as assertions, schema,
-honest failure path) are committed in four slices, each under the
-500-line limit. Gate green: scoped 64 passed, canary 42 passed.
-Six mutation red-proofs run in a disposable worktree. No PR yet —
-the PR comes at closure. The worker writes no verdict and merges
-nothing.
+R2 (SPLIT, LARGE repair+continue) DELIVERED — awaiting reviewer
+verdict. R1's FAIL is repaired: R-0172 (rule check now judges the
+REBUILT document), R-0173 (a stored version is immutable; an
+identical rewrite is a no-op), R-0174 (IterationFacts docstring).
+The R1 gate was re-run green BEFORE T003 started. T003 landed in
+three slices: the live state + iteration facts + refresh, the loop
+wiring through the existing assemble_context dossier seam, and the
+reusable recall harness. Seven mutation red-proofs; one survivor
+(the harness's `missing` set) produced a negative-control test.
+No PR — closure creates it. The worker writes no verdict.
 
 ## Next Steps
-- R2: T003 loop integration (dossier asserted as prompt prefix,
-  through the `dossier` seam of orchestrator_loop.run_mission) +
-  recall harness (seeded 10-fact fixture) + integration gate.
-- R3: closure per STATUS_closure_protocol.md.
+- R3: integration gate per docs/agents/integration_gate.md.
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- Token counting: the counting basis is LABELED, not invented (P6) —
-  .agent/decisions.md records what was deliberately not done.
-- Compression rules live as test assertions plus post-validation
-  enforcement, never as prose in a prompt alone.
-- Do-not-touch: cross-session handoffs (F079), prompt ordering
-  policy, memory systems beyond the dossier. orchestrator_loop.py is
-  unchanged in R1 (imported read-only for measure_call_cost).
+- The loop's compression provider is a SEPARATE opt-in seam so
+  F070's one-call-per-iteration accounting is unchanged; the
+  default path flags over-budget instead of compressing.
+- The live state is JSON (dossier_state.json); the markdown
+  versions stay a pure projection. See .agent/decisions.md.
+- Do-not-touch held: no move-schema change, no new move kinds,
+  cross-session handoffs (F079) untouched — the recall harness is
+  published for F079 to reuse, not wired into it.

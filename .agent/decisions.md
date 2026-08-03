@@ -1,5 +1,53 @@
 # Decisions
 
+## 2026-08-03: F071 R2 — the compression rule check judges the REBUILT document
+R-0172's root cause was a mismatch of levels: the check read the answer's raw
+id lists while `_rebuild` carried items PER SECTION, so an open risk returned
+under `milestones` satisfied the check and then vanished from the rebuild. The
+fix is not a bigger check but a check at the right level — `_check_rules`
+builds the document first and judges THAT, and `compress_dossier` returns the
+very object that was judged. `compression_rule_violation` keeps its signature
+and delegates, so the public predicate and the compressed result can never
+disagree.
+
+General form worth keeping: validate the artifact you are about to write, not
+the message you received. A check on the input passes for reasons the output
+does not share.
+
+## 2026-08-03: F071 R2 — a stored dossier version is immutable, and retries are free
+R-0173: `write_dossier_version` promised versions are never overwritten and
+then overwrote unconditionally. Two behaviors were possible; both are wrong
+alone. Refusing every rewrite makes an idempotent retry an error; allowing
+every rewrite destroys audit evidence. So: byte-identical rewrite is a no-op
+returning the path, differing content raises `ValueError` naming the path and
+the version, and the original bytes are left intact.
+
+## 2026-08-03: F071 T003 — the live state is JSON; the markdown is the audit trail
+The dossier reaches disk as `dossier_v<N>.md` for humans to diff. The next
+iteration needs the STRUCTURED document back, and parsing the markdown would
+make the state a hostage of the renderer — a formatting change would silently
+alter recovered facts. So `dossier_state.json` holds the live state and the
+markdown versions stay a pure projection. An unreadable state file reads as
+ABSENT, not as an error: a mission then starts a fresh dossier from its own
+goal, which is degraded but never a dead loop.
+
+## 2026-08-03: F071 T003 — the loop's compression provider is a SEPARATE seam
+F070 records "one provider call per iteration". A compression call would be a
+second one, so `update_mission_dossier` takes `call_fn` and DEFAULTS IT TO
+NONE: out of the box an over-budget dossier keeps its honest flag rather than
+spending a call the loop's budget never authorized. Compression is opt-in by
+the caller that wants to pay for it. The wiring itself is two lines — the
+`dossier` seam of `assemble_context` already existed and was built for this.
+
+## 2026-08-03: F071 T003 — the recall harness lives in the package, not the tests
+The feature file names the harness a deliverable other features reuse (F079).
+A harness only the test file can reach is not a deliverable, so
+`run_recall_harness`, `RECALL_FIXTURE_FACTS` and `recall_report` are public in
+`mission_dossier`. It reports PER FACT — answerable, missing, compressed away —
+and `recall_report` deliberately prints no verdict word: the asymmetry between
+open facts (must survive) and resolved ones (may compress away) is the
+measurement, and collapsing it to pass/fail would hide it.
+
 ## 2026-08-03: F071 T002 — the compression contract has NO goal field
 "Never drop the goal" is one of the three verbatim compression rules. A rule
 that only ever appears in a prompt is a hope. `DossierCompression` therefore
