@@ -247,6 +247,7 @@
 - [ ] F202 — Backup/restore & schema migrations
 - [ ] F203 — Structured logging & correlation
 - [ ] F204 — Update channel & change transparency
+- [ ] F253 — Headless API contract
 
 ## Tier 13 — Multi-Repo & Organization
 
