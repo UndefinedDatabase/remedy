@@ -11,8 +11,9 @@ other consumer). Each oversize commit became two: protocol reader + move-schema
 tests / context assembly, and era detectors + fixtures / era detector tests.
 The evaluate-step commit was split the same way when it measured 506. Proof
 that nothing was lost: `git diff f070-oversize-backup HEAD` is EMPTY — the
-rebuilt tip is byte-identical to the pre-rebuild tip. The backup branch is
-listed in the handback's external actions.
+rebuilt tip is byte-identical to the pre-rebuild tip. The backup branch existed
+only to carry that proof and was deleted once it passed; both facts are in the
+handback's external actions.
 
 ## 2026-08-03: F070 T002 — milestone attribution is read from the loop's OWN ledger
 The evaluator has to know which job served which milestone, and the mission
