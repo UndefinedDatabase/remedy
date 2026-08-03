@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-32 of 252 registered items accepted. Next: F069 (Mission compiler).
+33 of 252 registered items accepted. Next: F070 (Orchestrator loop inside Remedy).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 16 | 22 |
+| 1 | Self-Build Bootstrap | 17 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |

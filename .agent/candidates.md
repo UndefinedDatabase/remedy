@@ -7,4 +7,11 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-No open candidates.
+- REMEDY_UI_NO_AUTO_BUILD=1 did not prevent a UI auto-build inside
+  the R2 integration-gate base worktree: dist/ was rewritten
+  mid-run (direct evidence 2 in .agent/gate_f069_r2/attribution.md),
+  so base-run parity relied on empirical per-id attribution instead
+  of the doc's parity step alone. Suspect: a spawned server/build
+  path that does not inherit or honor the env var. Gate tooling /
+  integration_gate.md hardening — not F069 feature code.
+  Source: F069 closure · 2026-08-03.

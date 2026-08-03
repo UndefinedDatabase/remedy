@@ -1,4 +1,12 @@
-OUTCOME: (pending — update at handback)
+OUTCOME: executed — F069 CLOSED. R2 verdict persisted; Built State recorded;
+integrity passed true; Evidence job cee98ee1ec623232; package
+remedy-review-20260803-103015-READY_FOR_REVIEW.zip SHA-256
+4b7433157232acb774101da9885665ce71068a0741ca6c07287260932359c000;
+STATUS [x] + README synced in one commit; candidate recorded.
+Accepted HEAD 4dce6060 — one extra content commit: the first zip was REJECTED
+because .agent/gate_f069_r2/*.log tripped the packaging guard, which exposed
+that .gitignore (*.log) had silently kept the R2 raw tails out of the repo.
+Renamed to .txt, committed the original bytes, rebuilt evidence + zip.
 
 You are the Remedy worker (Window 2) for feature F069 — Mission compiler,
   round R3: CLOSURE per docs/roadmap/STATUS_closure_protocol.md (v4) — read

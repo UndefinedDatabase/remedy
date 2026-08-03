@@ -40,7 +40,7 @@
 - [x] F056 — Missions: persistent goal, jobs as execution units (T001–T003 complete; accepted 2026-07-31 · live review PASS — ACCEPTED · Evidence job 057a2de1dde14778 · package remedy-review-20260731-210415-READY_FOR_REVIEW.zip · SHA-256 b732f0bdd0a334a62091b127f4efbd392f612de98ec2a687f27e1ef36fd7e555 · accepted HEAD eaa86f51c5ae72ed4e310cdeb249eba3142c7e7c)
 - [x] F061 — Definition-of-Done compiler (T001–T004 complete; accepted 2026-08-01 · live review PASS — ACCEPTED · Evidence job c5185517fa2443bf · package remedy-review-20260801-190945-READY_FOR_REVIEW.zip · SHA-256 486948228f6dd3413ba8cdd9947622b08b8803b40e9f7a0c7c547470150bcbd8 · accepted HEAD 8dc6086c4da87ca2ec63c33c3e17904c29ee394d)
 - [x] F062 — Product smoke as the closing gate (T001–T003 complete; accepted 2026-08-01 · live review PASS — ACCEPTED · Evidence job 76ee4cb7318e409e · package remedy-review-20260801-214231-READY_FOR_REVIEW.zip · SHA-256 46e684f5954a32c92994781a734bf3c26d830ba288e63d48fe4d5dc441b8ab29 · accepted HEAD 52a283cfb0d3b774d105d6dd5d96bed5464af615)
-- [~] F069 — Mission compiler
+- [x] F069 — Mission compiler (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job cee98ee1ec623232 · package remedy-review-20260803-103015-READY_FOR_REVIEW.zip · SHA-256 4b7433157232acb774101da9885665ce71068a0741ca6c07287260932359c000 · accepted HEAD 4dce6060a4b663a6546e40432c5abbd18e9ddd93)
 - [ ] F070 — Orchestrator loop inside Remedy
 - [ ] F071 — Mission dossier
 - [ ] F075 — MILESTONE GATE: 10 flawless self-runs
