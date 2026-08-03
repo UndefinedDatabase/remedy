@@ -974,6 +974,117 @@ class TestTheDossierIsUpdatedEveryIteration:
         assert "M002 [open]" in text
 
 
+class TestTheMaintainedDossierIsThePromptPrefix:
+    """F071 T003 — the maintained document drives the live loop.
+
+    The dossier is assembled FIRST and its bytes are the prefix of the mission
+    state, so a provider's prompt cache survives an iteration in which only the
+    volatile sections changed.
+    """
+
+    def _run(self, tmp_path, mission, dispatched, **kwargs):
+        iterations = kwargs.pop("iterations", 1)
+        # dispatch_job is NON-terminal, so a multi-iteration run really runs
+        # that many iterations; wait_on_decisions ends the run after one.
+        move = _move_json("dispatch_job", milestone_id="M001", step="work") \
+            if iterations > 1 else _move_json("wait_on_decisions")
+        return run_mission(
+            mission.id, LoopLimits(max_iterations=iterations),
+            project_id=PROJECT, call_fn=_scripted(move), root=tmp_path,
+            dispatch=dispatched, control_root_path=tmp_path / "control",
+            **kwargs)
+
+    def test_the_newest_version_is_the_byte_prefix_of_the_mission_state(
+            self, tmp_path, mission, dispatched):
+        from packages.orchestration.mission_dossier import newest_dossier_text
+
+        prompts: list[str] = []
+        self._run(tmp_path, mission, dispatched,
+                  on_call=lambda a, v, r, prompt: prompts.append(prompt))
+        newest = newest_dossier_text(PROJECT, mission.id, tmp_path)
+        assert newest
+        assert f"# Mission state\n\n{SECTION_DOSSIER}\n\n{newest}" in prompts[0]
+
+    def test_the_dossier_section_leads_the_assembled_context(self, tmp_path,
+                                                             mission,
+                                                             dispatched):
+        from packages.orchestration.mission_dossier import newest_dossier_text
+
+        self._run(tmp_path, mission, dispatched)
+        newest = newest_dossier_text(PROJECT, mission.id, tmp_path)
+        context = assemble_context(mission, dossier=lambda m: newest)
+        assert context.sections[0][0] == SECTION_DOSSIER
+        assert context.text.startswith(f"{SECTION_DOSSIER}\n\n{newest}")
+
+    def test_the_prefix_is_the_maintained_document_not_the_stand_in(
+            self, tmp_path, mission, dispatched):
+        from packages.orchestration.mission_dossier import (
+            SECTION_GOAL,
+            newest_dossier_text,
+        )
+
+        self._run(tmp_path, mission, dispatched)
+        newest = newest_dossier_text(PROJECT, mission.id, tmp_path)
+        assert f"## {SECTION_GOAL}" in newest
+        assert "stand-in" not in newest
+
+    def test_one_version_file_lands_per_iteration(self, tmp_path, mission,
+                                                  dispatched):
+        from packages.orchestration.mission_dossier import dossier_versions
+
+        self._run(tmp_path, mission, dispatched, iterations=3)
+        assert dossier_versions(PROJECT, mission.id, tmp_path) == [2, 3, 4]
+
+    def test_the_goal_is_byte_identical_across_every_version(self, tmp_path,
+                                                             mission,
+                                                             dispatched):
+        from packages.orchestration.mission_dossier import (
+            dossier_version_path,
+            dossier_versions,
+        )
+
+        self._run(tmp_path, mission, dispatched, iterations=3)
+        goals = set()
+        for version in dossier_versions(PROJECT, mission.id, tmp_path):
+            text = dossier_version_path(
+                PROJECT, mission.id, version, tmp_path).read_text()
+            goals.add(text.split("## MILESTONES")[0])
+        assert len(goals) == 1
+        assert "Ship the thing" in goals.pop()
+
+    def test_a_compression_failure_iteration_still_renders_the_whole_document(
+            self, tmp_path, mission, dispatched):
+        from packages.orchestration.mission_dossier import (
+            open_items,
+            refresh_mission_dossier,
+            render_dossier,
+        )
+
+        # A tight budget forces compression; the provider answers with garbage,
+        # so the iteration must keep the complete document and FLAG it.
+        def refresh(project_id, mission_id, mission_record):
+            result = refresh_mission_dossier(
+                project_id, mission_id, mission_record, root=tmp_path,
+                budget=1, call_fn=lambda prompt, attempt: "not json")
+            assert result.over_budget is True
+            return result
+
+        prompts: list[str] = []
+        self._run(tmp_path, mission, dispatched, update_dossier=refresh,
+                  on_call=lambda a, v, r, prompt: prompts.append(prompt))
+
+        from packages.orchestration.mission_dossier import load_dossier_state
+
+        state = load_dossier_state(PROJECT, mission.id, tmp_path)
+        assert state.over_budget is True
+        text = render_dossier(state)
+        assert "OVER BUDGET" in text
+        assert "Nothing was truncated" in text
+        # Every open item is still in the prompt — flagged, never trimmed.
+        for item in open_items(state):
+            assert item.id in prompts[0]
+
+
 # ---------------------------------------------------------------------------
 # T002 — the era corpus stops the loop
 # ---------------------------------------------------------------------------
