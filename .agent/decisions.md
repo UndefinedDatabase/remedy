@@ -1,5 +1,61 @@
 # Decisions
 
+## 2026-08-03: F070 Phase 2 — the verb map (inspection only, no production code)
+Recorded BEFORE any F070 code. Rule A6: the loop SEQUENCES these; a diff that
+reimplements one is a defect. Every verb the order enumerates exists.
+
+| Verb the loop needs | file:symbol |
+|---|---|
+| mission record load | `mission_state.py:load_mission` / `save_mission` / `resolve_mission_id` |
+| mission plan read | `mission_compiler.py:mission_plan_of` / `plan_version_of` |
+| mission plan write | `mission_state.py:set_mission_plan` |
+| mission status write | `mission_state.py:set_mission_status` |
+| mission↔job link | `mission_state.py:link_job_to_mission` / `mission_for_job` |
+| dispatch a job into a mission | `mission_state.py:continue_mission` (creates the job, builds it verify-first, links it) |
+| run a dispatched follow-up | `mission_state.py:execute_mission_followup` |
+| intake | `intake.py:run_intake` (+ `heuristic_intake` fallback) |
+| flight-plan generation | `flight_plan.py:plan_job_llm` → `map_flight_plan_to_tasks` |
+| plan approval gate state | `flight_plan.py:flight_plan_blocks_execution` / `flight_plan_approval_open` |
+| plan approval (human) | `apps/cli/commands/decision.py` `fp:approval` resolve path |
+| plan approval (--yes / auto) | `apps/cli/commands/do_cmd.py:298-318` — INLINE, see the extraction note below |
+| multi-cycle executor entry | `long_run_executor.py:run_cycles` (+ `limits_from_config`, `CycleLimits`) |
+| DoD compile (F061) | `dod_compiler.py:compile_dod`; per-milestone wrapper `mission_compiler.py:compile_milestone_dod` / `attach_milestone_dods` |
+| DoD evaluation | `dod_gate.py:evaluate_dod` / `run_job_gate` / `load_dod` / `load_gate_result` |
+| report writer | `run_report.py:write_final_report` (+ `collect_report_sources`, `render_report`) |
+| escalation | `escalation.py:enqueue_task_decision` / `answer_task_decision` / `open_task_decisions` / `answered_task_decisions` |
+| open decisions view | `decision_queue.py:list_decisions` / `open_decisions` |
+| postmortems | `failure_postmortem.py:write_postmortem` / `build_job_rollup` / `classify` |
+| config lookup for a model role | `role_config.py:resolve_role_config` (+ `KNOWN_ROLES`); config keys via `config.py:get_config().get(<key>)` |
+| stop-request check | `safe_points.py:stop_requested` / `should_stop` / `consume_stop` |
+| structured call + schema registry | `structured_outputs.py:run_structured_call`; `schemas/models.py:SCHEMA_REGISTRY`; `schemas/validation.py:validate_response` |
+
+Two gaps found by the inspection, neither of them a missing verb:
+
+1. **`--yes` auto-approval is not a verb yet.** The semantics the loop needs
+   (approve the flight plan, run every open clarification on its documented
+   default, write the assumption log, stamp `_approval_audit.mode="auto_yes"`)
+   exist only INLINE in `do_cmd.py`. A6 says extract, not copy — so it is
+   extracted into `flight_plan.py` and `do_cmd.py` is switched to call it, in
+   its OWN commit (AGENTS.md: never mix refactoring with a feature).
+2. **The dossier does not exist.** F071 (Mission dossier) is unclaimed;
+   `Mission.dossier_ref` is documented as RESERVED and is `""` on every record.
+   The dossier is NOT in this phase's enumerated verb list, so this is not an
+   If-Blocked stop — but the order still requires "dossier first" in the
+   context prefix and a dossier update every iteration. Resolution below.
+
+## 2026-08-03: F070 T001 — the dossier is a SEAM, not a document this feature invents
+The loop takes a `dossier` callable (a port) and calls it first, so the
+cache-stable prefix discipline is real from day one. Its DEFAULT renders the
+facts the mission record already holds (goal, status, plan origin, milestone
+outcomes, done/open counts) — it invents no new document, no new file format
+and no new persistence, and it says on its face that it is a stand-in until
+F071 lands. `Mission.dossier_ref` is read when non-empty and preferred over
+the stand-in, which is exactly the hand-off point F071 plugs into.
+
+The alternative — writing a dossier document here — would be building F071
+inside F070 and would be the second mechanism A6 forbids.
+Recorded as a declared assumption; flagged in the handback.
+
 ## 2026-08-03: F069 R2 gate — copying apps/ui/dist is necessary but not sufficient
 The doc's §3 remedy (COPY `apps/ui/node_modules` and `apps/ui/dist`, never
 symlink, plus `REMEDY_UI_NO_AUTO_BUILD=1`) was followed exactly, and eight
