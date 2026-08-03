@@ -44,14 +44,17 @@ from packages.orchestration.orchestrator_loop import (
     DEFAULT_MAX_ITERATIONS,
     LEDGER_FILENAME,
     MILESTONES_DONE_KEY,
+    OUTCOME_REFUSED,
     PROTOCOL_DOC_RELATIVE,
     PROTOCOL_VERSION,
     SECTION_DECISIONS,
     SECTION_DOSSIER,
+    SECTION_FEEDBACK,
     SECTION_PLAN,
     SECTION_REPORT,
     TERMINAL_ABORTED,
     TERMINAL_ACHIEVED,
+    TERMINAL_ESCALATED,
     TERMINAL_INVALID_MOVE,
     TERMINAL_ITERATION_LIMIT,
     TERMINAL_NO_PROVIDER,
@@ -69,6 +72,7 @@ from packages.orchestration.orchestrator_loop import (
     build_orchestrator_system_prompt,
     context_digest,
     done_milestones,
+    escalate_repeated_refusal,
     evaluate_dispatch,
     evaluate_milestone_done,
     ledger_path,
@@ -244,15 +248,31 @@ class TestTheProtocolDocument:
             assert kind in text, f"protocol document does not mention {kind}"
 
     def test_there_is_no_runtime_writer_for_the_protocol(self):
-        """Self-modification is a Do-not-touch. The absence IS the enforcement."""
+        """Self-modification is a Do-not-touch. The absence IS the enforcement.
+
+        Asserted over the source rather than by calling something: the property
+        under test is that no such code path exists at all.
+        """
         import packages.orchestration.orchestrator_loop as loop
 
-        source = (loop.__file__ or "")
-        text = open(source, encoding="utf-8").read()
+        text = open(loop.__file__ or "", encoding="utf-8").read()
         assert "protocol_document_path" in text
-        for writer in (".write_text(", "write_protocol", "open(protocol"):
-            assert writer not in text, (
-                f"the loop must not be able to write its own protocol ({writer})")
+        writes = (".write_text(", ".write_bytes(", ".open(", "shutil.")
+        for line in text.splitlines():
+            if "protocol" not in line.lower():
+                continue
+            for writer in writes:
+                assert writer not in line, (
+                    f"the loop must not be able to write its own protocol: "
+                    f"{line.strip()}")
+
+    def test_the_protocol_is_only_ever_read(self):
+        """The one call that touches the file is a read."""
+        import inspect
+
+        source = inspect.getsource(orchestrator_protocol_text)
+        assert ".read_text(" in source
+        assert ".write_text(" not in source
 
 
 # ---------------------------------------------------------------------------
@@ -494,6 +514,12 @@ def _scripted(*responses: str):
     return call_fn
 
 
+def _met_evidence(project_id, mission_id, milestone_id):
+    """A milestone whose job finished and whose Definition of Done was met."""
+    return MilestoneEvidence(job_id="job-0001", job_state="completed",
+                             gate_released=True)
+
+
 @pytest.fixture()
 def dispatched():
     """Records every dispatch the loop makes, without creating real jobs."""
@@ -560,13 +586,17 @@ class TestEveryMoveKindIsExercised:
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_milestone_done",
                                          milestone_id="M001")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, evidence=_met_evidence,
             control_root_path=tmp_path / "control")
         assert done_milestones(
             load_mission(PROJECT, mission.id, tmp_path)) == ("M001",)
 
     def test_declare_mission_achieved_sets_the_record(self, tmp_path, mission,
                                                       dispatched):
+        # Achieved is a claim about every milestone, so the evaluator requires
+        # every milestone to be done before it will let the claim through.
+        for milestone in ("M001", "M002"):
+            mark_milestone_done(PROJECT, mission.id, milestone, tmp_path)
         result = run_mission(
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_mission_achieved")),
@@ -810,3 +840,81 @@ class TestEvaluateMilestoneDone:
             mission, "M001",
             MilestoneEvidence(job_id="j1", job_state="completed",
                               gate_released=True)) == ""
+
+    def test_achieved_is_refused_while_milestones_are_open(self, tmp_path,
+                                                           mission, dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=_scripted(_move_json("declare_mission_achieved")),
+            root=tmp_path, dispatch=dispatched, evidence=_no_evidence,
+            control_root_path=tmp_path / "control")
+        assert result.entries[0].outcome["status"] == OUTCOME_REFUSED
+        assert "still open" in result.entries[0].outcome["detail"]
+        assert load_mission(PROJECT, mission.id, tmp_path).status == "active"
+
+
+class TestRefusalRePromptsOnceThenEscalates:
+    def test_the_first_refusal_re_prompts_with_the_reason_as_feedback(
+            self, tmp_path, mission, dispatched):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        call_fn = _scripted(
+            _move_json("dispatch_job", milestone_id="M001", step="again"),
+            _move_json("wait_on_decisions"))
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=4), project_id=PROJECT,
+            call_fn=call_fn, root=tmp_path, dispatch=dispatched,
+            evidence=_no_evidence, control_root_path=tmp_path / "control")
+        # The refusal was recorded, and the very next prompt carried it back.
+        assert result.entries[0].outcome["status"] == OUTCOME_REFUSED
+        assert SECTION_FEEDBACK not in call_fn.prompts[0]
+        assert SECTION_FEEDBACK in call_fn.prompts[1]
+        assert "already done" in call_fn.prompts[1]
+        # The re-prompt produced an acceptable move, so the loop went on.
+        assert result.terminal == TERMINAL_WAITING
+        assert dispatched.seen == []
+
+    def test_a_second_refusal_escalates_through_the_escalation_verb(
+            self, tmp_path, mission, dispatched):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        escalated: list[str] = []
+
+        def escalate(project_id, mission_id, reason):
+            escalated.append(reason)
+            return "d1"
+
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=5), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="again and again")),
+            root=tmp_path, dispatch=dispatched, evidence=_no_evidence,
+            escalate=escalate, control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_ESCALATED
+        assert len(escalated) == 1
+        assert "already done" in escalated[0]
+        # Never a silent loop: two refusals and out, not five.
+        assert result.iterations == 2
+        assert dispatched.seen == []
+
+    def test_an_accepted_move_clears_the_feedback(self, tmp_path, mission,
+                                                  dispatched):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        call_fn = _scripted(
+            _move_json("dispatch_job", milestone_id="M001", step="refused"),
+            _move_json("dispatch_job", milestone_id="M002", step="fine"),
+            _move_json("dispatch_job", milestone_id="M001", step="refused"),
+            _move_json("wait_on_decisions"))
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            call_fn=call_fn, root=tmp_path, dispatch=dispatched,
+            evidence=_no_evidence, control_root_path=tmp_path / "control")
+        # Prompt 3 follows an ACCEPTED move, so it carries no stale feedback.
+        assert SECTION_FEEDBACK in call_fn.prompts[1]
+        assert SECTION_FEEDBACK not in call_fn.prompts[2]
+        assert result.terminal == TERMINAL_WAITING
+
+    def test_the_default_escalation_uses_the_existing_verb(self, tmp_path,
+                                                          mission):
+        """No job linked yet, so the honest answer is that there is nowhere to attach."""
+        reason = escalate_repeated_refusal(PROJECT, mission.id, "refused twice",
+                                           root=tmp_path)
+        assert "no job is linked" in reason

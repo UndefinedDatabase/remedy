@@ -109,6 +109,9 @@ SECTION_DOSSIER = "## Mission dossier"
 SECTION_PLAN = "## Mission plan state"
 SECTION_REPORT = "## Last report"
 SECTION_DECISIONS = "## Open decisions"
+#: Present only on the ONE re-prompt that follows a refused move. Last, so a
+#: refusal never disturbs the stable prefix in front of it.
+SECTION_FEEDBACK = "## Your previous move was refused"
 
 #: What the stand-in dossier says about itself. F071 (Mission dossier) is not
 #: built; ``Mission.dossier_ref`` is documented as RESERVED and is empty on
@@ -197,6 +200,7 @@ def assemble_context(
     dossier: Callable[[Any], str] | None = None,
     last_report: str = "",
     open_decisions: Iterable[Any] = (),
+    feedback: str = "",
 ) -> OrchestratorContext:
     """Assemble one iteration's context: dossier FIRST, then the volatile parts.
 
@@ -228,6 +232,8 @@ def assemble_context(
         (SECTION_REPORT, last_report.strip() or "No report yet."),
         (SECTION_DECISIONS, decision_text),
     )
+    if feedback.strip():
+        sections = (*sections, (SECTION_FEEDBACK, feedback.strip()))
     text = "\n\n".join(f"{name}\n\n{body}" for name, body in sections) + "\n"
     return OrchestratorContext(
         text=text, digest=context_digest(text), sections=sections)
@@ -636,6 +642,8 @@ def run_mission(
     dossier: Callable[[Any], str] | None = None,
     dispatch: Callable[..., Any] | None = None,
     last_report: Callable[[Any], str] | None = None,
+    evidence: Callable[[str, str, str], MilestoneEvidence] | None = None,
+    escalate: Callable[[str, str, str], str] | None = None,
     control_root_path: Path | None = None,
     repo_root: Path | None = None,
     on_call: Callable[[int, str, bool, str], None] | None = None,
@@ -649,13 +657,22 @@ def run_mission(
     iteration begins, so a stop request lands within one iteration and a human
     override never waits for the run to finish.
 
+    Every move that would ADVANCE the mission is evaluated before it is
+    executed. A refused move is recorded with its reason and the loop
+    re-prompts ONCE with that reason as feedback; a second refusal in a row
+    escalates to a human through the existing escalation verb. There is no
+    third attempt and no silent retry loop.
+
     Seams, all defaulting to the production path:
-      ``dispatch``     how a job is created for a milestone
-                       (``mission_state.continue_mission``)
-      ``dossier``      how the mission's dossier renders (F071 plugs in here)
-      ``last_report``  the account of the most recent dispatched job
-      ``call_fn``      the orchestrator provider call; ``None`` means there is
-                       no provider, which is a terminal and not an exception
+      ``dispatch``        how a job is created for a milestone
+                          (``mission_state.continue_mission``)
+      ``dossier``         how the mission's dossier renders (F071 plugs in here)
+      ``evidence``        how a milestone's job state, DoD gate and handback are
+                          observed (:func:`collect_milestone_evidence`)
+      ``escalate``        how a twice-refused move reaches a human
+      ``last_report``     the account of the most recent dispatched job
+      ``call_fn``         the orchestrator provider call; ``None`` means there
+                          is no provider, which is a terminal, not an exception
 
     Every iteration leaves a ledger entry — including the ones that end the
     run — so the audit trail has no gaps where a decision used to be.
@@ -672,6 +689,13 @@ def run_mission(
     pid = project_id or resolve_mission_project(mission_id, root)
     result = MissionRunResult(mission_id=mission_id, project_id=pid,
                               terminal=TERMINAL_ITERATION_LIMIT)
+    observe = evidence or (
+        lambda p, m, ms: collect_milestone_evidence(p, m, ms, root))
+    hand_over = escalate or (
+        lambda p, m, reason: escalate_repeated_refusal(p, m, reason, root=root,
+                                                       now=now))
+    #: Empty until a move is refused; carried into exactly ONE re-prompt.
+    feedback = ""
 
     def _record(iteration: int, digest: str, move: dict[str, Any],
                 outcome: MoveOutcome, cost: dict[str, Any]) -> None:
@@ -708,7 +732,8 @@ def run_mission(
             done_milestones=done_milestones(mission),
             dossier=dossier,
             last_report=last_report(mission) if last_report else "",
-            open_decisions=open_mission_decisions(mission))
+            open_decisions=open_mission_decisions(mission),
+            feedback=feedback)
         result.iterations = iteration
 
         if call_fn is None:
@@ -741,6 +766,29 @@ def run_mission(
             return result
 
         move: OrchestratorMove = call.value
+        refusal = evaluate_move(mission, move, observe=observe,
+                                project_id=pid, mission_id=mission_id)
+
+        if refusal:
+            if not feedback:
+                # First refusal: record it and re-prompt ONCE with the reason.
+                _record(iteration, context.digest, move.model_dump(),
+                        MoveOutcome(status=OUTCOME_REFUSED, detail=refusal),
+                        cost)
+                feedback = refusal
+                continue
+            # Second refusal in a row: a human decides, never another retry.
+            handle = hand_over(pid, mission_id, refusal)
+            outcome = MoveOutcome(
+                status=TERMINAL_ESCALATED,
+                detail=f"refused twice in a row ({refusal}); escalated: "
+                       f"{handle}",
+                terminal=True)
+            _record(iteration, context.digest, move.model_dump(), outcome, cost)
+            result.terminal, result.detail = TERMINAL_ESCALATED, outcome.detail
+            return result
+
+        feedback = ""
         outcome = execute_move(pid, mission_id, move, root=root,
                                dispatch=dispatch, now=now)
         _record(iteration, context.digest, move.model_dump(), outcome, cost)
@@ -1022,6 +1070,45 @@ def _era_refusal(evidence: MilestoneEvidence | None) -> str:
     return (f"the handback carries {len(defects)} integrity defect(s) from "
             f"known finding classes, so the loop refuses to advance: "
             f"{render_defects(defects)}")
+
+
+def escalate_repeated_refusal(project_id: str, mission_id: str, reason: str, *,
+                              root: Path | None = None,
+                              now: datetime | None = None) -> str:
+    """Hand a twice-refused move to a human through the EXISTING escalation verb.
+
+    Never a silent loop: the second refusal in a row stops being the loop's
+    problem and becomes a human decision. The decision is enqueued on the
+    mission's most recent job, because that is the object
+    ``escalation.enqueue_task_decision`` attaches to; a mission with no job yet
+    has nowhere to attach one, and that is reported rather than papered over.
+    """
+    from packages.orchestration.escalation import enqueue_task_decision
+    from packages.orchestration.mission_state import load_mission
+    from packages.orchestration.storage import load_job, save_job
+
+    mission = load_mission(project_id, mission_id, root)
+    link = mission.latest_link()
+    if link is None:
+        return ("no job is linked to this mission, so the refusal cannot be "
+                "attached to a decision — a human has to look at the mission")
+    try:
+        job = load_job(_as_uuid(link.job_id))
+    except Exception as exc:
+        return f"the mission's latest job could not be read to escalate: {exc}"
+    tasks = list(getattr(job, "tasks", ()) or ())
+    if not tasks:
+        return (f"job {link.job_id} has no task to attach the decision to")
+    record = enqueue_task_decision(
+        job,
+        task_id=tasks[0].id,
+        question=(f"The orchestrator's move was refused twice in a row: "
+                  f"{reason}. How should this mission proceed?"),
+        options=("replan the mission", "abandon the mission"),
+        impact="the mission cannot advance until this is answered",
+        now=now or datetime.now(timezone.utc))
+    save_job(job)
+    return str(record.get("decision_id", ""))
 
 
 def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
