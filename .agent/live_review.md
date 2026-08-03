@@ -39,6 +39,7 @@ jobs, starts nothing, touches no worktree.
   provider prompt's rules; pin with tests: an over-cap draft and
   a blank-goal draft both end in the deterministic fallback with
   a hint, never a traceback.
+  Done: R-0168 (commit b70009cb).
 - Next free ID: R-0169.
 
 ## Verdicts
