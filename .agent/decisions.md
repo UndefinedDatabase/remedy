@@ -1,5 +1,60 @@
 # Decisions
 
+## 2026-08-03: F071 T002 — the compression contract has NO goal field
+"Never drop the goal" is one of the three verbatim compression rules. A rule
+that only ever appears in a prompt is a hope. `DossierCompression` therefore
+declares `milestones`, `risks`, `decisions` and `next_step` and nothing else:
+the provider has no channel through which to change, shorten or omit the goal,
+and `_rebuild` copies the goal from the dossier that went in. Same idiom as
+`OrchestratorMove` — the authority boundary is the schema's shape, not its
+prose. The other two rules ("keep every open item", "merge resolved risks
+away") CANNOT be expressed as absent fields, so they are enforced after
+validation by `compression_rule_violation`, which refuses the answer and hands
+the caller the honest over-budget fallback.
+
+For the same reason the answer carries TEXT only, no state field: a compression
+cannot promote a milestone to done or reopen a closed risk. `resolved` and
+`outcome` are carried over from the previous dossier by id.
+
+## 2026-08-03: F071 T002 — exactly one call, no parse retry
+The feature specifies ONE compression provider call. `run_structured_call` is
+used with `allow_parse_retry=False`, so "one call" is true of the code and not
+only of the prose. A retry would buy nothing here: the fallback is already a
+complete, correct, honestly-flagged document, so there is no partial result to
+salvage. This is the deliberate difference from the mission compiler and the
+orchestrator loop, which both allow the single retry.
+
+`dossier_compress_draft_v1` is NOT registered in `schemas.models.SCHEMA_REGISTRY`
+— the same call the `dod_draft_v1` / `mission_plan_draft_v1` precedents make. A
+compression answer never leaves this module and is never persisted under its
+tag; what reaches disk is the rewritten dossier markdown.
+
+## 2026-08-03: F071 T001 — the budget counts on the labeled ESTIMATE basis
+P6 says label the counting basis and never invent a counter. The dossier's size
+is counted through the EXISTING seam, `token_economy.estimate_text_tokens`, and
+every count travels as a `DossierTokenCount` carrying `basis` and the actuals
+feature's own confidence vocabulary (`low` — F003 established that a count with
+no provider-measured usage behind it is a character heuristic).
+
+What was deliberately NOT done: using a provider call's `UsageActuals` as the
+dossier's token count. Those actuals measure a whole prompt, not this document,
+so reporting them as the dossier's size would be a more authoritative-looking
+number that is not about the thing it names. A call's measured actuals are
+recorded separately, as that CALL's cost, through the existing
+`orchestrator_loop.measure_call_cost`.
+
+The over-budget FLAG is likewise excluded from the counted body: counting it
+would make the budget check depend on its own previous verdict.
+
+## 2026-08-03: F071 T001 — one update produces one version
+`update()` advances the version by exactly one, whether or not a compression
+ran. The alternative — a second version for the compressed rewrite — would let
+a reader diff pre- against post-compression directly, but it makes "the live
+prompt uses the newest" ambiguous within a single iteration. Version N-1 is
+still on disk, so `diff dossier_v<N-1>.md dossier_v<N>.md` shows what the
+iteration appended AND what the compression dropped, which is the audit the
+feature asks for.
+
 ## 2026-08-03: F070 T003 — `mission run` gains a MODE, it does not replace one
 `remedy mission run` already existed: a facade over the dogfood run loop
 (`dogfood_run.run_mission_loop`), keyed on a RUN id, covered by

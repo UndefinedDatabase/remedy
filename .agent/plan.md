@@ -14,20 +14,26 @@ stays under budget across many iterations, survives recall checks,
 and the dossier is the asserted prompt prefix.
 
 ## Current Step
-R1 (SPLIT, LARGE bundle): T001 structure + update mechanics +
-budget check + versioning + unit tests; T002 compression call +
-rules + schema + fake-provider tests (open items survive, resolved
-merge, goal immutable). Gate: scoped test file + canary.
+R1 (SPLIT, LARGE bundle) DELIVERED — awaiting reviewer verdict.
+T001 (structure, update mechanics, budget + labeled basis,
+versioning) and T002 (compression call, rules as assertions, schema,
+honest failure path) are committed in four slices, each under the
+500-line limit. Gate green: scoped 64 passed, canary 42 passed.
+Six mutation red-proofs run in a disposable worktree. No PR yet —
+the PR comes at closure. The worker writes no verdict and merges
+nothing.
 
 ## Next Steps
-- R2: T003 loop integration (prefix asserted) + recall harness
-  (10-fact fixture) + integration gate.
+- R2: T003 loop integration (dossier asserted as prompt prefix,
+  through the `dossier` seam of orchestrator_loop.run_mission) +
+  recall harness (seeded 10-fact fixture) + integration gate.
 - R3: closure per STATUS_closure_protocol.md.
 
 ## Risks
-- Token counting: use the actuals basis, label it — never invent a
-  counter (P6).
-- Compression must be falsifiable: the rules live as test
-  assertions, not prose.
+- Token counting: the counting basis is LABELED, not invented (P6) —
+  .agent/decisions.md records what was deliberately not done.
+- Compression rules live as test assertions plus post-validation
+  enforcement, never as prose in a prompt alone.
 - Do-not-touch: cross-session handoffs (F079), prompt ordering
-  policy, memory systems beyond the dossier.
+  policy, memory systems beyond the dossier. orchestrator_loop.py is
+  unchanged in R1 (imported read-only for measure_call_cost).
