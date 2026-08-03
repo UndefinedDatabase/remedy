@@ -33,9 +33,11 @@ from packages.orchestration.mission_plan_schema import (
     MissionPlan,
 )
 from packages.orchestration.mission_state import (
+    MissionNotFoundError,
     create_mission,
     load_mission,
     set_mission_plan,
+    set_mission_status,
 )
 from packages.orchestration.orchestrator_loop import (
     CONFIG_KEY_MAX_ITERATIONS,
@@ -50,7 +52,11 @@ from packages.orchestration.orchestrator_loop import (
     SECTION_REPORT,
     TERMINAL_ABORTED,
     TERMINAL_ACHIEVED,
+    TERMINAL_INVALID_MOVE,
     TERMINAL_ITERATION_LIMIT,
+    TERMINAL_NO_PROVIDER,
+    TERMINAL_NOT_ACTIVE,
+    TERMINAL_STOPPED,
     TERMINAL_WAITING,
     USAGE_UNMEASURED,
     LedgerEntry,
@@ -58,6 +64,7 @@ from packages.orchestration.orchestrator_loop import (
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
+    build_orchestrator_prompt,
     build_orchestrator_system_prompt,
     context_digest,
     done_milestones,
@@ -70,6 +77,7 @@ from packages.orchestration.orchestrator_loop import (
     read_ledger,
     render_ledger,
     render_mission_dossier,
+    resolve_mission_project,
     run_mission,
 )
 from packages.orchestration.orchestrator_move_schema import (
@@ -78,6 +86,7 @@ from packages.orchestration.orchestrator_move_schema import (
     ORCHESTRATOR_MOVE_SCHEMA_V,
     OrchestratorMove,
 )
+from packages.orchestration.safe_points import request_stop, stop_requested
 from packages.orchestration.schemas.models import SCHEMA_REGISTRY
 from packages.orchestration.schemas.validation import validate_response
 from packages.orchestration.structured_outputs import (
@@ -574,3 +583,166 @@ class TestEveryMoveKindIsExercised:
         assert result.terminal == TERMINAL_ABORTED
         assert result.detail == "the plan is unbuildable"
         assert load_mission(PROJECT, mission.id, tmp_path).status == "abandoned"
+
+
+class TestTheLoopTerminals:
+    def test_an_unknown_kind_ends_the_run_as_a_parse_class_failure(
+            self, tmp_path, mission, dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(json.dumps({
+                "schema_v": ORCHESTRATOR_MOVE_SCHEMA_V,
+                "kind": "create_mission", "payload": {"goal": "mine now"}})),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_INVALID_MOVE
+        assert result.entries[-1].outcome["detail"].startswith("parse-class")
+
+    def test_no_provider_is_a_terminal_not_an_exception(self, tmp_path,
+                                                        mission, dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=None, root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_NO_PROVIDER
+        assert len(result.entries) == 1
+
+    def test_the_iteration_limit_is_a_normal_terminal(self, tmp_path, mission,
+                                                      dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="keep going")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+        assert result.iterations == 3
+        assert len(dispatched.seen) == 3
+        assert "3-iteration limit" in result.detail
+
+    def test_a_non_active_mission_stops_immediately(self, tmp_path, mission,
+                                                    dispatched):
+        set_mission_status(PROJECT, mission.id, "paused", tmp_path)
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
+            dispatch=dispatched, control_root_path=tmp_path / "control")
+        assert result.terminal == TERMINAL_NOT_ACTIVE
+        assert result.entries == []
+
+
+class TestHumanOverridesWinInstantly:
+    def test_a_stop_request_between_iterations_halts_within_one_iteration(
+            self, tmp_path, mission, dispatched):
+        control = tmp_path / "control"
+        seen: list[int] = []
+
+        def dispatch(project_id, mission_id, step, *, root=None, now=None):
+            seen.append(len(seen) + 1)
+            if len(seen) == 1:
+                # The human presses stop while iteration 1 is still running.
+                request_stop(mission.id, reason="operator says stop",
+                             control_root_path=control)
+            return _FakeJob(f"job-{len(seen):04d}")
+
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=5), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="work")),
+            root=tmp_path, dispatch=dispatch, control_root_path=control)
+
+        assert result.terminal == TERMINAL_STOPPED
+        # Exactly ONE dispatch: the stop landed at the very next safe point,
+        # not at the end of the five permitted iterations.
+        assert seen == [1]
+        assert "operator says stop" in result.detail
+
+    def test_the_stop_is_consumed_so_a_later_run_is_not_stopped_again(
+            self, tmp_path, mission, dispatched):
+        control = tmp_path / "control"
+        request_stop(mission.id, reason="halt", control_root_path=control)
+        first = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
+            dispatch=dispatched, control_root_path=control)
+        assert first.terminal == TERMINAL_STOPPED
+        assert stop_requested(mission.id, control_root_path=control) is None
+
+    def test_open_decisions_reach_the_prompt_every_iteration(self, tmp_path,
+                                                             mission):
+        call_fn = _scripted(_move_json("wait_on_decisions"))
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=call_fn, root=tmp_path,
+            control_root_path=tmp_path / "control")
+        assert SECTION_DECISIONS in call_fn.prompts[0]
+
+
+class TestTheLedgerCoversEveryIteration:
+    def test_one_entry_per_iteration_numbered_from_one(self, tmp_path, mission,
+                                                       dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="work")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert [e["iteration"] for e in entries] == [1, 2, 3]
+        assert all(e["move"]["kind"] == "dispatch_job" for e in entries)
+
+    def test_every_entry_carries_a_context_digest_and_cost(self, tmp_path,
+                                                           mission, dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="work")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        for entry in read_ledger(PROJECT, mission.id, tmp_path):
+            assert entry["context_digest"].startswith("sha256:")
+            assert entry["cost"]["calls"] == 1
+            assert entry["cost"]["usage_source"] == USAGE_UNMEASURED
+
+    def test_the_run_is_reconstructable_from_the_rendered_ledger(
+            self, tmp_path, mission, dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            call_fn=_scripted(
+                _move_json("dispatch_job", milestone_id="M001", step="build"),
+                _move_json("declare_milestone_done", milestone_id="M001"),
+                _move_json("abort_with_reason", reason="M002 is impossible")),
+            root=tmp_path, dispatch=dispatched,
+            control_root_path=tmp_path / "control")
+        text = render_ledger(read_ledger(PROJECT, mission.id, tmp_path))
+        for expected in ("dispatch_job", "build", "declare_milestone_done",
+                         "abort_with_reason", "M002 is impossible"):
+            assert expected in text
+
+
+class TestThePromptComesFromTheProtocol:
+    def test_the_prompt_carries_the_generated_protocol_then_the_state(
+            self, mission):
+        ctx = assemble_context(mission)
+        prompt = build_orchestrator_prompt(ctx)
+        assert prompt.index(PROTOCOL_VERSION) < prompt.index(SECTION_DOSSIER)
+        assert ctx.text in prompt
+
+    def test_the_loop_sends_that_prompt(self, tmp_path, mission):
+        call_fn = _scripted(_move_json("wait_on_decisions"))
+        run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            call_fn=call_fn, root=tmp_path,
+            control_root_path=tmp_path / "control")
+        assert PROTOCOL_DOC_RELATIVE in call_fn.prompts[0]
+        assert SECTION_DOSSIER in call_fn.prompts[0]
+
+
+class TestProjectResolution:
+    def test_the_project_is_found_from_the_mission_id_alone(self, tmp_path,
+                                                            mission):
+        assert resolve_mission_project(mission.id, tmp_path) == PROJECT
+
+    def test_an_unknown_mission_id_is_refused(self, tmp_path):
+        with pytest.raises(MissionNotFoundError):
+            resolve_mission_project("deadbeef", tmp_path)
