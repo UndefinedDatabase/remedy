@@ -1,0 +1,10 @@
+=== base run: 097e4959 (merge base) ===
+2026-08-03T15:14:39Z
+cmd: REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+...[progress lines trimmed — the gate records the raw TAIL, the FAILED list, the exit code and wall time]...
+(no FAILED lines)
+........................................................................ [ 99%]
+.............................                                            [100%]
+15274 passed, 19 skipped in 165.08s (0:02:45)
+WALL=165.58s
+BASE_EXIT=0

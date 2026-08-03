@@ -1,0 +1,50 @@
+# Integration gate — F071 R3 — attribution
+
+Procedure: docs/agents/integration_gate.md.
+
+## Runs
+branch  c4068b85  python3 -m pytest -n auto -q
+        15383 passed, 19 skipped, exit 0, 149.72s
+base    097e4959  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+        (throwaway worktree on throwaway branch tmp/base-gate)
+        15274 passed, 19 skipped, exit 0, 165.58s
+delta   +109 tests — the F071 R1-R3 additions, all passing.
+
+## Comparison
+branch_failed.txt  0 lines
+base_failed.txt    0 lines
+comm -13 (branch-only failures)  EMPTY  -> nothing to attribute
+comm -23 (failures the branch fixed)  EMPTY
+
+Step 4 (per-id attribution) does not apply: it runs for every branch-only
+id, and there are none. Flake debt 0.
+
+## Environment parity (R-0155/R-0158/R-0169)
+apps/ui/node_modules and apps/ui/dist were COPIED (never symlinked) from the
+primary checkout into the base worktree before the base run.
+REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run and NOT trusted alone —
+apps/ui/dist was hashed before and after:
+  before 5ff2033ab95c45d2802cbe7d9977605abbe009a916236a43aab30f97954ba092
+  after  5ff2033ab95c45d2802cbe7d9977605abbe009a916236a43aab30f97954ba092
+UNCHANGED -> the parity claim stands, no per-id attribution forced.
+
+## Worktree hygiene
+git worktree remove --force + git worktree prune + git branch -D tmp/base-gate.
+git worktree list shows the primary checkout only; no tmp/* branch remains.
+
+## Budget
+Both runs under the ~5 min note threshold (149.72s / 165.58s). No perf pass.
+
+## Procedure note for the reviewer (candidate, not a self-authored finding)
+The FIRST branch run was executed with its log written to
+.agent/gate_f071_r3/branch_run.txt INSIDE the repo. It reported 4 failures:
+  tests/orchestration/test_run_manifest_logical_identity.py (2 ids)
+  tests/cli/test_job_rerun_workspace_identity.py (2 ids)
+All four compare remedy_worktree_digest values; the log file was being
+appended to WHILE the suite ran, so the worktree digest changed mid-run and
+the tests correctly reported drift. Re-running with the evidence written
+outside the repo (scratchpad) and copied in afterwards: 15383 passed, exit 0.
+The four failures were an artifact of where the evidence was written, not of
+the branch. integration_gate.md fixes evidence NAMES (.txt, R-0169) but says
+nothing about evidence LOCATION during the run; recorded here for the reviewer
+to register if it is worth an amendment. No doc was amended in this round.

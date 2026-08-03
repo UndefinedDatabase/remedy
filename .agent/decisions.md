@@ -1,5 +1,24 @@
 # Decisions
 
+## 2026-08-03: F071 R3 — gate evidence is written OUTSIDE the repo during the run
+The first branch gate run wrote its log to `.agent/gate_f071_r3/branch_run.txt`
+inside the repo and reported four failures — two in
+`test_run_manifest_logical_identity.py`, two in
+`test_job_rerun_workspace_identity.py`. All four compare
+`remedy_worktree_digest` values, and the log was being appended to WHILE the
+suite ran, so the worktree digest genuinely changed mid-run. The tests were
+right; the harness was wrong.
+
+Re-running with the log in the session scratchpad and copying the evidence into
+`.agent/gate_f071_r3/` after both runs finished: 15383 passed, exit 0, zero
+failures.
+
+`docs/agents/integration_gate.md` constrains evidence NAMES (`.txt`, never
+`.log` — R-0169) but says nothing about evidence LOCATION during the run. No
+doc was amended here: authoring gate-procedure amendments is the reviewer's
+call, so the observation is recorded in `.agent/gate_f071_r3/attribution.txt`
+and in the handback for the reviewer to register or discard.
+
 ## 2026-08-03: F071 R3 — the version fast-forward, the ONE exception to one-update-one-version
 The R1 decision "one update produces exactly ONE version" still describes the
 normal path and is still pinned by a test. R-0175 found the case it does not

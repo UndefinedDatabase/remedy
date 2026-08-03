@@ -1,0 +1,10 @@
+=== branch run: c4068b85 ===
+2026-08-03T15:11:43Z
+cmd: python3 -m pytest -n auto -q
+...[progress lines trimmed — the gate records the raw TAIL, the FAILED list, the exit code and wall time]...
+(no FAILED lines)
+........................................................................ [ 99%]
+..................................................................       [100%]
+15383 passed, 19 skipped in 149.19s (0:02:29)
+WALL=149.72s
+BRANCH_EXIT=0
