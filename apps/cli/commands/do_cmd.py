@@ -296,24 +296,14 @@ def _cmd_do_mission(
             if yes:
                 # F034: --yes covers approval AND clarifications. Every open
                 # question runs on its documented default, recorded in the
-                # assumption log — unattended, but never silent.
-                from packages.orchestration.flight_plan import (
-                    apply_clarification_answers,
-                    write_assumptions_md,
-                )
-                if fp_dict.get("clarifications_resolved"):
-                    fp_dict["clarifications_resolved"] = apply_clarification_answers(
-                        fp_dict.get("clarifications_resolved"), None)
-                fp_dict["_approval"] = "approved"
-                fp_dict["_approval_audit"] = {
-                    "mode": "auto_yes",
-                    "reason": "auto-approved via --yes",
-                }
+                # assumption log — unattended, but never silent. The semantics
+                # live in flight_plan.auto_approve_flight_plan so the
+                # orchestrator loop runs the SAME approval, not a copy of it.
+                from packages.orchestration.flight_plan import auto_approve_flight_plan
+                fp_dict = auto_approve_flight_plan(
+                    fp_dict, job_evidence_export_dir(str(job.id)))
                 job.flight_plan = fp_dict
                 save_job(job)
-                write_assumptions_md(
-                    fp_dict.get("clarifications_resolved"),
-                    job_evidence_export_dir(str(job.id)))
                 plan_label = (
                     f"flight plan {fp_result.plan.schema_v} (approved via --yes)"
                 )
