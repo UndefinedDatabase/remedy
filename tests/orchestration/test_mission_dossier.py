@@ -970,6 +970,23 @@ class TestTheRecallHarness:
         assert result.answerable == ("X1",)
         assert result.missing == ()
 
+    def test_the_harness_reports_a_fact_it_cannot_find(self):
+        """Negative control: proves `missing` is derived, not hard-coded empty.
+
+        DECISIONS renders the RECENT few by design, so a fact seeded as an
+        unresolved decision falls out of the rendering once newer ones arrive —
+        and the harness must SAY so. (Open facts belong in milestones or risks;
+        ``open_items`` deliberately excludes decisions.)
+        """
+        facts = tuple(
+            RecallFact(f"D{i:03d}", f"an open call {i}", "decision")
+            for i in range(MAX_RECENT_DECISIONS + 3))
+        result = run_recall_harness(facts, budget=DEFAULT_MAX_TOKENS,
+                                    per_iteration=1)
+        assert result.missing == ("D000", "D001", "D002")
+        assert result.recalled_all_open is False
+        assert "D000" in recall_report(result)
+
     def test_the_report_carries_every_number_and_no_verdict(self):
         text = recall_report(run_recall_harness(call_fn=_shrinking_provider()))
         for label in ("iterations:", "dossier version:", "tokens:",
