@@ -67,12 +67,14 @@ class TestSchemaVersioning:
         assert DOD_DRAFT_SCHEMA_V not in SCHEMA_REGISTRY
 
     def test_tags_are_compact(self):
-        # flight_plan_v1 (14 chars) deliberately uses a descriptive tag;
-        # all other tags must stay <= 6 chars (original compact guard).
-        _LONG_TAG_EXEMPTIONS = {"flight_plan_v1"}
+        # flight_plan_v1 (14) and mission_plan_v1 (15) deliberately use
+        # descriptive tags — both name a PLAN a human reads in evidence, where
+        # "fp1"/"mp1" would be a riddle. The exemption is a named list, not a
+        # raised limit: every other tag must stay <= 6 chars (compact guard).
+        _LONG_TAG_EXEMPTIONS = {"flight_plan_v1", "mission_plan_v1"}
         for tag in SCHEMA_REGISTRY:
             if tag in _LONG_TAG_EXEMPTIONS:
-                assert len(tag) <= 14, f"exempted tag {tag!r} exceeds 14"
+                assert len(tag) <= 15, f"exempted tag {tag!r} exceeds 15"
             else:
                 assert 2 <= len(tag) <= 6, f"schema_v {tag!r} is not compact"
 

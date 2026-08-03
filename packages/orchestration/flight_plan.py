@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.models import AcceptanceCheck, RunState, Task
+from packages.orchestration.prompt_facts import repo_facts_block
 from packages.orchestration.schemas.models import (
     _LARGE_PLAN_THRESHOLD,
     FlightPlan,
@@ -79,30 +80,10 @@ Return ONLY a JSON object matching the flight_plan_v1 schema.
 #   choices — humans can, explicitly.
 
 
-def _cheap_repo_facts() -> str:
-    """Gather minimal repo context for the planner prompt."""
-    import os
-    lines: list[str] = []
-    cwd = os.getcwd()
-    try:
-        entries = sorted(os.listdir(cwd))
-        dirs = [e for e in entries if os.path.isdir(os.path.join(cwd, e))
-                and not e.startswith(".")]
-        files = [e for e in entries if os.path.isfile(os.path.join(cwd, e))
-                 and not e.startswith(".")]
-        if dirs:
-            lines.append(f"Top-level dirs: {', '.join(dirs[:20])}")
-        if files:
-            lines.append(f"Top-level files: {', '.join(files[:20])}")
-    except OSError:
-        lines.append("(repo listing unavailable)")
-    return "\n".join(lines) if lines else "(no repo facts available)"
-
-
 def _build_plan_prompt(intake_dict: dict[str, Any]) -> str:
     return _PLAN_PROMPT_TEMPLATE.format(
         intake_json=json.dumps(intake_dict, indent=2),
-        repo_facts=_cheap_repo_facts(),
+        repo_facts=repo_facts_block(),
     )
 
 

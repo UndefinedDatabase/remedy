@@ -171,6 +171,14 @@ class Mission:
     filled by this one.  It exists now so that the record shape does not have
     to change when the dossier lands — an empty string means "no dossier",
     which is the truth today for every mission.
+
+    ``mission_plan`` (F069) is the compiled MissionPlan, ADDITIVE and OPTIONAL:
+    the key is written only once a plan exists, so every record written before
+    F069 stays byte-identical and every reader that predates F069 keeps working
+    — which is why :data:`MISSION_SCHEMA_VERSION` does NOT move for it.  The
+    body is the plan's ``model_dump()`` plus the ``_versions``/``_version``
+    keys the flight-plan replan precedent established; ``None`` and an absent
+    key both mean "not compiled yet".
     """
 
     id: str
@@ -181,9 +189,10 @@ class Mission:
     dossier_ref: str = ""
     created_at: str = ""
     schema_version: int = MISSION_SCHEMA_VERSION
+    mission_plan: dict[str, Any] | None = None
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        body = {
             "schema_version": self.schema_version,
             "id": self.id,
             "project_id": self.project_id,
@@ -193,6 +202,12 @@ class Mission:
             "dossier_ref": self.dossier_ref,
             "created_at": self.created_at,
         }
+        # Written only when there IS one: an absent key is how a pre-F069
+        # record says "no plan", and a record that never gained a plan must not
+        # start differing from the bytes already on disk.
+        if self.mission_plan is not None:
+            body["mission_plan"] = self.mission_plan
+        return body
 
     @classmethod
     def from_json(cls, body: Any) -> Mission:
@@ -211,6 +226,9 @@ class Mission:
         links = body.get("job_links") or []
         if not isinstance(links, list):
             raise ValueError("mission job_links must be a list")
+        plan = body.get("mission_plan")
+        if plan is not None and not isinstance(plan, dict):
+            raise ValueError("mission_plan must be an object")
         return cls(
             id=mission_id,
             project_id=project_id,
@@ -220,6 +238,7 @@ class Mission:
             dossier_ref=str(body.get("dossier_ref", "")),
             created_at=str(body.get("created_at", "")),
             schema_version=version,
+            mission_plan=plan,
         )
 
     def job_ids(self) -> tuple[str, ...]:
@@ -258,6 +277,20 @@ def mission_record_path(project_id: str, mission_id: str,
     """The single file one mission record lives in."""
     return (mission_dir_for_project(project_id, root)
             / f"{_validate_path_id(mission_id, 'mission id')}.json")
+
+
+def mission_evidence_dir(project_id: str, mission_id: str,
+                         root: Path | None = None) -> Path:
+    """Where one mission's own artifacts live — its rendered plan, its DoDs.
+
+    Mirrors the job precedent (``pingpong_job.job_evidence_dir`` =
+    ``<jobs>/<job id>/evidence``): a directory named after the record, with an
+    ``evidence`` area inside it.  It is a SIBLING of the ``<mission id>.json``
+    record, and ``list_missions_safe`` globs ``*.json``, so adding it cannot
+    disturb any listing.
+    """
+    return (mission_dir_for_project(project_id, root)
+            / _validate_path_id(mission_id, "mission id") / "evidence")
 
 
 def project_ids_with_missions(root: Path | None = None) -> list[str]:
@@ -447,6 +480,24 @@ def set_mission_status(project_id: str, mission_id: str, status: str,
             f"{', '.join(MISSION_STATUSES)})")
     mission = load_mission(project_id, mission_id, root)
     updated = replace(mission, status=status)
+    save_mission(updated, root)
+    return updated
+
+
+def set_mission_plan(project_id: str, mission_id: str,
+                     plan_body: dict[str, Any] | None,
+                     root: Path | None = None) -> Mission:
+    """Persist a compiled MissionPlan body on the mission record.
+
+    The record is the plan's home because the plan describes the MISSION, not
+    any one job.  Writing it changes nothing else: the goal, the status and the
+    job chain are untouched, and nothing is started — persisting a plan is not
+    running one.
+    """
+    if plan_body is not None and not isinstance(plan_body, dict):
+        raise MissionError("a mission plan body must be an object")
+    mission = load_mission(project_id, mission_id, root)
+    updated = replace(mission, mission_plan=plan_body)
     save_mission(updated, root)
     return updated
 

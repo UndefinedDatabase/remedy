@@ -1660,6 +1660,21 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.show", "mission.start"),
     ),
     CommandEntry(
+        command_id="mission.plan",
+        group_id="mission",
+        subcommand="plan",
+        description="Compile a mission's goal into a milestone plan (recompiles keep prior versions; refused once a milestone is in progress). Creates no jobs and starts nothing.",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id (or a unique prefix)"),
+            ArgDef("--no-llm", "Compile deterministically (no LLM provider call)", required=False, is_option=True, is_flag=True),
+            _PROJECT_SCOPE_OPT,
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.start"),
+    ),
+    CommandEntry(
         command_id="mission.show",
         group_id="mission",
         subcommand="show",

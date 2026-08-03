@@ -1,0 +1,12 @@
+$ git worktree remove --force <base-gate>
+exit=0
+$ git worktree prune
+exit=0
+$ git branch -D tmp/base-gate
+Deleted branch tmp/base-gate (was 53ac3efa).
+exit=0
+$ git worktree list
+/home/decodeux/Repos/remedy  0740b00b [feature/f069-mission-compiler]
+$ git branch --list "tmp/*"  (must be empty)
+$ test -e <base-gate path>
+removed from disk

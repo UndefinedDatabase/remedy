@@ -717,3 +717,172 @@ class TestStatusTransitions:
         shown = json.loads(_run(["mission", "show", mission_id, "--project",
                                  project_id, "--json"], data_root).stdout)
         assert shown["mission"]["status"] == "active"
+
+
+# ---------------------------------------------------------------------------
+# F069 T003 — `remedy mission plan`
+# ---------------------------------------------------------------------------
+
+_LONG_GOAL = (
+    "Keep the CSV importer trustworthy over the next two quarters. Today it "
+    "silently drops rows whose encoding it cannot guess, the failure only "
+    "surfaces weeks later in the monthly reconciliation, and nobody can say "
+    "which imports were affected. Eventually a bad row should fail loudly at "
+    "import time and every import should be reconstructable from its own "
+    "record."
+)
+
+
+def _plan(data_root: Path, project_id: str, mission_id: str, *,
+          expect_ok: bool = True):
+    """Compile a mission plan deterministically — no provider in tests."""
+    return _run(["mission", "plan", mission_id, "--no-llm", "--project",
+                 project_id, "--json"], data_root, expect_ok=expect_ok)
+
+
+class TestPlanCatalog:
+    def test_plan_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        entry = get_command("mission.plan")
+        assert entry.action_class == "write_metadata"
+        assert entry.supports_json is True
+        assert "mission.plan" in collect_all_handlers()
+
+    def test_planning_may_not_execute_or_mutate_the_repo(self):
+        """Compiling a plan is metadata work — it runs nothing."""
+        from apps.cli.command_catalog import get_command
+
+        entry = get_command("mission.plan")
+        assert entry.may_execute_commands is False
+        assert entry.may_mutate_repo is False
+
+
+class TestPlan:
+    def test_plan_compiles_milestones_and_renders_them(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        body = json.loads(_plan(data_root, project_id, mission_id).stdout)
+
+        assert body["plan_version"] == 1
+        assert body["source"] == "deterministic"
+        assert body["milestones"]
+        assert Path(body["plan_path"]).is_file()
+        assert Path(body["plan_path"]).name == "mission_plan.md"
+
+    def test_every_milestone_carries_a_dod_reference_that_exists(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        body = json.loads(_plan(data_root, project_id, mission_id).stdout)
+
+        evidence = Path(body["plan_path"]).parent
+        for milestone in body["milestones"]:
+            assert milestone["dod_ref"]
+            assert (evidence / milestone["dod_ref"]).is_file()
+
+    def test_the_text_output_says_nothing_was_started(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        out = _run(["mission", "plan", mission_id, "--no-llm", "--project",
+                    project_id], data_root).stdout
+
+        assert "No jobs were created and nothing was started" in out
+        assert "draft job outline" in out
+
+    def test_planning_creates_no_jobs(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        body = json.loads(_plan(data_root, project_id, mission_id).stdout)
+
+        assert body["jobs_created"] == 0
+        shown = json.loads(_run(["mission", "show", mission_id, "--project",
+                                 project_id, "--json"], data_root).stdout)
+        assert shown["mission"]["job_links"] == []
+        jobs = data_root / "jobs"
+        assert not jobs.exists() or list(jobs.iterdir()) == []
+
+    def test_the_plan_is_persisted_on_the_mission_record(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan(data_root, project_id, mission_id)
+
+        record = json.loads(
+            (data_root / "missions" / project_id / f"{mission_id}.json")
+            .read_text(encoding="utf-8"))
+        assert record["mission_plan"]["schema_v"] == "mission_plan_v1"
+        assert record["mission_plan"]["_version"] == 1
+
+    def test_planning_an_unknown_mission_exits_one(self, project):
+        data_root, project_id = project
+        proc = _plan(data_root, project_id, "0" * 32, expect_ok=False)
+        assert proc.returncode == 1
+        assert "no mission" in proc.stderr
+
+
+class TestRecompileVersioning:
+    def test_a_recompile_keeps_the_prior_version(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        first = json.loads(_plan(data_root, project_id, mission_id).stdout)
+        second = json.loads(_plan(data_root, project_id, mission_id).stdout)
+
+        assert first["plan_version"] == 1
+        assert second["plan_version"] == 2
+        record = json.loads(
+            (data_root / "missions" / project_id / f"{mission_id}.json")
+            .read_text(encoding="utf-8"))
+        assert len(record["mission_plan"]["_versions"]) == 1
+        assert record["mission_plan"]["_versions"][0]["_version"] == 1
+
+    def test_the_earlier_rendered_plan_is_not_destroyed(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+
+        first = json.loads(_plan(data_root, project_id, mission_id).stdout)
+        second = json.loads(_plan(data_root, project_id, mission_id).stdout)
+
+        assert Path(first["plan_path"]).is_file()
+        assert Path(second["plan_path"]).name == "mission_plan_v2.md"
+        assert Path(first["plan_path"]) != Path(second["plan_path"])
+
+
+class TestInProgressRefusal:
+    def test_a_recompile_is_refused_once_a_job_is_linked(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan(data_root, project_id, mission_id)
+        _link_job(data_root, project_id, mission_id, role="initial")
+
+        proc = _plan(data_root, project_id, mission_id, expect_ok=False)
+
+        assert proc.returncode == 1
+        assert "already in progress" in proc.stderr
+        assert "cannot be replanned" in proc.stderr
+
+    def test_the_refusal_leaves_the_persisted_plan_untouched(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _plan(data_root, project_id, mission_id)
+        _link_job(data_root, project_id, mission_id, role="initial")
+        record_path = data_root / "missions" / project_id / f"{mission_id}.json"
+        before = record_path.read_text(encoding="utf-8")
+
+        _plan(data_root, project_id, mission_id, expect_ok=False)
+
+        assert record_path.read_text(encoding="utf-8") == before
+
+    def test_the_first_compilation_is_allowed_even_with_a_linked_job(self, project):
+        """Nothing is in progress while there are no milestones yet."""
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, _LONG_GOAL)
+        _link_job(data_root, project_id, mission_id, role="initial")
+
+        body = json.loads(_plan(data_root, project_id, mission_id).stdout)
+
+        assert body["plan_version"] == 1

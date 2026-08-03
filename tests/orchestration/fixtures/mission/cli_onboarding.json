@@ -1,0 +1,151 @@
+{
+  "name": "cli_onboarding",
+  "note": "Long goal written as a to-do list \u2014 the shape users actually type. The provider still returns outcome-phrased milestones (three, with one fan-in), and the fallback proves that even an imperative-list goal produces a constructible deterministic plan.",
+  "mission": {
+    "goal": "Fix onboarding for the CLI, update the getting-started guide, and add a first-run check. Right now a new user installs the tool, runs it, and gets a stack trace because no project has been initialised \u2014 and the guide does not mention that step at all. Support sees the same three questions every week: why the first command fails, where the config file lives, and how to tell whether the install worked. Over the next quarter a first run should either work or explain itself, and the guide should match what the tool actually does."
+  },
+  "provider_draft": {
+    "schema_v": "mission_plan_draft_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "a first run either works or explains exactly what is missing",
+        "rationale": "A stack trace on first run is the single biggest drop-off.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Detect the uninitialised-project case",
+            "goal": "Recognise the state instead of failing on it",
+            "est_band": "S"
+          },
+          {
+            "title": "Replace the trace with a next-step message",
+            "goal": "Name the missing thing and the command that supplies it",
+            "est_band": "M"
+          }
+        ]
+      },
+      {
+        "id": "M002",
+        "goal": "the getting-started guide matches what the tool actually does",
+        "rationale": "A guide that omits a required step is worse than no guide.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Walk the guide on a clean machine",
+            "goal": "Record every place the guide and the tool disagree",
+            "est_band": "M"
+          }
+        ]
+      },
+      {
+        "id": "M003",
+        "goal": "support no longer answers the same three install questions",
+        "rationale": "The mission's outcome, measurable in the support queue.",
+        "depends_on": [
+          "M001",
+          "M002"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Surface a self-check command",
+            "goal": "One command answers whether the install is healthy",
+            "est_band": "M"
+          }
+        ]
+      }
+    ],
+    "risks": [
+      "The three support questions may hide a fourth nobody has counted."
+    ],
+    "assumptions": [
+      "Existing installed users keep their current behaviour; only the first run changes."
+    ]
+  },
+  "golden_plan": {
+    "schema_v": "mission_plan_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "a first run either works or explains exactly what is missing",
+        "rationale": "A stack trace on first run is the single biggest drop-off.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Detect the uninitialised-project case",
+            "goal": "Recognise the state instead of failing on it",
+            "est_band": "S"
+          },
+          {
+            "title": "Replace the trace with a next-step message",
+            "goal": "Name the missing thing and the command that supplies it",
+            "est_band": "M"
+          }
+        ],
+        "dod_ref": ""
+      },
+      {
+        "id": "M002",
+        "goal": "the getting-started guide matches what the tool actually does",
+        "rationale": "A guide that omits a required step is worse than no guide.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Walk the guide on a clean machine",
+            "goal": "Record every place the guide and the tool disagree",
+            "est_band": "M"
+          }
+        ],
+        "dod_ref": ""
+      },
+      {
+        "id": "M003",
+        "goal": "support no longer answers the same three install questions",
+        "rationale": "The mission's outcome, measurable in the support queue.",
+        "depends_on": [
+          "M001",
+          "M002"
+        ],
+        "jobs_draft": [
+          {
+            "title": "Surface a self-check command",
+            "goal": "One command answers whether the install is healthy",
+            "est_band": "M"
+          }
+        ],
+        "dod_ref": ""
+      }
+    ],
+    "risks": [
+      "The three support questions may hide a fourth nobody has counted."
+    ],
+    "assumptions": [
+      "Existing installed users keep their current behaviour; only the first run changes."
+    ],
+    "compiled": true,
+    "origin": "provider"
+  },
+  "golden_fallback_plan": {
+    "schema_v": "mission_plan_v1",
+    "milestones": [
+      {
+        "id": "M001",
+        "goal": "The mission goal is met in full: Fix onboarding for the CLI, update the getting-started guide, and add a first-run check. Right now a new user installs the tool, runs it, and gets a stack trace because no project has been initialised \u2014 and the guide does not mention that step at all. Support sees the same three questions every week: why the first command fails, where the config file lives, and how to tell whether the install worked. Over the next quarter a first run should either work or explain itself, and the guide should match what the tool actually does.",
+        "rationale": "No provider produced a plan, so the whole mission goal is carried as one milestone. This is a degraded route, not a considered decomposition.",
+        "depends_on": [],
+        "jobs_draft": [
+          {
+            "title": "Fix onboarding for the CLI, update the getting-started guide, and add a first-ru",
+            "goal": "Fix onboarding for the CLI, update the getting-started guide, and add a first-run check. Right now a new user installs the tool, runs it, and gets a stack trace because no project has been initialised \u2014 and the guide does not mention that step at all. Support sees the same three questions every week: why the first command fails, where the config file lives, and how to tell whether the install worked. Over the next quarter a first run should either work or explain itself, and the guide should match what the tool actually does.",
+            "est_band": "XL"
+          }
+        ],
+        "dod_ref": ""
+      }
+    ],
+    "risks": [],
+    "assumptions": [],
+    "compiled": false,
+    "origin": "deterministic"
+  }
+}

@@ -1,5 +1,82 @@
 # Decisions
 
+## 2026-08-03: F069 R2 gate — copying apps/ui/dist is necessary but not sufficient
+The doc's §3 remedy (COPY `apps/ui/node_modules` and `apps/ui/dist`, never
+symlink, plus `REMEDY_UI_NO_AUTO_BUILD=1`) was followed exactly, and eight
+`tests/ui_server/test_live_state.py::TestUIServerIntegration` ids STILL failed at
+base with "ERROR: React UI not built".
+
+Cause, from the evidence: the base worktree's `apps/ui/dist/index.html` carries a
+mtime LATER than the copy that created it (09:05 vs 09:03), so a UI auto-build
+ran inside the base worktree DURING the run and rewrote `dist` while xdist
+workers were reading it — `_get_frontend_dist()` sees no `index.html` for the
+duration of the rewrite and `start_ui_server` refuses to start. This is the F053
+R3 hazard (decisions.md 2026-07-31) with the blast radius contained: because
+`dist` was copied rather than symlinked, the rewrite stayed inside the throwaway
+worktree instead of reaching the primary checkout.
+
+`REMEDY_UI_NO_AUTO_BUILD=1` did not prevent it. The variable is read by
+`_auto_build_frontend`, so it stops the build the ui_server code path triggers —
+but something in the base run still rebuilt. Worth a look before the next gate;
+recorded here rather than chased inside a feature round.
+
+Attribution was therefore done empirically, which is what §3 actually asks for:
+with `dist` in place, `tests/ui_server/test_live_state.py` re-run AT BASE gives
+42 passed / exit 0, so all eight `comm -23` ids are environment-class by direct
+per-id evidence. They are base-only; `comm -13` (branch-only) was empty.
+
+## 2026-08-02: F069 T003 — "in progress" is per-MISSION, because the record has no
+## per-milestone attribution
+The order's rule is "a milestone counts as in progress as soon as any real job
+attributable to it exists on the mission record". The record cannot express
+that attribution: `MissionJobLink` carries `job_id`, `role` and `created_at`,
+and nothing else. Adding a milestone id to the link means changing job
+creation — explicitly in this feature's Do-not-touch list.
+
+The conservative reading was taken instead and documented at the rule's home
+(`mission_compiler.milestones_in_progress`): once ANY job is linked to the
+mission, EVERY milestone of its current plan counts as in progress, and a
+recompile is refused. A mission with no plan yet has no milestones, so the
+FIRST compilation is always allowed even when jobs are already linked. Erring
+this way costs a refused recompile; erring the other way would rewrite the
+route under work already running. Recorded as a declared deviation.
+
+## 2026-08-02: F069 T002 — the milestone DoD goes through a flight-plan VIEW
+Rule A6 makes `compile_dod` the only DoD mechanism, and it takes
+`(intake, FlightPlan)`. A milestone is not a flight plan, so
+`milestone_flight_plan` projects one: one task per `jobs_draft` outline, plus a
+final task whose single acceptance line IS the milestone's outcome and which
+depends on all of them. The projection is never persisted and never scheduled —
+it lives for the length of one `compile_dod` call. The alternative was writing a
+milestone-shaped DoD builder here, which is precisely the second mechanism A6
+forbids.
+
+## 2026-08-02: F069 T001 — `mission_plan_v1` needed the compact-tag exemption widened
+`tests/orchestration/schemas/test_schemas.py::test_tags_are_compact` pins every
+registered `schema_v` at <= 6 chars, with `flight_plan_v1` (14) as the one named
+exemption. The F069 order fixes the tag as `mission_plan_v1` (15), so the guard
+went red the moment the tag was registered.
+
+Resolved by widening the NAMED exemption set to two entries and raising the
+exempted bound to 15 — not by raising the general limit, and not by renaming the
+ordered tag. Both exempted tags name a PLAN a human reads in evidence, where
+`fp1`/`mp1` would be a riddle; every other tag still has to stay compact. The
+guard's intent (tags travel in prompts, so keep them cheap) is intact, and the
+exemption list stays a list a reviewer can read at a glance.
+
+## 2026-08-02: F069 T001 — the MissionPlan schema is a LEAF module, like the DoD's
+`mission_plan_schema.py` sits beside `dod_schema.py` and imports only
+`structured_base` + pydantic, so `schemas/models.py` can import it to register
+`mission_plan_v1` in `SCHEMA_REGISTRY` without a cycle. That registration is
+required for the same reason the DoD's is: a `mission_plan_v1` payload is
+PERSISTED (on the mission record), so its tag has to resolve from the registry
+alone. `mission_plan_draft_v1` is deliberately NOT registered — it never leaves
+the compiler's own call.
+
+Consequence: the token-band literal is spelled out in the leaf rather than
+imported from `schemas.models` (which imports this module). Same four bands,
+documented at the definition.
+
 ## 2026-07-31: F053 R4 — `.agent/context.md` is pinned by TWO tests, not one
 R-0162 was diagnosed as the "Steps" token, and the authored replacement fixed
 exactly that: `test_context_md_no_stale_steps` passes and the whole

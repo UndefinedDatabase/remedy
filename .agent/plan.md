@@ -1,36 +1,35 @@
-# Plan — F062 Product smoke as the closing gate
+# Plan — F069 Mission compiler
+
+Branch: feature/f069-mission-compiler
 
 ## Goal
-Green tests can still mean a broken product. For jobs touching a
-runnable app, a standard DoD block proves the app STARTS, its core
-paths RESPOND, and the console stream is free of errors, before the
-job may end green. DONE when a fixture app with green unit tests but a
-broken startup keeps its job OPEN and the smoke's finding reads
-concretely ("start failed: <probe reason>"), not vaguely. No runtime
-configured → "smoke: not applicable (no runtime configured)", honest
-and non-gating, never silently green.
+A long prose goal compiles into a MissionPlan — ordered milestones,
+each with its own compiled DoD and draft job outlines — so the
+orchestrator loop has a structured route instead of improvising. DONE
+when three long fixture goals compile into sensible milestone plans,
+every milestone carries a DoD reference, and draft jobs NEVER
+autostart.
 
 ## Current Step
-R2 (LARGE): R-0166 fix (push first), then T002 core_paths_respond —
-closed probe vocabulary, path hand-off from intent/plan, OK-status
-rule, fixtures for ok / wrong status / missing marker; then T003
-clean_console — a small documented CASE-SENSITIVE pattern base that
-config EXTENDS but never replaces, red with the matched lines quoted,
-plus the smoke config table (enabled, paths override, error-pattern
-additions, readiness window); then the integration gate per
-docs/agents/integration_gate.md. Per-slice verification, stop-on-red.
+R2 (SPLIT, LARGE), R1 accepted PASS at 83ddb4cb: persist the R1 verdict
++ R-0168 (own commit); fix R-0168 — cap `jobs_draft` at a named
+MAX_MILESTONE_DRAFT_JOBS = 8 and require non-empty DraftJob
+title/goal, so a bad provider draft fails INSIDE run_structured_call
+(one retry, then the honest deterministic fallback) instead of raising
+out of attach_milestone_dods; name the cap in the provider prompt; pin
+with tests. THEN the integration gate per
+docs/agents/integration_gate.md, evidence under .agent/gate_f069_r2/.
+Stop-on-red throughout. No closure work this round.
 
 ## Next Steps
-- R3: closure per docs/roadmap/STATUS_closure_protocol.md (its own
-  round: Built State, preconditions, evidence job, review zip,
-  STATUS [x] + README sync, PR).
+- Reviewer's gate verdict on the integration-gate evidence.
+- Closure per docs/roadmap/STATUS_closure_protocol.md (own round).
 
 ## Risks
-- The harness owns process semantics; the smoke only ORCHESTRATES its
-  existing verbs. A diff changing harness process behaviour is out of
-  scope.
-- v1 is HTTP-level on purpose. Any diff pulling in a browser
-  dependency is rejected at self-review; clickable flows stay in the
-  DoD's runtime_flow kind.
-- Teardown must run on every outcome, including failure and retry — a
-  leaked process is a red result, never a quiet one.
+- The compiler must have ZERO execution side effects: no jobs, no
+  starts, no worktree touches. Pinned by a negative test.
+- Persistence must stay additive/optional on the mission record; a
+  silent schema-version bump would break mission_state consumers.
+- Prompt-building helpers are reused, not copied — a copied helper is
+  extracted into a shared one instead (feature file, Orchestrator
+  brief).
