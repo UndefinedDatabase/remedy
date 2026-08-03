@@ -1072,13 +1072,16 @@ safety ritual (F191), performance budgets for product code (F192),
 accessibility gate (F193), i18n checks (F194), budgeted fuzzing (F195),
 flake-resistant E2E discipline (F196).*
 
-### TIER 12 — OBSERVABILITY & OPERATIONS (8 features)
+### TIER 12 — OBSERVABILITY & OPERATIONS (9 features)
 *OpenTelemetry export per the GenAI semantic conventions (F197), Prometheus
 metrics (F198), self-health & local-only crash reports (F199), daemon mode
 `remedy serve` with the direct mode staying first-class (F200), remote access
 & mobile PWA — user-exposed, no cloud relay (F201), backup/restore & schema
 migrations (F202), structured logging with job/task/run correlation (F203),
-update channel — check only, never auto-update (F204).*
+update channel — check only, never auto-update (F204), headless API contract
+— every shipped-UI capability through a public, versioned, localhost-first
+HTTP API; the shipped UI consumes only that API (F253, operator decision
+2026-08-03; detail: features/T12_F253.md).*
 
 ### TIER 13 — MULTI-REPO & ORGANIZATION (8 features)
 *Multi-repo missions with strictly per-project evidence (F205), repo

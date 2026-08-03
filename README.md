@@ -16,7 +16,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-34 of 252 registered items accepted. Next: F071 (Mission dossier).
+34 of 253 registered items accepted. Next: F071 (Mission dossier).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
