@@ -55,10 +55,13 @@ from packages.orchestration.mission_compiler import (
     write_mission_plan_md,
 )
 from packages.orchestration.mission_plan_schema import (
+    MAX_MILESTONE_DRAFT_JOBS,
     MAX_MISSION_MILESTONES,
     MISSION_PLAN_DRAFT_SCHEMA_V,
     MISSION_PLAN_SCHEMA_V,
+    DraftJob,
     Milestone,
+    MilestoneDraft,
     MissionPlan,
     MissionPlanDraft,
     looks_like_task_list,
@@ -867,3 +870,121 @@ class TestInProgressRule:
         assert sorted(
             p.name for p in mission_evidence_dir("proj", mission.id).iterdir()
         ) == evidence_before
+
+
+# ---------------------------------------------------------------------------
+# R-0168 — a bad draft fails at parse time, not inside the DoD hand-off
+# ---------------------------------------------------------------------------
+
+def draft_body(*milestones: dict) -> dict:
+    return {"schema_v": MISSION_PLAN_DRAFT_SCHEMA_V,
+            "milestones": list(milestones)}
+
+
+def outline(n: int = 1, **over) -> dict:
+    body = {"title": f"outline {n}", "goal": f"outline {n} is done",
+            "est_band": "M"}
+    body.update(over)
+    return body
+
+
+class TestDraftOutlineValidators:
+    """R-0168: the cap and the non-empty rule live on the DRAFT contract."""
+
+    def test_the_cap_admits_exactly_eight_outlines(self):
+        ms = MilestoneDraft.model_validate(milestone("M001", jobs_draft=[
+            outline(i) for i in range(1, MAX_MILESTONE_DRAFT_JOBS + 1)]))
+        assert len(ms.jobs_draft) == MAX_MILESTONE_DRAFT_JOBS
+
+    def test_one_outline_over_the_cap_is_refused(self):
+        with pytest.raises(Exception) as exc:
+            MilestoneDraft.model_validate(milestone("M001", jobs_draft=[
+                outline(i) for i in range(1, MAX_MILESTONE_DRAFT_JOBS + 2)]))
+        assert "outline cap" in str(exc.value)
+
+    def test_the_compiled_milestone_inherits_the_cap(self):
+        with pytest.raises(Exception) as exc:
+            Milestone.model_validate(milestone("M001", jobs_draft=[
+                outline(i) for i in range(1, MAX_MILESTONE_DRAFT_JOBS + 2)]))
+        assert "outline cap" in str(exc.value)
+
+    @pytest.mark.parametrize("field", ["title", "goal"])
+    @pytest.mark.parametrize("value", [
+        pytest.param("", id="empty"),
+        pytest.param("   ", id="blank"),
+    ])
+    def test_a_blank_outline_field_is_refused(self, field, value):
+        with pytest.raises(Exception) as exc:
+            DraftJob.model_validate(outline(**{field: value}))
+        assert f"draft job {field} must not be empty" in str(exc.value)
+
+    def test_the_cap_keeps_the_flight_plan_view_inside_its_own_task_limit(self):
+        """One task per outline plus the outcome task — well under 25."""
+        ms = Milestone.model_validate(milestone("M001", jobs_draft=[
+            outline(i) for i in range(1, MAX_MILESTONE_DRAFT_JOBS + 1)]))
+        view = milestone_flight_plan(ms)
+        assert len(view.tasks) == MAX_MILESTONE_DRAFT_JOBS + 1
+
+
+class TestBadDraftEndsInTheFallbackNotATraceback:
+    """R-0168: the failure class is parse, so the retry + fallback net holds."""
+
+    @pytest.fixture
+    def over_cap_draft(self):
+        return draft_body(milestone("M001", jobs_draft=[
+            outline(i) for i in range(1, MAX_MILESTONE_DRAFT_JOBS + 2)]))
+
+    @pytest.fixture
+    def blank_goal_draft(self):
+        return draft_body(milestone("M001", jobs_draft=[outline(1, goal="  ")]))
+
+    def test_an_over_cap_draft_falls_back_with_a_hint(self, over_cap_draft):
+        result = compile_mission_plan(
+            "keep the payments service releasable", replaying(over_cap_draft))
+
+        assert result.source == "deterministic"
+        assert result.plan.origin == "deterministic"
+        assert result.error_hint
+        assert result.calls == 2  # one parse retry, then the fallback
+
+    def test_a_blank_goal_draft_falls_back_with_a_hint(self, blank_goal_draft):
+        result = compile_mission_plan(
+            "keep the payments service releasable", replaying(blank_goal_draft))
+
+        assert result.source == "deterministic"
+        assert result.error_hint
+        assert result.calls == 2
+
+    @pytest.mark.parametrize("bad", ["over_cap_draft", "blank_goal_draft"])
+    def test_the_dod_hand_off_never_sees_the_bad_draft(self, bad, request,
+                                                       tmp_path):
+        """The bug was a ValueError raised OUT of attach_milestone_dods."""
+        result = compile_mission_plan(
+            "keep the payments service releasable",
+            replaying(request.getfixturevalue(bad)))
+
+        attached = attach_milestone_dods(
+            result.plan, goal="keep the payments service releasable",
+            evidence_dir=tmp_path)
+
+        assert attached.milestones_without_dod == ()
+        assert len(attached.milestones) == 1
+
+    @pytest.mark.parametrize("bad", ["over_cap_draft", "blank_goal_draft"])
+    def test_plan_mission_returns_a_plan_instead_of_raising(
+            self, bad, request, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        mission = create_mission("proj", "keep the payments service releasable")
+
+        outcome = plan_mission(
+            "proj", mission.id, replaying(request.getfixturevalue(bad)))
+
+        assert outcome.source == "deterministic"
+        assert outcome.version == 1
+        assert outcome.plan_path.is_file()
+        assert mission_plan_of(load_mission("proj", mission.id)) == outcome.plan
+
+    def test_the_provider_prompt_names_the_cap(self):
+        prompt = build_mission_prompt("keep it green", project_facts="facts")
+        assert str(MAX_MILESTONE_DRAFT_JOBS) in prompt
+        assert "must be non-empty" in prompt

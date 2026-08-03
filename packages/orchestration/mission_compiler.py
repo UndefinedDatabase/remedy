@@ -41,6 +41,7 @@ from typing import Any
 
 from packages.orchestration.dod_compiler import DoDCompileResult, compile_dod
 from packages.orchestration.mission_plan_schema import (
+    MAX_MILESTONE_DRAFT_JOBS,
     MAX_MISSION_MILESTONES,
     MISSION_PLAN_DRAFT_SCHEMA_V,
     MISSION_PLAN_SCHEMA_V,
@@ -93,7 +94,9 @@ any single job. Break the goal below into the ordered milestones that reach it.
 - rationale says in one line why this milestone exists.
 - jobs_draft is an OUTLINE of the work the milestone will probably need:
   {{"title": "...", "goal": "...", "est_band": "S|M|L|XL"}}. These are sketches
-  for a human to read, NOT runnable jobs, and nothing starts them.
+  for a human to read, NOT runnable jobs, and nothing starts them. At most
+  {max_draft_jobs} per milestone, and every title and goal must be non-empty —
+  a milestone needing more outlines than that is a project, not a milestone.
 - risks lists what could make this mission fail.
 - assumptions lists what you decided on your own because the goal did not say.
   Prefer conservative choices: an assumption keeps existing behavior or does
@@ -160,6 +163,7 @@ def build_mission_prompt(goal: str, *, project_facts: str = "") -> str:
         goal=str(goal).strip(),
         repo_facts=project_facts or repo_facts_block(),
         max_milestones=MAX_MISSION_MILESTONES,
+        max_draft_jobs=MAX_MILESTONE_DRAFT_JOBS,
         schema_v=MISSION_PLAN_DRAFT_SCHEMA_V,
     )
 

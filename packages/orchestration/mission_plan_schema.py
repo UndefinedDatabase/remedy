@@ -61,6 +61,16 @@ MAX_MISSION_MILESTONES = 12
 #: edge, so it is small, non-empty, and free of whitespace.
 MAX_MILESTONE_ID_CHARS = 64
 
+#: How many draft outlines one milestone may sketch (R-0168).  A milestone
+#: needing more than eight is not a milestone, it is a project — the same
+#: hallucinated-scope reading :data:`MAX_MISSION_MILESTONES` applies one level
+#: up.  The cap also keeps the ephemeral ``milestone_flight_plan`` view inside
+#: the flight plan's own 25-task limit (one task per outline, plus the outcome
+#: task), so an over-eager draft is refused HERE — at parse time, where the
+#: single retry and the deterministic fallback still apply — instead of raising
+#: out of the DoD hand-off later.
+MAX_MILESTONE_DRAFT_JOBS = 8
+
 #: Imperative verbs a task list starts its items with.  Closed and small on
 #: purpose: this drives a LINT, and a lint that guesses is worse than no lint.
 #: See :func:`looks_like_task_list` for the rule these feed.
@@ -124,6 +134,17 @@ class DraftJob(_Strict):
     goal: str
     est_band: MilestoneTokenBand
 
+    @model_validator(mode="after")
+    def _validate_draft_job(self) -> DraftJob:
+        # R-0168: an outline whose goal is blank becomes an empty acceptance
+        # line in the milestone flight-plan view, which the FlightPlan
+        # validators reject far downstream. Refused here, at parse time.
+        for field, value in (("title", self.title), ("goal", self.goal)):
+            if not value.strip():
+                raise MissionPlanError(
+                    f"draft job {field} must not be empty or blank")
+        return self
+
 
 class MilestoneDraft(_Strict):
     """One milestone as the PROVIDER proposes it — no DoD reference yet."""
@@ -151,6 +172,12 @@ class MilestoneDraft(_Strict):
                 f"milestone {self.id!r} reads as a task list, not an outcome: "
                 f"{self.goal!r} — a milestone states what is TRUE when it is "
                 f"reached, not the steps taken to get there")
+        if len(self.jobs_draft) > MAX_MILESTONE_DRAFT_JOBS:
+            raise MissionPlanError(
+                f"milestone {self.id!r} exceeds the "
+                f"{MAX_MILESTONE_DRAFT_JOBS}-outline cap "
+                f"(got {len(self.jobs_draft)}) — that is a project, not a "
+                f"milestone; raise the milestone's altitude or split it")
         return self
 
 
