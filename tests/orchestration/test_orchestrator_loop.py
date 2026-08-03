@@ -39,9 +39,16 @@ from packages.orchestration.mission_state import (
 from packages.orchestration.orchestrator_loop import (
     PROTOCOL_DOC_RELATIVE,
     PROTOCOL_VERSION,
+    SECTION_DECISIONS,
+    SECTION_DOSSIER,
+    SECTION_PLAN,
+    SECTION_REPORT,
+    assemble_context,
     build_orchestrator_system_prompt,
+    context_digest,
     orchestrator_protocol_text,
     protocol_document_path,
+    render_mission_dossier,
 )
 from packages.orchestration.orchestrator_move_schema import (
     MAX_PAYLOAD_VALUE_CHARS,
@@ -212,3 +219,64 @@ class TestTheProtocolDocument:
         for writer in (".write_text(", "write_protocol", "open(protocol"):
             assert writer not in text, (
                 f"the loop must not be able to write its own protocol ({writer})")
+
+
+# ---------------------------------------------------------------------------
+# context assembly — dossier FIRST, byte-stable prefix
+# ---------------------------------------------------------------------------
+
+
+class TestContextAssembly:
+    def test_the_dossier_is_the_first_section(self, mission):
+        ctx = assemble_context(mission)
+        assert ctx.text.startswith(SECTION_DOSSIER)
+        assert ctx.sections[0][0] == SECTION_DOSSIER
+
+    def test_the_sections_are_in_the_specified_order(self, mission):
+        ctx = assemble_context(mission)
+        assert [name for name, _ in ctx.sections] == [
+            SECTION_DOSSIER, SECTION_PLAN, SECTION_REPORT, SECTION_DECISIONS]
+
+    def test_the_prefix_is_byte_stable_while_the_mission_does_not_change(
+            self, mission):
+        """The cache-stable prefix discipline, asserted rather than hoped."""
+        first = assemble_context(mission, last_report="report one")
+        second = assemble_context(mission, last_report="a different report")
+        prefix = first.text.split(SECTION_PLAN)[0]
+        assert second.text.startswith(prefix)
+        assert first.digest != second.digest
+
+    def test_the_dossier_changes_when_the_mission_does(self, mission):
+        before = assemble_context(mission)
+        after = assemble_context(mission, done_milestones=("M001",))
+        assert before.sections[0][1] != after.sections[0][1]
+
+    def test_a_dossier_seam_replaces_the_stand_in(self, mission):
+        ctx = assemble_context(mission, dossier=lambda m: "F071 DOSSIER")
+        assert ctx.sections[0][1] == "F071 DOSSIER"
+
+    def test_the_stand_in_says_it_is_a_stand_in(self, mission):
+        text = render_mission_dossier(mission)
+        assert "stand-in" in text
+        assert "M001" in text and "M002" in text
+
+    def test_plan_state_marks_ready_blocked_and_done(self, mission):
+        body = assemble_context(mission).sections[1][1]
+        assert "M001: ready" in body
+        assert "M002: blocked on M001" in body
+        after = assemble_context(mission, done_milestones=("M001",)).sections[1][1]
+        assert "M001: done" in after
+        assert "M002: ready" in after
+
+    def test_open_decisions_are_rendered(self, mission):
+        ctx = assemble_context(
+            mission, open_decisions=[{"id": "d1", "question": "which repo?"}])
+        assert "d1: which repo?" in ctx.sections[3][1]
+
+    def test_no_open_decisions_says_so(self, mission):
+        assert assemble_context(mission).sections[3][1] == "None open."
+
+    def test_the_digest_identifies_the_context(self, mission):
+        ctx = assemble_context(mission)
+        assert ctx.digest == context_digest(ctx.text)
+        assert ctx.digest.startswith("sha256:")
