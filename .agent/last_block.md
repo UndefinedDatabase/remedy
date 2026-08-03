@@ -1,4 +1,12 @@
-OUTCOME: (pending — update at handback)
+OUTCOME: executed — F069 R2 complete. R1 verdict + R-0168 persisted; R-0168
+fixed (MAX_MILESTONE_DRAFT_JOBS=8 + non-blank draft title/goal, cap named in
+the prompt, 15 tests, red-proofed at 83ddb4cb in a throwaway worktree).
+Integration gate run per docs/agents/integration_gate.md: branch 15094 passed
+exit 0 (115s), base 8 failed/14968 passed exit 1 (163s), comm -13 = ZERO
+branch-only failures, all 8 comm -23 ids attributed to the environment class
+(base worktree apps/ui/dist) with a clean re-run at base. Evidence in
+.agent/gate_f069_r2/; worktrees removed and pruned. No verdict claimed — the
+gate verdict is the reviewer's. No closure work. 5 commits, pushed, clean.
 
 You are the Remedy worker (Window 2) for feature F069 — Mission compiler,
   round R2 (SPLIT, LARGE): persist the R1 verdict + finding, fix R-0168,

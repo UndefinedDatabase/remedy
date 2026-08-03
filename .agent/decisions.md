@@ -1,5 +1,30 @@
 # Decisions
 
+## 2026-08-03: F069 R2 gate — copying apps/ui/dist is necessary but not sufficient
+The doc's §3 remedy (COPY `apps/ui/node_modules` and `apps/ui/dist`, never
+symlink, plus `REMEDY_UI_NO_AUTO_BUILD=1`) was followed exactly, and eight
+`tests/ui_server/test_live_state.py::TestUIServerIntegration` ids STILL failed at
+base with "ERROR: React UI not built".
+
+Cause, from the evidence: the base worktree's `apps/ui/dist/index.html` carries a
+mtime LATER than the copy that created it (09:05 vs 09:03), so a UI auto-build
+ran inside the base worktree DURING the run and rewrote `dist` while xdist
+workers were reading it — `_get_frontend_dist()` sees no `index.html` for the
+duration of the rewrite and `start_ui_server` refuses to start. This is the F053
+R3 hazard (decisions.md 2026-07-31) with the blast radius contained: because
+`dist` was copied rather than symlinked, the rewrite stayed inside the throwaway
+worktree instead of reaching the primary checkout.
+
+`REMEDY_UI_NO_AUTO_BUILD=1` did not prevent it. The variable is read by
+`_auto_build_frontend`, so it stops the build the ui_server code path triggers —
+but something in the base run still rebuilt. Worth a look before the next gate;
+recorded here rather than chased inside a feature round.
+
+Attribution was therefore done empirically, which is what §3 actually asks for:
+with `dist` in place, `tests/ui_server/test_live_state.py` re-run AT BASE gives
+42 passed / exit 0, so all eight `comm -23` ids are environment-class by direct
+per-id evidence. They are base-only; `comm -13` (branch-only) was empty.
+
 ## 2026-08-02: F069 T003 — "in progress" is per-MISSION, because the record has no
 ## per-milestone attribution
 The order's rule is "a milestone counts as in progress as soon as any real job
