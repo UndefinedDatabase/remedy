@@ -50,6 +50,7 @@ reusable harness.
   amendment (f071-r4-2) — run logs live outside the repo during
   the run, copied into .agent/gate_* after exit. Done when the
   amendment is applied and committed in this round.
+  Done: R-0176
 - R-0177 (docs, Low) 2026-08-03, reviewer's own reg0803 miss: the
   F253 registration bumped ROADMAP's Tier-12 count to 9 but not
   README's tier table, which still says "| 12 | Observability &

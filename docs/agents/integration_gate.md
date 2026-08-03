@@ -19,7 +19,14 @@
    with `git worktree list`. Gate evidence files use `.txt` names,
    never `.log`: `.gitignore` drops `*.log` silently and the
    review-zip guard rejects any `\.log$` member (R-0169, F069 R3
-   deviation 1).
+   deviation 1). Run logs are written OUTSIDE the repo worktree
+   while a suite runs (the session scratchpad) and copied into the
+   `.agent/gate_*` evidence dir only after the run exits: a log
+   growing INSIDE the repo during the run changes the worktree
+   digest mid-run and fails the manifest-identity ids as false
+   positives (R-0176, F071 R3: four false failures in
+   test_run_manifest_logical_identity and
+   test_job_rerun_workspace_identity from an in-repo log).
 3. **Compare.** `comm -13 base_failed.txt branch_failed.txt` = branch-only
    failures. Report `comm -23` too — failures the branch fixed.
    Environment-coupled base failures (R-0155 amendment, operator
