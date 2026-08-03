@@ -922,3 +922,149 @@ def refresh_mission_dossier(project_id: str, mission_id: str, mission: Any, *,
     write_dossier_version(project_id, mission_id, result.dossier, root)
     save_dossier_state(project_id, mission_id, result.dossier, root)
     return result
+
+
+# ---------------------------------------------------------------------------
+# T003 — the recall harness: quality is MEASURED, not assumed
+# ---------------------------------------------------------------------------
+#
+# A REUSABLE deliverable, named as such: F079 (cross-session handoffs) runs the
+# same harness against its own artifact. It lives here rather than in a test
+# file precisely so a second feature can import it — a harness only the tests
+# can reach is not a harness, it is a test.
+
+
+@dataclass(frozen=True)
+class RecallFact:
+    """One seeded fact the harness will later look for.
+
+    ``kind`` is ``"milestone"``, ``"risk"`` or ``"decision"``. A fact seeded
+    with ``resolved=True`` is one the dossier is ALLOWED to compress away —
+    that asymmetry against open facts is the property being measured.
+    """
+
+    id: str
+    text: str
+    kind: str = "risk"
+    resolved: bool = False
+    outcome: str = ""
+
+
+#: The seeded 10-fact fixture: open milestones, open risks, risks that close
+#: during the run, and recorded decisions. Deliberately mixed — a harness that
+#: only seeded open facts could not show the asymmetry it exists to show.
+RECALL_FIXTURE_FACTS: tuple[RecallFact, ...] = (
+    RecallFact("M001", "the ledger rewrite is released", "milestone"),
+    RecallFact("M002", "the payments API stays releasable", "milestone"),
+    RecallFact("R001", "the migration is not reversible"),
+    RecallFact("R002", "the smoke suite has no fixture project"),
+    RecallFact("R003", "the vendor sandbox rate-limits the nightly run"),
+    RecallFact("R004", "the staging database predates the schema",
+               resolved=True, outcome="staging was rebuilt from the dump"),
+    RecallFact("R005", "no rollback was ever rehearsed",
+               resolved=True, outcome="rehearsed on 2026-07-30, 4 minutes"),
+    RecallFact("D001", "settle on one ledger writer", "decision",
+               resolved=True, outcome="reused the existing writer"),
+    RecallFact("D002", "keep the legacy endpoint for one release", "decision",
+               resolved=True, outcome="kept, deprecation noted"),
+    RecallFact("D003", "run the gauntlet before the cutover", "decision",
+               resolved=True, outcome="scheduled"),
+)
+
+#: Tight on purpose: the fixture must cross the budget partway through, so the
+#: harness measures recall through at least one compression or flag, not just
+#: through plain appends.
+RECALL_BUDGET_TOKENS = 120
+
+
+@dataclass(frozen=True)
+class RecallResult:
+    """What the harness measured, per fact — never a single pass/fail number."""
+
+    dossier: MissionDossier
+    #: Open facts still findable in the newest dossier. The acceptance set.
+    answerable: tuple[str, ...] = ()
+    #: Open facts that are NOT findable. Must be empty; any entry is a defect.
+    missing: tuple[str, ...] = ()
+    #: Resolved facts no longer rendered — allowed, and the point.
+    compressed_away: tuple[str, ...] = ()
+    #: One entry per simulated iteration, in order.
+    updates: tuple[DossierUpdate, ...] = ()
+
+    @property
+    def recalled_all_open(self) -> bool:
+        return not self.missing
+
+
+def _recall_iteration_facts(chunk: Sequence[RecallFact]) -> IterationFacts:
+    """One iteration's worth of seeded facts, routed to their own sections."""
+    milestones = [DossierItem(id=f.id, text=f.text, resolved=f.resolved,
+                              outcome=f.outcome)
+                  for f in chunk if f.kind == "milestone"]
+    risks = [DossierItem(id=f.id, text=f.text) for f in chunk
+             if f.kind == "risk"]
+    decisions = [DossierItem(id=f.id, text=f.text, resolved=f.resolved,
+                             outcome=f.outcome)
+                 for f in chunk if f.kind == "decision"]
+    # A risk that closes is SEEDED open and then resolved, so the run exercises
+    # the real transition rather than a pre-closed shortcut.
+    closed = [(f.id, f.outcome) for f in chunk
+              if f.kind == "risk" and f.resolved]
+    return IterationFacts(milestones=milestones, risks=risks,
+                          decisions=decisions, resolved_risks=closed,
+                          next_step=f"process {len(chunk)} new fact(s)")
+
+
+def run_recall_harness(facts: Sequence[RecallFact] = RECALL_FIXTURE_FACTS, *,
+                       goal: str = "The seeded mission goal is met",
+                       budget: int = RECALL_BUDGET_TOKENS,
+                       per_iteration: int = 2,
+                       call_fn: Callable[[str, int], str] | None = None,
+                       config: Any = None) -> RecallResult:
+    """Seed facts across simulated iterations, then measure what survived.
+
+    A fact counts as ANSWERABLE when its id is findable in the newest
+    dossier's rendered body — the dossier alone, with no mission record, no
+    ledger and no provider to fall back on. That is the whole claim being
+    tested: the document is sufficient by itself.
+
+    Open facts must all be answerable. Resolved ones MAY compress away, and
+    :attr:`RecallResult.compressed_away` reports which did, so the asymmetry
+    is visible rather than assumed.
+    """
+    dossier = start_dossier(goal)
+    updates: list[DossierUpdate] = []
+    for start in range(0, len(facts), max(1, per_iteration)):
+        chunk = facts[start:start + max(1, per_iteration)]
+        result = update(dossier, _recall_iteration_facts(chunk),
+                        call_fn=call_fn, budget=budget, config=config)
+        dossier = result.dossier
+        updates.append(result)
+
+    text = render_dossier_body(dossier)
+    open_ids = [f.id for f in facts if not f.resolved]
+    resolved_ids = [f.id for f in facts if f.resolved]
+    return RecallResult(
+        dossier=dossier,
+        answerable=tuple(i for i in open_ids if i in text),
+        missing=tuple(i for i in open_ids if i not in text),
+        compressed_away=tuple(i for i in resolved_ids if i not in text),
+        updates=tuple(updates),
+    )
+
+
+def recall_report(result: RecallResult) -> str:
+    """The measurement as a human reads it — every number, no verdict word."""
+    return "\n".join([
+        f"iterations:      {len(result.updates)}",
+        f"dossier version: {result.dossier.version}",
+        f"tokens:          {dossier_tokens(result.dossier).tokens} "
+        f"(basis: {DOSSIER_TOKEN_BASIS})",
+        f"over budget:     {result.dossier.over_budget}",
+        f"open answerable: {len(result.answerable)} "
+        f"({', '.join(result.answerable) or 'none'})",
+        f"open missing:    {len(result.missing)} "
+        f"({', '.join(result.missing) or 'none'})",
+        f"compressed away: {len(result.compressed_away)} "
+        f"({', '.join(result.compressed_away) or 'none'})",
+    ])

@@ -25,7 +25,11 @@ What the order requires proof of (T001 structure and update mechanics):
     leaves the previous dossier plus the raw facts and an honest flag;
   * (T003) the live state round-trips through JSON, the iteration's facts come
     from artifacts Remedy ALREADY records — the compiled plan and the decision
-    ledger — and each refresh stores exactly one new version.
+    ledger — and each refresh stores exactly one new version;
+  * (T003) the recall harness — a reusable deliverable F079 also runs —
+    measures recall on a seeded 10-fact fixture under a tight budget: every
+    OPEN fact stays answerable from the newest dossier alone, resolved ones
+    may compress away, and that asymmetry is reported per fact.
 
 No provider is contacted: every "LLM" here is a local callable returning
 recorded text.
@@ -59,6 +63,7 @@ from packages.orchestration.mission_dossier import (
     MAX_RECENT_DECISIONS,
     NO_NEXT_STEP,
     PLAN_RISK_ID_TEMPLATE,
+    RECALL_FIXTURE_FACTS,
     SECTION_DECISIONS,
     SECTION_GOAL,
     SECTION_MILESTONES,
@@ -67,6 +72,7 @@ from packages.orchestration.mission_dossier import (
     DossierCompression,
     DossierItem,
     IterationFacts,
+    RecallFact,
     append_facts,
     build_compression_prompt,
     compress_dossier,
@@ -85,10 +91,12 @@ from packages.orchestration.mission_dossier import (
     mission_iteration_facts,
     newest_dossier_text,
     open_items,
+    recall_report,
     refresh_mission_dossier,
     render_dossier,
     render_dossier_body,
     resolve_risk,
+    run_recall_harness,
     save_dossier_state,
     start_dossier,
     update,
@@ -874,3 +882,99 @@ class TestRefreshAdvancesTheMaintainedDocument:
         assert result.status == COMPRESSION_NO_PROVIDER
         assert result.over_budget is True
         assert {i.id for i in open_items(result.dossier)} == {"M001", "M002"}
+
+
+# ---------------------------------------------------------------------------
+# T003 — the recall harness (a reusable deliverable; F079 reuses it)
+# ---------------------------------------------------------------------------
+
+
+def _shrinking_provider():
+    """A competent fake model: keeps every listed open item, drops decisions.
+
+    It reads the ids out of the dossier body quoted in the prompt, so it obeys
+    the rules the way a real answer would rather than by being handed the
+    expected output.
+    """
+    def ids_in(body, section):
+        block = body.split(f"## {section}", 1)[1].split("\n## ", 1)[0]
+        return [line.split()[1] for line in block.splitlines()
+                if line.startswith("- ")]
+
+    def call_fn(prompt, attempt):
+        body = prompt.split("## Current dossier", 1)[1]
+        return json.dumps({
+            "schema_v": DOSSIER_COMPRESSION_SCHEMA_V,
+            "milestones": [{"id": i, "text": "kept"}
+                           for i in ids_in(body, "MILESTONES")],
+            "risks": [{"id": i, "text": "kept"}
+                      for i in ids_in(body, "RISKS")],
+            # Older decisions are exactly what compression may merge away.
+            "decisions": [],
+            "next_step": "carry on",
+        })
+    return call_fn
+
+
+class TestTheRecallHarness:
+    def test_the_fixture_seeds_ten_mixed_facts(self):
+        assert len(RECALL_FIXTURE_FACTS) == 10
+        kinds = {f.kind for f in RECALL_FIXTURE_FACTS}
+        assert kinds == {"milestone", "risk", "decision"}
+        assert any(not f.resolved for f in RECALL_FIXTURE_FACTS)
+        assert any(f.resolved for f in RECALL_FIXTURE_FACTS)
+
+    def test_every_open_fact_is_answerable_from_the_dossier_alone(self):
+        result = run_recall_harness(call_fn=_shrinking_provider())
+        expected = {f.id for f in RECALL_FIXTURE_FACTS if not f.resolved}
+        assert result.missing == ()
+        assert set(result.answerable) == expected
+        assert result.recalled_all_open is True
+
+    def test_resolved_facts_may_compress_away_and_the_report_says_which(self):
+        result = run_recall_harness(call_fn=_shrinking_provider())
+        # The asymmetry is the point: open facts survive, resolved ones need not.
+        assert result.compressed_away
+        assert set(result.compressed_away) <= {
+            f.id for f in RECALL_FIXTURE_FACTS if f.resolved}
+
+    def test_the_run_actually_crosses_the_budget(self):
+        # Otherwise recall would be measured through plain appends only.
+        result = run_recall_harness(call_fn=_shrinking_provider())
+        assert any(u.status == COMPRESSION_OK for u in result.updates)
+
+    def test_open_facts_survive_even_when_every_compression_fails(self):
+        result = run_recall_harness(call_fn=_Provider("not json at all"))
+        assert result.missing == ()
+        assert result.dossier.over_budget is True
+        assert all(u.status in (COMPRESSION_WITHIN_BUDGET,
+                                COMPRESSION_INVALID_ANSWER)
+                   for u in result.updates)
+
+    def test_with_no_provider_nothing_is_lost_and_the_flag_is_honest(self):
+        result = run_recall_harness()
+        assert result.missing == ()
+        assert result.dossier.over_budget is True
+
+    def test_the_goal_is_byte_identical_after_the_whole_run(self):
+        goal = "The seeded mission goal is met"
+        result = run_recall_harness(goal=goal, call_fn=_shrinking_provider())
+        assert result.dossier.goal == start_dossier(goal).goal
+
+    def test_the_harness_accepts_a_callers_own_facts(self):
+        # F079 reuses the harness with its own artifact's facts.
+        facts = (RecallFact("X1", "an open thing"),
+                 RecallFact("X2", "a closed thing", resolved=True,
+                            outcome="closed"))
+        result = run_recall_harness(facts, budget=DEFAULT_MAX_TOKENS)
+        assert result.answerable == ("X1",)
+        assert result.missing == ()
+
+    def test_the_report_carries_every_number_and_no_verdict(self):
+        text = recall_report(run_recall_harness(call_fn=_shrinking_provider()))
+        for label in ("iterations:", "dossier version:", "tokens:",
+                      "over budget:", "open answerable:", "open missing:",
+                      "compressed away:"):
+            assert label in text
+        assert DOSSIER_TOKEN_BASIS in text
+        assert "PASS" not in text and "FAIL" not in text
