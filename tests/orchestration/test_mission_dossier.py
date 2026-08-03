@@ -368,6 +368,30 @@ class TestVersioning:
             "- M002 [open] the API stays releasable",
         ]
 
+    def test_rewriting_the_same_version_with_the_same_bytes_is_a_no_op(
+            self, tmp_path):
+        # R-0173: an idempotent retry must not be an error.
+        dossier = _dossier()
+        first = write_dossier_version(PROJECT, MISSION, dossier, tmp_path)
+        before = first.read_text(encoding="utf-8")
+        again = write_dossier_version(PROJECT, MISSION, dossier, tmp_path)
+        assert again == first
+        assert first.read_text(encoding="utf-8") == before
+
+    def test_rewriting_a_version_with_different_bytes_is_refused(self, tmp_path):
+        # R-0173: overwriting would destroy the audit evidence.
+        import dataclasses
+
+        dossier = _dossier()
+        path = write_dossier_version(PROJECT, MISSION, dossier, tmp_path)
+        before = path.read_text(encoding="utf-8")
+        changed = dataclasses.replace(dossier, next_step="something else")
+        with pytest.raises(ValueError) as exc:
+            write_dossier_version(PROJECT, MISSION, changed, tmp_path)
+        assert str(path) in str(exc.value)
+        assert str(dossier.version) in str(exc.value)
+        assert path.read_text(encoding="utf-8") == before
+
     def test_a_foreign_file_in_the_area_is_not_read_as_a_version(self, tmp_path):
         write_dossier_version(PROJECT, MISSION, _dossier(), tmp_path)
         stray = dossier_version_path(PROJECT, MISSION, 2, tmp_path).parent

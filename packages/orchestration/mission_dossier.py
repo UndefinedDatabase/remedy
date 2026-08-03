@@ -370,10 +370,24 @@ def dossier_version_path(project_id: str, mission_id: str, version: int,
 def write_dossier_version(project_id: str, mission_id: str,
                           dossier: MissionDossier,
                           root: Path | None = None) -> Path:
-    """Store this version. The live prompt uses the newest; the rest are evidence."""
+    """Store this version. The live prompt uses the newest; the rest are evidence.
+
+    R-0173: a stored version is never overwritten with different bytes. Writing
+    the SAME bytes again is a no-op — an idempotent retry must not be an error
+    — but different content under a version number that already exists would
+    destroy the audit evidence the versioning exists to keep, so it raises
+    instead. The original file is left untouched.
+    """
     path = dossier_version_path(project_id, mission_id, dossier.version, root)
+    text = render_dossier(dossier)
+    if path.is_file():
+        if path.read_text(encoding="utf-8") == text:
+            return path
+        raise ValueError(
+            f"{path} already holds a different dossier version "
+            f"{dossier.version}; stored versions are never overwritten")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_dossier(dossier), encoding="utf-8")
+    path.write_text(text, encoding="utf-8")
     return path
 
 

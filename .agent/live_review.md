@@ -53,6 +53,7 @@ dossier is the stable PREFIX of the orchestrator prompt.
   byte-identical rewrite is a no-op returning the path; differing
   content raises ValueError naming path and version, original
   bytes intact. Pin both branches with tests.
+  Done: R-0173
 - R-0174 (docs, Low) 2026-08-03: the IterationFacts docstring says
   "Decisions always append — they are a history", but append_facts
   routes decisions through _merge_by_id, so a restated decision id
