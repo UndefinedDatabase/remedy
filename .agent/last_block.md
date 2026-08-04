@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R2 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R2: R1 PASS persisted, R-0178 fixed (goldens unchanged), T003a runner + injection driver + --live landed, slice gate exit 0. Phase 4 NOT run: orchestrator_loop.run_mission has no exception boundary, so 3 of 4 injection classes cannot be driven honestly; campaign refused at preflight, zero tokens spent.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R2 (SPLIT, LARGE): persist the R1 PASS +
