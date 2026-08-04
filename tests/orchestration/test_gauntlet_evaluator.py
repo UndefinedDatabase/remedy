@@ -66,6 +66,7 @@ from packages.orchestration.orchestrator_loop import (
 )
 from tests.orchestration.test_gauntlet_evidence import (
     FLAWLESS_BODY,
+    RECORDED_DIR,
     RELEASED_GATE,
     write_run,
 )
@@ -397,3 +398,76 @@ def test_verdict_json_is_serialisable_and_names_the_failures(tmp_path: Path) -> 
     payload = json.dumps([r.to_json() for r in verdict.runs], sort_keys=True)
     assert FAILURE_TERMINAL_NOT_GREEN in payload
     assert json.loads(payload)[0]["flawless"] is True
+
+
+# ---------------------------------------------------------------------------
+# The dry-run proof — the evaluator judged against RECORDED evidence
+# ---------------------------------------------------------------------------
+#
+# T1_F075.md T001: the evaluator is proven against recorded fixture evidence
+# before any real run. The recorded set under fixtures/gauntlet/recorded/ holds
+# one flawless run, one run with an operator command, one with an unknown
+# postmortem, one per harness-failure injection class degraded correctly, and
+# the two named mishandlings (silent success, corrupted artifact accepted).
+
+#: run directory -> (flawless, the failure kinds it must produce). Written out
+#: rather than derived: a table that recomputes the evaluator proves nothing.
+RECORDED_EXPECTATIONS: dict[str, tuple[bool, tuple[str, ...]]] = {
+    "run-01-flawless-pure-code": (True, ()),
+    "run-02-operator-command": (False, (FAILURE_OPERATOR_INTERVENTION,)),
+    "run-03-unknown-postmortem": (False, (FAILURE_UNKNOWN_POSTMORTEM,)),
+    "run-04-injection-provider-api-error": (True, ()),
+    "run-05-injection-truncated-response": (True, ()),
+    "run-06-injection-death-mid-dispatch": (True, ()),
+    "run-07-injection-death-mid-write": (True, ()),
+    "run-08-injection-silent-success": (False, (FAILURE_INJECTION_NOT_DEGRADED,)),
+    "run-09-injection-corrupted-artifact": (False, (FAILURE_INJECTION_NOT_DEGRADED,)),
+}
+
+
+def recorded_verdict():
+    return evaluate_evidence_dir(RECORDED_DIR)
+
+
+def test_the_recorded_set_is_judged_exactly_as_recorded() -> None:
+    verdict = recorded_verdict()
+    got = {r.run_dir: (r.flawless, tuple(f.kind for f in r.failures))
+           for r in verdict.runs}
+    assert got == RECORDED_EXPECTATIONS
+    assert verdict.flawless_count == 5
+    assert verdict.passed is False
+
+
+def test_the_recorded_set_covers_each_injection_class_degraded() -> None:
+    """One run per class where the injection degraded — all four stay eligible."""
+    degraded: set[str] = set()
+    for run in recorded_verdict().runs:
+        if not run.flawless:
+            continue
+        degraded.update(str(i.get("class", "")) for i in run.evidence.injections)
+    assert degraded == set(INJECTION_CLASSES)
+
+
+def test_the_recorded_set_covers_both_named_mishandlings() -> None:
+    mishandled = {
+        str(i.get("disposition", ""))
+        for run in recorded_verdict().runs if not run.flawless
+        for i in run.evidence.injections
+    }
+    assert mishandled == set(REJECTED_DISPOSITIONS)
+
+
+def test_a_dry_run_reads_the_evidence_and_changes_nothing() -> None:
+    """The evaluator judges the data root question; it must not be part of it."""
+    before = {p: p.read_bytes() for p in sorted(RECORDED_DIR.rglob("*")) if p.is_file()}
+    recorded_verdict()
+    after = {p: p.read_bytes() for p in sorted(RECORDED_DIR.rglob("*")) if p.is_file()}
+    assert after == before
+
+
+def test_only_still_addresses_the_recorded_set_by_index() -> None:
+    names = list(RECORDED_EXPECTATIONS)
+    for index, name in enumerate(names, start=1):
+        verdict = evaluate_evidence_dir(RECORDED_DIR, only=index)
+        assert [r.run_dir for r in verdict.runs] == [name]
+        assert verdict.runs[0].flawless is RECORDED_EXPECTATIONS[name][0]

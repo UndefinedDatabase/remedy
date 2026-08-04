@@ -30,6 +30,8 @@ from packages.orchestration.gauntlet_matrix import (
 from packages.orchestration.orchestrator_loop import TERMINAL_ITERATION_LIMIT
 from tests.orchestration.test_gauntlet_evidence import (
     FLAWLESS_BODY,
+    GOLDEN_DIR,
+    RECORDED_DIR,
     RELEASED_GATE,
     write_run,
 )
@@ -155,3 +157,22 @@ def test_both_reports_end_with_exactly_one_newline(tmp_path: Path) -> None:
     for text in (render_matrix_markdown(verdict), matrix_json_bytes(verdict)):
         assert text.endswith("\n")
         assert not text.endswith("\n\n")
+
+
+# ---------------------------------------------------------------------------
+# The golden matrix for the recorded set
+# ---------------------------------------------------------------------------
+
+def test_the_golden_markdown_matrix_matches_the_recorded_set() -> None:
+    """Byte-for-byte. A golden that is re-blessed on every change checks nothing,
+    so this comparison is the one that must be argued with, not regenerated."""
+    rendered = render_matrix_markdown(evaluate_evidence_dir(RECORDED_DIR))
+    expected = (GOLDEN_DIR / MATRIX_MARKDOWN_FILENAME).read_text(encoding="utf-8")
+    assert rendered == expected
+
+
+def test_the_golden_markdown_names_every_recorded_run() -> None:
+    text = (GOLDEN_DIR / MATRIX_MARKDOWN_FILENAME).read_text(encoding="utf-8")
+    for run_dir in sorted(p.name for p in RECORDED_DIR.iterdir() if p.is_dir()):
+        assert f"### {run_dir} — " in text
+    assert "5/9 runs flawless · **NOT A PASS**" in text

@@ -23,6 +23,13 @@ from packages.orchestration.gauntlet_evidence import (
     run_dirs,
 )
 
+#: The recorded evidence the dry-run proof runs against, and the golden matrix
+#: rendered from it. Shared with the evaluator and matrix tests so there is one
+#: spelling of these paths.
+FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "gauntlet"
+RECORDED_DIR = FIXTURE_ROOT / "recorded"
+GOLDEN_DIR = FIXTURE_ROOT / "golden"
+
 FLAWLESS_BODY: dict = {
     "gauntlet_run_version": GAUNTLET_RUN_VERSION,
     "order_id": "g01-pure-code-change",
