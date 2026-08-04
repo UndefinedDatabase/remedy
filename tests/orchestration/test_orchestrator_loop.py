@@ -89,6 +89,8 @@ from packages.orchestration.orchestrator_loop import (
     JobExecution,
     MoveOutcome,
     blocked_completion,
+    SECTION_DIRECTIVES,
+    released_milestone_directives,
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
@@ -2080,3 +2082,135 @@ class TestARefusedDispatchDoesNotEraseTheAttribution:
         # The move the R8 run could not get past.
         assert "milestone_done" in statuses
         assert statuses[-1] == TERMINAL_ACHIEVED
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0193 — the context says a milestone is ready BEFORE a refusal does
+# ---------------------------------------------------------------------------
+#
+# R9's live run cost three iterations per milestone: dispatch, the R-0191
+# refusal, then declare. The refusal is where the model learned the milestone
+# was finished. Saying it in the context makes declare the DIRECT path; the
+# refusal stays as the net for a model that ignores it.
+
+
+class TestTheReleasedGateDirective:
+
+    def _observe(self, **by_milestone):
+        def observe(project_id, mission_id, milestone_id):
+            return by_milestone.get(milestone_id, MilestoneEvidence())
+        return observe
+
+    def _released(self, job_id="job-0001"):
+        return MilestoneEvidence(job_id=job_id, job_state="completed",
+                                 gate_released=True)
+
+    def test_a_released_milestone_gets_a_directive(self, mission):
+        lines = released_milestone_directives(
+            mission, self._observe(M001=self._released()),
+            project_id=PROJECT, mission_id=mission.id)
+        assert len(lines) == 1
+        assert "M001" in lines[0] and "job-0001" in lines[0]
+        assert "declare_milestone_done for M001" in lines[0]
+
+    @pytest.mark.parametrize("evidence", [
+        MilestoneEvidence(),                                        # nothing
+        MilestoneEvidence(job_id="j", job_state="running",
+                          gate_released=True),                      # in flight
+        MilestoneEvidence(job_id="j", job_state="completed"),        # no verdict
+        MilestoneEvidence(job_id="j", job_state="completed",
+                          gate_released=False),                     # blocked
+    ])
+    def test_nothing_unproven_gets_a_directive(self, mission, evidence):
+        assert released_milestone_directives(
+            mission, self._observe(M001=evidence),
+            project_id=PROJECT, mission_id=mission.id) == []
+
+    def test_a_milestone_already_done_is_not_re_announced(self, tmp_path,
+                                                          mission):
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        reloaded = load_mission(PROJECT, mission.id, tmp_path)
+        assert released_milestone_directives(
+            reloaded, self._observe(M001=self._released()),
+            project_id=PROJECT, mission_id=mission.id) == []
+
+    def test_an_observe_that_raises_costs_no_directive_and_no_crash(self, mission):
+        def boom(*args):
+            raise OSError("evidence unreadable")
+
+        assert released_milestone_directives(
+            mission, boom, project_id=PROJECT, mission_id=mission.id) == []
+
+    def test_the_section_appears_in_the_context_bytes(self, mission):
+        context = assemble_context(
+            mission, directives=["- M001: … declare_milestone_done for M001."])
+        assert SECTION_DIRECTIVES in context.text
+        assert "declare_milestone_done for M001" in context.text
+
+    def test_no_section_without_a_proven_milestone(self, mission):
+        assert SECTION_DIRECTIVES not in assemble_context(mission).text
+
+    def test_the_directive_reaches_the_prompt_of_a_live_loop(self, tmp_path,
+                                                             mission, dispatched):
+        """End to end through run_mission: the model sees it on iteration 2."""
+        prompts: list[str] = []
+
+        def call_fn(prompt, attempt):
+            prompts.append(prompt)
+            if len(prompts) == 1:
+                return _move_json("dispatch_job", milestone_id="M001",
+                                  step="build it")
+            return _move_json("wait_on_decisions", reason="waiting")
+
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=True)
+
+        def observe(project_id, mission_id, milestone_id):
+            if milestone_id != "M001":
+                return MilestoneEvidence()
+            if dispatched.seen:
+                return self._released("job-0001")
+            return MilestoneEvidence()
+
+        run_mission(mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+                    root=tmp_path, dispatch=dispatched, execute=execute,
+                    evidence=observe, call_fn=call_fn)
+        assert SECTION_DIRECTIVES not in prompts[0], "nothing proven yet"
+        assert "declare_milestone_done for M001" in prompts[1]
+
+    def test_the_refusal_net_still_fires(self, mission):
+        """The directive is guidance; the guard is the guarantee."""
+        refusal = evaluate_dispatch(mission, "M001", self._released())
+        assert "declare_milestone_done for M001" in refusal
+
+    def test_a_model_that_follows_the_context_needs_two_iterations(
+            self, tmp_path, mission, dispatched):
+        """R9 spent three per milestone; following the directive spends two."""
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=True)
+
+        def observe(project_id, mission_id, milestone_id):
+            job = dispatched_job_for(PROJECT, mission.id, milestone_id, tmp_path)
+            if not job:
+                return MilestoneEvidence()
+            return MilestoneEvidence(job_id=job, job_state="completed",
+                                     gate_released=True)
+
+        moves = _scripted(
+            _move_json("dispatch_job", milestone_id="M001", step="build it"),
+            _move_json("declare_milestone_done", milestone_id="M001"),
+            _move_json("dispatch_job", milestone_id="M002", step="polish it"),
+            _move_json("declare_milestone_done", milestone_id="M002"),
+            _move_json("declare_mission_achieved"),
+        )
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=5), project_id=PROJECT,
+            root=tmp_path, dispatch=dispatched, execute=execute,
+            evidence=observe, call_fn=moves)
+        assert result.terminal == TERMINAL_ACHIEVED
+        assert result.iterations == 5, "two per milestone plus the achieve"
+        statuses = [e["outcome"]["status"]
+                    for e in read_ledger(PROJECT, mission.id, tmp_path)]
+        assert OUTCOME_REFUSED not in statuses, "no iteration spent on a refusal"

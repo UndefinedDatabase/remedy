@@ -112,6 +112,12 @@ SECTION_DECISIONS = "## Open decisions"
 #: Present only on the ONE re-prompt that follows a refused move. Last, so a
 #: refusal never disturbs the stable prefix in front of it.
 SECTION_FEEDBACK = "## Your previous move was refused"
+#: R-0193. A milestone whose job finished and whose Definition of Done RELEASED
+#: is finished, and the only move that advances the mission is the claim. The
+#: R-0191 guard already refuses a dispatch there — but a refusal costs an
+#: iteration, so the context says it BEFORE the model spends one. Every line in
+#: this section states a fact the evidence proves, never a suggestion.
+SECTION_DIRECTIVES = "## Milestones ready to declare"
 
 #: What the stand-in dossier says about itself. Since F071 the loop's prefix is
 #: the MAINTAINED document (``mission_dossier``); this render remains as the
@@ -200,6 +206,7 @@ def assemble_context(
     dossier: Callable[[Any], str] | None = None,
     last_report: str = "",
     open_decisions: Iterable[Any] = (),
+    directives: Sequence[str] = (),
     feedback: str = "",
 ) -> OrchestratorContext:
     """Assemble one iteration's context: dossier FIRST, then the volatile parts.
@@ -232,11 +239,47 @@ def assemble_context(
         (SECTION_REPORT, last_report.strip() or "No report yet."),
         (SECTION_DECISIONS, decision_text),
     )
+    lines = [line for line in directives if line.strip()]
+    if lines:
+        sections = (*sections, (SECTION_DIRECTIVES, "\n".join(lines)))
     if feedback.strip():
         sections = (*sections, (SECTION_FEEDBACK, feedback.strip()))
     text = "\n\n".join(f"{name}\n\n{body}" for name, body in sections) + "\n"
     return OrchestratorContext(
         text=text, digest=context_digest(text), sections=sections)
+
+
+def released_milestone_directives(mission: Any, observe: Callable[..., Any], *,
+                                  project_id: str, mission_id: str) -> list[str]:
+    """One line per milestone that is finished and proven, in plan order.
+
+    The facts are the SAME ones the R-0191 dispatch guard reads — the latest
+    job's state and ``dod_gate.load_gate_result``'s verdict — so the context
+    and the guard can never disagree about which milestone is ready. Only
+    ``gate_released is True`` produces a line: an absent verdict proves
+    nothing and a blocked one is R-0190's business.
+
+    Reading evidence costs no provider call. It is the same ``observe`` seam
+    the evaluation step uses, so a test that substitutes it substitutes both.
+    """
+    done = set(done_milestones(mission))
+    lines: list[str] = []
+    for milestone_id in milestone_ids(mission):
+        if milestone_id in done:
+            continue
+        try:
+            evidence = observe(project_id, mission_id, milestone_id)
+        except Exception:  # noqa: BLE001 — a directive is never worth a crash
+            continue
+        if evidence is None or evidence.job_state != "completed":
+            continue
+        if evidence.gate_released is not True:
+            continue
+        lines.append(
+            f"- {milestone_id}: job {evidence.job_id} completed and its "
+            f"Definition of Done RELEASED. The correct next move is "
+            f"declare_milestone_done for {milestone_id}.")
+    return lines
 
 
 def _decision_line(record: Any) -> str:
@@ -845,6 +888,8 @@ def run_mission(
                 dossier=prefix,
                 last_report=last_report(mission) if last_report else "",
                 open_decisions=open_mission_decisions(mission),
+                directives=released_milestone_directives(
+                    mission, observe, project_id=pid, mission_id=mission_id),
                 feedback=feedback)
             digest = context.digest
             result.iterations = step

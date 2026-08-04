@@ -3277,3 +3277,39 @@ Two things a reviewer could rule on, neither of them mine to take:
 Not done, deliberately: no order or template edits, no budget changes, no
 config default touched, no weakening of the pass definition; the campaign
 (Phase 4) NOT run.
+
+## 2026-08-04: F075 R10 — R-0193 the released-gate context directive
+
+A new context section, `## Milestones ready to declare`, carrying one line per
+milestone whose latest job COMPLETED with a RELEASED gate:
+
+    - M001: job <id> completed and its Definition of Done RELEASED. The
+      correct next move is declare_milestone_done for M001.
+
+Decisions:
+1. **The same facts the guard reads.** `released_milestone_directives` calls
+   the loop's own `observe` seam — the very one `evaluate_move` uses — so the
+   context and the R-0191 refusal can never disagree about which milestone is
+   ready. A test that substitutes the seam substitutes both.
+2. **Only a proven fact earns a line.** `gate_released is True` and job state
+   `completed`. An absent verdict proves nothing; a blocked one is R-0190's
+   business; an in-flight job is R-0186's. Four parametrised cases pin that
+   nothing else produces a directive, and a milestone already recorded done is
+   not re-announced.
+3. **The section is absent when there is nothing to say** — no empty heading,
+   so the context stays byte-stable for a mission with nothing ready (the
+   cache-prefix discipline F070 set).
+4. **Guidance, not guarantee.** The R-0191 refusal is untouched and its own
+   test still asserts it fires. The directive saves an iteration; the guard is
+   what makes correctness non-optional.
+5. **A directive is never worth a crash.** An `observe` that raises is caught
+   and simply produces no line.
+
+Economics, pinned by test rather than asserted in prose: a model that follows
+the context reaches `achieved` in five iterations for two milestones — two
+each plus the final claim — with `OUTCOME_REFUSED` absent from the ledger. R9's
+live run spent three per milestone because the refusal was where the model
+learned the milestone was finished.
+
+Twelve tests, all provider-free (R-0182). Loop, e2e and era suites green
+UNEDITED (249).
