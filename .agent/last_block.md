@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R1 (SPLIT, LARGE bundle) started.
+OUTCOME: executed — F075 R1 complete: PR #178 merged, claim + T001 (evaluator, matrix, recorded fixtures, golden, CLI) + T002 (frozen ten, set version 1) landed; both slice gates exit 0; canary exit 0; no PR (comes at closure).
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R1 (SPLIT, LARGE bundle): Open PR Gate +
