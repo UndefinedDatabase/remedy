@@ -49,13 +49,13 @@ from packages.orchestration.orchestrator_loop import (
 
 def an_order(order_id: str = "g01-pure-code-change", *, injections=(),
              max_iterations: int = 4, max_tokens: int = 250_000,
-             max_wall_seconds: int = 2_400) -> GauntletOrder:
+             max_wall_seconds: int = 2_400, max_cycles: int = 4) -> GauntletOrder:
     return GauntletOrder(
         id=order_id, kind="pure_code_change", title="t", rationale="r",
         risk_probed="risk", goal="do the thing",
         milestones=({"id": "M001", "title": "m", "dod": ["x"]},),
         budget={"max_iterations": max_iterations, "max_tokens": max_tokens,
-                "max_wall_seconds": max_wall_seconds},
+                "max_wall_seconds": max_wall_seconds, "max_cycles": max_cycles},
         injections=tuple(injections), file_name=f"{order_id}.json", sha256="d")
 
 
@@ -63,6 +63,16 @@ def an_order(order_id: str = "g01-pure-code-change", *, injections=(),
 class FakeMission:
     id: str = "m-1"
     job_links: tuple = ()
+
+
+@dataclass
+class FakeExecution:
+    """What the loop's execute seam hands back (R-0187 carries the cycles)."""
+
+    terminal_status: str = "all_green"
+    job_status: str = "completed"
+    stop_reason: str = ""
+    resolved_cycles: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -89,6 +99,7 @@ class Recorder:
     raise_in_run: Exception | None = None
     seen_limits: Any = None
     seen_env: dict[str, str] = field(default_factory=dict)
+    seen_cycles: int | None = None
     wrote_into: Path | None = None
 
     def deps(self) -> RunnerDeps:
@@ -98,9 +109,23 @@ class Recorder:
             plan_mission=self._plan_mission,
             run_mission=self._run_mission,
             load_mission=lambda project_id, mission_id: FakeMission(id=mission_id),
+            # R-0187: the runner binds the order's cycle budget here; the
+            # double records it so the pass-through is provable without a
+            # provider.
+            execute_fn=self._execute_fn,
             plan_call_fn=lambda: (lambda p, a: "{}"),
             move_call_fn=lambda: (lambda p, a: "{}"),
         )
+
+    def _execute_fn(self, max_cycles: int):
+        self.seen_cycles = max_cycles
+
+        def _execute(job):
+            return FakeExecution(resolved_cycles={
+                "max_cycles": max_cycles, "source": "experiment",
+                "over_cap": max_cycles > 1})
+
+        return _execute
 
     def _make_project(self, name: str, slug: str) -> str:
         return "p-1"
@@ -556,3 +581,49 @@ def test_a_raise_from_run_order_itself_does_not_kill_the_campaign(
     verdict = evaluate_evidence_dir(tmp_path / "campaign")
     assert [r.run_dir for r in verdict.runs] == [
         "run-01-g01-order", "run-03-g03-order"]
+
+
+# ---------------------------------------------------------------------------
+# R-0187: the order's cycle budget reaches the executor and lands in evidence
+# ---------------------------------------------------------------------------
+
+def test_the_orders_cycle_budget_reaches_the_execute_seam(
+        tmp_path: Path, real_root: Path) -> None:
+    rec = Recorder()
+    run_order(an_order(max_cycles=7), campaign_root=tmp_path / "campaign",
+              real_data_root=real_root, deps=rec.deps())
+    assert rec.seen_cycles == 7
+
+
+def test_the_cycle_budget_is_recorded_in_the_run_evidence(
+        tmp_path: Path, real_root: Path) -> None:
+    """An over-cap run has to be visible in its own evidence, not inferred."""
+    rec = Recorder()
+    outcome = run_order(an_order(max_cycles=5),
+                        campaign_root=tmp_path / "campaign",
+                        real_data_root=real_root, deps=rec.deps())
+    assert outcome.body["cycles_budget"] == 5
+    assert load_run(outcome.run_dir).load_error == ""
+
+
+def test_the_resolved_cycles_are_read_back_off_the_ledger(
+        tmp_path: Path, real_root: Path) -> None:
+    rec = Recorder(entries=[ledger_entry(
+        detail="job x dispatched for M001; executed: terminal=all_green "
+               "job_status=completed cycles=5/experiment OVER-CAP")])
+    outcome = run_order(an_order(max_cycles=5),
+                        campaign_root=tmp_path / "campaign",
+                        real_data_root=real_root, deps=rec.deps())
+    assert outcome.body["cycles_resolved"] == ["cycles=5/experiment"]
+
+
+def test_the_production_execute_fn_binds_the_budget_to_the_loop_seam() -> None:
+    """No second executor: the default binds the order's number to the loop's
+    own `execute_dispatched_job`."""
+    import inspect
+
+    from packages.orchestration.gauntlet_runner import _default_execute_fn
+
+    source = inspect.getsource(_default_execute_fn)
+    assert "execute_dispatched_job" in source
+    assert "experiment_max_cycles" in source

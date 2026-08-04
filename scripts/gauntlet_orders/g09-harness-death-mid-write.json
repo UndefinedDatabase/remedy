@@ -1,5 +1,6 @@
 {
   "budget": {
+    "max_cycles": 8,
     "max_iterations": 14,
     "max_tokens": 520000,
     "max_wall_seconds": 5400

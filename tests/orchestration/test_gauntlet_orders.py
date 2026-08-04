@@ -102,7 +102,7 @@ def test_the_set_hash_matches_the_listed_digests() -> None:
     assert manifest["set_hash"] == compute_set_hash(manifest["orders"])
 
 
-def test_the_set_is_frozen_at_version_one() -> None:
+def test_the_set_is_frozen_at_the_declared_set_version() -> None:
     assert load_manifest()["gauntlet_order_set_version"] == GAUNTLET_ORDER_SET_VERSION
     for order in load_order_set():
         body = json.loads((ORDERS_DIR / order.file_name).read_text(encoding="utf-8"))
@@ -201,8 +201,12 @@ def test_a_nine_order_manifest_is_not_a_gauntlet(set_copy: Path) -> None:
 
 
 def test_an_unknown_set_version_is_refused(set_copy: Path) -> None:
+    """The literal used to be 2, which set v2 (R-0187) turned into the REAL
+    version. The assertion is unchanged; the example had to become a version
+    that is genuinely unknown."""
     rewrite(set_copy / MANIFEST_FILENAME,
-            lambda b: b.update(gauntlet_order_set_version=2))
+            lambda b: b.update(
+                gauntlet_order_set_version=GAUNTLET_ORDER_SET_VERSION + 1))
     with pytest.raises(OrderSetError, match="unsupported set version"):
         load_manifest(set_copy)
 
@@ -243,3 +247,29 @@ def test_an_unreadable_order_is_refused(set_copy: Path) -> None:
     path.write_text("{ not json", encoding="utf-8")
     with pytest.raises(OrderSetError, match="unreadable"):
         load_order(path)
+
+
+# ---------------------------------------------------------------------------
+# Set v2 (R-0187): every order says how many cycles it may spend
+# ---------------------------------------------------------------------------
+
+def test_the_set_is_at_version_two() -> None:
+    assert GAUNTLET_ORDER_SET_VERSION == 2
+    assert load_manifest()["gauntlet_order_set_version"] == 2
+
+
+def test_every_order_carries_a_positive_cycle_budget() -> None:
+    assert "max_cycles" in BUDGET_KEYS
+    for order in load_order_set():
+        assert order.budget["max_cycles"] > 0, order.id
+
+
+def test_the_cycle_budgets_are_chosen_per_order_not_copied() -> None:
+    """A doc order and a two-milestone mission needing the same number of
+    cycles would mean nobody thought about either."""
+    by_kind: dict[str, list[int]] = {}
+    for order in load_order_set():
+        by_kind.setdefault(order.kind, []).append(order.budget["max_cycles"])
+    assert min(by_kind["two_milestone_mission"]) > max(by_kind["doc_generation"]), \
+        "two milestones of real work need more cycles than prose"
+    assert len({c for cs in by_kind.values() for c in cs}) > 1

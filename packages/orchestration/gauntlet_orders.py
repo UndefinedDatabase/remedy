@@ -28,7 +28,10 @@ from typing import Any
 #: Order-file schema version, and the frozen set version. The set version is
 #: bumped by a human when the ten deliberately change — which resets the count.
 GAUNTLET_ORDER_VERSION = 1
-GAUNTLET_ORDER_SET_VERSION = 1
+#: Bumped to 2 for R-0187: every order now carries a ``max_cycles`` budget.
+#: A set re-issue RESETS the campaign count (T1_F075.md A9) — which costs
+#: nothing here, because no attempt has ever passed.
+GAUNTLET_ORDER_SET_VERSION = 2
 
 #: How many orders a gauntlet is. Not a default: the gate is "ten flawless".
 GAUNTLET_ORDER_COUNT = 10
@@ -52,7 +55,11 @@ ORDER_KINDS: tuple[str, ...] = (
 
 #: Budget keys every order must carry. A missing budget is an unbounded run,
 #: and an unbounded run cannot fail a budget — so it is refused at load time.
-BUDGET_KEYS: tuple[str, ...] = ("max_iterations", "max_tokens", "max_wall_seconds")
+#: ``max_cycles`` joined in set v2 (R-0187): a mission whose jobs are wedged at
+#: one cycle can never finish, so how many cycles an order may spend is part of
+#: what the order says, not a global default.
+BUDGET_KEYS: tuple[str, ...] = ("max_iterations", "max_tokens",
+                                "max_wall_seconds", "max_cycles")
 
 
 def default_orders_dir(repo_root: Path | None = None) -> Path:

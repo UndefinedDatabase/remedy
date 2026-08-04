@@ -932,7 +932,25 @@ def run_mission(
 IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
 
 
-def execute_dispatched_job(job: Any) -> Any:
+@dataclass(frozen=True)
+class JobExecution:
+    """What running one dispatched job produced, as the loop reads it.
+
+    A small carrier rather than the executor's own ``CycleLoopResult``, which
+    is frozen: the loop needs the cycle resolution alongside the outcome so the
+    run's evidence can record an over-cap run (R-0187). Test doubles expose the
+    same attribute names, so the seam stays substitutable.
+    """
+
+    terminal_status: str = ""
+    job_status: str = ""
+    stop_reason: str = ""
+    resolved_cycles: dict[str, Any] = field(default_factory=dict)
+
+
+def execute_dispatched_job(job: Any, *,
+                           experiment_max_cycles: int | None = None
+                           ) -> JobExecution:
     """Run a freshly dispatched job through the EXISTING multi-cycle executor.
 
     This is the step T1_F070's Design specified ("run it through the
@@ -947,6 +965,11 @@ def execute_dispatched_job(job: Any) -> Any:
     operator after the start command: a task decision carrying a safe default
     is answered from it and recorded in the escalation log (F051), and one
     without a safe default still waits.
+
+    ``experiment_max_cycles`` (R-0187) is the order's own cycle budget, passed
+    only by the gauntlet runner. Omitted — every other caller — the F046
+    rollout cap applies exactly as before. The resolved cycles are returned on
+    the result so the run's evidence can record what was actually allowed.
     """
     from dataclasses import replace
 
@@ -959,12 +982,19 @@ def execute_dispatched_job(job: Any) -> Any:
     from packages.orchestration.run_log import RunLogWriter
     from packages.providers.ollama_builder.provider import OllamaBuilder
 
-    limits, _resolved = limits_from_config(get_config())
+    limits, resolved = limits_from_config(
+        get_config(), experiment_max_cycles=experiment_max_cycles)
     limits = replace(limits, budgets=getattr(job, "budgets", None))
-    return run_cycles(job, limits, OllamaBuilder().build,
-                      task_step=default_task_step,
-                      log=RunLogWriter(job_id=job.id),
-                      unattended=True)
+    result = run_cycles(job, limits, OllamaBuilder().build,
+                        task_step=default_task_step,
+                        log=RunLogWriter(job_id=job.id),
+                        unattended=True)
+    # Carried out rather than logged and forgotten: a run that went over the
+    # rollout cap has to say so in its own evidence (R-0187).
+    return JobExecution(terminal_status=result.terminal_status,
+                        job_status=result.job_status,
+                        stop_reason=result.stop_reason,
+                        resolved_cycles=resolved.to_json())
 
 
 def execute_move(project_id: str, mission_id: str, move: Any, *,
@@ -1040,6 +1070,11 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         stop_reason = getattr(run, "stop_reason", "")
         if stop_reason:
             detail += f" stop={stop_reason}"
+        cycles = getattr(run, "resolved_cycles", None) or {}
+        if cycles:
+            detail += (f" cycles={cycles.get('max_cycles')}"
+                       f"/{cycles.get('source')}"
+                       f"{' OVER-CAP' if cycles.get('over_cap') else ''}")
         return MoveOutcome(status="dispatched", detail=detail,
                            job_id=str(job.id))
 

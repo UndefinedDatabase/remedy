@@ -166,6 +166,20 @@ def _default_move_call_fn() -> Callable[[str, int], str] | None:
         OrchestratorMove, model=get_config().get("orchestrator.model") or None)
 
 
+def _default_execute_fn(max_cycles: int) -> Callable[..., Any]:
+    """Bind the order's cycle budget to the loop's execute seam.
+
+    The gauntlet is the ONE caller allowed past the F046 rollout cap (R-0187),
+    and it says so here, in one place, with the order's own number.
+    """
+    from packages.orchestration.orchestrator_loop import execute_dispatched_job
+
+    def _execute(job: Any) -> Any:
+        return execute_dispatched_job(job, experiment_max_cycles=max_cycles)
+
+    return _execute
+
+
 def _default_dispatch() -> Callable[..., Any]:
     """How a job is created for a milestone — run_mission's own default.
 
@@ -207,6 +221,10 @@ class RunnerDeps:
     #: wrapping one changes what happens at that seam and nothing else.
     dispatch_fn: Callable[[], Callable[..., Any]] = _default_dispatch
     update_dossier_fn: Callable[[], Callable[..., Any]] = _default_update_dossier
+    #: How a dispatched job is RUN, bound to the order's own cycle budget
+    #: (R-0187). Takes the order's max_cycles and returns the loop's execute
+    #: seam; the production default is the existing multi-cycle executor.
+    execute_fn: Callable[[int], Callable[..., Any]] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.create_mission is None:
@@ -225,6 +243,8 @@ class RunnerDeps:
             from packages.orchestration.mission_state import load_mission
 
             self.load_mission = load_mission
+        if self.execute_fn is None:
+            self.execute_fn = _default_execute_fn
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +310,23 @@ def collect_era_defects(entries: list[Any]) -> list[dict[str, Any]]:
                 defects.append({"kind": kind, "detail": detail[:400],
                                 "finding_class": DEFECT_FINDING_CLASSES[kind]})
     return defects
+
+
+def _resolved_cycles(entries: list[Any]) -> list[str]:
+    """The cycle resolutions the loop recorded, read back off the ledger.
+
+    The loop writes `cycles=<n>/<source>` (plus `OVER-CAP`) into every dispatch
+    outcome; collecting them here keeps the run's evidence honest without the
+    runner re-deriving anything.
+    """
+    seen: list[str] = []
+    for entry in entries:
+        body = entry.to_json() if hasattr(entry, "to_json") else entry
+        detail = str(((body or {}).get("outcome") or {}).get("detail", ""))
+        for part in detail.split():
+            if part.startswith("cycles=") and part not in seen:
+                seen.append(part)
+    return seen
 
 
 def measure_tokens(entries: list[Any]) -> dict[str, int] | None:
@@ -391,6 +428,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
                 call_fn=seams.call_fn,
                 dispatch=seams.dispatch,
                 update_dossier=seams.update_dossier,
+                execute=deps.execute_fn(order.budget["max_cycles"]),
             )
             terminal = str(getattr(result, "terminal", ""))
             entries = list(getattr(result, "entries", []) or [])
@@ -483,6 +521,10 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
             injectors, RunOutcomeFacts(terminal=terminal,
                                        postmortems=len(postmortems))),
         "evidence_links": {"ledger": "data/missions", "isolated_root": "data"},
+        # R-0187: what the order allowed, and what the run actually resolved to,
+        # so an over-cap run is visible in its own evidence.
+        "cycles_budget": order.budget.get("max_cycles"),
+        "cycles_resolved": _resolved_cycles(entries),
     }
     tokens = measure_tokens(entries)
     if tokens is None:

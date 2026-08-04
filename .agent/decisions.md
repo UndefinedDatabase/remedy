@@ -2867,3 +2867,43 @@ Not done, deliberately: no change to `CYCLE_SAFETY_CAP` or any config
 default; no call from the loop into `run_job_gate`; no use of the fixture-demo
 spine; no order edits; no weakening of the pass definition. Campaign attempt 2
 did NOT run — Phase 4 is gated on a green Phase 3.
+
+## 2026-08-04: F075 R6 — R-0187 cycles experiment vehicle + order-set v2
+
+1. **`experiment_max_cycles` on `resolve_max_cycles` / `limits_from_config`.**
+   Keyword-only, documented as existing for exactly one caller (the F075
+   gauntlet runner), and deliberately NOT reachable from config or a CLI
+   flag — a caller must pass it in code, by name. `ResolvedCycles.source`
+   becomes `"experiment"` and a new `to_json()` carries `over_cap`, so a run
+   past the rollout cap is a fact on disk rather than an inference. F046's
+   shipped clamping is untouched; both directions are pinned
+   (flag 99 -> 1 capped, config 99 -> 1 capped, override 6 -> 6 uncapped,
+   nothing passed -> exactly today's default).
+2. **`JobExecution` carrier.** `CycleLoopResult` is a frozen dataclass, so the
+   resolved cycles could not be attached to it. `execute_dispatched_job` now
+   returns a small frozen carrier with the three fields the loop already read
+   plus `resolved_cycles`. Test doubles expose the same attribute names, so
+   the seam stays substitutable. Alternative considered: mutating the
+   executor's result type — rejected, that is F046's contract, not F075's.
+3. **Order-set v2.** Every order's budget gains a required `max_cycles`, chosen
+   from the order's own rationale rather than copied: doc orders 3, pure-code
+   and test-add 4, app-feature-with-smoke 5, two-milestone 8; the injection
+   orders match their non-injected twin. Manifest is
+   `gauntlet_order_set_version: 2` with fresh per-file digests and set hash
+   `b17540c381312b2c5dd40140396d1a489c0001c342572bb3276fc1ca9c6b994c`.
+   Per T1_F075.md A9 a set re-issue RESETS the campaign count — which costs
+   nothing: no attempt has ever passed. Every existing freeze/tamper pin holds
+   against v2 unchanged.
+4. **Runner pass-through.** `RunnerDeps.execute_fn(max_cycles) -> execute seam`,
+   production default `_default_execute_fn`, bound at `run_order` from
+   `order.budget["max_cycles"]`. `run.json` records `cycles_budget` and
+   `cycles_resolved` (read back off the ledger's `cycles=<n>/<source>` marks —
+   the runner re-derives nothing).
+
+One existing test was touched, by EXTENSION not weakening:
+`test_an_unknown_set_version_is_refused` used the literal `2` as its unknown
+version, which set v2 turned into the real one; the example became
+`GAUNTLET_ORDER_SET_VERSION + 1` and the assertion is unchanged.
+`test_the_set_is_frozen_at_version_one` was renamed to
+`..._at_the_declared_set_version` — its body already compared against the
+constant, so only a now-false NAME changed.
