@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R7 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R7: R6 PASS persisted; R-0189 BUILT (frozen sample-project template, all ten goals audited meaningful with no order edited, materialised as a git-committed COPY per run, manifest v3 folding the template digest into set hash c267ccab..., tamper refused) and R-0190 BUILT (escalate after two consecutive gate-blocked completions of one milestone, via the existing F051 hand_over). Phase 4 re-proof: the DoD gate RELEASED for the first time in this feature's history (acc-001 pytest passed, exit 0) — but terminal iteration_limit, because the model never chose declare_milestone_done -> rule 4.3 STOP; campaign NOT run. Next gap recorded: no guard refuses a dispatch for a milestone whose latest job completed with a released gate.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R7 (SPLIT, LARGE): persist the R6 PASS +
