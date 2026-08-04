@@ -993,7 +993,8 @@ class JobExecution:
 
 
 def execute_dispatched_job(job: Any, *,
-                           experiment_max_cycles: int | None = None
+                           experiment_max_cycles: int | None = None,
+                           worktree_root: Path | None = None
                            ) -> JobExecution:
     """Run a freshly dispatched job through the EXISTING multi-cycle executor.
 
@@ -1014,6 +1015,10 @@ def execute_dispatched_job(job: Any, *,
     only by the gauntlet runner. Omitted — every other caller — the F046
     rollout cap applies exactly as before. The resolved cycles are returned on
     the result so the run's evidence can record what was actually allowed.
+
+    ``worktree_root`` (R-0189) is the checkout the DoD checks run in: the
+    gauntlet passes its run's OWN materialised copy of the sample project.
+    Omitted, the gate falls back to the job's workspace.
     """
     from dataclasses import replace
 
@@ -1038,7 +1043,7 @@ def execute_dispatched_job(job: Any, *,
     # R-0188: the gate runs at PRODUCTION job completion, here, once. It
     # persists its own verdict where load_gate_result reads it, so there is no
     # second store and the fixture-demo fulfillment spine stays untouched.
-    released, blocker = run_gate_for_job(str(job.id))
+    released, blocker = run_gate_for_job(str(job.id), worktree_root)
     return JobExecution(terminal_status=result.terminal_status,
                         job_status=result.job_status,
                         stop_reason=result.stop_reason,

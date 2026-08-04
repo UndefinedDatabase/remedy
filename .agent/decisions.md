@@ -2997,3 +2997,55 @@ should escalate after N identical failed attempts is a reviewer call.
 Not done, deliberately: no change to CYCLE_SAFETY_CAP or any config default;
 no repository invented for the orders; no order edits; no weakening of the
 pass definition; the campaign (Phase 5) NOT run.
+
+## 2026-08-04: F075 R7 — R-0189 the sample-project world
+
+**Goal-vs-template audit.** Every one of the ten goals was checked against the
+template BEFORE freezing v3; each names something that really exists:
+
+| Order | What the goal names | Where it lives in the template |
+| --- | --- | --- |
+| g01 | a hard-coded retry backoff cap | `sampleproj/retry.py` `BACKOFF_CAP_SECONDS = 30` |
+| g02 | config precedence (arg > env > file) | `sampleproj/config.py` `resolve()`, `ENV_VARS` |
+| g03 | a CLI with progress output to suppress | `sampleproj/cli.py` prints progress to stdout, errors to stderr |
+| g04 | env vars + precedence rules to document | `config.ENV_VARS` + `README.md` "Configuration" |
+| g05 | duplicated path normalisation, two call sites | identical block in `importer.py` and `report.py`, both marked |
+| g06 | a public parse entry point returning None | `sampleproj/parsing.py` `parse_record()` |
+| g07 | exact user-facing error text | `sampleproj/errors.py` message constants |
+| g08 | an import command writing to a target dir | `cli.py import` + `importer.import_records` / `plan_import` |
+| g09 | a report writer, and a CLI that renders it | `sampleproj/report.py` + `cli.py report` |
+| g10 | a release history, next version unstated | `CHANGELOG.md` (0.1.0/0.2.0/0.3.0); no next version anywhere |
+
+No goal had to be dropped and NO order was edited. The template's own suite is
+30 tests, green, offline, ~0.05s.
+
+Decisions:
+1. **A copy per run, never the original.** `materialise_sample_project` copies
+   the template into `<run_dir>/workspace`, then `git init` + one baseline
+   commit inside the COPY. The baseline exists because a mission's work is a
+   DIFF: without it, "no file outside the touched module changed" has nothing
+   to measure from. Build droppings (`__pycache__`, `.pytest_cache`, `.git`)
+   are not copied — they are not the project.
+2. **The project record points there.** `_default_make_project` now sets
+   `repo_paths` and `canonical_repo_path` to the run's workspace, and the
+   execute seam binds that path as the DoD checks' `worktree_root`. The
+   operator's tree is never a mission workspace; two runs cannot see each
+   other's edits (both pinned by tests).
+3. **Freeze via manifest v3.** `template_tree_digest` hashes sorted relative
+   paths plus contents, and it is folded into the set hash — the world shapes
+   a mission's outcome exactly as much as the order does, so a retouched
+   template is a changed campaign. `load_order_set` refuses on a mismatch
+   before a token is spent, and a manifest with no `template_digest` is
+   refused outright. `run.json` records the digest used. Set v3 hash:
+   `c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6`,
+   template digest `1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454`.
+   Count reset per A9 — nothing lost, no attempt has passed.
+4. **`conftest.py` at the template root** inserts its own directory on
+   `sys.path`, so a materialised copy runs `python3 -m pytest tests -q` with no
+   install and no outside PYTHONPATH. Proven by running the suite from a
+   scratch copy, not by assuming it.
+
+Two existing tests changed, both because a literal became reality:
+`test_the_set_is_at_version_two` -> `..._three`, and
+`test_the_set_hash_matches_the_listed_digests` now also passes the template
+digest (the set hash covers it in v3). No assertion was weakened.

@@ -29,10 +29,12 @@ from packages.orchestration.gauntlet_orders import (
     OrderSetError,
     compute_set_hash,
     default_orders_dir,
+    default_template_dir,
     file_sha256,
     load_manifest,
     load_order,
     load_order_set,
+    template_tree_digest,
 )
 
 ORDERS_DIR = default_orders_dir()
@@ -97,9 +99,10 @@ def test_the_manifest_digests_match_the_files_on_disk() -> None:
         assert file_sha256(path) == entry["sha256"], entry["file"]
 
 
-def test_the_set_hash_matches_the_listed_digests() -> None:
+def test_the_set_hash_matches_the_listed_digests_and_the_template() -> None:
     manifest = load_manifest()
-    assert manifest["set_hash"] == compute_set_hash(manifest["orders"])
+    assert manifest["set_hash"] == compute_set_hash(
+        manifest["orders"], template_digest=manifest["template_digest"])
 
 
 def test_the_set_is_frozen_at_the_declared_set_version() -> None:
@@ -253,9 +256,9 @@ def test_an_unreadable_order_is_refused(set_copy: Path) -> None:
 # Set v2 (R-0187): every order says how many cycles it may spend
 # ---------------------------------------------------------------------------
 
-def test_the_set_is_at_version_two() -> None:
-    assert GAUNTLET_ORDER_SET_VERSION == 2
-    assert load_manifest()["gauntlet_order_set_version"] == 2
+def test_the_set_is_at_version_three() -> None:
+    assert GAUNTLET_ORDER_SET_VERSION == 3
+    assert load_manifest()["gauntlet_order_set_version"] == 3
 
 
 def test_every_order_carries_a_positive_cycle_budget() -> None:
@@ -273,3 +276,55 @@ def test_the_cycle_budgets_are_chosen_per_order_not_copied() -> None:
     assert min(by_kind["two_milestone_mission"]) > max(by_kind["doc_generation"]), \
         "two milestones of real work need more cycles than prose"
     assert len({c for cs in by_kind.values() for c in cs}) > 1
+
+
+# ---------------------------------------------------------------------------
+# Set v3 (R-0189): the sample-project template is frozen with the orders
+# ---------------------------------------------------------------------------
+
+def test_the_manifest_records_the_template_digest() -> None:
+    assert load_manifest()["template_digest"] == template_tree_digest()
+
+
+def test_the_template_suite_is_green_and_self_sufficient() -> None:
+    """The world a mission is given must start from a passing suite — a
+    template whose tests already fail would make every DoD meaningless."""
+    import subprocess
+    import sys
+
+    proc = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"],
+                          cwd=str(default_template_dir()),
+                          capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stdout[-2000:]
+
+
+def test_the_template_holds_what_the_orders_name() -> None:
+    """The goal-vs-template audit, pinned: an order about a hard-coded backoff
+    cap is meaningless unless the cap is really there."""
+    root = default_template_dir()
+    source = (root / "sampleproj" / "retry.py").read_text(encoding="utf-8")
+    assert "BACKOFF_CAP_SECONDS" in source
+    config = (root / "sampleproj" / "config.py").read_text(encoding="utf-8")
+    assert "ENV_VARS" in config and "explicit" in config
+    parsing = (root / "sampleproj" / "parsing.py").read_text(encoding="utf-8")
+    assert "return None" in parsing
+    # g05: the duplication really is duplicated.
+    marker = "path normalisation (duplicated in"
+    assert marker in (root / "sampleproj" / "importer.py").read_text(encoding="utf-8")
+    assert marker in (root / "sampleproj" / "report.py").read_text(encoding="utf-8")
+    assert (root / "CHANGELOG.md").is_file() and (root / "README.md").is_file()
+
+
+def test_editing_a_template_file_is_refused(tmp_path: Path, set_copy: Path) -> None:
+    """Tampering with the world is tampering with the campaign."""
+    template = tmp_path / "template"
+    shutil.copytree(default_template_dir(), template)
+    (template / "README.md").write_text("edited\n", encoding="utf-8")
+    with pytest.raises(OrderSetError, match="template was edited"):
+        load_order_set(set_copy, template)
+
+
+def test_a_manifest_without_a_template_digest_is_refused(set_copy: Path) -> None:
+    rewrite(set_copy / MANIFEST_FILENAME, lambda b: b.pop("template_digest"))
+    with pytest.raises(OrderSetError, match="no template_digest recorded"):
+        load_order_set(set_copy)

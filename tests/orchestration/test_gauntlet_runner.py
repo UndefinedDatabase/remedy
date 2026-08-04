@@ -100,6 +100,9 @@ class Recorder:
     seen_limits: Any = None
     seen_env: dict[str, str] = field(default_factory=dict)
     seen_cycles: int | None = None
+    seen_repo_root: Path | None = None
+    seen_repo_path: Path | None = None
+    seen_workspace: Path | None = None
     wrote_into: Path | None = None
 
     def deps(self) -> RunnerDeps:
@@ -113,12 +116,21 @@ class Recorder:
             # double records it so the pass-through is provable without a
             # provider.
             execute_fn=self._execute_fn,
+            materialise=self._materialise,
             plan_call_fn=lambda: (lambda p, a: "{}"),
             move_call_fn=lambda: (lambda p, a: "{}"),
         )
 
-    def _execute_fn(self, max_cycles: int):
+    def _materialise(self, run_dir: Path) -> Path:
+        """A workspace without git: the real one is proven in its own test."""
+        workspace = run_dir / "workspace"
+        workspace.mkdir(parents=True, exist_ok=True)
+        self.seen_workspace = workspace
+        return workspace
+
+    def _execute_fn(self, max_cycles: int, repo_root=None):
         self.seen_cycles = max_cycles
+        self.seen_repo_root = repo_root
 
         def _execute(job):
             return FakeExecution(resolved_cycles={
@@ -127,7 +139,8 @@ class Recorder:
 
         return _execute
 
-    def _make_project(self, name: str, slug: str) -> str:
+    def _make_project(self, name: str, slug: str, repo_path=None) -> str:
+        self.seen_repo_path = repo_path
         return "p-1"
 
     def _create_mission(self, project_id: str, goal: str) -> FakeMission:
@@ -627,3 +640,69 @@ def test_the_production_execute_fn_binds_the_budget_to_the_loop_seam() -> None:
     source = inspect.getsource(_default_execute_fn)
     assert "execute_dispatched_job" in source
     assert "experiment_max_cycles" in source
+
+
+# ---------------------------------------------------------------------------
+# R-0189: every run gets its own copy of the sample project
+# ---------------------------------------------------------------------------
+
+def test_the_project_record_points_at_the_runs_own_workspace(
+        tmp_path: Path, real_root: Path) -> None:
+    rec = Recorder()
+    run_order(an_order(), campaign_root=tmp_path / "campaign",
+              real_data_root=real_root, deps=rec.deps())
+    assert rec.seen_repo_path == rec.seen_workspace
+    assert rec.seen_repo_root == rec.seen_workspace
+
+
+def test_the_template_digest_is_recorded_in_the_run_evidence(
+        tmp_path: Path, real_root: Path) -> None:
+    from packages.orchestration.gauntlet_orders import template_tree_digest
+
+    outcome = run_order(an_order(), campaign_root=tmp_path / "campaign",
+                        real_data_root=real_root, deps=Recorder().deps())
+    assert outcome.body["template_digest"] == template_tree_digest()
+
+
+def test_materialisation_makes_a_committed_self_sufficient_copy(
+        tmp_path: Path) -> None:
+    """The real thing: a git repo with a baseline, and the suite green inside
+    it — a copy that needs the original is not a copy."""
+    import subprocess
+    import sys
+
+    from packages.orchestration.gauntlet_runner import materialise_sample_project
+
+    workspace = materialise_sample_project(tmp_path / "run-01")
+    assert (workspace / ".git").is_dir()
+    assert (workspace / "sampleproj" / "retry.py").is_file()
+
+    log = subprocess.run(["git", "log", "--oneline"], cwd=str(workspace),
+                         capture_output=True, text=True)
+    assert "baseline" in log.stdout
+
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=str(workspace),
+                            capture_output=True, text=True)
+    assert status.stdout.strip() == "", "the baseline commit left nothing dirty"
+
+    suite = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"],
+                           cwd=str(workspace), capture_output=True, text=True)
+    assert suite.returncode == 0, suite.stdout[-2000:]
+
+
+def test_build_droppings_are_not_copied(tmp_path: Path) -> None:
+    from packages.orchestration.gauntlet_runner import materialise_sample_project
+
+    workspace = materialise_sample_project(tmp_path / "run-01")
+    assert not list(workspace.rglob("__pycache__"))
+    assert not list(workspace.rglob(".pytest_cache"))
+
+
+def test_two_runs_cannot_see_each_others_edits(tmp_path: Path) -> None:
+    from packages.orchestration.gauntlet_runner import materialise_sample_project
+
+    first = materialise_sample_project(tmp_path / "run-01")
+    (first / "README.md").write_text("run one edited this\n", encoding="utf-8")
+    second = materialise_sample_project(tmp_path / "run-02")
+    assert "run one edited this" not in (second / "README.md").read_text(
+        encoding="utf-8")

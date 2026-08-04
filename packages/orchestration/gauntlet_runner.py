@@ -66,6 +66,11 @@ ENV_MAX_WALL_MINUTES = "REMEDY_BUDGET_MAX_WALL_CLOCK_MINUTES"
 #: so the evidence and the world it ran in stay together.
 ISOLATED_ROOT_DIRNAME = "data"
 
+#: Where the run's own copy of the sample project is materialised. A COPY, per
+#: run, inside the run's own directory: the operator's tree is never a mission
+#: workspace, and two runs can never see each other's edits (R-0189).
+WORKSPACE_DIRNAME = "workspace"
+
 #: The digest of a data root that does not exist. Named rather than "" so the
 #: before/after comparison is between two real answers.
 ABSENT_ROOT_DIGEST = "sha256:absent"
@@ -141,10 +146,46 @@ def isolated_environment(data_root: Path, order: GauntletOrder):
 # The production verbs, injectable so tests can run without a provider
 # ---------------------------------------------------------------------------
 
-def _default_make_project(name: str, slug: str) -> str:
+def materialise_sample_project(run_dir: Path,
+                               template_dir: Path | None = None) -> Path:
+    """Copy the frozen template into this run's own workspace and commit it.
+
+    A git repository with one baseline commit, because a mission's work is a
+    DIFF against something: without a baseline there is nothing for "no file
+    outside the touched module changed" to be measured from. Build droppings
+    are not copied — they are not the project.
+    """
+    import shutil
+    import subprocess
+
+    from packages.orchestration.gauntlet_orders import (
+        TEMPLATE_IGNORED_DIRS,
+        default_template_dir,
+    )
+
+    source = template_dir or default_template_dir()
+    workspace = run_dir / WORKSPACE_DIRNAME
+    shutil.copytree(source, workspace,
+                    ignore=shutil.ignore_patterns(*TEMPLATE_IGNORED_DIRS))
+    env = {**os.environ, "GIT_AUTHOR_NAME": "remedy-gauntlet",
+           "GIT_AUTHOR_EMAIL": "gauntlet@remedy.invalid",
+           "GIT_COMMITTER_NAME": "remedy-gauntlet",
+           "GIT_COMMITTER_EMAIL": "gauntlet@remedy.invalid"}
+    for argv in (["git", "init", "-q"],
+                 ["git", "add", "-A"],
+                 ["git", "commit", "-q", "-m", "baseline: the sample project"]):
+        subprocess.run(argv, cwd=str(workspace), env=env, check=True,
+                       capture_output=True)
+    return workspace
+
+
+def _default_make_project(name: str, slug: str,
+                          repo_path: Path | None = None) -> str:
     from packages.orchestration.project_registry import RemyProject, save_project
 
-    project = RemyProject(name=name, slug=slug)
+    project = RemyProject(name=name, slug=slug,
+                          repo_paths=[str(repo_path)] if repo_path else [],
+                          canonical_repo_path=str(repo_path) if repo_path else None)
     save_project(project)
     return str(project.id)
 
@@ -166,16 +207,20 @@ def _default_move_call_fn() -> Callable[[str, int], str] | None:
         OrchestratorMove, model=get_config().get("orchestrator.model") or None)
 
 
-def _default_execute_fn(max_cycles: int) -> Callable[..., Any]:
-    """Bind the order's cycle budget to the loop's execute seam.
+def _default_execute_fn(max_cycles: int,
+                        repo_root: Path | None = None) -> Callable[..., Any]:
+    """Bind the order's cycle budget and this run's checkout to the execute seam.
 
     The gauntlet is the ONE caller allowed past the F046 rollout cap (R-0187),
-    and it says so here, in one place, with the order's own number.
+    and it says so here, in one place, with the order's own number. The repo
+    root is the run's OWN materialised copy (R-0189), so the DoD checks run
+    against the mission's world and never against the operator's tree.
     """
     from packages.orchestration.orchestrator_loop import execute_dispatched_job
 
     def _execute(job: Any) -> Any:
-        return execute_dispatched_job(job, experiment_max_cycles=max_cycles)
+        return execute_dispatched_job(job, experiment_max_cycles=max_cycles,
+                                      worktree_root=repo_root)
 
     return _execute
 
@@ -210,7 +255,7 @@ class RunnerDeps:
     exist.
     """
 
-    make_project: Callable[[str, str], str] = _default_make_project
+    make_project: Callable[..., str] = _default_make_project
     create_mission: Callable[..., Any] = None  # type: ignore[assignment]
     plan_mission: Callable[..., Any] = None  # type: ignore[assignment]
     run_mission: Callable[..., Any] = None  # type: ignore[assignment]
@@ -219,12 +264,14 @@ class RunnerDeps:
     move_call_fn: Callable[[], Callable[[str, int], str] | None] = _default_move_call_fn
     #: The two seams only the injection driver needs. Production defaults, so
     #: wrapping one changes what happens at that seam and nothing else.
+    #: How the run's own copy of the sample project is created (R-0189).
+    materialise: Callable[..., Path] = None  # type: ignore[assignment]
     dispatch_fn: Callable[[], Callable[..., Any]] = _default_dispatch
     update_dossier_fn: Callable[[], Callable[..., Any]] = _default_update_dossier
     #: How a dispatched job is RUN, bound to the order's own cycle budget
-    #: (R-0187). Takes the order's max_cycles and returns the loop's execute
+    #: (R-0187) and this run's checkout (R-0189). Returns the loop's execute
     #: seam; the production default is the existing multi-cycle executor.
-    execute_fn: Callable[[int], Callable[..., Any]] = None  # type: ignore[assignment]
+    execute_fn: Callable[..., Callable[..., Any]] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.create_mission is None:
@@ -245,6 +292,8 @@ class RunnerDeps:
             self.load_mission = load_mission
         if self.execute_fn is None:
             self.execute_fn = _default_execute_fn
+        if self.materialise is None:
+            self.materialise = materialise_sample_project
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +359,20 @@ def collect_era_defects(entries: list[Any]) -> list[dict[str, Any]]:
                 defects.append({"kind": kind, "detail": detail[:400],
                                 "finding_class": DEFECT_FINDING_CLASSES[kind]})
     return defects
+
+
+def _template_digest() -> str:
+    """The frozen template's digest, or "" if it cannot be read.
+
+    Never raises: a run that could not digest its own world still writes its
+    evidence, and an empty string is visibly not a digest.
+    """
+    from packages.orchestration.gauntlet_orders import template_tree_digest
+
+    try:
+        return template_tree_digest()
+    except OSError:
+        return ""
 
 
 def _resolved_cycles(entries: list[Any]) -> list[str]:
@@ -411,7 +474,9 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
 
     try:
         with isolated_environment(data_root, order):
-            project_id = deps.make_project(f"gauntlet {order.id}", order.id)
+            workspace = deps.materialise(run_dir)
+            project_id = deps.make_project(f"gauntlet {order.id}", order.id,
+                                           workspace)
             mission = deps.create_mission(project_id, order.goal)
             deps.plan_mission(project_id, mission.id, deps.plan_call_fn())
             seams = build_injectors(
@@ -428,7 +493,7 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
                 call_fn=seams.call_fn,
                 dispatch=seams.dispatch,
                 update_dossier=seams.update_dossier,
-                execute=deps.execute_fn(order.budget["max_cycles"]),
+                execute=deps.execute_fn(order.budget["max_cycles"], workspace),
             )
             terminal = str(getattr(result, "terminal", ""))
             entries = list(getattr(result, "entries", []) or [])
@@ -525,6 +590,9 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
         # so an over-cap run is visible in its own evidence.
         "cycles_budget": order.budget.get("max_cycles"),
         "cycles_resolved": _resolved_cycles(entries),
+        # R-0189: which world this run was given. A different template is a
+        # different campaign, and the evidence says which one it was.
+        "template_digest": _template_digest(),
     }
     tokens = measure_tokens(entries)
     if tokens is None:

@@ -28,10 +28,12 @@ from typing import Any
 #: Order-file schema version, and the frozen set version. The set version is
 #: bumped by a human when the ten deliberately change — which resets the count.
 GAUNTLET_ORDER_VERSION = 1
-#: Bumped to 2 for R-0187: every order now carries a ``max_cycles`` budget.
-#: A set re-issue RESETS the campaign count (T1_F075.md A9) — which costs
-#: nothing here, because no attempt has ever passed.
-GAUNTLET_ORDER_SET_VERSION = 2
+#: v2 (R-0187) added a ``max_cycles`` budget to every order. v3 (R-0189) adds
+#: the sample-project TEMPLATE to the freeze: the world a mission runs in
+#: shapes its outcome exactly as much as the order does, so a changed template
+#: is a changed set. A re-issue RESETS the campaign count (T1_F075.md A9) —
+#: which costs nothing, because no attempt has ever passed.
+GAUNTLET_ORDER_SET_VERSION = 3
 
 #: How many orders a gauntlet is. Not a default: the gate is "ten flawless".
 GAUNTLET_ORDER_COUNT = 10
@@ -66,6 +68,35 @@ def default_orders_dir(repo_root: Path | None = None) -> Path:
     """Where the frozen set lives. One spelling, so nothing loads a copy."""
     root = repo_root or Path(__file__).resolve().parents[2]
     return root / "scripts" / "gauntlet_orders"
+
+
+def default_template_dir(repo_root: Path | None = None) -> Path:
+    """The sample project a gauntlet mission is given to work on."""
+    root = repo_root or Path(__file__).resolve().parents[2]
+    return root / "scripts" / "gauntlet_sample_project"
+
+
+#: Directories never copied into a run's workspace and never digested: build
+#: droppings, not the project.
+TEMPLATE_IGNORED_DIRS = frozenset({"__pycache__", ".pytest_cache", ".git"})
+
+
+def template_tree_digest(template_dir: Path | None = None) -> str:
+    """One digest over the template: sorted relative paths and their contents.
+
+    Paths are part of it, so a file that MOVES changes the digest as surely as
+    a file that changes — the same rule the runner's data-root hash uses.
+    """
+    directory = template_dir or default_template_dir()
+    running = hashlib.sha256()
+    for path in sorted(p for p in directory.rglob("*") if p.is_file()):
+        if TEMPLATE_IGNORED_DIRS & set(path.relative_to(directory).parts):
+            continue
+        running.update(str(path.relative_to(directory)).encode("utf-8"))
+        running.update(b"\0")
+        running.update(hashlib.sha256(path.read_bytes()).digest())
+        running.update(b"\0")
+    return running.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -106,13 +137,17 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def compute_set_hash(entries: list[dict[str, Any]]) -> str:
-    """The set hash: one digest over ``<sha256>  <file>`` lines, in manifest order.
+def compute_set_hash(entries: list[dict[str, Any]], *,
+                     template_digest: str = "") -> str:
+    """The set hash: one digest over ``<sha256>  <file>`` lines plus the template.
 
     Order-sensitive on purpose — reordering the ten changes which order is
-    ``--only 3``, so it is a change to the set.
+    ``--only 3``, so it is a change to the set. The template digest is folded
+    in (v3) because the world the missions run in decides their outcomes too.
     """
     payload = "".join(f"{e.get('sha256', '')}  {e.get('file', '')}\n" for e in entries)
+    if template_digest:
+        payload += f"{template_digest}  <template>\n"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -190,7 +225,8 @@ def load_manifest(orders_dir: Path | None = None) -> dict[str, Any]:
     return body
 
 
-def load_order_set(orders_dir: Path | None = None) -> tuple[GauntletOrder, ...]:
+def load_order_set(orders_dir: Path | None = None,
+                   template_dir: Path | None = None) -> tuple[GauntletOrder, ...]:
     """The ten orders in manifest order, with every freeze check applied.
 
     Raises :class:`OrderSetError` on the first thing that does not hold: a
@@ -220,7 +256,16 @@ def load_order_set(orders_dir: Path | None = None) -> tuple[GauntletOrder, ...]:
     ids = [o.id for o in orders]
     _require(len(set(ids)) == len(ids), f"duplicate order ids in the set: {ids}")
 
-    expected = compute_set_hash(entries)
+    # v3: the template is frozen with the orders. A retouched sample file is a
+    # changed campaign, and the loader says so before a single token is spent.
+    declared = str(manifest.get("template_digest", ""))
+    _require(bool(declared), f"{MANIFEST_FILENAME}: no template_digest recorded")
+    actual = template_tree_digest(template_dir)
+    _require(declared == actual,
+             f"the sample-project template was edited: digest {actual} does not "
+             f"match the manifest ({declared})")
+
+    expected = compute_set_hash(entries, template_digest=declared)
     _require(str(manifest.get("set_hash", "")) == expected,
              f"{MANIFEST_FILENAME}: set_hash {manifest.get('set_hash')} does not "
              f"match the listed digests ({expected}) — the manifest was edited")

@@ -1,6 +1,7 @@
 {
-  "gauntlet_order_set_version": 2,
-  "set_hash": "b17540c381312b2c5dd40140396d1a489c0001c342572bb3276fc1ca9c6b994c",
+  "gauntlet_order_set_version": 3,
+  "template_digest": "1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454",
+  "set_hash": "c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6",
   "orders": [
     {
       "id": "g01-pure-code-change",
