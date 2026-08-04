@@ -295,6 +295,8 @@ def test_a_mishandled_injection_names_class_and_disposition(
     assert v.failures[0].injection_class == injection
     assert disposition in v.failures[0].detail
     assert "a named mishandling" in v.failures[0].detail
+    # The harness's own sentence survives into the report.
+    assert "recorded: mishandled" in v.failures[0].detail
 
 
 def test_an_unclassified_disposition_is_rejected_not_assumed_fine(tmp_path: Path) -> None:

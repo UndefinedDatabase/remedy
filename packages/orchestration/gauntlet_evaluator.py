@@ -395,11 +395,16 @@ def _check_injections(ev: RunEvidence) -> list[GauntletFailure]:
             continue
         named = ("a named mishandling" if disposition in REJECTED_DISPOSITIONS
                  else "an unclassified disposition")
+        # The run's own account of what happened is carried through verbatim: a
+        # reader chasing a silent success needs the sentence the harness wrote,
+        # not only the class it fell into.
+        recorded = str(record.get("detail", "") or "")
         failures.append(GauntletFailure(
             kind=FAILURE_INJECTION_NOT_DEGRADED,
             criterion=CRITERION_INJECTIONS_DEGRADED,
             detail=(f"{injection_class} ended as {disposition or '(absent)'} — "
-                    f"{named}; expected one of {'/'.join(ACCEPTED_DISPOSITIONS)}"),
+                    f"{named}; expected one of {'/'.join(ACCEPTED_DISPOSITIONS)}"
+                    + (f"; recorded: {recorded}" if recorded else "")),
             injection_class=injection_class,
         ))
     return failures
