@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 8,
-    "max_iterations": 14,
-    "max_tokens": 520000,
-    "max_wall_seconds": 5400
+    "max_iterations": 22,
+    "max_tokens": 1400000,
+    "max_wall_seconds": 10200
   },
+  "budget_rationale": "g05's shape plus an injected death mid-write and the rewrite it forces across a milestone boundary.",
   "gauntlet_order_version": 1,
   "goal": "Milestone 1: add a structured summary artifact to the sample project's report writer. Milestone 2: have the CLI render that artifact.",
   "id": "g09-harness-death-mid-write",

@@ -31,9 +31,12 @@ GAUNTLET_ORDER_VERSION = 1
 #: v2 (R-0187) added a ``max_cycles`` budget to every order. v3 (R-0189) adds
 #: the sample-project TEMPLATE to the freeze: the world a mission runs in
 #: shapes its outcome exactly as much as the order does, so a changed template
-#: is a changed set. A re-issue RESETS the campaign count (T1_F075.md A9) —
-#: which costs nothing, because no attempt has ever passed.
-GAUNTLET_ORDER_SET_VERSION = 3
+#: is a changed set. v4 (R-0194) re-issues BUDGETS ONLY, sized from the first
+#: measured economics rather than R1's guesses: goals, kinds, rationales,
+#: risks, injections, milestones and the template are byte-unchanged. A
+#: re-issue RESETS the campaign count (T1_F075.md A9) — which costs nothing,
+#: because no attempt has ever passed.
+GAUNTLET_ORDER_SET_VERSION = 4
 
 #: How many orders a gauntlet is. Not a default: the gate is "ten flawless".
 GAUNTLET_ORDER_COUNT = 10

@@ -1,57 +1,57 @@
 {
-  "gauntlet_order_set_version": 3,
+  "gauntlet_order_set_version": 4,
   "template_digest": "1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454",
-  "set_hash": "c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6",
+  "set_hash": "e50916bfb6340a85e094da258ce9d8025e5fa35467f6a6bf3b1b5256f6f30efc",
   "orders": [
     {
       "id": "g01-pure-code-change",
       "file": "g01-pure-code-change.json",
-      "sha256": "1c49039d40317fee0635a2bfd453eb0d5640449f7eae4276570a864d8e021cd2"
+      "sha256": "29b7be31aa7b3ec401e1b960975bb3971f131aa12bbba258344e02c885cace2c"
     },
     {
       "id": "g02-test-add",
       "file": "g02-test-add.json",
-      "sha256": "c76e2fef9d598f329fc4737b25952c64d4fd6ed2f890626f04b9c2f27f51051b"
+      "sha256": "0fd6b1c239e93dbc144d0e0e5224657ea25acce687fcf94abc2a6458d9ae8017"
     },
     {
       "id": "g03-small-app-feature-smoke",
       "file": "g03-small-app-feature-smoke.json",
-      "sha256": "a366812e27be09bdf3d2d8c894d48ae563a59c18500303b987a167e92222d091"
+      "sha256": "b82a194fe1085975b5f679d8202261d936dc5f81ec4d6f48109f680e2d6a9ee5"
     },
     {
       "id": "g04-doc-generation",
       "file": "g04-doc-generation.json",
-      "sha256": "d5d7b12ee6946f93764512232fc3140039db8df6511e0aee5d7816637e900385"
+      "sha256": "6206e67b82294de429f8302fa7cde60a44df13a03e427754836d1e8eaf6163cf"
     },
     {
       "id": "g05-two-milestone-mission",
       "file": "g05-two-milestone-mission.json",
-      "sha256": "3f0866ade4dee8d9a9bcbdd92dd10af7223259bcfedb65c9bb0628c4663795f9"
+      "sha256": "81c566cdd5009d540724253685eb71881affe25bd9c593a090aabe455f0b0272"
     },
     {
       "id": "g06-provider-api-error-mid-move",
       "file": "g06-provider-api-error-mid-move.json",
-      "sha256": "f8d9ef9c62c2fbaaacde78b23355f02e13b7d1622a3375f355c41e01a4df5d4b"
+      "sha256": "d1db525684e0e12f4f0d1c3a0913052a1eba98ff092c4c734516b952c3fcf957"
     },
     {
       "id": "g07-truncated-model-response",
       "file": "g07-truncated-model-response.json",
-      "sha256": "d0ef3f994975e304ab9435de9078c2fb28c5560d827e66b98940a361d8b135a7"
+      "sha256": "da365dfd014b021337e676b3f0fb33ac4ca8dbf4e08658bd6cb4a0231c40ccdf"
     },
     {
       "id": "g08-harness-death-mid-dispatch",
       "file": "g08-harness-death-mid-dispatch.json",
-      "sha256": "fb59753a449743a3924470e5e1a3000d144e72a5ce725679de4f505e6292f115"
+      "sha256": "bda1778f7d83aa3c41c3a871fa4e153c52df03b960304f6829727a9e6a6e0fd3"
     },
     {
       "id": "g09-harness-death-mid-write",
       "file": "g09-harness-death-mid-write.json",
-      "sha256": "50fe06d007df25b1521025f8e17ce0bd51d0ba56d408631c1df8372f36d7a08d"
+      "sha256": "49445411c386ba8651b0b463eb91e22726a5abb5c9c35117fccdbed3892728cd"
     },
     {
       "id": "g10-escalate-then-finish",
       "file": "g10-escalate-then-finish.json",
-      "sha256": "db6ec82eba53e59509f16b75ebd080a098074cf6383f47bda1f91d3a0a6f0fd9"
+      "sha256": "72e7c2fbe19e548d3a7c20216ad13be3b8c72ac404c8786717c27acf55de734c"
     }
   ]
 }

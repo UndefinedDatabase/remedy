@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 3,
-    "max_iterations": 6,
-    "max_tokens": 200000,
-    "max_wall_seconds": 2100
+    "max_iterations": 12,
+    "max_tokens": 500000,
+    "max_wall_seconds": 4800
   },
+  "budget_rationale": "One stated milestone, prose deliverable: same iteration shape, the cheapest cycles in the set.",
   "gauntlet_order_version": 1,
   "goal": "Write a README section for the sample project documenting the config precedence rules and every supported environment variable, with one worked example per rule.",
   "id": "g04-doc-generation",

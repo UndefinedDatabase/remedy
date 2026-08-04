@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 8,
-    "max_iterations": 12,
-    "max_tokens": 480000,
-    "max_wall_seconds": 4800
+    "max_iterations": 22,
+    "max_tokens": 1200000,
+    "max_wall_seconds": 9000
   },
+  "budget_rationale": "Two stated milestones; at g01's observed expansion that is about six plan milestones. 6x3+1=19, +3 margin.",
   "gauntlet_order_version": 1,
   "goal": "Milestone 1: extract the sample project's duplicated path-normalisation logic into one helper. Milestone 2: make both former call sites use it and delete the duplicates.",
   "id": "g05-two-milestone-mission",

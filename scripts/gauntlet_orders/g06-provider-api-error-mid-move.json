@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 4,
-    "max_iterations": 8,
-    "max_tokens": 300000,
-    "max_wall_seconds": 3000
+    "max_iterations": 12,
+    "max_tokens": 700000,
+    "max_wall_seconds": 6000
   },
+  "budget_rationale": "g01's shape plus an injected provider error that costs a ledgered iteration and a retry.",
   "gauntlet_order_version": 1,
   "goal": "In the sample project, add input validation to the public parse entry point so malformed input raises a typed error instead of returning None.",
   "id": "g06-provider-api-error-mid-move",

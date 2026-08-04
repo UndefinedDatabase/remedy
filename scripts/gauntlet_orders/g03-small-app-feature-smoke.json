@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 5,
-    "max_iterations": 8,
-    "max_tokens": 320000,
-    "max_wall_seconds": 3000
+    "max_iterations": 12,
+    "max_tokens": 700000,
+    "max_wall_seconds": 6000
   },
+  "budget_rationale": "One stated milestone plus a smoke run per cycle; same iteration shape, more wall and tokens for the extra verification.",
   "gauntlet_order_version": 1,
   "goal": "Add a --quiet flag to the sample project's CLI that suppresses progress output but never suppresses errors, and prove it with a smoke run.",
   "id": "g03-small-app-feature-smoke",

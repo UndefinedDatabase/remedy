@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 4,
-    "max_iterations": 6,
-    "max_tokens": 220000,
-    "max_wall_seconds": 2400
+    "max_iterations": 12,
+    "max_tokens": 600000,
+    "max_wall_seconds": 5400
   },
+  "budget_rationale": "Same shape as g01 \u2014 one stated milestone, tests only, no smoke.",
   "gauntlet_order_version": 1,
   "goal": "Add unit tests for the sample project's config precedence rules (explicit argument over environment over file default). Do not change product code.",
   "id": "g02-test-add",

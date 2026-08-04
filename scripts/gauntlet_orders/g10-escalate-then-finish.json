@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 3,
-    "max_iterations": 5,
-    "max_tokens": 180000,
-    "max_wall_seconds": 1800
+    "max_iterations": 12,
+    "max_tokens": 500000,
+    "max_wall_seconds": 4800
   },
+  "budget_rationale": "g04's shape plus one escalation round trip; the tightest order in the set by design, but no longer tighter than the compiler's real plan.",
   "gauntlet_order_version": 1,
   "goal": "Write the sample project's upgrade notes for the next release. The release version is not stated anywhere in the repository.",
   "id": "g10-escalate-then-finish",

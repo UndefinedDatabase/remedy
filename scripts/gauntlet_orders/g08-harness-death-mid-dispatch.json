@@ -1,10 +1,11 @@
 {
   "budget": {
     "max_cycles": 5,
-    "max_iterations": 10,
-    "max_tokens": 360000,
-    "max_wall_seconds": 3600
+    "max_iterations": 12,
+    "max_tokens": 800000,
+    "max_wall_seconds": 6600
   },
+  "budget_rationale": "g03's shape plus an injected death mid-dispatch and its resume.",
   "gauntlet_order_version": 1,
   "goal": "Add a --dry-run flag to the sample project's import command that reports what would be written without writing it, and prove it with a smoke run.",
   "id": "g08-harness-death-mid-dispatch",

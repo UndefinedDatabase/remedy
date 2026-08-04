@@ -26,6 +26,7 @@ from packages.orchestration.gauntlet_orders import (
     GAUNTLET_ORDER_VERSION,
     MANIFEST_FILENAME,
     ORDER_KINDS,
+    GauntletOrder,
     OrderSetError,
     compute_set_hash,
     default_orders_dir,
@@ -256,9 +257,9 @@ def test_an_unreadable_order_is_refused(set_copy: Path) -> None:
 # Set v2 (R-0187): every order says how many cycles it may spend
 # ---------------------------------------------------------------------------
 
-def test_the_set_is_at_version_three() -> None:
-    assert GAUNTLET_ORDER_SET_VERSION == 3
-    assert load_manifest()["gauntlet_order_set_version"] == 3
+def test_the_set_is_at_version_four() -> None:
+    assert GAUNTLET_ORDER_SET_VERSION == 4
+    assert load_manifest()["gauntlet_order_set_version"] == 4
 
 
 def test_every_order_carries_a_positive_cycle_budget() -> None:
@@ -328,3 +329,65 @@ def test_a_manifest_without_a_template_digest_is_refused(set_copy: Path) -> None
     rewrite(set_copy / MANIFEST_FILENAME, lambda b: b.pop("template_digest"))
     with pytest.raises(OrderSetError, match="no template_digest recorded"):
         load_order_set(set_copy)
+
+
+# ---------------------------------------------------------------------------
+# Set v4 (R-0194): budgets sized from measured economics, not from a guess
+# ---------------------------------------------------------------------------
+
+#: What R9's live run measured. The compiler expanded a ONE-milestone goal into
+#: THREE plan milestones; a milestone cost three iterations (dispatch, the
+#: R-0191 refusal, the declare) and the mission needed one more to be declared
+#: achieved. R-0193 makes the direct path two, so this floor is the pessimistic
+#: figure: a run that ignores the directive still fits.
+MEASURED_EXPANSION = 3
+MEASURED_ITERATIONS_PER_MILESTONE = 3
+
+
+def measured_floor(order: GauntletOrder) -> int:
+    return (MEASURED_EXPANSION * MEASURED_ITERATIONS_PER_MILESTONE
+            * len(order.milestones)) + 1
+
+
+def test_every_order_says_why_its_budget_is_that_size() -> None:
+    """A budget without a stated reason is the guess v4 exists to replace."""
+    for order in load_order_set():
+        body = json.loads(
+            (ORDERS_DIR / order.file_name).read_text(encoding="utf-8"))
+        assert body.get("budget_rationale", "").strip(), order.id
+
+
+def test_every_iteration_budget_fits_the_measured_plan_shape() -> None:
+    for order in load_order_set():
+        assert order.budget["max_iterations"] >= measured_floor(order), order.id
+
+
+def test_the_budgets_carry_margin_but_not_slack() -> None:
+    """The gate still measures economy: a budget nothing can fail is not one."""
+    for order in load_order_set():
+        assert order.budget["max_iterations"] <= measured_floor(order) + 5, \
+            order.id
+
+
+def test_the_two_milestone_orders_are_budgeted_above_the_rest() -> None:
+    two = [o.budget["max_iterations"] for o in load_order_set()
+           if o.kind == "two_milestone_mission"]
+    rest = [o.budget["max_iterations"] for o in load_order_set()
+            if o.kind != "two_milestone_mission"]
+    assert two and rest and min(two) > max(rest)
+
+
+def test_the_cycle_budgets_did_not_move_with_the_iteration_budgets() -> None:
+    """v4 re-sizes what R9 measured wrong. Cycles were measured RIGHT (jobs
+    reached all_green at cycles=4), so touching them would be an edit without
+    evidence."""
+    cycles = {o.id: o.budget["max_cycles"] for o in load_order_set()}
+    assert cycles == {
+        "g01-pure-code-change": 4, "g02-test-add": 4,
+        "g03-small-app-feature-smoke": 5, "g04-doc-generation": 3,
+        "g05-two-milestone-mission": 8,
+        "g06-provider-api-error-mid-move": 4,
+        "g07-truncated-model-response": 4,
+        "g08-harness-death-mid-dispatch": 5,
+        "g09-harness-death-mid-write": 8, "g10-escalate-then-finish": 3,
+    }
