@@ -3146,3 +3146,57 @@ Nine tests, all provider-free (R-0182), including the end-to-end one: a model
 that follows the refusal reaches `achieved`, and `dispatched.seen == []`
 proves no job was created for work already finished. The loop, e2e, era,
 injection and runner suites are green UNEDITED (307).
+
+## 2026-08-04: F075 R8 Phase 3 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r8 --only 1 --format json`, exit 1, terminal
+`escalated`. The gate is RELEASED (`acc-001 passed`), so Phase 3's second
+requirement holds — but `achieved` does not. Rule 3.3: STOP, trail here,
+campaign not run.
+
+**R-0191 works, and the model obeyed it.** Three iterations, verbatim:
+
+    it1: dispatch_job -> dispatched
+         job fe02e963 ... DoD attached; executed: terminal=all_green
+         job_status=completed cycles=4/experiment OVER-CAP gate=released
+    it2: dispatch_job -> refused
+         milestone M001 is already finished: job fe02e963 completed and its
+         Definition of Done RELEASED. Another job would repeat work that is
+         already proven. Instead: declare_milestone_done for M001
+    it3: declare_milestone_done -> escalated
+         refused twice in a row (no job was ever dispatched for milestone
+         M001, so there is nothing whose outcome could meet its Definition of
+         Done); escalated: td:55642ed3
+
+The R7 failure mode is gone: six identical dispatches became one dispatch,
+one refusal, and the model took the instruction and claimed the milestone.
+
+**What blocked it — a latent defect the guard exposed.**
+`orchestrator_loop.dispatched_job_for` walks every ledger entry whose move
+kind is `dispatch_job` for the milestone and keeps the LAST one's
+`outcome.job_id`:
+
+    for entry in read_ledger(...):
+        if move.get("kind") != "dispatch_job":            continue
+        if payload.get("milestone_id") != milestone_id:   continue
+        job_id = str((entry.get("outcome") or {}).get("job_id", "") or "")
+
+A REFUSED dispatch is still a `dispatch_job` move — and its outcome carries no
+`job_id`, so it overwrites the real attribution with "". At it3 the evidence
+therefore said "no job was ever dispatched", `evaluate_milestone_done`
+correctly refused a claim it could not verify, and the second-refusal rule
+escalated. The mission ends with 1 open decision, so it would fail
+`no_open_decisions` too.
+
+The defect is pre-existing — nothing refused a dispatch before R-0191, so no
+ledger ever carried a refused `dispatch_job` entry for a milestone that also
+had a real one. The fix is one condition: a dispatch entry with no `job_id`
+(equivalently, an outcome whose status is not `dispatched`) is not a dispatch
+and must not erase the attribution. Not applied here: Phase 3.3 says commit
+nothing further, and this needs its own tests — including the exact
+refused-then-claim sequence above.
+
+Not done, deliberately: no order or template edits (v3 frozen at set hash
+c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6, template
+digest 1c4f41bf...); no config default touched; no weakening of the pass
+definition; the campaign (Phase 4) NOT run.
