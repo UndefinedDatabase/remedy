@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R6 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R6: R5 PASS persisted; R-0187 BUILT (explicit experiment_max_cycles override, F046 flag/config clamping untouched and pinned both ways; order-set v2 with per-order max_cycles, set hash b17540c3..., count reset per A9) and R-0188 BUILT (milestone DoD stored on the job at dispatch; run_job_gate at production completion, one author). Phase 4 re-proof: DoD attached, cycles=4/experiment OVER-CAP, job completed, gate produced a real verdict — but blocked (pytest check: 'file or directory not found: tests') and terminal iteration_limit -> rule 4.3 STOP; campaign NOT run. Next blocker recorded: the gauntlet's missions have NO repository (project repo_paths empty, workspace holds only run output).
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R6 (SPLIT, LARGE): persist the R5 PASS +
