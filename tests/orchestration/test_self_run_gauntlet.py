@@ -123,12 +123,90 @@ def test_a_dry_run_writes_nothing_into_the_evidence_it_reads(tmp_path: Path,
     assert after == before
 
 
-def test_without_dry_run_the_cli_says_live_execution_is_t003() -> None:
-    """Not implemented is stated out loud, and the exit code agrees."""
+def test_without_a_mode_the_cli_names_both_modes() -> None:
+    """A run with no mode is a usage error, said out loud."""
     proc = subprocess.run([sys.executable, str(SCRIPT)],
                           capture_output=True, text=True, cwd=str(REPO_ROOT))
     assert proc.returncode == cli.EXIT_USAGE
-    assert "live execution is not implemented in this round" in proc.stderr
+    assert "--dry-run <evidence-dir>" in proc.stderr
+    assert "--live <campaign-root>" in proc.stderr
+
+
+def test_both_modes_at_once_is_a_usage_error(tmp_path: Path) -> None:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "--dry-run", str(RECORDED_DIR),
+         "--live", str(tmp_path / "campaign")],
+        capture_output=True, text=True, cwd=str(REPO_ROOT))
+    assert proc.returncode == cli.EXIT_USAGE
+    assert "not both" in proc.stderr
+    assert not (tmp_path / "campaign").exists()
+
+
+# ---------------------------------------------------------------------------
+# --live, and the campaign it refuses to start
+# ---------------------------------------------------------------------------
+
+def test_a_live_campaign_refuses_while_an_injection_class_is_blocked(
+        tmp_path: Path, capsys) -> None:
+    """Three of the four classes wait on a product boundary; spending real
+    tokens on orders that could never be judged is the failure mode here."""
+    code = cli.main(["--live", str(tmp_path / "campaign")])
+    assert code == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert "refusing to start a live campaign" in err
+    assert "g06-provider-api-error-mid-move" in err
+    assert "no exception boundary" in err
+    # Nothing ran, so nothing was written.
+    assert not (tmp_path / "campaign").exists()
+
+
+def test_the_preflight_names_every_blocked_order() -> None:
+    from packages.orchestration.gauntlet_orders import load_order_set
+
+    blocked = cli.preflight_injections(load_order_set())
+    assert sorted(line.split(":")[0] for line in blocked) == [
+        "g06-provider-api-error-mid-move",
+        "g08-harness-death-mid-dispatch",
+        "g09-harness-death-mid-write",
+    ]
+
+
+def test_a_live_campaign_with_runnable_orders_produces_a_judged_matrix(
+        tmp_path: Path, monkeypatch, capsys) -> None:
+    """The only orders that can run today do run, and the SAME evaluator judges."""
+    from packages.orchestration import gauntlet_orders as orders_mod
+    from packages.orchestration import gauntlet_runner as runner_mod
+    from tests.orchestration.test_gauntlet_runner import Recorder, an_order
+
+    runnable = (an_order("g01-pure-code-change"), an_order("g02-test-add"))
+    monkeypatch.setattr(orders_mod, "load_order_set", lambda *a, **k: runnable)
+    real_root = tmp_path / "real"
+    real_root.mkdir()
+    deps = Recorder().deps()
+    original = runner_mod.run_campaign
+    monkeypatch.setattr(
+        runner_mod, "run_campaign",
+        lambda o, root, **kw: original(o, root, deps=deps,
+                                       real_data_root=real_root,
+                                       on_order=kw.get("on_order")))
+
+    code = cli.main(["--live", str(tmp_path / "campaign"), "--format", "json"])
+    body = json.loads(capsys.readouterr().out)
+    assert body["runs_recorded"] == 2
+    assert code in (cli.EXIT_PASS, cli.EXIT_NOT_A_PASS)
+    assert (tmp_path / "campaign" / "run-01-g01-pure-code-change").is_dir()
+
+
+def test_a_broken_frozen_set_stops_the_campaign(tmp_path: Path, monkeypatch,
+                                                capsys) -> None:
+    from packages.orchestration import gauntlet_orders as orders_mod
+
+    def boom(*a, **k):
+        raise orders_mod.OrderSetError("sha256 does not match the manifest")
+
+    monkeypatch.setattr(orders_mod, "load_order_set", boom)
+    assert cli.main(["--live", str(tmp_path / "campaign")]) == cli.EXIT_USAGE
+    assert "the frozen order set is not intact" in capsys.readouterr().err
 
 
 def test_the_script_runs_as_a_subprocess_from_any_cwd(tmp_path: Path) -> None:
