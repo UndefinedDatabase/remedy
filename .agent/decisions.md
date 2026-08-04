@@ -3049,3 +3049,20 @@ Two existing tests changed, both because a literal became reality:
 `test_the_set_is_at_version_two` -> `..._three`, and
 `test_the_set_hash_matches_the_listed_digests` now also passes the template
 digest (the set hash covers it in v3). No assertion was weakened.
+
+## 2026-08-04: F075 R7 — R-0190 escalate the second blocked completion
+
+`BLOCKED_COMPLETIONS_BEFORE_ESCALATION = 2`, matching the loop's own
+refuse-once-then-escalate rule: the FIRST block is a legitimate, informed
+retry (the context already carries the blocker), and the second says the retry
+did not work. `blocked_completion(move, outcome)` reads the streak off the
+outcome the loop already writes (`gate=blocked (<blocker>)`) rather than
+re-deriving anything; a released or un-run gate, or a different milestone,
+resets it. The escalation goes through the EXISTING `hand_over` seam — the
+same F051 verb the twice-refused path uses, pinned by a test that injects it —
+and its detail names the milestone, both blockers, and the iterations the
+run keeps instead of spending on a third identical dispatch.
+
+The streak is per milestone on purpose: two blocked milestones are two first
+attempts, not a stuck loop. All nine tests are provider-free (R-0182), and the
+loop, e2e, era and injection suites are green UNEDITED (259).

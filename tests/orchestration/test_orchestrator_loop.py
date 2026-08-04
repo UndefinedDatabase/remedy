@@ -87,6 +87,8 @@ from packages.orchestration.orchestrator_loop import (
     attach_milestone_dod,
     run_gate_for_job,
     JobExecution,
+    MoveOutcome,
+    blocked_completion,
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
@@ -1743,3 +1745,133 @@ class TestAReleasedGateMakesTheMilestoneClaimable:
                                                  step="build the core")))
         detail = read_ledger(PROJECT, mission.id, tmp_path)[0]["outcome"]["detail"]
         assert "gate=not-run" in detail
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0190 — a gate that blocks twice in a row goes to a human
+# ---------------------------------------------------------------------------
+#
+# With jobs finishing (R-0186) and the gate really running (R-0188), a blocked
+# milestone made the model dispatch again and again until the iteration limit:
+# six identical failed attempts, the R-0184 shape back for an honest reason.
+# The loop's own refuse-once-then-escalate rule is the precedent.
+
+
+class TestTheSecondBlockedCompletionEscalates:
+
+    def _blocked(self, blocker: str = "dod_blocking_red:tests"):
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=False,
+                                gate_blocker=blocker)
+        return execute
+
+    def _released(self):
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=True)
+        return execute
+
+    def _dispatch_moves(self, *milestones: str):
+        return _scripted(*[_move_json("dispatch_job", milestone_id=m,
+                                      step=f"work on {m}") for m in milestones])
+
+    def test_two_blocked_completions_in_a_row_escalate(self, tmp_path, mission,
+                                                       dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked(), call_fn=self._dispatch_moves("M001", "M001"))
+        assert result.terminal == TERMINAL_ESCALATED
+        assert "M001" in result.detail
+        assert "2 completed jobs in a row" in result.detail
+
+    def test_the_escalation_names_both_blockers(self, tmp_path, mission,
+                                                dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked("dod_blocking_red:acc-001"),
+            call_fn=self._dispatch_moves("M001", "M001"))
+        assert result.detail.count("acc-001") == 2
+
+    def test_the_escalation_says_what_budget_it_saved(self, tmp_path, mission,
+                                                     dispatched):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked(), call_fn=self._dispatch_moves("M001", "M001"))
+        assert "more iteration(s) of this run's budget" in result.detail
+
+    def test_the_first_block_is_still_a_retry_opportunity(self, tmp_path,
+                                                          mission, dispatched):
+        """One block escalates nothing — the context carries the blocker and
+        the model gets its legitimate targeted-fix attempt."""
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked(), call_fn=self._dispatch_moves("M001"))
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+
+    def test_a_released_gate_between_two_blocks_resets_the_streak(
+            self, tmp_path, mission, dispatched):
+        calls = {"n": 0}
+
+        def execute(job):
+            calls["n"] += 1
+            released = calls["n"] == 2
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=released,
+                                gate_blocker="" if released else "dod_blocking_red:x")
+
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=execute, call_fn=self._dispatch_moves("M001", "M001", "M001"))
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+
+    def test_blocks_on_two_different_milestones_do_not_escalate(
+            self, tmp_path, mission, dispatched):
+        """The streak is per milestone: two different ones are two first
+        attempts, not a stuck loop."""
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked(), call_fn=self._dispatch_moves("M001", "M002"))
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+
+    def test_the_escalation_lands_in_the_ledger(self, tmp_path, mission,
+                                                dispatched):
+        run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked(), call_fn=self._dispatch_moves("M001", "M001"))
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert entries[-1]["outcome"]["status"] == TERMINAL_ESCALATED
+        assert "M001" in entries[-1]["outcome"]["detail"]
+
+    def test_the_escalation_goes_through_the_existing_f051_verb(
+            self, tmp_path, mission, dispatched):
+        """Not a second escalation mechanism: the same hand_over the
+        twice-refused path uses."""
+        seen: list[str] = []
+
+        def escalate(project_id, mission_id, reason):
+            seen.append(reason)
+            return "td:0001"
+
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=self._blocked(), escalate=escalate,
+            call_fn=self._dispatch_moves("M001", "M001"))
+        assert len(seen) == 1 and "M001" in seen[0]
+        assert "td:0001" in result.detail
+
+    def test_a_non_dispatch_move_does_not_disturb_the_streak(self, mission):
+        """Unit-level: only dispatches count toward the streak."""
+        from packages.orchestration.orchestrator_move_schema import OrchestratorMove
+
+        move = OrchestratorMove.model_validate(
+            json.loads(_move_json("wait_on_decisions", reason="waiting")))
+        assert blocked_completion(move, MoveOutcome(status="waiting")) == ("", "")

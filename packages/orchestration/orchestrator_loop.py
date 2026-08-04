@@ -779,6 +779,13 @@ def run_mission(
                                                        now=now))
     #: Empty until a move is refused; carried into exactly ONE re-prompt.
     feedback = ""
+    #: R-0190: consecutive gate-BLOCKED completions for one milestone. A
+    #: milestone whose gate blocks twice in a row is not going to be argued
+    #: green by a third identical dispatch — the loop escalates instead of
+    #: spending the rest of its budget rediscovering the same blocker. The
+    #: loop's own second-refusal rule is the precedent.
+    blocked_milestone = ""
+    blocked_blockers: list[str] = []
 
     def _record(iteration: int, digest: str, move: dict[str, Any],
                 outcome: MoveOutcome, cost: dict[str, Any]) -> None:
@@ -901,6 +908,34 @@ def run_mission(
             if outcome.terminal:
                 result.terminal, result.detail = outcome.status, outcome.detail
                 return result
+
+            # R-0190: a gate that blocked twice in a row for the same milestone
+            # is a human's problem, not a third identical dispatch.
+            milestone, blocker = blocked_completion(move, outcome)
+            if milestone and blocker:
+                if milestone != blocked_milestone:
+                    blocked_milestone, blocked_blockers = milestone, []
+                blocked_blockers.append(blocker)
+                if len(blocked_blockers) >= BLOCKED_COMPLETIONS_BEFORE_ESCALATION:
+                    reason = (
+                        f"milestone {milestone}: the Definition of Done blocked "
+                        f"{len(blocked_blockers)} completed jobs in a row "
+                        f"({'; '.join(blocked_blockers)}). A third dispatch "
+                        f"would rediscover the same blocker and spend "
+                        f"{bounds.max_iterations - step} more iteration(s) of "
+                        f"this run's budget.")
+                    handle = hand_over(pid, mission_id, reason)
+                    escalated = MoveOutcome(
+                        status=TERMINAL_ESCALATED,
+                        detail=f"{reason} escalated: {handle}",
+                        terminal=True)
+                    _record(iteration, context.digest, {}, escalated, cost)
+                    result.terminal = TERMINAL_ESCALATED
+                    result.detail = escalated.detail
+                    return result
+            elif blocker == "" and _was_dispatch(move):
+                # A released (or un-run) gate ends the streak.
+                blocked_milestone, blocked_blockers = "", []
         except Exception as exc:
             failure_class, detail = record_iteration_failure(
                 pid, mission_id, exc, root=root, iteration=iteration)
@@ -930,6 +965,38 @@ def run_mission(
 #: NOT fixed here: the absent resume verb is why re-dispatch is the only
 #: forward path out of a paused job.)
 IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
+
+#: How many consecutive gate-blocked completions of ONE milestone the loop
+#: tolerates before handing it to a human (R-0190). Two, matching the loop's
+#: own refuse-once-then-escalate rule: the first block is a legitimate,
+#: informed retry — the context already carries the blocker — and the second
+#: says the retry did not work.
+BLOCKED_COMPLETIONS_BEFORE_ESCALATION = 2
+
+
+def _was_dispatch(move: Any) -> bool:
+    from packages.orchestration.orchestrator_move_schema import MOVE_DISPATCH_JOB
+
+    return getattr(move, "kind", "") == MOVE_DISPATCH_JOB
+
+
+def blocked_completion(move: Any, outcome: MoveOutcome) -> tuple[str, str]:
+    """``(milestone_id, blocker)`` when a dispatch finished on a BLOCKED gate.
+
+    ``("", "")`` when this move was not a dispatch. ``(milestone, "")`` when it
+    was a dispatch whose gate did not block — which RESETS the counter, because
+    the streak this guards against is a consecutive one.
+    """
+    from packages.orchestration.orchestrator_move_schema import MOVE_DISPATCH_JOB
+
+    if getattr(move, "kind", "") != MOVE_DISPATCH_JOB:
+        return "", ""
+    milestone = str((getattr(move, "payload", {}) or {}).get("milestone_id", ""))
+    detail = outcome.detail or ""
+    if "gate=blocked" not in detail:
+        return milestone, ""
+    blocker = detail.split("gate=blocked", 1)[1].strip()
+    return milestone, (blocker or "the gate did not release")
 
 
 def attach_milestone_dod(project_id: str, mission_id: str, mission: Any,
