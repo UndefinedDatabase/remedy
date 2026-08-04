@@ -2586,3 +2586,28 @@ tmp_path; `git status` clean, real data root untouched), but real provider
 calls were made. The live CLI path is now exercised ONLY with doubles or a
 monkeypatched order set, and the two obsolete tests were replaced by
 preflight-level ones that cannot start a campaign.
+
+## 2026-08-04: F075 R3 — attempt 1's matrix had to be written after the fact
+
+The block's Phase 6 step 3 assumed `--live ... --format both` leaves
+`matrix.md` + `matrix.json` in the campaign root. It did not: `--format`
+only chose what reached stdout, and `--out` (which writes files) was not
+part of the ordered invocation. The campaign therefore finished with its
+report existing only on a terminal — a campaign nobody could archive.
+
+Resolved WITHOUT rerunning anything. The evaluator and the report are
+pure functions of the recorded evidence, so the matrix was re-derived
+from the run directories attempt 1 had already written and PROVEN
+byte-identical to what the live invocation printed (compared against the
+captured stdout: `printed == md + js` -> True). No provider was called
+again, no run was repeated, no order was edited.
+
+Gap fixed in the same round: `--live` now always calls `write_matrix`
+into the campaign root, with a test. `--format` keeps meaning "what
+reaches stdout" and `--out` keeps meaning "also write here".
+
+**Observation for the reviewer, not fixed:** `RunVerdict.to_json` — and
+therefore the matrix — reports the `injections_degraded` criterion but not
+which fault got which disposition; that detail lives only in each run's
+`run.json`. Surfacing it would change the golden matrix bytes, so it is
+left for a ruling rather than taken unilaterally.

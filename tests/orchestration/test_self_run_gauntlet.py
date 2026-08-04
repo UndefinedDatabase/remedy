@@ -238,3 +238,36 @@ def test_the_script_runs_as_a_subprocess_from_any_cwd(tmp_path: Path) -> None:
         capture_output=True, text=True, cwd=str(tmp_path))
     assert proc.returncode == cli.EXIT_NOT_A_PASS
     assert json.loads(proc.stdout)["runs_flawless"] == 5
+
+
+def test_a_live_campaign_lands_its_matrix_beside_the_runs(
+        tmp_path: Path, monkeypatch, capsys) -> None:
+    """--format chooses what reaches stdout; the evidence area always gets the
+    report. Attempt 1 finished with its matrix only on a terminal, which is a
+    campaign nobody could archive."""
+    from packages.orchestration import gauntlet_orders as orders_mod
+    from packages.orchestration import gauntlet_runner as runner_mod
+    from packages.orchestration.gauntlet_matrix import (
+        MATRIX_JSON_FILENAME,
+        MATRIX_MARKDOWN_FILENAME,
+    )
+    from tests.orchestration.test_gauntlet_runner import Recorder, an_order
+
+    monkeypatch.setattr(orders_mod, "load_order_set",
+                        lambda *a, **k: (an_order("g01-pure-code-change"),))
+    real_root = tmp_path / "real"
+    real_root.mkdir()
+    deps = Recorder().deps()
+    original = runner_mod.run_campaign
+    monkeypatch.setattr(
+        runner_mod, "run_campaign",
+        lambda o, root, **kw: original(o, root, deps=deps,
+                                       real_data_root=real_root,
+                                       on_order=kw.get("on_order")))
+
+    campaign = tmp_path / "campaign"
+    cli.main(["--live", str(campaign), "--format", "json"])
+    capsys.readouterr()
+    assert (campaign / MATRIX_MARKDOWN_FILENAME).is_file()
+    body = json.loads((campaign / MATRIX_JSON_FILENAME).read_text(encoding="utf-8"))
+    assert body["runs_recorded"] == 1

@@ -164,6 +164,11 @@ def run_live(args: argparse.Namespace) -> int:
 
     run_campaign(orders, campaign_root, on_order=announce)
     verdict = evaluate_evidence_dir(campaign_root)
+    # The matrix lands in the evidence area beside the runs it judges
+    # (T1_F075.md, Design). --format only chooses what reaches stdout, and a
+    # campaign whose report existed only in a terminal would be a campaign
+    # nobody could archive: attempt 1 hit exactly that.
+    write_matrix(verdict, campaign_root)
     _emit(verdict, args)
     return EXIT_PASS if verdict.passed else EXIT_NOT_A_PASS
 
