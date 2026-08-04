@@ -1,117 +1,117 @@
-OUTCOME: executed — F075 R1 complete: PR #178 merged, claim + T001 (evaluator, matrix, recorded fixtures, golden, CLI) + T002 (frozen ten, set version 1) landed; both slice gates exit 0; canary exit 0; no PR (comes at closure).
+OUTCOME: in progress — F075 R2 (SPLIT, LARGE) started.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
-  10 flawless self-runs, round R1 (SPLIT, LARGE bundle): Open PR Gate +
-  claim + T001 + T002. Save THIS ENTIRE block verbatim to
-  .agent/last_block.md first (update OUTCOME at handback). LARGE rule:
-  every slice ends with its own verification; at the FIRST red gate STOP
-  per AGENTS.md If-Blocked — record the raw failure in the handoff, do
-  NOT continue into the next slice. Read docs/roadmap/features/T1_F075.md
-  COMPLETELY before Phase 2 — it is the specification of record for this
-  round; where this block is silent, the feature file governs.
+  10 flawless self-runs, round R2 (SPLIT, LARGE): persist the R1 PASS +
+  fix R-0178 + T003a live runner + campaign attempt 1. Save THIS ENTIRE
+  block verbatim to .agent/last_block.md first (update OUTCOME at
+  handback). You are on feature/f075-self-run-gauntlet at 740ff133.
+  STOP rule: every phase ends with a verification; at the FIRST red TEST
+  gate STOP per AGENTS.md If-Blocked, record the raw failure in the
+  handoff, do not continue. The CAMPAIGN result itself (Phase 4) is
+  campaign data: below 10/10 is an EXPECTED outcome, recorded honestly,
+  never a reason to stop or to retry-with-edits.
 
-  PHASE 0 — OPEN PR GATE + BRANCH
-   1. gh pr list --state open --json number,headRefName,baseRefName,isDraft
-      Expected: exactly one — #178, feature/f071-mission-dossier -> main,
-      not draft. Then: gh pr merge 178 --merge --delete-branch.
-      Anything else (multiple PRs, draft, different head) -> STOP, report.
-   2. git status (clean) · git checkout main · git pull ·
-      git checkout -b feature/f075-self-run-gauntlet
-
-  PHASE 1 — CLAIM (first commit)
-   1. Save the four AUTHORED TEXT payloads below to
-      .agent/authored/f075-r1-<n>.md (bytes between BEGIN/END markers,
+  PHASE 1 — PERSIST THE R1 VERDICT (first commit)
+   1. Save the three AUTHORED TEXT payloads below to
+      .agent/authored/f075-r2-<n>.md (bytes between BEGIN/END markers,
       exclusive, incl. the final newline; payload lines start at column
       0). Verify each sha256sum against its BEGIN-marker hash. Mismatch
       -> STOP, report raw sums, apply nothing.
-   2. Apply f075-r1-1 -> docs/roadmap/STATUS.md (FROM line occurs once;
-      replace once; copy from the SAVED file, never retype).
-   3. Apply f075-r1-2 -> .agent/live_review.md, f075-r1-3 ->
-      .agent/plan.md, f075-r1-4 -> .agent/context.md — each a FULL file
-      replacement, byte-exact copy of the saved authored file.
-   4. Commit 1: chore(f075): claim F075 — STATUS [~] + state reset.
-      Gates (docs/roadmap touched): python3 -m pytest tests/docs/ -q AND
-      python3 -m pytest tests/cli/test_golden_path.py -q -> both exit 0.
-      Push (git push -u origin feature/f075-self-run-gauntlet).
+   2. Apply f075-r2-1 -> .agent/live_review.md and f075-r2-2 ->
+      .agent/plan.md (FULL replacements, byte-exact copies of the saved
+      files). Apply f075-r2-3 -> .agent/context.md (the FROM line occurs
+      once; replace it with the two TO lines, copied from the saved
+      file).
+   3. Commit 1: chore(f075): persist the R1 PASS, register R-0178.
+      Gate: python3 -m pytest tests/cli/test_golden_path.py -q -> exit 0.
+      Push.
 
-  PHASE 2 — T001: EVALUATOR + MATRIX + DRY-RUN PROOF
-   Zero provider calls in this round — the evaluator is proven against
-   RECORDED fixture evidence before any real run (T1_F075.md, T001).
-   1. Evaluator logic in an importable module (suggested:
-      packages/orchestration/gauntlet_evaluator.py) + thin CLI
-      scripts/self_run_gauntlet.py with at least: --dry-run
-      <evidence-dir> (evaluate recorded evidence, no execution) and
-      --only <n>. Record interface decisions (module name, evidence
-      layout consumed, order-file schema) in .agent/decisions.md.
-   2. Pass definition, explicit and falsifiable — flawless per run =
-      start command only (zero operator interventions) + terminal green
-      + all blocking DoD checks green + zero unknown postmortems + zero
-      open decisions + host data root byte-untouched (before/after
-      content hash). Failure classification MUST be able to name the
-      F070 era-fixture classes (R-0141/R-0143/R-0144/R-0145/R-0146/
-      R-0147/R-0148 — see T1_F070.md, Design) and the harness-failure
-      injection classes (provider API error mid-move, truncated model
-      response, harness death mid-dispatch, harness death mid-write);
-      each injection degrades to a LEDGERED failure, retry within
-      budget, or escalation (F051 semantics) — never a silent success,
-      never a corrupted artifact accepted downstream.
-   3. Matrix report (markdown + json), deterministic bytes for a given
-      evidence set; per run: terminal status, DoD matrix, postmortem
-      classes, operator interventions, wall/tokens, links into the
-      run's evidence. During real runs (T003, later) all run artifacts
-      live in the ISOLATED data root, never inside the repo working
-      tree (docs/agents/integration_gate.md, R-0176).
-   4. Recorded fixture evidence under the tests fixture area covering
-      at minimum: one flawless run; one run with an operator command ->
-      NOT flawless; one run with an unknown postmortem -> NOT flawless;
-      one fixture per harness-failure injection class (ledgered ->
-      still eligible; silent success or corrupted-artifact-accepted ->
-      NOT flawless); era-fixture classes covered at least via
-      classification-mapping tests. Golden matrix (md + json) for the
-      recorded set.
-   5. Tests: tests/orchestration/test_gauntlet_evaluator.py — every
-      pass criterion has a test that flips it and asserts not-flawless
-      (falsifiability is the acceptance bar); golden-matrix comparison.
-      Multiple small commits expected, each < 500 lines.
-   6. SLICE GATE (STOP here if red):
-      python3 -m pytest tests/orchestration/test_gauntlet_evaluator.py -q
-      -> exit 0. Push.
+  PHASE 2 — FIX R-0178 (own commit)
+   1. packages/orchestration/gauntlet_evidence.py: a non-numeric
+      wall_seconds or tokens value in run.json becomes a load_error
+      (malformed evidence -> the run is not flawless), so _as_number's
+      docstring stands as written. Keep honest edge semantics: absent
+      fields still default (absence is not malformation); a bool is not
+      a number. One falsification test per field (wall_seconds, tokens
+      in, tokens out) in tests/orchestration/test_gauntlet_evidence.py;
+      mark Done: R-0178 in .agent/live_review.md in the same commit.
+   2. Gate: python3 -m pytest tests/orchestration/test_gauntlet_evidence.py
+      tests/orchestration/test_gauntlet_evaluator.py
+      tests/orchestration/test_gauntlet_matrix.py -q -> exit 0. If the
+      golden matrices change bytes, regenerate them IN THIS COMMIT and
+      say so in the handoff. Push.
 
-  PHASE 3 — T002: THE CURATED TEN-ORDER SET
-   1. Ten mission-order fixture files, each with a rationale comment
-      (why this order probes a DIFFERENT risk) and a fixed budget;
-      mixed kinds per T1_F075.md: pure-code change, test-add, small app
-      feature with smoke, doc generation, a two-milestone mission.
-      Location chosen by you (suggested: scripts/gauntlet_orders/ or
-      the tests fixture area) — record it in .agent/decisions.md.
-   2. Frozen + versioned: a set manifest (set version 1, per-order
-      sha256, set hash). Order-set edits mid-campaign are forbidden;
-      any change resets the gauntlet count (T1_F075.md, A9).
-   3. Tests pin the frozen set: exactly 10 orders, unique ids, budget
-      present on every order, manifest hashes match the files, the
-      kind mix is present.
-   4. SLICE GATE (STOP here if red): scoped pytest over the order-set
-      tests (same file or tests/orchestration/test_gauntlet_orders.py)
-      -> exit 0. Push.
+  PHASE 3 — T003a: THE LIVE RUNNER
+   Design authority: T1_F075.md (read it again before this phase). The
+   runner EXECUTES; the evaluator keeps sole authority over judging.
+   Record every interface decision in .agent/decisions.md.
+   1. New module (suggested packages/orchestration/gauntlet_runner.py)
+      + CLI wiring in scripts/self_run_gauntlet.py behind an explicit
+      --live flag (the exit-2 refusal without --dry-run/--live stays).
+      Per order, in manifest order from load_order_set():
+      - a FRESH isolated data root (REMEDY_DATA_DIR semantics) per run;
+        the operator's real data root is hashed BEFORE and AFTER every
+        run and both digests land in run.json (the criterion's facts);
+      - unattended --yes semantics under the order's own budget
+        (max_iterations, max_tokens, max_wall_seconds), driven through
+        the EXISTING mission intake -> compile -> orchestrator loop
+        path — the runner adds no second execution mechanism;
+      - evidence written per run in the recorded schema
+        (gauntlet_run_version 1: terminal_status, interventions,
+        postmortems, open_decisions, era_defects, injections,
+        wall/tokens, evidence_links, dod_result.json when the gate
+        ran) — the same bytes the dry-run evaluator already judges;
+      - failures along the way become postmortems/escalations via the
+        EXISTING F010/F051 paths, never swallowed by the runner.
+   2. Injection driver for the orders that declare injections
+      (g06-g09): deterministic fault injection at EXISTING seams
+      (transport/dispatch/write). Every injected event is recorded in
+      run.json injections[] with class + disposition + detail. HARD
+      RULE: no product code bypass, no test-only branch added to
+      production paths; if a needed seam does not exist, STOP after
+      committing the runner work so far and hand back naming the exact
+      seam — a product seam is its own reviewed change, never smuggled.
+   3. Runner tests (no provider calls: fake loop/provider doubles):
+      evidence lands in schema and is judged by the real evaluator;
+      real root hashed before/after and UNTOUCHED (asserted by hash);
+      isolated root actually used; budgets passed through; injection
+      events recorded; a runner crash mid-campaign leaves prior runs'
+      evidence intact and the campaign judgeable.
+   4. SLICE GATE (STOP if red): the new runner test file + the four
+      existing gauntlet test files + tests/orchestration/
+      test_self_run_gauntlet.py -> python3 -m pytest <those> -q,
+      exit 0. Push.
 
-  PHASE 4 — HANDBACK
-   Canary: python3 -m pytest tests/cli/test_golden_path.py -q -> exit 0.
+  PHASE 4 — CAMPAIGN ATTEMPT 1 (real runs, real tokens)
+   1. Preconditions stated in the handoff before starting: porcelain
+      empty, branch pushed, provider reachable (one cheap ping),
+      set_hash of scripts/gauntlet_orders/ re-verified via
+      load_order_set().
+   2. ONE invocation over the full frozen set with the campaign
+      evidence root OUTSIDE the repo (session scratch or the isolated
+      data area — R-0176 discipline; run artifacts are NEVER
+      committed). Set budget ceiling across the ten orders is ~3.1M
+      tokens; per-order budgets are the orders' own. Provider
+      flakiness during a run makes that run FAIL honestly (A9) — do
+      not rerun inside the same attempt, do not edit orders.
+   3. After the invocation: copy matrix.md + matrix.json (only these)
+      into .agent/gauntlet/attempt-01/ and commit — failed gauntlets
+      are KEPT; the attempt history is part of the proof. Record the
+      evidence root path + per-run terminal facts in the handoff.
+   4. Gate: the copied matrix.json parses and its runs_recorded == 10;
+      canary python3 -m pytest tests/cli/test_golden_path.py -q ->
+      exit 0. The flawless count is REPORTED, not gated.
+
+  PHASE 5 — HANDBACK
    git status --porcelain empty. Rewrite .agent/handoff.md per
-   docs/agents/handback_template.md (per-commit changed-files tables;
-   raw gate outputs with exit codes; PR #178 merge result recorded;
-   sha256 proof that every applied reviewer text is byte-identical to
-   its .agent/authored/ file). Update last_block OUTCOME. Completion
-   report ends: "F075 R1 complete — awaiting review."
+   docs/agents/handback_template.md (per-commit tables; raw gate
+   outputs with exit codes; the campaign matrix summary table verbatim;
+   sha256 proof for every applied reviewer text vs its
+   .agent/authored/ file). Update last_block OUTCOME. Completion report
+   ends: "F075 R2 complete — attempt 1 matrix recorded, awaiting
+   review."
 
-  --- BEGIN f075-r1-1 sha256=be68f1e9abc044da3c429aa03c0677ef158a27847e73fc59a5977fad73e05ea5 ---
-  FROM:
-  - [ ] F075 — MILESTONE GATE: 10 flawless self-runs
-
-  TO:
-  - [~] F075 — MILESTONE GATE: 10 flawless self-runs
-  --- END f075-r1-1 ---
-
-  --- BEGIN f075-r1-2 sha256=28246a1eb247df34ca454aa8d2b41602de909bcdec77293294f7416b1c63532d ---
+  --- BEGIN f075-r2-1 sha256=41e4bed4f054316f819f9ddb4f3716294c40a81b58731cd454c26231f77c3371 ---
   # Live Review — F075 MILESTONE GATE: 10 flawless self-runs (Tier 1)
 
   Branch: feature/f075-self-run-gauntlet
@@ -129,27 +129,54 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   fixes found by the campaign go through normal orders (T003).
 
   ## Steps
-  - R1 (SPLIT, LARGE bundle, current): Open PR Gate (merge PR #178,
-    the F071 closure) + claim + T001 evaluator/matrix/dry-run mode
-    proven against recorded fixture evidence + T002 the curated
-    ten-order set with rationale + budgets, frozen and versioned.
-  - R2+: T003 campaign — run, read the matrix, file targeted fix
-    orders with failing evidence attached, rerun; multiple rounds
-    EXPECTED. Then the integration gate per
-    docs/agents/integration_gate.md.
+  - R1 (SPLIT, LARGE): Open PR Gate (PR #178 merged) + claim + T001
+    evaluator/matrix/dry-run proof + T002 the frozen ten-order set —
+    PASS, see Verdicts.
+  - R2 (SPLIT, LARGE, current): persist the R1 verdict + fix R-0178
+    + T003a live runner (isolated data root per run, real-root hash
+    before/after, injection driver, evidence in the recorded
+    schema) + campaign attempt 1: the full gauntlet from ONE
+    invocation, matrix recorded honestly — a result below 10/10 is
+    campaign data, not a round failure.
+  - R3+: campaign iterations — targeted fix orders + full reruns —
+    until 10/10 stands from one invocation; then the integration
+    gate per docs/agents/integration_gate.md.
   - Closure per docs/roadmap/STATUS_closure_protocol.md; a passing
     10/10 emits a prepared-but-not-applied config diff + ADR — a
     human applies it, never the harness.
 
   ## Findings
-  (none yet — F071's R-0176/R-0177 Done at F071 closure)
-  - Next free ID: R-0178.
+  - R-0178 (product, Low) 2026-08-04, reviewer's R1 read:
+    gauntlet_evidence._as_number promises "a malformed number is a
+    load error, never a silent zero" but returns the default
+    silently — a run.json with a non-numeric wall_seconds or tokens
+    value renders as 0 in the matrix, understating cost in the very
+    report a human reads before flipping defaults. Fix: a
+    non-numeric wall_seconds/tokens value becomes a load_error
+    (malformed evidence, run not flawless), so the docstring stands
+    as written; one falsification test per field.
+  - Next free ID: R-0179.
 
   ## Verdicts
-  (pending R1)
-  --- END f075-r1-2 ---
+  - R1: PASS (SPLIT, LARGE, 2026-08-04). Range 563b15b4..740ff133
+    (13 commits, all tabled). Transport: all four authored files cmp
+    0 against the reviewer's scratchpad originals; applied files
+    hash-identical to their authored copies. Reviewer re-ran both
+    slice gates (evaluator 63, orders 34), siblings 44, canary 42,
+    docs 293 — all exit 0 — and independently reproduced BOTH golden
+    matrices byte-exact via the CLI over the recorded set (exit 1,
+    5/9 flawless, exactly as recorded). Frozen set verified: ten
+    orders, two of each kind, all four injection classes exercised,
+    distinct risks in prose; the era mapping covers all seven R-ids
+    the operator named. No existing product module touched — the
+    range adds new files only. Deviations 1–5 accepted (module
+    split: the seam is real and both slice gates ran as ordered).
+    R-0178 registered from the reviewer's own read. Worktree
+    hygiene: primary checkout only, porcelain empty at verdict.
+    LAST_REVIEWED_SHA = 740ff133.
+  --- END f075-r2-1 ---
 
-  --- BEGIN f075-r1-3 sha256=32729c7409dba63aded5b07cce4b00a39b4e5274e0cce106846d6b7773b51aeb ---
+  --- BEGIN f075-r2-2 sha256=cb9730c910fb35dc04903767e0bf36a2e717950a2141a25a0799d6411c72cfb7 ---
   # Plan — F075 MILESTONE GATE: 10 flawless self-runs
 
   Branch: feature/f075-self-run-gauntlet
@@ -165,57 +192,35 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   + ADR name the evidence — applied by a human, never the harness.
 
   ## Current Step
-  R1 (SPLIT, LARGE bundle): Open PR Gate (PR #178) + claim + T001
-  evaluator + matrix + dry-run fixture proof + T002 the ten curated
-  orders with rationale + budgets, frozen and versioned. Gate:
-  scoped evaluator/order-set tests + docs suite + canary.
+  R2 (SPLIT, LARGE): persist the R1 PASS + fix R-0178 (non-numeric
+  evidence numbers become load errors) + T003a live runner: per
+  order an isolated data root, real-root hash before/after, --yes
+  semantics under the order's budgets, evidence written in the
+  recorded schema, deterministic injection driver for g06–g09 at
+  existing seams — then campaign attempt 1: the full gauntlet from
+  ONE invocation, matrix kept durably under .agent/gauntlet/ (run
+  artifacts stay outside the repo). Below 10/10 is campaign data,
+  not a round failure; a red TEST gate is a STOP.
 
   ## Next Steps
-  - R2+: T003 campaign (run → targeted fix orders → rerun) +
-    integration gate per docs/agents/integration_gate.md.
+  - R3+: campaign iterations — targeted fix orders + full reruns —
+    until 10/10 from one invocation; then the integration gate.
   - Closure per STATUS_closure_protocol.md incl. config diff + ADR.
 
   ## Risks
-  - Every pass criterion must be demonstrably falsifiable — a
-    fixture proves each one can fail (one operator command → not
-    flawless; one unknown postmortem → not flawless).
-  - Do-not-touch: the pass definition once frozen (ADR to change),
-    config defaults by machine, order-set edits mid-campaign.
-  - Host-state isolation: every run and every verify step against an
-    isolated data root; ANY pollution disqualifies (F081 lesson
-    2026-07-23).
-  --- END f075-r1-3 ---
+  - Injections need real seams; a missing seam is a STOP-and-report,
+    never a product bypass added quietly.
+  - Real runs spend real tokens (set budget ceiling ~3.1M); provider
+    flakiness makes a run FAIL honestly (A9) — that is the gate
+    working, not breaking.
+  - Do-not-touch: the pass definition (ADR to change), config
+    defaults by machine, order-set edits mid-campaign.
+  --- END f075-r2-2 ---
 
-  --- BEGIN f075-r1-4 sha256=26b3de432a11307f7df927e8a434f50f29d295b96419eb786c305890adc8b812 ---
-  # Context — F075 MILESTONE GATE: 10 flawless self-runs
-
-  ## Active Branch
-  feature/f075-self-run-gauntlet (from main after the Open PR Gate
-  merged PR #178, the F071 closure)
-
-  ## Scope
-  Roadmap F075 (Tier 1, docs/roadmap/features/T1_F075.md): gauntlet
-  harness + evaluator + matrix report + frozen ten-order set + their
-  tests. The harness adds no product code paths; product fixes found
-  by the campaign go through normal orders with their own tests.
-
-  ## Constraints
-  - Round gate = scoped pytest command(s) authored in the step
-    block; canary per handback:
-    python3 -m pytest tests/cli/test_golden_path.py -q. Docs-round
-    gate applies to any commit touching docs/roadmap/**:
-    python3 -m pytest tests/docs/ -q. Full-suite pytest -n auto only
-    at the integration gate; the resource-safety rules of
-    tests/regression apply.
-  - Commits < 500 lines; authored texts applied byte-exact from
-    .agent/authored/f075-r1-<n>.md after sha256 verification.
-  - Gauntlet runs use an ISOLATED data root, never the operator's
-    real one; gate run logs live outside the repo during a run
-    (docs/agents/integration_gate.md, R-0176).
-  - Do-not-touch: the pass definition once frozen, config defaults
-    by machine, order-set edits mid-campaign.
-
-  ## Steps
+  --- BEGIN f075-r2-3 sha256=3eddb2c46b02c350352df0e622cb1edd52a326405fe950fc602be4011620efcb ---
+  FROM (exact line, occurs once in .agent/context.md):
   R1 T001+T002 (current) → R2+ T003 campaign + integration gate →
-  closure.
-  --- END f075-r1-4 ---
+  TO (two lines):
+  R1 done (PASS) → R2 T003a live runner + campaign attempt 1
+  (current) → R3+ iterations → integration gate →
+  --- END f075-r2-3 ---

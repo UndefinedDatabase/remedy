@@ -27,5 +27,6 @@ by the campaign go through normal orders with their own tests.
   by machine, order-set edits mid-campaign.
 
 ## Steps
-R1 T001+T002 (current) → R2+ T003 campaign + integration gate →
+R1 done (PASS) → R2 T003a live runner + campaign attempt 1
+(current) → R3+ iterations → integration gate →
 closure.
