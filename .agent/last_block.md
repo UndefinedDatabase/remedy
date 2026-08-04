@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R3 (SPLIT, LARGE) started.
+OUTCOME: executed — F075 R3: R2 PASS persisted; R-0179/R-0180 fixed; the run_mission exception boundary landed (classified post-mortem + ledger entry + honest iteration_failed terminal, 11 tests, existing loop suite green); all four injection classes now driveable; campaign attempt 1 ran from ONE invocation — 10 runs recorded, 0/10 flawless, matrix kept under .agent/gauntlet/attempt-01/. Every gate exit 0 (P2 red first on my own R-0179 change, fixed, rerun green). Two commits over the 500-line cap, both declared.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R3 (SPLIT, LARGE): persist the R2 PASS +
