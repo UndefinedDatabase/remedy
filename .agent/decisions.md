@@ -2411,3 +2411,30 @@ T001 asks for exactly these):
 
 Also frozen here: an empty evidence directory does NOT pass. Vacuous
 truth is the single most likely way this gate would lie about 10/10.
+
+## 2026-08-04: F075 T002 — where the frozen ten live, and what freezes them
+
+1. **Location: `scripts/gauntlet_orders/`**, beside the CLI that runs them.
+   Alternative considered: the tests fixture area — rejected, these are
+   campaign INPUT rather than test data, and filing real input as test
+   data is how it quietly becomes editable mid-campaign (exactly what
+   T1_F075.md A9 forbids).
+2. **Order-file schema (`gauntlet_order_version: 1`)**: id, kind, title,
+   `rationale` (prose: why this order probes a risk no other order
+   probes), `risk_probed` (slug), goal, milestones[], budget
+   {max_iterations, max_tokens, max_wall_seconds} — all three required
+   and positive, because an unbounded run cannot fail a budget — and an
+   optional `injections[]` naming the harness-failure classes this order
+   injects. The rationale is a FIELD rather than a JSON comment so a test
+   can assert it is present and distinct.
+3. **Freeze mechanism**: `manifest.json` carries
+   `gauntlet_order_set_version: 1`, one sha256 per order file, and a
+   `set_hash` over the `<sha256>  <file>` lines in manifest order. Order
+   is part of the hash on purpose — reordering changes which order
+   `--only 3` selects, so it is a change to the set. `load_order_set`
+   refuses on the first mismatch rather than reporting a soft finding:
+   running a campaign against a set the manifest does not describe proves
+   nothing about either.
+4. **Regenerating the manifest is a deliberate human act.** No script
+   rewrites it as a side effect of loading — the whole point is that an
+   edit is loud. Bumping the set version resets the gauntlet count.
