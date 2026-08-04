@@ -1,0 +1,34 @@
+{
+  "data_root_hash_after": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "data_root_hash_before": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "era_defects": [],
+  "evidence_links": {
+    "ledger": "ledger.jsonl",
+    "report": "report.md"
+  },
+  "gauntlet_run_version": 1,
+  "injections": [
+    {
+      "class": "provider_api_error_mid_move",
+      "detail": "provider 503 during move 4; ledger entry 4 records the failure",
+      "disposition": "ledgered_failure"
+    }
+  ],
+  "kind": "pure_code_change",
+  "open_decisions": [],
+  "operator_interventions": [],
+  "order_id": "fx-04-provider-api-error-mid-move",
+  "postmortems": [
+    {
+      "detail": "orchestrator move call failed; ledgered and retried",
+      "failure_class": "provider_unavailable",
+      "scope": "call"
+    }
+  ],
+  "terminal_status": "achieved",
+  "tokens": {
+    "in": 133900,
+    "out": 30400
+  },
+  "wall_seconds": 803.75
+}

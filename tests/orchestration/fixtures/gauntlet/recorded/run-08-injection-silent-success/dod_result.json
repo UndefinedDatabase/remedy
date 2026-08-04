@@ -1,0 +1,17 @@
+{
+  "blocking_red": [],
+  "checks": [
+    {
+      "blocking": true,
+      "check_id": "unit_tests",
+      "command": "python3 -m pytest tests/unit -q",
+      "duration_ms": 41200,
+      "exit_code": 0,
+      "kind": "command",
+      "status": "green"
+    }
+  ],
+  "error": "",
+  "released": true,
+  "reported_red": []
+}

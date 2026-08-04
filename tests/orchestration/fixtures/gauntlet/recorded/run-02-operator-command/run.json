@@ -1,0 +1,24 @@
+{
+  "data_root_hash_after": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "data_root_hash_before": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "era_defects": [],
+  "evidence_links": {
+    "ledger": "ledger.jsonl",
+    "report": "report.md"
+  },
+  "gauntlet_run_version": 1,
+  "injections": [],
+  "kind": "test_add",
+  "open_decisions": [],
+  "operator_interventions": [
+    "remedy job resume 4f1c9a"
+  ],
+  "order_id": "fx-02-operator-command",
+  "postmortems": [],
+  "terminal_status": "achieved",
+  "tokens": {
+    "in": 98200,
+    "out": 21050
+  },
+  "wall_seconds": 744.0
+}

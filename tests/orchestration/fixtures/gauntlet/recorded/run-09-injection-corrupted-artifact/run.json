@@ -1,0 +1,28 @@
+{
+  "data_root_hash_after": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "data_root_hash_before": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "era_defects": [],
+  "evidence_links": {
+    "ledger": "ledger.jsonl",
+    "report": "report.md"
+  },
+  "gauntlet_run_version": 1,
+  "injections": [
+    {
+      "class": "harness_death_mid_write",
+      "detail": "the half-written dossier was read back without verifying its digest and passed to the next iteration",
+      "disposition": "corrupted_artifact_accepted"
+    }
+  ],
+  "kind": "doc_generation",
+  "open_decisions": [],
+  "operator_interventions": [],
+  "order_id": "fx-09-harness-death-corrupted-artifact",
+  "postmortems": [],
+  "terminal_status": "achieved",
+  "tokens": {
+    "in": 88100,
+    "out": 20900
+  },
+  "wall_seconds": 585.5
+}
