@@ -1,215 +1,221 @@
-OUTCOME: executed — F069 CLOSED. R2 verdict persisted; Built State recorded;
-integrity passed true; Evidence job cee98ee1ec623232; package
-remedy-review-20260803-103015-READY_FOR_REVIEW.zip SHA-256
-4b7433157232acb774101da9885665ce71068a0741ca6c07287260932359c000;
-STATUS [x] + README synced in one commit; candidate recorded.
-Accepted HEAD 4dce6060 — one extra content commit: the first zip was REJECTED
-because .agent/gate_f069_r2/*.log tripped the packaging guard, which exposed
-that .gitignore (*.log) had silently kept the R2 raw tails out of the repo.
-Renamed to .txt, committed the original bytes, rebuilt evidence + zip.
+OUTCOME: in progress — F075 R1 (SPLIT, LARGE bundle) started.
 
-You are the Remedy worker (Window 2) for feature F069 — Mission compiler,
-  round R3: CLOSURE per docs/roadmap/STATUS_closure_protocol.md (v4) — read
-  it and follow it exactly; this block orders the steps and carries the
-  authored texts. Any precondition or zip failure → STOP per Failure
-  honesty (the feature does NOT close; record the raw error in the
-  handoff). Save THIS ENTIRE block verbatim to .agent/last_block.md first
-  (update OUTCOME at handback). You are on feature/f069-mission-compiler
-  at d2a4bb75.
+You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
+  10 flawless self-runs, round R1 (SPLIT, LARGE bundle): Open PR Gate +
+  claim + T001 + T002. Save THIS ENTIRE block verbatim to
+  .agent/last_block.md first (update OUTCOME at handback). LARGE rule:
+  every slice ends with its own verification; at the FIRST red gate STOP
+  per AGENTS.md If-Blocked — record the raw failure in the handoff, do
+  NOT continue into the next slice. Read docs/roadmap/features/T1_F075.md
+  COMPLETELY before Phase 2 — it is the specification of record for this
+  round; where this block is silent, the feature file governs.
 
-  PHASE 1 — PERSIST THE R2 VERDICT (first commit)
-   1. Save the five AUTHORED TEXT payloads below to
-      .agent/authored/f069-r3-<n>.md (bytes between BEGIN/END markers,
-      exclusive, incl. the final newline). Verify each sha256sum against
-      its BEGIN-marker hash. Mismatch → STOP, report raw sums, apply
-      nothing.
-   2. Apply f069-r3-1 → .agent/live_review.md (FROM line occurs once; the
-      TO embeds it — copy from the SAVED file, never retype).
-   3. Commit 1: chore(f069): persist the R2 gate verdict. Gate: python3
-      -m pytest tests/cli/test_golden_path.py -q → exit 0. Push.
+  PHASE 0 — OPEN PR GATE + BRANCH
+   1. gh pr list --state open --json number,headRefName,baseRefName,isDraft
+      Expected: exactly one — #178, feature/f071-mission-dossier -> main,
+      not draft. Then: gh pr merge 178 --merge --delete-branch.
+      Anything else (multiple PRs, draft, different head) -> STOP, report.
+   2. git status (clean) · git checkout main · git pull ·
+      git checkout -b feature/f075-self-run-gauntlet
 
-  PHASE 2 — BUILT STATE (precondition 4, own commit)
-   1. Append the BYTES of f069-r3-2 to the END of
-      docs/roadmap/features/T1_F069.md (starts with a blank line; simple
-      byte-append). Verify: bytes occur exactly once, file ENDS with
-      them, prior content intact as prefix.
-   2. Commit 2: docs(f069): record the accepted Built State. This is the
-      LAST content commit — its head is the intended accepted HEAD.
-   3. Gates (docs/roadmap touched): python3 -m pytest tests/docs/ -q AND
-      python3 -m pytest tests/cli/test_golden_path.py -q → both exit 0.
-      Push.
+  PHASE 1 — CLAIM (first commit)
+   1. Save the four AUTHORED TEXT payloads below to
+      .agent/authored/f075-r1-<n>.md (bytes between BEGIN/END markers,
+      exclusive, incl. the final newline; payload lines start at column
+      0). Verify each sha256sum against its BEGIN-marker hash. Mismatch
+      -> STOP, report raw sums, apply nothing.
+   2. Apply f075-r1-1 -> docs/roadmap/STATUS.md (FROM line occurs once;
+      replace once; copy from the SAVED file, never retype).
+   3. Apply f075-r1-2 -> .agent/live_review.md, f075-r1-3 ->
+      .agent/plan.md, f075-r1-4 -> .agent/context.md — each a FULL file
+      replacement, byte-exact copy of the saved authored file.
+   4. Commit 1: chore(f075): claim F075 — STATUS [~] + state reset.
+      Gates (docs/roadmap touched): python3 -m pytest tests/docs/ -q AND
+      python3 -m pytest tests/cli/test_golden_path.py -q -> both exit 0.
+      Push (git push -u origin feature/f075-self-run-gauntlet).
 
-  PHASE 3 — PRECONDITIONS
-   remedy integrity check --json → passed true; git status --porcelain
-   empty; branch pushed. .agent/candidates.md still reads "No open
-   candidates." at this point (the candidate entry lands in the closure
-   commit, PHASE 6) — assert, do not edit yet.
+  PHASE 2 — T001: EVALUATOR + MATRIX + DRY-RUN PROOF
+   Zero provider calls in this round — the evaluator is proven against
+   RECORDED fixture evidence before any real run (T1_F075.md, T001).
+   1. Evaluator logic in an importable module (suggested:
+      packages/orchestration/gauntlet_evaluator.py) + thin CLI
+      scripts/self_run_gauntlet.py with at least: --dry-run
+      <evidence-dir> (evaluate recorded evidence, no execution) and
+      --only <n>. Record interface decisions (module name, evidence
+      layout consumed, order-file schema) in .agent/decisions.md.
+   2. Pass definition, explicit and falsifiable — flawless per run =
+      start command only (zero operator interventions) + terminal green
+      + all blocking DoD checks green + zero unknown postmortems + zero
+      open decisions + host data root byte-untouched (before/after
+      content hash). Failure classification MUST be able to name the
+      F070 era-fixture classes (R-0141/R-0143/R-0144/R-0145/R-0146/
+      R-0147/R-0148 — see T1_F070.md, Design) and the harness-failure
+      injection classes (provider API error mid-move, truncated model
+      response, harness death mid-dispatch, harness death mid-write);
+      each injection degrades to a LEDGERED failure, retry within
+      budget, or escalation (F051 semantics) — never a silent success,
+      never a corrupted artifact accepted downstream.
+   3. Matrix report (markdown + json), deterministic bytes for a given
+      evidence set; per run: terminal status, DoD matrix, postmortem
+      classes, operator interventions, wall/tokens, links into the
+      run's evidence. During real runs (T003, later) all run artifacts
+      live in the ISOLATED data root, never inside the repo working
+      tree (docs/agents/integration_gate.md, R-0176).
+   4. Recorded fixture evidence under the tests fixture area covering
+      at minimum: one flawless run; one run with an operator command ->
+      NOT flawless; one run with an unknown postmortem -> NOT flawless;
+      one fixture per harness-failure injection class (ledgered ->
+      still eligible; silent success or corrupted-artifact-accepted ->
+      NOT flawless); era-fixture classes covered at least via
+      classification-mapping tests. Golden matrix (md + json) for the
+      recorded set.
+   5. Tests: tests/orchestration/test_gauntlet_evaluator.py — every
+      pass criterion has a test that flips it and asserts not-flawless
+      (falsifiability is the acceptance bar); golden-matrix comparison.
+      Multiple small commits expected, each < 500 lines.
+   6. SLICE GATE (STOP here if red):
+      python3 -m pytest tests/orchestration/test_gauntlet_evaluator.py -q
+      -> exit 0. Push.
 
-  PHASE 4 — EVIDENCE JOB (fresh id, feature-scoped, NOT committed)
-   Producer: packages.orchestration.job_evidence.
-   create_manual_completion_bundle(review_feature_id="f069", …), base
-   53ac3efa (full 40-char sha), head = accepted HEAD (commit 2). Build
-   the evidence dir OUTSIDE the repo (session scratch) — it is NEVER
-   committed; the durable pointer is package + SHA-256 + job id in the
-   STATUS line. Pitfalls, all asserted at authoring time (protocol §1):
-   real node ids from --collect-only with len(node_ids) == passed per
-   run; NO node id reading as a local absolute path and NO slash inside
-   a bracketed param id (F061/F062 lessons); test_files are FILES;
-   run_id matches ^vr-\d{4,}$; output_hash OMITTED so the producer
-   derives it. Run coordinator validation over the produced bytes BEFORE
-   any zip; a rejection → record raw blocking_reasons in the handoff,
-   fix at the cause, delete the rejected dir, rebuild.
+  PHASE 3 — T002: THE CURATED TEN-ORDER SET
+   1. Ten mission-order fixture files, each with a rationale comment
+      (why this order probes a DIFFERENT risk) and a fixed budget;
+      mixed kinds per T1_F075.md: pure-code change, test-add, small app
+      feature with smoke, doc generation, a two-milestone mission.
+      Location chosen by you (suggested: scripts/gauntlet_orders/ or
+      the tests fixture area) — record it in .agent/decisions.md.
+   2. Frozen + versioned: a set manifest (set version 1, per-order
+      sha256, set hash). Order-set edits mid-campaign are forbidden;
+      any change resets the gauntlet count (T1_F075.md, A9).
+   3. Tests pin the frozen set: exactly 10 orders, unique ids, budget
+      present on every order, manifest hashes match the files, the
+      kind mix is present.
+   4. SLICE GATE (STOP here if red): scoped pytest over the order-set
+      tests (same file or tests/orchestration/test_gauntlet_orders.py)
+      -> exit 0. Push.
 
-  PHASE 5 — REVIEW ZIP (mandatory, fresh, from the clean tree at accepted HEAD)
-   git status clean + branch pushed, then:
-   bash scripts/make_review_zip.sh --evidence-dir <path>
-   Require: READY_FOR_REVIEW, review_subject_alignment PASS, evidence
-   authoritative, committed_review_subject spans 53ac3efa..accepted
-   HEAD. Zip integrity (testzip) + import smoke over the PACKAGED
-   sources (extract to tmp, import mission_plan_schema +
-   mission_compiler, confirm mission_plan_v1 resolves from
-   SCHEMA_REGISTRY there, remove tmp). Record package filename +
-   SHA-256 (recompute independently). Failure → STOP, raw error into
-   the handoff, the feature does not close.
+  PHASE 4 — HANDBACK
+   Canary: python3 -m pytest tests/cli/test_golden_path.py -q -> exit 0.
+   git status --porcelain empty. Rewrite .agent/handoff.md per
+   docs/agents/handback_template.md (per-commit changed-files tables;
+   raw gate outputs with exit codes; PR #178 merge result recorded;
+   sha256 proof that every applied reviewer text is byte-identical to
+   its .agent/authored/ file). Update last_block OUTCOME. Completion
+   report ends: "F075 R1 complete — awaiting review."
 
-  PHASE 6 — CLOSURE COMMIT + PR
-   1. Apply f069-r3-3 → docs/roadmap/STATUS.md with the four
-      placeholders filled (evidence job id, zip filename, zip SHA-256,
-      accepted HEAD = commit 2's full sha).
-   2. Apply BOTH f069-r3-4 edits → README.md (same commit as STATUS —
-      R-0154: README and STATUS never disagree in any committed state).
-   3. Apply f069-r3-5 → .agent/candidates.md (the closure-candidate
-      disk vehicle; STATUS_closure_protocol.md "Closure-candidate
-      findings").
-   4. Rewrite .agent/handoff.md per docs/agents/handback_template.md
-      (all commits tabled, grouped self-reference allowed; grep proof
-      that every applied reviewer text is byte-identical to its
-      authored file; the zip outcome recorded BEFORE handback). Update
-      last_block OUTCOME.
-   5. Commit 3 (the LAST commit, Rule A4) touches exactly
-      docs/roadmap/STATUS.md, README.md and .agent/ state — nothing
-      else. Gates (docs/roadmap touched): python3 -m pytest tests/docs/
-      -q AND the canary → both exit 0. Push.
-   6. gh pr create --base main (title: F069 — Mission compiler; body:
-      what/why, key decisions incl. the per-MISSION in-progress rule,
-      the A6 flight-plan VIEW and R-0168, how to review, changed-files
-      table, verdict PASS — integration gate FULL SUITE GREEN, open
-      findings 0, one closure candidate recorded in
-      .agent/candidates.md, runtime actuals: 3 rounds 2026-08-02..03,
-      tokens not-measured). The PR is NOT merged — it merges at the
-      next feature's Open PR Gate. Report the PR NUMBER in the
-      completion report.
-   Handback: completion report ending
-   "F069 closure complete — PR #<n> open, awaiting the next Open PR Gate."
+  --- BEGIN f075-r1-1 sha256=be68f1e9abc044da3c429aa03c0677ef158a27847e73fc59a5977fad73e05ea5 ---
+  FROM:
+  - [ ] F075 — MILESTONE GATE: 10 flawless self-runs
 
-  --- BEGIN f069-r3-1 sha256=40dd92d69fd75d9ca02612dc4c2f0244f037fec47f0b06874456d493c810f85d ---
-  FROM (exact line, occurs once in .agent/live_review.md):
-    draft fields, Low). LAST_REVIEWED_SHA = 83ddb4cb.
   TO:
-    draft fields, Low). LAST_REVIEWED_SHA = 83ddb4cb.
-  - R2: PASS — INTEGRATION GATE PASS (LARGE round, 2026-08-03). Range
-    83ddb4cb..d2a4bb75 (5 commits, all tabled). Reviewer re-ran:
-    compiler+schemas 151 + canary 42, exit 0; OWN full suite at HEAD
-    15094 passed / 19 skipped, exit 0 — matching the branch evidence
-    in .agent/gate_f069_r2/; base 8 failed / 14968 passed (worker
-    raw); comm -13 EMPTY (0 branch-only); comm -23 = 8 ids, all
-    test_live_state.py::TestUIServerIntegration, attributed to the
-    environment class on three direct evidences (base stderr "React
-    UI not built"; dist rewritten mid-run; pass-at-base re-run
-    42/42, exit 0) — flake debt 0. R-0168 verified fixed in situ
-    (cap at draft validation, blank refusal, prompt names the cap;
-    red-proof at pre-fix HEAD in a throwaway worktree, R-0160) —
-    Done stands. Transport: digest fallback per
-    planner_reviewer_prompt.md §4.9 (scratchpad originals
-    unavailable at review time; the committed authored file's
-    recomputed sha256 equals the BEGIN digest 7f9538b8…dbc7ef7d) —
-    stated so the evidence chain stays honest. Deviations 1–3
-    accepted. Worktrees removed + pruned, tmp branch deleted,
-    primary only. Only this round carries the full-suite claim:
-    FULL SUITE GREEN. LAST_REVIEWED_SHA = d2a4bb75.
-  --- END f069-r3-1 ---
+  - [~] F075 — MILESTONE GATE: 10 flawless self-runs
+  --- END f075-r1-1 ---
 
-  --- BEGIN f069-r3-2 sha256=697bcf17dafdd54b75e4a046e439837da82cba272694ebb573f1aa2b439364e1 ---
+  --- BEGIN f075-r1-2 sha256=28246a1eb247df34ca454aa8d2b41602de909bcdec77293294f7416b1c63532d ---
+  # Live Review — F075 MILESTONE GATE: 10 flawless self-runs (Tier 1)
 
-  ## Built State (accepted 2026-08-03, R1–R2)
+  Branch: feature/f075-self-run-gauntlet
+  Scope: a gauntlet HARNESS — evaluator + matrix report + a frozen,
+  versioned set of ten mission orders — that earns autonomy with
+  data. Flawless per run = start command only + terminal green + all
+  blocking DoD checks green + zero unknown postmortems + zero open
+  decisions + host data root byte-untouched (before/after hash). The
+  evaluator names the F070 era-fixture classes (R-0141/R-0143/R-0144/
+  R-0145/R-0146/R-0147/R-0148) and the harness-failure injection
+  classes (provider API error mid-move, truncated model response,
+  harness death mid-dispatch and mid-write) — each degrades to a
+  LEDGERED failure, retry within budget, or escalation, never a
+  silent success. The harness adds no product code paths; product
+  fixes found by the campaign go through normal orders (T003).
 
-  Built and reviewed on branch feature/f069-mission-compiler:
+  ## Steps
+  - R1 (SPLIT, LARGE bundle, current): Open PR Gate (merge PR #178,
+    the F071 closure) + claim + T001 evaluator/matrix/dry-run mode
+    proven against recorded fixture evidence + T002 the curated
+    ten-order set with rationale + budgets, frozen and versioned.
+  - R2+: T003 campaign — run, read the matrix, file targeted fix
+    orders with failing evidence attached, rerun; multiple rounds
+    EXPECTED. Then the integration gate per
+    docs/agents/integration_gate.md.
+  - Closure per docs/roadmap/STATUS_closure_protocol.md; a passing
+    10/10 emits a prepared-but-not-applied config diff + ADR — a
+    human applies it, never the harness.
 
-  - **Schema** (packages/orchestration/mission_plan_schema.py):
-    mission_plan_v1 (registered — the payload persists) beside
-    mission_plan_draft_v1 (provider-facing, unregistered); a leaf
-    module like dod_schema; milestone DAG validated with the
-    flight-plan discipline (duplicates / unknown deps / cycles /
-    cap 12); outcome lint via a documented imperative-verb
-    heuristic; R-0168 hardening: MAX_MILESTONE_DRAFT_JOBS = 8 and
-    non-blank draft title/goal, refused at parse time where the
-    single retry and the deterministic fallback still apply.
-  - **Compiler** (packages/orchestration/mission_compiler.py):
-    compile_mission_plan through run_structured_call (one parse
-    retry max); honest deterministic fallback — ONE milestone
-    wrapping the whole goal, compiled=False/origin="deterministic",
-    and the schema refuses the dishonest combination; repo facts
-    from the SHARED prompt_facts.repo_facts_block (extracted from
-    flight_plan — one copy); zero execution side effects, pinned by
-    negative tests (zero jobs, no process, no worktree).
-  - **DoD hand-off**: per milestone through compile_dod via the
-    ephemeral milestone_flight_plan VIEW (Rule A6 — no second DoD
-    mechanism; the view is never persisted, never scheduled); each
-    DoD lands as dod_<milestone id>.json in the mission's evidence
-    dir and dod_ref records the RELATIVE filename.
-  - **Persistence + rendering**: additive optional mission_plan on
-    the Mission record — pre-F069 record bytes unchanged,
-    MISSION_SCHEMA_VERSION pinned at 1; mission_evidence_dir as a
-    sibling of the record json; mission_plan.md rendered
-    deterministically, prior versions KEPT (_versions/_version —
-    the flight-plan replan convention).
-  - **CLI**: remedy mission plan <id> (--no-llm, --project, --json);
-    recompile versioning; in-progress refusal under the per-MISSION
-    conservative rule (the record lacks milestone attribution;
-    DECISION 2026-08-02 in .agent/decisions.md).
-  - **Proof**: tests/orchestration/test_mission_compiler.py (105),
-    tests/cli/test_mission_cmd.py (66), test_mission_state.py (81);
-    three long-goal golden fixtures with 4/3/2-milestone DAGs, every
-    milestone carrying a dod_ref after compilation. R2 integration
-    gate: branch 15094 passed / 19 skipped exit 0; 0 branch-only
-    failures; 8 base-only ids attributed to the environment class on
-    direct evidence (.agent/gate_f069_r2/).
+  ## Findings
+  (none yet — F071's R-0176/R-0177 Done at F071 closure)
+  - Next free ID: R-0178.
 
-  Honest boundary: nothing consumes a MissionPlan at runtime yet —
-  the orchestrator loop (F070) is its first production consumer, and
-  compile_dod gains its first production caller there.
-  --- END f069-r3-2 ---
+  ## Verdicts
+  (pending R1)
+  --- END f075-r1-2 ---
 
-  --- BEGIN f069-r3-3 sha256=868f3c81187af481ed79b83b7e5066cc04f2bd49152d06da9ee1147981e47ba4 ---
-  FROM (exact line, occurs once in docs/roadmap/STATUS.md, replace once):
-  - [~] F069 — Mission compiler
-  TO (fill the four <PLACEHOLDERS> with real values, then apply):
-  - [x] F069 — Mission compiler (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED ·
-  Evidence job <EVIDENCE_JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD
-  <ACCEPTED_HEAD>)
-  --- END f069-r3-3 ---
+  --- BEGIN f075-r1-3 sha256=32729c7409dba63aded5b07cce4b00a39b4e5274e0cce106846d6b7773b51aeb ---
+  # Plan — F075 MILESTONE GATE: 10 flawless self-runs
 
-  --- BEGIN f069-r3-4 sha256=4cafe1f384b9e7aeaeb824096b668a9820ff0d1b0e8a58642009da7bd015ff4f ---
-  EDIT 1 FROM (exact line, occurs once in README.md):
-  32 of 252 registered items accepted. Next: F069 (Mission compiler).
-  EDIT 1 TO:
-  33 of 252 registered items accepted. Next: F070 (Orchestrator loop inside Remedy).
-  EDIT 2 FROM (exact line, occurs once in README.md):
-  | 1 | Self-Build Bootstrap | 16 | 22 |
-  EDIT 2 TO:
-  | 1 | Self-Build Bootstrap | 17 | 22 |
-  --- END f069-r3-4 ---
+  Branch: feature/f075-self-run-gauntlet
 
-  --- BEGIN f069-r3-5 sha256=8a611e8ba08d328fddb87e1bcbb394303eb0be1f7b00d6eb29a5fd5e2a5bbc31 ---
-  FROM (exact line, occurs once in .agent/candidates.md):
-  No open candidates.
-  TO:
-  - REMEDY_UI_NO_AUTO_BUILD=1 did not prevent a UI auto-build inside
-    the R2 integration-gate base worktree: dist/ was rewritten
-    mid-run (direct evidence 2 in .agent/gate_f069_r2/attribution.md),
-    so base-run parity relied on empirical per-id attribution instead
-    of the doc's parity step alone. Suspect: a spawned server/build
-    path that does not inherit or honor the env var. Gate tooling /
-    integration_gate.md hardening — not F069 feature code.
-    Source: F069 closure · 2026-08-03.
-  --- END f069-r3-5 ---
+  ## Goal
+  Autonomy earned with data, not vibes: scripts/self_run_gauntlet.py
+  runs ten frozen mission orders unattended and judges each against
+  a strict, falsifiable pass definition (start command only, terminal
+  green, blocking DoD green, zero unknown postmortems, zero open
+  decisions, host data root byte-untouched). Matrix report (md+json)
+  lands in a gauntlet evidence area; failed attempts are KEPT. DONE
+  when 10/10 stands from ONE invocation and the prepared config diff
+  + ADR name the evidence — applied by a human, never the harness.
+
+  ## Current Step
+  R1 (SPLIT, LARGE bundle): Open PR Gate (PR #178) + claim + T001
+  evaluator + matrix + dry-run fixture proof + T002 the ten curated
+  orders with rationale + budgets, frozen and versioned. Gate:
+  scoped evaluator/order-set tests + docs suite + canary.
+
+  ## Next Steps
+  - R2+: T003 campaign (run → targeted fix orders → rerun) +
+    integration gate per docs/agents/integration_gate.md.
+  - Closure per STATUS_closure_protocol.md incl. config diff + ADR.
+
+  ## Risks
+  - Every pass criterion must be demonstrably falsifiable — a
+    fixture proves each one can fail (one operator command → not
+    flawless; one unknown postmortem → not flawless).
+  - Do-not-touch: the pass definition once frozen (ADR to change),
+    config defaults by machine, order-set edits mid-campaign.
+  - Host-state isolation: every run and every verify step against an
+    isolated data root; ANY pollution disqualifies (F081 lesson
+    2026-07-23).
+  --- END f075-r1-3 ---
+
+  --- BEGIN f075-r1-4 sha256=26b3de432a11307f7df927e8a434f50f29d295b96419eb786c305890adc8b812 ---
+  # Context — F075 MILESTONE GATE: 10 flawless self-runs
+
+  ## Active Branch
+  feature/f075-self-run-gauntlet (from main after the Open PR Gate
+  merged PR #178, the F071 closure)
+
+  ## Scope
+  Roadmap F075 (Tier 1, docs/roadmap/features/T1_F075.md): gauntlet
+  harness + evaluator + matrix report + frozen ten-order set + their
+  tests. The harness adds no product code paths; product fixes found
+  by the campaign go through normal orders with their own tests.
+
+  ## Constraints
+  - Round gate = scoped pytest command(s) authored in the step
+    block; canary per handback:
+    python3 -m pytest tests/cli/test_golden_path.py -q. Docs-round
+    gate applies to any commit touching docs/roadmap/**:
+    python3 -m pytest tests/docs/ -q. Full-suite pytest -n auto only
+    at the integration gate; the resource-safety rules of
+    tests/regression apply.
+  - Commits < 500 lines; authored texts applied byte-exact from
+    .agent/authored/f075-r1-<n>.md after sha256 verification.
+  - Gauntlet runs use an ISOLATED data root, never the operator's
+    real one; gate run logs live outside the repo during a run
+    (docs/agents/integration_gate.md, R-0176).
+  - Do-not-touch: the pass definition once frozen, config defaults
+    by machine, order-set edits mid-campaign.
+
+  ## Steps
+  R1 T001+T002 (current) → R2+ T003 campaign + integration gate →
+  closure.
+  --- END f075-r1-4 ---

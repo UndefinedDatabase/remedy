@@ -43,7 +43,7 @@
 - [x] F069 — Mission compiler (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job cee98ee1ec623232 · package remedy-review-20260803-103015-READY_FOR_REVIEW.zip · SHA-256 4b7433157232acb774101da9885665ce71068a0741ca6c07287260932359c000 · accepted HEAD 4dce6060a4b663a6546e40432c5abbd18e9ddd93)
 - [x] F070 — Orchestrator loop inside Remedy (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job 2edd34878e5c4fbc · package remedy-review-20260803-143749-READY_FOR_REVIEW.zip · SHA-256 5c559751d7a4710c9495a69899d9f0966b045047392748e709403a8347d16805 · accepted HEAD f1fad962b1ec4203dafdb146f3e90fad8111550e)
 - [x] F071 — Mission dossier (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job b3b98e3ee1d10668 · package remedy-review-20260803-190339-READY_FOR_REVIEW.zip · SHA-256 aa117e26a55b0ab1b1941d881a4ed510967c2d1669be021abda30ab0f6e9e99e · accepted HEAD acb02acd8a41dc2a8ba89e2db023b1840814adff)
-- [ ] F075 — MILESTONE GATE: 10 flawless self-runs
+- [~] F075 — MILESTONE GATE: 10 flawless self-runs
 - [ ] F079 — Context handoffs
 - [ ] F080 — Machine-readable roadmap mirror & STATUS.md
 
