@@ -1,0 +1,328 @@
+{
+  "evidence_label": "recorded",
+  "failure_kinds": [
+    "operator_intervention",
+    "unknown_postmortem",
+    "injection_not_degraded"
+  ],
+  "matrix_version": 1,
+  "pass_criteria": [
+    "evidence_well_formed",
+    "start_command_only",
+    "terminal_green",
+    "dod_blocking_green",
+    "no_unknown_postmortems",
+    "no_open_decisions",
+    "host_data_root_untouched",
+    "no_era_defect_classes",
+    "injections_degraded"
+  ],
+  "passed": false,
+  "runs": [
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "pure_code_change",
+      "operator_interventions": [],
+      "order_id": "fx-01-pure-code-change",
+      "postmortem_classes": [],
+      "run_dir": "run-01-flawless-pure-code",
+      "terminal_status": "achieved",
+      "tokens_in": 121400,
+      "tokens_out": 28900,
+      "wall_seconds": 612.5
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": false,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [
+        {
+          "criterion": "start_command_only",
+          "detail": "operator intervened after start: remedy job resume 4f1c9a",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "operator_intervention"
+        }
+      ],
+      "flawless": false,
+      "kind": "test_add",
+      "operator_interventions": [
+        "remedy job resume 4f1c9a"
+      ],
+      "order_id": "fx-02-operator-command",
+      "postmortem_classes": [],
+      "run_dir": "run-02-operator-command",
+      "terminal_status": "achieved",
+      "tokens_in": 98200,
+      "tokens_out": 21050,
+      "wall_seconds": 744.0
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": false,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [
+        {
+          "criterion": "no_unknown_postmortems",
+          "detail": "postmortem (task) has failure class unknown — the failure was not understood",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "unknown_postmortem"
+        }
+      ],
+      "flawless": false,
+      "kind": "small_app_feature",
+      "operator_interventions": [],
+      "order_id": "fx-03-unknown-postmortem",
+      "postmortem_classes": [
+        "unknown"
+      ],
+      "run_dir": "run-03-unknown-postmortem",
+      "terminal_status": "achieved",
+      "tokens_in": 204600,
+      "tokens_out": 47300,
+      "wall_seconds": 1180.25
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "pure_code_change",
+      "operator_interventions": [],
+      "order_id": "fx-04-provider-api-error-mid-move",
+      "postmortem_classes": [
+        "provider_unavailable"
+      ],
+      "run_dir": "run-04-injection-provider-api-error",
+      "terminal_status": "achieved",
+      "tokens_in": 133900,
+      "tokens_out": 30400,
+      "wall_seconds": 803.75
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "doc_generation",
+      "operator_interventions": [],
+      "order_id": "fx-05-truncated-model-response",
+      "postmortem_classes": [
+        "parse"
+      ],
+      "run_dir": "run-05-injection-truncated-response",
+      "terminal_status": "achieved",
+      "tokens_in": 76500,
+      "tokens_out": 19800,
+      "wall_seconds": 512.0
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "test_add",
+      "operator_interventions": [],
+      "order_id": "fx-06-harness-death-mid-dispatch",
+      "postmortem_classes": [],
+      "run_dir": "run-06-injection-death-mid-dispatch",
+      "terminal_status": "achieved",
+      "tokens_in": 148300,
+      "tokens_out": 33100,
+      "wall_seconds": 968.5
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "two_milestone_mission",
+      "operator_interventions": [],
+      "order_id": "fx-07-harness-death-mid-write",
+      "postmortem_classes": [
+        "stopped"
+      ],
+      "run_dir": "run-07-injection-death-mid-write",
+      "terminal_status": "achieved",
+      "tokens_in": 388700,
+      "tokens_out": 91200,
+      "wall_seconds": 2410.0
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": false,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [
+        {
+          "criterion": "injections_degraded",
+          "detail": "truncated_model_response ended as silent_success — a named mishandling; expected one of ledgered_failure/retry_within_budget/escalated; recorded: truncated move accepted as a complete move; the milestone was declared done from half a payload",
+          "finding_class": "",
+          "injection_class": "truncated_model_response",
+          "kind": "injection_not_degraded"
+        }
+      ],
+      "flawless": false,
+      "kind": "small_app_feature",
+      "operator_interventions": [],
+      "order_id": "fx-08-truncated-response-silent-success",
+      "postmortem_classes": [],
+      "run_dir": "run-08-injection-silent-success",
+      "terminal_status": "achieved",
+      "tokens_in": 112700,
+      "tokens_out": 26400,
+      "wall_seconds": 690.0
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": false,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| unit_tests | command | yes | green | - | 41200ms |",
+      "evidence_links": {
+        "ledger": "ledger.jsonl",
+        "report": "report.md"
+      },
+      "failures": [
+        {
+          "criterion": "injections_degraded",
+          "detail": "harness_death_mid_write ended as corrupted_artifact_accepted — a named mishandling; expected one of ledgered_failure/retry_within_budget/escalated; recorded: the half-written dossier was read back without verifying its digest and passed to the next iteration",
+          "finding_class": "",
+          "injection_class": "harness_death_mid_write",
+          "kind": "injection_not_degraded"
+        }
+      ],
+      "flawless": false,
+      "kind": "doc_generation",
+      "operator_interventions": [],
+      "order_id": "fx-09-harness-death-corrupted-artifact",
+      "postmortem_classes": [],
+      "run_dir": "run-09-injection-corrupted-artifact",
+      "terminal_status": "achieved",
+      "tokens_in": 88100,
+      "tokens_out": 20900,
+      "wall_seconds": 585.5
+    }
+  ],
+  "runs_flawless": 5,
+  "runs_recorded": 9
+}

@@ -176,3 +176,21 @@ def test_the_golden_markdown_names_every_recorded_run() -> None:
     for run_dir in sorted(p.name for p in RECORDED_DIR.iterdir() if p.is_dir()):
         assert f"### {run_dir} — " in text
     assert "5/9 runs flawless · **NOT A PASS**" in text
+
+
+def test_the_golden_json_matrix_matches_the_recorded_set() -> None:
+    """The machine-readable half of the same golden — the bytes a downstream
+    reader parses, pinned exactly as they are written."""
+    rendered = matrix_json_bytes(evaluate_evidence_dir(RECORDED_DIR))
+    expected = (GOLDEN_DIR / MATRIX_JSON_FILENAME).read_text(encoding="utf-8")
+    assert rendered == expected
+
+
+def test_the_golden_json_agrees_with_the_golden_markdown() -> None:
+    """Two renderings, one set of facts. They may not drift apart."""
+    body = json.loads((GOLDEN_DIR / MATRIX_JSON_FILENAME).read_text(encoding="utf-8"))
+    text = (GOLDEN_DIR / MATRIX_MARKDOWN_FILENAME).read_text(encoding="utf-8")
+    assert f"{body['runs_flawless']}/{body['runs_recorded']} runs flawless" in text
+    assert body["passed"] is False
+    assert [r["run_dir"] for r in body["runs"]] == [
+        line.split(" — ")[0][4:] for line in text.splitlines() if line.startswith("### ")]
