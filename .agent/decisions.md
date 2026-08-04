@@ -3359,3 +3359,73 @@ product's behaviour rather than a hope — but a campaign order that expands to
 five milestones AND ignores the directive can still hit iteration_limit. That
 is the gate measuring economy, which is its job; noting it so a v5 is an
 evidence decision rather than a reflex.
+
+## 2026-08-05: F075 R10 Phase 5 — set-v4 campaign, attempt 02: 3/10
+
+ONE invocation, ten orders, isolated data root outside the repo, matrix in
+`.agent/gauntlet/attempt-02/`. Set hash e50916bf…, template digest 1c4f41bf…
+(unchanged from v3). Attempt 01 was 0/10.
+
+    g01 pure-code-change        FLAWLESS   achieved          7 it,  3 milestones
+    g02 test-add                           iteration_limit  12 it,  6 milestones
+    g03 small-app-feature-smoke            iteration_limit  12 it,  6 milestones
+    g04 doc-generation                     iteration_limit  12 it,  6 milestones
+    g05 two-milestone-mission   FLAWLESS   achieved          5 it,  2 milestones
+    g06 provider-api-error                 iteration_failed  1 it,  0 milestones
+    g07 truncated-model-response FLAWLESS  achieved         11 it,  5 milestones
+    g08 harness-death-mid-dispatch         iteration_failed  1 it,  0 milestones
+    g09 harness-death-mid-write            iteration_failed  1 it,  0 milestones
+    g10 escalate-then-finish               iteration_limit  12 it,  6 milestones
+
+Held in ALL TEN runs: `start_command_only`, `no_unknown_postmortems`,
+`no_open_decisions`, `host_data_root_untouched` (hash before == after),
+`no_era_defect_classes`, `injections_degraded`, `evidence_well_formed`. Zero
+refusals anywhere — R-0193's direct path carried every one of the 74 iterations
+this campaign spent. Only two criteria ever failed: `terminal_green` (7 runs)
+and `dod_blocking_green` (the 3 that died before any gate ran).
+
+### Finding A — the compiler's plan expansion is erratic, so no static budget fits
+
+Same order, same frozen world, different plan shape every time. g01 expanded a
+one-milestone goal into 3 here, 4 in this round's re-proof, 3 in R9. g02/g03/g04
+each expanded into at least 7. g05 did not expand at all: two stated milestones
+became two.
+
+Every one of the four `iteration_limit` runs finished six milestones cleanly at
+exactly two iterations each and then ran out of budget mid-plan. Nothing
+misbehaved — the runs were economical and correct, and still could not finish.
+
+v4 sized `max_iterations` from a measured expansion factor of 3. The real factor
+ranges from 1 to at least 7 and varies between runs of the SAME order. A static
+per-order budget cannot track that: set it for the worst case and the
+anti-slack test becomes meaningless, set it for the average and half the
+campaign dies. R-0194 was the right correction to R1's guess and it is not
+enough. The fix belongs in the product — bound or stabilise the expansion, or
+derive the bound from the compiled plan rather than from the order — not in a
+v5 of the budgets.
+
+### Finding B — the exception boundary ends the mission where the pass definition requires it to continue
+
+`orchestrator_loop.py:984-993`: the R3 boundary classifies the failure, writes
+the postmortem, ledgers it, sets `terminal=True` and RETURNS. One transport
+blip is a dead mission.
+
+Three runs prove it, on two distinct failure classes: g06 (`provider_unavailable`
+at `call_fn` call 1), g08 and g09 (`io_failure` at `dispatch` and at
+`update_dossier`, call 1). Each ledgered correctly with `disposition
+"ledgered_failure"` and no unknown postmortem — the degradation is exactly right
+— and each mission was over after ONE iteration, having completed no milestone,
+so no DoD verdict exists and `dod_blocking_green` fails as an absence.
+
+g07 is the counter-example that makes this a defect rather than a design choice:
+its truncation injection is handled BELOW the boundary (parse-class refused,
+re-prompted once, `disposition "retry_within_budget"`) and the mission ran on to
+`achieved` and FLAWLESS. Degrade-and-continue already exists in this codebase;
+the boundary is what refuses it.
+
+g06's own rationale states the bar: "Flawless means ledgered and retried within
+budget — never a move silently skipped." With today's boundary, g06/g08/g09
+cannot reach `achieved`, so three of ten runs are unwinnable by construction.
+Direction (a reviewer decision, NOT taken here): ledger, write the postmortem,
+and continue the loop until a budget or a repeat-failure rule stops it. NO retry
+inside the boundary — transport retries live below `call_fn` (F001).
