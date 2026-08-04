@@ -2943,3 +2943,57 @@ e2e, era, injection, runner and dod_gate suites are green unedited (316).
 Test-fixture note: the DoD used by the new tests names `python3`, because the
 gate only executes allow-listed executables; a check naming anything else is
 refused before it runs, which is the allowlist working, not an obstacle.
+
+## 2026-08-04: F075 R6 Phase 4 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r6 --only 1 --format json`, exit 1, terminal
+`iteration_limit`. `dod_result.json` IS present in the run dir — but
+`released: false`. Phase 4 requires `achieved` AND a released verdict, so
+rule 4.3 applies: STOP, trail recorded here, Phase 5 not run.
+
+**Everything R-0187 and R-0188 wired is working, verbatim from the ledger:**
+
+    it1: dispatch_job -> dispatched
+         job 412be9f0 ... dispatched for M001; DoD attached; executed:
+         terminal=all_green job_status=completed cycles=4/experiment OVER-CAP
+         gate=blocked (dod_blocking_red:acc-001)
+
+- `DoD attached` — `store_dod` now has a real caller; the milestone's compiled
+  artifact reaches the job (R-0188.1).
+- `cycles=4/experiment OVER-CAP` — the order's v2 budget reached the executor
+  through the explicit override, and the run records it. `run.json` carries
+  `cycles_budget: 4`, `cycles_resolved: ["cycles=4/experiment"]` (R-0187).
+- `executed: terminal=all_green job_status=completed` — jobs run and finish.
+- `gate=blocked (...)` — the gate RUNS and produces a persisted verdict. Before
+  R-0188 no run in the project's history could produce one at all.
+
+**Why it is blocked — the next blocker, and it is not in this round's scope.**
+The verdict's one red check:
+
+    acc-001  kind=pytest  blocking=True  status=failed  reason=nonzero_exit
+      no tests ran in 0.00s
+      ERROR: file or directory not found: tests
+
+The gauntlet's missions have NO REPOSITORY. The runner creates a project
+record with `repo_paths: []` and `canonical_repo_path: None`, and the job's
+workspace contains only what the run itself produced
+(`['.pytest_cache', 'task_output']`). The orders say "in the sample project",
+but no sample project is materialised, so a milestone whose DoD is "the unit
+suite is green" can never release: there is nothing to test.
+
+That is a harness gap of the same class as the R2 seam, the R4 2c and the R5
+3.3 — a missing piece of the campaign's world, needing its own reviewed
+design (what repository the ten orders operate on, how it is materialised per
+run, and how it stays isolated from the operator's tree). Not smuggled in
+here.
+
+Second observation, recorded not fixed: the six-dispatch pattern reappears,
+but for a DIFFERENT reason than R-0184. Every job now reaches `completed`, so
+the re-dispatch guard correctly allows a retry; the model retries because the
+gate blocked. Retrying a milestone whose DoD failed is defensible, but it
+spends the whole iteration budget on identical attempts. Whether the loop
+should escalate after N identical failed attempts is a reviewer call.
+
+Not done, deliberately: no change to CYCLE_SAFETY_CAP or any config default;
+no repository invented for the orders; no order edits; no weakening of the
+pass definition; the campaign (Phase 5) NOT run.
