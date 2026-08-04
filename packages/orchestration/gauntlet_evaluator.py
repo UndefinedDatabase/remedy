@@ -122,13 +122,19 @@ ACCEPTED_DISPOSITIONS: tuple[str, ...] = (
     DISPOSITION_ESCALATED,
 )
 
-#: The two named ways an injection can go wrong. Named rather than lumped into
-#: "other" because these two are what the operator asked to be able to see.
+#: The named ways an injection can go wrong. Named rather than lumped into
+#: "other" because these are what the operator asked to be able to see.
 DISPOSITION_SILENT_SUCCESS = "silent_success"
 DISPOSITION_CORRUPTED_ARTIFACT_ACCEPTED = "corrupted_artifact_accepted"
+#: The injection was declared but never actually fired (R-0179). Rejected, not
+#: accepted: a run that never exercised its declared fault has proven nothing
+#: about degrading it, and evidence claiming a failure-handling that never
+#: happened is the overclaim this whole criterion exists to catch.
+DISPOSITION_NEVER_FIRED = "injection_never_fired"
 REJECTED_DISPOSITIONS: tuple[str, ...] = (
     DISPOSITION_SILENT_SUCCESS,
     DISPOSITION_CORRUPTED_ARTIFACT_ACCEPTED,
+    DISPOSITION_NEVER_FIRED,
 )
 
 

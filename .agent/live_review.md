@@ -53,6 +53,12 @@ iteration leaves a ledger entry") made true under a raise.
   that this tightens the closed set BEFORE any campaign has run
   (pre-freeze, so no ADR needed — T1_F075.md freezes the
   definition at campaign time).
+  Fixed in this round's R-0179 commit: DISPOSITION_NEVER_FIRED
+  ("injection_never_fired") added to REJECTED_DISPOSITIONS;
+  TruncatedResponseInjector.settle uses it; the pinning test now
+  asserts the rejected class AND an end-to-end evaluator verdict
+  that the run is not flawless. Pre-campaign, so no ADR.
+  Done: R-0179
 - R-0180 (product, Low) 2026-08-04, reviewer's R2 read:
   run_campaign's docstring promises "a run that dies takes only
   itself down" but its loop has no boundary — only run_mission

@@ -8,10 +8,15 @@ loudly, instead of quietly running their orders un-injected.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from packages.orchestration.gauntlet_evaluator import (
+    CRITERION_INJECTIONS_DEGRADED,
     DISPOSITION_LEDGERED,
+    DISPOSITION_NEVER_FIRED,
     DISPOSITION_RETRIED,
     DISPOSITION_SILENT_SUCCESS,
     INJECTION_CLASSES,
@@ -19,7 +24,10 @@ from packages.orchestration.gauntlet_evaluator import (
     INJECTION_HARNESS_DEATH_MID_WRITE,
     INJECTION_PROVIDER_API_ERROR_MID_MOVE,
     INJECTION_TRUNCATED_MODEL_RESPONSE,
+    REJECTED_DISPOSITIONS,
+    evaluate_run,
 )
+from packages.orchestration.gauntlet_evidence import load_run
 from packages.orchestration.gauntlet_injection import (
     BLOCKED_INJECTIONS,
     MISSING_SEAM,
@@ -30,6 +38,7 @@ from packages.orchestration.gauntlet_injection import (
     check_injections_supported,
     injection_json,
 )
+from tests.orchestration.test_gauntlet_evidence import FLAWLESS_BODY, RELEASED_GATE
 
 
 def counting_call_fn(answers: list[str]):
@@ -89,12 +98,35 @@ def test_a_truncated_payload_the_loop_never_re_prompted_is_a_silent_success() ->
     assert "accepted without a re-prompt" in record.detail
 
 
-def test_an_injection_that_never_fired_says_so_rather_than_claiming_a_pass() -> None:
+def test_an_injection_that_never_fired_is_a_rejected_disposition() -> None:
+    """R-0179: it used to settle as ledgered_failure — an ACCEPTED class — so a
+    run that never exercised its declared fault could still count flawless."""
     injector = TruncatedResponseInjector(inner=counting_call_fn(["real"]), on_move=3)
     injector("prompt", 0)
     record = injector.settle(terminal_ok=True)
-    assert record.disposition == DISPOSITION_LEDGERED
+    assert record.disposition == DISPOSITION_NEVER_FIRED
+    assert DISPOSITION_NEVER_FIRED in REJECTED_DISPOSITIONS
     assert "never fired" in record.detail
+
+
+def test_a_never_fired_injection_fails_the_run_through_the_evaluator(
+        tmp_path: Path) -> None:
+    """End to end: the evidence a never-fired injection writes is not flawless."""
+    injector = TruncatedResponseInjector(inner=counting_call_fn(["real"]), on_move=3)
+    injector("prompt", 0)
+    block = injection_json([injector], terminal_ok=True)
+
+    run_dir = tmp_path / "run-01"
+    run_dir.mkdir()
+    (run_dir / "run.json").write_text(json.dumps(dict(
+        FLAWLESS_BODY, injections=block)), encoding="utf-8")
+    (run_dir / "dod_result.json").write_text(json.dumps(RELEASED_GATE),
+                                             encoding="utf-8")
+
+    verdict = evaluate_run(load_run(run_dir))
+    assert verdict.flawless is False
+    assert verdict.criteria[CRITERION_INJECTIONS_DEGRADED] is False
+    assert verdict.failures[0].injection_class == INJECTION_TRUNCATED_MODEL_RESPONSE
 
 
 def test_only_the_named_move_is_truncated() -> None:

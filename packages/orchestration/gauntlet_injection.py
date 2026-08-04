@@ -34,6 +34,7 @@ from typing import Any
 
 from packages.orchestration.gauntlet_evaluator import (
     DISPOSITION_LEDGERED,
+    DISPOSITION_NEVER_FIRED,
     DISPOSITION_RETRIED,
     DISPOSITION_SILENT_SUCCESS,
     INJECTION_CLASSES,
@@ -148,7 +149,9 @@ class TruncatedResponseInjector:
         stopped" — both acceptable, but not the same fact.
         """
         if not self.injected:
-            self.record.disposition = DISPOSITION_LEDGERED
+            # R-0179: rejected, not accepted. A declared fault that never fired
+            # proves nothing about degrading it, and the run must not count.
+            self.record.disposition = DISPOSITION_NEVER_FIRED
             self.record.detail = ("the injection never fired: the run made fewer "
                                   f"than {self.on_move} move calls")
             return self.record

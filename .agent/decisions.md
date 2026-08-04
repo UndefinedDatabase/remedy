@@ -2491,3 +2491,19 @@ Decisions taken:
 4. **Injectors are decorators around the production callable** the
    runner would have passed anyway — no product edit, no test-only
    branch on a production path.
+
+## 2026-08-04: F075 R3 — R-0179 closed-set tightening (pre-freeze)
+
+`injection_never_fired` joins `REJECTED_DISPOSITIONS`. A declared fault
+that never fired proves nothing about degrading it, so settling it as
+`ledgered_failure` — an ACCEPTED class — let a run count flawless while
+its evidence claimed a failure-handling that never happened.
+
+This CHANGES the pass definition's closed set. It is allowed without an
+ADR because it lands BEFORE any campaign has run: T1_F075.md freezes the
+definition at campaign time, and attempt 1 has not started (R2's attempt
+was refused at preflight, zero runs recorded). Any later change to this
+set needs an ADR. Alternative considered: leave it and rely on
+INJECT_ON_MOVE=1 making a never-fired injection unreachable in practice
+— rejected, that is an accident of one constant defending a pass
+criterion, not a rule.
