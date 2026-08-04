@@ -2370,3 +2370,44 @@ reversible by any later relay:
    spent): handback_template.md "External actions" now states that PR
    create entries include the resulting PR number — settles the F056
    miss (that closure handoff omitted the PR number).
+
+## 2026-08-04: F075 T001 — evaluator interfaces (module, evidence layout, order schema)
+
+Four interface decisions, recorded before the code they bind (T1_F075.md
+T001 asks for exactly these):
+
+1. **Module split.** The pass definition lives in
+   `packages/orchestration/gauntlet_evaluator.py` — an importable, pure
+   module with no execution and no provider calls; the CLI
+   `scripts/self_run_gauntlet.py` stays thin. Alternative considered:
+   logic inside the script — rejected, `--dry-run` against recorded
+   evidence is only a proof if the judged code is the same code the real
+   campaign will use, and a script is not importable by the tests that
+   prove it.
+2. **Recorded-evidence layout consumed.** `<evidence-dir>/<run-dir>/`
+   with `run.json` (required, `gauntlet_run_version: 1`) and an optional
+   `dod_result.json` holding the stored `dod_gate.GateResult` JSON
+   verbatim. Run order is the sorted run-directory name — a property of
+   the bytes on disk, so two readers produce the same matrix. `run.json`
+   carries: order_id, kind, terminal_status, wall_seconds, tokens{in,out},
+   operator_interventions[], data_root_hash_before/after, postmortems[],
+   open_decisions[], era_defects[], injections[], evidence_links{}.
+   Alternative considered: one flat JSON per campaign — rejected, failed
+   attempts are KEPT and a per-run directory is what links into that
+   run's own evidence.
+3. **The DoD verdict has one author.** The evaluator asks
+   `dod_gate.gate_blocker` for the blocker line through a small adapter
+   over the stored JSON instead of re-deriving it from the same fields
+   (A6: the gauntlet reimplements no product verb). A run with no stored
+   gate result fails `dod_blocking_green` with the honest reason that no
+   gate ran — never a silent pass.
+4. **Injection dispositions are a closed set.** Accepted:
+   `ledgered_failure`, `retry_within_budget`, `escalated` (F051
+   semantics). Named mishandlings: `silent_success`,
+   `corrupted_artifact_accepted`. Anything else is `unclassified` and
+   fails. An unknown injection *class* is malformed evidence, not a new
+   failure mode — the four classes are frozen by the operator addition
+   of 2026-08-03.
+
+Also frozen here: an empty evidence directory does NOT pass. Vacuous
+truth is the single most likely way this gate would lie about 10/10.
