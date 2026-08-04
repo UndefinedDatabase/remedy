@@ -449,12 +449,22 @@ def test_the_recorded_set_covers_each_injection_class_degraded() -> None:
 
 
 def test_the_recorded_set_covers_both_named_mishandlings() -> None:
+    """The two mishandlings a RUN can record: a fault that fired and was
+    swallowed, and one whose corrupted artifact was taken downstream.
+
+    ``injection_never_fired`` (R-0179) is the third rejected disposition but is
+    not a fixture case: it is settled by the injector when the fault never
+    fired at all, so it is proven in test_gauntlet_injection.py instead —
+    there, end to end, through the evaluator.
+    """
     mishandled = {
         str(i.get("disposition", ""))
         for run in recorded_verdict().runs if not run.flawless
         for i in run.evidence.injections
     }
-    assert mishandled == set(REJECTED_DISPOSITIONS)
+    assert mishandled == {DISPOSITION_SILENT_SUCCESS,
+                          DISPOSITION_CORRUPTED_ARTIFACT_ACCEPTED}
+    assert mishandled < set(REJECTED_DISPOSITIONS)
 
 
 def test_a_dry_run_reads_the_evidence_and_changes_nothing() -> None:
