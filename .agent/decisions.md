@@ -3110,3 +3110,39 @@ Not done, deliberately: no change to CYCLE_SAFETY_CAP or any config default;
 no order or template edits (v3 stays frozen at set hash
 c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6); no
 weakening of the pass definition; the campaign (Phase 5) NOT run.
+
+## 2026-08-04: F075 R8 — R-0191 the released-gate dispatch guard
+
+`evaluate_dispatch` now refuses a `dispatch_job` for a milestone whose LATEST
+linked job COMPLETED with a RELEASED gate. That completes the triad the
+campaign uncovered one leg at a time:
+
+| Milestone's latest job | Guard | What the loop does |
+| --- | --- | --- |
+| in flight (pending/planned/running) | R-0186 | refuse; wait or declare when it finishes |
+| completed, gate BLOCKED twice in a row | R-0190 | escalate through the existing F051 hand_over |
+| completed, gate RELEASED | R-0191 | refuse; declare_milestone_done |
+
+Decisions:
+1. **The verdict is read, never re-derived.** `collect_milestone_evidence`
+   already asks `dod_gate.load_gate_result` for the latest job the ledger
+   attributes to the milestone, so `evidence.gate_released` IS the real
+   verdict, and a newer un-released job supersedes an older released one by
+   construction. A test asserts the guard's source never mentions
+   `blocking_red` or `checks` — it trusts the gate's answer.
+2. **Only `gate_released is True` fires it.** `None` (no stored DoD) means
+   nothing was proven, so a further dispatch is legitimate; `False` belongs to
+   R-0190. Two guards arguing over one fact would be worse than the hole.
+3. **The loop does NOT declare the milestone itself.** The claim is the
+   model's move and carries the model's accountability — the loop refuses the
+   move that cannot help and names the one that can. The existing
+   first-refusal re-prompt carries that sentence back, and the
+   second-refusal escalation already exists if it is ignored. Alternative
+   considered: auto-declaring on a released gate — rejected, it would make the
+   loop assert a milestone is done on the model's behalf, which is exactly the
+   authority boundary F070 was built to keep.
+
+Nine tests, all provider-free (R-0182), including the end-to-end one: a model
+that follows the refusal reaches `achieved`, and `dispatched.seen == []`
+proves no job was created for work already finished. The loop, e2e, era,
+injection and runner suites are green UNEDITED (307).

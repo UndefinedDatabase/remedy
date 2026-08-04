@@ -1380,7 +1380,41 @@ def evaluate_dispatch(mission: Any, milestone_id: str,
     in_flight = _in_flight_refusal(milestone_id, evidence)
     if in_flight:
         return in_flight
+    # R-0191: the third leg of the guard triad. In flight -> wait; blocked
+    # twice -> escalate (R-0190); completed with a RELEASED gate -> there is
+    # nothing left to dispatch, and the only move that advances the mission is
+    # the claim itself.
+    released = _released_gate_refusal(milestone_id, evidence)
+    if released:
+        return released
     return _era_refusal(evidence)
+
+
+def _released_gate_refusal(milestone_id: str,
+                           evidence: MilestoneEvidence | None) -> str:
+    """Refuse a dispatch when the milestone's work is already done and proven.
+
+    The verdict is the REAL one: ``collect_milestone_evidence`` reads it from
+    ``dod_gate.load_gate_result`` for the LATEST job the ledger attributes to
+    this milestone, so a newer un-released job supersedes an older released
+    one by construction — nothing is re-derived here.
+
+    Remedy deliberately does NOT declare the milestone itself. The claim is the
+    model's move and carries the model's accountability; the loop's job is to
+    refuse the move that cannot help and say which one can. The existing
+    first-refusal re-prompt carries this sentence back to the model, and the
+    second-refusal escalation already exists if it ignores it.
+    """
+    if evidence is None or not evidence.job_id:
+        return ""
+    if evidence.job_state != "completed":
+        return ""
+    if evidence.gate_released is not True:
+        return ""
+    return (f"milestone {milestone_id} is already finished: job "
+            f"{evidence.job_id} completed and its Definition of Done "
+            f"RELEASED. Another job would repeat work that is already proven. "
+            f"Instead: declare_milestone_done for {milestone_id}")
 
 
 def _in_flight_refusal(milestone_id: str,

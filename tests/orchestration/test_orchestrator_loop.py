@@ -1875,3 +1875,107 @@ class TestTheSecondBlockedCompletionEscalates:
         move = OrchestratorMove.model_validate(
             json.loads(_move_json("wait_on_decisions", reason="waiting")))
         assert blocked_completion(move, MoveOutcome(status="waiting")) == ("", "")
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0191 — the released-gate dispatch guard (the triad's third leg)
+# ---------------------------------------------------------------------------
+#
+# The R7 re-proof dispatched M001 six times, every job completing with a
+# RELEASED gate, and the model never claimed the milestone. In flight -> wait
+# (R-0186); blocked twice -> escalate (R-0190); completed and released -> this.
+
+
+class TestTheReleasedGateDispatchGuard:
+
+    def _released(self, job_id: str = "job-0001"):
+        return MilestoneEvidence(job_id=job_id, job_state="completed",
+                                 gate_released=True)
+
+    def test_a_dispatch_is_refused_when_the_work_is_done_and_proven(self, mission):
+        refusal = evaluate_dispatch(mission, "M001", self._released())
+        assert "already finished" in refusal
+        assert "job-0001" in refusal
+
+    def test_the_refusal_names_the_only_move_that_advances(self, mission):
+        refusal = evaluate_dispatch(mission, "M001", self._released())
+        assert "declare_milestone_done for M001" in refusal
+
+    def test_a_blocked_gate_is_not_this_guards_business(self, mission):
+        """R-0190 owns that case; two guards on one fact would fight."""
+        evidence = MilestoneEvidence(job_id="job-1", job_state="completed",
+                                     gate_released=False,
+                                     gate_blocker="dod_blocking_red:x")
+        assert evaluate_dispatch(mission, "M001", evidence) == ""
+
+    def test_an_ungated_completed_job_is_not_refused(self, mission):
+        """No stored DoD means no verdict — nothing is proven, so a further
+        dispatch is legitimate."""
+        evidence = MilestoneEvidence(job_id="job-1", job_state="completed")
+        assert evaluate_dispatch(mission, "M001", evidence) == ""
+
+    def test_an_in_flight_job_still_takes_the_r0186_path(self, mission):
+        evidence = MilestoneEvidence(job_id="job-1", job_state="running",
+                                     gate_released=True)
+        refusal = evaluate_dispatch(mission, "M001", evidence)
+        assert "in flight" in refusal
+        assert "already finished" not in refusal
+
+    def test_a_newer_unreleased_job_supersedes_an_older_released_one(
+            self, tmp_path, mission, dispatched):
+        """LATEST rules: the evidence collector reads the last job the ledger
+        attributes to the milestone, so a newer un-released one wins."""
+        newer = MilestoneEvidence(job_id="job-0002", job_state="completed",
+                                  gate_released=False,
+                                  gate_blocker="dod_blocking_red:x")
+        assert evaluate_dispatch(mission, "M001", newer) == ""
+
+    def test_the_verdict_is_read_not_re_derived(self):
+        """The guard trusts load_gate_result's answer, which reaches it on the
+        evidence — it never inspects checks itself."""
+        import inspect
+
+        from packages.orchestration.orchestrator_loop import (
+            _released_gate_refusal,
+        )
+        source = inspect.getsource(_released_gate_refusal)
+        assert "gate_released" in source
+        assert "blocking_red" not in source and "checks" not in source
+
+    def test_a_model_that_follows_the_instruction_achieves_the_mission(
+            self, tmp_path, mission, dispatched):
+        """End to end: refused dispatch -> re-prompt -> declaration -> achieved."""
+        evidence = {"M001": self._released("job-0001"),
+                    "M002": self._released("job-0002")}
+
+        moves = _scripted(
+            _move_json("dispatch_job", milestone_id="M001", step="redo it"),
+            _move_json("declare_milestone_done", milestone_id="M001"),
+            _move_json("declare_milestone_done", milestone_id="M002"),
+            _move_json("declare_mission_achieved"),
+        )
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
+            evidence=lambda p, m, ms: evidence[ms], call_fn=moves)
+        assert result.terminal == TERMINAL_ACHIEVED
+
+    def test_the_ledger_shows_the_refusal_then_the_declaration(
+            self, tmp_path, mission, dispatched):
+        evidence = {"M001": self._released("job-0001"),
+                    "M002": self._released("job-0002")}
+        moves = _scripted(
+            _move_json("dispatch_job", milestone_id="M001", step="redo it"),
+            _move_json("declare_milestone_done", milestone_id="M001"),
+            _move_json("declare_milestone_done", milestone_id="M002"),
+            _move_json("declare_mission_achieved"),
+        )
+        run_mission(mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+                    root=tmp_path, dispatch=dispatched, execute=_executed,
+                    evidence=lambda p, m, ms: evidence[ms], call_fn=moves)
+        statuses = [e["outcome"]["status"]
+                    for e in read_ledger(PROJECT, mission.id, tmp_path)]
+        assert statuses[0] == OUTCOME_REFUSED
+        assert "milestone_done" in statuses
+        assert statuses[-1] == TERMINAL_ACHIEVED
+        assert dispatched.seen == [], "no job was created for finished work"
