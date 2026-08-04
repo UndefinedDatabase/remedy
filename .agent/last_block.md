@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R8 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R8: R7 PASS persisted; R-0191 BUILT (evaluate_dispatch refuses a dispatch for a milestone whose latest job completed with a RELEASED gate, refusal naming declare_milestone_done; 9 tests, five suites green unedited). Phase 3 re-proof: the guard fired and the MODEL OBEYED — one dispatch, one refusal, then declare_milestone_done — but the claim was refused because dispatched_job_for lets a REFUSED dispatch_job entry (no job_id) overwrite the real attribution, so the loop escalated -> rule 3.3 STOP; campaign NOT run. Gate still RELEASED (acc-001 passed). Next defect located: a dispatch entry with no job_id is not a dispatch.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R8 (SPLIT, LARGE): persist the R7 PASS +
