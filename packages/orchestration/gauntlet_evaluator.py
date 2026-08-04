@@ -297,7 +297,17 @@ def _check_dod(ev: RunEvidence) -> list[GauntletFailure]:
             detail=f"no {DOD_RESULT_FILENAME}: the DoD gate never produced a verdict",
         )]
     view = _GateResultView(ev.dod_result)
-    if view.released and not view.error:
+    if view.released and view.error:
+        # released=True with an error is a verdict at war with itself. The gate
+        # never writes one, so seeing it means the evidence was edited or
+        # truncated — reported as what it is, not resolved in either direction.
+        return [GauntletFailure(
+            kind=FAILURE_DOD_BLOCKING_RED,
+            criterion=CRITERION_DOD_BLOCKING_GREEN,
+            detail=f"the stored gate verdict contradicts itself: "
+                   f"released with error {view.error}",
+        )]
+    if view.released:
         return []
     return [GauntletFailure(
         kind=FAILURE_DOD_BLOCKING_RED,
