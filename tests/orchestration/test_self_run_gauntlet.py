@@ -146,29 +146,51 @@ def test_both_modes_at_once_is_a_usage_error(tmp_path: Path) -> None:
 # --live, and the campaign it refuses to start
 # ---------------------------------------------------------------------------
 
-def test_a_live_campaign_refuses_while_an_injection_class_is_blocked(
-        tmp_path: Path, capsys) -> None:
-    """Three of the four classes wait on a product boundary; spending real
-    tokens on orders that could never be judged is the failure mode here."""
-    code = cli.main(["--live", str(tmp_path / "campaign")])
-    assert code == cli.EXIT_USAGE
-    err = capsys.readouterr().err
-    assert "refusing to start a live campaign" in err
-    assert "g06-provider-api-error-mid-move" in err
-    assert "no exception boundary" in err
-    # Nothing ran, so nothing was written.
-    assert not (tmp_path / "campaign").exists()
+def test_the_frozen_set_passes_preflight_now_that_every_class_is_driveable() -> None:
+    """Since the R3 boundary landed, nothing in the set is blocked.
 
-
-def test_the_preflight_names_every_blocked_order() -> None:
+    Checked through the preflight rather than by starting a campaign: no test
+    in this file may take the production path, because that spends real tokens
+    on ten real missions.
+    """
     from packages.orchestration.gauntlet_orders import load_order_set
 
-    blocked = cli.preflight_injections(load_order_set())
-    assert sorted(line.split(":")[0] for line in blocked) == [
-        "g06-provider-api-error-mid-move",
-        "g08-harness-death-mid-dispatch",
-        "g09-harness-death-mid-write",
-    ]
+    assert cli.preflight_injections(load_order_set()) == []
+
+
+def test_the_preflight_still_refuses_an_order_declaring_an_unknown_class() -> None:
+    """The guard that stopped R2's campaign is intact for any future class."""
+    from packages.orchestration.gauntlet_orders import GauntletOrder
+
+    order = GauntletOrder(
+        id="gxx", kind="pure_code_change", title="t", rationale="r",
+        risk_probed="risk", goal="g", milestones=({"id": "M001"},),
+        budget={"max_iterations": 1, "max_tokens": 1, "max_wall_seconds": 1},
+        injections=("cosmic_ray",), file_name="gxx.json", sha256="d")
+    blocked = cli.preflight_injections((order,))
+    assert len(blocked) == 1
+    assert "unknown injection class" in blocked[0]
+
+
+def test_a_live_campaign_stops_when_an_order_is_blocked(tmp_path: Path,
+                                                        monkeypatch, capsys) -> None:
+    """Refused before the first provider call, so a set nobody can judge costs
+    nothing to discover."""
+    from packages.orchestration import gauntlet_orders as orders_mod
+    from packages.orchestration.gauntlet_orders import GauntletOrder
+
+    order = GauntletOrder(
+        id="gxx-unknown", kind="pure_code_change", title="t", rationale="r",
+        risk_probed="risk", goal="g", milestones=({"id": "M001"},),
+        budget={"max_iterations": 1, "max_tokens": 1, "max_wall_seconds": 1},
+        injections=("cosmic_ray",), file_name="gxx.json", sha256="d")
+    monkeypatch.setattr(orders_mod, "load_order_set", lambda *a, **k: (order,))
+
+    assert cli.main(["--live", str(tmp_path / "campaign")]) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert "refusing to start a live campaign" in err
+    assert "gxx-unknown" in err
+    assert not (tmp_path / "campaign").exists()
 
 
 def test_a_live_campaign_with_runnable_orders_produces_a_judged_matrix(

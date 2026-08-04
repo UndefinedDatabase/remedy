@@ -19,6 +19,9 @@ import pytest
 
 from packages.orchestration.gauntlet_evaluator import (
     CRITERION_DATA_ROOT_UNTOUCHED,
+    CRITERION_INJECTIONS_DEGRADED,
+    DISPOSITION_LEDGERED,
+    DISPOSITION_SILENT_SUCCESS,
     evaluate_evidence_dir,
 )
 from packages.orchestration.gauntlet_evidence import RUN_FILENAME, load_run
@@ -38,7 +41,10 @@ from packages.orchestration.gauntlet_runner import (
     run_campaign,
     run_order,
 )
-from packages.orchestration.orchestrator_loop import TERMINAL_ACHIEVED
+from packages.orchestration.orchestrator_loop import (
+    TERMINAL_ACHIEVED,
+    TERMINAL_ITERATION_FAILED,
+)
 
 
 def an_order(order_id: str = "g01-pure-code-change", *, injections=(),
@@ -271,16 +277,108 @@ def test_a_declared_injection_is_recorded(tmp_path: Path, real_root: Path) -> No
     assert outcome.body["injections"][0]["disposition"]
 
 
-def test_an_order_with_a_blocked_injection_fails_rather_than_running_uninjected(
+def test_an_order_with_an_undriveable_injection_fails_rather_than_running_uninjected(
         tmp_path: Path, real_root: Path) -> None:
     """Evidence that omits a declared injection would be a lie by omission."""
     rec = Recorder()
-    outcome = run_order(an_order(injections=["harness_death_mid_write"]),
+    outcome = run_order(an_order(injections=["cosmic_ray"]),
                         campaign_root=tmp_path / "campaign",
                         real_data_root=real_root, deps=rec.deps())
     assert MissingSeamError.__name__ in outcome.crashed
     assert outcome.terminal_status == "runner_crashed"
     assert (outcome.run_dir / RUN_FILENAME).is_file()
+
+
+# ---------------------------------------------------------------------------
+# The three raise-class injections, driven through the runner
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BoundaryRecorder(Recorder):
+    """A loop double that CALLS its seams and behaves like the R3 boundary.
+
+    It drives update_dossier -> call_fn -> dispatch, and a raise from any of
+    them becomes a written post-mortem plus the honest ``iteration_failed``
+    terminal — the contract the real boundary is tested against in
+    ``test_orchestrator_loop.py``. Here it exists so the runner's own wiring
+    (which seam gets which wrapper, and what lands in run.json) is provable
+    without a provider.
+    """
+
+    def _run_mission(self, mission_id: str, limits, **kwargs):
+        from packages.orchestration.data_paths import resolve_data_root
+
+        self.seen_limits = limits
+        self.wrote_into = resolve_data_root()
+        self.wrote_into.mkdir(parents=True, exist_ok=True)
+        try:
+            kwargs["update_dossier"]("p-1", mission_id, FakeMission())
+            kwargs["call_fn"]("prompt", 0)
+            kwargs["dispatch"]("p-1", mission_id, "step")
+        except Exception as exc:
+            pm = self.wrote_into / "missions" / "iteration_1"
+            pm.mkdir(parents=True, exist_ok=True)
+            (pm / "postmortem.json").write_text(json.dumps({
+                "scope": "job", "failure_class": "unknown",
+                "raw_reason": f"iteration 1: {type(exc).__name__}: {exc}"}),
+                encoding="utf-8")
+            return FakeResult(terminal=TERMINAL_ITERATION_FAILED, entries=[])
+        return FakeResult(terminal=self.terminal, entries=list(self.entries))
+
+    def deps(self) -> RunnerDeps:
+        deps = super().deps()
+        deps.dispatch_fn = lambda: (lambda *a, **k: _NOOP_JOB)
+        deps.update_dossier_fn = lambda: (lambda *a, **k: None)
+        return deps
+
+
+_NOOP_JOB = object()
+
+
+@pytest.mark.parametrize("injection", [
+    "provider_api_error_mid_move",
+    "harness_death_mid_dispatch",
+    "harness_death_mid_write",
+])
+def test_a_raise_class_injection_is_ledgered_and_recorded(
+        tmp_path: Path, real_root: Path, injection: str) -> None:
+    outcome = run_order(an_order(injections=[injection]),
+                        campaign_root=tmp_path / injection,
+                        real_data_root=real_root, deps=BoundaryRecorder().deps())
+    assert outcome.terminal_status == TERMINAL_ITERATION_FAILED
+    block = outcome.body["injections"]
+    assert [i["class"] for i in block] == [injection]
+    assert block[0]["disposition"] == DISPOSITION_LEDGERED
+    assert block[0]["detail"]
+    # The evidence still reads as a well-formed, judgeable — and failed — run.
+    verdict = evaluate_evidence_dir(tmp_path / injection)
+    assert verdict.runs[0].flawless is False
+    assert verdict.runs[0].criteria[CRITERION_INJECTIONS_DEGRADED] is True
+
+
+def test_a_swallowed_injection_is_a_silent_success(tmp_path: Path,
+                                                   real_root: Path) -> None:
+    """A green terminal after the fault fired is the failure to catch."""
+
+    @dataclass
+    class Swallowing(BoundaryRecorder):
+        def _run_mission(self, mission_id: str, limits, **kwargs):
+            from packages.orchestration.data_paths import resolve_data_root
+
+            self.wrote_into = resolve_data_root()
+            self.wrote_into.mkdir(parents=True, exist_ok=True)
+            try:
+                kwargs["call_fn"]("prompt", 0)
+            except Exception:
+                pass  # the exact thing the criterion forbids
+            return FakeResult(terminal=TERMINAL_ACHIEVED, entries=[])
+
+    outcome = run_order(an_order(injections=["provider_api_error_mid_move"]),
+                        campaign_root=tmp_path / "campaign",
+                        real_data_root=real_root, deps=Swallowing().deps())
+    assert outcome.body["injections"][0]["disposition"] == DISPOSITION_SILENT_SUCCESS
+    verdict = evaluate_evidence_dir(tmp_path / "campaign")
+    assert verdict.runs[0].criteria[CRITERION_INJECTIONS_DEGRADED] is False
 
 
 # ---------------------------------------------------------------------------

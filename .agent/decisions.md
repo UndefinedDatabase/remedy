@@ -2550,3 +2550,39 @@ provider-API-error order its `no_unknown_postmortems` criterion. Left
 alone deliberately: bending the injected error text to force a nicer
 class would be gaming the gate, and finding exactly this kind of thing is
 what attempt 1 is for (a targeted fix order in R4+).
+
+## 2026-08-04: F075 R3 — unblocking the three raise-class injections
+
+1. **One decorator shape for all four.** `RaiseOnceInjector` raises once at
+   its seam then delegates to the production callable, mirroring
+   `TruncatedResponseInjector`. `build_injectors` now returns an
+   `InjectedSeams` triple (call_fn / dispatch / update_dossier) instead of
+   just a call_fn, and `RunnerDeps` gained `dispatch_fn` /
+   `update_dossier_fn` defaulting to `run_mission`'s own defaults
+   (`continue_mission`, `update_mission_dossier`) so a wrapper decorates
+   the real path rather than a stub.
+2. **Dispositions come from `RunOutcomeFacts`** — the run's terminal plus
+   the number of post-mortems collected — never from the injector's own
+   view. `iteration_failed` + a post-mortem = `ledgered_failure`;
+   `escalated` = `escalated`; a GREEN terminal after the fault fired =
+   `silent_success`; an honest terminal with NO post-mortem =
+   `unclassified`, because the terminal alone is not the whole contract.
+3. **Realistic error text, deliberately not tuned.** The injected messages
+   are what a real 503 / killed process would say. A message invented to
+   earn a nicer `failure_postmortem` class would be gaming the gate.
+4. **`BLOCKED_INJECTIONS` kept as an empty mapping** rather than deleted,
+   with its refusal path and test intact: an unknown class must still be
+   refused before the first provider call, which is what stopped R2's
+   campaign from spending tokens it could not judge.
+
+**Test-safety lesson (self-inflicted, recorded so it is not repeated):**
+once the preflight stopped refusing, the R2-era CLI test
+`test_a_live_campaign_refuses_while_an_injection_class_is_blocked` fell
+through to `cli.main(["--live", ...])` with PRODUCTION deps and started a
+real ten-order campaign inside pytest. It was killed within ~2 minutes.
+Host isolation HELD (run_order enters `isolated_environment` before it
+creates anything, so every write landed in the run's own data root under
+tmp_path; `git status` clean, real data root untouched), but real provider
+calls were made. The live CLI path is now exercised ONLY with doubles or a
+monkeypatched order set, and the two obsolete tests were replaced by
+preflight-level ones that cannot start a campaign.

@@ -49,7 +49,11 @@ from packages.orchestration.gauntlet_evidence import (
     GAUNTLET_RUN_VERSION,
     RUN_FILENAME,
 )
-from packages.orchestration.gauntlet_injection import build_injectors, injection_json
+from packages.orchestration.gauntlet_injection import (
+    RunOutcomeFacts,
+    build_injectors,
+    injection_json,
+)
 from packages.orchestration.gauntlet_orders import GauntletOrder
 
 #: Environment keys the runner sets per run. All of them already exist — the
@@ -162,6 +166,27 @@ def _default_move_call_fn() -> Callable[[str, int], str] | None:
         OrchestratorMove, model=get_config().get("orchestrator.model") or None)
 
 
+def _default_dispatch() -> Callable[..., Any]:
+    """How a job is created for a milestone — run_mission's own default.
+
+    Named explicitly so the injection driver has a production callable to
+    decorate. Passing it is identical to passing nothing.
+    """
+    from packages.orchestration.mission_state import continue_mission
+
+    return continue_mission
+
+
+def _default_update_dossier(root: Path | None = None) -> Callable[..., Any]:
+    """The per-iteration dossier refresh — run_mission's own default."""
+    from packages.orchestration.orchestrator_loop import update_mission_dossier
+
+    def refresh(project_id: str, mission_id: str, mission: Any) -> Any:
+        return update_mission_dossier(project_id, mission_id, mission, root)
+
+    return refresh
+
+
 @dataclass
 class RunnerDeps:
     """Every product verb the runner calls, defaulting to the production one.
@@ -178,6 +203,10 @@ class RunnerDeps:
     load_mission: Callable[..., Any] = None  # type: ignore[assignment]
     plan_call_fn: Callable[[], Callable[[str, int], str] | None] = _default_plan_call_fn
     move_call_fn: Callable[[], Callable[[str, int], str] | None] = _default_move_call_fn
+    #: The two seams only the injection driver needs. Production defaults, so
+    #: wrapping one changes what happens at that seam and nothing else.
+    dispatch_fn: Callable[[], Callable[..., Any]] = _default_dispatch
+    update_dossier_fn: Callable[[], Callable[..., Any]] = _default_update_dossier
 
     def __post_init__(self) -> None:
         if self.create_mission is None:
@@ -348,12 +377,20 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             project_id = deps.make_project(f"gauntlet {order.id}", order.id)
             mission = deps.create_mission(project_id, order.goal)
             deps.plan_mission(project_id, mission.id, deps.plan_call_fn())
-            call_fn, injectors = build_injectors(order.injections, deps.move_call_fn())
+            seams = build_injectors(
+                order.injections,
+                call_fn=deps.move_call_fn(),
+                dispatch=deps.dispatch_fn(),
+                update_dossier=deps.update_dossier_fn(),
+            )
+            injectors = seams.injectors
             result = deps.run_mission(
                 mission.id,
                 LoopLimits(max_iterations=order.budget["max_iterations"]),
                 project_id=project_id,
-                call_fn=call_fn,
+                call_fn=seams.call_fn,
+                dispatch=seams.dispatch,
+                update_dossier=seams.update_dossier,
             )
             terminal = str(getattr(result, "terminal", ""))
             entries = list(getattr(result, "entries", []) or [])
@@ -426,8 +463,7 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
     called once from inside the run's isolation and once from the crash path,
     and a body that guessed its own root could read the operator's.
     """
-    from packages.orchestration.orchestrator_loop import TERMINAL_ACHIEVED
-
+    postmortems = collect_postmortems(data_root)
     body: dict[str, Any] = {
         "gauntlet_run_version": GAUNTLET_RUN_VERSION,
         "order_id": order.id,
@@ -438,11 +474,14 @@ def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
         # stdin and never prompts. The empty list is a measured fact, not a hope.
         "operator_interventions": [],
         "data_root_hash_before": before,
-        "postmortems": collect_postmortems(data_root),
+        "postmortems": postmortems,
         "open_decisions": collect_open_decisions(mission) if mission else [],
         "era_defects": collect_era_defects(entries),
-        "injections": injection_json(injectors,
-                                     terminal_ok=terminal == TERMINAL_ACHIEVED),
+        # The disposition is read off what the product DID: its terminal, and
+        # whether it left a post-mortem behind.
+        "injections": injection_json(
+            injectors, RunOutcomeFacts(terminal=terminal,
+                                       postmortems=len(postmortems))),
         "evidence_links": {"ledger": "data/missions", "isolated_root": "data"},
     }
     tokens = measure_tokens(entries)
