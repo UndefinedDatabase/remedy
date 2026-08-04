@@ -1,0 +1,28 @@
+{
+  "budget": {
+    "max_iterations": 8,
+    "max_tokens": 300000,
+    "max_wall_seconds": 3000
+  },
+  "gauntlet_order_version": 1,
+  "goal": "In the sample project, add input validation to the public parse entry point so malformed input raises a typed error instead of returning None.",
+  "id": "g06-provider-api-error-mid-move",
+  "injections": [
+    "provider_api_error_mid_move"
+  ],
+  "kind": "pure_code_change",
+  "milestones": [
+    {
+      "dod": [
+        "malformed input raises the typed error, covered by a test",
+        "the full unit suite is green",
+        "every injected provider error appears in the mission ledger"
+      ],
+      "id": "m1",
+      "title": "Typed error on malformed input"
+    }
+  ],
+  "rationale": "Injects a provider API error mid-move. The risk is specific to the decision layer: a failed builder call is a failed job, but a failed MOVE call means the loop does not know what it decided. Flawless means ledgered and retried within budget \u2014 never a move silently skipped.",
+  "risk_probed": "transport_failure_at_the_decision_layer",
+  "title": "Survive a provider API error in the middle of an orchestrator move"
+}

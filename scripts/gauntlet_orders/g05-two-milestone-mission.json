@@ -1,0 +1,34 @@
+{
+  "budget": {
+    "max_iterations": 12,
+    "max_tokens": 480000,
+    "max_wall_seconds": 4800
+  },
+  "gauntlet_order_version": 1,
+  "goal": "Milestone 1: extract the sample project's duplicated path-normalisation logic into one helper. Milestone 2: make both former call sites use it and delete the duplicates.",
+  "id": "g05-two-milestone-mission",
+  "injections": [],
+  "kind": "two_milestone_mission",
+  "milestones": [
+    {
+      "dod": [
+        "the helper has unit tests covering both former behaviours",
+        "the full unit suite is green"
+      ],
+      "id": "m1",
+      "title": "Helper extracted with its own tests"
+    },
+    {
+      "dod": [
+        "no call site contains the old inline normalisation",
+        "the full unit suite is green",
+        "milestone 1 is recorded done before milestone 2 starts"
+      ],
+      "id": "m2",
+      "title": "Both call sites migrated, duplicates gone"
+    }
+  ],
+  "rationale": "The first order that cannot be finished in one flight plan. It probes the bookkeeping every single-milestone order skips: the second milestone must build on the first's result, and the mission record must be able to say which one is done without a human reading the diff.",
+  "risk_probed": "milestone_sequencing_and_mission_state",
+  "title": "Carry state across a milestone boundary"
+}

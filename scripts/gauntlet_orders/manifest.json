@@ -1,0 +1,56 @@
+{
+  "gauntlet_order_set_version": 1,
+  "set_hash": "d19c999a0d3cfbf76672911c9197b06bd7f27e4107c01668f49415fa8058fdc0",
+  "orders": [
+    {
+      "id": "g01-pure-code-change",
+      "file": "g01-pure-code-change.json",
+      "sha256": "039dcde163ee8c1cdbd0f77ef159965ebf4f86975a1463831c09c8ceba5a23df"
+    },
+    {
+      "id": "g02-test-add",
+      "file": "g02-test-add.json",
+      "sha256": "ff2dd2052223edcbc19f4956c6d08aa60d21e0a47a0b52d1a55c27873d743815"
+    },
+    {
+      "id": "g03-small-app-feature-smoke",
+      "file": "g03-small-app-feature-smoke.json",
+      "sha256": "6be4315db6420695147f9595da2407a36a8f4832668ff9ff476943adaccafe2e"
+    },
+    {
+      "id": "g04-doc-generation",
+      "file": "g04-doc-generation.json",
+      "sha256": "6213a54b016c44034815876a009931c86cd34ca6ec391c84a427efa443da012c"
+    },
+    {
+      "id": "g05-two-milestone-mission",
+      "file": "g05-two-milestone-mission.json",
+      "sha256": "2821996bebdfc9728cee649d390812fdcb4ecedb6cbba448a11780da3118895f"
+    },
+    {
+      "id": "g06-provider-api-error-mid-move",
+      "file": "g06-provider-api-error-mid-move.json",
+      "sha256": "a219868839c7501ca7b28f14221f80137710e4212b67588ce191209b568ca364"
+    },
+    {
+      "id": "g07-truncated-model-response",
+      "file": "g07-truncated-model-response.json",
+      "sha256": "66a071ec5b9169f91a9bd41c8a07dcead88df8b6fb9d73de5f5a509b930fe570"
+    },
+    {
+      "id": "g08-harness-death-mid-dispatch",
+      "file": "g08-harness-death-mid-dispatch.json",
+      "sha256": "33a67193f0a9866d9efd8197750f5eb2894c02d5b0668bb74ae601d6681de423"
+    },
+    {
+      "id": "g09-harness-death-mid-write",
+      "file": "g09-harness-death-mid-write.json",
+      "sha256": "c3d41063448c51b6555688fce95fc8eb7bde06c21ff5ab8f8355039ff14a3d44"
+    },
+    {
+      "id": "g10-escalate-then-finish",
+      "file": "g10-escalate-then-finish.json",
+      "sha256": "0a618e189a0f1aaa9a8366c314f4b8b4f630de1cc2f8f636b1d193dd56b8aa93"
+    }
+  ]
+}

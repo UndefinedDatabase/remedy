@@ -1,0 +1,26 @@
+{
+  "budget": {
+    "max_iterations": 6,
+    "max_tokens": 220000,
+    "max_wall_seconds": 2400
+  },
+  "gauntlet_order_version": 1,
+  "goal": "Add unit tests for the sample project's config precedence rules (explicit argument over environment over file default). Do not change product code.",
+  "id": "g02-test-add",
+  "injections": [],
+  "kind": "test_add",
+  "milestones": [
+    {
+      "dod": [
+        "every new test fails when the precedence order is inverted",
+        "git diff touches only files under the test directory",
+        "the full unit suite is green"
+      ],
+      "id": "m1",
+      "title": "Precedence covered by tests, product code untouched"
+    }
+  ],
+  "rationale": "A test-only mission removes the escape hatch every other order has: there is no product edit whose green suite can carry a weak test. It probes whether Remedy can characterise behaviour it did not write, and whether the DoD can tell a real test from one that passes vacuously.",
+  "risk_probed": "test_without_a_code_change_to_hide_behind",
+  "title": "Write a test for existing untested behaviour, changing no product code"
+}

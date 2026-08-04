@@ -1,0 +1,36 @@
+{
+  "budget": {
+    "max_iterations": 14,
+    "max_tokens": 520000,
+    "max_wall_seconds": 5400
+  },
+  "gauntlet_order_version": 1,
+  "goal": "Milestone 1: add a structured summary artifact to the sample project's report writer. Milestone 2: have the CLI render that artifact.",
+  "id": "g09-harness-death-mid-write",
+  "injections": [
+    "harness_death_mid_write"
+  ],
+  "kind": "two_milestone_mission",
+  "milestones": [
+    {
+      "dod": [
+        "the artifact carries a digest of its own content",
+        "the full unit suite is green"
+      ],
+      "id": "m1",
+      "title": "Summary artifact written with a digest"
+    },
+    {
+      "dod": [
+        "a digest mismatch on read is refused and reported, covered by a test",
+        "no truncated artifact reached the renderer",
+        "the full unit suite is green"
+      ],
+      "id": "m2",
+      "title": "CLI renders the artifact"
+    }
+  ],
+  "rationale": "Injects a harness death mid-write, across a milestone boundary so the truncated artifact is read back by a LATER iteration. This is the process half of the lesson F070's closure learned in the field: hash-on-write and verify-on-read caught a corrupted authored text on its first real use. Flawless means the mismatch is caught, never accepted downstream.",
+  "risk_probed": "artifact_corruption_at_the_write_boundary",
+  "title": "Detect a half-written artifact instead of consuming it"
+}
