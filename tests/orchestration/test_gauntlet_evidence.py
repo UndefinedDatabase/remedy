@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from packages.orchestration.gauntlet_evidence import (
     DOD_RESULT_FILENAME,
     GAUNTLET_RUN_VERSION,
@@ -146,11 +148,70 @@ def test_non_dict_list_members_are_dropped(tmp_path: Path) -> None:
     assert ev.postmortems == ({"failure_class": "test_failed"},)
 
 
-def test_unparsable_numbers_fall_back_without_raising(tmp_path: Path) -> None:
-    body = dict(FLAWLESS_BODY, wall_seconds="a while", tokens={"in": None, "out": "many"})
+# --- R-0178: a malformed number is a load error, never a silent zero ---------
+#
+# The matrix is what a human reads before flipping multi-cycle defaults. A cost
+# that renders as 0 because the value was unreadable understates exactly what
+# that reader is weighing, so each field gets its own falsification.
+
+@pytest.mark.parametrize("bad", ["a while", None, True, [], {}, "612.5"])
+def test_a_non_numeric_wall_seconds_is_a_load_error(tmp_path: Path, bad) -> None:
+    ev = load_run(write_run(tmp_path / repr(bad), "run-01",
+                            dict(FLAWLESS_BODY, wall_seconds=bad)))
+    assert ev.load_error == f"wall_seconds is not a number: {bad!r}"
+
+
+@pytest.mark.parametrize("bad", ["many", None, False, ["1"]])
+def test_a_non_numeric_tokens_in_is_a_load_error(tmp_path: Path, bad) -> None:
+    body = dict(FLAWLESS_BODY, tokens={"in": bad, "out": 30_000})
+    ev = load_run(write_run(tmp_path / repr(bad), "run-01", body))
+    assert ev.load_error == f"tokens.in is not a number: {bad!r}"
+
+
+@pytest.mark.parametrize("bad", ["many", None, True, {"n": 1}])
+def test_a_non_numeric_tokens_out_is_a_load_error(tmp_path: Path, bad) -> None:
+    body = dict(FLAWLESS_BODY, tokens={"in": 120_000, "out": bad})
+    ev = load_run(write_run(tmp_path / repr(bad), "run-01", body))
+    assert ev.load_error == f"tokens.out is not a number: {bad!r}"
+
+
+def test_a_non_object_tokens_value_is_a_load_error(tmp_path: Path) -> None:
+    ev = load_run(write_run(tmp_path, "run-01", dict(FLAWLESS_BODY, tokens="many")))
+    assert ev.load_error == "tokens is not an object: 'many'"
+
+
+def test_absent_numbers_still_default_because_absence_is_not_malformation(
+        tmp_path: Path) -> None:
+    """A run that recorded no token count says zero honestly."""
+    body = {k: v for k, v in FLAWLESS_BODY.items()
+            if k not in ("wall_seconds", "tokens")}
     ev = load_run(write_run(tmp_path, "run-01", body))
     assert ev.load_error == ""
     assert (ev.wall_seconds, ev.tokens_in, ev.tokens_out) == (0.0, 0, 0)
+
+
+def test_a_half_recorded_tokens_object_defaults_only_the_absent_half(
+        tmp_path: Path) -> None:
+    ev = load_run(write_run(tmp_path, "run-01",
+                            dict(FLAWLESS_BODY, tokens={"in": 42})))
+    assert ev.load_error == ""
+    assert (ev.tokens_in, ev.tokens_out) == (42, 0)
+
+
+def test_an_integer_wall_seconds_is_accepted_as_a_number(tmp_path: Path) -> None:
+    ev = load_run(write_run(tmp_path, "run-01", dict(FLAWLESS_BODY, wall_seconds=612)))
+    assert ev.load_error == ""
+    assert ev.wall_seconds == 612.0
+
+
+def test_a_malformed_number_makes_the_run_not_flawless(tmp_path: Path) -> None:
+    """The point of the finding: unreadable cost must cost the run its pass."""
+    from packages.orchestration.gauntlet_evaluator import evaluate_run
+
+    verdict = evaluate_run(load_run(write_run(
+        tmp_path, "run-01", dict(FLAWLESS_BODY, wall_seconds="a while"), RELEASED_GATE)))
+    assert verdict.flawless is False
+    assert not any(verdict.criteria.values())
 
 
 def test_run_order_is_the_sorted_directory_name(tmp_path: Path) -> None:

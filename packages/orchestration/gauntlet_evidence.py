@@ -83,12 +83,27 @@ def _as_dict_tuple(raw: Any) -> tuple[dict[str, Any], ...]:
     return tuple(item for item in raw if isinstance(item, dict))
 
 
-def _as_number(raw: Any, cast: Any, default: Any) -> Any:
-    """A malformed number is a load error, never a silent zero."""
-    try:
-        return cast(raw)
-    except (TypeError, ValueError):
-        return default
+#: Distinguishes "the field is not there" from "the field is there and wrong".
+#: Absence is not malformation — a run that recorded no token count says zero
+#: honestly; a run that recorded ``"many"`` does not.
+_MISSING = object()
+
+
+def _as_number(raw: Any, cast: Any, field: str) -> tuple[Any, str]:
+    """One recorded number, or the reason it cannot be believed.
+
+    A malformed number is a load error, never a silent zero (R-0178): the
+    matrix is the report a human reads before flipping multi-cycle defaults,
+    and a cost silently rendered as 0 understates exactly what that reader is
+    weighing. JSON has a number type, so a string — even ``"612.5"`` — is a
+    type error rather than a value to coerce. ``True`` is an ``int`` in Python
+    and is refused here for the same reason.
+    """
+    if raw is _MISSING:
+        return cast(0), ""
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return cast(0), f"{field} is not a number: {raw!r}"
+    return cast(raw), ""
 
 
 def _load_json(path: Path) -> Any:
@@ -137,16 +152,31 @@ def load_run(run_dir: Path) -> RunEvidence:
     if error:
         return _failed(name, order_id, error)
 
-    tokens = body.get("tokens") if isinstance(body.get("tokens"), dict) else {}
+    raw_tokens = body.get("tokens", _MISSING)
+    if raw_tokens is _MISSING:
+        tokens: dict[str, Any] = {}
+    elif isinstance(raw_tokens, dict):
+        tokens = raw_tokens
+    else:
+        return _failed(name, order_id, f"tokens is not an object: {raw_tokens!r}")
+
+    wall_seconds, wall_error = _as_number(
+        body.get("wall_seconds", _MISSING), float, "wall_seconds")
+    tokens_in, in_error = _as_number(tokens.get("in", _MISSING), int, "tokens.in")
+    tokens_out, out_error = _as_number(tokens.get("out", _MISSING), int, "tokens.out")
+    number_error = wall_error or in_error or out_error
+    if number_error:
+        return _failed(name, order_id, number_error)
+
     links = body.get("evidence_links")
     return RunEvidence(
         run_dir=name,
         order_id=order_id,
         kind=str(body.get("kind", "")),
         terminal_status=str(body.get("terminal_status", "")),
-        wall_seconds=_as_number(body.get("wall_seconds", 0.0), float, 0.0),
-        tokens_in=_as_number(tokens.get("in", 0), int, 0),
-        tokens_out=_as_number(tokens.get("out", 0), int, 0),
+        wall_seconds=wall_seconds,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
         operator_interventions=_as_str_tuple(body.get("operator_interventions")),
         data_root_hash_before=str(body.get("data_root_hash_before", "")),
         data_root_hash_after=str(body.get("data_root_hash_after", "")),

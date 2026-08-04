@@ -41,6 +41,15 @@ fixes found by the campaign go through normal orders (T003).
   non-numeric wall_seconds/tokens value becomes a load_error
   (malformed evidence, run not flawless), so the docstring stands
   as written; one falsification test per field.
+  Fixed in this round's R-0178 commit: a non-numeric wall_seconds or
+  tokens value — and a non-object tokens — becomes a load_error, so
+  the run is not flawless and no criterion is reported green. Honest
+  edges kept: an absent field still defaults (absence is not
+  malformation), a bool is not a number, a numeric string is a type
+  error rather than a value to coerce. Falsification per field plus
+  one test that the run loses its pass; both golden matrices
+  unchanged.
+  Done: R-0178
 - Next free ID: R-0179.
 
 ## Verdicts
