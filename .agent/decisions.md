@@ -2669,3 +2669,79 @@ Rendering only; no pass criterion moved:
 because every recorded fixture carries a measured `tokens` object; the new
 wording only appears when a run is unmeasured, which the new tests cover
 with their own evidence rather than by editing the fixtures.
+
+## 2026-08-04: F075 R4 — R-0184 diagnosis: the loop dispatches jobs but never runs them
+
+One cheap live run, `--live <scratch>/diag-r0184 --only 1 --format json`,
+exit 1, terminal `iteration_limit`. It reproduces attempt 1's g01 exactly,
+so the finding is not a one-off.
+
+**(a) What moves does the model produce.** Well-formed, schema-valid, and
+reasonable. Six iterations, six `dispatch_job` moves for the SAME
+milestone. Iteration 1, verbatim from the run's ledger (trimmed):
+
+    {"iteration": 1,
+     "move": {"kind": "dispatch_job",
+              "payload": {"milestone_id": "M001",
+                          "step": "identify_location_of_hardcoded_retry_backoff_cap_..."},
+              "rationale": "M001 is the first milestone and is ready; need to
+                            locate and refactor the hard-coded backoff cap ...",
+              "schema_v": "om1"},
+     "outcome": {"status": "dispatched",
+                 "detail": "job d18005fc-... dispatched for M001"}}
+
+The model is not the blocker. Every move parsed, none was refused, and the
+rationale is on-topic.
+
+**(b) Do dispatched jobs run and finish.** No. All six job records sit at
+`state = planned` with their tasks built and never touched:
+
+    1e384c8b state=planned tasks=2   7e7bfae7 state=planned tasks=2
+    81df99a0 state=planned tasks=2   a0268bd5 state=planned tasks=2
+    b092254d state=planned tasks=2   d18005fc state=planned tasks=1
+
+`execute_move`'s dispatch branch is `create = dispatch or continue_mission`
+— which creates the job, builds its plan verify-first, links it to the
+mission and auto-approves the plan gate. Creation is where it stops.
+Nothing in `run_mission` executes the job it just created.
+
+**(c) Why `declare_milestone_done` / `declare_mission_achieved` is never
+reached.** Because it never becomes true. `evaluate_milestone_done` wants a
+finished job with a released gate; the job never leaves `planned`, so the
+orchestrator's only remaining useful move is to dispatch again. The mission
+record after six iterations: `status=active`, `_milestones_done=None`,
+`job_links=6` — six jobs for one milestone. `evaluate_dispatch` refuses an
+already-DONE milestone, an unknown one, and unmet dependencies; it does NOT
+refuse a milestone that already has an in-flight job, so the loop is free to
+re-dispatch forever.
+
+**(d) Why the DoD gate never runs.** Never invoked at all — not invoked and
+failing. No `dod.json` and no `dod_result.json` exists anywhere under the
+run's data root. `run_job_gate` has exactly one caller in the tree,
+`job_fulfillment.py:1003`, which is part of JOB EXECUTION. No execution, no
+gate. That is why `dod_blocking_green` was red on all ten runs of attempt 1
+with the honest reason "the DoD gate never produced a verdict".
+
+**Root cause.** `orchestrator_loop.py`'s own module docstring states the verb
+map: "`mission_state.continue_mission` dispatches, `long_run_executor`
+executes, `dod_gate` evaluates". The loop imports `long_run_executor` only
+for `next_cycle_index` (line 377, ledger numbering). It never calls
+`run_cycles`. T1_F070's Design specifies the iteration as "pick or shape the
+next job as a Flight Plan -> run it through the multi-cycle executor ->
+evaluate against the milestone's DoD"; the built loop implements the first
+step and the last, and omits the middle one.
+
+**Decision fork -> rule 2c: STOP with the analysis.** This is not a bounded
+wiring bug. Closing it means running each dispatched job through
+`long_run_executor.run_cycles` inside the loop with the order's budgets,
+stop/safe-point handling and cycle accounting, then letting the DoD gate
+produce its verdict, plus a re-dispatch guard in `evaluate_dispatch` so one
+milestone cannot accumulate six jobs. That is the missing half of F070's
+design — a product feature with its own tests, and precisely the kind of
+change the gauntlet exists to demand rather than to smuggle. Explicitly NOT
+done here: no `orchestrator.model` change (the model is not the blocker and
+config defaults by machine are do-not-touch), no order edits, no weakening
+of the pass definition.
+
+Attempt 2 therefore does NOT run this round: Phase 5 is gated on a green
+2a+3, and this is 2c.
