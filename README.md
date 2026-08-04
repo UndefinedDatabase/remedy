@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-34 of 253 registered items accepted. Next: F071 (Mission dossier).
+35 of 253 registered items accepted. Next: F075 (MILESTONE GATE: 10 flawless self-runs).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 18 | 22 |
+| 1 | Self-Build Bootstrap | 19 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
@@ -32,7 +32,7 @@ verification commands. If something is unproven, Remedy says so instead of guess
 | 9 | Evidence & Compliance Product | 0 | 12 |
 | 10 | Team & Multi-User | 0 | 12 |
 | 11 | Verification v2 | 0 | 10 |
-| 12 | Observability & Operations | 0 | 8 |
+| 12 | Observability & Operations | 0 | 9 |
 | 13 | Multi-Repo & Organization | 0 | 8 |
 | 14 | Productization & Distribution | 0 | 10 |
 | 15 | Intelligence v2 | 0 | 10 |

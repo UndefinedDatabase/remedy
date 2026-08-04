@@ -1,32 +1,34 @@
-# Plan — reg0803 registration micro-round
+# Plan — F071 Mission dossier
 
-Branch: feature/registration-0803 (single-session micro-round,
-planner_reviewer_prompt.md §3; operator override 2026-08-03)
+Branch: feature/f071-mission-dossier
 
 ## Goal
-Register two operator decisions of 2026-08-03 on disk: (1) F253 —
-Headless API contract (Tier 12, next free registry number; STATUS
-line + T12_F253.md + ROADMAP Tier-12 prose + ledger pin 252→253 in
-ONE commit per the R-0151/R-0156 rule); (2) the harness-failure
-injection class joins the F075 gauntlet (dated operator addition in
-T1_F075.md, Acceptance). Carried closure candidates: none —
-.agent/candidates.md is empty (F069's candidate already registered
-as R-0169 in F070 R1).
+Long missions no longer die of context bloat: mission_dossier.py
+maintains a hard-budgeted structured dossier (GOAL immutable,
+MILESTONES, RISKS open-only, DECISIONS recent, NEXT) as the stable
+prefix of the orchestrator prompt. Over budget compresses via one
+schema-validated provider call under explicit rules; failure keeps
+the previous dossier + raw facts with an honest over-budget flag.
+Versions archived as dossier_v<N>.md. DONE — accepted 2026-08-03.
 
 ## Current Step
-Apply authored texts (reg0803-r1-1..5), gate with
-`python3 -m pytest tests/docs/ -q` + canary
-`pytest tests/cli/test_golden_path.py -q`, handback, merge on PASS
-(standing same-session-merge approval for this round type).
+R4 (closure) COMPLETE. R3 verdict PASS + GATE PASS persisted;
+R-0176 amendment applied to docs/agents/integration_gate.md;
+Built State recorded in T1_F071.md (accepted HEAD acb02acd);
+evidence job b3b98e3ee1d10668; package
+remedy-review-20260803-190339-READY_FOR_REVIEW.zip
+(SHA-256 aa117e26…); STATUS [x] + README sync (R-0177) in the
+closure commit. PR open, NOT merged — it merges at the next
+feature's Open PR Gate. Open findings: 0.
 
 ## Next Steps
-- Handback + self-review verdict; PR; merge on PASS.
-- Continue per Rule A5: F071 — Mission dossier (fresh session,
-  SPLIT rounds).
+- Next session: Rule A5 selects the next feature (F075 —
+  MILESTONE GATE: 10 flawless self-runs). Its Open PR Gate merges
+  this closure PR first.
 
 ## Risks
-- Ledger pin and STATUS line must land in the SAME commit or
-  tests/docs goes red between commits.
-- ROADMAP.md edit is operator-authorized here by the F251/F252
-  registration precedent (commit 7d4b586e touched ROADMAP.md);
-  scope limited to the Tier-12 summary paragraph.
+- None open for F071. Carried knowledge: version numbers are a
+  monotonic high-water mark (torn-write self-heal, R-0175); gate
+  run logs live outside the repo during a run (R-0176).
+- .agent/candidates.md stays empty — this closure raised no
+  candidates.

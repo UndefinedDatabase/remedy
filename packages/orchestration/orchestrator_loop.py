@@ -113,14 +113,14 @@ SECTION_DECISIONS = "## Open decisions"
 #: refusal never disturbs the stable prefix in front of it.
 SECTION_FEEDBACK = "## Your previous move was refused"
 
-#: What the stand-in dossier says about itself. F071 (Mission dossier) is not
-#: built; ``Mission.dossier_ref`` is documented as RESERVED and is empty on
-#: every record. Rather than invent that document here — which would be the
-#: second mechanism A6 forbids — the loop renders the facts the mission record
-#: ALREADY holds and labels the result for what it is.
+#: What the stand-in dossier says about itself. Since F071 the loop's prefix is
+#: the MAINTAINED document (``mission_dossier``); this render remains as the
+#: fallback for a mission that has no stored version yet — a context assembled
+#: outside a run — and labels itself for what it is rather than passing for the
+#: maintained document.
 DOSSIER_STANDIN_NOTE = (
-    "(stand-in: rendered from the mission record. The maintained dossier "
-    "document is F071 and does not exist yet.)")
+    "(stand-in: rendered from the mission record because this mission has no "
+    "stored dossier version yet.)")
 
 
 def render_mission_dossier(mission: Any, *, done_milestones: Sequence[str] = ()) -> str:
@@ -523,23 +523,45 @@ DOSSIER_FILENAME = "dossier.md"
 
 
 def update_mission_dossier(project_id: str, mission_id: str, mission: Any,
-                           root: Path | None = None) -> Path:
+                           root: Path | None = None,
+                           *, call_fn: Callable[[str, int], str] | None = None,
+                           ) -> Path:
     """Refresh the mission's dossier. Called EVERY iteration.
 
-    Until F071 lands this writes the rendered stand-in — a snapshot of what the
-    mission record already says, labeled as a stand-in. It is a real write of a
-    real file, not a placeholder that pretends to be one, and it deliberately
-    does not claim F071's maintained-document semantics (a curated, token-
-    budgeted narrative). ``Mission.dossier_ref``, when F071 fills it, is what a
-    caller passes through the loop's ``dossier`` seam instead.
+    F071: this drives the MAINTAINED document. One
+    :func:`~packages.orchestration.mission_dossier.refresh_mission_dossier`
+    call appends the iteration's facts, enforces the token budget and stores
+    the new ``dossier_v<N>.md`` version; the newest render is then written to
+    the live file beside the ledger. ``call_fn`` is the COMPRESSION provider —
+    omitted, an over-budget dossier keeps its honest flag rather than spending
+    a call the loop's own budget never authorized.
     """
+    from packages.orchestration.mission_dossier import (
+        refresh_mission_dossier,
+        render_dossier,
+    )
+
+    result = refresh_mission_dossier(project_id, mission_id, mission,
+                                     root=root, call_fn=call_fn)
     path = mission_evidence_dir(project_id, mission_id, root) / DOSSIER_FILENAME
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        render_mission_dossier(
-            mission, done_milestones=done_milestones(mission)) + "\n",
-        encoding="utf-8")
+    path.write_text(render_dossier(result.dossier), encoding="utf-8")
     return path
+
+
+def maintained_dossier_text(project_id: str, mission_id: str, mission: Any,
+                            root: Path | None = None) -> str:
+    """The NEWEST stored dossier version — what the live prompt uses.
+
+    Falls back to the stand-in render when a mission has no stored version
+    yet, so ``assemble_context`` called outside a run still has a dossier. In
+    a run the refresh precedes the assembly every iteration, so the fallback
+    is not the path a real prompt takes.
+    """
+    from packages.orchestration.mission_dossier import newest_dossier_text
+
+    return newest_dossier_text(project_id, mission_id, root) or \
+        render_mission_dossier(mission, done_milestones=done_milestones(mission))
 
 
 def mission_achieved(project_id: str, mission_id: str,
@@ -708,7 +730,8 @@ def run_mission(
     Seams, all defaulting to the production path:
       ``dispatch``        how a job is created for a milestone
                           (``mission_state.continue_mission``)
-      ``dossier``         how the mission's dossier renders (F071 plugs in here)
+      ``dossier``         how the mission's dossier renders; defaults to the
+                          newest stored version of the F071 maintained document
       ``update_dossier``  the dossier refresh, called every iteration
       ``evidence``        how a milestone's job state, DoD gate and handback are
                           observed (:func:`collect_milestone_evidence`)
@@ -736,6 +759,11 @@ def run_mission(
         lambda p, m, ms: collect_milestone_evidence(p, m, ms, root))
     refresh = update_dossier or (
         lambda p, m, mission: update_mission_dossier(p, m, mission, root))
+    # F071: the prefix is the MAINTAINED document's newest version, which
+    # ``refresh`` stores at the top of every iteration before the context is
+    # assembled. The stand-in remains only as the no-version fallback.
+    prefix = dossier or (
+        lambda mission: maintained_dossier_text(pid, mission_id, mission, root))
     hand_over = escalate or (
         lambda p, m, reason: escalate_repeated_refusal(p, m, reason, root=root,
                                                        now=now))
@@ -785,7 +813,7 @@ def run_mission(
         context = assemble_context(
             mission,
             done_milestones=done_milestones(mission),
-            dossier=dossier,
+            dossier=prefix,
             last_report=last_report(mission) if last_report else "",
             open_decisions=open_mission_decisions(mission),
             feedback=feedback)

@@ -1,5 +1,157 @@
 # Decisions
 
+## 2026-08-03: F071 R3 — gate evidence is written OUTSIDE the repo during the run
+The first branch gate run wrote its log to `.agent/gate_f071_r3/branch_run.txt`
+inside the repo and reported four failures — two in
+`test_run_manifest_logical_identity.py`, two in
+`test_job_rerun_workspace_identity.py`. All four compare
+`remedy_worktree_digest` values, and the log was being appended to WHILE the
+suite ran, so the worktree digest genuinely changed mid-run. The tests were
+right; the harness was wrong.
+
+Re-running with the log in the session scratchpad and copying the evidence into
+`.agent/gate_f071_r3/` after both runs finished: 15383 passed, exit 0, zero
+failures.
+
+`docs/agents/integration_gate.md` constrains evidence NAMES (`.txt`, never
+`.log` — R-0169) but says nothing about evidence LOCATION during the run. No
+doc was amended here: authoring gate-procedure amendments is the reviewer's
+call, so the observation is recorded in `.agent/gate_f071_r3/attribution.txt`
+and in the handback for the reviewer to register or discard.
+
+## 2026-08-03: F071 R3 — the version fast-forward, the ONE exception to one-update-one-version
+The R1 decision "one update produces exactly ONE version" still describes the
+normal path and is still pinned by a test. R-0175 found the case it does not
+cover: `refresh_mission_dossier` writes `dossier_v<N>.md` before
+`dossier_state.json`, so a process that dies between the two leaves the archive
+one ahead of the live state. The next refresh then recomputes a version number
+the archive already holds, and — as soon as any fact has drifted, which one new
+ledger entry is enough to cause — the R-0173 never-overwrite guard raises. It
+raises again on every retry: the mission is wedged until a human deletes
+evidence files.
+
+Three options were available and two are wrong. Making the guard lenient would
+undo R-0173 and let audit evidence be destroyed. Writing the state file first
+would only move the tear (state ahead of archive, a version number silently
+skipped, and a rendered document no archived file matches). So: RECONCILE
+before writing. `latest = latest_dossier_version(...)`; if the updated
+dossier's version is `<= latest`, fast-forward it to `latest + 1`.
+
+What this costs: in a torn run one version number is consumed without a
+corresponding update, so version numbers are a monotonic high-water mark rather
+than an update counter. What it buys: the archive stays append-only, the
+never-overwrite guard stays intact and untouched, and a torn write HEALS on the
+next refresh instead of wedging the mission. That trade matches the module's
+own stance elsewhere — `load_dossier_state` treats an unreadable state file as
+absent for exactly the same reason: degraded, but never a dead loop.
+
+The failure class is the one the F075 gauntlet names (harness death mid-write,
+operator addition 2026-08-03); the reconcile is what makes this module survive
+it rather than merely detect it.
+
+## 2026-08-03: F071 R2 — the compression rule check judges the REBUILT document
+R-0172's root cause was a mismatch of levels: the check read the answer's raw
+id lists while `_rebuild` carried items PER SECTION, so an open risk returned
+under `milestones` satisfied the check and then vanished from the rebuild. The
+fix is not a bigger check but a check at the right level — `_check_rules`
+builds the document first and judges THAT, and `compress_dossier` returns the
+very object that was judged. `compression_rule_violation` keeps its signature
+and delegates, so the public predicate and the compressed result can never
+disagree.
+
+General form worth keeping: validate the artifact you are about to write, not
+the message you received. A check on the input passes for reasons the output
+does not share.
+
+## 2026-08-03: F071 R2 — a stored dossier version is immutable, and retries are free
+R-0173: `write_dossier_version` promised versions are never overwritten and
+then overwrote unconditionally. Two behaviors were possible; both are wrong
+alone. Refusing every rewrite makes an idempotent retry an error; allowing
+every rewrite destroys audit evidence. So: byte-identical rewrite is a no-op
+returning the path, differing content raises `ValueError` naming the path and
+the version, and the original bytes are left intact.
+
+## 2026-08-03: F071 T003 — the live state is JSON; the markdown is the audit trail
+The dossier reaches disk as `dossier_v<N>.md` for humans to diff. The next
+iteration needs the STRUCTURED document back, and parsing the markdown would
+make the state a hostage of the renderer — a formatting change would silently
+alter recovered facts. So `dossier_state.json` holds the live state and the
+markdown versions stay a pure projection. An unreadable state file reads as
+ABSENT, not as an error: a mission then starts a fresh dossier from its own
+goal, which is degraded but never a dead loop.
+
+## 2026-08-03: F071 T003 — the loop's compression provider is a SEPARATE seam
+F070 records "one provider call per iteration". A compression call would be a
+second one, so `update_mission_dossier` takes `call_fn` and DEFAULTS IT TO
+NONE: out of the box an over-budget dossier keeps its honest flag rather than
+spending a call the loop's budget never authorized. Compression is opt-in by
+the caller that wants to pay for it. The wiring itself is two lines — the
+`dossier` seam of `assemble_context` already existed and was built for this.
+
+## 2026-08-03: F071 T003 — the recall harness lives in the package, not the tests
+The feature file names the harness a deliverable other features reuse (F079).
+A harness only the test file can reach is not a deliverable, so
+`run_recall_harness`, `RECALL_FIXTURE_FACTS` and `recall_report` are public in
+`mission_dossier`. It reports PER FACT — answerable, missing, compressed away —
+and `recall_report` deliberately prints no verdict word: the asymmetry between
+open facts (must survive) and resolved ones (may compress away) is the
+measurement, and collapsing it to pass/fail would hide it.
+
+## 2026-08-03: F071 T002 — the compression contract has NO goal field
+"Never drop the goal" is one of the three verbatim compression rules. A rule
+that only ever appears in a prompt is a hope. `DossierCompression` therefore
+declares `milestones`, `risks`, `decisions` and `next_step` and nothing else:
+the provider has no channel through which to change, shorten or omit the goal,
+and `_rebuild` copies the goal from the dossier that went in. Same idiom as
+`OrchestratorMove` — the authority boundary is the schema's shape, not its
+prose. The other two rules ("keep every open item", "merge resolved risks
+away") CANNOT be expressed as absent fields, so they are enforced after
+validation by `compression_rule_violation`, which refuses the answer and hands
+the caller the honest over-budget fallback.
+
+For the same reason the answer carries TEXT only, no state field: a compression
+cannot promote a milestone to done or reopen a closed risk. `resolved` and
+`outcome` are carried over from the previous dossier by id.
+
+## 2026-08-03: F071 T002 — exactly one call, no parse retry
+The feature specifies ONE compression provider call. `run_structured_call` is
+used with `allow_parse_retry=False`, so "one call" is true of the code and not
+only of the prose. A retry would buy nothing here: the fallback is already a
+complete, correct, honestly-flagged document, so there is no partial result to
+salvage. This is the deliberate difference from the mission compiler and the
+orchestrator loop, which both allow the single retry.
+
+`dossier_compress_draft_v1` is NOT registered in `schemas.models.SCHEMA_REGISTRY`
+— the same call the `dod_draft_v1` / `mission_plan_draft_v1` precedents make. A
+compression answer never leaves this module and is never persisted under its
+tag; what reaches disk is the rewritten dossier markdown.
+
+## 2026-08-03: F071 T001 — the budget counts on the labeled ESTIMATE basis
+P6 says label the counting basis and never invent a counter. The dossier's size
+is counted through the EXISTING seam, `token_economy.estimate_text_tokens`, and
+every count travels as a `DossierTokenCount` carrying `basis` and the actuals
+feature's own confidence vocabulary (`low` — F003 established that a count with
+no provider-measured usage behind it is a character heuristic).
+
+What was deliberately NOT done: using a provider call's `UsageActuals` as the
+dossier's token count. Those actuals measure a whole prompt, not this document,
+so reporting them as the dossier's size would be a more authoritative-looking
+number that is not about the thing it names. A call's measured actuals are
+recorded separately, as that CALL's cost, through the existing
+`orchestrator_loop.measure_call_cost`.
+
+The over-budget FLAG is likewise excluded from the counted body: counting it
+would make the budget check depend on its own previous verdict.
+
+## 2026-08-03: F071 T001 — one update produces one version
+`update()` advances the version by exactly one, whether or not a compression
+ran. The alternative — a second version for the compressed rewrite — would let
+a reader diff pre- against post-compression directly, but it makes "the live
+prompt uses the newest" ambiguous within a single iteration. Version N-1 is
+still on disk, so `diff dossier_v<N-1>.md dossier_v<N>.md` shows what the
+iteration appended AND what the compression dropped, which is the audit the
+feature asks for.
+
 ## 2026-08-03: F070 T003 — `mission run` gains a MODE, it does not replace one
 `remedy mission run` already existed: a facade over the dogfood run loop
 (`dogfood_run.run_mission_loop`), keyed on a RUN id, covered by
