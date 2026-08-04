@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R9 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R9: R8 PASS persisted; R-0192 BUILT (one condition — a dispatch_job ledger entry with no job_id no longer overwrites the attribution; 5 tests incl. the R8 sequence replayed to achieved). Phase 3 re-proof: the chain CLOSES — dispatch, execute, gate RELEASED, declare_milestone_done accepted, TWICE in one run (_milestones_done ['M001','M002']), zero open decisions. Terminal still iteration_limit: the compiler expanded g01's single-milestone goal into THREE plan milestones and each costs 3 iterations (dispatch, R-0191 refusal, declare) against a budget of 6 -> rule 3.3 STOP; campaign NOT run. Two reviewer calls recorded: whether a refused iteration should cost budget, and whether the R1-era order budgets need a v4 re-issue.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R9 (SPLIT, LARGE): persist the R8 PASS +
