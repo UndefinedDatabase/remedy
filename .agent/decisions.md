@@ -3066,3 +3066,47 @@ run keeps instead of spending on a third identical dispatch.
 The streak is per milestone on purpose: two blocked milestones are two first
 attempts, not a stuck loop. All nine tests are provider-free (R-0182), and the
 loop, e2e, era and injection suites are green UNEDITED (259).
+
+## 2026-08-04: F075 R7 Phase 4 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r7 --only 1 --format json`, exit 1, terminal
+`iteration_limit`. The DoD verdict is RELEASED. Phase 4 requires `achieved`
+AND a released verdict, so rule 4.3 applies: STOP, trail recorded here,
+Phase 5 not run.
+
+**The gate releases — the first time in this feature's history.**
+
+    dod_result.json: released: true, blocking_red: [], error: ""
+      check acc-001  kind=pytest  status=passed  exit_code=0
+    run.json: cycles_budget 4, cycles_resolved ["cycles=4/experiment"],
+              template_digest 1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454
+
+R-0189 did what it was for: the mission had a real checkout, the suite ran in
+it, and `acc-001` — the same check that read "file or directory not found:
+tests" in R6 — passed with exit 0. Every ledger entry reads:
+
+    dispatch_job -> dispatched :: job ... dispatched for M001; DoD attached;
+    executed: terminal=all_green job_status=completed
+    cycles=4/experiment OVER-CAP gate=released
+
+**Why it still did not reach `achieved`.** Six iterations, six dispatches of
+M001, every one completing with a RELEASED gate — and the model never chose
+`declare_milestone_done`. Mission end state: `status: active`,
+`_milestones_done: None`, `job_links: 6`. R-0190 correctly did not fire: it
+escalates a blocked STREAK, and nothing here was blocked.
+
+The gap is now a single missing guard, symmetric with the two already built:
+`evaluate_dispatch` refuses a second job while one is IN FLIGHT (R-0186) and
+the loop escalates two consecutive BLOCKED completions (R-0190), but nothing
+refuses a dispatch for a milestone whose latest job COMPLETED with a RELEASED
+gate — the one case where the only correct move is `declare_milestone_done`.
+The refusal message would say exactly that, the same way the in-flight refusal
+already tells the model what to do instead.
+
+Not built here: it is not this round's ordered scope, and Phase 4.3 says stop
+rather than keep going. Recorded for the reviewer as the next fix.
+
+Not done, deliberately: no change to CYCLE_SAFETY_CAP or any config default;
+no order or template edits (v3 stays frozen at set hash
+c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6); no
+weakening of the pass definition; the campaign (Phase 5) NOT run.
