@@ -2745,3 +2745,72 @@ of the pass definition.
 
 Attempt 2 therefore does NOT run this round: Phase 5 is gated on a green
 2a+3, and this is 2c.
+
+## 2026-08-04: F075 R5 — R-0186 execution wiring, and the third link that is missing
+
+Built: (1) a dispatch now RUNS its job, (2) the re-dispatch guard.
+
+1. **`execute` seam on `run_mission`/`execute_move`**, defaulting to the new
+   `execute_dispatched_job`, which is a thin call to the EXISTING
+   `long_run_executor.run_cycles` with `limits_from_config` (so the F046
+   rollout cap still applies exactly as for `remedy job run`),
+   `default_task_step`, the job's own budgets and `unattended=True`. No second
+   executor: a test asserts the function's source names `run_cycles`,
+   `limits_from_config` and `default_task_step`. The move outcome records
+   `terminal=`/`job_status=`/`stop=` so the next iteration's context shows why
+   a milestone is or is not claimable.
+2. **Re-dispatch guard** in `evaluate_dispatch`: a milestone whose job is
+   `pending`/`planned`/`running` refuses a second dispatch and the refusal says
+   what to do instead. `paused` is deliberately EXCLUDED — see below.
+3. **Test-safety (R-0182):** the executor default builds a real
+   `OllamaBuilder`, so every test that dispatches must inject the seam exactly
+   as it already injects `dispatch`. 29 call sites in
+   `test_orchestrator_loop.py` gained `execute=_executed`; `test_mission_e2e.py`
+   gained `_no_execution`. Discovered the honest way: the first Phase-2 gate
+   run HUNG on a real provider call and was killed.
+
+**`paused` is not guarded, and that is a finding-shaped fact, not a
+convenience.** The move schema has five kinds — dispatch_job,
+wait_on_decisions, declare_milestone_done, declare_mission_achieved,
+abort_with_reason — and NO resume kind. Refusing a dispatch for a paused job
+would leave the loop with no legal move that advances the milestone after a
+human answers its decision: a deadlock in place of a defect. Re-dispatch is
+therefore the only forward path out of a paused job today. Recorded for the
+reviewer; NOT fixed here (a resume verb is its own reviewed change).
+
+`test_mission_e2e.py`'s executor double also sets the job it "ran" to
+`paused` and saves it. A real executor always takes a job out of `planned`;
+the double previously left it there, which is only invisible while nothing
+executes. That is test fidelity restored, not an assertion weakened — no
+assertion in that file changed.
+
+### The third link: the DoD gate is not reachable from real execution
+
+Phase 2's premise was "the gate verdict comes from the EXISTING job-execution
+path (job_fulfillment -> run_job_gate)". Verified in source, it does not exist:
+
+- `run_job_gate` has exactly ONE caller, `job_fulfillment.run_job_fulfill`.
+- `run_job_fulfill` has NO production caller — only tests. The CLI merely
+  READS fulfillment records (`list_fulfillment_records`).
+- `job_fulfillment`'s module docstring: "Job Fulfillment Spine **v0** ... v0
+  supports **fixture-demo mode only** (deterministic, no real provider)", and
+  its `fixture_plan_tasks` hardcodes two tasks ("Update CHANGELOG.md", "Add
+  verification evidence summary") regardless of the job.
+- `dod_gate.store_dod` — the only way a job gets a DoD for the gate to read —
+  has NO caller anywhere in `packages/` or `apps/`. Milestone DoDs are written
+  into the MISSION's evidence area by `attach_milestone_dods`, never attached
+  to the dispatched job. `run_job_gate` on such a job returns None by design
+  ("a job with no stored DoD ... changes nothing").
+
+So a DoD verdict cannot be produced by executing a job today, and the two ways
+to make one appear are both refused here: calling the fixture-demo spine would
+make the gauntlet grade a demo (the R2 "grading its own crutch" rule), and
+calling `run_job_gate` from the loop is explicitly forbidden by this round's
+own order ("do not call the gate from the loop directly"). Attaching the DoD at
+dispatch plus a production fulfillment invocation is new product work of the
+same class as the R2 seam and the R4 2c — it is NOT this round's ordered scope.
+
+Consequence: Phase 3's hard gate (terminal `achieved` AND `dod_result.json`
+present) cannot be met by construction. The run was still executed as ordered,
+because whether execution now advances jobs and reaches `achieved` is real
+evidence the reviewer needs; its trail is recorded below.

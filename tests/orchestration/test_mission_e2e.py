@@ -117,6 +117,31 @@ def _two_milestone_plan() -> dict:
     ).model_dump()
 
 
+class _NoExecution:
+    """What the executor seam hands back, reduced to what the loop reads."""
+
+    terminal_status = "all_green"
+    job_status = "completed"
+    stop_reason = ""
+
+
+def _no_execution(job):
+    """The executor seam, injected so this test stays provider-free (R-0182).
+
+    R-0186 made a dispatch also RUN its job through
+    ``long_run_executor.run_cycles``, whose production default builds a real
+    OllamaBuilder. This scenario drives jobs to terminal itself, through
+    ``_finish_job_with_dod_met``, so the double does that job's one other
+    observable thing: it takes the job OUT of ``planned``. A real executor
+    always does — and the R-0186 re-dispatch guard reads exactly that state.
+    ``paused`` is the honest state here: this scenario's second job asks a
+    human, and the loop's next legal move after the answer is a dispatch.
+    """
+    job.state = RunState.PAUSED
+    save_job(job)
+    return _NoExecution()
+
+
 def _finish_job_with_dod_met(job_id: str) -> None:
     """Take a dispatched job to a terminal state with its DoD met.
 
@@ -232,7 +257,7 @@ def e2e(data_root, mission):
     ])
     result_one = run_mission(
         mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
-        call_fn=run_one, control_root_path=control)
+        call_fn=run_one, execute=_no_execution, control_root_path=control)
 
     # Captured BEFORE the answer: what a human walking up to the paused
     # mission would see.
@@ -254,7 +279,7 @@ def e2e(data_root, mission):
     ])
     result_two = run_mission(
         mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
-        call_fn=run_two, control_root_path=control)
+        call_fn=run_two, execute=_no_execution, control_root_path=control)
 
     return {
         "mission_id": mission.id,

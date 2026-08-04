@@ -710,6 +710,7 @@ def run_mission(
     root: Path | None = None,
     dossier: Callable[[Any], str] | None = None,
     dispatch: Callable[..., Any] | None = None,
+    execute: Callable[[Any], Any] | None = None,
     last_report: Callable[[Any], str] | None = None,
     evidence: Callable[[str, str, str], MilestoneEvidence] | None = None,
     escalate: Callable[[str, str, str], str] | None = None,
@@ -736,6 +737,9 @@ def run_mission(
     Seams, all defaulting to the production path:
       ``dispatch``        how a job is created for a milestone
                           (``mission_state.continue_mission``)
+      ``execute``         how a dispatched job is RUN; defaults to
+                          :func:`execute_dispatched_job`, i.e. the existing
+                          ``long_run_executor.run_cycles``
       ``dossier``         how the mission's dossier renders; defaults to the
                           newest stored version of the F071 maintained document
       ``update_dossier``  the dossier refresh, called every iteration
@@ -892,7 +896,7 @@ def run_mission(
 
             feedback = ""
             outcome = execute_move(pid, mission_id, move, root=root,
-                                   dispatch=dispatch, now=now)
+                                   dispatch=dispatch, execute=execute, now=now)
             _record(iteration, context.digest, move.model_dump(), outcome, cost)
             if outcome.terminal:
                 result.terminal, result.detail = outcome.status, outcome.detail
@@ -913,16 +917,71 @@ def run_mission(
     return result
 
 
+#: Job states that mean "this milestone's work has not been executed, or is
+#: still executing". A second dispatch against one of these is the
+#: six-identical-jobs loop campaign attempt 1 recorded (R-0184).
+#:
+#: ``paused`` is deliberately ABSENT. A paused job is one that asked a human
+#: something, and the move schema has NO resume kind — dispatch_job,
+#: wait_on_decisions, declare_milestone_done, declare_mission_achieved,
+#: abort_with_reason. Refusing a dispatch there would leave the loop with no
+#: legal move that advances the milestone once the decision is answered, i.e. a
+#: deadlock in place of a defect. (Observation for the reviewer, deliberately
+#: NOT fixed here: the absent resume verb is why re-dispatch is the only
+#: forward path out of a paused job.)
+IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
+
+
+def execute_dispatched_job(job: Any) -> Any:
+    """Run a freshly dispatched job through the EXISTING multi-cycle executor.
+
+    This is the step T1_F070's Design specified ("run it through the
+    multi-cycle executor -> evaluate") and the build omitted, which is why
+    campaign attempt 1 produced ten missions whose jobs all sat at ``planned``
+    (R-0184). It reimplements nothing: the limits come from
+    ``limits_from_config`` — so the F046 rollout cap still applies exactly as
+    it does for ``remedy job run`` — the task pipeline is ``default_task_step``,
+    and the budgets are the job's own.
+
+    ``unattended=True`` because the gauntlet's whole premise is a run with no
+    operator after the start command: a task decision carrying a safe default
+    is answered from it and recorded in the escalation log (F051), and one
+    without a safe default still waits.
+    """
+    from dataclasses import replace
+
+    from packages.orchestration.config import get_config
+    from packages.orchestration.long_run_executor import (
+        default_task_step,
+        limits_from_config,
+        run_cycles,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.providers.ollama_builder.provider import OllamaBuilder
+
+    limits, _resolved = limits_from_config(get_config())
+    limits = replace(limits, budgets=getattr(job, "budgets", None))
+    return run_cycles(job, limits, OllamaBuilder().build,
+                      task_step=default_task_step,
+                      log=RunLogWriter(job_id=job.id),
+                      unattended=True)
+
+
 def execute_move(project_id: str, mission_id: str, move: Any, *,
                  root: Path | None = None,
                  dispatch: Callable[..., Any] | None = None,
+                 execute: Callable[[Any], Any] | None = None,
                  now: datetime | None = None) -> MoveOutcome:
     """Execute ONE move through Remedy's existing verbs. No verb is reinvented here.
 
     The dispatch path goes through ``mission_state.continue_mission`` — which
     creates the job, builds its plan verify-first and links it to the mission —
-    and then applies the audited unattended approval through
-    ``flight_plan.auto_approve_flight_plan`` when the job has an open plan gate.
+    then applies the audited unattended approval through
+    ``flight_plan.auto_approve_flight_plan`` when the job has an open plan gate,
+    and then RUNS the job through the existing multi-cycle executor
+    (:func:`execute_dispatched_job`). Creating a job and walking away was
+    R-0184: the milestone could never become done, so the loop re-dispatched
+    until its iteration budget ran out.
     """
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ABANDONED,
@@ -973,6 +1032,14 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         detail = f"job {job.id} dispatched for {payload['milestone_id']}"
         if approved:
             detail += " (plan auto-approved, audited)"
+        run = (execute or execute_dispatched_job)(job)
+        # What execution PRODUCED, on the ledger entry, so the next iteration's
+        # context shows why the milestone is or is not claimable.
+        detail += (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
+                   f" job_status={getattr(run, 'job_status', '')}")
+        stop_reason = getattr(run, "stop_reason", "")
+        if stop_reason:
+            detail += f" stop={stop_reason}"
         return MoveOutcome(status="dispatched", detail=detail,
                            job_id=str(job.id))
 
@@ -1111,7 +1178,32 @@ def evaluate_dispatch(mission: Any, milestone_id: str,
     if unmet:
         return (f"milestone {milestone_id} depends on {', '.join(unmet)}, "
                 f"which is not done yet")
+    # R-0186: one milestone, one job at a time. Campaign attempt 1 dispatched
+    # six jobs for the same milestone because nothing refused a second one
+    # while the first was still in flight. The refusal says what to do INSTEAD,
+    # so the next move is an advance rather than the same move again.
+    in_flight = _in_flight_refusal(milestone_id, evidence)
+    if in_flight:
+        return in_flight
     return _era_refusal(evidence)
+
+
+def _in_flight_refusal(milestone_id: str,
+                       evidence: MilestoneEvidence | None) -> str:
+    """Refuse a second job for a milestone whose first one has not finished."""
+    if evidence is None or not evidence.job_id:
+        return ""
+    if evidence.job_state not in IN_FLIGHT_JOB_STATES:
+        return ""
+    if evidence.gate_released:
+        advice = (f"declare_milestone_done for {milestone_id} — its gate has "
+                  f"already released")
+    else:
+        advice = ("wait_on_decisions, or declare_milestone_done once that job "
+                  "finishes and its gate releases")
+    return (f"milestone {milestone_id} already has job {evidence.job_id} in "
+            f"flight (state {evidence.job_state}); a second job for it is "
+            f"refused. Instead: {advice}")
 
 
 def evaluate_milestone_done(mission: Any, milestone_id: str,

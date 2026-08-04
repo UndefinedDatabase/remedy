@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -540,6 +541,27 @@ def _met_evidence(project_id, mission_id, milestone_id):
                              gate_released=True)
 
 
+class _FakeCycleRun:
+    """What `run_cycles` hands back, reduced to what the loop reads.
+
+    R-0186 made execution part of a dispatch. Every test that dispatches must
+    therefore inject this the same way it injects `dispatch`: the production
+    default builds a real OllamaBuilder, and no pytest may take a provider
+    path (R-0182).
+    """
+
+    def __init__(self, terminal_status: str = "all_green",
+                 job_status: str = "completed", stop_reason: str = ""):
+        self.terminal_status = terminal_status
+        self.job_status = job_status
+        self.stop_reason = stop_reason
+
+
+def _executed(job):
+    """The default executor double: the job ran and went green."""
+    return _FakeCycleRun()
+
+
 @pytest.fixture()
 def dispatched():
     """Records every dispatch the loop makes, without creating real jobs."""
@@ -583,7 +605,7 @@ class TestEveryMoveKindIsExercised:
         result = run_mission(
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
             call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
-            dispatch=dispatched, control_root_path=tmp_path / "control")
+            dispatch=dispatched, execute=_executed, control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_WAITING
         assert result.iterations == 1
 
@@ -593,7 +615,7 @@ class TestEveryMoveKindIsExercised:
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="build M001")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert dispatched.seen == [(PROJECT, mission.id, "build M001")]
         assert result.terminal == TERMINAL_ITERATION_LIMIT
@@ -606,7 +628,7 @@ class TestEveryMoveKindIsExercised:
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_milestone_done",
                                          milestone_id="M001")),
-            root=tmp_path, dispatch=dispatched, evidence=_met_evidence,
+            root=tmp_path, dispatch=dispatched, execute=_executed, evidence=_met_evidence,
             control_root_path=tmp_path / "control")
         assert done_milestones(
             load_mission(PROJECT, mission.id, tmp_path)) == ("M001",)
@@ -620,7 +642,7 @@ class TestEveryMoveKindIsExercised:
         result = run_mission(
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_mission_achieved")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_ACHIEVED
         assert load_mission(PROJECT, mission.id, tmp_path).status == "achieved"
@@ -631,7 +653,7 @@ class TestEveryMoveKindIsExercised:
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("abort_with_reason",
                                          reason="the plan is unbuildable")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_ABORTED
         assert result.detail == "the plan is unbuildable"
@@ -646,7 +668,7 @@ class TestTheLoopTerminals:
             call_fn=_scripted(json.dumps({
                 "schema_v": ORCHESTRATOR_MOVE_SCHEMA_V,
                 "kind": "create_mission", "payload": {"goal": "mine now"}})),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_INVALID_MOVE
         assert result.entries[-1].outcome["detail"].startswith("parse-class")
@@ -655,7 +677,7 @@ class TestTheLoopTerminals:
                                                         mission, dispatched):
         result = run_mission(
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
-            call_fn=None, root=tmp_path, dispatch=dispatched,
+            call_fn=None, root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_NO_PROVIDER
         assert len(result.entries) == 1
@@ -666,7 +688,7 @@ class TestTheLoopTerminals:
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="keep going")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_ITERATION_LIMIT
         assert result.iterations == 3
@@ -679,7 +701,7 @@ class TestTheLoopTerminals:
         result = run_mission(
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
             call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
-            dispatch=dispatched, control_root_path=tmp_path / "control")
+            dispatch=dispatched, execute=_executed, control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_NOT_ACTIVE
         assert result.entries == []
 
@@ -702,7 +724,7 @@ class TestHumanOverridesWinInstantly:
             mission.id, LoopLimits(max_iterations=5), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="work")),
-            root=tmp_path, dispatch=dispatch, control_root_path=control)
+            root=tmp_path, dispatch=dispatch, execute=_executed, control_root_path=control)
 
         assert result.terminal == TERMINAL_STOPPED
         # Exactly ONE dispatch: the stop landed at the very next safe point,
@@ -717,7 +739,7 @@ class TestHumanOverridesWinInstantly:
         first = run_mission(
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
-            dispatch=dispatched, control_root_path=control)
+            dispatch=dispatched, execute=_executed, control_root_path=control)
         assert first.terminal == TERMINAL_STOPPED
         assert stop_requested(mission.id, control_root_path=control) is None
 
@@ -738,7 +760,7 @@ class TestTheLedgerCoversEveryIteration:
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="work")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         entries = read_ledger(PROJECT, mission.id, tmp_path)
         assert [e["iteration"] for e in entries] == [1, 2, 3]
@@ -750,7 +772,7 @@ class TestTheLedgerCoversEveryIteration:
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="work")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         for entry in read_ledger(PROJECT, mission.id, tmp_path):
             assert entry["context_digest"].startswith("sha256:")
@@ -765,7 +787,7 @@ class TestTheLedgerCoversEveryIteration:
                 _move_json("dispatch_job", milestone_id="M001", step="build"),
                 _move_json("declare_milestone_done", milestone_id="M001"),
                 _move_json("abort_with_reason", reason="M002 is impossible")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         text = render_ledger(read_ledger(PROJECT, mission.id, tmp_path))
         for expected in ("dispatch_job", "build", "declare_milestone_done",
@@ -866,7 +888,7 @@ class TestEvaluateMilestoneDone:
         result = run_mission(
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_mission_achieved")),
-            root=tmp_path, dispatch=dispatched, evidence=_no_evidence,
+            root=tmp_path, dispatch=dispatched, execute=_executed, evidence=_no_evidence,
             control_root_path=tmp_path / "control")
         assert result.entries[0].outcome["status"] == OUTCOME_REFUSED
         assert "still open" in result.entries[0].outcome["detail"]
@@ -882,7 +904,7 @@ class TestRefusalRePromptsOnceThenEscalates:
             _move_json("wait_on_decisions"))
         result = run_mission(
             mission.id, LoopLimits(max_iterations=4), project_id=PROJECT,
-            call_fn=call_fn, root=tmp_path, dispatch=dispatched,
+            call_fn=call_fn, root=tmp_path, dispatch=dispatched, execute=_executed,
             evidence=_no_evidence, control_root_path=tmp_path / "control")
         # The refusal was recorded, and the very next prompt carried it back.
         assert result.entries[0].outcome["status"] == OUTCOME_REFUSED
@@ -906,7 +928,7 @@ class TestRefusalRePromptsOnceThenEscalates:
             mission.id, LoopLimits(max_iterations=5), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="again and again")),
-            root=tmp_path, dispatch=dispatched, evidence=_no_evidence,
+            root=tmp_path, dispatch=dispatched, execute=_executed, evidence=_no_evidence,
             escalate=escalate, control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_ESCALATED
         assert len(escalated) == 1
@@ -925,7 +947,7 @@ class TestRefusalRePromptsOnceThenEscalates:
             _move_json("wait_on_decisions"))
         result = run_mission(
             mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
-            call_fn=call_fn, root=tmp_path, dispatch=dispatched,
+            call_fn=call_fn, root=tmp_path, dispatch=dispatched, execute=_executed,
             evidence=_no_evidence, control_root_path=tmp_path / "control")
         # Prompt 3 follows an ACCEPTED move, so it carries no stale feedback.
         assert SECTION_FEEDBACK in call_fn.prompts[1]
@@ -948,7 +970,7 @@ class TestTheDossierIsUpdatedEveryIteration:
             mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="work")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             update_dossier=lambda p, m, mission: seen.append(m),
             control_root_path=tmp_path / "control")
         assert seen == [mission.id] * 3
@@ -958,7 +980,7 @@ class TestTheDossierIsUpdatedEveryIteration:
         run_mission(
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
-            dispatch=dispatched, control_root_path=tmp_path / "control")
+            dispatch=dispatched, execute=_executed, control_root_path=tmp_path / "control")
         path = ledger_path(PROJECT, mission.id, tmp_path).parent / DOSSIER_FILENAME
         assert path.is_file()
         assert "Ship the thing" in path.read_text()
@@ -969,7 +991,7 @@ class TestTheDossierIsUpdatedEveryIteration:
         run_mission(
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("wait_on_decisions")), root=tmp_path,
-            dispatch=dispatched, control_root_path=tmp_path / "control")
+            dispatch=dispatched, execute=_executed, control_root_path=tmp_path / "control")
         text = (ledger_path(PROJECT, mission.id, tmp_path).parent
                 / DOSSIER_FILENAME).read_text()
         assert "M001 [done]" in text
@@ -993,7 +1015,7 @@ class TestTheMaintainedDossierIsThePromptPrefix:
         return run_mission(
             mission.id, LoopLimits(max_iterations=iterations),
             project_id=PROJECT, call_fn=_scripted(move), root=tmp_path,
-            dispatch=dispatched, control_root_path=tmp_path / "control",
+            dispatch=dispatched, execute=_executed, control_root_path=tmp_path / "control",
             **kwargs)
 
     def test_the_newest_version_is_the_byte_prefix_of_the_mission_state(
@@ -1120,7 +1142,7 @@ class TestTheEraCorpusRefusesToAdvance:
             mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_milestone_done",
                                          milestone_id="M001")),
-            root=tmp_path, dispatch=dispatched, evidence=evidence,
+            root=tmp_path, dispatch=dispatched, execute=_executed, evidence=evidence,
             escalate=lambda p, m, r: "d1",
             control_root_path=tmp_path / "control")
 
@@ -1141,7 +1163,7 @@ class TestTheEraCorpusRefusesToAdvance:
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="carry on")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             evidence=lambda p, m, ms: MilestoneEvidence(handback=handback),
             control_root_path=tmp_path / "control")
         assert result.entries[0].outcome["status"] == OUTCOME_REFUSED
@@ -1156,7 +1178,7 @@ class TestTheEraCorpusRefusesToAdvance:
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_milestone_done",
                                          milestone_id="M001")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             evidence=lambda p, m, ms: MilestoneEvidence(
                 job_id="j1", job_state="completed", gate_released=True,
                 handback=clean),
@@ -1172,7 +1194,7 @@ class TestMilestoneAttributionComesFromTheLedger:
             mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
                                          step="build M001")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert dispatched_job_for(PROJECT, mission.id, "M001",
                                   tmp_path) == "job-0001"
@@ -1197,7 +1219,7 @@ class TestAPlanLessMissionCannotBeDeclaredAchieved:
         result = run_mission(
             plan_less.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_mission_achieved")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         outcome = result.entries[0].outcome
         assert outcome["status"] == OUTCOME_REFUSED
@@ -1207,7 +1229,7 @@ class TestAPlanLessMissionCannotBeDeclaredAchieved:
         run_mission(
             plan_less.id, LoopLimits(max_iterations=1), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_mission_achieved")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             control_root_path=tmp_path / "control")
         assert load_mission(PROJECT, plan_less.id, tmp_path).status == "active"
 
@@ -1217,7 +1239,7 @@ class TestAPlanLessMissionCannotBeDeclaredAchieved:
         result = run_mission(
             plan_less.id, LoopLimits(max_iterations=5), project_id=PROJECT,
             call_fn=_scripted(_move_json("declare_mission_achieved")),
-            root=tmp_path, dispatch=dispatched,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
             escalate=lambda p, m, reason: escalated.append(reason) or "d1",
             control_root_path=tmp_path / "control")
         assert result.terminal == TERMINAL_ESCALATED
@@ -1414,3 +1436,142 @@ class TestTheIterationBoundary:
         body = json.loads(self._postmortems(tmp_path, mission.id)[0]
                           .read_text(encoding="utf-8"))
         assert body["failure_class"] == "io_failure"
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0186 — the loop executes what it dispatches
+# ---------------------------------------------------------------------------
+#
+# Campaign attempt 1 recorded ten missions whose jobs all sat at `planned`: the
+# loop created work and walked away, so no milestone could become done and the
+# DoD gate was never reached. T1_F070's Design specified the executor step
+# ("run it through the multi-cycle executor -> evaluate"); this is that step.
+# Every test here injects the executor seam — no pytest may take a provider
+# path (R-0182).
+
+
+class TestTheLoopExecutesWhatItDispatches:
+
+    def _run(self, tmp_path, mission, execute, dispatched, **kw):
+        return run_mission(
+            mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+            root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+            execute=execute,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="build the core")), **kw)
+
+    def test_the_dispatched_job_is_executed_in_the_same_iteration(
+            self, tmp_path, mission, dispatched):
+        seen: list[Any] = []
+
+        def execute(job):
+            seen.append(job)
+            return _FakeCycleRun()
+
+        self._run(tmp_path, mission, execute, dispatched)
+        assert len(seen) == 1, "exactly one execution per dispatch"
+        assert str(seen[0].id) == "job-0001", "the job just created, not another"
+
+    def test_what_execution_produced_is_on_the_ledger(self, tmp_path, mission,
+                                                      dispatched):
+        """The next iteration's context has to show WHY a milestone is or is
+        not claimable, so the outcome carries the executor's own verdict."""
+        def execute(job):
+            return _FakeCycleRun(terminal_status="all_green",
+                                 job_status="completed")
+
+        self._run(tmp_path, mission, execute, dispatched)
+        detail = read_ledger(PROJECT, mission.id, tmp_path)[0]["outcome"]["detail"]
+        assert "executed: terminal=all_green" in detail
+        assert "job_status=completed" in detail
+
+    def test_a_stop_reason_from_the_executor_is_recorded(self, tmp_path, mission,
+                                                         dispatched):
+        def execute(job):
+            return _FakeCycleRun(terminal_status="stopped",
+                                 job_status="paused", stop_reason="budget")
+
+        self._run(tmp_path, mission, execute, dispatched)
+        detail = read_ledger(PROJECT, mission.id, tmp_path)[0]["outcome"]["detail"]
+        assert "stop=budget" in detail
+
+    def test_a_raising_executor_degrades_through_the_boundary(
+            self, tmp_path, mission, dispatched):
+        """Execution lives INSIDE the R3 boundary: it must not escape."""
+        def execute(job):
+            raise OSError("the executor died mid-cycle")
+
+        result = self._run(tmp_path, mission, execute, dispatched)
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        assert "the executor died mid-cycle" in result.detail
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert entries[-1]["outcome"]["status"] == TERMINAL_ITERATION_FAILED
+        body = json.loads(sorted(mission_evidence_dir(PROJECT, mission.id, tmp_path)
+                                 .rglob("postmortem.json"))[0]
+                          .read_text(encoding="utf-8"))
+        assert body["failure_class"] == "io_failure"
+
+    def test_the_production_default_is_the_existing_executor(self):
+        """No second executor: the default is long_run_executor.run_cycles,
+        reached through one named function that reuses limits_from_config."""
+        import inspect
+
+        from packages.orchestration.orchestrator_loop import (
+            execute_dispatched_job,
+        )
+        source = inspect.getsource(execute_dispatched_job)
+        assert "run_cycles" in source
+        assert "limits_from_config" in source
+        assert "default_task_step" in source
+
+
+class TestTheReDispatchGuard:
+    """One milestone, one job at a time (R-0186)."""
+
+    def _evidence(self, state: str, released=None):
+        return MilestoneEvidence(job_id="job-0001", job_state=state,
+                                 gate_released=released)
+
+    @pytest.mark.parametrize("state", ["pending", "planned", "running"])
+    def test_a_second_job_is_refused_while_the_first_is_in_flight(
+            self, mission, state):
+        refusal = evaluate_dispatch(mission, "M001", self._evidence(state))
+        assert "already has job job-0001 in flight" in refusal
+        assert state in refusal
+
+    def test_the_refusal_says_what_to_do_instead(self, mission):
+        refusal = evaluate_dispatch(mission, "M001", self._evidence("planned"))
+        assert "wait_on_decisions" in refusal
+        assert "declare_milestone_done" in refusal
+
+    def test_a_released_gate_is_told_to_declare_done(self, mission):
+        refusal = evaluate_dispatch(mission, "M001",
+                                    self._evidence("running", released=True))
+        assert "declare_milestone_done for M001" in refusal
+
+    @pytest.mark.parametrize("state", ["completed", "failed", "cancelled"])
+    def test_a_terminal_job_allows_a_new_dispatch(self, mission, state):
+        assert evaluate_dispatch(mission, "M001", self._evidence(state)) == ""
+
+    def test_a_paused_job_still_allows_a_dispatch(self, mission):
+        """The move schema has no resume kind, so refusing here would deadlock
+        the mission instead of guarding it."""
+        assert evaluate_dispatch(mission, "M001", self._evidence("paused")) == ""
+
+    def test_a_milestone_with_no_job_is_untouched(self, mission):
+        assert evaluate_dispatch(mission, "M001", MilestoneEvidence()) == ""
+
+    def test_the_six_identical_dispatches_are_now_impossible(
+            self, tmp_path, mission, dispatched):
+        """The exact R-0184 shape: the model asks for the same milestone again
+        while its job has not advanced."""
+        moves = _scripted(_move_json("dispatch_job", milestone_id="M001",
+                                     step="build the core"))
+        in_flight = MilestoneEvidence(job_id="job-0001", job_state="planned")
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=6), project_id=PROJECT,
+            root=tmp_path, dispatch=dispatched, execute=_executed,
+            evidence=lambda p, m, ms: in_flight, call_fn=moves)
+        # First refusal re-prompts once, the second escalates — never six jobs.
+        assert result.terminal == TERMINAL_ESCALATED
+        assert len(dispatched.seen) == 0
