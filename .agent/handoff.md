@@ -1,60 +1,40 @@
-# Handback — F075 R3: R2 PASS persisted, R-0179/R-0180 fixed, run_mission boundary, all four injections live, campaign attempt 1 recorded (0/10).
+# Handback — F075 R4: R3 PASS persisted, R-0185 + R-0183 fixed, R-0184 diagnosed. STOPPED on rule 2c; attempt 2 not run.
 
-HEAD 0a2ce17c · `P/`=packages/orchestration/ `T/`=tests/orchestration/ `S/`=scripts/
+HEAD 0ccf44d7 · `P/`=packages/orchestration/ `T/`=tests/orchestration/
 
 ## Range
-Review of ef23e274..0a2ce17c (8 commits, incl. this one).
+Review of a4cb91ca..0ccf44d7 (5 commits, incl. this one).
 
 ## Commits
 
-### c95f23db chore(f075): persist the R2 PASS, register R-0179/R-0180
+### e5ca780e chore(f075): persist the R3 PASS, register R-0181..R-0185
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/authored/f075-r3-{1,2,3}.md | +170 | saved first |
-| .agent/{live_review,plan,context,last_block}.md | +360/-244 | applied; block verbatim |
+| .agent/authored/f075-r4-{1,2,3}.md | +170 | saved first |
+| .agent/{live_review,plan,context,last_block}.md | +398/-286 | applied; block verbatim |
 
-### 587ec34a fix(f075): a never-fired injection is a rejected disposition (R-0179)
+### 7202beca fix(f075): classify transport and machine failures instead of unknown (R-0185)
 | Path | +/- | Reason |
 | --- | --- | --- |
-| P/gauntlet_{evaluator,injection}.py | +12/-3 | `injection_never_fired` -> REJECTED |
-| T/test_gauntlet_injection.py | +34/-2 | pin + end-to-end verdict |
-| .agent/{decisions,live_review}.md | +22 | pre-freeze rationale, Done: R-0179 |
+| P/failure_postmortem.py | +56 | ConnectionError->provider_unavailable; new `io_failure`; 2 predicates |
+| T/test_failure_postmortem.py | +89 | per-class + falsification; +1 reachability producer |
+| T/test_orchestrator_loop.py | +40/-2 | both injected shapes end-to-end |
+| .agent/decisions.md | +37 | taxonomy rationale + the 2 touched tests |
 
-### 97b6708a fix(f075): a dying order no longer takes the campaign with it (R-0180)
+### 364c68ef fix(f075): an unmeasured token count says so in both matrix formats (R-0183)
 | Path | +/- | Reason |
 | --- | --- | --- |
-| P/gauntlet_runner.py | +63/-12 | per-order boundary; `body` bound before try |
-| T/test_gauntlet_runner.py | +58 | crash path raising; run_order raising |
-| .agent/live_review.md | +8 | Done: R-0180 |
+| P/gauntlet_{evidence,evaluator,matrix}.py | +56/-7 | `tokens_measured`; md "unmeasured", json null+source |
+| T/test_gauntlet_{evidence,matrix}.py | +73 | measured/unmeasured/true-zero cases |
+| fixtures/gauntlet/golden/matrix.json | +9 | REGENERATED (declared below) |
+| .agent/decisions.md | +21 | rendering-only rationale |
 
-### d5213ad3 test(f075): pin the recorded set to the two mishandlings it records
+### 0ccf44d7 docs(f075): R-0184 diagnosis — the loop creates jobs it never executes
 | Path | +/- | Reason |
 | --- | --- | --- |
-| T/test_gauntlet_evaluator.py | +11/-1 | the R-0179 gate fix (see Verification) |
+| .agent/decisions.md | +76 | the analysis with raw quotes; rule 2c |
 
-### 995b64ea feat(f075): run_mission catches an iteration failure and ends honestly
-| Path | +/- | Reason |
-| --- | --- | --- |
-| P/orchestrator_loop.py | +149/-71 | the boundary + `record_iteration_failure` |
-| T/test_orchestrator_loop.py | +138 | 11 boundary tests |
-| .agent/decisions.md | +43 | terminal name, scope, no-retry, PM place |
-
-### 35cdc031 feat(f075): drive all four injection classes at their existing seams
-| Path | +/- | Reason |
-| --- | --- | --- |
-| P/gauntlet_injection.py | +190/-65 | `RaiseOnceInjector`, `InjectedSeams`, facts |
-| P/gauntlet_runner.py | +47/-8 | dispatch/update_dossier seams in RunnerDeps |
-| T/test_gauntlet_{injection,runner,self_run}.py | +318/-89 | all four driven; preflight tests |
-| .agent/decisions.md | +36 | seam wiring + test-safety lesson |
-
-### 0a2ce17c chore(f075): keep attempt 1 matrix and land live reports in the evidence area
-| Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/gauntlet/attempt-01/matrix.{md,json} | +895 | the KEPT campaign artifact |
-| S/self_run_gauntlet.py + its test | +38 | `--live` writes the matrix, pinned |
-| .agent/decisions.md | +25 | why it was written after the fact |
-
-### <this> chore(f075): handback R3
+### <this> chore(f075): handback R4
 | Path | +/- | Reason |
 | --- | --- | --- |
 | .agent/handoff.md | rewrite | this handback (R-0149 self-ref) |
@@ -62,65 +42,49 @@ Review of ef23e274..0a2ce17c (8 commits, incl. this one).
 
 ## External actions
 - `git push` after every phase. No PR (comes at closure).
-- `self_run_gauntlet.py --live <scratch>/gauntlet-attempt-01 --format both` -> exit 1, 10 runs recorded. Evidence root OUTSIDE the repo; only matrix.md + matrix.json committed.
+- `self_run_gauntlet.py --live <scratch>/diag-r0184 --only 1 --format json` -> exit 1, `iteration_limit`. Diagnostic only; evidence outside the repo, nothing committed from it. No attempt-2 invocation (gated on a green 2a+3; fork was 2c).
 
 ## Verification
 All `python3 -m pytest <path> -q`.
 
     $ tests/cli/test_golden_path.py  ->  42 passed, exit 0  (P1 gate)
-    $ T/test_gauntlet_{injection,runner,evaluator}.py  ->  RED FIRST: 1 failed, 110 passed, exit 1
-      test_the_recorded_set_covers_both_named_mishandlings: "Extra items in the right set: 'injection_never_fired'" — my own R-0179 change; a 2nd assertion pinned the same closed set. Fixed in d5213ad3, rerun -> 111 passed, exit 0  (P2 gate)
-    $ T/test_orchestrator_loop.py T/test_mission_e2e.py T/test_era_integrity.py  ->  184 passed, exit 0  (P3 gate; real filenames, e2e+era added as a stricter check)
-    $ T/test_gauntlet_{injection,runner}.py T/test_self_run_gauntlet.py  ->  86 passed, exit 0  (P4 gate)
-    $ the seven harness files  ->  235 passed, exit 0  (P5 gate; goldens UNCHANGED, nothing regenerated) — re-run after the P6 CLI fix -> 236 passed, exit 0
+    $ T/test_failure_postmortem.py T/test_orchestrator_loop.py  ->  RED FIRST: 1 failed, 245 passed
+      test_a_class_it_cannot_determine_is_recorded_as_unknown: "assert 'provider_unavailable' == 'unknown'" — my own R3 test used "HTTP 503" as its unclassifiable example, which IS the dishonest unknown R-0185 fixes. Input changed, assertion unchanged. Rerun -> 246 passed, exit 0  (P2 gate)
+    $ T/test_gauntlet_{evidence,matrix,evaluator}.py  ->  123 passed, exit 0  (P3 gate)
+    $ the seven harness files  ->  244 passed, exit 0
     $ tests/cli/test_golden_path.py  ->  42 passed, exit 0  (canary)
     $ git status --porcelain  ->  empty
 
-## Campaign attempt 1 — preconditions and result
-Preconditions: porcelain empty; HEAD 35cdc031 == origin; ollama reachable (`orchestrator.model` unset, planner default); set_hash `d19c999a…8058fdc0` over ten orders; `preflight_injections` -> `[]`. Evidence root (NOT committed): `<session scratch>/gauntlet-attempt-01`; ~70 min wall.
-
-Summary table, verbatim from the committed matrix.md:
-
-    | run | order | kind | terminal | flawless | interventions | wall | tokens in/out |
-    | --- | --- | --- | --- | --- | --- | --- | --- |
-    | run-01-g01-pure-code-change | g01-pure-code-change | pure_code_change | iteration_limit | NO | 0 | 323.9s | 0/0 |
-    | run-02-g02-test-add | g02-test-add | test_add | iteration_limit | NO | 0 | 420.4s | 0/0 |
-    | run-03-g03-small-app-feature-smoke | g03-small-app-feature-smoke | small_app_feature_with_smoke | iteration_limit | NO | 0 | 229.1s | 0/0 |
-    | run-04-g04-doc-generation | g04-doc-generation | doc_generation | iteration_limit | NO | 0 | 495.6s | 0/0 |
-    | run-05-g05-two-milestone-mission | g05-two-milestone-mission | two_milestone_mission | iteration_limit | NO | 0 | 273.2s | 0/0 |
-    | run-06-g06-provider-api-error-mid-move | g06-provider-api-error-mid-move | pure_code_change | iteration_failed | NO | 0 | 211.9s | 0/0 |
-    | run-07-g07-truncated-model-response | g07-truncated-model-response | test_add | iteration_limit | NO | 0 | 587.9s | 0/0 |
-    | run-08-g08-harness-death-mid-dispatch | g08-harness-death-mid-dispatch | small_app_feature_with_smoke | iteration_failed | NO | 0 | 377.9s | 0/0 |
-    | run-09-g09-harness-death-mid-write | g09-harness-death-mid-write | two_milestone_mission | iteration_failed | NO | 0 | 151.1s | 0/0 |
-    | run-10-g10-escalate-then-finish | g10-escalate-then-finish | doc_generation | iteration_limit | NO | 0 | 734.4s | 0/0 |
-
-**0/10 flawless. NOT A PASS — reported, not gated.** Criteria held: start_command_only 10/10, host_data_root_untouched 10/10, injections_degraded 10/10, no_open_decisions 10/10, no_era_defect_classes 10/10, evidence_well_formed 10/10; no_unknown_postmortems 7/10; terminal_green 0/10; dod_blocking_green 0/10.
-Attempt 1 says: (a) nothing reached `achieved` in budget and no DoD gate ever ran — the first real finding, for an R4 fix order; (b) all four faults FIRED and each degraded to `ledgered_failure` — the 2026-08-03 addition met live, the R3 boundary doing its job on three; (c) the raise-class runs lose `no_unknown_postmortems` because `failure_postmortem` reads "HTTP 503" as `unknown` (predicted in decisions.md BEFORE the run, not tuned around). Tokens 0/0 = the loop measured none, so none was written (R-0178); real spend is non-zero.
+## R-0184 diagnosis (full text + raw quotes: .agent/decisions.md)
+One `--only 1` live run reproduced attempt 1's g01 exactly.
+- (a) **The model is not the blocker**: six schema-valid `dispatch_job` moves, on-topic rationales, none refused.
+- (b) All six dispatched jobs sit at `state=planned`, tasks built, never touched. `execute_move` is `create = dispatch or continue_mission` — creation is where it stops.
+- (c) `declare_milestone_done` never becomes true (needs a finished job + released gate), so dispatch stays the only useful move. `evaluate_dispatch` refuses done/unknown/unmet-deps milestones but NOT one with an in-flight job -> mission ends `active`, `_milestones_done=None`, `job_links=6`.
+- (d) The DoD gate is **never invoked**: no `dod.json`/`dod_result.json` anywhere; `run_job_gate`'s one caller is `job_fulfillment.py:1003`, part of job execution.
+- **Root cause:** the loop's docstring names the verb map ("`continue_mission` dispatches, `long_run_executor` executes, `dod_gate` evaluates") but it imports `long_run_executor` only for `next_cycle_index` and never calls `run_cycles`. T1_F070's Design specifies that step; the build omits it.
+- **Fork -> 2c, STOP.** Closing it = running each job through `run_cycles` in the loop with budgets, stop/safe-point handling and cycle accounting, then the gate verdict, plus a re-dispatch guard: F070's missing half, product work with its own tests. NOT done: no `orchestrator.model` change (model is not the blocker; config defaults by machine are do-not-touch), no order edits, no weakened pass definition.
 
 ## Authored-text proofs
 `sha256sum` on disk vs the committed `.agent/authored/` file:
-- r3-1 `f1224711…720d97ae` == live_review.md AT the apply commit c95f23db (later appends are the permitted Done-marks only) · r3-2 `918012f5…6c5699e8` == plan.md · r3-3 `47e68f9d…5b2492af` == context.md
+- r4-1 `941af73a…53811d8d` == live_review.md AT the apply commit e5ca780e · r4-2 `a4a90b75…1b2fb428` == plan.md · r4-3 `e975c006…3ff5b8bc0` == context.md
 
 ## Deviations & assumptions
-- **Two commits over the 500-line cap, both declared.** 35cdc031 (753): `build_injectors` changing shape breaks three test files at once, so any split leaves a red intermediate commit — inseparable. 0a2ce17c (958): 895 of its lines are the generated campaign artifact the block orders committed whole. Per AGENTS.md the second is a Medium finding; I am reporting it rather than rewriting pushed history.
-- **A test started a real campaign.** When the preflight stopped refusing, the R2-era `--live` CLI test fell through to production deps and ran real missions inside pytest. Killed in ~2 min. Host isolation HELD (every write landed in the run's own root under tmp_path; porcelain clean, real data root untouched) but real provider calls were made. Both obsolete tests are replaced by preflight-level ones that cannot start a campaign; recorded in decisions.md.
-- **Escalation not used by the boundary**: F051 escalation asks a human a question; a raised failure is a failure to ledger. Honest terminal instead (decisions.md).
-- **Attempt 1's matrix was written after the invocation**, from evidence already recorded and proven byte-identical to what the run printed. No rerun, no order edit; `--live` now writes it itself.
-- Not taken unilaterally: the matrix reports the injections criterion but not per-fault dispositions (those live in each run.json).
-- Handoff cap: 128 lines / ~2.3k tokens against 100 / 800. Eight mandatory commit tables plus the verbatim campaign table cost that alone; declared, no section dropped.
+- **Golden regeneration declared:** `golden/matrix.json` +9 lines (one `tokens_source` per run). `golden/matrix.md` byte-identical — every fixture is measured, so the new wording appears only in the new tests' own evidence. No fixture edited.
+- **Two existing tests touched by EXTENSION, not weakening** (per-test in decisions.md): a producer added for `IO_FAILURE`; the pinned-unknown loop test given a genuinely unrecognisable input.
+- `ConnectionError` maps to the EXISTING `provider_unavailable`; only `io_failure` is new. F001's retry predicates untouched — widening those changes retry behaviour, not this finding.
+- All commits under 500 lines; the oversize exemption stays spent (R-0181). Handoff cap: 91 lines / ~1.5k tokens against 60 / 800 — declared, no section dropped. Five mandatory commit tables, the ordered R-0184 summary and the item table cost that; the full analysis lives in decisions.md rather than here.
 
 ## Item status
 | Item | Status | Reason |
 | --- | --- | --- |
-| P1 persist R2 PASS | done | |
-| P2.1 R-0179 | done | |
-| P2.2 R-0180 | done | |
-| P2.3 gate | done | red first, fixed, exit 0 |
-| P3 run_mission boundary | done | |
-| P4 unblock three injections | done | |
-| P5 full harness gate | done | goldens unchanged |
-| P6 campaign attempt 1 | done | 0/10, matrix committed |
-| P7 handback | done | |
+| P1 persist R3 PASS | done | |
+| P2 R-0185 | done | red first, cause explained, rerun exit 0 |
+| P3 R-0183 | done | goldens regenerated, declared |
+| P4 R-0184 diagnosis | done | fork = 2c |
+| P4.2a bounded fix | skipped | not a bounded bug — see analysis |
+| P4.3 cheap re-proof | skipped | gated on 2a |
+| P5 attempt 2 | skipped | gated on a green 2a+3 |
+| P6 handback | done | |
 
 ## Next
-Window 1 reviews R3 and rules on the two oversize commits. R4 = targeted fix orders from attempt 1 (nothing reaches `achieved`; no DoD gate runs; transport errors classify as `unknown`), then attempt 2.
+Window 1 rules on R-0184. R5 = wiring `long_run_executor.run_cycles` into the loop (+ the re-dispatch guard) as its own reviewed order, then attempt 2.

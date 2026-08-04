@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R4 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R4: R3 PASS persisted; R-0185 fixed (ConnectionError -> provider_unavailable, new io_failure class, falsification kept); R-0183 fixed (unmeasured tokens render as unmeasured, golden json regenerated +9 lines, declared); R-0184 DIAGNOSED from one cheap --only 1 live run — the loop creates jobs and never executes them (all six stay `planned`, the DoD gate is never invoked, run_cycles is never called). Fork = rule 2c: STOPPED with the analysis, attempt 2 NOT run. Every gate exit 0 (P2 red first on my own R3 test pinning the dishonest unknown).
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R4 (SPLIT, LARGE): persist the R3 PASS +
