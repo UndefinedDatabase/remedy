@@ -2507,3 +2507,46 @@ set needs an ADR. Alternative considered: leave it and rely on
 INJECT_ON_MOVE=1 making a never-fired injection unreachable in practice
 — rejected, that is an accident of one constant defending a pass
 criterion, not a rule.
+
+## 2026-08-04: F075 R3 — the run_mission exception boundary (product change)
+
+Built per the R2 verdict's DECISION. Four naming/shape decisions:
+
+1. **Terminal name: `iteration_failed`** (new constant, alongside the
+   existing honest terminals). Alternatives considered: reuse `aborted`
+   — rejected, that means the orchestrator DECIDED to give up, and a
+   crash is not a decision; reuse `invalid_move` — rejected, that means
+   the provider answered with something unusable, and here the work
+   itself threw. The reader of a matrix must be able to tell those three
+   apart.
+2. **Scope of the catch: `except Exception`, once per iteration**, around
+   the iteration's own work (refresh -> assemble -> provider call ->
+   evaluate -> execute). `KeyboardInterrupt` and `SystemExit` derive
+   from `BaseException` and are therefore NOT caught — an operator
+   stopping Remedy is not a failure to classify. The safe point and the
+   mission-record read stay OUTSIDE the boundary: reading a stop request
+   is not the iteration's work.
+3. **No retry in the boundary.** One catch, then the run ends. Transport
+   retries live below `call_fn` (F001) and a second attempt here would
+   hide them; `run_structured_call` keeps its single PARSE retry, which
+   is a different thing.
+4. **Post-mortem placement: `<mission evidence>/iteration_<n>/`**, scope
+   `job`. `write_postmortem` is create-only by design, so two failing
+   iterations in one mission would otherwise collide over the account of
+   the first. `record_iteration_failure` never raises: a post-mortem that
+   could not be written is reported in the run's detail rather than
+   becoming a second, louder failure on top of the first.
+
+Escalation was considered and NOT used: F051's escalation asks a human a
+QUESTION (the twice-refused-move path). A raised failure is not a
+question, it is a failure to ledger — so the boundary ends the run on an
+honest terminal and leaves escalation where its semantics actually apply.
+
+**Campaign observation, not fixed here:** a realistic HTTP-level provider
+error ("HTTP 503 from the host", "connection refused") classifies as
+`unknown` — `failure_postmortem` recognises missing binaries and timeouts
+but not transport status codes. That will cost the injected
+provider-API-error order its `no_unknown_postmortems` criterion. Left
+alone deliberately: bending the injected error text to force a nicer
+class would be gaming the gate, and finding exactly this kind of thing is
+what attempt 1 is for (a targeted fix order in R4+).

@@ -630,6 +630,12 @@ TERMINAL_NO_PROVIDER = "no_provider"
 TERMINAL_INVALID_MOVE = "invalid_move"
 #: The mission record is not active (paused, achieved or abandoned already).
 TERMINAL_NOT_ACTIVE = "mission_not_active"
+#: The iteration's own work RAISED — the provider call, the dispatch or the
+#: dossier refresh threw rather than returning. Distinct from ``aborted`` (the
+#: orchestrator decided to give up) and from ``invalid_move`` (the provider
+#: answered with something unusable): here the work itself failed, and the run
+#: says so instead of escaping with no account.
+TERMINAL_ITERATION_FAILED = "iteration_failed"
 
 
 @dataclass(frozen=True)
@@ -805,78 +811,100 @@ def run_mission(
             result.iterations = step - 1
             return result
 
-        # The dossier is refreshed BEFORE the context is assembled, so the
-        # prompt's first section and the mission's own dossier file describe
-        # the same state rather than drifting an iteration apart.
-        refresh(pid, mission_id, mission)
+        # ── the iteration's own work, inside the boundary. A raise from the
+        # provider call, from dispatch or from the dossier refresh becomes a
+        # classified post-mortem, this iteration's ledger entry and an honest
+        # terminal — never an escape that leaves the run with no account of
+        # itself. `except Exception` deliberately does NOT catch
+        # KeyboardInterrupt or SystemExit: an operator stopping Remedy is not
+        # a failure to classify. No retry lives here either — transport
+        # retries belong below call_fn (F001).
+        digest = ""
+        cost: dict[str, Any] = {"calls": 0, "usage": None,
+                                "usage_source": USAGE_UNMEASURED}
+        try:
+            # The dossier is refreshed BEFORE the context is assembled, so the
+            # prompt's first section and the mission's own dossier file describe
+            # the same state rather than drifting an iteration apart.
+            refresh(pid, mission_id, mission)
 
-        context = assemble_context(
-            mission,
-            done_milestones=done_milestones(mission),
-            dossier=prefix,
-            last_report=last_report(mission) if last_report else "",
-            open_decisions=open_mission_decisions(mission),
-            feedback=feedback)
-        result.iterations = step
+            context = assemble_context(
+                mission,
+                done_milestones=done_milestones(mission),
+                dossier=prefix,
+                last_report=last_report(mission) if last_report else "",
+                open_decisions=open_mission_decisions(mission),
+                feedback=feedback)
+            digest = context.digest
+            result.iterations = step
 
-        if call_fn is None:
-            outcome = MoveOutcome(
-                status=TERMINAL_NO_PROVIDER,
-                detail="no orchestrator provider is configured, so no move "
-                       "was decided",
-                terminal=True)
-            _record(iteration, context.digest, {}, outcome,
-                    {"calls": 0, "usage": None,
-                     "usage_source": USAGE_UNMEASURED})
-            result.terminal, result.detail = TERMINAL_NO_PROVIDER, outcome.detail
-            return result
+            if call_fn is None:
+                outcome = MoveOutcome(
+                    status=TERMINAL_NO_PROVIDER,
+                    detail="no orchestrator provider is configured, so no move "
+                           "was decided",
+                    terminal=True)
+                _record(iteration, context.digest, {}, outcome,
+                        {"calls": 0, "usage": None,
+                         "usage_source": USAGE_UNMEASURED})
+                result.terminal, result.detail = TERMINAL_NO_PROVIDER, outcome.detail
+                return result
 
-        call = run_structured_call(
-            OrchestratorMove,
-            build_orchestrator_prompt(context, repo_root),
-            call_fn,
-            on_call=on_call,
-            allow_parse_retry=True)
-        cost = measure_call_cost(call)
+            call = run_structured_call(
+                OrchestratorMove,
+                build_orchestrator_prompt(context, repo_root),
+                call_fn,
+                on_call=on_call,
+                allow_parse_retry=True)
+            cost = measure_call_cost(call)
 
-        if not call.ok:
-            outcome = MoveOutcome(
-                status=TERMINAL_INVALID_MOVE,
-                detail=f"parse-class failure: {call.hint}".strip(),
-                terminal=True)
-            _record(iteration, context.digest, {}, outcome, cost)
-            result.terminal, result.detail = TERMINAL_INVALID_MOVE, outcome.detail
-            return result
+            if not call.ok:
+                outcome = MoveOutcome(
+                    status=TERMINAL_INVALID_MOVE,
+                    detail=f"parse-class failure: {call.hint}".strip(),
+                    terminal=True)
+                _record(iteration, context.digest, {}, outcome, cost)
+                result.terminal, result.detail = TERMINAL_INVALID_MOVE, outcome.detail
+                return result
 
-        move: OrchestratorMove = call.value
-        refusal = evaluate_move(mission, move, observe=observe,
-                                project_id=pid, mission_id=mission_id)
+            move: OrchestratorMove = call.value
+            refusal = evaluate_move(mission, move, observe=observe,
+                                    project_id=pid, mission_id=mission_id)
 
-        if refusal:
-            if not feedback:
-                # First refusal: record it and re-prompt ONCE with the reason.
-                _record(iteration, context.digest, move.model_dump(),
-                        MoveOutcome(status=OUTCOME_REFUSED, detail=refusal),
-                        cost)
-                feedback = refusal
-                continue
-            # Second refusal in a row: a human decides, never another retry.
-            handle = hand_over(pid, mission_id, refusal)
-            outcome = MoveOutcome(
-                status=TERMINAL_ESCALATED,
-                detail=f"refused twice in a row ({refusal}); escalated: "
-                       f"{handle}",
-                terminal=True)
+            if refusal:
+                if not feedback:
+                    # First refusal: record it and re-prompt ONCE with the reason.
+                    _record(iteration, context.digest, move.model_dump(),
+                            MoveOutcome(status=OUTCOME_REFUSED, detail=refusal),
+                            cost)
+                    feedback = refusal
+                    continue
+                # Second refusal in a row: a human decides, never another retry.
+                handle = hand_over(pid, mission_id, refusal)
+                outcome = MoveOutcome(
+                    status=TERMINAL_ESCALATED,
+                    detail=f"refused twice in a row ({refusal}); escalated: "
+                           f"{handle}",
+                    terminal=True)
+                _record(iteration, context.digest, move.model_dump(), outcome, cost)
+                result.terminal, result.detail = TERMINAL_ESCALATED, outcome.detail
+                return result
+
+            feedback = ""
+            outcome = execute_move(pid, mission_id, move, root=root,
+                                   dispatch=dispatch, now=now)
             _record(iteration, context.digest, move.model_dump(), outcome, cost)
-            result.terminal, result.detail = TERMINAL_ESCALATED, outcome.detail
-            return result
-
-        feedback = ""
-        outcome = execute_move(pid, mission_id, move, root=root,
-                               dispatch=dispatch, now=now)
-        _record(iteration, context.digest, move.model_dump(), outcome, cost)
-        if outcome.terminal:
-            result.terminal, result.detail = outcome.status, outcome.detail
+            if outcome.terminal:
+                result.terminal, result.detail = outcome.status, outcome.detail
+                return result
+        except Exception as exc:
+            failure_class, detail = record_iteration_failure(
+                pid, mission_id, exc, root=root, iteration=iteration)
+            outcome = MoveOutcome(status=TERMINAL_ITERATION_FAILED,
+                                  detail=detail, terminal=True)
+            _record(iteration, digest, {}, outcome, cost)
+            result.terminal, result.detail = TERMINAL_ITERATION_FAILED, detail
+            result.iterations = step
             return result
 
     result.terminal = TERMINAL_ITERATION_LIMIT
@@ -1241,3 +1269,53 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
                     f"{len(open_ones)} milestone(s) are still open: "
                     f"{', '.join(open_ones)}")
     return ""
+
+
+def record_iteration_failure(project_id: str, mission_id: str,
+                             exc: BaseException, *, root: Path | None = None,
+                             iteration: int = 0) -> tuple[Any, str]:
+    """Classify a raised iteration failure and write its F010 post-mortem.
+
+    Returns ``(failure_class, detail)``. The class comes from
+    :func:`failure_postmortem.classify` — the same pure classifier every other
+    layer uses — and a class it cannot determine comes back as ``unknown``,
+    said out loud rather than invented.
+
+    Never raises. The boundary exists so a run ends honestly; a post-mortem
+    that could not be written must not become a second, louder failure on top
+    of the first. It is reported in the detail instead, so the run's own
+    account still names what happened.
+
+    Each iteration's record lives in its own sub-directory: ``write_postmortem``
+    is create-only by design, and two failing iterations in one mission must not
+    collide over the account of the first.
+    """
+    from packages.orchestration.failure_postmortem import (
+        SCOPE_JOB,
+        FailureSignals,
+        PostmortemV1,
+        classify,
+        write_postmortem,
+    )
+    from packages.orchestration.mission_state import mission_evidence_dir
+
+    text = f"{type(exc).__name__}: {exc}"
+    verdict = classify(FailureSignals(exception=exc, error_text=text))
+    detail = (f"iteration {iteration} failed: {text} "
+              f"(class {verdict.failure_class.value})")
+    try:
+        evidence = mission_evidence_dir(project_id, mission_id, root)
+        target = evidence / f"iteration_{iteration}"
+        target.mkdir(parents=True, exist_ok=True)
+        write_postmortem(target, PostmortemV1(
+            failure_class=verdict.failure_class,
+            signal_source=verdict.signal_source,
+            job_id=mission_id,
+            scope=SCOPE_JOB,
+            raw_reason=f"iteration {iteration}: {text}",
+            terminal_status=TERMINAL_ITERATION_FAILED,
+        ), root=evidence)
+    except Exception as write_exc:  # honest, never fatal
+        detail += (f"; the post-mortem could not be written "
+                   f"({type(write_exc).__name__}: {write_exc})")
+    return verdict.failure_class, detail

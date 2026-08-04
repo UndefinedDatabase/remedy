@@ -51,6 +51,7 @@ from packages.orchestration.mission_state import (
     MissionNotFoundError,
     create_mission,
     load_mission,
+    mission_evidence_dir,
     set_mission_plan,
     set_mission_status,
 )
@@ -72,6 +73,7 @@ from packages.orchestration.orchestrator_loop import (
     TERMINAL_ACHIEVED,
     TERMINAL_ESCALATED,
     TERMINAL_INVALID_MOVE,
+    TERMINAL_ITERATION_FAILED,
     TERMINAL_ITERATION_LIMIT,
     TERMINAL_NO_PROVIDER,
     TERMINAL_NOT_ACTIVE,
@@ -1240,3 +1242,139 @@ class TestAPlanLessMissionCannotBeDeclaredAchieved:
             _move_json("declare_mission_achieved"))
         assert evaluate_move(updated, move, observe=_no_evidence,
                              project_id=PROJECT, mission_id=mission.id) == ""
+
+
+# ---------------------------------------------------------------------------
+# F075 R3 — the exception boundary
+# ---------------------------------------------------------------------------
+#
+# Before this boundary existed, a raise from the iteration's own work escaped
+# run_mission: no ledger entry, no post-mortem, no terminal, and the loop's own
+# docstring promise ("every iteration leaves a ledger entry") was false exactly
+# when a reader would need it most. The DECISION of record is the F075 R2
+# verdict. Three seams can raise — the provider call, the dispatch and the
+# dossier refresh — and each must end the run honestly instead of escaping.
+
+
+class TestTheIterationBoundary:
+    """A raise inside an iteration becomes an account, never an escape."""
+
+    def _boom(self, message: str):
+        def raiser(*args, **kwargs):
+            raise RuntimeError(message)
+        return raiser
+
+    def _postmortems(self, tmp_path, mission_id):
+        return sorted(mission_evidence_dir(PROJECT, mission_id, tmp_path)
+                      .rglob("postmortem.json"))
+
+    def test_a_raising_provider_call_does_not_propagate(self, tmp_path, mission):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            root=tmp_path, call_fn=self._boom("the model host went away"))
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        assert "the model host went away" in result.detail
+
+    def test_a_raising_dispatch_does_not_propagate(self, tmp_path, mission):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            root=tmp_path,
+            call_fn=_scripted(_move_json("dispatch_job", milestone_id="M001",
+                                         step="start the work")),
+            evidence=_no_evidence,
+            dispatch=self._boom("died between the move and the dispatch"))
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        assert "died between the move and the dispatch" in result.detail
+
+    def test_a_raising_dossier_refresh_does_not_propagate(self, tmp_path, mission):
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            root=tmp_path, call_fn=_scripted(_move_json("wait_on_decisions",
+                                                        reason="waiting")),
+            update_dossier=self._boom("died mid-write"))
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        assert "died mid-write" in result.detail
+
+    def test_the_failing_iteration_still_leaves_a_ledger_entry(self, tmp_path,
+                                                              mission):
+        run_mission(mission.id, LoopLimits(max_iterations=3), project_id=PROJECT,
+                    root=tmp_path, call_fn=self._boom("provider exploded"))
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert len(entries) == 1
+        assert entries[0]["outcome"]["status"] == TERMINAL_ITERATION_FAILED
+        assert "provider exploded" in entries[0]["outcome"]["detail"]
+
+    def test_the_failure_is_classified_into_a_postmortem(self, tmp_path, mission):
+        run_mission(mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+                    root=tmp_path, call_fn=self._boom("request timed out"))
+        written = self._postmortems(tmp_path, mission.id)
+        assert [p.parent.name for p in written] == ["iteration_1"]
+        body = json.loads(written[0].read_text(encoding="utf-8"))
+        assert body["failure_class"] == "provider_timeout"
+        assert body["terminal_status"] == TERMINAL_ITERATION_FAILED
+        assert "request timed out" in body["raw_reason"]
+
+    def test_a_class_it_cannot_determine_is_recorded_as_unknown(self, tmp_path,
+                                                               mission):
+        """Said out loud, never invented — and the gauntlet's
+        no-unknown-postmortems criterion is what makes that visible."""
+        run_mission(mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+                    root=tmp_path, call_fn=self._boom("HTTP 503 from the host"))
+        body = json.loads(self._postmortems(tmp_path, mission.id)[0]
+                          .read_text(encoding="utf-8"))
+        assert body["failure_class"] == "unknown"
+
+    def test_the_boundary_adds_no_retry_of_its_own(self, tmp_path, mission):
+        """One catch per iteration, then the run ends. Transport retries are
+        F001's, below call_fn — a second attempt here would hide them."""
+        calls: list[int] = []
+
+        def counting(prompt, attempt):
+            calls.append(attempt)
+            raise RuntimeError("always down")
+
+        run_mission(mission.id, LoopLimits(max_iterations=5), project_id=PROJECT,
+                    root=tmp_path, call_fn=counting)
+        assert calls == [0]
+
+    def test_a_keyboard_interrupt_propagates(self, tmp_path, mission):
+        """An operator stopping Remedy is not a failure to classify."""
+        def interrupted(*args, **kwargs):
+            raise KeyboardInterrupt
+
+        with pytest.raises(KeyboardInterrupt):
+            run_mission(mission.id, LoopLimits(max_iterations=2),
+                        project_id=PROJECT, root=tmp_path, call_fn=interrupted)
+
+    def test_a_system_exit_propagates(self, tmp_path, mission):
+        def exiting(*args, **kwargs):
+            raise SystemExit(2)
+
+        with pytest.raises(SystemExit):
+            run_mission(mission.id, LoopLimits(max_iterations=2),
+                        project_id=PROJECT, root=tmp_path, call_fn=exiting)
+
+    def test_the_mission_record_survives_a_boundary_catch(self, tmp_path, mission):
+        run_mission(mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+                    root=tmp_path, call_fn=self._boom("provider exploded"))
+        reloaded = load_mission(PROJECT, mission.id, tmp_path)
+        assert reloaded.id == mission.id
+        assert reloaded.goal == mission.goal
+        assert mission_plan_of(reloaded) is not None
+
+    def test_an_unwritable_postmortem_is_reported_not_raised(self, tmp_path,
+                                                             mission, monkeypatch):
+        """A post-mortem that cannot be written must not become a second,
+        louder failure on top of the first."""
+        import packages.orchestration.failure_postmortem as pm
+
+        def refuse(*args, **kwargs):
+            raise OSError("the evidence area is read-only")
+
+        monkeypatch.setattr(pm, "write_postmortem", refuse)
+        result = run_mission(mission.id, LoopLimits(max_iterations=2),
+                             project_id=PROJECT, root=tmp_path,
+                             call_fn=self._boom("provider exploded"))
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        assert "the post-mortem could not be written" in result.detail
+        assert "provider exploded" in result.detail
