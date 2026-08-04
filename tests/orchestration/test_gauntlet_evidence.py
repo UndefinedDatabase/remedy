@@ -21,6 +21,7 @@ from packages.orchestration.gauntlet_evidence import (
     DOD_RESULT_FILENAME,
     GAUNTLET_RUN_VERSION,
     RUN_FILENAME,
+    TOKENS_SOURCE_UNMEASURED,
     load_run,
     run_dirs,
 )
@@ -229,3 +230,39 @@ def test_directories_without_a_run_file_are_not_runs(tmp_path: Path) -> None:
 
 def test_missing_evidence_dir_is_no_runs_not_an_error(tmp_path: Path) -> None:
     assert run_dirs(tmp_path / "nowhere") == []
+
+
+# --- R-0183: an unmeasured cost is not a measured zero -----------------------
+
+def test_a_recorded_tokens_object_is_measured(tmp_path: Path) -> None:
+    ev = load_run(write_run(tmp_path, "run-01", FLAWLESS_BODY))
+    assert ev.tokens_measured is True
+    assert (ev.tokens_in, ev.tokens_out) == (120_000, 30_000)
+
+
+def test_absent_tokens_are_not_measured(tmp_path: Path) -> None:
+    body = {k: v for k, v in FLAWLESS_BODY.items() if k != "tokens"}
+    ev = load_run(write_run(tmp_path, "run-01", body))
+    assert ev.tokens_measured is False
+    assert (ev.tokens_in, ev.tokens_out) == (0, 0)
+
+
+def test_a_run_that_declares_itself_unmeasured_is_believed(tmp_path: Path) -> None:
+    """The runner writes tokens_source when the loop measured nothing."""
+    body = dict(FLAWLESS_BODY, tokens_source=TOKENS_SOURCE_UNMEASURED)
+    ev = load_run(write_run(tmp_path, "run-01", body))
+    assert ev.tokens_measured is False
+
+
+def test_a_half_recorded_tokens_object_still_counts_as_measured(tmp_path: Path) -> None:
+    ev = load_run(write_run(tmp_path, "run-01", dict(FLAWLESS_BODY, tokens={"in": 42})))
+    assert ev.tokens_measured is True
+    assert (ev.tokens_in, ev.tokens_out) == (42, 0)
+
+
+def test_a_measured_zero_stays_measured(tmp_path: Path) -> None:
+    """A run that really did spend nothing must not be relabelled unmeasured."""
+    ev = load_run(write_run(tmp_path, "run-01",
+                            dict(FLAWLESS_BODY, tokens={"in": 0, "out": 0})))
+    assert ev.tokens_measured is True
+    assert (ev.tokens_in, ev.tokens_out) == (0, 0)

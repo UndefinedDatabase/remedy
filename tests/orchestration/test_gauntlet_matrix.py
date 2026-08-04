@@ -20,6 +20,7 @@ from packages.orchestration.gauntlet_evaluator import (
 )
 from packages.orchestration.gauntlet_matrix import (
     MATRIX_JSON_FILENAME,
+    TOKENS_UNMEASURED_LABEL,
     MATRIX_MARKDOWN_FILENAME,
     MATRIX_VERSION,
     matrix_json,
@@ -194,3 +195,38 @@ def test_the_golden_json_agrees_with_the_golden_markdown() -> None:
     assert body["passed"] is False
     assert [r["run_dir"] for r in body["runs"]] == [
         line.split(" — ")[0][4:] for line in text.splitlines() if line.startswith("### ")]
+
+
+# ---------------------------------------------------------------------------
+# R-0183: an unmeasured cost says so in both formats
+# ---------------------------------------------------------------------------
+
+def unmeasured_evidence(root: Path) -> Path:
+    evidence = root / "recorded"
+    body = {k: v for k, v in FLAWLESS_BODY.items() if k != "tokens"}
+    write_run(evidence, "run-01", dict(body, order_id="g01",
+                                       tokens_source="unmeasured"), RELEASED_GATE)
+    return evidence
+
+
+def test_the_markdown_says_unmeasured_rather_than_zero_over_zero(tmp_path: Path) -> None:
+    """Attempt 1 rendered ten real runs as "0/0"; a reader could not tell those
+    from ten free ones."""
+    text = render_matrix_markdown(evaluate_evidence_dir(unmeasured_evidence(tmp_path)))
+    assert TOKENS_UNMEASURED_LABEL in text
+    assert "| 0/0 |" not in text
+    assert "· tokens unmeasured" in text
+
+
+def test_the_json_carries_null_and_a_source_rather_than_zero(tmp_path: Path) -> None:
+    run = matrix_json(evaluate_evidence_dir(unmeasured_evidence(tmp_path)))["runs"][0]
+    assert run["tokens_in"] is None and run["tokens_out"] is None
+    assert run["tokens_source"] == "unmeasured"
+
+
+def test_a_measured_run_still_reports_its_numbers(tmp_path: Path) -> None:
+    verdict = evaluate_evidence_dir(build_evidence(tmp_path))
+    run = matrix_json(verdict)["runs"][0]
+    assert (run["tokens_in"], run["tokens_out"]) == (120_000, 30_000)
+    assert run["tokens_source"] == "measured"
+    assert "120000/30000" in render_matrix_markdown(verdict)

@@ -48,6 +48,19 @@ def _wall(seconds: float) -> str:
     return f"{seconds:.1f}s"
 
 
+#: What the tokens column says when nothing counted. The word, not a number:
+#: attempt 1 rendered ten real runs as "0/0" and a reader could not tell that
+#: from ten free ones (R-0183).
+TOKENS_UNMEASURED_LABEL = "unmeasured"
+
+
+def _tokens(run: RunVerdict) -> str:
+    ev = run.evidence
+    if not ev.tokens_measured:
+        return TOKENS_UNMEASURED_LABEL
+    return f"{ev.tokens_in}/{ev.tokens_out}"
+
+
 def postmortem_classes(run: RunVerdict) -> tuple[str, ...]:
     """The failure classes this run recorded, deduplicated, in first-seen order.
 
@@ -98,7 +111,7 @@ def _summary_rows(verdict: GauntletVerdict) -> list[tuple[str, ...]]:
          "yes" if run.flawless else "NO",
          str(len(run.evidence.operator_interventions)),
          _wall(run.evidence.wall_seconds),
-         f"{run.evidence.tokens_in}/{run.evidence.tokens_out}")
+         _tokens(run))
         for run in verdict.runs
     ]
 
@@ -120,8 +133,11 @@ def _run_section(run: RunVerdict) -> list[str]:
         lines.append(f"  - `{command}`")
     classes = postmortem_classes(run)
     lines.append(f"- Postmortem classes: {', '.join(classes) if classes else 'none'}")
-    lines.append(f"- Wall / tokens: {_wall(ev.wall_seconds)} · "
-                 f"{ev.tokens_in} in / {ev.tokens_out} out")
+    if ev.tokens_measured:
+        cost = f"{ev.tokens_in} in / {ev.tokens_out} out"
+    else:
+        cost = f"tokens {TOKENS_UNMEASURED_LABEL}"
+    lines.append(f"- Wall / tokens: {_wall(ev.wall_seconds)} · {cost}")
     lines.append("")
 
     lines.append("Criteria:")

@@ -55,6 +55,8 @@ from packages.orchestration.era_integrity import DEFECT_FINDING_CLASSES
 from packages.orchestration.failure_postmortem import FailureClass
 from packages.orchestration.gauntlet_evidence import (
     DOD_RESULT_FILENAME,
+    TOKENS_SOURCE_MEASURED,
+    TOKENS_SOURCE_UNMEASURED,
     RunEvidence,
     load_run,
     run_dirs,
@@ -215,8 +217,14 @@ class RunVerdict:
             "flawless": self.flawless,
             "terminal_status": self.evidence.terminal_status,
             "wall_seconds": self.evidence.wall_seconds,
-            "tokens_in": self.evidence.tokens_in,
-            "tokens_out": self.evidence.tokens_out,
+            # null, not 0, when nothing counted (R-0183). A machine reader must
+            # not have to guess whether a zero was measured.
+            "tokens_in": self.evidence.tokens_in if self.evidence.tokens_measured
+            else None,
+            "tokens_out": self.evidence.tokens_out if self.evidence.tokens_measured
+            else None,
+            "tokens_source": (TOKENS_SOURCE_MEASURED if self.evidence.tokens_measured
+                              else TOKENS_SOURCE_UNMEASURED),
             "operator_interventions": list(self.evidence.operator_interventions),
             "criteria": {name: self.criteria[name] for name in PASS_CRITERIA},
             "failures": [f.to_json() for f in self.failures],

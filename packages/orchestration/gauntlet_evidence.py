@@ -43,6 +43,13 @@ RUN_FILENAME = "run.json"
 #: reached the gate is a real case, and the evaluator reports it as such.
 DOD_RESULT_FILENAME = "dod_result.json"
 
+#: What a run.json says about where its token counts came from. A run whose
+#: provider reported no usage did not spend nothing — it reported nothing, and
+#: the difference has to survive all the way to the matrix (R-0183: attempt 1
+#: displayed "0/0" on ten runs that had really spent tokens).
+TOKENS_SOURCE_MEASURED = "measured"
+TOKENS_SOURCE_UNMEASURED = "unmeasured"
+
 
 @dataclass(frozen=True)
 class RunEvidence:
@@ -59,6 +66,9 @@ class RunEvidence:
     wall_seconds: float = 0.0
     tokens_in: int = 0
     tokens_out: int = 0
+    #: False when nothing measured the cost. Then ``tokens_in``/``tokens_out``
+    #: are 0 as a placeholder and MUST NOT be rendered as a measured zero.
+    tokens_measured: bool = False
     operator_interventions: tuple[str, ...] = ()
     data_root_hash_before: str = ""
     data_root_hash_after: str = ""
@@ -160,10 +170,17 @@ def load_run(run_dir: Path) -> RunEvidence:
     else:
         return _failed(name, order_id, f"tokens is not an object: {raw_tokens!r}")
 
+    raw_in, raw_out = tokens.get("in", _MISSING), tokens.get("out", _MISSING)
+    declared = str(body.get("tokens_source", "") or "")
+    # Measured means someone actually counted: the object is there, at least one
+    # side of it was recorded, and the run did not itself say "unmeasured".
+    tokens_measured = (declared != TOKENS_SOURCE_UNMEASURED
+                       and (raw_in is not _MISSING or raw_out is not _MISSING))
+
     wall_seconds, wall_error = _as_number(
         body.get("wall_seconds", _MISSING), float, "wall_seconds")
-    tokens_in, in_error = _as_number(tokens.get("in", _MISSING), int, "tokens.in")
-    tokens_out, out_error = _as_number(tokens.get("out", _MISSING), int, "tokens.out")
+    tokens_in, in_error = _as_number(raw_in, int, "tokens.in")
+    tokens_out, out_error = _as_number(raw_out, int, "tokens.out")
     number_error = wall_error or in_error or out_error
     if number_error:
         return _failed(name, order_id, number_error)
@@ -177,6 +194,7 @@ def load_run(run_dir: Path) -> RunEvidence:
         wall_seconds=wall_seconds,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
+        tokens_measured=tokens_measured,
         operator_interventions=_as_str_tuple(body.get("operator_interventions")),
         data_root_hash_before=str(body.get("data_root_hash_before", "")),
         data_root_hash_after=str(body.get("data_root_hash_after", "")),

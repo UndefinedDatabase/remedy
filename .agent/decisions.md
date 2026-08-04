@@ -2648,3 +2648,24 @@ Two existing tests were touched, both by EXTENSION rather than weakening:
   unrecognisable message. The assertion is unchanged and the falsification
   still stands: `ValueError`/`RuntimeError`/`KeyError` and nonsense text
   all still classify as `unknown`.
+
+## 2026-08-04: F075 R4 — R-0183, unmeasured cost is not a measured zero
+
+`RunEvidence` gained `tokens_measured`. Measured means someone actually
+counted: the `tokens` object is present, at least one side of it was
+recorded, and the run did not itself declare `tokens_source:
+"unmeasured"`. A run that really spent zero stays MEASURED — relabelling
+a true zero would be the same lie in the other direction (test pins it).
+
+Rendering only; no pass criterion moved:
+- markdown: the tokens column says `unmeasured`, and the per-run line
+  reads `· tokens unmeasured` instead of `0 in / 0 out`.
+- json: `tokens_in`/`tokens_out` are `null`, and every run payload now
+  carries `tokens_source` ("measured" | "unmeasured") so a machine reader
+  never has to guess whether a zero was counted.
+
+**Golden regeneration declared:** `golden/matrix.json` +9 lines — one
+`tokens_source` key per recorded run. `golden/matrix.md` is byte-identical
+because every recorded fixture carries a measured `tokens` object; the new
+wording only appears when a run is unmeasured, which the new tests cover
+with their own evidence rather than by editing the fixtures.
