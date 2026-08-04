@@ -85,7 +85,7 @@ Held in all ten: start_command_only, no_unknown_postmortems, no_open_decisions, 
 - **`max_cycles` NOT re-sized**: R9 measured those right; an edit without evidence is the guess v4 replaces.
 - **Findings A and B are reported, not fixed** — each needs its own reviewed round; neither is an order edit, and orders stay frozen mid-campaign.
 - All commits under 500 lines; the exemption stays spent (R-0181) — see the force-with-lease note.
-- Handoff cap: 99 lines / ~1.4k tokens against 100 / 800 — token overage declared, no section dropped.
+- Handoff cap: 101 lines / ~1.4k tokens against 100 / 800 — token overage declared, no section dropped.
 
 ## Item status
 | Item | Status | Reason |
