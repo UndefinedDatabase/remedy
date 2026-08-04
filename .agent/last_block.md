@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R10 (SPLIT, LARGE) started.
+OUTCOME: done — F075 R10 complete. R9 PASS persisted; R-0193 and R-0194 built; re-proof achieved+released with a DIRECT declare; set-v4 campaign attempt 02 = 3/10 (first flawless runs), two findings reported for Window 1.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R10 (SPLIT, LARGE): persist the R9 PASS +
