@@ -3227,3 +3227,53 @@ agreeing with itself.
 
 Nothing else rode along in the commit. Loop, e2e and era suites green
 UNEDITED (237).
+
+## 2026-08-04: F075 R9 Phase 3 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r9 --only 1 --format json`, exit 1, terminal
+`iteration_limit`. Gate RELEASED, ZERO open decisions — two of Phase 3's
+three requirements hold, `achieved` does not. Rule 3.3: STOP, trail here,
+campaign not run.
+
+**R-0192 works live, and the whole chain now closes for a milestone.**
+
+    it1: dispatch_job -> dispatched   job 336057db ... DoD attached; executed:
+         terminal=all_green job_status=completed cycles=4/experiment OVER-CAP
+         gate=released
+    it2: dispatch_job -> refused      milestone M001 is already finished: job
+         336057db completed and its Definition of Done RELEASED ...
+    it3: declare_milestone_done -> milestone_done   milestone M001 recorded as done
+    it4: dispatch_job -> dispatched   job 75115e49 ... for M002 ... gate=released
+    it5: dispatch_job -> refused      milestone M002 is already finished ...
+    it6: declare_milestone_done -> milestone_done   milestone M002 recorded as done
+
+`dod_result.json`: released true, `acc-001 passed`. Mission record:
+`_milestones_done: ['M001', 'M002']`. The R8 blocker is gone — the declare
+move that was refused with "no job was ever dispatched" now succeeds, twice.
+
+**Why not `achieved`: a budget-versus-plan-shape mismatch, not a defect.**
+The order g01 states ONE milestone; the mission compiler expanded its goal
+into THREE (`M001, M002, M003`). The loop currently spends THREE iterations
+per milestone — dispatch, the R-0191 refusal, then the declare — so three
+milestones plus the final `declare_mission_achieved` need ten iterations
+against g01's budget of six. It got two milestones done and ran out.
+
+Two things a reviewer could rule on, neither of them mine to take:
+
+1. **The refused dispatch costs an iteration.** The model dispatches, is
+   refused with "declare_milestone_done", then declares. If it declared
+   straight off a released gate each milestone would cost two iterations, and
+   three milestones would fit in seven. The guard makes the model CORRECT; it
+   does not yet make it economical. Options include carrying the released-gate
+   fact more visibly in the assembled context, or not counting a refused
+   iteration against the budget — both are product changes with their own
+   tests.
+2. **Order budgets were set in R1, when nothing executed.** `max_iterations`
+   6 for g01 predates execution, the DoD path and the guards. Raising them is
+   an order edit — forbidden mid-campaign, and set v3 is frozen (set hash
+   c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6), so a
+   re-issue would be v4 with another count reset. Reviewer's call.
+
+Not done, deliberately: no order or template edits, no budget changes, no
+config default touched, no weakening of the pass definition; the campaign
+(Phase 4) NOT run.
