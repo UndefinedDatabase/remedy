@@ -3200,3 +3200,30 @@ Not done, deliberately: no order or template edits (v3 frozen at set hash
 c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6, template
 digest 1c4f41bf...); no config default touched; no weakening of the pass
 definition; the campaign (Phase 4) NOT run.
+
+## 2026-08-04: F075 R9 — R-0192 a refused dispatch is not a dispatch
+
+One condition in `dispatched_job_for`: an entry whose outcome carries no
+`job_id` is skipped instead of overwriting the answer. Everything else in the
+function is untouched — same ledger walk, same milestone filter, same
+last-wins rule among entries that actually produced a job.
+
+Why it was wrong: the move kind and milestone id of a REFUSED dispatch are
+identical to a real one, and only the outcome tells them apart. Before R-0191
+nothing refused a dispatch, so no ledger ever held a refusal beside a real
+dispatch and the unconditional overwrite was never exercised. The R8 re-proof
+is the whole story: `declare_milestone_done` refused with "no job was ever
+dispatched for milestone M001" for a milestone whose job had completed with a
+released gate.
+
+Five tests, all provider-free: real-then-refused keeps the attribution;
+latest-REAL-wins across interleaved refusals; only-refusals still answers ""
+honestly (absence must stay sayable); another milestone's dispatch is not
+borrowed; and the R8 sequence replayed end-to-end — dispatch, refused dispatch
+(R-0191 still firing), declare — now reaching `milestone_done` and then
+`achieved`. That last test derives its evidence from the REAL
+`dispatched_job_for`, which is what makes it load-bearing rather than a mock
+agreeing with itself.
+
+Nothing else rode along in the commit. Loop, e2e and era suites green
+UNEDITED (237).

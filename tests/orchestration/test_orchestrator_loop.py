@@ -1979,3 +1979,104 @@ class TestTheReleasedGateDispatchGuard:
         assert "milestone_done" in statuses
         assert statuses[-1] == TERMINAL_ACHIEVED
         assert dispatched.seen == [], "no job was created for finished work"
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0192 — a refused dispatch is not a dispatch
+# ---------------------------------------------------------------------------
+#
+# The R-0191 guard made refused dispatch_job entries common, and
+# dispatched_job_for kept the LAST such entry's job_id unconditionally — so a
+# refusal (no job_id) erased the real attribution and the next declare move was
+# refused with "no job was ever dispatched" for a milestone that was finished.
+
+
+class TestARefusedDispatchDoesNotEraseTheAttribution:
+
+    def _ledger(self, tmp_path, mission, *entries):
+        for entry in entries:
+            append_ledger_entry(PROJECT, mission.id, entry, tmp_path)
+
+    def _dispatch_entry(self, iteration: int, milestone: str, job_id: str = ""):
+        outcome = {"status": "dispatched" if job_id else OUTCOME_REFUSED,
+                   "detail": "x"}
+        if job_id:
+            outcome["job_id"] = job_id
+        return LedgerEntry(
+            iteration=iteration, context_digest="d",
+            move={"kind": "dispatch_job", "payload": {"milestone_id": milestone}},
+            outcome=outcome, cost={"calls": 0, "usage": None,
+                                   "usage_source": USAGE_UNMEASURED})
+
+    def test_a_real_dispatch_followed_by_a_refusal_keeps_the_attribution(
+            self, tmp_path, mission):
+        self._ledger(tmp_path, mission,
+                     self._dispatch_entry(1, "M001", "job-real"),
+                     self._dispatch_entry(2, "M001"))
+        assert dispatched_job_for(PROJECT, mission.id, "M001",
+                                  tmp_path) == "job-real"
+
+    def test_the_latest_real_dispatch_wins(self, tmp_path, mission):
+        self._ledger(tmp_path, mission,
+                     self._dispatch_entry(1, "M001", "job-one"),
+                     self._dispatch_entry(2, "M001"),
+                     self._dispatch_entry(3, "M001", "job-two"),
+                     self._dispatch_entry(4, "M001"))
+        assert dispatched_job_for(PROJECT, mission.id, "M001",
+                                  tmp_path) == "job-two"
+
+    def test_only_refusals_still_answers_nothing(self, tmp_path, mission):
+        """Honest absence: no job was dispatched, and the answer says so."""
+        self._ledger(tmp_path, mission,
+                     self._dispatch_entry(1, "M001"),
+                     self._dispatch_entry(2, "M001"))
+        assert dispatched_job_for(PROJECT, mission.id, "M001", tmp_path) == ""
+
+    def test_another_milestones_dispatch_is_not_borrowed(self, tmp_path, mission):
+        self._ledger(tmp_path, mission,
+                     self._dispatch_entry(1, "M002", "job-other"),
+                     self._dispatch_entry(2, "M001"))
+        assert dispatched_job_for(PROJECT, mission.id, "M001", tmp_path) == ""
+
+    def test_the_r8_sequence_now_reaches_achieved(self, tmp_path, mission,
+                                                  dispatched):
+        """The live R8 trail, replayed: dispatch -> refused dispatch (R-0191)
+        -> declare. It escalated before this fix; it achieves after it.
+
+        The evidence is derived from the REAL ledger attribution, which is what
+        makes this test load-bearing: with the old unconditional overwrite the
+        refused entry blanks the job id and the declare move is refused.
+        """
+        def observe(project_id, mission_id, milestone_id):
+            job_id = dispatched_job_for(project_id, mission_id, milestone_id,
+                                        tmp_path)
+            if not job_id:
+                return MilestoneEvidence()
+            return MilestoneEvidence(job_id=job_id, job_state="completed",
+                                     gate_released=True)
+
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=True)
+
+        moves = _scripted(
+            _move_json("dispatch_job", milestone_id="M001", step="build it"),
+            # the R-0191 guard refuses this one; the re-prompt carries its advice
+            _move_json("dispatch_job", milestone_id="M001", step="build it again"),
+            _move_json("declare_milestone_done", milestone_id="M001"),
+            _move_json("dispatch_job", milestone_id="M002", step="polish it"),
+            _move_json("declare_milestone_done", milestone_id="M002"),
+            _move_json("declare_mission_achieved"),
+        )
+        result = run_mission(
+            mission.id, LoopLimits(max_iterations=8), project_id=PROJECT,
+            root=tmp_path, dispatch=dispatched, execute=execute,
+            evidence=observe, call_fn=moves)
+
+        assert result.terminal == TERMINAL_ACHIEVED
+        statuses = [e["outcome"]["status"]
+                    for e in read_ledger(PROJECT, mission.id, tmp_path)]
+        assert OUTCOME_REFUSED in statuses, "the R-0191 guard still fires"
+        # The move the R8 run could not get past.
+        assert "milestone_done" in statuses
+        assert statuses[-1] == TERMINAL_ACHIEVED

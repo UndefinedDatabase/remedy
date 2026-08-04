@@ -1308,6 +1308,15 @@ def dispatched_job_for(project_id: str, mission_id: str, milestone_id: str,
     ``dispatch_job`` entry stores the milestone id it was for beside the job id
     it produced. Reading it here means the attribution costs no change to job
     creation, which stays exactly as F056 left it.
+
+    A REFUSED dispatch is not a dispatch (R-0192). Its move kind is still
+    ``dispatch_job`` and its milestone id still matches, but nothing was
+    created, so its outcome carries no job id — and letting it through would
+    overwrite the real answer with "". That is not hypothetical: the R-0191
+    guard made refused dispatches common, and the very next ``declare`` move
+    was refused with "no job was ever dispatched" for a milestone whose job had
+    completed with a released gate. Only an entry that actually produced a job
+    updates the answer.
     """
     job_id = ""
     for entry in read_ledger(project_id, mission_id, root):
@@ -1316,7 +1325,10 @@ def dispatched_job_for(project_id: str, mission_id: str, milestone_id: str,
             continue
         if (move.get("payload") or {}).get("milestone_id") != milestone_id:
             continue
-        job_id = str((entry.get("outcome") or {}).get("job_id", "") or "")
+        produced = str((entry.get("outcome") or {}).get("job_id", "") or "")
+        if not produced:
+            continue
+        job_id = produced
     return job_id
 
 
