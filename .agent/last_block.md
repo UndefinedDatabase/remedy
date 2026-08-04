@@ -1,62 +1,54 @@
-OUTCOME: executed with a STOP — F075 R8: R7 PASS persisted; R-0191 BUILT (evaluate_dispatch refuses a dispatch for a milestone whose latest job completed with a RELEASED gate, refusal naming declare_milestone_done; 9 tests, five suites green unedited). Phase 3 re-proof: the guard fired and the MODEL OBEYED — one dispatch, one refusal, then declare_milestone_done — but the claim was refused because dispatched_job_for lets a REFUSED dispatch_job entry (no job_id) overwrite the real attribution, so the loop escalated -> rule 3.3 STOP; campaign NOT run. Gate still RELEASED (acc-001 passed). Next defect located: a dispatch entry with no job_id is not a dispatch.
+OUTCOME: in progress — F075 R9 (SPLIT, LARGE) started.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
-  10 flawless self-runs, round R8 (SPLIT, LARGE): persist the R7 PASS +
-  R-0191 (the released-gate dispatch guard) + re-proof + the set-v3
-  campaign. Save THIS ENTIRE block verbatim to .agent/last_block.md
-  first (update OUTCOME at handback). You are on
-  feature/f075-self-run-gauntlet at 854a9860. STOP rule: every phase
-  ends with a verification; first red TEST gate -> STOP per AGENTS.md
-  If-Blocked. Phase 3 has its own hard STOP. Commits < 500 lines, NO
-  oversize left (R-0181).
+  10 flawless self-runs, round R9 (SPLIT, LARGE): persist the R8 PASS +
+  R-0192 (the attribution fix) + re-proof + the set-v3 campaign. Save
+  THIS ENTIRE block verbatim to .agent/last_block.md first (update
+  OUTCOME at handback). You are on feature/f075-self-run-gauntlet at
+  09348505. STOP rule: every phase ends with a verification; first red
+  TEST gate -> STOP per AGENTS.md If-Blocked. Phase 3 has its own hard
+  STOP. Commits < 500 lines, NO oversize left (R-0181).
 
-  PHASE 1 — PERSIST THE R7 VERDICT (first commit)
+  PHASE 1 — PERSIST THE R8 VERDICT (first commit)
    1. Save the three AUTHORED TEXT payloads below to
-      .agent/authored/f075-r8-<n>.md (bytes between BEGIN/END markers,
+      .agent/authored/f075-r9-<n>.md (bytes between BEGIN/END markers,
       exclusive, incl. final newline; payload lines at column 0).
       Verify each sha256sum against its BEGIN-marker hash. Mismatch ->
       STOP, report raw sums, apply nothing.
-   2. Apply f075-r8-1 -> .agent/live_review.md, f075-r8-2 ->
-      .agent/plan.md, f075-r8-3 -> .agent/context.md — FULL
+   2. Apply f075-r9-1 -> .agent/live_review.md, f075-r9-2 ->
+      .agent/plan.md, f075-r9-3 -> .agent/context.md — FULL
       replacements, byte-exact from the saved files.
-   3. Commit 1: chore(f075): persist the R7 PASS, register R-0191.
+   3. Commit 1: chore(f075): persist the R8 PASS, register R-0192.
       Gate: python3 -m pytest tests/cli/test_golden_path.py -q ->
       exit 0. Push.
 
-  PHASE 2 — R-0191: THE RELEASED-GATE DISPATCH GUARD (own commit)
-   1. evaluate_dispatch: refuse a dispatch_job for a milestone whose
-      LATEST linked job completed with a RELEASED gate verdict — read
-      the REAL verdict via load_gate_result, never re-derive it. The
-      refusal detail tells the model the only correct move:
-      declare_milestone_done (the existing first-refusal re-prompt
-      carries it; the second-refusal escalation already exists). A
-      milestone whose latest job has no verdict or a blocked one is
-      untouched by this guard (R-0186/R-0190 own those cases).
-   2. Tests (fakes, R-0182): released latest job -> dispatch refused
-      with declare_milestone_done in the detail -> a fake model that
-      follows the instruction achieves the mission end-to-end;
-      blocked latest job -> this guard silent (R-0190 path);
-      in-flight -> R-0186 path unchanged; a NEWER non-released job
-      supersedes an older released one (LATEST rules); ledger shows
-      refusal then declaration. Existing suites green unedited —
-      list any exception per name with reason.
+  PHASE 2 — R-0192: A REFUSED DISPATCH IS NOT A DISPATCH (own commit)
+   Keep this commit to the one condition and its tests — nothing else
+   rides along.
+   1. dispatched_job_for (orchestrator_loop.py): only a dispatch_job
+      entry that actually DISPATCHED (outcome carries a job_id /
+      status dispatched) updates the attribution; a refused entry is
+      skipped, never erasing the real answer.
+   2. Tests (fakes, R-0182): the R8 sequence — dispatch, refused
+      dispatch, declare — now ACHIEVES end-to-end with a released
+      verdict; real-then-refused keeps the attribution; several real
+      dispatches -> the latest REAL one wins; a mission with only
+      refused dispatches still answers "" honestly.
    3. Gate (STOP if red): python3 -m pytest
       tests/orchestration/test_orchestrator_loop.py
       tests/orchestration/test_mission_e2e.py
-      tests/orchestration/test_era_integrity.py
-      tests/orchestration/test_gauntlet_injection.py
-      tests/orchestration/test_gauntlet_runner.py -q -> exit 0. Push.
+      tests/orchestration/test_era_integrity.py -q -> exit 0. Push.
 
   PHASE 3 — RE-PROOF (one order, hard-gated)
    1. python3 scripts/self_run_gauntlet.py --live <fresh root OUTSIDE
       the repo> --only 1 --format json
    2. REQUIRED: terminal `achieved` AND dod_result.json with
-      released: true. Quote the terminal, the verdict fields, the
-      cycles record, the template digest and the declare move's
-      ledger entry in the handoff.
-   3. Either missing -> STOP: commit nothing further, record the
+      released: true AND zero open decisions. Quote the terminal, the
+      verdict fields, the declare move's ledger entry and the full
+      criteria table in the handoff.
+   3. Anything missing -> STOP: commit nothing further, record the
       full evidence trail in .agent/decisions.md, hand back (the
-      R4-R7 STOP precedent).
+      R4-R8 STOP precedent).
 
   PHASE 4 — CAMPAIGN, SET v3 (only after a green Phase 3)
    1. Preconditions in the handoff: porcelain empty, pushed,
@@ -79,10 +71,10 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
    outputs; the Phase 3 proof quoted; if Phase 4 ran, its summary
    table verbatim; sha256 proof per applied reviewer text). Update
    last_block OUTCOME. Completion report ends:
-   "F075 R8 complete — awaiting review." (append "set-v3 campaign
+   "F075 R9 complete — awaiting review." (append "set-v3 campaign
    matrix recorded" if Phase 4 ran).
 
-  --- BEGIN f075-r8-1 sha256=bc4c813c811e2c4c717bbdcc0a11016e92e2123f745a1c4dea3953843657ba3f ---
+  --- BEGIN f075-r9-1 sha256=cde835a274e1dc65ee6d2f7b7b0afc05c882956fd01f1ec86d62c440553c75da ---
   # Live Review — F075 MILESTONE GATE: 10 flawless self-runs (Tier 1)
 
   Branch: feature/f075-self-run-gauntlet
@@ -94,91 +86,83 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   along ONLY as reviewed SPLIT work: exception boundary (R3),
   transport classes (R4), execution wiring (R5), cycles vehicle +
   production DoD path (R6), sample-project world + blocked-gate
-  escalation (R7), the released-gate dispatch guard (R8).
+  escalation (R7), released-gate dispatch guard (R8), the
+  attribution fix (R9).
 
   ## Steps
-  - R1-R6 (SPLIT, LARGE): harness + set + boundary + injections +
-    attempt 1 + execution + cycles vehicle + DoD path — PASS x6
-    (history).
-  - R7 (SPLIT, LARGE): R-0189 (template world, manifest v3) +
-    R-0190 (blocked-streak escalation) built; the gate RELEASED for
-    the first time; compliant 4.3 STOP on the missing
-    released-gate dispatch guard — PASS, see Verdicts.
-  - R8 (SPLIT, LARGE, current): persist R7 verdict + R-0191 (refuse
-    a dispatch for a milestone whose latest job completed with a
-    released gate; the refusal instructs declare_milestone_done) +
+  - R1-R7 (SPLIT, LARGE): harness + set + boundary + injections +
+    attempt 1 + execution + cycles vehicle + DoD path + template
+    world + escalation — PASS x7 (history).
+  - R8 (SPLIT, LARGE): R-0191 built; the model OBEYED the
+    instructive refusal and declared — blocked only by the latent
+    attribution defect the guard exposed; compliant 3.3 STOP —
+    PASS, see Verdicts.
+  - R9 (SPLIT, LARGE, current): persist R8 verdict + R-0192 (a
+    refused dispatch_job entry must not erase the attribution) +
     re-proof (--only 1 must reach achieved WITH a released verdict)
     + the set-v3 campaign from ONE invocation.
-  - R9+: campaign iterations until 10/10 from one invocation; then
+  - R10+: campaign iterations until 10/10 from one invocation; then
     the integration gate per docs/agents/integration_gate.md.
   - Closure per docs/roadmap/STATUS_closure_protocol.md; a passing
     10/10 emits a prepared-but-not-applied config diff + ADR (the
     CYCLE_SAFETY_CAP / default raise — human-applied).
 
   ## Findings
-  - R-0178..R-0188: all fixed and reviewer-verified; R-0181
+  - R-0178..R-0190: all fixed and reviewer-verified; R-0181
     resolved by ruling (exemption SPENT). Done: R-0178 ·
     Done: R-0179 · Done: R-0180 · Done: R-0182 · Done: R-0183 ·
     Done: R-0184 · Done: R-0185 · Done: R-0186 · Done: R-0187 ·
-    Done: R-0188 · R-0181 Resolved.
-  - R-0189 (product, High): the missions' world. Built 2eb5ab46 +
-    0cc11d4d + 7404fdf9 — sample project (7 modules, 30-test green
-    suite, README/CHANGELOG), per-run materialised copy (git init +
-    baseline), manifest v3 folds the template tree digest into the
-    set hash, tamper refused, run.json records the digest; all ten
-    goals audited meaningful, no order edited. Reviewer re-ran the
-    scratch-copy proof personally: 30 passed from a fresh
-    materialisation. The R6 blocker check (acc-001) now PASSES and
-    the gate produced this feature's first RELEASED verdict.
-    Done: R-0189
-  - R-0190 (product, Medium): blocked-streak escalation. Built
-    e19af5e6 — per-milestone consecutive-blocked counter, second
-    block escalates via the existing F051 hand_over, reset on
-    release or other milestone; 9 tests; correctly did NOT fire in
-    the R7 re-proof (nothing was blocked). Done: R-0190
-  - R-0191 (product, High) 2026-08-04, R7 re-proof: six dispatches
-    of M001, every one completed with a RELEASED gate, and the
-    model never chose declare_milestone_done — the guard triad has
-    a hole: in-flight -> refuse+wait (R-0186), blocked x2 ->
-    escalate (R-0190), but completed+released -> nothing. Fix
-    (DECISION below): evaluate_dispatch refuses a dispatch_job for
-    a milestone whose LATEST job completed with a released gate;
-    the refusal detail says the only correct move is
-    declare_milestone_done — the loop's existing first-refusal
-    re-prompt then carries that instruction to the model.
+    Done: R-0188 · Done: R-0189 · Done: R-0190 · R-0181 Resolved.
+  - R-0191 (product, High): released-gate dispatch guard. Built
+    03038187 — refusal only on gate_released is True, verdict read
+    via load_gate_result (a test pins that the guard's source never
+    re-derives), LATEST-job rules, instructive refusal naming
+    declare_milestone_done; 9 tests; the R8 re-proof shows the
+    model OBEYING it (one dispatch, one refusal, then the declare
+    move). Reviewer-verified. Done: R-0191
+  - R-0192 (product, Medium) 2026-08-04, R8 re-proof — a latent
+    defect the guard exposed: dispatched_job_for keeps the LAST
+    dispatch_job ledger entry's outcome.job_id for the milestone,
+    and a REFUSED dispatch is still a dispatch_job move with NO
+    job_id — so it overwrote the real attribution with "" (source:
+    orchestrator_loop.py:1319, unconditional overwrite). The
+    declare move was then refused ("no job was ever dispatched"),
+    the second-refusal rule escalated, and the run ended escalated
+    with one open decision. Pre-existing: before R-0191 no ledger
+    held a refused dispatch beside a real one. Fix: only an entry
+    whose outcome actually dispatched (status dispatched / job_id
+    present) updates the attribution; tests for refused-then-claim
+    (achieves end-to-end), real-then-refused (attribution kept),
+    and multiple dispatches (latest REAL one wins).
   - Deferred closure candidates: F070 review gap; absent resume
     verb.
-  - Next free ID: R-0192.
+  - Next free ID: R-0193.
 
   ## Verdicts
-  - R1-R6: PASS x6. Full texts in this file's git history
-    (55f706db, c95f23db, e5ca780e, 6a002f09, 9e8ced5b, df856730).
-  - R7: PASS (SPLIT, LARGE, 2026-08-04). Range 73c19023..854a9860
-    (7 commits, all tabled). Transport: r7-1/2/3 cmp 0 against the
+  - R1-R7: PASS x7. Full texts in this file's git history
+    (55f706db, c95f23db, e5ca780e, 6a002f09, 9e8ced5b, df856730,
+    1fe38c56).
+  - R8: PASS (SPLIT, LARGE, 2026-08-04). Range 854a9860..09348505
+    (4 commits, all tabled). Transport: r8-1/2/3 cmp 0 against the
     reviewer's scratchpad originals; live_review at the apply
     commit byte-equals the authored text. Reviewer re-ran every
-    gate: orders/runner 81, loop/e2e/era/injection 259 (all four
-    suites UNEDITED), remaining seven files 376, canary 42 — all
-    exit 0, porcelain empty — and personally materialised a fresh
-    copy and ran its suite: 30 passed, self-sufficient, template
-    digest matching the v3 manifest. The goal-vs-template audit
-    spot-checked (g01's BACKOFF_CAP_SECONDS exists at retry.py:8).
-    The 4.3 STOP is COMPLIANT and TRUE: the re-proof's
-    dod_result.json is RELEASED with acc-001 passed — the R6
-    blocker demonstrably closed — and the miss is the model never
-    claiming the milestone, with the guard hole precisely
-    identified. Version-literal test renames accepted as declared.
-    DECISION 2026-08-04 (§4.7), reversal = any later relay:
-    (R-0191) the released-gate dispatch guard with an instructive
-    refusal — alternatives rejected: the loop auto-declaring the
-    milestone (the declare move carries the model's accountability;
-    the loop must not claim on its behalf), prompt-engineering
-    alone (a guard is falsifiable, a hint is a hope). Worktree
-    hygiene: primary only, porcelain empty.
-    LAST_REVIEWED_SHA = 854a9860.
-  --- END f075-r8-1 ---
+    gate: loop/e2e/era/injection/runner 307 (all five suites
+    UNEDITED), remaining seven files 386, canary 42 — all exit 0,
+    porcelain empty. R-0191 verified in the diff and in the live
+    re-proof ledger: the R7 six-dispatch pattern became
+    dispatch -> instructive refusal -> declare_milestone_done — the
+    model followed the guard's named move. The 3.3 STOP is
+    COMPLIANT and TRUE: the attribution defect is real (reviewer
+    read the unconditional overwrite at orchestrator_loop.py:1319),
+    pre-existing, and precisely located by the worker WITH the
+    honest note that the run would also fail no_open_decisions.
+    Guard design deviations all accepted (released-only trigger;
+    no self-declaring — the F070 authority boundary). R-0192
+    registered. Worktree hygiene: primary only, porcelain empty.
+    LAST_REVIEWED_SHA = 09348505.
+  --- END f075-r9-1 ---
 
-  --- BEGIN f075-r8-2 sha256=c28791b09ad4e8a001b5c29db0f17c8b582d15e4a2a6d82976252ab31051a525 ---
+  --- BEGIN f075-r9-2 sha256=7abaf098fb8548c4282ef00bc81ca6133d133bac56f49da5c2313658c5bd6f23 ---
   # Plan — F075 MILESTONE GATE: 10 flawless self-runs
 
   Branch: feature/f075-self-run-gauntlet
@@ -194,33 +178,33 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   + ADR name the evidence — applied by a human, never the harness.
 
   ## Current Step
-  R8 (SPLIT, LARGE): persist R7 PASS + R-0191 — evaluate_dispatch
-  refuses a dispatch_job for a milestone whose LATEST job completed
-  with a RELEASED gate, refusal detail instructing
-  declare_milestone_done (completing the guard triad: in-flight ->
-  wait, blocked x2 -> escalate, released -> declare) — + re-proof
-  (--only 1 must reach achieved WITH a released verdict, hard STOP
-  otherwise) + the set-v3 campaign (full ten, ONE invocation,
-  matrix to .agent/gauntlet/attempt-02/, sliced commits).
+  R9 (SPLIT, LARGE): persist R8 PASS + R-0192 — dispatched_job_for
+  only updates its answer from a dispatch_job entry that actually
+  dispatched (job_id present / outcome status dispatched); a
+  refused dispatch never erases the real attribution — with tests
+  for refused-then-claim (achieves), real-then-refused (kept), and
+  latest-REAL-wins — + re-proof (--only 1 must reach achieved WITH
+  a released verdict, hard STOP otherwise) + the set-v3 campaign
+  (full ten, ONE invocation, matrix to .agent/gauntlet/attempt-02/,
+  sliced commits).
 
   ## Next Steps
-  - R9+: campaign iterations until 10/10 from one invocation; then
+  - R10+: campaign iterations until 10/10 from one invocation; then
     the integration gate.
   - Closure per STATUS_closure_protocol.md incl. the
     CYCLE_SAFETY_CAP config diff + ADR and the closure candidates.
 
   ## Risks
-  - The guard must read the REAL gate verdict (load_gate_result),
-    not re-derive it; released-but-stale edge (a later job for the
-    same milestone) resolves by LATEST job.
+  - The chain is one condition away from its first achieved
+    self-run — resist bundling anything else into the fix commit.
   - Real runs spend real tokens; provider flakiness fails a run
     honestly (A9).
   - Do-not-touch: config defaults by machine, the pass definition,
     order/template edits mid-campaign; the oversize exemption stays
     spent (R-0181).
-  --- END f075-r8-2 ---
+  --- END f075-r9-2 ---
 
-  --- BEGIN f075-r8-3 sha256=e97aae1657ab7e3c762a30b66f2357ef7d939f72bbbdb5e68dfa9ad15e6c2f80 ---
+  --- BEGIN f075-r9-3 sha256=b9af4aac91fefa47844f2a17917a690781885f80bb09374d75d50918b720c80e ---
   # Context — F075 MILESTONE GATE: 10 flawless self-runs
 
   ## Active Branch
@@ -234,8 +218,8 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   tests. Reviewed product changes: exception boundary (R3),
   transport classes (R4), execution wiring (R5), cycles vehicle +
   production DoD path (R6), sample-project world + blocked-gate
-  escalation (R7), the R-0191 released-gate dispatch guard (R8,
-  DECISION in the R7 verdict).
+  escalation (R7), released-gate dispatch guard (R8), the R-0192
+  attribution fix (R9).
 
   ## Constraints
   - Round gate = scoped pytest command(s) authored in the step
@@ -247,7 +231,7 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
     tests/regression apply.
   - Commits < 500 lines, NO oversize left (R-0181 spent it);
     authored texts applied byte-exact from
-    .agent/authored/f075-r8-<n>.md after sha256 verification.
+    .agent/authored/f075-r9-<n>.md after sha256 verification.
   - No pytest test may take a production/provider path (R-0182).
   - F046 safety: config and flag stay clamped to CYCLE_SAFETY_CAP;
     only the explicit experiment override exceeds it, recorded in
@@ -261,6 +245,6 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
     mid-campaign; the pass definition freezes at campaign time.
 
   ## Steps
-  R1-R7 done (PASS x7) → R8 R-0191 + re-proof + set-v3 campaign
-  (current) → R9+ iterations → integration gate → closure.
-  --- END f075-r8-3 ---
+  R1-R8 done (PASS x8) → R9 R-0192 + re-proof + set-v3 campaign
+  (current) → R10+ iterations → integration gate → closure.
+  --- END f075-r9-3 ---
