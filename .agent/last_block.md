@@ -1,139 +1,113 @@
-OUTCOME: executed — F075 R3: R2 PASS persisted; R-0179/R-0180 fixed; the run_mission exception boundary landed (classified post-mortem + ledger entry + honest iteration_failed terminal, 11 tests, existing loop suite green); all four injection classes now driveable; campaign attempt 1 ran from ONE invocation — 10 runs recorded, 0/10 flawless, matrix kept under .agent/gauntlet/attempt-01/. Every gate exit 0 (P2 red first on my own R-0179 change, fixed, rerun green). Two commits over the 500-line cap, both declared.
+OUTCOME: in progress — F075 R4 (SPLIT, LARGE) started.
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
-  10 flawless self-runs, round R3 (SPLIT, LARGE): persist the R2 PASS +
-  fix R-0179/R-0180 + the run_mission exception boundary + unblock the
-  three raise-class injections + campaign attempt 1. Save THIS ENTIRE
-  block verbatim to .agent/last_block.md first (update OUTCOME at
-  handback). You are on feature/f075-self-run-gauntlet at ef23e274.
-  STOP rule: every phase ends with a verification; at the FIRST red TEST
-  gate STOP per AGENTS.md If-Blocked, record the raw failure, do not
-  continue. The CAMPAIGN result (Phase 6) is campaign data: below 10/10
-  is an EXPECTED outcome, recorded honestly, never a stop and never a
-  reason to edit orders or rerun inside the same attempt.
+  10 flawless self-runs, round R4 (SPLIT, LARGE): persist the R3 PASS +
+  fix R-0185 and R-0183 + DIAGNOSE R-0184 + attempt 2 only on a green
+  fix. Save THIS ENTIRE block verbatim to .agent/last_block.md first
+  (update OUTCOME at handback). You are on feature/f075-self-run-gauntlet
+  at a4cb91ca. STOP rule: every phase ends with a verification; first
+  red TEST gate -> STOP per AGENTS.md If-Blocked. The R-0184 diagnosis
+  has its own STOP conditions (Phase 4). Commits < 500 lines — the
+  feature's one oversize exemption is SPENT (R-0181); slice everything,
+  including any regenerated goldens if needed.
 
-  PHASE 1 — PERSIST THE R2 VERDICT (first commit)
+  PHASE 1 — PERSIST THE R3 VERDICT (first commit)
    1. Save the three AUTHORED TEXT payloads below to
-      .agent/authored/f075-r3-<n>.md (bytes between BEGIN/END markers,
-      exclusive, incl. the final newline; payload lines start at column
-      0). Verify each sha256sum against its BEGIN-marker hash. Mismatch
-      -> STOP, report raw sums, apply nothing.
-   2. Apply f075-r3-1 -> .agent/live_review.md, f075-r3-2 ->
-      .agent/plan.md, f075-r3-3 -> .agent/context.md — each a FULL file
-      replacement, byte-exact copy of the saved file.
-   3. Commit 1: chore(f075): persist the R2 PASS, register
-      R-0179/R-0180. Gate: python3 -m pytest
+      .agent/authored/f075-r4-<n>.md (bytes between BEGIN/END markers,
+      exclusive, incl. final newline; payload lines at column 0).
+      Verify each sha256sum against its BEGIN-marker hash. Mismatch ->
+      STOP, report raw sums, apply nothing.
+   2. Apply f075-r4-1 -> .agent/live_review.md, f075-r4-2 ->
+      .agent/plan.md, f075-r4-3 -> .agent/context.md — FULL
+      replacements, byte-exact from the saved files.
+   3. Commit 1: chore(f075): persist the R3 PASS, register
+      R-0181..R-0185. Gate: python3 -m pytest
       tests/cli/test_golden_path.py -q -> exit 0. Push.
 
-  PHASE 2 — FIX R-0179 AND R-0180 (own commit(s), finding by finding)
-   1. R-0179: add a REJECTED disposition (suggested name
-      injection_never_fired) to gauntlet_evaluator's
-      REJECTED_DISPOSITIONS; TruncatedResponseInjector.settle uses it
-      when the injection never fired; update the line-92 pinning test
-      so a never-fired injection FAILS the run through the evaluator
-      (one end-to-end assertion: run verdict not flawless). Record in
-      .agent/decisions.md: closed-set tightening, landed BEFORE any
-      campaign (pre-freeze, no ADR). Mark Done: R-0179 in
-      .agent/live_review.md in the same commit.
-   2. R-0180: per-order boundary in run_campaign (a raise from
-      run_order becomes a synthetic crashed OrderOutcome; the loop
-      continues); harden run_order's crash path (body initialized or
-      the fallback nested) so the hash-after line can never hit an
-      unbound body. One test where the CRASH PATH itself raises (e.g.
-      a collector that throws on the crash re-entry) proving the
-      campaign continues and evidence for the other runs survives.
-      Mark Done: R-0180 same commit.
-   3. Gate: python3 -m pytest tests/orchestration/test_gauntlet_injection.py
-      tests/orchestration/test_gauntlet_runner.py
+  PHASE 2 — FIX R-0185: TRANSPORT CLASSES IN THE CLASSIFIER (own commit)
+   1. packages/orchestration/failure_postmortem.py: transport/provider
+      -error classes aligned with the F001 transport taxonomy (inspect
+      the existing taxonomy first; do NOT invent a parallel naming).
+      The boundary already passes the exception object in
+      FailureSignals — use type and text both. The injected shapes
+      ("HTTP 503 ... closed the connection" as ConnectionError,
+      "killed ..." as OSError) must classify to a REAL class, not
+      unknown; genuinely unrecognizable input STAYS unknown
+      (falsification test).
+   2. Tests: one per new class + the two injected shapes end-to-end
+      through record_iteration_failure; existing classifier tests stay
+      green unedited unless an assertion was pinning the old dishonest
+      unknown — say so per test in the handoff if so.
+   3. Gate (STOP if red): the classifier's test file +
+      tests/orchestration/test_orchestrator_loop.py -q -> exit 0. Push.
+
+  PHASE 3 — FIX R-0183: UNMEASURED TOKENS SAY SO (own commit)
+   1. Carry the unmeasured fact through gauntlet_evidence (read
+      tokens_source; absent tokens + tokens_source=unmeasured is NOT
+      zero) into both matrix formats: md renders "unmeasured", json
+      carries an explicit source/null rather than 0/0. The evaluator's
+      criteria are untouched — this is rendering honesty only.
+   2. Regenerate BOTH goldens in the same commit and declare it. If
+      the goldens diff exceeds the commit cap together with the code,
+      split: code+tests commit first, goldens-regeneration commit
+      second, each gated.
+   3. Gate (STOP if red): python3 -m pytest
+      tests/orchestration/test_gauntlet_evidence.py
+      tests/orchestration/test_gauntlet_matrix.py
       tests/orchestration/test_gauntlet_evaluator.py -q -> exit 0. Push.
 
-  PHASE 3 — THE run_mission EXCEPTION BOUNDARY (product change, own commits)
-   The DECISION of record (R2 verdict; worker analysis decisions.md
-   2026-08-04). Scope: packages/orchestration/orchestrator_loop.py —
-   minimal boundary, nothing else.
-   1. A raise of Exception (NEVER KeyboardInterrupt/SystemExit) from
-      the per-iteration work — the provider call, dispatch via
-      execute_move, update_dossier/refresh — is caught ONCE per
-      iteration and becomes: (a) a classified F010 postmortem via the
-      existing failure_postmortem path (a class it cannot determine is
-      recorded honestly as its unknown/unclassified value, never
-      invented); (b) the iteration's ledger entry (the docstring's
-      "every iteration leaves a ledger entry" becomes true under a
-      raise); (c) an honest terminal on the result (pick/extend the
-      existing terminal constants — record the naming decision in
-      .agent/decisions.md) or an F051 escalation where the existing
-      escalation semantics apply. NO retry logic in the boundary:
-      transport retries live below call_fn (F001).
-   2. Tests (new or in the existing loop test file — follow the repo's
-      test_x <-> x convention): raising call_fn, raising dispatch,
-      raising update_dossier — each leaves a ledger entry + classified
-      postmortem + honest terminal and does NOT propagate; a
-      KeyboardInterrupt DOES propagate; the mission record is not
-      corrupted (reloadable) after a boundary catch.
-   3. Gate (STOP if red): the loop's own test file(s) — python3 -m
-      pytest tests/orchestration/test_orchestrator_loop*.py -q (adjust
-      to the real filenames, state them in the handoff) -> exit 0,
-      proving the EXISTING suite stays green with the new tests. Push.
+  PHASE 4 — DIAGNOSE R-0184 (evidence before any fix)
+   1. ONE cheap live run: python3 scripts/self_run_gauntlet.py --live
+      <fresh root OUTSIDE the repo> --only 1 --format json. Then read
+      the run's OWN evidence — the ledger entries (moves decided,
+      outcomes, refusals), the mission record, dispatched jobs and
+      their states, dossier — and answer with evidence quotes:
+      (a) what moves does the model produce; (b) do dispatched jobs
+      run and finish; (c) why is declare_milestone_done /
+      declare_mission_achieved never reached in budget; (d) why does
+      the DoD gate never run (never invoked at all vs invoked and
+      failing). Write the analysis to .agent/decisions.md with raw
+      quotes (trimmed), and summarize it in the handoff.
+   2. Decision fork — apply the FIRST matching rule:
+      a. BOUNDED product/harness bug (wiring, prompt gap, a loop or
+         gate invocation defect, budget plumbing): fix it with tests,
+         gate with the touched files' test suites -> exit 0. Push.
+      b. Model capability is the blocker (the default planner model
+         cannot finish these missions): STOP after committing the
+         analysis. Do NOT change orchestrator.model, do NOT edit
+         orders, do NOT weaken the pass definition. The reviewer
+         rules next round (config defaults by machine = do-not-touch).
+      c. The fix is real product work beyond a bounded bug: STOP
+         after committing the analysis (R2-seam precedent).
+   3. If 2a landed green: prove it cheaply BEFORE the full campaign —
+      rerun the SAME --only 1 live run in a fresh root; the run must
+      now reach `achieved` with the DoD gate having produced a
+      verdict (dod_result.json present). If it does not, treat as 2c:
+      STOP with both runs' evidence.
 
-  PHASE 4 — UNBLOCK THE THREE INJECTION CLASSES
-   1. gauntlet_injection.py: drivers for provider_api_error_mid_move
-      (call_fn raises once at the named move), harness_death_mid_dispatch
-      (dispatch raises once), harness_death_mid_write (update_dossier
-      raises once) — decorators around production callables, same
-      pattern as the truncation injector; move the three from
-      BLOCKED_INJECTIONS to SUPPORTED_INJECTIONS; dispositions read
-      off what the product DID (postmortem written + honest
-      terminal/escalation -> ledgered/escalated/retried; anything else
-      -> the named mishandling or unclassified). Runner passes
-      dispatch/update_dossier wrappers through the same RunnerDeps
-      seams it already owns.
-   2. Preflight now passes a full-set live run; the exit-2 refusal for
-      unknown classes stays. Update tests: each class driveable end-to-
-      end against a fake loop that RAISES at the seam; the settled
-      run.json block carries class + disposition + detail.
-   3. Gate (STOP if red): python3 -m pytest
-      tests/orchestration/test_gauntlet_injection.py
-      tests/orchestration/test_gauntlet_runner.py
-      tests/orchestration/test_self_run_gauntlet.py -q -> exit 0. Push.
+  PHASE 5 — CAMPAIGN ATTEMPT 2 (only if Phase 4 reached a green 2a+3)
+   1. Preconditions in the handoff: porcelain empty, pushed, provider
+      reachable, set_hash re-verified, preflight_injections -> [].
+   2. ONE invocation, full ten, fresh root OUTSIDE the repo:
+      --live <root> --format both. No rerun inside the attempt, no
+      order edits; provider flakiness fails a run honestly (A9).
+   3. Copy matrix.md + matrix.json into .agent/gauntlet/attempt-02/
+      and commit (sliced under the cap — R-0181). Evidence-root path
+      + per-run terminals in the handoff.
+   4. Gate: committed matrix.json parses, runs_recorded == 10; canary
+      python3 -m pytest tests/cli/test_golden_path.py -q -> exit 0.
+      The flawless count is REPORTED, not gated.
 
-  PHASE 5 — FULL HARNESS GATE
-   python3 -m pytest tests/orchestration/test_gauntlet_evidence.py
-   tests/orchestration/test_gauntlet_evaluator.py
-   tests/orchestration/test_gauntlet_matrix.py
-   tests/orchestration/test_gauntlet_orders.py
-   tests/orchestration/test_gauntlet_injection.py
-   tests/orchestration/test_gauntlet_runner.py
-   tests/orchestration/test_self_run_gauntlet.py -q -> exit 0. If the
-   golden matrices changed bytes (R-0179 tightening does not touch the
-   recorded fixtures unless a fixture declares a never-fired
-   injection), regenerate in the same commit and say so. Push.
-
-  PHASE 6 — CAMPAIGN ATTEMPT 1 (real runs, real tokens)
-   1. Preconditions in the handoff BEFORE starting: porcelain empty,
-      branch pushed, provider reachable (one cheap ping), set_hash
-      re-verified via load_order_set(), preflight_injections -> [].
-   2. ONE invocation: python3 scripts/self_run_gauntlet.py --live
-      <campaign-root OUTSIDE the repo> --format both. Per-order
-      budgets are the orders' own; set ceiling ~3.1M tokens. Provider
-      flakiness fails a run honestly (A9) — no rerun inside the
-      attempt, no order edits.
-   3. Copy matrix.md + matrix.json (only these) into
-      .agent/gauntlet/attempt-01/ and commit — failed gauntlets are
-      KEPT. Record the evidence-root path + per-run terminals in the
-      handoff.
-   4. Gate: the committed matrix.json parses, runs_recorded == 10;
-      canary python3 -m pytest tests/cli/test_golden_path.py -q ->
-      exit 0. The flawless count is REPORTED, not gated.
-
-  PHASE 7 — HANDBACK
+  PHASE 6 — HANDBACK
    git status --porcelain empty. Rewrite .agent/handoff.md per
    docs/agents/handback_template.md (per-commit tables; raw gate
-   outputs with exit codes; the campaign summary table verbatim;
-   sha256 proof per applied reviewer text vs its .agent/authored/
-   file). Update last_block OUTCOME. Completion report ends:
-   "F075 R3 complete — attempt 1 matrix recorded, awaiting review."
+   outputs; the R-0184 analysis summary; if attempt 2 ran, its
+   summary table verbatim; sha256 proof per applied reviewer text).
+   Update last_block OUTCOME. Completion report ends:
+   "F075 R4 complete — awaiting review." (append "attempt 2 matrix
+   recorded" if Phase 5 ran).
 
-  --- BEGIN f075-r3-1 sha256=f1224711b244b770af8c829d0ed7c1339632fb2ddaa59d6639d83338720d97ae ---
+  --- BEGIN f075-r4-1 sha256=941af73a72341c876d411e759e6594af437e0708307a2fb756b3fbf253811d8d ---
   # Live Review — F075 MILESTONE GATE: 10 flawless self-runs (Tier 1)
 
   Branch: feature/f075-self-run-gauntlet
@@ -142,95 +116,112 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   data. Flawless per run = start command only + terminal green + all
   blocking DoD checks green + zero unknown postmortems + zero open
   decisions + host data root byte-untouched (before/after hash). The
-  evaluator names the F070 era-fixture classes (R-0141/R-0143/R-0144/
-  R-0145/R-0146/R-0147/R-0148) and the harness-failure injection
-  classes (provider API error mid-move, truncated model response,
-  harness death mid-dispatch and mid-write) — each degrades to a
-  LEDGERED failure, retry within budget, or escalation, never a
-  silent success. This round the scope gains ONE reviewed product
-  change: the run_mission exception boundary (DECISION 2026-08-04 in
-  the R2 verdict) — the loop's own docstring contract ("every
-  iteration leaves a ledger entry") made true under a raise.
+  evaluator names the F070 era-fixture classes and the four
+  harness-failure injection classes. Product changes ride along ONLY
+  as reviewed SPLIT work (so far: the run_mission exception boundary,
+  R3; the failure_postmortem transport classes, R4).
 
   ## Steps
-  - R1 (SPLIT, LARGE): claim + T001 evaluator/matrix/dry-run proof +
-    T002 frozen ten-order set — PASS, see Verdicts.
-  - R2 (SPLIT, LARGE): R1 PASS persisted + R-0178 fixed + T003a
-    runner/injection driver/--live CLI; campaign attempt REFUSED at
-    preflight on the missing run_mission exception boundary —
-    compliant STOP, PASS, see Verdicts.
-  - R3 (SPLIT, LARGE, current): persist R2 verdict + fix R-0179 and
-    R-0180 + the run_mission exception boundary (product change, own
-    tests) + unblock the three raise-class injections + campaign
-    attempt 1 from ONE invocation, matrix recorded honestly — below
-    10/10 is campaign data, not a round failure.
-  - R4+: campaign iterations until 10/10 stands from one invocation;
-    then the integration gate per docs/agents/integration_gate.md.
+  - R1 (SPLIT, LARGE): claim + T001 + T002 — PASS (history).
+  - R2 (SPLIT, LARGE): R-0178 + T003a runner; compliant STOP on the
+    missing boundary — PASS (history).
+  - R3 (SPLIT, LARGE): R-0179/R-0180 + run_mission boundary + all
+    four injections + campaign attempt 1 (0/10, honest) — PASS, see
+    Verdicts.
+  - R4 (SPLIT, LARGE, current): persist R3 verdict + fix R-0185
+    (transport classes) + R-0183 (unmeasured tokens display) +
+    DIAGNOSE R-0184 (nothing achieves, no DoD gate runs) with one
+    cheap --only run; bounded fix -> land it; deep work or a model-
+    capability DECISION -> STOP with the analysis. Then attempt 2
+    from ONE invocation if and only if the R-0184 fix landed green.
+  - R5+: campaign iterations until 10/10 from one invocation; then
+    the integration gate per docs/agents/integration_gate.md.
   - Closure per docs/roadmap/STATUS_closure_protocol.md; a passing
-    10/10 emits a prepared-but-not-applied config diff + ADR — a
-    human applies it, never the harness.
+    10/10 emits a prepared-but-not-applied config diff + ADR.
 
   ## Findings
-  - R-0178 (product, Low): non-numeric evidence numbers were silent
-    zeros. Fixed a11e089e, reviewer-verified in the diff and by
-    rerunning the evidence/evaluator/matrix gates; goldens unchanged.
-    Done: R-0178
-  - R-0179 (product, Low) 2026-08-04, reviewer's R2 read: an
-    injection that NEVER FIRED settles as disposition
-    ledgered_failure — an ACCEPTED class — so a run that never
-    exercised its declared injection can still count flawless while
-    its evidence claims a failure-handling that never happened
-    (test_gauntlet_injection.py pins this at line 92). Benign today
-    only because INJECT_ON_MOVE=1 and reaching `achieved` needs at
-    least one move. Fix: a never-fired injection settles to its own
-    REJECTED disposition (e.g. injection_never_fired) so the
-    evaluator fails the run honestly; update the pinning test and
-    the evaluator's REJECTED_DISPOSITIONS; record in decisions.md
-    that this tightens the closed set BEFORE any campaign has run
-    (pre-freeze, so no ADR needed — T1_F075.md freezes the
-    definition at campaign time).
-  - R-0180 (product, Low) 2026-08-04, reviewer's R2 read:
-    run_campaign's docstring promises "a run that dies takes only
-    itself down" but its loop has no boundary — only run_mission
-    raises are absorbed (inside run_order). A raise from run_order's
-    own crash path (evidence write, the re-entered collectors) kills
-    the rest of the campaign; in that path `body` can also be
-    unbound at the hash-after line (NameError masks the original
-    error). Fix: per-order boundary in run_campaign recording a
-    synthetic crashed OrderOutcome; initialize body before the try
-    or nest the crash path's fallback; one test where the crash
-    path itself raises.
-  - Next free ID: R-0181.
+  - R-0178 (product, Low): silent-zero evidence numbers. Fixed
+    a11e089e. Done: R-0178
+  - R-0179 (product, Low): never-fired injection was an ACCEPTED
+    disposition. Fixed 587ec34a + d5213ad3 (injection_never_fired,
+    REJECTED); reviewer-verified in the diff and the closed-set pin.
+    Done: R-0179
+  - R-0180 (product, Low): campaign had no per-order boundary;
+    crash-path NameError. Fixed 97b6708a (_minimal_body pre-bound,
+    nested fallback, runner_crashed named); reviewer-verified.
+    Done: R-0180
+  - R-0181 (process, Medium) 2026-08-04: TWO >500-line commits in R3
+    (35cdc031: 753 diff lines, declared inseparable — accepted;
+    0a2ce17c: 958, of which 895 are the ordered-whole matrix
+    artifact). AGENTS.md grants ONE oversize per feature. Cause: the
+    R3 ordering block told the worker to commit the artifact whole
+    without declaring the exemption — a reviewer-order defect, not a
+    worker one. Resolved by ruling: both stand (history is pushed;
+    a rewrite is destructive); from R4 on, ordering blocks slice
+    artifact commits or declare the exemption inline. Resolved.
+  - R-0182 (test-safety, Medium) 2026-08-04, worker-reported: when
+    preflight stopped refusing, two R2-era --live CLI tests fell
+    through to production deps and started a REAL campaign inside
+    pytest (~2 min, real provider calls; host isolation HELD, real
+    root untouched). Fixed in-round: both tests replaced by
+    preflight-level ones; the file states no test may take the
+    production path. Reviewer verified: the full harness suite (236)
+    runs in under a second with zero provider calls. Done: R-0182
+  - R-0183 (product, Low) 2026-08-04, reviewer's read: the matrix
+    renders unmeasured tokens as "0/0", indistinguishable from a
+    measured zero — run.json carries tokens_source=unmeasured but
+    RunEvidence and the matrix ignore it. Attempt 1 displays 0/0 on
+    all ten runs while real tokens were spent. Fix: carry the
+    unmeasured fact through gauntlet_evidence into both matrix
+    formats (md "unmeasured", json null or explicit source field);
+    regenerate goldens in the same commit and say so.
+  - R-0184 (product, High) 2026-08-04, campaign attempt 1: ZERO of
+    ten runs reached `achieved` and the DoD gate NEVER ran — seven
+    iteration_limit, three iteration_failed. The loop under the
+    default planner model produces no run that finishes its mission
+    within budget. Needs DIAGNOSIS with evidence (one --only live
+    run, read the moves/ledger) before any fix; if the blocker is
+    model capability, that is a DECISION for the reviewer, not a
+    silent model switch (config defaults by machine = do-not-touch).
+  - R-0185 (product, Medium) 2026-08-04, campaign attempt 1 +
+    worker's pre-run prediction: failure_postmortem.classify reads
+    the injected transport errors ("HTTP 503 ...", "killed ...") as
+    `unknown`, so the three raise-class runs also fail
+    no_unknown_postmortems. The boundary already hands the classifier
+    the exception object. Fix: transport/provider-error classes in
+    failure_postmortem aligned with the F001 transport taxonomy;
+    falsification tests; the gauntlet fixtures' expected classes
+    updated only where the honest classification changes.
+  - Next free ID: R-0186.
 
   ## Verdicts
-  - R1: PASS (SPLIT, LARGE, 2026-08-04). Range 563b15b4..740ff133.
-    Full text in this file's git history (55f706db).
-    LAST_REVIEWED_SHA was 740ff133.
-  - R2: PASS (SPLIT, LARGE, 2026-08-04). Range 740ff133..ef23e274
-    (7 commits, all tabled). Transport: r2-1/2/3 cmp 0 against the
+  - R1: PASS. R2: PASS. Full texts in this file's git history
+    (55f706db, c95f23db).
+  - R3: PASS (SPLIT, LARGE, 2026-08-04). Range ef23e274..a4cb91ca
+    (8 commits, all tabled). Transport: r3-1/2/3 cmp 0 against the
     reviewer's scratchpad originals; live_review at the apply commit
-    byte-equals the authored text (worker's later append is the
-    permitted Done-mark only). Reviewer re-ran every gate: P2 111,
-    slice 205, canary 42 — all exit 0 — and re-reproduced the golden
-    matrix byte-exact through the CLI. R-0178 fix verified in the
-    real diff. The STOP is COMPLIANT and TRUE: reviewer reproduced
-    the escape independently (AST: zero try-blocks in run_mission
-    698-885 and execute_move; a raising call_fn escaped
-    run_structured_call at structured_outputs.py:158 in a live
-    probe), so three injection classes are honestly undriveable and
-    the preflight refusal spent zero tokens. R-0179/R-0180
-    registered from the reviewer's read. DECISION 2026-08-04 (§4.7):
-    the missing run_mission exception boundary is built IN THIS
-    BRANCH as reviewed SPLIT work with its own tests — alternatives
-    considered: a separate feature first (slower, breaks campaign
-    momentum for a change this feature's acceptance explicitly
-    demands) and a harness-side except (rejected: grades the
-    harness's crutch, decisions.md 2026-08-04); reversal = any later
-    relay. Worktree hygiene: primary only, porcelain empty.
-    LAST_REVIEWED_SHA = ef23e274.
-  --- END f075-r3-1 ---
+    byte-equals the authored text. Reviewer re-ran every gate: P2
+    133 (with the round's added tests), P3 loop/e2e/era 184, P5
+    harness 236, canary 42 — all exit 0, porcelain empty. The
+    boundary verified in the real diff (digest/cost pre-bound,
+    except Exception only, no retry, never-raising post-mortem
+    writer, per-iteration post-mortem dirs) and through its 11
+    tests; the honest-red P2 first run (worker's own closed-set pin
+    tripped by the R-0179 change, fixed in d5213ad3) is exactly the
+    discipline working. Campaign attempt 1 audited from the
+    committed matrix: internally consistent, 0/10, criteria counts
+    match the handoff exactly, all four injections fired and
+    degraded to ledgered_failure. Deviations accepted: the two
+    oversize commits ruled in R-0181; the after-the-fact matrix
+    write (now done by --live itself, pinned); escalation not used
+    by the boundary (honest terminal instead — F051 asks a human a
+    question, a raised failure is a failure to ledger;
+    decisions.md). R-0181..R-0185 registered. Worktree hygiene:
+    primary only, porcelain empty at verdict.
+    LAST_REVIEWED_SHA = a4cb91ca.
+  --- END f075-r4-1 ---
 
-  --- BEGIN f075-r3-2 sha256=918012f5d869f402c01378470ec35d95241a1126b57eca78651f518e6c5699e8 ---
+  --- BEGIN f075-r4-2 sha256=a4a90b75826062d2c2cd36c1e076d73f8d24de24c6d20ef3a195fe031b2fb428 ---
   # Plan — F075 MILESTONE GATE: 10 flawless self-runs
 
   Branch: feature/f075-self-run-gauntlet
@@ -246,35 +237,35 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   + ADR name the evidence — applied by a human, never the harness.
 
   ## Current Step
-  R3 (SPLIT, LARGE): persist R2 PASS + fix R-0179 (never-fired
-  injection is a REJECTED disposition) + R-0180 (campaign-level
-  boundary, crash-path NameError) + the run_mission exception
-  boundary (product change: classify via failure_postmortem, write
-  the F010 postmortem, append the iteration's ledger entry, end on
-  an honest terminal or F051 escalation — own tests, existing loop
-  suite stays green) + unblock the three raise-class injections +
-  campaign attempt 1 from ONE invocation (evidence outside the
-  repo, matrix kept under .agent/gauntlet/attempt-01/). Below 10/10
-  is campaign data; a red TEST gate is a STOP.
+  R4 (SPLIT, LARGE): persist R3 PASS + fix R-0185 (transport classes
+  in failure_postmortem, F001-aligned, with tests) + R-0183
+  (unmeasured tokens rendered as unmeasured, goldens regenerated
+  declared) + DIAGNOSE R-0184 with one cheap --only live run and the
+  run's own ledger: why does nothing reach `achieved` and why does
+  the DoD gate never run? Bounded fix -> land with tests. Deep
+  product work or a model-capability blocker -> STOP with the
+  analysis (R2-seam precedent); a model switch is a reviewer
+  DECISION, never a silent config change. Attempt 2 (full ten, ONE
+  invocation, matrix to .agent/gauntlet/attempt-02/) runs ONLY if
+  the R-0184 fix landed green.
 
   ## Next Steps
-  - R4+: campaign iterations — targeted fix orders + full reruns —
-    until 10/10 from one invocation; then the integration gate.
+  - R5+: campaign iterations until 10/10 from one invocation; then
+    the integration gate.
   - Closure per STATUS_closure_protocol.md incl. config diff + ADR.
 
   ## Risks
-  - The boundary touches the loop's core: it must catch Exception
-    only (never KeyboardInterrupt/SystemExit), add no retry of its
-    own (transport retries are F001's, below call_fn), and keep the
-    full existing loop suite green.
-  - Real runs spend real tokens (set ceiling ~3.1M); provider
-    flakiness makes a run FAIL honestly (A9).
+  - R-0184 is the feature's real work now: the campaign found a
+    product truth (missions do not finish unattended in budget) and
+    the fix must not weaken the pass definition to pass the gate.
+  - Real runs spend real tokens; provider flakiness fails a run
+    honestly (A9).
   - Do-not-touch: config defaults by machine, order-set edits
-    mid-campaign; the pass definition freezes at campaign time —
-    R-0179's tightening lands before any campaign has run.
-  --- END f075-r3-2 ---
+    mid-campaign, the pass definition (freezes at campaign time; the
+    R-0183 display fix touches rendering, not criteria).
+  --- END f075-r4-2 ---
 
-  --- BEGIN f075-r3-3 sha256=47e68f9d646d4ef43a407ee208859e1ae0a116e6bd7afdf0b77270cd5b2492af ---
+  --- BEGIN f075-r4-3 sha256=e975c006b099e46216a967d0f0bc700ef8764efe4b8502ec480ceb73ff5b8bc0 ---
   # Context — F075 MILESTONE GATE: 10 flawless self-runs
 
   ## Active Branch
@@ -283,11 +274,12 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
 
   ## Scope
   Roadmap F075 (Tier 1, docs/roadmap/features/T1_F075.md): gauntlet
-  harness + evaluator + matrix report + frozen ten-order set + live
-  runner + injection driver + their tests. This round adds ONE
-  reviewed product change: the run_mission exception boundary in
-  packages/orchestration/orchestrator_loop.py (DECISION 2026-08-04,
-  R2 verdict) — everything else stays harness-side.
+  harness + evaluator + matrix + frozen ten-order set + live runner
+  + injection driver + their tests. Reviewed product changes so far:
+  the run_mission exception boundary (R3); this round adds the
+  failure_postmortem transport classes (R-0185) and whatever bounded
+  fix the R-0184 diagnosis proves — everything else stays
+  harness-side.
 
   ## Constraints
   - Round gate = scoped pytest command(s) authored in the step
@@ -297,17 +289,18 @@ You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
     python3 -m pytest tests/docs/ -q. Full-suite pytest -n auto only
     at the integration gate; the resource-safety rules of
     tests/regression apply.
-  - Commits < 500 lines; authored texts applied byte-exact from
-    .agent/authored/f075-r3-<n>.md after sha256 verification.
-  - Gauntlet runs use an ISOLATED data root, never the operator's
-    real one; campaign evidence lives outside the repo during runs
-    (docs/agents/integration_gate.md, R-0176); only matrix.md +
+  - Commits < 500 lines (ONE declared oversize per feature — R3
+    used it; R-0181 rules the second one closed, no third);
+    authored texts applied byte-exact from
+    .agent/authored/f075-r4-<n>.md after sha256 verification.
+  - No pytest test may take a production/provider path (R-0182).
+  - Gauntlet runs use an ISOLATED data root; campaign evidence
+    lives outside the repo during runs (R-0176); only matrix.md +
     matrix.json are committed under .agent/gauntlet/.
   - Do-not-touch: config defaults by machine, order-set edits
     mid-campaign; the pass definition freezes at campaign time.
 
   ## Steps
-  R1 done (PASS) → R2 done (PASS, compliant STOP) → R3 boundary +
-  injections + campaign attempt 1 (current) → R4+ iterations →
-  integration gate → closure.
-  --- END f075-r3-3 ---
+  R1-R3 done (PASS x3) → R4 R-0184 diagnosis + fixes + attempt 2
+  (current) → R5+ iterations → integration gate → closure.
+  --- END f075-r4-3 ---
