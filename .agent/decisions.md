@@ -2814,3 +2814,56 @@ Consequence: Phase 3's hard gate (terminal `achieved` AND `dod_result.json`
 present) cannot be met by construction. The run was still executed as ordered,
 because whether execution now advances jobs and reaches `achieved` is real
 evidence the reviewer needs; its trail is recorded below.
+
+## 2026-08-04: F075 R5 Phase 3 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r0186 --only 1 --format json`, exit 1, terminal
+`waiting_on_decisions`, no `dod_result.json`. Phase 3 requires `achieved`
+AND a gate verdict, so rule 3.3 applies: STOP, both trails recorded here.
+
+**What R-0186 demonstrably fixed** (ledger of the re-proof run, verbatim
+details, trimmed):
+
+    it1: dispatch_job -> dispatched
+         job 0db084c6 ... dispatched for M001; executed:
+         terminal=all_green job_status=completed
+    it2: dispatch_job -> dispatched
+         job 20fba26e ... dispatched for M001; executed:
+         terminal=max_cycles_reached job_status=running
+    it3: dispatch_job -> refused
+         milestone M001 already has job 20fba26e in flight (state running);
+         a second job for it is refused. Instead: wait_on_decisions, or
+         declare_milestone_done once that job finishes and its gate releases
+    it4: wait_on_decisions -> waiting_on_decisions
+
+Job states after the run: `0db084c6 completed` (1 task), `20fba26e running`
+(2 tasks). Compare the R4 diagnostic run, same order, same model: six
+`dispatch_job` moves, six jobs, ALL `planned`, nothing executed, nothing
+refused. So: jobs now really execute (a job reached `completed` through
+`run_cycles`), and the six-identical-dispatches loop is gone — the guard
+refused the third dispatch with the message it was built to give.
+
+**Why the run still did not reach `achieved` — two blockers, neither in
+this round's scope:**
+
+1. **`CYCLE_SAFETY_CAP = 1` (and `DEFAULT_MAX_CYCLES = 1`).** A job needing
+   more than one cycle ends `max_cycles_reached` with `job_status=running` —
+   never a terminal state — and `evaluate_milestone_done` refuses a claim
+   whose job "is in state 'running', which is not terminal". The loop has no
+   resume kind, so that job can never finish. The cap's own docstring says it
+   stands "until the F075 milestone gate raises it": the gate is expected to
+   raise the cap, and the cap prevents the gate from passing. That
+   chicken-and-egg is a reviewer DECISION — raising it is a config default by
+   machine, explicitly do-not-touch for the worker.
+2. **No DoD verdict is reachable** (recorded in full above): `store_dod` has
+   no caller, and `run_job_gate`'s only caller is the v0 fixture-demo spine.
+   Note the nuance: `evaluate_milestone_done` refuses only on
+   `gate_released is False`, and an absent DoD leaves it `None` — so a claim
+   is not blocked by the missing gate. It is blocked by blocker 1. But the
+   gauntlet's `dod_blocking_green` criterion still cannot be satisfied by any
+   run, because no run can produce a gate verdict at all.
+
+Not done, deliberately: no change to `CYCLE_SAFETY_CAP` or any config
+default; no call from the loop into `run_job_gate`; no use of the fixture-demo
+spine; no order edits; no weakening of the pass definition. Campaign attempt 2
+did NOT run — Phase 4 is gated on a green Phase 3.
