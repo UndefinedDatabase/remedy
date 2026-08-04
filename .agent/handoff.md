@@ -1,40 +1,32 @@
-# Handback — F075 R4: R3 PASS persisted, R-0185 + R-0183 fixed, R-0184 diagnosed. STOPPED on rule 2c; attempt 2 not run.
+# Handback — F075 R5: R4 PASS persisted, R-0186 built (execution + guard). Phase 3 STOP; attempt 2 not run.
 
-HEAD 0ccf44d7 · `P/`=packages/orchestration/ `T/`=tests/orchestration/
+HEAD a25ce886 · `P/`=packages/orchestration/ `T/`=tests/orchestration/
 
 ## Range
-Review of a4cb91ca..0ccf44d7 (5 commits, incl. this one).
+Review of 49202f47..a25ce886 (4 commits, incl. this one).
 
 ## Commits
 
-### e5ca780e chore(f075): persist the R3 PASS, register R-0181..R-0185
+### 6a002f09 chore(f075): persist the R4 PASS, register R-0186
 | Path | +/- | Reason |
 | --- | --- | --- |
-| .agent/authored/f075-r4-{1,2,3}.md | +170 | saved first |
-| .agent/{live_review,plan,context,last_block}.md | +398/-286 | applied; block verbatim |
+| .agent/authored/f075-r5-{1,2,3}.md | +176 | saved first |
+| .agent/{live_review,plan,context,last_block}.md | +314/-343 | applied; block verbatim |
 
-### 7202beca fix(f075): classify transport and machine failures instead of unknown (R-0185)
+### ce80e034 feat(f075): the loop runs the job it dispatches, and refuses a second one (R-0186)
 | Path | +/- | Reason |
 | --- | --- | --- |
-| P/failure_postmortem.py | +56 | ConnectionError->provider_unavailable; new `io_failure`; 2 predicates |
-| T/test_failure_postmortem.py | +89 | per-class + falsification; +1 reachability producer |
-| T/test_orchestrator_loop.py | +40/-2 | both injected shapes end-to-end |
-| .agent/decisions.md | +37 | taxonomy rationale + the 2 touched tests |
+| P/orchestrator_loop.py | +95/-3 | `execute` seam -> `execute_dispatched_job` (run_cycles); re-dispatch guard |
+| T/test_orchestrator_loop.py | +190/-29 | 13 new tests; 29 call sites inject the executor double |
+| T/test_mission_e2e.py | +27/-2 | executor double; no assertion changed |
+| .agent/decisions.md | +69 | wiring decisions + the third missing link |
 
-### 364c68ef fix(f075): an unmeasured token count says so in both matrix formats (R-0183)
+### a25ce886 docs(f075): R-0186 re-proof evidence and the two remaining blockers
 | Path | +/- | Reason |
 | --- | --- | --- |
-| P/gauntlet_{evidence,evaluator,matrix}.py | +56/-7 | `tokens_measured`; md "unmeasured", json null+source |
-| T/test_gauntlet_{evidence,matrix}.py | +73 | measured/unmeasured/true-zero cases |
-| fixtures/gauntlet/golden/matrix.json | +9 | REGENERATED (declared below) |
-| .agent/decisions.md | +21 | rendering-only rationale |
+| .agent/decisions.md | +53 | Phase 3 ledger quotes; rule 3.3 STOP |
 
-### 0ccf44d7 docs(f075): R-0184 diagnosis — the loop creates jobs it never executes
-| Path | +/- | Reason |
-| --- | --- | --- |
-| .agent/decisions.md | +76 | the analysis with raw quotes; rule 2c |
-
-### <this> chore(f075): handback R4
+### <this> chore(f075): handback R5
 | Path | +/- | Reason |
 | --- | --- | --- |
 | .agent/handoff.md | rewrite | this handback (R-0149 self-ref) |
@@ -42,49 +34,61 @@ Review of a4cb91ca..0ccf44d7 (5 commits, incl. this one).
 
 ## External actions
 - `git push` after every phase. No PR (comes at closure).
-- `self_run_gauntlet.py --live <scratch>/diag-r0184 --only 1 --format json` -> exit 1, `iteration_limit`. Diagnostic only; evidence outside the repo, nothing committed from it. No attempt-2 invocation (gated on a green 2a+3; fork was 2c).
+- `self_run_gauntlet.py --live <scratch>/reproof-r0186 --only 1 --format json` -> exit 1, terminal `waiting_on_decisions`. Evidence outside the repo, nothing committed from it. No attempt-2 invocation (Phase 4 is gated on a green Phase 3).
 
 ## Verification
 All `python3 -m pytest <path> -q`.
 
     $ tests/cli/test_golden_path.py  ->  42 passed, exit 0  (P1 gate)
-    $ T/test_failure_postmortem.py T/test_orchestrator_loop.py  ->  RED FIRST: 1 failed, 245 passed
-      test_a_class_it_cannot_determine_is_recorded_as_unknown: "assert 'provider_unavailable' == 'unknown'" — my own R3 test used "HTTP 503" as its unclassifiable example, which IS the dishonest unknown R-0185 fixes. Input changed, assertion unchanged. Rerun -> 246 passed, exit 0  (P2 gate)
-    $ T/test_gauntlet_{evidence,matrix,evaluator}.py  ->  123 passed, exit 0  (P3 gate)
-    $ the seven harness files  ->  244 passed, exit 0
+    $ T/test_orchestrator_loop.py T/test_mission_e2e.py T/test_era_integrity.py T/test_gauntlet_{injection,runner}.py
+      ->  268 passed, exit 0  (P2 gate). Injection/runner suites UNEDITED — g08 still fires at the dispatch seam.
+    $ the six remaining harness/classifier files  ->  305 passed, exit 0
     $ tests/cli/test_golden_path.py  ->  42 passed, exit 0  (canary)
     $ git status --porcelain  ->  empty
 
-## R-0184 diagnosis (full text + raw quotes: .agent/decisions.md)
-One `--only 1` live run reproduced attempt 1's g01 exactly.
-- (a) **The model is not the blocker**: six schema-valid `dispatch_job` moves, on-topic rationales, none refused.
-- (b) All six dispatched jobs sit at `state=planned`, tasks built, never touched. `execute_move` is `create = dispatch or continue_mission` — creation is where it stops.
-- (c) `declare_milestone_done` never becomes true (needs a finished job + released gate), so dispatch stays the only useful move. `evaluate_dispatch` refuses done/unknown/unmet-deps milestones but NOT one with an in-flight job -> mission ends `active`, `_milestones_done=None`, `job_links=6`.
-- (d) The DoD gate is **never invoked**: no `dod.json`/`dod_result.json` anywhere; `run_job_gate`'s one caller is `job_fulfillment.py:1003`, part of job execution.
-- **Root cause:** the loop's docstring names the verb map ("`continue_mission` dispatches, `long_run_executor` executes, `dod_gate` evaluates") but it imports `long_run_executor` only for `next_cycle_index` and never calls `run_cycles`. T1_F070's Design specifies that step; the build omits it.
-- **Fork -> 2c, STOP.** Closing it = running each job through `run_cycles` in the loop with budgets, stop/safe-point handling and cycle accounting, then the gate verdict, plus a re-dispatch guard: F070's missing half, product work with its own tests. NOT done: no `orchestrator.model` change (model is not the blocker; config defaults by machine are do-not-touch), no order edits, no weakened pass definition.
+**Honest incident:** the first P2 run HUNG on a real provider call and was killed — the new `execute` seam defaults to production (`OllamaBuilder`), so every existing dispatching test fell into it. Fixed by injecting the executor double exactly as `dispatch` already is (29 sites): the seam's contract, not a workaround. No test takes a provider path now (R-0182); the gate runs in 1.6s.
+
+## Phase 3 proof — REQUIRED terminal `achieved` + `dod_result.json`: NEITHER. Rule 3.3 STOP.
+Re-proof ledger, verbatim (trimmed):
+
+    it1: dispatch_job -> dispatched
+         job 0db084c6 ... executed: terminal=all_green job_status=completed
+    it2: dispatch_job -> dispatched
+         job 20fba26e ... executed: terminal=max_cycles_reached job_status=running
+    it3: dispatch_job -> refused
+         milestone M001 already has job 20fba26e in flight (state running); a second
+         job for it is refused. Instead: wait_on_decisions, or declare_milestone_done
+         once that job finishes and its gate releases
+    it4: wait_on_decisions -> waiting_on_decisions
+
+Job states: `0db084c6 completed`, `20fba26e running`. No `dod_result.json`.
+**R-0186 works** — R4's same-order run was six dispatches, six jobs, all `planned`, nothing executed, nothing refused. Now a job executes to `completed` and the six-dispatch loop is gone.
+**Two blockers remain, neither in scope** (detail in decisions.md):
+1. `CYCLE_SAFETY_CAP = 1`: a job needing >1 cycle ends `max_cycles_reached`/`running` — never terminal — and the schema has no resume kind, so it can never finish. Its own docstring says the cap stands "until the F075 milestone gate raises it": the gate must raise the cap, and the cap stops the gate passing. Raising it is a config default by machine — a reviewer DECISION.
+2. No DoD verdict is reachable at all: `store_dod` has NO caller anywhere, and `run_job_gate`'s only caller is `job_fulfillment.run_job_fulfill` — "Spine v0 ... fixture-demo mode only", hardcoded CHANGELOG tasks, no production caller. So `dod_blocking_green` cannot be met by any run. Using the demo would make the gauntlet grade a demo (R2 rule); calling the gate from the loop is forbidden by this round's order.
 
 ## Authored-text proofs
 `sha256sum` on disk vs the committed `.agent/authored/` file:
-- r4-1 `941af73a…53811d8d` == live_review.md AT the apply commit e5ca780e · r4-2 `a4a90b75…1b2fb428` == plan.md · r4-3 `e975c006…3ff5b8bc0` == context.md
+- r5-1 `5a6342c9…c339badab` == live_review.md AT the apply commit 6a002f09 · r5-2 `d7d08f7f…019ec44d` == plan.md · r5-3 `1d9bf4e8…ee53711a4` == context.md
 
 ## Deviations & assumptions
-- **Golden regeneration declared:** `golden/matrix.json` +9 lines (one `tokens_source` per run). `golden/matrix.md` byte-identical — every fixture is measured, so the new wording appears only in the new tests' own evidence. No fixture edited.
-- **Two existing tests touched by EXTENSION, not weakening** (per-test in decisions.md): a producer added for `IO_FAILURE`; the pinned-unknown loop test given a genuinely unrecognisable input.
-- `ConnectionError` maps to the EXISTING `provider_unavailable`; only `io_failure` is new. F001's retry predicates untouched — widening those changes retry behaviour, not this finding.
-- All commits under 500 lines; the oversize exemption stays spent (R-0181). Handoff cap: 91 lines / ~1.5k tokens against 60 / 800 — declared, no section dropped. Five mandatory commit tables, the ordered R-0184 summary and the item table cost that; the full analysis lives in decisions.md rather than here.
+- **`paused` is NOT guarded**, deliberately: the move schema has no resume kind, so refusing a dispatch for a paused job leaves no legal advancing move after a human answers — a deadlock in place of a defect. Recorded as an observation (the absent resume verb), not fixed.
+- **`test_mission_e2e.py` touched without changing any assertion**: its executor double now also takes the job out of `planned`, which a real executor always does. Test fidelity restored, not behaviour pinned. No test in any suite was edited to accommodate the new behaviour otherwise.
+- All commits under 500 lines; the oversize exemption stays spent (R-0181).
+- Handoff cap: 95 lines / ~1.55k tokens against 60 / 800 — declared, no section dropped; the Phase 3 ledger quotes are ordered content.
 
 ## Item status
 | Item | Status | Reason |
 | --- | --- | --- |
-| P1 persist R3 PASS | done | |
-| P2 R-0185 | done | red first, cause explained, rerun exit 0 |
-| P3 R-0183 | done | goldens regenerated, declared |
-| P4 R-0184 diagnosis | done | fork = 2c |
-| P4.2a bounded fix | skipped | not a bounded bug — see analysis |
-| P4.3 cheap re-proof | skipped | gated on 2a |
-| P5 attempt 2 | skipped | gated on a green 2a+3 |
-| P6 handback | done | |
+| P1 persist R4 PASS | done | |
+| P2.1 execution wiring | done | |
+| P2.2 re-dispatch guard | done | |
+| P2.3 boundary + injections intact | done | injection suites unedited |
+| P2.4 tests | done | 13 new; provider-free |
+| P2.5 gate | done | exit 0 (after the killed provider hang) |
+| P3 cheap re-proof | done | NOT achieved, no gate verdict -> 3.3 STOP |
+| P4 attempt 2 | skipped | gated on a green Phase 3 |
+| P5 handback | done | |
 
 ## Next
-Window 1 rules on R-0184. R5 = wiring `long_run_executor.run_cycles` into the loop (+ the re-dispatch guard) as its own reviewed order, then attempt 2.
+Window 1 rules on the two blockers: raising `CYCLE_SAFETY_CAP` (config default by machine) and a production DoD path (`store_dod` at dispatch + a non-fixture fulfillment). R6 = whichever it orders, then attempt 2.

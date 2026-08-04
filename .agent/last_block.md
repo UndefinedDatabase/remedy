@@ -1,4 +1,4 @@
-OUTCOME: in progress — F075 R5 (SPLIT, LARGE) started.
+OUTCOME: executed with a STOP — F075 R5: R4 PASS persisted; R-0186 BUILT — a dispatch now runs its job through the existing long_run_executor.run_cycles and evaluate_dispatch refuses a second job while one is in flight (13 new tests, 268-test P2 gate exit 0). Phase 3 re-proof: jobs now really execute (one reached `completed`) and the six-dispatch loop is gone, but the run ended waiting_on_decisions with no dod_result.json -> rule 3.3 STOP; attempt 2 NOT run. Two blockers recorded for the reviewer: CYCLE_SAFETY_CAP=1 (config default by machine) and no reachable DoD verdict (store_dod has no caller; run_job_gate's only caller is a fixture-demo spine).
 
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
   10 flawless self-runs, round R5 (SPLIT, LARGE): persist the R4 PASS +
