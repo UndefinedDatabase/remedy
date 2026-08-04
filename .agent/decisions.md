@@ -2611,3 +2611,40 @@ therefore the matrix — reports the `injections_degraded` criterion but not
 which fault got which disposition; that detail lives only in each run's
 `run.json`. Surfacing it would change the golden matrix bytes, so it is
 left for a ruling rather than taken unilaterally.
+
+## 2026-08-04: F075 R4 — R-0185, transport and machine classes
+
+Inspected the F001 taxonomy first: `provider_timeouts.is_timeout_error` /
+`is_nonzero_exit_error` (both retry predicates) plus F010's local
+`is_provider_unavailable_error` (a MISSING BINARY, deliberately not a
+retry predicate). Three provider classes already exist. Decisions:
+
+1. **`ConnectionError` -> `PROVIDER_UNAVAILABLE`**, an existing class, not
+   a new one. The provider did not serve the call; whether the binary is
+   absent or the socket died is different EVIDENCE for the same fact.
+   Recognised by type and by a new local predicate
+   `is_provider_connection_error` (refused/reset/aborted/closed, broken
+   pipe, HTTP 500/502/503/504). The F001 retry predicates are untouched —
+   widening those would change retry behaviour, which is not this finding.
+2. **New enum member `IO_FAILURE = "io_failure"`** for the machine under
+   us: a killed process, a full disk, an unreadable device. Not a parallel
+   spelling of any `provider_*` class — nothing about the provider went
+   wrong. Recognised by a bare `OSError` and by a narrow text predicate.
+   Alternative considered: reuse `STOPPED` — rejected, that is F011's
+   deliberate kill switch, and calling a crash a deliberate stop is a lie.
+3. **Ordering matters and is commented in the code.** In Python 3.10
+   `TimeoutError`, `ConnectionError` and `FileNotFoundError` are all
+   `OSError` subclasses, so the bare-`OSError` rule is LAST; in the text
+   path a provider reading wins over a machine reading, because a provider
+   error that also mentions a pipe is still a provider error.
+
+Two existing tests were touched, both by EXTENSION rather than weakening:
+- `test_every_enum_member_is_reachable` gained a producing signal for
+  `IO_FAILURE`. Without it the test correctly fails — a class nothing can
+  produce should not exist.
+- `test_a_class_it_cannot_determine_is_recorded_as_unknown` (mine, R3) used
+  "HTTP 503 from the host" as its unclassifiable example. That WAS the
+  dishonest unknown R-0185 fixes, so the input became a genuinely
+  unrecognisable message. The assertion is unchanged and the falsification
+  still stands: `ValueError`/`RuntimeError`/`KeyError` and nonsense text
+  all still classify as `unknown`.

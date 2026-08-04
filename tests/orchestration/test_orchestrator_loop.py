@@ -1317,9 +1317,14 @@ class TestTheIterationBoundary:
     def test_a_class_it_cannot_determine_is_recorded_as_unknown(self, tmp_path,
                                                                mission):
         """Said out loud, never invented — and the gauntlet's
-        no-unknown-postmortems criterion is what makes that visible."""
+        no-unknown-postmortems criterion is what makes that visible.
+
+        The example used to be "HTTP 503 from the host". That was the dishonest
+        unknown R-0185 fixed: the classifier reads a 503 as
+        ``provider_unavailable`` now, so this test needs a failure nothing can
+        actually recognise. The assertion is unchanged."""
         run_mission(mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
-                    root=tmp_path, call_fn=self._boom("HTTP 503 from the host"))
+                    root=tmp_path, call_fn=self._boom("the flurb did not glorp"))
         body = json.loads(self._postmortems(tmp_path, mission.id)[0]
                           .read_text(encoding="utf-8"))
         assert body["failure_class"] == "unknown"
@@ -1378,3 +1383,34 @@ class TestTheIterationBoundary:
         assert result.terminal == TERMINAL_ITERATION_FAILED
         assert "the post-mortem could not be written" in result.detail
         assert "provider exploded" in result.detail
+
+    def test_the_injected_provider_error_classifies_as_a_provider_failure(
+            self, tmp_path, mission):
+        """R-0185, end to end through record_iteration_failure: attempt 1's
+        injected 503 used to land in the evidence as `unknown`."""
+        def boom(*args, **kwargs):
+            raise ConnectionError("provider API error mid-move: the model host "
+                                  "returned HTTP 503 and closed the connection")
+
+        result = run_mission(mission.id, LoopLimits(max_iterations=2),
+                             project_id=PROJECT, root=tmp_path, call_fn=boom)
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        body = json.loads(self._postmortems(tmp_path, mission.id)[0]
+                          .read_text(encoding="utf-8"))
+        assert body["failure_class"] == "provider_unavailable"
+
+    def test_the_injected_harness_death_classifies_as_a_machine_failure(
+            self, tmp_path, mission):
+        """The other injected shape: nothing about the provider went wrong."""
+        def die(*args, **kwargs):
+            raise OSError("harness death mid-write: killed while writing the dossier")
+
+        result = run_mission(mission.id, LoopLimits(max_iterations=2),
+                             project_id=PROJECT, root=tmp_path,
+                             call_fn=_scripted(_move_json("wait_on_decisions",
+                                                          reason="waiting")),
+                             update_dossier=die)
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        body = json.loads(self._postmortems(tmp_path, mission.id)[0]
+                          .read_text(encoding="utf-8"))
+        assert body["failure_class"] == "io_failure"

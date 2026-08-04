@@ -96,6 +96,12 @@ class FailureClass(str, enum.Enum):
     BUDGET_EXHAUSTED = "budget_exhausted"
     #: F017 scope fence violation. A write path was blocked by fence checks.
     FENCE_VIOLATION = "fence_violation"
+    #: The HARNESS's own OS-level I/O or process failure — a killed process, a
+    #: full disk, a broken pipe. Deliberately NOT one of the ``provider_*``
+    #: classes: nothing about the provider went wrong, the machine under us did
+    #: (F075 R-0185, from a gauntlet run whose injected mid-write death read as
+    #: ``unknown``).
+    IO_FAILURE = "io_failure"
     UNKNOWN = "unknown"
 
 
@@ -126,6 +132,40 @@ def is_provider_unavailable_error(error: str | None) -> bool:
         or "executable" in lowered and "missing" in lowered
         or "provider_unavailable" in lowered
     )
+
+
+def is_provider_connection_error(error: str | None) -> bool:
+    """Does this error mean "the provider was reachable-shaped but did not answer"?
+
+    Separate from :func:`is_provider_unavailable_error`, which means the
+    executable is not there. Both end at ``provider_unavailable`` — the provider
+    did not serve the call — but they are different evidence and a reader of the
+    predicate should not have to pretend otherwise.
+    """
+    if not error:
+        return False
+    lowered = error.lower()
+    return any(mark in lowered for mark in (
+        "connection refused", "connection reset", "connection aborted",
+        "closed the connection", "broken pipe", "connectionerror",
+        "econnrefused", "http 500", "http 502", "http 503", "http 504",
+    ))
+
+
+def is_io_failure_error(error: str | None) -> bool:
+    """Does this error mean the machine under us failed, not the provider?
+
+    A killed process, a full disk, an unreadable device. Kept narrow and
+    explicit: a predicate that matched everything would turn ``io_failure``
+    into a second spelling of ``unknown``.
+    """
+    if not error:
+        return False
+    lowered = error.lower()
+    return any(mark in lowered for mark in (
+        "killed", "no space left", "input/output error", "read-only file system",
+        "broken pipe", "too many open files",
+    ))
 
 
 #: Terminal loop/task statuses that ARE a failure, mapped to their class. A status that is
@@ -220,11 +260,21 @@ def _classify_exception(exc: BaseException) -> Classification | None:
     if isinstance(exc, FileNotFoundError):
         return Classification(
             FailureClass.PROVIDER_UNAVAILABLE, SIGNAL_TYPED_EXCEPTION, text)
+    # ConnectionError before the bare-OSError rule below: it IS an OSError, and
+    # the provider not answering is a provider fact, not a machine fact.
+    if isinstance(exc, ConnectionError):
+        return Classification(
+            FailureClass.PROVIDER_UNAVAILABLE, SIGNAL_TYPED_EXCEPTION, text)
     if isinstance(exc, TimeoutError) or type(exc).__name__ == "TimeoutExpired":
         return Classification(FailureClass.PROVIDER_TIMEOUT, SIGNAL_TYPED_EXCEPTION, text)
     if type(exc).__name__ == "CalledProcessError":
         return Classification(
             FailureClass.PROVIDER_NONZERO_EXIT, SIGNAL_TYPED_EXCEPTION, text)
+    # LAST of the OSError family, so every more specific member above wins:
+    # in Python 3.10 TimeoutError, ConnectionError and FileNotFoundError are all
+    # OSError subclasses, and a rule ordered above them would swallow them.
+    if isinstance(exc, OSError):
+        return Classification(FailureClass.IO_FAILURE, SIGNAL_TYPED_EXCEPTION, text)
     return None
 
 
@@ -238,10 +288,16 @@ def _classify_error_text(text: str) -> FailureClass | None:
         return None
     if is_provider_unavailable_error(text):
         return FailureClass.PROVIDER_UNAVAILABLE
+    if is_provider_connection_error(text):
+        return FailureClass.PROVIDER_UNAVAILABLE
     if is_timeout_error(text):
         return FailureClass.PROVIDER_TIMEOUT
     if is_nonzero_exit_error(text):
         return FailureClass.PROVIDER_NONZERO_EXIT
+    # Last: the machine under us. A provider reading comes first because a
+    # provider error that also mentions a pipe is still a provider error.
+    if is_io_failure_error(text):
+        return FailureClass.IO_FAILURE
     return None
 
 
