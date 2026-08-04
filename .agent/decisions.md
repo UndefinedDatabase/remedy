@@ -2438,3 +2438,56 @@ truth is the single most likely way this gate would lie about 10/10.
 4. **Regenerating the manifest is a deliberate human act.** No script
    rewrites it as a side effect of loading — the whole point is that an
    edit is loud. Bumping the set version resets the gauntlet count.
+
+## 2026-08-04: F075 T003a — injection seams, and the one that is missing
+
+**Finding for the reviewer (no R-id claimed — Window 1 assigns it):
+`orchestrator_loop.run_mission` has no exception boundary.** Its body
+(lines 698–886) contains no `try`/`except` at all, `execute_move` wraps
+none around `dispatch`, and `structured_outputs.run_structured_call`
+retries PARSE failures only — never an exception. Verified by running
+the real code, not by reading it:
+
+- a raising `call_fn` propagates out at `orchestrator_loop.py:834` →
+  `structured_outputs.py:158` (`RuntimeError` escaped `run_mission`);
+- a raising `update_dossier` propagates out at
+  `orchestrator_loop.py:811` (`OSError` escaped `run_mission`).
+
+In both cases the iteration leaves NO ledger entry, NO F010 postmortem
+and NO terminal — the loop cannot degrade a failure it never catches.
+
+Consequence for T003a: three of the four harness-failure injection
+classes (provider API error mid-move, harness death mid-dispatch,
+harness death mid-write) cannot be driven honestly today. The seams
+themselves all exist and are already public parameters of `run_mission`
+(`call_fn`, `dispatch`, `update_dossier`) — what is missing is the
+boundary that turns a raised failure at one of them into a classified
+postmortem plus an honest terminal or an F051 escalation. Per the
+round's HARD RULE this is a product change of its own, with its own
+tests, and was NOT smuggled into the harness.
+
+Decisions taken:
+1. **Blocked classes are REFUSED, not silently skipped.**
+   `gauntlet_injection.check_injections_supported` raises
+   `MissingSeamError` naming the class, its seam and the missing
+   boundary. Alternative considered: run g06/g08/g09 without their
+   injections — rejected, a run.json that omits a declared injection is
+   a lie by omission in exactly the artifact a human trusts when
+   flipping defaults.
+2. **No harness-side `except` around the seam to fake resilience.**
+   If the runner absorbed the raise itself, the gauntlet would be
+   grading its own crutch rather than the product. The runner still
+   catches a crashed `run_mission` at the CAMPAIGN level — a crashed
+   run is a FAILED run, recorded as such — which is harness
+   bookkeeping, not product resilience.
+3. **`truncated_model_response` is injectable today** and is driven at
+   the `call_fn` seam: the first attempt of move 1 returns a payload cut
+   mid-object. It RETURNS rather than raises, so `run_structured_call`
+   classifies it parse-class and re-prompts once — the real
+   retry-within-budget path. The disposition is read off what the
+   product did: no re-prompt → `silent_success`; re-prompted and the
+   mission reached a green terminal → `retry_within_budget`; re-prompted
+   without recovery → `ledgered_failure`.
+4. **Injectors are decorators around the production callable** the
+   runner would have passed anyway — no product edit, no test-only
+   branch on a production path.
