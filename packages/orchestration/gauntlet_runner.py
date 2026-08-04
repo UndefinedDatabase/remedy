@@ -70,6 +70,10 @@ ABSENT_ROOT_DIGEST = "sha256:absent"
 #: ``tokens`` key at all: absence is honest, a zero would be a claim (R-0178).
 TOKENS_UNMEASURED = "unmeasured"
 
+#: The terminal a run gets when it raised out of the harness rather than
+#: reaching one of the loop's own terminals. Not green, and named as what it is.
+TERMINAL_RUNNER_CRASHED = "runner_crashed"
+
 
 # ---------------------------------------------------------------------------
 # Host-state isolation
@@ -332,6 +336,12 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
     entries: list[Any] = []
     mission: Any = None
     injectors: list[Any] = []
+    gate: dict[str, Any] | None = None
+    # Bound BEFORE the try (R-0180). The crash path can itself fail — a
+    # collector reading a half-written root, a disk that has gone away — and an
+    # unbound `body` at the hash-after line would raise NameError over the top
+    # of the real error, losing the only account of what went wrong.
+    body: dict[str, Any] = _minimal_body(order, before)
 
     try:
         with isolated_environment(data_root, order):
@@ -354,17 +364,25 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             gate = latest_gate_result(mission)
     except Exception as exc:  # a crashed run is a FAILED run, with evidence
         crashed = f"{type(exc).__name__}: {exc}"
-        terminal = terminal or "runner_crashed"
-        # Re-entered on purpose: the collectors read through the product's own
-        # path resolution, and outside isolation that path is the operator's
-        # real root — the one thing this runner must never touch.
-        with isolated_environment(data_root, order):
-            body = _evidence_body(order, terminal, time.monotonic() - started,
-                                  entries, mission, injectors, before, data_root)
+        terminal = terminal or TERMINAL_RUNNER_CRASHED
+        gate = None
+        try:
+            # Re-entered on purpose: the collectors read through the product's
+            # own path resolution, and outside isolation that path is the
+            # operator's real root — the one thing this runner must never touch.
+            with isolated_environment(data_root, order):
+                body = _evidence_body(order, terminal, time.monotonic() - started,
+                                      entries, mission, injectors, before, data_root)
+        except Exception as collect_exc:  # R-0180: the fallback keeps the run
+            body = _minimal_body(order, before)
+            body["terminal_status"] = terminal
+            body["postmortems"] = [{
+                "scope": "job", "failure_class": "",
+                "detail": f"collecting this run's evidence also failed: "
+                          f"{type(collect_exc).__name__}: {collect_exc}"}]
         body["postmortems"] = list(body["postmortems"]) + [{
             "scope": "job", "failure_class": "",
             "detail": f"the run raised out of the harness: {crashed}"}]
-        gate = None
 
     body["data_root_hash_after"] = data_root_digest(real_data_root)
     (run_dir / RUN_FILENAME).write_text(
@@ -374,6 +392,29 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             json.dumps(gate, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return OrderOutcome(order_id=order.id, run_dir=run_dir,
                         terminal_status=terminal, crashed=crashed, body=body)
+
+
+def _minimal_body(order: GauntletOrder, before: str) -> dict[str, Any]:
+    """The least evidence a run can leave and still be judged.
+
+    Every list empty rather than absent, so the schema holds and the evaluator
+    reads a real — if bare — run instead of malformed bytes.
+    """
+    return {
+        "gauntlet_run_version": GAUNTLET_RUN_VERSION,
+        "order_id": order.id,
+        "kind": order.kind,
+        "terminal_status": TERMINAL_RUNNER_CRASHED,
+        "wall_seconds": 0.0,
+        "operator_interventions": [],
+        "data_root_hash_before": before,
+        "postmortems": [],
+        "open_decisions": [],
+        "era_defects": [],
+        "injections": [],
+        "evidence_links": {},
+        "tokens_source": TOKENS_UNMEASURED,
+    }
 
 
 def _evidence_body(order: GauntletOrder, terminal: str, wall: float,
@@ -423,8 +464,10 @@ def run_campaign(orders: tuple[GauntletOrder, ...], campaign_root: Path, *,
                  ) -> list[OrderOutcome]:
     """Run the frozen set once, in manifest order, keeping every run's evidence.
 
-    A run that dies takes only itself down: the loop continues, because the
-    campaign's value is the whole matrix and a missing run is worse than a
+    A run that dies takes only itself down: every order is wrapped, so a raise
+    from ``run_order`` ITSELF — its evidence write, its re-entered collectors —
+    becomes a synthetic crashed outcome and the campaign continues (R-0180).
+    The campaign's value is the whole matrix, and a missing run is worse than a
     failed one. ``real_data_root`` defaults to the operator's CURRENT root,
     resolved before any isolation is applied.
     """
@@ -435,8 +478,16 @@ def run_campaign(orders: tuple[GauntletOrder, ...], campaign_root: Path, *,
     campaign_root.mkdir(parents=True, exist_ok=True)
     outcomes: list[OrderOutcome] = []
     for index, order in enumerate(orders, start=1):
-        outcome = run_order(order, campaign_root=campaign_root,
-                            real_data_root=real_root, deps=deps, index=index)
+        try:
+            outcome = run_order(order, campaign_root=campaign_root,
+                                real_data_root=real_root, deps=deps, index=index)
+        except Exception as exc:  # R-0180: the order dies, the campaign does not
+            outcome = OrderOutcome(
+                order_id=order.id,
+                run_dir=campaign_root / f"run-{index:02d}-{order.id}",
+                terminal_status=TERMINAL_RUNNER_CRASHED,
+                crashed=f"{type(exc).__name__}: {exc}",
+                body={})
         outcomes.append(outcome)
         if on_order is not None:
             on_order(index, order, outcome)

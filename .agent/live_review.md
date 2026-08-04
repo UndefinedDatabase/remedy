@@ -70,6 +70,14 @@ iteration leaves a ledger entry") made true under a raise.
   synthetic crashed OrderOutcome; initialize body before the try
   or nest the crash path's fallback; one test where the crash
   path itself raises.
+  Fixed in this round's R-0180 commit: run_campaign wraps every
+  order (a raise from run_order itself becomes a synthetic crashed
+  OrderOutcome and the loop continues); run_order binds `body` to a
+  minimal schema-valid body BEFORE the try and nests the crash
+  path's collection so a failing collector cannot mask the real
+  error. Two tests: the crash path itself raising, and run_order
+  itself raising mid-campaign.
+  Done: R-0180
 - Next free ID: R-0181.
 
 ## Verdicts

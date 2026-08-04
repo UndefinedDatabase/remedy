@@ -400,3 +400,61 @@ def test_the_defaults_are_the_production_verbs() -> None:
     assert deps.plan_mission is plan_mission
     assert deps.run_mission is run_mission
     assert deps.load_mission is load_mission
+
+
+# ---------------------------------------------------------------------------
+# R-0180: the crash path can itself fail, and the campaign still finishes
+# ---------------------------------------------------------------------------
+
+def test_a_crash_path_that_also_raises_still_leaves_judgeable_evidence(
+        tmp_path: Path, real_root: Path, monkeypatch) -> None:
+    """Collecting a dead run's evidence can fail too. The fallback keeps the run
+    in the matrix instead of losing it behind a NameError."""
+    import packages.orchestration.gauntlet_runner as runner_mod
+
+    def collector_explodes(_data_root):
+        raise OSError("the isolated root went away mid-collection")
+
+    monkeypatch.setattr(runner_mod, "collect_postmortems", collector_explodes)
+    rec = Recorder(raise_in_run=RuntimeError("the run died"))
+    outcome = run_order(an_order(), campaign_root=tmp_path / "campaign",
+                        real_data_root=real_root, deps=rec.deps())
+
+    assert outcome.crashed.startswith("RuntimeError")
+    assert outcome.terminal_status == runner_mod.TERMINAL_RUNNER_CRASHED
+    details = " ".join(p["detail"] for p in outcome.body["postmortems"])
+    assert "collecting this run's evidence also failed" in details
+    assert "the run raised out of the harness" in details
+    # Still real, readable evidence with both hashes.
+    ev = load_run(outcome.run_dir)
+    assert ev.load_error == ""
+    assert outcome.body["data_root_hash_before"] == outcome.body["data_root_hash_after"]
+    assert evaluate_evidence_dir(tmp_path / "campaign").runs[0].flawless is False
+
+
+def test_a_raise_from_run_order_itself_does_not_kill_the_campaign(
+        tmp_path: Path, real_root: Path, monkeypatch) -> None:
+    """run_campaign's promise, enforced: only the dying order dies."""
+    import packages.orchestration.gauntlet_runner as runner_mod
+
+    real_run_order = runner_mod.run_order
+    calls = {"n": 0}
+
+    def flaky_run_order(order, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise OSError("could not write this run's evidence")
+        return real_run_order(order, **kwargs)
+
+    monkeypatch.setattr(runner_mod, "run_order", flaky_run_order)
+    orders = tuple(an_order(f"g{i:02d}-order") for i in range(1, 4))
+    outcomes = run_campaign(orders, tmp_path / "campaign", deps=Recorder().deps(),
+                            real_data_root=real_root)
+
+    assert [bool(o.crashed) for o in outcomes] == [False, True, False]
+    assert outcomes[1].terminal_status == runner_mod.TERMINAL_RUNNER_CRASHED
+    assert "could not write this run's evidence" in outcomes[1].crashed
+    # The survivors' evidence is intact and judgeable.
+    verdict = evaluate_evidence_dir(tmp_path / "campaign")
+    assert [r.run_dir for r in verdict.runs] == [
+        "run-01-g01-order", "run-03-g03-order"]
