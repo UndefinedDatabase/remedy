@@ -932,6 +932,47 @@ def run_mission(
 IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
 
 
+def attach_milestone_dod(project_id: str, mission_id: str, mission: Any,
+                         milestone_id: str, job_id: str,
+                         root: Path | None = None) -> bool:
+    """Store the milestone's COMPILED DoD on the job it was dispatched for.
+
+    The gate reads a job's own evidence area (``dod_gate.load_dod``), and until
+    R-0188 nothing ever put anything there — ``store_dod`` had zero callers, so
+    ``run_job_gate`` returned None for every job in existence and
+    ``dod_blocking_green`` was unmeetable by construction.
+
+    Nothing is compiled here. F069 already compiled every milestone's DoD into
+    the mission's evidence area and recorded the filename in the milestone's
+    ``dod_ref``; this copies that artifact onto the job. A milestone with no
+    ``dod_ref``, or a file that will not parse, stores NOTHING and the gate
+    stays un-run for that job — an honest absence the evaluator already knows
+    how to report, never an invented definition of done.
+
+    Returns whether a DoD was stored.
+    """
+    from packages.orchestration.dod_gate import store_dod
+    from packages.orchestration.dod_schema import DoD
+    from packages.orchestration.mission_compiler import mission_plan_of
+    from packages.orchestration.mission_state import mission_evidence_dir
+
+    plan = mission_plan_of(mission)
+    if plan is None:
+        return False
+    milestone = next((m for m in plan.milestones
+                      if getattr(m, "id", "") == milestone_id), None)
+    ref = getattr(milestone, "dod_ref", "") if milestone is not None else ""
+    if not ref:
+        return False
+    path = mission_evidence_dir(project_id, mission_id, root) / ref
+    try:
+        dod = DoD.model_validate(json.loads(path.read_text(encoding="utf-8")))
+    except Exception:  # noqa: BLE001 — an unusable DoD is no DoD, said by absence
+        return False
+    store_dod(job_id, dod)
+    return True
+
+
 @dataclass(frozen=True)
 class JobExecution:
     """What running one dispatched job produced, as the loop reads it.
@@ -946,6 +987,9 @@ class JobExecution:
     job_status: str = ""
     stop_reason: str = ""
     resolved_cycles: dict[str, Any] = field(default_factory=dict)
+    #: The DoD gate's verdict for this job, or None when it stored no DoD.
+    gate_released: bool | None = None
+    gate_blocker: str = ""
 
 
 def execute_dispatched_job(job: Any, *,
@@ -991,10 +1035,39 @@ def execute_dispatched_job(job: Any, *,
                         unattended=True)
     # Carried out rather than logged and forgotten: a run that went over the
     # rollout cap has to say so in its own evidence (R-0187).
+    # R-0188: the gate runs at PRODUCTION job completion, here, once. It
+    # persists its own verdict where load_gate_result reads it, so there is no
+    # second store and the fixture-demo fulfillment spine stays untouched.
+    released, blocker = run_gate_for_job(str(job.id))
     return JobExecution(terminal_status=result.terminal_status,
                         job_status=result.job_status,
                         stop_reason=result.stop_reason,
-                        resolved_cycles=resolved.to_json())
+                        resolved_cycles=resolved.to_json(),
+                        gate_released=released, gate_blocker=blocker)
+
+
+def run_gate_for_job(job_id: str,
+                     worktree_root: Path | None = None) -> tuple[bool | None, str]:
+    """Evaluate a finished job's Definition of Done through the EXISTING gate.
+
+    ``run_job_gate`` both evaluates and persists — one author for the verdict —
+    so this adds no store of its own. ``None`` means the job carried no DoD and
+    was therefore not gated at all, which is the gate's own additive contract.
+
+    The checks run in the job's workspace: a gauntlet mission has no repository
+    checkout, and pointing them at one would run a mission's checks against the
+    operator's tree. A gate that cannot run its checks reports them red with a
+    reason, which is an honest verdict rather than a missing one.
+    """
+    from packages.orchestration.data_paths import workspaces_dir
+    from packages.orchestration.dod_gate import gate_blocker, run_job_gate
+
+    root = worktree_root or (workspaces_dir() / job_id)
+    root.mkdir(parents=True, exist_ok=True)
+    result = run_job_gate(job_id, root)
+    if result is None:
+        return None, ""
+    return result.released, gate_blocker(result)
 
 
 def execute_move(project_id: str, mission_id: str, move: Any, *,
@@ -1062,6 +1135,14 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         detail = f"job {job.id} dispatched for {payload['milestone_id']}"
         if approved:
             detail += " (plan auto-approved, audited)"
+        # R-0188: give the job its milestone's DoD before it runs, or the gate
+        # has nothing to evaluate when it finishes.
+        from packages.orchestration.mission_state import load_mission as _load
+
+        if attach_milestone_dod(project_id, mission_id,
+                                _load(project_id, mission_id, root),
+                                payload["milestone_id"], str(job.id), root):
+            detail += "; DoD attached"
         run = (execute or execute_dispatched_job)(job)
         # What execution PRODUCED, on the ledger entry, so the next iteration's
         # context shows why the milestone is or is not claimable.
@@ -1075,6 +1156,13 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
             detail += (f" cycles={cycles.get('max_cycles')}"
                        f"/{cycles.get('source')}"
                        f"{' OVER-CAP' if cycles.get('over_cap') else ''}")
+        released = getattr(run, "gate_released", None)
+        if released is None:
+            detail += " gate=not-run"
+        else:
+            detail += f" gate={'released' if released else 'blocked'}"
+            if not released and getattr(run, "gate_blocker", ""):
+                detail += f" ({run.gate_blocker})"
         return MoveOutcome(status="dispatched", detail=detail,
                            job_id=str(job.id))
 

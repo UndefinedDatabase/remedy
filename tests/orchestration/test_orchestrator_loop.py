@@ -84,6 +84,9 @@ from packages.orchestration.orchestrator_loop import (
     LedgerEntry,
     LoopLimits,
     MilestoneEvidence,
+    attach_milestone_dod,
+    run_gate_for_job,
+    JobExecution,
     all_milestones_done,
     append_ledger_entry,
     assemble_context,
@@ -1575,3 +1578,168 @@ class TestTheReDispatchGuard:
         # First refusal re-prompts once, the second escalates — never six jobs.
         assert result.terminal == TERMINAL_ESCALATED
         assert len(dispatched.seen) == 0
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0188 — the production DoD path
+# ---------------------------------------------------------------------------
+#
+# Before this, `store_dod` had zero callers and `run_job_gate`'s only caller was
+# the fixture-demo fulfillment spine, so no real run could ever produce a gate
+# verdict and `dod_blocking_green` was unmeetable by construction.
+
+
+def _a_dod(check_id: str = "tests", argv=("python3", "-c", "pass"),
+           blocking: bool = True):
+    """A minimal deterministic DoD: one custom_cmd check that really runs.
+
+    ``python3`` because the gate only executes allow-listed executables — a
+    check naming anything else is refused before it runs, which is the point of
+    the allowlist and not something to work around.
+    """
+    from packages.orchestration.dod_schema import DoD
+
+    return DoD.model_validate({
+        "schema_v": "dod_v1",
+        "checks": [{"id": check_id, "kind": "custom_cmd", "blocking": blocking,
+                    "spec": {"argv": list(argv)}, "source": "standard"}],
+        "compiled": False,
+        "origin": "deterministic",
+    })
+
+
+class TestTheDoDReachesTheJob:
+
+    def _write_milestone_dod(self, tmp_path, mission, milestone_id="M001"):
+        from packages.orchestration.mission_compiler import (
+            milestone_dod_filename,
+            mission_plan_of,
+        )
+        evidence = mission_evidence_dir(PROJECT, mission.id, tmp_path)
+        evidence.mkdir(parents=True, exist_ok=True)
+        name = milestone_dod_filename(milestone_id)
+        (evidence / name).write_text(
+            json.dumps(_a_dod().model_dump()), encoding="utf-8")
+        plan = mission_plan_of(mission)
+        body = plan.model_copy(update={"milestones": [
+            m.model_copy(update={"dod_ref": name}) if m.id == milestone_id else m
+            for m in plan.milestones]}).model_dump()
+        set_mission_plan(PROJECT, mission.id, body, tmp_path)
+        return load_mission(PROJECT, mission.id, tmp_path)
+
+    def test_a_dispatch_stores_the_milestones_compiled_dod(self, tmp_path, mission):
+        from packages.orchestration.dod_gate import load_dod
+
+        mission = self._write_milestone_dod(tmp_path, mission)
+        stored = attach_milestone_dod(PROJECT, mission.id, mission, "M001",
+                                      "job-0001", tmp_path)
+        assert stored is True
+        assert load_dod("job-0001") is not None
+
+    def test_a_milestone_with_no_dod_ref_stores_nothing(self, tmp_path, mission):
+        """Honest absence: the gate stays un-run rather than inventing a DoD."""
+        assert attach_milestone_dod(PROJECT, mission.id, mission, "M001",
+                                    "job-0002", tmp_path) is False
+
+    def test_an_unreadable_dod_artifact_stores_nothing(self, tmp_path, mission):
+        from packages.orchestration.mission_compiler import (
+            milestone_dod_filename,
+            mission_plan_of,
+        )
+        evidence = mission_evidence_dir(PROJECT, mission.id, tmp_path)
+        evidence.mkdir(parents=True, exist_ok=True)
+        name = milestone_dod_filename("M001")
+        (evidence / name).write_text("{ not a dod", encoding="utf-8")
+        plan = mission_plan_of(mission)
+        body = plan.model_copy(update={"milestones": [
+            m.model_copy(update={"dod_ref": name}) if m.id == "M001" else m
+            for m in plan.milestones]}).model_dump()
+        set_mission_plan(PROJECT, mission.id, body, tmp_path)
+        reloaded = load_mission(PROJECT, mission.id, tmp_path)
+        assert attach_milestone_dod(PROJECT, mission.id, reloaded, "M001",
+                                    "job-0003", tmp_path) is False
+
+    def test_nothing_is_recompiled(self, tmp_path, mission):
+        """The artifact F069 already wrote is COPIED, never rebuilt."""
+        import inspect
+
+        source = inspect.getsource(attach_milestone_dod)
+        assert "compile_milestone_dod" not in source
+        assert "store_dod" in source
+
+
+class TestTheGateRunsAtJobCompletion:
+
+    def test_a_job_with_a_dod_gets_a_persisted_verdict(self, tmp_path, monkeypatch):
+        from packages.orchestration.dod_gate import load_gate_result, store_dod
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        store_dod("job-0100", _a_dod())
+        released, blocker = run_gate_for_job("job-0100")
+        assert released is True and blocker == ""
+        assert load_gate_result("job-0100")["released"] is True
+
+    def test_a_job_without_a_dod_is_not_gated_at_all(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        assert run_gate_for_job("job-0101") == (None, "")
+
+    def test_a_failing_check_blocks_and_names_its_blocker(self, tmp_path,
+                                                          monkeypatch):
+        from packages.orchestration.dod_gate import store_dod
+
+        monkeypatch.setenv("REMEDY_DATA_DIR", str(tmp_path))
+        store_dod("job-0102", _a_dod(check_id="impossible",
+                                     argv=("python3", "-c", "raise SystemExit(1)")))
+        released, blocker = run_gate_for_job("job-0102")
+        assert released is False
+        assert "impossible" in blocker
+
+    def test_the_verdict_has_one_author(self):
+        """run_job_gate persists its own result — no second store here."""
+        import inspect
+
+        source = inspect.getsource(run_gate_for_job)
+        assert "run_job_gate" in source
+        assert "save_gate_result" not in source
+
+
+class TestAReleasedGateMakesTheMilestoneClaimable:
+
+    def test_a_released_gate_allows_declare_milestone_done(self, mission):
+        evidence = MilestoneEvidence(job_id="job-1", job_state="completed",
+                                     gate_released=True)
+        assert evaluate_milestone_done(mission, "M001", evidence) == ""
+
+    def test_a_blocked_gate_refuses_and_shows_the_blocker(self, mission):
+        evidence = MilestoneEvidence(job_id="job-1", job_state="completed",
+                                     gate_released=False,
+                                     gate_blocker="dod_blocking_red:tests")
+        refusal = evaluate_milestone_done(mission, "M001", evidence)
+        assert "is not met" in refusal
+        assert "dod_blocking_red:tests" in refusal
+
+    def test_the_execution_outcome_reports_the_gate(self, tmp_path, mission,
+                                                    dispatched):
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=True)
+
+        run_mission(mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+                    root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+                    execute=execute,
+                    call_fn=_scripted(_move_json("dispatch_job",
+                                                 milestone_id="M001",
+                                                 step="build the core")))
+        detail = read_ledger(PROJECT, mission.id, tmp_path)[0]["outcome"]["detail"]
+        assert "gate=released" in detail
+
+    def test_an_ungated_job_says_so_rather_than_implying_green(
+            self, tmp_path, mission, dispatched):
+        run_mission(mission.id, LoopLimits(max_iterations=1), project_id=PROJECT,
+                    root=tmp_path, evidence=_no_evidence, dispatch=dispatched,
+                    execute=_executed,
+                    call_fn=_scripted(_move_json("dispatch_job",
+                                                 milestone_id="M001",
+                                                 step="build the core")))
+        detail = read_ledger(PROJECT, mission.id, tmp_path)[0]["outcome"]["detail"]
+        assert "gate=not-run" in detail

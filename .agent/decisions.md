@@ -2907,3 +2907,39 @@ version, which set v2 turned into the real one; the example became
 `test_the_set_is_frozen_at_version_one` was renamed to
 `..._at_the_declared_set_version` — its body already compared against the
 constant, so only a now-false NAME changed.
+
+## 2026-08-04: F075 R6 — R-0188 the production DoD path
+
+Shapes inspected first: `store_dod(job_id, DoD)` writes `dod.json` into the
+job's evidence area; `run_job_gate(job_id, worktree_root)` reads that file,
+evaluates, AND persists via `save_gate_result` — so it is already the single
+author of a verdict; `load_gate_result(job_id)` reads the same place. F069
+compiles each milestone's DoD into the MISSION's evidence area as
+`dod_<milestone>.json` and records the filename in the milestone's `dod_ref`.
+
+1. **`attach_milestone_dod` at dispatch.** Copies the milestone's existing
+   `dod_ref` artifact onto the job via `store_dod`. Nothing is recompiled — a
+   test asserts the function's source never mentions `compile_milestone_dod`.
+   No `dod_ref`, or an artifact that will not parse, stores NOTHING and returns
+   False: the gate stays un-run for that job, which is the honest absence the
+   evaluator already reports, never an invented definition of done.
+2. **`run_gate_for_job` at production completion**, called from
+   `execute_dispatched_job` after `run_cycles` returns. It calls `run_job_gate`
+   and nothing else — a test asserts `save_gate_result` does not appear in its
+   source, so the verdict keeps one author and the fixture-demo fulfillment
+   spine is untouched. `None` (no stored DoD) is passed through as "not gated",
+   not as green.
+3. **Where the checks run.** The job's own workspace
+   (`workspaces_dir()/<job id>`), created if absent. A gauntlet mission has no
+   repository checkout, and pointing its checks at one would run a mission's
+   commands against the operator's tree. A check that cannot run is recorded
+   red with a reason — an honest verdict rather than a missing one.
+4. **The outcome detail now carries the gate**: `gate=released`,
+   `gate=blocked (<blocker>)`, or `gate=not-run`. "Not run" is said out loud
+   rather than left to look like a pass.
+
+No existing test's assertion pinned the old gate-less behaviour — the loop,
+e2e, era, injection, runner and dod_gate suites are green unedited (316).
+Test-fixture note: the DoD used by the new tests names `python3`, because the
+gate only executes allow-listed executables; a check naming anything else is
+refused before it runs, which is the allowlist working, not an obstacle.
