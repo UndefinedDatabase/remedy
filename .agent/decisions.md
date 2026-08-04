@@ -3313,3 +3313,49 @@ learned the milestone was finished.
 
 Twelve tests, all provider-free (R-0182). Loop, e2e and era suites green
 UNEDITED (249).
+
+## 2026-08-04: F075 R10 Phase 3/4 — v4 budgets, and the first flawless run
+
+**R-0194, what changed and what did not.** Ten orders, budget values only.
+`max_iterations` 6 → 12 (one-milestone orders) and 12/14 → 22 (the two
+two-milestone orders); `max_tokens` and `max_wall_seconds` re-sized with them;
+`max_cycles` UNTOUCHED — R9 measured those right (every job reached all_green
+at its budgeted cycles), and an edit without evidence is the guess v4 exists to
+replace. Every non-budget key was proven byte-identical to v3 mechanically
+before the commit. Template digest unchanged (1c4f41bf…), so the world the
+missions run in is the same world; set hash e50916bf…, version 4, count resets
+per A9 (nothing lost — no attempt had passed).
+
+Sizing rule, recorded per order in a new `budget_rationale` field: the
+PESSIMISTIC path. Three iterations per milestone (dispatch, the R-0191 refusal,
+the declare) plus one to achieve, over the compiler's observed expansion, plus
+margin — so a run that ignores the R-0193 directive still fits. Three tests pin
+it: a floor from the measured shape, a ceiling five above it (a budget nothing
+can fail does not measure economy), and the frozen cycles.
+
+**Phase 4 re-proof — the first flawless run in this feature's history.**
+`--only 1`, isolated data root outside the repo, 472s:
+
+    terminal_status achieved · open_decisions [] · released true (acc-001 passed)
+    all nine criteria true · flawless true
+
+Nine iterations, and the ledger contains no refusal at all:
+
+    it1 dispatch M001 gate=released · it2 declare M001
+    it3 dispatch M002 gate=released · it4 declare M002
+    it5 dispatch M003 gate=released · it6 declare M003
+    it7 dispatch M004 gate=released · it8 declare M004
+    it9 achieved — every milestone is done and the mission goal is met
+
+R-0193 does what it claimed: two iterations per milestone, the guard never
+needed. R-0192's chain now runs four times in one mission instead of twice.
+
+**One observation the reviewer should hold, not act on.** The compiler shaped
+FOUR milestones this time, not R9's three — the expansion is not a constant.
+Four milestones cost 9 iterations direct (fits 12 with room) but would cost 13
+if the model fell back to the refusal path, which does NOT fit. The budget is
+sized for the direct path plus margin, and the direct path is now the
+product's behaviour rather than a hope — but a campaign order that expands to
+five milestones AND ignores the directive can still hit iteration_limit. That
+is the gate measuring economy, which is its job; noting it so a v5 is an
+evidence decision rather than a reflex.
