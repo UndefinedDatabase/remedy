@@ -23,6 +23,9 @@
   data root before and after every run — cost scales with operator
   history. Needs a measured diagnosis + fix order (manifest-based
   digest or scoped root). Source: F075 R11 · 2026-08-05.
+  Operator priority: HIGH — the scan class is the likely root of
+  multi-hour campaign wall-clock on this machine (2026-08-05); order
+  the measured diagnosis early in the F079 R1 candidate sweep.
 - The mid-run UI rebuild recurs: REMEDY_UI_NO_AUTO_BUILD=1 did not
   prevent a rebuild inside the R12 base gate run (6 base-only ids,
   identical dist content hash, mtimes inside the run) — the same
