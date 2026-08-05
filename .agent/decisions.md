@@ -3533,3 +3533,45 @@ than being a guess against an unbounded shape.
 
 Preconditions for attempt 03 re-verified: set version 4, set hash
 e50916bf… equal to the recomputation, `preflight_injections -> []`.
+
+## 2026-08-05: F075 R11 Phase 5 — attempt 03: 10/10 FLAWLESS
+
+ONE invocation, ten orders, set v4 (hash e50916bf…, template 1c4f41bf…),
+isolated data root outside the repo. `passed: true`, `failure_kinds: []`.
+
+    run                            terminal    it done retry open
+    g01 pure-code-change           achieved     5    2     0    0
+    g02 test-add                   achieved     3    1     0    0
+    g03 small-app-feature-smoke    achieved     5    2     0    0
+    g04 doc-generation             achieved     5    2     0    0
+    g05 two-milestone-mission      achieved     7    3     0    0
+    g06 provider-api-error         achieved     4    1     1    0
+    g07 truncated-model-response   achieved     5    2     0    0
+    g08 harness-death-mid-dispatch achieved     6    2     1    0
+    g09 harness-death-mid-write    achieved     8    3     1    0
+    g10 escalate-then-finish       achieved     5    2     0    0
+
+All nine criteria true in all ten runs. Every run finished well inside its v4
+budget; the largest was g09 at 8 iterations against 22.
+
+Both R11 changes are visible in the evidence rather than merely asserted:
+
+* **R-0196** — the `retry` column is `iteration_failed_retrying` entries.
+  Exactly the three raise-class injections produced one each, and each of
+  those runs went on to `achieved`. All four injections FIRED and all four
+  settled `retry_within_budget`, with post-mortems `provider_unavailable`
+  (g06) and `io_failure` (g08, g09); g07's truncation re-prompted once as
+  before. Nothing settled `never_fired` or `silent_success`.
+* **R-0197** — plan shapes are now bounded by the orders: 1–3 milestones per
+  run against declared shapes of 1 or 2. Attempt 02's same orders compiled to
+  as many as seven.
+
+Comparison: attempt 01 = 0/10, attempt 02 = 3/10, attempt 03 = 10/10.
+
+**Observation for Window 1, NOT acted on.** The campaign process read ~872 GB
+from disk while writing ~2 MB, sustaining ~12 MB/s with system I/O pressure
+near 15%. Nothing is wrong with the results — the isolation held and the host
+data root hashed identical before and after in every run — but the read volume
+is out of all proportion to a 2 MB evidence tree, which suggests a large tree
+is being hashed or listed once per iteration. Worth a finding ID; touching it
+mid-campaign was not an option and the campaign is now complete.
