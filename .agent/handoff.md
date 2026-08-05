@@ -105,7 +105,7 @@ Evidence root `<job tmp>/campaign-a03`. Preconditions verified before the run: p
 - **`retry_within_budget` for the raise classes is a reading of the product's facts**, not a new disposition — the closed set is untouched.
 - **NEW, unfixed: the campaign read ~872 GB while writing ~2 MB** (~12 MB/s, I/O pressure ~15%). Results are unaffected and isolation held, but the volume is out of proportion to a 2 MB evidence tree. Needs a finding ID.
 - Every other commit under 500 lines; the oversize exemption stays spent (R-0181).
-- Handoff cap: 120 lines / ~1.6k tokens against 100 / 800 — declared, no section dropped; the two proof blocks are ordered content.
+- Handoff cap: 121 lines / ~1.6k tokens against 100 / 800 — declared, no section dropped; the two proof blocks are ordered content.
 
 ## Item status
 | Item | Status | Reason |
