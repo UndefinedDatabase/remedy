@@ -7,6 +7,7 @@
 
 | Keyword | File | Category |
 |---------|------|----------|
+| ADR / decision record | [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | adr |
 | agent conventions | [worker_conventions.md](agents/worker_conventions.md), [reviewer_conventions.md](agents/reviewer_conventions.md) | agents |
 | handback template | [handback_template.md](agents/handback_template.md) | agents |
 | integration gate | [integration_gate.md](agents/integration_gate.md) | agents |
@@ -171,6 +172,18 @@ routing policy seeds F110.
 | [handback_template.md](agents/handback_template.md) | Mandatory skeleton of every handoff.md handback rewrite |
 | [integration_gate.md](agents/integration_gate.md) | Canonical full-suite integration-gate procedure |
 | [orchestrator_protocol.md](agents/orchestrator_protocol.md) | F070 orchestrator role contract — the source of the loop's system prompt |
+
+## Architecture Decision Records (`docs/adr/`)
+
+Numbered decision records for changes that need a human's explicit approval
+rather than a machine's. A record is `PROPOSED` until a human applies it and
+edits the status line themselves; each proposed record ships with a
+ready-to-apply unified diff beside it, and applying that diff is always a
+human action.
+
+| File | Description | Status |
+|------|-------------|--------|
+| [0001-raise-cycle-safety-cap.md](adr/0001-raise-cycle-safety-cap.md) | Raise `CYCLE_SAFETY_CAP` 1 → 8 on the F075 10/10 gate evidence; the shipped default stays 1 | PROPOSED |
 
 ## Roadmap (`docs/roadmap/`)
 

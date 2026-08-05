@@ -3575,3 +3575,44 @@ data root hashed identical before and after in every run — but the read volume
 is out of all proportion to a 2 MB evidence tree, which suggests a large tree
 is being hashed or listed once per iteration. Worth a finding ID; touching it
 mid-campaign was not an option and the campaign is now complete.
+
+## 2026-08-05 — F075 R12: where the ADR lands, and what it proposes
+
+**The repository had no ADR convention.** Inspected before choosing: no
+`docs/adr/`, no `*adr*` or `*decision*` file anywhere under `docs/`, no ADR
+section in `docs/README.md`. The only prior art is the instruction in the
+source itself — `CYCLE_SAFETY_CAP`'s comment says the F075 gate raises it *"via
+an explicit change with an ADR"* — and `.agent/decisions.md`, which is
+task-scoped state and therefore the wrong home for a record a human must find
+months from now.
+
+**Decision: `docs/adr/`, a new subcategory of `docs/`, registered in
+`docs/README.md`.** Rejected alternatives: `.agent/` (ephemeral task state, not
+durable knowledge — the ADR outlives this feature); `docs/system/` (that
+directory describes what IS BUILT, and a PROPOSED ADR describes what is not
+built yet); `docs/roadmap/` (agents may not touch ROADMAP.md, and the roadmap
+is the target plan, not a decision log). `docs/adr/` follows the precedent
+already set by `docs/agents/` and `docs/ui/`: subcategories of `docs/` that are
+neither built-state specs nor roadmap. The status line carries the boundary —
+PROPOSED, applied by a human, never accepted by machine.
+
+Files: `docs/adr/0001-raise-cycle-safety-cap.md` and its ready-to-apply
+`0001-raise-cycle-safety-cap.diff` (verified with `git apply --check`;
+generated from a real edit that was then reverted, so the context lines are
+exact rather than hand-written).
+
+**The proposal: `CYCLE_SAFETY_CAP` 1 -> 8, `DEFAULT_MAX_CYCLES` stays 1.** 8 is
+the largest cycle budget attempt 03 granted (g05 and g09) and completed under.
+Stated as a limitation rather than glossed: per-run cycle CONSUMPTION is not
+recoverable — it lived in each run's `gauntlet_run.json` under the campaign
+root outside the repo (R-0176), which has since been reclaimed; only the
+matrices are committed. So the ADR argues from the proven CEILING (budgets
+3-8, ten `achieved`) plus the committed iteration usage, and declines to invent
+a measured-max-plus-margin number the evidence does not carry.
+
+**NOT applied, deliberately.** The working tree after this phase carries the
+diff FILE, not the change: `git status` is clean of any
+`long_run_executor.py` modification and the suite is green with the cap still
+at 1. Three assertions pin it there; the new one,
+`test_the_rollout_cap_is_still_one_until_adr_0001_is_applied`, names ADR-0001
+in its docstring so the human applying the ADR finds every pin by grep.
