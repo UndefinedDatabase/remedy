@@ -202,6 +202,7 @@ suite base vs branch, run logs outside the repo, raw tails into
   fresh review zip, STATUS [x], README sync, PR; closure
   candidates registered (F070 review gap; absent resume verb;
   R-0199 campaign I/O).
+
 ## Risks
 - The ADR proposes; a human disposes — the diff must be
   applicable but NOT applied, and CI/tests must stay green
