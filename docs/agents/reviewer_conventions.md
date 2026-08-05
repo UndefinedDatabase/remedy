@@ -27,6 +27,15 @@ violated criterion. A finding without evidence is dropped or upgraded.
 5. Unverified completion claims (assertion without reproducible evidence)
 6. Silent scope change vs. the task/mission
 
+## Specified route exercised
+
+A feature whose spec names a runtime route (an executor, provider call, or
+gate invocation) is not accepted until at least one piece of evidence shows
+that route EXECUTED end-to-end — fixture-driven counts; unit tests of its
+parts alone do not. Precedent: F070 was accepted with its specified
+execution step unbuilt; zero-provider evidence never ran a job, so no test
+could notice (R-0184, F075 R4 diagnosis).
+
 ## Verdict
 
 Per A2/F005: PASS or FINDINGS (PASS_WITH_RISKS only where the schema allows
