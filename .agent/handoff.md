@@ -1,56 +1,55 @@
-# Handback — F075 R13 CLOSURE
+# Handback — Amendment round amend0805-v3
 
-## Range
-Review of 8bc1305a..HEAD (4 commits, incl. this one).
+## Round
+Operator-relayed amendment amend0805-v3 (replaces amend0804 v1/v2 —
+neither ran). Boundary-agnostic, before F079's claim; NOT a feature
+claim, candidates block condition did not fire. Single-session per §3.
+Docs/planning only — no product code, no order/template edits.
+
+## Branch
+feature/amend0805-v3 (from main after PR #179 merge at Open PR Gate).
 
 ## Commits
-### b49e6bdb chore(f075): save the R13 closure block
-| Path | +/- | Reason |
+| SHA | Scope | Files |
 |---|---|---|
-| .agent/last_block.md | +241/-235 | the block, own commit (R-0198); two transport defects repaired against the digests — see proofs |
+| d6409c15 | Part B roadmap | STATUS.md, T2_F254.md (new), T12_F253.md, T17_F243.md, T2_F103.md, plan.md |
+| e8deb6a6 | Part C reviewer rule | docs/agents/reviewer_conventions.md |
+| e4ecd200 | Part D doc drift | scripts/self_run_gauntlet.py, packages/providers/claude_agent/__init__.py |
+| a155a886 | Part E workflow | docs/agents/planner_reviewer_prompt.md, .agent/candidates.md |
 
-### 634b0be8 chore(f075): persist the R12 gate verdict
-| Path | +/- | Reason |
+## Item status
+| Item | Status | Reason |
 |---|---|---|
-| .agent/authored/f075-r13-{1..5}.md | +129 | the five reviewer texts, sha256-verified |
-| .agent/live_review.md | +29 | r13-1 applied; LAST_REVIEWED_SHA = 8bc1305a |
+| B1 | done | F254 registered in Tier 2 (before F086) + T2_F254.md per F080 grammar |
+| B2 | done | MCP facet section appended to T12_F253.md |
+| B3 | done | Proof-or-Stop benchmark candidate appended to T17_F243.md |
+| B4 | done | Milestone R1 line after Tier 2 heading |
+| B5 | done | credit-pool scope note appended to T2_F103.md |
+| C1 | done | specified-route-exercised rule added; relationship note below |
+| D1 | done | preflight paragraph now matches SUPPORTED_INJECTIONS (none blocked) |
+| D2 | done | Step 33+ wording replaced with roadmap + pingpong_provider reference |
+| E1 | done | Laufzeit row + definition; grep found no .claude/commands restatement |
+| E2 | done | R-0199 operator-priority HIGH note appended |
 
-### 36f3bc81 docs(f075): record the accepted Built State ← ACCEPTED HEAD
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/features/T1_F075.md | +53 | r13-2 byte-appended (precondition 4) |
+All presence checks came back ABSENT; no SKIPPED(present), no
+ANCHOR-DRIFT.
 
-### &lt;this commit&gt; the closure commit (Rule A4, last on the branch)
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md · README.md | ±1 / ±2 | r13-3 with the four placeholders filled · r13-4 both edits, same commit (R-0154) |
-| .agent/candidates.md | rewrite | r13-5 full replacement, 4 candidates |
-| .agent/plan.md · context.md · handoff.md · last_block.md | rewrite | final F075-closed state · this handback · OUTCOME |
-
-## External actions
-- 4x `git push origin feature/f075-self-run-gauntlet`, one per commit — OK. NO force-push (R-0195).
-- `bash scripts/make_review_zip.sh --evidence-dir <scratch>/remedy-job-evidence-f075-closure` — REVIEW_PACKAGE_CREATED=true.
-- `gh pr create --base main` runs AFTER this commit (Rule A4 puts the STATUS edit last), so the number is reported in the session handback, not here — the F071 closure precedent. NOT merged (protocol §6). No other gh command.
+## C1 relationship (record per order)
+C1 is the reviewer-practice HALF of the first closure candidate in
+.agent/candidates.md (F070/R-0184). The gate-tooling half — closure
+evidence proving a specified verb was CALLED — stays with that
+candidate for F079 R1 to order. The candidate's landing should cite
+the new reviewer_conventions.md rule.
 
 ## Verification
-`pytest tests/cli/test_golden_path.py -q` → 42 passed, EXIT=0 (P1, P2, closure) · `pytest tests/docs/ -q` → 293 passed, EXIT=0 (P2, closure) · `remedy integrity check --json` → `passed: true`, every check pass · `git status --porcelain` empty at every phase boundary.
-EVIDENCE JOB **b1b6eb7ed4962309** — `create_manual_completion_bundle(review_feature_id="f075")`, base 563b15b4d35b785563d9720fb762d393883d744d, head 36f3bc8150a9bdaae3c1e3a743c1621998c48691, 4 verification runs (272 / 42 / 293 / 74 = 681 passed), authority 76, verdict PASS_WITH_RISKS; built OUTSIDE the repo, NOT committed. Coordinator validation attempt 1 → `ok: False`, raw blocking_reasons: `"final_verifier_report.json test_status.passed cannot be confirmed: the VerificationTests total is missing or invalid"` and `"verification_tests.json runs[0] test_files is not sorted"`. Fixed AT THE CAUSE (test_files sorted at authoring), rejected dir deleted, rebuilt → attempt 2 `ok: True`, `blocking_reasons: []`.
-REVIEW ZIP **remedy-review-20260805-144354-READY_FOR_REVIEW.zip** · SHA-256 `d63cda6b2b9e83bf993889d33fa716646f712f90eabc992a472d12390b8910d3` (recomputed independently with sha256sum — equal to the builder's report) · PACKAGE_STATUS=READY_FOR_REVIEW · REVIEW_SUBJECT_ALIGNMENT=PASS · EVIDENCE_AUTHORITATIVE=true · committed_review_subject 563b15b4…d744d → 36f3bc81…c48691 (the accepted HEAD) · 2064 members, 76 authoritative · `testzip` → no bad member · import smoke over the PACKAGED sources (extracted to tmp, removed after): PASS_CRITERIA len 9, GAUNTLET_ORDER_SET_VERSION 4, gauntlet_runner imports → PASS.
+- tests/orchestration/test_self_run_gauntlet.py: 21 passed (D1 is
+  docstring-only; no behavior change).
+- grep: "Three of the four" and "Bis zum Self-Run" gone repo-wide.
+- Out-of-scope drift observed, NOT touched: docs/system/
+  architecture.md:2481 restates the stale "(Step 33+)" wording for
+  claude_agent — candidate for a future hygiene item.
 
-## Authored-text proofs
-| text | sha256 vs BEGIN digest | applied, byte-identical |
-|---|---|---|
-| f075-r13-1 | 67b700f9…d1e0 EQUAL | TO block occurs 1x in live_review.md, tail-anchored |
-| f075-r13-2 | 9c3e097e…3a72 EQUAL | occurs 1x in T1_F075.md, file ends with it, prior content intact as prefix |
-| f075-r13-3 | b6ff64e8…f94b EQUAL | TO line occurs 1x in STATUS.md, ONE line of 347 chars, 4 placeholders filled |
-| f075-r13-4 | 91123541…873d EQUAL | both TO lines occur 1x in README.md, both FROM lines gone |
-| f075-r13-5 | 55af55f4…b030 EQUAL | `cmp` exit 0 vs .agent/candidates.md |
-
-DECLARED, transport — two defects, both caught by the digests BEFORE anything was applied, neither guessed: (1) a duplicated instruction region (PHASE 4 tail through the end of PHASE 6) was injected between the first `BEGIN f075-r13-1` marker and the real payload — the complete second BEGIN/END pair hashes to 67b700f9, proving the first marker plus duplicate is corruption; (2) r13-3 arrived WRAPPED across three lines, the exact F071 lesson the block itself names — unwrapping to one line reproduced b6ff64e8. Both repairs are in the archived block (b49e6bdb).
-
-## Deviations & assumptions
-- The evidence-job rebuild after a coordinator rejection is protocol-ordered, not a deviation; raw reasons above. The evidence dir stays in session scratch and is NOT committed — the durable pointer is package + SHA-256 + job id in the STATUS line.
-- Runtime actuals as authored: 13 rounds 2026-08-04..05, three live campaigns + seven `--only` re-proofs, tokens **not-measured** (the local provider reports no ledger usage).
-
-## Next
-The Open PR Gate at the next feature's start merges the closure PR; F079 (Context handoffs) begins in a fresh session and its FIRST reviewed round must empty .agent/candidates.md (4 entries).
+## Next expected action
+F079 (Context handoffs) per Rule A5, fresh session. Its first
+reviewed round must empty .agent/candidates.md (4 entries, R-0199
+now marked operator-priority HIGH). ADR-0001 still awaits a human.
