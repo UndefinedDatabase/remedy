@@ -673,6 +673,16 @@ class TestCycleConfig:
         r = resolve_max_cycles(config_value=6)
         assert (r.max_cycles, r.source) == (6, "config")
 
+    def test_the_rollout_cap_is_still_one_until_adr_0001_is_applied(self):
+        """ADR-0001 (docs/adr/0001-raise-cycle-safety-cap.md) proposes raising
+        CYCLE_SAFETY_CAP from 1 to 8 on the F075 10/10 evidence.  It is
+        PROPOSED, not applied: the prepared diff sits beside the ADR and a
+        human applies it.  This pin fails the moment the constant moves, so
+        the raise cannot happen accidentally — flip it to 8, together with the
+        two other pins the ADR names, as part of applying the ADR.
+        """
+        assert CYCLE_SAFETY_CAP == 1
+
     def test_the_cap_trims_both_flag_and_config(self):
         flagged = resolve_max_cycles(flag=25)
         configured = resolve_max_cycles(config_value=25)
