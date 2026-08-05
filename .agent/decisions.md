@@ -3496,3 +3496,40 @@ Decisions:
 The DAG discipline and the deterministic fallback are untouched, both pinned by
 their own tests. 8 compiler tests + 2 runner tests. Gate: compiler/runner 154,
 exit 0.
+
+## 2026-08-05: F075 R11 Phase 4 — both re-proofs green
+
+Fresh isolated roots outside the repo, one order each.
+
+**Re-proof 1 (`--only 6`) — R-0196 live.** Every required fact present:
+
+    terminal achieved · open_decisions [] · dod released true
+    injection: raised at call_fn call 1: ConnectionError: provider API error
+      mid-move: HTTP 503; ledgered with 1 post-mortem(s), then the run
+      recovered and finished
+    disposition retry_within_budget   post-mortem class provider_unavailable
+
+    it1 iteration_failed_retrying | ConnectionError ... HTTP 503
+    it2 dispatched                | job e2185f24 ... all_green, gate released
+    it3 milestone_done            | M001 recorded as done
+    it4 achieved                  | every milestone is done
+
+In attempt 02 this same order ended `iteration_failed` at iteration 1 with zero
+milestones and no DoD verdict at all. The fault now costs one iteration and the
+mission finishes. The disposition is read off the product's own facts — a green
+terminal WITH a post-mortem — not asserted by the harness.
+
+**Re-proof 2 (`--only 2`) — R-0197 live.**
+
+    compiled milestones ['M001', 'M002'] · origin provider · compiled true
+    terminal achieved · open_decisions [] · dod released true · 5 iterations
+    against g02's v4 budget of 12
+
+g02 declares ONE milestone, so the cap was 2 and the compiler produced exactly
+2 — within `declared + 1`. In attempt 02 the same order compiled at least SEVEN
+and died on `iteration_limit` after six milestones. Two iterations per
+milestone plus the achieve, so the v4 budgets now have real headroom rather
+than being a guess against an unbounded shape.
+
+Preconditions for attempt 03 re-verified: set version 4, set hash
+e50916bf… equal to the recomputation, `preflight_injections -> []`.
