@@ -1,0 +1,106 @@
+# Integration gate — F075 R12 — attribution
+
+Procedure: docs/agents/integration_gate.md.
+
+## Runs
+branch  dcde0698  python3 -m pytest -n auto -q
+        15805 passed, 19 skipped, exit 0, 184s
+base    563b15b4  REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+        (throwaway worktree on throwaway branch tmp/base-gate-r12, outside the repo)
+        6 failed, 15377 passed, 19 skipped, exit 1, 147.95s
+delta   +428 tests — the F075 R1-R12 additions, all passing.
+
+Both run logs were written to the session scratchpad OUTSIDE the repo while
+the suites ran and copied into this directory only after each run exited
+(R-0176). Evidence files are .txt, never .log (R-0169).
+
+## Comparison
+branch_failed.txt  0 lines
+base_failed.txt    6 lines
+comm -13 (branch-only failures)        EMPTY  -> nothing to attribute
+comm -23 (failures the branch "fixed") 6 ids  -> attributed below, per id
+
+## Step 4 — per-id attribution of branch-only failures
+Does not apply: it runs for every branch-only id, and there are none.
+Flake debt 0.
+
+## Step 3 — attribution of every comm -23 id
+All six are the same id family and the same cause:
+
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+  tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+
+CLASS: environment — the R-0169 mid-run UI rebuild, racing the UI server.
+NOT a genuine base failure, and NOT something the branch fixed: no F075
+commit touches apps/ui, packages/orchestration/ui_server.py, or
+tests/ui_server.
+
+Direct evidence, in order:
+
+1. Every one of the six failed with the SAME captured stderr, from
+   packages/orchestration/ui_server.py::_load_frontend_html:
+
+       ERROR: React UI not built.
+         To fix, run:
+           cd apps/ui && npm install && npm run build
+
+   and the SAME assertion, tests/ui_server/test_live_state.py:165
+   `Failed: Server did not start in time` — the 5-second wait for
+   server_info.json, which the server never writes because it aborts on the
+   missing build.
+
+2. The build WAS present in the base worktree before the run. apps/ui/dist
+   and apps/ui/node_modules were COPIED (never symlinked) from the primary
+   checkout, and apps/ui/dist hashed identical before and after the base run
+   (dist_hash_before.txt == dist_hash_after.txt ==
+   5ff2033ab95c45d2802cbe7d9977605abbe009a916236a43aab30f97954ba092 — the
+   same digest F071 R3 recorded, i.e. a reproducible build output).
+
+3. The dist was nevertheless REWRITTEN during the base run — mtimes prove
+   what the content hash cannot:
+     - primary   apps/ui/dist/index.html  mtime 13:19:49, inside the BRANCH
+       run window 13:18:51 -> 13:21:55. The suite rebuilds the UI mid-run.
+     - base      apps/ui/dist/index.html  mtime 13:25:23 after the base run,
+       though `cp -a` had preserved 13:19:49 from the primary. The base
+       worktree's dist was rebuilt at 13:25:23, INSIDE the base run.
+     - base      apps/ui/node_modules/.vite/deps mtime 13:23:06, also inside
+       the base run.
+   This is exactly the R-0169 failure mode the gate procedure warns about:
+   "a spawned build path ignored REMEDY_UI_NO_AUTO_BUILD=1 once (F069 R2:
+   dist/ rewritten mid-run)". It recurred here. The env var was set and, as
+   the procedure requires, not trusted alone — which is why the rewrite was
+   caught. The content hash is unchanged because the rebuild is
+   reproducible; the parity claim therefore holds for CONTENT, but the
+   rebuild WINDOW is real, and per-id attribution is done rather than
+   claimed away.
+
+4. Serial re-run in the SAME base worktree, same env var, same files:
+   all six PASS (base_only_serial_rerun.txt: 16 passed, exit 0). The
+   failures are not reproducible outside the parallel rebuild window.
+
+5. The staleness path was ruled out as the cause: with the original
+   preserved mtime restored (dist/index.html at 1785928996 = 13:25:23,
+   newer than the newest apps/ui/src file at 13:22:02), `_is_stale` is
+   false and test_server_starts_and_writes_info passes serially. The base
+   worktree was never "stale"; it was momentarily mid-rebuild.
+
+Conclusion: the six comm -23 ids are attributed to the environment class
+with direct evidence per the id family. No unattributed comm -23 id remains.
+They are a pre-existing flake in the base, unrelated to F075; they are worth
+their own order (the rebuild path that ignores REMEDY_UI_NO_AUTO_BUILD is
+still there), which is a closure-candidate note, not a gate blocker.
+
+## Worktree hygiene
+The base worktree was removed, `git worktree prune` run, and the throwaway
+branch tmp/base-gate-r12 deleted. `git worktree list` shows the primary
+checkout only — see worktree_hygiene.txt. `git status --porcelain` empty.
+
+## Gate result
+branch full suite exit 0, 15805 passed / 19 skipped.
+0 branch-only failures. 0 unattributed comm -23 ids.
+Wall 184s (branch) / 147.95s (base) — under the ~5 min perf note threshold.
+The verdict itself is the reviewer's to issue.

@@ -1,0 +1,10 @@
+=== worktree hygiene after the gate ===
+$ git worktree list
+/home/decodeux/Repos/remedy  dcde0698 [feature/f075-self-run-gauntlet]
+
+$ git branch --list 'tmp/*'
+(no output — the throwaway branch tmp/base-gate-r12 was deleted)
+
+$ git status --porcelain   (run while this evidence dir was still untracked)
+?? .agent/gate_f075_r12/
+(nothing else — the gate left no stray file; the dir is committed by the next commit)
