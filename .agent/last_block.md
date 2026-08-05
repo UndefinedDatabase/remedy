@@ -1,3 +1,5 @@
+OUTCOME: done — F075 R12 complete. R11 PASS persisted; ADR-0001 + config diff prepared and NOT applied; integration gate run: branch exit 0, zero branch-only failures, six base-only ids attributed to R-0169.
+
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
 10 flawless self-runs, round R12 (SPLIT, LARGE): persist the R11 PASS
 + prepare the config diff + ADR + the INTEGRATION GATE. Save THIS
