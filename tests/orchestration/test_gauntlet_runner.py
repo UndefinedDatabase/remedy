@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -98,6 +99,7 @@ class Recorder:
     entries: list = field(default_factory=list)
     raise_in_run: Exception | None = None
     seen_limits: Any = None
+    seen_milestone_cap: int | None = None
     seen_env: dict[str, str] = field(default_factory=dict)
     seen_cycles: int | None = None
     seen_repo_root: Path | None = None
@@ -146,7 +148,9 @@ class Recorder:
     def _create_mission(self, project_id: str, goal: str) -> FakeMission:
         return FakeMission()
 
-    def _plan_mission(self, project_id: str, mission_id: str, call_fn) -> Any:
+    def _plan_mission(self, project_id: str, mission_id: str, call_fn,
+                      **kwargs) -> Any:
+        self.seen_milestone_cap = kwargs.get("max_milestones")
         return None
 
     def _run_mission(self, mission_id: str, limits, **kwargs) -> FakeResult:
@@ -706,3 +710,34 @@ def test_two_runs_cannot_see_each_others_edits(tmp_path: Path) -> None:
     second = materialise_sample_project(tmp_path / "run-02")
     assert "run one edited this" not in (second / "README.md").read_text(
         encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0197 — the order's declared shape reaches the compiler
+# ---------------------------------------------------------------------------
+
+def _with_milestones(order, count: int):
+    return dataclasses.replace(order, milestones=tuple(
+        {"id": f"M{n:03d}", "title": "m", "dod": ["x"]}
+        for n in range(1, count + 1)))
+
+
+def test_the_runner_passes_the_orders_shape_as_the_milestone_cap(
+        tmp_path: Path, real_root: Path) -> None:
+    rec = Recorder()
+    run_order(an_order(), campaign_root=tmp_path / "campaign",
+              real_data_root=real_root, deps=rec.deps())
+    assert rec.seen_milestone_cap == 2, "one declared milestone plus headroom"
+
+
+def test_the_cap_is_derived_never_hard_coded(tmp_path: Path,
+                                             real_root: Path) -> None:
+    """Pinned as a FUNCTION of the order, so a re-issued set moves it too."""
+    caps = []
+    for count in (1, 2, 4):
+        rec = Recorder()
+        run_order(_with_milestones(an_order(), count),
+                  campaign_root=tmp_path / f"campaign-{count}",
+                  real_data_root=real_root, deps=rec.deps())
+        caps.append(rec.seen_milestone_cap)
+    assert caps == [2, 3, 5]

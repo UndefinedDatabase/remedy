@@ -478,7 +478,13 @@ def run_order(order: GauntletOrder, *, campaign_root: Path, real_data_root: Path
             project_id = deps.make_project(f"gauntlet {order.id}", order.id,
                                            workspace)
             mission = deps.create_mission(project_id, order.goal)
-            deps.plan_mission(project_id, mission.id, deps.plan_call_fn())
+            # R-0197: the order declares its shape, so the compiler is told
+            # it. One milestone of headroom, because a compiler that finds a
+            # genuine prerequisite should be able to say so — what it may not
+            # do is turn a one-milestone order into seven and spend the
+            # budget rediscovering that (attempt 02, Finding A).
+            deps.plan_mission(project_id, mission.id, deps.plan_call_fn(),
+                              max_milestones=len(order.milestones) + 1)
             seams = build_injectors(
                 order.injections,
                 call_fn=deps.move_call_fn(),

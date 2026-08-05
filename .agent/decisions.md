@@ -3465,3 +3465,34 @@ now produce. The closed disposition set is untouched.
 Three existing tests asserted the old terminal and were updated with the reason
 stated inline; their subject (the failure CLASS) is unchanged. 14 new tests.
 Gate: loop/e2e/era/injection/runner 338, exit 0.
+
+## 2026-08-05: F075 R11 — R-0197 the compiler honors the order's declared shape
+
+`compile_mission_plan` and `plan_mission` gain `max_milestones: int | None`.
+`None` is today's behaviour exactly, pinned by a test that compares the two
+prompts for equality rather than by inspection.
+
+Decisions:
+1. **The cap is enforced twice, in the two places that can disagree.** The
+   prompt states the lower ceiling, AND the draft is validated against it. A
+   prompt alone is a request; a validator alone wastes a call it could have
+   prevented.
+2. **The validator is a SUBCLASS of `MissionPlanDraft`**, so an over-cap draft
+   is a parse-class failure like any other invalid answer: F001's single retry
+   re-prompts with the reason (proven: the second prompt names the cap and the
+   draft's actual count), and a second over-cap answer takes the deterministic
+   fallback. No new retry path and no new failure mode were invented for this.
+   The subclass keeps `MissionPlanDraft`'s name so the protocol the provider is
+   shown is unchanged — only the validation is stricter.
+3. **The caller can only make the plan SMALLER.** `resolve_milestone_cap`
+   clamps into `[1, MAX_MISSION_MILESTONES]`, so F069's outer bound still wins
+   and a caller cannot argue past the schema.
+4. **The runner passes `len(order.milestones) + 1`** — derived, never
+   hard-coded, pinned as a function over 1/2/4 declared milestones. The
+   headroom exists because a compiler that finds a genuine prerequisite should
+   be able to say so; what it may not do is turn a one-milestone order into
+   seven and spend the budget rediscovering that.
+
+The DAG discipline and the deterministic fallback are untouched, both pinned by
+their own tests. 8 compiler tests + 2 runner tests. Gate: compiler/runner 154,
+exit 0.

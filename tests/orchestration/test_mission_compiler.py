@@ -43,6 +43,7 @@ from packages.orchestration.mission_compiler import (
     MissionPlanInProgressError,
     attach_milestone_dods,
     build_mission_prompt,
+    resolve_milestone_cap,
     compile_milestone_dod,
     compile_mission_plan,
     deterministic_mission_plan,
@@ -988,3 +989,91 @@ class TestBadDraftEndsInTheFallbackNotATraceback:
         prompt = build_mission_prompt("keep it green", project_facts="facts")
         assert str(MAX_MILESTONE_DRAFT_JOBS) in prompt
         assert "must be non-empty" in prompt
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0197 — the compiler honors a caller's declared milestone shape
+# ---------------------------------------------------------------------------
+#
+# Campaign attempt 02, Finding A: the SAME frozen order compiled to 3, 4 and at
+# least 7 milestones across runs. Every one of those runs then finished six
+# milestones economically and ran out of budget mid-plan. No static budget can
+# fit a nondeterministic shape, so the shape is what gets bounded — by the
+# caller who actually knows it.
+
+def test_no_cap_is_byte_for_byte_the_old_prompt() -> None:
+    """Every non-gauntlet caller must see exactly what it saw yesterday."""
+    assert build_mission_prompt("ship it", project_facts="facts") == \
+        build_mission_prompt("ship it", project_facts="facts",
+                             max_milestones=None)
+
+
+def test_the_cap_reaches_the_prompt() -> None:
+    prompt = build_mission_prompt("ship it", project_facts="f", max_milestones=2)
+    assert "Maximum 2 milestones" in prompt
+
+
+def test_the_outer_bound_still_wins() -> None:
+    """A caller can make the plan smaller. It cannot argue past F069's cap."""
+    assert resolve_milestone_cap(None) == MAX_MISSION_MILESTONES
+    assert resolve_milestone_cap(MAX_MISSION_MILESTONES + 5) == \
+        MAX_MISSION_MILESTONES
+    assert resolve_milestone_cap(0) == 1, "a plan needs at least one milestone"
+
+
+def test_a_compliant_draft_under_the_cap_compiles_normally() -> None:
+    body = draft_body(milestone("M001"), milestone("M002"))
+    result = compile_mission_plan("ship it", replaying(body), max_milestones=2)
+    assert result.source == "llm"
+    assert [m.id for m in result.plan.milestones] == ["M001", "M002"]
+
+
+def test_an_over_cap_draft_is_refused_retried_then_falls_back() -> None:
+    """The over-cap answer is a parse-class failure: one retry, then the
+    deterministic plan. No new retry path was invented for it."""
+    body = draft_body(*[milestone(f"M00{n}") for n in range(1, 5)])
+    calls: list[int] = []
+
+    def call_fn(prompt: str, attempt: int) -> str:
+        calls.append(attempt)
+        return json.dumps(body)
+
+    result = compile_mission_plan("ship it", call_fn, max_milestones=2)
+    assert len(calls) == 2, "exactly one retry, F001's ceiling"
+    assert result.source == "deterministic"
+    assert "at most 2 milestone(s)" in result.error_hint
+
+
+def test_the_retry_prompt_carries_the_reason() -> None:
+    prompts: list[str] = []
+    body = draft_body(*[milestone(f"M00{n}") for n in range(1, 5)])
+
+    def call_fn(prompt: str, attempt: int) -> str:
+        prompts.append(prompt)
+        return json.dumps(body)
+
+    compile_mission_plan("ship it", call_fn, max_milestones=2)
+    assert "at most 2 milestone(s)" in prompts[1]
+    assert "the draft has 4" in prompts[1]
+
+
+def test_a_provider_that_complies_on_the_retry_still_compiles() -> None:
+    """The refusal is guidance, not a death sentence for the run."""
+    over = draft_body(*[milestone(f"M00{n}") for n in range(1, 5)])
+    under = draft_body(milestone("M001"))
+    answers = [json.dumps(over), json.dumps(under)]
+
+    def call_fn(prompt: str, attempt: int) -> str:
+        return answers[min(attempt, len(answers) - 1)]
+
+    result = compile_mission_plan("ship it", call_fn, max_milestones=2)
+    assert result.source == "llm"
+    assert len(result.plan.milestones) == 1
+
+
+def test_the_cap_never_loosens_the_dag_discipline() -> None:
+    """A cycle is still a cycle, capped or not."""
+    body = draft_body(milestone("M001", depends_on=["M002"]),
+                      milestone("M002", depends_on=["M001"]))
+    result = compile_mission_plan("ship it", replaying(body), max_milestones=2)
+    assert result.source == "deterministic"
