@@ -7,10 +7,12 @@ Planned purpose:
     local provider with Anthropic-hosted models.
 
 Current status:
-    Reserved namespace — no implementation in this step.
-    Active providers are in packages.providers.ollama_builder and
-    packages.providers.ollama_planner.
+    Reserved namespace — no implementation yet.  Active providers are in
+    packages.providers.ollama_builder and packages.providers.ollama_planner.
+    The live Claude path today is the ``claude -p`` subprocess provider in
+    packages.orchestration.pingpong_provider.
 
-Future layer:
-    Claude-hosted builder / planner provider (planned Step 33+).
+Roadmap:
+    Provider work lands with the Tier 2/3 economy features
+    (docs/roadmap/STATUS.md).
 """
