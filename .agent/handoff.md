@@ -1,4 +1,21 @@
-# Handback — Amendment round amend0805-v3
+# Handback — Amendment round amend0805-v3 (+ repair amend0805-v3-fix)
+
+## Repair round amend0805-v3-fix (2026-08-05)
+Cause: B1 registration missed reg0803 ledger-count atomicity (count
+pin + README totals move with a registration). One commit, this
+branch, PR #180 stays open.
+| Edit | File | Change |
+|---|---|---|
+| 1 | tests/docs/test_docs_consistency.py | TOTAL_FEATURES 253 -> 254, comment lists F254 |
+| 2 | README.md:19 | 36 of 253 -> 36 of 254 registered items |
+| 3 | README.md tier table | Tier 2 total 13 -> 14 |
+| 4 (opt) | docs/system/architecture.md:2481 | stale "(Step 33+)" row reworded to D2's roadmap reference |
+Gates: tests/docs 293 passed (was 2 failed/291); test_golden_path.py
+42 passed. Both exit 0.
+Process note (round record): the amendment round ran only
+test_self_run_gauntlet.py while touching docs/roadmap/** — the
+docs-round gate rule applies to amendment rounds exactly as to
+feature rounds; relayed prompts must list their gates explicitly.
 
 ## Round
 Operator-relayed amendment amend0805-v3 (replaces amend0804 v1/v2 —
