@@ -1,0 +1,327 @@
+{
+  "evidence_label": "attempt-03",
+  "failure_kinds": [],
+  "matrix_version": 1,
+  "pass_criteria": [
+    "evidence_well_formed",
+    "start_command_only",
+    "terminal_green",
+    "dod_blocking_green",
+    "no_unknown_postmortems",
+    "no_open_decisions",
+    "host_data_root_untouched",
+    "no_era_defect_classes",
+    "injections_degraded"
+  ],
+  "passed": true,
+  "runs": [
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 158ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "pure_code_change",
+      "operator_interventions": [],
+      "order_id": "g01-pure-code-change",
+      "postmortem_classes": [],
+      "run_dir": "run-01-g01-pure-code-change",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 272.915
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 219ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "test_add",
+      "operator_interventions": [],
+      "order_id": "g02-test-add",
+      "postmortem_classes": [],
+      "run_dir": "run-02-g02-test-add",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 191.221
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 161ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "small_app_feature_with_smoke",
+      "operator_interventions": [],
+      "order_id": "g03-small-app-feature-smoke",
+      "postmortem_classes": [],
+      "run_dir": "run-03-g03-small-app-feature-smoke",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 270.692
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 161ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "doc_generation",
+      "operator_interventions": [],
+      "order_id": "g04-doc-generation",
+      "postmortem_classes": [],
+      "run_dir": "run-04-g04-doc-generation",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 279.92
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 155ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "two_milestone_mission",
+      "operator_interventions": [],
+      "order_id": "g05-two-milestone-mission",
+      "postmortem_classes": [],
+      "run_dir": "run-05-g05-two-milestone-mission",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 364.74
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 207ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "pure_code_change",
+      "operator_interventions": [],
+      "order_id": "g06-provider-api-error-mid-move",
+      "postmortem_classes": [
+        "provider_unavailable"
+      ],
+      "run_dir": "run-06-g06-provider-api-error-mid-move",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 109.369
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 164ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "test_add",
+      "operator_interventions": [],
+      "order_id": "g07-truncated-model-response",
+      "postmortem_classes": [],
+      "run_dir": "run-07-g07-truncated-model-response",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 261.437
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 154ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "small_app_feature_with_smoke",
+      "operator_interventions": [],
+      "order_id": "g08-harness-death-mid-dispatch",
+      "postmortem_classes": [
+        "io_failure"
+      ],
+      "run_dir": "run-08-g08-harness-death-mid-dispatch",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 272.134
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 154ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "two_milestone_mission",
+      "operator_interventions": [],
+      "order_id": "g09-harness-death-mid-write",
+      "postmortem_classes": [
+        "io_failure"
+      ],
+      "run_dir": "run-09-g09-harness-death-mid-write",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 329.267
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": true,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": true
+      },
+      "dod_matrix": "| check | kind | blocking | status | reason | duration |\n| --- | --- | --- | --- | --- | --- |\n| acc-001 | pytest | yes | passed | - | 155ms |",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [],
+      "flawless": true,
+      "kind": "doc_generation",
+      "operator_interventions": [],
+      "order_id": "g10-escalate-then-finish",
+      "postmortem_classes": [],
+      "run_dir": "run-10-g10-escalate-then-finish",
+      "terminal_status": "achieved",
+      "tokens_in": null,
+      "tokens_out": null,
+      "tokens_source": "unmeasured",
+      "wall_seconds": 244.719
+    }
+  ],
+  "runs_flawless": 10,
+  "runs_recorded": 10
+}
