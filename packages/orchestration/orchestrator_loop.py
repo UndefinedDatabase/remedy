@@ -112,6 +112,12 @@ SECTION_DECISIONS = "## Open decisions"
 #: Present only on the ONE re-prompt that follows a refused move. Last, so a
 #: refusal never disturbs the stable prefix in front of it.
 SECTION_FEEDBACK = "## Your previous move was refused"
+#: R-0193. A milestone whose job finished and whose Definition of Done RELEASED
+#: is finished, and the only move that advances the mission is the claim. The
+#: R-0191 guard already refuses a dispatch there — but a refusal costs an
+#: iteration, so the context says it BEFORE the model spends one. Every line in
+#: this section states a fact the evidence proves, never a suggestion.
+SECTION_DIRECTIVES = "## Milestones ready to declare"
 
 #: What the stand-in dossier says about itself. Since F071 the loop's prefix is
 #: the MAINTAINED document (``mission_dossier``); this render remains as the
@@ -200,6 +206,7 @@ def assemble_context(
     dossier: Callable[[Any], str] | None = None,
     last_report: str = "",
     open_decisions: Iterable[Any] = (),
+    directives: Sequence[str] = (),
     feedback: str = "",
 ) -> OrchestratorContext:
     """Assemble one iteration's context: dossier FIRST, then the volatile parts.
@@ -232,11 +239,47 @@ def assemble_context(
         (SECTION_REPORT, last_report.strip() or "No report yet."),
         (SECTION_DECISIONS, decision_text),
     )
+    lines = [line for line in directives if line.strip()]
+    if lines:
+        sections = (*sections, (SECTION_DIRECTIVES, "\n".join(lines)))
     if feedback.strip():
         sections = (*sections, (SECTION_FEEDBACK, feedback.strip()))
     text = "\n\n".join(f"{name}\n\n{body}" for name, body in sections) + "\n"
     return OrchestratorContext(
         text=text, digest=context_digest(text), sections=sections)
+
+
+def released_milestone_directives(mission: Any, observe: Callable[..., Any], *,
+                                  project_id: str, mission_id: str) -> list[str]:
+    """One line per milestone that is finished and proven, in plan order.
+
+    The facts are the SAME ones the R-0191 dispatch guard reads — the latest
+    job's state and ``dod_gate.load_gate_result``'s verdict — so the context
+    and the guard can never disagree about which milestone is ready. Only
+    ``gate_released is True`` produces a line: an absent verdict proves
+    nothing and a blocked one is R-0190's business.
+
+    Reading evidence costs no provider call. It is the same ``observe`` seam
+    the evaluation step uses, so a test that substitutes it substitutes both.
+    """
+    done = set(done_milestones(mission))
+    lines: list[str] = []
+    for milestone_id in milestone_ids(mission):
+        if milestone_id in done:
+            continue
+        try:
+            evidence = observe(project_id, mission_id, milestone_id)
+        except Exception:  # noqa: BLE001 — a directive is never worth a crash
+            continue
+        if evidence is None or evidence.job_state != "completed":
+            continue
+        if evidence.gate_released is not True:
+            continue
+        lines.append(
+            f"- {milestone_id}: job {evidence.job_id} completed and its "
+            f"Definition of Done RELEASED. The correct next move is "
+            f"declare_milestone_done for {milestone_id}.")
+    return lines
 
 
 def _decision_line(record: Any) -> str:
@@ -630,6 +673,12 @@ TERMINAL_NO_PROVIDER = "no_provider"
 TERMINAL_INVALID_MOVE = "invalid_move"
 #: The mission record is not active (paused, achieved or abandoned already).
 TERMINAL_NOT_ACTIVE = "mission_not_active"
+#: The iteration's own work RAISED — the provider call, the dispatch or the
+#: dossier refresh threw rather than returning. Distinct from ``aborted`` (the
+#: orchestrator decided to give up) and from ``invalid_move`` (the provider
+#: answered with something unusable): here the work itself failed, and the run
+#: says so instead of escaping with no account.
+TERMINAL_ITERATION_FAILED = "iteration_failed"
 
 
 @dataclass(frozen=True)
@@ -704,6 +753,7 @@ def run_mission(
     root: Path | None = None,
     dossier: Callable[[Any], str] | None = None,
     dispatch: Callable[..., Any] | None = None,
+    execute: Callable[[Any], Any] | None = None,
     last_report: Callable[[Any], str] | None = None,
     evidence: Callable[[str, str, str], MilestoneEvidence] | None = None,
     escalate: Callable[[str, str, str], str] | None = None,
@@ -730,6 +780,9 @@ def run_mission(
     Seams, all defaulting to the production path:
       ``dispatch``        how a job is created for a milestone
                           (``mission_state.continue_mission``)
+      ``execute``         how a dispatched job is RUN; defaults to
+                          :func:`execute_dispatched_job`, i.e. the existing
+                          ``long_run_executor.run_cycles``
       ``dossier``         how the mission's dossier renders; defaults to the
                           newest stored version of the F071 maintained document
       ``update_dossier``  the dossier refresh, called every iteration
@@ -769,6 +822,19 @@ def run_mission(
                                                        now=now))
     #: Empty until a move is refused; carried into exactly ONE re-prompt.
     feedback = ""
+    #: R-0190: consecutive gate-BLOCKED completions for one milestone. A
+    #: milestone whose gate blocks twice in a row is not going to be argued
+    #: green by a third identical dispatch — the loop escalates instead of
+    #: spending the rest of its budget rediscovering the same blocker. The
+    #: loop's own second-refusal rule is the precedent.
+    blocked_milestone = ""
+    blocked_blockers: list[str] = []
+    #: R-0196: consecutive boundary-caught RETRYABLE failures for one
+    #: milestone. One transient fault is worth another iteration; two in a row
+    #: on the same milestone is a fault that is not passing, so a human hears
+    #: about it instead of the budget draining into the same exception.
+    boundary_milestone = ""
+    boundary_failures: list[str] = []
 
     def _record(iteration: int, digest: str, move: dict[str, Any],
                 outcome: MoveOutcome, cost: dict[str, Any]) -> None:
@@ -805,79 +871,168 @@ def run_mission(
             result.iterations = step - 1
             return result
 
-        # The dossier is refreshed BEFORE the context is assembled, so the
-        # prompt's first section and the mission's own dossier file describe
-        # the same state rather than drifting an iteration apart.
-        refresh(pid, mission_id, mission)
+        # ── the iteration's own work, inside the boundary. A raise from the
+        # provider call, from dispatch or from the dossier refresh becomes a
+        # classified post-mortem, this iteration's ledger entry and an honest
+        # terminal — never an escape that leaves the run with no account of
+        # itself. `except Exception` deliberately does NOT catch
+        # KeyboardInterrupt or SystemExit: an operator stopping Remedy is not
+        # a failure to classify. Since R-0196 a RETRYABLE class costs the
+        # iteration and the loop continues; every other class, unknown
+        # included, still ends the run. No retry lives here either — transport
+        # retries belong below call_fn (F001), and the next iteration decides
+        # afresh rather than re-issuing the call that raised.
+        digest = ""
+        cost: dict[str, Any] = {"calls": 0, "usage": None,
+                                "usage_source": USAGE_UNMEASURED}
+        try:
+            # The dossier is refreshed BEFORE the context is assembled, so the
+            # prompt's first section and the mission's own dossier file describe
+            # the same state rather than drifting an iteration apart.
+            refresh(pid, mission_id, mission)
 
-        context = assemble_context(
-            mission,
-            done_milestones=done_milestones(mission),
-            dossier=prefix,
-            last_report=last_report(mission) if last_report else "",
-            open_decisions=open_mission_decisions(mission),
-            feedback=feedback)
-        result.iterations = step
+            context = assemble_context(
+                mission,
+                done_milestones=done_milestones(mission),
+                dossier=prefix,
+                last_report=last_report(mission) if last_report else "",
+                open_decisions=open_mission_decisions(mission),
+                directives=released_milestone_directives(
+                    mission, observe, project_id=pid, mission_id=mission_id),
+                feedback=feedback)
+            digest = context.digest
+            result.iterations = step
 
-        if call_fn is None:
-            outcome = MoveOutcome(
-                status=TERMINAL_NO_PROVIDER,
-                detail="no orchestrator provider is configured, so no move "
-                       "was decided",
-                terminal=True)
-            _record(iteration, context.digest, {}, outcome,
-                    {"calls": 0, "usage": None,
-                     "usage_source": USAGE_UNMEASURED})
-            result.terminal, result.detail = TERMINAL_NO_PROVIDER, outcome.detail
-            return result
+            if call_fn is None:
+                outcome = MoveOutcome(
+                    status=TERMINAL_NO_PROVIDER,
+                    detail="no orchestrator provider is configured, so no move "
+                           "was decided",
+                    terminal=True)
+                _record(iteration, context.digest, {}, outcome,
+                        {"calls": 0, "usage": None,
+                         "usage_source": USAGE_UNMEASURED})
+                result.terminal, result.detail = TERMINAL_NO_PROVIDER, outcome.detail
+                return result
 
-        call = run_structured_call(
-            OrchestratorMove,
-            build_orchestrator_prompt(context, repo_root),
-            call_fn,
-            on_call=on_call,
-            allow_parse_retry=True)
-        cost = measure_call_cost(call)
+            call = run_structured_call(
+                OrchestratorMove,
+                build_orchestrator_prompt(context, repo_root),
+                call_fn,
+                on_call=on_call,
+                allow_parse_retry=True)
+            cost = measure_call_cost(call)
 
-        if not call.ok:
-            outcome = MoveOutcome(
-                status=TERMINAL_INVALID_MOVE,
-                detail=f"parse-class failure: {call.hint}".strip(),
-                terminal=True)
-            _record(iteration, context.digest, {}, outcome, cost)
-            result.terminal, result.detail = TERMINAL_INVALID_MOVE, outcome.detail
-            return result
+            if not call.ok:
+                outcome = MoveOutcome(
+                    status=TERMINAL_INVALID_MOVE,
+                    detail=f"parse-class failure: {call.hint}".strip(),
+                    terminal=True)
+                _record(iteration, context.digest, {}, outcome, cost)
+                result.terminal, result.detail = TERMINAL_INVALID_MOVE, outcome.detail
+                return result
 
-        move: OrchestratorMove = call.value
-        refusal = evaluate_move(mission, move, observe=observe,
-                                project_id=pid, mission_id=mission_id)
+            move: OrchestratorMove = call.value
+            refusal = evaluate_move(mission, move, observe=observe,
+                                    project_id=pid, mission_id=mission_id)
 
-        if refusal:
-            if not feedback:
-                # First refusal: record it and re-prompt ONCE with the reason.
-                _record(iteration, context.digest, move.model_dump(),
-                        MoveOutcome(status=OUTCOME_REFUSED, detail=refusal),
-                        cost)
-                feedback = refusal
-                continue
-            # Second refusal in a row: a human decides, never another retry.
-            handle = hand_over(pid, mission_id, refusal)
-            outcome = MoveOutcome(
-                status=TERMINAL_ESCALATED,
-                detail=f"refused twice in a row ({refusal}); escalated: "
-                       f"{handle}",
-                terminal=True)
+            if refusal:
+                if not feedback:
+                    # First refusal: record it and re-prompt ONCE with the reason.
+                    _record(iteration, context.digest, move.model_dump(),
+                            MoveOutcome(status=OUTCOME_REFUSED, detail=refusal),
+                            cost)
+                    feedback = refusal
+                    continue
+                # Second refusal in a row: a human decides, never another retry.
+                handle = hand_over(pid, mission_id, refusal)
+                outcome = MoveOutcome(
+                    status=TERMINAL_ESCALATED,
+                    detail=f"refused twice in a row ({refusal}); escalated: "
+                           f"{handle}",
+                    terminal=True)
+                _record(iteration, context.digest, move.model_dump(), outcome, cost)
+                result.terminal, result.detail = TERMINAL_ESCALATED, outcome.detail
+                return result
+
+            feedback = ""
+            outcome = execute_move(pid, mission_id, move, root=root,
+                                   dispatch=dispatch, execute=execute, now=now)
             _record(iteration, context.digest, move.model_dump(), outcome, cost)
-            result.terminal, result.detail = TERMINAL_ESCALATED, outcome.detail
-            return result
+            if outcome.terminal:
+                result.terminal, result.detail = outcome.status, outcome.detail
+                return result
+            # An iteration that decided and executed a move ends any
+            # boundary-failure streak: the fault did not persist (R-0196).
+            boundary_milestone, boundary_failures = "", []
 
-        feedback = ""
-        outcome = execute_move(pid, mission_id, move, root=root,
-                               dispatch=dispatch, now=now)
-        _record(iteration, context.digest, move.model_dump(), outcome, cost)
-        if outcome.terminal:
-            result.terminal, result.detail = outcome.status, outcome.detail
-            return result
+            # R-0190: a gate that blocked twice in a row for the same milestone
+            # is a human's problem, not a third identical dispatch.
+            milestone, blocker = blocked_completion(move, outcome)
+            if milestone and blocker:
+                if milestone != blocked_milestone:
+                    blocked_milestone, blocked_blockers = milestone, []
+                blocked_blockers.append(blocker)
+                if len(blocked_blockers) >= BLOCKED_COMPLETIONS_BEFORE_ESCALATION:
+                    reason = (
+                        f"milestone {milestone}: the Definition of Done blocked "
+                        f"{len(blocked_blockers)} completed jobs in a row "
+                        f"({'; '.join(blocked_blockers)}). A third dispatch "
+                        f"would rediscover the same blocker and spend "
+                        f"{bounds.max_iterations - step} more iteration(s) of "
+                        f"this run's budget.")
+                    handle = hand_over(pid, mission_id, reason)
+                    escalated = MoveOutcome(
+                        status=TERMINAL_ESCALATED,
+                        detail=f"{reason} escalated: {handle}",
+                        terminal=True)
+                    _record(iteration, context.digest, {}, escalated, cost)
+                    result.terminal = TERMINAL_ESCALATED
+                    result.detail = escalated.detail
+                    return result
+            elif blocker == "" and _was_dispatch(move):
+                # A released (or un-run) gate ends the streak.
+                blocked_milestone, blocked_blockers = "", []
+        except Exception as exc:
+            failure_class, detail = record_iteration_failure(
+                pid, mission_id, exc, root=root, iteration=iteration)
+            result.iterations = step
+            if not _is_retryable(failure_class):
+                outcome = MoveOutcome(status=TERMINAL_ITERATION_FAILED,
+                                      detail=detail, terminal=True)
+                _record(iteration, digest, {}, outcome, cost)
+                result.terminal, result.detail = TERMINAL_ITERATION_FAILED, detail
+                return result
+
+            # R-0196: a transient transport or machine fault costs this
+            # iteration, not the mission. The failure is classified, its
+            # post-mortem written and the iteration ledgered — then the loop
+            # goes round again under the SAME budgets. Still no retry lives
+            # here: the next iteration re-decides from a fresh context, which
+            # is not the same thing as re-issuing a call (F001).
+            milestone = working_milestone(mission)
+            if milestone != boundary_milestone:
+                boundary_milestone, boundary_failures = milestone, []
+            boundary_failures.append(detail)
+            if len(boundary_failures) >= BOUNDARY_FAILURES_BEFORE_ESCALATION:
+                reason = (
+                    f"milestone {milestone or '(none)'}: {len(boundary_failures)} "
+                    f"caught iteration failures in a row "
+                    f"({'; '.join(boundary_failures)}). Retrying a third time "
+                    f"would spend {bounds.max_iterations - step} more "
+                    f"iteration(s) of this run's budget on the same fault.")
+                handle = hand_over(pid, mission_id, reason)
+                escalated = MoveOutcome(
+                    status=TERMINAL_ESCALATED,
+                    detail=f"{reason} escalated: {handle}",
+                    terminal=True)
+                _record(iteration, digest, {}, escalated, cost)
+                result.terminal, result.detail = TERMINAL_ESCALATED, escalated.detail
+                return result
+            _record(iteration, digest, {},
+                    MoveOutcome(status=OUTCOME_ITERATION_RETRYING, detail=detail),
+                    cost)
+            continue
 
     result.terminal = TERMINAL_ITERATION_LIMIT
     result.detail = (f"reached the {bounds.max_iterations}-iteration limit "
@@ -885,16 +1040,246 @@ def run_mission(
     return result
 
 
+#: Job states that mean "this milestone's work has not been executed, or is
+#: still executing". A second dispatch against one of these is the
+#: six-identical-jobs loop campaign attempt 1 recorded (R-0184).
+#:
+#: ``paused`` is deliberately ABSENT. A paused job is one that asked a human
+#: something, and the move schema has NO resume kind — dispatch_job,
+#: wait_on_decisions, declare_milestone_done, declare_mission_achieved,
+#: abort_with_reason. Refusing a dispatch there would leave the loop with no
+#: legal move that advances the milestone once the decision is answered, i.e. a
+#: deadlock in place of a defect. (Observation for the reviewer, deliberately
+#: NOT fixed here: the absent resume verb is why re-dispatch is the only
+#: forward path out of a paused job.)
+IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
+
+#: How many consecutive gate-blocked completions of ONE milestone the loop
+#: tolerates before handing it to a human (R-0190). Two, matching the loop's
+#: own refuse-once-then-escalate rule: the first block is a legitimate,
+#: informed retry — the context already carries the blocker — and the second
+#: says the retry did not work.
+BLOCKED_COMPLETIONS_BEFORE_ESCALATION = 2
+
+#: The failure classes a caught iteration may be retried on (R-0196). NARROW
+#: and named on purpose: both mean "the machine or the transport hiccuped",
+#: which is exactly the fault another iteration can get past. Everything else
+#: — a config error, a fence violation, a parse defect, and above all
+#: ``unknown`` — still ends the run, because retrying a fault Remedy does not
+#: understand is how a budget disappears without an account of itself.
+RETRYABLE_FAILURE_CLASSES: frozenset[str] = frozenset({
+    "provider_unavailable", "io_failure"})
+
+#: How many consecutive boundary-caught retryable failures on ONE milestone
+#: the loop tolerates. Two, matching R-0190 and the refuse-once rule.
+BOUNDARY_FAILURES_BEFORE_ESCALATION = 2
+
+
+def _is_retryable(failure_class: Any) -> bool:
+    """Membership by VALUE, so the loop never imports F010's enum at module
+    scope and a class added there is not silently retried here."""
+    return getattr(failure_class, "value",
+                   str(failure_class)) in RETRYABLE_FAILURE_CLASSES
+
+
+def working_milestone(mission: Any) -> str:
+    """The milestone a failed iteration was working: the first not yet done.
+
+    The exception may have been raised before any move existed, so the
+    milestone cannot come from the move. It comes from the same plan order the
+    loop itself follows, which is what makes "twice in a row on the SAME
+    milestone" a statement about the work rather than about the exception.
+    """
+    done = set(done_milestones(mission))
+    for milestone_id in milestone_ids(mission):
+        if milestone_id not in done:
+            return milestone_id
+    return ""
+
+
+def _was_dispatch(move: Any) -> bool:
+    from packages.orchestration.orchestrator_move_schema import MOVE_DISPATCH_JOB
+
+    return getattr(move, "kind", "") == MOVE_DISPATCH_JOB
+
+
+def blocked_completion(move: Any, outcome: MoveOutcome) -> tuple[str, str]:
+    """``(milestone_id, blocker)`` when a dispatch finished on a BLOCKED gate.
+
+    ``("", "")`` when this move was not a dispatch. ``(milestone, "")`` when it
+    was a dispatch whose gate did not block — which RESETS the counter, because
+    the streak this guards against is a consecutive one.
+    """
+    from packages.orchestration.orchestrator_move_schema import MOVE_DISPATCH_JOB
+
+    if getattr(move, "kind", "") != MOVE_DISPATCH_JOB:
+        return "", ""
+    milestone = str((getattr(move, "payload", {}) or {}).get("milestone_id", ""))
+    detail = outcome.detail or ""
+    if "gate=blocked" not in detail:
+        return milestone, ""
+    blocker = detail.split("gate=blocked", 1)[1].strip()
+    return milestone, (blocker or "the gate did not release")
+
+
+def attach_milestone_dod(project_id: str, mission_id: str, mission: Any,
+                         milestone_id: str, job_id: str,
+                         root: Path | None = None) -> bool:
+    """Store the milestone's COMPILED DoD on the job it was dispatched for.
+
+    The gate reads a job's own evidence area (``dod_gate.load_dod``), and until
+    R-0188 nothing ever put anything there — ``store_dod`` had zero callers, so
+    ``run_job_gate`` returned None for every job in existence and
+    ``dod_blocking_green`` was unmeetable by construction.
+
+    Nothing is compiled here. F069 already compiled every milestone's DoD into
+    the mission's evidence area and recorded the filename in the milestone's
+    ``dod_ref``; this copies that artifact onto the job. A milestone with no
+    ``dod_ref``, or a file that will not parse, stores NOTHING and the gate
+    stays un-run for that job — an honest absence the evaluator already knows
+    how to report, never an invented definition of done.
+
+    Returns whether a DoD was stored.
+    """
+    from packages.orchestration.dod_gate import store_dod
+    from packages.orchestration.dod_schema import DoD
+    from packages.orchestration.mission_compiler import mission_plan_of
+    from packages.orchestration.mission_state import mission_evidence_dir
+
+    plan = mission_plan_of(mission)
+    if plan is None:
+        return False
+    milestone = next((m for m in plan.milestones
+                      if getattr(m, "id", "") == milestone_id), None)
+    ref = getattr(milestone, "dod_ref", "") if milestone is not None else ""
+    if not ref:
+        return False
+    path = mission_evidence_dir(project_id, mission_id, root) / ref
+    try:
+        dod = DoD.model_validate(json.loads(path.read_text(encoding="utf-8")))
+    except Exception:  # noqa: BLE001 — an unusable DoD is no DoD, said by absence
+        return False
+    store_dod(job_id, dod)
+    return True
+
+
+@dataclass(frozen=True)
+class JobExecution:
+    """What running one dispatched job produced, as the loop reads it.
+
+    A small carrier rather than the executor's own ``CycleLoopResult``, which
+    is frozen: the loop needs the cycle resolution alongside the outcome so the
+    run's evidence can record an over-cap run (R-0187). Test doubles expose the
+    same attribute names, so the seam stays substitutable.
+    """
+
+    terminal_status: str = ""
+    job_status: str = ""
+    stop_reason: str = ""
+    resolved_cycles: dict[str, Any] = field(default_factory=dict)
+    #: The DoD gate's verdict for this job, or None when it stored no DoD.
+    gate_released: bool | None = None
+    gate_blocker: str = ""
+
+
+def execute_dispatched_job(job: Any, *,
+                           experiment_max_cycles: int | None = None,
+                           worktree_root: Path | None = None
+                           ) -> JobExecution:
+    """Run a freshly dispatched job through the EXISTING multi-cycle executor.
+
+    This is the step T1_F070's Design specified ("run it through the
+    multi-cycle executor -> evaluate") and the build omitted, which is why
+    campaign attempt 1 produced ten missions whose jobs all sat at ``planned``
+    (R-0184). It reimplements nothing: the limits come from
+    ``limits_from_config`` — so the F046 rollout cap still applies exactly as
+    it does for ``remedy job run`` — the task pipeline is ``default_task_step``,
+    and the budgets are the job's own.
+
+    ``unattended=True`` because the gauntlet's whole premise is a run with no
+    operator after the start command: a task decision carrying a safe default
+    is answered from it and recorded in the escalation log (F051), and one
+    without a safe default still waits.
+
+    ``experiment_max_cycles`` (R-0187) is the order's own cycle budget, passed
+    only by the gauntlet runner. Omitted — every other caller — the F046
+    rollout cap applies exactly as before. The resolved cycles are returned on
+    the result so the run's evidence can record what was actually allowed.
+
+    ``worktree_root`` (R-0189) is the checkout the DoD checks run in: the
+    gauntlet passes its run's OWN materialised copy of the sample project.
+    Omitted, the gate falls back to the job's workspace.
+    """
+    from dataclasses import replace
+
+    from packages.orchestration.config import get_config
+    from packages.orchestration.long_run_executor import (
+        default_task_step,
+        limits_from_config,
+        run_cycles,
+    )
+    from packages.orchestration.run_log import RunLogWriter
+    from packages.providers.ollama_builder.provider import OllamaBuilder
+
+    limits, resolved = limits_from_config(
+        get_config(), experiment_max_cycles=experiment_max_cycles)
+    limits = replace(limits, budgets=getattr(job, "budgets", None))
+    result = run_cycles(job, limits, OllamaBuilder().build,
+                        task_step=default_task_step,
+                        log=RunLogWriter(job_id=job.id),
+                        unattended=True)
+    # Carried out rather than logged and forgotten: a run that went over the
+    # rollout cap has to say so in its own evidence (R-0187).
+    # R-0188: the gate runs at PRODUCTION job completion, here, once. It
+    # persists its own verdict where load_gate_result reads it, so there is no
+    # second store and the fixture-demo fulfillment spine stays untouched.
+    released, blocker = run_gate_for_job(str(job.id), worktree_root)
+    return JobExecution(terminal_status=result.terminal_status,
+                        job_status=result.job_status,
+                        stop_reason=result.stop_reason,
+                        resolved_cycles=resolved.to_json(),
+                        gate_released=released, gate_blocker=blocker)
+
+
+def run_gate_for_job(job_id: str,
+                     worktree_root: Path | None = None) -> tuple[bool | None, str]:
+    """Evaluate a finished job's Definition of Done through the EXISTING gate.
+
+    ``run_job_gate`` both evaluates and persists — one author for the verdict —
+    so this adds no store of its own. ``None`` means the job carried no DoD and
+    was therefore not gated at all, which is the gate's own additive contract.
+
+    The checks run in the job's workspace: a gauntlet mission has no repository
+    checkout, and pointing them at one would run a mission's checks against the
+    operator's tree. A gate that cannot run its checks reports them red with a
+    reason, which is an honest verdict rather than a missing one.
+    """
+    from packages.orchestration.data_paths import workspaces_dir
+    from packages.orchestration.dod_gate import gate_blocker, run_job_gate
+
+    root = worktree_root or (workspaces_dir() / job_id)
+    root.mkdir(parents=True, exist_ok=True)
+    result = run_job_gate(job_id, root)
+    if result is None:
+        return None, ""
+    return result.released, gate_blocker(result)
+
+
 def execute_move(project_id: str, mission_id: str, move: Any, *,
                  root: Path | None = None,
                  dispatch: Callable[..., Any] | None = None,
+                 execute: Callable[[Any], Any] | None = None,
                  now: datetime | None = None) -> MoveOutcome:
     """Execute ONE move through Remedy's existing verbs. No verb is reinvented here.
 
     The dispatch path goes through ``mission_state.continue_mission`` — which
     creates the job, builds its plan verify-first and links it to the mission —
-    and then applies the audited unattended approval through
-    ``flight_plan.auto_approve_flight_plan`` when the job has an open plan gate.
+    then applies the audited unattended approval through
+    ``flight_plan.auto_approve_flight_plan`` when the job has an open plan gate,
+    and then RUNS the job through the existing multi-cycle executor
+    (:func:`execute_dispatched_job`). Creating a job and walking away was
+    R-0184: the milestone could never become done, so the loop re-dispatched
+    until its iteration budget ran out.
     """
     from packages.orchestration.mission_state import (
         MISSION_STATUS_ABANDONED,
@@ -945,6 +1330,34 @@ def execute_move(project_id: str, mission_id: str, move: Any, *,
         detail = f"job {job.id} dispatched for {payload['milestone_id']}"
         if approved:
             detail += " (plan auto-approved, audited)"
+        # R-0188: give the job its milestone's DoD before it runs, or the gate
+        # has nothing to evaluate when it finishes.
+        from packages.orchestration.mission_state import load_mission as _load
+
+        if attach_milestone_dod(project_id, mission_id,
+                                _load(project_id, mission_id, root),
+                                payload["milestone_id"], str(job.id), root):
+            detail += "; DoD attached"
+        run = (execute or execute_dispatched_job)(job)
+        # What execution PRODUCED, on the ledger entry, so the next iteration's
+        # context shows why the milestone is or is not claimable.
+        detail += (f"; executed: terminal={getattr(run, 'terminal_status', '')}"
+                   f" job_status={getattr(run, 'job_status', '')}")
+        stop_reason = getattr(run, "stop_reason", "")
+        if stop_reason:
+            detail += f" stop={stop_reason}"
+        cycles = getattr(run, "resolved_cycles", None) or {}
+        if cycles:
+            detail += (f" cycles={cycles.get('max_cycles')}"
+                       f"/{cycles.get('source')}"
+                       f"{' OVER-CAP' if cycles.get('over_cap') else ''}")
+        released = getattr(run, "gate_released", None)
+        if released is None:
+            detail += " gate=not-run"
+        else:
+            detail += f" gate={'released' if released else 'blocked'}"
+            if not released and getattr(run, "gate_blocker", ""):
+                detail += f" ({run.gate_blocker})"
         return MoveOutcome(status="dispatched", detail=detail,
                            job_id=str(job.id))
 
@@ -985,6 +1398,12 @@ def _auto_approve_if_gated(job: Any) -> bool:
 #: once with the reason, and only a SECOND refusal escalates.
 OUTCOME_REFUSED = "refused"
 
+#: An iteration the boundary caught on a RETRYABLE class (R-0196). An OUTCOME_
+#: and deliberately NOT a TERMINAL_: the iteration is spent and accounted for,
+#: the mission is not over. The ledger keeps it so a run that succeeded on the
+#: second attempt still says out loud that the first one failed.
+OUTCOME_ITERATION_RETRYING = "iteration_failed_retrying"
+
 #: A second refusal in a row reached a human through the escalation verb.
 TERMINAL_ESCALATED = "escalated"
 
@@ -1018,6 +1437,15 @@ def dispatched_job_for(project_id: str, mission_id: str, milestone_id: str,
     ``dispatch_job`` entry stores the milestone id it was for beside the job id
     it produced. Reading it here means the attribution costs no change to job
     creation, which stays exactly as F056 left it.
+
+    A REFUSED dispatch is not a dispatch (R-0192). Its move kind is still
+    ``dispatch_job`` and its milestone id still matches, but nothing was
+    created, so its outcome carries no job id — and letting it through would
+    overwrite the real answer with "". That is not hypothetical: the R-0191
+    guard made refused dispatches common, and the very next ``declare`` move
+    was refused with "no job was ever dispatched" for a milestone whose job had
+    completed with a released gate. Only an entry that actually produced a job
+    updates the answer.
     """
     job_id = ""
     for entry in read_ledger(project_id, mission_id, root):
@@ -1026,7 +1454,10 @@ def dispatched_job_for(project_id: str, mission_id: str, milestone_id: str,
             continue
         if (move.get("payload") or {}).get("milestone_id") != milestone_id:
             continue
-        job_id = str((entry.get("outcome") or {}).get("job_id", "") or "")
+        produced = str((entry.get("outcome") or {}).get("job_id", "") or "")
+        if not produced:
+            continue
+        job_id = produced
     return job_id
 
 
@@ -1083,7 +1514,66 @@ def evaluate_dispatch(mission: Any, milestone_id: str,
     if unmet:
         return (f"milestone {milestone_id} depends on {', '.join(unmet)}, "
                 f"which is not done yet")
+    # R-0186: one milestone, one job at a time. Campaign attempt 1 dispatched
+    # six jobs for the same milestone because nothing refused a second one
+    # while the first was still in flight. The refusal says what to do INSTEAD,
+    # so the next move is an advance rather than the same move again.
+    in_flight = _in_flight_refusal(milestone_id, evidence)
+    if in_flight:
+        return in_flight
+    # R-0191: the third leg of the guard triad. In flight -> wait; blocked
+    # twice -> escalate (R-0190); completed with a RELEASED gate -> there is
+    # nothing left to dispatch, and the only move that advances the mission is
+    # the claim itself.
+    released = _released_gate_refusal(milestone_id, evidence)
+    if released:
+        return released
     return _era_refusal(evidence)
+
+
+def _released_gate_refusal(milestone_id: str,
+                           evidence: MilestoneEvidence | None) -> str:
+    """Refuse a dispatch when the milestone's work is already done and proven.
+
+    The verdict is the REAL one: ``collect_milestone_evidence`` reads it from
+    ``dod_gate.load_gate_result`` for the LATEST job the ledger attributes to
+    this milestone, so a newer un-released job supersedes an older released
+    one by construction — nothing is re-derived here.
+
+    Remedy deliberately does NOT declare the milestone itself. The claim is the
+    model's move and carries the model's accountability; the loop's job is to
+    refuse the move that cannot help and say which one can. The existing
+    first-refusal re-prompt carries this sentence back to the model, and the
+    second-refusal escalation already exists if it ignores it.
+    """
+    if evidence is None or not evidence.job_id:
+        return ""
+    if evidence.job_state != "completed":
+        return ""
+    if evidence.gate_released is not True:
+        return ""
+    return (f"milestone {milestone_id} is already finished: job "
+            f"{evidence.job_id} completed and its Definition of Done "
+            f"RELEASED. Another job would repeat work that is already proven. "
+            f"Instead: declare_milestone_done for {milestone_id}")
+
+
+def _in_flight_refusal(milestone_id: str,
+                       evidence: MilestoneEvidence | None) -> str:
+    """Refuse a second job for a milestone whose first one has not finished."""
+    if evidence is None or not evidence.job_id:
+        return ""
+    if evidence.job_state not in IN_FLIGHT_JOB_STATES:
+        return ""
+    if evidence.gate_released:
+        advice = (f"declare_milestone_done for {milestone_id} — its gate has "
+                  f"already released")
+    else:
+        advice = ("wait_on_decisions, or declare_milestone_done once that job "
+                  "finishes and its gate releases")
+    return (f"milestone {milestone_id} already has job {evidence.job_id} in "
+            f"flight (state {evidence.job_state}); a second job for it is "
+            f"refused. Instead: {advice}")
 
 
 def evaluate_milestone_done(mission: Any, milestone_id: str,
@@ -1241,3 +1731,53 @@ def evaluate_move(mission: Any, move: Any, *, observe: Callable[..., Any],
                     f"{len(open_ones)} milestone(s) are still open: "
                     f"{', '.join(open_ones)}")
     return ""
+
+
+def record_iteration_failure(project_id: str, mission_id: str,
+                             exc: BaseException, *, root: Path | None = None,
+                             iteration: int = 0) -> tuple[Any, str]:
+    """Classify a raised iteration failure and write its F010 post-mortem.
+
+    Returns ``(failure_class, detail)``. The class comes from
+    :func:`failure_postmortem.classify` — the same pure classifier every other
+    layer uses — and a class it cannot determine comes back as ``unknown``,
+    said out loud rather than invented.
+
+    Never raises. The boundary exists so a run ends honestly; a post-mortem
+    that could not be written must not become a second, louder failure on top
+    of the first. It is reported in the detail instead, so the run's own
+    account still names what happened.
+
+    Each iteration's record lives in its own sub-directory: ``write_postmortem``
+    is create-only by design, and two failing iterations in one mission must not
+    collide over the account of the first.
+    """
+    from packages.orchestration.failure_postmortem import (
+        SCOPE_JOB,
+        FailureSignals,
+        PostmortemV1,
+        classify,
+        write_postmortem,
+    )
+    from packages.orchestration.mission_state import mission_evidence_dir
+
+    text = f"{type(exc).__name__}: {exc}"
+    verdict = classify(FailureSignals(exception=exc, error_text=text))
+    detail = (f"iteration {iteration} failed: {text} "
+              f"(class {verdict.failure_class.value})")
+    try:
+        evidence = mission_evidence_dir(project_id, mission_id, root)
+        target = evidence / f"iteration_{iteration}"
+        target.mkdir(parents=True, exist_ok=True)
+        write_postmortem(target, PostmortemV1(
+            failure_class=verdict.failure_class,
+            signal_source=verdict.signal_source,
+            job_id=mission_id,
+            scope=SCOPE_JOB,
+            raw_reason=f"iteration {iteration}: {text}",
+            terminal_status=TERMINAL_ITERATION_FAILED,
+        ), root=evidence)
+    except Exception as write_exc:  # honest, never fatal
+        detail += (f"; the post-mortem could not be written "
+                   f"({type(write_exc).__name__}: {write_exc})")
+    return verdict.failure_class, detail

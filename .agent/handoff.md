@@ -1,95 +1,56 @@
-# Handoff — F071 Mission dossier · R4 (CLOSURE)
+# Handback — F075 R13 CLOSURE
 
 ## Range
-Review of 1121142a..\<HEAD\> · 4 new commits · ACCEPTED_HEAD = acb02acd.
+Review of 8bc1305a..HEAD (4 commits, incl. this one).
 
 ## Commits
-### a0eeff86 persist the R3 PASS + gate verdict, register R-0176/R-0177
+### b49e6bdb chore(f075): save the R13 closure block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f071-r4-1..5.md | +181 | 5 reviewer texts, sha256-verified |
-| .agent/live_review.md | +143/-75 | authored full replacement |
+| .agent/last_block.md | +241/-235 | the block, own commit (R-0198); two transport defects repaired against the digests — see proofs |
 
-### b8b9c043 docs(agents): gate run logs live outside the repo (R-0176)
+### 634b0be8 chore(f075): persist the R12 gate verdict
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/integration_gate.md | +9/-1 | authored FROM→TO |
-| .agent/live_review.md | +1 | Done: R-0176 |
+| .agent/authored/f075-r13-{1..5}.md | +129 | the five reviewer texts, sha256-verified |
+| .agent/live_review.md | +29 | r13-1 applied; LAST_REVIEWED_SHA = 8bc1305a |
 
-### acb02acd docs(f071): record the accepted Built State ← ACCEPTED_HEAD
+### 36f3bc81 docs(f075): record the accepted Built State ← ACCEPTED HEAD
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T1_F071.md | +58 | f071-r4-3 appended verbatim at EOF |
+| docs/roadmap/features/T1_F075.md | +53 | r13-2 byte-appended (precondition 4) |
 
-### \<closure sha\> chore(f071): close F071 — STATUS [x] + README sync
+### &lt;this commit&gt; the closure commit (Rule A4, last on the branch)
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | f071-r4-4, 4 placeholders substituted |
-| README.md | +3/-3 | f071-r4-5 pairs 1-3 (pair 3 = R-0177) |
-| .agent/live_review · plan · context · handoff.md | rewritten | Done: R-0177 + final state (R-0149 self-ref) |
-
-## Item status
-| Item | Status | Reason |
-|---|---|---|
-| R-0176 | done | b8b9c043 |
-| R-0177 | done | closure commit — README tier-12 row Total 9 |
-| Built State | done | acb02acd |
-| Evidence job | done | b3b98e3ee1d10668 |
-| Review zip | done | READY_FOR_REVIEW, subject 097e4959..acb02acd |
-| STATUS [x] + README | done | closure commit, exact path set |
-| PR | done | created right after this commit, open, NOT merged |
+| docs/roadmap/STATUS.md · README.md | ±1 / ±2 | r13-3 with the four placeholders filled · r13-4 both edits, same commit (R-0154) |
+| .agent/candidates.md | rewrite | r13-5 full replacement, 4 candidates |
+| .agent/plan.md · context.md · handoff.md · last_block.md | rewrite | final F075-closed state · this handback · OUTCOME |
 
 ## External actions
-- `make_review_zip.sh --evidence-dir <scratch>/remedy-job-evidence-f071` -> exit 0.
-- `git push` x2 -> exit 0. `gh pr create` runs AFTER this commit (Rule A4: the STATUS edit is the last commit), so the number is reported in the session handback, not here. NOT merged — the next feature's Open PR Gate merges it.
+- 4x `git push origin feature/f075-self-run-gauntlet`, one per commit — OK. NO force-push (R-0195).
+- `bash scripts/make_review_zip.sh --evidence-dir <scratch>/remedy-job-evidence-f075-closure` — REVIEW_PACKAGE_CREATED=true.
+- `gh pr create --base main` runs AFTER this commit (Rule A4 puts the STATUS edit last), so the number is reported in the session handback, not here — the F071 closure precedent. NOT merged (protocol §6). No other gh command.
 
 ## Verification
-```
-pytest tests/docs/ -q  293 EXIT=0 | canary 42 EXIT=0 | (re-run after closure commit: same)
-remedy integrity check --json  passed=true, fail_count=0, 5/5
-git status --porcelain  empty before evidence AND at handback
-```
-Evidence job `b3b98e3ee1d10668` — feature-scoped, zero provider calls, 4 runs /
-544 passed / 0 failed (dossier 103 · loop 106 · canary 42 · docs 293). Real
-`--collect-only` node ids, `len(node_ids)==selected`, 0 skipped; test_files are
-FILES (tests/docs/ expanded to 293); run_id `vr-0001..0004`; full-length
-base_commit; output_hash == sha256(stdout_summary) verified all 4. READY gate
-`ok:True`, blocking `[]`.
-Package `remedy-review-20260803-190339-READY_FOR_REVIEW.zip`
-SHA-256 `aa117e26a55b0ab1b1941d881a4ed510967c2d1669be021abda30ab0f6e9e99e`,
-built from the clean tree at acb02acd; committed_review_subject
-097e4959..acb02acd, 25 commits, base_is_ancestor true; 1881 members. Evidence
-dir stayed in session scratch — NOT committed.
+`pytest tests/cli/test_golden_path.py -q` → 42 passed, EXIT=0 (P1, P2, closure) · `pytest tests/docs/ -q` → 293 passed, EXIT=0 (P2, closure) · `remedy integrity check --json` → `passed: true`, every check pass · `git status --porcelain` empty at every phase boundary.
+EVIDENCE JOB **b1b6eb7ed4962309** — `create_manual_completion_bundle(review_feature_id="f075")`, base 563b15b4d35b785563d9720fb762d393883d744d, head 36f3bc8150a9bdaae3c1e3a743c1621998c48691, 4 verification runs (272 / 42 / 293 / 74 = 681 passed), authority 76, verdict PASS_WITH_RISKS; built OUTSIDE the repo, NOT committed. Coordinator validation attempt 1 → `ok: False`, raw blocking_reasons: `"final_verifier_report.json test_status.passed cannot be confirmed: the VerificationTests total is missing or invalid"` and `"verification_tests.json runs[0] test_files is not sorted"`. Fixed AT THE CAUSE (test_files sorted at authoring), rejected dir deleted, rebuilt → attempt 2 `ok: True`, `blocking_reasons: []`.
+REVIEW ZIP **remedy-review-20260805-144354-READY_FOR_REVIEW.zip** · SHA-256 `d63cda6b2b9e83bf993889d33fa716646f712f90eabc992a472d12390b8910d3` (recomputed independently with sha256sum — equal to the builder's report) · PACKAGE_STATUS=READY_FOR_REVIEW · REVIEW_SUBJECT_ALIGNMENT=PASS · EVIDENCE_AUTHORITATIVE=true · committed_review_subject 563b15b4…d744d → 36f3bc81…c48691 (the accepted HEAD) · 2064 members, 76 authoritative · `testzip` → no bad member · import smoke over the PACKAGED sources (extracted to tmp, removed after): PASS_CRITERIA len 9, GAUNTLET_ORDER_SET_VERSION 4, gauntlet_runner imports → PASS.
 
 ## Authored-text proofs
-All five sha256 match their BEGIN digests (`5cce9c84` `90f443cc` `1358d51e`
-`c90535f5` `2e199533`). r4-1 `cmp` vs live_review.md -> 0. r4-2 FROM 1→0,
-TO 0→1. r4-3 `doc.endswith(authored)` True, occurrences 1. r4-4 FROM 1→0,
-TO 0→1, STATUS diff exactly 1 insertion/1 deletion — **and re-substituting
-JOB_ID/ZIP_FILENAME/ZIP_SHA256/ACCEPTED_HEAD back reproduces the authored
-template byte for byte (True)**. r4-5 three pairs, each FROM 1→0, TO 0→1.
+| text | sha256 vs BEGIN digest | applied, byte-identical |
+|---|---|---|
+| f075-r13-1 | 67b700f9…d1e0 EQUAL | TO block occurs 1x in live_review.md, tail-anchored |
+| f075-r13-2 | 9c3e097e…3a72 EQUAL | occurs 1x in T1_F075.md, file ends with it, prior content intact as prefix |
+| f075-r13-3 | b6ff64e8…f94b EQUAL | TO line occurs 1x in STATUS.md, ONE line of 347 chars, 4 placeholders filled |
+| f075-r13-4 | 91123541…873d EQUAL | both TO lines occur 1x in README.md, both FROM lines gone |
+| f075-r13-5 | 55af55f4…b030 EQUAL | `cmp` exit 0 vs .agent/candidates.md |
+
+DECLARED, transport — two defects, both caught by the digests BEFORE anything was applied, neither guessed: (1) a duplicated instruction region (PHASE 4 tail through the end of PHASE 6) was injected between the first `BEGIN f075-r13-1` marker and the real payload — the complete second BEGIN/END pair hashes to 67b700f9, proving the first marker plus duplicate is corruption; (2) r13-3 arrived WRAPPED across three lines, the exact F071 lesson the block itself names — unwrapping to one line reproduced b6ff64e8. Both repairs are in the archived block (b49e6bdb).
 
 ## Deviations & assumptions
-1. **f071-r4-4 digest mismatched on transcription — STOPPED, applied nothing.**
-   Got `e93dd811ccbff7772b8ba9d153ba0d26d9229d544f46f2f4d7477d5bc588f0d0`,
-   expected `c90535f5…`. Cause: the STATUS TO line is ONE line, displayed
-   wrapped; I had transcribed the wrap as a newline. Resolved by HASHING
-   candidates only — joining the two display lines with one space reproduces
-   `c90535f5…`. Applied only after the digest matched.
-2. Final-verifier verdict `PASS_WITH_RISKS`, not PASS — standard zero-provider
-   attested outcome (`token_measurement_confidence: low`,
-   `human_final_reviewer_required: true`); `unresolved_findings []`,
-   `missing_evidence []`, 544 passed. The STATUS line records the LIVE REVIEW
-   verdict (PASS), which is what the template asks for.
-3. `.agent/context.md` refreshed in the closure commit with plan/handoff — all
-   inside the allowed `.agent/` path set.
-4. `.agent/candidates.md` left empty: this closure raised no candidates.
-5. Cap: the round order grants LARGE cap rules — 95 lines (≤160), ~1.2k tokens
-   (≤1600), both met, no section dropped. The base ≤60/≤800 cap would not fit
-   4 mandatory per-commit tables plus the protocol's mandatory grep proofs.
-6. The PR number is absent from this file by construction: Rule A4 puts the
-   STATUS edit last, so the PR is created after this commit is written.
+- The evidence-job rebuild after a coordinator rejection is protocol-ordered, not a deviation; raw reasons above. The evidence dir stays in session scratch and is NOT committed — the durable pointer is package + SHA-256 + job id in the STATUS line.
+- Runtime actuals as authored: 13 rounds 2026-08-04..05, three live campaigns + seven `--only` re-proofs, tokens **not-measured** (the local provider reports no ledger usage).
 
 ## Next
-F071 closed on disk; PR open and unmerged by design. Rule A5 selects F075 in a
-fresh session; its Open PR Gate merges this PR.
+The Open PR Gate at the next feature's start merges the closure PR; F079 (Context handoffs) begins in a fresh session and its FIRST reviewed round must empty .agent/candidates.md (4 entries).

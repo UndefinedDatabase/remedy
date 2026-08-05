@@ -127,6 +127,9 @@ class TestClassifyEveryClass:
             FailureSignals(exception=subprocess.TimeoutExpired("c", 1)),
             FailureSignals(exception=subprocess.CalledProcessError(1, "c")),
             FailureSignals(exception=FileNotFoundError("c")),
+            # R-0185: a new enum member needs a producer, or the class exists
+            # and nothing can ever reach it.
+            FailureSignals(exception=OSError("killed while writing")),
             FailureSignals(exception=_fence_err),
             FailureSignals(terminal_status="test_failed"),
             FailureSignals(terminal_status="review_failed"),
@@ -947,3 +950,89 @@ class TestTheParentOfTheEvidenceRootIsVerifiedToo:
         Path("evidence").mkdir()
         path = write_postmortem(Path("evidence/call"), self._rec(), root=Path("evidence"))
         assert Path(path).is_file()
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0185 — transport and machine failures the classifier used to call unknown
+# ---------------------------------------------------------------------------
+#
+# Campaign attempt 1 injected two realistic shapes at the orchestrator loop's
+# seams and F010 read both as `unknown`, which cost three runs the
+# no-unknown-postmortems criterion while Remedy in fact knew exactly what had
+# happened. The classes below are the EXISTING taxonomy plus one honest new
+# member for the machine-under-us case; nothing here is a second spelling of a
+# provider class.
+
+
+class TestTransportAndMachineFailures:
+
+    def _classify(self, exc):
+        return classify(FailureSignals(exception=exc,
+                                       error_text=f"{type(exc).__name__}: {exc}"))
+
+    def test_a_connection_error_is_the_provider_not_answering(self):
+        verdict = self._classify(ConnectionError("connection refused"))
+        assert verdict.failure_class is FailureClass.PROVIDER_UNAVAILABLE
+        assert verdict.signal_source == FP.SIGNAL_TYPED_EXCEPTION
+
+    @pytest.mark.parametrize("exc", [
+        ConnectionRefusedError("connection refused"),
+        ConnectionResetError("connection reset by peer"),
+        BrokenPipeError("broken pipe"),
+    ])
+    def test_every_connection_error_subclass_lands_on_the_same_class(self, exc):
+        assert self._classify(exc).failure_class is FailureClass.PROVIDER_UNAVAILABLE
+
+    def test_a_bare_os_error_is_the_machine_not_the_provider(self):
+        verdict = self._classify(OSError("killed while writing"))
+        assert verdict.failure_class is FailureClass.IO_FAILURE
+        assert verdict.signal_source == FP.SIGNAL_TYPED_EXCEPTION
+
+    def test_the_os_error_family_keeps_its_more_specific_members(self):
+        """TimeoutError, ConnectionError and FileNotFoundError are all OSError
+        subclasses in 3.10; a bare-OSError rule ordered above them would eat
+        every one of them."""
+        assert self._classify(TimeoutError("x")).failure_class is \
+            FailureClass.PROVIDER_TIMEOUT
+        assert self._classify(FileNotFoundError("x")).failure_class is \
+            FailureClass.PROVIDER_UNAVAILABLE
+        assert self._classify(ConnectionError("x")).failure_class is \
+            FailureClass.PROVIDER_UNAVAILABLE
+
+    def test_a_connection_failure_read_from_text_alone_is_classified(self):
+        verdict = classify(FailureSignals(error_text="the model host returned HTTP 503"))
+        assert verdict.failure_class is FailureClass.PROVIDER_UNAVAILABLE
+        assert verdict.signal_source == FP.SIGNAL_ERROR_TEXT
+
+    def test_a_machine_failure_read_from_text_alone_is_classified(self):
+        verdict = classify(FailureSignals(error_text="no space left on device"))
+        assert verdict.failure_class is FailureClass.IO_FAILURE
+
+    def test_a_provider_reading_wins_over_a_machine_reading(self):
+        """A provider error that also mentions a pipe is still a provider error."""
+        verdict = classify(FailureSignals(
+            error_text="connection reset by peer; broken pipe"))
+        assert verdict.failure_class is FailureClass.PROVIDER_UNAVAILABLE
+
+    @pytest.mark.parametrize("exc", [
+        ValueError("something nobody can classify"),
+        RuntimeError("the vibes were off"),
+        KeyError("k"),
+    ])
+    def test_a_genuinely_unrecognizable_failure_stays_unknown(self, exc):
+        """The falsification: the new classes must not make `unknown` unreachable."""
+        assert self._classify(exc).failure_class is FailureClass.UNKNOWN
+
+    def test_an_unrecognizable_message_stays_unknown(self):
+        assert classify(FailureSignals(
+            error_text="the flurb did not glorp")).failure_class is FailureClass.UNKNOWN
+
+    def test_the_io_predicate_is_narrow_enough_to_be_worth_having(self):
+        assert FP.is_io_failure_error("killed while writing the dossier") is True
+        assert FP.is_io_failure_error("everything was completely fine") is False
+        assert FP.is_io_failure_error("") is False
+
+    def test_the_connection_predicate_is_narrow_enough_to_be_worth_having(self):
+        assert FP.is_provider_connection_error("HTTP 503 from the host") is True
+        assert FP.is_provider_connection_error("a perfectly good answer") is False
+        assert FP.is_provider_connection_error(None) is False

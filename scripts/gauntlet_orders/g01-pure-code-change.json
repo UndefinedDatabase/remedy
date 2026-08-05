@@ -1,0 +1,28 @@
+{
+  "budget": {
+    "max_cycles": 4,
+    "max_iterations": 12,
+    "max_tokens": 600000,
+    "max_wall_seconds": 5400
+  },
+  "budget_rationale": "One stated milestone; the compiler shaped three (R9 live run). 3x3+1=10 with the refusal net, +2 margin.",
+  "gauntlet_order_version": 1,
+  "goal": "In the sample project, make the retry backoff cap configurable instead of hard-coded, keeping the current value as the default, and cover the new behaviour with a unit test.",
+  "id": "g01-pure-code-change",
+  "injections": [],
+  "kind": "pure_code_change",
+  "milestones": [
+    {
+      "dod": [
+        "the new unit test fails against the pre-change code",
+        "the full unit suite of the sample project is green",
+        "no file outside the touched module and its test changed"
+      ],
+      "id": "m1",
+      "title": "Configurable backoff cap with a passing unit test"
+    }
+  ],
+  "rationale": "The floor of the gauntlet: the smallest complete mission there is. If this one needs an operator command, nothing above it can be trusted. No new surface, no new file, one behaviour, one test \u2014 it probes the loop itself rather than any capability, and it is the only order that does.",
+  "risk_probed": "baseline_single_file_change",
+  "title": "Change one function's behaviour and prove it with a unit test"
+}

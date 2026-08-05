@@ -39,6 +39,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pydantic import model_validator
+
 from packages.orchestration.dod_compiler import DoDCompileResult, compile_dod
 from packages.orchestration.mission_plan_schema import (
     MAX_MILESTONE_DRAFT_JOBS,
@@ -152,20 +154,61 @@ class MissionPlanOutcome:
     evidence_dir: Path | None = None
 
 
-def build_mission_prompt(goal: str, *, project_facts: str = "") -> str:
+def resolve_milestone_cap(max_milestones: int | None) -> int:
+    """The effective cap: the caller's, clamped by F069's outer bound.
+
+    ``None`` means "no caller opinion", which is the historical behaviour —
+    the outer bound alone. A caller can only ever make the plan SMALLER, never
+    argue past the schema's own ceiling.
+    """
+    if max_milestones is None:
+        return MAX_MISSION_MILESTONES
+    return max(1, min(int(max_milestones), MAX_MISSION_MILESTONES))
+
+
+def build_mission_prompt(goal: str, *, project_facts: str = "",
+                         max_milestones: int | None = None) -> str:
     """The provider prompt for one mission goal.
 
     ``project_facts`` defaults to the SHARED repo-facts block — the same one
     the flight planner puts in front of its provider. A caller that already
     knows the project's shape passes it instead of paying for a second listing.
+
+    ``max_milestones`` (R-0197) lowers the milestone ceiling the prompt states.
+    ``None`` reproduces today's prompt byte for byte.
     """
     return _MISSION_PROMPT_TEMPLATE.format(
         goal=str(goal).strip(),
         repo_facts=project_facts or repo_facts_block(),
-        max_milestones=MAX_MISSION_MILESTONES,
+        max_milestones=resolve_milestone_cap(max_milestones),
         max_draft_jobs=MAX_MILESTONE_DRAFT_JOBS,
         schema_v=MISSION_PLAN_DRAFT_SCHEMA_V,
     )
+
+
+def _capped_draft_model(cap: int) -> type[MissionPlanDraft]:
+    """``MissionPlanDraft`` that also refuses a draft above ``cap``.
+
+    A subclass rather than a post-hoc check, so the over-cap draft is a
+    PARSE-class failure like any other invalid answer: F001's single retry
+    re-prompts with the reason, and a second over-cap answer falls back
+    deterministically — no new retry path, no new failure mode.
+    """
+    class _CappedMissionPlanDraft(MissionPlanDraft):
+        @model_validator(mode="after")
+        def _validate_milestone_cap(self):  # type: ignore[no-untyped-def]
+            if len(self.milestones) > cap:
+                raise ValueError(
+                    f"this mission allows at most {cap} milestone(s); the "
+                    f"draft has {len(self.milestones)}. Raise the altitude of "
+                    f"the milestones instead of adding more.")
+            return self
+
+    # The schema the prompt shows the provider must still be called what the
+    # protocol calls it; only the validation is stricter.
+    _CappedMissionPlanDraft.__name__ = MissionPlanDraft.__name__
+    _CappedMissionPlanDraft.__qualname__ = MissionPlanDraft.__qualname__
+    return _CappedMissionPlanDraft
 
 
 def deterministic_mission_plan(goal: str) -> MissionPlan:
@@ -200,6 +243,7 @@ def compile_mission_plan(
     *,
     on_call: Callable[[int, str, bool, str], None] | None = None,
     project_facts: str = "",
+    max_milestones: int | None = None,
 ) -> MissionCompileResult:
     """Compile a mission's goal into a MissionPlan.  Starts nothing.
 
@@ -208,6 +252,12 @@ def compile_mission_plan(
     ``call_fn is None`` — or any provider failure, or an unparseable answer —
     yields the deterministic fallback rather than an exception or an empty
     plan: a mission without a provider still gets a real route.
+
+    ``max_milestones`` (R-0197) caps the compiled plan: the prompt states the
+    lower ceiling AND the draft is validated against it, so a provider that
+    ignores the instruction is re-prompted once and then falls back
+    deterministically. ``None`` is today's behaviour exactly — same prompt
+    bytes, same validation, same fallback.
 
     Compiling has NO side effects: nothing is persisted here, no job is
     created, no process starts. Persistence and the per-milestone DoD hand-off
@@ -222,8 +272,10 @@ def compile_mission_plan(
 
     try:
         outcome: StructuredOutcome = run_structured_call(
-            MissionPlanDraft,
-            build_mission_prompt(goal, project_facts=project_facts),
+            MissionPlanDraft if max_milestones is None
+            else _capped_draft_model(resolve_milestone_cap(max_milestones)),
+            build_mission_prompt(goal, project_facts=project_facts,
+                                 max_milestones=max_milestones),
             call_fn,
             on_call=on_call,
             allow_parse_retry=True,
@@ -537,6 +589,7 @@ def plan_mission(
     *,
     root: Path | None = None,
     on_call: Callable[[int, str, bool, str], None] | None = None,
+    max_milestones: int | None = None,
 ) -> MissionPlanOutcome:
     """Compile (or recompile) a mission's plan, persist it, render it.
 
@@ -570,7 +623,8 @@ def plan_mission(
             f"Start a new mission for a different route, or achieve/abandon "
             f"this one (remedy mission achieve|abandon {mission.id[:12]}).")
 
-    result = compile_mission_plan(mission, call_fn, on_call=on_call)
+    result = compile_mission_plan(mission, call_fn, on_call=on_call,
+                                  max_milestones=max_milestones)
     evidence_dir = mission_evidence_dir(project_id, mission.id, root)
     plan = attach_milestone_dods(
         result.plan, goal=mission.goal, evidence_dir=evidence_dir,

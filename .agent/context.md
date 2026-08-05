@@ -1,27 +1,30 @@
-# Context — F071 Mission dossier
+# Context — F075 closed; next feature not yet claimed
 
 ## Active Branch
-feature/f071-mission-dossier (from main 097e4959, post reg0803
-micro-round merge PR #177) — CLOSED at acb02acd, PR open, unmerged.
+feature/f075-self-run-gauntlet — F075 closure PR open, NOT merged. The
+next feature (F079, Context handoffs) starts from main AFTER the Open PR
+Gate merges this PR.
 
 ## Scope
-Roadmap F071 (Tier 1, docs/roadmap/features/T1_F071.md): the
-mission dossier module, its loop wiring and its tests. Production
-code path → SPLIT rounds only; reviewer gated every merge.
+F075 is complete and accepted: gauntlet harness, evaluator, matrix,
+frozen order set v4 + sample-project template, live runner, injection
+driver, and the nine campaign-earned product changes, all reviewed round
+by round. Built State is recorded in
+docs/roadmap/features/T1_F075.md; STATUS.md carries the [x] line with
+the evidence job, package and accepted HEAD.
 
 ## Constraints
-- Round gate = scoped pytest command(s) authored in the step block;
-  canary per handback: python3 -m pytest tests/cli/test_golden_path.py -q.
-  Full-suite pytest -n auto ran at the R3 integration gate
-  (resource budget: keep runs scoped; the resource-safety rules of
-  tests/regression apply). Gate run logs are written OUTSIDE the
-  repo during the run (R-0176).
-- Commits < 500 lines; authored texts applied byte-exact from
-  .agent/authored/f071-r<round>-<n>.md after sha256 verification.
-- Do-not-touch: cross-session handoffs (F079), prompt ordering
-  policy, memory systems beyond the dossier.
+- Nothing further ships on this branch. The closure commit was the last
+  commit (Rule A4); do not append to it.
+- ADR-0001 is PROPOSED, never applied by a machine: CYCLE_SAFETY_CAP
+  stays 1 and three pinned assertions hold it there.
+- .agent/candidates.md is non-empty by design and blocks the next
+  feature claim until its first reviewed round registers or resolves
+  each entry.
+- Round gates stay scoped pytest commands; the full-suite
+  pytest -n auto run belongs to the integration gate, where the
+  resource-safety rules of tests/regression apply.
 
 ## Steps
-R1 T001+T002 → R2 fixes + T003 → R3 fix + integration gate →
-R4 closure (current, done). The PR merges at the next feature's
-Open PR Gate; nothing here merges it.
+R1-R11 built and reviewed (PASS x11) → R12 ADR/diff prep + integration
+gate PASS → R13 closure (done) → next: F079 in a fresh session.

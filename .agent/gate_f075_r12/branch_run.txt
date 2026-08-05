@@ -1,0 +1,11 @@
+=== branch run: dcde0698 (feature/f075-self-run-gauntlet) ===
+2026-08-05T11:18:51Z
+cmd: python3 -m pytest -n auto -q
+log written OUTSIDE the repo during the run (session scratchpad), copied after exit (R-0176)
+...[progress lines trimmed — the gate records the raw TAIL, the FAILED list, the exit code and wall time]...
+(no FAILED lines)
+........................................................................ [ 99%]
+........................................................                 [100%]
+15805 passed, 19 skipped in 183.39s (0:03:03)
+WALL=184s (13:18:51 -> 13:21:55 local)
+BRANCH_EXIT=0

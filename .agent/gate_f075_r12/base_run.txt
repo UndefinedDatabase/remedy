@@ -1,0 +1,14 @@
+=== base run: 563b15b4 (merge-base main...HEAD) ===
+cmd: REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+throwaway worktree on throwaway branch tmp/base-gate-r12, OUTSIDE the repo
+log written OUTSIDE the repo during the run, copied after exit (R-0176)
+...[progress lines trimmed — raw TAIL, FAILED list, exit code, wall time]...
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+6 failed, 15377 passed, 19 skipped in 147.95s (0:02:27)
+WALL=147.95s
+BASE_EXIT=1

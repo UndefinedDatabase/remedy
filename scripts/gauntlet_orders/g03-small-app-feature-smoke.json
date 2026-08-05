@@ -1,0 +1,28 @@
+{
+  "budget": {
+    "max_cycles": 5,
+    "max_iterations": 12,
+    "max_tokens": 700000,
+    "max_wall_seconds": 6000
+  },
+  "budget_rationale": "One stated milestone plus a smoke run per cycle; same iteration shape, more wall and tokens for the extra verification.",
+  "gauntlet_order_version": 1,
+  "goal": "Add a --quiet flag to the sample project's CLI that suppresses progress output but never suppresses errors, and prove it with a smoke run.",
+  "id": "g03-small-app-feature-smoke",
+  "injections": [],
+  "kind": "small_app_feature_with_smoke",
+  "milestones": [
+    {
+      "dod": [
+        "a smoke run with --quiet produces no progress lines on stdout",
+        "a smoke run with --quiet still prints an error to stderr on bad input",
+        "the full unit suite is green"
+      ],
+      "id": "m1",
+      "title": "Flag implemented and smoke-proven"
+    }
+  ],
+  "rationale": "The only order whose DoD cannot be satisfied by pytest alone: the feature must be exercised through the app's real entry point. It probes the smoke runner and the difference between 'the code is right' and 'the product does it' \u2014 a distinction unit tests structurally cannot make.",
+  "risk_probed": "product_level_verification",
+  "title": "Add a user-visible flag whose proof is a smoke run, not a unit test"
+}

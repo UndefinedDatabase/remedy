@@ -1,0 +1,57 @@
+{
+  "gauntlet_order_set_version": 4,
+  "template_digest": "1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454",
+  "set_hash": "e50916bfb6340a85e094da258ce9d8025e5fa35467f6a6bf3b1b5256f6f30efc",
+  "orders": [
+    {
+      "id": "g01-pure-code-change",
+      "file": "g01-pure-code-change.json",
+      "sha256": "29b7be31aa7b3ec401e1b960975bb3971f131aa12bbba258344e02c885cace2c"
+    },
+    {
+      "id": "g02-test-add",
+      "file": "g02-test-add.json",
+      "sha256": "0fd6b1c239e93dbc144d0e0e5224657ea25acce687fcf94abc2a6458d9ae8017"
+    },
+    {
+      "id": "g03-small-app-feature-smoke",
+      "file": "g03-small-app-feature-smoke.json",
+      "sha256": "b82a194fe1085975b5f679d8202261d936dc5f81ec4d6f48109f680e2d6a9ee5"
+    },
+    {
+      "id": "g04-doc-generation",
+      "file": "g04-doc-generation.json",
+      "sha256": "6206e67b82294de429f8302fa7cde60a44df13a03e427754836d1e8eaf6163cf"
+    },
+    {
+      "id": "g05-two-milestone-mission",
+      "file": "g05-two-milestone-mission.json",
+      "sha256": "81c566cdd5009d540724253685eb71881affe25bd9c593a090aabe455f0b0272"
+    },
+    {
+      "id": "g06-provider-api-error-mid-move",
+      "file": "g06-provider-api-error-mid-move.json",
+      "sha256": "d1db525684e0e12f4f0d1c3a0913052a1eba98ff092c4c734516b952c3fcf957"
+    },
+    {
+      "id": "g07-truncated-model-response",
+      "file": "g07-truncated-model-response.json",
+      "sha256": "da365dfd014b021337e676b3f0fb33ac4ca8dbf4e08658bd6cb4a0231c40ccdf"
+    },
+    {
+      "id": "g08-harness-death-mid-dispatch",
+      "file": "g08-harness-death-mid-dispatch.json",
+      "sha256": "bda1778f7d83aa3c41c3a871fa4e153c52df03b960304f6829727a9e6a6e0fd3"
+    },
+    {
+      "id": "g09-harness-death-mid-write",
+      "file": "g09-harness-death-mid-write.json",
+      "sha256": "49445411c386ba8651b0b463eb91e22726a5abb5c9c35117fccdbed3892728cd"
+    },
+    {
+      "id": "g10-escalate-then-finish",
+      "file": "g10-escalate-then-finish.json",
+      "sha256": "72e7c2fbe19e548d3a7c20216ad13be3b8c72ac404c8786717c27acf55de734c"
+    }
+  ]
+}

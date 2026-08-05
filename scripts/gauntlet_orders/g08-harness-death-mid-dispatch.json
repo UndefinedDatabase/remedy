@@ -1,0 +1,30 @@
+{
+  "budget": {
+    "max_cycles": 5,
+    "max_iterations": 12,
+    "max_tokens": 800000,
+    "max_wall_seconds": 6600
+  },
+  "budget_rationale": "g03's shape plus an injected death mid-dispatch and its resume.",
+  "gauntlet_order_version": 1,
+  "goal": "Add a --dry-run flag to the sample project's import command that reports what would be written without writing it, and prove it with a smoke run.",
+  "id": "g08-harness-death-mid-dispatch",
+  "injections": [
+    "harness_death_mid_dispatch"
+  ],
+  "kind": "small_app_feature_with_smoke",
+  "milestones": [
+    {
+      "dod": [
+        "a smoke run with --dry-run leaves the target directory byte-identical",
+        "the reported plan matches what a real run then writes",
+        "no job was dispatched twice across the resume"
+      ],
+      "id": "m1",
+      "title": "Dry-run implemented and smoke-proven"
+    }
+  ],
+  "rationale": "Injects a harness death between the move and the dispatch. The risk is the ambiguous middle: on resume the loop cannot tell from its own ledger whether the job started. Flawless means it escalates or ledgers rather than guessing \u2014 and never dispatches the same job twice.",
+  "risk_probed": "resume_ambiguity_did_the_job_start",
+  "title": "Resume correctly after dying between decision and dispatch"
+}

@@ -1,0 +1,34 @@
+{
+  "data_root_hash_after": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "data_root_hash_before": "sha256:6c1f0a3d9b2e47f58a0d1c7e93b45a2f8d6e0b1c4a79f3d25e8b607c1a934fde",
+  "era_defects": [],
+  "evidence_links": {
+    "ledger": "ledger.jsonl",
+    "report": "report.md"
+  },
+  "gauntlet_run_version": 1,
+  "injections": [
+    {
+      "class": "truncated_model_response",
+      "detail": "truncated move refused by the schema; re-prompted once, within budget",
+      "disposition": "retry_within_budget"
+    }
+  ],
+  "kind": "doc_generation",
+  "open_decisions": [],
+  "operator_interventions": [],
+  "order_id": "fx-05-truncated-model-response",
+  "postmortems": [
+    {
+      "detail": "move payload ended mid-object; refused as parse-class",
+      "failure_class": "parse",
+      "scope": "call"
+    }
+  ],
+  "terminal_status": "achieved",
+  "tokens": {
+    "in": 76500,
+    "out": 19800
+  },
+  "wall_seconds": 512.0
+}

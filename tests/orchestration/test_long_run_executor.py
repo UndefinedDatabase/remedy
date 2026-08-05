@@ -673,6 +673,16 @@ class TestCycleConfig:
         r = resolve_max_cycles(config_value=6)
         assert (r.max_cycles, r.source) == (6, "config")
 
+    def test_the_rollout_cap_is_still_one_until_adr_0001_is_applied(self):
+        """ADR-0001 (docs/adr/0001-raise-cycle-safety-cap.md) proposes raising
+        CYCLE_SAFETY_CAP from 1 to 8 on the F075 10/10 evidence.  It is
+        PROPOSED, not applied: the prepared diff sits beside the ADR and a
+        human applies it.  This pin fails the moment the constant moves, so
+        the raise cannot happen accidentally — flip it to 8, together with the
+        two other pins the ADR names, as part of applying the ADR.
+        """
+        assert CYCLE_SAFETY_CAP == 1
+
     def test_the_cap_trims_both_flag_and_config(self):
         flagged = resolve_max_cycles(flag=25)
         configured = resolve_max_cycles(config_value=25)
@@ -1134,3 +1144,110 @@ class TestLinearPlansAreUnchanged:
         assert result.terminal_status == TERMINAL_BLOCKED
         assert result.cycles[-1].skipped_blocked_task_ids == (str(job.tasks[2].id),)
         assert job.tasks[2].status == RunState.PENDING
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0187 — the cycles experiment vehicle
+# ---------------------------------------------------------------------------
+#
+# The F075 gate cannot demonstrate ten flawless multi-cycle missions while
+# every job is wedged at one cycle, and raising the DEFAULT is the job of the
+# human-applied ADR a passing 10/10 produces. So the campaign gets an explicit,
+# loudly-named override and the shipped F046 safety is left exactly as it is.
+# Both directions are pinned here: what the override may do, and what config
+# and flag still may NOT do.
+
+
+class TestTheCyclesExperimentOverride:
+
+    def test_a_flag_over_the_cap_is_still_clamped(self):
+        from packages.orchestration.long_run_executor import (
+            CYCLE_SAFETY_CAP,
+            resolve_max_cycles,
+        )
+        resolved = resolve_max_cycles(99)
+        assert resolved.max_cycles == CYCLE_SAFETY_CAP
+        assert resolved.capped is True
+        assert resolved.source == "flag"
+
+    def test_a_config_value_over_the_cap_is_still_clamped(self):
+        from packages.orchestration.long_run_executor import (
+            CYCLE_SAFETY_CAP,
+            resolve_max_cycles,
+        )
+        resolved = resolve_max_cycles(None, 99)
+        assert resolved.max_cycles == CYCLE_SAFETY_CAP
+        assert resolved.capped is True
+        assert resolved.source == "config"
+
+    def test_the_override_may_exceed_the_cap(self):
+        from packages.orchestration.long_run_executor import resolve_max_cycles
+
+        resolved = resolve_max_cycles(experiment_max_cycles=6)
+        assert resolved.max_cycles == 6
+        assert resolved.source == "experiment"
+        assert resolved.capped is False
+
+    def test_the_override_beats_a_flag_and_a_config_value(self):
+        from packages.orchestration.long_run_executor import resolve_max_cycles
+
+        resolved = resolve_max_cycles(3, 4, experiment_max_cycles=6)
+        assert (resolved.max_cycles, resolved.source) == (6, "experiment")
+
+    def test_without_the_override_nothing_changes(self):
+        from packages.orchestration.long_run_executor import (
+            DEFAULT_MAX_CYCLES,
+            resolve_max_cycles,
+        )
+        resolved = resolve_max_cycles()
+        assert resolved.max_cycles == DEFAULT_MAX_CYCLES
+        assert resolved.source == "default"
+        assert resolved.capped is False
+
+    def test_the_override_still_refuses_a_nonsense_value(self):
+        from packages.orchestration.long_run_executor import resolve_max_cycles
+
+        with pytest.raises(ValueError, match="max_cycles must be >= 1"):
+            resolve_max_cycles(experiment_max_cycles=0)
+
+    def test_an_over_cap_run_is_recorded_as_over_cap(self):
+        """No run may exceed the rollout cap silently — it is a fact on disk."""
+        from packages.orchestration.long_run_executor import resolve_max_cycles
+
+        body = resolve_max_cycles(experiment_max_cycles=6).to_json()
+        assert body["over_cap"] is True
+        assert body["source"] == "experiment"
+        assert body["cap"] == 1 and body["max_cycles"] == 6
+
+    def test_a_capped_run_is_not_recorded_as_over_cap(self):
+        from packages.orchestration.long_run_executor import resolve_max_cycles
+
+        body = resolve_max_cycles(99).to_json()
+        assert body["over_cap"] is False
+        assert body["capped"] is True and body["requested"] == 99
+
+    def test_limits_from_config_passes_the_override_through(self):
+        from packages.orchestration.long_run_executor import limits_from_config
+
+        class _Config:
+            def get(self, key):
+                return None
+
+        limits, resolved = limits_from_config(_Config(), experiment_max_cycles=5)
+        assert limits.max_cycles == 5
+        assert resolved.source == "experiment"
+
+    def test_limits_from_config_without_the_override_still_clamps(self):
+        from packages.orchestration.long_run_executor import (
+            CYCLE_SAFETY_CAP,
+            CONFIG_KEY_MAX_CYCLES,
+            limits_from_config,
+        )
+
+        class _Config:
+            def get(self, key):
+                return 99 if key == CONFIG_KEY_MAX_CYCLES else None
+
+        limits, resolved = limits_from_config(_Config())
+        assert limits.max_cycles == CYCLE_SAFETY_CAP
+        assert resolved.capped is True

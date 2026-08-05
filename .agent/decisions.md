@@ -2370,3 +2370,1249 @@ reversible by any later relay:
    spent): handback_template.md "External actions" now states that PR
    create entries include the resulting PR number — settles the F056
    miss (that closure handoff omitted the PR number).
+
+## 2026-08-04: F075 T001 — evaluator interfaces (module, evidence layout, order schema)
+
+Four interface decisions, recorded before the code they bind (T1_F075.md
+T001 asks for exactly these):
+
+1. **Module split.** The pass definition lives in
+   `packages/orchestration/gauntlet_evaluator.py` — an importable, pure
+   module with no execution and no provider calls; the CLI
+   `scripts/self_run_gauntlet.py` stays thin. Alternative considered:
+   logic inside the script — rejected, `--dry-run` against recorded
+   evidence is only a proof if the judged code is the same code the real
+   campaign will use, and a script is not importable by the tests that
+   prove it.
+2. **Recorded-evidence layout consumed.** `<evidence-dir>/<run-dir>/`
+   with `run.json` (required, `gauntlet_run_version: 1`) and an optional
+   `dod_result.json` holding the stored `dod_gate.GateResult` JSON
+   verbatim. Run order is the sorted run-directory name — a property of
+   the bytes on disk, so two readers produce the same matrix. `run.json`
+   carries: order_id, kind, terminal_status, wall_seconds, tokens{in,out},
+   operator_interventions[], data_root_hash_before/after, postmortems[],
+   open_decisions[], era_defects[], injections[], evidence_links{}.
+   Alternative considered: one flat JSON per campaign — rejected, failed
+   attempts are KEPT and a per-run directory is what links into that
+   run's own evidence.
+3. **The DoD verdict has one author.** The evaluator asks
+   `dod_gate.gate_blocker` for the blocker line through a small adapter
+   over the stored JSON instead of re-deriving it from the same fields
+   (A6: the gauntlet reimplements no product verb). A run with no stored
+   gate result fails `dod_blocking_green` with the honest reason that no
+   gate ran — never a silent pass.
+4. **Injection dispositions are a closed set.** Accepted:
+   `ledgered_failure`, `retry_within_budget`, `escalated` (F051
+   semantics). Named mishandlings: `silent_success`,
+   `corrupted_artifact_accepted`. Anything else is `unclassified` and
+   fails. An unknown injection *class* is malformed evidence, not a new
+   failure mode — the four classes are frozen by the operator addition
+   of 2026-08-03.
+
+Also frozen here: an empty evidence directory does NOT pass. Vacuous
+truth is the single most likely way this gate would lie about 10/10.
+
+## 2026-08-04: F075 T002 — where the frozen ten live, and what freezes them
+
+1. **Location: `scripts/gauntlet_orders/`**, beside the CLI that runs them.
+   Alternative considered: the tests fixture area — rejected, these are
+   campaign INPUT rather than test data, and filing real input as test
+   data is how it quietly becomes editable mid-campaign (exactly what
+   T1_F075.md A9 forbids).
+2. **Order-file schema (`gauntlet_order_version: 1`)**: id, kind, title,
+   `rationale` (prose: why this order probes a risk no other order
+   probes), `risk_probed` (slug), goal, milestones[], budget
+   {max_iterations, max_tokens, max_wall_seconds} — all three required
+   and positive, because an unbounded run cannot fail a budget — and an
+   optional `injections[]` naming the harness-failure classes this order
+   injects. The rationale is a FIELD rather than a JSON comment so a test
+   can assert it is present and distinct.
+3. **Freeze mechanism**: `manifest.json` carries
+   `gauntlet_order_set_version: 1`, one sha256 per order file, and a
+   `set_hash` over the `<sha256>  <file>` lines in manifest order. Order
+   is part of the hash on purpose — reordering changes which order
+   `--only 3` selects, so it is a change to the set. `load_order_set`
+   refuses on the first mismatch rather than reporting a soft finding:
+   running a campaign against a set the manifest does not describe proves
+   nothing about either.
+4. **Regenerating the manifest is a deliberate human act.** No script
+   rewrites it as a side effect of loading — the whole point is that an
+   edit is loud. Bumping the set version resets the gauntlet count.
+
+## 2026-08-04: F075 T003a — injection seams, and the one that is missing
+
+**Finding for the reviewer (no R-id claimed — Window 1 assigns it):
+`orchestrator_loop.run_mission` has no exception boundary.** Its body
+(lines 698–886) contains no `try`/`except` at all, `execute_move` wraps
+none around `dispatch`, and `structured_outputs.run_structured_call`
+retries PARSE failures only — never an exception. Verified by running
+the real code, not by reading it:
+
+- a raising `call_fn` propagates out at `orchestrator_loop.py:834` →
+  `structured_outputs.py:158` (`RuntimeError` escaped `run_mission`);
+- a raising `update_dossier` propagates out at
+  `orchestrator_loop.py:811` (`OSError` escaped `run_mission`).
+
+In both cases the iteration leaves NO ledger entry, NO F010 postmortem
+and NO terminal — the loop cannot degrade a failure it never catches.
+
+Consequence for T003a: three of the four harness-failure injection
+classes (provider API error mid-move, harness death mid-dispatch,
+harness death mid-write) cannot be driven honestly today. The seams
+themselves all exist and are already public parameters of `run_mission`
+(`call_fn`, `dispatch`, `update_dossier`) — what is missing is the
+boundary that turns a raised failure at one of them into a classified
+postmortem plus an honest terminal or an F051 escalation. Per the
+round's HARD RULE this is a product change of its own, with its own
+tests, and was NOT smuggled into the harness.
+
+Decisions taken:
+1. **Blocked classes are REFUSED, not silently skipped.**
+   `gauntlet_injection.check_injections_supported` raises
+   `MissingSeamError` naming the class, its seam and the missing
+   boundary. Alternative considered: run g06/g08/g09 without their
+   injections — rejected, a run.json that omits a declared injection is
+   a lie by omission in exactly the artifact a human trusts when
+   flipping defaults.
+2. **No harness-side `except` around the seam to fake resilience.**
+   If the runner absorbed the raise itself, the gauntlet would be
+   grading its own crutch rather than the product. The runner still
+   catches a crashed `run_mission` at the CAMPAIGN level — a crashed
+   run is a FAILED run, recorded as such — which is harness
+   bookkeeping, not product resilience.
+3. **`truncated_model_response` is injectable today** and is driven at
+   the `call_fn` seam: the first attempt of move 1 returns a payload cut
+   mid-object. It RETURNS rather than raises, so `run_structured_call`
+   classifies it parse-class and re-prompts once — the real
+   retry-within-budget path. The disposition is read off what the
+   product did: no re-prompt → `silent_success`; re-prompted and the
+   mission reached a green terminal → `retry_within_budget`; re-prompted
+   without recovery → `ledgered_failure`.
+4. **Injectors are decorators around the production callable** the
+   runner would have passed anyway — no product edit, no test-only
+   branch on a production path.
+
+## 2026-08-04: F075 R3 — R-0179 closed-set tightening (pre-freeze)
+
+`injection_never_fired` joins `REJECTED_DISPOSITIONS`. A declared fault
+that never fired proves nothing about degrading it, so settling it as
+`ledgered_failure` — an ACCEPTED class — let a run count flawless while
+its evidence claimed a failure-handling that never happened.
+
+This CHANGES the pass definition's closed set. It is allowed without an
+ADR because it lands BEFORE any campaign has run: T1_F075.md freezes the
+definition at campaign time, and attempt 1 has not started (R2's attempt
+was refused at preflight, zero runs recorded). Any later change to this
+set needs an ADR. Alternative considered: leave it and rely on
+INJECT_ON_MOVE=1 making a never-fired injection unreachable in practice
+— rejected, that is an accident of one constant defending a pass
+criterion, not a rule.
+
+## 2026-08-04: F075 R3 — the run_mission exception boundary (product change)
+
+Built per the R2 verdict's DECISION. Four naming/shape decisions:
+
+1. **Terminal name: `iteration_failed`** (new constant, alongside the
+   existing honest terminals). Alternatives considered: reuse `aborted`
+   — rejected, that means the orchestrator DECIDED to give up, and a
+   crash is not a decision; reuse `invalid_move` — rejected, that means
+   the provider answered with something unusable, and here the work
+   itself threw. The reader of a matrix must be able to tell those three
+   apart.
+2. **Scope of the catch: `except Exception`, once per iteration**, around
+   the iteration's own work (refresh -> assemble -> provider call ->
+   evaluate -> execute). `KeyboardInterrupt` and `SystemExit` derive
+   from `BaseException` and are therefore NOT caught — an operator
+   stopping Remedy is not a failure to classify. The safe point and the
+   mission-record read stay OUTSIDE the boundary: reading a stop request
+   is not the iteration's work.
+3. **No retry in the boundary.** One catch, then the run ends. Transport
+   retries live below `call_fn` (F001) and a second attempt here would
+   hide them; `run_structured_call` keeps its single PARSE retry, which
+   is a different thing.
+4. **Post-mortem placement: `<mission evidence>/iteration_<n>/`**, scope
+   `job`. `write_postmortem` is create-only by design, so two failing
+   iterations in one mission would otherwise collide over the account of
+   the first. `record_iteration_failure` never raises: a post-mortem that
+   could not be written is reported in the run's detail rather than
+   becoming a second, louder failure on top of the first.
+
+Escalation was considered and NOT used: F051's escalation asks a human a
+QUESTION (the twice-refused-move path). A raised failure is not a
+question, it is a failure to ledger — so the boundary ends the run on an
+honest terminal and leaves escalation where its semantics actually apply.
+
+**Campaign observation, not fixed here:** a realistic HTTP-level provider
+error ("HTTP 503 from the host", "connection refused") classifies as
+`unknown` — `failure_postmortem` recognises missing binaries and timeouts
+but not transport status codes. That will cost the injected
+provider-API-error order its `no_unknown_postmortems` criterion. Left
+alone deliberately: bending the injected error text to force a nicer
+class would be gaming the gate, and finding exactly this kind of thing is
+what attempt 1 is for (a targeted fix order in R4+).
+
+## 2026-08-04: F075 R3 — unblocking the three raise-class injections
+
+1. **One decorator shape for all four.** `RaiseOnceInjector` raises once at
+   its seam then delegates to the production callable, mirroring
+   `TruncatedResponseInjector`. `build_injectors` now returns an
+   `InjectedSeams` triple (call_fn / dispatch / update_dossier) instead of
+   just a call_fn, and `RunnerDeps` gained `dispatch_fn` /
+   `update_dossier_fn` defaulting to `run_mission`'s own defaults
+   (`continue_mission`, `update_mission_dossier`) so a wrapper decorates
+   the real path rather than a stub.
+2. **Dispositions come from `RunOutcomeFacts`** — the run's terminal plus
+   the number of post-mortems collected — never from the injector's own
+   view. `iteration_failed` + a post-mortem = `ledgered_failure`;
+   `escalated` = `escalated`; a GREEN terminal after the fault fired =
+   `silent_success`; an honest terminal with NO post-mortem =
+   `unclassified`, because the terminal alone is not the whole contract.
+3. **Realistic error text, deliberately not tuned.** The injected messages
+   are what a real 503 / killed process would say. A message invented to
+   earn a nicer `failure_postmortem` class would be gaming the gate.
+4. **`BLOCKED_INJECTIONS` kept as an empty mapping** rather than deleted,
+   with its refusal path and test intact: an unknown class must still be
+   refused before the first provider call, which is what stopped R2's
+   campaign from spending tokens it could not judge.
+
+**Test-safety lesson (self-inflicted, recorded so it is not repeated):**
+once the preflight stopped refusing, the R2-era CLI test
+`test_a_live_campaign_refuses_while_an_injection_class_is_blocked` fell
+through to `cli.main(["--live", ...])` with PRODUCTION deps and started a
+real ten-order campaign inside pytest. It was killed within ~2 minutes.
+Host isolation HELD (run_order enters `isolated_environment` before it
+creates anything, so every write landed in the run's own data root under
+tmp_path; `git status` clean, real data root untouched), but real provider
+calls were made. The live CLI path is now exercised ONLY with doubles or a
+monkeypatched order set, and the two obsolete tests were replaced by
+preflight-level ones that cannot start a campaign.
+
+## 2026-08-04: F075 R3 — attempt 1's matrix had to be written after the fact
+
+The block's Phase 6 step 3 assumed `--live ... --format both` leaves
+`matrix.md` + `matrix.json` in the campaign root. It did not: `--format`
+only chose what reached stdout, and `--out` (which writes files) was not
+part of the ordered invocation. The campaign therefore finished with its
+report existing only on a terminal — a campaign nobody could archive.
+
+Resolved WITHOUT rerunning anything. The evaluator and the report are
+pure functions of the recorded evidence, so the matrix was re-derived
+from the run directories attempt 1 had already written and PROVEN
+byte-identical to what the live invocation printed (compared against the
+captured stdout: `printed == md + js` -> True). No provider was called
+again, no run was repeated, no order was edited.
+
+Gap fixed in the same round: `--live` now always calls `write_matrix`
+into the campaign root, with a test. `--format` keeps meaning "what
+reaches stdout" and `--out` keeps meaning "also write here".
+
+**Observation for the reviewer, not fixed:** `RunVerdict.to_json` — and
+therefore the matrix — reports the `injections_degraded` criterion but not
+which fault got which disposition; that detail lives only in each run's
+`run.json`. Surfacing it would change the golden matrix bytes, so it is
+left for a ruling rather than taken unilaterally.
+
+## 2026-08-04: F075 R4 — R-0185, transport and machine classes
+
+Inspected the F001 taxonomy first: `provider_timeouts.is_timeout_error` /
+`is_nonzero_exit_error` (both retry predicates) plus F010's local
+`is_provider_unavailable_error` (a MISSING BINARY, deliberately not a
+retry predicate). Three provider classes already exist. Decisions:
+
+1. **`ConnectionError` -> `PROVIDER_UNAVAILABLE`**, an existing class, not
+   a new one. The provider did not serve the call; whether the binary is
+   absent or the socket died is different EVIDENCE for the same fact.
+   Recognised by type and by a new local predicate
+   `is_provider_connection_error` (refused/reset/aborted/closed, broken
+   pipe, HTTP 500/502/503/504). The F001 retry predicates are untouched —
+   widening those would change retry behaviour, which is not this finding.
+2. **New enum member `IO_FAILURE = "io_failure"`** for the machine under
+   us: a killed process, a full disk, an unreadable device. Not a parallel
+   spelling of any `provider_*` class — nothing about the provider went
+   wrong. Recognised by a bare `OSError` and by a narrow text predicate.
+   Alternative considered: reuse `STOPPED` — rejected, that is F011's
+   deliberate kill switch, and calling a crash a deliberate stop is a lie.
+3. **Ordering matters and is commented in the code.** In Python 3.10
+   `TimeoutError`, `ConnectionError` and `FileNotFoundError` are all
+   `OSError` subclasses, so the bare-`OSError` rule is LAST; in the text
+   path a provider reading wins over a machine reading, because a provider
+   error that also mentions a pipe is still a provider error.
+
+Two existing tests were touched, both by EXTENSION rather than weakening:
+- `test_every_enum_member_is_reachable` gained a producing signal for
+  `IO_FAILURE`. Without it the test correctly fails — a class nothing can
+  produce should not exist.
+- `test_a_class_it_cannot_determine_is_recorded_as_unknown` (mine, R3) used
+  "HTTP 503 from the host" as its unclassifiable example. That WAS the
+  dishonest unknown R-0185 fixes, so the input became a genuinely
+  unrecognisable message. The assertion is unchanged and the falsification
+  still stands: `ValueError`/`RuntimeError`/`KeyError` and nonsense text
+  all still classify as `unknown`.
+
+## 2026-08-04: F075 R4 — R-0183, unmeasured cost is not a measured zero
+
+`RunEvidence` gained `tokens_measured`. Measured means someone actually
+counted: the `tokens` object is present, at least one side of it was
+recorded, and the run did not itself declare `tokens_source:
+"unmeasured"`. A run that really spent zero stays MEASURED — relabelling
+a true zero would be the same lie in the other direction (test pins it).
+
+Rendering only; no pass criterion moved:
+- markdown: the tokens column says `unmeasured`, and the per-run line
+  reads `· tokens unmeasured` instead of `0 in / 0 out`.
+- json: `tokens_in`/`tokens_out` are `null`, and every run payload now
+  carries `tokens_source` ("measured" | "unmeasured") so a machine reader
+  never has to guess whether a zero was counted.
+
+**Golden regeneration declared:** `golden/matrix.json` +9 lines — one
+`tokens_source` key per recorded run. `golden/matrix.md` is byte-identical
+because every recorded fixture carries a measured `tokens` object; the new
+wording only appears when a run is unmeasured, which the new tests cover
+with their own evidence rather than by editing the fixtures.
+
+## 2026-08-04: F075 R4 — R-0184 diagnosis: the loop dispatches jobs but never runs them
+
+One cheap live run, `--live <scratch>/diag-r0184 --only 1 --format json`,
+exit 1, terminal `iteration_limit`. It reproduces attempt 1's g01 exactly,
+so the finding is not a one-off.
+
+**(a) What moves does the model produce.** Well-formed, schema-valid, and
+reasonable. Six iterations, six `dispatch_job` moves for the SAME
+milestone. Iteration 1, verbatim from the run's ledger (trimmed):
+
+    {"iteration": 1,
+     "move": {"kind": "dispatch_job",
+              "payload": {"milestone_id": "M001",
+                          "step": "identify_location_of_hardcoded_retry_backoff_cap_..."},
+              "rationale": "M001 is the first milestone and is ready; need to
+                            locate and refactor the hard-coded backoff cap ...",
+              "schema_v": "om1"},
+     "outcome": {"status": "dispatched",
+                 "detail": "job d18005fc-... dispatched for M001"}}
+
+The model is not the blocker. Every move parsed, none was refused, and the
+rationale is on-topic.
+
+**(b) Do dispatched jobs run and finish.** No. All six job records sit at
+`state = planned` with their tasks built and never touched:
+
+    1e384c8b state=planned tasks=2   7e7bfae7 state=planned tasks=2
+    81df99a0 state=planned tasks=2   a0268bd5 state=planned tasks=2
+    b092254d state=planned tasks=2   d18005fc state=planned tasks=1
+
+`execute_move`'s dispatch branch is `create = dispatch or continue_mission`
+— which creates the job, builds its plan verify-first, links it to the
+mission and auto-approves the plan gate. Creation is where it stops.
+Nothing in `run_mission` executes the job it just created.
+
+**(c) Why `declare_milestone_done` / `declare_mission_achieved` is never
+reached.** Because it never becomes true. `evaluate_milestone_done` wants a
+finished job with a released gate; the job never leaves `planned`, so the
+orchestrator's only remaining useful move is to dispatch again. The mission
+record after six iterations: `status=active`, `_milestones_done=None`,
+`job_links=6` — six jobs for one milestone. `evaluate_dispatch` refuses an
+already-DONE milestone, an unknown one, and unmet dependencies; it does NOT
+refuse a milestone that already has an in-flight job, so the loop is free to
+re-dispatch forever.
+
+**(d) Why the DoD gate never runs.** Never invoked at all — not invoked and
+failing. No `dod.json` and no `dod_result.json` exists anywhere under the
+run's data root. `run_job_gate` has exactly one caller in the tree,
+`job_fulfillment.py:1003`, which is part of JOB EXECUTION. No execution, no
+gate. That is why `dod_blocking_green` was red on all ten runs of attempt 1
+with the honest reason "the DoD gate never produced a verdict".
+
+**Root cause.** `orchestrator_loop.py`'s own module docstring states the verb
+map: "`mission_state.continue_mission` dispatches, `long_run_executor`
+executes, `dod_gate` evaluates". The loop imports `long_run_executor` only
+for `next_cycle_index` (line 377, ledger numbering). It never calls
+`run_cycles`. T1_F070's Design specifies the iteration as "pick or shape the
+next job as a Flight Plan -> run it through the multi-cycle executor ->
+evaluate against the milestone's DoD"; the built loop implements the first
+step and the last, and omits the middle one.
+
+**Decision fork -> rule 2c: STOP with the analysis.** This is not a bounded
+wiring bug. Closing it means running each dispatched job through
+`long_run_executor.run_cycles` inside the loop with the order's budgets,
+stop/safe-point handling and cycle accounting, then letting the DoD gate
+produce its verdict, plus a re-dispatch guard in `evaluate_dispatch` so one
+milestone cannot accumulate six jobs. That is the missing half of F070's
+design — a product feature with its own tests, and precisely the kind of
+change the gauntlet exists to demand rather than to smuggle. Explicitly NOT
+done here: no `orchestrator.model` change (the model is not the blocker and
+config defaults by machine are do-not-touch), no order edits, no weakening
+of the pass definition.
+
+Attempt 2 therefore does NOT run this round: Phase 5 is gated on a green
+2a+3, and this is 2c.
+
+## 2026-08-04: F075 R5 — R-0186 execution wiring, and the third link that is missing
+
+Built: (1) a dispatch now RUNS its job, (2) the re-dispatch guard.
+
+1. **`execute` seam on `run_mission`/`execute_move`**, defaulting to the new
+   `execute_dispatched_job`, which is a thin call to the EXISTING
+   `long_run_executor.run_cycles` with `limits_from_config` (so the F046
+   rollout cap still applies exactly as for `remedy job run`),
+   `default_task_step`, the job's own budgets and `unattended=True`. No second
+   executor: a test asserts the function's source names `run_cycles`,
+   `limits_from_config` and `default_task_step`. The move outcome records
+   `terminal=`/`job_status=`/`stop=` so the next iteration's context shows why
+   a milestone is or is not claimable.
+2. **Re-dispatch guard** in `evaluate_dispatch`: a milestone whose job is
+   `pending`/`planned`/`running` refuses a second dispatch and the refusal says
+   what to do instead. `paused` is deliberately EXCLUDED — see below.
+3. **Test-safety (R-0182):** the executor default builds a real
+   `OllamaBuilder`, so every test that dispatches must inject the seam exactly
+   as it already injects `dispatch`. 29 call sites in
+   `test_orchestrator_loop.py` gained `execute=_executed`; `test_mission_e2e.py`
+   gained `_no_execution`. Discovered the honest way: the first Phase-2 gate
+   run HUNG on a real provider call and was killed.
+
+**`paused` is not guarded, and that is a finding-shaped fact, not a
+convenience.** The move schema has five kinds — dispatch_job,
+wait_on_decisions, declare_milestone_done, declare_mission_achieved,
+abort_with_reason — and NO resume kind. Refusing a dispatch for a paused job
+would leave the loop with no legal move that advances the milestone after a
+human answers its decision: a deadlock in place of a defect. Re-dispatch is
+therefore the only forward path out of a paused job today. Recorded for the
+reviewer; NOT fixed here (a resume verb is its own reviewed change).
+
+`test_mission_e2e.py`'s executor double also sets the job it "ran" to
+`paused` and saves it. A real executor always takes a job out of `planned`;
+the double previously left it there, which is only invisible while nothing
+executes. That is test fidelity restored, not an assertion weakened — no
+assertion in that file changed.
+
+### The third link: the DoD gate is not reachable from real execution
+
+Phase 2's premise was "the gate verdict comes from the EXISTING job-execution
+path (job_fulfillment -> run_job_gate)". Verified in source, it does not exist:
+
+- `run_job_gate` has exactly ONE caller, `job_fulfillment.run_job_fulfill`.
+- `run_job_fulfill` has NO production caller — only tests. The CLI merely
+  READS fulfillment records (`list_fulfillment_records`).
+- `job_fulfillment`'s module docstring: "Job Fulfillment Spine **v0** ... v0
+  supports **fixture-demo mode only** (deterministic, no real provider)", and
+  its `fixture_plan_tasks` hardcodes two tasks ("Update CHANGELOG.md", "Add
+  verification evidence summary") regardless of the job.
+- `dod_gate.store_dod` — the only way a job gets a DoD for the gate to read —
+  has NO caller anywhere in `packages/` or `apps/`. Milestone DoDs are written
+  into the MISSION's evidence area by `attach_milestone_dods`, never attached
+  to the dispatched job. `run_job_gate` on such a job returns None by design
+  ("a job with no stored DoD ... changes nothing").
+
+So a DoD verdict cannot be produced by executing a job today, and the two ways
+to make one appear are both refused here: calling the fixture-demo spine would
+make the gauntlet grade a demo (the R2 "grading its own crutch" rule), and
+calling `run_job_gate` from the loop is explicitly forbidden by this round's
+own order ("do not call the gate from the loop directly"). Attaching the DoD at
+dispatch plus a production fulfillment invocation is new product work of the
+same class as the R2 seam and the R4 2c — it is NOT this round's ordered scope.
+
+Consequence: Phase 3's hard gate (terminal `achieved` AND `dod_result.json`
+present) cannot be met by construction. The run was still executed as ordered,
+because whether execution now advances jobs and reaches `achieved` is real
+evidence the reviewer needs; its trail is recorded below.
+
+## 2026-08-04: F075 R5 Phase 3 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r0186 --only 1 --format json`, exit 1, terminal
+`waiting_on_decisions`, no `dod_result.json`. Phase 3 requires `achieved`
+AND a gate verdict, so rule 3.3 applies: STOP, both trails recorded here.
+
+**What R-0186 demonstrably fixed** (ledger of the re-proof run, verbatim
+details, trimmed):
+
+    it1: dispatch_job -> dispatched
+         job 0db084c6 ... dispatched for M001; executed:
+         terminal=all_green job_status=completed
+    it2: dispatch_job -> dispatched
+         job 20fba26e ... dispatched for M001; executed:
+         terminal=max_cycles_reached job_status=running
+    it3: dispatch_job -> refused
+         milestone M001 already has job 20fba26e in flight (state running);
+         a second job for it is refused. Instead: wait_on_decisions, or
+         declare_milestone_done once that job finishes and its gate releases
+    it4: wait_on_decisions -> waiting_on_decisions
+
+Job states after the run: `0db084c6 completed` (1 task), `20fba26e running`
+(2 tasks). Compare the R4 diagnostic run, same order, same model: six
+`dispatch_job` moves, six jobs, ALL `planned`, nothing executed, nothing
+refused. So: jobs now really execute (a job reached `completed` through
+`run_cycles`), and the six-identical-dispatches loop is gone — the guard
+refused the third dispatch with the message it was built to give.
+
+**Why the run still did not reach `achieved` — two blockers, neither in
+this round's scope:**
+
+1. **`CYCLE_SAFETY_CAP = 1` (and `DEFAULT_MAX_CYCLES = 1`).** A job needing
+   more than one cycle ends `max_cycles_reached` with `job_status=running` —
+   never a terminal state — and `evaluate_milestone_done` refuses a claim
+   whose job "is in state 'running', which is not terminal". The loop has no
+   resume kind, so that job can never finish. The cap's own docstring says it
+   stands "until the F075 milestone gate raises it": the gate is expected to
+   raise the cap, and the cap prevents the gate from passing. That
+   chicken-and-egg is a reviewer DECISION — raising it is a config default by
+   machine, explicitly do-not-touch for the worker.
+2. **No DoD verdict is reachable** (recorded in full above): `store_dod` has
+   no caller, and `run_job_gate`'s only caller is the v0 fixture-demo spine.
+   Note the nuance: `evaluate_milestone_done` refuses only on
+   `gate_released is False`, and an absent DoD leaves it `None` — so a claim
+   is not blocked by the missing gate. It is blocked by blocker 1. But the
+   gauntlet's `dod_blocking_green` criterion still cannot be satisfied by any
+   run, because no run can produce a gate verdict at all.
+
+Not done, deliberately: no change to `CYCLE_SAFETY_CAP` or any config
+default; no call from the loop into `run_job_gate`; no use of the fixture-demo
+spine; no order edits; no weakening of the pass definition. Campaign attempt 2
+did NOT run — Phase 4 is gated on a green Phase 3.
+
+## 2026-08-04: F075 R6 — R-0187 cycles experiment vehicle + order-set v2
+
+1. **`experiment_max_cycles` on `resolve_max_cycles` / `limits_from_config`.**
+   Keyword-only, documented as existing for exactly one caller (the F075
+   gauntlet runner), and deliberately NOT reachable from config or a CLI
+   flag — a caller must pass it in code, by name. `ResolvedCycles.source`
+   becomes `"experiment"` and a new `to_json()` carries `over_cap`, so a run
+   past the rollout cap is a fact on disk rather than an inference. F046's
+   shipped clamping is untouched; both directions are pinned
+   (flag 99 -> 1 capped, config 99 -> 1 capped, override 6 -> 6 uncapped,
+   nothing passed -> exactly today's default).
+2. **`JobExecution` carrier.** `CycleLoopResult` is a frozen dataclass, so the
+   resolved cycles could not be attached to it. `execute_dispatched_job` now
+   returns a small frozen carrier with the three fields the loop already read
+   plus `resolved_cycles`. Test doubles expose the same attribute names, so
+   the seam stays substitutable. Alternative considered: mutating the
+   executor's result type — rejected, that is F046's contract, not F075's.
+3. **Order-set v2.** Every order's budget gains a required `max_cycles`, chosen
+   from the order's own rationale rather than copied: doc orders 3, pure-code
+   and test-add 4, app-feature-with-smoke 5, two-milestone 8; the injection
+   orders match their non-injected twin. Manifest is
+   `gauntlet_order_set_version: 2` with fresh per-file digests and set hash
+   `b17540c381312b2c5dd40140396d1a489c0001c342572bb3276fc1ca9c6b994c`.
+   Per T1_F075.md A9 a set re-issue RESETS the campaign count — which costs
+   nothing: no attempt has ever passed. Every existing freeze/tamper pin holds
+   against v2 unchanged.
+4. **Runner pass-through.** `RunnerDeps.execute_fn(max_cycles) -> execute seam`,
+   production default `_default_execute_fn`, bound at `run_order` from
+   `order.budget["max_cycles"]`. `run.json` records `cycles_budget` and
+   `cycles_resolved` (read back off the ledger's `cycles=<n>/<source>` marks —
+   the runner re-derives nothing).
+
+One existing test was touched, by EXTENSION not weakening:
+`test_an_unknown_set_version_is_refused` used the literal `2` as its unknown
+version, which set v2 turned into the real one; the example became
+`GAUNTLET_ORDER_SET_VERSION + 1` and the assertion is unchanged.
+`test_the_set_is_frozen_at_version_one` was renamed to
+`..._at_the_declared_set_version` — its body already compared against the
+constant, so only a now-false NAME changed.
+
+## 2026-08-04: F075 R6 — R-0188 the production DoD path
+
+Shapes inspected first: `store_dod(job_id, DoD)` writes `dod.json` into the
+job's evidence area; `run_job_gate(job_id, worktree_root)` reads that file,
+evaluates, AND persists via `save_gate_result` — so it is already the single
+author of a verdict; `load_gate_result(job_id)` reads the same place. F069
+compiles each milestone's DoD into the MISSION's evidence area as
+`dod_<milestone>.json` and records the filename in the milestone's `dod_ref`.
+
+1. **`attach_milestone_dod` at dispatch.** Copies the milestone's existing
+   `dod_ref` artifact onto the job via `store_dod`. Nothing is recompiled — a
+   test asserts the function's source never mentions `compile_milestone_dod`.
+   No `dod_ref`, or an artifact that will not parse, stores NOTHING and returns
+   False: the gate stays un-run for that job, which is the honest absence the
+   evaluator already reports, never an invented definition of done.
+2. **`run_gate_for_job` at production completion**, called from
+   `execute_dispatched_job` after `run_cycles` returns. It calls `run_job_gate`
+   and nothing else — a test asserts `save_gate_result` does not appear in its
+   source, so the verdict keeps one author and the fixture-demo fulfillment
+   spine is untouched. `None` (no stored DoD) is passed through as "not gated",
+   not as green.
+3. **Where the checks run.** The job's own workspace
+   (`workspaces_dir()/<job id>`), created if absent. A gauntlet mission has no
+   repository checkout, and pointing its checks at one would run a mission's
+   commands against the operator's tree. A check that cannot run is recorded
+   red with a reason — an honest verdict rather than a missing one.
+4. **The outcome detail now carries the gate**: `gate=released`,
+   `gate=blocked (<blocker>)`, or `gate=not-run`. "Not run" is said out loud
+   rather than left to look like a pass.
+
+No existing test's assertion pinned the old gate-less behaviour — the loop,
+e2e, era, injection, runner and dod_gate suites are green unedited (316).
+Test-fixture note: the DoD used by the new tests names `python3`, because the
+gate only executes allow-listed executables; a check naming anything else is
+refused before it runs, which is the allowlist working, not an obstacle.
+
+## 2026-08-04: F075 R6 Phase 4 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r6 --only 1 --format json`, exit 1, terminal
+`iteration_limit`. `dod_result.json` IS present in the run dir — but
+`released: false`. Phase 4 requires `achieved` AND a released verdict, so
+rule 4.3 applies: STOP, trail recorded here, Phase 5 not run.
+
+**Everything R-0187 and R-0188 wired is working, verbatim from the ledger:**
+
+    it1: dispatch_job -> dispatched
+         job 412be9f0 ... dispatched for M001; DoD attached; executed:
+         terminal=all_green job_status=completed cycles=4/experiment OVER-CAP
+         gate=blocked (dod_blocking_red:acc-001)
+
+- `DoD attached` — `store_dod` now has a real caller; the milestone's compiled
+  artifact reaches the job (R-0188.1).
+- `cycles=4/experiment OVER-CAP` — the order's v2 budget reached the executor
+  through the explicit override, and the run records it. `run.json` carries
+  `cycles_budget: 4`, `cycles_resolved: ["cycles=4/experiment"]` (R-0187).
+- `executed: terminal=all_green job_status=completed` — jobs run and finish.
+- `gate=blocked (...)` — the gate RUNS and produces a persisted verdict. Before
+  R-0188 no run in the project's history could produce one at all.
+
+**Why it is blocked — the next blocker, and it is not in this round's scope.**
+The verdict's one red check:
+
+    acc-001  kind=pytest  blocking=True  status=failed  reason=nonzero_exit
+      no tests ran in 0.00s
+      ERROR: file or directory not found: tests
+
+The gauntlet's missions have NO REPOSITORY. The runner creates a project
+record with `repo_paths: []` and `canonical_repo_path: None`, and the job's
+workspace contains only what the run itself produced
+(`['.pytest_cache', 'task_output']`). The orders say "in the sample project",
+but no sample project is materialised, so a milestone whose DoD is "the unit
+suite is green" can never release: there is nothing to test.
+
+That is a harness gap of the same class as the R2 seam, the R4 2c and the R5
+3.3 — a missing piece of the campaign's world, needing its own reviewed
+design (what repository the ten orders operate on, how it is materialised per
+run, and how it stays isolated from the operator's tree). Not smuggled in
+here.
+
+Second observation, recorded not fixed: the six-dispatch pattern reappears,
+but for a DIFFERENT reason than R-0184. Every job now reaches `completed`, so
+the re-dispatch guard correctly allows a retry; the model retries because the
+gate blocked. Retrying a milestone whose DoD failed is defensible, but it
+spends the whole iteration budget on identical attempts. Whether the loop
+should escalate after N identical failed attempts is a reviewer call.
+
+Not done, deliberately: no change to CYCLE_SAFETY_CAP or any config default;
+no repository invented for the orders; no order edits; no weakening of the
+pass definition; the campaign (Phase 5) NOT run.
+
+## 2026-08-04: F075 R7 — R-0189 the sample-project world
+
+**Goal-vs-template audit.** Every one of the ten goals was checked against the
+template BEFORE freezing v3; each names something that really exists:
+
+| Order | What the goal names | Where it lives in the template |
+| --- | --- | --- |
+| g01 | a hard-coded retry backoff cap | `sampleproj/retry.py` `BACKOFF_CAP_SECONDS = 30` |
+| g02 | config precedence (arg > env > file) | `sampleproj/config.py` `resolve()`, `ENV_VARS` |
+| g03 | a CLI with progress output to suppress | `sampleproj/cli.py` prints progress to stdout, errors to stderr |
+| g04 | env vars + precedence rules to document | `config.ENV_VARS` + `README.md` "Configuration" |
+| g05 | duplicated path normalisation, two call sites | identical block in `importer.py` and `report.py`, both marked |
+| g06 | a public parse entry point returning None | `sampleproj/parsing.py` `parse_record()` |
+| g07 | exact user-facing error text | `sampleproj/errors.py` message constants |
+| g08 | an import command writing to a target dir | `cli.py import` + `importer.import_records` / `plan_import` |
+| g09 | a report writer, and a CLI that renders it | `sampleproj/report.py` + `cli.py report` |
+| g10 | a release history, next version unstated | `CHANGELOG.md` (0.1.0/0.2.0/0.3.0); no next version anywhere |
+
+No goal had to be dropped and NO order was edited. The template's own suite is
+30 tests, green, offline, ~0.05s.
+
+Decisions:
+1. **A copy per run, never the original.** `materialise_sample_project` copies
+   the template into `<run_dir>/workspace`, then `git init` + one baseline
+   commit inside the COPY. The baseline exists because a mission's work is a
+   DIFF: without it, "no file outside the touched module changed" has nothing
+   to measure from. Build droppings (`__pycache__`, `.pytest_cache`, `.git`)
+   are not copied — they are not the project.
+2. **The project record points there.** `_default_make_project` now sets
+   `repo_paths` and `canonical_repo_path` to the run's workspace, and the
+   execute seam binds that path as the DoD checks' `worktree_root`. The
+   operator's tree is never a mission workspace; two runs cannot see each
+   other's edits (both pinned by tests).
+3. **Freeze via manifest v3.** `template_tree_digest` hashes sorted relative
+   paths plus contents, and it is folded into the set hash — the world shapes
+   a mission's outcome exactly as much as the order does, so a retouched
+   template is a changed campaign. `load_order_set` refuses on a mismatch
+   before a token is spent, and a manifest with no `template_digest` is
+   refused outright. `run.json` records the digest used. Set v3 hash:
+   `c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6`,
+   template digest `1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454`.
+   Count reset per A9 — nothing lost, no attempt has passed.
+4. **`conftest.py` at the template root** inserts its own directory on
+   `sys.path`, so a materialised copy runs `python3 -m pytest tests -q` with no
+   install and no outside PYTHONPATH. Proven by running the suite from a
+   scratch copy, not by assuming it.
+
+Two existing tests changed, both because a literal became reality:
+`test_the_set_is_at_version_two` -> `..._three`, and
+`test_the_set_hash_matches_the_listed_digests` now also passes the template
+digest (the set hash covers it in v3). No assertion was weakened.
+
+## 2026-08-04: F075 R7 — R-0190 escalate the second blocked completion
+
+`BLOCKED_COMPLETIONS_BEFORE_ESCALATION = 2`, matching the loop's own
+refuse-once-then-escalate rule: the FIRST block is a legitimate, informed
+retry (the context already carries the blocker), and the second says the retry
+did not work. `blocked_completion(move, outcome)` reads the streak off the
+outcome the loop already writes (`gate=blocked (<blocker>)`) rather than
+re-deriving anything; a released or un-run gate, or a different milestone,
+resets it. The escalation goes through the EXISTING `hand_over` seam — the
+same F051 verb the twice-refused path uses, pinned by a test that injects it —
+and its detail names the milestone, both blockers, and the iterations the
+run keeps instead of spending on a third identical dispatch.
+
+The streak is per milestone on purpose: two blocked milestones are two first
+attempts, not a stuck loop. All nine tests are provider-free (R-0182), and the
+loop, e2e, era and injection suites are green UNEDITED (259).
+
+## 2026-08-04: F075 R7 Phase 4 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r7 --only 1 --format json`, exit 1, terminal
+`iteration_limit`. The DoD verdict is RELEASED. Phase 4 requires `achieved`
+AND a released verdict, so rule 4.3 applies: STOP, trail recorded here,
+Phase 5 not run.
+
+**The gate releases — the first time in this feature's history.**
+
+    dod_result.json: released: true, blocking_red: [], error: ""
+      check acc-001  kind=pytest  status=passed  exit_code=0
+    run.json: cycles_budget 4, cycles_resolved ["cycles=4/experiment"],
+              template_digest 1c4f41bf991a5b3626a72d5de60eba76948e82ec3181cff1f2dc4d5dd4ef0454
+
+R-0189 did what it was for: the mission had a real checkout, the suite ran in
+it, and `acc-001` — the same check that read "file or directory not found:
+tests" in R6 — passed with exit 0. Every ledger entry reads:
+
+    dispatch_job -> dispatched :: job ... dispatched for M001; DoD attached;
+    executed: terminal=all_green job_status=completed
+    cycles=4/experiment OVER-CAP gate=released
+
+**Why it still did not reach `achieved`.** Six iterations, six dispatches of
+M001, every one completing with a RELEASED gate — and the model never chose
+`declare_milestone_done`. Mission end state: `status: active`,
+`_milestones_done: None`, `job_links: 6`. R-0190 correctly did not fire: it
+escalates a blocked STREAK, and nothing here was blocked.
+
+The gap is now a single missing guard, symmetric with the two already built:
+`evaluate_dispatch` refuses a second job while one is IN FLIGHT (R-0186) and
+the loop escalates two consecutive BLOCKED completions (R-0190), but nothing
+refuses a dispatch for a milestone whose latest job COMPLETED with a RELEASED
+gate — the one case where the only correct move is `declare_milestone_done`.
+The refusal message would say exactly that, the same way the in-flight refusal
+already tells the model what to do instead.
+
+Not built here: it is not this round's ordered scope, and Phase 4.3 says stop
+rather than keep going. Recorded for the reviewer as the next fix.
+
+Not done, deliberately: no change to CYCLE_SAFETY_CAP or any config default;
+no order or template edits (v3 stays frozen at set hash
+c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6); no
+weakening of the pass definition; the campaign (Phase 5) NOT run.
+
+## 2026-08-04: F075 R8 — R-0191 the released-gate dispatch guard
+
+`evaluate_dispatch` now refuses a `dispatch_job` for a milestone whose LATEST
+linked job COMPLETED with a RELEASED gate. That completes the triad the
+campaign uncovered one leg at a time:
+
+| Milestone's latest job | Guard | What the loop does |
+| --- | --- | --- |
+| in flight (pending/planned/running) | R-0186 | refuse; wait or declare when it finishes |
+| completed, gate BLOCKED twice in a row | R-0190 | escalate through the existing F051 hand_over |
+| completed, gate RELEASED | R-0191 | refuse; declare_milestone_done |
+
+Decisions:
+1. **The verdict is read, never re-derived.** `collect_milestone_evidence`
+   already asks `dod_gate.load_gate_result` for the latest job the ledger
+   attributes to the milestone, so `evidence.gate_released` IS the real
+   verdict, and a newer un-released job supersedes an older released one by
+   construction. A test asserts the guard's source never mentions
+   `blocking_red` or `checks` — it trusts the gate's answer.
+2. **Only `gate_released is True` fires it.** `None` (no stored DoD) means
+   nothing was proven, so a further dispatch is legitimate; `False` belongs to
+   R-0190. Two guards arguing over one fact would be worse than the hole.
+3. **The loop does NOT declare the milestone itself.** The claim is the
+   model's move and carries the model's accountability — the loop refuses the
+   move that cannot help and names the one that can. The existing
+   first-refusal re-prompt carries that sentence back, and the
+   second-refusal escalation already exists if it is ignored. Alternative
+   considered: auto-declaring on a released gate — rejected, it would make the
+   loop assert a milestone is done on the model's behalf, which is exactly the
+   authority boundary F070 was built to keep.
+
+Nine tests, all provider-free (R-0182), including the end-to-end one: a model
+that follows the refusal reaches `achieved`, and `dispatched.seen == []`
+proves no job was created for work already finished. The loop, e2e, era,
+injection and runner suites are green UNEDITED (307).
+
+## 2026-08-04: F075 R8 Phase 3 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r8 --only 1 --format json`, exit 1, terminal
+`escalated`. The gate is RELEASED (`acc-001 passed`), so Phase 3's second
+requirement holds — but `achieved` does not. Rule 3.3: STOP, trail here,
+campaign not run.
+
+**R-0191 works, and the model obeyed it.** Three iterations, verbatim:
+
+    it1: dispatch_job -> dispatched
+         job fe02e963 ... DoD attached; executed: terminal=all_green
+         job_status=completed cycles=4/experiment OVER-CAP gate=released
+    it2: dispatch_job -> refused
+         milestone M001 is already finished: job fe02e963 completed and its
+         Definition of Done RELEASED. Another job would repeat work that is
+         already proven. Instead: declare_milestone_done for M001
+    it3: declare_milestone_done -> escalated
+         refused twice in a row (no job was ever dispatched for milestone
+         M001, so there is nothing whose outcome could meet its Definition of
+         Done); escalated: td:55642ed3
+
+The R7 failure mode is gone: six identical dispatches became one dispatch,
+one refusal, and the model took the instruction and claimed the milestone.
+
+**What blocked it — a latent defect the guard exposed.**
+`orchestrator_loop.dispatched_job_for` walks every ledger entry whose move
+kind is `dispatch_job` for the milestone and keeps the LAST one's
+`outcome.job_id`:
+
+    for entry in read_ledger(...):
+        if move.get("kind") != "dispatch_job":            continue
+        if payload.get("milestone_id") != milestone_id:   continue
+        job_id = str((entry.get("outcome") or {}).get("job_id", "") or "")
+
+A REFUSED dispatch is still a `dispatch_job` move — and its outcome carries no
+`job_id`, so it overwrites the real attribution with "". At it3 the evidence
+therefore said "no job was ever dispatched", `evaluate_milestone_done`
+correctly refused a claim it could not verify, and the second-refusal rule
+escalated. The mission ends with 1 open decision, so it would fail
+`no_open_decisions` too.
+
+The defect is pre-existing — nothing refused a dispatch before R-0191, so no
+ledger ever carried a refused `dispatch_job` entry for a milestone that also
+had a real one. The fix is one condition: a dispatch entry with no `job_id`
+(equivalently, an outcome whose status is not `dispatched`) is not a dispatch
+and must not erase the attribution. Not applied here: Phase 3.3 says commit
+nothing further, and this needs its own tests — including the exact
+refused-then-claim sequence above.
+
+Not done, deliberately: no order or template edits (v3 frozen at set hash
+c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6, template
+digest 1c4f41bf...); no config default touched; no weakening of the pass
+definition; the campaign (Phase 4) NOT run.
+
+## 2026-08-04: F075 R9 — R-0192 a refused dispatch is not a dispatch
+
+One condition in `dispatched_job_for`: an entry whose outcome carries no
+`job_id` is skipped instead of overwriting the answer. Everything else in the
+function is untouched — same ledger walk, same milestone filter, same
+last-wins rule among entries that actually produced a job.
+
+Why it was wrong: the move kind and milestone id of a REFUSED dispatch are
+identical to a real one, and only the outcome tells them apart. Before R-0191
+nothing refused a dispatch, so no ledger ever held a refusal beside a real
+dispatch and the unconditional overwrite was never exercised. The R8 re-proof
+is the whole story: `declare_milestone_done` refused with "no job was ever
+dispatched for milestone M001" for a milestone whose job had completed with a
+released gate.
+
+Five tests, all provider-free: real-then-refused keeps the attribution;
+latest-REAL-wins across interleaved refusals; only-refusals still answers ""
+honestly (absence must stay sayable); another milestone's dispatch is not
+borrowed; and the R8 sequence replayed end-to-end — dispatch, refused dispatch
+(R-0191 still firing), declare — now reaching `milestone_done` and then
+`achieved`. That last test derives its evidence from the REAL
+`dispatched_job_for`, which is what makes it load-bearing rather than a mock
+agreeing with itself.
+
+Nothing else rode along in the commit. Loop, e2e and era suites green
+UNEDITED (237).
+
+## 2026-08-04: F075 R9 Phase 3 — re-proof evidence, and the STOP
+
+`--live <scratch>/reproof-r9 --only 1 --format json`, exit 1, terminal
+`iteration_limit`. Gate RELEASED, ZERO open decisions — two of Phase 3's
+three requirements hold, `achieved` does not. Rule 3.3: STOP, trail here,
+campaign not run.
+
+**R-0192 works live, and the whole chain now closes for a milestone.**
+
+    it1: dispatch_job -> dispatched   job 336057db ... DoD attached; executed:
+         terminal=all_green job_status=completed cycles=4/experiment OVER-CAP
+         gate=released
+    it2: dispatch_job -> refused      milestone M001 is already finished: job
+         336057db completed and its Definition of Done RELEASED ...
+    it3: declare_milestone_done -> milestone_done   milestone M001 recorded as done
+    it4: dispatch_job -> dispatched   job 75115e49 ... for M002 ... gate=released
+    it5: dispatch_job -> refused      milestone M002 is already finished ...
+    it6: declare_milestone_done -> milestone_done   milestone M002 recorded as done
+
+`dod_result.json`: released true, `acc-001 passed`. Mission record:
+`_milestones_done: ['M001', 'M002']`. The R8 blocker is gone — the declare
+move that was refused with "no job was ever dispatched" now succeeds, twice.
+
+**Why not `achieved`: a budget-versus-plan-shape mismatch, not a defect.**
+The order g01 states ONE milestone; the mission compiler expanded its goal
+into THREE (`M001, M002, M003`). The loop currently spends THREE iterations
+per milestone — dispatch, the R-0191 refusal, then the declare — so three
+milestones plus the final `declare_mission_achieved` need ten iterations
+against g01's budget of six. It got two milestones done and ran out.
+
+Two things a reviewer could rule on, neither of them mine to take:
+
+1. **The refused dispatch costs an iteration.** The model dispatches, is
+   refused with "declare_milestone_done", then declares. If it declared
+   straight off a released gate each milestone would cost two iterations, and
+   three milestones would fit in seven. The guard makes the model CORRECT; it
+   does not yet make it economical. Options include carrying the released-gate
+   fact more visibly in the assembled context, or not counting a refused
+   iteration against the budget — both are product changes with their own
+   tests.
+2. **Order budgets were set in R1, when nothing executed.** `max_iterations`
+   6 for g01 predates execution, the DoD path and the guards. Raising them is
+   an order edit — forbidden mid-campaign, and set v3 is frozen (set hash
+   c267ccabf9b021c9c1f01c126d09c1308436457a22a0373ef490ebd989aaebb6), so a
+   re-issue would be v4 with another count reset. Reviewer's call.
+
+Not done, deliberately: no order or template edits, no budget changes, no
+config default touched, no weakening of the pass definition; the campaign
+(Phase 4) NOT run.
+
+## 2026-08-04: F075 R10 — R-0193 the released-gate context directive
+
+A new context section, `## Milestones ready to declare`, carrying one line per
+milestone whose latest job COMPLETED with a RELEASED gate:
+
+    - M001: job <id> completed and its Definition of Done RELEASED. The
+      correct next move is declare_milestone_done for M001.
+
+Decisions:
+1. **The same facts the guard reads.** `released_milestone_directives` calls
+   the loop's own `observe` seam — the very one `evaluate_move` uses — so the
+   context and the R-0191 refusal can never disagree about which milestone is
+   ready. A test that substitutes the seam substitutes both.
+2. **Only a proven fact earns a line.** `gate_released is True` and job state
+   `completed`. An absent verdict proves nothing; a blocked one is R-0190's
+   business; an in-flight job is R-0186's. Four parametrised cases pin that
+   nothing else produces a directive, and a milestone already recorded done is
+   not re-announced.
+3. **The section is absent when there is nothing to say** — no empty heading,
+   so the context stays byte-stable for a mission with nothing ready (the
+   cache-prefix discipline F070 set).
+4. **Guidance, not guarantee.** The R-0191 refusal is untouched and its own
+   test still asserts it fires. The directive saves an iteration; the guard is
+   what makes correctness non-optional.
+5. **A directive is never worth a crash.** An `observe` that raises is caught
+   and simply produces no line.
+
+Economics, pinned by test rather than asserted in prose: a model that follows
+the context reaches `achieved` in five iterations for two milestones — two
+each plus the final claim — with `OUTCOME_REFUSED` absent from the ledger. R9's
+live run spent three per milestone because the refusal was where the model
+learned the milestone was finished.
+
+Twelve tests, all provider-free (R-0182). Loop, e2e and era suites green
+UNEDITED (249).
+
+## 2026-08-04: F075 R10 Phase 3/4 — v4 budgets, and the first flawless run
+
+**R-0194, what changed and what did not.** Ten orders, budget values only.
+`max_iterations` 6 → 12 (one-milestone orders) and 12/14 → 22 (the two
+two-milestone orders); `max_tokens` and `max_wall_seconds` re-sized with them;
+`max_cycles` UNTOUCHED — R9 measured those right (every job reached all_green
+at its budgeted cycles), and an edit without evidence is the guess v4 exists to
+replace. Every non-budget key was proven byte-identical to v3 mechanically
+before the commit. Template digest unchanged (1c4f41bf…), so the world the
+missions run in is the same world; set hash e50916bf…, version 4, count resets
+per A9 (nothing lost — no attempt had passed).
+
+Sizing rule, recorded per order in a new `budget_rationale` field: the
+PESSIMISTIC path. Three iterations per milestone (dispatch, the R-0191 refusal,
+the declare) plus one to achieve, over the compiler's observed expansion, plus
+margin — so a run that ignores the R-0193 directive still fits. Three tests pin
+it: a floor from the measured shape, a ceiling five above it (a budget nothing
+can fail does not measure economy), and the frozen cycles.
+
+**Phase 4 re-proof — the first flawless run in this feature's history.**
+`--only 1`, isolated data root outside the repo, 472s:
+
+    terminal_status achieved · open_decisions [] · released true (acc-001 passed)
+    all nine criteria true · flawless true
+
+Nine iterations, and the ledger contains no refusal at all:
+
+    it1 dispatch M001 gate=released · it2 declare M001
+    it3 dispatch M002 gate=released · it4 declare M002
+    it5 dispatch M003 gate=released · it6 declare M003
+    it7 dispatch M004 gate=released · it8 declare M004
+    it9 achieved — every milestone is done and the mission goal is met
+
+R-0193 does what it claimed: two iterations per milestone, the guard never
+needed. R-0192's chain now runs four times in one mission instead of twice.
+
+**One observation the reviewer should hold, not act on.** The compiler shaped
+FOUR milestones this time, not R9's three — the expansion is not a constant.
+Four milestones cost 9 iterations direct (fits 12 with room) but would cost 13
+if the model fell back to the refusal path, which does NOT fit. The budget is
+sized for the direct path plus margin, and the direct path is now the
+product's behaviour rather than a hope — but a campaign order that expands to
+five milestones AND ignores the directive can still hit iteration_limit. That
+is the gate measuring economy, which is its job; noting it so a v5 is an
+evidence decision rather than a reflex.
+
+## 2026-08-05: F075 R10 Phase 5 — set-v4 campaign, attempt 02: 3/10
+
+ONE invocation, ten orders, isolated data root outside the repo, matrix in
+`.agent/gauntlet/attempt-02/`. Set hash e50916bf…, template digest 1c4f41bf…
+(unchanged from v3). Attempt 01 was 0/10.
+
+    g01 pure-code-change        FLAWLESS   achieved          7 it,  3 milestones
+    g02 test-add                           iteration_limit  12 it,  6 milestones
+    g03 small-app-feature-smoke            iteration_limit  12 it,  6 milestones
+    g04 doc-generation                     iteration_limit  12 it,  6 milestones
+    g05 two-milestone-mission   FLAWLESS   achieved          5 it,  2 milestones
+    g06 provider-api-error                 iteration_failed  1 it,  0 milestones
+    g07 truncated-model-response FLAWLESS  achieved         11 it,  5 milestones
+    g08 harness-death-mid-dispatch         iteration_failed  1 it,  0 milestones
+    g09 harness-death-mid-write            iteration_failed  1 it,  0 milestones
+    g10 escalate-then-finish               iteration_limit  12 it,  6 milestones
+
+Held in ALL TEN runs: `start_command_only`, `no_unknown_postmortems`,
+`no_open_decisions`, `host_data_root_untouched` (hash before == after),
+`no_era_defect_classes`, `injections_degraded`, `evidence_well_formed`. Zero
+refusals anywhere — R-0193's direct path carried every one of the 74 iterations
+this campaign spent. Only two criteria ever failed: `terminal_green` (7 runs)
+and `dod_blocking_green` (the 3 that died before any gate ran).
+
+### Finding A — the compiler's plan expansion is erratic, so no static budget fits
+
+Same order, same frozen world, different plan shape every time. g01 expanded a
+one-milestone goal into 3 here, 4 in this round's re-proof, 3 in R9. g02/g03/g04
+each expanded into at least 7. g05 did not expand at all: two stated milestones
+became two.
+
+Every one of the four `iteration_limit` runs finished six milestones cleanly at
+exactly two iterations each and then ran out of budget mid-plan. Nothing
+misbehaved — the runs were economical and correct, and still could not finish.
+
+v4 sized `max_iterations` from a measured expansion factor of 3. The real factor
+ranges from 1 to at least 7 and varies between runs of the SAME order. A static
+per-order budget cannot track that: set it for the worst case and the
+anti-slack test becomes meaningless, set it for the average and half the
+campaign dies. R-0194 was the right correction to R1's guess and it is not
+enough. The fix belongs in the product — bound or stabilise the expansion, or
+derive the bound from the compiled plan rather than from the order — not in a
+v5 of the budgets.
+
+### Finding B — the exception boundary ends the mission where the pass definition requires it to continue
+
+`orchestrator_loop.py:984-993`: the R3 boundary classifies the failure, writes
+the postmortem, ledgers it, sets `terminal=True` and RETURNS. One transport
+blip is a dead mission.
+
+Three runs prove it, on two distinct failure classes: g06 (`provider_unavailable`
+at `call_fn` call 1), g08 and g09 (`io_failure` at `dispatch` and at
+`update_dossier`, call 1). Each ledgered correctly with `disposition
+"ledgered_failure"` and no unknown postmortem — the degradation is exactly right
+— and each mission was over after ONE iteration, having completed no milestone,
+so no DoD verdict exists and `dod_blocking_green` fails as an absence.
+
+g07 is the counter-example that makes this a defect rather than a design choice:
+its truncation injection is handled BELOW the boundary (parse-class refused,
+re-prompted once, `disposition "retry_within_budget"`) and the mission ran on to
+`achieved` and FLAWLESS. Degrade-and-continue already exists in this codebase;
+the boundary is what refuses it.
+
+g06's own rationale states the bar: "Flawless means ledgered and retried within
+budget — never a move silently skipped." With today's boundary, g06/g08/g09
+cannot reach `achieved`, so three of ten runs are unwinnable by construction.
+Direction (a reviewer decision, NOT taken here): ledger, write the postmortem,
+and continue the loop until a budget or a repeat-failure rule stops it. NO retry
+inside the boundary — transport retries live below `call_fn` (F001).
+
+## 2026-08-05: F075 R11 — R-0196 the boundary continues on retryable classes
+
+Campaign attempt 02 showed three missions dying at iteration 1 on transient
+faults, with zero milestones and therefore no DoD verdict at all — while g07's
+truncation, handled below the boundary, recovered and finished flawless. The
+boundary now makes that distinction itself.
+
+Decisions:
+1. **The set is NARROW and named**: `provider_unavailable` and `io_failure`,
+   compared by VALUE so F010 can add a class without it being silently retried
+   here. A timeout is a provider fault and is deliberately NOT in the set — the
+   ruling named two classes, not "anything provider-shaped". `unknown` above
+   all still ends the run: retrying a fault Remedy cannot name is how a budget
+   disappears without an account of itself.
+2. **A new OUTCOME_, not a TERMINAL_.** `OUTCOME_ITERATION_RETRYING` keeps the
+   spent iteration on the ledger, so a run that succeeded on the second attempt
+   still says out loud that the first one failed. The post-mortem is written
+   exactly as before.
+3. **Two in a row on the SAME milestone escalates**, mirroring R-0190 and the
+   refuse-once rule. The milestone comes from `working_milestone` — the first
+   not yet done, the same plan order the loop follows — because the exception
+   may be raised before any move exists. Any executed move clears the streak.
+4. **Still no retry in the boundary.** The next iteration re-decides from a
+   fresh context, which is not re-issuing the call that raised; transport
+   retries stay below `call_fn` (F001).
+
+`gauntlet_injection.settle` needed the new shape, not a new rule: a green
+terminal now means "swallowed" only when NO post-mortem was written, and
+"recovered" (`retry_within_budget`) when one was. Same question it always
+asked — did the run keep an account of the fault — on a shape the product can
+now produce. The closed disposition set is untouched.
+
+Three existing tests asserted the old terminal and were updated with the reason
+stated inline; their subject (the failure CLASS) is unchanged. 14 new tests.
+Gate: loop/e2e/era/injection/runner 338, exit 0.
+
+## 2026-08-05: F075 R11 — R-0197 the compiler honors the order's declared shape
+
+`compile_mission_plan` and `plan_mission` gain `max_milestones: int | None`.
+`None` is today's behaviour exactly, pinned by a test that compares the two
+prompts for equality rather than by inspection.
+
+Decisions:
+1. **The cap is enforced twice, in the two places that can disagree.** The
+   prompt states the lower ceiling, AND the draft is validated against it. A
+   prompt alone is a request; a validator alone wastes a call it could have
+   prevented.
+2. **The validator is a SUBCLASS of `MissionPlanDraft`**, so an over-cap draft
+   is a parse-class failure like any other invalid answer: F001's single retry
+   re-prompts with the reason (proven: the second prompt names the cap and the
+   draft's actual count), and a second over-cap answer takes the deterministic
+   fallback. No new retry path and no new failure mode were invented for this.
+   The subclass keeps `MissionPlanDraft`'s name so the protocol the provider is
+   shown is unchanged — only the validation is stricter.
+3. **The caller can only make the plan SMALLER.** `resolve_milestone_cap`
+   clamps into `[1, MAX_MISSION_MILESTONES]`, so F069's outer bound still wins
+   and a caller cannot argue past the schema.
+4. **The runner passes `len(order.milestones) + 1`** — derived, never
+   hard-coded, pinned as a function over 1/2/4 declared milestones. The
+   headroom exists because a compiler that finds a genuine prerequisite should
+   be able to say so; what it may not do is turn a one-milestone order into
+   seven and spend the budget rediscovering that.
+
+The DAG discipline and the deterministic fallback are untouched, both pinned by
+their own tests. 8 compiler tests + 2 runner tests. Gate: compiler/runner 154,
+exit 0.
+
+## 2026-08-05: F075 R11 Phase 4 — both re-proofs green
+
+Fresh isolated roots outside the repo, one order each.
+
+**Re-proof 1 (`--only 6`) — R-0196 live.** Every required fact present:
+
+    terminal achieved · open_decisions [] · dod released true
+    injection: raised at call_fn call 1: ConnectionError: provider API error
+      mid-move: HTTP 503; ledgered with 1 post-mortem(s), then the run
+      recovered and finished
+    disposition retry_within_budget   post-mortem class provider_unavailable
+
+    it1 iteration_failed_retrying | ConnectionError ... HTTP 503
+    it2 dispatched                | job e2185f24 ... all_green, gate released
+    it3 milestone_done            | M001 recorded as done
+    it4 achieved                  | every milestone is done
+
+In attempt 02 this same order ended `iteration_failed` at iteration 1 with zero
+milestones and no DoD verdict at all. The fault now costs one iteration and the
+mission finishes. The disposition is read off the product's own facts — a green
+terminal WITH a post-mortem — not asserted by the harness.
+
+**Re-proof 2 (`--only 2`) — R-0197 live.**
+
+    compiled milestones ['M001', 'M002'] · origin provider · compiled true
+    terminal achieved · open_decisions [] · dod released true · 5 iterations
+    against g02's v4 budget of 12
+
+g02 declares ONE milestone, so the cap was 2 and the compiler produced exactly
+2 — within `declared + 1`. In attempt 02 the same order compiled at least SEVEN
+and died on `iteration_limit` after six milestones. Two iterations per
+milestone plus the achieve, so the v4 budgets now have real headroom rather
+than being a guess against an unbounded shape.
+
+Preconditions for attempt 03 re-verified: set version 4, set hash
+e50916bf… equal to the recomputation, `preflight_injections -> []`.
+
+## 2026-08-05: F075 R11 Phase 5 — attempt 03: 10/10 FLAWLESS
+
+ONE invocation, ten orders, set v4 (hash e50916bf…, template 1c4f41bf…),
+isolated data root outside the repo. `passed: true`, `failure_kinds: []`.
+
+    run                            terminal    it done retry open
+    g01 pure-code-change           achieved     5    2     0    0
+    g02 test-add                   achieved     3    1     0    0
+    g03 small-app-feature-smoke    achieved     5    2     0    0
+    g04 doc-generation             achieved     5    2     0    0
+    g05 two-milestone-mission      achieved     7    3     0    0
+    g06 provider-api-error         achieved     4    1     1    0
+    g07 truncated-model-response   achieved     5    2     0    0
+    g08 harness-death-mid-dispatch achieved     6    2     1    0
+    g09 harness-death-mid-write    achieved     8    3     1    0
+    g10 escalate-then-finish       achieved     5    2     0    0
+
+All nine criteria true in all ten runs. Every run finished well inside its v4
+budget; the largest was g09 at 8 iterations against 22.
+
+Both R11 changes are visible in the evidence rather than merely asserted:
+
+* **R-0196** — the `retry` column is `iteration_failed_retrying` entries.
+  Exactly the three raise-class injections produced one each, and each of
+  those runs went on to `achieved`. All four injections FIRED and all four
+  settled `retry_within_budget`, with post-mortems `provider_unavailable`
+  (g06) and `io_failure` (g08, g09); g07's truncation re-prompted once as
+  before. Nothing settled `never_fired` or `silent_success`.
+* **R-0197** — plan shapes are now bounded by the orders: 1–3 milestones per
+  run against declared shapes of 1 or 2. Attempt 02's same orders compiled to
+  as many as seven.
+
+Comparison: attempt 01 = 0/10, attempt 02 = 3/10, attempt 03 = 10/10.
+
+**Observation for Window 1, NOT acted on.** The campaign process read ~872 GB
+from disk while writing ~2 MB, sustaining ~12 MB/s with system I/O pressure
+near 15%. Nothing is wrong with the results — the isolation held and the host
+data root hashed identical before and after in every run — but the read volume
+is out of all proportion to a 2 MB evidence tree, which suggests a large tree
+is being hashed or listed once per iteration. Worth a finding ID; touching it
+mid-campaign was not an option and the campaign is now complete.
+
+## 2026-08-05 — F075 R12: where the ADR lands, and what it proposes
+
+**The repository had no ADR convention.** Inspected before choosing: no
+`docs/adr/`, no `*adr*` or `*decision*` file anywhere under `docs/`, no ADR
+section in `docs/README.md`. The only prior art is the instruction in the
+source itself — `CYCLE_SAFETY_CAP`'s comment says the F075 gate raises it *"via
+an explicit change with an ADR"* — and `.agent/decisions.md`, which is
+task-scoped state and therefore the wrong home for a record a human must find
+months from now.
+
+**Decision: `docs/adr/`, a new subcategory of `docs/`, registered in
+`docs/README.md`.** Rejected alternatives: `.agent/` (ephemeral task state, not
+durable knowledge — the ADR outlives this feature); `docs/system/` (that
+directory describes what IS BUILT, and a PROPOSED ADR describes what is not
+built yet); `docs/roadmap/` (agents may not touch ROADMAP.md, and the roadmap
+is the target plan, not a decision log). `docs/adr/` follows the precedent
+already set by `docs/agents/` and `docs/ui/`: subcategories of `docs/` that are
+neither built-state specs nor roadmap. The status line carries the boundary —
+PROPOSED, applied by a human, never accepted by machine.
+
+Files: `docs/adr/0001-raise-cycle-safety-cap.md` and its ready-to-apply
+`0001-raise-cycle-safety-cap.diff` (verified with `git apply --check`;
+generated from a real edit that was then reverted, so the context lines are
+exact rather than hand-written).
+
+**The proposal: `CYCLE_SAFETY_CAP` 1 -> 8, `DEFAULT_MAX_CYCLES` stays 1.** 8 is
+the largest cycle budget attempt 03 granted (g05 and g09) and completed under.
+Stated as a limitation rather than glossed: per-run cycle CONSUMPTION is not
+recoverable — it lived in each run's `gauntlet_run.json` under the campaign
+root outside the repo (R-0176), which has since been reclaimed; only the
+matrices are committed. So the ADR argues from the proven CEILING (budgets
+3-8, ten `achieved`) plus the committed iteration usage, and declines to invent
+a measured-max-plus-margin number the evidence does not carry.
+
+**NOT applied, deliberately.** The working tree after this phase carries the
+diff FILE, not the change: `git status` is clean of any
+`long_run_executor.py` modification and the suite is green with the cap still
+at 1. Three assertions pin it there; the new one,
+`test_the_rollout_cap_is_still_one_until_adr_0001_is_applied`, names ADR-0001
+in its docstring so the human applying the ADR finds every pin by grep.

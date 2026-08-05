@@ -1,0 +1,492 @@
+{
+  "evidence_label": "gauntlet-attempt-01",
+  "failure_kinds": [
+    "terminal_not_green",
+    "dod_blocking_red",
+    "unknown_postmortem"
+  ],
+  "matrix_version": 1,
+  "pass_criteria": [
+    "evidence_well_formed",
+    "start_command_only",
+    "terminal_green",
+    "dod_blocking_green",
+    "no_unknown_postmortems",
+    "no_open_decisions",
+    "host_data_root_untouched",
+    "no_era_defect_classes",
+    "injections_degraded"
+  ],
+  "passed": false,
+  "runs": [
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "pure_code_change",
+      "operator_interventions": [],
+      "order_id": "g01-pure-code-change",
+      "postmortem_classes": [],
+      "run_dir": "run-01-g01-pure-code-change",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 323.891
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "test_add",
+      "operator_interventions": [],
+      "order_id": "g02-test-add",
+      "postmortem_classes": [],
+      "run_dir": "run-02-g02-test-add",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 420.36
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "small_app_feature_with_smoke",
+      "operator_interventions": [],
+      "order_id": "g03-small-app-feature-smoke",
+      "postmortem_classes": [],
+      "run_dir": "run-03-g03-small-app-feature-smoke",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 229.115
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "doc_generation",
+      "operator_interventions": [],
+      "order_id": "g04-doc-generation",
+      "postmortem_classes": [],
+      "run_dir": "run-04-g04-doc-generation",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 495.561
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "two_milestone_mission",
+      "operator_interventions": [],
+      "order_id": "g05-two-milestone-mission",
+      "postmortem_classes": [],
+      "run_dir": "run-05-g05-two-milestone-mission",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 273.19
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": false,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_failed is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        },
+        {
+          "criterion": "no_unknown_postmortems",
+          "detail": "postmortem (job) has failure class unknown — the failure was not understood",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "unknown_postmortem"
+        }
+      ],
+      "flawless": false,
+      "kind": "pure_code_change",
+      "operator_interventions": [],
+      "order_id": "g06-provider-api-error-mid-move",
+      "postmortem_classes": [
+        "unknown"
+      ],
+      "run_dir": "run-06-g06-provider-api-error-mid-move",
+      "terminal_status": "iteration_failed",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 211.915
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "test_add",
+      "operator_interventions": [],
+      "order_id": "g07-truncated-model-response",
+      "postmortem_classes": [],
+      "run_dir": "run-07-g07-truncated-model-response",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 587.907
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": false,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_failed is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        },
+        {
+          "criterion": "no_unknown_postmortems",
+          "detail": "postmortem (job) has failure class unknown — the failure was not understood",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "unknown_postmortem"
+        }
+      ],
+      "flawless": false,
+      "kind": "small_app_feature_with_smoke",
+      "operator_interventions": [],
+      "order_id": "g08-harness-death-mid-dispatch",
+      "postmortem_classes": [
+        "unknown"
+      ],
+      "run_dir": "run-08-g08-harness-death-mid-dispatch",
+      "terminal_status": "iteration_failed",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 377.947
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": false,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_failed is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        },
+        {
+          "criterion": "no_unknown_postmortems",
+          "detail": "postmortem (job) has failure class unknown — the failure was not understood",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "unknown_postmortem"
+        }
+      ],
+      "flawless": false,
+      "kind": "two_milestone_mission",
+      "operator_interventions": [],
+      "order_id": "g09-harness-death-mid-write",
+      "postmortem_classes": [
+        "unknown"
+      ],
+      "run_dir": "run-09-g09-harness-death-mid-write",
+      "terminal_status": "iteration_failed",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 151.074
+    },
+    {
+      "criteria": {
+        "dod_blocking_green": false,
+        "evidence_well_formed": true,
+        "host_data_root_untouched": true,
+        "injections_degraded": true,
+        "no_era_defect_classes": true,
+        "no_open_decisions": true,
+        "no_unknown_postmortems": true,
+        "start_command_only": true,
+        "terminal_green": false
+      },
+      "dod_matrix": "No Definition of Done was run for this job.",
+      "evidence_links": {
+        "isolated_root": "data",
+        "ledger": "data/missions"
+      },
+      "failures": [
+        {
+          "criterion": "terminal_green",
+          "detail": "terminal status iteration_limit is not achieved",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "terminal_not_green"
+        },
+        {
+          "criterion": "dod_blocking_green",
+          "detail": "no dod_result.json: the DoD gate never produced a verdict",
+          "finding_class": "",
+          "injection_class": "",
+          "kind": "dod_blocking_red"
+        }
+      ],
+      "flawless": false,
+      "kind": "doc_generation",
+      "operator_interventions": [],
+      "order_id": "g10-escalate-then-finish",
+      "postmortem_classes": [],
+      "run_dir": "run-10-g10-escalate-then-finish",
+      "terminal_status": "iteration_limit",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "wall_seconds": 734.424
+    }
+  ],
+  "runs_flawless": 0,
+  "runs_recorded": 10
+}

@@ -1,0 +1,30 @@
+{
+  "budget": {
+    "max_cycles": 4,
+    "max_iterations": 12,
+    "max_tokens": 700000,
+    "max_wall_seconds": 6000
+  },
+  "budget_rationale": "g02's shape plus a truncated response that costs a parse re-prompt.",
+  "gauntlet_order_version": 1,
+  "goal": "Add regression tests for the sample project's error-message formatting, pinning the exact text of each user-facing error.",
+  "id": "g07-truncated-model-response",
+  "injections": [
+    "truncated_model_response"
+  ],
+  "kind": "test_add",
+  "milestones": [
+    {
+      "dod": [
+        "each test fails when its error string is altered by one character",
+        "the full unit suite is green",
+        "no truncated move was executed"
+      ],
+      "id": "m1",
+      "title": "Error text pinned by tests"
+    }
+  ],
+  "rationale": "Injects a truncated model response. Distinct from g06: the call SUCCEEDS and returns something that looks like an answer. The risk is acceptance, not failure \u2014 a half-parsed move that declares a milestone done from half a payload. Flawless means parse-class refusal and one re-prompt.",
+  "risk_probed": "invalid_move_accepted_as_complete",
+  "title": "Refuse a structurally incomplete model response"
+}

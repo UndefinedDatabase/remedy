@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-35 of 253 registered items accepted. Next: F075 (MILESTONE GATE: 10 flawless self-runs).
+36 of 253 registered items accepted. Next: F079 (Context handoffs).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 19 | 22 |
+| 1 | Self-Build Bootstrap | 20 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 13 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |

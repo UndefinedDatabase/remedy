@@ -672,7 +672,7 @@ class ResolvedCycles:
     rollout cap trimmed it."""
 
     max_cycles: int
-    source: str          # "flag" | "config" | "default"
+    source: str          # "flag" | "config" | "default" | "experiment"
     requested: int
     capped: bool
 
@@ -680,16 +680,46 @@ class ResolvedCycles:
     def cap(self) -> int:
         return CYCLE_SAFETY_CAP
 
+    def to_json(self) -> dict[str, Any]:
+        """The record that makes an over-cap run impossible to miss.
+
+        Written into the run's evidence by every caller that resolves cycles,
+        so "this run used more than the rollout cap" is a fact on disk rather
+        than something a reader has to infer.
+        """
+        return {"max_cycles": self.max_cycles, "source": self.source,
+                "requested": self.requested, "capped": self.capped,
+                "cap": self.cap, "over_cap": self.max_cycles > self.cap}
+
 
 def resolve_max_cycles(flag: int | None = None,
-                       config_value: int | None = None) -> ResolvedCycles:
+                       config_value: int | None = None,
+                       *,
+                       experiment_max_cycles: int | None = None) -> ResolvedCycles:
     """Flag beats config beats default — and BOTH are capped.
 
     The cap is the F046 rollout rule: until the F075 milestone gate raises
     ``CYCLE_SAFETY_CAP``, no configuration and no flag can make Remedy run more
     than one cycle.  The requested value is reported alongside so the caller
     can tell the operator their number was trimmed rather than ignored.
+
+    ``experiment_max_cycles`` is the ONE way past the cap, and it exists for
+    exactly one caller: the F075 gauntlet runner (R-0187). The gate cannot
+    demonstrate ten flawless multi-cycle missions while every job is wedged at
+    one cycle, and the cap's own rule says raising the DEFAULT is the job of
+    the human-applied ADR that a passing 10/10 produces — so the CAMPAIGN and
+    the DEFAULT are separated here rather than conflated. It is deliberately
+    NOT reachable from config or a CLI flag: a caller has to pass it in code,
+    by name, and the resulting ``ResolvedCycles`` records ``source
+    "experiment"`` with ``over_cap`` true so no run can exceed the cap
+    silently. Config and flag clamping below is untouched.
     """
+    if experiment_max_cycles is not None:
+        requested = int(experiment_max_cycles)
+        if requested < 1:
+            raise ValueError(f"max_cycles must be >= 1, got {requested}")
+        return ResolvedCycles(max_cycles=requested, source="experiment",
+                              requested=requested, capped=False)
     if flag is not None:
         requested, source = int(flag), "flag"
     elif config_value is not None:
@@ -703,13 +733,19 @@ def resolve_max_cycles(flag: int | None = None,
                           requested=requested, capped=allowed < requested)
 
 
-def limits_from_config(config: Any = None, *, cycles_flag: int | None = None
+def limits_from_config(config: Any = None, *, cycles_flag: int | None = None,
+                       experiment_max_cycles: int | None = None
                        ) -> tuple[CycleLimits, ResolvedCycles]:
-    """Build ``CycleLimits`` from the resolved Remedy config plus a CLI flag."""
+    """Build ``CycleLimits`` from the resolved Remedy config plus a CLI flag.
+
+    ``experiment_max_cycles`` is passed straight through to
+    :func:`resolve_max_cycles`; see there for why it exists and who may use it.
+    """
     if config is None:
         from packages.orchestration.config import get_config
         config = get_config()
-    resolved = resolve_max_cycles(cycles_flag, config.get(CONFIG_KEY_MAX_CYCLES))
+    resolved = resolve_max_cycles(cycles_flag, config.get(CONFIG_KEY_MAX_CYCLES),
+                                  experiment_max_cycles=experiment_max_cycles)
     batch_size = config.get(CONFIG_KEY_BATCH_SIZE) or DEFAULT_BATCH_SIZE
     repair_rounds = config.get(CONFIG_KEY_REPAIR_ROUNDS)
     return (
