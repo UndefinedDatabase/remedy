@@ -1,26 +1,29 @@
-# Plan — F075 MILESTONE GATE: 10 flawless self-runs — CLOSED
+# Plan — Amendment round amend0805-v3
 
-Branch: feature/f075-self-run-gauntlet (closure PR open, not merged)
+Branch: feature/amend0805-v3 (F075 PR #179 merged at Open PR Gate)
 
 ## Goal
-DONE. Autonomy earned with data: the gauntlet harness ran ten frozen
-mission orders unattended and judged each against a strict, falsifiable
-pass definition. Attempt 03 = 10/10 FLAWLESS from ONE invocation, the
-attempt history 0/10 -> 3/10 -> 10/10 kept under .agent/gauntlet/. The
-integration gate passed (branch full suite exit 0, zero branch-only
-failures) and closure ran per STATUS_closure_protocol.md: Built State
-recorded, evidence job built, READY_FOR_REVIEW package produced,
-STATUS [x] and README synced in one commit.
+Apply operator-relayed amendment round amend0805-v3 (docs/planning only;
+replaces amend0804 v1/v2, neither ran). Items B1–B5 (roadmap), C1
+(reviewer conventions), D1–D2 (doc drift), E1–E2 (workflow docs +
+candidates note). Single-session permitted per §3 Named Round Types.
+Not a feature claim; candidates block condition does not fire.
 
 ## Current Step
-None — F075 is closed. The closure PR is open and NOT merged; it merges
-at the next feature's Open PR Gate.
+Presence checks done — all 10 items absent, all live. Applying in
+order B → C → D → E; commit per part, push, PR, handback with
+item-status table.
 
 ## Next Steps
-- Next feature per Rule A5: F079 (Context handoffs), fresh session.
-- Its FIRST reviewed round must empty .agent/candidates.md — four
-  entries are carried there (F070 review gap; absent resume verb;
-  R-0199 campaign I/O; the recurring mid-run UI rebuild). A non-empty
-  candidates file at feature-claim time is a block condition.
-- ADR-0001 (docs/adr/) awaits a human: raise CYCLE_SAFETY_CAP 1 -> 8.
-  Prepared, NOT applied. No agent applies it.
+- Part B: STATUS.md (F254 line + Milestone R1), new T2_F254.md,
+  appends to T12_F253.md / T17_F243.md / T2_F103.md
+- Part C: reviewer_conventions.md specified-route-exercised rule
+- Part D: self_run_gauntlet.py docstring, claude_agent/__init__.py
+- Part E: planner_reviewer_prompt.md Laufzeit row + definition;
+  candidates.md R-0199 operator-priority note
+- Rewrite handoff.md at handback
+
+## Risks
+- No product code or order/template edits allowed in this round.
+- After this round: F079 per Rule A5; candidates.md still non-empty
+  (block condition at F079 claim). ADR-0001 still awaits a human.
