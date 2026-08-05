@@ -1,39 +1,30 @@
-# Context — F075 MILESTONE GATE: 10 flawless self-runs
+# Context — F075 closed; next feature not yet claimed
 
 ## Active Branch
-feature/f075-self-run-gauntlet (from main after the Open PR Gate
-merged PR #178, the F071 closure)
+feature/f075-self-run-gauntlet — F075 closure PR open, NOT merged. The
+next feature (F079, Context handoffs) starts from main AFTER the Open PR
+Gate merges this PR.
 
 ## Scope
-Roadmap F075 (Tier 1, docs/roadmap/features/T1_F075.md): gauntlet
-harness + evaluator + matrix + frozen order set v4 + live runner
-+ injection driver + their tests; nine reviewed product changes
-(R3-R11, see live_review). THE BAR IS MET: attempt 03 = 10/10
-flawless from one invocation. This round: the prepared config
-diff + ADR (NOT applied) and the integration gate; then closure.
+F075 is complete and accepted: gauntlet harness, evaluator, matrix,
+frozen order set v4 + sample-project template, live runner, injection
+driver, and the nine campaign-earned product changes, all reviewed round
+by round. Built State is recorded in
+docs/roadmap/features/T1_F075.md; STATUS.md carries the [x] line with
+the evidence job, package and accepted HEAD.
 
 ## Constraints
-- Round gate = scoped pytest command(s) authored in the step
-  block; canary per handback:
-  python3 -m pytest tests/cli/test_golden_path.py -q. Docs-round
-  gate applies to any commit touching docs/roadmap/**:
-  python3 -m pytest tests/docs/ -q. The INTEGRATION GATE runs the
-  full suite per docs/agents/integration_gate.md (pytest -n auto;
-  run logs OUTSIDE the repo during the run, copied to
-  .agent/gate_f075_r12/ after; the resource-safety rules of
-  tests/regression apply).
-- Commits < 500 lines, NO oversize left (R-0181; R-0198 rules the
-  persist-commit class); NEVER force-push (R-0195); authored
-  texts applied byte-exact from .agent/authored/f075-r12-<n>.md
-  after sha256 verification.
-- No pytest test may take a production/provider path (R-0182).
-- The config diff + ADR are PREPARED, never applied — config
-  defaults by machine remain do-not-touch; the suite must be
-  green without them.
-- Gauntlet evidence: only matrix.md + matrix.json committed under
-  .agent/gauntlet/ (attempts 01-03 KEPT).
-- Do-not-touch: the pass definition, order/template edits.
+- Nothing further ships on this branch. The closure commit was the last
+  commit (Rule A4); do not append to it.
+- ADR-0001 is PROPOSED, never applied by a machine: CYCLE_SAFETY_CAP
+  stays 1 and three pinned assertions hold it there.
+- .agent/candidates.md is non-empty by design and blocks the next
+  feature claim until its first reviewed round registers or resolves
+  each entry.
+- Round gates stay scoped pytest commands; the full-suite
+  pytest -n auto run belongs to the integration gate, where the
+  resource-safety rules of tests/regression apply.
 
 ## Steps
-R1-R11 done (PASS x11; 10/10 stands) → R12 ADR/diff prep +
-integration gate (current) → R13 closure.
+R1-R11 built and reviewed (PASS x11) → R12 ADR/diff prep + integration
+gate PASS → R13 closure (done) → next: F079 in a fresh session.

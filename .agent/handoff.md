@@ -1,100 +1,56 @@
-# Handback — F075 R12 (SPLIT, LARGE)
+# Handback — F075 R13 CLOSURE
 
 ## Range
-Review of 05a15669..f45b1358 (6 commits + this handoff commit).
+Review of 8bc1305a..HEAD (4 commits, incl. this one).
 
 ## Commits
-### 4b171dc0 chore(f075): save the R12 block
+### b49e6bdb chore(f075): save the R13 closure block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +198/-285 | the block verbatim, own commit per R-0198 |
+| .agent/last_block.md | +241/-235 | the block, own commit (R-0198); two transport defects repaired against the digests — see proofs |
 
-### ba266dab chore(f075): restore a blank line dropped from the R12 block in transport
+### 634b0be8 chore(f075): persist the R12 gate verdict
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/last_block.md | +1 | archived block corrected to the authored bytes |
+| .agent/authored/f075-r13-{1..5}.md | +129 | the five reviewer texts, sha256-verified |
+| .agent/live_review.md | +29 | r13-1 applied; LAST_REVIEWED_SHA = 8bc1305a |
 
-### 8d01fb32 chore(f075): persist the R11 PASS -- 10/10 stands; register R-0198/R-0199
+### 36f3bc81 docs(f075): record the accepted Built State ← ACCEPTED HEAD
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f075-r12-{1,2,3}.md | +95/+38/+39 | reviewer texts, sha256-verified |
-| .agent/live_review.md · plan.md · context.md | +196/+60/+50 (-175 tot.) | full replacements from r12-1/2/3 |
+| docs/roadmap/features/T1_F075.md | +53 | r13-2 byte-appended (precondition 4) |
 
-### 449d64dd docs(f075): prepare ADR-0001 -- raise the cycle safety cap, not applied
+### &lt;this commit&gt; the closure commit (Rule A4, last on the branch)
 | Path | +/- | Reason |
 |---|---|---|
-| docs/adr/0001-raise-cycle-safety-cap.md | +152 | the ADR, status PROPOSED |
-| docs/adr/0001-raise-cycle-safety-cap.diff | +22 | ready-to-apply diff, NOT applied |
-| docs/README.md | +13 | new `docs/adr/` category + quick-find row |
-| .agent/decisions.md | +41 | location decision, the 8 reasoning, the evidence limit |
-
-### dcde0698 test(f075): pin the cycle safety cap at 1 until ADR-0001 is applied
-| Path | +/- | Reason |
-|---|---|---|
-| tests/orchestration/test_long_run_executor.py | +10 | pin `test_the_rollout_cap_is_still_one_until_adr_0001_is_applied` |
-
-### f45b1358 chore(f075): record the R12 integration gate evidence
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/gate_f075_r12/ | +158 | 11 files: raw tails, both comm lists, per-id attribution, dist hashes, hygiene |
-
-### <this commit> chore(f075): handback R12
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md · .agent/last_block.md | rewrite / +1 | this handback (R-0149) · OUTCOME line |
+| docs/roadmap/STATUS.md · README.md | ±1 / ±2 | r13-3 with the four placeholders filled · r13-4 both edits, same commit (R-0154) |
+| .agent/candidates.md | rewrite | r13-5 full replacement, 4 candidates |
+| .agent/plan.md · context.md · handoff.md · last_block.md | rewrite | final F075-closed state · this handback · OUTCOME |
 
 ## External actions
-- 6x `git push -u origin feature/f075-self-run-gauntlet`, one per commit — OK. NO force-push (R-0195).
-- `git worktree add -b tmp/base-gate-r12 <scratchpad>/base-gate 563b15b4` — OK; then `remove --force` + `prune` + `git branch -D` → `Deleted branch tmp/base-gate-r12 (was 563b15b4)`, `git worktree list` = primary only.
-- No PR, no gh command, nothing merged.
+- 4x `git push origin feature/f075-self-run-gauntlet`, one per commit — OK. NO force-push (R-0195).
+- `bash scripts/make_review_zip.sh --evidence-dir <scratch>/remedy-job-evidence-f075-closure` — REVIEW_PACKAGE_CREATED=true.
+- `gh pr create --base main` runs AFTER this commit (Rule A4 puts the STATUS edit last), so the number is reported in the session handback, not here — the F071 closure precedent. NOT merged (protocol §6). No other gh command.
 
 ## Verification
-```
-$ pytest tests/cli/test_golden_path.py -q     42 passed 15.32s   EXIT=0  (P1 gate)
-$ pytest tests/orchestration/test_long_run_executor.py -q  74 passed  EXIT=0  (P2)
-$ pytest tests/docs/ -q                       293 passed         EXIT=0  (P2)
-$ grep -n '^CYCLE_SAFETY_CAP' packages/orchestration/long_run_executor.py
-  165:CYCLE_SAFETY_CAP = 1        <- diff is a FILE; the change is NOT applied
-$ git apply --check docs/adr/0001-raise-cycle-safety-cap.diff   APPLIES CLEANLY  EXIT=0
-$ pytest -n auto -q       BRANCH dcde0698  15805 passed, 19 skipped, 183.39s   EXIT=0
-$ REMEDY_UI_NO_AUTO_BUILD=1 pytest -n auto -q  BASE 563b15b4  6 failed, 15377 passed, 19 skipped, 147.95s  EXIT=1
-$ comm -13 base_failed branch_failed   (empty)  <- branch-only
-$ comm -23 base_failed branch_failed   6x tests/ui_server/test_live_state.py::TestUIServerIntegration::*
-$ REMEDY_UI_NO_AUTO_BUILD=1 pytest ...::TestUIServerIntegration -q  serial, base worktree  16 passed  EXIT=0
-$ pytest tests/cli/test_golden_path.py -q     42 passed 15.67s   EXIT=0  (canary)
-$ git status --porcelain   (empty)
-```
-GATE RESULT: branch exit 0, **0 branch-only failures**, 0 unattributed comm -23 ids.
-The six base-only ids are R-0169 recurring — the suite rebuilt the UI mid-run despite
-`REMEDY_UI_NO_AUTO_BUILD=1`, racing the UI server. Per id: same stderr `ERROR: React UI
-not built.`; dist CONTENT hash identical before/after (5ff2033a…, F071 R3's digest) yet
-base `dist/index.html` mtime 13:25:23 and `.vite/deps` 13:23:06 sit INSIDE the base run;
-staleness ruled out (dist newer than every `apps/ui/src` file); all six pass serially in
-the same worktree; no F075 commit touches apps/ui or ui_server. Per-id evidence:
-`.agent/gate_f075_r12/attribution.txt`.
+`pytest tests/cli/test_golden_path.py -q` → 42 passed, EXIT=0 (P1, P2, closure) · `pytest tests/docs/ -q` → 293 passed, EXIT=0 (P2, closure) · `remedy integrity check --json` → `passed: true`, every check pass · `git status --porcelain` empty at every phase boundary.
+EVIDENCE JOB **b1b6eb7ed4962309** — `create_manual_completion_bundle(review_feature_id="f075")`, base 563b15b4d35b785563d9720fb762d393883d744d, head 36f3bc8150a9bdaae3c1e3a743c1621998c48691, 4 verification runs (272 / 42 / 293 / 74 = 681 passed), authority 76, verdict PASS_WITH_RISKS; built OUTSIDE the repo, NOT committed. Coordinator validation attempt 1 → `ok: False`, raw blocking_reasons: `"final_verifier_report.json test_status.passed cannot be confirmed: the VerificationTests total is missing or invalid"` and `"verification_tests.json runs[0] test_files is not sorted"`. Fixed AT THE CAUSE (test_files sorted at authoring), rejected dir deleted, rebuilt → attempt 2 `ok: True`, `blocking_reasons: []`.
+REVIEW ZIP **remedy-review-20260805-144354-READY_FOR_REVIEW.zip** · SHA-256 `d63cda6b2b9e83bf993889d33fa716646f712f90eabc992a472d12390b8910d3` (recomputed independently with sha256sum — equal to the builder's report) · PACKAGE_STATUS=READY_FOR_REVIEW · REVIEW_SUBJECT_ALIGNMENT=PASS · EVIDENCE_AUTHORITATIVE=true · committed_review_subject 563b15b4…d744d → 36f3bc81…c48691 (the accepted HEAD) · 2064 members, 76 authoritative · `testzip` → no bad member · import smoke over the PACKAGED sources (extracted to tmp, removed after): PASS_CRITERIA len 9, GAUNTLET_ORDER_SET_VERSION 4, gauntlet_runner imports → PASS.
 
 ## Authored-text proofs
-| text | sha256 vs BEGIN digest | applied |
+| text | sha256 vs BEGIN digest | applied, byte-identical |
 |---|---|---|
-| f075-r12-1 | acc6fcfb…8be4 EQUAL | `cmp` 0 vs .agent/live_review.md |
-| f075-r12-2 | 11349415…1696 EQUAL | `cmp` 0 vs .agent/plan.md |
-| f075-r12-3 | 5747f126…eee6 EQUAL | `cmp` 0 vs .agent/context.md |
+| f075-r13-1 | 67b700f9…d1e0 EQUAL | TO block occurs 1x in live_review.md, tail-anchored |
+| f075-r13-2 | 9c3e097e…3a72 EQUAL | occurs 1x in T1_F075.md, file ends with it, prior content intact as prefix |
+| f075-r13-3 | b6ff64e8…f94b EQUAL | TO line occurs 1x in STATUS.md, ONE line of 347 chars, 4 placeholders filled |
+| f075-r13-4 | 91123541…873d EQUAL | both TO lines occur 1x in README.md, both FROM lines gone |
+| f075-r13-5 | 55af55f4…b030 EQUAL | `cmp` exit 0 vs .agent/candidates.md |
 
-DECLARED, transport: r12-2 as received hashed b55c4de1…. Cause isolated to ONE dropped
-blank line before `## Risks`; restoring it reproduced 11349415… exactly. r12-1/r12-3
-hashed correct on first extraction, which makes the one-line diagnosis safe, not a guess.
-Nothing was applied until all three matched; the archived block was fixed too (ba266dab).
+DECLARED, transport — two defects, both caught by the digests BEFORE anything was applied, neither guessed: (1) a duplicated instruction region (PHASE 4 tail through the end of PHASE 6) was injected between the first `BEGIN f075-r13-1` marker and the real payload — the complete second BEGIN/END pair hashes to 67b700f9, proving the first marker plus duplicate is corruption; (2) r13-3 arrived WRAPPED across three lines, the exact F071 lesson the block itself names — unwrapping to one line reproduced b6ff64e8. Both repairs are in the archived block (b49e6bdb).
 
 ## Deviations & assumptions
-- ADR location: repo had NO ADR convention (no `docs/adr/`, no `*adr*` file, no index
-  section). Chose `docs/adr/`, precedent `docs/agents/` + `docs/ui/`; alternatives and
-  rejections in `.agent/decisions.md`.
-- ADR number 8: per-run cycle CONSUMPTION is unrecoverable — it lived in each run's
-  `gauntlet_run.json` under the campaign root outside the repo (R-0176), since reclaimed.
-  The ADR argues from the proven CEILING (budgets 3–8, ten `achieved`) and says so openly
-  instead of inventing a measured-max-plus-margin figure. `DEFAULT_MAX_CYCLES` stays 1.
-- Extra commit ba266dab, not in the block: the transport fix above. The mid-run UI
-  rebuild deserves its own order — offered as a closure candidate, not filed (your call).
+- The evidence-job rebuild after a coordinator rejection is protocol-ordered, not a deviation; raw reasons above. The evidence dir stays in session scratch and is NOT committed — the durable pointer is package + SHA-256 + job id in the STATUS line.
+- Runtime actuals as authored: 13 rounds 2026-08-04..05, three live campaigns + seven `--only` re-proofs, tokens **not-measured** (the local provider reports no ledger usage).
 
 ## Next
-Window 1 reviews R12 and issues the gate verdict; then R13, closure per `STATUS_closure_protocol.md`.
+The Open PR Gate at the next feature's start merges the closure PR; F079 (Context handoffs) begins in a fresh session and its FIRST reviewed round must empty .agent/candidates.md (4 entries).

@@ -1,38 +1,26 @@
-# Plan — F075 MILESTONE GATE: 10 flawless self-runs
+# Plan — F075 MILESTONE GATE: 10 flawless self-runs — CLOSED
 
-Branch: feature/f075-self-run-gauntlet
+Branch: feature/f075-self-run-gauntlet (closure PR open, not merged)
 
 ## Goal
-Autonomy earned with data, not vibes — AND NOW EARNED: attempt 03
-ran the ten frozen orders unattended, 10/10 flawless from ONE
-invocation, all four injected harness failures survived and
-ledgered, host untouched, zero refusals needed. DONE when the
-prepared config diff + ADR name the evidence (human-applied,
-never the harness) and the integration gate + closure protocol
-confirm the branch. Attempt history 0/10 -> 3/10 -> 10/10 KEPT
-under .agent/gauntlet/.
+DONE. Autonomy earned with data: the gauntlet harness ran ten frozen
+mission orders unattended and judged each against a strict, falsifiable
+pass definition. Attempt 03 = 10/10 FLAWLESS from ONE invocation, the
+attempt history 0/10 -> 3/10 -> 10/10 kept under .agent/gauntlet/. The
+integration gate passed (branch full suite exit 0, zero branch-only
+failures) and closure ran per STATUS_closure_protocol.md: Built State
+recorded, evidence job built, READY_FOR_REVIEW package produced,
+STATUS [x] and README synced in one commit.
 
 ## Current Step
-R12 (SPLIT, LARGE): persist R11 verdict + prepare the
-CYCLE_SAFETY_CAP config diff + ADR — prepared, NOT applied,
-naming the attempt-03 evidence and the measured cycle usage;
-location and ADR convention inspected first, decisions recorded —
-+ the INTEGRATION GATE per docs/agents/integration_gate.md (full
-suite base vs branch, run logs outside the repo, raw tails into
-.agent/gate_f075_r12/). T003 completes when this round passes.
+None — F075 is closed. The closure PR is open and NOT merged; it merges
+at the next feature's Open PR Gate.
 
 ## Next Steps
-- R13: closure per STATUS_closure_protocol.md — evidence job,
-  fresh review zip, STATUS [x], README sync, PR; closure
-  candidates registered (F070 review gap; absent resume verb;
-  R-0199 campaign I/O).
-
-## Risks
-- The ADR proposes; a human disposes — the diff must be
-  applicable but NOT applied, and CI/tests must stay green
-  WITHOUT it.
-- The integration gate is the round's verdict-carrier: a
-  regression there is a normal repair round, not a crisis.
-- Do-not-touch: config defaults by machine, the pass definition,
-  order/template edits; the oversize exemption stays spent; NEVER
-  force-push (R-0195).
+- Next feature per Rule A5: F079 (Context handoffs), fresh session.
+- Its FIRST reviewed round must empty .agent/candidates.md — four
+  entries are carried there (F070 review gap; absent resume verb;
+  R-0199 campaign I/O; the recurring mid-run UI rebuild). A non-empty
+  candidates file at feature-claim time is a block condition.
+- ADR-0001 (docs/adr/) awaits a human: raise CYCLE_SAFETY_CAP 1 -> 8.
+  Prepared, NOT applied. No agent applies it.

@@ -1,3 +1,5 @@
+OUTCOME: done — F075 R13 CLOSURE complete. R12 gate verdict persisted; Built State recorded (accepted HEAD 36f3bc81); evidence job b1b6eb7ed4962309; package remedy-review-20260805-144354-READY_FOR_REVIEW.zip READY_FOR_REVIEW; STATUS [x] + README synced; closure PR open, NOT merged.
+
 You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
 10 flawless self-runs, round R13: CLOSURE per
 docs/roadmap/STATUS_closure_protocol.md (v4) — read it and follow it
