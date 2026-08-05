@@ -244,9 +244,21 @@ class RaiseOnceInjector:
                                   f"{INJECTION_SEAMS[self.injection_class]}")
             return self.record
         if facts.terminal_ok:
+            if facts.postmortems:
+                # R-0196: the boundary now continues on a retryable class, so
+                # a green terminal AFTER a written post-mortem is the fault
+                # being survived, not swallowed. The difference is whether the
+                # run kept an account of it — which is the same question this
+                # method has always asked, on a shape the product can now
+                # produce. The closed disposition set is untouched.
+                self.record.disposition = DISPOSITION_RETRIED
+                self.record.detail += (
+                    f"; ledgered with {facts.postmortems} post-mortem(s), then "
+                    f"the run recovered and finished")
+                return self.record
             self.record.disposition = DISPOSITION_SILENT_SUCCESS
-            self.record.detail += ("; the run still reached a green terminal, so "
-                                   "the fault was swallowed")
+            self.record.detail += ("; the run reached a green terminal with "
+                                   "NOTHING recorded, so the fault was swallowed")
             return self.record
         if facts.terminal == TERMINAL_ESCALATED:
             self.record.disposition = DISPOSITION_ESCALATED

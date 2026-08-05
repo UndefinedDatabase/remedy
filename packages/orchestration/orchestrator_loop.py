@@ -829,6 +829,12 @@ def run_mission(
     #: loop's own second-refusal rule is the precedent.
     blocked_milestone = ""
     blocked_blockers: list[str] = []
+    #: R-0196: consecutive boundary-caught RETRYABLE failures for one
+    #: milestone. One transient fault is worth another iteration; two in a row
+    #: on the same milestone is a fault that is not passing, so a human hears
+    #: about it instead of the budget draining into the same exception.
+    boundary_milestone = ""
+    boundary_failures: list[str] = []
 
     def _record(iteration: int, digest: str, move: dict[str, Any],
                 outcome: MoveOutcome, cost: dict[str, Any]) -> None:
@@ -871,8 +877,11 @@ def run_mission(
         # terminal — never an escape that leaves the run with no account of
         # itself. `except Exception` deliberately does NOT catch
         # KeyboardInterrupt or SystemExit: an operator stopping Remedy is not
-        # a failure to classify. No retry lives here either — transport
-        # retries belong below call_fn (F001).
+        # a failure to classify. Since R-0196 a RETRYABLE class costs the
+        # iteration and the loop continues; every other class, unknown
+        # included, still ends the run. No retry lives here either — transport
+        # retries belong below call_fn (F001), and the next iteration decides
+        # afresh rather than re-issuing the call that raised.
         digest = ""
         cost: dict[str, Any] = {"calls": 0, "usage": None,
                                 "usage_source": USAGE_UNMEASURED}
@@ -953,6 +962,9 @@ def run_mission(
             if outcome.terminal:
                 result.terminal, result.detail = outcome.status, outcome.detail
                 return result
+            # An iteration that decided and executed a move ends any
+            # boundary-failure streak: the fault did not persist (R-0196).
+            boundary_milestone, boundary_failures = "", []
 
             # R-0190: a gate that blocked twice in a row for the same milestone
             # is a human's problem, not a third identical dispatch.
@@ -984,12 +996,43 @@ def run_mission(
         except Exception as exc:
             failure_class, detail = record_iteration_failure(
                 pid, mission_id, exc, root=root, iteration=iteration)
-            outcome = MoveOutcome(status=TERMINAL_ITERATION_FAILED,
-                                  detail=detail, terminal=True)
-            _record(iteration, digest, {}, outcome, cost)
-            result.terminal, result.detail = TERMINAL_ITERATION_FAILED, detail
             result.iterations = step
-            return result
+            if not _is_retryable(failure_class):
+                outcome = MoveOutcome(status=TERMINAL_ITERATION_FAILED,
+                                      detail=detail, terminal=True)
+                _record(iteration, digest, {}, outcome, cost)
+                result.terminal, result.detail = TERMINAL_ITERATION_FAILED, detail
+                return result
+
+            # R-0196: a transient transport or machine fault costs this
+            # iteration, not the mission. The failure is classified, its
+            # post-mortem written and the iteration ledgered — then the loop
+            # goes round again under the SAME budgets. Still no retry lives
+            # here: the next iteration re-decides from a fresh context, which
+            # is not the same thing as re-issuing a call (F001).
+            milestone = working_milestone(mission)
+            if milestone != boundary_milestone:
+                boundary_milestone, boundary_failures = milestone, []
+            boundary_failures.append(detail)
+            if len(boundary_failures) >= BOUNDARY_FAILURES_BEFORE_ESCALATION:
+                reason = (
+                    f"milestone {milestone or '(none)'}: {len(boundary_failures)} "
+                    f"caught iteration failures in a row "
+                    f"({'; '.join(boundary_failures)}). Retrying a third time "
+                    f"would spend {bounds.max_iterations - step} more "
+                    f"iteration(s) of this run's budget on the same fault.")
+                handle = hand_over(pid, mission_id, reason)
+                escalated = MoveOutcome(
+                    status=TERMINAL_ESCALATED,
+                    detail=f"{reason} escalated: {handle}",
+                    terminal=True)
+                _record(iteration, digest, {}, escalated, cost)
+                result.terminal, result.detail = TERMINAL_ESCALATED, escalated.detail
+                return result
+            _record(iteration, digest, {},
+                    MoveOutcome(status=OUTCOME_ITERATION_RETRYING, detail=detail),
+                    cost)
+            continue
 
     result.terminal = TERMINAL_ITERATION_LIMIT
     result.detail = (f"reached the {bounds.max_iterations}-iteration limit "
@@ -1017,6 +1060,41 @@ IN_FLIGHT_JOB_STATES = ("pending", "planned", "running")
 #: informed retry — the context already carries the blocker — and the second
 #: says the retry did not work.
 BLOCKED_COMPLETIONS_BEFORE_ESCALATION = 2
+
+#: The failure classes a caught iteration may be retried on (R-0196). NARROW
+#: and named on purpose: both mean "the machine or the transport hiccuped",
+#: which is exactly the fault another iteration can get past. Everything else
+#: — a config error, a fence violation, a parse defect, and above all
+#: ``unknown`` — still ends the run, because retrying a fault Remedy does not
+#: understand is how a budget disappears without an account of itself.
+RETRYABLE_FAILURE_CLASSES: frozenset[str] = frozenset({
+    "provider_unavailable", "io_failure"})
+
+#: How many consecutive boundary-caught retryable failures on ONE milestone
+#: the loop tolerates. Two, matching R-0190 and the refuse-once rule.
+BOUNDARY_FAILURES_BEFORE_ESCALATION = 2
+
+
+def _is_retryable(failure_class: Any) -> bool:
+    """Membership by VALUE, so the loop never imports F010's enum at module
+    scope and a class added there is not silently retried here."""
+    return getattr(failure_class, "value",
+                   str(failure_class)) in RETRYABLE_FAILURE_CLASSES
+
+
+def working_milestone(mission: Any) -> str:
+    """The milestone a failed iteration was working: the first not yet done.
+
+    The exception may have been raised before any move existed, so the
+    milestone cannot come from the move. It comes from the same plan order the
+    loop itself follows, which is what makes "twice in a row on the SAME
+    milestone" a statement about the work rather than about the exception.
+    """
+    done = set(done_milestones(mission))
+    for milestone_id in milestone_ids(mission):
+        if milestone_id not in done:
+            return milestone_id
+    return ""
 
 
 def _was_dispatch(move: Any) -> bool:
@@ -1319,6 +1397,12 @@ def _auto_approve_if_gated(job: Any) -> bool:
 #: A move the evaluator refused. Not terminal on its own: the loop re-prompts
 #: once with the reason, and only a SECOND refusal escalates.
 OUTCOME_REFUSED = "refused"
+
+#: An iteration the boundary caught on a RETRYABLE class (R-0196). An OUTCOME_
+#: and deliberately NOT a TERMINAL_: the iteration is spent and accounted for,
+#: the mission is not over. The ledger keeps it so a run that succeeded on the
+#: second attempt still says out loud that the first one failed.
+OUTCOME_ITERATION_RETRYING = "iteration_failed_retrying"
 
 #: A second refusal in a row reached a human through the escalation verb.
 TERMINAL_ESCALATED = "escalated"

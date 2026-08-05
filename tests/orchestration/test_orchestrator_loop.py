@@ -62,6 +62,7 @@ from packages.orchestration.orchestrator_loop import (
     DOSSIER_FILENAME,
     LEDGER_FILENAME,
     MILESTONES_DONE_KEY,
+    OUTCOME_ITERATION_RETRYING,
     OUTCOME_REFUSED,
     PROTOCOL_DOC_RELATIVE,
     PROTOCOL_VERSION,
@@ -89,6 +90,9 @@ from packages.orchestration.orchestrator_loop import (
     JobExecution,
     MoveOutcome,
     blocked_completion,
+    working_milestone,
+    BOUNDARY_FAILURES_BEFORE_ESCALATION,
+    RETRYABLE_FAILURE_CLASSES,
     SECTION_DIRECTIVES,
     released_milestone_directives,
     all_milestones_done,
@@ -1423,7 +1427,11 @@ class TestTheIterationBoundary:
 
         result = run_mission(mission.id, LoopLimits(max_iterations=2),
                              project_id=PROJECT, root=tmp_path, call_fn=boom)
-        assert result.terminal == TERMINAL_ITERATION_FAILED
+        # R-0196: provider_unavailable is retryable, so the second identical
+        # failure on the same milestone escalates rather than ending the run
+        # at the first. The CLASS is what this test is about, and it is
+        # unchanged.
+        assert result.terminal == TERMINAL_ESCALATED
         body = json.loads(self._postmortems(tmp_path, mission.id)[0]
                           .read_text(encoding="utf-8"))
         assert body["failure_class"] == "provider_unavailable"
@@ -1439,7 +1447,8 @@ class TestTheIterationBoundary:
                              call_fn=_scripted(_move_json("wait_on_decisions",
                                                           reason="waiting")),
                              update_dossier=die)
-        assert result.terminal == TERMINAL_ITERATION_FAILED
+        # R-0196, as above: io_failure is retryable, so two in a row escalate.
+        assert result.terminal == TERMINAL_ESCALATED
         body = json.loads(self._postmortems(tmp_path, mission.id)[0]
                           .read_text(encoding="utf-8"))
         assert body["failure_class"] == "io_failure"
@@ -1504,15 +1513,21 @@ class TestTheLoopExecutesWhatItDispatches:
 
     def test_a_raising_executor_degrades_through_the_boundary(
             self, tmp_path, mission, dispatched):
-        """Execution lives INSIDE the R3 boundary: it must not escape."""
+        """Execution lives INSIDE the R3 boundary: it must not escape.
+
+        R-0196 changed what "degrades" means for this class: an OSError is a
+        machine fault, so the iteration is ledgered and the loop goes round
+        again. Here the budget is one iteration, so the run ends on the limit
+        — the assertions that matter are that nothing escaped and that the
+        failure is on the record."""
         def execute(job):
             raise OSError("the executor died mid-cycle")
 
         result = self._run(tmp_path, mission, execute, dispatched)
-        assert result.terminal == TERMINAL_ITERATION_FAILED
-        assert "the executor died mid-cycle" in result.detail
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
         entries = read_ledger(PROJECT, mission.id, tmp_path)
-        assert entries[-1]["outcome"]["status"] == TERMINAL_ITERATION_FAILED
+        assert entries[-1]["outcome"]["status"] == OUTCOME_ITERATION_RETRYING
+        assert "the executor died mid-cycle" in entries[-1]["outcome"]["detail"]
         body = json.loads(sorted(mission_evidence_dir(PROJECT, mission.id, tmp_path)
                                  .rglob("postmortem.json"))[0]
                           .read_text(encoding="utf-8"))
@@ -2214,3 +2229,198 @@ class TestTheReleasedGateDirective:
         statuses = [e["outcome"]["status"]
                     for e in read_ledger(PROJECT, mission.id, tmp_path)]
         assert OUTCOME_REFUSED not in statuses, "no iteration spent on a refusal"
+
+
+# ---------------------------------------------------------------------------
+# F075 R-0196 — a retryable failure costs the iteration, not the mission
+# ---------------------------------------------------------------------------
+#
+# Campaign attempt 02 found the boundary ending three missions at iteration 1
+# on transient faults, with zero milestones and therefore no DoD verdict at
+# all. g07 proved in the same campaign that degrade-and-continue is possible;
+# these tests pin that the boundary now does it, and — just as load-bearing —
+# that it still refuses to do it for a fault Remedy cannot name.
+
+class TestTheBoundaryContinuesOnRetryableFailures:
+
+    def _released(self, job_id: str = "job-0001") -> MilestoneEvidence:
+        return MilestoneEvidence(job_id=job_id, job_state="completed",
+                                 gate_released=True)
+
+    def _finishing(self, tmp_path, mission, dispatched):
+        """Deps for a mission that can actually reach `achieved`."""
+        def execute(job):
+            return JobExecution(terminal_status="all_green",
+                                job_status="completed", gate_released=True)
+
+        def observe(project_id, mission_id, milestone_id):
+            job = dispatched_job_for(PROJECT, mission.id, milestone_id, tmp_path)
+            return self._released(job) if job else MilestoneEvidence()
+
+        return {"dispatch": dispatched, "execute": execute, "evidence": observe}
+
+    def _plan_moves(self):
+        return [
+            _move_json("dispatch_job", milestone_id="M001", step="build it"),
+            _move_json("declare_milestone_done", milestone_id="M001"),
+            _move_json("dispatch_job", milestone_id="M002", step="polish it"),
+            _move_json("declare_milestone_done", milestone_id="M002"),
+            _move_json("declare_mission_achieved"),
+        ]
+
+    def _raises_once(self, exc: BaseException):
+        """A provider that fails its FIRST call and then plays the script."""
+        script = self._plan_moves()
+        calls: list[int] = []
+
+        def call_fn(prompt, attempt):
+            calls.append(attempt)
+            if len(calls) == 1:
+                raise exc
+            index = min(len(calls) - 2, len(script) - 1)
+            return script[index]
+
+        return call_fn
+
+    def test_a_provider_error_costs_one_iteration_and_the_mission_finishes(
+            self, tmp_path, mission, dispatched):
+        """The g06 shape: HTTP 503 on the first move used to end the run."""
+        boom = ConnectionError("provider API error mid-move: the model host "
+                               "returned HTTP 503 and closed the connection")
+        result = run_mission(mission.id, LoopLimits(max_iterations=8),
+                             project_id=PROJECT, root=tmp_path, call_fn=
+                             self._raises_once(boom),
+                             **self._finishing(tmp_path, mission, dispatched))
+        assert result.terminal == TERMINAL_ACHIEVED
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert entries[0]["outcome"]["status"] == OUTCOME_ITERATION_RETRYING
+        assert "HTTP 503" in entries[0]["outcome"]["detail"]
+        assert entries[-1]["outcome"]["status"] == TERMINAL_ACHIEVED
+
+    def test_the_failed_iteration_still_writes_its_postmortem(
+            self, tmp_path, mission, dispatched):
+        """Continuing must not turn the failure into a silence."""
+        boom = ConnectionError("provider API error mid-move: HTTP 503")
+        run_mission(mission.id, LoopLimits(max_iterations=8), project_id=PROJECT,
+                    root=tmp_path, call_fn=self._raises_once(boom),
+                    **self._finishing(tmp_path, mission, dispatched))
+        written = sorted(mission_evidence_dir(PROJECT, mission.id, tmp_path)
+                         .rglob("postmortem.json"))
+        assert len(written) == 1
+        body = json.loads(written[0].read_text(encoding="utf-8"))
+        assert body["failure_class"] == "provider_unavailable"
+
+    def test_a_machine_fault_mid_write_costs_one_iteration_too(
+            self, tmp_path, mission, dispatched):
+        """The g09 shape: killed while writing the dossier."""
+        deaths: list[int] = []
+
+        def die(project_id, mission_id, mission, **kwargs):
+            deaths.append(1)
+            if len(deaths) == 1:
+                raise OSError("harness death mid-write: killed while writing "
+                              "the dossier")
+
+        result = run_mission(mission.id, LoopLimits(max_iterations=8),
+                             project_id=PROJECT, root=tmp_path,
+                             call_fn=_scripted(*self._plan_moves()),
+                             update_dossier=die,
+                             **self._finishing(tmp_path, mission, dispatched))
+        assert result.terminal == TERMINAL_ACHIEVED
+        entries = read_ledger(PROJECT, mission.id, tmp_path)
+        assert entries[0]["outcome"]["status"] == OUTCOME_ITERATION_RETRYING
+        body = json.loads(sorted(mission_evidence_dir(PROJECT, mission.id,
+                                                      tmp_path)
+                                 .rglob("postmortem.json"))[0]
+                          .read_text(encoding="utf-8"))
+        assert body["failure_class"] == "io_failure"
+
+    def test_two_in_a_row_on_one_milestone_reaches_a_human(self, tmp_path,
+                                                           mission):
+        """A fault that is not passing is not worth the rest of the budget."""
+        handed: list[str] = []
+
+        def escalate(project_id, mission_id, reason):
+            handed.append(reason)
+            return "decision-0001"
+
+        def always(prompt, attempt):
+            raise ConnectionError("provider API error mid-move: HTTP 503")
+
+        result = run_mission(mission.id, LoopLimits(max_iterations=9),
+                             project_id=PROJECT, root=tmp_path, call_fn=always,
+                             escalate=escalate)
+        assert result.terminal == TERMINAL_ESCALATED
+        assert result.iterations == BOUNDARY_FAILURES_BEFORE_ESCALATION
+        assert len(handed) == 1
+        assert handed[0].count("HTTP 503") == 2, "both failures named"
+        assert "M001" in handed[0], "the milestone that was being worked"
+
+    def test_a_successful_iteration_clears_the_streak(self, tmp_path, mission,
+                                                      dispatched):
+        """Two failures far apart are not two in a row."""
+        script = self._plan_moves()
+        calls: list[int] = []
+
+        def call_fn(prompt, attempt):
+            calls.append(attempt)
+            if len(calls) in (1, 3):
+                raise ConnectionError("provider API error mid-move: HTTP 503")
+            index = min(len(calls) - (3 if len(calls) > 3 else 2),
+                        len(script) - 1)
+            return script[index]
+
+        result = run_mission(mission.id, LoopLimits(max_iterations=9),
+                             project_id=PROJECT, root=tmp_path, call_fn=call_fn,
+                             **self._finishing(tmp_path, mission, dispatched))
+        assert result.terminal == TERMINAL_ACHIEVED, \
+            "the dispatch between them reset the streak"
+        statuses = [e["outcome"]["status"]
+                    for e in read_ledger(PROJECT, mission.id, tmp_path)]
+        assert statuses.count(OUTCOME_ITERATION_RETRYING) == 2
+        assert TERMINAL_ESCALATED not in statuses
+
+    @pytest.mark.parametrize("text, expected", [
+        ("the flurb did not glorp", "unknown"),
+        # A timeout IS a provider fault and is still not in the set: the
+        # decision named two classes, not "anything provider-shaped".
+        ("request timed out", "provider_timeout"),
+    ])
+    def test_a_class_outside_the_narrow_set_still_ends_the_run(
+            self, tmp_path, mission, text, expected):
+        """Retrying a fault Remedy cannot name is how a budget disappears."""
+        def boom(prompt, attempt):
+            raise RuntimeError(text)
+
+        result = run_mission(mission.id, LoopLimits(max_iterations=6),
+                             project_id=PROJECT, root=tmp_path, call_fn=boom)
+        assert result.terminal == TERMINAL_ITERATION_FAILED
+        assert result.iterations == 1, "one catch, then the run ends"
+        body = json.loads(sorted(mission_evidence_dir(PROJECT, mission.id,
+                                                      tmp_path)
+                                 .rglob("postmortem.json"))[0]
+                          .read_text(encoding="utf-8"))
+        assert body["failure_class"] == expected
+
+    def test_the_retryable_set_is_exactly_the_two_named_classes(self):
+        """NARROW by decision. Widening it is a reviewed change, not a typo."""
+        assert RETRYABLE_FAILURE_CLASSES == frozenset(
+            {"provider_unavailable", "io_failure"})
+
+    def test_the_working_milestone_is_the_first_one_not_done(self, tmp_path,
+                                                             mission):
+        assert working_milestone(mission) == "M001"
+        mark_milestone_done(PROJECT, mission.id, "M001", tmp_path)
+        assert working_milestone(
+            load_mission(PROJECT, mission.id, tmp_path)) == "M002"
+
+    def test_an_operator_stop_is_still_not_a_failure_to_classify(self, tmp_path,
+                                                                 mission):
+        """KeyboardInterrupt and SystemExit never became retryable."""
+        for stopper in (KeyboardInterrupt, SystemExit):
+            def raising(*args, **kwargs):
+                raise stopper()
+
+            with pytest.raises(stopper):
+                run_mission(mission.id, LoopLimits(max_iterations=4),
+                            project_id=PROJECT, root=tmp_path, call_fn=raising)

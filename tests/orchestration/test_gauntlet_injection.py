@@ -166,14 +166,47 @@ def test_a_caught_and_classified_raise_is_a_ledgered_failure(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", RAISE_CLASSES)
-def test_a_green_terminal_after_the_fault_fired_is_a_silent_success(name: str) -> None:
-    """The failure this criterion exists to catch: success claimed over a fault."""
+def test_a_green_terminal_with_nothing_recorded_is_a_silent_success(name: str) -> None:
+    """The failure this criterion exists to catch: success claimed over a fault.
+
+    "Nothing recorded" is the whole of it. Before R-0196 a green terminal
+    could only mean the fault vanished, because the boundary ended every run
+    it caught; now a run can survive one, so the post-mortem count is what
+    separates surviving a fault from swallowing it."""
     injector = RaiseOnceInjector(injection_class=name, inner=lambda *a: None)
     with pytest.raises(Exception):
         injector()
     record = injector.settle(GREEN_FACTS)
     assert record.disposition == DISPOSITION_SILENT_SUCCESS
     assert "swallowed" in record.detail
+
+
+@pytest.mark.parametrize("name", RAISE_CLASSES)
+def test_a_green_terminal_over_a_ledgered_fault_is_a_retry_within_budget(
+        name: str) -> None:
+    """R-0196's shape: caught, classified, ledgered — then the run finished."""
+    injector = RaiseOnceInjector(injection_class=name, inner=lambda *a: None)
+    with pytest.raises(Exception):
+        injector()
+    record = injector.settle(RunOutcomeFacts(terminal=TERMINAL_ACHIEVED,
+                                             postmortems=1))
+    assert record.disposition == DISPOSITION_RETRIED
+    assert "recovered and finished" in record.detail
+    assert "swallowed" not in record.detail
+
+
+def test_the_two_green_readings_differ_only_by_the_post_mortem() -> None:
+    """One fact decides it, so the reading cannot drift from the evidence."""
+    dispositions = set()
+    for count in (0, 1):
+        injector = RaiseOnceInjector(injection_class=RAISE_CLASSES[0],
+                                     inner=lambda *a: None)
+        with pytest.raises(Exception):
+            injector()
+        dispositions.add(injector.settle(
+            RunOutcomeFacts(terminal=TERMINAL_ACHIEVED,
+                            postmortems=count)).disposition)
+    assert dispositions == {DISPOSITION_SILENT_SUCCESS, DISPOSITION_RETRIED}
 
 
 def test_an_escalated_run_settles_as_escalated() -> None:

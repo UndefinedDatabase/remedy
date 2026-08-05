@@ -3429,3 +3429,39 @@ cannot reach `achieved`, so three of ten runs are unwinnable by construction.
 Direction (a reviewer decision, NOT taken here): ledger, write the postmortem,
 and continue the loop until a budget or a repeat-failure rule stops it. NO retry
 inside the boundary — transport retries live below `call_fn` (F001).
+
+## 2026-08-05: F075 R11 — R-0196 the boundary continues on retryable classes
+
+Campaign attempt 02 showed three missions dying at iteration 1 on transient
+faults, with zero milestones and therefore no DoD verdict at all — while g07's
+truncation, handled below the boundary, recovered and finished flawless. The
+boundary now makes that distinction itself.
+
+Decisions:
+1. **The set is NARROW and named**: `provider_unavailable` and `io_failure`,
+   compared by VALUE so F010 can add a class without it being silently retried
+   here. A timeout is a provider fault and is deliberately NOT in the set — the
+   ruling named two classes, not "anything provider-shaped". `unknown` above
+   all still ends the run: retrying a fault Remedy cannot name is how a budget
+   disappears without an account of itself.
+2. **A new OUTCOME_, not a TERMINAL_.** `OUTCOME_ITERATION_RETRYING` keeps the
+   spent iteration on the ledger, so a run that succeeded on the second attempt
+   still says out loud that the first one failed. The post-mortem is written
+   exactly as before.
+3. **Two in a row on the SAME milestone escalates**, mirroring R-0190 and the
+   refuse-once rule. The milestone comes from `working_milestone` — the first
+   not yet done, the same plan order the loop follows — because the exception
+   may be raised before any move exists. Any executed move clears the streak.
+4. **Still no retry in the boundary.** The next iteration re-decides from a
+   fresh context, which is not re-issuing the call that raised; transport
+   retries stay below `call_fn` (F001).
+
+`gauntlet_injection.settle` needed the new shape, not a new rule: a green
+terminal now means "swallowed" only when NO post-mortem was written, and
+"recovered" (`retry_within_budget`) when one was. Same question it always
+asked — did the run keep an account of the fault — on a shape the product can
+now produce. The closed disposition set is untouched.
+
+Three existing tests asserted the old terminal and were updated with the reason
+stated inline; their subject (the failure CLASS) is unchanged. 14 new tests.
+Gate: loop/e2e/era/injection/runner 338, exit 0.
