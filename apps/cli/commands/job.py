@@ -914,6 +914,7 @@ def _cmd_job_resume(
         AllCheckpointsCorruptError,
         load_latest_valid,
         resolve_live_worktree_head,
+        worktree_drift_message,
     )
     from packages.orchestration.flight_plan import flight_plan_blocks_execution
     from packages.orchestration.safe_points import consume_stop, stop_requested
@@ -969,12 +970,8 @@ def _cmd_job_resume(
         live_head = resolve_live_worktree_head(jid)
         if live_head and live_head != checkpoint.worktree_head:
             print(
-                f"Error: worktree has moved since the checkpoint was written.\n"
-                f"  checkpoint head: {checkpoint.worktree_head}\n"
-                f"  worktree head:   {live_head}\n"
-                f"Resume refuses to rebase silently. Either restore the "
-                f"worktree to {checkpoint.worktree_head}, or start a fresh run "
-                f"for the current state.",
+                "Error: " + worktree_drift_message(
+                    checkpoint.worktree_head, live_head),
                 file=sys.stderr,
             )
             sys.exit(3)

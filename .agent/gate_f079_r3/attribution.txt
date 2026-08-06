@@ -1,0 +1,91 @@
+F079 R3 — INTEGRATION GATE, per docs/agents/integration_gate.md
+================================================================
+Branch HEAD : 561e401bc007b9d429d4d5aa40716bbc264345a3
+              (feature/f079-context-handoffs, after the R3 state commits)
+Merge base  : 38854f6034f1abff6f2c1e85e4d21752d33d66b6
+              (git merge-base main HEAD; main = the PR #180 merge)
+
+STEP 1 — BRANCH RUN
+  command : python3 -m pytest -n auto -q     (repo root, primary checkout)
+  exit    : 0
+  result  : 15853 passed, 19 skipped in 141.15s (0:02:21)
+  wall    : 141 s
+  FAILED  : 0 lines -> branch_failed.txt (empty)
+  raw     : branch_run.txt (written to the session scratchpad DURING the
+            run and copied in afterwards — R-0176: a log growing inside
+            the repo changes the worktree digest mid-run)
+
+STEP 2 — BASE RUN
+  worktree: git worktree add -b tmp/base-gate /tmp/claude-1000/f079-base-gate 38854f60
+            (throwaway BRANCH, not detached — the self-dogfood branch
+            guard refuses a detached HEAD by design, DECISION D3)
+  parity  : apps/ui/node_modules (305M) and apps/ui/dist (376K) COPIED
+            from the primary checkout with `cp -r` — never symlinked
+            (F053 R3: the UI auto-build writes THROUGH a symlink into
+            the primary checkout)
+  command : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+  exit    : 0
+  result  : 15805 passed, 19 skipped in 131.89s (0:02:11)
+  wall    : 132 s
+  FAILED  : 0 lines -> base_failed.txt (empty)
+  raw     : base_run.txt (same out-of-repo discipline)
+  cleanup : git worktree remove --force + git worktree prune +
+            git branch -D tmp/base-gate; `git worktree list` = primary only
+
+STEP 3 — COMPARE + R-0202 NEUTRALIZATION CHECK (mandatory this gate)
+  comm -13 base_failed.txt branch_failed.txt (branch-only failures) : EMPTY
+  comm -23 base_failed.txt branch_failed.txt (failures the branch fixed): EMPTY
+  Neither run failed anything, so there is no environment-coupled base
+  failure to attribute and no `comm -23` id to explain.
+
+  apps/ui/dist hash, base worktree AND primary, before vs after the base run
+  (sha256 over the sorted path+content manifest of the tree):
+    base_dist_before    = sha256:af0098490eab9ea6c04769f42fc2a35a6f37c93d85e4547e8223d7a5e7bdc344
+    base_dist_after     = sha256:af0098490eab9ea6c04769f42fc2a35a6f37c93d85e4547e8223d7a5e7bdc344
+    primary_dist_before = sha256:af0098490eab9ea6c04769f42fc2a35a6f37c93d85e4547e8223d7a5e7bdc344
+    primary_dist_after  = sha256:af0098490eab9ea6c04769f42fc2a35a6f37c93d85e4547e8223d7a5e7bdc344
+  UNCHANGED on both sides: no mid-run rebuild happened, in the base
+  worktree or through into the primary. The R-0202 class did NOT recur
+  in this gate; the parity claim stands. (R-0202 stays OPEN as a finding
+  — one clean gate is not the env-var hunt.)
+
+STEP 4 — ATTRIBUTION OF EVERY DIFFERING ID
+  There are no differing FAILURES to attribute (both sides: zero).
+  The runs differ in COUNT — 15853 vs 15805 passed, +48 — so every one
+  of those 48 ids is attributed here by collection diff:
+    python3 -m pytest --collect-only -q  (both trees)
+      branch collected : 15872 ids   (15853 passed + 19 skipped)
+      base collected   : 15824 ids   (15805 passed + 19 skipped)
+    comm -13 base_ids branch_ids -> ids_branch_only.txt : 48 ids
+    comm -23 base_ids branch_ids -> ids_base_only.txt   :  0 ids
+      (the full 15k-line id dumps are derived data and are NOT archived;
+       the 48-id difference below is the evidence)
+
+  All 48 branch-only ids are tests ADDED by this feature's R2 commits.
+  Per file, with the commit that introduced them:
+    tests/orchestration/test_handoff.py          39 ids
+      - 23 from 33db3aa5 (R1, T001) + 0ee4157f (R2, T002) + 8a25af2d
+        (R2, T003); the file does not exist at the merge base at all
+        (`git log 38854f60 -- tests/orchestration/test_handoff.py` is
+        empty), so every id in it is branch-only by construction.
+    tests/cli/test_mission_cmd.py                 5 ids
+      - TestHandoffCommand::* added by 0ee4157f (R2, T002 explicit
+        trigger). The file exists at base; only this class is new.
+    tests/orchestration/test_gauntlet_runner.py   4 ids
+      - test_a_removed_file_changes_the_digest,
+        test_a_resized_file_changes_the_digest,
+        test_a_touched_mtime_changes_the_digest,
+        test_the_digest_names_its_definition
+        added by e249ea15 (R2, the R-0199 metadata-manifest digest).
+  No id present at the base is missing on the branch (ids_base_only.txt
+  is empty), so nothing was deleted, renamed away or silently skipped.
+
+  Serial re-runs: not required — step 4 applies to branch-only
+  FAILURES, and there are none. No xdist-flake class, no reproducible
+  branch-only failure, therefore no blocker under the gate doc's rule.
+
+STEP 5 — BUDGET
+  141 s + 132 s wall clock, both under the ~5 min note threshold.
+
+The gate verdict itself is the reviewer's to issue. This file records
+what was executed and measured, nothing more.

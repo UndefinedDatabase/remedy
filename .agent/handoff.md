@@ -1,72 +1,56 @@
-# Handback — Amendment round amend0805-v3 (+ repair amend0805-v3-fix)
+# Handback — F079 R5 (CLOSURE PART 2: closure commit + PR)
 
-## Repair round amend0805-v3-fix (2026-08-05)
-Cause: B1 registration missed reg0803 ledger-count atomicity (count
-pin + README totals move with a registration). One commit, this
-branch, PR #180 stays open.
-| Edit | File | Change |
-|---|---|---|
-| 1 | tests/docs/test_docs_consistency.py | TOTAL_FEATURES 253 -> 254, comment lists F254 |
-| 2 | README.md:19 | 36 of 253 -> 36 of 254 registered items |
-| 3 | README.md tier table | Tier 2 total 13 -> 14 |
-| 4 (opt) | docs/system/architecture.md:2481 | stale "(Step 33+)" row reworded to D2's roadmap reference |
-Gates: tests/docs 293 passed (was 2 failed/291); test_golden_path.py
-42 passed. Both exit 0.
-Process note (round record): the amendment round ran only
-test_self_run_gauntlet.py while touching docs/roadmap/** — the
-docs-round gate rule applies to amendment rounds exactly as to
-feature rounds; relayed prompts must list their gates explicitly.
+Branch: feature/f079-context-handoffs. This IS the closure commit — the last
+commit on the branch (Rule A4). The PR is created after it and is NOT merged;
+it merges at the next feature's Open PR Gate.
 
-## Round
-Operator-relayed amendment amend0805-v3 (replaces amend0804 v1/v2 —
-neither ran). Boundary-agnostic, before F079's claim; NOT a feature
-claim, candidates block condition did not fire. Single-session per §3.
-Docs/planning only — no product code, no order/template edits.
+## The four closure values (as applied to STATUS.md, verbatim)
+    Evidence job a7f0791c4d6b2e58
+    package remedy-review-20260806-203747-READY_FOR_REVIEW.zip
+    SHA-256 f30d540afec921aa76aef40d754abc7d00f4026eb2a755aa53bf99e241a88eec
+    accepted HEAD abc33f79aac937d3504dddef7a72bdb22d4aa2d1
+PR created after this commit; its number and URL are in the completion report.
 
-## Branch
-feature/amend0805-v3 (from main after PR #179 merge at Open PR Gate).
+## Changed files per commit
+| Commit | Path | +/- | Reason |
+|---|---|---|---|
+| fffb4a61 (A1) | .agent/last_block.md | +264/-232 | R5 block saved verbatim (rides alone, 496 lines) |
+| 2c286d55 (A2) | .agent/authored/f079-r5-{1..6}.md | +170/-0 | six texts, sha256 verified |
+| B (this) | docs/roadmap/STATUS.md | +1/-1 | authored `[x]` line, F079's only line |
+| B (this) | README.md | +2/-2 | ledger sync: 37 of 254; Tier 1 21/22 (same commit as STATUS — R-0154) |
+| B (this) | .agent/candidates.md | rewrite | re-emit R-0200, R-0202 + the R3 xdist-flake id |
+| B (this) | .agent/live_review.md | rewrite | R4 PASS persisted, R1–R4 verdicts, findings final |
+| B (this) | .agent/plan.md | rewrite | F079 closed; next is F080 in a fresh session |
+| B (this) | .agent/context.md | rewrite | branch/scope/constraints after closure |
+| B (this) | .agent/handoff.md | rewrite | this handback |
 
-## Commits
-| SHA | Scope | Files |
-|---|---|---|
-| d6409c15 | Part B roadmap | STATUS.md, T2_F254.md (new), T12_F253.md, T17_F243.md, T2_F103.md, plan.md |
-| e8deb6a6 | Part C reviewer rule | docs/agents/reviewer_conventions.md |
-| e4ecd200 | Part D doc drift | scripts/self_run_gauntlet.py, packages/providers/claude_agent/__init__.py |
-| a155a886 | Part E workflow | docs/agents/planner_reviewer_prompt.md, .agent/candidates.md |
+Commit A was split in two because the combined stage was 666 changed lines;
+the block save rides alone at 496 (R-0198 rule, both orderings approved).
+All six authored hashes matched their BEGIN markers before anything was
+applied: 6ae1a2d0 · 33fa335d · 9e921185 · c32b1668 · c6a703cc · c7efa5aa.
+Transport note: the r5-1 STATUS line and the r5-2 EDIT-1 TO line arrived
+line-wrapped; the joined forms are what hash-match, so the joined bytes are
+what was saved and applied (wrap is recoverable — the hash decides).
+
+## Grep proofs run at this commit (raw outputs in the completion report)
+    grep -F "accepted HEAD abc33f79aac937d3504dddef7a72bdb22d4aa2d1" docs/roadmap/STATUS.md
+    grep -F "SHA-256 f30d540afec921aa76aef40d754abc7d00f4026eb2a755aa53bf99e241a88eec" docs/roadmap/STATUS.md
+    grep -F "37 of 254 registered items accepted" README.md
+    grep -c "^- " .agent/candidates.md      # expected 3
+
+## Gates
+    python3 -m pytest tests/docs/ -q                     -> exit 0
+    python3 -m pytest tests/cli/test_golden_path.py -q   -> exit 0
+    git status --porcelain                               -> empty
+Tails are in the completion report. The evidence dir and both zips stay
+uncommitted (`remedy-review-*` and `remedy-job-evidence-*` are gitignored;
+the evidence dir lives in session scratch, outside the repo).
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| B1 | done | F254 registered in Tier 2 (before F086) + T2_F254.md per F080 grammar |
-| B2 | done | MCP facet section appended to T12_F253.md |
-| B3 | done | Proof-or-Stop benchmark candidate appended to T17_F243.md |
-| B4 | done | Milestone R1 line after Tier 2 heading |
-| B5 | done | credit-pool scope note appended to T2_F103.md |
-| C1 | done | specified-route-exercised rule added; relationship note below |
-| D1 | done | preflight paragraph now matches SUPPORTED_INJECTIONS (none blocked) |
-| D2 | done | Step 33+ wording replaced with roadmap + pingpong_provider reference |
-| E1 | done | Laufzeit row + definition; grep found no .claude/commands restatement |
-| E2 | done | R-0199 operator-priority HIGH note appended |
-
-All presence checks came back ABSENT; no SKIPPED(present), no
-ANCHOR-DRIFT.
-
-## C1 relationship (record per order)
-C1 is the reviewer-practice HALF of the first closure candidate in
-.agent/candidates.md (F070/R-0184). The gate-tooling half — closure
-evidence proving a specified verb was CALLED — stays with that
-candidate for F079 R1 to order. The candidate's landing should cite
-the new reviewer_conventions.md rule.
-
-## Verification
-- tests/orchestration/test_self_run_gauntlet.py: 21 passed (D1 is
-  docstring-only; no behavior change).
-- grep: "Three of the four" and "Bis zum Self-Run" gone repo-wide.
-- Out-of-scope drift observed, NOT touched: docs/system/
-  architecture.md:2481 restates the stale "(Step 33+)" wording for
-  claude_agent — candidate for a future hygiene item.
-
-## Next expected action
-F079 (Context handoffs) per Rule A5, fresh session. Its first
-reviewed round must empty .agent/candidates.md (4 entries, R-0199
-now marked operator-priority HIGH). ADR-0001 still awaits a human.
+| 1 authored saves | done | six files, all hashes verified; commit A split per R-0198 |
+| 2 closure commit | done | exactly the seven allowed paths, STATUS + README together |
+| 3 gates | done | docs gate + canary green, porcelain empty, four grep proofs |
+| 4 push + PR | done | PR created, base main, NOT merged — number in the report |
+| 5 handback | done | this file, inside the closure commit |

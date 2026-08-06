@@ -1034,3 +1034,66 @@ class TestMissionLedger:
         body = json.loads(_run(["mission", "ledger", mission_id, "--project",
                                 project_id, "--json"], data_root).stdout)
         assert len(body["entries"]) == 1
+
+
+class TestHandoffCommand:
+    """`remedy mission handoff <id>` — F079's explicit boundary trigger."""
+
+    def test_the_command_is_in_the_catalog_with_a_handler(self):
+        from apps.cli.command_catalog import get_command
+        from apps.cli.commands import collect_all_handlers
+
+        entry = get_command("mission.handoff")
+        assert entry.action_class == "write_metadata"
+        assert entry.may_execute_commands is False
+        assert entry.may_mutate_repo is False
+        assert "mission.handoff" in collect_all_handlers()
+
+    def test_it_writes_the_artifact_and_prints_where(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Ship the handoff")
+
+        proc = _run(["mission", "handoff", mission_id], data_root)
+
+        path = Path(proc.stdout.splitlines()[0].strip())
+        assert path.is_file()
+        assert path.name == "handoff_v1.json"
+        assert path.with_suffix(".md").is_file()
+        body = json.loads(path.read_text(encoding="utf-8"))
+        assert body["mission_id"] == mission_id
+        assert body["schema_version"] == 1
+        # A zero-progress mission is valid: its empty sections are named gaps.
+        assert body["gaps"]
+        assert "Gaps:" in proc.stdout
+
+    def test_the_json_view_names_both_files(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Ship the handoff")
+
+        body = json.loads(_run(["mission", "handoff", mission_id, "--json"],
+                               data_root).stdout)
+
+        assert body["mission_id"] == mission_id
+        assert Path(body["handoff"]).is_file()
+        assert Path(body["rendered"]).is_file()
+
+    def test_building_twice_leaves_one_account(self, project):
+        data_root, project_id = project
+        mission_id = _start(data_root, project_id, "Ship the handoff")
+
+        first = _run(["mission", "handoff", mission_id], data_root).stdout
+        second = _run(["mission", "handoff", mission_id], data_root).stdout
+
+        assert first.splitlines()[0] == second.splitlines()[0]
+        evidence = Path(first.splitlines()[0].strip()).parent
+        assert sorted(p.name for p in evidence.glob("handoff_v*.json")) == \
+            ["handoff_v1.json"]
+
+    def test_an_unknown_mission_exits_nonzero_and_says_so(self, project):
+        data_root, _project_id = project
+
+        proc = _run(["mission", "handoff", "no-such-mission"], data_root,
+                    expect_ok=False)
+
+        assert proc.returncode != 0
+        assert "no mission 'no-such-mission' exists to hand off" in proc.stderr

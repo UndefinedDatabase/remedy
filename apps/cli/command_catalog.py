@@ -1622,6 +1622,19 @@ CATALOG: tuple[CommandEntry, ...] = (
         related=("mission.run", "mission.show"),
     ),
     CommandEntry(
+        command_id="mission.handoff",
+        group_id="mission",
+        subcommand="handoff",
+        description="Compose this mission's handoff artifact — dossier, checkpoint reference, open decisions and next intent — so a fresh context can resume from it (F079).",
+        action_class="write_metadata",
+        args=(
+            ArgDef("mission_id", "Mission id"),
+            _JSON_OPT,
+        ),
+        supports_json=True,
+        related=("mission.show", "mission.ledger"),
+    ),
+    CommandEntry(
         command_id="mission.report",
         group_id="mission",
         subcommand="report",
