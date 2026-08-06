@@ -28,13 +28,33 @@ What a handoff is, and what it deliberately is not:
 * A missing source is a NAMED GAP, never invented content — a zero-progress
   mission is a valid handoff: its goal plus gap entries.
 
-Consuming a handoff — verifying that its checkpoint and worktree references
-still hold before a resumed context trusts the narrative — is F079 T002 and
-deliberately does NOT live here yet.
+CONSUMPTION (T002) lives at the bottom of this module: the newest handoff
+whose ``schema_version`` this build knows becomes the seed for iteration one
+of a RESUMED mission, and its checkpoint reference is verified with the
+CHECKPOINT feature's own rules before the narrative is trusted — a worktree
+that has moved refuses with ``checkpoints.worktree_drift_message``, not with
+a second wording of the same refusal.
+
+**Remedy deliberately does NOT detect context pressure in flight.** There is
+no watcher that notices a context window filling up and builds a handoff on
+its own: v1's boundaries are the ones someone can name — the explicit
+``remedy mission handoff`` command and the loop terminating for its limits or
+for a stop. Automatic in-flight detection is out of scope for F079 (T1_F079.md
+"Do not touch"), so a search for it lands here and finds the reason.
+
+ROOT DISCIPLINE (R-0203). One root answers for every source. ``root`` selects
+the mission area (record, dossier, evidence output); the job-side sources
+(checkpoints, job records, run events) resolve the data root the product
+resolves, ``data_paths.resolve_data_root()``. Passing a ``root`` that is not
+the resolved data root therefore composes a mission from one world and its
+jobs from another. Callers that isolate — tests, the gauntlet runner — set
+``REMEDY_DATA_DIR`` to that same directory, which is what makes the two
+agree; :func:`handoff_root_conflict` names the mismatch when they do not.
 """
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -46,8 +66,11 @@ from packages.orchestration.mission_state import (
     project_ids_with_missions,
 )
 
+_log = logging.getLogger(__name__)
+
 #: Bumped only when the composed body's SHAPE changes. A consumer that reads a
-#: version it does not know must refuse rather than guess (T002's job).
+#: version it does not know REFUSES rather than guesses (see
+#: :func:`read_handoff`).
 HANDOFF_SCHEMA_VERSION = 1
 
 #: One file per version, beside the dossier versions in the mission's evidence
@@ -497,3 +520,169 @@ def build_handoff(mission_id: str, root: Path | None = None) -> Path:
     handoff_render_path(mission.project_id, mission.id, version, root).write_text(
         rendered, encoding="utf-8")
     return path
+
+
+# ---------------------------------------------------------------------------
+# T002 — consumption: seeding a fresh context from a handoff
+# ---------------------------------------------------------------------------
+
+class HandoffSchemaVersionError(HandoffError):
+    """The stored handoff carries a schema version this build does not know.
+
+    Refusing is the point: a consumer that guessed at an unknown shape would
+    hand a successor context a narrative assembled from fields it misread.
+    """
+
+    def __init__(self, path: Path, found: Any) -> None:
+        super().__init__(
+            f"{path} carries handoff schema_version {found!r}; this build "
+            f"knows {HANDOFF_SCHEMA_VERSION} and refuses to guess")
+        self.path = path
+        self.found = found
+
+
+class HandoffReferenceStaleError(HandoffError):
+    """The handoff's checkpoint reference no longer describes the world."""
+
+
+@dataclass(frozen=True)
+class HandoffSeed:
+    """One consumable handoff: where it came from, what it says."""
+
+    path: Path
+    body: dict[str, Any]
+    text: str
+
+    @property
+    def version(self) -> int:
+        return int(self.path.stem.rsplit("_v", 1)[-1] or 0)
+
+
+def handoff_root_conflict(root: Path | None) -> str:
+    """R-0203: name the mismatch when ``root`` and the data root disagree.
+
+    Returns "" when they agree (or when no ``root`` was passed, which means
+    "use the resolved one for everything"). The caller decides what a
+    mismatch is worth — composition still works, but the mission and its jobs
+    would come from two different worlds, and a silent split is the failure
+    mode this exists to make visible.
+    """
+    if root is None:
+        return ""
+    from packages.orchestration.data_paths import resolve_data_root
+
+    resolved = resolve_data_root()
+    if Path(root).resolve() == Path(resolved).resolve():
+        return ""
+    return (f"mission sources resolve under {root} while job sources resolve "
+            f"under {resolved}; set REMEDY_DATA_DIR to the mission root so "
+            f"one root answers for both (R-0203)")
+
+
+def read_handoff(path: Path) -> dict[str, Any]:
+    """One stored handoff body, or a refusal. Never a guess."""
+    body = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(body, dict):
+        raise HandoffSchemaVersionError(Path(path), None)
+    found = body.get("schema_version")
+    if found != HANDOFF_SCHEMA_VERSION:
+        raise HandoffSchemaVersionError(Path(path), found)
+    return body
+
+
+def verify_handoff_references(body: dict[str, Any]) -> None:
+    """Check the handoff's checkpoint reference against the world it names.
+
+    The CHECKPOINT feature's own rules do the checking: its loader decides
+    what a valid checkpoint is, ``resolve_live_worktree_head`` reads the head
+    that exists right now, and a drift refuses with
+    ``checkpoints.worktree_drift_message`` — the same sentence
+    ``remedy job resume`` prints. A handoff with no checkpoint reference (a
+    named gap) has nothing to verify and passes: an absent claim cannot be
+    stale.
+    """
+    from packages.orchestration.checkpoints import (
+        AllCheckpointsCorruptError,
+        load_latest_valid,
+        resolve_live_worktree_head,
+        worktree_drift_message,
+    )
+
+    checkpoint = body.get("checkpoint") or {}
+    job_id = str(checkpoint.get("job_id", ""))
+    if not job_id:
+        return
+    try:
+        current = load_latest_valid(job_id)
+    except AllCheckpointsCorruptError as exc:
+        raise HandoffReferenceStaleError(
+            f"no usable checkpoint for job {job_id} — "
+            f"{len(exc.paths)} checkpoint(s) failed hash verification "
+            f"({', '.join(exc.paths)}). They are kept on disk for "
+            f"inspection.") from exc
+    if current is None:
+        raise HandoffReferenceStaleError(
+            f"the handoff references a checkpoint of job {job_id}, but the "
+            f"job has no verifying checkpoint any more")
+    recorded_head = str(checkpoint.get("worktree_head", ""))
+    if not recorded_head:
+        return
+    live_head = resolve_live_worktree_head(job_id)
+    if live_head and live_head != recorded_head:
+        raise HandoffReferenceStaleError(
+            worktree_drift_message(recorded_head, live_head))
+
+
+def latest_valid_handoff(mission_id: str, root: Path | None = None,
+                         ) -> HandoffSeed | None:
+    """The newest handoff this build can read, or None when there is none.
+
+    Newest-first, exactly the way the checkpoint loader walks its own files:
+    a handoff whose bytes cannot be read is skipped and logged, and the walk
+    continues to the one before it. An unknown ``schema_version`` is NOT
+    skipped — it is refused, because reading past a shape this build does not
+    understand would silently resume a mission from an older account.
+    """
+    mission = find_mission_record(mission_id, root)
+    if mission is None:
+        raise MissionForHandoffNotFoundError(str(mission_id))
+    versions = handoff_versions(mission.project_id, mission.id, root)
+    for version in reversed(versions):
+        path = handoff_path(mission.project_id, mission.id, version, root)
+        try:
+            body = read_handoff(path)
+        except (OSError, ValueError) as exc:
+            _log.warning("mission %s: handoff %s is unreadable — skipped, "
+                         "kept on disk: %s", mission_id, path.name, exc)
+            continue
+        rendered = handoff_render_path(mission.project_id, mission.id,
+                                       version, root)
+        try:
+            text = rendered.read_text(encoding="utf-8")
+        except OSError:
+            # The prompt block is a RENDERING of the body; re-render rather
+            # than resume without one.
+            text = render_handoff(body)
+        _log.info("mission %s: resuming from %s", mission_id, path.name)
+        return HandoffSeed(path=path, body=body, text=text)
+    return None
+
+
+def handoff_resume_seed(mission_id: str, root: Path | None = None, *,
+                        verify: bool = True) -> HandoffSeed | None:
+    """The seed a resumed mission's FIRST iteration starts from, or None.
+
+    Verification comes BEFORE the narrative is handed on: a stale checkpoint
+    reference raises :class:`HandoffReferenceStaleError` with the checkpoint
+    feature's own message rather than seeding a context that describes a
+    worktree nobody is standing on.
+    """
+    conflict = handoff_root_conflict(root)
+    if conflict:
+        _log.warning("mission %s: %s", mission_id, conflict)
+    seed = latest_valid_handoff(mission_id, root)
+    if seed is None:
+        return None
+    if verify:
+        verify_handoff_references(seed.body)
+    return seed

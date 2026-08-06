@@ -270,6 +270,23 @@ def resolve_live_worktree_head(job_id: str) -> str:
         return ""
 
 
+def worktree_drift_message(checkpoint_head: str, live_head: str) -> str:
+    """The ONE wording for "the worktree moved under this checkpoint".
+
+    Every consumer that verifies a checkpoint reference before trusting it —
+    ``remedy job resume``, the F079 handoff consumption — refuses with THIS
+    text. A second wording of the same refusal would be a second contract:
+    an operator who has learned what this message means must not have to
+    learn it again per feature.
+    """
+    return (f"worktree has moved since the checkpoint was written.\n"
+            f"  checkpoint head: {checkpoint_head}\n"
+            f"  worktree head:   {live_head}\n"
+            f"Resume refuses to rebase silently. Either restore the "
+            f"worktree to {checkpoint_head}, or start a fresh run "
+            f"for the current state.")
+
+
 # ---------------------------------------------------------------------------
 # Writing
 # ---------------------------------------------------------------------------
