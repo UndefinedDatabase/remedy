@@ -1,187 +1,272 @@
-You are the worker for F079 R3 (SPLIT round): the INTEGRATION GATE.
-R2 verdict: PASS — T001–T003 are built and verified. Reviewer issues
-the gate verdict; you execute and record. Authority: AGENTS.md. If any
-step goes red in a way integration_gate.md does not itself handle:
-STOP per AGENTS.md If-Blocked and hand back with the raw output.
+You are the worker for F079 R4 (SPLIT round): CLOSURE PART 1 —
+evidence job + fresh review zip per
+docs/roadmap/STATUS_closure_protocol.md. R3 verdict: PASS, integration
+gate passed, full suite green. Read the protocol file before acting.
+The STATUS [x] line is NOT written this round — the reviewer authors
+it from the values your handback reports, and part 2 applies it.
+If anything below goes red: STOP per AGENTS.md If-Blocked, hand back
+with the raw output. A failing zip build is a closure BLOCKER.
 
-── STEP gate/1 — F079 ───────────────────────────────────────
-Goal:        Persist the R2 verdict, then run the integration gate
-             exactly per docs/agents/integration_gate.md.
-Bundle:      1 state commits · 2 integration gate · 3 handback
-Change:      .agent/** only (state files + gate evidence). NO source
-             or test edits this round — a regression found here is
-             its own reviewer-gated repair round.
-Constraints: Primary checkout porcelain-empty at every point after
-             commits; the base run happens in the disposable worktree
-             integration_gate.md prescribes, removed and pruned
-             before handback. Commits < 500 lines each; the
-             last_block save rides alone (R-0198 rule).
-Done when:   Both suite runs recorded raw, every differing id
-             attributed per integration_gate.md, evidence under
-             .agent/gate_f079_r3/.
-Handback:    Completion report + rewrite .agent/handoff.md (see 3).
+── STEP closure-1/2 — F079 ──────────────────────────────────
+Goal:        Persist the R3 gate verdict, land the Built State
+             section, satisfy the closure preconditions, produce the
+             evidence job and the fresh review zip.
+Bundle:      1 state commits · 2 Built State · 3 preconditions ·
+             4 evidence job · 5 review zip · 6 handback
+Change:      .agent/** state files and
+             docs/roadmap/features/T1_F079.md (append) ONLY. No
+             STATUS.md, no README.md, no source, no tests.
+Constraints: Evidence dir lives in session scratch OUTSIDE the repo
+             and is NEVER committed (a committed dir turns the
+             package BLOCKED_EVIDENCE — F147 attempt-2). Commits
+             < 500 lines each; the last_block save rides alone.
+Done when:   Integrity check PASS, bundle complete, zip import check
+             green, package + SHA-256 recorded.
+Handback:    Completion report + rewrite .agent/handoff.md (see 6).
 ──────────────────────────────────────────────────────────────
 
 1. STATE COMMITS (persist FIRST)
-   Two authored texts follow at the bottom, delimited by BEGIN/END
+   Three authored texts follow at the bottom, delimited by BEGIN/END
    markers. Authored bytes = everything BETWEEN the marker lines,
    including the final newline; markers are never content.
    a. COMMIT A: this entire prompt saved verbatim to
       .agent/last_block.md (own commit).
-   b. Save to .agent/authored/f079-r3-1.md and
-      .agent/authored/f079-r3-2.md; verify each with sha256sum
-      against its BEGIN-marker hash. Mismatch → STOP, hand back
-      naming block and both hashes; apply nothing.
-      COMMIT B: the two authored files.
-   c. Apply: f079-r3-1 replaces .agent/live_review.md entirely;
-      f079-r3-2 replaces .agent/plan.md entirely. COMMIT C: exactly
+   b. Save to .agent/authored/f079-r4-{1,2,3}.md; verify each with
+      sha256sum against its BEGIN-marker hash. Mismatch → STOP, hand
+      back naming block and both hashes; apply nothing.
+      COMMIT B: the three authored files.
+   c. Apply: f079-r4-1 replaces .agent/live_review.md entirely;
+      f079-r4-2 replaces .agent/plan.md entirely. COMMIT C: exactly
       these two files, message
-      "chore(f079): persist R2 PASS verdict (R-0199, R-0203 done) +
-      gate plan".
+      "chore(f079): persist R3 gate PASS (full suite green) +
+      closure plan".
 
-2. INTEGRATION GATE — follow docs/agents/integration_gate.md EXACTLY
-   Parameters for this gate:
-   - Branch HEAD: the tip after your state commits.
-   - Merge base: `git merge-base main HEAD` (main is at the PR #180
-     merge, 38854f60).
-   - Evidence directory: .agent/gate_f079_r3/ (raw stdout+stderr of
-     BOTH runs, the id lists, comm outputs, attribution.txt with one
-     line per differing id and its direct evidence).
-   - Full runs use `pytest -n auto` per the gate doc; record wall
-     clock for both runs.
-   - Step 3 of the gate doc is MANDATORY here: the R-0202 class
-     (mid-run UI rebuild despite REMEDY_UI_NO_AUTO_BUILD=1) recurred
-     in the F075 R12 base gate — hash apps/ui/dist before and after
-     the base run and record both hashes; a changed hash voids the
-     parity claim and forces per-id attribution.
-   - A reproducible branch-only failure coupled to feature code is a
-     BLOCKER: STOP, hand back — the fix is its own round (the gate
-     doc's step 4 rule).
-   Commit the evidence directory when complete (one commit; split
-   only if a raw log pushes it past 500 lines — logs may be split
-   from attribution).
+2. BUILT STATE (content commit — precondition 4)
+   Apply f079-r4-3 as an APPEND to
+   docs/roadmap/features/T1_F079.md (the file currently ends after
+   the "Do not touch" section; the authored text begins with a blank
+   line — append as-is). COMMIT D: exactly this file, message
+   "docs(f079): Built State — composer, triggers, consumption,
+   recall eval, R-0199 fix".
+   GATES (docs round): python3 -m pytest tests/docs/ -q → exit 0;
+   python3 -m pytest tests/cli/test_golden_path.py -q → exit 0.
+   Red → STOP.
 
-3. HANDBACK
-   Canary: python3 -m pytest tests/cli/test_golden_path.py -q →
-   exit 0. git worktree list → primary only (base worktree removed
-   and pruned, per the gate doc). git status --porcelain → empty.
-   Push the branch. Rewrite .agent/handoff.md (last commit) with:
+3. PRECONDITIONS (protocol head)
+   a. remedy integrity check --json → record the RAW output; must be
+      PASS. Not PASS → STOP, hand back the output.
+   b. git status --porcelain → empty; no relevant untracked files.
+   c. git push (branch up to date; the zip records committed state).
+
+4. EVIDENCE JOB (protocol algorithm step 1)
+   Produce the final evidence bundle with the canonical producer:
+   packages.orchestration.job_evidence.create_manual_completion_bundle
+   with review_feature_id="f079", writing into a NEW evidence dir
+   under the session scratchpad (outside the repo). Honor the named
+   producer pitfalls from the protocol, at authoring time:
+   - verification_runs: sha256-hex output_hash, valid
+     VerificationTests totals, FULL-length base_commit (38854f60's
+     full sha via `git rev-parse 38854f60`);
+   - (a) non-empty test node ids with len(node_ids) == selected —
+     take real ids from `pytest --collect-only -q`;
+   - (b) test_files are FILES, never directories;
+   - (c) run_id matches ^vr-\d{4,}$.
+   Feed it the real gate numbers (R3: branch 15853 passed/19
+   skipped; base 15805 passed/19 skipped; canary 42) — never
+   invented totals. Record the job id.
+
+5. REVIEW ZIP (protocol algorithm step 2 — MANDATORY, fresh)
+   From the clean tree at the content HEAD (after COMMIT D):
+   bash scripts/make_review_zip.sh --evidence-dir <the dir from 4>
+   Verify: committed_review_subject spans <full sha of 38854f60>..
+   <current HEAD> and the zip import check passes. Record the
+   printed package filename and SHA-256 EXACTLY (they go verbatim
+   into the STATUS line). Zip failure → STOP, hand back the raw
+   error; do not retry blind.
+
+6. HANDBACK
+   Canary already ran in 2; re-run if any commit followed it. Final
+   git status --porcelain → empty. Rewrite .agent/handoff.md (last
+   commit) with:
    - changed-files table per commit,
-   - raw transcripts: both full-suite runs (command, exit code,
-     tail with counts and wall clock), the canary, the hygiene
-     proofs,
-   - the dist-hash pair from step 3 of the gate doc,
-   - the comm results and EVERY differing id with its attribution
-     line,
-   - item status. NO verdict — the reviewer issues the gate verdict.
+   - raw transcripts: docs gate, canary, integrity check --json
+     output, the producer invocation + its stdout, the zip build
+     tail (package + SHA-256 + import check),
+   - the four values the reviewer needs VERBATIM on one line each:
+     evidence job id · package filename · SHA-256 · content HEAD
+     (full sha at handback, before the handoff commit — state both
+     if the handoff commit moves HEAD),
+   - item status. NO STATUS edit, NO README edit, NO PR — part 2.
 
 AUTHORED TEXTS
 
-<<<BEGIN AUTHORED f079-r3-1
-sha256=80c9b272e89c82f3bcafff959b968bb27edcdef1441102e27dbc44b1aa4e0488>>>
+<<<BEGIN AUTHORED f079-r4-1
+sha256=f883c986a24ba50a45bf6a060ce3631b860bf425de4e423792d469cc79619447>>>
 # Live Review — F079 Context handoffs (Tier 1)
 
 Branch: feature/f079-context-handoffs
 Scope: handoff artifact (handoff.json + rendered handoff.md) composed
 from dossier, checkpoint reference, open decisions and next intent;
-triggers + loop consumption; measured recall eval. T001–T003 are all
-built and reviewer-verified; the F075 candidate sweep landed in R1.
+triggers + loop consumption; measured recall eval. T001–T003 built and
+verified; integration gate PASSED. Closure runs in two relays because
+the STATUS line quotes the evidence job, package and hash — the
+reviewer can only author it after they exist.
 
 ## Steps
-- R1 (SPLIT, LARGE): Open PR Gate (#180) + STATUS claim + candidate
-  sweep + R-0199 measured diagnosis + reuse inspection + T001 —
-  PASS, see Verdicts.
-- R2 (SPLIT, LARGE): R-0199 fix (metadata-manifest digest) + T002
-  (triggers + loop consumption + reference verification) + T003
-  (boundary recall eval + threshold) — PASS, see Verdicts.
-- R3 (SPLIT, current): the INTEGRATION GATE per
-  docs/agents/integration_gate.md. Awaiting handback.
-- R4: closure per docs/roadmap/STATUS_closure_protocol.md — its own
-  round, never bundled.
+- R1 (SPLIT, LARGE): claim + candidate sweep + R-0199 diagnosis +
+  reuse inspection + T001 — PASS, see Verdicts.
+- R2 (SPLIT, LARGE): R-0199 fix + T002 + T003 — PASS, see Verdicts.
+- R3 (SPLIT): INTEGRATION GATE — PASS, FULL SUITE GREEN, see
+  Verdicts.
+- R4 (SPLIT, current): closure part 1 — Built State section, closure
+  preconditions, evidence job, fresh review zip. Awaiting handback
+  with job id, package and SHA-256.
+- R5: closure part 2 — authored STATUS [x] + README sync + candidate
+  re-emit + closure commit + PR, per
+  docs/roadmap/STATUS_closure_protocol.md.
 
 ## Findings
-- R-0199 (harness perf, Medium — carried from F075): FIXED in R2,
-  commit e249ea15 — data_root_digest hashes the sorted metadata
-  manifest (relpath, size, mtime_ns), value prefixed meta-sha256: so
-  old and new definitions can never compare equal; per-run frequency
-  and evidence field names unchanged; the only semantic consumer
-  (gauntlet_evaluator._check_data_root) compares within-run equality
-  and is unaffected. Measured proof: one call 34.611 s against the
-  394.8 s content-hash baseline (11.4x), content bytes read per call
-  ~143.66 GB -> ~0. Reviewer verified the diff, the consumer audit
-  and the honest-contract docstring. Done: R-0199
+- R-0199 (harness perf, Medium — carried from F075): FIXED in R2
+  (metadata-manifest digest, 34.611 s vs 394.8 s baseline, consumer
+  audit verified). Done: R-0199
 - R-0200 (process/gate-tooling, Medium): F070 verb-called gate half.
-  Deferred, OPEN — rolls to candidates at closure if unbuilt.
-- R-0201 (roadmap routing): resolved by routing in R1 — scope note in
-  docs/roadmap/features/T3_F106.md. Resolved.
+  Deferred, OPEN — re-emits to .agent/candidates.md at closure.
+- R-0201 (roadmap routing): resolved by routing in R1 (T3_F106.md).
+  Resolved.
 - R-0202 (gate tooling, Low): mid-run UI rebuild env-var class.
-  Deferred, OPEN — rolls to candidates at closure if unbuilt.
+  Deferred, OPEN — did NOT recur in the R3 gate (dist hashes
+  identical on both sides); one clean gate is not the env-var hunt;
+  re-emits to .agent/candidates.md at closure.
 - R-0203 (design, Low): root discipline at the consumption seam.
-  FIXED in R2 — documented in handoff.py ("ROOT DISCIPLINE") and made
-  visible by handoff_root_conflict (named, tested, R-0203 cited in
-  the message). Done: R-0203
+  FIXED in R2. Done: R-0203
 - Next free ID: R-0204.
 
 ## Verdicts
 - R1: PASS (SPLIT, LARGE, 2026-08-06). Range 38854f60..79621fc0.
   Full text in this file's git history (commit b3a0291e).
-  LAST_REVIEWED_SHA was 79621fc0.
-- R2: PASS (SPLIT, LARGE, 2026-08-06). Range 79621fc0..0938884f
-  (10 commits, all tabled). Transport: f079-r2-1/2 cmp 0 against the
-  reviewer's scratchpad originals (primary proof); both applied state
-  files byte-equal their authored texts. Reviewer re-ran every gate
-  personally: handoff+gauntlet_runner 84, evaluator+evidence+
-  self_run 125, mission_cmd+resume 106, orchestrator_loop 192,
-  canary 42, tests/docs 293 — all exit 0; porcelain empty;
-  `git worktree list` = primary only. Full diff read bottom-up:
-  the R-0199 fix verified in source with its consumer audit; the
-  T002 loop seams verified (limit and stop terminals return through
-  build_boundary_handoff; a build failure lands in handoff_error and
-  the terminal is never masked — pinned by test; the seed reaches
-  iteration one's context only — pinned by a prompt-recording test);
-  schema refusal and stale-head refusal assert the checkpoint
-  feature's own sentence verbatim via worktree_drift_message; the
-  T003 eval reuses run_recall_harness, RECALL_FIXTURE_FACTS and
-  recall_report verbatim, inherits the dossier's documented
-  threshold (100 % of OPEN items), is falsifiable (a lost open fact
-  fails it), and archives the report beside the handoffs it
-  measures. DECLARED scope deviation (checkpoints.py + job.py: the
-  drift wording extracted to one source) ACCEPTED by ruling — the
-  order's own single-wording constraint required it, the wording is
-  byte-identical, both resume test files green; not a silent scope
-  change. The 504-line last_block commit rides alone per the R-0198
-  rule. Verification tier: round gates + canary + docs gate.
-  LAST_REVIEWED_SHA = 0938884f.
-<<<END AUTHORED f079-r3-1>>>
+- R2: PASS (SPLIT, LARGE, 2026-08-06). Range 79621fc0..0938884f.
+  Full text in this file's git history (commit 561e401b).
+- R3: PASS — INTEGRATION GATE PASS (SPLIT, 2026-08-06). Range
+  0938884f..a11d1f74 (6 commits, all tabled; no source or test file
+  touched). Transport: f079-r3-1/2 cmp 0 against the reviewer's
+  scratchpad originals; both applied state files byte-equal their
+  authored texts. Gate evidence audited in .agent/gate_f079_r3/:
+  raw logs (branch 15853 passed / 19 skipped, 141 s; base @
+  38854f60 15805 passed / 19 skipped, 132 s; both exit 0), failed
+  lists EMPTY on both sides, comm -13 and comm -23 EMPTY,
+  ids_base_only EMPTY, and the 48 branch-only ids reconcile exactly
+  (15853-15805 = 15872-15824 = 48): 39 test_handoff.py ids (file
+  absent at the merge base — 0 commits, re-verified by the
+  reviewer), 5 TestHandoffCommand ids, 4 digest-test ids — all
+  attributed to the three new-test commits. Step-3 dist hashes
+  identical before/after on both sides: the R-0202 class did NOT
+  recur and the parity claim stands. The reviewer re-ran the FULL
+  SUITE personally at HEAD: 1 failed / 15852 passed — the single id
+  (test_run_manifest_logical_identity.py::TestTwoRealRunsShare
+  LogicalIdentity::test_different_execution_identities_same_
+  logical_hash) re-run serially passed (file: 11 passed), and the
+  file is untouched in 38854f60..HEAD (0 commits) — xdist-flake
+  class per integration_gate.md step 4: recorded, not a blocker;
+  1 id, far under the 10-id flake-debt threshold; goes to closure
+  candidates for the flake ledger. Canary 42 re-run by the
+  reviewer; porcelain empty; primary worktree only, base worktree
+  removed and pruned. Only this round carries the claim: FULL SUITE
+  GREEN. GATE VERDICT: PASS. LAST_REVIEWED_SHA = a11d1f74.
+<<<END AUTHORED f079-r4-1>>>
 
-<<<BEGIN AUTHORED f079-r3-2
-sha256=5d1be7e33ca3685c32713732d62ecc80f3eb12842159a7ce7de7b9e867841c6f>>>
+<<<BEGIN AUTHORED f079-r4-2
+sha256=16bce73d69dd46de382cb45cddb877b7d5880546ead651b95f5603d354154d62>>>
 # Plan — F079 Context handoffs
 
 Branch: feature/f079-context-handoffs
 
 ## Goal
-Session and context-window boundaries stop losing knowledge — DONE in
-substance: T001 composer (idempotent, pure), T002 triggers + loop
-consumption + reference verification, T003 measured boundary recall
-(100 % open-item threshold met, report archived). R-0199 fixed
-(metadata-manifest digest, 11.4x). Spec: docs/roadmap/features/
-T1_F079.md. What remains is proving the whole, then closing.
+Close F079 per docs/roadmap/STATUS_closure_protocol.md. Substance is
+done and gated: T001 composer, T002 triggers + consumption + reference
+verification, T003 measured boundary recall (100 % open items),
+R-0199 fixed, integration gate PASS (full suite green, both sides,
+all 48 differing ids attributed).
 
 ## Current Step
-R3: the integration gate per docs/agents/integration_gate.md — full
-suite at HEAD and at the merge base, per-id attribution of every
-difference, evidence under .agent/gate_f079_r3/. The reviewer issues
-the gate verdict.
+R4 — closure part 1: Built State section into T1_F079.md (content
+commit, before the zip), closure preconditions (integrity check,
+clean tree), evidence job via create_manual_completion_bundle
+(review_feature_id=f079), fresh review zip from the clean content
+HEAD. Handback carries job id, package filename, SHA-256 and the
+content HEAD — the reviewer authors the STATUS line from them.
 
 ## Next Steps
-- R4: closure per docs/roadmap/STATUS_closure_protocol.md (own
-  round): evidence job + fresh review zip + authored STATUS [x] line
-  + PR. R-0200/R-0202 roll back to .agent/candidates.md if unbuilt.
+- R5 — closure part 2: apply the authored STATUS [x] line + README
+  ledger sync (same commit), re-emit R-0200/R-0202 + the R3 flake
+  observation to .agent/candidates.md, final .agent state, closure
+  commit (STATUS.md + README.md + .agent/** only), push, PR. The PR
+  merges at the next feature's Open PR Gate.
 
 ## Risks
-- The known mid-run-UI-rebuild flake class (R-0202) may reappear in
-  the base run — integration_gate.md step 3 carries the mandatory
-  dist-hash neutralization check.
-- Full-suite wall clock ~2.5 min per run; two runs plus attribution.
-<<<END AUTHORED f079-r3-2>>>
+- Packaging pitfalls are known and named in the protocol: sha256
+  output_hash, full-length base_commit, real node ids with
+  len == selected, test_files are files, run_id matches ^vr-\d{4,}$.
+- The evidence dir stays OUTSIDE the repo (session scratch, never
+  committed) — a committed dir turns the package BLOCKED_EVIDENCE.
+- A failing zip build is a closure BLOCKER: stop, hand back raw.
+<<<END AUTHORED f079-r4-2>>>
+
+<<<BEGIN AUTHORED f079-r4-3
+sha256=ae6e99fe3784cd20e2cea3e9d4e3c70fca59c5582dccf8ada47691072a82894b>>>
+
+## Built State (accepted 2026-08-06, R1–R3)
+
+Built and reviewed on branch feature/f079-context-handoffs:
+
+- **Composer** (packages/orchestration/handoff.py, T001):
+  HANDOFF_SCHEMA_VERSION = 1; build_handoff(mission_id) composes
+  handoff_v<N>.json plus the rendered handoff_v<N>.md (fixed section
+  order, dossier first) into the mission's evidence area
+  (mission_state.mission_evidence_dir — the dossier's own path
+  scheme and _v<N> accumulation precedent). Idempotent per state: no
+  wall-clock reads in content, a repeat build on unchanged state
+  returns the existing file, changed state accumulates the next
+  version. Missing sources are NAMED gaps (GAP_* constants), never
+  invented content; a zero-progress mission is a valid handoff.
+  Redaction reuses run_manifest.is_secret_key and stream_evidence's
+  redactors. Building is a pure artifact — pinned by a
+  before/after-snapshot test.
+- **Triggers** (T002): explicit `remedy mission handoff <id>`
+  (command_catalog `mission.handoff` + mission_cmd handler,
+  supports --json) and the loop boundary:
+  orchestrator_loop.build_boundary_handoff runs at
+  TERMINAL_ITERATION_LIMIT and TERMINAL_STOPPED; a build failure
+  lands in MissionRunResult.handoff_error and nowhere else — the
+  terminal is never masked.
+- **Consumption** (T002): handoff_resume_seed seeds iteration one of
+  a resumed mission (SECTION_HANDOFF, first iteration only); the
+  newest readable handoff wins and is logged; an unknown
+  schema_version refuses (HandoffSchemaVersionError); the checkpoint
+  reference is verified with the checkpoint feature's own rules, and
+  a moved worktree refuses with checkpoints.worktree_drift_message —
+  extracted in this feature so `remedy job resume` and handoff
+  consumption share ONE wording. Root discipline documented
+  (R-0203; handoff_root_conflict names a mission-root/data-root
+  split). Automatic in-flight context-pressure detection is
+  deliberately unbuilt and documented in the module docstring.
+- **Recall eval** (T003): run_boundary_recall_eval reuses the
+  dossier's run_recall_harness, RECALL_FIXTURE_FACTS and
+  recall_report verbatim, forces a real boundary and measures the
+  seed alone; threshold RECALL_THRESHOLD_OPEN_ITEMS = 1.0, inherited
+  from the dossier's open/resolved asymmetry; the report is archived
+  as handoff_recall_eval.md beside the handoffs it measures.
+  Measured: 100 % open recall on the fixture facts.
+- **R-0199** (carried from F075, fixed here):
+  gauntlet_runner.data_root_digest hashes a sorted metadata manifest
+  (relpath, size, mtime_ns), value prefixed `meta-sha256:`; measured
+  34.611 s per call against the 394.8 s content-hash baseline,
+  content bytes read per call ~143.66 GB -> ~0; per-run frequency
+  and evidence field names unchanged.
+- **Tests**: tests/orchestration/test_handoff.py (39),
+  digest tests in tests/orchestration/test_gauntlet_runner.py (4),
+  TestHandoffCommand in tests/cli/test_mission_cmd.py (5).
+  Integration gate (R3): branch 15853 passed / base 15805 passed,
+  zero failures on both sides, all 48 differing ids attributed to
+  the three new-test commits; dist hashes unchanged (R-0202 did not
+  recur).
+<<<END AUTHORED f079-r4-3>>>
