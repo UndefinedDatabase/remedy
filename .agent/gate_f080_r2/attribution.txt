@@ -1,0 +1,65 @@
+F080 R2 — INTEGRATION GATE (docs/agents/integration_gate.md)
+=============================================================
+Branch : feature/f080-roadmap-mirror @ 6b6f7274
+Base   : main @ 1da1b07a (git merge-base main HEAD)
+Date   : 2026-08-06
+
+1. BRANCH RUN
+   cmd  : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+   cwd  : repo root (log written to the session scratchpad, copied here
+          after exit — R-0176: a log growing inside the worktree changes
+          the digest mid-run)
+   exit : 0
+   tail : 15941 passed, 19 skipped in 152.03s (0:02:32)
+   FAILED lines: 0  (branch_failed.txt is empty)
+
+2. BASE RUN
+   worktree: throwaway BRANCH tmp/base-gate at 1da1b07a (never detached —
+             the self-dogfood guard refuses a detached HEAD, DECISION D3)
+   parity  : apps/ui/node_modules and apps/ui/dist COPIED from the primary
+             checkout (never symlinked — F053 R3), REMEDY_UI_NO_AUTO_BUILD=1
+   verify  : apps/ui/dist aggregate hash before == after
+             5ff2033ab95c45d2802cbe7d9977605abbe009a916236a43aab30f97954ba092
+             -> neutralization VERIFIED, parity claim holds (dist_hashes.txt)
+   exit : 1
+   tail : 2 failed, 15851 passed, 19 skipped in 148.98s (0:02:28)
+   cleanup: git worktree remove --force + prune + branch -D tmp/base-gate;
+            `git worktree list` shows only the primary checkout.
+
+3. COMPARE
+   comm -13 base_failed branch_failed  (BRANCH-ONLY) : 0 ids — none.
+   comm -23 base_failed branch_failed  (base-only / branch fixed) : 2 ids.
+
+4. ATTRIBUTION — every comm -23 id, by direct evidence
+   Parity was RESTORED before the base run (option 1 of the R-0155
+   amendment), so no id needs environment-class attribution to stand.
+   Both are explained anyway:
+
+   a) tests/orchestration/test_run_manifest_logical_identity.py::
+      TestTwoRealRunsShareLogicalIdentity::
+      test_different_execution_identities_same_logical_hash
+      -> xdist-flake class. Failed under -n auto at BASE, serial re-run of
+         the exact node id PASSES (base_serial_rerun.txt, 1 passed in 0.72s).
+      -> This is R-0204 — the known flaky id registered from the F079 R3
+         gate and routed to T7_F135. RECURRENCE, not a new failure. It
+         recurred on the BASE side this time; the branch run was clean.
+         Still one id, far under the 10-id flake-debt threshold.
+
+   b) tests/regression/test_resource_safety.py::
+      TestContextIncludesResourceSafety::test_context_mentions_resource_safety
+      -> NOT a flake and NOT environment: serial re-run at base FAILS
+         reproducibly (base_serial_rerun.txt, 1 failed in 0.03s).
+      -> Root cause, from the assertion text: main's .agent/context.md is
+         the plan0806 file, which contains neither "resource" nor "pytest".
+         The test asserts one of the two words is present.
+      -> The BRANCH fixes it: this round's context.md carries the
+         test-runner / resource-safety note. So main at 1da1b07a is
+         standing-red on this single id until any branch carrying a
+         compliant context.md merges. Recorded as finding R-0205 for the
+         reviewer; it is a base-state observation, not branch work.
+
+5. VERDICT INPUT
+   Zero branch-only failures. No reproducible branch-only failure coupled to
+   feature code, so nothing blocks under step 4. Wall clock 152s branch /
+   149s base — both under the ~5 min budget note.
+   The gate VERDICT itself is the reviewer's to issue (step 5).

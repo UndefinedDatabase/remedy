@@ -1,0 +1,27 @@
+### serial rerun 1: R-0204 candidate id
+.                                                                        [100%]
+1 passed in 0.72s
+EXIT=0
+### serial rerun 2: resource-safety context id
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ TestContextIncludesResourceSafety.test_context_mentions_resource_safety ____
+
+self = <tests.regression.test_resource_safety.TestContextIncludesResourceSafety object at 0x7092113c2ad0>
+
+    def test_context_mentions_resource_safety(self):
+        ctx = REPO_ROOT / ".agent" / "context.md"
+        assert ctx.exists(), ".agent/context.md must exist"
+        text = ctx.read_text()
+>       assert "resource" in text.lower() or "pytest" in text.lower()
+E       AssertionError: assert ('resource' in '# context — plan0806 registration + self-drive planning round\n\n## active branch\nfeature/reg-f255-teacher-role — re...e (commit 419a6243, both gates green) → part 2 planning\ndocs committed → push + pr → next: f080 in a fresh session.\n' or 'pytest' in '# context — plan0806 registration + self-drive planning round\n\n## active branch\nfeature/reg-f255-teacher-role — re...e (commit 419a6243, both gates green) → part 2 planning\ndocs committed → push + pr → next: f080 in a fresh session.\n')
+E        +  where '# context — plan0806 registration + self-drive planning round\n\n## active branch\nfeature/reg-f255-teacher-role — re...e (commit 419a6243, both gates green) → part 2 planning\ndocs committed → push + pr → next: f080 in a fresh session.\n' = <built-in method lower of str object at 0x5d2fa8987360>()
+E        +    where <built-in method lower of str object at 0x5d2fa8987360> = '# Context — plan0806 registration + self-drive planning round\n\n## Active Branch\nfeature/reg-f255-teacher-role — re...e (commit 419a6243, both gates green) → Part 2 planning\ndocs committed → push + PR → next: F080 in a fresh session.\n'.lower
+E        +  and   '# context — plan0806 registration + self-drive planning round\n\n## active branch\nfeature/reg-f255-teacher-role — re...e (commit 419a6243, both gates green) → part 2 planning\ndocs committed → push + pr → next: f080 in a fresh session.\n' = <built-in method lower of str object at 0x5d2fa8987360>()
+E        +    where <built-in method lower of str object at 0x5d2fa8987360> = '# Context — plan0806 registration + self-drive planning round\n\n## Active Branch\nfeature/reg-f255-teacher-role — re...e (commit 419a6243, both gates green) → Part 2 planning\ndocs committed → push + PR → next: F080 in a fresh session.\n'.lower
+
+tests/regression/test_resource_safety.py:117: AssertionError
+=========================== short test summary info ============================
+FAILED tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety
+1 failed in 0.03s
+EXIT=1

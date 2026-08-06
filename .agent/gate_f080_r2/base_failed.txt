@@ -1,0 +1,2 @@
+FAILED tests/orchestration/test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogicalIdentity::test_different_execution_identities_same_logical_hash
+FAILED tests/regression/test_resource_safety.py::TestContextIncludesResourceSafety::test_context_mentions_resource_safety

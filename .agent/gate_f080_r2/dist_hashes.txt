@@ -1,0 +1,4 @@
+dist parity check (base worktree apps/ui/dist, aggregate sha256 of per-file hashes)
+before base run: 5ff2033ab95c45d2802cbe7d9977605abbe009a916236a43aab30f97954ba092  -
+after  base run: 5ff2033ab95c45d2802cbe7d9977605abbe009a916236a43aab30f97954ba092  -
+verdict: unchanged -> REMEDY_UI_NO_AUTO_BUILD=1 neutralization VERIFIED, parity claim holds
