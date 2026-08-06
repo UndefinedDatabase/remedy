@@ -1,32 +1,27 @@
-# Context — F079 closed; next feature not yet claimed
+# Context — plan0806 registration + self-drive planning round
 
 ## Active Branch
-feature/f079-context-handoffs — F079 closure PR open, NOT merged. The
-next feature (F080, Machine-readable roadmap mirror & STATUS.md)
-starts from main AFTER the Open PR Gate merges this PR.
+feature/reg-f255-teacher-role — registration micro-round (precedent
+reg0803). PR open after handback, NOT merged; merges at the next
+round's Open PR Gate. F079 PR #181 was merged by this round's gate.
 
 ## Scope
-F079 is complete and accepted: handoff composer (idempotent, pure
-artifact), `remedy mission handoff` + loop boundary triggers,
-consumption with checkpoint-reference verification and the shared
-worktree-drift wording, measured boundary recall (100 % of open
-items), and the R-0199 metadata-manifest digest fix. Built State is
-recorded in docs/roadmap/features/T1_F079.md; STATUS.md carries the
-[x] line with the evidence job, package and accepted HEAD.
+Docs/planning only, no product code. Part 1: F255 (teacher role)
+registered in Tier 5 — STATUS line, T5_F255.md (scope verbatim),
+TOTAL_FEATURES 255, README counts, one commit. Part 2: single-command
+self-drive package planned in .agent/selfdrive_package.md; plan.md
+carries the sequence and the operator constraint verbatim.
 
 ## Constraints
-- Nothing further ships on this branch. The closure commit is the
-  last commit (Rule A4); do not append to it.
-- .agent/candidates.md is non-empty by design and blocks the next
-  feature claim until its first reviewed round registers or resolves
-  each entry.
-- Round gates stay scoped pytest commands; the full-suite
-  pytest -n auto run belongs to the integration gate, where the
-  resource-safety rules of tests/regression apply.
+- Registration is NOT a feature claim: the three candidates (R-0200,
+  R-0202, xdist flake) do not block here; they block the F080 claim
+  and its R1 must sweep them.
+- Self-drive is planning output only; build sequenced AFTER F080
+  closes. Hard date: operational and rehearsed by 2026-08-12
+  (operator SSH-only from 2026-08-13).
 - ADR-0001 stays PROPOSED; CYCLE_SAFETY_CAP stays 1 until a human
-  applies it.
+  applies it — prerequisite for multi-cycle loop delegation (S3).
 
 ## Steps
-R1–R2 build (PASS) → R3 integration gate PASS (full suite green) →
-R4 evidence job + fresh zip → R5 closure commit + PR (this commit) →
-next: F080 in a fresh session.
+Part 1 done (commit 419a6243, both gates green) → Part 2 planning
+docs committed → push + PR → next: F080 in a fresh session.
