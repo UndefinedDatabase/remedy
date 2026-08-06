@@ -1,238 +1,230 @@
-OUTCOME: done — F075 R13 CLOSURE complete. R12 gate verdict persisted; Built State recorded (accepted HEAD 36f3bc81); evidence job b1b6eb7ed4962309; package remedy-review-20260805-144354-READY_FOR_REVIEW.zip READY_FOR_REVIEW; STATUS [x] + README synced; closure PR open, NOT merged.
+You are the worker for F079 R1 (SPLIT round, LARGE). Reviewer gates the
+handback; you never write verdicts and never merge feature work.
+Authority: AGENTS.md. Spec: docs/roadmap/features/T1_F079.md (read it
+fully). If any verification below goes red: STOP at that point per
+AGENTS.md If-Blocked, commit what is green, hand back with the raw
+failure — do not continue into the next slice.
 
-You are the Remedy worker (Window 2) for feature F075 — MILESTONE GATE:
-10 flawless self-runs, round R13: CLOSURE per
-docs/roadmap/STATUS_closure_protocol.md (v4) — read it and follow it
-exactly; this block orders the steps and carries the authored texts.
-Any precondition or zip failure -> STOP per Failure honesty (the
-feature does NOT close; record the raw error in the handoff). Save
-THIS ENTIRE block verbatim to .agent/last_block.md as its OWN FIRST
-commit (R-0198). You are on feature/f075-self-run-gauntlet at
-8bc1305a. NEVER force-push (R-0195); commits < 500 lines except where
-a single authored artifact is inseparable — declare, never rewrite.
+── STEP claim+T001/3 — F079 ─────────────────────────────────
+Goal:        Merge PR #180, claim F079, register/resolve the four
+             closure candidates, measure R-0199, inspect reuse
+             surfaces, build T001 (handoff schema + composer +
+             idempotence + unit tests).
+Bundle:      0 preflight · 1 Open PR Gate · 2 branch · 3 state commits
+             (authored texts) · 4 docs gates · 5 R-0199 measured
+             diagnosis · 6 reuse inspection · 7 T001 · 8 handback
+Change:      .agent/** state files, docs/roadmap/STATUS.md (one line),
+             docs/roadmap/features/T3_F106.md (append), NEW
+             packages/orchestration/handoff.py, NEW
+             tests/orchestration/test_handoff.py. Nothing else.
+Constraints: Do-not-touch per T1_F079.md (no automatic context-pressure
+             detection, no cross-machine transport, no memory features
+             beyond composition). Reuse is mandated: dossier renderer,
+             checkpoint verification, recall harness — a new
+             implementation of an existing piece is a reject. Commits
+             < 500 lines each. Primary checkout porcelain-empty at
+             handback.
+Done when:   All verifications below exit 0, in order.
+Handback:    Completion report + rewrite .agent/handoff.md (see 8).
+──────────────────────────────────────────────────────────────
 
-PHASE 0 — THE BLOCK
- Commit 0: chore(f075): save the R13 closure block. Touches ONLY
- .agent/last_block.md. Push.
+0. PREFLIGHT
+   git status --porcelain   → must be empty (you are on
+   feature/amend0805-v3). If not empty: STOP, hand back.
 
-PHASE 1 — PERSIST THE R12 GATE VERDICT (own commit)
- 1. Save the five AUTHORED TEXT payloads below to
-    .agent/authored/f075-r13-<n>.md (bytes between BEGIN/END
-    markers, exclusive, incl. final newline; payload lines at
-    column 0). Verify each sha256sum against its BEGIN-marker hash.
-    Mismatch -> STOP, report raw sums, apply nothing (the r12-2
-    precedent: diagnose from the saved bytes, never guess).
- 2. Apply f075-r13-1 -> .agent/live_review.md (the FROM line occurs
-    once; the TO embeds it — copy from the SAVED file, never
-    retype; the two-space indentation of the FROM/TO lines inside
-    the payload is part of the bytes).
- 3. Commit 1: chore(f075): persist the R12 gate verdict. Gate:
-    python3 -m pytest tests/cli/test_golden_path.py -q -> exit 0.
-    Push.
+1. OPEN PR GATE
+   Merge PR #180 per the AGENTS.md Open PR Gate procedure. Then:
+   git checkout main && git pull
 
-PHASE 2 — BUILT STATE (precondition 4, own commit)
- 1. Append the BYTES of f075-r13-2 to the END of
-    docs/roadmap/features/T1_F075.md (starts with a blank line;
-    simple byte-append). Verify: bytes occur exactly once, the file
-    ENDS with them, prior content intact as prefix.
- 2. Commit 2: docs(f075): record the accepted Built State. This is
-    the LAST content commit — its head is the intended accepted
-    HEAD.
- 3. Gates (docs/roadmap touched): python3 -m pytest tests/docs/ -q
-    AND python3 -m pytest tests/cli/test_golden_path.py -q -> both
-    exit 0. Push.
+2. BRANCH
+   git checkout -b feature/f079-context-handoffs
 
-PHASE 3 — PRECONDITIONS
- remedy integrity check --json -> passed true; git status
- --porcelain empty; branch pushed. .agent/candidates.md still
- carries its F071-era content at this point (the new candidate set
- lands in the closure commit, PHASE 6) — assert, do not edit yet.
+3. STATE COMMITS
+   Five authored texts follow at the bottom of this prompt, each
+   delimited by BEGIN/END marker lines. The authored bytes are
+   everything BETWEEN the marker lines, including the final newline;
+   the marker lines themselves are never part of the content.
+   For each text f079-r1-N:
+   a. Save the bytes to .agent/authored/f079-r1-N.md
+   b. Verify: sha256sum .agent/authored/f079-r1-N.md must equal the
+      sha256 in its BEGIN marker. On ANY mismatch: STOP, hand back
+      naming the block and both hashes — apply nothing.
+   COMMIT 1 (own commit, before any application): the six files
+   .agent/authored/f079-r1-{1,2,3,4,5,6}.md plus this entire prompt
+   saved verbatim to .agent/last_block.md.
+   Then apply, verbatim from the verified authored files:
+   c. f079-r1-1: in docs/roadmap/STATUS.md replace the FROM line with
+      the TO line (exactly one occurrence; the file's only F079 line).
+   d. f079-r1-2 → replaces .agent/live_review.md entirely.
+   e. f079-r1-3 → replaces .agent/candidates.md entirely.
+   f. f079-r1-4 → APPEND to docs/roadmap/features/T3_F106.md (file
+      currently ends after the "Do not touch" section; the authored
+      text begins with a blank line — append as-is to the end).
+   g. f079-r1-5 → replaces .agent/plan.md entirely.
+   h. f079-r1-6 → replaces .agent/context.md entirely.
+   COMMIT 2: exactly these six applied files, message
+   "chore(f079): claim F079 + candidate sweep (R-0200..R-0202, R-0199
+   diagnosis ordered)".
 
-PHASE 4 — EVIDENCE JOB (fresh id, feature-scoped, NOT committed)
- Producer: packages.orchestration.job_evidence.
- create_manual_completion_bundle(review_feature_id="f075", ...),
- base 563b15b4 (the FULL 40-char sha), head = accepted HEAD
- (commit 2). Build the evidence dir OUTSIDE the repo (session
- scratch) — NEVER committed; the durable pointer is package +
- SHA-256 + job id in the STATUS line. Pitfalls, all asserted at
- authoring time (protocol §1): real node ids from --collect-only
- with len(node_ids) == passed per run; test_files are FILES
- (expand tests/docs/); run_id matches ^vr-\d{4,}$; full-length
- base_commit; output_hash OMITTED so the producer derives it; NO
- node id as an absolute path, NO slash inside a bracketed param
- id. Run coordinator validation over the produced bytes BEFORE any
- zip; a rejection -> record raw blocking_reasons in the handoff,
- fix at the cause, delete the rejected dir, rebuild.
+4. DOCS-ROUND GATES (change set touches docs/roadmap/**)
+   python3 -m pytest tests/docs/ -q          → exit 0
+   python3 -m pytest tests/cli/test_golden_path.py -q   → exit 0
+   Record command, exit code and tail for both. Red → STOP.
 
-PHASE 5 — REVIEW ZIP (mandatory, fresh, from the clean tree at
- accepted HEAD)
- git status clean + branch pushed, then:
- bash scripts/make_review_zip.sh --evidence-dir <path>
- Require: READY_FOR_REVIEW, review_subject_alignment PASS, evidence
- authoritative, committed_review_subject spans 563b15b4..accepted
- HEAD. Zip integrity (testzip) + import smoke over the PACKAGED
- sources (extract to tmp, import gauntlet_evaluator +
- gauntlet_orders + gauntlet_runner, confirm PASS_CRITERIA has 9
- members and GAUNTLET_ORDER_SET_VERSION == 4 there, remove tmp).
- Record package filename + SHA-256 (recompute independently).
- Failure -> STOP, raw error into the handoff, the feature does not
- close.
+5. R-0199 MEASURED DIAGNOSIS (read-only; no code change, no fix)
+   Hypothesis to test: gauntlet_runner.data_root_digest
+   (packages/orchestration/gauntlet_runner.py:91) full-scans the
+   operator's real data root on every call, ~20+ calls per campaign.
+   a. Read the call sites: count how many data_root_digest calls one
+      campaign of 10 runs performs; note file:line of each site.
+   b. Resolve the EXACT root the gauntlet passes (read the resolution
+      code path; do not guess).
+   c. Measure that root: file count and total bytes (e.g.
+      `find <root> -type f | wc -l` and `du -sb <root>`).
+   d. Time ONE data_root_digest(<root>) call with time.perf_counter
+      via a throwaway script OUTSIDE the repo (scratch/tmp, deleted
+      afterwards). HARD CAP: if the call has not returned after 15
+      minutes, kill it and record "aborted at 15 min" — the timeout
+      is itself the measurement.
+   e. Record ALL raw numbers (counts, bytes, seconds, call-site
+      table) in the handback under "R-0199 diagnosis". Compute
+      bytes-scanned-per-campaign = total bytes x call count and state
+      whether it is consistent with the observed ~872 GB. NO fix in
+      this round — the reviewer orders the fix in R2 from your
+      numbers.
 
-PHASE 6 — CLOSURE COMMIT + PR
- 1. Apply f075-r13-3 -> docs/roadmap/STATUS.md with the four
-    placeholders filled (evidence job id, zip filename, zip
-    SHA-256, accepted HEAD = commit 2's full sha). The TO line is
-    ONE line however it displays (the F071 wrap lesson).
- 2. Apply BOTH f075-r13-4 edits -> README.md (same commit as
-    STATUS — R-0154: README and STATUS never disagree in any
-    committed state).
- 3. Apply f075-r13-5 -> .agent/candidates.md (FULL replacement —
-    the closure-candidate disk vehicle).
- 4. Rewrite .agent/plan.md and .agent/context.md to their final
-    F075-closed state (worker-authored, inside the allowed .agent/
-    path set; KEEP the contract strings: plan "## Goal" +
-    "## Next Steps" + an F-id; context "## Active Branch" +
-    "feature/" + an F-id + "Steps" + the word "resource" or
-    "pytest"; note F079 as next per Rule A5). Rewrite
-    .agent/handoff.md per docs/agents/handback_template.md (all
-    commits tabled; grep proof that every applied reviewer text is
-    byte-identical to its authored file; the zip outcome recorded
-    BEFORE handback). Update last_block OUTCOME.
- 5. Commit 3 (the LAST commit, Rule A4) touches exactly
-    docs/roadmap/STATUS.md, README.md and .agent/ state — nothing
-    else. Gates (docs/roadmap touched): python3 -m pytest
-    tests/docs/ -q AND the canary -> both exit 0. Push.
- 6. gh pr create --base main (title: F075 — MILESTONE GATE: 10
-    flawless self-runs; body: what/why — the gauntlet harness, the
-    frozen order set + sample project, the nine campaign-earned
-    product changes, the attempt history 0/10 -> 3/10 -> 10/10
-    with matrices committed, ADR-0001 prepared NOT applied; key
-    decisions R-0187/R-0188/R-0196/R-0197 pointers; how to review
-    — start at .agent/gauntlet/attempt-03/matrix.md and
-    docs/adr/0001-*; changed-files table; verdict PASS —
-    INTEGRATION GATE FULL SUITE GREEN (15805/19, 0 branch-only);
-    open findings 0 (R-0199 documented Medium risk, carried as a
-    candidate); four closure candidates in .agent/candidates.md;
-    runtime actuals: 13 rounds 2026-08-04..05, three live
-    campaigns + seven --only re-proofs, tokens not-measured
-    (ledger usage unreported by the local provider)). The PR is
-    NOT merged — it merges at the next feature's Open PR Gate.
-    Report the PR NUMBER in the completion report.
- Handback: completion report ending
- "F075 closure complete — PR #<n> open, awaiting the next Open PR
- Gate."
+6. REUSE INSPECTION (read-only)
+   Produce a table in the handback naming, with file:line, the exact
+   pieces T001–T003 must reuse:
+   - the dossier renderer entry point(s) in
+     packages/orchestration/mission_dossier.py and where dossier
+     evidence is written (the evidence-area path scheme),
+   - the checkpoint reference + verification API in
+     packages/orchestration/checkpoints.py (what T002 will call),
+   - the recall harness used by the dossier tests (locate it under
+     tests/, name the fixture mission it uses),
+   - where open decisions live (decision_queue.py surface) and where
+     "next intent" can be read from mission state.
+   No code changes in this slice.
 
---- BEGIN f075-r13-1 sha256=67b700f9c7c98ecea146366fc760f029f08af3b36770d73ae95a6fa53854d1e0 ---
-FROM (exact line, occurs once in .agent/live_review.md):
-  LAST_REVIEWED_SHA = 05a15669.
+7. T001 — schema + composer + idempotence + unit tests
+   New module packages/orchestration/handoff.py:
+   - HANDOFF_SCHEMA_VERSION = 1; build_handoff(mission_id) -> Path.
+   - Compose handoff.json: schema_version, mission_id, dossier text
+     (via the EXISTING renderer from slice 6), checkpoint reference +
+     worktree head, open decisions with ids, next intent, provenance
+     timestamps, and an explicit `gaps` list — any missing source
+     renders as a named gap entry, never invented content.
+   - Also render handoff.md: fixed section order, dossier first.
+   - Both files land in the mission's evidence area, same path scheme
+     the dossier uses.
+   - IDEMPOTENT PER STATE: same mission state → byte-identical output
+     (content-hash test). Therefore NO wall-clock reads in content:
+     provenance timestamps are those of the SOURCE artifacts. Repeat
+     builds on unchanged state must not create duplicates; changed
+     state accumulates a new handoff deterministically (newest
+     resolvable by the accumulation scheme — consumption itself is
+     T002, not now).
+   - PURE ARTIFACT: building mutates no mission/job/queue state —
+     test asserts a state snapshot before == after.
+   - Secrets: apply the existing manifest redaction denylist to any
+     config values included.
+   - Zero-progress mission is a valid handoff (goal + empty sections
+     as explicit gaps).
+   Tests in tests/orchestration/test_handoff.py covering: idempotence
+   hash equality; missing-source → named gap; zero-progress validity;
+   no-mutation snapshot; redaction applied; schema_version present.
+   In the handback, name every reused piece per slice 6.
+   Commit in small commits (< 500 lines each).
+   VERIFY: python3 -m pytest tests/orchestration/test_handoff.py -q
+   → exit 0. Red → STOP per If-Blocked.
+
+8. HANDBACK
+   Re-run the canary: python3 -m pytest tests/cli/test_golden_path.py
+   -q → exit 0. Confirm git status --porcelain empty after the final
+   commit. Push the branch (no PR — closure creates the PR later).
+   Rewrite .agent/handoff.md (commit it as the last commit) with:
+   - changed-files table per commit (path, +/-, reason),
+   - raw transcripts: every verification command, exit code, output
+     tail,
+   - "R-0199 diagnosis" section with the slice-5 numbers,
+   - the slice-6 reuse table,
+   - reused-pieces list for T001,
+   - item status per slice (done / stopped-at with the red output).
+   No verdict, no merge, no STATUS edits beyond the authored claim.
+
+AUTHORED TEXTS
+
+<<<BEGIN AUTHORED f079-r1-1
+sha256=29cbd4ef7c1a7bf2e7d043c6d0bf63dd95eb47a84ed25e68d89a69a70240c59b>>>
+FROM:
+- [ ] F079 — Context handoffs
 TO:
-  LAST_REVIEWED_SHA = 05a15669.
-- R12: PASS — INTEGRATION GATE PASS (SPLIT, LARGE, 2026-08-05).
-  Range 05a15669..8bc1305a (7 commits, all tabled). Transport:
-  r12-1/2/3 cmp 0 against the reviewer's scratchpad originals AND
-  against the applied files; the r12-2 corruption (ONE blank line
-  dropped in transport) was caught by the sha256 check BEFORE
-  anything was applied, isolated, restored, and re-verified — the
-  R-0148 mechanism doing exactly its job; the archived block was
-  corrected too (ba266dab). ADR-0001 verified: status PROPOSED,
-  the diff applies cleanly and is NOT applied (CYCLE_SAFETY_CAP
-  still 1 at source line 165, pinned by the new test until a
-  human applies the ADR); the honest evidence-limit note (per-run
-  cycle consumption unrecoverable, argued from the proven
-  ceiling) accepted. INTEGRATION GATE: reviewer re-ran the FULL
-  SUITE at HEAD personally: 15805 passed / 19 skipped, exit 0 in
-  150s — matching the worker's branch run; base run raw records
-  audited (6 failed / 15377 passed); comm -13 EMPTY (0
-  branch-only), comm -23 = 6 ids, all
-  test_live_state.py::TestUIServerIntegration, attributed to the
-  known mid-run-UI-rebuild class on per-id direct evidence
-  (identical dist content hash, mtimes inside the base run,
-  serial re-run 16/16 green, no F075 commit touching apps/ui) —
-  .agent/gate_f075_r12/attribution.txt. Flake debt: 6 base-only,
-  under the 10-id escalation threshold; the recurring rebuild
-  class goes to closure candidates. Worktree hygiene: the base
-  gate worktree removed, pruned, branch deleted, primary only;
-  porcelain empty. Only this round carries the full-suite claim:
-  FULL SUITE GREEN. T003 complete — 10/10 stands, the ADR + diff
-  are prepared. GATE VERDICT: PASS.
-  LAST_REVIEWED_SHA = 8bc1305a.
---- END f075-r13-1 ---
+- [~] F079 — Context handoffs
+<<<END AUTHORED f079-r1-1>>>
 
---- BEGIN f075-r13-2 sha256=9c3e097e8794616caf00b8daefe35f702e8f3620ae00509ef56b67f747c53a72 ---
+<<<BEGIN AUTHORED f079-r1-2
+sha256=0015ab62fc7342b8d0d35a78c258d133e08df3efaabaf431931e33416d313617>>>
+# Live Review — F079 Context handoffs (Tier 1)
 
-## Built State (accepted 2026-08-05, R1–R12)
+Branch: feature/f079-context-handoffs
+Scope: handoff artifact (handoff.json + rendered handoff.md) composed
+from dossier, checkpoint reference, open decisions and next intent;
+triggers + loop consumption; measured recall eval. The F075 candidate
+sweep (4 entries) is registered/resolved in R1 per
+docs/roadmap/STATUS_closure_protocol.md ("Closure-candidate findings").
 
-Built and reviewed on branch feature/f075-self-run-gauntlet:
+## Steps
+- R1 (SPLIT, LARGE): Open PR Gate (#180) + STATUS claim + candidate
+  sweep + R-0199 measured diagnosis + reuse inspection + T001 (schema
+  + composer + idempotence + unit tests). Awaiting handback.
+- R2 (planned): T002 triggers + loop consumption + reference
+  verification; R-0199 fix order once the diagnosis numbers are in.
+- R3 (planned): T003 boundary recall eval + threshold. Then the
+  integration gate round, then closure (its own round, never bundled).
 
-- **Harness** (packages/orchestration/): gauntlet_evidence
-  (never-raising reader, R-0178/R-0183 honest numbers),
-  gauntlet_evaluator (9 falsifiable criteria, era classes
-  R-0141..R-0148 nameable, empty-set vacuous pass refused),
-  gauntlet_matrix (deterministic md+json), gauntlet_orders
-  (frozen set, manifest digests + set hash + template digest),
-  gauntlet_injection (all four operator classes driveable,
-  dispositions read off product facts), gauntlet_runner
-  (per-run isolated data root + materialised sample-project
-  workspace, real-root hash before/after, campaign-level crash
-  containment). CLI scripts/self_run_gauntlet.py: --dry-run
-  proof, --live campaign, --only, preflight refusals.
-- **Order set v4** (scripts/gauntlet_orders/): ten missions,
-  2x each kind, rationale + risk_probed + budget_rationale per
-  order, all four injection classes exercised; frozen with the
-  sample-project template (scripts/gauntlet_sample_project/,
-  30-test green suite) under one set hash.
-- **Product changes earned by the campaign** (each its own
-  reviewed round): run_mission exception boundary with narrow
-  retryable-class continuation and per-milestone streak
-  escalation (R3/R11); transport/machine failure classes in
-  failure_postmortem (R4); the loop executes what it dispatches
-  via long_run_executor.run_cycles (R5); explicit
-  experiment_max_cycles override — flag/config clamp untouched —
-  and store_dod at dispatch + run_job_gate at production
-  completion (R6); blocked-streak escalation (R7); released-gate
-  dispatch guard (R8); refused-dispatch attribution fix (R9);
-  released-gate context directive (R10); compiler milestone cap
-  honoring the order's declared shape (R11).
-- **The bar**: attempt 01 = 0/10, attempt 02 = 3/10, attempt 03
-  = 10/10 FLAWLESS from ONE invocation — matrices KEPT under
-  .agent/gauntlet/attempt-0{1,2,3}/. All four injections fired
-  and settled retry_within_budget in attempt 03.
-- **ADR-0001** (docs/adr/): raise CYCLE_SAFETY_CAP 1 -> 8,
-  status PROPOSED, diff prepared and NOT applied, pinned by
-  test until a human applies it.
-- **Proof**: tests/orchestration/test_gauntlet_*.py +
-  test_self_run_gauntlet.py (~470 across seven files), boundary
-  and guard tests in test_orchestrator_loop.py, compiler-cap
-  tests, executor-clamp pins. R12 integration gate: branch
-  15805 passed / 19 skipped exit 0 (reviewer re-ran personally,
-  identical); 0 branch-only failures; 6 base-only ids attributed
-  to the known UI-rebuild class (.agent/gate_f075_r12/).
+## Findings
+- R-0199 (harness perf, Medium — carried from F075, ID spent there):
+  the attempt-03 campaign read ~872 GB while writing ~2 MB.
+  Hypothesis, unverified: gauntlet_runner.data_root_digest full-scans
+  the operator's real data root before and after every run. Operator
+  priority HIGH. R1 orders the MEASURED diagnosis (raw numbers in the
+  handback); the fix order follows in R2 on those numbers.
+- R-0200 (process/gate-tooling, Medium) 2026-08-06, registered from
+  candidates: F070 was accepted with a specified execution step
+  unbuilt — its zero-provider closure evidence never proved the
+  specified verb was CALLED. The reviewer-practice half is landed
+  (docs/agents/reviewer_conventions.md, specified-route-exercised
+  rule, amend0805-v3). The gate-tooling half (closure evidence proves
+  a specified verb actually ran) stays OPEN here. DECISION: deferred —
+  no build inside F079 scope (alternatives considered: build it now —
+  rejected as scope creep; drop it — rejected, the F070 gap was real).
+  Reversal: any later relay may order the build; if unbuilt at F079
+  closure it rolls to candidates per protocol.
+- R-0201 (roadmap routing) 2026-08-06, resolved from candidates: the
+  move schema has no resume kind — a paused job's only forward path is
+  re-dispatch, and a job that ended max_cycles_reached cannot be
+  continued (F075 R5/R6 evidence). DECISION: routed to F106 — a scope
+  note is appended to docs/roadmap/features/T3_F106.md in this round
+  (alternative considered: F045 — rejected, loops are declarative
+  config, not continuation of interrupted state). Reversal: move or
+  reword the note in any later round. Resolved by routing.
+- R-0202 (gate tooling, Low) 2026-08-06, registered from candidates:
+  the mid-run UI rebuild recurred in the F075 R12 base gate despite
+  REMEDY_UI_NO_AUTO_BUILD=1 (same class as R-0169, F069 R2); suspect a
+  spawned server/build path not honoring the env var.
+  docs/agents/integration_gate.md already carries the operational
+  mitigation (dist hash check + per-id attribution). DECISION:
+  deferred, OPEN — the env-var hunt is its own ordered round when
+  prioritized; rolls to candidates at closure if unbuilt.
+- Next free ID: R-0203.
 
-Honest boundary: the multi-cycle DEFAULT is still 1 everywhere —
-ADR-0001 proposes the flip and a human applies it; the gauntlet's
-experiment override is the only over-cap path and every use is
-recorded in run evidence.
---- END f075-r13-2 ---
+## Verdicts
+- (none yet — R1 handback awaited)
+<<<END AUTHORED f079-r1-2>>>
 
---- BEGIN f075-r13-3 sha256=b6ff64e8330e39dff83bff4898247a3903b3273caf05b53df2f499f03924f94b ---
-FROM (exact line, occurs once in docs/roadmap/STATUS.md, replace once):
-- [~] F075 — MILESTONE GATE: 10 flawless self-runs
-TO (fill the four <PLACEHOLDERS> with real values, then apply):
-- [x] F075 — MILESTONE GATE: 10 flawless self-runs (T001–T003 complete; accepted 2026-08-05 · live review PASS — ACCEPTED · Evidence job <EVIDENCE_JOB_ID> · package <ZIP_FILENAME> · SHA-256 <ZIP_SHA256> · accepted HEAD <ACCEPTED_HEAD>)
---- END f075-r13-3 ---
-
---- BEGIN f075-r13-4 sha256=91123541fd9bd7f634cdbc67ef3a50e43afafc40c2da7c982d24b991e7e2873d ---
-EDIT 1 FROM (exact line, occurs once in README.md):
-35 of 253 registered items accepted. Next: F075 (MILESTONE GATE: 10 flawless self-runs).
-EDIT 1 TO:
-36 of 253 registered items accepted. Next: F079 (Context handoffs).
-EDIT 2 FROM (exact line, occurs once in README.md):
-| 1 | Self-Build Bootstrap | 19 | 22 |
-EDIT 2 TO:
-| 1 | Self-Build Bootstrap | 20 | 22 |
---- END f075-r13-4 ---
-
---- BEGIN f075-r13-5 sha256=55af55f4d3a10d23ecbe54ee739d7619711e03a064957592a003dc0fffe2b030 ---
+<<<BEGIN AUTHORED f079-r1-3
+sha256=9ddaa844de7b6a29f19c08b2001dcd85c703045798a79f61117e9a41b486ce35>>>
 # Closure Candidates — carrier of record
 
 > Written at closure per docs/roadmap/STATUS_closure_protocol.md
@@ -242,26 +234,86 @@ EDIT 2 TO:
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-- F070 was accepted with a specified execution step unbuilt (the
-  multi-cycle executor call named in T1_F070.md Design): its
-  zero-provider evidence never ran a job, so no test could notice.
-  Review-practice/gate-tooling class: how closure evidence can
-  prove a specified verb is actually CALLED, not merely present.
-  Source: F075 R4 diagnosis · 2026-08-04.
-- The move schema has no resume kind: a paused job's only forward
-  path is re-dispatch, and a job that ended max_cycles_reached
-  cannot be continued. Roadmap F045/F106 territory.
-  Source: F075 R5/R6 · 2026-08-04.
-- R-0199 (registered, deferred): the attempt-03 campaign read
-  ~872 GB while writing ~2 MB. Reviewer hypothesis, unverified:
-  gauntlet_runner.data_root_digest full-scans the operator's real
-  data root before and after every run — cost scales with operator
-  history. Needs a measured diagnosis + fix order (manifest-based
-  digest or scoped root). Source: F075 R11 · 2026-08-05.
-- The mid-run UI rebuild recurs: REMEDY_UI_NO_AUTO_BUILD=1 did not
-  prevent a rebuild inside the R12 base gate run (6 base-only ids,
-  identical dist content hash, mtimes inside the run) — the same
-  class as the F069 R2 candidate. Suspect: a spawned server/build
-  path not honoring the env var. Gate tooling, not F075 code.
-  Source: F075 R12 gate · 2026-08-05.
---- END f075-r13-5 ---
+(empty — the four F075 candidates were registered/resolved in F079 R1
+on 2026-08-06: R-0200 registered (F070 gate-tooling half, deferred) ·
+R-0201 resolved by routing to T3_F106.md · R-0199 measured diagnosis
+ordered in R1 · R-0202 registered (UI-rebuild env-var class,
+deferred). Ledger of record: .agent/live_review.md.)
+<<<END AUTHORED f079-r1-3>>>
+
+<<<BEGIN AUTHORED f079-r1-4
+sha256=54fee0eff5e98f3f333b8e42a1b8d4343ec824d029a741b0e9966325fb8dc640>>>
+
+## Scope note (F075 candidate routing, 2026-08-06)
+The orchestrator move schema has no `resume` kind: a paused job's only
+forward path is re-dispatch, and a job that ended `max_cycles_reached`
+cannot be continued (F075 R5/R6 evidence, routed from
+.agent/candidates.md by F079 R1 as R-0201). When F106 is claimed,
+treat "resume a job/mission from its persisted state" as in-scope
+territory alongside provider-session resume — the two halves of the
+same promise that an interruption is not a restart.
+<<<END AUTHORED f079-r1-4>>>
+
+<<<BEGIN AUTHORED f079-r1-5
+sha256=51c15db676f1c3aaeb4ea71c3f088aaed4469ef6f0a3e09e564d59926a3338b5>>>
+# Plan — F079 Context handoffs
+
+Branch: feature/f079-context-handoffs (from main after PR #180 merged
+at the Open PR Gate)
+
+## Goal
+Session and context-window boundaries stop losing knowledge:
+build_handoff composes dossier + checkpoint reference + open decisions
++ next intent into handoff.json + rendered handoff.md (idempotent,
+pure artifact — producing it changes no state); triggers + loop
+consumption with reference verification; measured recall eval on a
+fixture mission. Spec: docs/roadmap/features/T1_F079.md.
+
+## Current Step
+R1: candidate sweep persisted in live_review; R-0199 measured
+diagnosis (raw numbers to handoff); reuse inspection
+(mission_dossier renderer, checkpoints verification, recall harness);
+T001 schema + composer + idempotence + unit tests.
+
+## Next Steps
+- T002: triggers (explicit CLI + loop-terminates-for-limits/stop) +
+  loop consumption + stale-reference refusal + tests
+- T003: boundary recall eval on a fake-provider mission + threshold
+- R-0199 fix order once the diagnosis numbers are in
+- Integration gate round, then closure (its own round)
+
+## Risks
+- Reuse is mandated: dossier renderer, checkpoint verification, recall
+  harness — new implementations of existing pieces are rejects.
+- Do not touch: automatic context-pressure detection, cross-machine
+  transport, memory features beyond composition.
+- Idempotence vs timestamps: provenance timestamps come from SOURCE
+  artifacts, never wall clock — same state must hash identical.
+<<<END AUTHORED f079-r1-5>>>
+
+<<<BEGIN AUTHORED f079-r1-6
+sha256=51862540c4c6d7359cc5c3468ab2dd68557f8af564b0dfb2bb3905cd4514fce8>>>
+# Context — F079 Context handoffs (in progress)
+
+## Active Branch
+feature/f079-context-handoffs — claimed from main after the Open PR
+Gate merged PR #180 (amend0805-v3).
+
+## Scope
+F079 (Context handoffs, Tier 1): handoff artifact composition
+(dossier, checkpoint reference, open decisions, next intent) with
+explicit + loop triggers, loop consumption with reference
+verification, and a measured recall eval on a fixture mission. R1 also
+carries the F075 candidate sweep and the R-0199 measured diagnosis.
+
+## Constraints
+- Round gates stay scoped pytest commands; the full-suite
+  pytest -n auto run belongs to the integration gate, where the
+  resource-safety rules of tests/regression apply.
+- Building a handoff mutates nothing; missing sources render as
+  explicit gaps, never invented content.
+
+## Steps
+R1: Open PR Gate + claim + candidate sweep + R-0199 diagnosis + reuse
+inspection + T001. Then T002, T003, integration gate, closure.
+<<<END AUTHORED f079-r1-6>>>
