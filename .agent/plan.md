@@ -1,28 +1,40 @@
-# Plan — F079 Context handoffs (closed)
+# Plan — plan0806: F255 registered; self-drive package queued
 
-Branch: feature/f079-context-handoffs — closure PR open, merges at
-the next feature's Open PR Gate.
+Branch: feature/reg-f255-teacher-role — registration PR open, merges
+at the next round's Open PR Gate.
 
 ## Goal
-F079 is complete and accepted: handoff composer (idempotent, pure
-artifact), explicit CLI + loop boundary triggers, consumption with
-reference verification and one shared drift wording, measured
-boundary recall (100 % open items, report archived), R-0199
-metadata-manifest digest fix (34.6 s vs 394.8 s). Evidence job
-a7f0791c4d6b2e58; package
-remedy-review-20260806-203747-READY_FOR_REVIEW.zip; accepted HEAD
-abc33f79aac937d3504dddef7a72bdb22d4aa2d1.
+Round plan0806 (operator-relayed) done: F255 (teacher role) registered
+in Tier 5, ledger pinned at 255; single-command self-drive package
+planned in .agent/selfdrive_package.md (full S1–S5 text + round
+shapes + runtime rows there — it is part of this plan).
+
+## Operator constraint (verbatim)
+From 2026-08-13 the operator reaches this machine ONLY via SSH from a
+phone. Starting Claude Code and invoking ONE skill must be the only
+required touchpoint. Target: operational and rehearsed by 2026-08-12.
+
+## Sequence (after this PR merges)
+1. F080 (Machine-readable roadmap mirror & STATUS.md) — its R1 MUST
+   sweep the three .agent/candidates.md entries (R-0200, R-0202,
+   xdist flake): register or resolve each; they block the F080 claim.
+2. S1+S2 — build skill /build-remedy-self per the package: one-session
+   Window-1 discipline (state probe -> decide -> rounds in-session),
+   hard guardrails (PR-only merges at Open PR Gate, no force-push,
+   explicit gates, .agent/STOP / session-limit / ambiguity ->
+   F079 handoff + clean end).
+3. S4 — rehearsal: F254 built through the skill, operator present;
+   success = accepted with zero operator edits beyond starting it.
+4. Normal feature flow through the skill (S5: review-zip stays the
+   operator's remote window).
 
 ## Next Steps
-- Next session: F080 (Machine-readable roadmap mirror & STATUS.md)
-  per Rule A5, fresh window. Its first paste block runs the Open PR
-  Gate (merges the F079 closure PR).
-- .agent/candidates.md carries three entries (R-0200, R-0202, one
-  xdist-flake id) — block condition at the F080 claim until its
-  first reviewed round registers or resolves each.
+- Push branch, open PR for plan0806 (registration + planning docs).
+- Next session: F080 per sequence above.
 
 ## Risks
-- ADR-0001 (CYCLE_SAFETY_CAP) still awaits a human; the pinned
-  assertions hold it at 1.
-- Round gates stay scoped pytest commands (resource-safety rules of
-  tests/regression apply to full runs).
+- Hard date: self-drive operational and rehearsed by 2026-08-12.
+- ADR-0001 (CYCLE_SAFETY_CAP) awaits human application; blocks
+  multi-cycle loop delegation (S3 experiment lane), not the skill.
+- Candidates R-0200/R-0202/xdist flake block the F080 claim until
+  its R1 sweeps them.
