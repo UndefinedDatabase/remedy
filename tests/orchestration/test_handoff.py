@@ -659,3 +659,143 @@ class TestConsumption:
         message = handoff_root_conflict(tmp_path / "elsewhere")
         assert "R-0203" in message
         assert "REMEDY_DATA_DIR" in message
+
+
+# ---------------------------------------------------------------------------
+# T003 — the boundary recall eval (the acceptance heart)
+# ---------------------------------------------------------------------------
+
+def _shrinking_provider():
+    """The dossier suite's fake model, reused: keeps open items, drops decisions.
+
+    It reads the ids out of the dossier body quoted in the prompt, so it obeys
+    the compression rules the way a real answer would. No provider is
+    contacted anywhere in this eval.
+    """
+    from packages.orchestration.mission_dossier import DOSSIER_COMPRESSION_SCHEMA_V
+
+    def ids_in(body, section):
+        block = body.split(f"## {section}", 1)[1].split("\n## ", 1)[0]
+        return [line.split()[1] for line in block.splitlines()
+                if line.startswith("- ")]
+
+    def call_fn(prompt, attempt):
+        body = prompt.split("## Current dossier", 1)[1]
+        return json.dumps({
+            "schema_v": DOSSIER_COMPRESSION_SCHEMA_V,
+            "milestones": [{"id": i, "text": "kept"}
+                           for i in ids_in(body, "MILESTONES")],
+            "risks": [{"id": i, "text": "kept"}
+                      for i in ids_in(body, "RISKS")],
+            "decisions": [],
+            "next_step": "carry on",
+        })
+    return call_fn
+
+
+class TestBoundaryRecallEval:
+    def test_every_open_fact_survives_the_boundary(self, data_root):
+        from packages.orchestration.handoff import (
+            RECALL_THRESHOLD_OPEN_ITEMS,
+            run_boundary_recall_eval,
+        )
+        from packages.orchestration.mission_dossier import RECALL_FIXTURE_FACTS
+
+        mission = _mission(data_root, goal="The seeded mission goal is met")
+        result = run_boundary_recall_eval(mission.id, data_root,
+                                          call_fn=_shrinking_provider())
+
+        expected = {f.id for f in RECALL_FIXTURE_FACTS if not f.resolved}
+        assert set(result.answerable) == expected
+        assert result.missing == ()
+        assert result.open_recall >= RECALL_THRESHOLD_OPEN_ITEMS
+
+    def test_resolved_facts_may_compress_away_and_the_report_says_which(
+            self, data_root):
+        from packages.orchestration.handoff import run_boundary_recall_eval
+        from packages.orchestration.mission_dossier import RECALL_FIXTURE_FACTS
+
+        result = run_boundary_recall_eval(
+            _mission(data_root).id, data_root, call_fn=_shrinking_provider())
+
+        assert result.compressed_away
+        assert set(result.compressed_away) <= {
+            f.id for f in RECALL_FIXTURE_FACTS if f.resolved}
+        report = result.report_path.read_text(encoding="utf-8")
+        assert "compressed away:" in report
+        for fact_id in result.compressed_away:
+            assert fact_id in report
+
+    def test_the_resumed_context_reads_the_handoff_alone(self, data_root):
+        """The claim: the seed is sufficient by itself, with no other source."""
+        from packages.orchestration.handoff import (
+            handoff_resume_seed,
+            run_boundary_recall_eval,
+        )
+
+        mission = _mission(data_root)
+        result = run_boundary_recall_eval(mission.id, data_root,
+                                          call_fn=_shrinking_provider())
+        seed = handoff_resume_seed(mission.id, data_root)
+
+        assert seed is not None
+        assert seed.path == result.seed_path
+        for fact_id in result.answerable:
+            assert fact_id in seed.text
+
+    def test_the_report_is_archived_as_evidence_beside_the_handoff(
+            self, data_root):
+        from packages.orchestration.handoff import (
+            RECALL_REPORT_FILENAME,
+            run_boundary_recall_eval,
+        )
+
+        mission = _mission(data_root)
+        result = run_boundary_recall_eval(mission.id, data_root,
+                                          call_fn=_shrinking_provider())
+
+        assert result.report_path.name == RECALL_REPORT_FILENAME
+        assert result.report_path.parent == result.seed_path.parent
+        report = result.report_path.read_text(encoding="utf-8")
+        assert mission.id in report
+        assert "threshold:       100% of OPEN items" in report
+        assert "open recall:     100%" in report
+        assert result.seed_path.name in report
+        # The dossier harness's own numbers are carried, not restated.
+        assert "dossier version:" in report
+
+    def test_the_measurement_accounts_for_every_seeded_open_fact(self, data_root):
+        from packages.orchestration.handoff import run_boundary_recall_eval
+        from packages.orchestration.mission_dossier import RecallFact
+
+        facts = (RecallFact("R900", "this risk stays open"),
+                 RecallFact("R901", "so does this one"),
+                 RecallFact("D900", "settled already", "decision",
+                            resolved=True, outcome="done"))
+
+        result = run_boundary_recall_eval(
+            _mission(data_root).id, data_root, call_fn=_shrinking_provider(),
+            facts=facts)
+
+        assert set(result.answerable) | set(result.missing) == {"R900", "R901"}
+        report = result.report_path.read_text(encoding="utf-8")
+        assert f"open missing:    {len(result.missing)}" in report
+        assert "seeded facts:    3 (2 open, 1 resolved)" in report
+
+    def test_a_lost_open_fact_falls_below_the_threshold(self):
+        """The threshold can FAIL: recall is a measurement, not a formality."""
+        from packages.orchestration.handoff import (
+            RECALL_THRESHOLD_OPEN_ITEMS,
+            BoundaryRecallResult,
+        )
+
+        lost = BoundaryRecallResult(
+            seed_path=Path("handoff_v1.json"), report_path=Path("report.md"),
+            answerable=("R001", "R002", "R003"), missing=("R004",))
+        assert lost.open_recall == 0.75
+        assert lost.open_recall < RECALL_THRESHOLD_OPEN_ITEMS
+
+        whole = BoundaryRecallResult(
+            seed_path=Path("handoff_v1.json"), report_path=Path("report.md"),
+            answerable=("R001", "R002"), missing=())
+        assert whole.open_recall >= RECALL_THRESHOLD_OPEN_ITEMS
