@@ -1,27 +1,33 @@
-# Context — plan0806 registration + self-drive planning round
+# Context — F080 machine-readable roadmap mirror (R1)
 
 ## Active Branch
-feature/reg-f255-teacher-role — registration micro-round (precedent
-reg0803). PR open after handback, NOT merged; merges at the next
-round's Open PR Gate. F079 PR #181 was merged by this round's gate.
+feature/f080-roadmap-mirror — cut from main 1da1b07a after the Open PR
+Gate merged PR #182 (plan0806 registration). No PR this round; F080's
+PR is created only at closure.
 
 ## Scope
-Docs/planning only, no product code. Part 1: F255 (teacher role)
-registered in Tier 5 — STATUS line, T5_F255.md (scope verbatim),
-TOTAL_FEATURES 255, README counts, one commit. Part 2: single-command
-self-drive package planned in .agent/selfdrive_package.md; plan.md
-carries the sequence and the operator constraint verbatim.
+F080 R1: candidate sweep + claim + T001 (pure parser
+packages/orchestration/roadmap_index.py, strict grammar validation with
+`<file>:<line>: <what>` errors, JSON index writer under the data root,
+CLI group `plan` with `status` / `next`) + T002 (report-only
+consistency checks). T003 (feature→mission adapter) is R2, not here.
 
 ## Constraints
-- Registration is NOT a feature claim: the three candidates (R-0200,
-  R-0202, xdist flake) do not block here; they block the F080 claim
-  and its R1 must sweep them.
-- Self-drive is planning output only; build sequenced AFTER F080
-  closes. Hard date: operational and rehearsed by 2026-08-12
-  (operator SSH-only from 2026-08-13).
-- ADR-0001 stays PROPOSED; CYCLE_SAFETY_CAP stays 1 until a human
-  applies it — prerequisite for multi-cycle loop delegation (S3).
+- STATUS.md semantics and ownership stay human-owned (A4); no
+  auto-checking of checkboxes; the generated index is never committed
+  (one-way mirror under REMEDY_DATA_DIR, regenerated on every read).
+- `plan status` / `plan next` PROPOSE only — they never start a job.
+  Per STATUS Rule A5 an in-progress `[~]` line is the active feature;
+  otherwise the first `[ ]` line is next.
+- Grammar violations are the only hard failures; consistency findings
+  are reported, never fatal. Duplicate feature ids: hard error.
+- Commits < 500 lines; multiple commits expected.
+- Test runner is pytest, invoked per-file (tests/orchestration/
+  test_roadmap_index.py, tests/cli/test_plan_cli.py, tests/docs/,
+  tests/cli/test_golden_path.py) — no full-suite or xdist runs from
+  the worker window (resource safety).
 
 ## Steps
-Part 1 done (commit 419a6243, both gates green) → Part 2 planning
-docs committed → push + PR → next: F080 in a fresh session.
+Sweep committed (6f529456) → claim (STATUS [~], live_review reset) →
+T001 parser+tests → T001 CLI+tests → T002 checks+tests → push +
+handoff rewrite.

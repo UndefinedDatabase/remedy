@@ -1,23 +1,25 @@
-# Plan — plan0806: F255 registered; self-drive package queued
+# Plan — F080 Machine-readable roadmap mirror & STATUS.md (R1)
 
-Branch: feature/reg-f255-teacher-role — registration PR open, merges
-at the next round's Open PR Gate.
+Branch: feature/f080-roadmap-mirror — claimed after the Open PR Gate
+merged PR #182 (main 1da1b07a).
 
 ## Goal
-Round plan0806 (operator-relayed) done: F255 (teacher role) registered
-in Tier 5, ledger pinned at 255; single-command self-drive package
-planned in .agent/selfdrive_package.md (full S1–S5 text + round
-shapes + runtime rows there — it is part of this plan).
+F080 R1 (SPLIT, LARGE): candidate sweep (done — R-0200 → T9_F163,
+R-0202 → T2_F085, R-0204 → T7_F135; .agent/candidates.md now empty),
+claim (STATUS [~]), then T001 (pure parser roadmap_index.py + strict
+grammar validation with file:line errors + index writer under the data
+root + CLI `remedy plan status` / `remedy plan next`) and T002
+(report-only consistency checks). Index is a one-way mirror, never
+committed; STATUS.md stays human-owned (A4).
 
 ## Operator constraint (verbatim)
 From 2026-08-13 the operator reaches this machine ONLY via SSH from a
 phone. Starting Claude Code and invoking ONE skill must be the only
 required touchpoint. Target: operational and rehearsed by 2026-08-12.
 
-## Sequence (after this PR merges)
-1. F080 (Machine-readable roadmap mirror & STATUS.md) — its R1 MUST
-   sweep the three .agent/candidates.md entries (R-0200, R-0202,
-   xdist flake): register or resolve each; they block the F080 claim.
+## Sequence
+1. F080 (Machine-readable roadmap mirror & STATUS.md) — R1 in progress;
+   its candidate sweep is done, so the claim is unblocked.
 2. S1+S2 — build skill /build-remedy-self per the package: one-session
    Window-1 discipline (state probe -> decide -> rounds in-session),
    hard guardrails (PR-only merges at Open PR Gate, no force-push,
@@ -29,12 +31,16 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- Push branch, open PR for plan0806 (registration + planning docs).
-- Next session: F080 per sequence above.
+- T001: roadmap_index.py + tests (this repo as fixture + one broken-
+  grammar fixture per violation class), then plan CLI + tests.
+- T002: consistency checks reported in `plan status` and in the index.
+- Handback: push branch, rewrite .agent/handoff.md. No PR — F080's PR
+  is created only at closure.
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
 - ADR-0001 (CYCLE_SAFETY_CAP) awaits human application; blocks
   multi-cycle loop delegation (S3 experiment lane), not the skill.
-- Candidates R-0200/R-0202/xdist flake block the F080 claim until
-  its R1 sweeps them.
+- Parser anchors are markdown header conventions — grammar strictness
+  must not turn existing valid feature files red (tests/docs/ is the
+  guard).
