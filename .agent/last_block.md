@@ -1,319 +1,261 @@
-You are the worker for F079 R1 (SPLIT round, LARGE). Reviewer gates the
-handback; you never write verdicts and never merge feature work.
-Authority: AGENTS.md. Spec: docs/roadmap/features/T1_F079.md (read it
-fully). If any verification below goes red: STOP at that point per
-AGENTS.md If-Blocked, commit what is green, hand back with the raw
-failure — do not continue into the next slice.
+You are the worker for F079 R2 (SPLIT round, LARGE). R1 verdict: PASS.
+Reviewer gates the handback; you never write verdicts and never merge.
+Authority: AGENTS.md. Spec: docs/roadmap/features/T1_F079.md. If any
+verification below goes red: STOP at that point per AGENTS.md
+If-Blocked, commit what is green, hand back with the raw failure — do
+not continue into the next slice.
 
-── STEP claim+T001/3 — F079 ─────────────────────────────────
-Goal:        Merge PR #180, claim F079, register/resolve the four
-             closure candidates, measure R-0199, inspect reuse
-             surfaces, build T001 (handoff schema + composer +
-             idempotence + unit tests).
-Bundle:      0 preflight · 1 Open PR Gate · 2 branch · 3 state commits
-             (authored texts) · 4 docs gates · 5 R-0199 measured
-             diagnosis · 6 reuse inspection · 7 T001 · 8 handback
-Change:      .agent/** state files, docs/roadmap/STATUS.md (one line),
-             docs/roadmap/features/T3_F106.md (append), NEW
-             packages/orchestration/handoff.py, NEW
-             tests/orchestration/test_handoff.py. Nothing else.
-Constraints: Do-not-touch per T1_F079.md (no automatic context-pressure
-             detection, no cross-machine transport, no memory features
-             beyond composition). Reuse is mandated: dossier renderer,
-             checkpoint verification, recall harness — a new
-             implementation of an existing piece is a reject. Commits
-             < 500 lines each. Primary checkout porcelain-empty at
-             handback.
+── STEP R-0199+T002+T003/3 — F079 ───────────────────────────
+Goal:        Persist the R1 verdict, fix R-0199 (metadata-manifest
+             digest), build T002 (triggers + loop consumption +
+             reference verification) and T003 (boundary recall eval).
+Bundle:      1 state commits · 2 R-0199 fix · 3 T002 · 4 T003 ·
+             5 handback
+Change:      .agent/** state files,
+             packages/orchestration/gauntlet_runner.py (digest only),
+             packages/orchestration/handoff.py, the CLI module that
+             carries mission commands, orchestrator loop termination
+             seam, tests. Nothing else.
+Constraints: Do-not-touch per T1_F079.md. Reuse mandated: checkpoint
+             verification, recall harness — new implementations of
+             existing pieces are rejects. Commits < 500 lines each
+             (the last_block save rides alone, R-0198 rule). Primary
+             checkout porcelain-empty at handback. Mutation/red-proof
+             checks, if any, only in a disposable git worktree.
 Done when:   All verifications below exit 0, in order.
-Handback:    Completion report + rewrite .agent/handoff.md (see 8).
+Handback:    Completion report + rewrite .agent/handoff.md (see 5).
 ──────────────────────────────────────────────────────────────
 
-0. PREFLIGHT
-   git status --porcelain   → must be empty (you are on
-   feature/amend0805-v3). If not empty: STOP, hand back.
+1. STATE COMMITS (persist FIRST, before any fix)
+   Two authored texts follow at the bottom, delimited by BEGIN/END
+   marker lines. Authored bytes = everything BETWEEN the marker
+   lines, including the final newline; markers are never content.
+   a. COMMIT A: this entire prompt saved verbatim to
+      .agent/last_block.md (own commit).
+   b. Save the bytes to .agent/authored/f079-r2-1.md and
+      .agent/authored/f079-r2-2.md; verify each with sha256sum
+      against the sha256 in its BEGIN marker. Mismatch → STOP, hand
+      back naming the block and both hashes; apply nothing.
+      COMMIT B: the two authored files.
+   c. Apply: f079-r2-1 replaces .agent/live_review.md entirely;
+      f079-r2-2 replaces .agent/plan.md entirely. COMMIT C: exactly
+      these two files, message
+      "chore(f079): persist R1 PASS verdict + R2 plan (R-0199 fix
+      ordered, R-0203 registered)".
 
-1. OPEN PR GATE
-   Merge PR #180 per the AGENTS.md Open PR Gate procedure. Then:
-   git checkout main && git pull
+2. R-0199 FIX — data_root_digest becomes a metadata manifest
+   File: packages/orchestration/gauntlet_runner.py, function
+   data_root_digest (line ~91). The R1 diagnosis (handoff.md of R1)
+   measured 394.8 s per call, ~2.9 TB read per campaign, with
+   job_workspaces at 99.80 % of bytes.
+   a. FIRST inspect every consumer of the digest value and the
+      data_root_hash_before/after fields: rg through
+      gauntlet_evaluator.py, gauntlet_evidence.py, gauntlet_matrix.py
+      and tests/. List them in the handback. Field NAMES and per-run
+      call frequency stay unchanged; only the digest definition
+      changes.
+   b. Reimplement: sha256 over the sorted manifest of
+      "relpath\tsize\tmtime_ns" lines for every file under the root —
+      NO content reads. Prefix the value "meta-sha256:" so an old
+      content digest can never be compared equal to a new one.
+      Docstring states the honest contract: detects add, remove,
+      move, resize and mtime change; does NOT detect a content edit
+      that forges identical size and mtime_ns — the isolation proof's
+      threat model is accidental writes, not forgery. Cite R-0199.
+   c. Unit tests (same test home the runner already uses): unchanged
+      tree → stable digest across calls; add / remove / move /
+      resize / mtime-touch → digest changes; value carries the
+      meta-sha256: prefix.
+   d. Time ONE call of the new digest on the real data root
+      (throwaway script outside the repo, deleted after; the R1
+      baseline was 394.8 s content / 66.8 s walk-only). Record the
+      seconds in the handback — that number is the fix's proof.
+   VERIFY: the runner's test file(s) you touched, e.g.
+   python3 -m pytest tests/orchestration/test_self_run_gauntlet.py -q
+   plus the digest tests → exit 0. Red → STOP.
 
-2. BRANCH
-   git checkout -b feature/f079-context-handoffs
-
-3. STATE COMMITS
-   Five authored texts follow at the bottom of this prompt, each
-   delimited by BEGIN/END marker lines. The authored bytes are
-   everything BETWEEN the marker lines, including the final newline;
-   the marker lines themselves are never part of the content.
-   For each text f079-r1-N:
-   a. Save the bytes to .agent/authored/f079-r1-N.md
-   b. Verify: sha256sum .agent/authored/f079-r1-N.md must equal the
-      sha256 in its BEGIN marker. On ANY mismatch: STOP, hand back
-      naming the block and both hashes — apply nothing.
-   COMMIT 1 (own commit, before any application): the six files
-   .agent/authored/f079-r1-{1,2,3,4,5,6}.md plus this entire prompt
-   saved verbatim to .agent/last_block.md.
-   Then apply, verbatim from the verified authored files:
-   c. f079-r1-1: in docs/roadmap/STATUS.md replace the FROM line with
-      the TO line (exactly one occurrence; the file's only F079 line).
-   d. f079-r1-2 → replaces .agent/live_review.md entirely.
-   e. f079-r1-3 → replaces .agent/candidates.md entirely.
-   f. f079-r1-4 → APPEND to docs/roadmap/features/T3_F106.md (file
-      currently ends after the "Do not touch" section; the authored
-      text begins with a blank line — append as-is to the end).
-   g. f079-r1-5 → replaces .agent/plan.md entirely.
-   h. f079-r1-6 → replaces .agent/context.md entirely.
-   COMMIT 2: exactly these six applied files, message
-   "chore(f079): claim F079 + candidate sweep (R-0200..R-0202, R-0199
-   diagnosis ordered)".
-
-4. DOCS-ROUND GATES (change set touches docs/roadmap/**)
-   python3 -m pytest tests/docs/ -q          → exit 0
-   python3 -m pytest tests/cli/test_golden_path.py -q   → exit 0
-   Record command, exit code and tail for both. Red → STOP.
-
-5. R-0199 MEASURED DIAGNOSIS (read-only; no code change, no fix)
-   Hypothesis to test: gauntlet_runner.data_root_digest
-   (packages/orchestration/gauntlet_runner.py:91) full-scans the
-   operator's real data root on every call, ~20+ calls per campaign.
-   a. Read the call sites: count how many data_root_digest calls one
-      campaign of 10 runs performs; note file:line of each site.
-   b. Resolve the EXACT root the gauntlet passes (read the resolution
-      code path; do not guess).
-   c. Measure that root: file count and total bytes (e.g.
-      `find <root> -type f | wc -l` and `du -sb <root>`).
-   d. Time ONE data_root_digest(<root>) call with time.perf_counter
-      via a throwaway script OUTSIDE the repo (scratch/tmp, deleted
-      afterwards). HARD CAP: if the call has not returned after 15
-      minutes, kill it and record "aborted at 15 min" — the timeout
-      is itself the measurement.
-   e. Record ALL raw numbers (counts, bytes, seconds, call-site
-      table) in the handback under "R-0199 diagnosis". Compute
-      bytes-scanned-per-campaign = total bytes x call count and state
-      whether it is consistent with the observed ~872 GB. NO fix in
-      this round — the reviewer orders the fix in R2 from your
-      numbers.
-
-6. REUSE INSPECTION (read-only)
-   Produce a table in the handback naming, with file:line, the exact
-   pieces T001–T003 must reuse:
-   - the dossier renderer entry point(s) in
-     packages/orchestration/mission_dossier.py and where dossier
-     evidence is written (the evidence-area path scheme),
-   - the checkpoint reference + verification API in
-     packages/orchestration/checkpoints.py (what T002 will call),
-   - the recall harness used by the dossier tests (locate it under
-     tests/, name the fixture mission it uses),
-   - where open decisions live (decision_queue.py surface) and where
-     "next intent" can be read from mission state.
-   No code changes in this slice.
-
-7. T001 — schema + composer + idempotence + unit tests
-   New module packages/orchestration/handoff.py:
-   - HANDOFF_SCHEMA_VERSION = 1; build_handoff(mission_id) -> Path.
-   - Compose handoff.json: schema_version, mission_id, dossier text
-     (via the EXISTING renderer from slice 6), checkpoint reference +
-     worktree head, open decisions with ids, next intent, provenance
-     timestamps, and an explicit `gaps` list — any missing source
-     renders as a named gap entry, never invented content.
-   - Also render handoff.md: fixed section order, dossier first.
-   - Both files land in the mission's evidence area, same path scheme
-     the dossier uses.
-   - IDEMPOTENT PER STATE: same mission state → byte-identical output
-     (content-hash test). Therefore NO wall-clock reads in content:
-     provenance timestamps are those of the SOURCE artifacts. Repeat
-     builds on unchanged state must not create duplicates; changed
-     state accumulates a new handoff deterministically (newest
-     resolvable by the accumulation scheme — consumption itself is
-     T002, not now).
-   - PURE ARTIFACT: building mutates no mission/job/queue state —
-     test asserts a state snapshot before == after.
-   - Secrets: apply the existing manifest redaction denylist to any
-     config values included.
-   - Zero-progress mission is a valid handoff (goal + empty sections
-     as explicit gaps).
-   Tests in tests/orchestration/test_handoff.py covering: idempotence
-   hash equality; missing-source → named gap; zero-progress validity;
-   no-mutation snapshot; redaction applied; schema_version present.
-   In the handback, name every reused piece per slice 6.
-   Commit in small commits (< 500 lines each).
+3. T002 — triggers + loop consumption + reference verification
+   a. Explicit trigger: `remedy mission handoff <mission-id>` —
+      follow the EXISTING mission-command registration pattern in the
+      CLI (locate it; name it in the handback). Calls build_handoff,
+      prints the artifact path, exits nonzero with the
+      MissionForHandoffNotFoundError message for an unknown mission.
+   b. Loop trigger: when the orchestrator loop terminates for limits
+      or stop, it builds a handoff — every pause becomes resumable.
+      A handoff-build failure must NOT mask the terminal outcome:
+      catch, record honestly (event/log surface the loop already
+      has), terminate as before. Name the exact seam (file:line) in
+      the handback.
+   c. Consumption: the loop's context assembly accepts a handoff as
+      the seed for iteration one of a RESUMED mission. Rules:
+      newest valid handoff wins and which one is logged; unknown
+      schema_version → refuse (HANDOFF_SCHEMA_VERSION consumers must
+      not guess); before trusting the narrative, verify the
+      checkpoint reference with the EXISTING checkpoint rules
+      (checkpoints.py load path + resolve_live_worktree_head) — a
+      stale worktree head refuses with the checkpoint feature's own
+      message, never a new one. R-0203 constraint: resolve ALL
+      sources through one root discipline; document it at the
+      consumption seam.
+   d. Automatic in-flight context-pressure detection stays unbuilt —
+      note it in the module docstring where consumption lands (the
+      feature file demands the documentation).
+   Tests: extend tests/orchestration/test_handoff.py (+ a CLI test
+   beside the existing mission-command tests): explicit trigger
+   writes the artifact; loop-limit termination writes one; build
+   failure does not change the terminal; resume seeds from newest
+   valid; stale head refuses with the checkpoint message; unknown
+   schema_version refuses.
    VERIFY: python3 -m pytest tests/orchestration/test_handoff.py -q
-   → exit 0. Red → STOP per If-Blocked.
+   and the CLI test file you touched → exit 0. Red → STOP.
 
-8. HANDBACK
-   Re-run the canary: python3 -m pytest tests/cli/test_golden_path.py
-   -q → exit 0. Confirm git status --porcelain empty after the final
-   commit. Push the branch (no PR — closure creates the PR later).
-   Rewrite .agent/handoff.md (commit it as the last commit) with:
+4. T003 — the boundary recall eval (acceptance heart)
+   Reuse the dossier's recall harness VERBATIM:
+   mission_dossier.run_recall_harness + RECALL_FIXTURE_FACTS (10
+   seeded facts) + recall_report — a new harness is a reject. Eval:
+   fixture mission on the fake provider, seed the facts, force a
+   boundary (build the handoff), resume in a fresh context FROM THE
+   HANDOFF ALONE, assert the documented recall threshold on OPEN
+   items (resolved items may compress — the dossier's own
+   asymmetry; reuse its documented threshold and cite where it is
+   documented). Archive the eval report into the mission's evidence
+   area — that archived report is closure evidence.
+   Tests: the eval runs in test_handoff.py (or its own test file
+   beside it), asserts the threshold and the archived report's
+   existence and content.
+   VERIFY: python3 -m pytest tests/orchestration/test_handoff.py -q
+   (full file) → exit 0. Red → STOP.
+
+5. HANDBACK
+   Canary: python3 -m pytest tests/cli/test_golden_path.py -q →
+   exit 0. git status --porcelain → empty. Push the branch (no PR —
+   closure creates it). Rewrite .agent/handoff.md (last commit) with:
    - changed-files table per commit (path, +/-, reason),
-   - raw transcripts: every verification command, exit code, output
-     tail,
-   - "R-0199 diagnosis" section with the slice-5 numbers,
-   - the slice-6 reuse table,
-   - reused-pieces list for T001,
+   - raw transcripts: every verification command, exit code, tail,
+   - the R-0199 consumer list (2a) and the new-digest timing (2d),
+   - the CLI pattern followed (3a) and the loop seam file:line (3b),
+   - reused pieces named for T002/T003 (checkpoint rules, recall
+     harness, threshold citation),
    - item status per slice (done / stopped-at with the red output).
-   No verdict, no merge, no STATUS edits beyond the authored claim.
+   No verdict, no merge, no STATUS edits.
 
 AUTHORED TEXTS
 
-<<<BEGIN AUTHORED f079-r1-1
-sha256=29cbd4ef7c1a7bf2e7d043c6d0bf63dd95eb47a84ed25e68d89a69a70240c59b>>>
-FROM:
-- [ ] F079 — Context handoffs
-TO:
-- [~] F079 — Context handoffs
-<<<END AUTHORED f079-r1-1>>>
-
-<<<BEGIN AUTHORED f079-r1-2
-sha256=0015ab62fc7342b8d0d35a78c258d133e08df3efaabaf431931e33416d313617>>>
+<<<BEGIN AUTHORED f079-r2-1
+sha256=8077b273a9f909e51ca3c50f0ca3b7330428a1b44b1d3e7fc5cd7e0d5bf79cde>>>
 # Live Review — F079 Context handoffs (Tier 1)
 
 Branch: feature/f079-context-handoffs
 Scope: handoff artifact (handoff.json + rendered handoff.md) composed
 from dossier, checkpoint reference, open decisions and next intent;
 triggers + loop consumption; measured recall eval. The F075 candidate
-sweep (4 entries) is registered/resolved in R1 per
+sweep (4 entries) was registered/resolved in R1 per
 docs/roadmap/STATUS_closure_protocol.md ("Closure-candidate findings").
 
 ## Steps
 - R1 (SPLIT, LARGE): Open PR Gate (#180) + STATUS claim + candidate
-  sweep + R-0199 measured diagnosis + reuse inspection + T001 (schema
-  + composer + idempotence + unit tests). Awaiting handback.
-- R2 (planned): T002 triggers + loop consumption + reference
-  verification; R-0199 fix order once the diagnosis numbers are in.
-- R3 (planned): T003 boundary recall eval + threshold. Then the
-  integration gate round, then closure (its own round, never bundled).
+  sweep + R-0199 measured diagnosis + reuse inspection + T001 —
+  PASS, see Verdicts.
+- R2 (SPLIT, LARGE, current): R-0199 fix (metadata-manifest digest)
+  + T002 (triggers + loop consumption + reference verification)
+  + T003 (boundary recall eval + threshold). Awaiting handback.
+- R3 (planned): integration gate per docs/agents/integration_gate.md.
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md — its own
+  round, never bundled.
 
 ## Findings
 - R-0199 (harness perf, Medium — carried from F075, ID spent there):
-  the attempt-03 campaign read ~872 GB while writing ~2 MB.
-  Hypothesis, unverified: gauntlet_runner.data_root_digest full-scans
-  the operator's real data root before and after every run. Operator
-  priority HIGH. R1 orders the MEASURED diagnosis (raw numbers in the
-  handback); the fix order follows in R2 on those numbers.
-- R-0200 (process/gate-tooling, Medium) 2026-08-06, registered from
-  candidates: F070 was accepted with a specified execution step
-  unbuilt — its zero-provider closure evidence never proved the
-  specified verb was CALLED. The reviewer-practice half is landed
-  (docs/agents/reviewer_conventions.md, specified-route-exercised
-  rule, amend0805-v3). The gate-tooling half (closure evidence proves
-  a specified verb actually ran) stays OPEN here. DECISION: deferred —
-  no build inside F079 scope (alternatives considered: build it now —
-  rejected as scope creep; drop it — rejected, the F070 gap was real).
-  Reversal: any later relay may order the build; if unbuilt at F079
-  closure it rolls to candidates per protocol.
-- R-0201 (roadmap routing) 2026-08-06, resolved from candidates: the
-  move schema has no resume kind — a paused job's only forward path is
-  re-dispatch, and a job that ended max_cycles_reached cannot be
-  continued (F075 R5/R6 evidence). DECISION: routed to F106 — a scope
-  note is appended to docs/roadmap/features/T3_F106.md in this round
-  (alternative considered: F045 — rejected, loops are declarative
-  config, not continuation of interrupted state). Reversal: move or
-  reword the note in any later round. Resolved by routing.
-- R-0202 (gate tooling, Low) 2026-08-06, registered from candidates:
-  the mid-run UI rebuild recurred in the F075 R12 base gate despite
-  REMEDY_UI_NO_AUTO_BUILD=1 (same class as R-0169, F069 R2); suspect a
-  spawned server/build path not honoring the env var.
-  docs/agents/integration_gate.md already carries the operational
-  mitigation (dist hash check + per-id attribution). DECISION:
-  deferred, OPEN — the env-var hunt is its own ordered round when
-  prioritized; rolls to candidates at closure if unbuilt.
-- Next free ID: R-0203.
+  diagnosis MEASURED in the F079 R1 handback, mechanism confirmed —
+  two production call sites (gauntlet_runner.py:461 before, :533
+  after, always), root resolves to the operator's real .data
+  (143.66 GB / 2,495,115 files at measurement), one content-hash call
+  = 394.8 s, 20 calls per 10-order campaign ≈ 2.9 TB read / ~2.2 h
+  pure hashing; job_workspaces holds 99.80 % of the bytes; the
+  attempt-03 ~872 GB observation is consistent with the mechanism at
+  that date's root size. FIX ORDERED in R2: data_root_digest becomes
+  a metadata-manifest digest (relpath, size, mtime_ns — no content
+  reads), per-run call frequency and evidence field names retained.
+  DECISION (alternatives considered: campaign-level frequency —
+  rejected, loses per-run attribution; scoping the root past
+  job_workspaces — rejected, that subtree is exactly where a
+  violation would land; keeping content hashing — rejected, 6x the
+  wall clock for a threat model of accidental writes). Reversal: any
+  later relay may reinstate content hashing.
+- R-0200 (process/gate-tooling, Medium): F070 verb-called gate half.
+  Deferred, OPEN — unchanged from R1; rolls to candidates at closure
+  if unbuilt.
+- R-0201 (roadmap routing): resolved by routing in R1 — scope note
+  landed in docs/roadmap/features/T3_F106.md. Resolved.
+- R-0202 (gate tooling, Low): mid-run UI rebuild env-var class.
+  Deferred, OPEN — unchanged from R1; rolls to candidates at closure
+  if unbuilt.
+- R-0203 (design, Low) 2026-08-06, reviewer-registered at the R1
+  review: handoff.py's `root` parameter reaches mission/dossier/output
+  paths, but the job-side sources (checkpoints, storage, run events)
+  resolve the env-rooted data root — consistent only when both point
+  at the same place (the tests pin this via REMEDY_DATA_DIR). Matches
+  the existing env-rooted API shape; not a defect today. Disposition:
+  constraint carried into the T002 order (consumption resolves ALL
+  sources through one root discipline and documents it); closes with
+  T002.
+- Next free ID: R-0204.
 
 ## Verdicts
-- (none yet — R1 handback awaited)
-<<<END AUTHORED f079-r1-2>>>
+- R1: PASS (SPLIT, LARGE, 2026-08-06). Range 38854f60..79621fc0
+  (6 commits, all tabled). Transport: f079-r1-1..6 cmp 0 against the
+  reviewer's scratchpad originals (primary proof); every applied
+  state file byte-equals its authored text; the STATUS claim and the
+  T3_F106 append verified in place. Reviewer re-ran the gates
+  personally: tests/docs 293 passed, canary 42 passed, test_handoff
+  23 passed — all exit 0; porcelain empty; `git worktree list` =
+  primary only. handoff.py and test_handoff.py read in full:
+  composition only — dossier renderer, checkpoint loader, decision
+  queue, event/job loaders and both redactors reused, every reuse
+  claim spot-checked at its file:line; pure artifact pinned by the
+  snapshot test; idempotence pinned incl. the derived-decision
+  wall-clock fix the worker found and killed in-slice; gaps named,
+  zero-progress valid, redaction pinned to run_manifest's denylist.
+  R-0199 diagnosis accepted: both call sites and the root-resolution
+  path verified in source by the reviewer; the size/time numbers
+  accepted from the worker's raw transcript — a reviewer re-scan was
+  deliberately skipped (the scan is itself the R-0199 cost) and the
+  operator declined it at relay, consistent with that discipline.
+  The COMMIT-1 split deviation is accepted (contents and order
+  unchanged, < 500-line rule honoured — same class as the R-0198
+  ruling). Verification tier: round gate + canary + docs gate.
+  LAST_REVIEWED_SHA = 79621fc0.
+<<<END AUTHORED f079-r2-1>>>
 
-<<<BEGIN AUTHORED f079-r1-3
-sha256=9ddaa844de7b6a29f19c08b2001dcd85c703045798a79f61117e9a41b486ce35>>>
-# Closure Candidates — carrier of record
-
-> Written at closure per docs/roadmap/STATUS_closure_protocol.md
-> ("Closure-candidate findings", disk-vehicle rule, operator ruling
-> 2026-08-01). Read at Window-1 session bootstrap
-> (docs/agents/planner_reviewer_prompt.md §1). One entry per
-> candidate: description · source feature · date. Any entry present
-> at feature-claim time is a block condition.
-
-(empty — the four F075 candidates were registered/resolved in F079 R1
-on 2026-08-06: R-0200 registered (F070 gate-tooling half, deferred) ·
-R-0201 resolved by routing to T3_F106.md · R-0199 measured diagnosis
-ordered in R1 · R-0202 registered (UI-rebuild env-var class,
-deferred). Ledger of record: .agent/live_review.md.)
-<<<END AUTHORED f079-r1-3>>>
-
-<<<BEGIN AUTHORED f079-r1-4
-sha256=54fee0eff5e98f3f333b8e42a1b8d4343ec824d029a741b0e9966325fb8dc640>>>
-
-## Scope note (F075 candidate routing, 2026-08-06)
-The orchestrator move schema has no `resume` kind: a paused job's only
-forward path is re-dispatch, and a job that ended `max_cycles_reached`
-cannot be continued (F075 R5/R6 evidence, routed from
-.agent/candidates.md by F079 R1 as R-0201). When F106 is claimed,
-treat "resume a job/mission from its persisted state" as in-scope
-territory alongside provider-session resume — the two halves of the
-same promise that an interruption is not a restart.
-<<<END AUTHORED f079-r1-4>>>
-
-<<<BEGIN AUTHORED f079-r1-5
-sha256=51c15db676f1c3aaeb4ea71c3f088aaed4469ef6f0a3e09e564d59926a3338b5>>>
+<<<BEGIN AUTHORED f079-r2-2
+sha256=d4c7bcd3d28c2278bd27cc8c9a65999f85eeffc407fbb586ed6d38fa5b4a8f4c>>>
 # Plan — F079 Context handoffs
 
-Branch: feature/f079-context-handoffs (from main after PR #180 merged
-at the Open PR Gate)
+Branch: feature/f079-context-handoffs
 
 ## Goal
 Session and context-window boundaries stop losing knowledge:
 build_handoff composes dossier + checkpoint reference + open decisions
 + next intent into handoff.json + rendered handoff.md (idempotent,
-pure artifact — producing it changes no state); triggers + loop
-consumption with reference verification; measured recall eval on a
-fixture mission. Spec: docs/roadmap/features/T1_F079.md.
+pure artifact — done in T001); triggers + loop consumption with
+reference verification (T002); measured recall eval on a fixture
+mission (T003). Spec: docs/roadmap/features/T1_F079.md.
 
 ## Current Step
-R1: candidate sweep persisted in live_review; R-0199 measured
-diagnosis (raw numbers to handoff); reuse inspection
-(mission_dossier renderer, checkpoints verification, recall harness);
-T001 schema + composer + idempotence + unit tests.
+R2: R-0199 fix (data_root_digest becomes a metadata-manifest digest;
+per-run frequency and evidence field names retained), T002 triggers +
+loop consumption + reference verification, T003 boundary recall eval
++ threshold assertion + archived eval report.
 
 ## Next Steps
-- T002: triggers (explicit CLI + loop-terminates-for-limits/stop) +
-  loop consumption + stale-reference refusal + tests
-- T003: boundary recall eval on a fake-provider mission + threshold
-- R-0199 fix order once the diagnosis numbers are in
-- Integration gate round, then closure (its own round)
+- R3: integration gate per docs/agents/integration_gate.md
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md (own round)
 
 ## Risks
-- Reuse is mandated: dossier renderer, checkpoint verification, recall
-  harness — new implementations of existing pieces are rejects.
-- Do not touch: automatic context-pressure detection, cross-machine
-  transport, memory features beyond composition.
-- Idempotence vs timestamps: provenance timestamps come from SOURCE
-  artifacts, never wall clock — same state must hash identical.
-<<<END AUTHORED f079-r1-5>>>
-
-<<<BEGIN AUTHORED f079-r1-6
-sha256=51862540c4c6d7359cc5c3468ab2dd68557f8af564b0dfb2bb3905cd4514fce8>>>
-# Context — F079 Context handoffs (in progress)
-
-## Active Branch
-feature/f079-context-handoffs — claimed from main after the Open PR
-Gate merged PR #180 (amend0805-v3).
-
-## Scope
-F079 (Context handoffs, Tier 1): handoff artifact composition
-(dossier, checkpoint reference, open decisions, next intent) with
-explicit + loop triggers, loop consumption with reference
-verification, and a measured recall eval on a fixture mission. R1 also
-carries the F075 candidate sweep and the R-0199 measured diagnosis.
-
-## Constraints
-- Round gates stay scoped pytest commands; the full-suite
-  pytest -n auto run belongs to the integration gate, where the
-  resource-safety rules of tests/regression apply.
-- Building a handoff mutates nothing; missing sources render as
-  explicit gaps, never invented content.
-
-## Steps
-R1: Open PR Gate + claim + candidate sweep + R-0199 diagnosis + reuse
-inspection + T001. Then T002, T003, integration gate, closure.
-<<<END AUTHORED f079-r1-6>>>
+- R-0203 constraint: consumption resolves ALL sources through one
+  root discipline; document it at the consumption seam.
+- Evidence-shape care in the R-0199 fix: digest definition changes,
+  call frequency and field names do not; gauntlet evaluator/test
+  consumers must be inspected before the edit.
+- Do-not-touch unchanged: no automatic context-pressure detection, no
+  cross-machine transport, no memory features beyond composition.
+<<<END AUTHORED f079-r2-2>>>
