@@ -1,29 +1,33 @@
-# Plan — Amendment round amend0805-v3
+# Plan — F079 Context handoffs
 
-Branch: feature/amend0805-v3 (F075 PR #179 merged at Open PR Gate)
+Branch: feature/f079-context-handoffs (from main after PR #180 merged
+at the Open PR Gate)
 
 ## Goal
-Apply operator-relayed amendment round amend0805-v3 (docs/planning only;
-replaces amend0804 v1/v2, neither ran). Items B1–B5 (roadmap), C1
-(reviewer conventions), D1–D2 (doc drift), E1–E2 (workflow docs +
-candidates note). Single-session permitted per §3 Named Round Types.
-Not a feature claim; candidates block condition does not fire.
+Session and context-window boundaries stop losing knowledge:
+build_handoff composes dossier + checkpoint reference + open decisions
++ next intent into handoff.json + rendered handoff.md (idempotent,
+pure artifact — producing it changes no state); triggers + loop
+consumption with reference verification; measured recall eval on a
+fixture mission. Spec: docs/roadmap/features/T1_F079.md.
 
 ## Current Step
-Presence checks done — all 10 items absent, all live. Applying in
-order B → C → D → E; commit per part, push, PR, handback with
-item-status table.
+R1: candidate sweep persisted in live_review; R-0199 measured
+diagnosis (raw numbers to handoff); reuse inspection
+(mission_dossier renderer, checkpoints verification, recall harness);
+T001 schema + composer + idempotence + unit tests.
 
 ## Next Steps
-- Part B: STATUS.md (F254 line + Milestone R1), new T2_F254.md,
-  appends to T12_F253.md / T17_F243.md / T2_F103.md
-- Part C: reviewer_conventions.md specified-route-exercised rule
-- Part D: self_run_gauntlet.py docstring, claude_agent/__init__.py
-- Part E: planner_reviewer_prompt.md Laufzeit row + definition;
-  candidates.md R-0199 operator-priority note
-- Rewrite handoff.md at handback
+- T002: triggers (explicit CLI + loop-terminates-for-limits/stop) +
+  loop consumption + stale-reference refusal + tests
+- T003: boundary recall eval on a fake-provider mission + threshold
+- R-0199 fix order once the diagnosis numbers are in
+- Integration gate round, then closure (its own round)
 
 ## Risks
-- No product code or order/template edits allowed in this round.
-- After this round: F079 per Rule A5; candidates.md still non-empty
-  (block condition at F079 claim). ADR-0001 still awaits a human.
+- Reuse is mandated: dossier renderer, checkpoint verification, recall
+  harness — new implementations of existing pieces are rejects.
+- Do not touch: automatic context-pressure detection, cross-machine
+  transport, memory features beyond composition.
+- Idempotence vs timestamps: provenance timestamps come from SOURCE
+  artifacts, never wall clock — same state must hash identical.

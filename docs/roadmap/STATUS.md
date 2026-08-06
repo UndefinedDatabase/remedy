@@ -44,7 +44,7 @@
 - [x] F070 — Orchestrator loop inside Remedy (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job 2edd34878e5c4fbc · package remedy-review-20260803-143749-READY_FOR_REVIEW.zip · SHA-256 5c559751d7a4710c9495a69899d9f0966b045047392748e709403a8347d16805 · accepted HEAD f1fad962b1ec4203dafdb146f3e90fad8111550e)
 - [x] F071 — Mission dossier (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job b3b98e3ee1d10668 · package remedy-review-20260803-190339-READY_FOR_REVIEW.zip · SHA-256 aa117e26a55b0ab1b1941d881a4ed510967c2d1669be021abda30ab0f6e9e99e · accepted HEAD acb02acd8a41dc2a8ba89e2db023b1840814adff)
 - [x] F075 — MILESTONE GATE: 10 flawless self-runs (T001–T003 complete; accepted 2026-08-05 · live review PASS — ACCEPTED · Evidence job b1b6eb7ed4962309 · package remedy-review-20260805-144354-READY_FOR_REVIEW.zip · SHA-256 d63cda6b2b9e83bf993889d33fa716646f712f90eabc992a472d12390b8910d3 · accepted HEAD 36f3bc8150a9bdaae3c1e3a743c1621998c48691)
-- [ ] F079 — Context handoffs
+- [~] F079 — Context handoffs
 - [ ] F080 — Machine-readable roadmap mirror & STATUS.md
 
 ## Tier 2 — Minimal Self-Build Runtime
