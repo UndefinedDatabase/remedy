@@ -26,11 +26,11 @@ means one campaign — there is no resume, because ten consecutive greens from
 one invocation is the whole claim.
 
 **A live campaign refuses to start while any order declares an injection class
-the product cannot yet degrade.** Three of the four wait on an exception
-boundary ``orchestrator_loop.run_mission`` does not have; running their orders
-un-injected would spend real tokens producing evidence that omits the very
-fault it was supposed to prove. See
-:mod:`packages.orchestration.gauntlet_injection`.
+outside ``SUPPORTED_INJECTIONS``.** Since the R3 boundary landed, every
+injection class can be driven — currently none is blocked — but the preflight
+stays: running an unsupported class's order un-injected would spend real
+tokens producing evidence that omits the very fault it was supposed to prove.
+See :mod:`packages.orchestration.gauntlet_injection`.
 
 Invoking with neither flag says so and exits 2 rather than pretending to run.
 

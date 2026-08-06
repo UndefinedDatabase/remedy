@@ -2478,7 +2478,7 @@ The following empty `__init__.py` files received module docstrings describing pl
 | `packages/verification/__init__.py` | Pluggable verification backends (Step 37+) |
 | `apps/api/__init__.py` | HTTP API server (Step 38+) |
 | `apps/worker/__init__.py` | Background worker/daemon (Step 39+) |
-| `packages/providers/claude_agent/__init__.py` | Claude-hosted provider (Step 33+) |
+| `packages/providers/claude_agent/__init__.py` | Claude Agent SDK provider (reserved; lands with Tier 2/3 economy features — live Claude path is the `claude -p` subprocess provider in `pingpong_provider.py`) |
 | `packages/providers/docker_runtime/__init__.py` | Docker container runtime (Step 40+) |
 | `packages/providers/mempalace/__init__.py` | MemPalace provider client (post-Step 35) |
 

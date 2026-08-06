@@ -18,12 +18,14 @@ FEATURE_FILE_RE = re.compile(r"\AT(\d{1,2})_F(\d{3})\.md\Z")
 STATUS_LINE_RE = re.compile(r"^- \[[ ~x]\] F(\d{3}) — ")
 TIER_HEADING_RE = re.compile(r"^#+\s*Tier\s*(\d{1,2})", re.IGNORECASE)
 
-#: 250 roadmap features (F001-F250) plus three registered additions: F251,
+#: 250 roadmap features (F001-F250) plus four registered additions: F251,
 #: added by the planning amendment of 2026-07-27; F252 (standing-red
-#: paydown), added by operator ruling A of 2026-07-28; and F253 (headless
-#: API contract), added by operator decision of 2026-08-03. See
-#: docs/roadmap/features/T1_F251.md, T1_F252.md and T12_F253.md.
-TOTAL_FEATURES = 253
+#: paydown), added by operator ruling A of 2026-07-28; F253 (headless
+#: API contract), added by operator decision of 2026-08-03; and F254
+#: (model alias table & dead-model doctor check), added by amendment
+#: round amend0805-v3 of 2026-08-05. See docs/roadmap/features/
+#: T1_F251.md, T1_F252.md, T12_F253.md and T2_F254.md.
+TOTAL_FEATURES = 254
 
 #: Documents that must never contain a stale claim.
 PRIMARY_DOCS = [

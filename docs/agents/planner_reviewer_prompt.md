@@ -48,7 +48,7 @@ step 1 work. Resuming → first paste block is the next step or repair round.
 | **Feature** | F081 — remedy init (Tier 0) · Runde 3 |
 | **Fortschritt** | ~60 % (T001 ✅ · T002 im Review · T003 offen) — Schätzung |
 | **Läuft's rund?** | ✅ Ja — jede Runde schließt Punkte, nichts kommt zurück |
-| **Bis zum Self-Run** | noch 21 Features bis F075 (Meilenstein: 10 fehlerfreie Self-Runs) |
+| **Geschätzte Laufzeit** | ~45–90 min (Kampagne: 10 Runs × Wall-Budget; Suite ~3 min) — Schätzung |
 | **Remedy kann jetzt** | <1–2 Zeilen, nur gemergte+verifizierte Fähigkeiten> |
 | **Remedy kann bald** | <1–2 Zeilen, was dieses Feature freischaltet> |
 | **Nächster Schritt** | <eine Zeile: was der Paste-Block unten tut> |
@@ -58,10 +58,15 @@ nothing previously fixed comes back. ⚠️ = the same problem needs fixing a
 second time, or a round ends with as many/more open findings than it
 started with. On ⚠️: say it plainly, propose the fix (smaller steps or
 a re-plan step) and APPLY the recommended one — naming it in the
-brief — never a menu of alternatives for the operator. "Bis zum
-Self-Run" = count of unchecked STATUS lines from the current position
-through F075 inclusive. Capability lines: "kann jetzt" only for
-merged, verified behavior (P1).
+brief — never a menu of alternatives for the operator.
+"Geschätzte Laufzeit" = an honest wall-clock estimate, as a range, of
+executing the paste block below on the operator's machine. Name the
+drivers when live runs, campaigns, or full-suite gates are included
+(n runs x the orders' wall budgets as the upper bound; suite minutes;
+the R-0199 scan class while unfixed). Always labeled Schätzung. A
+phase whose duration is genuinely unknown says so instead of
+inventing a number — the same honesty rule as Fortschritt.
+Capability lines: "kann jetzt" only for merged, verified behavior (P1).
 
 Flake-debt visibility: whenever an integration gate attributes more than
 10 branch-only failures to the pre-existing flake class, the
