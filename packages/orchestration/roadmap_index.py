@@ -482,3 +482,52 @@ def write_index(index: RoadmapIndex, data_root: Path | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(index.as_dict(), indent=2) + "\n", encoding="utf-8")
     return path
+
+
+# ---------------------------------------------------------------------------
+# Reading the order (STATUS Rule A5)
+# ---------------------------------------------------------------------------
+
+
+def active_feature(index: RoadmapIndex) -> RoadmapFeature | None:
+    """The in-progress ``[~]`` feature, first in STATUS order, or None."""
+    for feature in index.ordered_features():
+        if feature.status == "in_progress":
+            return feature
+    return None
+
+
+def next_feature(index: RoadmapIndex) -> RoadmapFeature | None:
+    """The first unchecked ``[ ]`` feature in STATUS order, or None."""
+    for feature in index.ordered_features():
+        if feature.status == "todo":
+            return feature
+    return None
+
+
+def proposed_feature(index: RoadmapIndex) -> tuple[RoadmapFeature | None, str]:
+    """What Rule A5 points at: the active ``[~]`` line, else the first ``[ ]``.
+
+    Returns (feature, reason) with reason ``in_progress``, ``next_unchecked``
+    or ``none``. This PROPOSES — nothing here starts any work.
+    """
+    active = active_feature(index)
+    if active is not None:
+        return active, "in_progress"
+    nxt = next_feature(index)
+    if nxt is not None:
+        return nxt, "next_unchecked"
+    return None, "none"
+
+
+def blocker_states(index: RoadmapIndex, feature: RoadmapFeature) -> list[dict]:
+    """State of each id the feature depends on — unknown ids included."""
+    states: list[dict] = []
+    for dep in feature.depends_on:
+        found = index.by_id(dep)
+        states.append({
+            "id": dep,
+            "status": found.status if found is not None else "unknown",
+            "title": found.title if found is not None else "",
+        })
+    return states
