@@ -1,16 +1,16 @@
-# Plan — F080 Machine-readable roadmap mirror & STATUS.md (R1)
+# Plan — F080 Machine-readable roadmap mirror & STATUS.md (R2)
 
-Branch: feature/f080-roadmap-mirror — claimed after the Open PR Gate
-merged PR #182 (main 1da1b07a).
+Branch: feature/f080-roadmap-mirror — R1 PASS (LAST_REVIEWED_SHA
+6787d6cf). No PR yet; F080's PR is created at closure.
 
 ## Goal
-F080 R1 (SPLIT, LARGE): candidate sweep (done — R-0200 → T9_F163,
-R-0202 → T2_F085, R-0204 → T7_F135; .agent/candidates.md now empty),
-claim (STATUS [~]), then T001 (pure parser roadmap_index.py + strict
-grammar validation with file:line errors + index writer under the data
-root + CLI `remedy plan status` / `remedy plan next`) and T002
-(report-only consistency checks). Index is a one-way mirror, never
-committed; STATUS.md stays human-owned (A4).
+F080 R2 (SPLIT, LARGE): persist the R1 PASS verdict, then T003 — the
+feature→mission adapter (detail file → PREPARED mission draft: context
+input, plan seed, DoD seed, fences, each traceable to the file's
+sections) with one real feature file compiled end to end, the docs
+page for the `plan` CLI group, and the integration gate per
+docs/agents/integration_gate.md. The adapter PREPARES: no job started,
+approval left to the standard human path.
 
 ## Operator constraint (verbatim)
 From 2026-08-13 the operator reaches this machine ONLY via SSH from a
@@ -18,8 +18,8 @@ phone. Starting Claude Code and invoking ONE skill must be the only
 required touchpoint. Target: operational and rehearsed by 2026-08-12.
 
 ## Sequence
-1. F080 (Machine-readable roadmap mirror & STATUS.md) — R1 in progress;
-   its candidate sweep is done, so the claim is unblocked.
+1. F080 (Machine-readable roadmap mirror & STATUS.md) — R2 in progress
+   (T003 + docs + integration gate); closure is its own later round.
 2. S1+S2 — build skill /build-remedy-self per the package: one-session
    Window-1 discipline (state probe -> decide -> rounds in-session),
    hard guardrails (PR-only merges at Open PR Gate, no force-push,
@@ -31,18 +31,19 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- R1 done: sweep, claim, T001 (parser + grammar + index writer + CLI
-  status/next) and T002 (consistency checks) are committed and green;
-  branch pushed, no PR (F080's PR is created only at closure).
-- R2: T003 feature→mission adapter + end-to-end compile of one real
-  feature file, no execution side effects.
-- Open for R2/closure: docs/ entry for the new `plan` CLI group — out
-  of this round's declared change scope.
+- Part B: feature_mission_adapter.py + tests, reusing roadmap_index's
+  parser and the existing mission/DoD compiler records.
+- Part C: docs page for the `plan` group + docs/README.md index line
+  (the item R1 deferred).
+- Part D: integration gate, then handback. Closure (evidence job,
+  fresh zip, STATUS [x], PR) is a separate round after the R2 verdict.
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
 - ADR-0001 (CYCLE_SAFETY_CAP) awaits human application; blocks
   multi-cycle loop delegation (S3 experiment lane), not the skill.
-- Parser anchors are markdown header conventions — grammar strictness
-  must not turn existing valid feature files red (tests/docs/ is the
-  guard).
+- The adapter's output format IS the later self-build intake
+  (Orchestrator brief) — format doubts go into the handoff, not into a
+  silent guess.
+- R-0204 is a known xdist flake id; a recurrence in the gate is
+  recorded as such with serial-rerun proof, never as a new failure.
