@@ -1,33 +1,28 @@
-# Plan — F079 Context handoffs
+# Plan — F079 Context handoffs (closed)
 
-Branch: feature/f079-context-handoffs
+Branch: feature/f079-context-handoffs — closure PR open, merges at
+the next feature's Open PR Gate.
 
 ## Goal
-Close F079 per docs/roadmap/STATUS_closure_protocol.md. Substance is
-done and gated: T001 composer, T002 triggers + consumption + reference
-verification, T003 measured boundary recall (100 % open items),
-R-0199 fixed, integration gate PASS (full suite green, both sides,
-all 48 differing ids attributed).
-
-## Current Step
-R4 — closure part 1: Built State section into T1_F079.md (content
-commit, before the zip), closure preconditions (integrity check,
-clean tree), evidence job via create_manual_completion_bundle
-(review_feature_id=f079), fresh review zip from the clean content
-HEAD. Handback carries job id, package filename, SHA-256 and the
-content HEAD — the reviewer authors the STATUS line from them.
+F079 is complete and accepted: handoff composer (idempotent, pure
+artifact), explicit CLI + loop boundary triggers, consumption with
+reference verification and one shared drift wording, measured
+boundary recall (100 % open items, report archived), R-0199
+metadata-manifest digest fix (34.6 s vs 394.8 s). Evidence job
+a7f0791c4d6b2e58; package
+remedy-review-20260806-203747-READY_FOR_REVIEW.zip; accepted HEAD
+abc33f79aac937d3504dddef7a72bdb22d4aa2d1.
 
 ## Next Steps
-- R5 — closure part 2: apply the authored STATUS [x] line + README
-  ledger sync (same commit), re-emit R-0200/R-0202 + the R3 flake
-  observation to .agent/candidates.md, final .agent state, closure
-  commit (STATUS.md + README.md + .agent/** only), push, PR. The PR
-  merges at the next feature's Open PR Gate.
+- Next session: F080 (Machine-readable roadmap mirror & STATUS.md)
+  per Rule A5, fresh window. Its first paste block runs the Open PR
+  Gate (merges the F079 closure PR).
+- .agent/candidates.md carries three entries (R-0200, R-0202, one
+  xdist-flake id) — block condition at the F080 claim until its
+  first reviewed round registers or resolves each.
 
 ## Risks
-- Packaging pitfalls are known and named in the protocol: sha256
-  output_hash, full-length base_commit, real node ids with
-  len == selected, test_files are files, run_id matches ^vr-\d{4,}$.
-- The evidence dir stays OUTSIDE the repo (session scratch, never
-  committed) — a committed dir turns the package BLOCKED_EVIDENCE.
-- A failing zip build is a closure BLOCKER: stop, hand back raw.
+- ADR-0001 (CYCLE_SAFETY_CAP) still awaits a human; the pinned
+  assertions hold it at 1.
+- Round gates stay scoped pytest commands (resource-safety rules of
+  tests/regression apply to full runs).

@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-36 of 254 registered items accepted. Next: F079 (Context handoffs).
+37 of 254 registered items accepted. Next: F080 (Machine-readable roadmap mirror & STATUS.md).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 20 | 22 |
+| 1 | Self-Build Bootstrap | 21 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
