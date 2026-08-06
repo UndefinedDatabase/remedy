@@ -1,33 +1,30 @@
 # Plan — F079 Context handoffs
 
-Branch: feature/f079-context-handoffs (from main after PR #180 merged
-at the Open PR Gate)
+Branch: feature/f079-context-handoffs
 
 ## Goal
 Session and context-window boundaries stop losing knowledge:
 build_handoff composes dossier + checkpoint reference + open decisions
 + next intent into handoff.json + rendered handoff.md (idempotent,
-pure artifact — producing it changes no state); triggers + loop
-consumption with reference verification; measured recall eval on a
-fixture mission. Spec: docs/roadmap/features/T1_F079.md.
+pure artifact — done in T001); triggers + loop consumption with
+reference verification (T002); measured recall eval on a fixture
+mission (T003). Spec: docs/roadmap/features/T1_F079.md.
 
 ## Current Step
-R1: candidate sweep persisted in live_review; R-0199 measured
-diagnosis (raw numbers to handoff); reuse inspection
-(mission_dossier renderer, checkpoints verification, recall harness);
-T001 schema + composer + idempotence + unit tests.
+R2: R-0199 fix (data_root_digest becomes a metadata-manifest digest;
+per-run frequency and evidence field names retained), T002 triggers +
+loop consumption + reference verification, T003 boundary recall eval
++ threshold assertion + archived eval report.
 
 ## Next Steps
-- T002: triggers (explicit CLI + loop-terminates-for-limits/stop) +
-  loop consumption + stale-reference refusal + tests
-- T003: boundary recall eval on a fake-provider mission + threshold
-- R-0199 fix order once the diagnosis numbers are in
-- Integration gate round, then closure (its own round)
+- R3: integration gate per docs/agents/integration_gate.md
+- R4: closure per docs/roadmap/STATUS_closure_protocol.md (own round)
 
 ## Risks
-- Reuse is mandated: dossier renderer, checkpoint verification, recall
-  harness — new implementations of existing pieces are rejects.
-- Do not touch: automatic context-pressure detection, cross-machine
-  transport, memory features beyond composition.
-- Idempotence vs timestamps: provenance timestamps come from SOURCE
-  artifacts, never wall clock — same state must hash identical.
+- R-0203 constraint: consumption resolves ALL sources through one
+  root discipline; document it at the consumption seam.
+- Evidence-shape care in the R-0199 fix: digest definition changes,
+  call frequency and field names do not; gauntlet evaluator/test
+  consumers must be inspected before the edit.
+- Do-not-touch unchanged: no automatic context-pressure detection, no
+  cross-machine transport, no memory features beyond composition.
