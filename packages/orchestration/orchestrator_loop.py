@@ -109,6 +109,10 @@ SECTION_DOSSIER = "## Mission dossier"
 SECTION_PLAN = "## Mission plan state"
 SECTION_REPORT = "## Last report"
 SECTION_DECISIONS = "## Open decisions"
+#: F079: present only on the FIRST iteration of a mission resumed from a
+#: handoff, and only after the handoff's checkpoint reference verified. It
+#: follows the live sections because it describes a boundary already passed.
+SECTION_HANDOFF = "## Handoff from the previous context"
 #: Present only on the ONE re-prompt that follows a refused move. Last, so a
 #: refusal never disturbs the stable prefix in front of it.
 SECTION_FEEDBACK = "## Your previous move was refused"
@@ -208,6 +212,7 @@ def assemble_context(
     open_decisions: Iterable[Any] = (),
     directives: Sequence[str] = (),
     feedback: str = "",
+    handoff_seed: str = "",
 ) -> OrchestratorContext:
     """Assemble one iteration's context: dossier FIRST, then the volatile parts.
 
@@ -215,6 +220,12 @@ def assemble_context(
     dossier; absent, :func:`render_mission_dossier` renders the stand-in from
     the mission record. A non-empty ``Mission.dossier_ref`` is reported so a
     reader can see which document a decision was made against.
+
+    ``handoff_seed`` is F079's: the rendered handoff block a RESUMED mission
+    starts its first iteration from. It sits behind the dossier because the
+    dossier is the live document and the handoff is the account of a boundary
+    that has already passed — a successor context reads what is true now, then
+    what it was told at the boundary.
     """
     if dossier is not None:
         dossier_text = dossier(mission)
@@ -239,6 +250,8 @@ def assemble_context(
         (SECTION_REPORT, last_report.strip() or "No report yet."),
         (SECTION_DECISIONS, decision_text),
     )
+    if handoff_seed.strip():
+        sections = (*sections, (SECTION_HANDOFF, handoff_seed.strip()))
     lines = [line for line in directives if line.strip()]
     if lines:
         sections = (*sections, (SECTION_DIRECTIVES, "\n".join(lines)))
@@ -707,6 +720,55 @@ class MissionRunResult:
     detail: str = ""
     iterations: int = 0
     entries: list[LedgerEntry] = field(default_factory=list)
+    #: F079. Where the boundary handoff landed when this run paused for its
+    #: limits or for a stop, "" when none was built.
+    handoff_path: str = ""
+    #: Why no handoff exists although one was attempted. A build failure is
+    #: recorded HERE and nowhere else in the outcome: the terminal a run
+    #: reached is a fact about the mission, and an artifact that could not be
+    #: written must never overwrite it.
+    handoff_error: str = ""
+    #: The handoff this run's FIRST iteration was seeded from, "" when the
+    #: mission started fresh or carried no readable handoff.
+    resumed_from: str = ""
+
+
+def build_boundary_handoff(result: MissionRunResult,
+                           root: Path | None = None) -> MissionRunResult:
+    """Compose a handoff for a run that PAUSED, recording failure honestly.
+
+    F079: every pause is meant to be resumable by a fresh context, so the loop
+    builds the artifact at the two terminals that mean "not finished, not
+    broken" — its iteration limit and an operator stop. Building is a pure
+    artifact and cannot change the mission, but it CAN fail (a disk that is
+    gone, a source that will not read). A failure is recorded on the result
+    and nothing else: the terminal the run actually reached is never masked by
+    the state of its souvenir.
+    """
+    from packages.orchestration.handoff import build_handoff
+
+    try:
+        result.handoff_path = str(build_handoff(result.mission_id, root))
+    except Exception as exc:  # noqa: BLE001 — the terminal outranks the artifact
+        result.handoff_error = f"{type(exc).__name__}: {exc}"
+    return result
+
+
+def resume_seed_text(mission_id: str, root: Path | None = None) -> tuple[str, str]:
+    """``(seed text, source name)`` for a resumed mission's first iteration.
+
+    Returns ``("", "")`` when there is nothing to resume from. A handoff whose
+    references no longer hold, or whose schema this build does not know, is
+    NOT seeded — the refusal (the checkpoint feature's own message, or the
+    schema refusal) is raised to the caller rather than silently downgraded to
+    a run that starts from a narrative nobody verified.
+    """
+    from packages.orchestration.handoff import handoff_resume_seed
+
+    seed = handoff_resume_seed(mission_id, root)
+    if seed is None:
+        return ("", "")
+    return (seed.text, seed.path.name)
 
 
 def resolve_mission_project(mission_id: str, root: Path | None = None) -> str:
@@ -846,6 +908,13 @@ def run_mission(
     # Ledger numbering continues the MISSION's sequence; ``step`` counts this
     # invocation, which is what ``limits`` bounds.
     base = next_iteration_index(pid, mission_id, root)
+    # F079 consumption: a mission that already has ledger history is being
+    # RESUMED, so its first iteration is seeded from the newest handoff whose
+    # references still verify. A mission on its first ever iteration has no
+    # boundary behind it and is seeded from nothing.
+    seed_text, seed_source = resume_seed_text(mission_id, root) if base > 1 \
+        else ("", "")
+    result.resumed_from = seed_source
 
     for step in range(1, bounds.max_iterations + 1):
         iteration = base + step - 1
@@ -862,7 +931,7 @@ def run_mission(
                                                  "usage_source": USAGE_UNMEASURED})
             result.terminal, result.detail = TERMINAL_STOPPED, outcome.detail
             result.iterations = step - 1
-            return result
+            return build_boundary_handoff(result, root)
 
         mission = load_mission(pid, mission_id, root)
         if mission.status != MISSION_STATUS_ACTIVE:
@@ -899,7 +968,10 @@ def run_mission(
                 open_decisions=open_mission_decisions(mission),
                 directives=released_milestone_directives(
                     mission, observe, project_id=pid, mission_id=mission_id),
-                feedback=feedback)
+                feedback=feedback,
+                # Only iteration one carries the boundary account; after that
+                # the run has its own history and the seed would be noise.
+                handoff_seed=seed_text if step == 1 else "")
             digest = context.digest
             result.iterations = step
 
@@ -1037,7 +1109,7 @@ def run_mission(
     result.terminal = TERMINAL_ITERATION_LIMIT
     result.detail = (f"reached the {bounds.max_iterations}-iteration limit "
                      f"with the mission still active")
-    return result
+    return build_boundary_handoff(result, root)
 
 
 #: Job states that mean "this milestone's work has not been executed, or is

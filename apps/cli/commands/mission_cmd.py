@@ -416,7 +416,48 @@ def _cmd_mission_ledger(mission_id: str, *, project: str | None = None,
     print(render_ledger(entries))
 
 
+def _cmd_mission_handoff(mission_id: str, *, json_output: bool = False) -> None:
+    """``remedy mission handoff <id>`` — the explicit boundary trigger (F079).
+
+    The mission id alone is enough: ``build_handoff`` resolves which project
+    holds the mission, exactly as ``run_mission`` does, so a boundary can be
+    declared from wherever the operator happens to be standing. Composing is a
+    pure artifact — no mission, job or queue state moves — and building twice
+    on unchanged state returns the SAME file rather than a second account.
+    """
+    from packages.orchestration.handoff import (
+        MissionForHandoffNotFoundError,
+        build_handoff,
+        read_handoff,
+    )
+
+    try:
+        path = build_handoff(mission_id)
+    except MissionForHandoffNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    body = read_handoff(path)
+    rendered = path.with_suffix(".md")
+    if json_output:
+        print(_json.dumps({"version": 1, "mission_id": body["mission_id"],
+                           "handoff": str(path), "rendered": str(rendered),
+                           "gaps": body.get("gaps", [])}, sort_keys=True))
+        return
+
+    print(str(path))
+    print(f"  Rendered: {rendered}")
+    gaps = body.get("gaps") or []
+    print(f"  Gaps: {len(gaps)}")
+    for gap in gaps:
+        print(f"    - {gap.get('source', '')}: {gap.get('detail', '')}")
+
+
 COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "mission.handoff": lambda args: _cmd_mission_handoff(
+        args.mission_id,
+        json_output=getattr(args, "json", False),
+    ),
     "mission.ledger": lambda args: _cmd_mission_ledger(
         args.mission_id,
         project=getattr(args, "project", None),
