@@ -2,7 +2,7 @@
 
 Branch: feature/f080-roadmap-mirror, pushed. Still NO PR — F080's PR is
 created at closure, which is its own later round. R1 PASS is persisted
-(LAST_REVIEWED_SHA 6787d6cf); this round adds 2be05610..<tip>.
+(LAST_REVIEWED_SHA 6787d6cf); this round adds 2be05610..c0098916 (7 commits).
 
 ## Changed files per commit
 | Commit | Path | +/- | Reason |
