@@ -204,6 +204,39 @@ def test_a_moved_file_changes_the_digest(real_root: Path) -> None:
     assert data_root_digest(real_root) != before
 
 
+def test_a_removed_file_changes_the_digest(real_root: Path) -> None:
+    before = data_root_digest(real_root)
+    (real_root / "projects" / "keep.json").unlink()
+    assert data_root_digest(real_root) != before
+
+
+def test_a_resized_file_changes_the_digest(real_root: Path) -> None:
+    before = data_root_digest(real_root)
+    (real_root / "projects" / "keep.json").write_text(
+        '{"id": "keep", "and": "more"}', encoding="utf-8")
+    assert data_root_digest(real_root) != before
+
+
+def test_a_touched_mtime_changes_the_digest(real_root: Path) -> None:
+    """A rewrite with the SAME size still moves mtime_ns — and the digest."""
+    kept = real_root / "projects" / "keep.json"
+    before = data_root_digest(real_root)
+    os.utime(kept, ns=(kept.stat().st_atime_ns,
+                       kept.stat().st_mtime_ns + 1_000_000))
+    assert data_root_digest(real_root) != before
+
+
+def test_the_digest_names_its_definition(real_root: Path) -> None:
+    """R-0199: a metadata digest must never compare equal to a content one.
+
+    The prefix is the guard — the old definition's values start ``sha256:``,
+    so a before/after pair can never straddle the change and read "untouched".
+    """
+    digest = data_root_digest(real_root)
+    assert digest.startswith("meta-sha256:")
+    assert not digest.startswith("sha256:")
+
+
 # ---------------------------------------------------------------------------
 # Isolation
 # ---------------------------------------------------------------------------

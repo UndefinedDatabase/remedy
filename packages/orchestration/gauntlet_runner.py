@@ -88,27 +88,46 @@ TERMINAL_RUNNER_CRASHED = "runner_crashed"
 # Host-state isolation
 # ---------------------------------------------------------------------------
 
-def data_root_digest(root: Path) -> str:
-    """One digest over every file under a data root, path and content.
+def _manifest_line(path: Path, relpath: str) -> str:
+    """One file's metadata row: relpath, size, mtime_ns. No content is read."""
+    try:
+        stat = path.stat()
+    except OSError as exc:  # unreadable is a fact about the tree, not a crash
+        return f"{relpath}\t<unreadable: {exc.errno}>"
+    return f"{relpath}\t{stat.st_size}\t{stat.st_mtime_ns}"
 
+
+def data_root_digest(root: Path) -> str:
+    """One digest over the METADATA MANIFEST of every file under a data root.
+
+    The manifest is the sorted set of ``relpath\\tsize\\tmtime_ns`` lines.
     Paths are included and sorted, so a file that MOVES changes the digest as
-    surely as a file that changes — "byte-untouched" has to mean the tree, not
-    a bag of contents.
+    surely as a file that is written — "byte-untouched" has to mean the tree,
+    not a bag of contents.
+
+    The honest contract: this detects a file being ADDED, REMOVED, MOVED,
+    RESIZED or RE-TIMESTAMPED. It does NOT detect a content edit that forges
+    an identical size AND mtime_ns. That is the deliberate trade of R-0199:
+    the criterion's threat model is the harness ACCIDENTALLY writing into the
+    operator's real root, not an adversary covering tracks — and the previous
+    content-hashing definition read ~143 GB per call (394.8 s measured, ~2.9 TB
+    per 10-run campaign) to answer a question about accidents.
+
+    The ``meta-sha256:`` prefix is load-bearing: a digest recorded under the
+    old content-hashing definition can never compare equal to one recorded
+    under this one, so a before/after pair can never straddle the change and
+    read as "untouched".
     """
     if not root.exists():
         return ABSENT_ROOT_DIGEST
     if root.is_file():
-        return "sha256:" + hashlib.sha256(root.read_bytes()).hexdigest()
-    running = hashlib.sha256()
-    for path in sorted(p for p in root.rglob("*") if p.is_file()):
-        running.update(str(path.relative_to(root)).encode("utf-8"))
-        running.update(b"\0")
-        try:
-            running.update(hashlib.sha256(path.read_bytes()).digest())
-        except OSError as exc:  # unreadable is a fact about the tree, not a crash
-            running.update(f"<unreadable: {exc.errno}>".encode("utf-8"))
-        running.update(b"\0")
-    return "sha256:" + running.hexdigest()
+        lines = [_manifest_line(root, root.name)]
+    else:
+        lines = sorted(
+            _manifest_line(path, str(path.relative_to(root)))
+            for path in root.rglob("*") if path.is_file())
+    manifest = "\n".join(lines).encode("utf-8")
+    return "meta-sha256:" + hashlib.sha256(manifest).hexdigest()
 
 
 @contextmanager
