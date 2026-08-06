@@ -686,3 +686,116 @@ def handoff_resume_seed(mission_id: str, root: Path | None = None, *,
     if verify:
         verify_handoff_references(seed.body)
     return seed
+
+
+# ---------------------------------------------------------------------------
+# T003 — the boundary recall eval: recall is MEASURED across the boundary
+# ---------------------------------------------------------------------------
+
+#: Where one mission's archived boundary-recall measurement lives — beside the
+#: handoffs it measures, in the mission's own evidence area.
+RECALL_REPORT_FILENAME = "handoff_recall_eval.md"
+
+#: The threshold, inherited rather than invented: the dossier's own harness
+#: documents it as "Open facts must all be answerable. Resolved ones MAY
+#: compress away" (``mission_dossier.run_recall_harness`` docstring, pinned by
+#: ``RecallResult.recalled_all_open`` and by
+#: ``tests/orchestration/test_mission_dossier.py`` — the open/resolved
+#: asymmetry). A handoff that carries the dossier forward inherits the same
+#: bar: EVERY open fact, none missing.
+RECALL_THRESHOLD_OPEN_ITEMS = 1.0
+
+
+@dataclass(frozen=True)
+class BoundaryRecallResult:
+    """What survived a real boundary, per fact — never a single pass/fail word."""
+
+    seed_path: Path
+    report_path: Path
+    #: Open facts findable in the handoff seed ALONE. The acceptance set.
+    answerable: tuple[str, ...] = ()
+    #: Open facts that are NOT findable. Any entry is a defect.
+    missing: tuple[str, ...] = ()
+    #: Resolved facts the dossier compressed away — allowed, and the point.
+    compressed_away: tuple[str, ...] = ()
+
+    @property
+    def open_recall(self) -> float:
+        total = len(self.answerable) + len(self.missing)
+        return 1.0 if not total else len(self.answerable) / total
+
+
+def run_boundary_recall_eval(mission_id: str, root: Path | None = None, *,
+                             call_fn: Any = None,
+                             facts: Any = None) -> BoundaryRecallResult:
+    """Seed facts, cross a REAL boundary, and measure what a fresh context gets.
+
+    The measurement reuses the dossier's harness verbatim —
+    ``mission_dossier.run_recall_harness`` over ``RECALL_FIXTURE_FACTS``, and
+    ``recall_report`` for the numbers — so this eval measures the HANDOFF, not
+    a second opinion about dossiers. The harness produces the document; this
+    function stores it as the mission's dossier, forces the boundary by
+    building the handoff, and then asks the acceptance question: with nothing
+    but the handoff seed a resumed context would receive, which seeded facts
+    are still findable?
+
+    Open facts must all survive; resolved ones may have compressed away (the
+    dossier's own asymmetry — see :data:`RECALL_THRESHOLD_OPEN_ITEMS`). The
+    report is archived in the mission's evidence area, where it is closure
+    evidence rather than a number in a test log.
+    """
+    from packages.orchestration.mission_dossier import (
+        RECALL_FIXTURE_FACTS,
+        recall_report,
+        run_recall_harness,
+        save_dossier_state,
+        write_dossier_version,
+    )
+
+    mission = find_mission_record(mission_id, root)
+    if mission is None:
+        raise MissionForHandoffNotFoundError(str(mission_id))
+    seeded = tuple(facts if facts is not None else RECALL_FIXTURE_FACTS)
+
+    measured = run_recall_harness(seeded, goal=mission.goal, call_fn=call_fn)
+    write_dossier_version(mission.project_id, mission.id, measured.dossier, root)
+    save_dossier_state(mission.project_id, mission.id, measured.dossier, root)
+
+    build_handoff(mission.id, root)
+    seed = handoff_resume_seed(mission.id, root)
+    if seed is None:  # pragma: no cover — build_handoff just wrote one
+        raise HandoffError(
+            f"mission {mission.id} has no readable handoff after building one")
+
+    open_ids = [f.id for f in seeded if not f.resolved]
+    resolved_ids = [f.id for f in seeded if f.resolved]
+    result = BoundaryRecallResult(
+        seed_path=seed.path,
+        report_path=mission_evidence_dir(mission.project_id, mission.id, root)
+        / RECALL_REPORT_FILENAME,
+        answerable=tuple(i for i in open_ids if i in seed.text),
+        missing=tuple(i for i in open_ids if i not in seed.text),
+        compressed_away=tuple(i for i in resolved_ids if i not in seed.text),
+    )
+    report = "\n".join([
+        f"# Boundary recall eval — mission {mission.id}",
+        "",
+        f"seeded facts:    {len(seeded)} "
+        f"({len(open_ids)} open, {len(resolved_ids)} resolved)",
+        f"boundary:        {seed.path.name}",
+        f"threshold:       {RECALL_THRESHOLD_OPEN_ITEMS:.0%} of OPEN items "
+        f"(inherited from the dossier harness)",
+        f"open recall:     {result.open_recall:.0%} "
+        f"({', '.join(result.answerable) or 'none'})",
+        f"open missing:    {len(result.missing)} "
+        f"({', '.join(result.missing) or 'none'})",
+        f"compressed away: {len(result.compressed_away)} "
+        f"({', '.join(result.compressed_away) or 'none'})",
+        "",
+        "## The dossier the boundary carried",
+        "",
+        recall_report(measured),
+    ]) + "\n"
+    result.report_path.parent.mkdir(parents=True, exist_ok=True)
+    result.report_path.write_text(report, encoding="utf-8")
+    return result
