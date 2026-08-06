@@ -107,6 +107,7 @@ GROUPS: dict[str, GroupDef] = {
     "memory": GroupDef("memory", "Memory", "Project memory."),
     "runtime": GroupDef("runtime", "Runtime", "Start, probe and stop the project dev server."),
     "stats": GroupDef("stats", "Stats", "Honest counts from the evidence on disk."),
+    "plan": GroupDef("plan", "Plan", "Read-only roadmap mirror — what is active, what is next. Proposes, never starts."),
     # -- Advanced / internal commands (callable but hidden from default help) --
     "patch": GroupDef("patch", "Patch", "Review and apply patch intents.", user_facing=False),
     "test": GroupDef("test", "Test", "Discover and run project tests.", user_facing=False),
@@ -4054,6 +4055,34 @@ CATALOG: tuple[CommandEntry, ...] = (
             ArgDef("--json", "Output as JSON", required=False, is_option=True),
         ),
         supports_json=True,
+    ),
+
+    # ── plan (F080: the roadmap mirror; proposes, never starts) ─────────
+    CommandEntry(
+        command_id="plan.status",
+        group_id="plan",
+        subcommand="status",
+        description="Show the active roadmap feature, its blockers and its milestone.",
+        action_class="read_only",
+        args=(
+            ArgDef("--repo", "Repository to mirror (default: this Remedy checkout)", required=False, is_option=True),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+        related=("plan.next",),
+    ),
+    CommandEntry(
+        command_id="plan.next",
+        group_id="plan",
+        subcommand="next",
+        description="Propose the next roadmap feature and its file path. Starts nothing.",
+        action_class="read_only",
+        args=(
+            ArgDef("--repo", "Repository to mirror (default: this Remedy checkout)", required=False, is_option=True),
+            ArgDef("--json", "Output as JSON", required=False, is_option=True),
+        ),
+        supports_json=True,
+        related=("plan.status",),
     ),
 
     # ── integrity ───────────────────────────────────────────────────────
