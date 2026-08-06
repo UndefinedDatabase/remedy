@@ -1,98 +1,123 @@
-# Handback — F079 R1 (claim + candidate sweep + R-0199 diagnosis + T001)
+# Handback — F079 R2 (R-0199 fix + T002 + T003)
 
-Branch: feature/f079-context-handoffs (from main @ 38854f60 after PR #180
-merged at the Open PR Gate). Commits 7d8fe554 · 42ee0b46 · 2a75cbf8 ·
-6ef34950 · 33db3aa5 (+ this handoff). No PR — closure creates it.
+Branch: feature/f079-context-handoffs. Range 79621fc0..8a25af2d, 9 commits
+(+ this handoff). No PR — closure creates it.
 
 ## Changed files per commit
 | Commit | Path | +/- | Reason |
 |---|---|---|---|
-| 7d8fe554 | .agent/last_block.md | +309/-257 | R1 block saved verbatim |
-| 42ee0b46 | .agent/authored/f079-r1-{1..6}.md | +139/-0 | six texts, sha256 verified |
-| 2a75cbf8 | .agent/live_review.md | +49/-117 | F079 ledger, R-0200..R-0202 |
-| 2a75cbf8 | .agent/candidates.md | +5/-25 | four candidates swept, now empty |
-| 2a75cbf8 | .agent/plan.md · context.md | +36/-39 | F079 plan/scope |
-| 2a75cbf8 | docs/roadmap/STATUS.md | +1/-1 | F079 `[ ]` -> `[~]` |
-| 2a75cbf8 | docs/roadmap/features/T3_F106.md | +9/-0 | R-0201 routing note |
-| 6ef34950 | packages/orchestration/handoff.py | +499/-0 | T001 composer (NEW) |
-| 33db3aa5 | tests/orchestration/test_handoff.py | +416/-0 | T001 tests (NEW, 23) |
+| 1be0d87a | .agent/last_block.md | +223/-281 | R2 block saved verbatim (rides alone) |
+| c72c0e60 | .agent/authored/f079-r2-{1,2}.md | +111/-0 | two texts, sha256 verified |
+| b3a0291e | .agent/live_review.md · plan.md | +83/-61 | R1 PASS persisted, R2 plan |
+| e249ea15 | packages/orchestration/gauntlet_runner.py | +33/-14 | R-0199: metadata-manifest digest |
+| e249ea15 | tests/orchestration/test_gauntlet_runner.py | +33/-0 | remove/resize/mtime/prefix tests |
+| 0cdb2019 | packages/orchestration/handoff.py | +193/-4 | T002 consumption + root discipline |
+| 0cdb2019 | packages/orchestration/checkpoints.py | +17/-0 | `worktree_drift_message` — ONE wording |
+| 0cdb2019 | apps/cli/commands/job.py | +3/-6 | resume now uses that one wording |
+| 2860fa7d | apps/cli/command_catalog.py | +13/-0 | `mission.handoff` entry |
+| 2860fa7d | apps/cli/commands/mission_cmd.py | +41/-0 | `_cmd_mission_handoff` + handler |
+| 2860fa7d | packages/orchestration/orchestrator_loop.py | +75/-3 | boundary build + seed seam |
+| 0ee4157f | tests/orchestration/test_handoff.py | +245/-0 | T002 triggers/consumption tests |
+| 0ee4157f | tests/cli/test_mission_cmd.py | +63/-0 | explicit-trigger CLI tests |
+| c6e8dc89 | packages/orchestration/handoff.py | +113/-0 | T003 boundary recall eval |
+| 8a25af2d | tests/orchestration/test_handoff.py | +140/-0 | T003 threshold + archived report |
 
-Authored-text hashes: all six matched their BEGIN-marker sha256 before any
-application (verified with sha256sum; no mismatch, nothing retyped).
+Authored hashes: f079-r2-1 `8077b273…`, f079-r2-2 `d4c7bcd3…` — both matched
+their BEGIN markers before application; nothing retyped.
 
 ## Verification transcripts
 | Command | Exit | Tail |
 |---|---|---|
 | `git status --porcelain` (preflight) | 0 | (empty) |
-| `gh pr merge 180 --merge --delete-branch` | 0 | `Fast-forward … 15 files changed` |
-| `python3 -m pytest tests/docs/ -q` | 0 | `293 passed in 0.48s` |
-| `python3 -m pytest tests/cli/test_golden_path.py -q` | 0 | `42 passed in 21.74s` |
-| `python3 -m pytest tests/orchestration/test_handoff.py -q` | 0 | `23 passed in 0.22s` |
-| `ruff check packages/orchestration/handoff.py tests/…` | 0 | `All checks passed!` |
-| `python3 -m pytest tests/cli/test_golden_path.py -q` (canary, final) | 0 | `42 passed in 19.23s` |
+| `pytest tests/orchestration/test_gauntlet_runner.py -q` | 0 | `45 passed in 0.56s` |
+| `pytest tests/orchestration/test_gauntlet_evaluator.py test_gauntlet_evidence.py -q` | 0 | `104 passed in 0.29s` |
+| `pytest tests/orchestration/test_self_run_gauntlet.py -q` | 0 | `21 passed in 0.57s` |
+| `pytest tests/orchestration/test_handoff.py -q` (final) | 0 | `39 passed in 0.33s` |
+| `pytest tests/cli/test_mission_cmd.py -q` | 0 | `83 passed in 36.71s` |
+| `pytest tests/orchestration/test_orchestrator_loop.py -q` | 0 | in `345 passed in 37.90s` (with handoff+cli+checkpoints) |
+| `pytest tests/orchestration/test_worktree_resume_cli.py test_resume_kill.py -q` | 0 | `23 passed in 4.28s` |
+| `pytest tests/docs/ -q` | 0 | `293 passed in 0.25s` |
+| `pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 19.41s` |
+| `ruff check` (every touched source) | 0 | `All checks passed!` |
 | `git status --porcelain` (final) | 0 | (empty) |
 
-## R-0199 diagnosis (measured, no fix — R2 orders it)
-Hypothesis CONFIRMED as mechanism: `data_root_digest` hashes every file
-under the operator's REAL data root, twice per run.
-- Call sites (production): `gauntlet_runner.py:461` (before the run) and
-  `gauntlet_runner.py:533` (after, always, even on crash). No others
-  outside tests. -> 2 calls/run x 10 frozen orders = **20 calls/campaign**
-  (`gauntlet_orders.load_order_set()` = 10 orders; campaign loop
-  `gauntlet_runner.py:632-638`).
-- Root resolved (not guessed): `run_campaign` -> `real_data_root or
-  resolve_data_root()` (`gauntlet_runner.py:632`), resolved BEFORE any
-  isolation; `REMEDY_DATA_DIR` unset and no `data_dir` config here, so
-  `data_paths.py:50-52` -> **`/home/decodeux/Repos/remedy/.data`**.
-- Measured (throwaway script outside the repo, deleted after):
-  file_count **2,495,115** · total_bytes **143,655,667,319** (133.79 GiB)
-  · walk-only 66.8 s · **one `data_root_digest()` call = 394.8 s**
-  (digest `sha256:9c5c18dc…`). No timeout — well inside the 15-min cap.
-- Breakdown: `job_workspaces` = 143.37 GB / 2,240,761 files = **99.80 %**
-  of the bytes; every other subtree together is < 0.3 GB.
-- Bytes per campaign today = 143.66 GB x 20 = **~2,873 GB** (~2.9 TB), and
-  ~7,900 s (2.2 h) of pure hashing. The attempt-03 observation of ~872 GB
-  is **consistent** with this mechanism at the root size of that date:
-  872 / 20 = 43.6 GB per call, i.e. a `.data` roughly a third of today's —
-  the cost scales with operator history exactly as the hypothesis says.
+## R-0199 — consumers inspected (2a) and the fix's proof (2d)
+Consumers of the value / of `data_root_hash_before|after`, all string-opaque:
+- `gauntlet_runner.py:461` (before) and `:533` (after) — the two producers;
+  frequency unchanged, 2 per run.
+- `gauntlet_runner.py:556`, `:585` — the field written into `run.json` bodies.
+- `gauntlet_evidence.py:73-74`, `:199-200` — RunEvidence fields + loader.
+- `gauntlet_evaluator.py:362-377` `_check_data_root` — the ONLY semantic
+  consumer: it compares before vs after for equality and reports absence.
+  Equality of two values from the same run is all it needs, so the digest
+  definition is free to change under it.
+- `gauntlet_matrix.py` — no reference (checked).
+- tests: `test_gauntlet_runner.py:187-256,437,506-511,571`,
+  `test_gauntlet_evidence.py:44-86`, `test_gauntlet_evaluator.py:196-336`,
+  and 10 recorded fixtures under `tests/orchestration/fixtures/gauntlet/`
+  (literal strings, compared only within their own run — unaffected).
+New definition: sha256 over sorted `relpath\tsize\tmtime_ns` lines, no content
+reads, value prefixed `meta-sha256:` so an old content digest can never
+compare equal to a new one. Docstring states the honest contract (detects
+add/remove/move/resize/mtime; does NOT detect a forged same-size same-mtime
+edit — threat model is accidental writes).
+TIMING on the real root (throwaway script outside the repo, deleted after):
+**34.611 s**, digest `meta-sha256:e1308ade…` — against the R1 baseline of
+394.8 s content-hashing (66.8 s walk-only). **11.4x faster**, and bytes read
+drop from ~143.66 GB to ~0 per call: a campaign's 20 calls go from ~2.9 TB /
+~2.2 h to ~692 s of metadata walking.
 
-## Reuse surfaces (slice 6) — what T001–T003 must call
-| Piece | Where | Used by |
+## T002 — pattern and seams
+- CLI pattern followed: `CommandEntry` in `apps/cli/command_catalog.py:1625`
+  (`mission.handoff`, `write_metadata`, `--json`) + handler entry in
+  `mission_cmd.py:COMMAND_HANDLERS` — the same two-part registration
+  `mission.ledger` uses. Unknown mission → `Error: no mission '…' exists to
+  hand off` on stderr, exit 1.
+- Loop seam (build): `orchestrator_loop.py:934` (stop terminal) and `:1112`
+  (iteration limit) both return through
+  `orchestrator_loop.build_boundary_handoff` (`:736`). A build failure lands
+  in `MissionRunResult.handoff_error` and NOTHING else — the terminal is never
+  masked (pinned by `test_a_build_failure_does_not_mask_the_terminal`).
+- Loop seam (consume): `orchestrator_loop.py:915` seeds from
+  `resume_seed_text` when the mission already has ledger history, and
+  `assemble_context(handoff_seed=…)` adds `SECTION_HANDOFF` on iteration one
+  only (`:115`, `:974`).
+- R-0203: documented at the consumption seam (handoff.py module docstring,
+  "ROOT DISCIPLINE") and made visible by `handoff_root_conflict`, which names
+  a mission-root/data-root split instead of composing two worlds silently.
+- Context-pressure detection stays unbuilt, documented in the same docstring.
+
+## Reused pieces (T002/T003)
+| Piece | Where | Used for |
 |---|---|---|
-| Dossier renderer | `mission_dossier.py:198 render_dossier` / `:187 render_dossier_body`; newest stored text `:828 newest_dossier_text`, version `:414 latest_dossier_version`, live state `:808 load_dossier_state` | T001 |
-| Evidence-area path scheme | `mission_state.py:282 mission_evidence_dir` (+ `mission_dossier.py:365 DOSSIER_VERSION_TEMPLATE` = the `_v<N>` accumulation precedent) | T001 |
-| Checkpoint ref + verification | `checkpoints.py:98 Checkpoint` (`content_hash` `:135`, `next_intent`), `:396 load_latest_valid`, `:234 resolve_worktree_head`, `:250 resolve_live_worktree_head` (stale-head check), `:80 AllCheckpointsCorruptError` | T001 / T002 |
-| Open decisions | `decision_queue.py:62 list_decisions(job, events)` + `:439 open_decisions`; events via `timeline.py:68 load_run_events`; job via `storage.py:100 load_job_safe` / `pingpong_job.py:299 load_job_plan` | T001 / T002 |
-| Next intent | `checkpoints.py:113 Checkpoint.next_intent` (recorded) with fallback `mission_dossier` `next_step` (narrated) | T001 |
-| Recall harness | `mission_dossier.py:1037 run_recall_harness` + `:975 RECALL_FIXTURE_FACTS` (10 seeded facts) + `:1074 recall_report`; fixture mission goal `"The seeded mission goal is met"`, budget `RECALL_BUDGET_TOKENS=120`; exercised by `tests/orchestration/test_mission_dossier.py:1010-1081` | T003 |
-| Redaction denylist | `run_manifest.py:102 is_secret_key` (`_SECRET_TERMS`, `:77`) + `stream_evidence.py:155 is_sensitive_key` / `:174 redact_text` | T001 |
+| Checkpoint load rules | `checkpoints.py:396 load_latest_valid`, `:80 AllCheckpointsCorruptError` | reference verification |
+| Live head | `checkpoints.py:250 resolve_live_worktree_head` | drift detection |
+| Drift wording | `checkpoints.py:273 worktree_drift_message` (extracted from `job.py`'s resume refusal, now its only source) | stale-head refusal |
+| Recall harness | `mission_dossier.py:1037 run_recall_harness` + `:975 RECALL_FIXTURE_FACTS` + `:1074 recall_report` | T003 measurement |
+| Threshold citation | `run_recall_harness` docstring "Open facts must all be answerable. Resolved ones MAY compress away" + `RecallResult.recalled_all_open` | `RECALL_THRESHOLD_OPEN_ITEMS = 1.0` |
+| Dossier writers | `mission_dossier.py:375 write_dossier_version`, `:796 save_dossier_state` | storing the eval's dossier |
 
-T001 reuses, verbatim, all of the above except the T002/T003-only rows:
-renderer + evidence path + accumulation precedent, checkpoint loader,
-decision queue + event/job loaders, both redactors. It implements only the
-composition, the gap naming and the `handoff_v<N>` accumulation.
+T003 result: 5 open fixture facts all answerable from the handoff seed ALONE
+(100%, threshold met), resolved facts compressed away and named; the report is
+archived at `<mission evidence>/handoff_recall_eval.md`.
 
 ## Notes for the reviewer
-- Idempotence finding (fixed in-slice): the decision queue DERIVES stop
-  reasons with a wall-clock `created_at`, so carrying that field made two
-  builds of unchanged state differ. Decision rows now carry id/type/
-  severity/summary/next_actions only; `test_derived_open_decisions_do_not_
-  break_byte_identity` pins it.
-- Oversize commit declared (AGENTS.md exception, first in this feature):
-  7d8fe554 is 566 changed lines — the R1 block is ONE authored artifact
-  saved verbatim; splitting it would corrupt the transported bytes. The
-  ordered "COMMIT 1" was therefore split so the authored texts (42ee0b46,
-  139 lines) ride separately; every other commit is < 500 lines.
+- Scope deviation, declared: `checkpoints.py` and `apps/cli/commands/job.py`
+  are outside the block's change list. Reason: the order requires the stale
+  head to refuse "with the checkpoint feature's own message, never a new one";
+  the wording lived inline in `job.py`, so it was extracted into
+  `checkpoints.worktree_drift_message` and both callers now use it. Copying
+  the sentence into handoff.py would have created the second implementation
+  the order forbids. Byte-identical wording; resume tests green (23 passed).
+- Oversize commit declared (first this feature): 1be0d87a is 504 changed
+  lines — the R2 block is one authored artifact saved verbatim (R-0198 rule
+  says it rides alone). Every other commit is < 500.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 0 preflight | done | porcelain empty on feature/amend0805-v3 |
-| 1 Open PR Gate | done | PR #180 merged, main pulled @ 38854f60 |
-| 2 branch | done | feature/f079-context-handoffs |
-| 3 state commits | deviated | ordered COMMIT 1 split into 7d8fe554 + 42ee0b46 to honour the < 500-line constraint; contents and order unchanged |
-| 4 docs gates | done | 293 + 42 passed, both exit 0 |
-| 5 R-0199 diagnosis | done | numbers above; no fix made |
-| 6 reuse inspection | done | table above, read-only |
-| 7 T001 | done | 23 tests, exit 0 |
-| 8 handback | done | canary re-run 0, porcelain empty, branch pushed |
+| 1 state commits | done | A/B/C in order, hashes verified before applying |
+| 2 R-0199 fix | done | consumers listed, metadata digest, 34.611 s measured |
+| 3 T002 | deviated | built in full; +2 files beyond the change list for the shared drift wording (declared above) |
+| 4 T003 | done | threshold met, report archived, harness reused verbatim |
+| 5 handback | done | canary 0, porcelain empty, branch pushed |
