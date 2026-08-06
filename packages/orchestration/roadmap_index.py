@@ -21,6 +21,7 @@ Public API::
 
     build_index(repo_root=None) -> RoadmapIndex
     build_and_write_index(repo_root=None) -> tuple[RoadmapIndex, Path]
+    check_consistency(files, entries) -> list[dict]
     roadmap_index_path(data_root=None) -> Path
     active_feature(index) -> RoadmapFeature | None
     next_feature(index) -> RoadmapFeature | None
@@ -405,6 +406,57 @@ def _milestone_for_tier(milestones: list[dict], tier: int) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Consistency checks (T002) — reported, never fatal
+# ---------------------------------------------------------------------------
+
+#: The three check classes. Grammar stays the only hard failure: these are
+#: findings a human decides about, not reasons to refuse to read the roadmap.
+CONSISTENCY_KINDS = ("status_without_file", "file_without_status", "unknown_dependency")
+
+
+def check_consistency(files: dict[str, dict], entries: list[dict]) -> list[dict]:
+    """Report roadmap inconsistencies as ``{kind, id, detail}`` records.
+
+    * ``status_without_file`` — a STATUS line whose feature file is missing.
+    * ``file_without_status`` — a feature file absent from STATUS; per the
+      STATUS rules it is simply not scheduled, which is worth saying out loud.
+    * ``unknown_dependency`` — a dependency or blocks reference to an id that
+      exists in neither STATUS nor the feature files.
+    """
+    findings: list[dict] = []
+    status_ids = {entry["id"] for entry in entries}
+    known = status_ids | set(files)
+
+    for entry in entries:
+        if entry["id"] not in files:
+            findings.append({
+                "kind": "status_without_file",
+                "id": entry["id"],
+                "detail": f"listed in STATUS.md:{entry['line']} but no feature file defines it",
+            })
+
+    for feature_id, parsed in sorted(files.items()):
+        if feature_id not in status_ids:
+            findings.append({
+                "kind": "file_without_status",
+                "id": feature_id,
+                "detail": f"{parsed['file']} is not listed in STATUS.md — treated as not scheduled",
+            })
+
+    for feature_id, parsed in sorted(files.items()):
+        for label, refs in (("depends_on", parsed["depends_on"]), ("blocks", parsed["blocks"])):
+            for ref in refs:
+                if ref in known:
+                    continue
+                findings.append({
+                    "kind": "unknown_dependency",
+                    "id": feature_id,
+                    "detail": f"{label} references unknown id {ref} ({parsed['file']}:2)",
+                })
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Index
 # ---------------------------------------------------------------------------
 
@@ -462,7 +514,7 @@ def build_index(repo_root: Path | str | None = None) -> RoadmapIndex:
         features=tuple(features),
         milestones=tuple(milestones),
         order=tuple(entry["id"] for entry in entries),
-        inconsistencies=(),
+        inconsistencies=tuple(check_consistency(files, entries)),
         repo_root=str(root),
     )
     return index

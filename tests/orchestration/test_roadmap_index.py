@@ -1,4 +1,4 @@
-"""Tests for the machine-readable roadmap mirror (F080 T001).
+"""Tests for the machine-readable roadmap mirror (F080 T001/T002).
 
 Two fixture kinds, per the feature's acceptance:
 
@@ -10,6 +10,10 @@ Two fixture kinds, per the feature's acceptance:
 
 The mirror is one-way: nothing here writes markdown, and the generated
 index goes under the data root, never into the repo.
+
+T002 adds the consistency checks, which REPORT and never fail — and on
+this repository they report nothing, which is itself a proof about the
+roadmap's state.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from pathlib import Path
 import pytest
 
 from packages.orchestration.roadmap_index import (
+    CONSISTENCY_KINDS,
     STATUS_GLYPHS,
     GrammarViolation,
     RoadmapGrammarError,
@@ -271,6 +276,16 @@ class TestGrammarViolations:
         assert str(found[0]) == (
             "docs/roadmap/STATUS.md:9: duplicate feature id F001 — already listed on line 7")
 
+    def test_consistency_findings_are_not_grammar_errors(self, tmp_path):
+        """Only grammar raises. An unscheduled feature file still parses."""
+        root = _make_repo(tmp_path)
+        (root / "docs/roadmap/features/T0_F003.md").write_text(
+            VALID_FEATURE.format(tier=0, fid="003", title="Unscheduled feature",
+                                 depends="F001", blocks="none"),
+            encoding="utf-8")
+        index = build_index(root)
+        assert index.by_id("F003").status == "not_scheduled"
+
     def test_all_violations_reported_in_one_pass(self, tmp_path):
         """A fix round is mechanical: every violation is collected, not just the first."""
         root = _make_repo(tmp_path)
@@ -282,3 +297,97 @@ class TestGrammarViolations:
         assert len(found) == 2
         assert {v.file for v in found} == {
             "docs/roadmap/features/T0_F001.md", "docs/roadmap/STATUS.md"}
+
+
+# ---------------------------------------------------------------------------
+# Consistency checks (T002) — reported, never fatal
+# ---------------------------------------------------------------------------
+
+
+class TestConsistencyChecks:
+    def test_this_repository_reports_zero_inconsistencies(self):
+        """The clean report IS the proof: 255 files, 255 STATUS lines, no unknown refs."""
+        index = build_index(REPO_ROOT)
+        assert list(index.inconsistencies) == []
+
+    def test_clean_fixture_reports_nothing(self, tmp_path):
+        assert build_index(_make_repo(tmp_path)).inconsistencies == ()
+
+    def test_status_entry_without_feature_file(self, tmp_path):
+        root = _make_repo(tmp_path)
+        (root / "docs/roadmap/features/T0_F002.md").unlink()
+        findings = build_index(root).inconsistencies
+        assert [f["kind"] for f in findings] == ["status_without_file"]
+        assert findings[0]["id"] == "F002"
+        assert "STATUS.md:8" in findings[0]["detail"]
+
+    def test_feature_file_absent_from_status_is_not_scheduled(self, tmp_path):
+        root = _make_repo(tmp_path)
+        (root / "docs/roadmap/features/T0_F003.md").write_text(
+            VALID_FEATURE.format(tier=0, fid="003", title="Unscheduled feature",
+                                 depends="none", blocks="none"),
+            encoding="utf-8")
+        index = build_index(root)
+        findings = index.inconsistencies
+        assert [f["kind"] for f in findings] == ["file_without_status"]
+        assert findings[0]["id"] == "F003"
+        assert "not scheduled" in findings[0]["detail"]
+        assert index.by_id("F003").status == "not_scheduled"
+        assert "F003" not in index.order
+
+    def test_unknown_dependency_reference(self, tmp_path):
+        root = _make_repo(tmp_path)
+        target = root / "docs/roadmap/features/T0_F002.md"
+        target.write_text(
+            VALID_FEATURE.format(tier=0, fid="002", title="Second feature",
+                                 depends="F001, F999", blocks="none"),
+            encoding="utf-8")
+        findings = build_index(root).inconsistencies
+        assert [f["kind"] for f in findings] == ["unknown_dependency"]
+        assert findings[0]["id"] == "F002"
+        assert "F999" in findings[0]["detail"]
+        assert "depends_on" in findings[0]["detail"]
+
+    def test_unknown_blocks_reference(self, tmp_path):
+        root = _make_repo(tmp_path)
+        target = root / "docs/roadmap/features/T0_F002.md"
+        target.write_text(
+            VALID_FEATURE.format(tier=0, fid="002", title="Second feature",
+                                 depends="F001", blocks="F998"),
+            encoding="utf-8")
+        findings = build_index(root).inconsistencies
+        assert [f["kind"] for f in findings] == ["unknown_dependency"]
+        assert "blocks references unknown id F998" in findings[0]["detail"]
+
+    def test_known_ids_include_status_only_features(self, tmp_path):
+        """An id that exists only in STATUS still counts as known for references."""
+        root = _make_repo(tmp_path)
+        status = root / "docs/roadmap/STATUS.md"
+        status.write_text(status.read_text(encoding="utf-8") + "- [ ] F050 — Status-only feature\n",
+                          encoding="utf-8")
+        target = root / "docs/roadmap/features/T0_F002.md"
+        target.write_text(
+            VALID_FEATURE.format(tier=0, fid="002", title="Second feature",
+                                 depends="F001", blocks="F050"),
+            encoding="utf-8")
+        findings = build_index(root).inconsistencies
+        assert [f["kind"] for f in findings] == ["status_without_file"]
+        assert findings[0]["id"] == "F050"
+
+    def test_every_kind_is_declared(self, tmp_path):
+        """No finding kind escapes the documented set."""
+        root = _make_repo(tmp_path)
+        (root / "docs/roadmap/features/T0_F002.md").unlink()
+        (root / "docs/roadmap/features/T0_F003.md").write_text(
+            VALID_FEATURE.format(tier=0, fid="003", title="Unscheduled feature",
+                                 depends="F997", blocks="none"),
+            encoding="utf-8")
+        findings = build_index(root).inconsistencies
+        assert {f["kind"] for f in findings} == set(CONSISTENCY_KINDS)
+
+    def test_findings_travel_into_the_written_index(self, tmp_path):
+        root = _make_repo(tmp_path)
+        (root / "docs/roadmap/features/T0_F002.md").unlink()
+        index = build_index(root)
+        payload = json.loads(write_index(index, tmp_path / "data").read_text(encoding="utf-8"))
+        assert payload["inconsistencies"] == [dict(c) for c in index.inconsistencies]
