@@ -144,6 +144,7 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F042 — Multi-project cockpit
 - [ ] F043 — Explanation layer
 - [ ] F044 — Command palette, keyboard, performance budget
+- [ ] F255 — Teacher role (evidence-grounded live explainer & learn-along tutor)
 
 ## Tier 6 — Design-to-Code
 
