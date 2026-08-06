@@ -31,12 +31,16 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- Part B: feature_mission_adapter.py + tests, reusing roadmap_index's
-  parser and the existing mission/DoD compiler records.
-- Part C: docs page for the `plan` group + docs/README.md index line
-  (the item R1 deferred).
-- Part D: integration gate, then handback. Closure (evidence job,
-  fresh zip, STATUS [x], PR) is a separate round after the R2 verdict.
+- R2 done: verdict persisted, adapter + tests landed (T003), docs page
+  registered, integration gate run — branch 15941 passed / 0 failed,
+  zero branch-only failures, both base-only ids attributed
+  (.agent/gate_f080_r2/attribution.txt). Branch pushed, still no PR.
+- Reviewer gates R2 on the next relay.
+- Then closure as its own round: evidence job, fresh review zip,
+  STATUS [x], PR — not part of R2.
+- Open for the reviewer: R-0205 (main is standing-red on
+  test_context_mentions_resource_safety until a compliant
+  .agent/context.md merges; this branch already carries one).
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
