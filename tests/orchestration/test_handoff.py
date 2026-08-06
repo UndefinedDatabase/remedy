@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -86,6 +87,17 @@ def _seed_dossier(root, mission, *, next_step: str = "run the migration"):
         decisions=[DossierItem(id="D001", text="reuse the existing writer",
                                resolved=True, outcome="reused")],
         next_step=next_step))
+    write_dossier_version(PROJECT, mission.id, result.dossier, root)
+    save_dossier_state(PROJECT, mission.id, result.dossier, root)
+    return result.dossier
+
+
+def _advance_dossier(root, mission, *, next_step: str):
+    """One more dossier iteration — a NEW version, the way a real run moves."""
+    from packages.orchestration.mission_dossier import load_dossier_state
+
+    dossier = load_dossier_state(PROJECT, mission.id, root)
+    result = update(dossier, IterationFacts(next_step=next_step))
     write_dossier_version(PROJECT, mission.id, result.dossier, root)
     save_dossier_state(PROJECT, mission.id, result.dossier, root)
     return result.dossier
@@ -414,3 +426,236 @@ class TestRenderedBlock:
         body = json.loads(path.read_text(encoding="utf-8"))
         assert render_handoff(body) == \
             path.with_suffix(".md").read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# T002 — triggers, consumption, reference verification
+# ---------------------------------------------------------------------------
+
+def _plan_for(mission_id: str, data_root, *, milestone: str = "M001"):
+    """A compiled one-milestone plan, so the loop has something to dispatch."""
+    from packages.orchestration.mission_plan_schema import (
+        MISSION_PLAN_SCHEMA_V,
+        Milestone,
+        MissionPlan,
+    )
+    from packages.orchestration.mission_state import set_mission_plan
+
+    plan = MissionPlan(
+        schema_v=MISSION_PLAN_SCHEMA_V,
+        milestones=[Milestone(
+            id=milestone, goal=f"The outcome of {milestone} holds",
+            rationale=f"{milestone} exists", depends_on=[],
+            jobs_draft=[{"title": "work", "goal": "do it", "est_band": "M"}])],
+        compiled=True, origin="provider")
+    set_mission_plan(PROJECT, mission_id, plan.model_dump(), data_root)
+
+
+class _LoopJob:
+    """The smallest thing the dispatch seam must return: an id and no plan."""
+
+    def __init__(self, job_id: str = "job-0001"):
+        self.id = job_id
+        self.flight_plan = None
+
+
+def _dispatch_double(project_id, mission_id, step, *, root=None, now=None):
+    return _LoopJob()
+
+
+def _execute_double(job):
+    from packages.orchestration.orchestrator_loop import MilestoneEvidence  # noqa: F401
+
+    class _Run:
+        stopped = False
+        stop_reason = ""
+        cycles = 1
+    return _Run()
+
+
+def _dispatching_provider():
+    """A provider that keeps asking for the same dispatch — never terminal."""
+    import json as _json
+
+    from packages.orchestration.orchestrator_move_schema import (
+        ORCHESTRATOR_MOVE_SCHEMA_V,
+    )
+
+    move = _json.dumps({"schema_v": ORCHESTRATOR_MOVE_SCHEMA_V,
+                        "kind": "dispatch_job",
+                        "payload": {"milestone_id": "M001", "step": "keep going"}})
+    return lambda prompt, attempt: move
+
+
+def _run_to_limit(mission, data_root, *, iterations: int = 1):
+    from packages.orchestration.orchestrator_loop import LoopLimits, run_mission
+
+    return run_mission(
+        mission.id, LoopLimits(max_iterations=iterations), project_id=PROJECT,
+        call_fn=_dispatching_provider(), root=data_root,
+        dispatch=_dispatch_double, execute=_execute_double,
+        control_root_path=data_root / "control")
+
+
+class TestLoopTrigger:
+    def test_the_iteration_limit_builds_a_handoff(self, data_root):
+        from packages.orchestration.orchestrator_loop import (
+            TERMINAL_ITERATION_LIMIT,
+        )
+
+        mission = _mission(data_root)
+        _plan_for(mission.id, data_root)
+        result = _run_to_limit(mission, data_root)
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+        assert result.handoff_error == ""
+        assert Path(result.handoff_path).is_file()
+        assert Path(result.handoff_path).name == "handoff_v1.json"
+
+    def test_a_stop_builds_a_handoff(self, data_root):
+        from packages.orchestration.orchestrator_loop import TERMINAL_STOPPED
+        from packages.orchestration.safe_points import request_stop
+
+        mission = _mission(data_root)
+        _plan_for(mission.id, data_root)
+        control = data_root / "control"
+        request_stop(mission.id, reason="operator says stop",
+                     control_root_path=control)
+        result = _run_to_limit(mission, data_root, iterations=2)
+        assert result.terminal == TERMINAL_STOPPED
+        assert Path(result.handoff_path).is_file()
+
+    def test_a_build_failure_does_not_mask_the_terminal(self, data_root,
+                                                        monkeypatch):
+        from packages.orchestration import handoff as handoff_module
+        from packages.orchestration.orchestrator_loop import (
+            TERMINAL_ITERATION_LIMIT,
+        )
+
+        def _boom(*args, **kwargs):
+            raise OSError("the evidence area is gone")
+
+        monkeypatch.setattr(handoff_module, "build_handoff", _boom)
+        mission = _mission(data_root)
+        _plan_for(mission.id, data_root)
+        result = _run_to_limit(mission, data_root)
+        assert result.terminal == TERMINAL_ITERATION_LIMIT
+        assert result.handoff_path == ""
+        assert "the evidence area is gone" in result.handoff_error
+
+
+class TestConsumption:
+    def test_the_newest_valid_handoff_is_the_one_resumed_from(self, data_root):
+        from packages.orchestration.handoff import handoff_resume_seed
+
+        mission = _mission(data_root)
+        _seed_dossier(data_root, mission, next_step="first step")
+        build_handoff(mission.id, data_root)
+        _advance_dossier(data_root, mission, next_step="second step")
+        newest = build_handoff(mission.id, data_root)
+        seed = handoff_resume_seed(mission.id, data_root)
+        assert seed is not None
+        assert seed.path == newest
+        assert seed.path.name == "handoff_v2.json"
+        assert "second step" in seed.text
+
+    def test_an_unknown_schema_version_is_refused_not_guessed(self, data_root):
+        from packages.orchestration.handoff import (
+            HandoffSchemaVersionError,
+            handoff_resume_seed,
+        )
+
+        mission = _mission(data_root)
+        _seed_dossier(data_root, mission)
+        path = build_handoff(mission.id, data_root)
+        body = json.loads(path.read_text(encoding="utf-8"))
+        body["schema_version"] = HANDOFF_SCHEMA_VERSION + 1
+        path.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8")
+        with pytest.raises(HandoffSchemaVersionError) as exc:
+            handoff_resume_seed(mission.id, data_root)
+        assert str(HANDOFF_SCHEMA_VERSION + 1) in str(exc.value)
+
+    def test_a_stale_worktree_head_refuses_with_the_checkpoint_message(
+            self, data_root, monkeypatch):
+        from packages.orchestration import checkpoints as checkpoints_module
+        from packages.orchestration.handoff import (
+            HandoffReferenceStaleError,
+            handoff_resume_seed,
+        )
+
+        mission = _mission(data_root)
+        _seed_dossier(data_root, mission)
+        job_id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+        _seed_job_checkpoint(data_root, mission, job_id)
+        build_handoff(mission.id, data_root)
+        monkeypatch.setattr(checkpoints_module, "resolve_live_worktree_head",
+                            lambda _job_id: "deadbeef" + "0" * 32)
+        with pytest.raises(HandoffReferenceStaleError) as exc:
+            handoff_resume_seed(mission.id, data_root)
+        expected = checkpoints_module.worktree_drift_message(
+            "c0ffee" + "0" * 34, "deadbeef" + "0" * 32)
+        assert str(exc.value) == expected
+
+    def test_a_vanished_checkpoint_refuses(self, data_root):
+        from packages.orchestration.checkpoints import checkpoint_dir
+        from packages.orchestration.handoff import (
+            HandoffReferenceStaleError,
+            handoff_resume_seed,
+        )
+
+        mission = _mission(data_root)
+        _seed_dossier(data_root, mission)
+        job_id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        _seed_job_checkpoint(data_root, mission, job_id)
+        build_handoff(mission.id, data_root)
+        for path in checkpoint_dir(job_id).glob("checkpoint_*.json"):
+            path.unlink()
+        with pytest.raises(HandoffReferenceStaleError) as exc:
+            handoff_resume_seed(mission.id, data_root)
+        assert "no verifying checkpoint" in str(exc.value)
+
+    def test_a_gap_only_handoff_has_nothing_to_verify(self, data_root):
+        from packages.orchestration.handoff import handoff_resume_seed
+
+        mission = _mission(data_root)
+        build_handoff(mission.id, data_root)  # zero progress: all gaps
+        seed = handoff_resume_seed(mission.id, data_root)
+        assert seed is not None
+        assert seed.body["checkpoint"] == {}
+
+    def test_the_seed_reaches_the_first_iterations_context_only(self, data_root):
+        from packages.orchestration.orchestrator_loop import SECTION_HANDOFF
+
+        mission = _mission(data_root)
+        _plan_for(mission.id, data_root)
+        first = _run_to_limit(mission, data_root)          # writes handoff_v1
+        assert first.resumed_from == ""                     # nothing to resume
+        provider = _dispatching_provider()
+        prompts: list[str] = []
+
+        def recording(prompt, attempt):
+            prompts.append(prompt)
+            return provider(prompt, attempt)
+
+        from packages.orchestration.orchestrator_loop import (
+            LoopLimits,
+            run_mission,
+        )
+
+        second = run_mission(
+            mission.id, LoopLimits(max_iterations=2), project_id=PROJECT,
+            call_fn=recording, root=data_root, dispatch=_dispatch_double,
+            execute=_execute_double, control_root_path=data_root / "control")
+        assert second.resumed_from == "handoff_v1.json"
+        assert SECTION_HANDOFF in prompts[0]
+        assert SECTION_HANDOFF not in prompts[1]
+
+    def test_the_root_conflict_is_named_rather_than_silent(self, data_root,
+                                                           tmp_path):
+        from packages.orchestration.handoff import handoff_root_conflict
+
+        assert handoff_root_conflict(None) == ""
+        assert handoff_root_conflict(data_root) == ""
+        message = handoff_root_conflict(tmp_path / "elsewhere")
+        assert "R-0203" in message
+        assert "REMEDY_DATA_DIR" in message
