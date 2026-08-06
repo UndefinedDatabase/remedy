@@ -31,11 +31,13 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- T001: roadmap_index.py + tests (this repo as fixture + one broken-
-  grammar fixture per violation class), then plan CLI + tests.
-- T002: consistency checks reported in `plan status` and in the index.
-- Handback: push branch, rewrite .agent/handoff.md. No PR — F080's PR
-  is created only at closure.
+- R1 done: sweep, claim, T001 (parser + grammar + index writer + CLI
+  status/next) and T002 (consistency checks) are committed and green;
+  branch pushed, no PR (F080's PR is created only at closure).
+- R2: T003 feature→mission adapter + end-to-end compile of one real
+  feature file, no execution side effects.
+- Open for R2/closure: docs/ entry for the new `plan` CLI group — out
+  of this round's declared change scope.
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
