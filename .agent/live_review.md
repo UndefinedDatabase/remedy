@@ -45,13 +45,20 @@ licence to improvise.
   the repo-scan test that closes the second acceptance criterion, and
   write the docs, registered in the docs/README.md index — PASS. Both
   of the feature file's acceptance criteria are now met and pinned.
-- R7 (current, SPLIT): persist the R6 verdict, register R-0216 and fix
-  it, then the integration gate per docs/agents/integration_gate.md —
-  the first and only full-suite run before closure.
-- R8: closure per docs/roadmap/STATUS_closure_protocol.md — evidence
-  job and a fresh review zip are mandatory, a zip failure is a closure
-  blocker, the STATUS line flips to `[x]` last, and the PR that
-  follows is NOT merged in the session that creates it.
+- R7 (SPLIT): persist the R6 verdict, register and fix R-0216, then
+  the integration gate — PASS. Zero branch-only failures; the
+  reviewer's own independent full-suite run at the same HEAD was
+  16016 passed, 19 skipped, 0 failed.
+- R8 (current, SPLIT): persist the R7 verdict and register R-0217.
+  This is the session-closing round: the S4 rehearsal session reached
+  its capacity limit here, with the feature built, both acceptance
+  criteria pinned and the integration gate green, but NOT closed.
+- R9 (next session): closure per
+  docs/roadmap/STATUS_closure_protocol.md — evidence job and a fresh
+  review zip are mandatory, a zip failure is a closure blocker, the
+  gate evidence is re-produced into the repo (R-0217c), the STATUS
+  line flips to `[x]` last, and the PR that follows is NOT merged in
+  the session that creates it.
 
 ## Findings
 - R-0211 (reviewer authoring, Low): F254 was claimed ahead of F103,
@@ -154,7 +161,29 @@ licence to improvise.
   duplicated planning bullet misleads no verification. Fix: receipt
   f254-r7-1 PAIR 1 takes the whole tail of the list.
   Done: R-0216 — the duplicate is gone.
-- Next free ID: R-0217.
+- R-0217 (reviewer authoring, Low): three defects in the R7 step
+  block, all in what the reviewer ordered rather than in what the
+  worker did. (a) Its "Done when" required
+  `grep -c '^- R6' .agent/live_review.md` to be 1, which is
+  unsatisfiable while an R6 VERDICT line exists — verdict lines share
+  the `- R6:` prefix with step lines. The worker reported the
+  mismatch instead of deleting a verdict line to satisfy a check, and
+  the substantive test — exactly one R6 bullet inside `## Steps` —
+  passes. (b) The authored plan.md text pushed the file to 54 lines,
+  past the AGENTS.md sub-50 cap that the reviewer enforces on
+  everyone else. (c) The block's Change list forbade any sixth path,
+  which blocked integration_gate.md §2's own instruction to copy the
+  gate logs into a `.agent/gate_*` directory; the logs therefore live
+  only in the session scratchpad and die with the session. Not a
+  block condition: the gate's real numbers are recorded in the R7
+  verdict from two independent runs, and the closure protocol
+  requires a full-suite confirmation anyway, so the evidence is
+  reproducible rather than lost. Fix: (a) and (b) in this round's
+  receipts; (c) is carried into the closure round, which must produce
+  the gate evidence into the repo before flipping the STATUS line.
+  Done: R-0217a and R-0217b — fixed here. R-0217c — carried to R9,
+  named in the handoff as a closure precondition.
+- Next free ID: R-0218.
 
 ## Decisions
 - D10 (work-item order): F254 runs before F103. Chosen because F254 is
@@ -456,4 +485,36 @@ licence to improvise.
   PR. Tier: docs-round gate + canary. No full-suite claim is made —
   that is R7's job and nothing before it may claim it.
   LAST_REVIEWED_SHA = ac54592c.
-- R7: PENDING — awaiting the worker handback.
+- R7: PASS (2026-08-07), and the integration gate is GREEN. Range
+  ac54592c..a310cd13, two commits, both .agent-only — no source, test,
+  docs or STATUS file was touched in the gate round, which is what
+  keeps the gate a measurement rather than a negotiation. Transport,
+  PRIMARY proof: both receipts cmp 0 against the reviewer's scratchpad
+  originals; all six pairs REWRITE-clean; the R-0216 duplicate is gone
+  and `## Steps` holds exactly one R6 bullet. The gate itself: the
+  worker ran `python3 -m pytest -n auto -q` at 0ea95c88 → exit 1, 1
+  failed / 16015 passed / 19 skipped in 128s, and at the merge-base
+  fc023265 in a disposable worktree → exit 1, 5 failed / 15950 passed
+  / 19 skipped in 147s. BRANCH-ONLY FAILURES: ZERO. The single shared
+  failure, test_product_smoke.py::test_no_zombie_processes_after_
+  every_outcome, is present at the base too and passes on a serial
+  re-run — the xdist-flake class, not this branch. The four base-only
+  failures were not waved away as noise: the worker measured the cause
+  and showed that the full suite rebuilt apps/ui/dist mid-run (the
+  primary's dist mtime falls inside the branch-run window while the
+  base worktree's dist hash was unchanged), which is the R-0155/R-0158
+  build-output class. That asymmetry means the two runs were not
+  perfectly comparable, and the honest answer to it is a third
+  measurement rather than an argument — so the reviewer ran the full
+  suite independently at a310cd13: `python3 -m pytest -n auto -q` →
+  16016 passed, 19 skipped, 0 FAILED, 124s. Zero failures at this
+  HEAD, in the reviewer's own hands. Both runs sit well under the
+  five-minute budget, so no perf pass is owed. Worktree cleanup
+  verified by the reviewer, not the report: `git worktree list` shows
+  the primary alone, no `tmp/*` branch survives, `git status
+  --porcelain` is empty and no pytest, vite or npm process is left
+  running. Three deviations were declared and all three are the
+  reviewer's, becoming finding R-0217. This is the ONLY round of this
+  feature permitted to claim "full suite green", and it claims it:
+  16016 passed, 0 failed, at a310cd13. LAST_REVIEWED_SHA = a310cd13.
+- R8: PENDING — awaiting the worker handback.
