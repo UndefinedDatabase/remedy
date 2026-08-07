@@ -2,8 +2,9 @@
 
 Branch: feature/selfdrive-skill · PR #185 open and unmerged by design —
 it merges at the next work item's Open PR Gate, which is the operator's
-manual-review window. R1, R2 and R3 all PASSed; 0 open findings; next
-free finding ID R-0211 — R-0210 was raised and fixed in R4.
+manual-review window. R1 through R4 all PASSed; 0 open findings; next
+free finding ID R-0211 — R-0210 was raised and fixed in R4. R5 is the
+S4 rehearsal session's opening round.
 
 ## Goal
 The one-session build discipline is on the branch: the protocol
@@ -19,8 +20,10 @@ phone. Starting Claude Code and invoking ONE skill must be the only
 required touchpoint. Target: operational and rehearsed by 2026-08-12.
 
 ## Current Step
-Build complete. The only remaining commitment before the hard date is
-the S4 rehearsal.
+R5 — the S4 rehearsal session's opening round: record the R4 PASS
+verdict in .agent/live_review.md so the build's evidence chain is
+closed before PR #185 is merged. This round performs no merge and
+creates no branch; the Open PR Gate is the next round's first action.
 
 ## Next Steps
 - S4 rehearsal, FRESH session: build F254 (Model alias table & dead-model
