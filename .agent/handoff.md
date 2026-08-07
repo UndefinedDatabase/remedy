@@ -1,116 +1,81 @@
-# Handoff — F254, session close (S4 self-drive rehearsal)
+# Handoff — F254 R9, closure PREPARATION, TRUNCATED BY `.agent/STOP`
 
-Read cold: the ONLY return channel out of a session that ENDED. Feature
-**T2_F254 — model alias table & dead-model doctor check**, branch
-**`feature/f254-model-alias-table`**, HEAD **`00703e8e`**, pushed, tree
-clean. **BUILT and gate-green but NOT CLOSED**: the session hit its
-capacity limit at R8, and per self_drive_protocol.md **G7** a session
-ending at its limit with a written handoff is a **SUCCESS**. All rounds
-SPLIT — reviewer in the main session, one delegated worker subagent per
-round; the single-writer rule held.
+Feature **T2_F254 — model alias table & dead-model doctor check**, branch
+**`feature/f254-model-alias-table`**, HEAD **`a50b330a`** + this handoff
+commit, pushed. SPLIT round, worker subagent.
 
-## Round ledger R1-R8
-| R | What it did | Verdict |
-|---|---|---|
-| R1 | Open PR Gate (merged PR #185), cut branch, claim `[~]`, reset .agent state | PASS |
-| R2 | Alias module `packages/orchestration/model_aliases.py`, 5 built-in ids routed | PASS |
-| R3 | Route last 3 built-in ids (2 Ollama providers, `ollama.model`), amend Acceptance | PASS |
-| R4 | Known-dead list `scripts/dead_models.json`, loader, config extension, tests | PASS |
-| R5 | Wire the dead-model check into `remedy doctor core` as an advisory warning | PASS |
-| R6 | Fix warning verbosity + miscount, add repo-scan pin, write and index the doc | PASS |
-| R7 | Persist R6, fix R-0216, then the integration gate — full suite | PASS, gate GREEN |
-| R8 | Persist R7, register R-0217, write this handoff — session-closing round | PENDING (this handback) |
-
-## Commit range and PR state
-Merge base with `main`: `fc023265` (the PR #185 merge commit). Branch
-range **`ef71d83e`..`00703e8e`** — first commit after the merge base
-through HEAD — **23 commits**, 40 paths: 20 authored receipts, 5 `.agent`
-files, 4 docs (incl. the `STATUS.md` `[~]` claim and the `docs/README.md`
-index entry), 8 source files, 3 new test files.
-**PR #185** (`feature/selfdrive-skill` → `main`, the S1+S2 self-drive
-skill) is **MERGED**, `mergedAt` 2026-08-07T14:26:32Z, at R1's Open PR
-Gate. **NO PR exists for this branch**: `gh pr list --head
-feature/f254-model-alias-table --state all` → `[]`, `gh pr list --state
-open` → `[]`. The F254 PR is the closure round's job.
-
-## Integration gate (R7) — three real runs
-| Run | Where | Result (`python3 -m pytest -n auto -q`) |
-|---|---|---|
-| Branch | repo root @ `0ea95c88` | exit 1 · 1 failed, 16015 passed, 19 skipped · 128s |
-| Base | worktree @ merge-base `fc023265` | exit 1 · 5 failed, 15950 passed, 19 skipped · 147s |
-| Reviewer, independent | repo root @ `a310cd13` | **16016 passed, 19 skipped, 0 failed** · 124s |
-
-**Branch-only failures: ZERO.** The one shared failure
-(`test_product_smoke.py::test_no_zombie_processes_after_every_outcome`)
-exists at the base and passes serially — xdist flake. The four base-only
-failures were the `apps/ui/dist` build-output class (R-0155/R-0158),
-measured rather than waved away; the reviewer's third run settles it.
-**R-0217c: the gate LOGS did not survive their session's scratchpad** —
-the R7 block forbade a sixth path, blocking integration_gate.md §2's own
-instruction to copy them into `.agent/gate_*`. The numbers survive in the
-R7 verdict; the raw transcripts do not. **The closure round MUST produce
-gate evidence into the repo before flipping the STATUS line.**
-
-## Findings
-R-0211 … R-0216, R-0217a, R-0217b: **Done**. **R-0217c: CARRIED** (above).
-**Open findings: 0. Next free ID: R-0218.** Four of seven were
-reviewer-authoring defects, two the same defect twice (a FROM that edits
-a list must span the whole list); the worker caught each by refusing to
-improvise. **`.agent/candidates.md` holds ONE entry** — the R-0214
-handoff-cap amendment — and is a **BLOCK CONDITION at the next feature
-claim**: the first reviewed round of what comes next must register or
-resolve it and empty the file.
-
-## What the next session must do, in order
-1. **Phase 0 probe**: `git status --porcelain`, branch, `git log -n 8`,
-   `gh pr list --state open`, `remedy plan status`, `remedy plan next`;
-   then read from DISK `.agent/handoff.md`, `plan.md`, `live_review.md`,
-   `candidates.md`, `docs/roadmap/features/T2_F254.md`. Never from memory.
-2. **Closure round (R9)** per `docs/roadmap/STATUS_closure_protocol.md`:
-   evidence job (feature-scoped, fresh job id) → **FRESH review zip**
-   (`scripts/make_review_zip.sh`; **a zip failure is a closure BLOCKER**)
-   → **gate evidence into the repo** (R-0217c) → reviewer authors the
-   STATUS `[ ]`→`[x]` line, worker commits it **LAST** → `gh pr create`.
-   **That PR is NOT merged in the session that creates it.**
-3. After F254: **F103** (Token ledger, SQLite), which Rule A5 names —
-   where the candidates.md block condition fires.
-
-## This round (R8) — changed files and proofs
-| Path | + | - |
-|---|---|---|
-| .agent/authored/f254-r8-1.md | 114 | 0 |
-| .agent/authored/f254-r8-2.md | 43 | 0 |
-| .agent/live_review.md | 70 | 9 |
-| .agent/plan.md | 29 | 40 |
-| .agent/handoff.md | rewritten (commit 2, self-reference) | |
-
-Transport: `cp` then `cmp` vs the reviewer's scratchpad originals, both
-**exit 0**; sha256 identical on both sides —
-`fb7cb6a83e21a368432fa16510bdda3389e657c1295c58a09422c0486e6ea85d` r8-1,
-`50c6c2fb9729aea88e629378ded93423f47757b66028a8ce9d8337283d2ab55b` r8-2.
-Three pairs → live_review.md, all REWRITE-shaped, pre FROM 1x / TO 0x →
-post FROM 0x / TO 1x each. plan.md was a full-file `cp`, `cmp` exit 0,
-now **43 lines** (was 54 — R-0217b fixed), `## Goal` and `## Next Steps`
-present. live_review.md keeps `## Steps`, `## Findings`, `## Decisions`,
-`## Verdicts` 1x each and exactly one `- R6` bullet inside `## Steps`
-(whole-file `grep -c '^- R6'` is 2: step bullet + R6 verdict line —
-R-0217a, not a defect). Round gate, all exit 0: dashboard contract **70**
-· test_test_runner **51** · resource safety **21** · golden path **42**.
-Commit 1 `00703e8e`, commit 2 = this handoff, both pushed; tree clean,
-`git worktree list` primary only, no force-push, no PR, STATUS untouched.
+## STOP — why this round is short
+An untracked, empty **`.agent/STOP`** appeared mid-round
+(mtime 2026-08-07 20:07:54; `git status --porcelain` was EMPTY at round
+start, `git check-ignore` exit 1, never tracked, not created by any
+command this worker ran). self_drive_protocol.md **G6** binds: finish the
+commit in flight, hand off, end. Bundle item A was committed at 20:07;
+**B, C and D-as-planned were NOT started.** The STOP file is left in
+place untouched — deleting an operator signal is not the worker's call —
+so `git status --porcelain` shows `?? .agent/STOP` and nothing else.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| A1 apply f254-r8-1 (3 pairs) | done | all REWRITE-clean |
-| A2 apply f254-r8-2 (full file) | done | cmp 0, plan.md 43 lines |
-| Commit 1 + push | done | `00703e8e` |
-| B session-closing handoff | done | this file |
-| Commit 2 + push | done | reported in the handback message |
+| A persist R8 verdict + D14, replace plan.md | done | `a50b330a` |
+| B Built State section on T2_F254.md | skipped | STOP (G6); receipt f254-r9-3 is COMMITTED and unapplied |
+| C gate evidence into .agent/gate_f254_r9/ | skipped | STOP (G6); full suite never started, dir not created |
+| D rewrite handoff | done | this file, deviated in content: it reports a truncated round |
 
-Length: **116 lines**, over the 100 the >5-commit allowance stretches to.
-Declared, not hidden — R-0214's fifth measurement. No section dropped.
+## Changed files (`git diff --stat d8dd8c18..HEAD`, commit A only)
+| Path | + | - |
+|---|---|---|
+| .agent/authored/f254-r9-1.md | 145 | 0 |
+| .agent/authored/f254-r9-2.md | 45 | 0 |
+| .agent/authored/f254-r9-3.md | 93 | 0 |
+| .agent/live_review.md | 83 | 11 |
+| .agent/plan.md | 25 | 23 |
+
+## Verification (real commands, real exit codes)
+Transport: `cp` + `cmp` vs the reviewer's scratchpad originals — **cmp
+exit 0** for all three receipts; sha256 matches the block exactly
+(`7803c178…c89d43` r9-1, `aba96379…ed9e1e` r9-2, `16999fb4…b75646` r9-3).
+`cmp .agent/plan.md .agent/authored/f254-r9-2.md` **exit 0**.
+Pairs, applied byte-exact, reported under their declared shape:
+r9-1 PAIR 1 REWRITE pre FROM 1x → post FROM 0x / TO 1x; PAIR 2 APPEND
+pre FROM 1x → post FROM 1x, all 22 TO-ONLY lines 1x; PAIR 3 REWRITE
+pre FROM 1x → post FROM 0x / TO 1x. r9-3 PAIR 1 **not applied** (item B).
+State contracts: `wc -l .agent/plan.md` **45** (<50) · `^## Goal` **1** ·
+`^## Next Steps` **1** · live_review 4-section grep **4** · `- R6`
+bullets inside `## Steps` **1**.
+Round gate `-q`, exit **0**: dashboard contract + test_test_runner +
+resource safety = **142 passed** in 18.72s. Canary
+tests/cli/test_golden_path.py exit **0**, **42 passed**.
+Docs gate NOT owed and NOT run — no docs path changed (item B skipped).
+**No full-suite run happened this round; the gate evidence directory
+does not exist.** R-0217c is STILL UNPAID.
+`git worktree list` → primary only. No force-push, no PR, no STATUS edit.
+
+## Findings
+R-0211…R-0217b Done. **R-0217c: still CARRIED** — the closure round must
+produce gate evidence into the repo before the STATUS line flips.
+**Open findings: 0. Next free ID: R-0218.** `.agent/candidates.md` still
+holds the R-0214 handoff-cap amendment — block condition at the NEXT
+feature claim, not at this closure.
+
+## Deviations, declared
+1. Items B and C skipped under G6 — not a judgement call about their
+   value, only about the STOP file.
+2. `.agent/plan.md` holds the reviewer-authored R9 text describing a
+   three-commit round; two of those commits did not happen. The block
+   said "do not edit it further", so it was not improvised on. The
+   discrepancy lives here instead. The next round re-authors it.
+3. `git status --porcelain` is NOT empty: `?? .agent/STOP`, left in place
+   deliberately.
 
 ## Next expected action
-A fresh session runs Phase 0, then the closure round above. Nothing is
-in-flight and nothing waits on the operator.
+Reviewer gates commit `a50b330a` (R9 partial). If the STOP is honoured,
+the session ends here. When work resumes: **re-run R9 items B and C** —
+receipt f254-r9-3 is already on disk and unapplied, and the branch-only
+gate re-run per DECISION D14 still owes `.agent/gate_f254_r9/` — then
+R10 closure per docs/roadmap/STATUS_closure_protocol.md (evidence job →
+fresh review zip → STATUS `[x]` + README sync in ONE last commit → PR,
+not merged in the session that creates it).
+
+Length: **81 lines**, over the 60-line cap and under the 100-line
+allowance. Declared, no section dropped — R-0214's sixth measurement.
