@@ -1,76 +1,96 @@
-# Handoff — F254 R1 (Open PR Gate, branch, claim, state reset)
-Feature T2_F254 Model alias table & dead-model doctor check · Round R1 · SPLIT ·
-branch `feature/f254-model-alias-table`, cut from main at `fc023265`.
-Length: 76 lines. Reason for exceeding 60: three mandatory tables (8-row
-changed-files, 5-row verification, 4-item status) plus the gate transcript this
-round was ordered to record verbatim. No section is dropped.
+# Handoff — F254 R2 (alias module + defaults relocated)
+Feature T2_F254 · Round R2 · SPLIT · branch `feature/f254-model-alias-table`.
+Length: 96 lines. Over 60 because of the 9-row changed-files table, the 13-line verbatim
+`rg` output this step ordered recorded, and one declared deviation that must not be
+compressed into a slogan. No mandated section is dropped.
 
-## Open PR Gate (A)
-Pre-check `git status --porcelain` empty, exit 0. `gh pr list` returned EXACTLY the
-predicted single entry `{"baseRefName":"main","headRefName":"feature/selfdrive-skill","isDraft":false,"number":185}`, exit 0.
-`gh pr merge 185 --merge --delete-branch` exit 0 — fast-forwarded local main
-`df39c3fa..fc023265` and deleted the head branch; `gh pr view 185` confirms state
-MERGED, mergedAt 2026-08-07T14:26:32Z, mergeCommit `fc023265`. `git checkout main`
-("Already on 'main'") and `git pull --ff-only` ("Already up to date.") both exit 0.
-`git log --oneline -n 3`: `fc023265` merge PR #185 · `fc099951` · `ecee9194`.
-This was the only merge; no other PR existed.
+## Commits (range 5fed2fca..HEAD)
+- `4254503b` docs(f254): persist the R1 verdict and finding R-0211 — .agent paths ONLY,
+  committed BEFORE any code, as ordered.
+- `3713867a` feat(f254): add the model alias module and route defaults through it. Pushed, exit 0.
+- commit 3 `chore(f254): rewrite handoff for the R2 handback` — SHA self-referential
+  (this file is its only content), branch tip at handback; declared, not guessed.
 
-## Commits (range fc023265..HEAD, two)
-- `ef71d83e` feat(f254): claim the feature and reset agent state — four receipts +
-  STATUS.md + live_review.md + plan.md + context.md. Pushed, exit 0.
-- commit 2 `chore(f254): rewrite handoff for the R1 handback` — SHA self-referential
-  (this file is its only content), the branch tip at handback; declared, not guessed.
-
-## Changed files — GENERATED from `git diff --numstat fc023265..ef71d83e` (R-0210 fix, not retyped)
+## Changed files — GENERATED from `git diff --numstat 5fed2fca..HEAD` (R-0210 fix, not retyped)
 | Path | + | - |
 |---|---|---|
-| .agent/authored/f254-r1-1.md | +15 | -0 |
-| .agent/authored/f254-r1-2.md | +42 | -0 |
-| .agent/authored/f254-r1-3.md | +44 | -0 |
-| .agent/authored/f254-r1-4.md | +37 | -0 |
-| .agent/context.md | +28 | -29 |
-| .agent/live_review.md | +32 | -220 |
-| .agent/plan.md | +35 | -37 |
-| docs/roadmap/STATUS.md | +1 | -1 |
-| .agent/handoff.md | self-referential | written by commit 2; declared, not omitted |
+| .agent/authored/f254-r2-1.md | +138 | -0 |
+| .agent/authored/f254-r2-2.md | +64 | -0 |
+| .agent/live_review.md | +74 | -13 |
+| .agent/plan.md | +17 | -14 |
+| packages/orchestration/model_aliases.py | +84 | -0 |
+| packages/orchestration/pingpong_provider.py | +7 | -1 |
+| packages/orchestration/role_config.py | +10 | -5 |
+| tests/orchestration/test_model_aliases.py | +98 | -0 |
+| .agent/handoff.md | self-referential | written by commit 3; declared, not omitted |
 
-## Verification (all run for real; docs gate mandatory — docs/roadmap/ changed)
-| Command | Result | exit |
-|---|---|---|
-| `pytest tests/docs/ -q` | 294 passed in 0.44s | 0 |
-| `pytest tests/ui_server/test_dashboard_contract.py -q` | 70 passed in 4.32s | 0 |
-| `pytest tests/orchestration/test_test_runner.py -q` | 51 passed in 4.35s | 0 |
-| `pytest tests/regression/test_resource_safety.py -q` | 21 passed in 10.72s | 0 |
-| `pytest tests/cli/test_golden_path.py -q` | 42 passed in 20.44s | 0 |
-Equal to the predicted 294 · 70 · 51 · 21 · 42. No full-suite claim is made.
-`git status --porcelain` empty after commit 1 + push and after commit 2 + push.
-No force-push, no history rewrite, no `git worktree`, no PR created.
+## Verification — all 11 run for real as `python3 -m pytest <path> -q`, every exit 0
+orchestration/test_model_aliases 18 passed 0.15s · test_role_config 32 passed 0.08s ·
+test_pingpong 33 passed 0.48s · test_provider_mode 24 passed 0.63s · test_token_truth 37
+passed 0.11s · test_final_verifier 97 passed 0.24s · tests/test_do_job_flow 178 passed
+22.37s · ui_server/test_dashboard_contract 70 passed 5.03s · orchestration/test_test_runner
+51 passed 4.77s · regression/test_resource_safety 21 passed 10.94s · cli/test_golden_path
+42 passed 22.03s. No failures, no skips. Round gate + canary only — NO full-suite claim.
+`ruff check` on the four touched paths: "All checks passed!", exit 0. `git status
+--porcelain` empty at every commit. No force-push, no history rewrite, no `git worktree`,
+no PR created, main untouched.
 
-## Transport proofs (C — copied with `cp`, never retyped)
-`cmp <scratchpad>/f254-r1-N.md .agent/authored/f254-r1-N.md` → no output, exit 0 for N = 1,2,3,4.
-sha256: r1-1 `2870e398e1e0ed62c3bb96055fa82cc2c6b1663ccb2e3c89cf73f3808b5d3bad` · r1-2 `e37a8d86082330f75bdd8b1bbee3aba6dc591486d91da04cee7fd6ca8554c055`
-r1-3 `40ee9f357a925bf098600ddb7ad0edcf245f577018aa0b858ca905e435f2966b` · r1-4 `d4cffe583d74368fdd514f3688b647e07813cad1ae1bd80c856548c30c75592c`
-Full-file applications: `cmp` r1-2↔live_review.md, r1-3↔plan.md, r1-4↔context.md — all exit 0.
+## Transport proofs (A — copied with `cp`, never retyped) and pair counts
+`cmp <scratchpad>/f254-r2-N.md .agent/authored/f254-r2-N.md` → no output, exit 0 for N = 1,2.
+sha256, identical both sides: r2-1 `bc9d849e89acf099ca48e3566c56590c017013aa50d97b6bfd4a307bec9d71ad`
+r2-2 `c9803e370c304b522c7284ee348df8b76fea717f8d4347833ed8df824b6ba3d9`
+BEFORE editing: r2-1 pairs 1-4 FROM 1x each, r2-2 pairs 1-2 FROM 1x each — all six exactly
+1x, nothing ambiguous. AFTER: all six FROM **0x**, TO **1x** (REWRITE shape). Structure
+holds — live_review.md has `## Steps`/`## Findings`/`## Decisions`/`## Verdicts` 1x each;
+plan.md has `## Goal` and `## Next Steps` 1x each, 47 lines (<50).
 
-## STATUS.md counts (C1, REWRITE shape)
-FROM was exactly 1x before the edit (line 66). After: FROM **0x** (grep exit 1) and
-TO **1x** (grep exit 0). `grep -c '^- \[~\]' docs/roadmap/STATUS.md` → **1**, exit 0.
+## `rg -n 'claude-opus-4-20250514|claude-sonnet-4-20250514|qwen3-coder-next' packages/ apps/ scripts/` — exit 0
+```
+packages/providers/ollama_builder/provider.py:18:  4. Built-in default (qwen3-coder-next)
+packages/providers/ollama_builder/provider.py:33:_DEFAULT_MODEL = "qwen3-coder-next"
+packages/providers/ollama_planner/provider.py:19:  4. Built-in default (qwen3-coder-next)
+packages/providers/ollama_planner/provider.py:32:_DEFAULT_MODEL = "qwen3-coder-next"
+packages/orchestration/role_config.py:114:    qwen3-coder-next for ollama).
+packages/orchestration/config.py:115:        default="qwen3-coder-next",
+packages/orchestration/config.py:766:# model = "qwen3-coder-next"
+packages/orchestration/config.py:769:# model = "qwen3-coder-next"
+packages/orchestration/config.py:774:# model = "qwen3-coder-next"
+packages/orchestration/model_aliases.py:42:    "claude-flagship": "claude-opus-4-20250514",
+packages/orchestration/model_aliases.py:44:    "claude-workhorse": "claude-sonnet-4-20250514",
+packages/orchestration/model_aliases.py:46:    "ollama-default": "qwen3-coder-next",
+```
 
-## Findings, deviations, assumptions
-0 open findings; next free ID R-0211; none raised this round. No deviations — every
-prediction in the step block was checked against real output and matched. For the
-record, not a deviation: Rule A5's first unchecked line is F103; claiming F254 ahead
-of it is the planner's deliberate choice, stated in the authored context.md.
+## Deviations, assumptions, observations
+- DEVIATION, declared: the Done-when "hits ONLY in model_aliases.py" is NOT met and cannot
+  be met inside the declared change set. Nine hits survive in five files; four of those
+  files (ollama_builder/provider.py, ollama_planner/provider.py, orchestration/config.py,
+  role_config.py:114's prose, which the step ordered left untouched) are outside the paths
+  this round may edit. Scope discipline won — AGENTS.md: prefer smaller changes.
+- What IS true, narrower: both DATED ids now occur only in model_aliases.py.
+  `rg 'claude-opus-4-20250514|claude-sonnet-4-20250514' packages/ apps/ scripts/` returns
+  exactly those 2 lines, exit 0; only undated `qwen3-coder-next` survives elsewhere. The
+  feature file's acceptance says "no hardcoded DATED model string", so R4 must decide
+  explicitly whether its repo scan covers dated ids only or every built-in id — if the
+  latter, R4 needs the two ollama providers and config.py inside ITS change set.
+- Assumption: the one-line WHY comment above `_PROVIDER_DEFAULT_MODELS` and above the new
+  `_DEFAULT_CLAUDE_MODEL` is AGENTS.md Code Discoverability for definitions touched anyway,
+  not scope creep. No other line of either file changed.
+- Observation: the R4 docs/ deferral is right — the alias module's public surface is final
+  only once R3 consumes `builtin_model_ids()`; documenting it now would be rewritten.
+- Behaviour unchanged: the five ids were read out of `git show HEAD:…` and compared
+  programmatically before the table was written, so every evaluated default is byte-identical
+  to R1. 0 open findings; next free ID R-0212.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| A Open PR Gate | done | PR #185 MERGED; main at fc023265 |
-| B branch | done | feature/f254-model-alias-table |
-| C receipts + application | done | 4 cmp + 3 full-file cmp, all exit 0 |
-| D commit, push, handoff | done | ef71d83e pushed; this file is commit 2 |
+| A receipts persist first | done | 4254503b, .agent paths only, before any code |
+| B model_aliases.py | done | 5 aliases, 3 accessors, imports nothing from the package |
+| C role_config + pingpong routing | done | 5 + 1 literals relocated, nothing else touched |
+| D test_model_aliases.py | done | 18 tests; no network, no ANTHROPIC_API_KEY |
+| E commit, push, handoff | done | 2 commits pushed; this file is commit 3 |
 
 ## Next
-Reviewer re-reads `git diff fc023265..HEAD` and re-runs the five gates. On PASS,
-LAST_REVIEWED_SHA advances to the tip and R2 opens with the ground inspection the
-feature file demands, then the alias module. No PR exists for this branch yet.
+Reviewer re-reads `git diff 5fed2fca..HEAD` and re-runs the 11 gate commands. On PASS,
+LAST_REVIEWED_SHA advances to the tip and R3 opens (known-dead list + doctor check),
+carrying the scan-scope question above. No PR exists for this branch.
