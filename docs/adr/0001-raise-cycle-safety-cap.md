@@ -1,10 +1,11 @@
 # ADR-0001 — Raise `CYCLE_SAFETY_CAP` from 1 to 8
 
-> **Status: PROPOSED.** Not applied. A human applies the accompanying diff
-> ([0001-raise-cycle-safety-cap.diff](0001-raise-cycle-safety-cap.diff)) after
-> reviewing this record. The harness that produced the evidence does not edit
-> configuration, and nothing in this repository flips the constant
-> automatically.
+> **Status: ACCEPTED & APPLIED.** Applied 2026-08-07 on operator approval
+> (relayed). The accompanying diff
+> ([0001-raise-cycle-safety-cap.diff](0001-raise-cycle-safety-cap.diff)) is in
+> the tree. The three pins named under *Consequences* were flipped in the same
+> commit, and so were three further cap-dependent tests the record did not
+> list (two CLI capping messages and the `over_cap` evidence pin).
 
 - **Date proposed:** 2026-08-05
 - **Feature:** T1_F075 — MILESTONE GATE: 10 flawless self-runs

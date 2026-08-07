@@ -673,20 +673,21 @@ class TestCycleConfig:
         r = resolve_max_cycles(config_value=6)
         assert (r.max_cycles, r.source) == (6, "config")
 
-    def test_the_rollout_cap_is_still_one_until_adr_0001_is_applied(self):
-        """ADR-0001 (docs/adr/0001-raise-cycle-safety-cap.md) proposes raising
-        CYCLE_SAFETY_CAP from 1 to 8 on the F075 10/10 evidence.  It is
-        PROPOSED, not applied: the prepared diff sits beside the ADR and a
-        human applies it.  This pin fails the moment the constant moves, so
-        the raise cannot happen accidentally — flip it to 8, together with the
-        two other pins the ADR names, as part of applying the ADR.
+    def test_the_rollout_cap_is_eight_since_adr_0001_was_applied(self):
+        """ADR-0001 (docs/adr/0001-raise-cycle-safety-cap.md) raised
+        CYCLE_SAFETY_CAP from 1 to 8 on the F075 10/10 evidence — 8 is the
+        largest cycle budget that campaign granted and completed under.  The
+        ADR is ACCEPTED & APPLIED; this pin fails the moment the constant
+        moves again, so any further change needs its own record.  The shipped
+        DEFAULT_MAX_CYCLES stays 1: the ceiling rose, the default did not.
         """
-        assert CYCLE_SAFETY_CAP == 1
+        assert CYCLE_SAFETY_CAP == 8
+        assert DEFAULT_MAX_CYCLES == 1
 
     def test_the_cap_trims_both_flag_and_config(self):
         flagged = resolve_max_cycles(flag=25)
         configured = resolve_max_cycles(config_value=25)
-        assert flagged.max_cycles == configured.max_cycles == CYCLE_SAFETY_CAP == 1
+        assert flagged.max_cycles == configured.max_cycles == CYCLE_SAFETY_CAP == 8
         assert flagged.capped is True and flagged.requested == 25
         assert configured.capped is True
 
@@ -840,14 +841,21 @@ class TestJobRunCommand:
         assert seen == ["abc12345"]
 
     def test_the_flag_is_capped_and_the_operator_is_told(self, monkeypatch, capsys):
+        """ADR-0001 moved the ceiling to 8, so a capped run is no longer the
+        single pass — it is a real loop run.  What is pinned is unchanged: the
+        flag is trimmed to the cap and the operator is told so."""
         from apps.cli.commands import job as job_cmd
+        from packages.orchestration.storage import save_job
+        from packages.providers.ollama_builder import provider as provider_mod
 
-        seen: list[str] = []
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", seen.append)
-        job_cmd._cmd_job_run_cycles("abc12345", cycles=9)
+        monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
+
+        job = make_job(2)
+        save_job(job)
+        job_cmd._cmd_job_run_cycles(str(job.id), cycles=99)
+
         err = capsys.readouterr().err
-        assert seen == ["abc12345"]                  # still the single pass
-        assert "capped to 1" in err and "F075" in err
+        assert "capped to 8" in err and "F075" in err
 
     def test_zero_cycles_is_refused(self, monkeypatch):
         from apps.cli.commands import job as job_cmd
@@ -876,16 +884,21 @@ class TestJobRunCommand:
     def test_a_capped_config_value_names_the_config_key(self, monkeypatch, capsys):
         from apps.cli.commands import job as job_cmd
 
-        monkeypatch.setattr(job_cmd, "_cmd_run_next_task_local", lambda _: None)
-        monkeypatch.setenv("REMEDY_CYCLES_MAX_CYCLES", "8")
+        from packages.orchestration.storage import save_job
+        from packages.providers.ollama_builder import provider as provider_mod
+
+        monkeypatch.setattr(provider_mod, "OllamaBuilder", FakeBuilder)
+        monkeypatch.setenv("REMEDY_CYCLES_MAX_CYCLES", "20")
         from packages.orchestration.config import reset_config
         reset_config()
+        job = make_job(2)
+        save_job(job)
         try:
-            job_cmd._cmd_job_run_cycles("abc12345")
+            job_cmd._cmd_job_run_cycles(str(job.id))
         finally:
             reset_config()
         err = capsys.readouterr().err
-        assert "cycles.max_cycles 8 capped to 1" in err
+        assert "cycles.max_cycles 20 capped to 8" in err
 
 
 # ---------------------------------------------------------------------------
@@ -1183,8 +1196,8 @@ class TestTheCyclesExperimentOverride:
     def test_the_override_may_exceed_the_cap(self):
         from packages.orchestration.long_run_executor import resolve_max_cycles
 
-        resolved = resolve_max_cycles(experiment_max_cycles=6)
-        assert resolved.max_cycles == 6
+        resolved = resolve_max_cycles(experiment_max_cycles=12)
+        assert resolved.max_cycles == 12
         assert resolved.source == "experiment"
         assert resolved.capped is False
 
@@ -1214,10 +1227,10 @@ class TestTheCyclesExperimentOverride:
         """No run may exceed the rollout cap silently — it is a fact on disk."""
         from packages.orchestration.long_run_executor import resolve_max_cycles
 
-        body = resolve_max_cycles(experiment_max_cycles=6).to_json()
+        body = resolve_max_cycles(experiment_max_cycles=12).to_json()
         assert body["over_cap"] is True
         assert body["source"] == "experiment"
-        assert body["cap"] == 1 and body["max_cycles"] == 6
+        assert body["cap"] == 8 and body["max_cycles"] == 12
 
     def test_a_capped_run_is_not_recorded_as_over_cap(self):
         from packages.orchestration.long_run_executor import resolve_max_cycles
