@@ -1,62 +1,83 @@
-# Handback — S1+S2 self-drive skill, R1 (worker)
-Branch feature/selfdrive-skill, cut at df39c3fa. Open findings 0 · next free ID R-0207.
+# Handback — S1+S2 self-drive skill, R2 (worker)
+Branch feature/selfdrive-skill. Open findings 0 · R-0207 Done · next free ID R-0208.
 
 ## Range
-Review of df39c3fa..4a38253f (merge-base with main = df39c3fa).
+Review of 54a99c8e..ae3c742e (plus the handoff commit below).
 
 ## Commits
-### 12e151df chore(selfdrive): sweep F080 candidate, open R1 state
+### f043cf9c chore(selfdrive): persist R1 PASS and finding R-0207
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/selfdrive-r1-{1..11}.md | +457/-0 | 11 verified receipts |
-| .agent/live_review.md | +54/-95 | R1 opened; D5/D6/D7; verdict PENDING |
-| .agent/plan.md | +32/-41 | R1 goal, four-commit step, risks |
-| .agent/context.md | +24/-28 | branch, scope, constraints |
-| .agent/candidates.md | +3/-10 | F080 candidate swept (carrier empty) |
-| docs/roadmap/STATUS_closure_protocol.md | +10/-0 | producer pitfall (d) |
-### f681fb95 docs(selfdrive): add the one-session build protocol
+| .agent/authored/selfdrive-r2-{1..5}.md | +236/-0 | 5 verified receipts |
+| .agent/live_review.md | +70/-32 | R1 PASS verdict; R-0207 raised; D8 |
+| .agent/plan.md | +28/-25 | R2 step, R3 next |
+| .agent/context.md | +24/-22 | R2 scope + constraints |
+### ae3c742e docs(review): name both FROM-TO proof shapes (R-0207)
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/self_drive_protocol.md | +124/-0 | new: roles, phases, G1-G8 |
-| docs/README.md | +2/-0 | quick-find + Agent Conventions rows |
-### 6976e7d7 feat(selfdrive): add build-remedy-self command and skill
-| Path | +/- | Reason |
-|---|---|---|
-| .claude/skills/remedy-self-drive/SKILL.md | +60/-0 | new skill entry point |
-| .claude/commands/build-remedy-self.md | +15/-0 | new slash command |
-| .claude/README.md | +5/-1 | contents line + self-drive pointer |
-### 4a38253f test(selfdrive): pin the protocol guardrails and registration
-| Path | +/- | Reason |
-|---|---|---|
-| tests/test_agent_tooling.py | +37/-0 | 3 pins, append-only |
+| docs/agents/planner_reviewer_prompt.md | +10/-0 | §4 item 9: rewrite vs append shape |
+| .agent/live_review.md | +2/-0 | R-0207 Done, after the fix |
+(The handoff commit that writes this file is self-referential — R-0149 pattern.)
 
 ## External actions
-- `gh pr list --state open ...` → exactly one: #184, feature/adr-0001-cycle-cap → main, isDraft false — gate shape matched; `gh pr merge 184 --merge --delete-branch` → merged; `git pull --ff-only` → 97bcefe0..df39c3fa (8 files); `git checkout -b feature/selfdrive-skill` at df39c3fa.
-- `git push -u origin feature/selfdrive-skill` → `* [new branch]`, tracking set. No PR created (step block). No worktree, no force-push.
+- `git push -u origin feature/selfdrive-skill` → 54a99c8e..ae3c742e, tracking set. No PR created (R3 is the PR round). No merge, no force-push, no worktree.
 
 ## Verification (raw; every command exit 0, none ran red)
-- commit 1: `pytest tests/docs/ -q` 293 passed 0.19s · `tests/ui_server/test_dashboard_contract.py` 70 passed 3.02s · `tests/orchestration/test_test_runner.py` 51 passed 3.05s · `tests/regression/test_resource_safety.py` 21 passed 10.77s · `tests/cli/test_golden_path.py` 42 passed 15.26s
-- commit 2: `pytest tests/docs/ -q` 293 passed 0.19s. commit 3: `pytest tests/test_agent_tooling.py -q` 7 passed, 1 skipped 0.03s.
-- commit 4: `pytest tests/test_agent_tooling.py -q` 10 passed, 1 skipped 0.04s · `tests/cli/test_golden_path.py` 42 passed 15.31s. `git status --porcelain` after push → empty.
+- commit 1: `pytest tests/ui_server/test_dashboard_contract.py -q` 70 passed 3.29s · `tests/orchestration/test_test_runner.py` 51 passed 3.24s · `tests/regression/test_resource_safety.py` 21 passed 10.78s · `tests/docs/ -q` 293 passed 0.23s
+- commit 2: `pytest tests/docs/ -q` 293 passed 0.19s · `tests/orchestration/test_test_runner.py` 51 passed 3.01s · `tests/test_agent_tooling.py` 10 passed 1 skipped 0.03s · `tests/cli/test_golden_path.py` 42 passed 15.44s
+- `git status --porcelain` after commit 2 and after push → empty.
 
 ## Authored-text proofs
-- `sha256sum selfdrive-r1-*.md`: all 11 digests equal their BEGIN-marker stamp on the FIRST save; no wrap recovery needed. Display-wrapped lines were rejoined before saving (r1-6 two table rows, r1-7 pair-2 rows, r1-8 `description:`); the matching hashes confirm each rejoin.
-- `cmp` = 0 receipt vs applied file: r1-1→live_review.md, r1-2→plan.md, r1-3→context.md, r1-4→candidates.md, r1-6→docs/agents/self_drive_protocol.md, r1-8→SKILL.md, r1-9→build-remedy-self.md.
-- r1-10 (.claude/README.md): FROM 0x, TO 1x — a true 0x/1x rewrite. r1-5 and r1-7 pairs 1+2: TO CONTAINS FROM verbatim (TO = FROM + appended row/paragraph), so FROM 0x is unattainable by construction and is NOT claimed; proof given instead is FROM 1x plus each TO-only addition exactly 1x — `A fourth, from the F080 R4 attempt` 1x, `| self-drive | …agents |` 1x, `| [self_drive_protocol.md](…) | One-session build discipline… |` 1x.
-- r1-11: appended to tests/test_agent_tooling.py; `git diff --numstat` = `37 0`, no existing line touched; file ends with exactly one newline (hexdump-verified).
+- `sha256sum selfdrive-r2-*.md` → all FIVE equal their BEGIN-marker stamp on the FIRST save; no wrap recovery needed on any receipt.
+- `cmp` = 0 receipt vs applied file: r2-1→.agent/live_review.md, r2-4→.agent/plan.md, r2-5→.agent/context.md.
+- r2-2 (planner_reviewer_prompt.md), APPEND shape: FROM `stays honest. cmp-against-scratchpad remains the primary proof` 1x; TO-only `Two proof shapes, never one (R-0207, S1+S2 R1)` 1x. No 0x count attempted or claimed.
+- r2-3 (.agent/live_review.md), APPEND shape: FROM `lives on disk instead of in reviewer session memory` 1x; TO-only `Done: R-0207 — applied in R2` 1x. No 0x count attempted or claimed. Applied only AFTER the r2-2 edit was on disk.
+
+## Part D — Phase 0 dry run (read-only, nothing committed; raw)
+`git status --porcelain` exit=0 — no output (tree clean)
+`git branch --show-current` exit=0 — `feature/selfdrive-skill`
+`git log --oneline -n 8` exit=0 —
+    ae3c742e docs(review): name both FROM-TO proof shapes (R-0207)
+    f043cf9c chore(selfdrive): persist R1 PASS and finding R-0207
+    54a99c8e chore(selfdrive): rewrite handoff for R1 handback
+    4a38253f test(selfdrive): pin the protocol guardrails and registration
+    6976e7d7 feat(selfdrive): add build-remedy-self command and skill
+    f681fb95 docs(selfdrive): add the one-session build protocol
+    12e151df chore(selfdrive): sweep F080 candidate, open R1 state
+    df39c3fa Merge pull request #184 from UndefinedDatabase/feature/adr-0001-cycle-cap
+`gh pr list --state open --json number,headRefName,baseRefName,isDraft` exit=0 — `[]`
+`remedy plan status` exit=0 —
+    Next: F103 — Token ledger (SQLite)  [todo]
+      File: docs/roadmap/features/T2_F103.md
+      Milestone: M3 — Cheap, safe, measurable (Tier 2)
+      Blockers:
+        F003 — Real token/cost measurement  [done]
+        F146 — Project identity & repo autodetection  [done]
+    Roadmap: 255 features · 255 scheduled in STATUS
+    Consistency: no findings
+    Mirror: /home/decodeux/Repos/remedy/.data/roadmap/index.json (generated, never committed)
+`remedy plan next` exit=0 —
+    F103 — Token ledger (SQLite)
+    File: docs/roadmap/features/T2_F103.md
+    State: unchecked (Rule A5: first open line) · docs/roadmap/STATUS.md:54
+    Proposal only — nothing was started.
+`ls -d tests/cli/test_golden_path.py tests/docs scripts/make_review_zip.sh docs/agents/handback_template.md docs/roadmap/STATUS_closure_protocol.md docs/agents/planner_reviewer_prompt.md docs/agents/split_workflow.md docs/roadmap/features AGENTS.md` exit=0 — all 9 listed, none missing:
+    AGENTS.md · docs/agents/handback_template.md · docs/agents/planner_reviewer_prompt.md · docs/agents/split_workflow.md · docs/roadmap/features · docs/roadmap/STATUS_closure_protocol.md · scripts/make_review_zip.sh · tests/cli/test_golden_path.py · tests/docs
+RESULT: Phase 0 as shipped is executable end to end. Zero non-zero exits, zero missing paths. Nothing was patched.
 
 ## Deviations & assumptions
-- Only deviation: the 0x FROM proof for r1-5 / r1-7 (above) — nothing was reworded to reach a count. No PR created and no STATUS.md edit (D7). Nothing under packages/, apps/, scripts/ touched.
+- This handoff exceeds the ≤60-line cap. Cause: the round explicitly ordered the FULL raw Part D transcript into it ("this transcript IS the deliverable of Part D", "trimmed but never summarized"). Sections were compressed, none dropped; the transcript is verbatim except that the 9-line `ls` output is joined with `·` separators.
+- `remedy plan status` reports 255 features / 255 scheduled; the R1 texts say "250-item ledger". Observation only, out of R2 scope, not changed.
+- No PR, no STATUS.md edit, nothing under packages/, apps/, scripts/. R1 deliverables untouched.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 0 Open PR Gate + branch | done | |
-| 1 state + candidate sweep + pitfall (d) | done | 5 gates exit 0 |
-| 2 protocol doc + docs index | done | gate exit 0 |
-| 3 skill + command + .claude/README | done | gate exit 0 |
-| 4 test pins | done | 2 gates exit 0 |
-| 5 push + handoff | done | pushed; no PR by instruction |
+| A receipts saved + sha256 | done | 5/5 first-save match |
+| B commit 1 state + finding | done | 4 gates exit 0 |
+| C commit 2 fix + Done flip | done | 4 gates exit 0; order respected |
+| D Phase 0 dry run | done | 6 commands + 9 paths, all green |
+| E push + handoff | done | pushed; no PR by instruction |
 
 ## Next
-Reviewer gates R1 against the committed diff df39c3fa..4a38253f.
+Reviewer gates R2, then authors the R3 PR round.
