@@ -31,14 +31,36 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
 4. Normal feature flow through the skill (S5: review-zip stays the
    operator's remote window).
 
+## BLOCKER — closure cannot complete this round
+The review zip build FAILS. Raw error:
+
+    REVIEW_ZIP_ERROR: ReviewSubjectError: review_subject commit[4]
+    subject is missing, too long, or carries a secret/path/control
+    (exit 2, no zip published)
+
+commit[4] of the base..HEAD chain is 1e1f4352, subject
+"feat(f080): remedy plan status / plan next (T001)". The metadata
+scanner reads " status / plan " as a local path
+(review_subject._metadata_is_safe -> run_manifest._contains_local_path
+-> failure_postmortem.safe_text rewrites it to "status [path]/path
+plan"). Exactly the AGENTS.md commit-subject rule that blocked the F081
+closure in July. My subject, my error — the round prompts did not
+author it.
+
+The only fix is rewording that commit, i.e. rewriting reviewed history
+(new shas for commits 5-16) plus a force-push. That invalidates the
+R1/R2 verdict ranges and LAST_REVIEWED_SHA 84cd2797, so it is an
+operator/reviewer decision, not a worker improvisation. Handing back.
+
 ## Next Steps
-- Part B: Built State appended to docs/roadmap/features/T1_F080.md.
-- Part C: closure preconditions 1-5, each recorded with its evidence.
-- Part D: evidence job via create_manual_completion_bundle (evidence
-  dir OUTSIDE the repo — never committed) + fresh review zip from the
-  clean tree; record filename + SHA-256 + job id + accepted HEAD.
-- Handback for R4: the reviewer authors the STATUS [x] line from those
-  values.
+- Parts A-C are DONE and green; Part D is half done: the evidence
+  bundle built clean (job f080-closure, full closed-schema gate set),
+  the zip did not.
+- Reviewer/operator decides: reword 1e1f4352 via rebase + force-push
+  (then re-author the verdict ranges and rebuild the bundle at the new
+  HEAD), or take another route.
+- After that: rebuild the bundle, rebuild the zip, then R4 (STATUS [x]
+  + README sync + PR).
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
