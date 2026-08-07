@@ -8,7 +8,9 @@ ANTHROPIC_API_KEY, no config file, no environment variable.
 """
 from __future__ import annotations
 
+import ast
 import inspect
+from pathlib import Path
 
 import pytest
 
@@ -118,3 +120,125 @@ class TestRelocationIsFaithful:
         spec = config.get_key_spec("ollama.model")
         assert spec is not None
         assert spec.default == resolve_model_alias("ollama-default")
+
+
+# ---------------------------------------------------------------------------
+# F254 acceptance criterion 2: no built-in model id outside the alias table
+# ---------------------------------------------------------------------------
+
+#: The one module allowed to spell a concrete id — it IS the table.
+ALIAS_MODULE_RELPATH = "packages/orchestration/model_aliases.py"
+
+#: Where the scan looks. Product code only; tests and scripts are free to name
+#: an id, because pinning a value is what a test is for.
+SCANNED_ROOTS = ("packages", "apps")
+
+#: Directories that hold no reviewable source: compiled caches and the runtime
+#: state tree Remedy writes under `.data/`.
+SKIPPED_DIR_NAMES = frozenset({"__pycache__", ".data"})
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _python_sources() -> list[Path]:
+    root = _repo_root()
+    found: list[Path] = []
+    for base in SCANNED_ROOTS:
+        for path in sorted((root / base).rglob("*.py")):
+            if SKIPPED_DIR_NAMES & set(path.relative_to(root).parts):
+                continue
+            found.append(path)
+    return found
+
+
+def _docstring_node_ids(tree: ast.AST) -> set[int]:
+    """Identify the module/class/function docstrings so the scan can skip them.
+
+    A docstring that quotes a default is DOCUMENTATION of that default, not the
+    default itself (DECISION D11, docs/roadmap/features/T2_F254.md) — the alias
+    module's own prose and any module explaining what it used to hardcode must
+    stay legal.
+    """
+    docstrings: set[int] = set()
+    holders = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, holders):
+            continue
+        body = getattr(node, "body", None)
+        if not body:
+            continue
+        first = body[0]
+        if (isinstance(first, ast.Expr)
+                and isinstance(first.value, ast.Constant)
+                and isinstance(first.value.value, str)):
+            docstrings.add(id(first.value))
+    return docstrings
+
+
+def _spelled_builtin_ids() -> list[tuple[str, int, str]]:
+    """Every built-in model id spelled as a real string constant, with location.
+
+    The scan parses with `ast` ON PURPOSE, and that choice is the mechanism
+    behind the D11 boundary rather than a style preference: COMMENTS ARE
+    INVISIBLE TO `ast` BY CONSTRUCTION — the parser discards them — so an
+    illustrative id in a `#` comment can never be flagged, and no allow-list of
+    line numbers has to be maintained to keep it that way. Do NOT "improve"
+    this into a regex or a text search: that would lose the property, and the
+    first comment mentioning an old id would go red.
+
+    Docstrings are excluded explicitly (see :func:`_docstring_node_ids`) for
+    the same reason, and sample-config prose in `.toml`/`.md` is never read
+    because only `*.py` is walked.
+    """
+    root = _repo_root()
+    builtin_ids = set(MODEL_ALIASES.values())
+    offences: list[tuple[str, int, str]] = []
+    for path in _python_sources():
+        relpath = path.relative_to(root).as_posix()
+        if relpath == ALIAS_MODULE_RELPATH:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        docstrings = _docstring_node_ids(tree)
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Constant)
+                    and isinstance(node.value, str)
+                    and id(node) not in docstrings
+                    and node.value in builtin_ids):
+                offences.append((relpath, node.lineno, node.value))
+    return offences
+
+
+class TestNoBuiltinModelIdOutsideTheAliasTable:
+    """F254 acceptance: one table, and nothing else spells a concrete id.
+
+    The Goal's binding reading is "every hardcoded default model id", dated or
+    not (DECISION D11), so an undated id such as the Ollama default is in scope
+    exactly like a May-2025 Claude id.
+    """
+
+    def test_scan_actually_reads_files(self):
+        # A scan over an empty file list would pass forever. Pin that it found
+        # real sources, and that the alias module was among them before it was
+        # excluded by name.
+        sources = _python_sources()
+        assert len(sources) > 50
+        relpaths = {p.relative_to(_repo_root()).as_posix() for p in sources}
+        assert ALIAS_MODULE_RELPATH in relpaths
+
+    def test_the_alias_table_holds_ids_the_scan_would_flag(self):
+        # If the table were empty, or its values were blank, the scan below
+        # would be vacuously green.
+        assert MODEL_ALIASES
+        assert all(v.strip() for v in MODEL_ALIASES.values())
+
+    def test_no_builtin_model_id_is_spelled_outside_the_alias_module(self):
+        offences = _spelled_builtin_ids()
+        assert not offences, (
+            "built-in model ids may only be spelled in "
+            f"{ALIAS_MODULE_RELPATH}; import the alias and resolve it instead. "
+            "Offending string constants:\n"
+            + "\n".join(f"  {relpath}:{line}: {value!r}"
+                        for relpath, line, value in sorted(offences))
+        )
