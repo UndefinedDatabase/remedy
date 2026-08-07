@@ -1,16 +1,16 @@
-# Plan — F080 Machine-readable roadmap mirror & STATUS.md (R2)
+# Plan — F080 Machine-readable roadmap mirror & STATUS.md (R3)
 
-Branch: feature/f080-roadmap-mirror — R1 PASS (LAST_REVIEWED_SHA
-6787d6cf). No PR yet; F080's PR is created at closure.
+Branch: feature/f080-roadmap-mirror — R1 PASS, R2 PASS with the
+integration gate and the full suite green (LAST_REVIEWED_SHA 84cd2797).
+R3 is closure part 1; R4 is the closure commit + PR.
 
 ## Goal
-F080 R2 (SPLIT, LARGE): persist the R1 PASS verdict, then T003 — the
-feature→mission adapter (detail file → PREPARED mission draft: context
-input, plan seed, DoD seed, fences, each traceable to the file's
-sections) with one real feature file compiled end to end, the docs
-page for the `plan` CLI group, and the integration gate per
-docs/agents/integration_gate.md. The adapter PREPARES: no job started,
-approval left to the standard human path.
+F080 R3 (SPLIT), closure part 1 per docs/roadmap/STATUS_closure_protocol.md:
+persist the R2 PASS verdict, route R-0205's class to T2_F083, make the
+feature file's Built State current (precondition 4), re-confirm the
+closure preconditions, then produce the evidence job and a FRESH review
+zip from a clean tree. No STATUS.md edit, no README edit, no PR — those
+are R4's closure commit.
 
 ## Operator constraint (verbatim)
 From 2026-08-13 the operator reaches this machine ONLY via SSH from a
@@ -18,8 +18,9 @@ phone. Starting Claude Code and invoking ONE skill must be the only
 required touchpoint. Target: operational and rehearsed by 2026-08-12.
 
 ## Sequence
-1. F080 (Machine-readable roadmap mirror & STATUS.md) — R2 in progress
-   (T003 + docs + integration gate); closure is its own later round.
+1. F080 — R3 closure part 1 (this round), then R4 closure part 2
+   (STATUS [x] + README sync + PR, merged at the next feature's Open
+   PR Gate).
 2. S1+S2 — build skill /build-remedy-self per the package: one-session
    Window-1 discipline (state probe -> decide -> rounds in-session),
    hard guardrails (PR-only merges at Open PR Gate, no force-push,
@@ -31,23 +32,20 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- R2 done: verdict persisted, adapter + tests landed (T003), docs page
-  registered, integration gate run — branch 15941 passed / 0 failed,
-  zero branch-only failures, both base-only ids attributed
-  (.agent/gate_f080_r2/attribution.txt). Branch pushed, still no PR.
-- Reviewer gates R2 on the next relay.
-- Then closure as its own round: evidence job, fresh review zip,
-  STATUS [x], PR — not part of R2.
-- Open for the reviewer: R-0205 (main is standing-red on
-  test_context_mentions_resource_safety until a compliant
-  .agent/context.md merges; this branch already carries one).
+- Part B: Built State appended to docs/roadmap/features/T1_F080.md.
+- Part C: closure preconditions 1-5, each recorded with its evidence.
+- Part D: evidence job via create_manual_completion_bundle (evidence
+  dir OUTSIDE the repo — never committed) + fresh review zip from the
+  clean tree; record filename + SHA-256 + job id + accepted HEAD.
+- Handback for R4: the reviewer authors the STATUS [x] line from those
+  values.
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
 - ADR-0001 (CYCLE_SAFETY_CAP) awaits human application; blocks
   multi-cycle loop delegation (S3 experiment lane), not the skill.
-- The adapter's output format IS the later self-build intake
-  (Orchestrator brief) — format doubts go into the handoff, not into a
-  silent guess.
-- R-0204 is a known xdist flake id; a recurrence in the gate is
-  recorded as such with serial-rerun proof, never as a new failure.
+- A failing zip build is a closure BLOCKER: record the raw error and
+  hand back, never close without the package.
+- Evidence-producer pitfalls (protocol step 1) must be satisfied at
+  authoring time: sha256-hex output_hash, full-length base_commit,
+  node ids matching `selected`, test_files as files, run_id ^vr-\d{4,}$.
