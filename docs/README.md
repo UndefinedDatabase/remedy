@@ -191,7 +191,7 @@ human action.
 
 ## Roadmap (`docs/roadmap/`)
 
-The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 250-feature
+The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 255-feature
 plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.

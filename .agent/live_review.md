@@ -36,6 +36,7 @@ work is not a roadmap feature (DECISION D7).
   either count), but a wrong number persisted in a decision record is
   exactly the class this project polices. Fix: correct the number in
   D7.
+  Done: R-0208 — D7 now reads 255-item.
 - R-0209 (stale doc claim, Low): two PRIMARY_DOCS understate the
   ledger. AGENTS.md says the target plan is "ROADMAP.md + 250 feature
   detail files"; docs/README.md calls ROADMAP.md "the full
@@ -46,6 +47,7 @@ work is not a roadmap feature (DECISION D7).
   README.md line 89 ("Roadmap (250 features + registered items)") is
   a DIFFERENT and still-true statement — F001-F250 plus the five
   later registered items — and is deliberately not touched.
+  Done: R-0209 — both texts corrected and pinned in one commit.
 - Next free ID: R-0210.
 
 ## Decisions
@@ -72,7 +74,7 @@ work is not a roadmap feature (DECISION D7).
   STATUS line. Rule A5 still names F103 as the next roadmap feature.
   Alternatives considered: claiming F103 first (misses the
   2026-08-12 date with no buffer), or inventing a STATUS entry
-  (breaks the ROADMAP.md Part C grammar and the 250-item ledger
+  (breaks the ROADMAP.md Part C grammar and the 255-item ledger
   pins). Reversible by any later relay.
 - D8 (R-0207 fix route): amend planner_reviewer_prompt.md rather than
   the worker conventions, because the defect is in what the REVIEWER

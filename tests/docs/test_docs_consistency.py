@@ -101,6 +101,21 @@ class TestPrimaryDocsAreHonest:
         ]
         assert offenders == [], offenders
 
+    def test_no_doc_understates_the_feature_count(self):
+        """R-0209: AGENTS.md and the docs index described a 250-file roadmap.
+
+        The ledger has been TOTAL_FEATURES long since F251-F255 were
+        registered, and the 150 pin above did not cover the successor
+        claim, which is why it survived. Pinned by document rather than
+        by regex over PRIMARY_DOCS on purpose: README.md's "250 features
+        + registered items" is a different and still-true statement,
+        and a blanket pattern would force a false repair on it.
+        """
+        for rel in ("AGENTS.md", "docs/README.md"):
+            text = (REPO / rel).read_text(encoding="utf-8")
+            assert "250 feature detail files" not in text, rel
+            assert "250-feature" not in text, rel
+
     def test_no_doc_references_a_missing_roadmap_ledger(self):
         offenders = [
             str(p.relative_to(REPO)) for p in PRIMARY_DOCS
