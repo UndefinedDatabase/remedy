@@ -2,9 +2,9 @@
 
 Branch: feature/f254-model-alias-table · claimed `[~]` in
 docs/roadmap/STATUS.md. PR #185 (S1+S2 self-drive skill) was merged at
-R1's Open PR Gate. 0 open findings — R-0211 and R-0212 were both
-raised against the reviewer's own authoring and both fixed in the
-round that followed; next free finding ID R-0213.
+R1's Open PR Gate. 0 open findings — R-0211, R-0212 and R-0213 were
+all raised against the reviewer's own authoring and each was fixed in
+the round that followed; next free finding ID R-0214.
 
 ## Goal
 Every hardcoded default model id moves behind ONE alias module, and
@@ -14,26 +14,25 @@ flags a dead id in a fixture and a repo scan proves no hardcoded dated
 model string survives outside the alias module.
 
 ## Current Step
-R3 — first commit: persist the R2 PASS verdict, register finding
-R-0212 and record DECISION D11. Then amend the T2_F254 Acceptance so
-the scan covers every built-in default id rather than dated ones only,
-and route the last three built-in ids through the alias table: the two
-Ollama providers and the `ollama.model` ConfigKeySpec default. Still
-pure relocation — no id changes value.
+R4 — first commit: persist the R3 PASS verdict and register finding
+R-0213. Then the known-dead model list: a shipped JSON data file, a
+loader module that merges it with an operator config extension, and
+unit tests. The `remedy doctor` wiring is deliberately NOT in this
+round — changing the doctor's JSON contract is a separate risk and
+gets its own round.
 
 ## Next Steps
-- R4: the config-driven known-dead list and the `remedy doctor` check,
-  whose output names the offending id, where it came from (config vs
+- R5: wire the dead-model check into `remedy doctor core`, whose
+  output names the offending id, where it came from (config vs
   built-in default) and the alias to update.
-- R5: the repo-scan test proving no built-in model id survives outside
+- R6: the repo-scan test proving no built-in model id survives outside
   the alias module, plus the docs/ update this feature owes — the alias
   module is new architecture and AGENTS.md requires it documented and
   registered in the docs/README.md index.
-- R6: the integration gate per docs/agents/integration_gate.md.
-- R7: closure per docs/roadmap/STATUS_closure_protocol.md.
-- Then the integration gate, then closure per
-  docs/roadmap/STATUS_closure_protocol.md (evidence job + a fresh
-  review zip are mandatory).
+- R7: the integration gate per docs/agents/integration_gate.md.
+- R8: closure per docs/roadmap/STATUS_closure_protocol.md — the
+  evidence job and a fresh review zip are mandatory there, and a zip
+  failure is a closure blocker.
 
 ## Risks
 - This is the S4 rehearsal: Phases 1 and 2 of the self-drive protocol
