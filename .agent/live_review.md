@@ -49,16 +49,22 @@ licence to improvise.
   the integration gate — PASS. Zero branch-only failures; the
   reviewer's own independent full-suite run at the same HEAD was
   16016 passed, 19 skipped, 0 failed.
-- R8 (current, SPLIT): persist the R7 verdict and register R-0217.
-  This is the session-closing round: the S4 rehearsal session reached
-  its capacity limit here, with the feature built, both acceptance
-  criteria pinned and the integration gate green, but NOT closed.
-- R9 (next session): closure per
-  docs/roadmap/STATUS_closure_protocol.md — evidence job and a fresh
-  review zip are mandatory, a zip failure is a closure blocker, the
-  gate evidence is re-produced into the repo (R-0217c), the STATUS
-  line flips to `[x]` last, and the PR that follows is NOT merged in
-  the session that creates it.
+- R8 (SPLIT): persist the R7 verdict and register R-0217 — PASS. The
+  S4 rehearsal session reached its capacity limit here, with the
+  feature built, both acceptance criteria pinned and the integration
+  gate green, but NOT closed. A second session resumes at R9.
+- R9 (current, SPLIT): closure PREPARATION — persist the R8 verdict,
+  record DECISION D14, write the feature file's Built State section,
+  and re-produce the integration-gate evidence INTO the repo, which
+  is what R-0217c owes. Deliberately NOT in this round: the evidence
+  job, the review zip, the STATUS edit and the PR — a closure that
+  packages its own preparation cannot be reviewed before it lands.
+- R10: closure per docs/roadmap/STATUS_closure_protocol.md — evidence
+  job and a fresh review zip are mandatory, a zip failure is a closure
+  blocker, the STATUS `[x]` line lands in the SAME commit as the
+  README capability sync (R-0154), that commit is LAST on the branch,
+  and the PR that follows is NOT merged in the session that creates
+  it.
 
 ## Findings
 - R-0211 (reviewer authoring, Low): F254 was claimed ahead of F103,
@@ -258,6 +264,28 @@ licence to improvise.
   fires, which makes the check decorative and leaves the actual rot
   unflagged. How to reverse: move the warning into the `checks` list
   and it becomes a blocker again — one call site.
+- D14 (closure gate evidence, reviewer): R9's gate evidence is a
+  BRANCH-ONLY re-run at the final content head, with its raw log,
+  FAILED list, exit code and wall time committed to
+  `.agent/gate_f254_r9/`. No second base run at the merge base is
+  ordered. Chosen because R7 already performed the dedicated
+  integration-gate round the closure protocol requires — branch run,
+  base run in a disposable worktree, and a third independent
+  reviewer run — and found ZERO branch-only failures; R-0217c is a
+  finding about the LOGS not reaching the repo, not about the
+  measurement being absent or doubted. The closure protocol's
+  precondition 2 asks this round to RE-CONFIRM a gate that already
+  PASSed, which a branch run at the head being packaged does.
+  Alternatives considered: repeating the full branch+base comparison,
+  which costs a second worktree, the apps/ui/node_modules and dist
+  parity restoration and roughly five more minutes to reproduce a
+  comparison whose answer is already recorded and was already
+  independently re-run; or committing the R7 numbers as prose, which
+  is exactly the "green as a word" that G4 calls a finding. How to
+  reverse: order a base run in the repair round and drop
+  `base_run.txt`, `base_failed.txt` and the `comm` outputs into the
+  same `.agent/gate_f254_r9/` directory — nothing about this round's
+  layout has to change to accept them.
 - The S1+S2 build's decisions D5 through D9 are the same numbering
   series, continued here rather than restarted, and stay in that
   branch's history, now on main.
@@ -517,4 +545,48 @@ licence to improvise.
   reviewer's, becoming finding R-0217. This is the ONLY round of this
   feature permitted to claim "full suite green", and it claims it:
   16016 passed, 0 failed, at a310cd13. LAST_REVIEWED_SHA = a310cd13.
-- R8: PENDING — awaiting the worker handback.
+- R8: PASS (2026-08-07). Range a310cd13..d8dd8c18, two commits, both
+  .agent-only — no source, test, docs or STATUS file was touched, so
+  the session-closing round changed nothing it then certified.
+  Transport: the prior session's scratchpad originals died with that
+  session, so the DIGEST FALLBACK of planner_reviewer_prompt.md §4.9
+  applies and is declared here rather than implied. What this
+  reviewer proved with its own hands, disk to disk: `.agent/plan.md`
+  is byte-identical to the committed receipt f254-r8-2 (`cmp` exit
+  0), and all three of receipt f254-r8-1's pairs are REWRITE-shaped
+  with FROM 0x and TO 1x in the applied file. The receipts' sha256
+  values recompute to
+  fb7cb6a83e21a368432fa16510bdda3389e657c1295c58a09422c0486e6ea85d
+  and
+  50c6c2fb9729aea88e629378ded93423f47757b66028a8ce9d8337283d2ab55b,
+  matching what the handoff records — a weaker link than
+  cmp-against-scratchpad, because the digests and the files now share
+  one custodian, and it is named as weaker instead of dressed up.
+  State contracts hold: plan.md is 43 lines, under the AGENTS.md
+  sub-50 cap the reviewer enforces on everyone else (R-0217b fixed,
+  measured not asserted), with `## Goal` and `## Next Steps` present;
+  live_review.md keeps `## Steps`, `## Findings`, `## Decisions` and
+  `## Verdicts` once each and exactly one `- R6` bullet inside
+  `## Steps`, which is R-0217a's real test rather than the
+  unsatisfiable whole-file grep the R7 block asked for. The round
+  gate was RE-RUN by the reviewer, not read out of the report:
+  tests/ui_server/test_dashboard_contract.py 70 ·
+  tests/orchestration/test_test_runner.py 51 ·
+  tests/regression/test_resource_safety.py 21 ·
+  tests/cli/test_golden_path.py 42 — 184 tests, every file exit 0 and
+  every count equal to the worker's. One correction the reviewer owes
+  its own record: the first re-run reached for tests/test_test_runner.py
+  (43 tests) instead of the orchestration file the worker meant, and
+  the per-file breakdown above is the settled reading. R-0217 is
+  registered with all three sub-items and its resolution is split
+  honestly rather than rounded up — a and b Done in this round's
+  receipts, c CARRIED with a named closure precondition. The 116-line
+  handoff is over the cap, declared as R-0214's fifth measurement with
+  no section dropped, and the amendment is already filed in
+  .agent/candidates.md — the same override for the fifth time is not a
+  new finding, it is evidence for the one already filed. Primary
+  checkout clean, `git worktree list` shows the primary alone, no
+  force-push, no PR, STATUS untouched at `[~]`. Tier: round gate plus
+  canary — this round makes no full-suite claim and none is owed until
+  the closure re-confirmation. LAST_REVIEWED_SHA = d8dd8c18.
+- R9: PENDING — awaiting the worker handback.
