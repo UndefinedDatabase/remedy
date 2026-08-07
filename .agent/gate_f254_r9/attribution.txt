@@ -1,0 +1,31 @@
+F254 integration gate — ATTRIBUTION (integration_gate.md step 4)
+
+branch_failed.txt is EMPTY (0 bytes, 0 lines). The branch run
+`python3 -m pytest -n auto -q` at head
+b09728bf4d63dc1f5266e3edef1f6eae47a4b07c exited 0 with
+"16016 passed, 19 skipped in 162.54s (0:02:42)" and produced no
+FAILED and no ERROR lines.
+
+Therefore NO attribution was owed: there is no branch-only failing
+node id to re-run serially, so no serial re-run was performed and no
+id falls into either the xdist-flake class or the real-failure class.
+An empty FAILED list is a real and acceptable gate result, not a
+missing measurement.
+
+Base run: per the reviewer's DECISION D14, already recorded in
+.agent/live_review.md, this gate is a BRANCH-ONLY re-run. No base
+worktree was created and NO RUN AT THE MERGE BASE was performed in
+this round. The branch/base comparison that integration_gate.md
+step 2 and step 3 describe was already carried out at R7 — full
+suite `-n auto` on the branch against a merge-base run in a
+disposable worktree — and it found ZERO branch-only failures. This
+R10 run re-confirms the branch side at the final content head, which
+is what carried finding R-0217c owes: the raw gate evidence has to
+exist inside the repository before the STATUS line may flip.
+
+No blocker. Nothing here stops closure.
+
+Files in this directory:
+  branch_run.txt     command, head SHA, exit code, wall time, raw tail
+  branch_failed.txt  `grep '^FAILED' <log> | sort` output — empty
+  attribution.txt    this file
