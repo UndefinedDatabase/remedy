@@ -2,8 +2,9 @@
 
 Branch: feature/f254-model-alias-table · claimed `[~]` in
 docs/roadmap/STATUS.md. PR #185 (S1+S2 self-drive skill) was merged at
-this round's Open PR Gate. 0 open findings; next free finding ID
-R-0211.
+R1's Open PR Gate. 0 open findings — R-0211 was raised against the
+reviewer's own authoring and fixed inside R2; next free finding ID
+R-0212.
 
 ## Goal
 Every hardcoded default model id moves behind ONE alias module, and
@@ -13,21 +14,23 @@ flags a dead id in a fixture and a repo scan proves no hardcoded dated
 model string survives outside the alias module.
 
 ## Current Step
-R1 — the fresh-feature opening round: Open PR Gate (merge PR #185), cut
-feature/f254-model-alias-table from main, claim the STATUS line, and
-reset .agent/live_review.md, .agent/plan.md and .agent/context.md to
-this feature. No production code in this round.
+R2 — first commit: persist the R1 PASS verdict, register finding
+R-0211 and record DECISION D10. Then the alias module
+packages/orchestration/model_aliases.py as the single source of
+Remedy's built-in default model ids, with all five ids relocated behind
+it (role_config.py's provider table and ClaudeProvider's default) and
+covered by tests/orchestration/test_model_aliases.py. Pure relocation:
+no model id changes value, so every existing test that pins a dated id
+must stay green.
 
 ## Next Steps
-- R2: the alias module — one source for logical role/provider aliases →
-  concrete model ids — with the two known hardcoded defaults routed
-  through it (packages/orchestration/role_config.py:35-36 and
-  packages/orchestration/pingpong_provider.py:335).
-- R3: the config-driven known-dead list and the doctor check, whose
-  output names the offending id, where it came from (config vs built-in
-  default) and the alias to update.
+- R3: the config-driven known-dead list and the `remedy doctor` check,
+  whose output names the offending id, where it came from (config vs
+  built-in default) and the alias to update.
 - R4: the repo-scan test proving no dated model string survives outside
-  the alias module.
+  the alias module, plus the docs/ update this feature owes — the alias
+  module is new architecture and AGENTS.md requires it documented and
+  registered in the docs/README.md index.
 - Then the integration gate, then closure per
   docs/roadmap/STATUS_closure_protocol.md (evidence job + a fresh
   review zip are mandatory).
