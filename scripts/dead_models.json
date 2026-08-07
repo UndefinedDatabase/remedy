@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "description": "F254 — the known-dead model list Remedy ships. Operator-maintained DATA, not discovery: Remedy never probes a provider or calls the network to build or refresh it, so the dead-model check is exactly as fresh as this file. Extend it with the doctor.dead_models config key; config only ADDS, it never replaces these entries.",
+  "dead_models": [
+    {
+      "id": "claude-opus-4-20250514",
+      "reason": "A May-2025 dated id, and the built-in default behind the claude-flagship alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. No replacement id is named here because nothing in this repository states one: choosing the successor is F232's job (the model upgrade playbook).",
+      "superseded_by": ""
+    },
+    {
+      "id": "claude-sonnet-4-20250514",
+      "reason": "A May-2025 dated id, and the built-in default behind the claude-workhorse alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. No replacement id is named here because nothing in this repository states one: choosing the successor is F232's job (the model upgrade playbook).",
+      "superseded_by": ""
+    }
+  ]
+}

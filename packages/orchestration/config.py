@@ -454,6 +454,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=10,
     ),
     ConfigKeySpec(
+        key="doctor.dead_models",
+        env_var="REMEDY_DOCTOR_DEAD_MODELS",
+        description=(
+            "ADDITIONAL known-dead model ids for the doctor's model check "
+            "(F254). Config EXTENDS the shipped list in scripts/dead_models.json; "
+            "it never replaces it, so an id Remedy already ships as dead cannot "
+            "be configured away. The list is operator-maintained data — Remedy "
+            "never probes a provider to build it."
+        ),
+        value_type=list,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="dossier.max_tokens",
         env_var="REMEDY_DOSSIER_MAX_TOKENS",
         description=(
