@@ -1,60 +1,57 @@
-# Handback — S1+S2 self-drive skill, R3 (final round, worker)
-Branch feature/selfdrive-skill. PR #185 https://github.com/UndefinedDatabase/remedy/pull/185 — OPEN, `mergedAt: null`, NOT merged.
-Open findings 0 · R-0207, R-0208, R-0209 all Done · next free ID R-0210.
+# Handback — S1+S2 self-drive skill, R4 — BLOCKED at PART A, handed back
+Branch feature/selfdrive-skill. PR #185 https://github.com/UndefinedDatabase/remedy/pull/185 — OPEN, isDraft false, `mergedAt: null`, NOT merged and NOT edited this round.
+R4 did NOT complete. Findings from R1-R3 unchanged: 0 open · R-0207, R-0208, R-0209 all Done · next free ID R-0210.
+
+## BLOCKER — receipt selfdrive-r4-1.md arrived TRUNCATED
+The relayed text for r4-1 is incomplete. After its title line and the following blank line, the step block's own text is spliced in, and r4-1's body only resumes mid-sentence at `registration, three pins in tests/test_agent_tooling.py, the F080`. The opening Branch/Scope paragraph — roughly the span between `BUILD COMPLETE` and `registration, three pins…` — never arrived.
+- expected (BEGIN-marker stamp): `9a0774f534c55d74879c8fead32c8dfa85e3f39c90821c1848eb4d78c17c79cb`
+- arrived fragment, sha256:     `cba7f56b23ba4c3d0f5084fd05a5215f5a3eb1d9af12f3b2cec4724ca8638811`
+This is NOT a display wrap — no rejoin of wrapped lines produces the missing sentences, so the documented wrap recovery does not apply. No substitute text was invented, nothing was reworded toward the hash, and no file named `.agent/authored/selfdrive-r4-1.md` exists in the repo. The arrived fragment lives only in session scratch and is NOT committed.
+Consequence: PART B steps 1-3 were not performed. `.agent/live_review.md`, `.agent/plan.md` and `.agent/context.md` are untouched at their R3 contents, so the R3 PASS verdict is NOT yet on disk.
+
+## PART C deliberately NOT performed
+`gh pr edit 185` was not run even though its receipt r4-4 verified clean. r4-4's body states "R1, R2 and R3 all PASS. The build is complete and reviewed" — publishing that while the R3 verdict is absent from `.agent/live_review.md` would claim a state the repo does not record. The PR keeps its R3 body until the verdict is persisted.
 
 ## Range
-Review of 151733e1..11659b95 (plus the handoff commit below).
+Review of 96bee72c..<this handoff commit>.
 
 ## Commits
-### b59bde9f chore(selfdrive): persist R2 PASS and findings R-0208, R-0209
+### <handoff commit> chore(selfdrive): record R4 blocker — receipt r4-1 truncated
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/selfdrive-r3-{1..8}.md | +439/-0 | 8 verified receipts |
-| .agent/live_review.md | +75/-46 | R2 PASS; R-0208 + R-0209 raised; D9 |
-| .agent/plan.md | +26/-23 | R3 step, S4 next |
-| .agent/context.md | +23/-16 | R3 scope + constraints |
-### 11659b95 fix(docs): the roadmap ledger is 255, not 250 (R-0209)
-| Path | +/- | Reason |
-|---|---|---|
-| AGENTS.md | +1/-1 | 250 → 255 feature detail files |
-| docs/README.md | +1/-1 | full 250-feature → 255-feature |
-| tests/docs/test_docs_consistency.py | +15/-0 | new pin (same commit, R-0151) |
-| .agent/live_review.md | +3/-1 | D7 → 255-item; two Done lines |
-(The handoff commit that writes this file is self-referential — R-0149 pattern.)
+| .agent/authored/selfdrive-r4-2.md | +43/-0 | verified receipt, unused (PART B not run) |
+| .agent/authored/selfdrive-r4-3.md | +40/-0 | verified receipt, unused |
+| .agent/authored/selfdrive-r4-4.md | +91/-0 | verified receipt, unused (PART C not run) |
+| .agent/handoff.md | rewrite | this blocker report |
+Valid completed portion only, per AGENTS.md If Blocked. No source, docs or test file changed this round; no STATUS.md edit; no merge.
 
 ## External actions
-- `git push` → 151733e1..11659b95. `git status --porcelain` → empty. No force-push, no worktree, no merge.
-- `gh pr create --base main --head feature/selfdrive-skill --title "Self-drive: one-session build discipline (S1+S2)" --body-file .agent/authored/selfdrive-r3-8.md` → **PR #185**, https://github.com/UndefinedDatabase/remedy/pull/185. Confirmed: `gh pr list --state open` → exactly one (#185, feature/selfdrive-skill → main, isDraft false); `gh pr view 185` → state OPEN, mergedAt null. NOT merged, by instruction.
+- `git push` → this handoff commit. `git status --porcelain` → empty. No force-push, no worktree, no merge, no `gh pr edit`, no `gh pr create`.
+- `gh pr view 185` → number 185, state OPEN, isDraft false, mergedAt null — unchanged from R3.
 
 ## Verification (raw; every command exit 0, none ran red)
-- commit 1: `pytest tests/ui_server/test_dashboard_contract.py -q` 70 passed 3.09s · `tests/orchestration/test_test_runner.py` 51 passed 3.04s · `tests/regression/test_resource_safety.py` 21 passed 10.77s · `tests/docs/ -q` **293 passed** 0.19s (BEFORE the pin)
-- commit 2: `pytest tests/docs/ -q` **294 passed** 0.31s (AFTER the pin — +1, the pin landed) · `tests/orchestration/test_test_runner.py` 51 passed 3.02s · `tests/ui_server/test_dashboard_contract.py` 70 passed 3.12s · `tests/cli/test_golden_path.py` 42 passed 15.25s
-- `git status --porcelain` after commit 2 and after push → empty.
+- `pytest tests/ui_server/test_dashboard_contract.py -q` 70 passed 3.24s · `tests/orchestration/test_test_runner.py` 51 passed 3.05s · `tests/regression/test_resource_safety.py` 21 passed 10.94s · `tests/docs/ -q` **294 passed** 0.23s (expected 294, unchanged — nothing moved) · `tests/cli/test_golden_path.py` 42 passed 15.98s
+- Run at HEAD 96bee72c before this handoff commit; they gate no new change this round and are recorded as tree-state evidence only.
 
 ## Authored-text proofs
-- `sha256sum selfdrive-r3-*.md` → all EIGHT equal their BEGIN-marker stamp on the FIRST save, no wrap recovery needed. `cmp` = 0 receipt vs applied file: r3-1→.agent/live_review.md, r3-6→.agent/plan.md, r3-7→.agent/context.md; r3-8 was consumed verbatim as the PR body via `--body-file`.
-- r3-2 (AGENTS.md) REWRITE: FROM `(ROADMAP.md + 250 feature detail files)` **0x**, TO `…255 feature detail files)` **1x** — the line's two trailing spaces survived, `cat -A` shows `…255 feature detail files)  $`. r3-3 (docs/README.md) REWRITE: FROM `the full 250-feature` **0x**, TO `the full 255-feature` **1x**.
-- r3-4 (tests/docs/test_docs_consistency.py) APPEND: FROM anchor `def test_no_doc_still_claims_150_feature_files` **1x**; TO-only `def test_no_doc_understates_the_feature_count` **1x**. No 0x count attempted or claimed.
-- r3-5 PAIR 1 (.agent/live_review.md) REWRITE: FROM `Part C grammar and the 250-item ledger` **0x**, TO `…255-item ledger` **1x**.
-- r3-5 PAIR 2 APPEND: FROM `…Fix: correct the number in` **1x**, TO-only `Done: R-0208 — D7 now reads 255-item.` **1x**. PAIR 3 APPEND: FROM `later registered items — and is deliberately not touched.` **1x**, TO-only `Done: R-0209 — both texts corrected and pinned in one commit.` **1x**. No 0x claimed on either.
-
-## Ordering confirmation (no Done line ever true ahead of its fix)
-Steps 4-6 were applied and verified on disk FIRST — AGENTS.md 250→0x/255→1x, docs/README.md 250→0x/255→1x, the pin present 1x — and only then was r3-5 applied, PAIR 1 before PAIRS 2 and 3. Both Done lines and the count fixes are in ONE commit (11659b95) together with the pin, per R-0151. Findings themselves landed in b59bde9f, the commit BEFORE any fix.
+- `sha256sum selfdrive-r4-*.md` → r4-2 `ff776d17…` MATCH · r4-3 `242d93e7…` MATCH · r4-4 `1112995d…` MATCH — three of four equal their BEGIN-marker stamp on the FIRST save, no wrap recovery needed. r4-1: see BLOCKER above, no match possible from what arrived.
+- `cmp` r4-1/r4-2/r4-3 against applied files: NOT RUN — PART B was not performed, so there are no applied files to compare. The three verified receipts are committed unused.
+- That r4-2, r4-3 and r4-4 all matched first-save is the evidence that the transport handling in this session is sound and that the r4-1 gap is a relay defect, not a worker error.
 
 ## Runtime actuals (observed only)
-Rounds: 3 (R1, R2, R3). Commits on the branch: 10 (df39c3fa..HEAD, incl. this handoff commit). PR: 1 (#185), unmerged. Evidence job: none (D7). Review zip: none (D7). Tokens / cost: not-measured — no provider run was executed this round.
+Rounds attempted: 4 (R1-R3 complete, R4 blocked). Commits on the branch: 11 (df39c3fa..HEAD, incl. this handoff commit). PR: 1 (#185), open and unmerged. Evidence job: none (D7). Review zip: none (D7). Tokens / cost: not-measured — no provider run.
 
 ## Deviations & assumptions
-- None. Path set is exactly the instructed one; no STATUS.md edit, no evidence job, no zip, no merge, and the R1/R2 deliverables were not reopened. Note on scope, not a deviation: `docs/ui/design_reference/FINAL_DESIGN_REFERENCE_SUMMARY.md` also says 250 — per D9 a dated historical snapshot, deliberately left alone, and the new pin names only AGENTS.md and docs/README.md so it does not fire on it.
+- One deviation, forced: R4's ordered work was not completed. Cause is the truncated r4-1 receipt, reported above with both digests. Per the round's own PART A rule and AGENTS.md If Blocked, the round stopped at the first red verification rather than proceeding on reconstructed text.
+- Assumption stated rather than acted on: the missing span is most likely a Branch/Scope opening paragraph mirroring r3-1's. That is a guess and was NOT written anywhere.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| A receipts saved + sha256 | done | 8/8 first-save match |
-| B commit 1 state + findings | done | 4 gates exit 0 |
-| C commit 2 fixes + pin + pairs | done | 4 gates exit 0; docs 293→294 |
-| D push + PR, not merged | done | PR #185 OPEN, mergedAt null |
-| E handoff | done | this file |
+| A receipts saved + sha256 | deviated | 3/4 match; r4-1 truncated in relay — BLOCKER |
+| B commit: final .agent state | skipped | depends on r4-1; live_review/plan/context untouched |
+| C push + PR body refresh | skipped | PR body would overclaim an unpersisted verdict |
+| D handoff | done | this file |
 
 ## Next
-Reviewer gates R3 and closes the S1+S2 build. The S4 rehearsal — F254 end to end through the skill — is a FRESH session, not part of this round. PR #185 merges at the next work item's Open PR Gate.
+Reviewer re-sends selfdrive-r4-1.md intact — the full text between the BEGIN marker and `END AUTHORED selfdrive-r4-1.md`, with the opening paragraph that follows the `BUILD COMPLETE` title line. R4 then reruns from PART B; r4-2, r4-3 and r4-4 are already verified on disk and need not be resent. PR #185 stays open and unmerged meanwhile.
