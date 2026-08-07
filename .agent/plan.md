@@ -2,9 +2,9 @@
 
 Branch: feature/f254-model-alias-table · claimed `[~]` in
 docs/roadmap/STATUS.md. PR #185 (S1+S2 self-drive skill) was merged at
-R1's Open PR Gate. 0 open findings — R-0211 was raised against the
-reviewer's own authoring and fixed inside R2; next free finding ID
-R-0212.
+R1's Open PR Gate. 0 open findings — R-0211 and R-0212 were both
+raised against the reviewer's own authoring and both fixed in the
+round that followed; next free finding ID R-0213.
 
 ## Goal
 Every hardcoded default model id moves behind ONE alias module, and
@@ -14,23 +14,23 @@ flags a dead id in a fixture and a repo scan proves no hardcoded dated
 model string survives outside the alias module.
 
 ## Current Step
-R2 — first commit: persist the R1 PASS verdict, register finding
-R-0211 and record DECISION D10. Then the alias module
-packages/orchestration/model_aliases.py as the single source of
-Remedy's built-in default model ids, with all five ids relocated behind
-it (role_config.py's provider table and ClaudeProvider's default) and
-covered by tests/orchestration/test_model_aliases.py. Pure relocation:
-no model id changes value, so every existing test that pins a dated id
-must stay green.
+R3 — first commit: persist the R2 PASS verdict, register finding
+R-0212 and record DECISION D11. Then amend the T2_F254 Acceptance so
+the scan covers every built-in default id rather than dated ones only,
+and route the last three built-in ids through the alias table: the two
+Ollama providers and the `ollama.model` ConfigKeySpec default. Still
+pure relocation — no id changes value.
 
 ## Next Steps
-- R3: the config-driven known-dead list and the `remedy doctor` check,
+- R4: the config-driven known-dead list and the `remedy doctor` check,
   whose output names the offending id, where it came from (config vs
   built-in default) and the alias to update.
-- R4: the repo-scan test proving no dated model string survives outside
+- R5: the repo-scan test proving no built-in model id survives outside
   the alias module, plus the docs/ update this feature owes — the alias
   module is new architecture and AGENTS.md requires it documented and
   registered in the docs/README.md index.
+- R6: the integration gate per docs/agents/integration_gate.md.
+- R7: closure per docs/roadmap/STATUS_closure_protocol.md.
 - Then the integration gate, then closure per
   docs/roadmap/STATUS_closure_protocol.md (evidence job + a fresh
   review zip are mandatory).
