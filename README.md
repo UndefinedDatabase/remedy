@@ -16,12 +16,12 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-37 of 255 registered items accepted. Next: F080 (Machine-readable roadmap mirror & STATUS.md).
+38 of 255 registered items accepted. Next: F103 (Token ledger (SQLite)).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
-| 1 | Self-Build Bootstrap | 21 | 22 |
+| 1 | Self-Build Bootstrap | 22 | 22 |
 | 2 | Minimal Self-Build Runtime | 0 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |

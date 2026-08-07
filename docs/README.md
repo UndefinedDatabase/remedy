@@ -32,6 +32,7 @@
 | external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
 | model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
+| plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
 | proof chain | [proof-chain.md](system/proof-chain.md) | system |
 | provider trust | [provider-trust-gate-v0.md](system/provider-trust-gate-v0.md) | system |
 | provider trust | [provider-trust-verification-v1.md](system/provider-trust-verification-v1.md) | system |
@@ -107,6 +108,7 @@ Specifications and design documents for the built system.
 | [review-bundle-structured-error-reporting-v1.md](system/review-bundle-structured-error-reporting-v1.md) | Structured error reporting in review bundles |
 | [review-bundle-v1.md](system/review-bundle-v1.md) | Review bundle format and contents |
 | [reviewer-safety.md](system/reviewer-safety.md) | Reviewer and test safety constraints |
+| [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | One-way roadmap mirror, `remedy plan status`/`next`, feature→mission adapter |
 | [run-contract-v1.md](system/run-contract-v1.md) | Run contract (apply/test gates, budgets) |
 | [run-replay-to-self-repair-proposal-v0.md](system/run-replay-to-self-repair-proposal-v0.md) | Replay analysis to self-repair proposal pipeline |
 | [self-dogfood-execution-v0.md](system/self-dogfood-execution-v0.md) | Self-dogfood execution (bounded self-improvement) |

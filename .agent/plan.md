@@ -1,23 +1,28 @@
-# Plan — plan0806: F255 registered; self-drive package queued
+# Plan — F080 CLOSED; next up the self-drive skill (S1+S2)
 
-Branch: feature/reg-f255-teacher-role — registration PR open, merges
-at the next round's Open PR Gate.
+Branch: feature/f080-roadmap-mirror — closure commit landed, PR open.
+The PR is NOT merged here: it merges at the NEXT feature's Open PR
+Gate, and the gap is the operator's manual-review window.
 
 ## Goal
-Round plan0806 (operator-relayed) done: F255 (teacher role) registered
-in Tier 5, ledger pinned at 255; single-command self-drive package
-planned in .agent/selfdrive_package.md (full S1–S5 text + round
-shapes + runtime rows there — it is part of this plan).
+F080 (Machine-readable roadmap mirror & STATUS.md) is DONE and accepted
+at R5: STATUS carries `[x] F080` with the evidence job, package,
+SHA-256 and accepted HEAD 0a22bcbf, README is synced in the same commit
+(38 of 255 accepted; Tier 1 at 22 of 22), and the closure candidate is
+on disk in .agent/candidates.md. Built: the roadmap parser with strict
+grammar validation and its generated one-way index, `remedy plan
+status` / `remedy plan next` (Rule A5, proposes and never starts),
+report-only consistency checks, and the feature→mission adapter that
+prepares a mission and never executes one.
 
 ## Operator constraint (verbatim)
 From 2026-08-13 the operator reaches this machine ONLY via SSH from a
 phone. Starting Claude Code and invoking ONE skill must be the only
 required touchpoint. Target: operational and rehearsed by 2026-08-12.
 
-## Sequence (after this PR merges)
-1. F080 (Machine-readable roadmap mirror & STATUS.md) — its R1 MUST
-   sweep the three .agent/candidates.md entries (R-0200, R-0202,
-   xdist flake): register or resolve each; they block the F080 claim.
+## Sequence
+1. F080 — DONE (R1–R5), PR open awaiting the next feature's Open PR
+   Gate.
 2. S1+S2 — build skill /build-remedy-self per the package: one-session
    Window-1 discipline (state probe -> decide -> rounds in-session),
    hard guardrails (PR-only merges at Open PR Gate, no force-push,
@@ -29,12 +34,19 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- Push branch, open PR for plan0806 (registration + planning docs).
-- Next session: F080 per sequence above.
+- Next session (fresh): the Open PR Gate merges F080's PR first, then
+  the S1+S2 skill build per .agent/selfdrive_package.md.
+- Window-1 bootstrap must read .agent/candidates.md: it holds ONE open
+  candidate (bundles cannot carry full-suite node ids; the closure
+  protocol should state the scoped-suites shape). It is a block
+  condition at the next feature claim — register or resolve it in that
+  round's first reviewed round.
+- Rule A5 now names the next feature itself: `remedy plan next` reports
+  F103 (Token ledger (SQLite)).
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
 - ADR-0001 (CYCLE_SAFETY_CAP) awaits human application; blocks
   multi-cycle loop delegation (S3 experiment lane), not the skill.
-- Candidates R-0200/R-0202/xdist flake block the F080 claim until
-  its R1 sweeps them.
+- The F080 PR must merge before unrelated work branches, or the Open PR
+  Gate blocks the next feature.
