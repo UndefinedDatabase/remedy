@@ -398,7 +398,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     def _check(name: str, ok: bool, detail: str = "") -> None:
         checks.append({"check": name, "ok": ok, "detail": detail})
 
-    def _warn(name: str, detail: str) -> None:
+    def _warn(name: str, summary: str, detail: str) -> None:
         """Record an ADVISORY finding: never a blocker, never moves `ready`.
 
         Deliberately separate from :func:`_check` (F254,
@@ -406,8 +406,15 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         on the known-dead list today, so routing that through `checks` would
         report NOT READY on a freshly cloned repo and teach operators to
         ignore the one word this command exists to say.
+
+        Two renderings of the SAME finding, because the two readers differ:
+        `summary` is the one compact line text mode prints, `detail` is the
+        full record `--json` carries. Splitting them is what keeps a readable
+        check list readable; what must never differ between them is the
+        provenance clause, which states that the verdict comes from
+        operator-maintained data rather than a provider probe.
         """
-        warnings.append({"warning": name, "detail": detail})
+        warnings.append({"warning": name, "summary": summary, "detail": detail})
 
     import importlib
 
@@ -477,9 +484,13 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         shipped_entries = load_dead_models()
         dead_entry_by_id = {e.id: (e.reason, e.superseded_by) for e in shipped_entries}
         dead_ids = dead_model_ids()
+        # Label the second number for what it actually counts: `dead_ids` is
+        # the UNION, so the difference is the config-only ids — an operator
+        # who re-lists an id Remedy already ships adds nothing to it.
         _check("dead_model_list", True,
                f"{len(shipped_entries)} shipped + "
-               f"{len(dead_ids) - len(shipped_entries)} configured dead ids")
+               f"{len(dead_ids) - len(shipped_entries)} config-only dead ids "
+               f"({len(dead_ids)} total)")
     except Exception as exc:
         _check("dead_model_list", False, _safe_err(exc))
 
@@ -495,20 +506,35 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                 builtin_model_ids,
             )
 
-            def _dead_provenance(model_id: str) -> str:
-                """Say WHERE the "dead" verdict came from — data, never a probe.
+            def _dead_origin(model_id: str) -> tuple[str, str, str]:
+                """Where the verdict came from, plus the entry's reason/successor."""
+                if model_id in dead_entry_by_id:
+                    reason, superseded = dead_entry_by_id[model_id]
+                    return (f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}",
+                            reason, superseded)
+                return (f"the operator's {DEAD_MODEL_CONFIG_KEY} config list", "", "")
+
+            def _dead_provenance_short(model_id: str) -> str:
+                """The provenance clause for TEXT mode — shorter words, same claim.
 
                 Remedy does not know a model is retired; it knows an
                 operator-maintained file says so. Wording that implies live
-                provider knowledge would be a false live indicator, so the
-                source and its staleness are stated in every warning.
+                provider knowledge would be a false live indicator, so this
+                clause appears in BOTH renderings and only its length differs.
+                What text mode drops is the entry's full recorded reason, never
+                the source of the verdict.
                 """
-                if model_id in dead_entry_by_id:
-                    reason, superseded = dead_entry_by_id[model_id]
-                    origin = f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}"
-                else:
-                    reason, superseded = "", ""
-                    origin = f"the operator's {DEAD_MODEL_CONFIG_KEY} config list"
+                origin, _reason, _superseded = _dead_origin(model_id)
+                return f"per {origin} — operator data, no provider queried"
+
+            def _dead_provenance(model_id: str) -> str:
+                """The full provenance record for `--json`: source, reason, successor.
+
+                Says WHERE the "dead" verdict came from — data, never a probe —
+                and then everything the entry recorded, which is what an
+                operator reads once the compact line has caught their eye.
+                """
+                origin, reason, superseded = _dead_origin(model_id)
                 parts = [
                     f"Remedy calls this id dead only because {origin} says so — "
                     f"that list is operator-maintained data, no provider was "
@@ -516,8 +542,14 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                 ]
                 if reason:
                     parts.append(f"Recorded reason: {reason}")
-                parts.append(f"Recorded replacement: {superseded}." if superseded
-                             else "No replacement id is recorded.")
+                # State the successor only when saying it ADDS something: with a
+                # recorded reason in hand, "no replacement id is recorded" is
+                # already in that reason, and repeating it twice in one line was
+                # the noise this split exists to remove.
+                if superseded:
+                    parts.append(f"Recorded replacement: {superseded}.")
+                elif not reason:
+                    parts.append("No replacement id is recorded.")
                 return " ".join(parts)
 
             # Built-in defaults: name the ALIAS, because that is the line an
@@ -528,6 +560,9 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                 alias_text = ", ".join(sorted(a for a, v in MODEL_ALIASES.items()
                                               if v == model_id))
                 _warn("dead_builtin_model",
+                      f"{model_id} — built-in default via alias {alias_text}; "
+                      f"fix: repoint alias {alias_text}; "
+                      f"{_dead_provenance_short(model_id)}",
                       f"{model_id} is a BUILT-IN default, reached through alias "
                       f"{alias_text} in packages/orchestration/model_aliases.py. "
                       f"Fix: repoint alias {alias_text} to a live id. "
@@ -543,13 +578,19 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
                 if not isinstance(value, str) or value not in dead_ids:
                     continue
                 _warn("dead_configured_model",
+                      f"{value} — from config key {spec.key}; "
+                      f"fix: change {spec.key} to a live id; "
+                      f"{_dead_provenance_short(value)}",
                       f"{value} is the resolved value of config key {spec.key} "
                       f"(env {spec.env_var}). Fix: change {spec.key} to a live "
                       f"id. {_dead_provenance(value)}")
         except Exception as exc:
-            _warn("dead_model_comparison",
-                  "the known-dead ids could not be compared against Remedy's "
-                  f"built-in defaults and config: {_safe_err(exc)}")
+            # Already compact, and there is no fuller record to hold back:
+            # both renderings are the same sentence.
+            comparison_failed = ("the known-dead ids could not be compared "
+                                 "against Remedy's built-in defaults and "
+                                 f"config: {_safe_err(exc)}")
+            _warn("dead_model_comparison", comparison_failed, comparison_failed)
 
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
@@ -573,7 +614,9 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     if warnings:
         print("  warnings (advisory — these do not affect READY):")
         for w in warnings:
-            print(f"  [WARN] {w['warning']}: {w['detail']}")
+            # The compact rendering; `--json` carries the full `detail`.
+            print(f"  [WARN] {w['warning']}: {w['summary']}")
+        print("  (run with --json for each warning's full recorded reason)")
 
 
 # ---------------------------------------------------------------------------
