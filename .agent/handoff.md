@@ -1,7 +1,10 @@
 # Handback — F080 R4 (repair R-0206 + closure part 1) — ZIP READY
 
-Branch: feature/f080-roadmap-mirror @ 0a22bcbf31322a365354d755b92d90b8fed20493,
-pushed, worktree clean. History untouched: no reword, no rebase, no
+Branch: feature/f080-roadmap-mirror. Accepted HEAD — the head the zip
+and its manifest record — is 0a22bcbf31322a365354d755b92d90b8fed20493,
+the last CONTENT commit; this .agent handback commit follows the READY
+zip, exactly as STATUS_closure_protocol.md step 2 prescribes. Pushed,
+worktree clean. History untouched: no reword, no rebase, no
 force-push. All four parts green; the review zip is READY_FOR_REVIEW.
 No STATUS edit, no README edit, no PR — those are R5.
 
