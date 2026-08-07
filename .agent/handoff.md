@@ -1,131 +1,136 @@
-# Handoff — F254 R5 (R4 findings persisted, dead-model warning in `doctor core`)
-Feature T2_F254 · Round R5 · SPLIT · branch `feature/f254-model-alias-table`.
-Length: 131 lines, 71 over the 60 target (measured with `wc -l`, not estimated). Cause: the
-mandated tables (changed files, pair counts under two shapes, 14-row verification table,
-item status) plus the doctor output this block required VERBATIM. No section dropped. This
-overage IS finding R-0214; the measurement is reported, not trimmed away, as asked.
+# Handback — F254 R6 (worker)
 
-## Commits (range 2504a560..HEAD)
-- `fd601931` docs(f254): persist the R4 verdict, finding R-0214 and decisions D12 and D13
-  — `.agent/` paths ONLY, 410 lines, precedes all code. Pushed with commit 2.
-- `885c64f0` feat(f254): warn in doctor core when a model id is on the dead list
-  — 289 lines, under the 500 limit. `git push` exit 0 (2504a560..885c64f0).
-- commit 3 `chore(f254): rewrite handoff for the R5 handback` — SHA self-referential
-  (this file is its only content); it is the branch tip at handback. Declared, not guessed.
+Feature T2_F254 · Round R6 · Branch `feature/f254-model-alias-table`
 
-## Changed files — GENERATED from `git diff --numstat 2504a560..HEAD` (R-0210, not retyped)
-| File | + | - |
+## Range
+Review of c77dfc0d..HEAD (5 commits: 08dcdd3b, 1743d252, a31112d7, 0a60ec7c + handoff).
+
+## Commits
+### 08dcdd3b docs(f254): persist the R5 verdict and finding R-0215
+| Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f254-r5-1.md | 163 | 0 |
-| .agent/authored/f254-r5-2.md | 69 | 0 |
-| .agent/authored/f254-r5-3.md | 23 | 0 |
-| .agent/candidates.md | 14 | 3 |
-| .agent/live_review.md | 100 | 10 |
-| .agent/plan.md | 14 | 14 |
-| apps/cli/commands/worker_facade_cmd.py | 109 | 0 |
-| tests/cli/test_worker_facade_cmd.py | 180 | 0 |
-(Row 8 is 180 not 176: a four-quote docstring opener in one new test was rewritten to a
-normal one during self-review, before commit 2. No behaviour change.)
+| .agent/authored/f254-r6-1.md | +118 / -0 | reviewer receipt, live_review target |
+| .agent/authored/f254-r6-2.md | +72 / -0 | reviewer receipt, plan target |
+| .agent/live_review.md | +75 / -8 | R5 PASS, R-0215, step list |
+| .agent/plan.md | +18 / -15 | current step R6, next steps, next free ID |
 
-## Transport proofs — PRIMARY
-`cp` from the reviewer's scratchpad, never retyped. All three `cmp` against the original: exit 0.
-| Receipt | cmp | sha256 |
+### 1743d252 fix(f254): make the dead-model warning readable and its count honest
+| Path | +/- | Reason |
 |---|---|---|
-| f254-r5-1.md | 0 | f6d134c86eb3d61c79019b32484c17cd11d8890f1bda54b2ae8c076a41d4df62 |
-| f254-r5-2.md | 0 | 89e49c907285969ac4b376c16f94fec8e147d9f9aa2cd1e365d88c583cdc38e4 |
-| f254-r5-3.md | 0 | dad4bc73d25213ae16b000f4362237250988860b864179b512e3771d033e5270 |
-`cp .agent/authored/f254-r5-3.md .agent/candidates.md` then `cmp` → exit 0 (full-file copy).
+| apps/cli/commands/worker_facade_cmd.py | +62 / -19 | R-0215 (a)+(b): summary/detail split, count label |
+| tests/cli/test_worker_facade_cmd.py | +108 / -3 | new shape pinned; 1 assertion inverted (see Deviations) |
 
-## Pair counts — reported UNDER EACH PAIR'S OWN SHAPE
-f254-r5-1 → .agent/live_review.md (4 pairs). Every FROM verified 1x BEFORE any edit.
-| Pair | Shape | FROM before | FROM after | TO after | TO-ONLY after |
-|---|---|---|---|---|---|
-| 1 | REWRITE | 1x | 0x | 1x | n/a |
-| 2 | REWRITE | 1x | 0x | 1x | n/a |
-| 3 | APPEND | 1x | 1x (by construction) | 1x | 1x |
-| 4 | REWRITE | 1x | 0x | 1x | n/a |
-f254-r5-2 → .agent/plan.md (3 pairs), all REWRITE: FROM 1x before, 0x after, TO 1x after.
-Structure after: live_review.md has `## Steps`/`## Findings`/`## Decisions`/`## Verdicts`
-1x each; plan.md has `## Goal` + `## Next Steps` 1x each and is 46 lines (<50).
-
-## `remedy doctor core` — real run against the real repo, both forms, exit 0
-`--json`: `ready` = **true**, `blockers` = **[]**, `warnings` = 2 entries, both
-`dead_builtin_model`, with the same detail strings shown verbatim below. New check
-`dead_model_list` = ok true, detail "2 shipped + 0 configured dead ids". Plain form:
-```
-Core Product Spine: READY
-  [OK] worker_facade: COMMAND_HANDLERS available
-  [OK] command_catalog: 325 commands, 57 groups
-  [OK] run_contract: ContractAction available
-  [OK] mission_facade: run_mission_loop available
-  [OK] self_repair_proposal: list_self_repair_proposals available
-  [OK] review_bundle: build_review_bundle available
-  [OK] config: get_config available
-  [OK] approval_policy: evaluate_execution_approval_policy available
-  [OK] fast_test_lane: scripts/remedy_test_fast.sh
-  [OK] full_test_lane: scripts/remedy_test_full.sh
-  [OK] dead_model_list: 2 shipped + 0 configured dead ids
-  warnings (advisory — these do not affect READY):
-  [WARN] dead_builtin_model: claude-opus-4-20250514 is a BUILT-IN default, reached through alias claude-flagship in packages/orchestration/model_aliases.py. Fix: repoint alias claude-flagship to a live id. Remedy calls this id dead only because the shipped list scripts/dead_models.json says so — that list is operator-maintained data, no provider was queried, so the verdict is exactly as current as the data. Recorded reason: A May-2025 dated id, and the built-in default behind the claude-flagship alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. No replacement id is named here because nothing in this repository states one: choosing the successor is F232's job (the model upgrade playbook). No replacement id is recorded.
-  [WARN] dead_builtin_model: claude-sonnet-4-20250514 is a BUILT-IN default, reached through alias claude-workhorse in packages/orchestration/model_aliases.py. Fix: repoint alias claude-workhorse to a live id. Remedy calls this id dead only because the shipped list scripts/dead_models.json says so — that list is operator-maintained data, no provider was queried, so the verdict is exactly as current as the data. Recorded reason: A May-2025 dated id, and the built-in default behind the claude-workhorse alias in packages/orchestration/model_aliases.py. docs/roadmap/features/T2_F254.md ('How it fits') records it as several generations stale as of Aug 2026. No replacement id is named here because nothing in this repository states one: choosing the successor is F232's job (the model upgrade playbook). No replacement id is recorded.
-```
-This matches the block's expectation (two shipped dead ids warn, `ready` stays true). No
-config warning fires: `ollama.model` resolves to `qwen3-coder-next` and `orchestrator.model`
-to None, neither of which is on the list.
-
-## Verification — real runs, real exit codes, nothing adjusted to match
-| Command | Result | Exit |
+### a31112d7 test(f254): pin that no built-in model id is spelled outside the alias table
+| Path | +/- | Reason |
 |---|---|---|
-| pytest tests/cli/test_worker_facade_cmd.py -q | 59 passed | 0 |
-| pytest tests/cli/test_product_spine.py -q | 72 passed | 0 |
-| pytest tests/cli/test_command_catalog.py -q | 23 passed | 0 |
-| pytest tests/orchestration/test_development_artifact_boundary.py -q | 18 passed | 0 |
-| pytest tests/orchestration/test_dead_model_list.py -q | 23 passed | 0 |
-| pytest tests/orchestration/test_model_aliases.py -q | 21 passed | 0 |
-| pytest tests/cli/test_cli_ux.py -q | 57 passed | 0 |
-| pytest tests/ui_server/test_dashboard_contract.py -q | 70 passed | 0 |
-| pytest tests/orchestration/test_test_runner.py -q | 51 passed | 0 |
-| pytest tests/regression/test_resource_safety.py -q | 21 passed | 0 |
-| pytest tests/cli/test_golden_path.py -q | 42 passed | 0 |
-| ruff check apps/cli/commands/worker_facade_cmd.py | All checks passed | 0 |
-| ruff check tests/cli/test_worker_facade_cmd.py | All checks passed | 0 |
-| git status --porcelain (at handback, before commit 3) | empty | 0 |
+| tests/orchestration/test_model_aliases.py | +124 / -0 | ast repo scan; acceptance criterion 2 |
+
+### 0a60ec7c docs(f254): document the model alias table and the dead-model check
+| Path | +/- | Reason |
+|---|---|---|
+| docs/system/model-defaults-and-dead-model-check-v0.md | +62 / -0 | new ist-doc |
+| docs/README.md | +2 / -0 | quick-find row + system table row |
+
+### handoff commit (self-reference exception)
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewritten | this handback |
+
+## External actions
+`git push` after 0a60ec7c → c77dfc0d..0a60ec7c, exit 0. Second push after the
+handoff commit. `git worktree add --detach <scratchpad>/wt-redproof HEAD` exit 0;
+`git worktree remove --force` exit 0; `git worktree prune` exit 0; `git worktree list`
+afterwards shows ONLY `/home/decodeux/Repos/remedy a31112d7`. No PR, no gh call, no force-push.
+
+## Verification
+| Gate | exit | count |
+|---|---|---|
+| tests/cli/test_worker_facade_cmd.py | 0 | 63 passed |
+| tests/orchestration/test_model_aliases.py | 0 | 24 passed |
+| tests/orchestration/test_dead_model_list.py | 0 | 23 passed |
+| tests/cli/test_product_spine.py | 0 | 72 passed |
+| tests/cli/test_cli_ux.py | 0 | 57 passed |
+| tests/orchestration/test_development_artifact_boundary.py | 0 | 18 passed |
+| tests/docs/ | 0 | 294 passed |
+| tests/ui_server/test_dashboard_contract.py | 0 | 70 passed |
+| tests/orchestration/test_test_runner.py | 0 | 51 passed |
+| tests/regression/test_resource_safety.py | 0 | 21 passed |
+| tests/cli/test_golden_path.py | 0 | 42 passed |
+| ruff check (3 touched .py paths) | 0 | All checks passed |
+| `remedy doctor core` | 0 | READY, 11 checks, 0 blockers, 2 warnings |
+| `remedy doctor core --json` | 0 | keys ready/checks/blockers/warnings; each warning has warning+summary+detail |
+
+Doctor text-mode longest `[WARN]` line: BEFORE 839 chars (other 834); AFTER 224 (other 220).
+JSON detail lengths unchanged in substance (772/777) and now carry the full reason.
+`dead_model_list` detail before `2 shipped + 0 configured dead ids`, after
+`2 shipped + 0 config-only dead ids (2 total)`.
+
+Scan-test red proof (disposable worktree at a31112d7, primary checkout untouched):
+inserted `REDPROOF_MODEL = "claude-opus-4-20250514"` at role_config.py:23 → test exit 1,
+message `packages/orchestration/role_config.py:23: 'claude-opus-4-20250514'`. Reverted;
+then the SAME id in a `#` comment at the same line → exit 0, 3 passed (D11 boundary holds
+by mechanism). Worktree removed and pruned; `git status --porcelain` in the primary
+checkout empty at every point.
+
+## Authored-text proofs
+`cp` + `cmp` disk-to-disk against the reviewer's scratchpad originals, both exit 0.
+f254-r6-1.md sha256 f4962b96b5be638ae5f015cb11badb2813b10f728b14acf4c067aa15266e4d95 (identical both sides).
+f254-r6-2.md sha256 a7c3f3a1ba2bf6502c9ad12d6c7752f200224f2acbbeb5272e74994ce45c9907 (identical both sides).
+Six pairs, all REWRITE-shaped, pre FROM 1x / TO 0x → post FROM 0x / TO 1x:
+live_review pairs 1,2,3 and plan pairs 1,2,3. Structure after: live_review keeps its four
+`##` headings 1x each (Steps, Findings, Decisions, Verdicts); plan keeps `## Goal` and
+`## Next Steps` and is 49 lines.
+
+## Deviations & assumptions
+- B2 implemented as "emit only when it ADDS information": with a recorded reason present the
+  trailing replacement sentence is dropped; with NO recorded reason (config-extension ids) it is
+  still emitted, because nothing else would say it. Consequence: existing
+  `test_missing_replacement_is_stated_not_implied` was replaced by
+  `test_missing_replacement_is_not_repeated_after_the_reason` (asserting the inverse for the
+  reason-present case). `test_config_extension_id_says_it_came_from_config` is untouched and still
+  proves the sentence appears when no reason exists. No `ready`/`blockers` assertion was weakened.
+- B3 solved by LABELLING (`config-only dead ids`, plus a total), not by recomputing: the real
+  configured count is only reachable through `dead_model_list._configured_dead_model_ids`, and the
+  step forbade editing that module; importing a private helper into the CLI was the worse trade.
+- Summary text deliberately omits the replacement id — the step's mandated summary content is
+  id + origin + fix + provenance, and the replacement is what `--json` is for.
+- Text mode gained one trailing line `(run with --json for each warning's full recorded reason)`
+  so the compact rendering is not silently lossy. Additive, printed only when warnings exist.
+- Doc decision: NEW doc, not an update. Checked the index first — no docs/system or docs/guides
+  file covers built-in model defaults (`grep` for DEFAULT_MODEL / default model / model alias /
+  dead model over docs/system, docs/guides, docs/agents returned zero files).
+  `agents/model_routing_policy.md` is the F110 class→tier seed, a different concern;
+  `system/core-product-spine-v0.md` is product terminology. No banner added: the index's banner
+  rules cover DEPRECATED, overnight-superseded and roadmap-superseded docs only, and this is a
+  current ist-doc.
+- Observation (NOT fixed, out of scope): `.agent/live_review.md` now carries TWO R6 lines in
+  `## Steps` — the new one from pair 1 and the pre-existing `- R6: the repo-scan test that no
+  built-in model id survives outside the alias module …`. The authored FROM did not cover it, and
+  retyping reviewer text is forbidden. Reviewer's call.
+- Observation: the repo scan found ZERO violations outside the alias module at HEAD; no exclusion
+  was added to make anything pass.
+- Handoff length: this file is 136 lines — 76 OVER the step block's 60-line target, and 36 over
+  the AGENTS.md ≤100 allowance for >5-commit per-commit tables. The mandated content is what
+  costs it: the 5 per-commit tables (~26 lines), the 14-row verification table (~17), the
+  authored-text + red-proof proofs (~15) and the A-E item-status table (~9) are ~67 lines before
+  a word of prose. That is R-0214's evidence, per the step block; no section was dropped to hit
+  a number. (Written twice, not once: the line count is self-referential and the item-status
+  table was added on the second pass — the PH v3 write-once rule cannot hold for a file that
+  reports its own length.)
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| A receipts persisted first | done | commit fd601931, `.agent/` paths only |
-| B doctor check | done | hard check + warnings, `ready`/`blockers` untouched |
-| C tests | done | 10 new tests in the existing file, +10 → 59 |
-| D commit / push / handoff | done | 2 pushed; commit 3 is this file |
+| A receipts persist first | done | own commit 08dcdd3b, precedes all code |
+| B R-0215 doctor fix | done | B1/B2/B3; B2 shaped as "adds information" — see Deviations |
+| C repo-scan acceptance test | done | red-proof + D11 comment proof recorded |
+| D docs + index row | done | new doc, no banner — see Deviations |
+| E commits, push, handoff | done | 5 commits, 2 pushes, no PR |
 
-## Deviations, assumptions, observations
-1. RED GATE HIT AND FIXED BEFORE COMMIT 2 — report this to the reviewer as a real event:
-   `test_development_artifact_boundary.py` failed 3/18 on first run because my `_warn`
-   docstring cited `.agent/live_review.md`, and `worker_facade_cmd` is in that test's
-   `_PRODUCT_MODULES` list (shipped code must not name a development artifact). Fixed by
-   citing `docs/roadmap/features/T2_F254.md` instead. No test assertion was edited.
-2. No existing doctor test went red from the new `warnings` key — the suite does not pin
-   the exact key set, so the STOP clause in the step block was never triggered.
-3. ASSUMPTION (not mandated): a `.model` key sitting at its built-in default that is dead
-   would produce BOTH a `dead_builtin_model` and a `dead_configured_model` warning. Both
-   statements are true about distinct origins, and the block asked for every `.model` key
-   read through the normal accessor with no source filter, so no `ConfigSource` filtering
-   was added. Today no such overlap exists.
-4. ASSUMPTION (not mandated): if the comparison itself fails (config or alias table
-   unreadable) a `dead_model_comparison` WARNING is emitted rather than crashing the
-   doctor or skipping silently — non-silent, and still never touches `ready`.
-5. OBSERVATION: each warning embeds the entry's full `reason` verbatim, so a detail runs
-   ~700 characters. Fine in JSON, a wall in the text form. Flagged for the reviewer's
-   judgement; nothing was truncated, because truncation would drop the provenance clause.
-6. Scope held: only the nine instructed paths changed. No `docs/`, `scripts/`, `packages/`
-   or `.claude/` edit; no catalog, flag or subcommand added. No worktree, no force-push,
-   no PR, `main` untouched.
+## Open findings
+0 open. R-0215 closed in this round (both defects). Next free ID R-0216.
+`.agent/candidates.md` still holds the R-0214 handoff-cap amendment for the next feature claim.
 
-## Findings & next action
-Open findings: 0. R-0214 registered and closed in the same commit (filed as a candidate);
-next free ID R-0215. `.agent/candidates.md` now holds 1 entry — a block condition at the
-next feature claim, by design (DECISION D12).
-Next expected action: reviewer reads `git diff 2504a560..HEAD` bottom-up, re-runs the 11
-suites, `ruff` and both `remedy doctor core` forms, and issues the R5 verdict. R6 is the
-repo-scan test plus the `docs/` write-up the alias module and dead-model list owe.
+## Next
+Reviewer: review c77dfc0d..HEAD, re-run the gates above, and issue the R6 verdict. On PASS the
+next round is R7 — the integration gate per docs/agents/integration_gate.md.
