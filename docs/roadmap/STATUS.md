@@ -45,7 +45,7 @@
 - [x] F071 — Mission dossier (T001–T003 complete; accepted 2026-08-03 · live review PASS — ACCEPTED · Evidence job b3b98e3ee1d10668 · package remedy-review-20260803-190339-READY_FOR_REVIEW.zip · SHA-256 aa117e26a55b0ab1b1941d881a4ed510967c2d1669be021abda30ab0f6e9e99e · accepted HEAD acb02acd8a41dc2a8ba89e2db023b1840814adff)
 - [x] F075 — MILESTONE GATE: 10 flawless self-runs (T001–T003 complete; accepted 2026-08-05 · live review PASS — ACCEPTED · Evidence job b1b6eb7ed4962309 · package remedy-review-20260805-144354-READY_FOR_REVIEW.zip · SHA-256 d63cda6b2b9e83bf993889d33fa716646f712f90eabc992a472d12390b8910d3 · accepted HEAD 36f3bc8150a9bdaae3c1e3a743c1621998c48691)
 - [x] F079 — Context handoffs (T001–T003 complete; accepted 2026-08-06 · live review PASS — ACCEPTED · Evidence job a7f0791c4d6b2e58 · package remedy-review-20260806-203747-READY_FOR_REVIEW.zip · SHA-256 f30d540afec921aa76aef40d754abc7d00f4026eb2a755aa53bf99e241a88eec · accepted HEAD abc33f79aac937d3504dddef7a72bdb22d4aa2d1)
-- [~] F080 — Machine-readable roadmap mirror & STATUS.md
+- [x] F080 — Machine-readable roadmap mirror & STATUS.md (T001–T003 complete; accepted 2026-08-07 · live review PASS — ACCEPTED · Evidence job f080-closure · package remedy-review-20260807-095605-READY_FOR_REVIEW.zip · SHA-256 5924c6f6ae8f93f790f9d3c9279d026c9682a547206355a580746333d5ca25cd · accepted HEAD 0a22bcbf31322a365354d755b92d90b8fed20493)
 
 ## Tier 2 — Minimal Self-Build Runtime
 

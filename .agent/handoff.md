@@ -1,163 +1,107 @@
-# Handback — F080 R4 (repair R-0206 + closure part 1) — ZIP READY
+# Handback — F080 R5 (closure part 2) — FEATURE CLOSED
 
-Branch: feature/f080-roadmap-mirror. Accepted HEAD — the head the zip
-and its manifest record — is 0a22bcbf31322a365354d755b92d90b8fed20493,
-the last CONTENT commit; this .agent handback commit follows the READY
-zip, exactly as STATUS_closure_protocol.md step 2 prescribes. Pushed,
-worktree clean. History untouched: no reword, no rebase, no
-force-push. All four parts green; the review zip is READY_FOR_REVIEW.
-No STATUS edit, no README edit, no PR — those are R5.
+Branch: feature/f080-roadmap-mirror. The closure commit is the LAST
+commit on the branch (Rule A4); the PR is created right after this
+commit and is NOT merged — it merges at the next feature's Open PR
+Gate, the operator's manual-review window. PR number is in the
+completion report (it cannot be in this file without adding a commit
+after the STATUS edit).
 
-## The package (what R5 needs)
-- package: **remedy-review-20260807-095605-READY_FOR_REVIEW.zip**
-- SHA-256: **5924c6f6ae8f93f790f9d3c9279d026c9682a547206355a580746333d5ca25cd**
-- Evidence job: **f080-closure** (same id as R3, rebuilt at this HEAD)
-- accepted HEAD (full): **0a22bcbf31322a365354d755b92d90b8fed20493**
-- base: 1da1b07a427c4518f21b5698dacfd5ab37f55c4a
+Accepted HEAD for the package stays 0a22bcbf31322a365354d755b92d90b8fed20493
+— the last CONTENT commit, which is what the manifest records; the R4
+handback and this closure commit follow the READY zip exactly as
+STATUS_closure_protocol.md step 2 prescribes.
 
-Verified by me before handback, from inside the zip:
-    package_status                     READY_FOR_REVIEW
-    committed_review_subject           base 1da1b07a… → head 0a22bcbf…,
-                                       base_is_ancestor true, commit_count 19,
-                                       file_count 45
-    current_evidence.validation        is_valid_current_run TRUE, errors []
-    ready_gate_matrix                  ok=true, blocking_reasons []
-      artifact_contract PASS · change_provenance PASS · fresh_evidence PASS ·
-      runtime_integration PASS · manifest_integrity ok · postmortem_integrity ok ·
-      final_verifier PASS_WITH_RISKS · commit_execution NEEDS_HUMAN_APPROVAL
-    token_truth_authority              VERIFIED_EQUAL (problems [])
-    final_verifier_reproducible        true
-    packaging_warnings                 []
-    zipfile.testzip()                  OK (no corrupt member), 2061 members
-The zip is NOT committed (.gitignore:223 `remedy-review-*`); tree clean.
+## Grep proof — every applied text is byte-identical to its receipt
+    cmp .agent/live_review.md .agent/authored/f080-r5-1.md   -> exit 0 (identical)
+    cmp .agent/candidates.md  .agent/authored/f080-r5-4.md   -> exit 0 (identical)
+    STATUS.md: the receipt's TO line occurs exactly 1x, at line 48;
+        the FROM line ("- [~] F080 …") occurs 0x
+    README.md: TO line 1 ("38 of 255 registered items accepted. Next: F103 …")
+        occurs 1x at line 19, its FROM occurs 0x
+    README.md: TO line 2 ("| 1 | Self-Build Bootstrap | 22 | 22 |")
+        occurs 1x at line 24, its FROM occurs 0x
+    receipts re-hashed on disk, all four equal to their BEGIN markers:
+        f080-r5-1.md f182ba5085a42af83268cf6f9c52b6c36f44964f0a156a964e1e426b66173936
+        f080-r5-2.md eda93dbe6195536450b79974072915bb3f67dca3a302b5955a6959ba2ec6c822
+        f080-r5-3.md bc64e0873cd25d77c4e4d55a68f9f0366bf2b7fe24d9ae35189edcf9b57aa153
+        f080-r5-4.md d245c6b3ab6c3c6e1b350ea31a7e1609bd3038d9156cb8ec4d37b21333043a65
 
-## Artifact-build attempts, both recorded
-1. remedy-review-20260807-095435-BLOCKED_EVIDENCE.zip — FAILED (status
-   BLOCKED_EVIDENCE). Blocking reason, from the manifest's own
-   validation_errors: 94 of the FULL-SUITE run's node ids "carry a local
-   absolute path" or "carry a secret". They are redaction-torture
-   parametrizations whose PARAMETER is a fake secret or path by design,
-   e.g.
-     tests/orchestration/test_failure_postmortem.py::TestRedaction::
-       test_an_absolute_path_never_reaches_the_record[/home/user…]
-     tests/orchestration/test_external_builder_sandbox.py::
-       TestRedactionTorture::test_public_surfaces_never_expose[sk-ABCDEF…]
-   The packaging metadata scan is right to reject them; enumerating the
-   whole suite's node ids was my choice, not a requirement.
-2. remedy-review-20260807-095605-READY_FOR_REVIEW.zip — SUCCEEDED, the
-   package above.
+Receipt 2 needed the documented wrap recovery (F080 R1 precedent): the
+STATUS line arrived display-wrapped over five lines. Saved as pasted it
+hashed f0077050c6c9cd251a943e81f2bd987f3225ba25050ae0e8839fba489cec18a0
+— mismatch. Rejoining the wrapped TO block into the ONE line a STATUS
+entry must be reproduced the declared digest exactly. No rewording; the
+hash is what proved the recovery. Receipts 1, 3 and 4 matched first try.
 
-### Why the full suite is not a bundle verification_run (declared)
-`len(node_ids) == selected` is mandatory, so a run cannot carry a
-filtered id list. Scan of every candidate suite:
-    r4_collect_full.txt                      15970 ids   94 offending
-    test_failure_postmortem.py                 137 ids   26 offending
-    test_roadmap_index.py / _adapter / plan CLI / docs / golden path
-                                          30/29/21/293/42 ids  0 offending
-The bundle therefore records the five clean suites (vr-0002..vr-0006,
-415 passed). The full-suite proof is NOT lost: it is in this handoff
-raw, in the R2 integration-gate evidence committed under
-.agent/gate_f080_r2/ (inside the review subject), and in the reviewer's
-own R2 run. Nothing green is claimed that was not run.
-
-## Changed files per commit
-| Commit | Path | +/- | Reason |
-|---|---|---|---|
-| 46c90c6a | .agent/live_review.md | +36/-31 | authored R3 verdict + R-0206 + D4 |
-| 46c90c6a | .agent/plan.md, .agent/context.md | rewrite | R4 repair state |
-| 46c90c6a | .agent/authored/f080-r4-1.md | +117 | receipt for text 1 |
-| 0a22bcbf | packages/common/path_redaction.py | +1/-1 | ABS_PATH_RE requires one tail char |
-| 0a22bcbf | tests/orchestration/test_failure_postmortem.py | +39/-0 | R-0206 regression class |
-| 0a22bcbf | .agent/authored/f080-r4-{2,3}.md | +42 | receipts for texts 2 and 3 |
-| (final) | .agent/plan.md, .agent/handoff.md | rewrite | R4 done state + this handback |
-Both commits staged by exact path — `git add -A` was not used anywhere
-this round (the R3 deviation is not repeated).
-
-## Authored-text receipts (R-0148) — all three matched first try
-| File | Computed sha256 | Match |
+## Changed files — the single closure commit
+| Path | +/- | Reason |
 |---|---|---|
-| f080-r4-1.md | b3136217cd2a63383e9110b2643a0471a7355fc6a7fc458615898c793de06f4a | yes |
-| f080-r4-2.md | 3043ee2812d957308f1f158d99977d53e8ddf0ebcad38d2b955cb8850140325e | yes |
-| f080-r4-3.md | c606ff81f953f0ec1760eebfef96e5c704260d201fb2d57ed52cd44bc8bf26d8 | yes |
+| docs/roadmap/STATUS.md | +1/-1 | authored `[x] F080` line with job, package, SHA-256, accepted HEAD |
+| README.md | +2/-2 | capability sync: 38 of 255 accepted, next F103; Tier 1 at 22 of 22 |
+| .agent/live_review.md | rewrite | authored final review, R4 PASS verdict, FEATURE COMPLETE |
+| .agent/candidates.md | rewrite | authored closure candidate (carrier of record) |
+| .agent/plan.md | rewrite | F080 closed; S1+S2 self-drive skill next |
+| .agent/context.md | rewrite | closed state, PR-awaits-gate, candidate block condition |
+| .agent/handoff.md | rewrite | this handback |
+| .agent/authored/f080-r5-{1,2,3,4}.md | new | the four receipts |
+Exactly the R-0154 path set — nothing else. STATUS and README land in
+the SAME commit, so no committed state has them disagreeing. The
+feature file's Built State was already current from bd73aaa6. Staged by
+exact path; `git add -A` was not used.
 
-## Verification transcripts
-    # PART A
-    pytest tests/docs/ -q                                -> 0 · 293 passed in 0.23s
-    pytest tests/ui_server/test_dashboard_contract.py -q  -> 0 · 70 passed in 3.35s
-    pytest tests/regression/test_resource_safety.py -q    -> 0 · 21 passed in 10.85s
-    # PART B — the one-line change, applied and counted
-    grep -c '| /{PATH_TAIL}*  … # /posix/path'  BEFORE -> 1 · AFTER -> 0
-    the TO line is present once at path_redaction.py:41
-    two blank lines separate the appended class from the previous last line
-    pytest tests/orchestration/test_failure_postmortem.py -q          -> 0 · 137 passed in 0.25s
-    pytest tests/test_run_log_cli.py tests/runtimes/test_supervisor_portability.py \
-           tests/orchestration/test_review_bundle.py -q               -> 0 · 250 passed in 93.65s
-    pytest tests/orchestration/test_run_manifest*.py -q               -> 0 · 894 passed in 105.70s
-    pytest tests/cli/test_golden_path.py -q                           -> 0 · 42 passed in 15.29s
-    # the repair, proven directly
-    _contains_local_path("feat(f080): remedy plan status / plan next (T001)") -> False  (was True)
-    _contains_local_path("fix: read /home/user/secret.txt")                   -> True   (unchanged)
-    # PART C — closure re-confirmation at the new HEAD
-    git status --porcelain -> empty
-    git push               -> 0362e19c..0a22bcbf  feature/f080-roadmap-mirror
-    remedy integrity check --json -> exit 0, passed=true, fail_count=0, check_count=5
-        handler_import pass (handlers=325) · live_review_verdict pass ·
-        plan_consistency pass (unchecked=0) · relevant_untracked pass
-        (untracked=0, relevant=0) · high_blockers_open pass
-    REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
-        -> exit 0 · 15951 passed, 19 skipped in 141.15s (0:02:21) · zero FAILED lines
-    # PART D
-    pytest --collect-only -q -> 0 · 15970 collected (= 15951 + 19)
-    per-suite reruns at this HEAD: roadmap 30 · adapter 29 · plan CLI 21 ·
-        docs 293 · golden path 42 · postmortem 137 — all exit 0
-No red verification command this round; the STOP rule never fired. The
-closure confirmation run needed no attribution — nothing failed, so
-neither R-0202's UI-not-built id nor R-0204's xdist id recurred.
+## Verification transcripts (all before the commit)
+    python3 -m pytest tests/docs/ -q                                -> 0 · 293 passed in 0.19s
+    python3 -m pytest tests/cli/test_golden_path.py -q              -> 0 · 42 passed in 15.28s
+    python3 -m pytest tests/ui_server/test_dashboard_contract.py -q -> 0 · 70 passed in 3.15s
+    python3 -m pytest tests/regression/test_resource_safety.py -q   -> 0 · 21 passed in 10.81s
+tests/docs/ is the gate that pins README against STATUS: green means
+the two agree in the state being committed. No red verification this
+round; the STOP rule never fired.
 
-## The fix, in one paragraph
-`ABS_PATH_RE` alternated on `/{PATH_TAIL}*` — a zero-length tail, so a
-bare "/" matched and any prose delimiter was rewritten to a redaction
-marker. Requiring one tail character (`/{PATH_TAIL}+`) removes exactly
-that case. Nothing that could leak stops being redacted: a bare slash
-carries no path information. The appended regression class pins both
-directions — four prose strings survive untouched and the packaging
-scan accepts the previously-rejected subject, while /etc/passwd,
-/home/... , cwd:/tmp/... and file:// URIs stay redacted and the scan
-still rejects a real path. 15951 suite tests agree, up 10 from the
-15941 of R3 — exactly the ten new cases.
+## Evidence of record (unchanged from R4, reviewer-verified)
+- Evidence job: f080-closure
+- package: remedy-review-20260807-095605-READY_FOR_REVIEW.zip
+- SHA-256: 5924c6f6ae8f93f790f9d3c9279d026c9682a547206355a580746333d5ca25cd
+- accepted HEAD: 0a22bcbf31322a365354d755b92d90b8fed20493
+- base: 1da1b07a427c4518f21b5698dacfd5ab37f55c4a
+Neither the evidence dir nor any zip is committed (session scratch;
+`.gitignore:223` covers `remedy-review-*`).
 
-## Closure preconditions 1-5 (STATUS_closure_protocol.md)
-1. R1 PASS, R2 PASS, R3 PASS-on-executed-work; R-0200/0202/0204/0205
-   resolved or routed, R-0206 fixed here — live_review.md.
-2. Full suite green at the accepted HEAD: exit 0, 15951 passed, 19
-   skipped (raw above); the dedicated integration gate PASSed in R2
-   with zero branch-only failures (.agent/gate_f080_r2/).
-3. `remedy integrity check --json` passed=true, fail_count=0,
-   untracked=0, relevant=0.
-4. Built State current in docs/roadmap/features/T1_F080.md since
-   bd73aaa6 (a content commit).
-5. Tree clean, branch pushed, worker idle.
+## Runtime actuals — observed only
+- Rounds: 5 (R1 build T001+T002, R2 T003 + integration gate, R3 closure
+  part 1 blocked, R4 repair + package, R5 closure).
+- Full suite at the accepted HEAD: 15951 passed, 19 skipped, exit 0.
+  Integration gate (R2): zero branch-only failures.
+- Commits on the branch: 20 in 1da1b07a..HEAD.
+- Tokens and cost: not-measured (no provider ran; the bundle's
+  token_truth records provider_call_count 0, measurement source
+  character_heuristic).
 
 ## Open findings
-- 0 blocking. R-0206 fixed and pinned by tests. Next free id: R-0207.
-- Candidate for R5's reviewer (no R-id spent, per the closure
-  protocol's candidate rule): the packaging metadata scan rejects
-  redaction-torture node ids, so no bundle can ever carry a full-suite
-  node-id list. Worth a documented rule in the closure protocol
-  ("record scoped suites in the bundle; the full-suite proof rides in
-  the gate evidence") so the next closure does not rediscover it.
+- 0 open findings. R-0200/R-0202/R-0204 resolved by routing, R-0205 and
+  R-0206 Done. Next free id: R-0207.
+- .agent/candidates.md carries ONE closure candidate: a bundle can
+  never enumerate full-suite node ids (redaction-torture
+  parametrizations are rejected by the packaging metadata scan by
+  design); the scoped-suites shape is precedent but unwritten in
+  STATUS_closure_protocol.md. Per the closure protocol it spends no
+  R-id now and is a BLOCK CONDITION at the next feature's claim: the
+  next session's first reviewed round registers or resolves it and
+  empties the file.
 
 ## Next expected action
-Reviewer gates R4 and authors the STATUS [x] line from the values
-above; R5 applies it verbatim with the README sync in one closure
-commit, then opens the PR (merged at the next feature's Open PR Gate).
+Window 1 ends this feature with the feature-done banner. Next feature
+in a FRESH session: its Open PR Gate merges this PR first, then the
+candidates file is swept, then the S1+S2 self-drive skill build per
+.agent/selfdrive_package.md (hard date 2026-08-12). Rule A5 already
+names what follows F080 — `remedy plan next` reports F103.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| Part A verdict + R-0206 registered | done | commit 46c90c6a, receipt 1 matched |
-| Part B detector fix + tests | done | commit 0a22bcbf, 137+250+894+42 green |
-| Part C closure re-confirmation | done | integrity pass, suite 15951/19 exit 0 |
-| Part D bundle rebuild | done | f080-closure at 0a22bcbf, gate matrix ok |
-| Part D review zip | done | READY_FOR_REVIEW, filename + SHA-256 above |
-| Handback | done | clean worktree, pushed, this file |
+| Part A texts applied | done | 4 receipts, text 2 recovered from wrap, cmp/grep proof above |
+| Part A plan + context rewritten | done | closed state, self-drive sequence carried forward |
+| Part B gates | done | 293 · 42 · 70 · 21, all exit 0 |
+| Part C closure commit | done | exact path set, STATUS + README together, last on branch |
+| Part D PR | done | created, NOT merged; number in the completion report |
