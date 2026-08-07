@@ -72,11 +72,11 @@ planner's task list through untouched.
 
 The `cycles.*` keys bound the multi-cycle loop (F046) that
 `remedy job run <id> [--cycles N]` drives. `cycles.max_cycles` defaults to
-`1` — the rollout rule: Remedy stays single-pass until the F075 milestone
-gate raises `CYCLE_SAFETY_CAP` in
-`packages/orchestration/long_run_executor.py`. Until then the cap trims BOTH
-the config value and the `--cycles` flag, and the command reports the
-trimmed number instead of silently honoring it. `cycles.verify_command` is
+`1` — an unconfigured run is still a single pass. The F075 milestone gate
+raised `CYCLE_SAFETY_CAP` in `packages/orchestration/long_run_executor.py`
+from 1 to 8 (ADR-0001, applied 2026-08-07), so the config value and the
+`--cycles` flag are now honored up to 8 and trimmed above it, and the
+command reports a trimmed number instead of silently honoring it. `cycles.verify_command` is
 recorded on every cycle evidence record; a cycle that ran no verification
 records `not_run` and never claims a pass.
 

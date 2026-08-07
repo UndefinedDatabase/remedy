@@ -411,9 +411,11 @@ class TestCycleBoundaryWiring:
         assert next_cycle_index(JOB_ID) == 1
 
     def test_the_default_single_pass_still_writes_exactly_one_checkpoint(self):
-        from packages.orchestration.long_run_executor import CYCLE_SAFETY_CAP
+        from packages.orchestration.long_run_executor import (
+            CYCLE_SAFETY_CAP, DEFAULT_MAX_CYCLES)
 
-        assert CYCLE_SAFETY_CAP == 1        # the rollout default is untouched
+        assert CYCLE_SAFETY_CAP == 8        # ADR-0001 raised the ceiling ...
+        assert DEFAULT_MAX_CYCLES == 1      # ... the rollout default is untouched
         job = _job(task_count=3)
         _run_one_cycle(job)
         assert [p.name for p in checkpoint_paths(str(job.id))] == [

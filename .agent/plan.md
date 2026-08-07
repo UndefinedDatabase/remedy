@@ -1,8 +1,9 @@
-# Plan — F080 CLOSED; next up the self-drive skill (S1+S2)
+# Plan — ADR-0001 applied (micro-round); next up the self-drive skill (S1+S2)
 
-Branch: feature/f080-roadmap-mirror — closure commit landed, PR open.
-The PR is NOT merged here: it merges at the NEXT feature's Open PR
-Gate, and the gap is the operator's manual-review window.
+Branch: feature/adr-0001-cycle-cap — decision-application micro-round on
+operator approval (relayed): ADR-0001 raises `CYCLE_SAFETY_CAP` 1 -> 8.
+F080's PR #183 merged at this round's Open PR Gate, as planned; that gap
+was the operator's manual-review window.
 
 ## Goal
 F080 (Machine-readable roadmap mirror & STATUS.md) is DONE and accepted
@@ -46,7 +47,8 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
-- ADR-0001 (CYCLE_SAFETY_CAP) awaits human application; blocks
-  multi-cycle loop delegation (S3 experiment lane), not the skill.
-- The F080 PR must merge before unrelated work branches, or the Open PR
-  Gate blocks the next feature.
+- ADR-0001 (CYCLE_SAFETY_CAP) APPLIED 2026-08-07 — the cap is 8 and
+  `DEFAULT_MAX_CYCLES` stays 1, so S3's experiment lane is unblocked and
+  an unconfigured run is still a single pass.
+- The F080 PR merged at this round's Open PR Gate (#183, --merge
+  --delete-branch), so the gate is clear for the next feature.
