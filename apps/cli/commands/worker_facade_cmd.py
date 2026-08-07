@@ -393,9 +393,21 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     from pathlib import Path
 
     checks: list[dict[str, str | bool]] = []
+    warnings: list[dict[str, str]] = []
 
     def _check(name: str, ok: bool, detail: str = "") -> None:
         checks.append({"check": name, "ok": ok, "detail": detail})
+
+    def _warn(name: str, detail: str) -> None:
+        """Record an ADVISORY finding: never a blocker, never moves `ready`.
+
+        Deliberately separate from :func:`_check` (F254,
+        docs/roadmap/features/T2_F254.md): Remedy's own shipped defaults sit
+        on the known-dead list today, so routing that through `checks` would
+        report NOT READY on a freshly cloned repo and teach operators to
+        ignore the one word this command exists to say.
+        """
+        warnings.append({"warning": name, "detail": detail})
 
     import importlib
 
@@ -447,6 +459,98 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
     full_lane = Path("scripts/remedy_test_full.sh")
     _check("full_test_lane", full_lane.exists(), str(full_lane))
 
+    # -----------------------------------------------------------------
+    # F254 — known-dead model ids: one HARD check, then ADVISORY warnings.
+    #
+    # Whether the list can be READ is a real defect and belongs in
+    # `blockers`: "no dead models" and "I could not open the list" are
+    # opposite answers and must never look alike. What the list SAYS is
+    # advisory only — see `_warn` above for why.
+    # -----------------------------------------------------------------
+    dead_ids: frozenset[str] = frozenset()
+    dead_entry_by_id: dict[str, tuple[str, str]] = {}
+    try:
+        from packages.orchestration.dead_model_list import (
+            dead_model_ids,
+            load_dead_models,
+        )
+        shipped_entries = load_dead_models()
+        dead_entry_by_id = {e.id: (e.reason, e.superseded_by) for e in shipped_entries}
+        dead_ids = dead_model_ids()
+        _check("dead_model_list", True,
+               f"{len(shipped_entries)} shipped + "
+               f"{len(dead_ids) - len(shipped_entries)} configured dead ids")
+    except Exception as exc:
+        _check("dead_model_list", False, _safe_err(exc))
+
+    if dead_ids:
+        try:
+            from packages.orchestration.config import all_key_specs, get_config
+            from packages.orchestration.dead_model_list import (
+                DEAD_MODEL_CONFIG_KEY,
+                DEAD_MODEL_LIST_FILENAME,
+            )
+            from packages.orchestration.model_aliases import (
+                MODEL_ALIASES,
+                builtin_model_ids,
+            )
+
+            def _dead_provenance(model_id: str) -> str:
+                """Say WHERE the "dead" verdict came from — data, never a probe.
+
+                Remedy does not know a model is retired; it knows an
+                operator-maintained file says so. Wording that implies live
+                provider knowledge would be a false live indicator, so the
+                source and its staleness are stated in every warning.
+                """
+                if model_id in dead_entry_by_id:
+                    reason, superseded = dead_entry_by_id[model_id]
+                    origin = f"the shipped list scripts/{DEAD_MODEL_LIST_FILENAME}"
+                else:
+                    reason, superseded = "", ""
+                    origin = f"the operator's {DEAD_MODEL_CONFIG_KEY} config list"
+                parts = [
+                    f"Remedy calls this id dead only because {origin} says so — "
+                    f"that list is operator-maintained data, no provider was "
+                    f"queried, so the verdict is exactly as current as the data.",
+                ]
+                if reason:
+                    parts.append(f"Recorded reason: {reason}")
+                parts.append(f"Recorded replacement: {superseded}." if superseded
+                             else "No replacement id is recorded.")
+                return " ".join(parts)
+
+            # Built-in defaults: name the ALIAS, because that is the line an
+            # operator repoints. Derived from the table, never hardcoded.
+            for model_id in builtin_model_ids():
+                if model_id not in dead_ids:
+                    continue
+                alias_text = ", ".join(sorted(a for a, v in MODEL_ALIASES.items()
+                                              if v == model_id))
+                _warn("dead_builtin_model",
+                      f"{model_id} is a BUILT-IN default, reached through alias "
+                      f"{alias_text} in packages/orchestration/model_aliases.py. "
+                      f"Fix: repoint alias {alias_text} to a live id. "
+                      f"{_dead_provenance(model_id)}")
+
+            # Configured ids: name the KEY it came from. Discovered from the
+            # key registry, so a new *.model key is covered the day it lands.
+            config = get_config()
+            for spec in all_key_specs():
+                if not spec.key.endswith(".model"):
+                    continue
+                value = config.get(spec.key)
+                if not isinstance(value, str) or value not in dead_ids:
+                    continue
+                _warn("dead_configured_model",
+                      f"{value} is the resolved value of config key {spec.key} "
+                      f"(env {spec.env_var}). Fix: change {spec.key} to a live "
+                      f"id. {_dead_provenance(value)}")
+        except Exception as exc:
+            _warn("dead_model_comparison",
+                  "the known-dead ids could not be compared against Remedy's "
+                  f"built-in defaults and config: {_safe_err(exc)}")
+
     blockers: list[str] = [str(c["check"]) for c in checks if not c["ok"]]
     ready = len(blockers) == 0
 
@@ -454,6 +558,7 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         "ready": ready,
         "checks": checks,
         "blockers": blockers,
+        "warnings": warnings,
     }
 
     if getattr(ns, "json", False):
@@ -465,6 +570,10 @@ def _cmd_doctor_core(ns: argparse.Namespace) -> None:
         print(f"  [{ok}] {c['check']}: {c['detail']}")
     if blockers:
         print(f"  blockers: {', '.join(blockers)}")
+    if warnings:
+        print("  warnings (advisory — these do not affect READY):")
+        for w in warnings:
+            print(f"  [WARN] {w['warning']}: {w['detail']}")
 
 
 # ---------------------------------------------------------------------------
