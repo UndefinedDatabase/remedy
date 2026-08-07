@@ -35,6 +35,8 @@ work is not a roadmap feature (DECISION D7).
   docs/agents/planner_reviewer_prompt.md §4 item 9, so the rule
   lives on disk instead of in reviewer session memory (the A1 trap
   §0 names).
+  Done: R-0207 — applied in R2; §4 item 9 now names the rewrite and
+  the append shape and the proof each one owes.
 - Next free ID: R-0208.
 
 ## Decisions
