@@ -32,6 +32,7 @@
 | external builder | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | system |
 | external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
 | model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
+| model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
 | plan / roadmap mirror | [roadmap-mirror-v1.md](system/roadmap-mirror-v1.md) | system |
 | proof chain | [proof-chain.md](system/proof-chain.md) | system |
@@ -86,6 +87,7 @@ Specifications and design documents for the built system.
 | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | Managed external builder execution + observability |
 | [managed-external-builder-execution-v1-1-hardening.md](system/managed-external-builder-execution-v1-1-hardening.md) | Approval hardening for managed external builders |
 | [mission-run-loop-morning-report-v0.md](system/mission-run-loop-morning-report-v0.md) | Mission run loop + morning report *(overnight superseded)* |
+| [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | Built-in model alias table, the shipped dead-model list, and the `remedy doctor core` warning |
 | [model-route-tournament-harness-v0.md](system/model-route-tournament-harness-v0.md) | Model/route tournament comparison harness |
 | [open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md](system/open-ended-dogfood-run-orchestrator-replay-analyzer-v0.md) | Open-ended dogfood run + replay analysis |
 | [operator-cockpit-v1.md](system/operator-cockpit-v1.md) | Operator cockpit UI spec |
