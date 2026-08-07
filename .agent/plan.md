@@ -2,9 +2,11 @@
 
 Branch: feature/f254-model-alias-table · claimed `[~]` in
 docs/roadmap/STATUS.md. PR #185 (S1+S2 self-drive skill) was merged at
-R1's Open PR Gate. 0 open findings — R-0211, R-0212 and R-0213 were
-all raised against the reviewer's own authoring and each was fixed in
-the round that followed; next free finding ID R-0214.
+R1's Open PR Gate. 0 open findings; next free finding ID R-0215.
+R-0211, R-0212 and R-0213 were reviewer-authoring defects, each fixed
+in the round after it was raised. R-0214 is different: it is a rule
+this project keeps overriding, and it leaves the branch as a closure
+candidate in .agent/candidates.md.
 
 ## Goal
 Every hardcoded default model id moves behind ONE alias module, and
@@ -14,21 +16,19 @@ flags a dead id in a fixture and a repo scan proves no hardcoded dated
 model string survives outside the alias module.
 
 ## Current Step
-R4 — first commit: persist the R3 PASS verdict and register finding
-R-0213. Then the known-dead model list: a shipped JSON data file, a
-loader module that merges it with an operator config extension, and
-unit tests. The `remedy doctor` wiring is deliberately NOT in this
-round — changing the doctor's JSON contract is a separate risk and
-gets its own round.
+R5 — first commit: persist the R4 PASS verdict, register finding
+R-0214, record DECISIONS D12 and D13, and file the handoff-cap
+conflict in .agent/candidates.md so it survives this branch. Then wire
+the dead-model check into `remedy doctor core`: a WARNING that names
+the offending id, whether it came from a built-in default or a config
+key, and the alias to repoint — while a list that cannot be READ stays
+a hard failing check.
 
 ## Next Steps
-- R5: wire the dead-model check into `remedy doctor core`, whose
-  output names the offending id, where it came from (config vs
-  built-in default) and the alias to update.
 - R6: the repo-scan test proving no built-in model id survives outside
   the alias module, plus the docs/ update this feature owes — the alias
-  module is new architecture and AGENTS.md requires it documented and
-  registered in the docs/README.md index.
+  module and the dead-model list are new architecture and AGENTS.md
+  requires them documented and registered in the docs/README.md index.
 - R7: the integration gate per docs/agents/integration_gate.md.
 - R8: closure per docs/roadmap/STATUS_closure_protocol.md — the
   evidence job and a fresh review zip are mandatory there, and a zip

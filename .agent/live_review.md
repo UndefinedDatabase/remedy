@@ -32,14 +32,15 @@ licence to improvise.
   D11, amend the feature file's Acceptance, and route the last three
   built-in ids — the two Ollama providers and the `ollama.model`
   config default — through the alias table — PASS.
-- R4 (current, SPLIT): persist the R3 verdict and register R-0213;
-  then the known-dead model list — a shipped data file, a loader
-  module that merges it with an operator config extension, and its
-  unit tests. No `remedy doctor` wiring in this round: the doctor's
-  JSON contract is a separate risk and gets its own round.
-- R5: wire the check into `remedy doctor core`, whose output names the
-  offending id, where it came from (config vs built-in default) and
-  the alias to update.
+- R4 (SPLIT): persist the R3 verdict, register R-0213, then the
+  known-dead model list — shipped data file, loader, config extension
+  and unit tests — PASS.
+- R5 (current, SPLIT): persist the R4 verdict, register R-0214, record
+  DECISIONS D12 and D13, and file the handoff-cap conflict as a
+  closure candidate; then wire the dead-model check into
+  `remedy doctor core` as a WARNING alongside the existing readiness
+  checks, naming the offending id, its origin and the alias to
+  repoint.
 - R6: the repo-scan test that no built-in model id survives outside
   the alias module, plus the docs/ update this feature owes.
 - R7: the integration gate (docs/agents/integration_gate.md).
@@ -87,7 +88,28 @@ licence to improvise.
   Next-Steps FROM to the end of its list rather than to the last line
   being changed. Fix: an authored receipt in R4 removes the orphan.
   Done: R-0213 — removed by receipt f254-r4-2.
-- Next free ID: R-0214.
+- R-0214 (rule vs practice, Low): AGENTS.md caps .agent/handoff.md at
+  60 lines, or 100 when a per-commit table of more than five commits
+  needs it, with sections never dropped. Three handbacks running have
+  exceeded it — S1+S2 R2, F254 R3 at 119 lines, F254 R4 at 122 — and
+  each time the reviewer accepted the overage ad hoc because the cause
+  was content the round's own step block mandated: transport proofs,
+  pair counts under two shapes, a generated changed-files table, an
+  item-status table and a verification table. R4 exceeded it even
+  after the block explicitly forbade verbatim transcripts, which rules
+  out worker verbosity as the cause. A rule that is correctly
+  overridden every time it binds is not a rule, and accepting it in
+  session memory three times over is the A1 trap
+  (docs/agents/planner_reviewer_prompt.md §0) this project keeps
+  falling into. NOT a block condition: no section was dropped and
+  every overage was declared with its cause. Fix: the amendment
+  belongs to AGENTS.md, which is out of this feature's scope —
+  AGENTS.md Core Workflow forbids mixing an unrelated fix into a
+  feature branch — so it is filed in .agent/candidates.md under the
+  disk-vehicle rule (docs/roadmap/STATUS_closure_protocol.md) and
+  becomes a block condition at the next feature claim until resolved.
+  Done: R-0214 — filed as a closure candidate in R5.
+- Next free ID: R-0215.
 
 ## Decisions
 - D10 (work-item order): F254 runs before F103. Chosen because F254 is
@@ -131,6 +153,37 @@ licence to improvise.
   packages/orchestration/config.py, and the docstring mention in
   packages/orchestration/role_config.py — none of those is a default,
   they are documentation of one.
+- D12 (where the handoff-cap fix goes): the R-0214 amendment is filed
+  as a closure candidate rather than applied on this branch. Chosen
+  because AGENTS.md is not F254's subject and the Core Workflow rule
+  "never mix unrelated features or fixes in the same branch" binds the
+  reviewer's authoring exactly as it binds the worker's editing; the
+  candidates file is the vehicle this project already built for a
+  finding that outlives its feature, and a non-empty candidates file
+  is itself a block condition at the next feature claim, so the fix
+  cannot be forgotten. Alternatives considered: amending AGENTS.md
+  here, which mixes a process fix into a model-alias feature and
+  makes the F254 PR harder to review honestly; or carrying it as an
+  open finding, which dies with the branch — the exact F056 loss the
+  disk vehicle exists to prevent. How to reverse: delete the entry
+  from .agent/candidates.md; the finding text stays in this file
+  either way.
+- D13 (dead-model check severity): the doctor's dead-model finding is
+  a WARNING, not a blocker, and `ready` keeps its current meaning.
+  Chosen because Remedy's own shipped defaults are on the dead list
+  today, so a blocker would make `remedy doctor core` report NOT READY
+  on a freshly cloned repo until F232 lands — which teaches operators
+  that NOT READY is normal and destroys the signal the command exists
+  to carry. A stale-but-working default does not stop Remedy running,
+  and that is precisely what a readiness check answers. Failing to
+  READ the shipped list is different and stays a hard check: "no dead
+  models" and "I could not open the file" must never look alike
+  (packages/orchestration/dead_model_list.py says the same in code).
+  Alternatives considered: making it a blocker, which is louder but
+  false about readiness; or shipping an empty dead list so nothing
+  fires, which makes the check decorative and leaves the actual rot
+  unflagged. How to reverse: move the warning into the `checks` list
+  and it becomes a blocker again — one call site.
 - The S1+S2 build's decisions D5 through D9 are the same numbering
   series, continued here rather than restarted, and stay in that
   branch's history, now on main.
@@ -233,4 +286,41 @@ licence to improvise.
   One finding, R-0213. Primary checkout clean, no worktree, no
   force-push, no PR. Tier: docs-round gate + canary; no full-suite
   claim is made. LAST_REVIEWED_SHA = 513451b4.
-- R4: PENDING — awaiting the worker handback.
+- R4: PASS (2026-08-07). Range 513451b4..2504a560, three commits.
+  Ordering verified against the diff: 74baaa7b carries only receipts
+  and .agent state, code appears first in 5ecd0197, and that commit's
+  diff is 438 lines — under the 500 limit, so no oversize declaration
+  was owed. Transport, PRIMARY proof: both receipts cmp 0 against the
+  reviewer's scratchpad originals, no digest fallback; all six pairs
+  REWRITE-clean; and the R-0213 repair landed — the orphaned bullet is
+  gone (`grep -c` 0) and .agent/plan.md is 46 lines. The data file is
+  the part that most deserved distrust and it holds up: both entries
+  name ids that exist in model_aliases.py, both reasons cite
+  T2_F254.md's own "How it fits" for the staleness claim, and both
+  `superseded_by` fields are EMPTY with the reason saying the
+  successor is F232's to choose. Nothing was invented, and
+  `qwen3-coder-next` is correctly absent because no source in this
+  repository calls it dead. The loader refuses to degrade an
+  unreadable file to an empty list, refuses a schema_version it does
+  not understand, and lets config extend but never replace — the
+  three properties that decide whether a check like this can be
+  trusted at all, and each is documented as a deliberate absence
+  where a reader would search for it. Reviewer re-runs at 2504a560:
+  test_dead_model_list 23 · test_model_aliases 21 · test_config 62 ·
+  test_config_cmd 14 · tests/docs/ 294 · dashboard contract 70 ·
+  test_test_runner 51 · resource safety 21 · golden path 42 — all
+  exit 0, every count equal to the worker's report. Independent
+  spot-check of the reviewer's own choosing on registry consumers the
+  round did not gate: test_command_catalog 23 · test_run_manifest_schema
+  13 — green. Fresh-interpreter imports of dead_model_list and config
+  both exit 0, which matters because config.py now resolves an alias
+  at import and the loader imports config lazily inside a function to
+  keep that direction one-way. Five items declared, all accepted: the
+  self-corrected config-key placement, four public names beyond the
+  ordered surface (each earns its place — one spelling per concept),
+  the two loader assumptions about config unavailability and an absent
+  `superseded_by`, and the handoff length, which becomes finding
+  R-0214 rather than another silent acceptance. Primary checkout
+  clean, no worktree, no force-push, no PR. Tier: round gate + canary;
+  no full-suite claim is made. LAST_REVIEWED_SHA = 2504a560.
+- R5: PENDING — awaiting the worker handback.
