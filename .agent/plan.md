@@ -2,7 +2,7 @@
 
 Branch: feature/f254-model-alias-table · claimed `[~]` in
 docs/roadmap/STATUS.md. PR #185 (S1+S2 self-drive skill) was merged at
-R1's Open PR Gate. 0 open findings; next free finding ID R-0216.
+R1's Open PR Gate. 0 open findings; next free finding ID R-0217.
 R-0211, R-0212 and R-0213 were reviewer-authoring defects, each fixed
 in the round after it was raised. R-0214 is different: it is a rule
 this project keeps overriding, and it leaves the branch as a closure
@@ -16,26 +16,31 @@ flags a dead id in a fixture and a repo scan proves no hardcoded dated
 model string survives outside the alias module.
 
 ## Current Step
-R6 — first commit: persist the R5 PASS verdict and register finding
-R-0215. Then three things that finish the build: fix the doctor
-warning's text-mode verbosity and its miscounted detail line; add the
-repo-scan test that closes the feature's second acceptance criterion,
-using the ast module so comments are out of scope by construction
-rather than by allow-list; and write the docs this feature owes,
-registered in the docs/README.md index.
+R7 — first commit: persist the R6 PASS verdict, register finding
+R-0216 and fix it. Then the integration gate per
+docs/agents/integration_gate.md: the first and only full-suite run of
+this feature, and the only round permitted to claim "full suite
+green". A regression there is a normal repair round, not a crisis.
+Both of the feature file's acceptance criteria are already met and
+pinned; nothing else is owed before closure.
 
 ## Next Steps
-- R7: the integration gate per docs/agents/integration_gate.md — the
-  first and only full-suite run before closure.
 - R8: closure per docs/roadmap/STATUS_closure_protocol.md — the
   evidence job and a fresh review zip are mandatory there, a zip
   failure is a closure blocker, and the STATUS line flips to `[x]`
   last, followed by the PR. The PR is NOT merged in the same session
-  that creates it.
+  that creates it; it merges at the NEXT work item's Open PR Gate,
+  which is the operator's manual-review window.
 - Carried past this feature: .agent/candidates.md holds the R-0214
   handoff-cap amendment. It is a block condition at the next feature
   claim and must be registered or resolved by the first reviewed round
   of whatever comes next.
+- Also carried: the four reviewer-authoring findings of this feature
+  (R-0211 through R-0213 and R-0216) are all Done, but two of them
+  were the same defect — a FROM that edits a list must span the whole
+  list. That belongs in reviewer conventions, not only in a branch's
+  live review; whoever runs closure should consider filing it as a
+  second closure candidate rather than letting it die with the branch.
 
 ## Risks
 - This is the S4 rehearsal: Phases 1 and 2 of the self-drive protocol

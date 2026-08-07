@@ -40,16 +40,18 @@ licence to improvise.
   check into `remedy doctor core` as an advisory warning — PASS. The
   feature's first acceptance criterion is met against the real shipped
   list, not a fixture.
-- R6 (current, SPLIT): persist the R5 verdict and register R-0215;
-  fix the doctor warning's text-mode verbosity and its miscounted
-  detail line; add the repo-scan test that closes the second
-  acceptance criterion; and write the docs this feature owes,
-  registered in the docs/README.md index.
-- R6: the repo-scan test that no built-in model id survives outside
-  the alias module, plus the docs/ update this feature owes.
-- R7: the integration gate (docs/agents/integration_gate.md).
+- R6 (SPLIT): persist the R5 verdict, register R-0215, fix the doctor
+  warning's text-mode verbosity and its miscounted detail line, add
+  the repo-scan test that closes the second acceptance criterion, and
+  write the docs, registered in the docs/README.md index — PASS. Both
+  of the feature file's acceptance criteria are now met and pinned.
+- R7 (current, SPLIT): persist the R6 verdict, register R-0216 and fix
+  it, then the integration gate per docs/agents/integration_gate.md —
+  the first and only full-suite run before closure.
 - R8: closure per docs/roadmap/STATUS_closure_protocol.md — evidence
-  job and a fresh review zip are mandatory.
+  job and a fresh review zip are mandatory, a zip failure is a closure
+  blocker, the STATUS line flips to `[x]` last, and the PR that
+  follows is NOT merged in the session that creates it.
 
 ## Findings
 - R-0211 (reviewer authoring, Low): F254 was claimed ahead of F103,
@@ -136,7 +138,23 @@ licence to improvise.
   when the reason already covers it; and the count is labelled for
   what it counts.
   Done: R-0215 — both fixed in R6.
-- Next free ID: R-0216.
+- R-0216 (reviewer authoring, Low): receipt f254-r6-1 PAIR 1 rewrote
+  the R5 step bullet and added an R6 bullet, but its FROM stopped
+  before the pre-existing "- R6: the repo-scan test…" line, so the
+  Steps list carried two R6 entries. Identical in shape to R-0213 and
+  with the same countermeasure, which was written down after R-0213
+  and then not applied: a FROM that edits a LIST extends to the end of
+  that list, not to the last line whose wording is changing. Fourth
+  reviewer-authoring finding of this feature and the second of exactly
+  this kind, so the pattern is now the finding: authored list edits in
+  this project need the whole list in the FROM, every time. The worker
+  again reported the duplicate and refused to delete text no authored
+  FROM covered, which is correct and is why the defect surfaced at all
+  rather than being quietly normalised. Not a block condition — a
+  duplicated planning bullet misleads no verification. Fix: receipt
+  f254-r7-1 PAIR 1 takes the whole tail of the list.
+  Done: R-0216 — the duplicate is gone.
+- Next free ID: R-0217.
 
 ## Decisions
 - D10 (work-item order): F254 runs before F103. Chosen because F254 is
@@ -390,4 +408,52 @@ licence to improvise.
   are the measurement R-0214 asked for, not a new offence. Primary
   checkout clean, no worktree, no force-push, no PR. Tier: round gate
   + canary; no full-suite claim is made. LAST_REVIEWED_SHA = c77dfc0d.
-- R6: PENDING — awaiting the worker handback.
+- R6: PASS (2026-08-07). Range c77dfc0d..ac54592c, five commits.
+  Ordering verified against the diff: 08dcdd3b carries only receipts
+  and .agent state; the fix, the pin and the docs land in three
+  separate commits, none mixed. Transport, PRIMARY proof: both
+  receipts cmp 0 against the reviewer's scratchpad originals, no
+  digest fallback; all six pairs REWRITE-clean. R-0215 is fixed and
+  measured, not asserted: the reviewer ran `remedy doctor core` and
+  the longest warning line is 220 and 224 characters against 839
+  before, the provenance clause survives in the short form word for
+  word in meaning ("per the shipped list scripts/dead_models.json —
+  operator data, no provider queried"), the full recorded reason moved
+  to `--json` with a printed pointer saying so, and the count now
+  reads "2 shipped + 0 config-only dead ids (2 total)" — a label that
+  matches what it counts. The repo scan is the part that had to be
+  distrusted hardest, because a scan that never bites is worse than no
+  scan. The reviewer proved it independently, in a disposable
+  worktree at this HEAD, not by reading the worker's transcript:
+  adding a real assignment of claude-sonnet-4-20250514 to
+  role_config.py turns the test RED and the message names
+  packages/orchestration/role_config.py:151 with the offending id;
+  putting the SAME id in a `#` comment on the same file leaves it
+  green, which is DECISION D11's boundary falling out of the `ast`
+  mechanism rather than out of an allow-list. The worktree was removed
+  and pruned before this verdict and the primary checkout was clean
+  throughout. Zero violations at HEAD and no exclusion was added to
+  reach that. The docs decision is sound and evidenced: a grep of
+  docs/system, docs/guides and docs/agents for the concepts returned
+  nothing, so a new doc was correct, and it is registered in both the
+  quick-find and system tables of docs/README.md. One declared item
+  needs naming rather than burying: implementing R-0215's
+  de-duplication inverted an assertion this reviewer authored in R5,
+  which now reads "not repeated after the reason". That is the R5
+  test being corrected by the R6 finding, not an assertion weakened to
+  fit — the `ready`/`blockers` contract of D13 is untouched, and the
+  reviewer confirmed it by running the command. B3 was solved by
+  relabelling rather than recomputing because the real configured
+  count sits behind a private function in a module this round was
+  forbidden to edit; the label is honest, so the finding is closed
+  correctly, if not at its root. Reviewer re-runs at ac54592c:
+  worker_facade_cmd 63 · model_aliases 24 · dead_model_list 23 ·
+  product_spine 72 · cli_ux 57 · development_artifact_boundary 18 ·
+  tests/docs/ 294 · dashboard contract 70 · test_test_runner 51 ·
+  resource safety 21 · golden path 42 — all exit 0, every count equal
+  to the worker's report. One finding, R-0216. Primary checkout
+  clean, `git worktree list` shows the primary only, no force-push, no
+  PR. Tier: docs-round gate + canary. No full-suite claim is made —
+  that is R7's job and nothing before it may claim it.
+  LAST_REVIEWED_SHA = ac54592c.
+- R7: PENDING — awaiting the worker handback.
