@@ -36,15 +36,20 @@ required touchpoint. Target: operational and rehearsed by 2026-08-12.
    operator's remote window).
 
 ## Next Steps
-- Part B: the one-line ABS_PATH_RE fix + the regression class appended
-  to tests/orchestration/test_failure_postmortem.py; prove it across
-  the scrubber's reader suites and the run_manifest suites.
-- Part C: clean tree, push, integrity check, full `-n auto` suite at
-  the new HEAD as the closure confirmation run; attribute any red id
-  per integration_gate.md step 4.
-- Part D: rebuild the bundle at the new HEAD with this round's real
-  numbers (evidence dir outside the repo), then the fresh zip; record
-  filename + SHA-256 + job id + accepted HEAD for R5.
+- R4 done: R-0206 fixed and pinned (137+250+894+42 green), suite green
+  at the accepted HEAD (15951 passed, 19 skipped, exit 0), bundle
+  f080-closure rebuilt there, and the zip is READY_FOR_REVIEW —
+  remedy-review-20260807-095605-READY_FOR_REVIEW.zip, SHA-256
+  5924c6f6ae8f93f790f9d3c9279d026c9682a547206355a580746333d5ca25cd,
+  accepted HEAD 0a22bcbf31322a365354d755b92d90b8fed20493.
+- R5 (closure part 2): reviewer authors the STATUS [x] line from those
+  values; worker applies it verbatim with the README capability sync in
+  ONE closure commit, then opens the PR. It merges at the next
+  feature's Open PR Gate.
+- Carried for R5's reviewer as a candidate (no R-id spent): a bundle
+  can never enumerate full-suite node ids — redaction-torture
+  parametrizations are rejected by the packaging metadata scan by
+  design. Worth writing into the closure protocol.
 
 ## Risks
 - Hard date: self-drive operational and rehearsed by 2026-08-12.
