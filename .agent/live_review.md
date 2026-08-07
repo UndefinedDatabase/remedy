@@ -60,18 +60,22 @@ licence to improvise.
   verdict, DECISION D14, the plan.md replacement) landed in
   `a50b330a`; items B and C were never started. The operator cleared
   the STOP before the next session.
-- R10 (current, SPLIT): pay R9's remaining debt — persist the R9
-  verdict, re-author plan.md, apply the Built State section to the
-  feature file, and produce the integration-gate evidence into
-  `.agent/gate_f254_r9/`, which is what R-0217c owes and what DECISION
-  D14 names. Still deliberately NOT in this round: the evidence job,
-  the review zip, the STATUS edit and the PR.
-- R11: closure per docs/roadmap/STATUS_closure_protocol.md — evidence
-  job and a fresh review zip are mandatory, a zip failure is a closure
-  blocker, the STATUS `[x]` line lands in the SAME commit as the
-  README capability sync (R-0154), that commit is LAST on the branch,
-  and the PR that follows is NOT merged in the session that creates
-  it.
+- R10 (SPLIT): pay R9's remaining debt — the R9 verdict, plan.md, the
+  Built State section, and the integration-gate evidence into
+  `.agent/gate_f254_r9/` — PASS. R-0217c is paid: the raw gate
+  evidence now exists inside the repository.
+- R11 (current, SPLIT): closure part 1 — persist the R10 verdict and
+  replace plan.md in ONE content commit, which becomes the ACCEPTED
+  HEAD; then the closure preconditions, the evidence job, and a FRESH
+  review zip built from the clean tree at that head. A failing zip
+  build is a closure BLOCKER, not a step to route around. The round
+  hands back the job id, the package filename, its SHA-256 and the
+  accepted HEAD, because the reviewer cannot author a STATUS line
+  containing values it has not been given.
+- R12: closure part 2 — the reviewer-authored STATUS `[~]`→`[x]` line
+  lands in the SAME commit as the README capability sync (R-0154),
+  that commit is LAST on the branch (Rule A4), and the PR that follows
+  is NOT merged in the session that creates it.
 
 ## Findings
 - R-0211 (reviewer authoring, Low): F254 was claimed ahead of F103,
@@ -643,4 +647,50 @@ licence to improvise.
   `git worktree list` primary only, no force-push, no PR. Tier: round
   gate plus canary — no full-suite claim is made or owed here.
   LAST_REVIEWED_SHA = f3eb61ba.
-- R10: PENDING — awaiting the worker handback.
+- R10: PASS (2026-08-07). Range f3eb61ba..0c44cd6f, four commits, and
+  the round paid every debt R9's truncation left. Transport, PRIMARY
+  proof — the reviewer's scratchpad originals were alive, so no digest
+  fallback: all three receipts are byte-identical to the originals
+  (sha256 MATCH x3) and `.agent/plan.md` is byte-identical to receipt
+  f254-r10-2 (`cmp` exit 0). Pair counts
+  verify under the shapes their receipts declare: both live_review
+  pairs REWRITE with FROM 0x and TO 1x, and the feature-file pair
+  APPEND with FROM still 1x and all 71 non-blank TO-only lines exactly
+  1x. One note the reviewer owes its own record: its first automated
+  count of that append reported three lines as non-unique, which were
+  the pair's blank lines counted by a naive matcher — an artifact of
+  the reviewer's check, not of the worker's edit, and the worker's
+  71/71 was right. State contracts hold: plan.md 46 lines with
+  `## Goal` and `## Next Steps` once each; live_review keeping its four
+  sections once each and one `- R6` bullet inside `## Steps`.
+  The gate evidence is the substance of this round and was read, not
+  accepted: `.agent/gate_f254_r9/` holds branch_run.txt (the command,
+  head `b09728bf`, exit 0, 162.54s, the raw tail and the summary line),
+  a genuinely EMPTY branch_failed.txt, and an attribution.txt that says
+  in plain words why no attribution was owed, that DECISION D14 means
+  no base run happened here, and that R7 already recorded the
+  branch/base comparison at zero branch-only failures. An empty FAILED
+  list is a real result and is labelled as one rather than passed over
+  in silence. The reviewer then ran the full suite itself at HEAD
+  `0c44cd6f` rather than re-reading the worker's log: `python3 -m
+  pytest -n auto -q` → exit 0, 16016 passed, 19 skipped, 0 failed,
+  151s wall clock, zero FAILED and zero ERROR lines. That is the
+  closure protocol's precondition 2 satisfied in the reviewer's own
+  hands, and it agrees with the worker's run to the test. Both runs sit
+  well under the five-minute budget, so no perf pass is owed. Scope is
+  exact: `git diff --numstat` over the range touches only the three
+  receipts, the three gate files, the three `.agent` state files and
+  the feature file — STATUS stayed `[~]`, README, every source file and
+  every test file untouched, and the superseded receipt
+  f254-r9-3.md is byte-unchanged, which the reviewer confirmed with its
+  own empty diff. The handoff was audited as the return channel and
+  holds: its changed-files table reproduces the real numstat, it scopes
+  itself honestly to A+B+C because a handoff cannot contain its own
+  numstat, and it declares its 82-line overage as R-0214's seventh
+  measurement. Zero deviations were declared and the reviewer found
+  none. No finding. Next free ID stays R-0218. Primary checkout clean,
+  `git worktree list` primary only, no force-push, no PR, branch
+  pushed. Tier: INTEGRATION GATE — this round re-confirms the full
+  suite and is entitled to say so: 16016 passed, 0 failed, at
+  `0c44cd6f`. LAST_REVIEWED_SHA = 0c44cd6f.
+- R11: PENDING — awaiting the worker handback.
