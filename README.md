@@ -16,13 +16,13 @@ verification commands. If something is unproven, Remedy says so instead of guess
 
 ## Status
 
-38 of 255 registered items accepted. Next: F103 (Token ledger (SQLite)).
+39 of 255 registered items accepted. Next: F103 (Token ledger (SQLite)).
 
 | Tier | Name | Done | Total |
 |------|------|-----:|------:|
 | 0 | Foundation & Trust Core | 16 | 16 |
 | 1 | Self-Build Bootstrap | 22 | 22 |
-| 2 | Minimal Self-Build Runtime | 0 | 14 |
+| 2 | Minimal Self-Build Runtime | 1 | 14 |
 | 3 | Full Token Economy & Autonomy | 0 | 26 |
 | 4 | Memory & Learning | 0 | 16 |
 | 5 | Operator Cockpit | 0 | 29 |
@@ -54,6 +54,9 @@ F048 job queue, F251 full-suite stabilization, F252 standing-red paydown,
 F050 DAG scheduling, F051 escalate instead of block,
 F052 self-healing test rounds,
 F053 final & interim report.
+
+Accepted in Tier 2 so far:
+F254 model alias table & dead-model doctor check.
 
 Full per-feature state: [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
 

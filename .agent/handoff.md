@@ -1,76 +1,82 @@
-# Handoff — F254 R11, closure part 1, COMPLETE
+# Handback — F254 R12, closure part 2 — FEATURE CLOSED
 
 Feature **T2_F254 — model alias table & dead-model doctor check**, branch
-**`feature/f254-model-alias-table`**, pushed. SPLIT round, worker subagent.
-`.agent/STOP` absent at round start and re-checked before every commit.
+**`feature/f254-model-alias-table`**. SPLIT round, worker subagent.
+`.agent/STOP` absent at round start and re-checked before the commit.
 
-## THE FOUR CLOSURE VALUES (the reviewer authors the STATUS line from these)
+**Two values cannot live in this file** (F080 R5 precedent): the closure
+commit's own SHA and the PR number. This file is INSIDE the closure commit,
+so it cannot name that commit's hash, and the PR is created after it. Both
+are in the completion report. Recording them here would require a commit
+after the STATUS edit, which Rule A4 forbids.
+
+## THE FOUR CLOSURE VALUES (as written into the STATUS line)
 - Evidence job id: **`f254-closure`**
 - Package: **`remedy-review-20260807-204305-READY_FOR_REVIEW.zip`**
 - SHA-256: **`1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0`**
-- Accepted HEAD: **`b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26`**
+- Accepted HEAD: **`b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26`** — the last
+  CONTENT commit, which is what the manifest records. The R11 handoff commit
+  `38a909c6` and this closure commit follow the READY zip, exactly as
+  STATUS_closure_protocol.md step 2 prescribes.
 
-## Commits, in order
-`b71c9bdd` A persist the R10 verdict + replace plan.md (ACCEPTED HEAD) · E =
-this handoff commit. B, C and D produce no commit by design.
-
-## Item status
-| Item | Status | Reason |
+## Changed files — the ONE closure commit (`38a909c6..HEAD`)
+| Path | +/- | Reason |
 |---|---|---|
-| A content commit | done | `b71c9bdd` |
-| B preconditions | done | clean tree, integrity PASS, pushed |
-| C evidence job | done | `f254-closure`, dir outside the repo |
-| D review zip | done | READY_FOR_REVIEW at `b71c9bdd` |
-| E rewrite handoff | done | this file |
+| docs/roadmap/STATUS.md | +1/-1 | authored `[x] F254` line: job, package, SHA-256, accepted HEAD |
+| README.md | +5/-2 | capability sync: 39 of 255 accepted; Tier 2 at 1 of 14; Tier 2 item named |
+| .agent/live_review.md | +75/-13 | authored R11 PASS verdict + the R12 CLOSURE entry |
+| .agent/plan.md | +34/-38 | authored replacement — F254 CLOSED, F103 next |
+| .agent/authored/f254-r12-{1,2,3,4}.md | new | the four receipts, byte-identical copies |
+| .agent/handoff.md | rewrite | this handback |
+Exactly the R-0154 path set — nothing else. STATUS and README land in the
+SAME commit, so no committed state has them disagreeing. The feature file's
+Built State was already current from `d8294663`. Staged by exact path;
+`git add -A` was not used. `.agent/context.md` and `.agent/decisions.md` were
+deliberately NOT touched: they are outside this round's mandated path set.
 
-## Changed files (`git diff --numstat 0c44cd6f..HEAD`, item A)
-| Path | + | - |
-|---|---|---|
-| .agent/authored/f254-r11-1.md | 103 | 0 |
-| .agent/authored/f254-r11-2.md | 47 | 0 |
-| .agent/live_review.md | 63 | 13 |
-| .agent/plan.md | 36 | 35 |
+## Transport and pair proof (PRIMARY evidence)
+All four receipts `cp`-copied, never hand-typed. `cmp` against the reviewer's
+scratchpad originals **exit 0 x4**; `sha256sum` matches the authored block for
+all four. `cmp .agent/plan.md .agent/authored/f254-r12-2.md` **exit 0**.
+Six pairs, each under its DECLARED shape:
+- r12-1 → live_review.md, PAIR 1+2 REWRITE: pre FROM **1x** → post FROM **0x**, TO **1x**.
+- r12-3 → STATUS.md, PAIR 1 REWRITE: pre FROM **1x** → post FROM **0x**, TO **1x**.
+- r12-4 → README.md, PAIR 1+2 REWRITE: pre **1x** → post FROM **0x**, TO **1x**;
+  PAIR 3 APPEND: FROM **1x** before AND after, each TO-ONLY line **1x** after.
+STATUS.md line count **315 before, 315 after** — unchanged, one line swapped.
+`grep -c '^- \[x\] F'` **38 → 39**; README now reads `39 of 255`, so the two
+agree in the committed state.
 
-## Verification (real commands, real exit codes)
-Transport: `cmp` vs the reviewer's scratchpad originals **exit 0 x2**, sha256
-matching the block; `cmp .agent/plan.md .agent/authored/f254-r11-2.md` **0**.
-Both live_review pairs REWRITE: pre FROM **1x** → post FROM **0x**, TO **1x**.
-State contracts: plan.md **47** lines (<50) · `^## Goal` **1** · `^## Next
-Steps` **1** · live_review 4-section grep **4** · `- R6` inside `## Steps`
-**1**. Round gate exit **0**, **142 passed**; canary golden path exit **0**,
-**42 passed**. `remedy integrity check --json` **passed true**, 5/5 pass,
-fail_count 0, no non-pass check. `git status --porcelain` **empty** before and
-after both artifact builds · `git worktree list` **primary only** · no
-force-push, no PR, no STATUS or README edit.
-
-## Artifact builds (both attempted, both succeeded)
-**Evidence job** `create_manual_completion_bundle(review_feature_id="f254")`,
-base `fc023265…48cc3` → head `b71c9bdd…`, R1-R11, evidence dir OUTSIDE the
-repo: authority 16 · commits 31 · partition 6/6/4 · total_passed **110** ·
-verdict **PASS_WITH_RISKS** (operator-attested model warnings only;
-unresolved_findings `[]`, missing_evidence `[]`). Three SCOPED suites with
-real `--collect-only` node ids and `len(node_ids) == selected`: model_aliases
-**24** · dead_model_list **23** · worker_facade_cmd **63**, each exit 0 / 0
-failed. No full-suite node-id list recorded (protocol pitfall d).
-**Review zip** `bash scripts/make_review_zip.sh --evidence-dir <scratchpad>`
-exit **0** → **READY_FOR_REVIEW**, evidence authoritative, alignment PASS,
-2151 members, `testzip()` None, ready_gate_matrix ok / blocking_reasons `[]`.
-`committed_review_subject` spans `fc023265…48cc3` → `b71c9bdd…c26`, 31
-commits / 52 files. Zip gitignored (`.gitignore:223`); evidence never
-committed.
+## Verification (real commands, real exit codes, before the commit)
+    python3 -m pytest tests/docs/ -q                    -> 0 · 294 passed in 0.26s
+    round gate (dashboard+test_runner+resource_safety)  -> 0 · 142 passed in 18.40s
+    python3 -m pytest tests/cli/test_golden_path.py -q  -> 0 · 42 passed in 18.86s
+`tests/docs/` is the pin that catches a README/STATUS disagreement; green
+means they agree in this exact state. `remedy integrity check --json` ran
+twice: BEFORE the commit `passed false`, fail_count 1 — the only failing
+check `relevant_untracked` naming the four not-yet-committed receipts, which
+the commit itself resolves; AFTER the commit `passed true`, 5/5 pass. No red
+verification was left standing; the STOP rule never fired.
 
 ## Findings
 R-0211…R-0217 all Done. **Open findings: 0. Next free ID: R-0218.**
-`.agent/candidates.md` still holds the R-0214 handoff-cap amendment — a
-block condition at the NEXT feature claim, not at this closure.
+`.agent/candidates.md` still holds the R-0214 handoff-cap amendment — a BLOCK
+CONDITION at the NEXT feature claim, not at this closure.
 
 ## Deviations, declared
-None. No scope widened, no reviewer-authored text edited. This file is 76
-lines, over the 60-line cap with no section dropped — R-0214's eighth
-measurement, caused by the four closure values plus the two artifact records.
+1. Closure commit SHA and PR number absent, per the note at the top — a
+   self-reference impossibility, not an omission.
+2. This file is 82 lines, over the 60-line cap, with NO section dropped —
+   R-0214's ninth measurement, caused by the four closure values, the
+   six-pair proof and the self-reference note.
+No scope was widened; no reviewer-authored text was edited; the PR is NOT
+merged by this round.
 
 ## Next expected action
-Reviewer gates `b71c9bdd..HEAD` (R11), then authors the R12 STATUS line from
-the four values above. R12 = closure part 2: STATUS `[~]`→`[x]` plus the
-README capability sync in the SAME commit (R-0154), LAST on the branch, then
-`gh pr create` — NOT merged in the session that creates it.
+Window 1 ends F254 with the feature-done banner. The closure PR merges at the
+NEXT feature's Open PR Gate — the operator's manual-review window; the
+operator may merge it manually at any time instead. Next feature: **F103 —
+Token ledger (SQLite)**, which Rule A5 names. Its first reviewed round MUST
+register or resolve the R-0214 entry in `.agent/candidates.md` and empty the
+file in that same round; a non-empty candidates file is a block condition at
+feature-claim time.

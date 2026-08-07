@@ -63,7 +63,7 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F082 — Self-benchmark
 - [ ] F083 — CI self-check
 - [ ] F085 — Sandbox hardening (stage 1)
-- [~] F254 — Model alias table & dead-model doctor check
+- [x] F254 — Model alias table & dead-model doctor check (R1–R12 complete; accepted 2026-08-07 · live review PASS — ACCEPTED · Evidence job f254-closure · package remedy-review-20260807-204305-READY_FOR_REVIEW.zip · SHA-256 1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0 · accepted HEAD b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26)
 - [ ] F086 — Release capability
 
 ## Tier 3 — Full Token Economy & Autonomy Extension
