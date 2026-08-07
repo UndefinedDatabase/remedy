@@ -15,6 +15,7 @@
 | closure protocol | [STATUS_closure_protocol.md](roadmap/STATUS_closure_protocol.md) | roadmap |
 | planner prompt | [planner_reviewer_prompt.md](agents/planner_reviewer_prompt.md) | agents |
 | split workflow | [split_workflow.md](agents/split_workflow.md) | agents |
+| self-drive | [self_drive_protocol.md](agents/self_drive_protocol.md) | agents |
 | architecture | [architecture.md](system/architecture.md) | system |
 | autocoder | [autocoder-usage.md](guides/autocoder-usage.md) | guide |
 | brain | [orchestrator-brain-v0.md](system/orchestrator-brain-v0.md) | system |
@@ -174,6 +175,7 @@ routing policy seeds F110.
 | [handback_template.md](agents/handback_template.md) | Mandatory skeleton of every handoff.md handback rewrite |
 | [integration_gate.md](agents/integration_gate.md) | Canonical full-suite integration-gate procedure |
 | [orchestrator_protocol.md](agents/orchestrator_protocol.md) | F070 orchestrator role contract — the source of the loop's system prompt |
+| [self_drive_protocol.md](agents/self_drive_protocol.md) | One-session build discipline: roles, state probe, round loop, guardrails |
 
 ## Architecture Decision Records (`docs/adr/`)
 
@@ -189,7 +191,7 @@ human action.
 
 ## Roadmap (`docs/roadmap/`)
 
-The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 250-feature
+The target plan for the product. See [ROADMAP.md](roadmap/ROADMAP.md) for the full 255-feature
 plan and [STATUS.md](roadmap/STATUS.md) for execution-order truth.
 
 Individual feature detail files live in `docs/roadmap/features/T{tier}_F{nnn}.md`.

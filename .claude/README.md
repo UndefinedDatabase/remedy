@@ -24,6 +24,10 @@ Claude Code project configuration is intentionally minimal and safety-focused.
 - `settings.json` — shareable project safety settings.
 - `skills/` — task-specific project skills.
 - `agents/` — subagent definitions (if any).
-- `commands/` — explicit-invocation slash commands (`/build-remedy`).
+- `commands/` — explicit-invocation slash commands (`/build-remedy`,
+  `/build-remedy-self`).
+- Self-drive (one session, no paste relay): `/build-remedy-self` and the
+  `remedy-self-drive` skill both run
+  `docs/agents/self_drive_protocol.md`.
 
 Local settings such as `settings.local.json` remain gitignored.
