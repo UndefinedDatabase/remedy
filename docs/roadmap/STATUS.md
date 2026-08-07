@@ -63,7 +63,7 @@ Milestone R1 — first public release cut: Tier 2 complete (F086 is the release 
 - [ ] F082 — Self-benchmark
 - [ ] F083 — CI self-check
 - [ ] F085 — Sandbox hardening (stage 1)
-- [ ] F254 — Model alias table & dead-model doctor check
+- [~] F254 — Model alias table & dead-model doctor check
 - [ ] F086 — Release capability
 
 ## Tier 3 — Full Token Economy & Autonomy Extension
