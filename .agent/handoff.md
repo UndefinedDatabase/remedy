@@ -1,107 +1,62 @@
-# Handback — F080 R5 (closure part 2) — FEATURE CLOSED
+# Handback — S1+S2 self-drive skill, R1 (worker)
+Branch feature/selfdrive-skill, cut at df39c3fa. Open findings 0 · next free ID R-0207.
 
-Branch: feature/f080-roadmap-mirror. The closure commit is the LAST
-commit on the branch (Rule A4); the PR is created right after this
-commit and is NOT merged — it merges at the next feature's Open PR
-Gate, the operator's manual-review window. PR number is in the
-completion report (it cannot be in this file without adding a commit
-after the STATUS edit).
+## Range
+Review of df39c3fa..4a38253f (merge-base with main = df39c3fa).
 
-Accepted HEAD for the package stays 0a22bcbf31322a365354d755b92d90b8fed20493
-— the last CONTENT commit, which is what the manifest records; the R4
-handback and this closure commit follow the READY zip exactly as
-STATUS_closure_protocol.md step 2 prescribes.
-
-## Grep proof — every applied text is byte-identical to its receipt
-    cmp .agent/live_review.md .agent/authored/f080-r5-1.md   -> exit 0 (identical)
-    cmp .agent/candidates.md  .agent/authored/f080-r5-4.md   -> exit 0 (identical)
-    STATUS.md: the receipt's TO line occurs exactly 1x, at line 48;
-        the FROM line ("- [~] F080 …") occurs 0x
-    README.md: TO line 1 ("38 of 255 registered items accepted. Next: F103 …")
-        occurs 1x at line 19, its FROM occurs 0x
-    README.md: TO line 2 ("| 1 | Self-Build Bootstrap | 22 | 22 |")
-        occurs 1x at line 24, its FROM occurs 0x
-    receipts re-hashed on disk, all four equal to their BEGIN markers:
-        f080-r5-1.md f182ba5085a42af83268cf6f9c52b6c36f44964f0a156a964e1e426b66173936
-        f080-r5-2.md eda93dbe6195536450b79974072915bb3f67dca3a302b5955a6959ba2ec6c822
-        f080-r5-3.md bc64e0873cd25d77c4e4d55a68f9f0366bf2b7fe24d9ae35189edcf9b57aa153
-        f080-r5-4.md d245c6b3ab6c3c6e1b350ea31a7e1609bd3038d9156cb8ec4d37b21333043a65
-
-Receipt 2 needed the documented wrap recovery (F080 R1 precedent): the
-STATUS line arrived display-wrapped over five lines. Saved as pasted it
-hashed f0077050c6c9cd251a943e81f2bd987f3225ba25050ae0e8839fba489cec18a0
-— mismatch. Rejoining the wrapped TO block into the ONE line a STATUS
-entry must be reproduced the declared digest exactly. No rewording; the
-hash is what proved the recovery. Receipts 1, 3 and 4 matched first try.
-
-## Changed files — the single closure commit
+## Commits
+### 12e151df chore(selfdrive): sweep F080 candidate, open R1 state
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | authored `[x] F080` line with job, package, SHA-256, accepted HEAD |
-| README.md | +2/-2 | capability sync: 38 of 255 accepted, next F103; Tier 1 at 22 of 22 |
-| .agent/live_review.md | rewrite | authored final review, R4 PASS verdict, FEATURE COMPLETE |
-| .agent/candidates.md | rewrite | authored closure candidate (carrier of record) |
-| .agent/plan.md | rewrite | F080 closed; S1+S2 self-drive skill next |
-| .agent/context.md | rewrite | closed state, PR-awaits-gate, candidate block condition |
-| .agent/handoff.md | rewrite | this handback |
-| .agent/authored/f080-r5-{1,2,3,4}.md | new | the four receipts |
-Exactly the R-0154 path set — nothing else. STATUS and README land in
-the SAME commit, so no committed state has them disagreeing. The
-feature file's Built State was already current from bd73aaa6. Staged by
-exact path; `git add -A` was not used.
+| .agent/authored/selfdrive-r1-{1..11}.md | +457/-0 | 11 verified receipts |
+| .agent/live_review.md | +54/-95 | R1 opened; D5/D6/D7; verdict PENDING |
+| .agent/plan.md | +32/-41 | R1 goal, four-commit step, risks |
+| .agent/context.md | +24/-28 | branch, scope, constraints |
+| .agent/candidates.md | +3/-10 | F080 candidate swept (carrier empty) |
+| docs/roadmap/STATUS_closure_protocol.md | +10/-0 | producer pitfall (d) |
+### f681fb95 docs(selfdrive): add the one-session build protocol
+| Path | +/- | Reason |
+|---|---|---|
+| docs/agents/self_drive_protocol.md | +124/-0 | new: roles, phases, G1-G8 |
+| docs/README.md | +2/-0 | quick-find + Agent Conventions rows |
+### 6976e7d7 feat(selfdrive): add build-remedy-self command and skill
+| Path | +/- | Reason |
+|---|---|---|
+| .claude/skills/remedy-self-drive/SKILL.md | +60/-0 | new skill entry point |
+| .claude/commands/build-remedy-self.md | +15/-0 | new slash command |
+| .claude/README.md | +5/-1 | contents line + self-drive pointer |
+### 4a38253f test(selfdrive): pin the protocol guardrails and registration
+| Path | +/- | Reason |
+|---|---|---|
+| tests/test_agent_tooling.py | +37/-0 | 3 pins, append-only |
 
-## Verification transcripts (all before the commit)
-    python3 -m pytest tests/docs/ -q                                -> 0 · 293 passed in 0.19s
-    python3 -m pytest tests/cli/test_golden_path.py -q              -> 0 · 42 passed in 15.28s
-    python3 -m pytest tests/ui_server/test_dashboard_contract.py -q -> 0 · 70 passed in 3.15s
-    python3 -m pytest tests/regression/test_resource_safety.py -q   -> 0 · 21 passed in 10.81s
-tests/docs/ is the gate that pins README against STATUS: green means
-the two agree in the state being committed. No red verification this
-round; the STOP rule never fired.
+## External actions
+- `gh pr list --state open ...` → exactly one: #184, feature/adr-0001-cycle-cap → main, isDraft false — gate shape matched; `gh pr merge 184 --merge --delete-branch` → merged; `git pull --ff-only` → 97bcefe0..df39c3fa (8 files); `git checkout -b feature/selfdrive-skill` at df39c3fa.
+- `git push -u origin feature/selfdrive-skill` → `* [new branch]`, tracking set. No PR created (step block). No worktree, no force-push.
 
-## Evidence of record (unchanged from R4, reviewer-verified)
-- Evidence job: f080-closure
-- package: remedy-review-20260807-095605-READY_FOR_REVIEW.zip
-- SHA-256: 5924c6f6ae8f93f790f9d3c9279d026c9682a547206355a580746333d5ca25cd
-- accepted HEAD: 0a22bcbf31322a365354d755b92d90b8fed20493
-- base: 1da1b07a427c4518f21b5698dacfd5ab37f55c4a
-Neither the evidence dir nor any zip is committed (session scratch;
-`.gitignore:223` covers `remedy-review-*`).
+## Verification (raw; every command exit 0, none ran red)
+- commit 1: `pytest tests/docs/ -q` 293 passed 0.19s · `tests/ui_server/test_dashboard_contract.py` 70 passed 3.02s · `tests/orchestration/test_test_runner.py` 51 passed 3.05s · `tests/regression/test_resource_safety.py` 21 passed 10.77s · `tests/cli/test_golden_path.py` 42 passed 15.26s
+- commit 2: `pytest tests/docs/ -q` 293 passed 0.19s. commit 3: `pytest tests/test_agent_tooling.py -q` 7 passed, 1 skipped 0.03s.
+- commit 4: `pytest tests/test_agent_tooling.py -q` 10 passed, 1 skipped 0.04s · `tests/cli/test_golden_path.py` 42 passed 15.31s. `git status --porcelain` after push → empty.
 
-## Runtime actuals — observed only
-- Rounds: 5 (R1 build T001+T002, R2 T003 + integration gate, R3 closure
-  part 1 blocked, R4 repair + package, R5 closure).
-- Full suite at the accepted HEAD: 15951 passed, 19 skipped, exit 0.
-  Integration gate (R2): zero branch-only failures.
-- Commits on the branch: 20 in 1da1b07a..HEAD.
-- Tokens and cost: not-measured (no provider ran; the bundle's
-  token_truth records provider_call_count 0, measurement source
-  character_heuristic).
+## Authored-text proofs
+- `sha256sum selfdrive-r1-*.md`: all 11 digests equal their BEGIN-marker stamp on the FIRST save; no wrap recovery needed. Display-wrapped lines were rejoined before saving (r1-6 two table rows, r1-7 pair-2 rows, r1-8 `description:`); the matching hashes confirm each rejoin.
+- `cmp` = 0 receipt vs applied file: r1-1→live_review.md, r1-2→plan.md, r1-3→context.md, r1-4→candidates.md, r1-6→docs/agents/self_drive_protocol.md, r1-8→SKILL.md, r1-9→build-remedy-self.md.
+- r1-10 (.claude/README.md): FROM 0x, TO 1x — a true 0x/1x rewrite. r1-5 and r1-7 pairs 1+2: TO CONTAINS FROM verbatim (TO = FROM + appended row/paragraph), so FROM 0x is unattainable by construction and is NOT claimed; proof given instead is FROM 1x plus each TO-only addition exactly 1x — `A fourth, from the F080 R4 attempt` 1x, `| self-drive | …agents |` 1x, `| [self_drive_protocol.md](…) | One-session build discipline… |` 1x.
+- r1-11: appended to tests/test_agent_tooling.py; `git diff --numstat` = `37 0`, no existing line touched; file ends with exactly one newline (hexdump-verified).
 
-## Open findings
-- 0 open findings. R-0200/R-0202/R-0204 resolved by routing, R-0205 and
-  R-0206 Done. Next free id: R-0207.
-- .agent/candidates.md carries ONE closure candidate: a bundle can
-  never enumerate full-suite node ids (redaction-torture
-  parametrizations are rejected by the packaging metadata scan by
-  design); the scoped-suites shape is precedent but unwritten in
-  STATUS_closure_protocol.md. Per the closure protocol it spends no
-  R-id now and is a BLOCK CONDITION at the next feature's claim: the
-  next session's first reviewed round registers or resolves it and
-  empties the file.
-
-## Next expected action
-Window 1 ends this feature with the feature-done banner. Next feature
-in a FRESH session: its Open PR Gate merges this PR first, then the
-candidates file is swept, then the S1+S2 self-drive skill build per
-.agent/selfdrive_package.md (hard date 2026-08-12). Rule A5 already
-names what follows F080 — `remedy plan next` reports F103.
+## Deviations & assumptions
+- Only deviation: the 0x FROM proof for r1-5 / r1-7 (above) — nothing was reworded to reach a count. No PR created and no STATUS.md edit (D7). Nothing under packages/, apps/, scripts/ touched.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| Part A texts applied | done | 4 receipts, text 2 recovered from wrap, cmp/grep proof above |
-| Part A plan + context rewritten | done | closed state, self-drive sequence carried forward |
-| Part B gates | done | 293 · 42 · 70 · 21, all exit 0 |
-| Part C closure commit | done | exact path set, STATUS + README together, last on branch |
-| Part D PR | done | created, NOT merged; number in the completion report |
+| 0 Open PR Gate + branch | done | |
+| 1 state + candidate sweep + pitfall (d) | done | 5 gates exit 0 |
+| 2 protocol doc + docs index | done | gate exit 0 |
+| 3 skill + command + .claude/README | done | gate exit 0 |
+| 4 test pins | done | 2 gates exit 0 |
+| 5 push + handoff | done | pushed; no PR by instruction |
+
+## Next
+Reviewer gates R1 against the committed diff df39c3fa..4a38253f.
