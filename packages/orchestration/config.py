@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.model_aliases import resolve_model_alias
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -107,12 +109,15 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=str,
         default="http://localhost:11434",
     ),
+    # The built-in Ollama default. Resolved from the single alias table
+    # (packages/orchestration/model_aliases.py) so no concrete model id is
+    # spelled out here; an upgrade repoints the alias, not this registry.
     ConfigKeySpec(
         key="ollama.model",
         env_var="REMEDY_OLLAMA_MODEL",
         description="Default Ollama model for all roles",
         value_type=str,
-        default="qwen3-coder-next",
+        default=resolve_model_alias("ollama-default"),
     ),
     ConfigKeySpec(
         key="ollama.builder.model",

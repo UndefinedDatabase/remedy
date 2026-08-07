@@ -1,9 +1,10 @@
 """Tests for packages.orchestration.model_aliases — the built-in model alias table.
 
 Covers the table's own contract (resolution, loud failure, sorted accessors) and
-the F254 RELOCATION: the ids role_config.py and pingpong_provider.py hand out
-must be exactly the ones the alias table holds. Pure in-process assertions — no
-network, no ANTHROPIC_API_KEY, no config file.
+the F254 RELOCATION: the ids role_config.py, pingpong_provider.py, config.py's
+key registry and the two Ollama providers hand out must be exactly the ones the
+alias table holds. Pure in-process assertions — no network, no
+ANTHROPIC_API_KEY, no config file, no environment variable.
 """
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import inspect
 
 import pytest
 
-from packages.orchestration import pingpong_provider, role_config
+from packages.orchestration import config, pingpong_provider, role_config
 from packages.orchestration.model_aliases import (
     MODEL_ALIASES,
     builtin_model_ids,
@@ -96,3 +97,24 @@ class TestRelocationIsFaithful:
         # lazily, so this needs neither the network nor ANTHROPIC_API_KEY.
         provider = pingpong_provider.ClaudeProvider()
         assert provider._model == resolve_model_alias("claude-workhorse")
+
+    def test_ollama_builder_default_model(self):
+        # Imported inside the test: the provider module is optional runtime
+        # surface (the `ollama` package is not a hard dependency), and the
+        # import itself does no I/O.
+        from packages.providers.ollama_builder import provider as ollama_builder
+
+        assert ollama_builder._DEFAULT_MODEL == resolve_model_alias("ollama-default")
+
+    def test_ollama_planner_default_model(self):
+        from packages.providers.ollama_planner import provider as ollama_planner
+
+        assert ollama_planner._DEFAULT_MODEL == resolve_model_alias("ollama-default")
+
+    def test_ollama_model_config_key_default(self):
+        # Looked up by KEY, never by position: the registry is a tuple and a
+        # hardcoded index would silently point at another key once one is
+        # inserted above it.
+        spec = config.get_key_spec("ollama.model")
+        assert spec is not None
+        assert spec.default == resolve_model_alias("ollama-default")
