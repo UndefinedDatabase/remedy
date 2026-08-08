@@ -1,438 +1,378 @@
-You are the WORKER for F103 R8 (SPLIT round): CLOSURE PART 2 — the STATUS `[~]`->`[x]` line, the README capability sync in the SAME commit, the final `.agent` state, and the PR. Per docs/roadmap/STATUS_closure_protocol.md algorithm steps 4-6.
+You are the WORKER for F104 R2 (SPLIT round) in the Remedy repository at /home/decodeux/Repos/remedy.
 
-Read from disk before acting: AGENTS.md (highest authority), docs/roadmap/STATUS_closure_protocol.md, .agent/plan.md, .agent/live_review.md, .agent/handoff.md.
+Read from disk BEFORE acting, in this order: AGENTS.md (highest authority), .agent/plan.md, .agent/live_review.md, .agent/handoff.md, docs/roadmap/features/T2_F104.md. Do not rely on anything in this prompt as a substitute for reading them.
 
-R7 verdict is PASS. LAST_REVIEWED_SHA `09d7ab2d`. Accepted head for the package: `65e1eec2`. Open findings 0.
+You are the ONLY writer. The reviewer (the session that wrote this block) is read-only and re-runs every verification itself; your summary is never evidence. Never force-push. Never work on main. Never merge. Do not create a PR this round. `git add -A` is FORBIDDEN — stage exact paths only.
 
-You are the ONLY writer. The reviewer is read-only and re-runs every verification itself. Never force-push. Never work on main. `git add -A` is forbidden — stage exact paths.
+Branch: stay on `feature/f104-hard-budget-enforcement` (already checked out, tree clean at fc4929d5).
+R1 verdict: PASS. LAST_REVIEWED_SHA = fc4929d5. Open findings entering this round: 3 (R-0221 carried, plus R-0222 and R-0223 which YOU register in item 2 below).
 
-CRITICAL — DO NOT MERGE. Create the PR and stop. This session does not merge the PR it creates (closure protocol step 6). Do not run `gh pr merge`. Do not delete any branch.
-
-── STEP closure-2/2 — F103 ────────────────────────────────────
-Goal:        Flip the roadmap ledger to accepted, sync the README in
-             the same commit, land the final state, and open the PR.
-Bundle:      1 save the block · 2 apply the six authored texts ·
-             3 gates · 4 the closure commit (LAST on the branch) ·
-             5 push + PR · 6 handback
-Change:      `.agent/**`, README.md and docs/roadmap/STATUS.md ONLY.
-             No source, no tests, no feature file, no other doc.
-Constraints: The STATUS edit is the LAST commit on the branch
-             (Rule A4). README and STATUS may never disagree in any
-             committed state, so they land TOGETHER (R-0154).
-Done when:   Docs gate and canary green, tree clean, branch pushed,
-             PR created and NOT merged.
-Handback:    Completion report + rewrite .agent/handoff.md (in the
-             closure commit itself) — see 6.
+── STEP T002-part-1/2 — F104 ──────────────────────────────────
+Goal:        Make the money limit actually enforceable at runtime
+             (fix R-0222), then add the PURE predictive-cost engine
+             and its config keys. The safe-point integration, the
+             `predicted_budget_exhausted` stop reason and the two
+             acceptance fixtures are R3 and are NOT in this round.
+Bundle:      1 save this block · 2 register findings FIRST ·
+             3 fix R-0222 (ledger cost reaches the guard) ·
+             4 predictive config keys + resolver ·
+             5 the pure prediction engine · 6 tests ·
+             7 feature-file amendment + decisions · 8 state + handback
+Change:      packages/orchestration/pingpong_job.py,
+             packages/orchestration/budget_guard.py,
+             packages/orchestration/budget_resolution.py,
+             packages/orchestration/config.py,
+             tests/orchestration/test_predictive_budget.py (new),
+             tests/orchestration/test_budget_guard.py,
+             docs/roadmap/features/T2_F104.md,
+             .agent/** (last_block, live_review, plan, decisions,
+             authored, handoff). NOTHING else.
+Constraints: P6 — an unmeasured figure is NEVER rendered or computed
+             as a measured zero. No price is ever invented. Do-not-touch
+             from the feature file: calibration from history,
+             per-task-class caps, burn-rate anomaly detection.
+             AGENTS.md commit discipline: one logical step per commit,
+             <500 INSERTIONS per commit (DECISION F104 D1).
+Done when:   Gates A-D below all exit 0, tree clean, branch pushed,
+             .agent/handoff.md rewritten.
+Handback:    completion report + rewritten .agent/handoff.md
 ───────────────────────────────────────────────────────────────
 
-1. SAVE THE BLOCK (own commit, first)
-   Save this entire prompt verbatim to `.agent/last_block.md`.
-   COMMIT 1: exactly that file, message
-   "chore(f103): save the R8 closure block".
+## 1. SAVE THIS BLOCK (own commit, FIRST)
 
-2. APPLY THE SIX AUTHORED TEXTS
-   Six authored texts follow at the bottom, delimited by BEGIN/END
-   markers. The authored bytes are everything BETWEEN the marker
-   lines, including the final newline; the marker lines are never
-   content.
-   Save them to `.agent/authored/f103-r8-1.md` through
-   `.agent/authored/f103-r8-6.md` and verify each with `sha256sum`
-   against its BEGIN-marker hash. Any mismatch → STOP, hand back
-   naming the block and BOTH hashes; apply nothing.
-   Then apply, all in the working tree (do not commit yet):
-   a. f103-r8-1 → `docs/roadmap/STATUS.md`. ONE pair, a REWRITE. The
-      FROM is the whole F103 line and occurs exactly 1x. Report FROM
-      1x / TO 0x before, FROM 0x / TO 1x after. Touch no other line:
-      `wc -l docs/roadmap/STATUS.md` must be identical before and
-      after, and `grep -c '^- \[~\]' docs/roadmap/STATUS.md` must go
-      from 1 to 0.
-   b. f103-r8-2 → `README.md`. THREE pairs, all REWRITES. Each FROM
-      occurs exactly 1x. Report the before/after counts for all three.
-   c. f103-r8-3 → `.agent/live_review.md`. TWO pairs, both REWRITES.
-      Each FROM occurs exactly 1x. Report the before/after counts.
-   d. f103-r8-4 → `.agent/plan.md`, COMPLETE replacement by
-      `cp .agent/authored/f103-r8-4.md .agent/plan.md`, then
-      `cmp` the two and record the exit code.
-   e. f103-r8-5 → `.agent/candidates.md`, COMPLETE replacement by
-      `cp`, then `cmp` and record the exit code. This file keeps
-      R-0221 and ADDS the commit-size counting candidate. It must
-      NOT be emptied — both entries are the next feature's
-      claim-time block condition.
-   f. f103-r8-6 is the PR body. It is saved and committed, but it is
-      NOT applied to any tracked file — it is used verbatim in 5.
+Save this entire prompt verbatim to `.agent/last_block.md` (it currently still holds the F103 R8 block — that staleness is finding R-0223). Commit exactly that one file:
 
-3. GATES (run against the working tree, before the closure commit)
-   Both must exit 0:
-     python3 -m pytest tests/docs/ -q
-     python3 -m pytest tests/cli/test_golden_path.py -q
-   The docs gate is the pin that proves README and STATUS agree; a
-   red gate here means the ledger edit is wrong. Red → STOP and hand
-   back the raw output. Also run and record:
-     python3 -m apps.cli.grouped integrity check --json
+    chore(f104): save the R2 step block
 
-4. THE CLOSURE COMMIT (LAST on the branch)
-   Write the new `.agent/handoff.md` (see 6) FIRST, then make ONE
-   commit staging exactly these paths and nothing else:
-     docs/roadmap/STATUS.md
-     README.md
-     .agent/live_review.md
-     .agent/plan.md
-     .agent/candidates.md
-     .agent/handoff.md
-     .agent/authored/f103-r8-1.md .. .agent/authored/f103-r8-6.md
-   Message subject exactly:
-     docs(f103): accept F103 in the roadmap ledger and sync the readme
-   Body: what was accepted, the evidence job / package / SHA-256 /
-   accepted HEAD, that README is synced in the SAME commit so no
-   committed state has the two disagreeing (R-0154), that the PR is
-   not merged by this session, and that `.agent/candidates.md`
-   carries two entries as the next feature's claim-time block
-   condition. End the message with the trailer
-   `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>`.
-   Commit subjects must not contain leading-slash tokens, absolute
-   paths or secret-like strings — the evidence metadata scanner
-   rejects them.
-   Then verify: `git status --porcelain` empty, and
-   `git log --oneline -1` is this commit.
+## 2. REGISTER THE FINDINGS (own commit, SECOND, before any code)
 
-5. PUSH AND PR
-   `git push`.
-   Then create the PR — and do NOT merge it:
-     gh pr create --base main --head feature/f103-token-ledger \
-       --title "F103 — Token ledger (SQLite)" \
-       --body-file .agent/authored/f103-r8-6.md
-   Record the PR number and URL. Then run
-   `gh pr list --state open --json number,headRefName,baseRefName,isDraft`
-   and record the raw output: it must show exactly this one PR, not a
-   draft, `feature/f103-token-ledger` -> `main`.
-   Do NOT run `gh pr merge`. Do NOT delete the branch.
+Findings persist before repairs so nothing is lost if this round dies.
 
-6. HANDBACK — `.agent/handoff.md`, rewritten inside the closure commit
-   It carries:
-   - feature + round, branch, the per-commit changed-files table for
-     both commits (a commit cannot table its own SHA — table the
-     closure commit by role);
-   - transport proofs: the six sha256 verifications, the before/after
-     pair counts for STATUS (1), README (3) and live_review (2), and
-     the two `cmp` exit codes for plan.md and candidates.md;
-   - the verification table with REAL exit codes: docs gate, canary,
-     integrity check, final `git status --porcelain`;
-   - the STATUS line proof: `wc -l` identical before/after and the
-     `[~]` count going 1 -> 0;
-   - the closure values as accepted: Evidence job `f103-closure`,
-     package `remedy-review-20260808-210612-READY_FOR_REVIEW.zip`,
-     SHA-256 `8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad`,
-     accepted HEAD `65e1eec25e61c1d0fe78539adeb890d3426cb605`;
-   - the PR number and URL, and the explicit statement that it was
-     NOT merged;
-   - the item-status table (AGENTS.md), bundle items 1-6 exactly
-     once each, with `done` / `skipped` / `deviated` and a reason;
-   - open findings **0**, and the note that `.agent/candidates.md`
-     carries TWO entries which are the next feature's claim-time
-     block condition;
-   - next expected action: the next feature (F104, Rule A5) in a
-     FRESH session, whose Open PR Gate merges this PR.
-   - any deviation, DECLARED. The stated-cause overage clause
-     applies: never drop a mandated section to meet the line cap.
+Write the text between the BEGIN/END markers below — the marker lines themselves are NEVER content — to `.agent/authored/f104-r2-1.md`, then apply it as a COMPLETE replacement:
 
-AUTHORED TEXTS
+    cp .agent/authored/f104-r2-1.md .agent/live_review.md
+    cmp .agent/authored/f104-r2-1.md .agent/live_review.md ; echo "cmp exit $?"
 
-<<<BEGIN AUTHORED f103-r8-1
-sha256=713a7e26a6ba9114898b2ea6aab301984c610023d30b2543ae86aa4b10e09d6f>>>
-PAIR 1 — REWRITE
+Record that exit code in the handback. Then commit exactly `.agent/authored/f104-r2-1.md` and `.agent/live_review.md`:
+
+    docs(f104): register the dead-bridge and stale-block findings
+
+--- BEGIN f104-r2-1 ---
+# Live Review — F104 Hard budget enforcement
+
+> Reviewer: the main session of a one-session self-drive build
+> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
+> round. Findings are authored here by the reviewer only; the worker applies
+> them verbatim and marks `Done: R-XXXX` when a fix lands. Only reviewer-
+> authored text sets Resolved.
+> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0224.
+
+## Findings
+
+- R-0221 (Low, carried from F103 R5 through `.agent/candidates.md`):
+  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
+  `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD`
+  and runs a real `npm install` + `npm run build` in whatever checkout it runs
+  in, refreshing `apps/ui/dist` mtimes mid-suite. That costs every integration
+  gate seven phantom base-only failures through the mtime comparison in
+  `_frontend_is_stale()` (`ui_server.py:2748`).
+  REGISTERED here, deliberately NOT fixed by F104: the code is not this
+  feature's and AGENTS.md Scope Control bars the "while I'm here" edit. It is
+  carried as a documented LOW risk to F104 closure
+  (STATUS_closure_protocol.md precondition 1) and routed to the F252
+  flake-debt follow-up class. The F104 integration gate attributes these seven
+  to the pre-existing base-only class per docs/agents/integration_gate.md
+  rather than treating them as new failures.
+
+- R-0222 (Medium, found in the R1 review, F104 R2 fixes it):
+  `collect_ledger_cost_for_job` in `packages/orchestration/budget_guard.py` has
+  NO production caller. The live safe-point check builds its counters at
+  `packages/orchestration/pingpong_job.py:1824` via
+  `collect_counters_from_actuals(...)` without the `measured_cost_usd` and
+  `unpriced_call_count` arguments R1 added, so at runtime `measured_cost_usd`
+  is always None. `evaluate_budget` then takes its "no call reported a cost;
+  cannot determine exhaustion" branch for every real job, and `--max-cost-usd`
+  can never exhaust in production no matter what the ledger holds. R1's gates
+  were green because every cost test constructs its counters by hand.
+  This is the R-0220 class: a green gate is not a working feature, and the
+  question a review must ask of new code is who calls it.
+  The R1 handback did not declare the gap, which is the second half of the
+  finding — `.agent/handoff.md` is the only return channel and an omission
+  there is itself incomplete (planner_reviewer_prompt.md §4.8). The declared
+  deviation list named the `remedy job budget` text renderer as deferred but
+  said nothing about the bridge having no caller, so a reader of the handback
+  would conclude the money limit enforces. It does not, yet.
+
+- R-0223 (Low, found in the R1 review, F104 R2 fixes it):
+  `.agent/last_block.md` still contained the F103 R8 closure block while F104
+  R1 was executing, so the R1 step block exists nowhere on disk and the round's
+  order cannot be audited against what was delivered. In the split workflow
+  that file is the record of what was actually ordered
+  (planner_reviewer_prompt.md §4.12); self-drive removes the relay, not the
+  record. Every self-drive round saves its own block as its first commit.
+
+## Steps
+
+- R1: claim + candidate sweep + T001 — the `max_cost_usd` limit, the ledger
+  cost bridge, the CLI flag and their tests. PASS at fc4929d5; gates A-D
+  re-run by the reviewer (345 / 32 / 294 / 42 passed) and two mutation
+  red-proofs run in a disposable worktree confirmed the boundary comparison
+  and the P6 null-preservation are genuinely pinned.
+- R2: fix R-0222 (ledger cost reaches the live guard), add the predictive
+  config keys and the pure prediction engine, register R-0222 and R-0223.
+  In flight.
+- R3: T002 part 2 — the predictive check at the dispatch safe point, the
+  `predicted_budget_exhausted:<limit>` stop reason, the decision entry
+  carrying the arithmetic, and both acceptance fixtures.
+--- END f104-r2-1 ---
+
+## 3. FIX R-0222 — the ledger cost must reach the live guard
+
+Read `packages/orchestration/pingpong_job.py` around the `_stop_check()` closure (near line 1823) and `packages/orchestration/job_evidence.py:65` (`_resolve_job_ledger_project_id`) before editing.
+
+Facts established by the reviewer, verify them yourself rather than trusting this list:
+- `job_evidence.py` already passes `ledger_project_id` / `ledger_job_id` into `write_evidence_bundle`, so a live run DOES write one ledger row per finalized task run. The read side is what is missing.
+- `collect_ledger_cost_for_job(job_id=..., project_id=..., path=...)` returns `(measured_cost_usd, priced_call_count, unpriced_call_count)` and never raises on a missing ledger.
+- `collect_counters_from_actuals` already accepts `measured_cost_usd=` and `unpriced_call_count=`.
+
+Change `_stop_check()` so that it reads the job's real cost from the ledger and passes it into the counters. Requirements:
+
+a. Resolve the ledger project the SAME way the write side does. Reuse `_resolve_job_ledger_project_id` from `packages/orchestration/job_evidence.py` rather than writing a second resolver — AGENTS.md "one spelling per concept" forbids the synonym. Import it lazily inside the function, matching the existing lazy-import style at that site.
+
+b. The read must NEVER be able to break a run. A ledger read that raises for any reason leaves the cost at None and the run continues; a stop check is not the place a job dies. Wrap it the way `_record_finalized_call_in_ledger` wraps its own write (log the error, swallow it), and say in a one-line WHY comment above the call that budgets read a mirror and a broken mirror must not stop a healthy job.
+
+c. Do NOT read the ledger when the job carries no cost limit. `_job_budgets` is in scope; when it is None or its `max_cost_usd` is None, skip the query entirely and keep the current behaviour byte for byte. A SQLite query per task for a limit nobody set is waste, and it also keeps every existing budget test on its current path.
+
+d. Preserve P6 exactly: whatever `collect_ledger_cost_for_job` returns for the cost is passed straight through, None included. Never coerce, never default to 0.0.
+
+Commit (source + its tests may land together only if the tests are in the same logical step; prefer source first, tests in item 6):
+
+    fix(f104): read the ledger cost at the live budget safe point
+
+## 4. PREDICTIVE CONFIG KEYS + RESOLVER
+
+In `packages/orchestration/config.py`, add four `ConfigKeySpec` entries in the shape of the existing `budget.max_cost_usd` spec, placed adjacent to it:
+
+- `budget.price_basis_usd_per_1k_tokens`, env `REMEDY_BUDGET_PRICE_BASIS_USD_PER_1K_TOKENS`, `value_type=float`, `default=None`, description "Provisional USD price per 1000 tokens used for cost predictions (F104; provisional until calibration)".
+- `budget.class_default_tokens_low`, env `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_LOW`, `value_type=int`, `default=8000`.
+- `budget.class_default_tokens_medium`, env `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_MEDIUM`, `value_type=int`, `default=32000`.
+- `budget.class_default_tokens_high`, env `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_HIGH`, `value_type=int`, `default=120000`.
+
+Each description ends with "(F104; provisional until calibration)" — the feature file requires these to be documented as provisional.
+
+In `packages/orchestration/budget_resolution.py`, add ONE public resolver next to `resolve_job_budgets`:
+
+    resolve_predictive_budget_config(*, config_path=None, project_root=None) -> PredictiveBudgetConfig
+
+returning a frozen dataclass `PredictiveBudgetConfig` with fields `price_basis_usd_per_1k_tokens: float | None` and `class_default_tokens: dict[str, int]` keyed by the `TokenBand` values `"low"`, `"medium"`, `"high"`. Reuse the existing `_pos_float` / `_pos_int` validators and the same `cfg.get_value` + `ConfigSource.DEFAULT` handling the other resolvers use. The price basis stays None when unset — do not substitute a number.
+
+Commit:
+
+    feat(f104): add the provisional price-basis and class-default config keys
+
+## 5. THE PURE PREDICTION ENGINE
+
+In `packages/orchestration/budget_guard.py`, add a frozen dataclass and one function. This round adds NO caller for them — that is deliberate and R3 wires them at the dispatch safe point; say so in the module-level docstring or a WHY comment so the absence is documented where a reader would search for it (AGENTS.md "deliberate absences are documented").
+
+    @dataclass(frozen=True)
+    class BudgetPrediction:
+        would_breach: bool
+        estimate_basis: str
+        band: str
+        expected_tokens: int | None
+        expected_cost_usd: float | None
+        spent_cost_usd: float | None
+        limit_usd: float | None
+        arithmetic: str
+        def to_json(self) -> dict[str, Any]: ...
+
+    def predict_next_task_cost(budgets, counters, *, band, config) -> BudgetPrediction
+
+Rules, all of which are acceptance criteria, not polish:
+
+- `estimate_basis` is ALWAYS a non-empty label and is carried in `to_json`. Its values are exactly: `"class_default"` (a band was known and priced), `"class_default_missing_band"` (no band, so the LARGEST class default was used — over-stopping beats overspending, the feature file's A9 edge case), `"no_price_basis"` (no price basis configured), `"no_cost_limit"` (`budgets.max_cost_usd` is None), `"unpriced_spend"` (what has been spent so far is unknown). No other value.
+- `would_breach` is True ONLY when a real number can be compared: basis is `class_default` or `class_default_missing_band`, and `spent + expected > limit`. Note `>` and not `>=` — the reactive check owns the exact-limit case and duplicating it here would make the two disagree about the boundary.
+- Spent money: use `counters.measured_cost_usd` when it is not None. When it is None, spend is unknown AND the basis becomes `unpriced_spend` with `would_breach=False` — EXCEPT when `counters.provider_calls == 0`, where a job that has made no provider call has definitionally spent nothing, so spend is 0.0 and prediction proceeds. Write the one-line WHY for that exception directly above it.
+- Never invent a price. With `config.price_basis_usd_per_1k_tokens` None, the basis is `no_price_basis`, `expected_cost_usd` is None, `would_breach` is False, and `arithmetic` says the price basis is unset. This is the honest default and it makes the predictive path inert until an operator configures a price.
+- `expected_cost_usd = expected_tokens / 1000 * price_basis`.
+- `band` accepts the `TokenBand` values from `packages/orchestration/token_economy.py` (`"low"`, `"medium"`, `"high"`, `"unknown"`); `"unknown"`, None, or any unrecognised string all mean "no band" and take the largest-class-default path. Import `TokenBand` rather than re-spelling the literals.
+- `arithmetic` is a single human-readable line carrying spent, expected, limit and basis — the feature file requires a human to see WHY. Example shape: `spent $1.2000 + expected $0.9000 (32000 tokens, band=medium, basis=class_default) > limit $2.0000`. When a figure is unknown it is rendered as `not-measured`, never as `$0.0000`.
+- Keep `budget_guard.py` import-light exactly as its existing comment demands: import `TokenBand` and `PredictiveBudgetConfig` lazily inside the function if a module-level import would drag in config/SQLite machinery. Check first; do not add a lazy import you do not need.
+
+Commit:
+
+    feat(f104): add the predictive next-task cost engine
+
+## 6. TESTS
+
+New file `tests/orchestration/test_predictive_budget.py` (the name the feature file suggests). Cover, at minimum:
+
+- every one of the five `estimate_basis` values, each asserting both the basis and `would_breach`;
+- the just-under case: spent + expected > limit → `would_breach` True;
+- the just-over-limit-already case and the exact-boundary case (`spent + expected == limit` → `would_breach` False, because the reactive check owns that boundary);
+- missing/unknown band → the LARGEST class default is used and the basis says the band was missing;
+- `price_basis` unset → inert, `expected_cost_usd is None`, and the arithmetic string does not contain `$0.0000`;
+- unknown spend with provider calls > 0 → `unpriced_spend`, no breach; unknown spend with zero provider calls → treated as 0.0 and prediction proceeds;
+- `to_json` carries `estimate_basis` (this is the grep-style pin the feature file's T003 will extend);
+- `resolve_predictive_budget_config` — defaults when nothing is configured, and TOML/env override precedence for the price basis, following the existing patterns in `tests/orchestration/test_job_budgets.py`.
+
+Extend `tests/orchestration/test_budget_guard.py` with a test that the R-0222 fix is real: assert that the pingpong safe-point path passes ledger cost into the counters. Prefer a test that exercises `_stop_check` behaviour over one that greps source text; if the closure is genuinely not reachable from a test, state that in the handback and pin it with the narrowest honest alternative, naming why.
+
+Commit:
+
+    test(f104): cover the prediction engine and the live ledger read
+
+## 7. FEATURE-FILE AMENDMENT + DECISIONS (reviewer-authored, apply verbatim)
+
+The spec assumes tasks carry a band; they do not — `JobTask` has no band field and `TokenBand` lives in `token_economy.py`. That is a wrong-spec finding routed to planning per planner_reviewer_prompt.md §4.7, and the reviewer has already chosen the option. Apply the amendment.
+
+Write the text between the markers to `.agent/authored/f104-r2-2.md`. It is ONE FROM→TO pair, a REWRITE, against `docs/roadmap/features/T2_F104.md`. The FROM occurs exactly 1x. Report FROM 1x / TO 0x before and FROM 0x / TO 1x after.
+
+--- BEGIN f104-r2-2 ---
 FROM:
-- [~] F103 — Token ledger (SQLite)
+- Predictive check at the task-dispatch safe point: expected =
+  band→tokens class default × configured price basis; if spent +
+  expected > limit → the standard stop path with reason
+  predicted_budget_exhausted:<limit> + a decision entry carrying the
+  arithmetic (spent, expected, basis) so the human sees WHY.
+
 TO:
-- [x] F103 — Token ledger (SQLite) (T001–T003 complete; accepted 2026-08-08 · live review PASS — ACCEPTED · Evidence job f103-closure · package remedy-review-20260808-210612-READY_FOR_REVIEW.zip · SHA-256 8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad · accepted HEAD 65e1eec25e61c1d0fe78539adeb890d3426cb605)
-<<<END AUTHORED f103-r8-1>>>
+- Predictive check at the task-dispatch safe point: expected =
+  band→tokens class default × configured price basis; if spent +
+  expected > limit → the standard stop path with reason
+  predicted_budget_exhausted:<limit> + a decision entry carrying the
+  arithmetic (spent, expected, basis) so the human sees WHY.
+  DECISION F104 D3 (2026-08-09): a JobTask carries no band field, so
+  the band is DERIVED at the safe point from
+  token_economy.estimate_task_token_band() over the next task's context
+  estimate; a task whose band cannot be derived takes the A9 path below.
+  DECISION F104 D4 (2026-08-09): the price basis has NO default. With
+  none configured the predictive path is inert and labels itself
+  estimate_basis=no_price_basis — Remedy invents no price (P6), and an
+  invented one would make every prediction a fabrication.
+--- END f104-r2-2 ---
 
-<<<BEGIN AUTHORED f103-r8-2
-sha256=d71606371fb801fda081d265d7c053d384d3bcead0a9a71e365e64cf098c2b3c>>>
-PAIR 1 — REWRITE
-FROM:
-39 of 255 registered items accepted. Next: F103 (Token ledger (SQLite)).
-TO:
-40 of 255 registered items accepted. Next: F104 (Hard budget enforcement).
+Then append the matching entry to `.agent/decisions.md`. Write the text between the markers to `.agent/authored/f104-r2-3.md` and append it verbatim to the END of `.agent/decisions.md`, separated by exactly one blank line. Verify the heading line occurs exactly 1x afterwards.
 
-PAIR 2 — REWRITE
-FROM:
-| 2 | Minimal Self-Build Runtime | 1 | 14 |
-TO:
-| 2 | Minimal Self-Build Runtime | 2 | 14 |
+--- BEGIN f104-r2-3 ---
+## DECISION F104 D3 + D4 — predicted cost has a derived band and no invented price (2026-08-09)
 
-PAIR 3 — REWRITE
-FROM:
-Accepted in Tier 2 so far:
-F254 model alias table & dead-model doctor check.
-TO:
-Accepted in Tier 2 so far:
-F254 model alias table & dead-model doctor check,
-F103 token ledger (SQLite).
-<<<END AUTHORED f103-r8-2>>>
+Context: T2_F104's Design says expected cost is "band→tokens class default ×
+configured price basis", which reads as though a task carries a band. It does
+not: `JobTask` has no band field, and the only band vocabulary in the repo is
+`TokenBand` (low/medium/high/unknown) in
+`packages/orchestration/token_economy.py`, alongside
+`estimate_task_token_band(task_type, context_estimate)`.
 
-<<<BEGIN AUTHORED f103-r8-3
-sha256=00be41a5fe574cb96d6e244e7a0b01319581ff36147c6d2de0c07036175fd62d>>>
-PAIR 1 — REWRITE
-FROM:
-  those values exist (F079 R4/R5 and F254 R11/R12 precedent).
-TO:
-  those values exist (F079 R4/R5 and F254 R11/R12 precedent) — PASS.
+D3 — the band is DERIVED, not stored. The predictive check derives the band at
+the dispatch safe point from `estimate_task_token_band()` over the next task's
+context estimate. Alternatives considered: (a) add a `band` field to `JobTask`
+— rejected, it changes a persisted model and every plan written before it would
+carry a null anyway, which is the same missing-band case with more migration;
+(b) always use the largest class default — rejected as needlessly blunt when a
+context estimate exists. A task whose band cannot be derived takes the feature
+file's own A9 path: the LARGEST class default, with the basis label saying the
+band was missing, because over-stopping beats overspending.
 
-PAIR 2 — REWRITE
-FROM:
-- R7: in flight — closure part 1. Awaiting the handback with the
-  evidence job id, the package filename, its SHA-256 and the content
-  HEAD the zip records as the accepted head.
-- R8: pending — closure part 2.
-TO:
-- R7 (closure part 1) — **PASS**. Reviewed `f69990a1..09d7ab2d`
-  bottom-up across five commits. The change set is exactly the
-  mandated two-path family — `.agent/**` and
-  `docs/roadmap/features/T2_F103.md` — with STATUS.md, README.md,
-  every source file and every test file untouched, so no part of the
-  closure claim was smuggled in early. Transport is proved
-  disk-to-disk against the REVIEWER'S OWN scratchpad originals rather
-  than by the digest fallback: `cmp` of each of the three
-  `.agent/authored/f103-r7-*.md` files against its original returned
-  **exit 0 x3**. Both `live_review.md` pairs are genuine REWRITES —
-  the reviewer re-parsed the FROM and TO strings out of the committed
-  receipt and confirmed neither TO contains its FROM — and after the
-  edit each is FROM **0x** / TO **1x**. `.agent/plan.md` equals its
-  authored file (`cmp` exit 0). The Built State landing is a PURE
-  APPEND, proved twice over: 5263 B before + 4376 B authored = 9639 B
-  after, `tail -c 4376` byte-identical to the authored file, and
-  `git diff` +69/-0.
-  The load-bearing claim is the one this round existed to make, and
-  the reviewer made it on its OWN run: `python3 -m pytest -n auto -q`
-  → **16131 passed, 19 skipped in 112.64s, exit 0**, matching the
-  handback exactly. The +10 delta against the R5 gate's 16121 is
-  VERIFIED rather than asserted: `test_token_ledger.py` collected
-  **72** tests at the gate head `af91d57b` and collects **82** now, so
-  the entire full-suite delta is R6's live-mirror tests and nothing
-  else moved. R6's production code is therefore covered by full-suite
-  evidence — the debt the R6 verdict recorded is paid.
-  The package was checked by the reviewer, not read from the
-  handback: disk `sha256sum` == `8e967d78…d38ad`; `zipfile.testzip()`
-  reports no corrupt member across 2211 members; the packaged
-  `.review_zip_manifest.json` records `package_status=
-  READY_FOR_REVIEW`, `committed_review_subject` spanning
-  `c1c0fbcb…a05d..65e1eec2…b605` with `base_is_ancestor=true`, 39
-  commits and 51 files, `ready_gate_matrix.ok=true` with
-  `blocking_reasons: []`, an alignment verdict of PASS with zero hash
-  mismatches and zero uncovered source or test files, and
-  `final_verifier_reproducible=true` (`VERIFIED_EQUAL`). All eight
-  closed-schema gates are on disk, so this is a real bundle and not a
-  lone runtime gate. Every named packaging pitfall was checked
-  individually and met: `run_id` `vr-0001`/`vr-0002`, bare 64-hex
-  `output_hash`, `test_files` that are files, and
-  `len(node_ids) == selected` on both runs — and the ids are REAL,
-  not merely well-shaped: the reviewer re-collected both suites and
-  the 115 recorded ids are exactly the 115 collected ids, zero extra
-  and zero missing, which is the F080 BLOCKED_EVIDENCE class closed
-  by evidence. `test_status.passed=115` equals 82+33, so the
-  fail-closed VerificationTests confirmation in
-  `build_review_manifest` is satisfied rather than bypassed. The
-  evidence dir is untracked and ignored and contributes ZERO files to
-  the review subject.
-  Reviewer-run verification: the full suite as above, `tests/docs/`
-  **294 passed**, canary **42 passed**, `integrity check --json`
-  `"passed": true` across 5/5 checks with `relevant_untracked` 0,
-  `git status --porcelain` empty, branch in sync with origin, and
-  `gh pr list --state open` still `[]`. Verification tier: CLOSURE
-  CONFIRMATION — the second and last of this feature's two full-suite
-  runs. No block condition.
-  Declared deviations accepted: the 106-line handoff states its cause
-  and drops no mandated section. One observation the reviewer records
-  rather than hides: commit `68bd9f3f` is +308/-277 = **585 changed
-  lines**, over 500 by the churn reading of AGENTS.md Commit
-  Discipline though under it by the insertions reading every prior
-  verdict in this repository has used. It is a single-file verbatim
-  save of the reviewer's own step block and is inseparable by
-  construction. Accepted under the insertions reading; the ambiguity
-  itself goes to `.agent/candidates.md` as a closure candidate rather
-  than spending an R-id (STATUS_closure_protocol.md,
-  "Closure-candidate findings").
-  LAST_REVIEWED_SHA = `09d7ab2d`.
-- R8: in flight — closure part 2. The STATUS `[~]`->`[x]` line and the
-  README capability sync land in the SAME commit, last on the branch,
-  then the PR — which this session does NOT merge.
-<<<END AUTHORED f103-r8-3>>>
+D4 — the price basis has no default. `budget.price_basis_usd_per_1k_tokens` is
+unset unless an operator sets it; with it unset the predictive path is inert and
+labels itself `estimate_basis=no_price_basis`. Alternative considered: ship a
+plausible default price — rejected under P6. A default price is a number nobody
+measured, and every prediction derived from it would be a fabrication wearing an
+honest label. An inert predictor is safe because the reactive check is the
+backstop and is unchanged.
 
-<<<BEGIN AUTHORED f103-r8-4
-sha256=c4e6084bf42e93bb2098d870532e0cf0820f31f9191b35bf68b1ddc321061533>>>
-# Plan — F103 Token ledger (SQLite)
+Reverse either decision by deleting its half of this entry and the matching
+lines in `docs/roadmap/features/T2_F104.md`.
+--- END f104-r2-3 ---
 
-Branch: feature/f103-token-ledger. R1-R7 all PASSed; LAST_REVIEWED_SHA
-09d7ab2d. Open findings 0; next free ID R-0222. Accepted head for the
-package: 65e1eec2. Build mode: one-session self-drive
-(docs/agents/self_drive_protocol.md), one delegated worker per round.
+Commit (feature file + decisions + both authored files together — one logical step):
+
+    docs(f104): record the derived-band and no-default-price decisions
+
+## 8. GATES, STATE, HANDBACK
+
+Run all four and record the REAL command, trimmed output and REAL exit code:
+
+    A  python3 -m pytest tests/orchestration/test_predictive_budget.py tests/orchestration/test_budget_guard.py tests/orchestration/test_job_budgets.py -q
+    B  python3 -m pytest tests/orchestration/test_budget_stop_integration.py tests/orchestration/test_f018_authority_integration.py tests/orchestration/test_stop_reasons.py -q
+    C  python3 -m pytest tests/docs/ -q
+    D  python3 -m pytest tests/cli/test_golden_path.py -q
+
+Gate C is mandatory because this round's change set includes `docs/roadmap/**` (planner_reviewer_prompt.md §3, docs-round gate). Gate D is the canary. A red gate is a STOP: hand back the raw output and do not paper over it. Do not run the full suite — that is the R4 integration gate, not this round.
+
+Any deliberately destructive verification (mutation red-proofs) runs ONLY inside a disposable `git worktree`; the primary checkout must satisfy `git status --porcelain` == empty at handback. Put any worktree under `.remedy-wt/` (gitignored) — writes to /tmp are denied on this machine — and remove it before you finish.
+
+Then rewrite `.agent/plan.md` from the text below (`.agent/authored/f104-r2-4.md`, applied by `cp`, then `cmp`, record the exit code). Do NOT touch `.agent/context.md` — scope, branch and constraints are unchanged from R1 and rewriting it risks its multi-test contract for no gain.
+
+--- BEGIN f104-r2-4 ---
+# Plan — F104 Hard budget enforcement
+
+Branch: feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after
+PR #187 — the F103 closure — was merged at the Open PR Gate. Build mode:
+one-session self-drive (docs/agents/self_drive_protocol.md), one delegated
+worker per round. Open findings: 3 — R-0221 (Low, carried, not F104's to fix),
+R-0222 (Medium, fixed in R2), R-0223 (Low, fixed in R2).
+Next free ID: R-0224.
 
 ## Goal
-F103 is built, gated and packaged: token and cost actuals are queryable,
-a real job mirrors its finalized task runs into the per-project SQLite
-ledger, and `remedy stats cost` answers per-job, per-role and per-period
-questions with every figure naming its basis. What remains is the ledger
-edit itself — flipping docs/roadmap/STATUS.md from `[~]` to `[x]` with
-the README capability sync in the SAME commit, so no committed state has
-the two disagreeing (R-0154), and opening the PR.
+Budgets grow teeth and foresight. A money limit `max_cost_usd` joins the F018
+limits under the same precedence rules; the counters read real cost actuals out
+of the F103 SQLite ledger with the unpriced notation surviving the trip; and a
+PREDICTIVE check at the task-dispatch safe point stops BEFORE a task that would
+breach the limit, recording the arithmetic that justified the stop. The
+reactive check stays exactly as it is — prediction never replaces the backstop.
 
 ## Current Step
-R8 — closure part 2: apply the reviewer-authored STATUS `[x]` line and
-the three README pairs in ONE commit that also carries the final
-`.agent` state, LAST on the branch (Rule A4), touching exactly
-docs/roadmap/STATUS.md, README.md and `.agent/**`. Then push and
-`gh pr create`. The PR is NOT merged by the session that creates it: it
-merges at the next feature's Open PR Gate, which is the operator's
-manual-review window.
+R2 — T002 part 1: fix R-0222 so the ledger cost reaches the live safe-point
+guard, add the provisional price-basis and class-default config keys with their
+resolver, and add the PURE prediction engine (`BudgetPrediction`,
+`predict_next_task_cost`) with its tests. The engine has no caller until R3 —
+that is stated in the code and here, so it is a scheduled absence and not the
+R-0222 mistake repeating.
 
 ## Next Steps
-- The feature-done banner, and the session ends. The operator may
-  review and merge the PR manually at any time.
-- Next feature by Rule A5: F104 — Hard budget enforcement. Its first
-  reviewed round MUST register or resolve every entry in
-  `.agent/candidates.md` and empty the file; a non-empty candidates
-  file at claim time is itself a block condition.
+- R3 — T002 part 2: derive the band at the dispatch safe point per DECISION
+  F104 D3, wire `predict_next_task_cost` in BEFORE the next task is dispatched,
+  add the `predicted_budget_exhausted:<limit>` stop reason and the decision
+  entry carrying the arithmetic, and both acceptance fixtures — just-under, and
+  prediction-wrong proving the reactive backstop still fires.
+- R4 — T003: display and docs; every user-facing predicted number carries its
+  `estimate_basis` label, pinned by a grep-style test.
+- R5 — integration gate per docs/agents/integration_gate.md.
+- R6/R7 — closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Risks
-- The README may claim only what is merged and verified. It is synced
-  in the same commit as the STATUS line for exactly that reason, and
-  `tests/docs/` is the pin that proves the two agree — the docs-round
-  gate must run before the commit stands.
-- `.agent/candidates.md` carries TWO entries after this round: R-0221
-  and the AGENTS.md commit-size counting ambiguity. Neither is F103's
-  to fix and neither may be silently dropped.
-- No force-push, no branch deletion, no merge this session.
-<<<END AUTHORED f103-r8-4>>>
+- Cost is NULLABLE by design (P6): the ledger stores NULL for an unpriced call
+  and nothing may render that as a measured zero. Every new figure keeps the
+  None and says so.
+- Predictions come from documented class defaults, not calibration.
+  `estimate_basis=class_default` is an acceptance criterion, not polish.
+- R-0221 costs the integration gate seven phantom base-only failures.
+  Attribute them, do not chase them.
+- The live ledger read happens inside a stop check. It is guarded and cheap
+  (skipped entirely when no cost limit is set), but any regression there is a
+  regression in the stop path — the most safety-critical code in the job loop.
+--- END f104-r2-4 ---
 
-<<<BEGIN AUTHORED f103-r8-5
-sha256=6ecf1e5498428ccdaa0b1df24f18579654e61de32d0813f6f1a886714152ec87>>>
-# Closure Candidates — carrier of record
+Rewrite `.agent/handoff.md` (rewrite, never append). It MUST carry, per AGENTS.md:
+- feature + round, branch, every commit SHA in order, and that this was a SPLIT round with no verdict, no PR, no merge;
+- a per-commit changed-files table with `+/-` and a reason per path;
+- the transport proofs: the `cmp` exit codes for f104-r2-1 and f104-r2-4, the before/after FROM/TO counts for the f104-r2-2 REWRITE pair, and the 1x heading check for the f104-r2-3 append;
+- the verification table with the REAL trimmed output and REAL exit codes for gates A-D;
+- an item-status table covering bundle items 1-8, each exactly once, with `done` / `skipped` (reason) / `deviated` (reason);
+- open-findings count and which findings this round marked `Done:`;
+- the final `git status --porcelain` result;
+- next expected action;
+- a "Deviations, declared" section naming ANY departure from this block, including its own line count if it exceeds 60 lines and why.
 
-> Written at closure per docs/roadmap/STATUS_closure_protocol.md
-> ("Closure-candidate findings", disk-vehicle rule, operator ruling
-> 2026-08-01). Read at Window-1 session bootstrap
-> (docs/agents/planner_reviewer_prompt.md §1). One entry per
-> candidate: description · source feature · date. Any entry present
-> at feature-claim time is a block condition.
+Declare in the handback, explicitly, whether `predict_next_task_cost` has a production caller at the end of this round. It does not, by design, and R3 adds one — saying so is what stops R-0222 from recurring silently.
 
-- R-0221 (Low): `TestAutoBuildBehavior::test_auto_build_runs_by_default` in `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD` and runs a real `npm install` + `npm run build` in whatever checkout it runs in, refreshing `apps/ui/dist` mtimes mid-suite. Costs every integration gate seven phantom base-only failures via the mtime comparison in `_frontend_is_stale()` (`ui_server.py:2748`). · source feature F103 (found at the R5 gate; the code is not F103's) · 2026-08-08
-- Commit-size counting is undefined (Low): AGENTS.md Commit Discipline says "If a diff exceeds 500 lines, stop and split before committing" without stating whether the count is INSERTIONS or insertions+deletions. F103 R7's commit `68bd9f3f` is +308/-277 = 585 changed lines — over the cap by the churn reading, under it by the insertions reading. This is not an edge case: every round's `.agent/last_block.md` and `.agent/handoff.md` save is a full-file rewrite, so the churn reading is unmeetable by construction for a verbatim single-file state save, while every verdict in this repository so far has silently used the insertions reading. Fix: state the counting rule in AGENTS.md and say whether a verbatim single-file state rewrite is exempt. · source feature F103 (raised at the R7 closure review; the rule is not F103's) · 2026-08-08
-<<<END AUTHORED f103-r8-5>>>
+Finally: commit the state files, `git push`, and confirm `git status --porcelain` is empty. Do NOT create a PR. Do NOT merge anything. Do NOT run `gh pr merge`.
 
-<<<BEGIN AUTHORED f103-r8-6
-sha256=53fef3259d02e94472d9e9386350c7e495902f2b3f1b4d251ee2ac270b017cec>>>
-## What changed
+Every commit message ends with the trailer:
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 
-F103 makes token and cost actuals QUERYABLE. Every finalized task run
-lands as a row in a per-project SQLite ledger at
-`<data_root>/projects/<uuid>/ledger.sqlite`, and `remedy stats cost`
-answers per-job, per-role and per-period questions from it. This is the
-first and so far only use of SQLite in Remedy; the module docstring says
-so where a reader would search for it.
+Commit subjects must not contain leading-slash tokens, absolute paths, or secret-like strings — the evidence metadata scanner rejects them.
 
-- **T001** `packages/orchestration/token_ledger.py`: schema version 1 in
-  a `meta` row, numbered migrations, WAL, the `calls` table keyed by
-  `call_id` with the three covering indexes, and `record_call` — which
-  NEVER fails the run: any failure returns False and counts a miss.
-- **T002** the call site at the actuals seam plus `backfill_ledger`
-  (idempotent by `call_id`) and `verify_ledger`, which compares row
-  CONTENT rather than presence and reports field-level `drifted_rows`.
-- **T003** `apps/cli/commands/stats_ledger_cmd.py`: `stats cost`,
-  `stats backfill-ledger` and `stats verify-ledger` in the existing
-  `stats` group, human and `--json`, every figure labelled with its
-  basis.
-- **R6** arms the mirror at the task-run evidence seam in
-  `job_evidence.py`, so a REAL job yields rows with nobody passing a
-  `ledger_*` argument by hand.
-
-## Why
-
-The files stay the source of truth; the database is a mirror. A ledger
-write may fail without failing the run precisely because every row
-restates something a file already says. Actuals capture already existed
-file-based — what it could not do is answer a question.
-
-## Key decisions
-
-- **D16 — row granularity.** A row is one FINALIZED TASK RUN, keyed
-  `"<job_id>:<task_id>"`, not one HTTP request. No per-request record
-  exists on disk, and synthesising one would fabricate ids, timestamps
-  and a usage split no file records (the F075 lesson). Remedy
-  deliberately does not do that.
-- **D17 — closure moved from R6 to R7** so R6 could arm the live
-  mirror. Closing before that would have claimed a capability that was
-  wired and switched off (finding R-0220).
-- **P6 holds in code, not prose.** There is no `COALESCE` in the
-  queries, so a sum over all-unmeasured rows stays NULL and never
-  renders as a measured zero. Counts use `COUNT`, because 0 is their
-  honest empty value. Reads use `mode=rw` + `PRAGMA query_only=1` so a
-  read never creates a database nor litters `-wal`/`-shm` sidecars.
-
-## How to review
-
-    python3 -m pytest tests/orchestration/test_token_ledger.py tests/cli/test_stats_cost.py -q   # 115 passed
-    python3 -m pytest tests/docs/ -q                                                             # 294 passed
-    python3 -m pytest tests/cli/test_golden_path.py -q                                           # 42 passed (canary)
-    python3 -m pytest -n auto -q                                                                 # 16131 passed, 19 skipped
-
-Package: `remedy-review-20260808-210612-READY_FOR_REVIEW.zip`,
-SHA-256 `8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad`,
-Evidence job `f103-closure`, accepted HEAD `65e1eec2`.
-
-## Changed files (source, tests and docs; `.agent/**` state omitted)
-
-| Path | What |
-|------|------|
-| `packages/orchestration/token_ledger.py` | new — schema, writer, backfill, reconcile, cost queries |
-| `packages/orchestration/job_evidence.py` | live mirror armed at the task-run evidence seam |
-| `packages/orchestration/pingpong_evidence.py` | the ledger hook at the actuals seam |
-| `apps/cli/commands/stats_ledger_cmd.py` | new — the three stats commands |
-| `apps/cli/command_catalog.py` | registers `stats.cost`, `stats.backfill-ledger`, `stats.verify-ledger` |
-| `apps/cli/commands/__init__.py` | wires the new handler module |
-| `tests/orchestration/test_token_ledger.py` | new — 82 tests |
-| `tests/cli/test_stats_cost.py` | new — 33 tests |
-| `tests/cli/test_failure_cmd.py` | declared: exact-contents assertion on the `stats` group weakened to membership |
-| `docs/roadmap/features/T2_F103.md` | D16 amendment + Built State |
-| `docs/roadmap/STATUS.md` | `[~]` -> `[x]` |
-| `README.md` | capability sync, same commit as STATUS (R-0154) |
-| `AGENTS.md` | D15 stated-cause handoff-overage clause (own commit, R1) |
-
-## Verdict and findings
-
-Live review **PASS** across R1–R8, every round reviewer-gated with the
-reviewer re-running the verification itself. **0 open findings.**
-R-0218 (perceptible-slowdown criterion) closed against a measured
-**+1.386 ms per finalized task run**, independently reproduced by the
-reviewer at +1.395 ms. R-0219 (presence-vs-content reconcile) and
-R-0220 (mirror never switched on) closed, both mutation red-proofed in
-disposable worktrees. R-0221 (a UI auto-build test that defeats its own
-env var) is NOT this feature's code and is carried in
-`.agent/candidates.md` as the next feature's claim-time block
-condition, together with an AGENTS.md commit-size counting ambiguity
-raised at the closure review.
-
-## Runtime actuals (observed)
-
-- Rounds: **8** (R1–R8), all PASS; closure split across R7/R8 because
-  the STATUS line quotes values that only exist after the package.
-- Models: planner/reviewer and every delegated worker ran on Claude
-  Opus 5 (1M context).
-- Full suite: **112.64 s** wall clock at the accepted head; scoped
-  ledger + stats suites 6.05 s.
-- Total feature wall clock: **not-measured** — the build spans several
-  sessions and no clock was recorded end to end. A guess would be worse
-  than the gap.
-- Tokens and cost: **not-measured**. No provider exposed measured usage
-  for this build, which the final verifier records as
-  `token_measurement_confidence: low`, `actual_call_count: 0`. That is
-  precisely the gap this feature closes for every provider that DOES
-  report.
-
-## Merge
-
-This PR is deliberately NOT merged by the session that created it. It
-merges at the next feature's Open PR Gate — the operator's
-manual-review window — or manually by the operator at any time.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-<<<END AUTHORED f103-r8-6>>>
+If anything in this block contradicts AGENTS.md, AGENTS.md wins and you hand back naming the contradiction instead of guessing. If a gate goes red and the fix is not obviously inside this round's change set, STOP and hand back with the raw output rather than widening scope.
