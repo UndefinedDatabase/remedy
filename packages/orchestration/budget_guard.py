@@ -2,6 +2,13 @@
 
 Pure, deterministic evaluation of job budgets against recorded actuals.
 No writes, no stop, no side effects. Injected clock for wall-time/deadline.
+
+F104 adds a second, FORWARD-looking evaluation next to the reactive one:
+``predict_next_task_cost``. Remedy deliberately does NOT call it from the job
+loop yet — F104 R3 wires it at the task-dispatch safe point, where the band is
+derived per DECISION F104 D3. The engine lands first, pure and tested, so that
+the change to the stop path (the most safety-critical code in the loop) is a
+single call rather than a call plus an unproven algorithm.
 """
 from __future__ import annotations
 
@@ -9,10 +16,14 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from packages.core.models import JobBudgets
+from packages.orchestration.token_economy import TokenBand
+
+if TYPE_CHECKING:  # import-light at runtime: the config type is duck-typed here
+    from packages.orchestration.budget_resolution import PredictiveBudgetConfig
 
 VALID_ACTUAL_SOURCES = frozenset({
     "pingpong_actuals", "pingpong_live", "persisted_job_actuals",
@@ -325,6 +336,158 @@ def evaluate_budget(
         cost_lower_bound=cost_lower_bound,
         warnings=tuple(warnings),
         source_descriptions=tuple(sources),
+    )
+
+
+# F104 predictive cost — the five labels a prediction may wear, and no others.
+# Every user-facing predicted number carries one of these; that is an acceptance
+# criterion of the feature, not decoration.
+VALID_ESTIMATE_BASES = frozenset({
+    "class_default",
+    "class_default_missing_band",
+    "no_price_basis",
+    "no_cost_limit",
+    "unpriced_spend",
+})
+
+_PREDICTABLE_BASES = ("class_default", "class_default_missing_band")
+
+
+# Renders a money figure, or says out loud that there is none. An unmeasured
+# figure is NEVER rendered as a measured zero (P6).
+def _format_prediction_usd(value: float | None) -> str:
+    return "not-measured" if value is None else f"${value:.4f}"
+
+
+@dataclass(frozen=True)
+class BudgetPrediction:
+    """What the NEXT task is expected to cost, and whether it would breach.
+
+    An ESTIMATE, never a measurement: ``estimate_basis`` names where the number
+    came from and is always one of ``VALID_ESTIMATE_BASES``. ``arithmetic`` is
+    the one-line human-readable justification — a human must be able to see WHY
+    a predictive stop happened without reading this module.
+    """
+
+    would_breach: bool
+    estimate_basis: str
+    band: str
+    expected_tokens: int | None
+    expected_cost_usd: float | None
+    spent_cost_usd: float | None
+    limit_usd: float | None
+    arithmetic: str
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "would_breach": self.would_breach,
+            # The label travels with the numbers wherever they surface.
+            "estimate_basis": self.estimate_basis,
+            "band": self.band,
+            "expected_tokens": self.expected_tokens,
+            # Stays None when no price basis is configured — never a zero.
+            "expected_cost_usd": self.expected_cost_usd,
+            "spent_cost_usd": self.spent_cost_usd,
+            "limit_usd": self.limit_usd,
+            "arithmetic": self.arithmetic,
+        }
+
+
+# Predicts what the next task will cost so a job can stop BEFORE it overspends.
+# Pure: no reads, no writes, no clock. NO PRODUCTION CALLER YET — F104 R3 adds
+# the one at the task-dispatch safe point (see the module docstring).
+def predict_next_task_cost(
+    budgets: JobBudgets | None,
+    counters: BudgetCounters,
+    *,
+    band: str | None,
+    config: PredictiveBudgetConfig,
+) -> BudgetPrediction:
+    """Estimate the next task's cost against the money limit.
+
+    ``band`` is a ``TokenBand`` value. ``"unknown"``, None and any unrecognised
+    string all mean the band could not be derived, and take the feature's A9
+    path: the LARGEST class default, labelled ``class_default_missing_band``,
+    because over-stopping beats overspending.
+
+    ``would_breach`` is True ONLY when real numbers could be compared, and uses
+    a strict ``>``: the exact-limit case belongs to the reactive check in
+    ``evaluate_budget``, and duplicating it here would let the two disagree
+    about the boundary.
+    """
+    class_defaults = dict(getattr(config, "class_default_tokens", None) or {})
+    price_basis = getattr(config, "price_basis_usd_per_1k_tokens", None)
+    limit = budgets.max_cost_usd if budgets is not None else None
+
+    if band in (TokenBand.LOW, TokenBand.MEDIUM, TokenBand.HIGH) and band in class_defaults:
+        resolved_band = band
+        expected_tokens: int | None = class_defaults[band]
+        band_basis = "class_default"
+    else:
+        resolved_band = TokenBand.UNKNOWN
+        expected_tokens = max(class_defaults.values()) if class_defaults else None
+        band_basis = "class_default_missing_band"
+
+    expected_cost_usd: float | None = None
+    if expected_tokens is not None and price_basis is not None:
+        expected_cost_usd = expected_tokens / 1000 * price_basis
+
+    spent = counters.measured_cost_usd
+    # WHY the exception: a job that has made NO provider call has definitionally
+    # spent nothing, so 0.0 there is a measurement and not an assumed zero.
+    if spent is None and counters.provider_calls == 0:
+        spent = 0.0
+
+    note: str | None = None
+    if limit is None:
+        estimate_basis = "no_cost_limit"
+        note = "no cost limit is configured"
+    elif price_basis is None:
+        estimate_basis = "no_price_basis"
+        note = "the price basis is unset, so no cost is predicted"
+    elif spent is None:
+        estimate_basis = "unpriced_spend"
+        note = (
+            f"spend so far is unpriced "
+            f"({counters.unpriced_call_count} of {counters.provider_calls} "
+            f"provider calls unpriced)"
+        )
+    else:
+        estimate_basis = band_basis
+
+    comparable = (
+        estimate_basis in _PREDICTABLE_BASES
+        and expected_cost_usd is not None
+        and spent is not None
+        and limit is not None
+    )
+    would_breach = bool(comparable and (spent + expected_cost_usd) > limit)
+
+    if not comparable:
+        comparison = "?"
+    elif would_breach:
+        comparison = ">"
+    else:
+        comparison = "<="
+    tokens_label = "not-measured" if expected_tokens is None else str(expected_tokens)
+    arithmetic = (
+        f"spent {_format_prediction_usd(spent)} + "
+        f"expected {_format_prediction_usd(expected_cost_usd)} "
+        f"({tokens_label} tokens, band={resolved_band}, basis={estimate_basis}) "
+        f"{comparison} limit {_format_prediction_usd(limit)}"
+    )
+    if note is not None:
+        arithmetic = f"{arithmetic}; {note}"
+
+    return BudgetPrediction(
+        would_breach=would_breach,
+        estimate_basis=estimate_basis,
+        band=resolved_band,
+        expected_tokens=expected_tokens,
+        expected_cost_usd=expected_cost_usd,
+        spent_cost_usd=spent,
+        limit_usd=limit,
+        arithmetic=arithmetic,
     )
 
 
