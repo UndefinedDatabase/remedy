@@ -738,3 +738,126 @@ class TestVerifyLedger:
     def test_needs_a_target(self, evidence_tree):
         with pytest.raises(ValueError):
             verify_ledger(evidence_tree)
+
+
+class TestCallSiteAtTheActualsSeam:
+    """The hook in ``write_evidence_bundle`` — opt-in, inert, never fatal."""
+
+    @staticmethod
+    def _bundle():
+        return {
+            "manifest": {"run_id": "run-1"},
+            "summary_md": "# run\n",
+            "tests": "ok\n",
+            "token_accounting": {"role": "builder"},
+            "provider_evidence": {
+                "schema_version": "1.0.0",
+                "task_id": TASK_FULL,
+                "execution_mode": "provider_backed",
+                "provider_call_count": 1,
+                "actual_call_count": 1,
+                "cost_call_count": 1,
+                "actual_prompt_tokens": 11,
+                "actual_completion_tokens": 5,
+                "actual_total_tokens": 16,
+                "total_cost_usd": 0.02,
+                "ts_utc": "2026-08-08T11:00:00+00:00",
+            },
+        }
+
+    def test_writes_a_row_when_a_target_is_given(self, tmp_path, ledger_path):
+        from packages.orchestration.pingpong_evidence import write_evidence_bundle
+
+        out_dir = tmp_path / "evidence" / FIXTURE_JOB_ID / "task_runs" / TASK_FULL
+        written = write_evidence_bundle(
+            self._bundle(), str(out_dir),
+            ledger_path=str(ledger_path),
+            ledger_job_id=FIXTURE_JOB_ID,
+            ledger_task_id=TASK_FULL,
+        )
+
+        assert "provider_evidence.json" in written
+        row = _row(ledger_path, f"{FIXTURE_JOB_ID}:{TASK_FULL}")
+        assert row is not None
+        assert row["job_id"] == FIXTURE_JOB_ID
+        assert row["task_id"] == TASK_FULL
+        assert row["role"] == "builder"
+        assert row["tokens_in"] == 11
+        assert row["tokens_out"] == 5
+        assert row["cost_basis"] == COST_BASIS_PROVIDER_REPORTED
+        assert row["evidence_ref"] == f"task_runs/{TASK_FULL}"
+
+    def test_the_live_row_is_the_row_backfill_would_have_written(
+        self, tmp_path, ledger_path
+    ):
+        """One row, two producers: reconcile can only compare content if they agree."""
+        from packages.orchestration.pingpong_evidence import write_evidence_bundle
+
+        evidence_dir = tmp_path / "evidence" / FIXTURE_JOB_ID
+        out_dir = evidence_dir / "task_runs" / TASK_FULL
+        write_evidence_bundle(
+            self._bundle(), str(out_dir),
+            ledger_path=str(ledger_path),
+            ledger_job_id=FIXTURE_JOB_ID,
+            ledger_task_id=TASK_FULL,
+        )
+        report = verify_ledger(evidence_dir, path=ledger_path)
+        assert report.has_drift is False
+        assert report.drifted_rows == []
+
+    def test_default_writes_nothing_and_raises_nothing(self, tmp_path, ledger_path):
+        """Every existing caller passes no ledger argument: nothing may happen."""
+        from packages.orchestration.pingpong_evidence import write_evidence_bundle
+
+        out_dir = tmp_path / "evidence" / FIXTURE_JOB_ID / "task_runs" / TASK_FULL
+        before = ledger_miss_count()
+
+        written = write_evidence_bundle(self._bundle(), str(out_dir))
+
+        assert "provider_evidence.json" in written
+        assert not ledger_path.exists(), "no ledger target means no ledger file"
+        assert list(tmp_path.rglob("*.sqlite")) == []
+        assert ledger_miss_count() == before, "an inert hook is not a counted miss"
+
+    def test_a_target_without_identifiers_stays_inert(self, tmp_path, ledger_path):
+        from packages.orchestration.pingpong_evidence import write_evidence_bundle
+
+        out_dir = tmp_path / "evidence" / FIXTURE_JOB_ID / "task_runs" / TASK_FULL
+        write_evidence_bundle(
+            self._bundle(), str(out_dir), ledger_path=str(ledger_path))
+        assert not ledger_path.exists()
+
+    def test_a_non_task_run_layout_invents_no_row(self, tmp_path, ledger_path):
+        """Outside the task_runs/<task_id>/ layout there is no honest evidence_ref."""
+        from packages.orchestration.pingpong_evidence import write_evidence_bundle
+
+        out_dir = tmp_path / "somewhere-else"
+        write_evidence_bundle(
+            self._bundle(), str(out_dir),
+            ledger_path=str(ledger_path),
+            ledger_job_id=FIXTURE_JOB_ID,
+            ledger_task_id=TASK_FULL,
+        )
+        assert not ledger_path.exists()
+
+    def test_a_broken_ledger_target_never_fails_the_evidence_write(
+        self, tmp_path, caplog
+    ):
+        """The mirror may fail; the evidence write may not."""
+        from packages.orchestration.pingpong_evidence import write_evidence_bundle
+
+        blocker = tmp_path / "not-a-directory"
+        blocker.write_text("this is a file, not a directory\n", encoding="utf-8")
+        out_dir = tmp_path / "evidence" / FIXTURE_JOB_ID / "task_runs" / TASK_FULL
+
+        with caplog.at_level(logging.ERROR):
+            written = write_evidence_bundle(
+                self._bundle(), str(out_dir),
+                ledger_path=str(blocker / "sub" / LEDGER_FILENAME),
+                ledger_job_id=FIXTURE_JOB_ID,
+                ledger_task_id=TASK_FULL,
+            )
+
+        assert "provider_evidence.json" in written
+        assert (out_dir / "provider_evidence.json").is_file()
+        assert ledger_miss_count() >= 1

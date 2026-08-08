@@ -30,7 +30,10 @@ does not exist:
 * Remedy deliberately does NOT add a second capture path. This module records
   what the existing actuals path already produced; it never parses a provider
   response itself: the usage counters come from ``token_truth``'s existing
-  extractor rather than from a second parse of provider output.
+  extractor rather than from a second parse of provider output. Its ONE call
+  site is the seam where actuals are finalized
+  (``pingpong_evidence.write_evidence_bundle``), where it is opt-in and stays
+  inert until a caller names a ledger target.
 * Remedy deliberately does NOT store one row per HTTP request. A ROW IS ONE
   FINALIZED TASK RUN, keyed ``"<job_id>:<task_id>"`` (DECISION D16, recorded on
   the feature file): ``task_runs/<task_id>/provider_evidence.json`` is the
