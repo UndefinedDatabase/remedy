@@ -16,20 +16,14 @@ breach the limit, recording the arithmetic that justified the stop. The
 reactive check is unchanged — prediction never replaces the backstop.
 
 ## Current Step
-R3 — fix R-0224, the cost-side counter split. `BudgetCounters` gains
-`priced_call_count`, the cross-source `unpriced_call_count > provider_calls`
-check is deleted (DECISION F104 D5) and the surviving contradiction check is
-restated in cost-side terms, so the ledger's counts stop raising inside the
-`_stop_check` swallow and `--max-cost-usd` enforces for mixed-priced and
-resumed jobs. No clamp — an unpriced count is never quietly reduced.
+R4 — T002 part 2: derive the band at the dispatch safe point per DECISION F104
+D3/D6, wire `predict_next_task_cost` in BEFORE the next task is dispatched (it
+has NO production caller at the end of R3), add the
+`predicted_budget_exhausted:<limit>` stop reason and the persisted arithmetic,
+and both acceptance fixtures — just-under, and prediction-wrong proving the
+reactive backstop still fires. Block saved at `.agent/last_block.md`.
 
 ## Next Steps
-- R4 — T002 part 2: derive the band at the dispatch safe point per DECISION
-  F104 D3, wire `predict_next_task_cost` in BEFORE the next task is dispatched
-  (it still has NO production caller at the end of R3), add the
-  `predicted_budget_exhausted:<limit>` stop reason and the decision entry
-  carrying the arithmetic, and both acceptance fixtures — just-under, and
-  prediction-wrong proving the reactive backstop still fires.
 - R5 — T003: display and docs; every user-facing predicted number carries its
   `estimate_basis` label, pinned by a grep-style test.
 - R6 — integration gate per docs/agents/integration_gate.md; R7/R8 — closure
