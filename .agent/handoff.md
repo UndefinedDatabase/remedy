@@ -1,120 +1,91 @@
-# Handback — F103 R5, the integration gate
+# Handoff — F103 Token ledger (SQLite), R6 (SPLIT, production code)
 
-Feature **T2_F103 — Token ledger (SQLite)**, round **R5** (the canonical gate,
-docs/agents/integration_gate.md). Branch **`feature/f103-token-ledger`**, entered
-at `e984bbab` — not re-cut, no PR, no merge, no force-push, `main` untouched.
-`.agent/STOP` absent, re-checked before every commit. **NO production code and no
-test file was changed this round**; the diff is `.agent/` only.
-
-## Range
-Review of `e984bbab..HEAD`. Three evidence commits; this file is the fourth.
+Branch `feature/f103-token-ledger` @ `eb8f5b99` (from `af91d57b`), pushed.
+No verdict issued: split round with production code never self-certifies.
 
 ## Commits
-### 7fd00b80 chore(f103): record the R5 branch-side gate run
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/gate_f103_r5/branch_run.txt | +53/-0 | header, trimmed tail, grep counts over the FULL log |
-| .agent/gate_f103_r5/branch_failed.txt | +0/-0 | empty on purpose — an empty file is evidence |
+| SHA | Subject | Files | Size |
+|-----|---------|-------|------|
+| `37a444d1` | persist the R5 PASS verdict and findings R-0220, R-0221 | `.agent/live_review.md`, `.agent/authored/f103-r6-1.md`, `.agent/authored/f103-r6-2.md` | +284/-7 |
+| `087acd78` | register R-0221 as a closure candidate | `.agent/candidates.md` | +1/-3 |
+| `8391f755` | arm the live token ledger at the task-run evidence seam | `packages/orchestration/job_evidence.py`, `tests/orchestration/test_token_ledger.py` | +410/-5 |
+| `eb8f5b99` | sync the plan to the R6 live-mirror round | `.agent/plan.md` | +23/-23 |
 
-### b52a698e chore(f103): record the R5 base run, parity check and comparison
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/gate_f103_r5/base_run.txt | +61/-0 | same shape + the COMPLETE FAILED section |
-| .agent/gate_f103_r5/base_failed.txt | +8/-0 | untrimmed sorted id list |
-| .agent/gate_f103_r5/base_serial_rerun.txt | +170/-0 | serial re-runs, passes 1-4 incl. the negative control |
-| .agent/gate_f103_r5/comm_branch_only_failures.txt | +0/-0 | `comm -13`, empty |
-| .agent/gate_f103_r5/comm_base_only_failures.txt | +8/-0 | `comm -23` |
-| .agent/gate_f103_r5/dist_hashes.txt | +56/-0 | parity + the before/after hash verdict |
-| .agent/gate_f103_r5/worktree_cleanup.txt | +17/-0 | remove/prune/branch -D + `git worktree list` |
+No commit over 500 lines. Path set held exactly; nothing outside it was touched.
 
-### 3178bfb5 chore(f103): attribute every gate id and measure the ledger seam
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/gate_f103_r5/attribution.txt | +134/-0 | sections 1-5, every id both directions |
-| .agent/gate_f103_r5/r0218_seam_timing.txt | +90/-0 | R-0218's number |
+## How the project is resolved at the seam
+`export_job_evidence` calls the new private `_resolve_job_ledger_project_id(job)`
+ONCE per export and threads the registry UUID plus `job.job_id` into
+`_write_task_run_evidence` (new keyword-only params, `None` defaults, so the
+three existing positional callers stay inert). Resolution is
+`project_registry.resolve_project(job.repo_path)` — persisted job state, the
+registry's read-only resolver, registry UUID; the ledger path comes from
+`token_ledger_path_for` → `data_paths.projects_dir`, so `REMEDY_DATA_DIR` is
+honoured. Deliberately NOT `project_scope.resolve_scope`: it consults
+`REMEDY_PROJECT` and the CWD, which exist to read a human's intent and would
+file one project's spend under another. An empty/absent `repo_path` returns
+None rather than letting `Path("")` become the CWD — this repository is itself
+a registered project (`83cdfe8b-…`), so that fallback would have written into
+the real `.data/`. Resolution is wrapped: it cannot raise. `pingpong_evidence.py`
+is BYTE-UNCHANGED — a caller was added, not a parameter.
 
-### (this commit) chore(f103): rewrite handoff for the R5 handback
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/handoff.md | rewrite | this handback — cannot table its own SHA |
+## Verification (run by me, real exit codes)
+| Command | Result | Exit |
+|---------|--------|------|
+| `pytest tests/orchestration/test_token_ledger.py -q` | 82 passed (68 + 14 new) | 0 |
+| `pytest tests/orchestration/test_evidence_bundle.py tests/orchestration/test_job_evidence.py -q` | 161 passed | 0 |
+| `pytest tests/cli/test_stats_cost.py -q` | 33 passed | 0 |
+| `pytest tests/cli/test_golden_path.py -q` (canary) | 42 passed | 0 |
+| `pytest tests/orchestration -q` | 10210 passed, 7 skipped, 649s | 0 |
+| `git status --porcelain` | empty | 0 |
+| `rglob` scan for `*.sqlite`/`-wal`/`-shm` incl. `.data/` | NONE | — |
+| `ruff check` on both changed files | All checks passed | 0 |
 
-Staged by exact path; `git add -A` never used. `.agent/plan.md` deliberately
-UNTOUCHED: it was already synced to R5 and the gate produced no blocker, so
-nothing in it changed.
+MUTATION RED-PROOF, run by me and reverted: (1) dropping the `ledger_*`
+arguments from the `write_evidence_bundle` call turned **6 of the 6
+production-path tests RED** while the 4 inertness tests stayed green — the new
+tests genuinely depend on the wiring, not on a hand-passed target; (2) making
+the resolver fall back to `"."` on an empty `repo_path` turned
+`test_an_empty_repo_path_never_falls_back_to_the_process_cwd` RED, and it
+failed by resolving the REAL project UUID `83cdfe8b-…`, which is precisely the
+data-root escape constraint 3 forbids.
 
-## Verification (real commands, real exit codes)
-| Command | Exit | Tail |
-|---|---|---|
-| `REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q` (branch, repo root) | **0** | `16121 passed, 19 skipped in 123.68s (0:02:03)` |
-| `REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q` (base worktree root) | **1** | `8 failed, 16008 passed, 19 skipped in 155.11s (0:02:35)` |
-| `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | **0** | `42 passed in 19.54s` |
-| `git status --porcelain` | **0** | no output — clean tree |
-| `git worktree list` | **0** | primary checkout only; `tmp/base-gate-f103` deleted |
-| R-0218 harness (throwaway, uncommitted) | **0** | `median +1.386 ms (+236.2%)` |
-Repo-wide sweep for `*.sqlite`, `*-wal`, `*-shm` incl. `.data/`: **0 hits**.
+## Transport proofs
+Receipt 1 → `.agent/live_review.md`. FROM counts BEFORE any edit: PAIR 1 1x,
+PAIR 2 1x, PAIR 3 1x, PAIR 4 1x. AFTER: PAIR 1 FROM 0x / TO 1x; PAIR 2 FROM 0x /
+TO 1x; PAIR 3 FROM 0x / TO 1x; PAIR 4 (append-shaped) FROM 1x / TO-only line
+`- D17 (…` 1x. All four TO blocks verified present byte-verbatim exactly once.
+CORRECTION, declared: the step block labels PAIR 3 append-shaped, but its TO
+does not contain its FROM — `- R5: pending review.` becomes
+`- R6: pending review.`. It is a REWRITE, so FROM 0x is the attainable and
+honest count; reporting 1x would have been false. PAIR 4 is genuinely
+append-shaped and reports FROM 1x as instructed.
+Receipt 2 → `.agent/plan.md` by `cp`; `cmp` **exit 0**. Both receipts: no
+trailing whitespace on any line, exactly one closing newline.
 
-## Gate result (inputs only — the verdict is Window 1's)
-Branch-only ids (`comm -13`): **0**. Base-only ids (`comm -23`): **8**, all
-attributed by direct evidence — 1 xdist port race (`Errno 98`, serial-pass 4/4)
-and 7 sharing one cause: `_frontend_is_stale` compares MTIMES, a fresh worktree
-checkout is newer than a `cp -a`'d dist, so the server refuses to build and
-exits 1. Proved by a negative control: moving the dist mtimes back reproduces
-all 7 without changing a byte; restoring them makes them pass. No branch-only
-failure coupled to F103 code, so nothing blocks under step 4.
-
-## Item status — R5 bundle B1-B5
+## Item status
 | Item | Status | Reason |
-|---|---|---|
-| B1 branch run + failed list | done | exit 0, zero FAILED |
-| B2 base run, parity by COPY, dist hash verified | deviated | see Deviations 1 and 3 |
-| B3 compare + attribute every id both directions | done | 0 / 8, all attributed |
-| B4 R-0218 seam timing | done | +1.386 ms median, no verdict written |
-| B5 commit, push, rewrite handoff | done | this commit, then push |
+|------|--------|--------|
+| B1 receipts saved first | done | |
+| B2 receipt 1 → live_review, commit 1 first action | done | |
+| B3 R-0221 → candidates.md | done | replaced the stale "(empty — …)" |
+| B4 wire the mirror at the seam | done | |
+| B5 production-path + inertness tests | done | 14 tests, both mutations red-proofed |
+| B6 verification | done | table above, all exit 0 |
+| B7 plan receipt, commit, push, handoff | done | |
 
-## Findings
-Open findings: **1** — R-0218 (Low), still OPEN. It is now PAID WITH A NUMBER
-and the reviewer closes it after reading that number, not before. Next free ID:
-**R-0220**. Possible new finding for Window 1 to raise or drop:
-`tests/ui_server/test_dashboard_contract.py:521`
-`TestAutoBuildBehavior::test_auto_build_runs_by_default` pops
-`REMEDY_UI_NO_AUTO_BUILD` and runs a real `npm` build in whatever checkout it
-finds — the named cause of the R-0169 class recurring. No test was changed.
+## Open findings & deviations
+Open findings: **1** — R-0220 (Medium), fixed here, closes on reviewer
+confirmation. R-0218/R-0219 closed; R-0221 carried in `.agent/candidates.md`.
+Deviations, declared: (a) the PAIR 3 shape correction above; (b)
+`tests/orchestration/test_job_evidence.py` exists, so the middle command needed
+no adjustment; (c) the new tests live in `test_token_ledger.py` — the honest
+home, since the behaviour under test is F103's ledger, not the bundle writer;
+(d) the resolver adds one `git rev-parse` per EXPORT (not per task run), so the
+R5-measured +1.386 ms per finalized task run is unmoved; (e) plan.md was synced
+at B7 as the bundle ordered, so commits 1-3 carried the R5-era plan, matching
+this feature's own R5 pattern.
 
-## Deviations, declared
-1. **Scratchpad and base worktree live at `.remedy-wt/…` inside the repo
-   DIRECTORY, not `/tmp`.** Not a choice: this session's permission policy
-   refuses every write outside `/home/decodeux/Repos/remedy` (`mkdir
-   /tmp/remedy-f103-r5` → blocked, twice, also with the sandbox override).
-   R-0176's SUBSTANCE is preserved and checked: `.remedy-wt/` is gitignored
-   (`.gitignore:235`), and the only untracked-file input to the worktree digest
-   is `git ls-files --others --exclude-standard` (`run_manifest.py:500`), which
-   returns **0** hits for `remedy-wt`. So nothing digest-visible grew during
-   either run. Logs were still written to the scratchpad and copied into
-   `.agent/gate_f103_r5/` only after each run exited. The scratchpad, incl. the
-   harness and its sqlite work dir, was deleted before the sweep above. One
-   unrelated gitignored leftover from an earlier halted attempt
-   (`.remedy-wt/scratch_f103_r5/`, 11:44) was left alone as not mine to remove.
-2. **Three evidence commits, not two.** The prescribed boundary (branch-side,
-   then base-side + compare + attribution + timing) makes a 540-line second
-   commit, over the 500-line cap. Split at 53 / 320 / 224. No oversize
-   exception is claimed.
-3. **The neutralization is NOT clean, and the round says so instead of
-   claiming a pass.** The dist aggregate CONTENT hash is identical before and
-   after the base run (`fb68a729…`), so the parity claim holds and no
-   `comm -23` id may be blamed on differing dist bytes. But the dist MTIMES
-   moved mid-run in BOTH checkouts, because the test named under Findings
-   builds for real. Its output is byte-identical, which is why the hash never
-   moved. Recorded in full in `dist_hashes.txt`.
-4. **The base worktree already existed at round start** (leftover at
-   `.remedy-wt/base-f103` on `tmp/base-gate-f103` from a halted attempt). It
-   was destroyed and recreated from scratch, never reused, then removed again.
-5. This file is 120 lines, over the 60-line cap, with NO section dropped.
-   Cause, all mandated: four per-commit changed-files tables, the six-row
-   verification table, the B1-B5 item-status table, and these deviations.
-6. Commit 4's SHA and the push result are absent by self-reference
-   impossibility, not omission; both are in the completion report.
-
-## Next
-Window 1 reviews `e984bbab..HEAD` and issues the GATE VERDICT (integration_gate
-step 5) — this round issued none — and decides R-0218 against the measured
-number. On PASS, R6 is closure per docs/roadmap/STATUS_closure_protocol.md.
+## Next expected action
+Reviewer reads `af91d57b..eb8f5b99`, re-runs the table, and rules on R-0220.
+On PASS, R7 is closure per docs/roadmap/STATUS_closure_protocol.md.
