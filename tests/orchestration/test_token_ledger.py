@@ -1,4 +1,4 @@
-"""F103 T001 — the SQLite token ledger: schema, writer, and the never-fail rule.
+"""F103 T001/T002 — the SQLite token ledger: schema, writer, backfill, reconcile.
 
 What the feature file requires proof of:
 
@@ -16,6 +16,22 @@ What the feature file requires proof of:
     Orchestrator brief demands a test for exactly this);
   * a reader still reads while a write is in flight — the WAL guarantee.
 
+What T002 adds proof of, against a real on-disk evidence tree:
+
+  * backfill is IDEMPOTENT — a second pass over the same evidence leaves the row
+    count unchanged and reports the same ``recorded`` total (the feature file's
+    "rerunning backfill adds nothing");
+  * a task run with no reported usage becomes a row with NULL counts and basis
+    ``unknown``, and a malformed one is counted in ``failed`` without raising
+    and without costing the other task runs their rows;
+  * reconcile reports ZERO DRIFT on a clean tree and FINDS AN INJECTED MISSING
+    ROW — that pair is the feature file's Acceptance, verbatim;
+  * reconcile is read-only: it inserts nothing and does not even create a ledger;
+  * reconcile compares CONTENT, so a row that drifted after it was written is
+    visible (finding R-0219's resolution);
+  * the call site at the seam where actuals are finalized writes a row when a
+    ledger target is given, and does nothing at all when none is.
+
 Every test writes inside ``tmp_path`` and passes ``root=``/``path=``
 explicitly. ``REMEDY_DATA_DIR`` is never mutated and the repository's real data
 root is never touched.
@@ -23,6 +39,7 @@ root is never touched.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sqlite3
@@ -38,12 +55,18 @@ from packages.orchestration.token_ledger import (
     LEDGER_FILENAME,
     SCHEMA_VERSION,
     SCHEMA_VERSION_KEY,
+    BackfillResult,
     CallRecord,
+    backfill_ledger,
+    call_id_for_task_run,
+    call_record_from_evidence,
+    job_id_for_evidence_dir,
     ledger_miss_count,
     open_ledger,
     record_call,
     reset_ledger_miss_count,
     token_ledger_path_for,
+    verify_ledger,
 )
 
 LEDGER_LOGGER = "packages.orchestration.token_ledger"
@@ -391,3 +414,327 @@ class TestTokenLedgerPathFor:
         path = token_ledger_path_for(uuid4(), root=tmp_path)
         assert not path.exists()
         assert not path.parent.exists()
+
+
+# ---------------------------------------------------------------------------
+# T002 — backfill and reconcile over a real on-disk evidence tree
+# ---------------------------------------------------------------------------
+
+FIXTURE_JOB_ID = "job-ledger-fixture"
+TASK_FULL = "T001"          # full provider actuals, a cost figure and a model
+TASK_UNMEASURED = "T002"    # provider reported no usage at all
+TASK_MALFORMED = "T003"     # a negative counter: unrecordable by design
+TASK_NO_EVIDENCE = "T004"   # a task-run dir with nothing to mirror
+
+
+def _write_json_file(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _row_count(ledger_path):
+    conn = open_ledger(ledger_path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM calls").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _call_ids(ledger_path):
+    conn = open_ledger(ledger_path)
+    try:
+        return sorted(r[0] for r in conn.execute("SELECT call_id FROM calls"))
+    finally:
+        conn.close()
+
+
+def _row(ledger_path, call_id):
+    conn = open_ledger(ledger_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        return conn.execute(
+            "SELECT * FROM calls WHERE call_id = ?", (call_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+@pytest.fixture
+def evidence_tree(tmp_path):
+    """A small evidence tree exactly like the actuals feature writes on disk.
+
+    Four task runs: full actuals, no usage at all, malformed counters, and a
+    directory with no provider evidence in it. Nothing here is a mock — the
+    backfill reads these files the same way it reads a real job's.
+    """
+    base = tmp_path / "evidence" / FIXTURE_JOB_ID
+    _write_json_file(base / "manifest.json",
+                     {"bundle_type": "job_evidence", "job_id": FIXTURE_JOB_ID})
+    runs = base / "task_runs"
+
+    _write_json_file(runs / TASK_FULL / "provider_evidence.json", {
+        "schema_version": "1.0.0",
+        "task_id": TASK_FULL,
+        "execution_mode": "provider_backed",
+        "provider_call_count": 2,
+        "actual_call_count": 2,
+        "cost_call_count": 2,
+        "actual_prompt_tokens": 1000,
+        "actual_completion_tokens": 200,
+        "actual_total_tokens": 1200,
+        "actual_cache_read_tokens": 64,
+        "actual_cache_creation_tokens": 32,
+        "total_cost_usd": 0.25,
+        "actual_model_verified": True,
+        "builder_actual_model": "claude-opus-5",
+        "ts_utc": "2026-08-08T09:00:00+00:00",
+    })
+    _write_json_file(runs / TASK_FULL / "token_accounting.json", {"role": "builder"})
+
+    # No usage counters and no cost at all — the claude-cli case.
+    _write_json_file(runs / TASK_UNMEASURED / "provider_evidence.json", {
+        "schema_version": "1.0.0",
+        "task_id": TASK_UNMEASURED,
+        "execution_mode": "provider_backed",
+        "provider_call_count": 1,
+        "actual_call_count": 0,
+        "cost_call_count": 0,
+        "actual_missing_reasons": ["provider reports no ledger usage"],
+    })
+    _write_json_file(runs / TASK_UNMEASURED / "token_accounting.json",
+                     {"role": "reviewer"})
+
+    # A negative token count: the extractor RAISES rather than coercing it into
+    # a plausible number, and this fixture pins that refusal end to end.
+    _write_json_file(runs / TASK_MALFORMED / "provider_evidence.json", {
+        "schema_version": "1.0.0",
+        "task_id": TASK_MALFORMED,
+        "actual_prompt_tokens": -5,
+    })
+
+    (runs / TASK_NO_EVIDENCE).mkdir(parents=True, exist_ok=True)
+    return base
+
+
+class TestCallIdForTaskRun:
+    def test_is_the_deterministic_job_and_task_pair(self):
+        assert call_id_for_task_run("job-7", "T012") == "job-7:T012"
+        assert call_id_for_task_run("job-7", "T012") == call_id_for_task_run(
+            "job-7", "T012")
+
+    @pytest.mark.parametrize("job_id,task_id", [
+        ("", "T001"), ("job-7", ""), ("   ", "T001"), (None, "T001"), ("job-7", None),
+    ])
+    def test_rejects_empty_parts(self, job_id, task_id):
+        """An id with an empty half would merge two task runs into one row."""
+        with pytest.raises(ValueError):
+            call_id_for_task_run(job_id, task_id)
+
+
+class TestJobIdForEvidenceDir:
+    def test_prefers_the_manifest_job_id(self, evidence_tree):
+        assert job_id_for_evidence_dir(evidence_tree) == FIXTURE_JOB_ID
+
+    def test_falls_back_to_the_directory_name(self, tmp_path):
+        base = tmp_path / "job-from-dirname"
+        base.mkdir()
+        assert job_id_for_evidence_dir(base) == "job-from-dirname"
+
+
+class TestCallRecordFromEvidence:
+    def test_maps_full_actuals_onto_the_row(self, evidence_tree):
+        record = call_record_from_evidence(evidence_tree, FIXTURE_JOB_ID, TASK_FULL)
+        assert record is not None
+        assert record.call_id == f"{FIXTURE_JOB_ID}:{TASK_FULL}"
+        assert record.job_id == FIXTURE_JOB_ID
+        assert record.task_id == TASK_FULL
+        assert record.role == "builder"
+        assert record.model == "claude-opus-5"
+        assert record.ts_utc == "2026-08-08T09:00:00+00:00"
+        assert record.tokens_in == 1000
+        assert record.tokens_out == 200
+        assert record.cache_read == 64
+        assert record.cache_write == 32
+        assert record.cost_usd == pytest.approx(0.25)
+        assert record.cost_basis == COST_BASIS_PROVIDER_REPORTED
+        assert record.evidence_ref == f"task_runs/{TASK_FULL}"
+
+    def test_unmeasured_run_has_null_counts_and_no_invented_price(self, evidence_tree):
+        record = call_record_from_evidence(
+            evidence_tree, FIXTURE_JOB_ID, TASK_UNMEASURED)
+        assert record is not None
+        assert (record.tokens_in, record.tokens_out) == (None, None)
+        assert (record.cache_read, record.cache_write) == (None, None)
+        assert record.cost_usd is None
+        assert record.cost_basis == COST_BASIS_UNKNOWN
+        assert record.model is None
+
+    def test_timestamp_falls_back_to_the_evidence_file_mtime(self, evidence_tree):
+        """No timestamp in the evidence → the file's mtime, stated as UTC."""
+        record = call_record_from_evidence(
+            evidence_tree, FIXTURE_JOB_ID, TASK_UNMEASURED)
+        source = (evidence_tree / "task_runs" / TASK_UNMEASURED
+                  / "provider_evidence.json")
+        from datetime import datetime, timezone
+        expected = datetime.fromtimestamp(
+            source.stat().st_mtime, tz=timezone.utc).isoformat()
+        assert record.ts_utc == expected
+
+    def test_malformed_counters_yield_no_record_at_all(self, evidence_tree):
+        assert call_record_from_evidence(
+            evidence_tree, FIXTURE_JOB_ID, TASK_MALFORMED) is None
+
+    def test_absent_evidence_yields_no_record(self, evidence_tree):
+        assert call_record_from_evidence(
+            evidence_tree, FIXTURE_JOB_ID, TASK_NO_EVIDENCE) is None
+
+
+class TestBackfillLedger:
+    def test_records_every_recordable_task_run(self, evidence_tree, ledger_path):
+        result = backfill_ledger(evidence_tree, path=ledger_path)
+        assert isinstance(result, BackfillResult)
+        assert result.scanned == 4
+        assert result.recorded == 2      # full + unmeasured
+        assert result.skipped == 1       # the dir with no provider evidence
+        assert result.failed == 1        # the malformed one
+        assert result.scanned == result.recorded + result.skipped + result.failed
+        assert _row_count(ledger_path) == 2
+
+    def test_is_idempotent(self, evidence_tree, ledger_path):
+        """Rerunning backfill adds nothing — the feature file's own words."""
+        first = backfill_ledger(evidence_tree, path=ledger_path)
+        rows_after_first = _row_count(ledger_path)
+        ids_after_first = _call_ids(ledger_path)
+
+        second = backfill_ledger(evidence_tree, path=ledger_path)
+        assert _row_count(ledger_path) == rows_after_first
+        assert second.recorded == first.recorded
+        assert second.scanned == first.scanned
+        assert second.failed == first.failed
+        assert _call_ids(ledger_path) == ids_after_first
+        conn = open_ledger(ledger_path)
+        try:
+            duplicates = conn.execute(
+                "SELECT call_id, COUNT(*) c FROM calls GROUP BY call_id HAVING c > 1"
+            ).fetchall()
+        finally:
+            conn.close()
+        assert duplicates == []
+
+    def test_unmeasured_task_run_lands_as_nulls_with_basis_unknown(
+        self, evidence_tree, ledger_path
+    ):
+        backfill_ledger(evidence_tree, path=ledger_path)
+        row = _row(ledger_path, f"{FIXTURE_JOB_ID}:{TASK_UNMEASURED}")
+        for column in ("tokens_in", "tokens_out", "cache_read", "cache_write"):
+            assert row[column] is None, f"{column} must be NULL, not a fabricated zero"
+        assert row["cost_usd"] is None
+        assert row["cost_basis"] == COST_BASIS_UNKNOWN
+
+    def test_malformed_task_run_never_raises_and_costs_no_other_row(
+        self, evidence_tree, ledger_path
+    ):
+        result = backfill_ledger(evidence_tree, path=ledger_path)
+        assert result.failed == 1
+        assert _row(ledger_path, f"{FIXTURE_JOB_ID}:{TASK_MALFORMED}") is None
+        # The task runs on either side of the malformed one are still recorded.
+        assert _row(ledger_path, f"{FIXTURE_JOB_ID}:{TASK_FULL}") is not None
+        assert _row(ledger_path, f"{FIXTURE_JOB_ID}:{TASK_UNMEASURED}") is not None
+
+    def test_empty_tree_records_nothing(self, tmp_path, ledger_path):
+        result = backfill_ledger(tmp_path / "job-empty", path=ledger_path)
+        assert (result.scanned, result.recorded, result.failed) == (0, 0, 0)
+        assert not ledger_path.exists()
+
+
+class TestVerifyLedger:
+    def test_reports_zero_drift_on_a_clean_tree(self, evidence_tree, ledger_path):
+        backfill_ledger(evidence_tree, path=ledger_path)
+        report = verify_ledger(evidence_tree, path=ledger_path)
+        assert report.missing_rows == []
+        assert report.orphan_rows == []
+        assert report.drifted_rows == []
+        assert report.has_drift is False
+        assert report.checked == 3           # the three dirs carrying evidence
+        assert report.unreadable == [f"{FIXTURE_JOB_ID}:{TASK_MALFORMED}"]
+
+    def test_finds_an_injected_missing_row(self, evidence_tree, ledger_path):
+        """The feature file's Acceptance: reconcile finds an injected missing row."""
+        backfill_ledger(evidence_tree, path=ledger_path)
+        gone = f"{FIXTURE_JOB_ID}:{TASK_FULL}"
+        conn = open_ledger(ledger_path)
+        try:
+            conn.execute("DELETE FROM calls WHERE call_id = ?", (gone,))
+            conn.commit()
+        finally:
+            conn.close()
+
+        report = verify_ledger(evidence_tree, path=ledger_path)
+        assert report.missing_rows == [gone]
+        assert report.orphan_rows == []
+        assert report.has_drift is True
+
+    def test_finds_a_content_drifted_row(self, evidence_tree, ledger_path):
+        """R-0219: a row whose content no longer matches its evidence is visible."""
+        backfill_ledger(evidence_tree, path=ledger_path)
+        drifted = f"{FIXTURE_JOB_ID}:{TASK_FULL}"
+        conn = open_ledger(ledger_path)
+        try:
+            conn.execute(
+                "UPDATE calls SET tokens_in = 999999 WHERE call_id = ?", (drifted,))
+            conn.commit()
+        finally:
+            conn.close()
+
+        report = verify_ledger(evidence_tree, path=ledger_path)
+        assert report.drifted_rows == [drifted]
+        assert report.missing_rows == []
+        assert report.has_drift is True
+
+    def test_finds_an_orphan_row_of_this_job(self, evidence_tree, ledger_path):
+        backfill_ledger(evidence_tree, path=ledger_path)
+        orphan = f"{FIXTURE_JOB_ID}:T999"
+        assert record_call(
+            CallRecord(call_id=orphan, job_id=FIXTURE_JOB_ID, task_id="T999",
+                       ts_utc="2026-08-08T10:00:00+00:00"),
+            path=ledger_path,
+        ) is True
+
+        report = verify_ledger(evidence_tree, path=ledger_path)
+        assert report.orphan_rows == [orphan]
+        assert report.missing_rows == []
+
+    def test_ignores_another_job_s_rows(self, evidence_tree, ledger_path):
+        """One project ledger holds many jobs; the others are not orphans."""
+        backfill_ledger(evidence_tree, path=ledger_path)
+        assert record_call(
+            CallRecord(call_id="some-other-job:T001", job_id="some-other-job",
+                       task_id="T001", ts_utc="2026-08-08T10:00:00+00:00"),
+            path=ledger_path,
+        ) is True
+
+        report = verify_ledger(evidence_tree, path=ledger_path)
+        assert report.orphan_rows == []
+        assert report.has_drift is False
+
+    def test_inserts_nothing(self, evidence_tree, ledger_path):
+        backfill_ledger(evidence_tree, path=ledger_path)
+        before = _row_count(ledger_path)
+        verify_ledger(evidence_tree, path=ledger_path)
+        verify_ledger(evidence_tree, path=ledger_path)
+        assert _row_count(ledger_path) == before
+
+    def test_does_not_create_a_ledger_that_does_not_exist(
+        self, evidence_tree, ledger_path
+    ):
+        """Verifying is read-only enough that it never brings a database into being."""
+        report = verify_ledger(evidence_tree, path=ledger_path)
+        assert not ledger_path.exists()
+        assert report.missing_rows == [
+            f"{FIXTURE_JOB_ID}:{TASK_FULL}",
+            f"{FIXTURE_JOB_ID}:{TASK_UNMEASURED}",
+        ]
+
+    def test_needs_a_target(self, evidence_tree):
+        with pytest.raises(ValueError):
+            verify_ledger(evidence_tree)
