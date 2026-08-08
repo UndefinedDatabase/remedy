@@ -38,7 +38,7 @@ handoff is a SUCCESS, not a failure.
   group, with basis labeling in both output modes — PASS.
 - R5: integration gate per docs/agents/integration_gate.md — PASS.
 - R6 (SPLIT): wire the live ledger mirror at the task-run evidence seam
-  so a real job yields rows (finding R-0220).
+  so a real job yields rows (finding R-0220) — PASS.
 - R7: closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Findings
@@ -117,8 +117,21 @@ handoff is a SUCCESS, not a failure.
   mtimes back reproduced all seven failures without changing one byte,
   restoring them made 42 pass. NOT F103's code and NOT this feature's
   to fix: registered as a closure candidate for the owning feature.
-- Next free ID: R-0222. Open findings: 1 (R-0220, Medium). R-0218 and
-  R-0219 are closed; R-0221 is carried in `.agent/candidates.md`.
+- Done: R-0220 — CLOSED at R6. The mirror is armed at the task-run seam
+  in `job_evidence.py`, and the reviewer MUTATION RED-PROOFED that the
+  fix is load-bearing rather than tautological: in a disposable
+  worktree under the gitignored `.remedy-wt/`, removed before the
+  verdict, reverting the wiring to the bare
+  `write_evidence_bundle(bundle, str(task_out))` turned **6 of 6**
+  production-path tests red while all four inertness tests stayed
+  green. A fake-provider job now yields its task run as a row through
+  `export_job_evidence` with nobody passing a `ledger_*` argument, so
+  the feature's acceptance criterion is met by the built system rather
+  than by a test that armed the hook itself.
+- Next free ID: R-0222. Open findings: **0**. R-0218, R-0219 and R-0220
+  are closed; R-0221 is carried in `.agent/candidates.md` and is a
+  block condition at the next feature's claim time until registered or
+  resolved.
 
 ## Decisions
 - D15 (F254 closure candidate R-0214, resolved inline per
@@ -369,4 +382,44 @@ handoff is a SUCCESS, not a failure.
   path is armed at all, which is how R-0220 stayed invisible until this
   review; that is a lesson about gate scope, not a defect of this round.
   LAST_REVIEWED_SHA = `af91d57b`.
-- R6: pending review.
+- R6 (SPLIT, the live mirror) — **PASS**. Reviewed `af91d57b..7f32dae9`
+  bottom-up across six commits, none over 500 lines, no dependency
+  change. The production diff is 91 lines in ONE file and does exactly
+  what the finding asked: `_resolve_job_ledger_project_id` decides the
+  target ONCE per export and `export_job_evidence` threads it plus the
+  job id into `_write_task_run_evidence`, which passes them on. The
+  reviewer checked the three things that could have gone wrong and all
+  three hold. Resolution is genuinely read-only —
+  `project_registry.resolve_project` is documented "NEVER WRITES" and
+  its body only reads the registry — so exporting evidence cannot
+  mutate project state. The data-root escape the opt-in exists to
+  prevent is closed by construction: an absent `repo_path` returns None
+  instead of letting `Path("")` become the process CWD, which matters
+  because this repository is itself a registered project, and the
+  worker red-proofed that exact hazard by making the resolver fall back
+  to `"."` and watching the test resolve the real project UUID. The
+  three legacy callers of `_write_task_run_evidence` are all tests
+  using the positional three-argument form, so they stay inert, and
+  `pingpong_evidence.py` is byte-unchanged — a caller was added, not a
+  parameter. Reviewer-run verification: the ledger, evidence bundle,
+  job evidence and stats suites together **276 passed**; the canary
+  plus the `.agent` state-contract readers and the docs gate **478
+  passed**; `git status --porcelain` empty with 0 untracked files and
+  no stray `.sqlite`/`-wal`/`-shm`. The mutation red-proof is recorded
+  under R-0220. One correction the WORKER made to the reviewer's own
+  authored text is accepted and credited: the reviewer labelled R5's
+  verdict pair append-shaped, but its TO does not contain its FROM, so
+  it is a rewrite and FROM 0x was the honest count — reporting the
+  instructed 1x would have been a fabricated number, and refusing to
+  fabricate it is the behaviour §4.9 is for. Verification tier: ROUND
+  GATE plus the canary and the state-contract readers — NOT the full
+  suite. No block condition. Deviations accepted: tests live in
+  `test_token_ledger.py` because the behaviour under test is the
+  ledger's; the plan synced at B7 rather than before the code commits,
+  matching this feature's own R5 pattern; the 97-line handoff drops no
+  section and states its cause. NOTE FOR CLOSURE: production code
+  landed AFTER the R5 gate, so the closure protocol's full-suite
+  confirmation run is load-bearing for this feature and may not be
+  treated as a formality.
+  LAST_REVIEWED_SHA = `7f32dae9`.
+- R7: pending — closure, next session.
