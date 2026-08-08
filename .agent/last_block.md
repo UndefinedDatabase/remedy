@@ -1,38 +1,43 @@
-You are the WORKER for F104 R2 (SPLIT round) in the Remedy repository at /home/decodeux/Repos/remedy.
+You are the WORKER for F104 R2-continuation (SPLIT round) in the Remedy repository at /home/decodeux/Repos/remedy.
 
-Read from disk BEFORE acting, in this order: AGENTS.md (highest authority), .agent/plan.md, .agent/live_review.md, .agent/handoff.md, docs/roadmap/features/T2_F104.md. Do not rely on anything in this prompt as a substitute for reading them.
+Read from disk BEFORE acting, in this order: AGENTS.md (highest authority), .agent/plan.md, .agent/live_review.md, .agent/handoff.md, .agent/last_block.md (it currently holds the ORIGINAL R2 block — read it in full, it is your specification for items 7 and 8), docs/roadmap/features/T2_F104.md. Do not rely on anything in this prompt as a substitute for reading them.
 
 You are the ONLY writer. The reviewer (the session that wrote this block) is read-only and re-runs every verification itself; your summary is never evidence. Never force-push. Never work on main. Never merge. Do not create a PR this round. `git add -A` is FORBIDDEN — stage exact paths only.
 
-Branch: stay on `feature/f104-hard-budget-enforcement` (already checked out, tree clean at fc4929d5).
-R1 verdict: PASS. LAST_REVIEWED_SHA = fc4929d5. Open findings entering this round: 3 (R-0221 carried, plus R-0222 and R-0223 which YOU register in item 2 below).
+Branch: stay on `feature/f104-hard-budget-enforcement` (already checked out, HEAD = ef9a852c).
 
-── STEP T002-part-1/2 — F104 ──────────────────────────────────
-Goal:        Make the money limit actually enforceable at runtime
-             (fix R-0222), then add the PURE predictive-cost engine
-             and its config keys. The safe-point integration, the
-             `predicted_budget_exhausted` stop reason and the two
-             acceptance fixtures are R3 and are NOT in this round.
-Bundle:      1 save this block · 2 register findings FIRST ·
-             3 fix R-0222 (ledger cost reaches the guard) ·
-             4 predictive config keys + resolver ·
-             5 the pure prediction engine · 6 tests ·
-             7 feature-file amendment + decisions · 8 state + handback
-Change:      packages/orchestration/pingpong_job.py,
-             packages/orchestration/budget_guard.py,
-             packages/orchestration/budget_resolution.py,
-             packages/orchestration/config.py,
+── WHY THIS BLOCK EXISTS ──────────────────────────────────────
+The previous R2 worker session ended mid-round without a handback. Items 1-5 of
+the original R2 block ARE committed (18b8ca7a, ab77b2b5, c6994fa8, 0f195a60,
+ef9a852c). Item 6 is HALF-WRITTEN AND UNCOMMITTED: `git status --porcelain`
+currently reports ` M tests/orchestration/test_budget_guard.py`, a +119-line
+addition of `class TestLiveSafePointReadsTheLedgerCost`. Items 7 and 8 are
+untouched. You finish items 6, 7 and 8 and hand back. You do NOT redo items 1-5.
+───────────────────────────────────────────────────────────────
+
+── STEP T002-part-1/2 (continuation) — F104 R2 ────────────────
+Goal:        Finish R2: pin the R-0222 fix with a live test, cover the pure
+             prediction engine, apply the reviewer-authored feature-file and
+             decisions text, run the gates, and hand back. The safe-point
+             integration, the `predicted_budget_exhausted` stop reason and the
+             two acceptance fixtures remain R3 and are NOT in this round.
+Bundle:      1 save this block · 2 commit the pending live-ledger test ·
+             3 the prediction-engine test file · 4 feature-file amendment +
+             decisions · 5 gates, state, handback
+Change:      tests/orchestration/test_budget_guard.py,
              tests/orchestration/test_predictive_budget.py (new),
-             tests/orchestration/test_budget_guard.py,
              docs/roadmap/features/T2_F104.md,
-             .agent/** (last_block, live_review, plan, decisions,
-             authored, handoff). NOTHING else.
-Constraints: P6 — an unmeasured figure is NEVER rendered or computed
-             as a measured zero. No price is ever invented. Do-not-touch
-             from the feature file: calibration from history,
-             per-task-class caps, burn-rate anomaly detection.
-             AGENTS.md commit discipline: one logical step per commit,
-             <500 INSERTIONS per commit (DECISION F104 D1).
+             .agent/** (last_block, decisions, plan, authored, handoff).
+             NOTHING else. In particular: no further edits to
+             packages/orchestration/** unless a gate goes red and the fix is
+             unambiguously inside R2's own change set — if it is not, STOP and
+             hand back with the raw output.
+Constraints: P6 — an unmeasured figure is NEVER rendered or computed as a
+             measured zero. No price is ever invented. Do-not-touch from the
+             feature file: calibration from history, per-task-class caps,
+             burn-rate anomaly detection. AGENTS.md commit discipline: one
+             logical step per commit, <500 INSERTIONS per commit
+             (DECISION F104 D1). Do NOT touch `.agent/context.md`.
 Done when:   Gates A-D below all exit 0, tree clean, branch pushed,
              .agent/handoff.md rewritten.
 Handback:    completion report + rewritten .agent/handoff.md
@@ -40,193 +45,54 @@ Handback:    completion report + rewritten .agent/handoff.md
 
 ## 1. SAVE THIS BLOCK (own commit, FIRST)
 
-Save this entire prompt verbatim to `.agent/last_block.md` (it currently still holds the F103 R8 block — that staleness is finding R-0223). Commit exactly that one file:
+Save this entire prompt verbatim to `.agent/last_block.md`, replacing the original R2 block (that block is preserved in git history at commit 18b8ca7a, and finding R-0223 requires the file to hold the block currently in force). Commit exactly that one file:
 
-    chore(f104): save the R2 step block
+    chore(f104): save the R2 continuation block
 
-## 2. REGISTER THE FINDINGS (own commit, SECOND, before any code)
+## 2. COMMIT THE PENDING LIVE-LEDGER TEST (own commit, SECOND)
 
-Findings persist before repairs so nothing is lost if this round dies.
+`tests/orchestration/test_budget_guard.py` already carries an uncommitted `class TestLiveSafePointReadsTheLedgerCost` written by the previous session. It is INHERITED WORK, not verified work. Before you commit it:
 
-Write the text between the BEGIN/END markers below — the marker lines themselves are NEVER content — to `.agent/authored/f104-r2-1.md`, then apply it as a COMPLETE replacement:
+a. Read the full added block with `git diff tests/orchestration/test_budget_guard.py` and read the surrounding file so you understand its conventions.
+b. Run it yourself: `python3 -m pytest tests/orchestration/test_budget_guard.py -q -k LiveSafePoint` and record the REAL output and exit code.
+c. Satisfy yourself it is a REAL pin of the R-0222 fix and not a tautology — it must drive `pingpong_job.run_job`'s pre-work safe point, not grep source text. Confirm the five cases it claims: over-limit stops, under-limit does not, an unpriced ledger keeps the cost null and does not stop, no cost limit never queries the ledger, and a raising ledger read never stops a healthy job.
+d. If any part of it is wrong, misleading, or does not actually exercise `_stop_check`, FIX it and say exactly what you changed and why in the handback. If it is sound as inherited, say that explicitly — "inherited unchanged, verified by running it" — rather than silently passing it off as your own.
 
-    cp .agent/authored/f104-r2-1.md .agent/live_review.md
-    cmp .agent/authored/f104-r2-1.md .agent/live_review.md ; echo "cmp exit $?"
+Then stage exactly that one path and commit:
 
-Record that exit code in the handback. Then commit exactly `.agent/authored/f104-r2-1.md` and `.agent/live_review.md`:
+    test(f104): pin the live ledger read at the budget safe point
 
-    docs(f104): register the dead-bridge and stale-block findings
+## 3. THE PREDICTION-ENGINE TEST FILE (own commit, THIRD)
 
---- BEGIN f104-r2-1 ---
-# Live Review — F104 Hard budget enforcement
+New file `tests/orchestration/test_predictive_budget.py`. Read `packages/orchestration/budget_guard.py` (`BudgetPrediction`, `predict_next_task_cost`, `VALID_ESTIMATE_BASES`) and `packages/orchestration/budget_resolution.py` (`PredictiveBudgetConfig`, `resolve_predictive_budget_config`) first — test what the code DOES, and if what it does contradicts the rules below, that is a finding for the handback, not something you quietly adjust the test to accept.
 
-> Reviewer: the main session of a one-session self-drive build
-> (docs/agents/self_drive_protocol.md). Worker: one delegated subagent per
-> round. Findings are authored here by the reviewer only; the worker applies
-> them verbatim and marks `Done: R-XXXX` when a fix lands. Only reviewer-
-> authored text sets Resolved.
-> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0224.
+Cover, at minimum:
 
-## Findings
+- every one of the five `estimate_basis` values — `class_default`, `class_default_missing_band`, `no_price_basis`, `no_cost_limit`, `unpriced_spend` — each asserting BOTH the basis and `would_breach`;
+- `VALID_ESTIMATE_BASES` contains exactly those five and every test's observed basis is a member;
+- the breach case: spent + expected > limit → `would_breach` True;
+- the exact-boundary case: spent + expected == limit → `would_breach` False, because the reactive check in `evaluate_budget` owns that boundary and duplicating it here would let the two disagree;
+- the already-over-limit case;
+- missing/unknown band: `None`, `"unknown"` and an unrecognised string each take the LARGEST class default, report `band == "unknown"` and basis `class_default_missing_band`;
+- `price_basis` unset → inert: `expected_cost_usd is None`, `would_breach` False, and the `arithmetic` string contains `not-measured` for the expected figure rather than a fabricated `$0.0000`;
+- unknown spend with `provider_calls > 0` → `unpriced_spend`, no breach; unknown spend with `provider_calls == 0` → spend treated as 0.0 (a job that made no provider call definitionally spent nothing) and prediction proceeds to a real basis;
+- `to_json()` carries `estimate_basis` — this is the grep-style pin the feature file's T003 will extend — and carries `expected_cost_usd is None` unchanged when there is no price basis;
+- `arithmetic` is a non-empty single line carrying spent, expected, limit and basis;
+- `resolve_predictive_budget_config`: the documented defaults when nothing is configured (8000 / 32000 / 120000, price basis None), a TOML override, and an env override, following the existing patterns at `tests/orchestration/test_job_budgets.py:193-362` (`tmp_path / "remedy.toml"` and `monkeypatch.setenv("REMEDY_BUDGET_*", ...)`).
 
-- R-0221 (Low, carried from F103 R5 through `.agent/candidates.md`):
-  `TestAutoBuildBehavior::test_auto_build_runs_by_default` in
-  `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD`
-  and runs a real `npm install` + `npm run build` in whatever checkout it runs
-  in, refreshing `apps/ui/dist` mtimes mid-suite. That costs every integration
-  gate seven phantom base-only failures through the mtime comparison in
-  `_frontend_is_stale()` (`ui_server.py:2748`).
-  REGISTERED here, deliberately NOT fixed by F104: the code is not this
-  feature's and AGENTS.md Scope Control bars the "while I'm here" edit. It is
-  carried as a documented LOW risk to F104 closure
-  (STATUS_closure_protocol.md precondition 1) and routed to the F252
-  flake-debt follow-up class. The F104 integration gate attributes these seven
-  to the pre-existing base-only class per docs/agents/integration_gate.md
-  rather than treating them as new failures.
+A note on the price-basis-unset assertion: if the counters you build there have `provider_calls == 0`, the spent figure is a legitimate measured `0.0` and WILL render as `$0.0000`. Do not assert the whole string is free of `$0.0000` in that case — assert on `expected_cost_usd is None` and on the expected figure rendering as `not-measured`. An honest test beats a convenient one.
 
-- R-0222 (Medium, found in the R1 review, F104 R2 fixes it):
-  `collect_ledger_cost_for_job` in `packages/orchestration/budget_guard.py` has
-  NO production caller. The live safe-point check builds its counters at
-  `packages/orchestration/pingpong_job.py:1824` via
-  `collect_counters_from_actuals(...)` without the `measured_cost_usd` and
-  `unpriced_call_count` arguments R1 added, so at runtime `measured_cost_usd`
-  is always None. `evaluate_budget` then takes its "no call reported a cost;
-  cannot determine exhaustion" branch for every real job, and `--max-cost-usd`
-  can never exhaust in production no matter what the ledger holds. R1's gates
-  were green because every cost test constructs its counters by hand.
-  This is the R-0220 class: a green gate is not a working feature, and the
-  question a review must ask of new code is who calls it.
-  The R1 handback did not declare the gap, which is the second half of the
-  finding — `.agent/handoff.md` is the only return channel and an omission
-  there is itself incomplete (planner_reviewer_prompt.md §4.8). The declared
-  deviation list named the `remedy job budget` text renderer as deferred but
-  said nothing about the bridge having no caller, so a reader of the handback
-  would conclude the money limit enforces. It does not, yet.
+Commit exactly that one new path:
 
-- R-0223 (Low, found in the R1 review, F104 R2 fixes it):
-  `.agent/last_block.md` still contained the F103 R8 closure block while F104
-  R1 was executing, so the R1 step block exists nowhere on disk and the round's
-  order cannot be audited against what was delivered. In the split workflow
-  that file is the record of what was actually ordered
-  (planner_reviewer_prompt.md §4.12); self-drive removes the relay, not the
-  record. Every self-drive round saves its own block as its first commit.
+    test(f104): cover the predictive next-task cost engine
 
-## Steps
+(The original R2 block asked for items 6a and 6b in ONE commit. The reviewer split it into the two commits above because they are two logical steps and the combined insertion count approaches the 500-line cap. Note this split in your handback's Deviations section as reviewer-directed.)
 
-- R1: claim + candidate sweep + T001 — the `max_cost_usd` limit, the ledger
-  cost bridge, the CLI flag and their tests. PASS at fc4929d5; gates A-D
-  re-run by the reviewer (345 / 32 / 294 / 42 passed) and two mutation
-  red-proofs run in a disposable worktree confirmed the boundary comparison
-  and the P6 null-preservation are genuinely pinned.
-- R2: fix R-0222 (ledger cost reaches the live guard), add the predictive
-  config keys and the pure prediction engine, register R-0222 and R-0223.
-  In flight.
-- R3: T002 part 2 — the predictive check at the dispatch safe point, the
-  `predicted_budget_exhausted:<limit>` stop reason, the decision entry
-  carrying the arithmetic, and both acceptance fixtures.
---- END f104-r2-1 ---
+## 4. FEATURE-FILE AMENDMENT + DECISIONS (reviewer-authored, apply verbatim)
 
-## 3. FIX R-0222 — the ledger cost must reach the live guard
+This is item 7 of the original R2 block, unchanged. The spec assumes tasks carry a band; they do not — `JobTask` has no band field and `TokenBand` lives in `token_economy.py`. That is a wrong-spec finding routed to planning per planner_reviewer_prompt.md §4.7, and the reviewer has already chosen the option. Apply the amendment.
 
-Read `packages/orchestration/pingpong_job.py` around the `_stop_check()` closure (near line 1823) and `packages/orchestration/job_evidence.py:65` (`_resolve_job_ledger_project_id`) before editing.
-
-Facts established by the reviewer, verify them yourself rather than trusting this list:
-- `job_evidence.py` already passes `ledger_project_id` / `ledger_job_id` into `write_evidence_bundle`, so a live run DOES write one ledger row per finalized task run. The read side is what is missing.
-- `collect_ledger_cost_for_job(job_id=..., project_id=..., path=...)` returns `(measured_cost_usd, priced_call_count, unpriced_call_count)` and never raises on a missing ledger.
-- `collect_counters_from_actuals` already accepts `measured_cost_usd=` and `unpriced_call_count=`.
-
-Change `_stop_check()` so that it reads the job's real cost from the ledger and passes it into the counters. Requirements:
-
-a. Resolve the ledger project the SAME way the write side does. Reuse `_resolve_job_ledger_project_id` from `packages/orchestration/job_evidence.py` rather than writing a second resolver — AGENTS.md "one spelling per concept" forbids the synonym. Import it lazily inside the function, matching the existing lazy-import style at that site.
-
-b. The read must NEVER be able to break a run. A ledger read that raises for any reason leaves the cost at None and the run continues; a stop check is not the place a job dies. Wrap it the way `_record_finalized_call_in_ledger` wraps its own write (log the error, swallow it), and say in a one-line WHY comment above the call that budgets read a mirror and a broken mirror must not stop a healthy job.
-
-c. Do NOT read the ledger when the job carries no cost limit. `_job_budgets` is in scope; when it is None or its `max_cost_usd` is None, skip the query entirely and keep the current behaviour byte for byte. A SQLite query per task for a limit nobody set is waste, and it also keeps every existing budget test on its current path.
-
-d. Preserve P6 exactly: whatever `collect_ledger_cost_for_job` returns for the cost is passed straight through, None included. Never coerce, never default to 0.0.
-
-Commit (source + its tests may land together only if the tests are in the same logical step; prefer source first, tests in item 6):
-
-    fix(f104): read the ledger cost at the live budget safe point
-
-## 4. PREDICTIVE CONFIG KEYS + RESOLVER
-
-In `packages/orchestration/config.py`, add four `ConfigKeySpec` entries in the shape of the existing `budget.max_cost_usd` spec, placed adjacent to it:
-
-- `budget.price_basis_usd_per_1k_tokens`, env `REMEDY_BUDGET_PRICE_BASIS_USD_PER_1K_TOKENS`, `value_type=float`, `default=None`, description "Provisional USD price per 1000 tokens used for cost predictions (F104; provisional until calibration)".
-- `budget.class_default_tokens_low`, env `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_LOW`, `value_type=int`, `default=8000`.
-- `budget.class_default_tokens_medium`, env `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_MEDIUM`, `value_type=int`, `default=32000`.
-- `budget.class_default_tokens_high`, env `REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_HIGH`, `value_type=int`, `default=120000`.
-
-Each description ends with "(F104; provisional until calibration)" — the feature file requires these to be documented as provisional.
-
-In `packages/orchestration/budget_resolution.py`, add ONE public resolver next to `resolve_job_budgets`:
-
-    resolve_predictive_budget_config(*, config_path=None, project_root=None) -> PredictiveBudgetConfig
-
-returning a frozen dataclass `PredictiveBudgetConfig` with fields `price_basis_usd_per_1k_tokens: float | None` and `class_default_tokens: dict[str, int]` keyed by the `TokenBand` values `"low"`, `"medium"`, `"high"`. Reuse the existing `_pos_float` / `_pos_int` validators and the same `cfg.get_value` + `ConfigSource.DEFAULT` handling the other resolvers use. The price basis stays None when unset — do not substitute a number.
-
-Commit:
-
-    feat(f104): add the provisional price-basis and class-default config keys
-
-## 5. THE PURE PREDICTION ENGINE
-
-In `packages/orchestration/budget_guard.py`, add a frozen dataclass and one function. This round adds NO caller for them — that is deliberate and R3 wires them at the dispatch safe point; say so in the module-level docstring or a WHY comment so the absence is documented where a reader would search for it (AGENTS.md "deliberate absences are documented").
-
-    @dataclass(frozen=True)
-    class BudgetPrediction:
-        would_breach: bool
-        estimate_basis: str
-        band: str
-        expected_tokens: int | None
-        expected_cost_usd: float | None
-        spent_cost_usd: float | None
-        limit_usd: float | None
-        arithmetic: str
-        def to_json(self) -> dict[str, Any]: ...
-
-    def predict_next_task_cost(budgets, counters, *, band, config) -> BudgetPrediction
-
-Rules, all of which are acceptance criteria, not polish:
-
-- `estimate_basis` is ALWAYS a non-empty label and is carried in `to_json`. Its values are exactly: `"class_default"` (a band was known and priced), `"class_default_missing_band"` (no band, so the LARGEST class default was used — over-stopping beats overspending, the feature file's A9 edge case), `"no_price_basis"` (no price basis configured), `"no_cost_limit"` (`budgets.max_cost_usd` is None), `"unpriced_spend"` (what has been spent so far is unknown). No other value.
-- `would_breach` is True ONLY when a real number can be compared: basis is `class_default` or `class_default_missing_band`, and `spent + expected > limit`. Note `>` and not `>=` — the reactive check owns the exact-limit case and duplicating it here would make the two disagree about the boundary.
-- Spent money: use `counters.measured_cost_usd` when it is not None. When it is None, spend is unknown AND the basis becomes `unpriced_spend` with `would_breach=False` — EXCEPT when `counters.provider_calls == 0`, where a job that has made no provider call has definitionally spent nothing, so spend is 0.0 and prediction proceeds. Write the one-line WHY for that exception directly above it.
-- Never invent a price. With `config.price_basis_usd_per_1k_tokens` None, the basis is `no_price_basis`, `expected_cost_usd` is None, `would_breach` is False, and `arithmetic` says the price basis is unset. This is the honest default and it makes the predictive path inert until an operator configures a price.
-- `expected_cost_usd = expected_tokens / 1000 * price_basis`.
-- `band` accepts the `TokenBand` values from `packages/orchestration/token_economy.py` (`"low"`, `"medium"`, `"high"`, `"unknown"`); `"unknown"`, None, or any unrecognised string all mean "no band" and take the largest-class-default path. Import `TokenBand` rather than re-spelling the literals.
-- `arithmetic` is a single human-readable line carrying spent, expected, limit and basis — the feature file requires a human to see WHY. Example shape: `spent $1.2000 + expected $0.9000 (32000 tokens, band=medium, basis=class_default) > limit $2.0000`. When a figure is unknown it is rendered as `not-measured`, never as `$0.0000`.
-- Keep `budget_guard.py` import-light exactly as its existing comment demands: import `TokenBand` and `PredictiveBudgetConfig` lazily inside the function if a module-level import would drag in config/SQLite machinery. Check first; do not add a lazy import you do not need.
-
-Commit:
-
-    feat(f104): add the predictive next-task cost engine
-
-## 6. TESTS
-
-New file `tests/orchestration/test_predictive_budget.py` (the name the feature file suggests). Cover, at minimum:
-
-- every one of the five `estimate_basis` values, each asserting both the basis and `would_breach`;
-- the just-under case: spent + expected > limit → `would_breach` True;
-- the just-over-limit-already case and the exact-boundary case (`spent + expected == limit` → `would_breach` False, because the reactive check owns that boundary);
-- missing/unknown band → the LARGEST class default is used and the basis says the band was missing;
-- `price_basis` unset → inert, `expected_cost_usd is None`, and the arithmetic string does not contain `$0.0000`;
-- unknown spend with provider calls > 0 → `unpriced_spend`, no breach; unknown spend with zero provider calls → treated as 0.0 and prediction proceeds;
-- `to_json` carries `estimate_basis` (this is the grep-style pin the feature file's T003 will extend);
-- `resolve_predictive_budget_config` — defaults when nothing is configured, and TOML/env override precedence for the price basis, following the existing patterns in `tests/orchestration/test_job_budgets.py`.
-
-Extend `tests/orchestration/test_budget_guard.py` with a test that the R-0222 fix is real: assert that the pingpong safe-point path passes ledger cost into the counters. Prefer a test that exercises `_stop_check` behaviour over one that greps source text; if the closure is genuinely not reachable from a test, state that in the handback and pin it with the narrowest honest alternative, naming why.
-
-Commit:
-
-    test(f104): cover the prediction engine and the live ledger read
-
-## 7. FEATURE-FILE AMENDMENT + DECISIONS (reviewer-authored, apply verbatim)
-
-The spec assumes tasks carry a band; they do not — `JobTask` has no band field and `TokenBand` lives in `token_economy.py`. That is a wrong-spec finding routed to planning per planner_reviewer_prompt.md §4.7, and the reviewer has already chosen the option. Apply the amendment.
-
-Write the text between the markers to `.agent/authored/f104-r2-2.md`. It is ONE FROM→TO pair, a REWRITE, against `docs/roadmap/features/T2_F104.md`. The FROM occurs exactly 1x. Report FROM 1x / TO 0x before and FROM 0x / TO 1x after.
+Write the text between the markers to `.agent/authored/f104-r2-2.md` — the marker lines themselves are NEVER content. It is ONE FROM→TO pair, a REWRITE, against `docs/roadmap/features/T2_F104.md`. The FROM occurs exactly 1x. Report FROM 1x / TO 0x before and FROM 0x / TO 1x after.
 
 --- BEGIN f104-r2-2 ---
 FROM:
@@ -286,11 +152,11 @@ Reverse either decision by deleting its half of this entry and the matching
 lines in `docs/roadmap/features/T2_F104.md`.
 --- END f104-r2-3 ---
 
-Commit (feature file + decisions + both authored files together — one logical step):
+Commit the feature file, decisions and both authored files together — one logical step:
 
     docs(f104): record the derived-band and no-default-price decisions
 
-## 8. GATES, STATE, HANDBACK
+## 5. GATES, STATE, HANDBACK
 
 Run all four and record the REAL command, trimmed output and REAL exit code:
 
@@ -299,11 +165,11 @@ Run all four and record the REAL command, trimmed output and REAL exit code:
     C  python3 -m pytest tests/docs/ -q
     D  python3 -m pytest tests/cli/test_golden_path.py -q
 
-Gate C is mandatory because this round's change set includes `docs/roadmap/**` (planner_reviewer_prompt.md §3, docs-round gate). Gate D is the canary. A red gate is a STOP: hand back the raw output and do not paper over it. Do not run the full suite — that is the R4 integration gate, not this round.
+Gate C is mandatory because this round's change set includes `docs/roadmap/**` (planner_reviewer_prompt.md §3, docs-round gate). Gate D is the canary. A red gate is a STOP: hand back the raw output and do not paper over it. Do not run the full suite — that is the R5 integration gate, not this round.
 
 Any deliberately destructive verification (mutation red-proofs) runs ONLY inside a disposable `git worktree`; the primary checkout must satisfy `git status --porcelain` == empty at handback. Put any worktree under `.remedy-wt/` (gitignored) — writes to /tmp are denied on this machine — and remove it before you finish.
 
-Then rewrite `.agent/plan.md` from the text below (`.agent/authored/f104-r2-4.md`, applied by `cp`, then `cmp`, record the exit code). Do NOT touch `.agent/context.md` — scope, branch and constraints are unchanged from R1 and rewriting it risks its multi-test contract for no gain.
+Then rewrite `.agent/plan.md` from the text below (write it to `.agent/authored/f104-r2-4.md`, apply by `cp`, then `cmp`, and record the exit code). Do NOT touch `.agent/context.md` — scope, branch and constraints are unchanged from R1 and rewriting it risks its multi-test contract for no gain.
 
 --- BEGIN f104-r2-4 ---
 # Plan — F104 Hard budget enforcement
@@ -356,17 +222,20 @@ R-0222 mistake repeating.
 --- END f104-r2-4 ---
 
 Rewrite `.agent/handoff.md` (rewrite, never append). It MUST carry, per AGENTS.md:
-- feature + round, branch, every commit SHA in order, and that this was a SPLIT round with no verdict, no PR, no merge;
-- a per-commit changed-files table with `+/-` and a reason per path;
-- the transport proofs: the `cmp` exit codes for f104-r2-1 and f104-r2-4, the before/after FROM/TO counts for the f104-r2-2 REWRITE pair, and the 1x heading check for the f104-r2-3 append;
+- feature + round, branch, and EVERY commit SHA of R2 in order — including the five made by the previous session (18b8ca7a, ab77b2b5, c6994fa8, 0f195a60, ef9a852c) and yours — and that this was a SPLIT round with no verdict, no PR, no merge;
+- a per-commit changed-files table with `+/-` and a reason per path, for YOUR commits; for the five inherited commits one summary row each is enough, marked inherited;
+- the fact that this session RESUMED an R2 that ended without a handback, and what state it found: ` M tests/orchestration/test_budget_guard.py` uncommitted, items 7-8 untouched;
+- the transport proofs: the `cmp` exit code for f104-r2-4, the before/after FROM/TO counts for the f104-r2-2 REWRITE pair, and the 1x heading check for the f104-r2-3 append;
 - the verification table with the REAL trimmed output and REAL exit codes for gates A-D;
-- an item-status table covering bundle items 1-8, each exactly once, with `done` / `skipped` (reason) / `deviated` (reason);
+- an item-status table covering the five bundle items of THIS block, each exactly once, with `done` / `skipped` (reason) / `deviated` (reason);
 - open-findings count and which findings this round marked `Done:`;
 - the final `git status --porcelain` result;
 - next expected action;
 - a "Deviations, declared" section naming ANY departure from this block, including its own line count if it exceeds 60 lines and why.
 
 Declare in the handback, explicitly, whether `predict_next_task_cost` has a production caller at the end of this round. It does not, by design, and R3 adds one — saying so is what stops R-0222 from recurring silently.
+
+Also declare explicitly what you did with the inherited uncommitted test: unchanged-and-verified, or changed (and exactly how).
 
 Finally: commit the state files, `git push`, and confirm `git status --porcelain` is empty. Do NOT create a PR. Do NOT merge anything. Do NOT run `gh pr merge`.
 
@@ -376,3 +245,5 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Commit subjects must not contain leading-slash tokens, absolute paths, or secret-like strings — the evidence metadata scanner rejects them.
 
 If anything in this block contradicts AGENTS.md, AGENTS.md wins and you hand back naming the contradiction instead of guessing. If a gate goes red and the fix is not obviously inside this round's change set, STOP and hand back with the raw output rather than widening scope.
+
+Your final message is your completion report: the item-status table, the real gate results with exit codes, the commit SHAs, the transport proofs, and your declared deviations.
