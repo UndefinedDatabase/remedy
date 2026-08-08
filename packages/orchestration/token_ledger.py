@@ -54,6 +54,7 @@ Public API::
     COST_BASIS_PROVIDER_REPORTED / COST_BASIS_PRICE_TABLE / COST_BASIS_UNKNOWN
     COST_BASES: frozenset[str]
     CallRecord / BackfillResult / ReconcileResult
+    CostRow / CostReport / COST_GROUP_KEYS
     token_ledger_path_for(project_id, root=None) -> Path
     open_ledger(path) -> sqlite3.Connection
     record_call(record, *, project_id=None, path=None) -> bool
@@ -64,6 +65,9 @@ Public API::
     call_record_from_evidence(evidence_dir, job_id, task_id) -> CallRecord | None
     backfill_ledger(evidence_dir, *, project_id=None, path=None) -> BackfillResult
     verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
+    query_cost(*, project_id=None, path=None, since=None, job_id=None, by=None)
+        -> CostReport
+    merge_cost_reports(reports) -> CostReport
 """
 
 from __future__ import annotations
@@ -147,6 +151,18 @@ _CALL_COLUMNS = (
 )
 
 _COST_BASIS_CHECK = ", ".join(f"'{b}'" for b in sorted(COST_BASES))
+
+# The three group keys ``query_cost`` understands; None means "grand total only".
+COST_GROUP_KEYS: tuple[str, ...] = ("role", "model", "day")
+
+# How each group key becomes a SQL bucket expression. Values are literals of this
+# module, never caller input, so they are safe to inline into the statement.
+_COST_GROUP_EXPRESSIONS: dict[str, str] = {
+    "role": "role",
+    "model": "model",
+    # The first 10 characters of an ISO-8601 UTC timestamp ARE its calendar day.
+    "day": "substr(ts_utc, 1, 10)",
+}
 
 # Migrations as NUMBERED STEPS, not an if-ladder: version 2 appends an entry and
 # version 1's path is never rewritten, which is what keeps old DBs upgradable.
@@ -263,6 +279,74 @@ class ReconcileResult:
     def has_drift(self) -> bool:
         """True when the mirror disagrees with the files in any way."""
         return bool(self.missing_rows or self.orphan_rows or self.drifted_rows)
+
+
+# One aggregated bucket of the ledger, carrying its OWN basis breakdown (P6).
+@dataclass
+class CostRow:
+    """One row of a cost report: a bucket, its figures, and how measured they are.
+
+    ``bucket`` is the group key's value — a role, a model, a ``YYYY-MM-DD`` day —
+    or None for the grand total AND for a bucket whose group column is NULL in
+    the database (a call whose role the evidence never named). ``calls`` counts
+    the rows in the bucket.
+
+    EVERY FIGURE IS NULLABLE ON PURPOSE. ``SUM()`` over rows that all reported
+    NULL yields NULL in SQLite, and that NULL is preserved here instead of being
+    coerced to 0: an UNMEASURED figure must never look like a MEASURED ZERO.
+    That is the P6 rule and the reason the ledger stores nulls at all — a
+    ``COALESCE`` in the query would silently turn "we do not know" into "it cost
+    nothing".
+
+    ``measured_calls`` and ``unmeasured_calls`` are the basis breakdown: how many
+    of ``calls`` carry basis ``provider_reported`` and how many carry ``unknown``.
+    They are COUNTS, not measurements, so 0 is the honest empty value for them —
+    the exact opposite of the rule above, which is why they are counted with
+    ``COUNT`` rather than summed. Their sum can be less than ``calls`` if a row
+    ever carries the ``price_table`` basis; no code in Remedy writes one.
+    """
+
+    bucket: str | None = None
+    calls: int = 0
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    cache_read: int | None = None
+    cache_write: int | None = None
+    cost_usd: float | None = None
+    measured_calls: int = 0
+    unmeasured_calls: int = 0
+
+    # A bucket is only fully measured when every call in it reported its basis.
+    @property
+    def fully_measured(self) -> bool:
+        """True when every call in this bucket reported a provider figure."""
+        return self.calls > 0 and self.measured_calls == self.calls
+
+
+# One answered cost question: the buckets, the grand total, and the provenance.
+@dataclass
+class CostReport:
+    """The result of one ``query_cost`` call.
+
+    ``rows`` are the buckets (empty when no grouping was asked for) and ``total``
+    is the grand total over the SAME filters — it is not the sum of ``rows`` by
+    definition but by construction, computed from the same WHERE clause.
+
+    The remaining fields echo the question back so a renderer can state its own
+    provenance: which ledger was read, whether that file even existed, and which
+    filters produced these numbers. A report over a ledger that does not exist is
+    EMPTY, not an error — and ``ledger_exists`` is how a caller tells "no ledger
+    yet" apart from "a ledger with nothing in it".
+    """
+
+    rows: list[CostRow] = field(default_factory=list)
+    total: CostRow = field(default_factory=CostRow)
+    by: str | None = None
+    since: str | None = None
+    job_id: str | None = None
+    project_id: str | None = None
+    ledger_path: str | None = None
+    ledger_exists: bool = False
 
 
 # Misses are process-level and lock-guarded: several worker threads may write.
@@ -623,6 +707,101 @@ def verify_ledger(
     return result
 
 
+# The aggregation the ledger exists for: what did this cost, grouped and honest.
+def query_cost(
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+    since: str | None = None,
+    job_id: str | None = None,
+    by: str | None = None,
+) -> CostReport:
+    """Aggregate the ledger into a ``CostReport``. READ-ONLY, and never raises on absence.
+
+    ``by`` is one of None (grand total only), ``"role"``, ``"model"`` or
+    ``"day"``; anything else is a ``ValueError``, because silently answering a
+    different question than the one asked is worse than refusing.
+
+    ``since`` filters ``ts_utc`` with a LEXICOGRAPHIC ``>=``. That is correct
+    rather than sloppy: ISO-8601 UTC timestamps sort identically as text and as
+    time — the fields run most-significant first and are zero-padded — and it is
+    exactly why ``ts_utc`` is stored as TEXT instead of an epoch number. The
+    comparison is only sound between timestamps written in the same ISO-8601 UTC
+    shape, which is the only shape this module ever writes.
+
+    ``job_id`` filters to one job. ``"day"`` buckets by the first 10 characters
+    of ``ts_utc``, i.e. its calendar day in UTC.
+
+    NULLS ARE PRESERVED. A bucket in which NO row reported tokens has
+    ``tokens_in=None``, never 0, and the same holds for ``cost_usd``: ``SUM()``
+    over all-NULL is NULL in SQLite and nothing here coerces it away. An
+    unmeasured figure must not be renderable as a measured zero (P6). NO PRICE IS
+    EVER COMPUTED — a cost figure appears only where a provider reported one.
+
+    A ledger file that does not exist yields an EMPTY report: not an error, and
+    NOT a created database. Asking what a project cost must never be the thing
+    that brings its ledger into being.
+    """
+    if by is not None and by not in COST_GROUP_KEYS:
+        raise ValueError(
+            f"query_cost(by={by!r}) is not a group key; use one of "
+            f"{list(COST_GROUP_KEYS)} or None for the grand total"
+        )
+    target = _resolve_ledger_path(project_id=project_id, path=path)
+    report = CostReport(
+        by=by,
+        since=since,
+        job_id=job_id,
+        project_id=None if project_id is None else str(project_id),
+        ledger_path=str(target),
+        ledger_exists=target.is_file(),
+    )
+    if not report.ledger_exists:
+        return report
+
+    where, where_params = _cost_filters(since=since, job_id=job_id)
+    conn = _connect_readonly(target)
+    try:
+        report.total = _cost_bucket_rows(conn, where, where_params, group_expr=None)[0]
+        if by is not None:
+            report.rows = _cost_bucket_rows(
+                conn, where, where_params, group_expr=_COST_GROUP_EXPRESSIONS[by]
+            )
+    finally:
+        conn.close()
+    return report
+
+
+# Folds several project reports into one, which is what ``--all-projects`` is.
+def merge_cost_reports(reports: list[CostReport]) -> CostReport:
+    """Combine per-project reports into one, keeping every NULL a NULL.
+
+    Buckets with the same key are added together; a figure that was unmeasured in
+    EVERY report stays None, while a figure measured anywhere becomes the sum of
+    the reports that measured it — the honest reading, since the unmeasured
+    reports contribute nothing known rather than a known zero.
+
+    The merged report echoes back only what all its inputs agree on: the filters
+    and the grouping. ``project_id`` and ``ledger_path`` are cleared, because a
+    cross-project total belongs to no single project or file, and
+    ``ledger_exists`` is True when at least one ledger was actually read.
+    """
+    merged = CostReport(
+        by=reports[0].by if reports else None,
+        since=reports[0].since if reports else None,
+        job_id=reports[0].job_id if reports else None,
+        ledger_exists=any(r.ledger_exists for r in reports),
+    )
+    merged.total = _combine_cost_rows([r.total for r in reports], bucket=None)
+    buckets: dict[str | None, list[CostRow]] = {}
+    for report in reports:
+        for row in report.rows:
+            buckets.setdefault(row.bucket, []).append(row)
+    ordered = sorted(buckets.items(), key=lambda item: (item[0] is not None, item[0] or ""))
+    merged.rows = [_combine_cost_rows(rows, bucket=bucket) for bucket, rows in ordered]
+    return merged
+
+
 # How many ledger writes have failed in this process — surfaced by verify-ledger.
 def ledger_miss_count() -> int:
     """Return the number of failed ledger writes since the last reset."""
@@ -653,6 +832,123 @@ def _resolve_ledger_path(
     if project_id is not None:
         return token_ledger_path_for(project_id)
     raise ValueError("a ledger target needs either project_id or path")
+
+
+def _connect_readonly(path: Path) -> sqlite3.Connection:
+    """Open ``path`` for querying only: it cannot be created and cannot be written.
+
+    Deliberately NOT ``open_ledger``: a query must never create a database and
+    must never MIGRATE one. ``remedy stats cost --all-projects`` reads other
+    projects' ledgers, and a read that quietly upgraded another project's schema
+    would be a write wearing a query's name. Two mechanisms, neither of them a
+    promise: ``mode=rw`` refuses to bring a missing file into existence, and
+    ``PRAGMA query_only=1`` makes SQLite itself reject every INSERT, UPDATE and
+    DDL statement on the handle.
+
+    Remedy deliberately does NOT use ``mode=ro`` here even though it sounds
+    stricter. A ``mode=ro`` handle cannot checkpoint the write-ahead log when it
+    closes, so merely READING a WAL database would leave ``-wal`` and ``-shm``
+    files sitting next to it forever. A read that litters the data root is not
+    the read-only this feature promised.
+    """
+    uri = f"{path.resolve().as_uri()}?mode=rw"
+    conn = sqlite3.connect(uri, uri=True, timeout=BUSY_TIMEOUT_MS / 1000)
+    try:
+        conn.execute("PRAGMA query_only=1")
+        conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
+    except BaseException:
+        conn.close()
+        raise
+    return conn
+
+
+def _cost_filters(*, since: str | None, job_id: str | None) -> tuple[str, list[Any]]:
+    """The shared WHERE clause, so the buckets and the grand total cannot diverge."""
+    clauses: list[str] = []
+    params: list[Any] = []
+    if since:
+        clauses.append("ts_utc >= ?")
+        params.append(since)
+    if job_id:
+        clauses.append("job_id = ?")
+        params.append(job_id)
+    return (" WHERE " + " AND ".join(clauses)) if clauses else "", params
+
+
+def _cost_bucket_rows(
+    conn: sqlite3.Connection,
+    where: str,
+    where_params: list[Any],
+    *,
+    group_expr: str | None,
+) -> list[CostRow]:
+    """Run one aggregation and map it onto ``CostRow``s, NULLS INTACT.
+
+    The measurement columns are ``SUM``med, so an all-NULL bucket stays NULL. The
+    two basis columns are ``COUNT``ed instead, because ``COUNT`` never returns
+    NULL and "zero calls reported a basis" is a fact rather than a gap — a count
+    of nothing IS 0, while a sum of nothing is not.
+
+    ``group_expr`` is a literal from ``_COST_GROUP_EXPRESSIONS``, never caller
+    input; ``since`` and ``job_id`` reach the statement as bound parameters.
+    """
+    bucket_expr = group_expr or "NULL"
+    sql = (
+        f"SELECT {bucket_expr} AS bucket, COUNT(*), "
+        "SUM(tokens_in), SUM(tokens_out), SUM(cache_read), SUM(cache_write), "
+        "SUM(cost_usd), "
+        "COUNT(CASE WHEN cost_basis = ? THEN 1 END), "
+        "COUNT(CASE WHEN cost_basis = ? THEN 1 END) "
+        f"FROM calls{where}"
+    )
+    params = [COST_BASIS_PROVIDER_REPORTED, COST_BASIS_UNKNOWN, *where_params]
+    if group_expr is not None:
+        sql += " GROUP BY bucket ORDER BY bucket"
+    rows = conn.execute(sql, params).fetchall()
+    return [
+        CostRow(
+            bucket=None if row[0] is None else str(row[0]),
+            calls=int(row[1]),
+            tokens_in=row[2],
+            tokens_out=row[3],
+            cache_read=row[4],
+            cache_write=row[5],
+            cost_usd=row[6],
+            measured_calls=int(row[7]),
+            unmeasured_calls=int(row[8]),
+        )
+        for row in rows
+    ]
+
+
+def _add_optional(left: int | float | None, right: int | float | None) -> int | float | None:
+    """Add two possibly-unmeasured figures; None only when BOTH are unmeasured.
+
+    ``None`` here means "nobody reported this", not "zero". Adding it as 0 would
+    manufacture a measurement; dropping the whole sum because one side is unknown
+    would discard a real one. Keeping the known part and staying None only when
+    nothing is known is the sole answer that invents nothing.
+    """
+    if left is None:
+        return right
+    if right is None:
+        return left
+    return left + right
+
+
+def _combine_cost_rows(rows: list[CostRow], *, bucket: str | None) -> CostRow:
+    """Fold several buckets with the same key into one, preserving unmeasuredness."""
+    combined = CostRow(bucket=bucket)
+    for row in rows:
+        combined.calls += row.calls
+        combined.measured_calls += row.measured_calls
+        combined.unmeasured_calls += row.unmeasured_calls
+        combined.tokens_in = _add_optional(combined.tokens_in, row.tokens_in)
+        combined.tokens_out = _add_optional(combined.tokens_out, row.tokens_out)
+        combined.cache_read = _add_optional(combined.cache_read, row.cache_read)
+        combined.cache_write = _add_optional(combined.cache_write, row.cache_write)
+        combined.cost_usd = _add_optional(combined.cost_usd, row.cost_usd)
+    return combined
 
 
 def _read_evidence_object(path: Path) -> dict[str, Any] | None:
