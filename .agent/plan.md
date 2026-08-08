@@ -17,8 +17,8 @@ reactive check is unchanged — prediction never replaces the backstop.
 
 ## Current Step
 R4 — T002 part 2: derive the band at the dispatch safe point per DECISION F104
-D3/D6, wire `predict_next_task_cost` in BEFORE the next task is dispatched (it
-has NO production caller at the end of R3), add the
+D3/D6, wire `predict_next_task_cost` in BEFORE the next task is dispatched (as
+of this round `run_job`'s `_stop_check` is its production caller), add the
 `predicted_budget_exhausted:<limit>` stop reason and the persisted arithmetic,
 and both acceptance fixtures — just-under, and prediction-wrong proving the
 reactive backstop still fires. Block saved at `.agent/last_block.md`.

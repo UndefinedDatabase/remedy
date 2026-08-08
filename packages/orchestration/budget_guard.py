@@ -4,11 +4,16 @@ Pure, deterministic evaluation of job budgets against recorded actuals.
 No writes, no stop, no side effects. Injected clock for wall-time/deadline.
 
 F104 adds a second, FORWARD-looking evaluation next to the reactive one:
-``predict_next_task_cost``. Remedy deliberately does NOT call it from the job
-loop yet — F104 R3 wires it at the task-dispatch safe point, where the band is
-derived per DECISION F104 D3. The engine lands first, pure and tested, so that
-the change to the stop path (the most safety-critical code in the loop) is a
-single call rather than a call plus an unproven algorithm.
+``predict_next_task_cost``. ``run_job`` calls it at the task-dispatch safe
+point in ``packages/orchestration/pingpong_job.py``, after the operator stop
+and after the reactive check, on the same counters the reactive check just
+evaluated. The band it needs is derived there by ``derive_next_task_token_band``
+from the next task's own text (DECISION F104 D3 and D6) — a JobTask stores no
+band, and the prompt is deliberately not built before the safe point.
+
+The reactive check in ``evaluate_budget`` remains the BACKSTOP: prediction only
+ever stops earlier than the backstop would, never instead of it, and both
+functions here stay pure so the stop path holds no estimation logic of its own.
 """
 from __future__ import annotations
 
@@ -438,8 +443,10 @@ def derive_next_task_token_band(task, previous_summaries=()) -> str:
 
 
 # Predicts what the next task will cost so a job can stop BEFORE it overspends.
-# Pure: no reads, no writes, no clock. NO PRODUCTION CALLER YET — F104 R3 adds
-# the one at the task-dispatch safe point (see the module docstring).
+# Pure: no reads, no writes, no clock. Called by `run_job`'s `_stop_check` at the
+# task-dispatch safe point, with the band from `derive_next_task_token_band`
+# (DECISION F104 D3/D6) and the counters the reactive check just used. The
+# reactive check in `evaluate_budget` remains the backstop for what this misses.
 def predict_next_task_cost(
     budgets: JobBudgets | None,
     counters: BudgetCounters,

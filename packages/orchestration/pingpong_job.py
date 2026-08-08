@@ -272,6 +272,9 @@ class JobPlan:
     # Planning and waiting time do not count. Resume preserves the original.
     first_running_at: str = ""
     budget_actuals: dict | None = None
+    # F104: the prediction that justified a predictive stop — its arithmetic is
+    # what a human reads to see WHY the job stopped before doing any work.
+    budget_prediction: dict | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -591,6 +594,7 @@ def _export_job(job: JobPlan) -> dict[str, Any]:
         "budgets": job.budgets,
         "first_running_at": job.first_running_at,
         "budget_actuals": job.budget_actuals,
+        "budget_prediction": job.budget_prediction,
         "handoff_coverage": {
             "verdict": job.handoff_coverage_verdict,
             "root_changed_files": job.root_changed_files,
@@ -683,6 +687,8 @@ def _import_job(data: dict[str, Any]) -> JobPlan:
         budgets=data.get("budgets"),
         first_running_at=str(data.get("first_running_at", "") or ""),
         budget_actuals=data.get("budget_actuals"),
+        # Absent in job files written before F104 — loads as None, unchanged.
+        budget_prediction=data.get("budget_prediction"),
     )
     for t in data.get("tasks", []):
         job.tasks.append(TaskEntry(
@@ -1804,6 +1810,30 @@ def run_job(
             _persist_job(job)
             return job
 
+    # F104: the predictive inputs (price basis + class defaults) are OPERATOR
+    # config, so they are read once per run, not once per safe point. Resolved
+    # only when a money limit exists — with no `max_cost_usd` there is nothing
+    # to predict against and every existing path stays byte for byte unchanged.
+    _predictive_config = None
+    if _job_budgets is not None and _job_budgets.max_cost_usd is not None:
+        try:
+            from packages.orchestration.budget_resolution import (
+                resolve_predictive_budget_config as _resolve_predictive_config,
+            )
+            _predictive_config = _resolve_predictive_config(
+                project_root=job.repo_path or None)
+        except Exception:
+            # A config read must never block a healthy job: with no config the
+            # predictive path is inert and the reactive check still enforces.
+            import logging as _logging
+            _logging.getLogger(__name__).error(
+                "predictive budget config read FAILED for job %r; the predictive "
+                "check is disabled for this run and the reactive budget check "
+                "continues to enforce every limit",
+                job.job_id, exc_info=True,
+            )
+            _predictive_config = None
+
     def _on_provider_call(attempt):
         nonlocal _accumulated_provider_calls, _accumulated_tokens
         nonlocal _accumulated_measured, _accumulated_unmeasured
@@ -1889,7 +1919,7 @@ def run_job(
             )
         return counters
 
-    def _stop_check():
+    def _stop_check(*, next_task=None, previous_summaries=()):
         counters = _build_budget_counters()
         result = _should_stop(
             job.job_id,
@@ -1898,6 +1928,59 @@ def run_job(
             control_root_path=_control,
         )
         if not result.should_stop:
+            # F104: neither the operator stop nor the REACTIVE budget check fired,
+            # so — and only so — ask whether the NEXT task would breach the money
+            # limit. The predictive check runs LAST on purpose: it never replaces
+            # the backstop, it only ever stops EARLIER than the backstop would.
+            if (
+                next_task is not None
+                and _job_budgets is not None
+                and _job_budgets.max_cost_usd is not None
+                and _predictive_config is not None
+            ):
+                # WHY the swallow: a prediction is an ESTIMATE, and a broken
+                # estimate must never stop a healthy job. Any failure here leaves
+                # the run going with the reactive check still enforcing every limit.
+                try:
+                    from packages.orchestration.budget_guard import (
+                        derive_next_task_token_band as _derive_band,
+                    )
+                    from packages.orchestration.budget_guard import (
+                        predict_next_task_cost as _predict_cost,
+                    )
+                    _prediction = _predict_cost(
+                        _job_budgets,
+                        counters,
+                        band=_derive_band(next_task, previous_summaries),
+                        config=_predictive_config,
+                    )
+                    if _prediction.would_breach:
+                        # The arithmetic is persisted BEFORE the stop so a human
+                        # reading job.json sees WHY no work was done.
+                        job.budget_prediction = _prediction.to_json()
+                        # One possible limit on this path; the reactive path
+                        # derives its name from first_exhausted_limit instead.
+                        _pred_reason = f"predicted_budget_exhausted:{'max_cost_usd'}"
+                        import hashlib as _phl
+                        _pred_episode = getattr(job, "active_episode_id", "") or ""
+                        _pred_id = _phl.sha256(
+                            f"{job.job_id}:{_pred_episode}:{_pred_reason}".encode()
+                        ).hexdigest()[:16]
+                        return _StopSignal(
+                            job_id=job.job_id,
+                            request_id=f"budget_{_pred_id}",
+                            reason=_pred_reason,
+                            source="budget",
+                        )
+                except Exception:
+                    import logging as _logging
+                    _logging.getLogger(__name__).error(
+                        "predictive budget check FAILED for job %r; the run "
+                        "continues and the reactive budget check still enforces "
+                        "every configured limit",
+                        job.job_id, exc_info=True,
+                    )
+                    return None
             return None
         if result.source == "operator":
             return result.operator_signal
@@ -1941,6 +2024,8 @@ def run_job(
     if not job.active_episode_id:
         job.active_episode_id = uuid4().hex[:16]
 
+    # Deliberately argument-free: there is no "next task" before the episode loop,
+    # and inventing one would predict against a task that may never be reached.
     _pre_stop = _stop_check()
     if _pre_stop is not None:
         if not _episode_snapshot_bound_ok(job):
@@ -2049,7 +2134,10 @@ def run_job(
             # SAFE POINT — before dispatching a task. A stop that was requested while the
             # job was not running is consumed HERE, before any work begins: zero provider
             # calls, every task still pending.
-            _stop = _stop_check()
+            # F104: this is also the only place the PREDICTIVE check has a real next
+            # task to predict against, so the task and the summaries that will feed
+            # its context are handed over here and nowhere else.
+            _stop = _stop_check(next_task=task, previous_summaries=previous_summaries)
             if _stop is not None:
                 _persist_budget_actuals()
                 _persist_job(job)
