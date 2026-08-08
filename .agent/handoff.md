@@ -1,130 +1,109 @@
-# Handoff — F104 Hard budget enforcement, SESSION CLOSE (R2 + R3)
+# Handoff — F104 Hard budget enforcement, R4 (T002 part 2)
 
-Branch: `feature/f104-hard-budget-enforcement`, cut from `main` at 94f69b0f.
-Build mode: one-session self-drive (docs/agents/self_drive_protocol.md).
-Tip: 8b51fa63. Pushed. No PR, no merge, no force-push this session.
-LAST_REVIEWED_SHA = 8b51fa63.
+Branch: `feature/f104-hard-budget-enforcement`. Build mode: one-session
+self-drive. No PR, no merge, no force-push, no worktree created.
 
-## What this session found and did
+## Range
+Review of `03efcd62..00289e1e` (6 commits, oldest first).
 
-It opened on a BROKEN-OFF round: HEAD was ef9a852c, `git status --porcelain`
-reported ` M tests/orchestration/test_budget_guard.py` (+119 lines,
-uncommitted), and R2 had committed items 1-5 of its block without ever writing
-a handback. Items 7-8 were untouched. The session resumed R2 rather than
-planning new work, then ran R3, and closed here. It did not start R4.
+## Commits
 
-## Rounds and verdicts (verdicts are the reviewer's; gates re-run by the reviewer)
-
-| Round | Commits (oldest first) | Verdict |
+### 745999fd chore(f104): save the R4 step block
+| Path | +/- | Reason |
 |---|---|---|
-| R2 (resumed) | 5e2e242d, 77971336, 5971a127, 460e837c, 5ffd1178 | PASS at 5ffd1178 |
-| R3 | 61ba3056, e4f0dd31, 76be26d9, c6f99aa8, 31a462d3, 8b51fa63 | PASS at 8b51fa63 |
+| .agent/authored/f104-r4-1.md | +114 | the R4 order, saved verbatim (item 1) |
+| .agent/last_block.md | +205/-201 | same text; replaces the stale R3 block |
+| .agent/plan.md | +9/-9 | Current Step moved to R4 |
 
-Plus the five R2 commits inherited from the previous session: 18b8ca7a,
-ab77b2b5, c6994fa8, 0f195a60, ef9a852c.
+### 445d84d6 refactor(f104): extract the safe-point counters build
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/pingpong_job.py | +12/-1 | pure move of the counters build into `_build_budget_counters()`; no logic change |
 
-## Verification — re-run by the reviewer, real exit codes
+### ffe03941 feat(f104): derive the next task's token band, pure
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/budget_guard.py | +35 | `derive_next_task_token_band` — pure, never raises |
+| tests/orchestration/test_predictive_budget.py | +79 | 9 tests: bands, boundary, summaries, degradation |
 
-| Gate | Command | R2 | R3 |
-|---|---|---|---|
-| A | `pytest test_predictive_budget.py test_budget_guard.py test_job_budgets.py -q` | 226 passed, exit 0 | 233 passed, exit 0 |
-| B | `pytest test_budget_stop_integration.py test_f018_authority_integration.py test_stop_reasons.py -q` | 163 passed, exit 0 | 163 passed, exit 0 |
-| C | `pytest tests/docs/ -q` | 294 passed, exit 0 | 294 passed, exit 0 |
-| D | `pytest tests/cli/test_golden_path.py -q` | 42 passed, exit 0 | 42 passed, exit 0 |
+### 14b8940c feat(f104): stop before a task that would breach max_cost_usd
+| Path | +/- | Reason |
+|---|---|---|
+| packages/orchestration/pingpong_job.py | +91/-1 | `JobPlan.budget_prediction` + both serializers; `_predictive_config` resolved once; predictive check inside `_stop_check` AFTER the reactive one; loop safe point passes the next task |
+| packages/orchestration/budget_guard.py | +14/-7 | the two "no production caller" claims replaced |
+| .agent/plan.md | +2/-2 | same claim removed |
 
-Mutation red-proofs, all run by the reviewer in disposable worktrees under
-`.remedy-wt/`, all removed afterwards:
+### 621479df test(f104): pin the predictive stop at the live safe point
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_predictive_budget.py | +338/-6 | both acceptance fixtures through the real `run_job`, 2 inert regressions, the A9 seam pin, `_counters(priced=)` |
+| .agent/plan.md | +11 | the blocker below |
 
-| Mutation | Result |
-|---|---|
-| `predict_next_task_cost`: `>` -> `>=` | 1 RED — only the exact-boundary test |
-| `_stop_check`: `_ledger_cost` -> `_ledger_cost or 0.0` | 1 RED — the P6 null test |
-| `_stop_check`: R-0222 ledger read disabled | 4 of 5 live safe-point tests RED |
-| `BudgetCounters`: restore `unpriced_call_count > provider_calls` | exactly 3 RED — the R-0224 pins |
+### 00289e1e docs(f104): record DECISION F104 D6 and the R4 state
+| Path | +/- | Reason |
+|---|---|---|
+| docs/roadmap/features/T2_F104.md | +10 | D6 appended next to D3/D4, verbatim |
+| .agent/decisions.md | +31 | D6 with alternative + reversal |
+| .agent/plan.md | +21/-24 | rewritten at R5, 49 lines |
+| .agent/live_review.md | +8/-5 | one R4 line in `## Steps`; no finding text authored |
 
-R-0224 was also reproduced directly by the reviewer before it was registered:
-`collect_counters_from_actuals({"provider_call_count": 0, ...},
-measured_cost_usd=None, unpriced_call_count=3)` raised
-`BudgetCounterError: unpriced_call_count (3) > provider_calls (0)`.
+## External actions
+`git push origin feature/f104-hard-budget-enforcement` — see the completion
+report for the real transcript. No PR, no merge, no gh command, no worktree.
 
-## What is built
+## Verification (real, re-runnable from the repo root)
+| Gate | Command | Result |
+|---|---|---|
+| A | `pytest test_predictive_budget.py test_budget_guard.py test_job_budgets.py -q` | **249 passed, 1 xfailed**, exit 0 |
+| B | `pytest test_budget_stop_integration.py test_f018_authority_integration.py test_stop_reasons.py -q` | **163 passed**, exit 0 |
+| C | `pytest tests/docs/ -q` | **294 passed**, exit 0 |
+| D | `pytest tests/cli/test_golden_path.py -q` | **42 passed**, exit 0 |
 
-T001 is complete (R1). T002 part 1 is complete: the ledger cost reaches the
-live safe-point guard, the provisional price-basis and class-default config
-keys resolve, and the PURE prediction engine `predict_next_task_cost` /
-`BudgetPrediction` is implemented and tested. R3 closed the cross-source
-counter defect that R2's own bridge introduced.
+No intermediate commit was red: A and B were run green at 445d84d6 and again at
+14b8940c before the tests landed (the wiring is inert without a price basis).
 
-DECLARED: `predict_next_task_cost` has NO production caller. That is by design
-and is stated in the module docstring, above the function, and in
-`.agent/plan.md`; R4 wires it at the task-dispatch safe point. Saying so is
-what keeps R-0222 from recurring silently.
-
-Decisions recorded this session: F104 D3 (band is derived, not stored), D4 (the
-price basis has no default), D5 (cost-side call counts are validated against
-the cost side).
+## Authored-text proofs
+`cmp .agent/authored/f104-r4-1.md .agent/last_block.md` → **exit 0**.
 
 ## Item status
-
 | Item | Status | Reason |
 |---|---|---|
-| R2 items 1-5 (inherited, committed) | done | verified by the reviewer at PASS |
-| R2 item 6 tests | done | inherited test strengthened by the R2 worker, then committed |
-| R2 item 7 feature file + decisions | done | |
-| R2 item 8 gates, state, handback | done | |
-| R3 items 1-6 | done | |
-| Session close | done | this handoff |
-| R4 (T002 part 2 wiring) | not started | session round cap reached |
+| 1 save the block | done | cmp exit 0 |
+| 2 counters refactor | done | pure move, verified by `git diff` |
+| 3 band derivation + tests | done | |
+| 4 wiring + stale comments | done | `stop_check=_stop_check` still a zero-arg callable (`pingpong_loop.py:2258`) |
+| 5 fixtures + regressions | deviated | terminal JOB_STOPPED is an `xfail(strict=True)` — blocker below; A9 pinned at the seam, as the block permits |
+| 6 docs, decisions, state | deviated | no ist-doc exists to carry the stop reason; `.agent/context.md` untouched |
 
-## Open findings
+## Deviations & assumptions
+- **BLOCKER, pre-existing, reported not fixed.**
+  `run_manifest._BUDGET_ALLOWED_KEYS` is a closed schema F104 T001 never
+  extended, so any job carrying `max_cost_usd` fails its F012 manifest write
+  (`manifest.budgets has unknown keys: ['max_cost_usd']`). On the stop path this
+  raises `StopFinalizationError` inside `_stop_job` AFTER the stop reason and
+  source are set but BEFORE the JOB_STOPPED checkpoint: the job is left RUNNING
+  with no manifest, so `--max-cost-usd` cannot finalize a stop at all. It
+  reproduces with the predictive path fully inert and with no budgets beyond
+  `{"max_cost_usd": 100.0}`, so it is not R4's. Not fixed — the block forbids
+  fixing defects outside the change set, and `run_manifest.py` is shared F012.
+  Every other acceptance assertion is pinned; the terminal one xfails
+  `strict=True` and self-clears when the allowlist is fixed.
+- **A9 pinned at the `derive`→`predict` seam, not through `run_job`**: a real
+  `TaskEntry` always yields a derivable band (absent text estimates to 0 tokens,
+  honestly LOW), so no run-level fixture reaches `TokenBand.UNKNOWN` without
+  faking the task. The block permits this and asks it be said here.
+- **No ist-doc carries the stop reason.** `docs/README.md` indexes none
+  describing the F018/F104 job-budget stop path; the three `budget_exhausted`
+  hits under `docs/system/` are the overnight-executor loop budget, the
+  orchestrator loop budget and a dogfood status enum, and `autocoder-usage.md`'s
+  is the repair budget. No doc created, per the block.
+- **`.agent/context.md` left unchanged**: scope and constraints did not change.
+  Its `## Steps` line is now stale (it maps R2→predictive stop, R3→display);
+  reported, not edited, since the block gated the file on scope/constraints.
+- **This handoff is 109 lines** (AGENTS.md D15 stated-cause overage): six
+  per-commit tables, the gate table, the proof line, the item table and the
+  blocker record. No section dropped.
 
-1 — R-0221 (Low, carried, not F104's to fix; routed to the F252 flake-debt
-class). R-0222, R-0223 and R-0224 are all marked Done in
-`.agent/live_review.md` with reviewer-authored resolution text.
-
-## State
-
-`git status --porcelain`: EMPTY. Branch pushed and in sync with origin. No
-worktrees remain beyond the primary checkout. `docs/roadmap/STATUS.md` still
-carries F104 as `[~]`, correctly — the feature is not closed.
-
-## Next expected action
-
-R4 — T002 part 2. Derive the band at the dispatch safe point per DECISION F104
-D3 using `token_economy.estimate_task_token_band()`, call
-`predict_next_task_cost` BEFORE the next task is dispatched, add the
-`predicted_budget_exhausted:<limit>` stop reason and the decision entry
-carrying the arithmetic, and add both acceptance fixtures — just-under, and
-prediction-wrong proving the reactive backstop still fires.
-
-Known trap for R4, surfaced by the R3 worker and confirmed: the `_counters`
-helper in `tests/orchestration/test_predictive_budget.py` has no `priced`
-parameter, so any new test pairing `spent > 0` with `unpriced > 0` will hit the
-cost-side contradiction check. Give it a `priced` parameter the way
-`_cost_counters` in `test_budget_guard.py` already has one.
-
-After R4: R5 display and docs, R6 integration gate, R7/R8 closure.
-
-## Deviations, declared
-
-- **The session ended at its stated round cap (3 delegated rounds), not at the
-  end of the feature.** Per self-drive protocol G7 that is a success, not a
-  failure. R4 was not started because it is the largest remaining round and
-  beginning it without headroom to also review it would have recreated exactly
-  the unfinished-round state this session opened on.
-- **The R3 worker's completion report claimed a `Done:` marker on R-0224 that
-  its applied text did not contain.** The worker applied the reviewer's text
-  correctly; the report overstated it. The reviewer caught the discrepancy at
-  review and authored the marker in this closing round. Recorded because a
-  worker summary is never evidence, and this is a concrete instance.
-- **The R3 worker repaired five pre-existing tests beyond the three the block
-  named**, by giving `_cost_counters` a `priced` parameter defaulting to
-  `calls - unpriced`. Reviewer-checked: no assertion was relaxed or deleted.
-- **Commit 76be26d9 leaves 7 tests RED at that SHA**, green again at 31a462d3.
-  The block separated the fix and its tests into two ordered items; the worker
-  declared this rather than silently reordering.
-- **This handoff is 118 lines, over the 60-line cap**, under AGENTS.md DECISION
-  D15 stated-cause overage: it covers TWO reviewed rounds plus a resumed one,
-  and carries the mandated per-round commit list, the two-round verification
-  table, the mutation-proof table, the item-status table and the open-findings
-  record. No section was dropped.
+## Next
+Reviewer: verdict on R4, plus a ruling on the manifest blocker — its own repair
+round, or folded into R5 (T003 display + docs + estimate labels).
