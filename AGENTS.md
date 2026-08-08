@@ -403,6 +403,17 @@ feature + round, branch, last commit SHAs, changed-files table,
 verification results (real, trimmed), open findings count, next expected
 action.
 
+Stated-cause overage (operator ruling 2026-08-08, F254 finding R-0214,
+resolved as DECISION D15): a handback MAY exceed the cap when the
+MANDATED content above genuinely does not fit, and only then. Such a
+handoff carries a "Deviations, declared" line naming its actual line
+count and the specific mandated content that caused the overage — the
+verification table, the transport and pair proofs, the item-status
+table, the closure values. Sections are NEVER dropped to meet the cap:
+dropping a mandated section is a finding, while exceeding the cap with a
+stated cause is not. Verbosity is not a cause — prose padding, verbatim
+transcripts and restated procedure remain findings at any length.
+
 - Every artifact-build attempt (evidence bundle, review zip)
   appears in the handoff with its status, including failed
   attempts with blocking reasons.
