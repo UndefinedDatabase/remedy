@@ -44,17 +44,35 @@ What T003 adds proof of, over a ledger written row by row:
   * the query connection itself refuses to write, and leaves no ``-wal``/``-shm``
     behind, so reading another project's ledger cannot change it.
 
-Every test writes inside ``tmp_path`` and passes ``root=``/``path=``
-explicitly. ``REMEDY_DATA_DIR`` is never mutated and the repository's real data
-root is never touched.
+What R6 adds proof of, against the PRODUCTION caller (finding R-0220):
+
+  * a fake-provider job exported through ``export_job_evidence`` — with NO
+    ``ledger_*`` argument passed by hand — yields its task runs as rows, with
+    the ``"<job_id>:<task_id>"`` call_id, role, token counters and basis the
+    evidence files themselves carry. The hand-passed path was already green;
+    it is what hid the fact that nobody ever armed the hook;
+  * the INERTNESS guarantee the opt-in exists for still holds: an export for
+    which no project resolves — an unregistered repo, a non-git directory, or a
+    job whose ``repo_path`` is empty — creates no ledger file ANYWHERE, and in
+    particular never falls back to the process working directory;
+  * evidence output is BYTE-IDENTICAL whether the mirror fires or not.
+
+Tests outside the R6 class write inside ``tmp_path`` and pass
+``root=``/``path=`` explicitly, never touching ``REMEDY_DATA_DIR``. The R6
+class must drive the real resolution path, so it points ``REMEDY_DATA_DIR`` at
+a ``tmp_path`` directory via ``monkeypatch``; the repository's real data root is
+never touched by any test in this file.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import sqlite3
+import subprocess
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -1105,3 +1123,303 @@ class TestMergeCostReports:
         assert merged.rows == []
         assert merged.total.calls == 0
         assert merged.total.cost_usd is None
+
+
+# ---------------------------------------------------------------------------
+# R6 (finding R-0220) — the LIVE mirror on the PRODUCTION path
+# ---------------------------------------------------------------------------
+
+#: A one-task job file. One task is enough: the seam is per TASK RUN (D16), so
+#: one finalized run is the whole unit of behaviour under test.
+_LIVE_JOB_FILE = """\
+# Job: Live ledger mirror
+
+## Task 1
+Add a greeting.
+
+Acceptance:
+- file exists
+"""
+
+
+@pytest.fixture
+def live_data_root(tmp_path, monkeypatch):
+    """A throwaway data root for the tests that drive real project resolution.
+
+    ``REMEDY_PROJECT`` is cleared as well: the seam must resolve the project from
+    the JOB's own repo path, and a leaked environment selector would mask that.
+    """
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    monkeypatch.delenv("REMEDY_PROJECT", raising=False)
+    return data_dir
+
+
+def _git_repo(path):
+    """A real git repo with one commit — what a project can be registered against."""
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "main.py").write_text("VALUE = 1\n")
+
+    def _git(*args):
+        subprocess.run(["git", *args], cwd=str(path), check=True,
+                       capture_output=True, text=True)
+
+    _git("init", "-q")
+    _git("config", "user.email", "t@example.com")
+    _git("config", "user.name", "Test")
+    _git("add", "-A")
+    _git("commit", "-q", "-m", "init")
+    return path
+
+
+@pytest.fixture
+def live_job_repo(tmp_path):
+    return _git_repo(tmp_path / "job_repo")
+
+
+def _run_fake_provider_job(repo):
+    """Run a real job end to end with the fake provider — no network, no real model."""
+    from packages.orchestration.pingpong_job import parse_job_file, run_job
+    from packages.orchestration.pingpong_provider import FakeProvider
+
+    plan = parse_job_file(_LIVE_JOB_FILE, str(repo))
+    return run_job(
+        plan.job_id,
+        builder_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+        reviewer_provider=FakeProvider(pass_on_round=1, fail_on_round=99),
+        repair_rounds=0,
+    )
+
+
+def _database_files_under(root):
+    """Every SQLite artefact under *root*, sidecars included — the inertness probe."""
+    base = Path(root)
+    if not base.exists():
+        return []
+    return sorted(
+        str(p.relative_to(base)) for p in base.rglob("*")
+        if p.is_file() and (
+            p.suffix == ".sqlite" or p.name.endswith(("-wal", "-shm"))
+        )
+    )
+
+
+def _file_digests(base):
+    return {
+        str(p.relative_to(base)): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(base.rglob("*")) if p.is_file()
+    }
+
+
+class TestLiveMirrorOnTheProductionPath:
+    """Finding R-0220: a REAL job must yield rows with nobody passing ``ledger_*``.
+
+    Every test in this class calls ``export_job_evidence`` — the production
+    caller behind `remedy do job-evidence` and `do job-flow` — and passes NO
+    ``ledger_*`` argument. A test that supplies the target itself proves only
+    the hand-passed path, which was already green and is exactly what let the
+    feature ship switched off.
+    """
+
+    def test_a_fake_provider_job_yields_its_task_run_as_a_row(
+        self, live_data_root, live_job_repo, tmp_path
+    ):
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("ledger-live", str(live_job_repo))
+        job = _run_fake_provider_job(live_job_repo)
+
+        result = export_job_evidence(job.job_id, str(tmp_path / "evidence"))
+        assert "error" not in result
+
+        ledger = token_ledger_path_for(project.id)
+        assert ledger.is_file(), (
+            "the production path armed no ledger: export_job_evidence must "
+            "supply the ledger_* target itself (finding R-0220)"
+        )
+
+        call_id = f"{job.job_id}:T001"
+        assert _call_ids(ledger) == [call_id]
+
+        row = _row(ledger, call_id)
+        assert row["job_id"] == job.job_id
+        assert row["task_id"] == "T001"
+        assert row["evidence_ref"] == "task_runs/T001"
+        assert row["ts_utc"]
+        assert row["cost_basis"] in COST_BASES
+
+    def test_the_live_row_says_exactly_what_the_evidence_files_say(
+        self, live_data_root, live_job_repo, tmp_path
+    ):
+        """Role, model, counters and basis are the FILES' values, not invented ones."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("ledger-live", str(live_job_repo))
+        job = _run_fake_provider_job(live_job_repo)
+        out = tmp_path / "evidence"
+        export_job_evidence(job.job_id, str(out))
+
+        expected = call_record_from_evidence(out, job.job_id, "T001")
+        assert expected is not None, "the exported tree carries no provider evidence"
+
+        row = _row(token_ledger_path_for(project.id), f"{job.job_id}:T001")
+        for field in (
+            "call_id", "job_id", "task_id", "role", "model",
+            "tokens_in", "tokens_out", "cache_read", "cache_write",
+            "cost_usd", "cost_basis", "ts_utc", "evidence_ref",
+        ):
+            assert row[field] == getattr(expected, field), field
+
+        # A fake-provider call reports no price, and an unreported counter must
+        # not have become a zero on the way in (the P6 rule).
+        assert row["cost_usd"] is None
+        assert row["cost_basis"] == COST_BASIS_UNKNOWN
+
+    def test_the_live_row_is_the_row_backfill_would_have_written(
+        self, live_data_root, live_job_repo, tmp_path
+    ):
+        """Reconcile is the independent judge: one producer, so zero drift."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("ledger-live", str(live_job_repo))
+        job = _run_fake_provider_job(live_job_repo)
+        out = tmp_path / "evidence"
+        export_job_evidence(job.job_id, str(out))
+
+        report = verify_ledger(out, path=token_ledger_path_for(project.id))
+        assert report.has_drift is False
+        assert report.missing_rows == []
+        assert report.drifted_rows == []
+
+    def test_re_exporting_the_same_job_adds_no_second_row(
+        self, live_data_root, live_job_repo, tmp_path
+    ):
+        """The call_id is a pure function of (job, task), so a re-export is a no-op."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.project_registry import register_project_repo
+
+        project = register_project_repo("ledger-live", str(live_job_repo))
+        job = _run_fake_provider_job(live_job_repo)
+
+        export_job_evidence(job.job_id, str(tmp_path / "first"))
+        ledger = token_ledger_path_for(project.id)
+        after_first = _row_count(ledger)
+
+        export_job_evidence(job.job_id, str(tmp_path / "second"))
+        assert _row_count(ledger) == after_first == 1
+
+    def test_the_export_never_fails_when_the_ledger_cannot_be_written(
+        self, live_data_root, live_job_repo, tmp_path, monkeypatch, caplog
+    ):
+        """A broken mirror is a counted, logged miss — never a failed export."""
+        import packages.orchestration.token_ledger as ledger_mod
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.project_registry import register_project_repo
+
+        register_project_repo("ledger-live", str(live_job_repo))
+        job = _run_fake_provider_job(live_job_repo)
+
+        def _boom(*_args, **_kwargs):
+            raise RuntimeError("ledger is on fire")
+
+        monkeypatch.setattr(ledger_mod, "open_ledger", _boom)
+        with caplog.at_level(logging.ERROR, logger=LEDGER_LOGGER):
+            result = export_job_evidence(job.job_id, str(tmp_path / "evidence"))
+
+        assert "error" not in result
+        assert "task_runs/T001/provider_evidence.json" in result["files"]
+        assert ledger_miss_count() == 1
+
+    def test_evidence_bytes_are_identical_whether_the_mirror_fires_or_not(
+        self, live_data_root, live_job_repo, tmp_path
+    ):
+        """The files are the source of truth; the mirror may not alter one byte."""
+        from packages.orchestration.job_evidence import export_job_evidence
+        from packages.orchestration.project_registry import register_project_repo
+
+        job = _run_fake_provider_job(live_job_repo)
+
+        inert = tmp_path / "inert"
+        export_job_evidence(job.job_id, str(inert))          # no project yet
+        assert _database_files_under(live_data_root) == []
+
+        register_project_repo("ledger-live", str(live_job_repo))
+        armed = tmp_path / "armed"
+        export_job_evidence(job.job_id, str(armed))
+        assert _database_files_under(live_data_root) != []
+
+        inert_files = _file_digests(inert)
+        armed_files = _file_digests(armed)
+        assert set(inert_files) == set(armed_files)
+        differing = [
+            name for name, digest in inert_files.items()
+            if name.startswith("task_runs/T001/") and armed_files[name] != digest
+        ]
+        assert differing == []
+
+
+class TestTheMirrorStaysInertWithoutAProject:
+    """The opt-in's reason for existing: no resolved project, no ledger anywhere.
+
+    ``_record_finalized_call_in_ledger`` refuses to resolve a project itself so
+    that a test which merely writes an evidence bundle never starts touching the
+    user's data root. Arming the hook at the job seam must not weaken that, so
+    the resolver has to answer None — not "the project of whatever directory the
+    process happens to be in".
+    """
+
+    def test_an_unregistered_git_repo_writes_no_ledger(
+        self, live_data_root, live_job_repo, tmp_path
+    ):
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        job = _run_fake_provider_job(live_job_repo)
+        result = export_job_evidence(job.job_id, str(tmp_path / "evidence"))
+
+        assert "error" not in result
+        assert _database_files_under(live_data_root) == []
+        assert _database_files_under(tmp_path) == []
+        assert ledger_miss_count() == 0
+
+    def test_a_plain_directory_writes_no_ledger(self, live_data_root, tmp_path):
+        from packages.orchestration.job_evidence import export_job_evidence
+
+        plain = tmp_path / "not_a_repo"
+        plain.mkdir()
+        (plain / "main.py").write_text("VALUE = 1\n")
+
+        job = _run_fake_provider_job(plain)
+        result = export_job_evidence(job.job_id, str(tmp_path / "evidence"))
+
+        assert "error" not in result
+        assert _database_files_under(live_data_root) == []
+        assert _database_files_under(tmp_path) == []
+
+    def test_an_empty_repo_path_never_falls_back_to_the_process_cwd(self):
+        """The dangerous case: ``Path("")`` resolves to the process CWD, which may
+        well be a REGISTERED project — this repository is one. The resolver must
+        refuse an absent repo path outright rather than file a test's rows under
+        whatever checkout the suite happens to be running in.
+        """
+        from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
+
+        class _JobWithoutRepoPath:
+            repo_path = ""
+
+        class _JobWithoutTheAttribute:
+            pass
+
+        assert _resolve_job_ledger_project_id(_JobWithoutRepoPath()) is None
+        assert _resolve_job_ledger_project_id(_JobWithoutTheAttribute()) is None
+
+    def test_a_vanished_repo_path_is_inert_and_never_raises(self, tmp_path):
+        from packages.orchestration.job_evidence import _resolve_job_ledger_project_id
+
+        class _Job:
+            repo_path = str(tmp_path / "gone")
+
+        assert _resolve_job_ledger_project_id(_Job()) is None
