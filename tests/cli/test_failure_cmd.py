@@ -216,7 +216,10 @@ class TestCli:
         assert entry.supports_json is True
         assert entry.may_mutate_repo is False and entry.may_execute_commands is False
         assert {a.name for a in entry.args} >= {"--job", "--since", "--json"}
-        assert [c.command_id for c in get_commands_for_group("stats")] == ["stats.failures"]
+        # F103 registered cost/backfill-ledger/verify-ledger in the SAME group, so
+        # this pins F010's own membership instead of the group's whole contents —
+        # the group is shared and will keep growing.
+        assert "stats.failures" in {c.command_id for c in get_commands_for_group("stats")}
         assert "stats.failures" in collect_all_handlers()
 
     def test_the_handler_is_read_only(self, corpus):

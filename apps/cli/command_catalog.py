@@ -2894,6 +2894,72 @@ CATALOG: tuple[CommandEntry, ...] = (
         may_mutate_repo=False,
         may_execute_commands=False,
     ),
+    # ── stats — the token ledger (F103) ──────────────────────────────────
+    CommandEntry(
+        command_id="stats.cost",
+        group_id="stats",
+        subcommand="cost",
+        description=(
+            "Token and cost actuals from the ledger. Every figure names its basis: "
+            "an unmeasured figure prints 'unmeasured', never 0, and no price is ever "
+            "computed (read-only)."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.backfill-ledger", "stats.verify-ledger"),
+        args=(
+            ArgDef("--since", "Only calls at or after this ISO-8601 timestamp", required=False, is_option=True),
+            ArgDef("--job", "Only this job's calls", required=False, is_option=True),
+            ArgDef("--by", "Group the figures by role, model or day (default: grand total only)", required=False, is_option=True),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
+        command_id="stats.backfill-ledger",
+        group_id="stats",
+        subcommand="backfill-ledger",
+        description=(
+            "Mirror an evidence directory's finalized task runs into the project's token "
+            "ledger. WRITES the ledger (never the evidence) and is idempotent: a re-run "
+            "adds no row."
+        ),
+        action_class="write_metadata",
+        supports_json=True,
+        related=("stats.cost", "stats.verify-ledger"),
+        args=(
+            ArgDef("evidence_dir", "Path to the job evidence directory to scan"),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
+    CommandEntry(
+        command_id="stats.verify-ledger",
+        group_id="stats",
+        subcommand="verify-ledger",
+        description=(
+            "Reconcile the evidence files against the token ledger rows (read-only). "
+            "Exits 0 on a clean reconcile and non-zero when drift is found, so it is "
+            "usable as a check."
+        ),
+        action_class="read_only",
+        supports_json=True,
+        related=("stats.cost", "stats.backfill-ledger"),
+        args=(
+            ArgDef("evidence_dir", "Path to the job evidence directory to reconcile"),
+            _PROJECT_SCOPE_OPT,
+            _ALL_PROJECTS_FLAG,
+            _JSON_OPT,
+        ),
+        may_mutate_repo=False,
+        may_execute_commands=False,
+    ),
     CommandEntry(
         command_id="runtime.serve",
         group_id="runtime",
