@@ -5,6 +5,7 @@ CLI flags override env/TOML; malformed values raise BudgetConfigError.
 """
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -55,10 +56,35 @@ def _pos_int(name: str, raw: Any) -> int | None:
     return raw
 
 
+# The money mirror of _pos_int: dollars are fractional, so floats are allowed.
+def _pos_float(name: str, raw: Any) -> float | None:
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        raise BudgetConfigError(f"{name} must be a number, got bool")
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if not raw:
+            return None
+        try:
+            raw = float(raw)
+        except ValueError:
+            raise BudgetConfigError(f"{name} is not a valid number: {raw!r}")
+    if not isinstance(raw, (int, float)):
+        raise BudgetConfigError(f"{name} must be a number, got {type(raw).__name__}")
+    raw = float(raw)
+    if not math.isfinite(raw):
+        raise BudgetConfigError(f"{name} must be finite, got {raw}")
+    if raw <= 0:
+        raise BudgetConfigError(f"{name} must be strictly positive, got {raw}")
+    return raw
+
+
 _CONFIG_KEYS = {
     "max_total_tokens": "budget.max_total_tokens",
     "max_provider_calls": "budget.max_provider_calls",
     "max_wall_clock_minutes": "budget.max_wall_clock_minutes",
+    "max_cost_usd": "budget.max_cost_usd",
     "deadline": "budget.deadline",
 }
 
@@ -68,6 +94,7 @@ def resolve_job_budgets(
     cli_max_total_tokens: str | None = None,
     cli_max_provider_calls: str | None = None,
     cli_max_wall_clock_minutes: str | None = None,
+    cli_max_cost_usd: str | None = None,
     cli_deadline: str | None = None,
     config_path: str | None = None,
     project_root: str | None = None,
@@ -98,9 +125,19 @@ def resolve_job_budgets(
             return _pos_int(name, cv.value)
         return None
 
+    # Same CLI > env > TOML > no-limit precedence as _resolve_int, for money.
+    def _resolve_float(name: str, cli_val: str | None) -> float | None:
+        if cli_val is not None:
+            return _pos_float(name, cli_val)
+        cv = cfg.get_value(_CONFIG_KEYS[name])
+        if cv is not None and cv.source != ConfigSource.DEFAULT and cv.value is not None:
+            return _pos_float(name, cv.value)
+        return None
+
     max_total_tokens = _resolve_int("max_total_tokens", cli_max_total_tokens)
     max_provider_calls = _resolve_int("max_provider_calls", cli_max_provider_calls)
     max_wall_clock_minutes = _resolve_int("max_wall_clock_minutes", cli_max_wall_clock_minutes)
+    max_cost_usd = _resolve_float("max_cost_usd", cli_max_cost_usd)
 
     deadline: datetime | None = None
     if cli_deadline is not None:
@@ -115,12 +152,14 @@ def resolve_job_budgets(
                 )
             deadline = _parse_deadline(raw_dl)
 
-    if all(v is None for v in (max_total_tokens, max_provider_calls, max_wall_clock_minutes, deadline)):
+    if all(v is None for v in (max_total_tokens, max_provider_calls,
+                               max_wall_clock_minutes, max_cost_usd, deadline)):
         return None
 
     return JobBudgets(
         max_total_tokens=max_total_tokens,
         max_provider_calls=max_provider_calls,
         max_wall_clock_minutes=max_wall_clock_minutes,
+        max_cost_usd=max_cost_usd,
         deadline=deadline,
     )

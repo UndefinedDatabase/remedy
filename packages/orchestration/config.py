@@ -266,6 +266,13 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         default=None,
     ),
     ConfigKeySpec(
+        key="budget.max_cost_usd",
+        env_var="REMEDY_BUDGET_MAX_COST_USD",
+        description="Maximum cost in USD for a job (F104 budgets)",
+        value_type=float,
+        default=None,
+    ),
+    ConfigKeySpec(
         key="budget.deadline",
         env_var="REMEDY_BUDGET_DEADLINE",
         description="UTC deadline for a job as ISO 8601 string (F018 budgets)",

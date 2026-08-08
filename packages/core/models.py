@@ -7,12 +7,13 @@ All models are Pydantic BaseModel for validation and serialization.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt, model_validator
 
 
 def _utcnow() -> datetime:
@@ -138,6 +139,9 @@ class JobBudgets(BaseModel):
     max_total_tokens: StrictInt | None = None
     max_provider_calls: StrictInt | None = None
     max_wall_clock_minutes: StrictInt | None = None
+    # Money is a float because providers report fractional dollars; it is the
+    # only non-integer limit here (F104 max_cost_usd).
+    max_cost_usd: StrictFloat | StrictInt | None = None
     deadline: datetime | None = None
 
     @model_validator(mode="after")
@@ -149,6 +153,19 @@ class JobBudgets(BaseModel):
                     raise ValueError(f"JobBudgets.{name} must be strictly positive, got {val}")
                 if not (-2**53 < val < 2**53):
                     raise ValueError(f"JobBudgets.{name} is not finite")
+        if self.max_cost_usd is not None:
+            cost = self.max_cost_usd
+            if isinstance(cost, bool):
+                raise ValueError("JobBudgets.max_cost_usd must be a number, got bool")
+            if not math.isfinite(cost):
+                raise ValueError(
+                    f"JobBudgets.max_cost_usd is not finite, got {cost!r}"
+                )
+            if cost <= 0:
+                raise ValueError(
+                    f"JobBudgets.max_cost_usd must be strictly positive, got {cost}"
+                )
+            object.__setattr__(self, "max_cost_usd", float(cost))
         if self.deadline is not None:
             if not isinstance(self.deadline, datetime):
                 raise ValueError(

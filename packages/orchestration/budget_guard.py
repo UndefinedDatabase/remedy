@@ -8,7 +8,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from packages.core.models import JobBudgets
 
@@ -34,6 +36,10 @@ class BudgetCounters:
     evaluated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     started_at: datetime | None = None
     actual_sources: tuple[str, ...] = ()
+    # F104 money actuals. None means UNPRICED — no provider reported a cost —
+    # and it is NOT interchangeable with 0.0, which means "measured, and free".
+    measured_cost_usd: float | None = None
+    unpriced_call_count: int = 0
 
     def __post_init__(self) -> None:
         for name in ("provider_calls", "measured_token_total", "measured_call_count",
@@ -94,6 +100,42 @@ class BudgetCounters:
         if self.measured_call_count > 0 and not self.actual_sources:
             raise BudgetCounterError(
                 "measured_call_count > 0 but actual_sources is empty")
+        # measured_cost_usd is None when NOTHING reported a cost. None and 0.0
+        # are different facts (P6) and neither is ever repaired into the other.
+        if self.measured_cost_usd is not None:
+            if isinstance(self.measured_cost_usd, bool):
+                raise BudgetCounterError(
+                    "measured_cost_usd must be a number or None, got bool")
+            if not isinstance(self.measured_cost_usd, (int, float)):
+                raise BudgetCounterError(
+                    f"measured_cost_usd must be a number or None, got "
+                    f"{type(self.measured_cost_usd).__name__}")
+            if not math.isfinite(self.measured_cost_usd):
+                raise BudgetCounterError(
+                    f"measured_cost_usd must be finite, got {self.measured_cost_usd!r}")
+            if self.measured_cost_usd < 0:
+                raise BudgetCounterError(
+                    f"measured_cost_usd must be non-negative, got "
+                    f"{self.measured_cost_usd!r}")
+        if isinstance(self.unpriced_call_count, bool):
+            raise BudgetCounterError("unpriced_call_count must be int, got bool")
+        if not isinstance(self.unpriced_call_count, int) or self.unpriced_call_count < 0:
+            raise BudgetCounterError(
+                f"unpriced_call_count must be a non-negative integer, got "
+                f"{self.unpriced_call_count!r}")
+        if self.unpriced_call_count > self.provider_calls:
+            raise BudgetCounterError(
+                f"unpriced_call_count ({self.unpriced_call_count}) > "
+                f"provider_calls ({self.provider_calls})")
+        if (
+            self.measured_cost_usd is not None
+            and self.measured_cost_usd > 0
+            and self.provider_calls > 0
+            and self.unpriced_call_count == self.provider_calls
+        ):
+            raise BudgetCounterError(
+                f"measured_cost_usd ({self.measured_cost_usd}) > 0 but all "
+                f"{self.provider_calls} provider calls are unpriced")
 
     @property
     def total_call_count(self) -> int:
@@ -103,6 +145,11 @@ class BudgetCounters:
     def has_unmeasured(self) -> bool:
         return self.unmeasured_call_count > 0
 
+    # The money mirror of has_unmeasured: at least one call carries no price.
+    @property
+    def has_unpriced(self) -> bool:
+        return self.unpriced_call_count > 0
+
     def token_description(self) -> str:
         if self.unmeasured_call_count > 0:
             return (
@@ -110,6 +157,18 @@ class BudgetCounters:
                 f"({self.unmeasured_call_count} provider calls unmeasured)"
             )
         return f"{self.measured_token_total} tokens"
+
+    # The money mirror of token_description: an unpriced figure says so in words.
+    def cost_description(self) -> str:
+        """Render the cost actuals without ever printing an unknown as a zero."""
+        if self.measured_cost_usd is None:
+            return "not-measured"
+        if self.unpriced_call_count > 0:
+            return (
+                f">= ${self.measured_cost_usd:.4f} "
+                f"({self.unpriced_call_count} provider calls unpriced)"
+            )
+        return f"${self.measured_cost_usd:.4f}"
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -121,6 +180,9 @@ class BudgetCounters:
             "evaluated_at": self.evaluated_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "actual_sources": list(self.actual_sources),
+            # Stays None in JSON when unpriced — a null, never a zero (P6).
+            "measured_cost_usd": self.measured_cost_usd,
+            "unpriced_call_count": self.unpriced_call_count,
         }
 
 
@@ -133,6 +195,8 @@ class BudgetEvaluation:
     exhausted: bool
     first_exhausted_limit: str | None = None
     token_lower_bound: bool = False
+    # True when the cost figure is a floor, not a total: some call was unpriced.
+    cost_lower_bound: bool = False
     warnings: tuple[str, ...] = ()
     source_descriptions: tuple[str, ...] = ()
 
@@ -146,6 +210,7 @@ class BudgetEvaluation:
             "exhausted": self.exhausted,
             "first_exhausted_limit": self.first_exhausted_limit,
             "token_lower_bound": self.token_lower_bound,
+            "cost_lower_bound": self.cost_lower_bound,
             "warnings": list(self.warnings),
             "source_descriptions": list(self.source_descriptions),
         }
@@ -154,6 +219,7 @@ class BudgetEvaluation:
 _LIMIT_ORDER = (
     "max_provider_calls",
     "max_total_tokens",
+    "max_cost_usd",
     "max_wall_clock_minutes",
     "deadline",
 )
@@ -183,6 +249,7 @@ def evaluate_budget(
     warnings: list[str] = []
     sources: list[str] = []
     token_lower_bound = False
+    cost_lower_bound = False
 
     if budgets.max_provider_calls is not None:
         sources.append(f"provider_calls: {counters.provider_calls}/{budgets.max_provider_calls}")
@@ -204,6 +271,33 @@ def evaluate_budget(
         else:
             if counters.measured_token_total >= budgets.max_total_tokens:
                 exhausted_limits.append("max_total_tokens")
+
+    if budgets.max_cost_usd is not None:
+        sources.append(
+            f"cost: {counters.cost_description()}/${budgets.max_cost_usd:.4f}")
+        if counters.measured_cost_usd is None:
+            cost_lower_bound = True
+            warnings.append(
+                f"cost is unpriced "
+                f"({counters.unpriced_call_count} calls unpriced); "
+                f"no call reported a cost; cannot determine exhaustion"
+            )
+        elif counters.has_unpriced:
+            # A lower bound ALREADY over the limit is a definite breach: pricing
+            # the remaining calls can only add money, never remove it. A lower
+            # bound still under the limit is genuinely undecidable, so it warns.
+            cost_lower_bound = True
+            if counters.measured_cost_usd >= budgets.max_cost_usd:
+                exhausted_limits.append("max_cost_usd")
+            else:
+                warnings.append(
+                    f"cost is a lower bound "
+                    f"({counters.unpriced_call_count} calls unpriced); "
+                    f"cannot definitively determine exhaustion"
+                )
+        else:
+            if counters.measured_cost_usd >= budgets.max_cost_usd:
+                exhausted_limits.append("max_cost_usd")
 
     if budgets.max_wall_clock_minutes is not None:
         limit_secs = budgets.max_wall_clock_minutes * 60
@@ -228,6 +322,7 @@ def evaluate_budget(
         exhausted=len(exhausted_limits) > 0,
         first_exhausted_limit=first,
         token_lower_bound=token_lower_bound,
+        cost_lower_bound=cost_lower_bound,
         warnings=tuple(warnings),
         source_descriptions=tuple(sources),
     )
@@ -239,6 +334,8 @@ def collect_counters_from_actuals(
     started_at: datetime | None = None,
     now: datetime | None = None,
     actual_sources: tuple[str, ...] | None = None,
+    measured_cost_usd: float | None = None,
+    unpriced_call_count: int = 0,
 ) -> BudgetCounters:
     """Build BudgetCounters from _aggregate_usage_actuals() output.
 
@@ -247,6 +344,11 @@ def collect_counters_from_actuals(
 
     *actual_sources*: provenance of the actuals data. Must not be empty
     when measured calls are present.
+
+    *measured_cost_usd* / *unpriced_call_count*: F104 money actuals, passed
+    straight through. This function deliberately does NOT read the ledger —
+    it stays the pure actuals bridge; ``collect_ledger_cost_for_job`` is the
+    ledger reader, and a caller composes the two.
     """
     if now is None:
         now = datetime.now(timezone.utc)
@@ -314,7 +416,40 @@ def collect_counters_from_actuals(
         evaluated_at=now,
         started_at=started_at,
         actual_sources=actual_sources,
+        measured_cost_usd=measured_cost_usd,
+        unpriced_call_count=unpriced_call_count,
     )
+
+
+# Budgets learn what a job has actually cost by reading the F103 ledger, which
+# is the only place in Remedy a real provider cost figure lives.
+def collect_ledger_cost_for_job(
+    *,
+    job_id: str,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+) -> tuple[float | None, int, int]:
+    """Return (measured_cost_usd, priced_call_count, unpriced_call_count).
+
+    The cost stays None when NO call in the job reported one — ``query_cost``
+    preserves SQLite's NULL over an all-NULL ``SUM()`` and nothing here coerces
+    it to 0.0 (P6). No price is ever invented.
+
+    ``CostRow.measured_calls``/``unmeasured_calls`` count the ledger's
+    ``cost_basis`` column — ``provider_reported`` versus ``unknown`` — which is
+    exactly the priced/unpriced split budgets need.
+
+    A ledger file that does not exist yields an EMPTY report rather than an
+    error, so a project that has never recorded a call returns (None, 0, 0).
+    That is deliberate: asking what a job cost must not create its ledger.
+    """
+    # Imported inside the function on purpose: this module is import-light
+    # (stdlib plus the models) and evaluating a budget must not drag SQLite in.
+    from packages.orchestration.token_ledger import query_cost
+
+    report = query_cost(project_id=project_id, path=path, job_id=job_id)
+    total = report.total
+    return (total.cost_usd, total.measured_calls, total.unmeasured_calls)
 
 
 _PERSISTED_ACTUALS_FIELDS = frozenset({
