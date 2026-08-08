@@ -30,8 +30,9 @@ handoff is a SUCCESS, not a failure.
 - R2 (SPLIT): T001 — schema, migration bootstrap, the `record_call(...)`
   writer, the never-fail-the-run discipline, miss counting, unit tests —
   PASS.
-- R3 (SPLIT): T002 — backfill and reconcile commands, idempotent by
-  call_id, tests on fixture evidence.
+- R3 (SPLIT): T002 data layer — the call site at the actuals seam, plus
+  backfill and reconcile over the evidence tree, idempotent by call_id —
+  PASS.
 - R4 (SPLIT): T003 — `remedy stats cost` aggregation, basis labeling,
   read-only cross-project aggregation, tests.
 - R5: integration gate per docs/agents/integration_gate.md.
@@ -59,8 +60,18 @@ handoff is a SUCCESS, not a failure.
   Fix: R3 must decide explicitly — either pin `call_id` as immutable by
   construction and say so in the docstring, or have `verify_ledger`
   compare content rather than presence. Record which, and why.
-- Next free ID: R-0220. Open findings: 2 (R-0218, R-0219), both Low,
-  both routed to a named later round.
+- Done: R-0219 — resolved in R3 by CONTENT COMPARISON in `verify_ledger`,
+  which re-derives each row from its own evidence through the same
+  `call_record_from_evidence` the live hook uses and reports field-level
+  mismatches in `drifted_rows`. The reviewer confirmed the fix is
+  load-bearing rather than asserted: reducing the comparison to
+  presence-only in a disposable worktree turned
+  `test_finds_a_content_drifted_row` red. `call_id` is ALSO pinned
+  immutable by construction and documented as such, but that guarantees
+  only the id, never the contents — which is why the stronger option was
+  the right one.
+- Next free ID: R-0220. Open findings: 1 (R-0218, Low), routed to R5's
+  integration gate, which owes the seam a real timing number.
 
 ## Decisions
 - D15 (F254 closure candidate R-0214, resolved inline per
@@ -173,4 +184,46 @@ handoff is a SUCCESS, not a failure.
   lines; the 121-line handoff drops no section and states its cause.
   Two findings registered, both Low: R-0218 and R-0219.
   LAST_REVIEWED_SHA = `c3a03076`.
-- R3: pending review.
+- R3 (SPLIT, T002 data layer) — **PASS**. Reviewed
+  `c3a03076..d2bc7d8e` bottom-up. Diff is exactly the 10-path set across
+  six commits, no commit over 500 lines, no dependency change, and
+  `token_truth.py` is BYTE-UNCHANGED — the no-second-capture-path
+  invariant holds by import rather than by promise. The reviewer checked
+  the three things a summary could most easily have got wrong, and all
+  three hold: `actual_cache_read_tokens` and
+  `actual_cache_creation_tokens` are the real canonical keys in
+  `token_truth._ACTUAL_ALIASES`, so the cache counters are genuinely
+  mapped and not silently always-None; `_strict_cost` really does return
+  None for an absent figure and raise on a malformed one, so
+  `cost_basis` becomes `provider_reported` only when a real number is
+  present; and the model fallback `("model", "builder_model")`
+  deliberately excludes `builder_configured_model` and
+  `reviewer_configured_model`, so the docstring's claim that a
+  configured model is never used as the model that ran is true of the
+  code. The call site is correct: four keyword-only `ledger_*` arguments
+  all defaulting to None keep every existing caller bit-for-bit
+  unchanged, the hook is inert without a target or ids, it never
+  resolves a project implicitly, it is wrapped so nothing escapes, and
+  it re-reads the file it has just written through the ledger's own
+  builder — one producer, which is exactly what makes content
+  comparison sound. `backfill_ledger`'s
+  `scanned == recorded + skipped + failed` holds on every path,
+  including the defensive one. Reviewer-run verification:
+  `test_token_ledger.py` **50 passed**, `tests/docs/` **294 passed**,
+  the `pingpong or evidence` regression selection **1129 passed, 14926
+  deselected**, the state-contract trio plus the canary **184 passed**,
+  `git status --porcelain` empty with no stray `.sqlite`/`-wal`/`-shm`.
+  Every number matched the handback's. MUTATION RED-PROOF in a
+  disposable worktree under the gitignored `.remedy-wt/`, removed before
+  this verdict: reducing `verify_ledger` to presence-only turned
+  `test_finds_a_content_drifted_row` red, so R-0219's fix is real.
+  DECISION D16 and the feature-file amendment landed together, so the
+  target plan and the built state do not disagree; the amendment is
+  purely additive (+15/-0). Verification tier: ROUND GATE plus the
+  docs-round gate and the canary — NOT the full suite. No block
+  condition. Declared deviations accepted: six commits not five, on the
+  step block's own instruction to split rather than claim an oversize
+  exception; the 152-line handoff drops no section and states its cause.
+  R-0219 closed; R-0218 stays open for R5.
+  LAST_REVIEWED_SHA = `d2bc7d8e`.
+- R4: pending review.
