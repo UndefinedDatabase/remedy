@@ -30,6 +30,7 @@ def _cmd_create_job(
     max_total_tokens: str | None = None,
     max_provider_calls: str | None = None,
     max_wall_clock_minutes: str | None = None,
+    max_cost_usd: str | None = None,
     deadline: str | None = None,
 ) -> None:
     from packages.orchestration.run_log import RunLogWriter
@@ -84,6 +85,7 @@ def _cmd_create_job(
             cli_max_total_tokens=max_total_tokens,
             cli_max_provider_calls=max_provider_calls,
             cli_max_wall_clock_minutes=max_wall_clock_minutes,
+            cli_max_cost_usd=max_cost_usd,
             cli_deadline=deadline,
             project_root=_project_repo,
         )
@@ -2199,6 +2201,7 @@ COMMAND_HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
         max_total_tokens=getattr(args, "max_total_tokens", None),
         max_provider_calls=getattr(args, "max_provider_calls", None),
         max_wall_clock_minutes=getattr(args, "max_wall_clock_minutes", None),
+        max_cost_usd=getattr(args, "max_cost_usd", None),
         deadline=getattr(args, "deadline", None),
     ),
     "job.list": lambda args: _cmd_list_jobs(
