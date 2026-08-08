@@ -1,114 +1,106 @@
-# Handoff — F103 R8 (closure part 2), branch `feature/f103-token-ledger`
+# Handoff — F104 Hard budget enforcement, R1 (T001)
 
-**Two values cannot live in this file** (F080 R5 / F254 R12 precedent): this
-closure commit's OWN SHA and the PR number/URL. The file is INSIDE the closure
-commit and the PR is created after it; recording either would need a commit
-after the STATUS edit, which Rule A4 forbids. Both are in the completion
-report, with the raw `gh pr list` output. The same holds for the post-commit
-`git status --porcelain` and the closure commit's own `git log --oneline -1`.
+Branch: `feature/f104-hard-budget-enforcement`, cut from `main` at 94f69b0f.
+Commits (oldest first): 48ba2d10, 07f32b93, bd6a31c7, 9f832796, aee9cb1c, 8e8f1aaf.
+Pushed. SPLIT round — no verdict written, no PR, no merge.
 
-## Closure values, as accepted and written into the STATUS line
-Evidence job f103-closure
-package remedy-review-20260808-210612-READY_FOR_REVIEW.zip
-SHA-256 8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad
-accepted HEAD 65e1eec25e61c1d0fe78539adeb890d3426cb605
-That is the CONTENT head the zip manifest records. The R7 handoff commit
-`09d7ab2d`, the R8 block save and this closure commit all follow the READY
-zip, exactly as STATUS_closure_protocol.md step 2 prescribes.
+## Changed files, per commit
 
-## Commits
-### 3243a3d1 chore(f103): save the R8 closure block
-| Path | +/- | Reason |
-|------|-----|--------|
-| `.agent/last_block.md` | +404/-301 | R8 block saved verbatim |
-### (this commit) docs(f103): accept F103 in the roadmap ledger and sync the readme
-| Path | +/- | Reason |
-|------|-----|--------|
-| `docs/roadmap/STATUS.md` | +1/-1 | `[~]` -> `[x]`, authored line |
-| `README.md` | +4/-3 | capability sync, SAME commit (R-0154) |
-| `.agent/live_review.md` | +72/-5 | R7 verdict recorded, R8 in flight |
-| `.agent/plan.md` | +31/-39 | complete replacement by `cp` |
-| `.agent/candidates.md` | +1/-0 | second candidate ADDED, R-0221 kept |
-| `.agent/handoff.md` | rewrite | this file (self-reference, R-0149) |
-| `.agent/authored/f103-r8-1..6.md` | +276 | the six receipts |
-No source, no test, no feature file and no other doc is touched.
+| Commit | Path | +/- | Reason |
+|---|---|---|---|
+| 48ba2d10 | docs/roadmap/STATUS.md | +1/-1 | claim F104 `[ ]` -> `[~]` (pair 1) |
+| 48ba2d10 | .agent/live_review.md | +24/-498 | reviewer text f104-r1-2 (R-0221 registered) |
+| 48ba2d10 | .agent/plan.md | +31/-33 | reviewer text f104-r1-3 |
+| 48ba2d10 | .agent/context.md | +30/-31 | reviewer text f104-r1-4 |
+| 48ba2d10 | .agent/authored/f104-r1-{1,2,3,4}.md | +121/-0 | authored originals for `cmp` |
+| 07f32b93 | AGENTS.md | +11/-0 | DECISION F104 D1 counting rule (pair 5, APPEND) |
+| 07f32b93 | .agent/decisions.md | +37/-0 | F104 D1 + D2 entry (block f104-r1-6) |
+| 07f32b93 | .agent/candidates.md | +8/-2 | swept empty (f104-r1-7) |
+| 07f32b93 | .agent/authored/f104-r1-{5,6,7}.md | +73/-0 | authored originals |
+| bd6a31c7 | docs/roadmap/features/T2_F104.md | +1/-1 | Goal flag renamed `--max-cost-usd` (pair 8) |
+| bd6a31c7 | .agent/authored/f104-r1-8.md | +9/-0 | authored original |
+| 9f832796 | packages/core/models.py | +18/-1 | `JobBudgets.max_cost_usd` + finite/positive/bool validation |
+| 9f832796 | packages/orchestration/budget_guard.py | +135/-0 | counters money fields, `cost_description`, `has_unpriced`, `cost_lower_bound`, `_LIMIT_ORDER`, `collect_ledger_cost_for_job` |
+| 9f832796 | packages/orchestration/budget_resolution.py | +40/-1 | `_pos_float`, `_resolve_float`, config key, all-None gate |
+| 9f832796 | packages/orchestration/config.py | +7/-0 | `budget.max_cost_usd` ConfigKeySpec (float) |
+| aee9cb1c | apps/cli/command_catalog.py | +4/-0 | `--max-cost-usd` ArgDef at all 4 budget sites |
+| aee9cb1c | apps/cli/commands/do_cmd.py | +11/-1 | thread `max_cost_usd` through 3 fns, the flag tuple, 3 handlers |
+| aee9cb1c | apps/cli/commands/job.py | +3/-0 | thread it through `job create` so its new flag is not dead |
+| 8e8f1aaf | tests/orchestration/test_budget_guard.py | +246/-0 | cost description, counter validation, evaluation, ledger bridge |
+| 8e8f1aaf | tests/orchestration/test_job_budgets.py | +163/-0 | model field, resolution precedence, config-key registration |
 
-## Transport proofs
-`sha256sum` of all six saved texts matched the block's BEGIN-marker hashes
-exactly — **6/6, no mismatch**: r8-1 `713a7e26…9d6f`, r8-2 `d7160637…2b3c`,
-r8-3 `00be41a5…d62f`, r8-4 `c4e6084b…1533`, r8-5 `6ecf1e54…ec87`, r8-6
-`53fef325…6cec`. Pairs applied with the FROM/TO strings parsed out of the
-authored files, never hand-typed; all six pairs are REWRITES and each FROM
-occurred exactly once before the edit:
-- `docs/roadmap/STATUS.md`, 1 pair — BEFORE FROM **1x** / TO **0x**;
-  AFTER FROM **0x** / TO **1x**.
-- `README.md`, 3 pairs — BEFORE each FROM **1x** / TO **0x**;
-  AFTER each FROM **0x** / TO **1x**.
-- `.agent/live_review.md`, 2 pairs — BEFORE each FROM **1x** / TO **0x**;
-  AFTER each FROM **0x** / TO **1x**.
-`cp` replacements: `cmp .agent/plan.md .agent/authored/f103-r8-4.md`
-**exit 0**; `cmp .agent/candidates.md .agent/authored/f103-r8-5.md`
-**exit 0**. r8-6 is the PR body: saved and committed, applied to no
-tracked file.
+## Transport proofs (all applied from `.agent/authored/`)
 
-## STATUS line proof
-`wc -l docs/roadmap/STATUS.md` **315 before, 315 after** — identical, one
-line swapped and no other line touched. `grep -c '^- \[~\]'` **1 -> 0**.
-The F103 line appears exactly once and is byte-identical to the authored TO.
+| Pair/file | Shape | Proof |
+|---|---|---|
+| f104-r1-1 STATUS.md | REWRITE | FROM 1x->0x, TO 0x->1x; `wc -l` 315 before and after |
+| f104-r1-2 live_review.md | full-file `cp` | `cmp` exit 0 |
+| f104-r1-3 plan.md | full-file `cp` | `cmp` exit 0 |
+| f104-r1-4 context.md | full-file `cp` | `cmp` exit 0 |
+| f104-r1-5 AGENTS.md | APPEND | FROM exactly 1x after edit; each TO-only line 1x; `diff` of authored TO block vs AGENTS.md:195-206 empty |
+| f104-r1-6 decisions.md | append block | heading line occurs exactly 1x; one blank line before it |
+| f104-r1-7 candidates.md | full-file `cp` | `cmp` exit 0 |
+| f104-r1-8 T2_F104.md | REWRITE | `budget-usd` 1x->0x, `max-cost-usd` 0x->1x |
 
-## Verification (run by me, real exit codes)
-| Command | Result | Exit |
-|---------|--------|------|
-| `python3 -m pytest tests/docs/ -q` | 294 passed in 0.25s | 0 |
-| `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 42 passed in 19.27s | 0 |
-| `integrity check --json`, receipts still untracked | `"passed": false`, 1/5 fail: `relevant_untracked` = the 6 receipts | 1 |
-| `integrity check --json`, closure paths staged | `"passed": true`, fail_count 0, 5/5, `untracked=0, relevant=0` | 0 |
-| `git status --porcelain` at handoff-write time | exactly the 11 mandated paths, staged; nothing else | 0 |
-The first integrity run is recorded rather than hidden: the receipts are part
-of this very commit, so untracked-until-staged is the expected transient and
-the staged re-run is the load-bearing one.
+## Verification (run by me; real trimmed output, real exit codes)
+
+| Gate | Command | Output | Exit |
+|---|---|---|---|
+| A | `python3 -m pytest tests/orchestration/test_budget_guard.py tests/orchestration/test_job_budgets.py tests/orchestration/test_budget_stop_integration.py tests/orchestration/test_f018_authority_integration.py tests/orchestration/test_stop_reasons.py -q` | `345 passed in 36.92s` | 0 |
+| B | `python3 -m pytest tests/cli/test_command_catalog.py tests/cli/test_do_cmd_cli_path.py -q` | `32 passed in 0.90s` | 0 |
+| C | `python3 -m pytest tests/docs/ -q` | `294 passed in 0.25s` | 0 |
+| D | `python3 -m pytest tests/cli/test_golden_path.py -q` | `42 passed in 20.66s` | 0 |
+
+CLI-site parity: `grep -c 'max-cost-usd' apps/cli/command_catalog.py` = 4,
+`grep -c 'max-wall-clock-minutes' apps/cli/command_catalog.py` = 4.
+Live reachability probe: `do.job-plan` with `--max-cost-usd not-a-number`
+printed `Error: max_cost_usd is not a valid number: 'not-a-number'` and exited 2.
 
 ## Item status
-| Item | Status | Reason |
-|------|--------|--------|
-| 1 save the block | done | commit `3243a3d1`, that file only |
-| 2 six authored texts | done | 6/6 sha256 match, pair counts above |
-| 3 gates | done | docs 294, canary 42, integrity PASS |
-| 4 closure commit | done | this commit, exact paths, LAST on branch |
-| 5 push + PR | done | see the completion report for number and URL |
-| 6 handback | done | this file, inside the closure commit |
 
-## Open findings
-**0.** R-0218, R-0219 and R-0220 closed; live review PASS across R1-R8.
-`.agent/candidates.md` carries **TWO** entries — R-0221 (the UI auto-build
-test that pops its own env var) and the AGENTS.md commit-size counting
-ambiguity raised at the R7 closure review. Both are the NEXT feature's
-claim-time block condition: its first reviewed round registers or resolves
-each and empties the file in that same round. Neither may be dropped.
+| Item | Status | Reason |
+|---|---|---|
+| 1 branch + STATUS claim + state reset | done | |
+| 2 candidate sweep (AGENTS.md D1, decisions, empty candidates) | done | |
+| 3 feature-file D2 amendment | done | |
+| 4 T001 engine (models, budget_guard, budget_resolution, config) | done | |
+| 5 T001 CLI wiring (command_catalog, do_cmd) | deviated | also threaded `apps/cli/commands/job.py` — see Deviations |
+| 6 T001 tests | done | |
+
+Open findings: 1 — R-0221 (Low), carried and REGISTERED in `.agent/live_review.md`,
+deliberately NOT fixed by this round.
+
+`git status --porcelain`: EMPTY at handback.
+Next expected action: reviewer re-runs gates A-D against 8e8f1aaf, then R2 (T002
+predictive check at the dispatch safe point).
 
 ## Deviations, declared
-1. The closure commit's own SHA, the PR number/URL and the post-commit
-   `git status`/`git log` are absent by self-reference impossibility, per
-   the note at the top — not an omission.
-2. Length **114 lines**, over the 60-line base cap, stated cause per the
-   AGENTS.md D15 overage clause: two per-commit tables, the six-hash and
-   six-pair transport proof, the STATUS line proof, the 5-row verification
-   table, the four closure values and the 6-row item-status table do not
-   fit in 60. NO mandated section was dropped.
-3. Commit size: 12 files, **+473/-128 = 601 changed lines**. Under the
-   INSERTIONS reading of AGENTS.md Commit Discipline (473) it is UNDER the
-   500 cap; under the churn reading (601) it is over. Inseparable —
-   STATUS_closure_protocol.md step 5 and R-0154 require README, STATUS and
-   the final `.agent` state to land in ONE commit, because no committed
-   state may have README and STATUS disagreeing. This is exactly the
-   ambiguity now carried in `.agent/candidates.md`.
-No scope was widened, no reviewer-authored text was edited, `git add -A` was
-never used, nothing was force-pushed and no branch was deleted.
 
-## Next expected action
-Window 1 ends F103 with the feature-done banner. The PR created by this round
-is **NOT merged** by this session; it merges at the NEXT feature's Open PR
-Gate — the operator's manual-review window — or manually by the operator at
-any time. Next feature by Rule A5: **F104 — Hard budget enforcement**, in a
-FRESH session, whose Open PR Gate merges this PR and whose first reviewed
-round must empty `.agent/candidates.md`.
+- **Bundle item 5 widened by one file.** The block named `command_catalog.py`
+  and `do_cmd.py`, but it also required an ArgDef at EVERY site declaring the
+  sibling budget flags — one of which is `job.create`, handled in
+  `apps/cli/commands/job.py`. Adding the flag there without threading it would
+  have shipped exactly the dead code the round's goal forbids, so the same
+  3-line pattern (signature, `resolve_job_budgets` kwarg, handler `getattr`)
+  was applied there. +3 lines, no behaviour invented.
+- **Other `resolve_job_budgets` callers, grepped.** Non-test callers are
+  `do_cmd.py:261` (`project_root=repo` only, no CLI flags — it now picks up
+  `budget.max_cost_usd` from TOML automatically and needed no change),
+  `do_cmd.py` x3 and `job.py` x1 (all threaded), and the
+  `runtime_integration_gate.py` grep PATTERN, which is a string, not a call.
+- **Help-text wording follows each site.** `job.create` and `do.run` say
+  "Maximum cost in USD for this job (F104 budget)"; `do.job-plan` says
+  "Maximum cost in USD (F104 budget)" and `do.job-run` "…(F104 budget override)",
+  matching their own neighbours, as the block instructed.
+- **`config.py` DID need the key.** `load_config` raises `BudgetConfigError` on
+  an undeclared `budget.*` TOML key and `cfg.get_value` returns nothing for an
+  unregistered key, so `budget.max_cost_usd` was added as a `float` ConfigKeySpec
+  in the `budget.max_total_tokens` shape.
+- **`remedy job budget` text output does not yet print `max_cost_usd`.** Its
+  JSON path already carries it via `model_dump`; the text renderer is display
+  work and belongs to T003, not T001. Named here so it is not mistaken for a miss.
+- **Commit sizes.** Largest commit is 8e8f1aaf at +409 insertions; every commit
+  is under the 500-insertion cap installed by DECISION F104 D1 in commit 2.
+- **Handoff length** is 106 lines, over the 60-line cap. Cause: the mandated
+  per-commit changed-files table (20 rows), the eight-row transport-proof table,
+  the four-gate verification table and the item-status table. No section dropped.
