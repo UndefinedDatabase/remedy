@@ -1,304 +1,335 @@
-You are the worker for F079 R5 (SPLIT round): CLOSURE PART 2 — the
-closure commit and the PR, per docs/roadmap/STATUS_closure_protocol.md
-algorithm steps 4–6. R4 verdict: PASS; the package is
-READY_FOR_REVIEW. The PR is NOT merged — it merges at the next
-feature's Open PR Gate. If any verification goes red: STOP per
-AGENTS.md If-Blocked and hand back the raw output.
+You are the WORKER for F103 R7 (SPLIT round): CLOSURE PART 1 — Built State, the load-bearing full-suite confirmation run, the evidence job and a FRESH review zip, per docs/roadmap/STATUS_closure_protocol.md.
 
-── STEP closure-2/2 — F079 ──────────────────────────────────
-Goal:        Apply the authored STATUS [x] line + README sync +
-             candidate re-emit + final .agent state in ONE closure
-             commit, push, create the PR.
-Bundle:      1 authored saves · 2 closure commit · 3 gates ·
-             4 push + PR · 5 handback
-Change:      docs/roadmap/STATUS.md (one line), README.md (two
-             lines), .agent/** — NOTHING else (R-0154 exact paths).
-Constraints: The closure commit is the LAST commit on the branch
-             (Rule A4). STATUS and README move in the SAME commit.
-             The evidence dir and the zips stay uncommitted
-             (gitignored).
-Done when:   Docs gate + canary green at the closure commit, grep
-             proofs recorded, PR created.
-Handback:    Completion report + rewrite .agent/handoff.md (inside
-             the closure commit, see 5).
-──────────────────────────────────────────────────────────────
+Read these before acting, from disk, not from memory: AGENTS.md (highest authority), docs/roadmap/STATUS_closure_protocol.md, docs/agents/worker_conventions.md, docs/agents/handback_template.md, .agent/plan.md, .agent/live_review.md, .agent/handoff.md.
 
-1. AUTHORED SAVES
-   Six authored texts follow at the bottom, delimited by BEGIN/END
-   markers. Authored bytes = everything BETWEEN the marker lines,
-   including the final newline; markers are never content.
-   Save to .agent/authored/f079-r5-{1..6}.md; verify each with
-   sha256sum against its BEGIN-marker hash. Mismatch → STOP, hand
-   back naming block and both hashes; apply nothing.
-   COMMIT A: the six authored files PLUS this entire prompt saved
-   verbatim to .agent/last_block.md. (If that commit exceeds 500
-   changed lines, split the last_block save into its own commit —
-   R-0198 rule; both orderings are approved.)
+You are the ONLY writer this round. The reviewer is read-only and will re-run every verification command itself before any verdict. A summary is not evidence — record real commands, real exit codes, real output.
 
-2. CLOSURE COMMIT (one commit, exact paths)
-   Apply, verbatim from the verified authored files:
-   a. f079-r5-1: in docs/roadmap/STATUS.md replace the FROM line
-      with the TO line (exactly one occurrence).
-   b. f079-r5-2: in README.md apply EDIT 1 (FROM→TO) and EDIT 2
-      (FROM→TO), each exactly one occurrence.
-   c. f079-r5-3 → replaces .agent/candidates.md entirely.
-   d. f079-r5-4 → replaces .agent/live_review.md entirely.
-   e. f079-r5-5 → replaces .agent/plan.md entirely.
-   f. f079-r5-6 → replaces .agent/context.md entirely.
-   g. Rewrite .agent/handoff.md as the R5 handback (see 5 for
-      required content — write it now, before committing).
-   COMMIT B (the closure commit): exactly docs/roadmap/STATUS.md,
-   README.md, .agent/candidates.md, .agent/live_review.md,
-   .agent/plan.md, .agent/context.md, .agent/handoff.md. Message:
-   "chore(f079): close F079 — STATUS [x] + README sync"
+The STATUS `[x]` line and the README sync are NOT written this round. The reviewer authors them from the values your handback reports; R8 applies them. Do not create a PR.
 
-3. GATES (docs round — roadmap touched)
-   python3 -m pytest tests/docs/ -q          → exit 0
-   python3 -m pytest tests/cli/test_golden_path.py -q → exit 0
-   git status --porcelain                    → empty
-   GREP PROOFS (record raw output in the handback message):
-   grep -F "accepted HEAD abc33f79aac937d3504dddef7a72bdb22d4aa2d1" docs/roadmap/STATUS.md
-   grep -F "SHA-256 f30d540afec921aa76aef40d754abc7d00f4026eb2a755aa53bf99e241a88eec"
-docs/roadmap/STATUS.md
-   grep -F "37 of 254 registered items accepted" README.md
-   grep -c "^- " .agent/candidates.md        → 3
-   Red or missing → STOP (the closure commit exists; do NOT amend —
-   hand back and the reviewer orders the repair).
+If anything goes red: STOP per AGENTS.md If-Blocked, commit only the valid completed portion, and hand back with the RAW output. A failing zip build is a closure BLOCKER — do not work around it, do not retry blind.
 
-4. PUSH + PR
-   git push. Then create the PR per the AGENTS.md PR workflow
-   (gh pr create, base main, head feature/f079-context-handoffs).
-   Title: "F079 — Context handoffs (T001–T003, closure)"
-   Body (compose from the disk state, not from memory):
-   - What/why: T1_F079.md Goal & Done + the Built State section.
-   - Key decisions: two-relay closure (STATUS quotes the package);
-     R-0199 metadata-manifest digest DECISION (alternatives named in
-     live_review R2 finding); drift-wording extraction ruling;
-     first-zip BLOCKED_EVIDENCE diagnosis (privacy validator
-     correct, per-file scoped runs precedent).
-   - How to review: read .agent/live_review.md verdicts R1–R4; the
-     gate evidence in .agent/gate_f079_r3/; the package
-     remedy-review-20260806-203747-READY_FOR_REVIEW.zip (SHA-256
-     f30d540afec921aa76aef40d754abc7d00f4026eb2a755aa53bf99e241a88eec).
-   - Changed-files summary per round (from the four handbacks in
-     .agent/handoff.md git history).
-   - Latest verdict: R4 PASS; full suite green at the R3 gate.
-   - Open findings: 2 deferred (R-0200 gate tooling, R-0202 UI
-     rebuild class) + 1 flake id — all re-emitted in
-     .agent/candidates.md for the next feature's first round.
-   - Runtime actuals (observed): 5 reviewer-gated rounds on
-     2026-08-06; full-suite wall ~141 s branch / ~132 s base;
-     tokens/cost not-measured (zero-provider closure).
-   Record the PR number and URL. DO NOT merge.
+── STEP closure-1/2 — F103 ────────────────────────────────────
+Goal:        Persist the R7/R8 closure split, land the Built State
+             section, satisfy the closure preconditions, run the
+             load-bearing full-suite confirmation, and produce the
+             evidence job plus the fresh review zip.
+Bundle:      1 state commits · 2 Built State · 3 preconditions ·
+             4 full-suite confirmation · 5 evidence job ·
+             6 review zip · 7 handback
+Change:      .agent/** state files and
+             docs/roadmap/features/T2_F103.md (APPEND) ONLY.
+             No STATUS.md, no README.md, no source, no tests.
+Constraints: The evidence dir is gitignored and OUTSIDE the review
+             subject; it is NEVER committed (a committed dir turns
+             the package BLOCKED_EVIDENCE — F147 attempt-2 lesson).
+             Commits under 500 lines each. Never force-push. Never
+             work on main. `git add -A` is forbidden — stage exact
+             paths.
+Done when:   Integrity check PASS, full suite green at the content
+             HEAD, bundle complete, zip import check green, package
+             filename + SHA-256 recorded.
+Handback:    Completion report + rewrite .agent/handoff.md (see 7).
+───────────────────────────────────────────────────────────────
 
-5. HANDBACK (.agent/handoff.md, inside the closure commit)
-   - The four STATUS values verbatim (job id, package, SHA-256,
-     accepted HEAD) and the PR number placeholder note ("PR created
-     after this commit; number in the completion report").
-   - Changed-files table for commits A and B.
-   - The grep-proof commands listed in 3 (their raw outputs go in
-     the completion REPORT, since the handoff commits first).
-   - Item status per bundle item.
-   The completion report (chat) carries: both gate tails, the grep
-   outputs, the PR number + URL, and final `git log --oneline -3`.
+1. STATE COMMITS (persist FIRST)
+   Three authored texts follow at the bottom, delimited by BEGIN/END
+   markers. The authored bytes are everything BETWEEN the marker
+   lines, including the final newline; the marker lines are never
+   content.
+   a. COMMIT A: this entire prompt saved verbatim to
+      .agent/last_block.md (own commit), message
+      "chore(f103): save the R7 closure block".
+   b. Save the three texts to .agent/authored/f103-r7-1.md,
+      .agent/authored/f103-r7-2.md, .agent/authored/f103-r7-3.md.
+      Verify each with `sha256sum` against its BEGIN-marker hash.
+      Any mismatch → STOP, hand back naming the block and BOTH
+      hashes; apply nothing.
+      COMMIT B: exactly those three files, message
+      "chore(f103): save the R7 authored texts".
+   c. Apply f103-r7-1 to .agent/live_review.md as TWO FROM→TO
+      replacement pairs. BOTH pairs are REWRITES (the TO does not
+      contain the FROM), so for each pair report, FROM BEFORE any
+      edit: FROM count 1x, TO count 0x; and AFTER the edit: FROM 0x,
+      TO 1x. Each FROM string is a unique whole line in the file
+      (verified by the reviewer: line 42 and line 425).
+      Apply f103-r7-2 to .agent/plan.md as a COMPLETE replacement,
+      by `cp .agent/authored/f103-r7-2.md .agent/plan.md`, then
+      prove it with `cmp .agent/authored/f103-r7-2.md .agent/plan.md`
+      and record the exit code.
+      COMMIT C: exactly .agent/live_review.md and .agent/plan.md,
+      message "chore(f103): split closure into R7 and R8 and set the
+      closure plan".
+
+2. BUILT STATE (content commit — closure precondition 4)
+   docs/roadmap/features/T2_F103.md currently ends with the line
+   "already the primary key, so no schema migration is needed."
+   followed by one newline. Apply f103-r7-3 as a pure APPEND to the
+   end of that file — the authored text BEGINS with a blank line, so
+   append it exactly as-is with no added or removed blank lines.
+   Prove the append shape: the file's byte count before + the
+   authored file's byte count == the byte count after, and
+   `tail -c <N>` of the result is byte-identical to the authored
+   file (any equivalent disk-to-disk proof is fine — record the
+   command and its exit code).
+   COMMIT D: exactly docs/roadmap/features/T2_F103.md, message
+   "docs(f103): Built State — ledger store, live mirror, cost CLI".
+   GATES for this docs-round change (planner_reviewer_prompt.md §3
+   item 5), both must exit 0:
+     python3 -m pytest tests/docs/ -q
+     python3 -m pytest tests/cli/test_golden_path.py -q
+   Red → STOP and hand back the raw output.
+
+3. PRECONDITIONS (closure protocol head)
+   a. `python3 -m apps.cli.grouped integrity check --json` — record
+      the RAW json. Must be `"passed": true`. Not PASS → STOP.
+      (The `remedy` console script is blocked by this session's
+      permission policy; the module entry point is the same code.)
+   b. `git status --porcelain` → empty.
+      `git ls-files --others --exclude-standard` → no relevant
+      untracked files.
+   c. `git push` — the branch must be up to date, because the zip
+      records committed state.
+
+4. FULL-SUITE CONFIRMATION RUN (closure protocol precondition 2)
+   THIS IS LOAD-BEARING, NOT A FORMALITY. R6 landed production code
+   in packages/orchestration/job_evidence.py AFTER the R5 integration
+   gate, so this is the ONLY full-suite evidence covering the
+   live-mirror wiring. Run it at the content HEAD from step 2:
+     python3 -m pytest -n auto -q
+   Record the command, the full tail (counts line), the exit code and
+   the wall clock. Any failure → STOP and hand back the raw failing
+   ids; a regression here is a normal repair round, not something to
+   route around. Note for context: the R5 gate measured 16121 passed
+   / 19 skipped on this branch.
+
+5. EVIDENCE JOB (closure protocol algorithm step 1)
+   Produce the final bundle with the canonical producer,
+   `packages.orchestration.job_evidence.create_manual_completion_bundle`,
+   called with `review_feature_id="f103"` and `job_id="f103-closure"`
+   (the F080/F254 naming precedent), writing into a NEW evidence dir
+   named `remedy-job-evidence-f103-closure/` at the repository root —
+   that glob is already in .gitignore (line 226), so the dir is
+   outside the review subject and must never be committed.
+   `write_runtime_integration_gate` alone is NOT a bundle.
+   Values:
+   - repo_root: the repository root.
+   - base_commit: the FULL sha
+     c1c0fbcbfb6b8ddb0d6fd30cb4bf8459b334a05d (the merge base with
+     main). Full length, never abbreviated.
+   - head_commit: the FULL sha of the content HEAD after COMMIT D.
+   - job_title / step_range: name F103 and the round range R1-R7.
+   Honour every named producer pitfall AT AUTHORING TIME. Each
+   `verification_runs` entry uses the fields
+   run_id, command, exit_code, passed, failed, test_files,
+   stdout_summary, head_sha, output_hash, selected, deselected,
+   skipped, node_ids, duration_seconds, and must satisfy:
+   - `run_id` matches `^vr-\d{4,}$`;
+   - `output_hash` is bare sha256 HEX;
+   - `test_files` entries are FILES, never directories;
+   - `node_ids` are REAL ids taken from `--collect-only -q`, with
+     `len(node_ids) == selected`;
+   - exit_code 0 and failed 0 (the producer refuses otherwise).
+   Record the SCOPED suites only — recommended:
+   tests/orchestration/test_token_ledger.py and
+   tests/cli/test_stats_cost.py (115 together at the reviewer's own
+   run). Do NOT put a full-suite node-id list in a verification
+   record: `len(node_ids) == selected` forbids filtering and the
+   packaging metadata scan rejects the redaction-torture ids by
+   design (F080 R4, 94 rejected ids, packaged BLOCKED_EVIDENCE). The
+   full-suite proof rides in step 4's transcript and the reviewer's
+   own re-run, which is the working shape.
+   Record the producer invocation and its full stdout, including the
+   returned summary dict and the final verdict.
+
+6. REVIEW ZIP (closure protocol algorithm step 2 — MANDATORY, FRESH)
+   From a CLEAN tree at the content HEAD (a package built from a
+   dirty tree is invalid):
+     bash scripts/make_review_zip.sh --evidence-dir remedy-job-evidence-f103-closure
+   Verify that committed_review_subject spans
+   c1c0fbcbfb6b8ddb0d6fd30cb4bf8459b334a05d..<content HEAD> and that
+   the zip import check passes. Record the printed package filename
+   and SHA-256 EXACTLY — they go verbatim into the STATUS line the
+   reviewer authors. A zip failure is a closure BLOCKER: STOP, hand
+   back the raw error.
+
+7. HANDBACK
+   Re-run the canary if any commit followed step 2. Final
+   `git status --porcelain` → empty, and the evidence dir must still
+   be untracked-and-ignored (`git status --porcelain` must not list
+   it). Rewrite .agent/handoff.md as the LAST commit, message
+   "chore(f103): rewrite handoff for the R7 handback", and push.
+   The handoff carries:
+   - feature + round, branch, the per-commit changed-files table;
+   - the transport proofs: the three sha256 verifications, the two
+     pair counts before and after, the `cmp` exit code for plan.md,
+     and the append proof for the feature file;
+   - the verification table with REAL exit codes: docs gate, canary,
+     integrity check, the FULL-SUITE confirmation (counts + wall
+     clock), the producer run, the zip build tail;
+   - the four values the reviewer needs, VERBATIM, one per line:
+     evidence job id · package filename · SHA-256 · content HEAD
+     (the full sha at handback; if the handoff commit moves HEAD,
+     state BOTH the content HEAD and the final HEAD);
+   - the item-status table (AGENTS.md), every bundle item 1-7
+     exactly once, with `done` / `skipped` / `deviated` and a reason;
+   - open findings count (0) and the next expected action (R8);
+   - any deviation, DECLARED, with its cause. The stated-cause
+     overage clause applies: never drop a mandated section to meet
+     the line cap.
+   NO STATUS.md edit. NO README.md edit. NO PR. Those are R8.
 
 AUTHORED TEXTS
 
-<<<BEGIN AUTHORED f079-r5-1
-sha256=6ae1a2d014f8ffad8c72e9cb121cf83906950d191895194f310c2f7daa8c36a7>>>
+<<<BEGIN AUTHORED f103-r7-1
+sha256=aeb26d7dd909d3860cfc83e6fe7172fe4b5d1c7368b33e4ed1d2676c77b10201>>>
+PAIR 1 — REWRITE
 FROM:
-- [~] F079 — Context handoffs
+- R7: closure per docs/roadmap/STATUS_closure_protocol.md.
 TO:
-- [x] F079 — Context handoffs (T001–T003 complete; accepted 2026-08-06 · live review PASS
-— ACCEPTED · Evidence job a7f0791c4d6b2e58 · package
-remedy-review-20260806-203747-READY_FOR_REVIEW.zip · SHA-256
-f30d540afec921aa76aef40d754abc7d00f4026eb2a755aa53bf99e241a88eec · accepted HEAD
-abc33f79aac937d3504dddef7a72bdb22d4aa2d1)
-<<<END AUTHORED f079-r5-1>>>
+- R7: closure part 1 per docs/roadmap/STATUS_closure_protocol.md — the
+  Built State section, the load-bearing full-suite confirmation run,
+  the evidence job and the FRESH review zip. Closure runs in TWO relays
+  because the STATUS line quotes the evidence job id, the package name
+  and its SHA-256, and the reviewer can only author that line once
+  those values exist (F079 R4/R5 and F254 R11/R12 precedent).
+- R8: closure part 2 — the reviewer-authored STATUS `[~]`->`[x]` line
+  and the README capability sync in the SAME commit (R-0154), last on
+  the branch (Rule A4), then `gh pr create`; the PR is NOT merged by
+  the session that creates it.
 
-<<<BEGIN AUTHORED f079-r5-2
-sha256=33fa335d51fd8951b2f553e1e5f7299155e5357b4f30065df941abd74c4a88d9>>>
-EDIT 1 FROM:
-36 of 254 registered items accepted. Next: F079 (Context handoffs).
-EDIT 1 TO:
-37 of 254 registered items accepted. Next: F080 (Machine-readable roadmap mirror &
-STATUS.md).
-EDIT 2 FROM:
-| 1 | Self-Build Bootstrap | 20 | 22 |
-EDIT 2 TO:
-| 1 | Self-Build Bootstrap | 21 | 22 |
-<<<END AUTHORED f079-r5-2>>>
+PAIR 2 — REWRITE
+FROM:
+- R7: pending — closure, next session.
+TO:
+- R7: in flight — closure part 1. Awaiting the handback with the
+  evidence job id, the package filename, its SHA-256 and the content
+  HEAD the zip records as the accepted head.
+- R8: pending — closure part 2.
+<<<END AUTHORED f103-r7-1>>>
 
-<<<BEGIN AUTHORED f079-r5-3
-sha256=9e92118597c3faea2182a1d195d5c080a21e99df01ad25e06d17b6328503f293>>>
-# Closure Candidates — carrier of record
+<<<BEGIN AUTHORED f103-r7-2
+sha256=db2f23b12b432b87af6e95c148ad322b642bd4d2e3084f94b0a05a2d2dd3e44d>>>
+# Plan — F103 Token ledger (SQLite)
 
-> Written at closure per docs/roadmap/STATUS_closure_protocol.md
-> ("Closure-candidate findings", disk-vehicle rule, operator ruling
-> 2026-08-01). Read at Window-1 session bootstrap
-> (docs/agents/planner_reviewer_prompt.md §1). One entry per
-> candidate: description · source feature · date. Any entry present
-> at feature-claim time is a block condition.
-
-- R-0200 (registered in F079, deferred unbuilt): closure evidence
-  cannot yet prove a specified verb was actually CALLED — the
-  gate-tooling half of the F070 acceptance gap. The reviewer-practice
-  half is landed (docs/agents/reviewer_conventions.md,
-  specified-route-exercised rule). Any build order should cite that
-  rule. Source: F075 R4 diagnosis → F079 R1 registration → deferred
-  through F079 closure · 2026-08-06.
-- R-0202 (registered in F079, deferred unbuilt): the mid-run UI
-  rebuild class — REMEDY_UI_NO_AUTO_BUILD=1 was once ignored by a
-  spawned server/build path (R-0169, F069 R2; recurred F075 R12).
-  Did NOT recur in the F079 R3 gate (dist hashes identical on both
-  sides), but one clean gate is not the env-var hunt; the mechanism
-  is still unexplained. integration_gate.md carries the operational
-  mitigation. Source: F075 R12 gate → F079 R1 registration ·
-  2026-08-06.
-- xdist flake, single id: tests/orchestration/
-  test_run_manifest_logical_identity.py::TestTwoRealRunsShareLogical
-  Identity::test_different_execution_identities_same_logical_hash
-  failed once in the reviewer's parallel full-suite run at F079 R3,
-  passed serially (file: 11/11) and the file is untouched by F079
-  (0 commits in range). F135 flaky-detector territory; 1 id, far
-  under the 10-id flake-debt threshold. Source: F079 R3 gate,
-  reviewer run · 2026-08-06.
-<<<END AUTHORED f079-r5-3>>>
-
-<<<BEGIN AUTHORED f079-r5-4
-sha256=c32b1668387d74f8d6d4e86c55a6d3e5b013061c0f5cbc02e26cc059c9293571>>>
-# Live Review — F079 Context handoffs (Tier 1)
-
-Branch: feature/f079-context-handoffs
-Scope: handoff artifact (handoff.json + rendered handoff.md) composed
-from dossier, checkpoint reference, open decisions and next intent;
-triggers + loop consumption; measured recall eval. T001–T003 built,
-verified, gated; evidence job + fresh zip produced in R4; R5 is the
-closure commit + PR. FEATURE COMPLETE at R5.
-
-## Steps
-- R1 (SPLIT, LARGE): claim + candidate sweep + R-0199 diagnosis +
-  reuse inspection + T001 — PASS.
-- R2 (SPLIT, LARGE): R-0199 fix + T002 + T003 — PASS.
-- R3 (SPLIT): INTEGRATION GATE — PASS, FULL SUITE GREEN.
-- R4 (SPLIT): closure part 1 — Built State, preconditions, evidence
-  job a7f0791c4d6b2e58, fresh zip READY_FOR_REVIEW — PASS, see
-  Verdicts.
-- R5 (SPLIT, current): closure part 2 — authored STATUS [x] + README
-  sync + candidate re-emit + closure commit + PR. The PR merges at
-  the next feature's Open PR Gate.
-
-## Findings
-- R-0199 (harness perf, Medium — carried from F075): FIXED in R2.
-  Done: R-0199
-- R-0200 (process/gate-tooling, Medium): deferred unbuilt — re-emitted
-  to .agent/candidates.md in the closure commit.
-- R-0201 (roadmap routing): resolved by routing in R1 (T3_F106.md).
-  Resolved.
-- R-0202 (gate tooling, Low): deferred unbuilt — re-emitted to
-  .agent/candidates.md in the closure commit.
-- R-0203 (design, Low): FIXED in R2. Done: R-0203
-- Next free ID: R-0204.
-
-## Verdicts
-- R1: PASS (2026-08-06). Range 38854f60..79621fc0. Full text in this
-  file's git history (commit b3a0291e).
-- R2: PASS (2026-08-06). Range 79621fc0..0938884f. Full text in this
-  file's git history (commit 561e401b).
-- R3: PASS — INTEGRATION GATE PASS, FULL SUITE GREEN (2026-08-06).
-  Range 0938884f..a11d1f74. Full text in this file's git history
-  (commit cc03063c).
-- R4: PASS (SPLIT, 2026-08-06). Range a11d1f74..20e2a06a (5 commits,
-  all tabled). Transport: f079-r4-1/2/3 cmp 0 against the reviewer's
-  scratchpad originals; live_review and plan byte-equal their
-  authored texts; the Built State append verified in place. Reviewer
-  verification, independent: the zip's sha256 recomputed on disk
-  equals the printed hash; zipfile.testzip() None over all 2031
-  members; .review_zip_manifest.json read directly — base
-  38854f6034f1abff6f2c1e85e4d21752d33d66b6, head
-  abc33f79aac937d3504dddef7a72bdb22d4aa2d1 (exactly the required
-  span), package_status READY_FOR_REVIEW, validation
-  is_valid_current_run true with zero errors, final_verifier and
-  token_truth both VERIFIED_EQUAL; `remedy integrity check --json`
-  re-run by the reviewer: passed=true, 0 failed, 5 checks. Docs gate
-  293 and canary 42 accepted from raw transcripts at the content
-  HEAD. The FIRST zip attempt (BLOCKED_EVIDENCE) was recorded with
-  its diagnosed cause — the packaging privacy validator correctly
-  rejecting 605 parametrized full-suite node ids that literally
-  contain secret-like strings and absolute paths; the full-suite
-  numbers stay in the committed .agent/gate_f079_r3/ evidence —
-  deviation ACCEPTED: correct validator behaviour, honest recording,
-  per-file scoped verification_runs match the closure precedent.
-  PASS_WITH_RISKS is the operator-attested manual-completion profile
-  (commit_execution_gate NEEDS_HUMAN_APPROVAL by design; every other
-  gate PASS; missing_evidence empty). Closure preconditions 1–5 all
-  hold. LAST_REVIEWED_SHA = 20e2a06a.
-<<<END AUTHORED f079-r5-4>>>
-
-<<<BEGIN AUTHORED f079-r5-5
-sha256=c6a703cc16533ab87432ef47812feec491b5f9fa14a029ce6e251806c9549a79>>>
-# Plan — F079 Context handoffs (closed)
-
-Branch: feature/f079-context-handoffs — closure PR open, merges at
-the next feature's Open PR Gate.
+Branch: feature/f103-token-ledger · claimed `[~]` in
+docs/roadmap/STATUS.md. Build mode: one-session self-drive
+(docs/agents/self_drive_protocol.md), one delegated worker per round.
+R1-R6 PASSed; LAST_REVIEWED_SHA 7f32dae9. Open findings 0; next free
+ID R-0222. R-0221 is carried in `.agent/candidates.md`. No PR exists.
 
 ## Goal
-F079 is complete and accepted: handoff composer (idempotent, pure
-artifact), explicit CLI + loop boundary triggers, consumption with
-reference verification and one shared drift wording, measured
-boundary recall (100 % open items, report archived), R-0199
-metadata-manifest digest fix (34.6 s vs 394.8 s). Evidence job
-a7f0791c4d6b2e58; package
-remedy-review-20260806-203747-READY_FOR_REVIEW.zip; accepted HEAD
-abc33f79aac937d3504dddef7a72bdb22d4aa2d1.
+Close F103 per docs/roadmap/STATUS_closure_protocol.md. The substance
+is built and gated: T001 schema plus the never-fail writer, T002 the
+call site with backfill and a content-comparing reconcile, T003 the
+cost aggregation with `remedy stats cost`, `backfill-ledger` and
+`verify-ledger`, the R5 integration gate, and R6's live mirror at the
+task-run evidence seam so a real job yields rows. Closure records what
+was built on the feature file and packages the accepted head.
+
+## Current Step
+R7 — closure part 1: the Built State section on
+docs/roadmap/features/T2_F103.md (a CONTENT commit, before the zip),
+the closure preconditions, the LOAD-BEARING full-suite confirmation
+run, the evidence job through `create_manual_completion_bundle` with
+`review_feature_id="f103"` into a gitignored dir outside the review
+subject, and a FRESH review zip from that clean content head. The
+handback carries the job id, the package filename, its SHA-256 and the
+content HEAD; the reviewer authors the STATUS line from those values
+and never from a guess.
 
 ## Next Steps
-- Next session: F080 (Machine-readable roadmap mirror & STATUS.md)
-  per Rule A5, fresh window. Its first paste block runs the Open PR
-  Gate (merges the F079 closure PR).
-- .agent/candidates.md carries three entries (R-0200, R-0202, one
-  xdist-flake id) — block condition at the F080 claim until its
-  first reviewed round registers or resolves each.
+- R8 — closure part 2: apply the authored STATUS `[~]`->`[x]` line and
+  the README ledger sync in the SAME commit (R-0154), keep R-0221 in
+  `.agent/candidates.md` as the next feature's block condition, write
+  the final `.agent` state, commit LAST on the branch (Rule A4), push,
+  `gh pr create`. That PR merges at the next feature's Open PR Gate,
+  which is the operator's manual-review window.
 
 ## Risks
-- ADR-0001 (CYCLE_SAFETY_CAP) still awaits a human; the pinned
-  assertions hold it at 1.
-- Round gates stay scoped pytest commands (resource-safety rules of
-  tests/regression apply to full runs).
-<<<END AUTHORED f079-r5-5>>>
+- The full-suite confirmation is LOAD-BEARING, not a formality: R6
+  landed production code AFTER the R5 gate, so it is the only
+  full-suite evidence over the live-mirror wiring. A regression there
+  is a normal repair round, never a closure workaround.
+- Packaging pitfalls named in the protocol must be met at authoring
+  time: sha256-hex output_hash, FULL-length base_commit, real node ids
+  with `len(node_ids) == selected`, `test_files` are files and never
+  directories, `run_id` matching `^vr-\d{4,}$`, and NEVER a full-suite
+  node-id list.
+- The evidence dir stays OUTSIDE the review subject and is never
+  committed — a committed one packages BLOCKED_EVIDENCE.
+- A failing zip build is a closure BLOCKER: stop, hand back the raw
+  error, do not work around it.
+<<<END AUTHORED f103-r7-2>>>
 
-<<<BEGIN AUTHORED f079-r5-6
-sha256=c7efa5aa380b3dfeaf46cd99711d05aad79c4807ab75fbb53b522fa48645dbad>>>
-# Context — F079 closed; next feature not yet claimed
+<<<BEGIN AUTHORED f103-r7-3
+sha256=e17ddc6d8f54df1252b4143169442c5a0c77d17174138a20fe8a480fb3246c5b>>>
 
-## Active Branch
-feature/f079-context-handoffs — F079 closure PR open, NOT merged. The
-next feature (F080, Machine-readable roadmap mirror & STATUS.md)
-starts from main AFTER the Open PR Gate merges this PR.
+## Built State (accepted 2026-08-08, R1–R6)
 
-## Scope
-F079 is complete and accepted: handoff composer (idempotent, pure
-artifact), `remedy mission handoff` + loop boundary triggers,
-consumption with checkpoint-reference verification and the shared
-worktree-drift wording, measured boundary recall (100 % of open
-items), and the R-0199 metadata-manifest digest fix. Built State is
-recorded in docs/roadmap/features/T1_F079.md; STATUS.md carries the
-[x] line with the evidence job, package and accepted HEAD.
+Built and reviewed on branch feature/f103-token-ledger:
 
-## Constraints
-- Nothing further ships on this branch. The closure commit is the
-  last commit (Rule A4); do not append to it.
-- .agent/candidates.md is non-empty by design and blocks the next
-  feature claim until its first reviewed round registers or resolves
-  each entry.
-- Round gates stay scoped pytest commands; the full-suite
-  pytest -n auto run belongs to the integration gate, where the
-  resource-safety rules of tests/regression apply.
-- ADR-0001 stays PROPOSED; CYCLE_SAFETY_CAP stays 1 until a human
-  applies it.
-
-## Steps
-R1–R2 build (PASS) → R3 integration gate PASS (full suite green) →
-R4 evidence job + fresh zip → R5 closure commit + PR (this commit) →
-next: F080 in a fresh session.
-<<<END AUTHORED f079-r5-6>>>
+- **Store & writer** (packages/orchestration/token_ledger.py, T001):
+  `SCHEMA_VERSION = 1` recorded in a `meta` row, migrations as numbered
+  steps rather than an if-ladder. One database per project at
+  `token_ledger_path_for(project_id)` =
+  `<data_root>/projects/<uuid>/ledger.sqlite` (`LEDGER_FILENAME`);
+  `open_ledger` sets `PRAGMA journal_mode=WAL` plus a busy timeout and
+  migrates on open. Table `calls` is keyed by `call_id` and carries the
+  three covering indexes the Design names (job_id; ts_utc; role+model).
+  `record_call` NEVER fails the run: any failure returns False and
+  increments the counter `ledger_miss_count()` reads, so a miss is
+  counted rather than silently dropped. The module docstring carries the
+  mandated sentence verbatim — "The file evidence remains the source of
+  truth and the database is a mirror." Python's bundled `sqlite3` only:
+  no ORM, no new dependency. This is the FIRST and so far ONLY use of
+  SQLite in Remedy, and the docstring says so where a reader would look.
+- **Row granularity** (DECISION D16): a row is one FINALIZED TASK RUN,
+  its key `call_id_for_task_run(job_id, task_id)` = `"<job_id>:<task_id>"`.
+  No per-HTTP-request record exists on disk, and synthesising one would
+  fabricate ids, timestamps and a usage split no file records — the F075
+  tokens-unmeasured lesson. Remedy deliberately does not do that.
+- **Data layer** (T002): `call_record_from_evidence` derives a row from
+  `task_runs/<task_id>/provider_evidence.json` through `token_truth`'s
+  own canonical aliases — imported, never re-parsed, so the feature adds
+  no second capture path. `backfill_ledger` scans an evidence tree, is
+  idempotent by `call_id`, and its counters satisfy
+  `scanned == recorded + skipped + failed` on every path.
+  `verify_ledger` compares CONTENT, not presence (finding R-0219): it
+  re-derives each row from its own evidence through the same builder the
+  live hook uses and reports field-level mismatches in `drifted_rows`.
+- **Live mirror** (packages/orchestration/job_evidence.py, R6, finding
+  R-0220): `_resolve_job_ledger_project_id` resolves the target ONCE per
+  export, read-only, and `export_job_evidence` threads it and the job id
+  through `_write_task_run_evidence` into the writer's keyword-only
+  `ledger_*` opt-in. A real job therefore yields its task runs as rows
+  with nobody passing a `ledger_*` argument by hand, which is what makes
+  the acceptance criterion true of the built system rather than of a test
+  that armed the hook itself. An absent `repo_path` returns None instead
+  of letting `Path("")` become the process CWD, so evidence export can
+  never escape into the wrong project.
+- **Queries & CLI** (T003): `query_cost` and `merge_cost_reports` bucket
+  by role, model or day and aggregate read-only across projects;
+  `apps/cli/commands/stats_ledger_cmd.py` adds `stats.cost`,
+  `stats.backfill-ledger` and `stats.verify-ledger` to the existing
+  `stats` group, in human and `--json` output, every figure labelled with
+  its basis (`provider_reported` | `price_table` | `unknown`; nothing in
+  Remedy writes `price_table`, so cost stays NULL rather than inventing a
+  price). P6 holds in code, not only in prose: there is no `COALESCE` in
+  the queries, so a sum over all-unmeasured rows stays NULL and never
+  renders as a measured zero, while COUNTS use `COUNT` because 0 is their
+  honest empty value. Reads open with `mode=rw` plus
+  `PRAGMA query_only=1`, which refuses to create a database and rejects
+  every write at the driver without leaving `-wal`/`-shm` sidecars beside
+  a ledger it merely read.
+- **Measured cost** (finding R-0218): the mirror costs a median
+  **+1.386 ms per finalized task run** at `write_evidence_bundle`
+  (0.587 ms inert vs 1.973 ms active), independently reproduced by the
+  reviewer at +1.395 ms with a row count of 330/330. The Goal's "without
+  slowing it perceptibly" criterion is therefore met with a number rather
+  than a claim, on a path whose sibling work is a provider call measured
+  in seconds.
+- **Tests**: tests/orchestration/test_token_ledger.py and
+  tests/cli/test_stats_cost.py — 115 together. Integration gate (R5):
+  16121 passed, 19 skipped, zero branch-only failures, re-run
+  independently by the reviewer.
+<<<END AUTHORED f103-r7-3>>>
