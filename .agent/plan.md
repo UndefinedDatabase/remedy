@@ -23,7 +23,18 @@ of this round `run_job`'s `_stop_check` is its production caller), add the
 and both acceptance fixtures — just-under, and prediction-wrong proving the
 reactive backstop still fires. Block saved at `.agent/last_block.md`.
 
+## Blocker found in R4 (reported, NOT fixed — outside this change set)
+`run_manifest._BUDGET_ALLOWED_KEYS` is a CLOSED schema that F104 T001 never
+extended, so ANY job carrying `max_cost_usd` fails its F012 manifest write:
+`manifest.budgets has unknown keys: ['max_cost_usd']`. On the STOP path that
+raises `StopFinalizationError` inside `_stop_job` after the stop reason/source
+are set but before the JOB_STOPPED checkpoint, leaving the job RUNNING. It
+reproduces with the predictive path fully inert, so it is a T001/R1 defect.
+Every other acceptance assertion is pinned; the terminal-state one is an
+`xfail(strict=True)` that self-clears when the allowlist is fixed.
+
 ## Next Steps
+- Reviewer decision needed on the blocker above before F104 can close.
 - R5 — T003: display and docs; every user-facing predicted number carries its
   `estimate_basis` label, pinned by a grep-style test.
 - R6 — integration gate per docs/agents/integration_gate.md; R7/R8 — closure

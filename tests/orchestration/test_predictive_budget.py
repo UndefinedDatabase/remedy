@@ -14,10 +14,12 @@ into a happy path:
 * The exact-limit boundary belongs to the REACTIVE check in ``evaluate_budget``.
   The prediction uses a strict ``>`` so the two can never disagree about it.
 
-There is deliberately NO test here that the job loop calls this engine: it has
-no production caller yet, by design (F104 R3 wires it at the task-dispatch safe
-point). ``TestLiveSafePointReadsTheLedgerCost`` in ``test_budget_guard.py`` is
-where the live wiring of the REACTIVE cost path is pinned.
+Since F104 R4 the engine has a PRODUCTION CALLER: ``run_job``'s ``_stop_check``
+at the task-dispatch safe point. ``TestPredictiveStopAtTheLiveDispatchSafePoint``
+below drives the real ``run_job`` end to end for that wiring — a unit gate on a
+pure function cannot tell a wired engine from an unwired one, which is exactly
+what R-0222 was. ``TestLiveSafePointReadsTheLedgerCost`` in
+``test_budget_guard.py`` pins the REACTIVE cost path at the same safe point.
 """
 from __future__ import annotations
 
@@ -52,8 +54,14 @@ def _config(price_basis: float | None, defaults: dict | None = None):
     )
 
 
-def _counters(*, spent: float | None, provider_calls: int = 4, unpriced: int = 0):
-    """Priced-and-measured counters, or unpriced ones when ``spent`` is None."""
+def _counters(*, spent: float | None, provider_calls: int = 4, unpriced: int = 0,
+              priced: int | None = None):
+    """Priced-and-measured counters, or unpriced ones when ``spent`` is None.
+
+    ``priced`` defaults to ``provider_calls - unpriced`` so a caller pairing a
+    real ``spent`` with an ``unpriced`` count does not trip the cost-side
+    contradiction check added in R3 (a priced total with zero priced calls).
+    """
     return BudgetCounters(
         provider_calls=provider_calls,
         measured_call_count=provider_calls,
@@ -63,6 +71,7 @@ def _counters(*, spent: float | None, provider_calls: int = 4, unpriced: int = 0
         evaluated_at=T0,
         measured_cost_usd=spent,
         unpriced_call_count=unpriced,
+        priced_call_count=(provider_calls - unpriced) if priced is None else priced,
     )
 
 
@@ -493,3 +502,326 @@ class TestResolvePredictiveBudgetConfig:
         toml.write_text('[remedy.budget]\nprice_basis_usd_per_1k_tokens = "free"\n')
         with pytest.raises(BudgetConfigError):
             resolve_predictive_budget_config(config_path=str(toml))
+
+
+# ---------------------------------------------------------------------------
+# The LIVE wiring (F104 R4). These drive the real ``run_job``.
+# ---------------------------------------------------------------------------
+
+_TWO_TASK_JOB = """\
+# Job: Predictive Budget
+
+## Task 1
+Add a helper module.
+
+Acceptance:
+- module exists
+
+## Task 2
+Add a second module.
+
+Acceptance:
+- module exists
+"""
+
+_LEDGER_PROJECT_ID = "11111111-2222-3333-4444-555555555555"
+
+
+@pytest.fixture
+def isolate_data_root(tmp_path, monkeypatch):
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    return data_dir
+
+
+@pytest.fixture
+def demo_repo(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# demo\n")
+    return repo
+
+
+def _configure_price_basis(repo, *, price_basis):
+    """Write the operator's predictive config where the job's repo_path finds it."""
+    (repo / "remedy.toml").write_text(
+        "[remedy.budget]\n"
+        f"price_basis_usd_per_1k_tokens = {price_basis}\n"
+    )
+
+
+def _record_cost(job_id, *, call_id, cost):
+    """Put a REAL priced row in the F103 ledger under the isolated data root."""
+    from packages.orchestration.token_ledger import (
+        COST_BASIS_PROVIDER_REPORTED,
+        CallRecord,
+        record_call,
+    )
+    ok = record_call(
+        CallRecord(
+            call_id=call_id,
+            job_id=job_id,
+            ts_utc="2026-08-09T10:00:00+00:00",
+            cost_usd=cost,
+            cost_basis=COST_BASIS_PROVIDER_REPORTED,
+        ),
+        project_id=_LEDGER_PROJECT_ID,
+    )
+    assert ok is True
+
+
+def _arm_the_ledger(monkeypatch):
+    """Point the live safe point's ledger read at the seeded project.
+
+    The production resolver needs a git repo registered in the project
+    registry; the SAME resolver is stubbed by
+    ``TestLiveSafePointReadsTheLedgerCost`` in ``test_budget_guard.py``, for the
+    same reason. Everything downstream of it here is production code.
+    """
+    from packages.orchestration import job_evidence as je
+    monkeypatch.setattr(
+        je, "_resolve_job_ledger_project_id", lambda job: _LEDGER_PROJECT_ID)
+
+
+class _CountingProvider:
+    """Wraps FakeProvider and counts calls, so "zero tasks ran" is provable."""
+
+    def __init__(self, **kwargs):
+        from packages.orchestration.pingpong_provider import FakeProvider
+        self._inner = FakeProvider(pass_on_round=1, fail_on_round=99, **kwargs)
+        self.build_calls = 0
+        self.review_calls = 0
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def build(self, prompt, **kwargs):
+        self.build_calls += 1
+        return self._inner.build(prompt, **kwargs)
+
+    def review(self, prompt, **kwargs):
+        self.review_calls += 1
+        return self._inner.review(prompt, **kwargs)
+
+
+_STOPPED_STATE_BLOCKER = (
+    "BLOCKED by a pre-existing defect that is NOT this round's change set: "
+    "``run_manifest._BUDGET_ALLOWED_KEYS`` is a CLOSED schema that F104 T001 "
+    "never extended, so any job carrying ``max_cost_usd`` fails its F012 "
+    "manifest write with \"manifest.budgets has unknown keys: ['max_cost_usd']\". "
+    "On the stop path that raises StopFinalizationError inside ``_stop_job`` "
+    "AFTER the stop reason and source are set but BEFORE the JOB_STOPPED "
+    "checkpoint, so the job is left RUNNING. It reproduces with no predictive "
+    "config at all and with the predictive path fully inert, so it is "
+    "independent of this round. Reported in the R4 handback; strict=True so "
+    "this flips to a failure the moment the allowlist is fixed."
+)
+
+
+class TestPredictiveStopAtTheLiveDispatchSafePoint:
+    """F104 acceptance, driven through the REAL ``run_job``.
+
+    A unit gate on ``predict_next_task_cost`` cannot tell a wired engine from an
+    unwired one — that was R-0222 — so the acceptance criteria (zero tasks run,
+    the stop reason, the arithmetic persisted) are pinned against a real run
+    with a real safe point, a real ``_stop_job`` and real F103 ledger rows.
+
+    The terminal JOB_STOPPED state is asserted separately and currently xfails:
+    see ``_STOPPED_STATE_BLOCKER``.
+    """
+
+    def _run(self, monkeypatch, repo, *, budgets, seeded_cost=None,
+             arm_ledger=True):
+        from packages.orchestration.pingpong_job import parse_job_file, run_job
+        if arm_ledger:
+            _arm_the_ledger(monkeypatch)
+        job = parse_job_file(_TWO_TASK_JOB, str(repo))
+        if seeded_cost is not None:
+            _record_cost(job.job_id, call_id=f"{job.job_id}-seed", cost=seeded_cost)
+        builder = _CountingProvider()
+        reviewer = _CountingProvider()
+        done = run_job(
+            job.job_id,
+            builder_provider=builder,
+            reviewer_provider=reviewer,
+            repair_rounds=0,
+            budgets=budgets,
+        )
+        return done, builder, reviewer
+
+    # -- ACCEPTANCE: just-under -------------------------------------------
+    def test_just_under_the_limit_stops_before_any_task_is_dispatched(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        # $0.01/1k tokens x the 8000-token LOW class default = $0.08 expected.
+        # Spend is $0.95 against a $1.00 limit: under the REACTIVE boundary, so
+        # only a PREDICTION can stop this job — 0.95 + 0.08 > 1.00.
+        from packages.orchestration.pingpong_job import TASK_PENDING
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        done, builder, reviewer = self._run(
+            monkeypatch, demo_repo,
+            budgets={"max_cost_usd": 1.00},
+            seeded_cost=0.95,
+        )
+
+        assert done.stop_reason == "predicted_budget_exhausted:max_cost_usd"
+        assert done.stop_source == "budget"
+
+        # Nothing was executed: that is the whole point of stopping BEFORE.
+        assert all(t.status == TASK_PENDING for t in done.tasks)
+        assert builder.build_calls == 0
+        assert reviewer.review_calls == 0
+
+        # The arithmetic a human reads to see WHY.
+        pred = done.budget_prediction
+        assert isinstance(pred, dict)
+        assert pred["estimate_basis"] == "class_default"
+        arithmetic = pred["arithmetic"]
+        assert isinstance(arithmetic, str) and arithmetic
+        assert "0.95" in arithmetic          # spent
+        assert "0.08" in arithmetic          # expected
+        assert "1.00" in arithmetic          # limit
+        assert pred["expected_tokens"] == 8000
+        assert pred["band"] == TokenBand.LOW
+
+    def test_the_persisted_prediction_survives_a_reload(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        from packages.orchestration.pingpong_job import load_job_plan
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        done, _b, _r = self._run(
+            monkeypatch, demo_repo,
+            budgets={"max_cost_usd": 1.00},
+            seeded_cost=0.95,
+        )
+        reloaded = load_job_plan(done.job_id)
+        assert reloaded is not None
+        assert reloaded.budget_prediction == done.budget_prediction
+
+    # -- ACCEPTANCE: prediction-wrong -------------------------------------
+    def test_a_wrong_prediction_is_still_caught_by_the_reactive_backstop(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        # At dispatch: 0.10 spent + 0.08 expected = 0.18, far under the $5.00
+        # limit, so the prediction correctly does NOT stop. The task then really
+        # costs $50 — the prediction was WRONG — and the REACTIVE check catches
+        # it at the next safe point.
+        from packages.orchestration.pingpong_job import (
+            TASK_PENDING,
+            parse_job_file,
+            run_job,
+        )
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        _arm_the_ledger(monkeypatch)
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        _record_cost(job.job_id, call_id=f"{job.job_id}-seed", cost=0.10)
+
+        class _ExpensiveProvider(_CountingProvider):
+            """Bills $50 to the ledger the first time it is asked to build."""
+
+            def build(self, prompt, **kwargs):
+                if self.build_calls == 0:
+                    _record_cost(job.job_id, call_id=f"{job.job_id}-overrun",
+                                 cost=50.0)
+                return super().build(prompt, **kwargs)
+
+        builder = _ExpensiveProvider()
+        reviewer = _CountingProvider()
+        done = run_job(job.job_id, builder_provider=builder,
+                       reviewer_provider=reviewer, repair_rounds=0,
+                       budgets={"max_cost_usd": 5.00})
+
+        assert done.stop_source == "budget"
+        # The REACTIVE reason, not the predicted one: the backstop still catches
+        # what the prediction missed.
+        assert done.stop_reason.startswith("budget_exhausted:")
+        assert not done.stop_reason.startswith("predicted_")
+        # No prediction ever breached, so nothing was recorded.
+        assert done.budget_prediction is None
+        # Real work happened — the prediction let this task through — and the
+        # overrun was caught MID-TASK, the incomplete task rolled back to
+        # pending by the ordinary stop path and no further task dispatched.
+        assert builder.build_calls >= 1
+        assert all(t.status == TASK_PENDING for t in done.tasks)
+
+    # -- the terminal state, currently blocked ----------------------------
+    @pytest.mark.xfail(strict=True, reason=_STOPPED_STATE_BLOCKER)
+    def test_a_predictive_stop_reaches_the_stopped_state(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        from packages.orchestration.pingpong_job import JOB_STOPPED
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        done, _b, _r = self._run(
+            monkeypatch, demo_repo,
+            budgets={"max_cost_usd": 1.00},
+            seeded_cost=0.95,
+        )
+        assert done.status == JOB_STOPPED
+
+    # -- REGRESSION: the inert paths --------------------------------------
+    def test_without_a_cost_limit_nothing_is_predicted(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        # A price basis IS configured; the missing money limit alone must keep
+        # the whole predictive path inert.
+        from packages.orchestration.pingpong_job import JOB_COMPLETED
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        done, builder, _r = self._run(
+            monkeypatch, demo_repo,
+            budgets={"max_total_tokens": 1_000_000},
+        )
+        assert done.status == JOB_COMPLETED
+        assert done.budget_prediction is None
+        assert builder.build_calls >= 1
+
+    def test_with_no_price_basis_configured_nothing_is_predicted(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        # DECISION F104 D4: no price is ever invented, so a money limit with no
+        # configured price basis leaves the path inert — and a job that would
+        # have breached an invented price runs to completion instead.
+        from packages.orchestration.pingpong_job import JOB_COMPLETED
+        assert not (demo_repo / "remedy.toml").exists()
+        done, builder, _r = self._run(
+            monkeypatch, demo_repo,
+            budgets={"max_cost_usd": 1.00},
+            seeded_cost=0.95,
+        )
+        assert done.status == JOB_COMPLETED
+        assert done.budget_prediction is None
+        assert builder.build_calls >= 1
+
+
+class TestTheA9PathAtTheDeriveThenPredictSeam:
+    """A task whose band cannot be derived predicts against the LARGEST default.
+
+    Pinned at the ``derive_next_task_token_band`` -> ``predict_next_task_cost``
+    SEAM rather than through ``run_job``: a real ``TaskEntry`` always yields a
+    derivable band (missing text estimates to 0 tokens, which is honestly LOW),
+    so no run-level fixture can reach ``TokenBand.UNKNOWN`` without faking the
+    task — and a fabricated run would prove nothing. Declared in the R4
+    handback.
+    """
+
+    class _UnderivableTask:
+        title = "legacy task"
+
+        @property
+        def body(self):
+            raise RuntimeError("this task's text cannot be read")
+
+    def test_the_seam_takes_the_largest_class_default_and_says_the_band_was_missing(self):
+        band = derive_next_task_token_band(self._UnderivableTask())
+        assert band == TokenBand.UNKNOWN
+
+        p = predict_next_task_cost(
+            JobBudgets(max_cost_usd=10.0), _counters(spent=1.0),
+            band=band, config=_config(0.01))
+        assert p.estimate_basis == "class_default_missing_band"
+        assert p.expected_tokens == LARGEST_CLASS_DEFAULT
+        # Over-stopping beats overspending: 120k tokens, not the 8k LOW default.
+        assert p.expected_cost_usd == pytest.approx(1.20)
+        assert "basis=class_default_missing_band" in p.arithmetic
+
+    def test_a_none_task_takes_the_same_path(self):
+        band = derive_next_task_token_band(None)
+        p = predict_next_task_cost(
+            JobBudgets(max_cost_usd=10.0), _counters(spent=1.0),
+            band=band, config=_config(0.01))
+        assert p.estimate_basis == "class_default_missing_band"
+        assert p.expected_tokens == LARGEST_CLASS_DEFAULT
