@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -33,6 +34,8 @@ from packages.orchestration.pingpong_job import (
     _export_target_guard,
     load_job_plan,
 )
+
+logger = logging.getLogger(__name__)
 
 _TASK_BODY_EVIDENCE_LIMIT = 500
 _WORKSPACE_DIFF_MAX_CHARS = 500_000
@@ -56,6 +59,58 @@ def _task_evidence_dir(out_base: str, task_id: str) -> Path:
             "Aborting evidence export to prevent path traversal."
         )
     return _validate_output_path(out_base, f"task_runs/{task_id}")
+
+
+# F103: the ONE place a real job's ledger target is decided; None means stay inert.
+def _resolve_job_ledger_project_id(job: Any) -> str | None:
+    """Return the registry UUID of the project a job's rows belong to, or None.
+
+    THIS IS THE SWITCH THAT ARMS THE F103 TOKEN LEDGER for real jobs. The mirror
+    in ``write_evidence_bundle`` is opt-in precisely so that writing an evidence
+    bundle never touches the user's data root by accident
+    (``pingpong_evidence._record_finalized_call_in_ledger``); arming it is
+    therefore a decision that has to be made HERE, once per export, on evidence
+    rather than on a guess.
+
+    The project is resolved from the job's OWN ``repo_path`` — persisted job
+    state — through ``project_registry.resolve_project``, the registry's
+    read-only cwd-to-project resolver. The returned id is the registry UUID that
+    ``token_ledger_path_for`` keys the ledger by, and the data root under it
+    comes from ``data_paths``, so ``REMEDY_DATA_DIR`` is honoured.
+
+    INERT UNLESS A PROJECT REALLY RESOLVES. Returns None when the job records no
+    repo path, when that path is not a git repository, or when no registered
+    project owns it. A None target is what keeps the hook switched off, so a
+    unit test that merely writes job evidence for a throwaway repo still writes
+    no ledger anywhere. Nothing is guessed: there is no fallback to the process
+    working directory and no default project.
+
+    Remedy deliberately does NOT consult ``REMEDY_PROJECT`` or the process CWD
+    here, unlike ``project_scope.resolve_scope`` which exists to interpret what a
+    HUMAN at a terminal meant. A job's cost rows belong to the repository the job
+    actually ran against; letting ambient environment redirect them would file
+    one project's spend under another. ``export_job_evidence`` reads no ambient
+    environment by design (F6, round 16) and this keeps that true.
+
+    Never raises: a resolution failure means no ledger, never a failed export.
+    """
+    repo_path = str(getattr(job, "repo_path", "") or "").strip()
+    if not repo_path:
+        return None
+    try:
+        from packages.orchestration.project_registry import resolve_project
+
+        project = resolve_project(repo_path)
+    except Exception:
+        logger.warning(
+            "token ledger target could not be resolved for repo %r; the live "
+            "mirror stays inert for this export and the evidence files, which "
+            "are the source of truth, are unaffected (remedy stats "
+            "backfill-ledger can still mirror them later)",
+            repo_path, exc_info=True,
+        )
+        return None
+    return str(project.id) if project is not None else None
 
 
 def export_job_evidence(
@@ -156,8 +211,15 @@ def export_job_evidence(
             "error": _safe(f"job post-mortem export failed: {type(exc).__name__}: {exc}")[:500],
         })
 
+    # F103: resolve the ledger target ONCE per export — one git/registry lookup
+    # for the whole job, not one per task — and stay inert when none resolves.
+    ledger_project_id = _resolve_job_ledger_project_id(job)
+
     for task in job.tasks:
-        _write_task_run_evidence(task, str(out_path), written)
+        _write_task_run_evidence(
+            task, str(out_path), written,
+            ledger_project_id=ledger_project_id, job_id=job.job_id,
+        )
         # F010: a terminally failed task leaves ONE rollup, and the call-level
         # post-mortems it points at travel with it into the bundle.
         try:
@@ -2424,7 +2486,22 @@ def _write_task_run_evidence(
     task: Any,
     out_base: str,
     written: dict[str, str],
+    *,
+    ledger_project_id: str | None = None,
+    job_id: str | None = None,
 ) -> None:
+    """Write one task run's evidence, and mirror it into the F103 ledger.
+
+    ``ledger_project_id`` and ``job_id`` are the ledger opt-in, resolved once by
+    ``export_job_evidence`` and threaded down because this function is handed a
+    TASK and never sees the job. Per DECISION D16 this is the per-task-run seam:
+    one row per finalized task run, ``call_id`` ``"<job_id>:<task_id>"``. Both
+    default to None so the existing three-argument callers stay inert exactly as
+    they were — the ledger arms only where a job is genuinely in hand.
+
+    The mirror cannot change what this function writes: it runs after the bundle
+    files exist, re-reads them, and is wrapped so nothing escapes it.
+    """
     task_out = _task_evidence_dir(out_base, task.task_id)
     task_rel = f"task_runs/{task.task_id}"
 
@@ -2452,7 +2529,17 @@ def _write_task_run_evidence(
     if trace_file.exists():
         bundle["prompt_trace_jsonl_path"] = str(trace_file)
 
-    task_written = write_evidence_bundle(bundle, str(task_out))
+    # F103: the live ledger mirror is armed HERE for a real job. The four
+    # ledger_* arguments keep their None defaults for every other caller, and a
+    # None project_id leaves the hook inert, so evidence output is byte-identical
+    # either way.
+    task_written = write_evidence_bundle(
+        bundle,
+        str(task_out),
+        ledger_project_id=ledger_project_id,
+        ledger_job_id=job_id,
+        ledger_task_id=task.task_id,
+    )
 
     for filename, path in task_written.items():
         written[f"{task_rel}/{filename}"] = path

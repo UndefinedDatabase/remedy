@@ -1,0 +1,61 @@
+=== F103 R5 BASE RUN ===
+date_utc  : 2026-08-08T17:50:58Z
+cwd       : /home/decodeux/Repos/remedy/.remedy-wt/base-f103
+head      : c1c0fbcbfb6b8ddb0d6fd30cb4bf8459b334a05d
+branch    : tmp/base-gate-f103
+command   : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+exit_code : 1
+wall_time : 156s
+log       : written to the gitignored session scratchpad during the run
+            and copied in only AFTER it exited (R-0176). .txt, never
+            .log (R-0169).
+trimmed   : YES. The full raw log is 740 lines; the progress-dot body
+            is DROPPED. Kept below: the last 30 raw lines including the
+            summary line, and the COMPLETE FAILED section if non-empty.
+            FAILED/ERROR counts are greps over the FULL log.
+FAILED lines (full log): 8
+ERROR lines  (full log): 7
+
+--- last 30 lines of the raw log (verbatim) ---
+        # Wait for info file
+        for _ in range(50):
+            if Path(info_file).exists():
+                info = json.loads(Path(info_file).read_text())
+                return info["port"], token, t
+            time.sleep(0.1)
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+=========================== short test summary info ============================
+FAILED tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_a_flaky_start_passes_on_retry_and_says_so
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+8 failed, 16008 passed, 19 skipped in 155.11s (0:02:35)
+--- end raw tail ---
+
+--- COMPLETE FAILED section (verbatim) ---
+FAILED tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_a_flaky_start_passes_on_retry_and_says_so
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+--- end FAILED section ---

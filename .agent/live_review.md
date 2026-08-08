@@ -1,758 +1,504 @@
-# Live Review — F254 Model alias table & dead-model doctor check
+# Live Review — F103 Token ledger (SQLite)
 
-Branch: feature/f254-model-alias-table
-Feature file: docs/roadmap/features/T2_F254.md
-Tier 2 · registered by amendment round amend0805-v3 (2026-08-05, the
-F232 core pulled forward) · depends on nothing · blocks F232 (model
-upgrade playbook) and F110 (routing).
+Branch: feature/f103-token-ledger
+Feature file: docs/roadmap/features/T2_F103.md
+Tier 2 · depends on F003 and F146 · blocks F074, F115, F116, F150 and
+F158. Claimed per Rule A5 as the first `[ ]` entry in
+docs/roadmap/STATUS.md after F254 was accepted.
 
-Goal & Done, quoted from the feature file: every hardcoded default
-model id moves behind ONE alias table in a single module, and
-`remedy doctor` gains a check that every configured/default model id is
-not on a known-dead list. DONE when doctor flags a dead id in a fixture
-and no hardcoded dated model string remains outside the alias module.
+Goal & Done, quoted from the feature file: token and cost actuals
+become QUERYABLE — every provider call lands as a row in a per-project
+SQLite ledger, and `remedy stats cost` answers per-job, per-role and
+per-period questions from it. DONE when the writer sits in the provider
+path without slowing it perceptibly, historical file-based actuals can
+be backfilled once, and every cost figure names its basis.
 
-This feature is also the S4 rehearsal of the self-drive protocol
-(docs/agents/self_drive_protocol.md): the first feature built end to
-end inside ONE session, with the planner/reviewer in the main session
-and a delegated worker subagent per round (DECISION D6 of the S1+S2
-build). The rehearsal is under test as much as the feature is — a gap
-the protocol cannot resolve is a finding against the protocol, never a
-licence to improvise.
+This feature INTRODUCES SQLite to the repository — the first and so far
+only place. The files stay the source of truth; the database is a
+mirror, and a writer failure never fails the run.
+
+Build mode: one-session self-drive
+(docs/agents/self_drive_protocol.md) — planner/reviewer in the main
+session, one delegated worker subagent per round. Session caps declared
+at R1: 8 rounds, ~4 hours wall clock. Reaching a cap with a written
+handoff is a SUCCESS, not a failure.
 
 ## Steps
-- R1 (SPLIT): Open PR Gate — merge PR #185, the S1+S2 self-drive skill
-  — then cut the branch, claim the STATUS line, and reset the three
-  .agent state files to this feature — PASS.
-- R2 (SPLIT): persist the R1 verdict, register R-0211, record DECISION
-  D10; then the alias module packages/orchestration/model_aliases.py
-  with the five built-in default model ids relocated behind it and its
-  own unit test — PASS.
-- R3 (SPLIT): persist the R2 verdict, register R-0212, record DECISION
-  D11, amend the feature file's Acceptance, and route the last three
-  built-in ids — the two Ollama providers and the `ollama.model`
-  config default — through the alias table — PASS.
-- R4 (SPLIT): persist the R3 verdict, register R-0213, then the
-  known-dead model list — shipped data file, loader, config extension
-  and unit tests — PASS.
-- R5 (SPLIT): persist the R4 verdict, register R-0214, record D12 and
-  D13, file the handoff-cap closure candidate, and wire the dead-model
-  check into `remedy doctor core` as an advisory warning — PASS. The
-  feature's first acceptance criterion is met against the real shipped
-  list, not a fixture.
-- R6 (SPLIT): persist the R5 verdict, register R-0215, fix the doctor
-  warning's text-mode verbosity and its miscounted detail line, add
-  the repo-scan test that closes the second acceptance criterion, and
-  write the docs, registered in the docs/README.md index — PASS. Both
-  of the feature file's acceptance criteria are now met and pinned.
-- R7 (SPLIT): persist the R6 verdict, register and fix R-0216, then
-  the integration gate — PASS. Zero branch-only failures; the
-  reviewer's own independent full-suite run at the same HEAD was
-  16016 passed, 19 skipped, 0 failed.
-- R8 (SPLIT): persist the R7 verdict and register R-0217 — PASS. The
-  S4 rehearsal session reached its capacity limit here, with the
-  feature built, both acceptance criteria pinned and the integration
-  gate green, but NOT closed. A second session resumes at R9.
-- R9 (SPLIT): closure PREPARATION — PASS for what it did, TRUNCATED
-  for the rest. An untracked, empty `.agent/STOP` appeared mid-round
-  and guardrail G6 of docs/agents/self_drive_protocol.md bound the
-  worker to finish the commit in flight and hand off. Item A (the R8
-  verdict, DECISION D14, the plan.md replacement) landed in
-  `a50b330a`; items B and C were never started. The operator cleared
-  the STOP before the next session.
-- R10 (SPLIT): pay R9's remaining debt — the R9 verdict, plan.md, the
-  Built State section, and the integration-gate evidence into
-  `.agent/gate_f254_r9/` — PASS. R-0217c is paid: the raw gate
-  evidence now exists inside the repository.
-- R11 (SPLIT): closure part 1 — the content commit that became the
-  ACCEPTED HEAD, the preconditions, the evidence job `f254-closure`
-  and a FRESH review zip — PASS. The package is READY_FOR_REVIEW and
-  its committed review subject spans the merge base to the accepted
-  head, verified by the reviewer opening the archive itself.
-- R12 (current, SPLIT): closure part 2 — the reviewer-authored STATUS
-  `[~]`→`[x]` line lands in the SAME commit as the README capability
-  sync (R-0154), that commit is LAST on the branch (Rule A4), and the
-  PR that follows is NOT merged in the session that creates it. It
-  merges at the next feature's Open PR Gate, which is the operator's
-  manual-review window.
+- R1 (SPLIT): Open PR Gate — no open PRs, nothing to merge — then the
+  STATUS claim, the R-0214 closure-candidate sweep, and the reset of
+  live_review, plan, context and candidates to this feature — PASS.
+- R2 (SPLIT): T001 — schema, migration bootstrap, the `record_call(...)`
+  writer, the never-fail-the-run discipline, miss counting, unit tests —
+  PASS.
+- R3 (SPLIT): T002 data layer — the call site at the actuals seam, plus
+  backfill and reconcile over the evidence tree, idempotent by call_id —
+  PASS.
+- R4 (SPLIT): T003 — the cost aggregation queries plus `remedy stats
+  cost`, `backfill-ledger` and `verify-ledger` in the existing stats
+  group, with basis labeling in both output modes — PASS.
+- R5: integration gate per docs/agents/integration_gate.md — PASS.
+- R6 (SPLIT): wire the live ledger mirror at the task-run evidence seam
+  so a real job yields rows (finding R-0220) — PASS.
+- R7: closure part 1 per docs/roadmap/STATUS_closure_protocol.md — the
+  Built State section, the load-bearing full-suite confirmation run,
+  the evidence job and the FRESH review zip. Closure runs in TWO relays
+  because the STATUS line quotes the evidence job id, the package name
+  and its SHA-256, and the reviewer can only author that line once
+  those values exist (F079 R4/R5 and F254 R11/R12 precedent) — PASS.
+- R8: closure part 2 — the reviewer-authored STATUS `[~]`->`[x]` line
+  and the README capability sync in the SAME commit (R-0154), last on
+  the branch (Rule A4), then `gh pr create`; the PR is NOT merged by
+  the session that creates it.
 
 ## Findings
-- R-0211 (reviewer authoring, Low): F254 was claimed ahead of F103,
-  which Rule A5 names as the first unchecked STATUS line, on the
-  strength of a previous session's plan note rather than a recorded
-  DECISION. docs/agents/planner_reviewer_prompt.md §4 item 7 requires
-  a re-plan to be loud, persisted and reversible — chosen option,
-  alternatives considered, how to reverse — and the authored
-  .agent/context.md stated the ordering as a fact with none of that.
-  The worker flagged the gap in its handback instead of proceeding
-  silently, which is exactly the behaviour the rule exists to produce.
-  It is NOT a block condition: nothing was fabricated and the ordering
-  itself is sound. Fix: record it as DECISION D10 below, in the same
-  commit that registers this finding.
-  Done: R-0211 — D10 recorded.
-- R-0212 (reviewer authoring, Low): the R2 step block's "Done when"
-  ordered an `rg` over three model strings — including the UNDATED
-  `qwen3-coder-next` — and required hits only in model_aliases.py,
-  while the same block's Change list forbade touching the four files
-  that hold the remaining occurrences. The criterion was unsatisfiable
-  inside its own scope. The worker did the right thing and the record
-  should say so: it declared the criterion unmet, printed the real
-  `rg` output, refused to widen scope, and refused to adjust anything
-  to make the check look green. Not a block condition — nothing was
-  fabricated and no false completion was claimed. Fix: R3 routes the
-  three remaining built-in ids, and the scan test is authored in R5
-  against the amended Acceptance rather than against an ad-hoc
-  command.
-  Done: R-0212 — routed in R3, Acceptance amended in the same round.
-- R-0213 (reviewer authoring, Low): the R3 receipt f254-r3-2 rewrote
-  .agent/plan.md's Next Steps but its FROM block stopped one bullet
-  short, leaving the old "Then the integration gate, then closure per
-  …STATUS_closure_protocol.md" line orphaned below the new R6/R7
-  bullets that already say the same thing. The worker reported the
-  duplication and refused to delete text no authored FROM covered,
-  which is exactly right — improvising a deletion is how authored
-  state silently drifts. Third finding in a row raised against the
-  reviewer's own authoring rather than the worker's execution; the
-  pattern is worth naming, and the countermeasure is to extend a
-  Next-Steps FROM to the end of its list rather than to the last line
-  being changed. Fix: an authored receipt in R4 removes the orphan.
-  Done: R-0213 — removed by receipt f254-r4-2.
-- R-0214 (rule vs practice, Low): AGENTS.md caps .agent/handoff.md at
-  60 lines, or 100 when a per-commit table of more than five commits
-  needs it, with sections never dropped. Three handbacks running have
-  exceeded it — S1+S2 R2, F254 R3 at 119 lines, F254 R4 at 122 — and
-  each time the reviewer accepted the overage ad hoc because the cause
-  was content the round's own step block mandated: transport proofs,
-  pair counts under two shapes, a generated changed-files table, an
-  item-status table and a verification table. R4 exceeded it even
-  after the block explicitly forbade verbatim transcripts, which rules
-  out worker verbosity as the cause. A rule that is correctly
-  overridden every time it binds is not a rule, and accepting it in
-  session memory three times over is the A1 trap
-  (docs/agents/planner_reviewer_prompt.md §0) this project keeps
-  falling into. NOT a block condition: no section was dropped and
-  every overage was declared with its cause. Fix: the amendment
-  belongs to AGENTS.md, which is out of this feature's scope —
-  AGENTS.md Core Workflow forbids mixing an unrelated fix into a
-  feature branch — so it is filed in .agent/candidates.md under the
-  disk-vehicle rule (docs/roadmap/STATUS_closure_protocol.md) and
-  becomes a block condition at the next feature claim until resolved.
-  Done: R-0214 — filed as a closure candidate in R5.
-- R-0215 (doctor output, Low): two defects in what the new warning
-  prints, both found by the reviewer running `remedy doctor core`
-  rather than by reading the diff. (a) In text mode each warning is a
-  single ~700-character line, because the entry's whole recorded
-  reason is embedded; two warnings turn the readable check list into a
-  wall. Worse, the detail ends "…choosing the successor is F232's job
-  (the model upgrade playbook). No replacement id is recorded." — the
-  recorded reason already said that, so the appended sentence is
-  redundant in exactly the case that fires today. (b) The
-  `dead_model_list` check detail reads "N shipped + M configured dead
-  ids", but M is computed as `len(dead_ids) - len(shipped_entries)`,
-  which is the number of configured ids NOT already shipped, not the
-  number configured. An operator who adds an id Remedy already ships
-  sees it counted as zero. Neither is a block condition: nothing is
-  fabricated, the honesty clause about operator-maintained data is
-  present and correct, and `ready` is unaffected. Fix: text mode
-  prints one compact line per warning — id, origin, the alias or key
-  to change, and the provenance clause, which stays in BOTH modes
-  because it is the honesty requirement — while the full recorded
-  reason stays in `--json`; the redundant trailing sentence is dropped
-  when the reason already covers it; and the count is labelled for
-  what it counts.
-  Done: R-0215 — both fixed in R6.
-- R-0216 (reviewer authoring, Low): receipt f254-r6-1 PAIR 1 rewrote
-  the R5 step bullet and added an R6 bullet, but its FROM stopped
-  before the pre-existing "- R6: the repo-scan test…" line, so the
-  Steps list carried two R6 entries. Identical in shape to R-0213 and
-  with the same countermeasure, which was written down after R-0213
-  and then not applied: a FROM that edits a LIST extends to the end of
-  that list, not to the last line whose wording is changing. Fourth
-  reviewer-authoring finding of this feature and the second of exactly
-  this kind, so the pattern is now the finding: authored list edits in
-  this project need the whole list in the FROM, every time. The worker
-  again reported the duplicate and refused to delete text no authored
-  FROM covered, which is correct and is why the defect surfaced at all
-  rather than being quietly normalised. Not a block condition — a
-  duplicated planning bullet misleads no verification. Fix: receipt
-  f254-r7-1 PAIR 1 takes the whole tail of the list.
-  Done: R-0216 — the duplicate is gone.
-- R-0217 (reviewer authoring, Low): three defects in the R7 step
-  block, all in what the reviewer ordered rather than in what the
-  worker did. (a) Its "Done when" required
-  `grep -c '^- R6' .agent/live_review.md` to be 1, which is
-  unsatisfiable while an R6 VERDICT line exists — verdict lines share
-  the `- R6:` prefix with step lines. The worker reported the
-  mismatch instead of deleting a verdict line to satisfy a check, and
-  the substantive test — exactly one R6 bullet inside `## Steps` —
-  passes. (b) The authored plan.md text pushed the file to 54 lines,
-  past the AGENTS.md sub-50 cap that the reviewer enforces on
-  everyone else. (c) The block's Change list forbade any sixth path,
-  which blocked integration_gate.md §2's own instruction to copy the
-  gate logs into a `.agent/gate_*` directory; the logs therefore live
-  only in the session scratchpad and die with the session. Not a
-  block condition: the gate's real numbers are recorded in the R7
-  verdict from two independent runs, and the closure protocol
-  requires a full-suite confirmation anyway, so the evidence is
-  reproducible rather than lost. Fix: (a) and (b) in this round's
-  receipts; (c) is carried into the closure round, which must produce
-  the gate evidence into the repo before flipping the STATUS line.
-  Done: R-0217a and R-0217b — fixed here. R-0217c — carried to R9,
-  named in the handoff as a closure precondition.
-- Next free ID: R-0218.
+- R-0218 (Low, R2, reviewer): the ledger's own acceptance criterion —
+  "the writer sits in the provider path without slowing it perceptibly"
+  (feature file, Goal & Done) — has no measurement anywhere. T001 could
+  not have one, because it deliberately adds no call site; but
+  `record_call` opens a connection, runs `PRAGMA journal_mode=WAL` and a
+  schema-version check on EVERY call, and that per-call cost is now
+  fixed by design rather than measured. Not a block condition: at T001
+  the writer is inert, so nothing is slowed yet. Fix: R3 lands the call
+  site, and R5's integration gate carries a real before/after timing of
+  the seam so the criterion is met with a number instead of a claim.
+- R-0219 (Low, R2, reviewer): `record_call` reports True when a row with
+  that `call_id` already exists, even if the record being written
+  differs from the stored one — the presence check asks "is a row
+  there", not "is THIS row there". The documented contract ("True when
+  the row is durable") is honest and duplicate call_ids are a caller
+  bug, so this is not a defect today. It becomes one the moment T002's
+  reconcile has to answer "does the ledger agree with the files": a
+  content-drifted row would be invisible to a presence-only comparison.
+  Fix: R3 must decide explicitly — either pin `call_id` as immutable by
+  construction and say so in the docstring, or have `verify_ledger`
+  compare content rather than presence. Record which, and why.
+- Done: R-0219 — resolved in R3 by CONTENT COMPARISON in `verify_ledger`,
+  which re-derives each row from its own evidence through the same
+  `call_record_from_evidence` the live hook uses and reports field-level
+  mismatches in `drifted_rows`. The reviewer confirmed the fix is
+  load-bearing rather than asserted: reducing the comparison to
+  presence-only in a disposable worktree turned
+  `test_finds_a_content_drifted_row` red. `call_id` is ALSO pinned
+  immutable by construction and documented as such, but that guarantees
+  only the id, never the contents — which is why the stronger option was
+  the right one.
+- Done: R-0218 — CLOSED at R5 against a real number, not a claim. The
+  gate measured the seam itself: `write_evidence_bundle` costs a median
+  0.587 ms with the mirror inert and 1.973 ms with it active, so the
+  mirror adds **+1.386 ms per finalized task run** (+236% of a very
+  small baseline). The reviewer REPRODUCED it independently with its
+  own harness — +1.395 ms median — and the worker's own second run gave
+  +1.506 ms; three runs agree within about 0.1 ms, and a row count of
+  330/330 proves arm B really inserted on every iteration rather than
+  short-circuiting. Judgement: 1.4 ms once per finalized TASK RUN, on a
+  path whose sibling work is a provider call measured in SECONDS, is
+  not "slowing it perceptibly". The criterion is met with a number.
+- R-0220 (Medium, R5, reviewer): the live mirror is never switched on,
+  so the feature's own acceptance criterion — "a fake-provider job
+  yields exactly its calls as rows with correct role/model/basis" — is
+  NOT met by the built system. `write_evidence_bundle`'s four
+  `ledger_*` arguments are the only way to arm the hook, and the ONLY
+  callers that pass them are TESTS: the two production callers,
+  `pingpong_evidence.py:633` and `job_evidence.py:2455`, pass none. A
+  real job therefore writes ZERO rows and the ledger fills only via
+  `remedy stats backfill-ledger`. R3 reviewed the hook and approved its
+  inertness as caller-compatibility, which was true as far as it went;
+  what nobody asked was who ever turns it on. Not a gate blocker — the
+  gate is about regressions and there were none — but a CLOSURE
+  blocker: flipping STATUS to `[x]` and syncing the README now would
+  claim a capability that is wired and switched off. Fix: R6 arms the
+  hook at the task-run seam for real jobs, with a test that drives the
+  PRODUCTION path and passes no `ledger_*` argument by hand, and with
+  the data-root safety of the opt-in preserved.
+- R-0221 (Low, R5, reviewer): `TestAutoBuildBehavior::
+  test_auto_build_runs_by_default`
+  (`tests/ui_server/test_dashboard_contract.py`) pops
+  `REMEDY_UI_NO_AUTO_BUILD` from the environment and calls
+  `_auto_build_frontend()` for real, so it runs `npm install` and
+  `npm run build` in whatever checkout it is running in. The env var
+  cannot suppress a call that deletes it first. This is the R-0169
+  class recurring with a NAMED cause. It costs every integration gate
+  seven phantom base-only failures: `_frontend_is_stale()`
+  (`ui_server.py:2748`) is a pure MTIME comparison, `git worktree add`
+  writes src at checkout time while `cp -a` preserves the older dist
+  mtimes, so a fresh base worktree is stale by construction. The R5
+  gate proved the mechanism with a negative control — moving the dist
+  mtimes back reproduced all seven failures without changing one byte,
+  restoring them made 42 pass. NOT F103's code and NOT this feature's
+  to fix: registered as a closure candidate for the owning feature.
+- Done: R-0220 — CLOSED at R6. The mirror is armed at the task-run seam
+  in `job_evidence.py`, and the reviewer MUTATION RED-PROOFED that the
+  fix is load-bearing rather than tautological: in a disposable
+  worktree under the gitignored `.remedy-wt/`, removed before the
+  verdict, reverting the wiring to the bare
+  `write_evidence_bundle(bundle, str(task_out))` turned **6 of 6**
+  production-path tests red while all four inertness tests stayed
+  green. A fake-provider job now yields its task run as a row through
+  `export_job_evidence` with nobody passing a `ledger_*` argument, so
+  the feature's acceptance criterion is met by the built system rather
+  than by a test that armed the hook itself.
+- Next free ID: R-0222. Open findings: **0**. R-0218, R-0219 and R-0220
+  are closed; R-0221 is carried in `.agent/candidates.md` and is a
+  block condition at the next feature's claim time until registered or
+  resolved.
 
 ## Decisions
-- D10 (work-item order): F254 runs before F103. Chosen because F254 is
-  the designated S4 rehearsal of the self-drive protocol
-  (docs/agents/self_drive_protocol.md), and the operator's SSH-only
-  constraint carries a hard date of 2026-08-12 — the rehearsal has to
-  finish first. F254 is small, dependency-free and touches production
-  code under packages/ and apps/, which is precisely what a rehearsal
-  must exercise: the SPLIT round type that forbids self-certified
-  production code. Alternatives considered: claiming F103 (Token
-  ledger, SQLite) first per Rule A5, which would rehearse the protocol
-  on a far larger feature with four days left; or rehearsing on a
-  docs-only item, which never exercises SPLIT at all and would prove
-  nothing about the round type the operator actually depends on. How
-  to reverse: any later relay flips the F254 line in
-  docs/roadmap/STATUS.md back to `[ ]` and claims F103 instead —
-  nothing else on this branch depends on the ordering. F103 remains
-  the next roadmap feature after F254.
-- D11 (spec tension, routed to planning per
-  docs/agents/planner_reviewer_prompt.md §4 item 7): T2_F254's Goal
-  says "every hardcoded default model id moves behind ONE alias
-  table", while its Acceptance says "no hardcoded dated model string
-  remains outside the alias module". They disagree about the undated
-  built-in default `qwen3-coder-next`, which R2 left in
-  packages/providers/ollama_builder/provider.py,
-  packages/providers/ollama_planner/provider.py and the `ollama.model`
-  ConfigKeySpec in packages/orchestration/config.py. Chosen: the GOAL
-  is binding — those three are built-in defaults and get routed
-  through the alias table in R3, and the feature file's Acceptance is
-  amended in the same round to say so, so the spec and the build stop
-  disagreeing. Alternatives considered: follow the Acceptance
-  literally and leave three copies of the default model of the
-  provider Remedy actually ships as its default, which preserves
-  exactly the rot this feature exists to stop; or amend the feature
-  file to drop the Goal sentence, which weakens a spec to match a
-  half-done implementation. How to reverse: revert the three routing
-  hunks and the one-line Acceptance amendment — the alias table is
-  valid under either reading, so nothing else depends on the choice.
-  Out of scope under either reading and deliberately untouched:
-  illustrative ids inside comments and the sample-TOML prose in
-  packages/orchestration/config.py, and the docstring mention in
-  packages/orchestration/role_config.py — none of those is a default,
-  they are documentation of one.
-- D12 (where the handoff-cap fix goes): the R-0214 amendment is filed
-  as a closure candidate rather than applied on this branch. Chosen
-  because AGENTS.md is not F254's subject and the Core Workflow rule
-  "never mix unrelated features or fixes in the same branch" binds the
-  reviewer's authoring exactly as it binds the worker's editing; the
-  candidates file is the vehicle this project already built for a
-  finding that outlives its feature, and a non-empty candidates file
-  is itself a block condition at the next feature claim, so the fix
-  cannot be forgotten. Alternatives considered: amending AGENTS.md
-  here, which mixes a process fix into a model-alias feature and
-  makes the F254 PR harder to review honestly; or carrying it as an
-  open finding, which dies with the branch — the exact F056 loss the
-  disk vehicle exists to prevent. How to reverse: delete the entry
-  from .agent/candidates.md; the finding text stays in this file
-  either way.
-- D13 (dead-model check severity): the doctor's dead-model finding is
-  a WARNING, not a blocker, and `ready` keeps its current meaning.
-  Chosen because Remedy's own shipped defaults are on the dead list
-  today, so a blocker would make `remedy doctor core` report NOT READY
-  on a freshly cloned repo until F232 lands — which teaches operators
-  that NOT READY is normal and destroys the signal the command exists
-  to carry. A stale-but-working default does not stop Remedy running,
-  and that is precisely what a readiness check answers. Failing to
-  READ the shipped list is different and stays a hard check: "no dead
-  models" and "I could not open the file" must never look alike
-  (packages/orchestration/dead_model_list.py says the same in code).
-  Alternatives considered: making it a blocker, which is louder but
-  false about readiness; or shipping an empty dead list so nothing
-  fires, which makes the check decorative and leaves the actual rot
-  unflagged. How to reverse: move the warning into the `checks` list
-  and it becomes a blocker again — one call site.
-- D14 (closure gate evidence, reviewer): R9's gate evidence is a
-  BRANCH-ONLY re-run at the final content head, with its raw log,
-  FAILED list, exit code and wall time committed to
-  `.agent/gate_f254_r9/`. No second base run at the merge base is
-  ordered. Chosen because R7 already performed the dedicated
-  integration-gate round the closure protocol requires — branch run,
-  base run in a disposable worktree, and a third independent
-  reviewer run — and found ZERO branch-only failures; R-0217c is a
-  finding about the LOGS not reaching the repo, not about the
-  measurement being absent or doubted. The closure protocol's
-  precondition 2 asks this round to RE-CONFIRM a gate that already
-  PASSed, which a branch run at the head being packaged does.
-  Alternatives considered: repeating the full branch+base comparison,
-  which costs a second worktree, the apps/ui/node_modules and dist
-  parity restoration and roughly five more minutes to reproduce a
-  comparison whose answer is already recorded and was already
-  independently re-run; or committing the R7 numbers as prose, which
-  is exactly the "green as a word" that G4 calls a finding. How to
-  reverse: order a base run in the repair round and drop
-  `base_run.txt`, `base_failed.txt` and the `comm` outputs into the
-  same `.agent/gate_f254_r9/` directory — nothing about this round's
-  layout has to change to accept them.
-- The S1+S2 build's decisions D5 through D9 are the same numbering
-  series, continued here rather than restarted, and stay in that
-  branch's history, now on main.
+- D15 (F254 closure candidate R-0214, resolved inline per
+  docs/agents/planner_reviewer_prompt.md §4 item 7): the AGENTS.md
+  handoff line cap gains a STATED-CAUSE OVERAGE clause; the mandated
+  handback content is NOT shrunk. Chosen because the cap has now been
+  overridden by every handback whose content was entirely mandated —
+  S1+S2 R2, F254 R3 at 119 lines, F254 R4 at 122, F254 R12 at 82 —
+  including one round whose step block explicitly forbade verbatim
+  transcripts, which rules out worker verbosity as the cause. A rule
+  that every compliant handback must break is not a rule. Alternatives
+  considered: shrinking the mandated content, which would delete the
+  evidence set, the pair proofs or the item-status table — the exact
+  artifacts the review loop exists to read, and the F056 candidate loss
+  shows what dropping a carrier costs; or leaving the cap
+  advisory-in-practice, which keeps every future handback nominally
+  non-compliant and teaches agents that stated caps are decorative. How
+  to reverse: delete the added paragraph from the AGENTS.md handoff.md
+  section — it is additive and self-contained, and the original cap
+  sentence is untouched by construction. Landed in its OWN commit,
+  separate from the feature claim, so the rules change stays reviewable
+  apart from F103: the D12 objection to mixing an unrelated fix into a
+  feature branch is answered by commit granularity, and the placement
+  itself is mandated by docs/roadmap/STATUS_closure_protocol.md, which
+  requires the next feature's first reviewed round to resolve the
+  candidate and empty `.agent/candidates.md` in that same round.
+- D16 (row granularity, reviewer, per
+  docs/agents/planner_reviewer_prompt.md §4 item 7): a ledger ROW is one
+  FINALIZED TASK RUN, not one HTTP request, and its `call_id` is the
+  deterministic `"<job_id>:<task_id>"`. Chosen because the feature file
+  says the writer "consumes the same records the actuals feature
+  produces", and what that feature actually puts on disk is
+  `task_runs/<task_id>/provider_evidence.json` — a per-task-run record
+  carrying `provider_call_count` and aggregated usage counters. There is
+  no per-HTTP-request record anywhere on disk to backfill from.
+  Alternatives considered: synthesising one row per counted provider
+  call, which would fabricate `call_id`s, timestamps and a usage split
+  that no file records — exactly the invented data P6 and the F075
+  tokens-unmeasured lesson forbid; or adding a per-request capture at
+  the provider boundary, which is the SECOND CAPTURE PATH the feature
+  file's Orchestrator brief rejects outright. How to reverse: when a
+  per-request evidence record exists on disk, change
+  `call_id_for_task_run` and the backfill scan to read it; the schema
+  already carries `call_id` as the primary key and needs no migration.
+  The feature file is amended in this same round so the built state and
+  the target plan do not disagree.
+
+- D17 (R5, reviewer, per docs/agents/planner_reviewer_prompt.md §4
+  item 7): closure MOVES from R6 to R7 and R6 becomes the round that
+  arms the live ledger mirror. Chosen because R-0220 shows the feature
+  does not meet its own acceptance criterion — a real job produces no
+  rows — and closing on that would be an unverified completion claim,
+  the exact block-condition class the review loop exists to catch.
+  Alternatives considered: closing now and filing the wiring as a
+  follow-up feature, rejected because F103's Goal & Done is explicit
+  that the writer sits in the provider path and every call lands as a
+  row, so the follow-up would be F103 itself under another name; or
+  amending the feature file to declare the mirror deliberately opt-in,
+  rejected because nothing in the file, the design or DECISION D16
+  hints at that intent and the acceptance criterion contradicts it.
+  Reversal: any later relay may drop R6 and go straight to closure by
+  amending the feature file's Acceptance instead — the cost of that
+  choice is that `remedy stats cost` answers only for ledgers someone
+  remembered to backfill by hand.
 
 ## Verdicts
-- R1: PASS (2026-08-07). Range fc023265..5fed2fca, two commits. Open
-  PR Gate: `gh pr list` returned exactly the predicted single entry;
-  `gh pr merge 185 --merge --delete-branch` produced merge commit
-  fc023265; and because that command printed no explicit confirmation
-  line, the worker verified independently with `gh pr view 185`, which
-  reports state MERGED, mergedAt 2026-08-07T14:26:32Z. Refusing to
-  read silence as success is the right instinct and is recorded here
-  as such. `gh pr list --state open` is now empty. The branch is
-  feature/f254-model-alias-table, cut from main at the merge commit;
-  main was never committed to. Transport, PRIMARY proof: all four
-  receipts cmp 0 against the reviewer's scratchpad originals — no
-  digest fallback — and the three full-file applications cmp 0 against
-  .agent/live_review.md, .agent/plan.md and .agent/context.md. The
-  STATUS pair is REWRITE-shaped: FROM 0x, TO 1x, the hunk is exactly
-  +1/-1 on line 66, and `grep -c` over the whole ledger finds exactly
-  one `[~]` line. Scope is the nine instructed paths and nothing else:
-  no file under packages/, apps/, scripts/, tests/ or .claude/
-  changed, and ROADMAP.md was not touched. Reviewer re-runs at
-  5fed2fca: tests/docs/ 294 · dashboard contract 70 · test_test_runner
-  51 · resource safety 21 · golden path 42 — every count equal to the
-  worker's report, all exit 0. Primary checkout clean, `git worktree
-  list` shows the primary only, no force-push. One finding, R-0211,
-  raised against the reviewer's own authoring rather than the worker's
-  execution. Tier: docs-round gate + canary; no full-suite claim is
-  made. LAST_REVIEWED_SHA = 5fed2fca.
-- R2: PASS (2026-08-07). Range 5fed2fca..807e3df7, three commits.
-  Ordering respected and verified against the diff, not the report:
-  4254503b carries ONLY the two receipts, .agent/live_review.md and
-  .agent/plan.md, so the finding and the decision were on disk before
-  a line of code moved. Transport, PRIMARY proof: both receipts cmp 0
-  against the reviewer's scratchpad originals — no digest fallback —
-  and all six pairs applied REWRITE-clean. The relocation is faithful:
-  `rg` over packages/, apps/ and scripts/ finds
-  `claude-opus-4-20250514` and `claude-sonnet-4-20250514` ONLY in
-  packages/orchestration/model_aliases.py. ClaudeProvider's evaluated
-  default is unchanged because the module-level constant is resolved
-  at import time and used as the signature default — the worker chose
-  that shape over `model: str = ""`, which would have changed
-  behaviour in a round that promised none. role_config's table is the
-  same five provider→id pairs it always was. The alias module imports
-  nothing from packages.orchestration, so no import cycle is
-  possible, and it documents its three deliberate absences (no config
-  read, no provider probe, no id modernisation) where a reader would
-  search for them. Reviewer re-runs at 807e3df7: test_model_aliases
-  18 · test_role_config 32 · test_pingpong 33 · test_provider_mode 24
-  · test_token_truth 37 · test_final_verifier 97 · test_do_job_flow
-  178 · dashboard contract 70 · test_test_runner 51 · resource safety
-  21 · golden path 42 — every count equal to the worker's report, all
-  exit 0. Independent spot-check of the reviewer's own choosing, on
-  five reader files the round did NOT gate: test_pingpong_integration
-  10 · test_job_task_runner 191 · test_task_plan_evidence 10 ·
-  test_execution_config_evidence 17 · test_worker_facade_cmd 49 — all
-  green, so the relocation broke nothing outside the gated set. No
-  existing test was edited. Primary checkout clean, `git worktree
-  list` shows the primary only, no force-push, no PR. One finding,
-  R-0212, raised against the reviewer's own step block rather than
-  the worker's execution. Tier: round gate + canary; no full-suite
-  claim is made. LAST_REVIEWED_SHA = 807e3df7.
-- R3: PASS (2026-08-07). Range 807e3df7..513451b4, four commits.
-  Ordering verified against the diff: 1816f0a0 carries only receipts
-  and .agent state, d8294663 only the feature file, and code appears
-  first in 9a45a99a — the finding and the decision were on disk before
-  the spec was amended, and the spec before the code. Transport,
-  PRIMARY proof: all three receipts cmp 0 against the reviewer's
-  scratchpad originals, no digest fallback. Both append-shaped pairs
-  were reported under their own shape with no 0x claimed (R-0207
-  honoured in practice, not just in the rule). The relocation is now
-  complete and was checked by the reviewer's own `rg`, not the
-  report's: every surviving `qwen3-coder-next` occurrence is
-  documentation prose — the two provider docstring precedence lists,
-  the role_config.py docstring, and three commented sample-TOML lines
-  — plus the alias table entry itself; the two dated Claude ids appear
-  only in model_aliases.py. That is exactly the boundary DECISION D11
-  drew, so the amended Acceptance and the built state agree. No import
-  cycle: `import packages.orchestration.config` in a fresh interpreter
-  exits 0, which matters because config.py now resolves an alias at
-  module import. Reviewer re-runs at 513451b4: test_model_aliases 21 ·
-  test_config 62 · test_role_config 32 · test_provider_mode 24 ·
-  tests/docs/ 294 · dashboard contract 70 · test_test_runner 51 ·
-  resource safety 21 · golden path 42 — all exit 0, every count equal
-  to the worker's report. Independent spot-check of the reviewer's own
-  choosing on files the round did not gate: test_config_cmd 14 ·
-  test_budget_guard 52 · test_ollama_builder 18 · test_ollama_provider
-  19 · test_ollama_patch_reliability 18 — all green. The two Ollama
-  counts confirm the worker's numbers exactly; the reviewer's first
-  attempt looked for those files under tests/orchestration/ and found
-  nothing, which was the reviewer's path error and not a discrepancy
-  in the handback. Two declared items, both accepted: the test module
-  docstring was updated to name the sources it now covers, which keeps
-  an in-scope file honest rather than drifting scope; and the handoff
-  ran to 119 lines because this block ordered two verbatim `rg`
-  transcripts and 21 test results into it — accepted under the same
-  reasoning as the S1+S2 R2 handoff, cause named, no section dropped,
-  and the fix belongs to the reviewer's authoring, not the worker's.
-  One finding, R-0213. Primary checkout clean, no worktree, no
-  force-push, no PR. Tier: docs-round gate + canary; no full-suite
-  claim is made. LAST_REVIEWED_SHA = 513451b4.
-- R4: PASS (2026-08-07). Range 513451b4..2504a560, three commits.
-  Ordering verified against the diff: 74baaa7b carries only receipts
-  and .agent state, code appears first in 5ecd0197, and that commit's
-  diff is 438 lines — under the 500 limit, so no oversize declaration
-  was owed. Transport, PRIMARY proof: both receipts cmp 0 against the
-  reviewer's scratchpad originals, no digest fallback; all six pairs
-  REWRITE-clean; and the R-0213 repair landed — the orphaned bullet is
-  gone (`grep -c` 0) and .agent/plan.md is 46 lines. The data file is
-  the part that most deserved distrust and it holds up: both entries
-  name ids that exist in model_aliases.py, both reasons cite
-  T2_F254.md's own "How it fits" for the staleness claim, and both
-  `superseded_by` fields are EMPTY with the reason saying the
-  successor is F232's to choose. Nothing was invented, and
-  `qwen3-coder-next` is correctly absent because no source in this
-  repository calls it dead. The loader refuses to degrade an
-  unreadable file to an empty list, refuses a schema_version it does
-  not understand, and lets config extend but never replace — the
-  three properties that decide whether a check like this can be
-  trusted at all, and each is documented as a deliberate absence
-  where a reader would search for it. Reviewer re-runs at 2504a560:
-  test_dead_model_list 23 · test_model_aliases 21 · test_config 62 ·
-  test_config_cmd 14 · tests/docs/ 294 · dashboard contract 70 ·
-  test_test_runner 51 · resource safety 21 · golden path 42 — all
-  exit 0, every count equal to the worker's report. Independent
-  spot-check of the reviewer's own choosing on registry consumers the
-  round did not gate: test_command_catalog 23 · test_run_manifest_schema
-  13 — green. Fresh-interpreter imports of dead_model_list and config
-  both exit 0, which matters because config.py now resolves an alias
-  at import and the loader imports config lazily inside a function to
-  keep that direction one-way. Five items declared, all accepted: the
-  self-corrected config-key placement, four public names beyond the
-  ordered surface (each earns its place — one spelling per concept),
-  the two loader assumptions about config unavailability and an absent
-  `superseded_by`, and the handoff length, which becomes finding
-  R-0214 rather than another silent acceptance. Primary checkout
-  clean, no worktree, no force-push, no PR. Tier: round gate + canary;
-  no full-suite claim is made. LAST_REVIEWED_SHA = 2504a560.
-- R5: PASS (2026-08-07). Range 2504a560..c77dfc0d, three commits.
-  Ordering verified against the diff: fd601931 carries only receipts
-  and .agent state — including the candidates.md entry — and code
-  appears first in 885c64f0, 289 lines. Transport, PRIMARY proof: all
-  three receipts cmp 0 against the reviewer's scratchpad originals, no
-  digest fallback; the candidates.md full-file application cmp 0; the
-  append-shaped pair was again reported under its own shape with no 0x
-  claimed. The block condition this round actually risked was a false
-  live indicator, and the code does not commit it: every warning says
-  Remedy calls the id dead "only because the shipped list …says so —
-  that list is operator-maintained data, no provider was queried", and
-  the helper that builds that sentence carries the reason for it in a
-  docstring. D13 holds in the built artifact, verified by the reviewer
-  running the command rather than trusting the report: `ready` is
-  true, `blockers` is empty, both dead ids surface as advisory
-  warnings, and the JSON gained exactly one key — `warnings` — with
-  `ready`, `checks` and `blockers` unchanged in meaning. The alias
-  names in the warnings are derived from MODEL_ALIASES and the config
-  keys from the key registry, so neither goes stale when the tables
-  change. Reading the list is a hard check and its failure is a
-  blocker; what the list SAYS is advisory — the distinction the whole
-  design turns on, and it is implemented where it was designed. One
-  event deserves the record: `test_development_artifact_boundary`
-  went red 3/18 mid-round because the new docstring cited
-  .agent/live_review.md, and shipped product code may not name a
-  development artifact. The worker fixed its own docstring and edited
-  no assertion — the rule caught a real leak on its first exposure,
-  which is what it is for. Reviewer re-runs at c77dfc0d:
-  worker_facade_cmd 59 · product_spine 72 · command_catalog 23 ·
-  development_artifact_boundary 18 · dead_model_list 23 ·
-  model_aliases 21 · cli_ux 57 · dashboard contract 70 ·
-  test_test_runner 51 · resource safety 21 · golden path 42 — all exit
-  0, every count equal to the worker's report. Reviewer's own
-  execution of `remedy doctor core` in both forms confirmed the
-  contract independently. Four items declared, all accepted; the
-  700-character text line and the miscounted detail become finding
-  R-0215 rather than a silent acceptance, and the handoff's 131 lines
-  are the measurement R-0214 asked for, not a new offence. Primary
-  checkout clean, no worktree, no force-push, no PR. Tier: round gate
-  + canary; no full-suite claim is made. LAST_REVIEWED_SHA = c77dfc0d.
-- R6: PASS (2026-08-07). Range c77dfc0d..ac54592c, five commits.
-  Ordering verified against the diff: 08dcdd3b carries only receipts
-  and .agent state; the fix, the pin and the docs land in three
-  separate commits, none mixed. Transport, PRIMARY proof: both
-  receipts cmp 0 against the reviewer's scratchpad originals, no
-  digest fallback; all six pairs REWRITE-clean. R-0215 is fixed and
-  measured, not asserted: the reviewer ran `remedy doctor core` and
-  the longest warning line is 220 and 224 characters against 839
-  before, the provenance clause survives in the short form word for
-  word in meaning ("per the shipped list scripts/dead_models.json —
-  operator data, no provider queried"), the full recorded reason moved
-  to `--json` with a printed pointer saying so, and the count now
-  reads "2 shipped + 0 config-only dead ids (2 total)" — a label that
-  matches what it counts. The repo scan is the part that had to be
-  distrusted hardest, because a scan that never bites is worse than no
-  scan. The reviewer proved it independently, in a disposable
-  worktree at this HEAD, not by reading the worker's transcript:
-  adding a real assignment of claude-sonnet-4-20250514 to
-  role_config.py turns the test RED and the message names
-  packages/orchestration/role_config.py:151 with the offending id;
-  putting the SAME id in a `#` comment on the same file leaves it
-  green, which is DECISION D11's boundary falling out of the `ast`
-  mechanism rather than out of an allow-list. The worktree was removed
-  and pruned before this verdict and the primary checkout was clean
-  throughout. Zero violations at HEAD and no exclusion was added to
-  reach that. The docs decision is sound and evidenced: a grep of
-  docs/system, docs/guides and docs/agents for the concepts returned
-  nothing, so a new doc was correct, and it is registered in both the
-  quick-find and system tables of docs/README.md. One declared item
-  needs naming rather than burying: implementing R-0215's
-  de-duplication inverted an assertion this reviewer authored in R5,
-  which now reads "not repeated after the reason". That is the R5
-  test being corrected by the R6 finding, not an assertion weakened to
-  fit — the `ready`/`blockers` contract of D13 is untouched, and the
-  reviewer confirmed it by running the command. B3 was solved by
-  relabelling rather than recomputing because the real configured
-  count sits behind a private function in a module this round was
-  forbidden to edit; the label is honest, so the finding is closed
-  correctly, if not at its root. Reviewer re-runs at ac54592c:
-  worker_facade_cmd 63 · model_aliases 24 · dead_model_list 23 ·
-  product_spine 72 · cli_ux 57 · development_artifact_boundary 18 ·
-  tests/docs/ 294 · dashboard contract 70 · test_test_runner 51 ·
-  resource safety 21 · golden path 42 — all exit 0, every count equal
-  to the worker's report. One finding, R-0216. Primary checkout
-  clean, `git worktree list` shows the primary only, no force-push, no
-  PR. Tier: docs-round gate + canary. No full-suite claim is made —
-  that is R7's job and nothing before it may claim it.
-  LAST_REVIEWED_SHA = ac54592c.
-- R7: PASS (2026-08-07), and the integration gate is GREEN. Range
-  ac54592c..a310cd13, two commits, both .agent-only — no source, test,
-  docs or STATUS file was touched in the gate round, which is what
-  keeps the gate a measurement rather than a negotiation. Transport,
-  PRIMARY proof: both receipts cmp 0 against the reviewer's scratchpad
-  originals; all six pairs REWRITE-clean; the R-0216 duplicate is gone
-  and `## Steps` holds exactly one R6 bullet. The gate itself: the
-  worker ran `python3 -m pytest -n auto -q` at 0ea95c88 → exit 1, 1
-  failed / 16015 passed / 19 skipped in 128s, and at the merge-base
-  fc023265 in a disposable worktree → exit 1, 5 failed / 15950 passed
-  / 19 skipped in 147s. BRANCH-ONLY FAILURES: ZERO. The single shared
-  failure, test_product_smoke.py::test_no_zombie_processes_after_
-  every_outcome, is present at the base too and passes on a serial
-  re-run — the xdist-flake class, not this branch. The four base-only
-  failures were not waved away as noise: the worker measured the cause
-  and showed that the full suite rebuilt apps/ui/dist mid-run (the
-  primary's dist mtime falls inside the branch-run window while the
-  base worktree's dist hash was unchanged), which is the R-0155/R-0158
-  build-output class. That asymmetry means the two runs were not
-  perfectly comparable, and the honest answer to it is a third
-  measurement rather than an argument — so the reviewer ran the full
-  suite independently at a310cd13: `python3 -m pytest -n auto -q` →
-  16016 passed, 19 skipped, 0 FAILED, 124s. Zero failures at this
-  HEAD, in the reviewer's own hands. Both runs sit well under the
-  five-minute budget, so no perf pass is owed. Worktree cleanup
-  verified by the reviewer, not the report: `git worktree list` shows
-  the primary alone, no `tmp/*` branch survives, `git status
-  --porcelain` is empty and no pytest, vite or npm process is left
-  running. Three deviations were declared and all three are the
-  reviewer's, becoming finding R-0217. This is the ONLY round of this
-  feature permitted to claim "full suite green", and it claims it:
-  16016 passed, 0 failed, at a310cd13. LAST_REVIEWED_SHA = a310cd13.
-- R8: PASS (2026-08-07). Range a310cd13..d8dd8c18, two commits, both
-  .agent-only — no source, test, docs or STATUS file was touched, so
-  the session-closing round changed nothing it then certified.
-  Transport: the prior session's scratchpad originals died with that
-  session, so the DIGEST FALLBACK of planner_reviewer_prompt.md §4.9
-  applies and is declared here rather than implied. What this
-  reviewer proved with its own hands, disk to disk: `.agent/plan.md`
-  is byte-identical to the committed receipt f254-r8-2 (`cmp` exit
-  0), and all three of receipt f254-r8-1's pairs are REWRITE-shaped
-  with FROM 0x and TO 1x in the applied file. The receipts' sha256
-  values recompute to
-  fb7cb6a83e21a368432fa16510bdda3389e657c1295c58a09422c0486e6ea85d
-  and
-  50c6c2fb9729aea88e629378ded93423f47757b66028a8ce9d8337283d2ab55b,
-  matching what the handoff records — a weaker link than
-  cmp-against-scratchpad, because the digests and the files now share
-  one custodian, and it is named as weaker instead of dressed up.
-  State contracts hold: plan.md is 43 lines, under the AGENTS.md
-  sub-50 cap the reviewer enforces on everyone else (R-0217b fixed,
-  measured not asserted), with `## Goal` and `## Next Steps` present;
-  live_review.md keeps `## Steps`, `## Findings`, `## Decisions` and
-  `## Verdicts` once each and exactly one `- R6` bullet inside
-  `## Steps`, which is R-0217a's real test rather than the
-  unsatisfiable whole-file grep the R7 block asked for. The round
-  gate was RE-RUN by the reviewer, not read out of the report:
-  tests/ui_server/test_dashboard_contract.py 70 ·
-  tests/orchestration/test_test_runner.py 51 ·
-  tests/regression/test_resource_safety.py 21 ·
-  tests/cli/test_golden_path.py 42 — 184 tests, every file exit 0 and
-  every count equal to the worker's. One correction the reviewer owes
-  its own record: the first re-run reached for tests/test_test_runner.py
-  (43 tests) instead of the orchestration file the worker meant, and
-  the per-file breakdown above is the settled reading. R-0217 is
-  registered with all three sub-items and its resolution is split
-  honestly rather than rounded up — a and b Done in this round's
-  receipts, c CARRIED with a named closure precondition. The 116-line
-  handoff is over the cap, declared as R-0214's fifth measurement with
-  no section dropped, and the amendment is already filed in
-  .agent/candidates.md — the same override for the fifth time is not a
-  new finding, it is evidence for the one already filed. Primary
-  checkout clean, `git worktree list` shows the primary alone, no
-  force-push, no PR, STATUS untouched at `[~]`. Tier: round gate plus
-  canary — this round makes no full-suite claim and none is owed until
-  the closure re-confirmation. LAST_REVIEWED_SHA = d8dd8c18.
-- R9: PASS (2026-08-07) for the one item it completed, TRUNCATED for
-  the two it did not. Range d8dd8c18..f3eb61ba, two commits,
-  `.agent`-only. The round ended on an untracked, empty `.agent/STOP`
-  that appeared mid-round; the reviewer verified the file itself
-  rather than taking the report's word for it — 0 bytes, mtime
-  2026-08-07 20:07:54, `git log -- .agent/STOP` empty so it was never
-  tracked, `git check-ignore` exit 1 so it was never ignored. The
-  worker's response to it is the part worth recording: it finished
-  the commit in flight, left the STOP file in place because clearing
-  an operator signal is not the worker's call, declared the
-  non-empty `git status --porcelain` that this necessarily produced,
-  and stopped. That is guardrail G6 executed rather than quoted.
-  Transport, PRIMARY proof — the reviewer's scratchpad originals were
-  still alive, so no digest fallback was needed: all three receipts
-  are byte-identical to the originals (sha256 MATCH ×3), and
-  `.agent/plan.md` is byte-identical to receipt f254-r9-2 (`cmp` exit
-  0). The three live_review pairs verify under the shapes their
-  receipt declares: PAIR 1 and PAIR 3 REWRITE with FROM 0x and TO 1x,
-  PAIR 2 APPEND with FROM still 1x and each of its 22 TO-only lines
-  exactly 1x — the count that an append can actually reach, rather
-  than the "FROM 0x" that R-0207 warns invites a fabricated number.
-  State contracts hold: plan.md 45 lines with `## Goal` and
-  `## Next Steps` once each, live_review keeping its four sections
-  once each and exactly one `- R6` bullet inside `## Steps`. The
-  reviewer re-ran the round gate and the canary at this HEAD rather
-  than reading them out of the handback: 184 passed, exit 0, matching
-  the worker's 142 + 42 split. Scope is exact — `git diff --stat`
-  over the range touches `.agent/` and nothing else, so STATUS stayed
-  `[~]`, README, the feature file and every source file untouched.
-  The handoff was audited as the return channel and holds up: its
-  changed-files table reproduces `git diff --numstat d8dd8c18..
-  a50b330a` line for line, it states plainly that no full-suite run
-  happened and that the gate evidence directory does not exist, and
-  it declares its own 81-line overage as R-0214's sixth measurement.
-  Two carried items are named honestly rather than rounded away.
-  R-0217c is STILL UNPAID — no full-suite run, no
-  `.agent/gate_f254_r9/`. And `.agent/plan.md` now over-claims: the
-  reviewer-authored text describes a three-commit R9 of which one
-  commit exists. The worker declared that discrepancy instead of
-  editing reviewer-authored text to hide it, which is the right call
-  and the reason it costs nothing. Both are paid in R10. No finding
-  is registered: nothing here is a defect in what the worker did, and
-  a STOP file is an operator signal, not an error. Next free ID stays
-  R-0218. Primary checkout clean apart from the STOP file itself,
-  `git worktree list` primary only, no force-push, no PR. Tier: round
-  gate plus canary — no full-suite claim is made or owed here.
-  LAST_REVIEWED_SHA = f3eb61ba.
-- R10: PASS (2026-08-07). Range f3eb61ba..0c44cd6f, four commits, and
-  the round paid every debt R9's truncation left. Transport, PRIMARY
-  proof — the reviewer's scratchpad originals were alive, so no digest
-  fallback: all three receipts are byte-identical to the originals
-  (sha256 MATCH x3) and `.agent/plan.md` is byte-identical to receipt
-  f254-r10-2 (`cmp` exit 0). Pair counts
-  verify under the shapes their receipts declare: both live_review
-  pairs REWRITE with FROM 0x and TO 1x, and the feature-file pair
-  APPEND with FROM still 1x and all 71 non-blank TO-only lines exactly
-  1x. One note the reviewer owes its own record: its first automated
-  count of that append reported three lines as non-unique, which were
-  the pair's blank lines counted by a naive matcher — an artifact of
-  the reviewer's check, not of the worker's edit, and the worker's
-  71/71 was right. State contracts hold: plan.md 46 lines with
-  `## Goal` and `## Next Steps` once each; live_review keeping its four
-  sections once each and one `- R6` bullet inside `## Steps`.
-  The gate evidence is the substance of this round and was read, not
-  accepted: `.agent/gate_f254_r9/` holds branch_run.txt (the command,
-  head `b09728bf`, exit 0, 162.54s, the raw tail and the summary line),
-  a genuinely EMPTY branch_failed.txt, and an attribution.txt that says
-  in plain words why no attribution was owed, that DECISION D14 means
-  no base run happened here, and that R7 already recorded the
-  branch/base comparison at zero branch-only failures. An empty FAILED
-  list is a real result and is labelled as one rather than passed over
-  in silence. The reviewer then ran the full suite itself at HEAD
-  `0c44cd6f` rather than re-reading the worker's log: `python3 -m
-  pytest -n auto -q` → exit 0, 16016 passed, 19 skipped, 0 failed,
-  151s wall clock, zero FAILED and zero ERROR lines. That is the
-  closure protocol's precondition 2 satisfied in the reviewer's own
-  hands, and it agrees with the worker's run to the test. Both runs sit
-  well under the five-minute budget, so no perf pass is owed. Scope is
-  exact: `git diff --numstat` over the range touches only the three
-  receipts, the three gate files, the three `.agent` state files and
-  the feature file — STATUS stayed `[~]`, README, every source file and
-  every test file untouched, and the superseded receipt
-  f254-r9-3.md is byte-unchanged, which the reviewer confirmed with its
-  own empty diff. The handoff was audited as the return channel and
-  holds: its changed-files table reproduces the real numstat, it scopes
-  itself honestly to A+B+C because a handoff cannot contain its own
-  numstat, and it declares its 82-line overage as R-0214's seventh
-  measurement. Zero deviations were declared and the reviewer found
-  none. No finding. Next free ID stays R-0218. Primary checkout clean,
-  `git worktree list` primary only, no force-push, no PR, branch
-  pushed. Tier: INTEGRATION GATE — this round re-confirms the full
-  suite and is entitled to say so: 16016 passed, 0 failed, at
-  `0c44cd6f`. LAST_REVIEWED_SHA = 0c44cd6f.
-- R11: PASS (2026-08-07). Range 0c44cd6f..38a909c6, two commits, and
-  every path in the diff is under `.agent/` — STATUS stayed `[~]`,
-  README, every source, test and docs file untouched, which is what
-  keeps the accepted head a measurement rather than a moving target.
-  Transport, PRIMARY proof: both receipts byte-identical to the
-  reviewer's scratchpad originals (sha256 MATCH x2), `.agent/plan.md`
-  byte-identical to receipt f254-r11-2 (`cmp` exit 0), both
-  live_review pairs REWRITE with FROM 0x and TO 1x. State contracts
-  hold: plan.md 47 lines, live_review's four sections once each, one
-  `- R6` bullet inside `## Steps`. `remedy integrity check --json`
-  passes all five checks with fail_count 0 and zero relevant
-  untracked files. Round gate and canary re-run by the reviewer: 184
-  passed, exit 0.
-  The two artifacts are the substance, and the reviewer verified them
-  by opening them rather than by reading the handback. The package
-  `remedy-review-20260807-204305-READY_FOR_REVIEW.zip` exists at the
-  repo root, is gitignored so the tree stayed clean, and its sha256
-  recomputes to
-  1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0 —
-  the value the handback reported, to the character. Opened with
-  `zipfile`: `testzip()` returns None so every CRC is intact, 2151
-  members, `package_status` READY_FOR_REVIEW, `ready_gate_matrix.ok`
-  true with `blocking_reasons` empty, and `committed_review_subject`
-  spanning base fc023265619f272c26b93053ccb0f0e086348cc3 to head
-  b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26 — the accepted HEAD — over
-  31 commits and 52 files with `base_is_ancestor` true. The evidence
-  job `f254-closure` returned total_passed 110 across the three scoped
-  suites (model_aliases 24, dead_model_list 23, worker_facade_cmd 63),
-  each with real node ids harvested by `--collect-only` so
-  `len(node_ids)` equals `selected`, `run_id` matching `^vr-\d{4,}$`,
-  `test_files` as file paths, and no full-suite node-id list anywhere
-  — pitfall (d) avoided by construction rather than by luck. Its
-  evidence directory sits outside the repository and is not committed,
-  as the protocol requires.
-  One thing is named rather than smoothed over: the bundle's final
-  verdict is PASS_WITH_RISKS, not PASS. The risks are the
-  operator-attested model warnings inherent to a zero-provider manual
-  bundle ("actual model unavailable, configured=operator"), with
-  `unresolved_findings` empty, `missing_evidence` empty and
-  `review_subject_uncovered_files` empty. That is a property of how
-  Remedy attests manual completions, not a defect of this feature, and
-  the package still built READY_FOR_REVIEW with no blocking reason.
-  The LIVE REVIEW verdict — the one the STATUS line records — is PASS:
-  eleven rounds, every one PASSed, zero open findings. The handoff's
-  76-line overage is declared as R-0214's eighth measurement with no
-  section dropped. No finding. Next free ID stays R-0218.
-  LAST_REVIEWED_SHA = 38a909c6.
-- R12: CLOSURE (2026-08-07). F254 closes with live review PASS —
-  ACCEPTED. Eleven build rounds plus this closure round, across four
-  sessions, one of them truncated by an operator STOP that the worker
-  honoured. Both acceptance criteria are met and pinned: `remedy
-  doctor core` flags a dead id from a config-driven list, and an
-  `ast`-based repo scan proves no built-in model id is spelled outside
-  the alias table. Integration gate green twice — R7 with a full
-  branch/base comparison at zero branch-only failures, and R10's
-  re-confirmation at 16016 passed / 0 failed, which the reviewer ran
-  itself. Evidence job `f254-closure`, package
-  remedy-review-20260807-204305-READY_FOR_REVIEW.zip, SHA-256
-  1b4995fa9e3ab76f7be8398be66ed69ec47e99f6e825d16cc97aa826a95a05c0,
-  accepted HEAD b71c9bdd93cbeb21d4b98842cdf6baa998c3ac26. Open
-  findings 0; next free ID R-0218. The PR created by this round is NOT
-  merged in the session that creates it — it merges at F103's Open PR
-  Gate, and `.agent/candidates.md` still carries the R-0214
-  handoff-cap amendment as a block condition at that claim.
+- R1 (SPLIT) — **PASS**. Reviewed `c1c0fbcb..28781d8f` bottom-up, and
+  the reviewer re-ran every verification command itself instead of
+  reading the worker's numbers. The diff is exactly the mandated
+  13-path set across three commits — no production code, no stray path,
+  `git add -A` never used. AGENTS.md **+11/-0**, purely additive, the
+  clause sitting inside the handoff.md section directly after the cap
+  paragraph with the original cap sentence untouched, so the declared
+  APPEND shape is real and not a rewrite in disguise. STATUS.md 315
+  lines before and after, one line swapped; `[~]` markers in the whole
+  file **1**; F103 appears exactly once. Reviewer-run transport proof:
+  `cmp` of each target against its committed receipt —
+  `.agent/live_review.md`, `.agent/plan.md`, `.agent/context.md`,
+  `.agent/candidates.md` — **exit 0 x4**, and receipts 4, 5 and 6 were
+  read back byte-for-byte against the authored originals.
+  Reviewer-run verification: `tests/docs/` **294 passed**, the
+  state-contract trio (dashboard, test_runner, resource_safety) **142
+  passed**, canary `tests/cli/test_golden_path.py` **42 passed**,
+  `git status --porcelain` empty, branch in sync with
+  `origin/feature/f103-token-ledger`, `gh pr list --state open` still
+  `[]`. Every number matched the handback's, so nothing was taken on
+  trust and nothing had to be corrected. Verification tier: ROUND GATE
+  plus the docs-round gate and the canary — NOT the full suite. No
+  block condition present. The three declared deviations are accepted:
+  the 100-line handoff is the first written under the very clause this
+  round added and drops no section; `.agent/decisions.md` was correctly
+  left alone as outside the path set; and a commit cannot table its own
+  SHA. No finding. Next free ID stays R-0218.
+  LAST_REVIEWED_SHA = `28781d8f`.
+- R2 (SPLIT, T001) — **PASS**. Reviewed `28781d8f..c3a03076` bottom-up.
+  Diff is exactly the 7-path set: the module, its tests, live_review,
+  plan, handoff and two receipts — no stray path, no dependency change
+  (`git diff` over pyproject/requirements/setup is EMPTY), bundled
+  `sqlite3` only, and NO call site, so the no-second-capture-path
+  invariant holds. The mandated docstring sentence is present verbatim:
+  "The file evidence remains the source of truth and the database is a
+  mirror." Migrations are numbered steps keyed off a `meta` row, not an
+  if-ladder; the three covering indexes the feature names all exist;
+  `CallRecord` field order matches `_CALL_COLUMNS` exactly; unmeasured
+  calls land as NULLs with basis `unknown` and `cost_usd` stays NULL, so
+  no price is invented. Reviewer-run verification:
+  `tests/orchestration/test_token_ledger.py` **18 passed**, the
+  state-contract trio plus the canary **184 passed** (142 + 42),
+  `git status --porcelain` empty with no stray `.sqlite`/`-wal`/`-shm`.
+  Every number matched the handback's. MUTATION RED-PROOF, run by the
+  reviewer in a disposable `git worktree` under the gitignored
+  `.remedy-wt/` and removed before this verdict (`git worktree list`
+  shows the primary checkout only): (1) making `record_call` re-raise
+  instead of returning False turned **5 tests red**, so the never-fail
+  rule the Orchestrator brief demands is genuinely pinned and not merely
+  asserted; (2) deleting the `rowcount`/constraint guard turned
+  `test_rejected_basis_is_a_counted_miss_not_a_silent_drop` red, so the
+  worker's `INSERT OR IGNORE` ambiguity fix is load-bearing rather than
+  decorative. The worker's two flagged design points are both accepted:
+  `INSERT OR IGNORE` does swallow CHECK and NOT NULL rejections exactly
+  as it swallows a duplicate key, so asking the table which case
+  occurred is correct and not defensive noise; and `kw_only=True` is
+  what makes the mandated field order expressible with `ts_utc`
+  required. Verification tier: ROUND GATE plus the canary — NOT the full
+  suite. No block condition. The declared deviations are accepted: four
+  commits instead of three is the step block's own instruction (split
+  rather than claim an oversize exception) and no commit exceeded 500
+  lines; the 121-line handoff drops no section and states its cause.
+  Two findings registered, both Low: R-0218 and R-0219.
+  LAST_REVIEWED_SHA = `c3a03076`.
+- R3 (SPLIT, T002 data layer) — **PASS**. Reviewed
+  `c3a03076..d2bc7d8e` bottom-up. Diff is exactly the 10-path set across
+  six commits, no commit over 500 lines, no dependency change, and
+  `token_truth.py` is BYTE-UNCHANGED — the no-second-capture-path
+  invariant holds by import rather than by promise. The reviewer checked
+  the three things a summary could most easily have got wrong, and all
+  three hold: `actual_cache_read_tokens` and
+  `actual_cache_creation_tokens` are the real canonical keys in
+  `token_truth._ACTUAL_ALIASES`, so the cache counters are genuinely
+  mapped and not silently always-None; `_strict_cost` really does return
+  None for an absent figure and raise on a malformed one, so
+  `cost_basis` becomes `provider_reported` only when a real number is
+  present; and the model fallback `("model", "builder_model")`
+  deliberately excludes `builder_configured_model` and
+  `reviewer_configured_model`, so the docstring's claim that a
+  configured model is never used as the model that ran is true of the
+  code. The call site is correct: four keyword-only `ledger_*` arguments
+  all defaulting to None keep every existing caller bit-for-bit
+  unchanged, the hook is inert without a target or ids, it never
+  resolves a project implicitly, it is wrapped so nothing escapes, and
+  it re-reads the file it has just written through the ledger's own
+  builder — one producer, which is exactly what makes content
+  comparison sound. `backfill_ledger`'s
+  `scanned == recorded + skipped + failed` holds on every path,
+  including the defensive one. Reviewer-run verification:
+  `test_token_ledger.py` **50 passed**, `tests/docs/` **294 passed**,
+  the `pingpong or evidence` regression selection **1129 passed, 14926
+  deselected**, the state-contract trio plus the canary **184 passed**,
+  `git status --porcelain` empty with no stray `.sqlite`/`-wal`/`-shm`.
+  Every number matched the handback's. MUTATION RED-PROOF in a
+  disposable worktree under the gitignored `.remedy-wt/`, removed before
+  this verdict: reducing `verify_ledger` to presence-only turned
+  `test_finds_a_content_drifted_row` red, so R-0219's fix is real.
+  DECISION D16 and the feature-file amendment landed together, so the
+  target plan and the built state do not disagree; the amendment is
+  purely additive (+15/-0). Verification tier: ROUND GATE plus the
+  docs-round gate and the canary — NOT the full suite. No block
+  condition. Declared deviations accepted: six commits not five, on the
+  step block's own instruction to split rather than claim an oversize
+  exception; the 152-line handoff drops no section and states its cause.
+  R-0219 closed; R-0218 stays open for R5.
+  LAST_REVIEWED_SHA = `d2bc7d8e`.
+- R4 (SPLIT, T003 + T002 surface) — **PASS**. Reviewed
+  `d2bc7d8e..25c343d0` bottom-up across seven commits, none over 500
+  lines, no dependency change. The P6 rule is the heart of this round
+  and it holds in code, not only in prose: there is no `COALESCE`
+  anywhere in the queries — the single occurrence of the word is a
+  docstring explaining why it is absent — so `SUM()` over all-NULL stays
+  NULL and an unmeasured figure never renders as a measured zero. The
+  reviewer MUTATION RED-PROOFED exactly that, in a disposable worktree
+  under the gitignored `.remedy-wt/`, removed before this verdict:
+  wrapping all seven `SUM(...)` in `COALESCE(..., 0)` turned **7 tests
+  red** across BOTH layers — `test_an_all_unmeasured_bucket_reports_none_not_zero`,
+  `test_an_all_unmeasured_total_reports_none_not_zero`,
+  `test_a_cache_counter_nobody_reported_stays_none`,
+  `test_two_ledgers_add_up_without_inventing_a_zero`, and three
+  basis-labeling tests in the CLI suite. The rule is pinned, not
+  asserted. `_connect_readonly` is the round's best judgement call and
+  it is correct: `mode=rw` plus `PRAGMA query_only=1` refuses to create
+  a database and rejects every write at the driver, while avoiding the
+  `mode=ro` trap where a read that cannot checkpoint the WAL leaves
+  `-wal`/`-shm` sidecars beside every ledger it merely looked at — a
+  read that litters the data root is not read-only. The `COUNT(CASE …)`
+  versus `SUM(…)` asymmetry is right for the same P6 reason: a count of
+  nothing is honestly 0, a sum of nothing is not. Reviewer-run
+  verification: `test_stats_cost.py` + `test_token_ledger.py` **105
+  passed**, the whole `tests/cli` catalog/registry contract guard
+  **1329 passed in 259s**, the state-contract trio plus the canary **184
+  passed**, `git status --porcelain` empty with no stray
+  `.sqlite`/`-wal`/`-shm`. Every number matched the handback's.
+  The one out-of-path-set edit is DECLARED, minimal and correct, so it
+  is not a silent scope change and not a block condition:
+  `tests/cli/test_failure_cmd.py` asserted the `stats` group's EXACT
+  contents (`== ["stats.failures"]`), which no longer holds once the
+  group legitimately grows; it is weakened to a membership assertion
+  with F010's own claim intact and a comment saying why. Leaving it red
+  was not an option the step block allowed. Verification tier: ROUND
+  GATE plus the canary — NOT the full suite; R5 owns that claim. No
+  block condition. Deviations accepted: seven commits rather than five,
+  on the step block's own split-over-oversize instruction; the extra
+  helpers (`merge_cost_reports` and friends) belong in the data layer
+  precisely because the block said the CLI only renders.
+  LAST_REVIEWED_SHA = `25c343d0`.
+- R5 (integration gate) — **PASS**. Reviewed `e984bbab..af91d57b`
+  bottom-up: four commits, none over 500 lines, and the change set is
+  `.agent/` only — no production code and no test file, exactly as the
+  round required. The gate's central claim is REPRODUCED, not accepted:
+  the reviewer re-ran the full suite itself and got **16121 passed, 19
+  skipped, exit 0**, matching the handback's numbers exactly, with zero
+  `FAILED` lines. Branch-only ids: **0**, so nothing can block under
+  integration_gate step 4. Base-only ids: 8, every one attributed by
+  DIRECT evidence — 1 xdist port race (`OSError: Errno 98` in the base
+  log, serial-pass 4 of 4) and 7 sharing one cause. That attribution is
+  the round's best work: it is proved by a NEGATIVE CONTROL, which is
+  what separates evidence from a story. `_frontend_is_stale()`
+  (`ui_server.py:2748`) compares MTIMES; setting the base worktree's
+  dist mtimes back behind `apps/ui/src` reproduced all seven failures
+  with the dist CONTENT hash unmoved, and restoring them turned the
+  file green at 42 passed. The reviewer read both cited sources and
+  confirms the mechanism holds in code. Parity by content holds
+  (`fb68a729…` before == after); the round declares plainly that the
+  neutralization is nonetheless NOT clean and names the writer, rather
+  than claiming a pass — that honesty is registered as R-0221. R-0218
+  is PAID and CLOSED: see the finding entry, including the reviewer's
+  own independent reproduction. Declared deviations accepted: the
+  scratchpad and base worktree sat under the gitignored `.remedy-wt/`
+  rather than `/tmp` because this session's permission policy refuses
+  every write outside the repo — the reviewer HIT THE SAME BLOCK and so
+  corroborates the cause, and R-0176's substance was verified rather
+  than assumed (`git ls-files --others --exclude-standard`, which
+  `run_manifest.py:500` is the digest's untracked input, returns 0
+  hits); three evidence commits rather than two, to stay under the
+  500-line cap without claiming an exception; the 120-line handoff
+  drops no section and states its cause. Verification tier:
+  INTEGRATION GATE — this entry is the one place the "full suite green"
+  claim may be made, and it is made on the reviewer's OWN run. No block
+  condition. The gate did not, however, ask whether the feature's live
+  path is armed at all, which is how R-0220 stayed invisible until this
+  review; that is a lesson about gate scope, not a defect of this round.
+  LAST_REVIEWED_SHA = `af91d57b`.
+- R6 (SPLIT, the live mirror) — **PASS**. Reviewed `af91d57b..7f32dae9`
+  bottom-up across six commits, none over 500 lines, no dependency
+  change. The production diff is 91 lines in ONE file and does exactly
+  what the finding asked: `_resolve_job_ledger_project_id` decides the
+  target ONCE per export and `export_job_evidence` threads it plus the
+  job id into `_write_task_run_evidence`, which passes them on. The
+  reviewer checked the three things that could have gone wrong and all
+  three hold. Resolution is genuinely read-only —
+  `project_registry.resolve_project` is documented "NEVER WRITES" and
+  its body only reads the registry — so exporting evidence cannot
+  mutate project state. The data-root escape the opt-in exists to
+  prevent is closed by construction: an absent `repo_path` returns None
+  instead of letting `Path("")` become the process CWD, which matters
+  because this repository is itself a registered project, and the
+  worker red-proofed that exact hazard by making the resolver fall back
+  to `"."` and watching the test resolve the real project UUID. The
+  three legacy callers of `_write_task_run_evidence` are all tests
+  using the positional three-argument form, so they stay inert, and
+  `pingpong_evidence.py` is byte-unchanged — a caller was added, not a
+  parameter. Reviewer-run verification: the ledger, evidence bundle,
+  job evidence and stats suites together **276 passed**; the canary
+  plus the `.agent` state-contract readers and the docs gate **478
+  passed**; `git status --porcelain` empty with 0 untracked files and
+  no stray `.sqlite`/`-wal`/`-shm`. The mutation red-proof is recorded
+  under R-0220. One correction the WORKER made to the reviewer's own
+  authored text is accepted and credited: the reviewer labelled R5's
+  verdict pair append-shaped, but its TO does not contain its FROM, so
+  it is a rewrite and FROM 0x was the honest count — reporting the
+  instructed 1x would have been a fabricated number, and refusing to
+  fabricate it is the behaviour §4.9 is for. Verification tier: ROUND
+  GATE plus the canary and the state-contract readers — NOT the full
+  suite. No block condition. Deviations accepted: tests live in
+  `test_token_ledger.py` because the behaviour under test is the
+  ledger's; the plan synced at B7 rather than before the code commits,
+  matching this feature's own R5 pattern; the 97-line handoff drops no
+  section and states its cause. NOTE FOR CLOSURE: production code
+  landed AFTER the R5 gate, so the closure protocol's full-suite
+  confirmation run is load-bearing for this feature and may not be
+  treated as a formality.
+  LAST_REVIEWED_SHA = `7f32dae9`.
+- R7 (closure part 1) — **PASS**. Reviewed `f69990a1..09d7ab2d`
+  bottom-up across five commits. The change set is exactly the
+  mandated two-path family — `.agent/**` and
+  `docs/roadmap/features/T2_F103.md` — with STATUS.md, README.md,
+  every source file and every test file untouched, so no part of the
+  closure claim was smuggled in early. Transport is proved
+  disk-to-disk against the REVIEWER'S OWN scratchpad originals rather
+  than by the digest fallback: `cmp` of each of the three
+  `.agent/authored/f103-r7-*.md` files against its original returned
+  **exit 0 x3**. Both `live_review.md` pairs are genuine REWRITES —
+  the reviewer re-parsed the FROM and TO strings out of the committed
+  receipt and confirmed neither TO contains its FROM — and after the
+  edit each is FROM **0x** / TO **1x**. `.agent/plan.md` equals its
+  authored file (`cmp` exit 0). The Built State landing is a PURE
+  APPEND, proved twice over: 5263 B before + 4376 B authored = 9639 B
+  after, `tail -c 4376` byte-identical to the authored file, and
+  `git diff` +69/-0.
+  The load-bearing claim is the one this round existed to make, and
+  the reviewer made it on its OWN run: `python3 -m pytest -n auto -q`
+  → **16131 passed, 19 skipped in 112.64s, exit 0**, matching the
+  handback exactly. The +10 delta against the R5 gate's 16121 is
+  VERIFIED rather than asserted: `test_token_ledger.py` collected
+  **72** tests at the gate head `af91d57b` and collects **82** now, so
+  the entire full-suite delta is R6's live-mirror tests and nothing
+  else moved. R6's production code is therefore covered by full-suite
+  evidence — the debt the R6 verdict recorded is paid.
+  The package was checked by the reviewer, not read from the
+  handback: disk `sha256sum` == `8e967d78…d38ad`; `zipfile.testzip()`
+  reports no corrupt member across 2211 members; the packaged
+  `.review_zip_manifest.json` records `package_status=
+  READY_FOR_REVIEW`, `committed_review_subject` spanning
+  `c1c0fbcb…a05d..65e1eec2…b605` with `base_is_ancestor=true`, 39
+  commits and 51 files, `ready_gate_matrix.ok=true` with
+  `blocking_reasons: []`, an alignment verdict of PASS with zero hash
+  mismatches and zero uncovered source or test files, and
+  `final_verifier_reproducible=true` (`VERIFIED_EQUAL`). All eight
+  closed-schema gates are on disk, so this is a real bundle and not a
+  lone runtime gate. Every named packaging pitfall was checked
+  individually and met: `run_id` `vr-0001`/`vr-0002`, bare 64-hex
+  `output_hash`, `test_files` that are files, and
+  `len(node_ids) == selected` on both runs — and the ids are REAL,
+  not merely well-shaped: the reviewer re-collected both suites and
+  the 115 recorded ids are exactly the 115 collected ids, zero extra
+  and zero missing, which is the F080 BLOCKED_EVIDENCE class closed
+  by evidence. `test_status.passed=115` equals 82+33, so the
+  fail-closed VerificationTests confirmation in
+  `build_review_manifest` is satisfied rather than bypassed. The
+  evidence dir is untracked and ignored and contributes ZERO files to
+  the review subject.
+  Reviewer-run verification: the full suite as above, `tests/docs/`
+  **294 passed**, canary **42 passed**, `integrity check --json`
+  `"passed": true` across 5/5 checks with `relevant_untracked` 0,
+  `git status --porcelain` empty, branch in sync with origin, and
+  `gh pr list --state open` still `[]`. Verification tier: CLOSURE
+  CONFIRMATION — the second and last of this feature's two full-suite
+  runs. No block condition.
+  Declared deviations accepted: the 106-line handoff states its cause
+  and drops no mandated section. One observation the reviewer records
+  rather than hides: commit `68bd9f3f` is +308/-277 = **585 changed
+  lines**, over 500 by the churn reading of AGENTS.md Commit
+  Discipline though under it by the insertions reading every prior
+  verdict in this repository has used. It is a single-file verbatim
+  save of the reviewer's own step block and is inseparable by
+  construction. Accepted under the insertions reading; the ambiguity
+  itself goes to `.agent/candidates.md` as a closure candidate rather
+  than spending an R-id (STATUS_closure_protocol.md,
+  "Closure-candidate findings").
+  LAST_REVIEWED_SHA = `09d7ab2d`.
+- R8: in flight — closure part 2. The STATUS `[~]`->`[x]` line and the
+  README capability sync land in the SAME commit, last on the branch,
+  then the PR — which this session does NOT merge.

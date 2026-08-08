@@ -51,7 +51,7 @@
 
 Milestone R1 — first public release cut: Tier 2 complete (F086 is the release vehicle). Build-first ends here; show-first begins.
 
-- [ ] F103 — Token ledger (SQLite)
+- [x] F103 — Token ledger (SQLite) (T001–T003 complete; accepted 2026-08-08 · live review PASS — ACCEPTED · Evidence job f103-closure · package remedy-review-20260808-210612-READY_FOR_REVIEW.zip · SHA-256 8e967d78e57fa97641365b4baa91ca884f6322bc855f678d1daeb146c9dd38ad · accepted HEAD 65e1eec25e61c1d0fe78539adeb890d3426cb605)
 - [ ] F104 — Hard budget enforcement
 - [ ] F105 — Cache-optimal prompt ordering
 - [ ] F107 — Context compiler v2

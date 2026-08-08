@@ -7,10 +7,16 @@ no hidden provider prompts, no .env files, no raw repo file contents beyond safe
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# The evidence layout the F103 token ledger mirrors: task_runs/<task_id>/.
+_TASK_RUNS_DIRNAME = "task_runs"
 
 # ---------------------------------------------------------------------------
 # Redaction
@@ -436,11 +442,25 @@ def _build_provider_evidence_json(run_data: dict[str, Any]) -> dict[str, Any]:
 def write_evidence_bundle(
     bundle: dict[str, Any],
     out_dir: str,
+    *,
+    ledger_project_id: str | None = None,
+    ledger_path: str | None = None,
+    ledger_job_id: str | None = None,
+    ledger_task_id: str | None = None,
 ) -> dict[str, str]:
     """Write evidence bundle files to output directory.
 
     Returns a dict mapping filename -> absolute path of written file.
     Blocks path traversal. Writes only inside out_dir.
+
+    The four ``ledger_*`` arguments are the OPT-IN for the F103 token ledger
+    mirror. They all default to None, which keeps every existing caller's
+    behaviour bit-for-bit unchanged: no ledger is opened, no project is
+    resolved, no file appears anywhere. Naming a target (``ledger_project_id``
+    or ``ledger_path``) together with ``ledger_job_id`` and ``ledger_task_id``
+    records this task run as one ledger row. The mirror never changes this
+    function's return value and never fails the write —
+    see ``_record_finalized_call_in_ledger``.
     """
     out_path = Path(out_dir).resolve()
     out_path.mkdir(parents=True, exist_ok=True)
@@ -494,6 +514,15 @@ def write_evidence_bundle(
     pe = bundle.get("provider_evidence")
     if pe:
         _write_json("provider_evidence.json", pe)
+        # Actuals are FINALIZED at this exact point — the file the ledger
+        # mirrors now exists — so this is where F103 puts its hook.
+        _record_finalized_call_in_ledger(
+            out_path,
+            project_id=ledger_project_id,
+            ledger_path=ledger_path,
+            job_id=ledger_job_id,
+            task_id=ledger_task_id,
+        )
 
     # prompt_trace.jsonl + prompt_trace_summary.json (copy from persisted run dir)
     trace_path = bundle.get("prompt_trace_jsonl_path")
@@ -507,6 +536,68 @@ def write_evidence_bundle(
                 _write("prompt_trace_summary.json", summary_src.read_text())
 
     return written
+
+
+# ---------------------------------------------------------------------------
+# F103 token ledger hook — the mirror, never the evidence
+# ---------------------------------------------------------------------------
+
+# Mirrors one finalized task run into the token ledger; opt-in, inert, never fatal.
+def _record_finalized_call_in_ledger(
+    out_path: Path,
+    *,
+    project_id: str | None,
+    ledger_path: str | None,
+    job_id: str | None,
+    task_id: str | None,
+) -> None:
+    """Record the task run just written under ``out_path`` into the F103 ledger.
+
+    THE EVIDENCE WRITE IS THE IMPORTANT THING AND THIS IS NOT. The ledger is a
+    mirror of files that are already the source of truth, so nothing here may
+    change what ``write_evidence_bundle`` returns, and nothing here may raise:
+    ``record_call`` already returns False instead of raising, and the wrapper
+    below makes even an unexpected error unable to escape.
+
+    OPT-IN AND INERT BY DEFAULT: without a ledger target, or without both
+    identifiers, it returns immediately. It deliberately does NOT resolve a
+    project itself — a test that writes an evidence bundle must never start
+    touching the user's data root, so the caller has to name the target.
+
+    NOT A SECOND CAPTURE PATH: it parses no provider output. It re-reads the
+    ``provider_evidence.json`` it has just written, through the ledger's own
+    ``call_record_from_evidence``, so the live row is derived by the same
+    function from the same bytes as a later backfill's row would be. That
+    identity is what lets ``verify_ledger`` compare content rather than mere
+    presence — two producers of one row must not be free to disagree.
+    """
+    if project_id is None and ledger_path is None:
+        return
+    if not job_id or not task_id:
+        return
+    try:
+        # Imported lazily: a run that never asks for a ledger never pays for the
+        # import, and the evidence exporter keeps its existing import graph.
+        from packages.orchestration.token_ledger import (
+            call_record_from_evidence,
+            record_call,
+        )
+
+        if out_path.parent.name != _TASK_RUNS_DIRNAME or out_path.name != str(task_id):
+            # Not the task-run layout the ledger mirrors, so there is no honest
+            # evidence_ref for the row. No row is invented for it.
+            return
+        record = call_record_from_evidence(out_path.parent.parent, job_id, task_id)
+        if record is None:
+            return
+        record_call(record, project_id=project_id, path=ledger_path)
+    except Exception:
+        logger.error(
+            "token ledger hook FAILED after writing evidence for task %r (the "
+            "evidence write itself is unaffected and the run continues; the files "
+            "remain the source of truth and reconcile can heal the mirror)",
+            task_id, exc_info=True,
+        )
 
 
 # ---------------------------------------------------------------------------

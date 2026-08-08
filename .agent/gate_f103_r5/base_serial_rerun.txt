@@ -1,0 +1,170 @@
+F103 R5 — BASE-SIDE SERIAL RE-RUNS
+cwd    : /home/decodeux/Repos/remedy/.remedy-wt/base-f103   (throwaway worktree, branch tmp/base-gate-f103 @ c1c0fbcb)
+date   : 2026-08-08T17:54:39Z
+
+=== EVIDENCE 0 — why apps/ui parity by COPY is not enough ===================
+_frontend_is_stale() (packages/orchestration/ui_server.py:2748) compares the
+MTIME of apps/ui/dist/index.html against every file under apps/ui/src/.
+git worktree add writes the source tree with mtime = checkout time, while
+cp -a PRESERVES the copied dist mtimes. So in a fresh base worktree src is
+always newer than dist -> stale -> _auto_build_frontend() -> suppressed by
+REMEDY_UI_NO_AUTO_BUILD=1 -> returns None -> 'ERROR: React UI not built.'
+-> sys.exit(1). Content parity is intact; only the timestamps differ.
+
+--- dist/index.html mtime ---
+2026-08-08 19:52:06.913338983 +0200  apps/ui/dist/index.html
+--- newest file under apps/ui/src ---
+2026-08-08+19:50:52.2810346300 apps/ui/src/types/react-force-graph-2d.d.ts
+
+=== PASS 1 — serial re-run of all 8 ids, worktree EXACTLY as the base run ===
+--- tests/orchestration/test_product_smoke.py::TestRetryAndPortConflict::test_a_flaky_start_passes_on_retry_and_says_so
+.                                                                        [100%]
+1 passed in 1.49s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+.                                                                        [100%]
+1 passed in 0.23s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+.                                                                        [100%]
+1 passed in 0.28s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+.                                                                        [100%]
+1 passed in 0.20s
+    exit=0
+
+=== PASS 2 — same 7 ui ids after ONLY the dist mtimes are refreshed ========
+touch apps/ui/dist (no byte changes; the post-run dist CONTENT hash was
+already captured before this touch and is unaffected — the aggregate is
+over file contents and names, not mtimes).
+2026-08-08 19:54:45.467771208 +0200  apps/ui/dist/index.html
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+.                                                                        [100%]
+1 passed in 0.18s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+.                                                                        [100%]
+1 passed in 0.28s
+    exit=0
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+.                                                                        [100%]
+1 passed in 0.20s
+    exit=0
+
+=== PASS 3 — the smoke id, serial, three consecutive runs ===================
+--- run 1
+.                                                                        [100%]
+1 passed in 1.47s
+    exit=0
+--- run 2
+.                                                                        [100%]
+1 passed in 1.49s
+    exit=0
+--- run 3
+.                                                                        [100%]
+1 passed in 1.49s
+    exit=0
+
+--- dist CONTENT hash after all of the above (must equal the run hashes) ---
+fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  -
+=== PASS 4 — NEGATIVE CONTROL =============================================
+The mechanism is a MTIME comparison, so it is reproduced by moving mtimes
+only. No byte in apps/ui/dist changes.
+
+culprit for the mid-run rebuild, found by grep and named here:
+  tests/ui_server/test_dashboard_contract.py:521
+  TestAutoBuildBehavior::test_auto_build_runs_by_default POPS
+  REMEDY_UI_NO_AUTO_BUILD from the environment and calls
+  _auto_build_frontend() FOR REAL -> npm install + npm run build in the
+  checkout it runs in. That is the R-0169 build path that ignores the env
+  var; here it is a test doing it on purpose. Its output is byte-identical
+  (the dist CONTENT hash never moved), but it REFRESHES the dist mtimes
+  mid-run, which is why the ui ids that ran AFTER it passed.
+
+--- set dist mtimes back BEHIND apps/ui/src (the state at base-run start) ---
+2020-01-01 00:00:00.000000000 +0100  apps/ui/dist/index.html
+2026-08-08+19:50:52.2810346300 apps/ui/src/types/react-force-graph-2d.d.ts
+
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.15s
+    exit=1
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_app_shell_served_without_token
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.14s
+    exit=1
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.14s
+    exit=1
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.13s
+    exit=1
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.14s
+    exit=1
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.15s
+    exit=1
+--- tests/ui_server/test_live_state.py::TestUIServerIntegration::test_brain_endpoint
+>       pytest.fail("Server did not start in time")
+E       Failed: Server did not start in time
+ERROR: React UI not built.
+1 failed in 5.15s
+    exit=1
+
+--- restore dist freshness, confirm the same ids pass again ---
+..........................................                               [100%]
+42 passed in 1.98s
+    exit=0
+
+--- dist CONTENT hash, unchanged through all of PASS 1-4 ---
+fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  -

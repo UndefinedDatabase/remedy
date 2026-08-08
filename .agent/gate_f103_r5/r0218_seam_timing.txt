@@ -1,0 +1,90 @@
+F103 R5 — R-0218: MEASURED BEFORE/AFTER OF THE LEDGER CALL-SITE SEAM
+====================================================================
+Finding R-0218 (Low, open): the T2_F103 acceptance criterion "the writer
+sits in the provider path without slowing it perceptibly" (feature file,
+Goal & Done) had no measurement anywhere. This file pays it with a number.
+It does NOT close the finding and it carries NO verdict: the reviewer reads
+the number and decides.
+
+THE SEAM
+  packages/orchestration/pingpong_evidence.py:442  write_evidence_bundle()
+  Its four keyword-only ledger_* arguments gate the hook at line ~546,
+  _record_finalized_call_in_ledger(). Every existing caller passes none of
+  them, so arm A below IS today's production path.
+
+HARNESS
+  Throwaway, never committed, no file added to the repo. Written to the
+  session scratchpad as r0218_seam_timing.py and deleted at the end of the
+  round together with the rest of the scratchpad.
+  command:
+    python3 <scratchpad>/r0218_seam_timing.py <scratchpad>
+
+  Faithful description of what it does:
+  * Arm A — write_evidence_bundle(bundle, out_dir), NO ledger_* arguments.
+  * Arm B — the same call plus ledger_path=<scratch ledger.sqlite>,
+    ledger_job_id="job-r0218-seam", ledger_task_id=<the iteration's id>.
+  * The bundle is modelled on TestCallSiteAtTheActualsSeam._bundle() in
+    tests/orchestration/test_token_ledger.py (~line 760) and reuses its
+    shape verbatim: manifest, summary_md, tests, token_accounting with a
+    role, and a provider_evidence dict with real counters
+    (actual_prompt_tokens 11, actual_completion_tokens 5,
+    actual_total_tokens 16, the three call counts) and
+    total_cost_usd 0.02.
+  * Every iteration uses a UNIQUE task_id and its own out_dir laid out as
+    <evidence>/<job_id>/task_runs/<task_id>, because the hook returns early
+    on any other layout. One shared ledger file accumulates the rows, so
+    arm B pays a REAL INSERT into a growing database on every iteration —
+    the worst case, never the cheap already-present path.
+  * 30 warm-up iterations per arm, discarded. Then 300 measured iterations
+    per arm, INTERLEAVED A/B/A/B/... within one loop so machine drift
+    cannot favour one arm.
+  * time.perf_counter() around each individual call.
+  * ledger_path is passed explicitly, so no project is ever resolved and
+    the real REMEDY_DATA_DIR is never touched. Everything lives under the
+    scratchpad.
+  * After the loop the harness counts the rows in the ledger and prints the
+    count against the expected count — the proof that arm B really inserted
+    a new row every iteration rather than short-circuiting.
+
+RAW OUTPUT (verbatim)
+---------------------
+ENVIRONMENT
+  python        : 3.10.12 (/usr/bin/python3)
+  platform      : Linux-6.17.9-76061709-generic-x86_64-with-glibc2.35
+  machine       : x86_64
+  cpu_count     : 24
+  scratch dir   : <scratchpad>/r0218_work
+  scratch fs    : ext2/ext3
+  ledger rows   : 330 (expected 330)
+
+PER-ARM STATISTICS (milliseconds per write_evidence_bundle call)
+  arm                              n       min    median      mean       p95       max
+  A baseline (no ledger_*)       300     0.547     0.587     0.603     0.707     1.266
+  B mirror active                300     1.882     1.973     2.067     2.425     4.098
+
+DELTA (B minus A)
+  median : +1.386 ms  (+236.2% of arm A median)
+  mean   : +1.464 ms  (+242.6% of arm A mean)
+---------------------
+A first, independent run of the same harness on the same machine gave
+A median 0.705 ms / B median 2.211 ms, delta +1.506 ms (+213.7%). The two
+runs agree to within about 0.12 ms on the delta.
+
+WHAT THE NUMBER IS
+  Turning the mirror on costs about 1.4 ms of extra wall time per finalized
+  task run, measured at the seam itself. That is roughly 3.4x the cost of
+  the evidence write alone, because the evidence write is itself cheap
+  (~0.6 ms of small-file I/O): the ledger adds a lazy import on the first
+  call, an sqlite3 connect, a schema check and one INSERT with its commit.
+  The relative figure is large; the absolute figure is 1.4 ms, once per
+  finalized TASK RUN (DECISION D16), on a path whose sibling work is a
+  provider call measured in seconds.
+  Both readings are stated because both are true, and choosing which one
+  matters is a judgement about the acceptance criterion — which is the
+  reviewer's to make, not this round's.
+
+NOT DONE HERE, DELIBERATELY
+  No production code was touched. R-0218 stays OPEN. If the reviewer reads
+  1.4 ms as too much, tuning it is a separate reviewer-gated round; this
+  round was explicitly forbidden to tune production code to improve its own
+  number.
