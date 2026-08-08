@@ -36,8 +36,10 @@ handoff is a SUCCESS, not a failure.
 - R4 (SPLIT): T003 — the cost aggregation queries plus `remedy stats
   cost`, `backfill-ledger` and `verify-ledger` in the existing stats
   group, with basis labeling in both output modes — PASS.
-- R5: integration gate per docs/agents/integration_gate.md.
-- R6: closure per docs/roadmap/STATUS_closure_protocol.md.
+- R5: integration gate per docs/agents/integration_gate.md — PASS.
+- R6 (SPLIT): wire the live ledger mirror at the task-run evidence seam
+  so a real job yields rows (finding R-0220).
+- R7: closure per docs/roadmap/STATUS_closure_protocol.md.
 
 ## Findings
 - R-0218 (Low, R2, reviewer): the ledger's own acceptance criterion —
@@ -71,10 +73,52 @@ handoff is a SUCCESS, not a failure.
   immutable by construction and documented as such, but that guarantees
   only the id, never the contents — which is why the stronger option was
   the right one.
-- Next free ID: R-0220. Open findings: 1 (R-0218, Low). R5 pays it with
-  a measured before/after of the call-site seam, committed to
-  `.agent/gate_f103_r5/r0218_seam_timing.txt`; the finding closes only
-  when the reviewer has read a real number, never on a claim.
+- Done: R-0218 — CLOSED at R5 against a real number, not a claim. The
+  gate measured the seam itself: `write_evidence_bundle` costs a median
+  0.587 ms with the mirror inert and 1.973 ms with it active, so the
+  mirror adds **+1.386 ms per finalized task run** (+236% of a very
+  small baseline). The reviewer REPRODUCED it independently with its
+  own harness — +1.395 ms median — and the worker's own second run gave
+  +1.506 ms; three runs agree within about 0.1 ms, and a row count of
+  330/330 proves arm B really inserted on every iteration rather than
+  short-circuiting. Judgement: 1.4 ms once per finalized TASK RUN, on a
+  path whose sibling work is a provider call measured in SECONDS, is
+  not "slowing it perceptibly". The criterion is met with a number.
+- R-0220 (Medium, R5, reviewer): the live mirror is never switched on,
+  so the feature's own acceptance criterion — "a fake-provider job
+  yields exactly its calls as rows with correct role/model/basis" — is
+  NOT met by the built system. `write_evidence_bundle`'s four
+  `ledger_*` arguments are the only way to arm the hook, and the ONLY
+  callers that pass them are TESTS: the two production callers,
+  `pingpong_evidence.py:633` and `job_evidence.py:2455`, pass none. A
+  real job therefore writes ZERO rows and the ledger fills only via
+  `remedy stats backfill-ledger`. R3 reviewed the hook and approved its
+  inertness as caller-compatibility, which was true as far as it went;
+  what nobody asked was who ever turns it on. Not a gate blocker — the
+  gate is about regressions and there were none — but a CLOSURE
+  blocker: flipping STATUS to `[x]` and syncing the README now would
+  claim a capability that is wired and switched off. Fix: R6 arms the
+  hook at the task-run seam for real jobs, with a test that drives the
+  PRODUCTION path and passes no `ledger_*` argument by hand, and with
+  the data-root safety of the opt-in preserved.
+- R-0221 (Low, R5, reviewer): `TestAutoBuildBehavior::
+  test_auto_build_runs_by_default`
+  (`tests/ui_server/test_dashboard_contract.py`) pops
+  `REMEDY_UI_NO_AUTO_BUILD` from the environment and calls
+  `_auto_build_frontend()` for real, so it runs `npm install` and
+  `npm run build` in whatever checkout it is running in. The env var
+  cannot suppress a call that deletes it first. This is the R-0169
+  class recurring with a NAMED cause. It costs every integration gate
+  seven phantom base-only failures: `_frontend_is_stale()`
+  (`ui_server.py:2748`) is a pure MTIME comparison, `git worktree add`
+  writes src at checkout time while `cp -a` preserves the older dist
+  mtimes, so a fresh base worktree is stale by construction. The R5
+  gate proved the mechanism with a negative control — moving the dist
+  mtimes back reproduced all seven failures without changing one byte,
+  restoring them made 42 pass. NOT F103's code and NOT this feature's
+  to fix: registered as a closure candidate for the owning feature.
+- Next free ID: R-0222. Open findings: 1 (R-0220, Medium). R-0218 and
+  R-0219 are closed; R-0221 is carried in `.agent/candidates.md`.
 
 ## Decisions
 - D15 (F254 closure candidate R-0214, resolved inline per
@@ -121,6 +165,24 @@ handoff is a SUCCESS, not a failure.
   already carries `call_id` as the primary key and needs no migration.
   The feature file is amended in this same round so the built state and
   the target plan do not disagree.
+
+- D17 (R5, reviewer, per docs/agents/planner_reviewer_prompt.md §4
+  item 7): closure MOVES from R6 to R7 and R6 becomes the round that
+  arms the live ledger mirror. Chosen because R-0220 shows the feature
+  does not meet its own acceptance criterion — a real job produces no
+  rows — and closing on that would be an unverified completion claim,
+  the exact block-condition class the review loop exists to catch.
+  Alternatives considered: closing now and filing the wiring as a
+  follow-up feature, rejected because F103's Goal & Done is explicit
+  that the writer sits in the provider path and every call lands as a
+  row, so the follow-up would be F103 itself under another name; or
+  amending the feature file to declare the mirror deliberately opt-in,
+  rejected because nothing in the file, the design or DECISION D16
+  hints at that intent and the acceptance criterion contradicts it.
+  Reversal: any later relay may drop R6 and go straight to closure by
+  amending the feature file's Acceptance instead — the cost of that
+  choice is that `remedy stats cost` answers only for ledgers someone
+  remembered to backfill by hand.
 
 ## Verdicts
 - R1 (SPLIT) — **PASS**. Reviewed `c1c0fbcb..28781d8f` bottom-up, and
@@ -270,4 +332,41 @@ handoff is a SUCCESS, not a failure.
   helpers (`merge_cost_reports` and friends) belong in the data layer
   precisely because the block said the CLI only renders.
   LAST_REVIEWED_SHA = `25c343d0`.
-- R5: pending review.
+- R5 (integration gate) — **PASS**. Reviewed `e984bbab..af91d57b`
+  bottom-up: four commits, none over 500 lines, and the change set is
+  `.agent/` only — no production code and no test file, exactly as the
+  round required. The gate's central claim is REPRODUCED, not accepted:
+  the reviewer re-ran the full suite itself and got **16121 passed, 19
+  skipped, exit 0**, matching the handback's numbers exactly, with zero
+  `FAILED` lines. Branch-only ids: **0**, so nothing can block under
+  integration_gate step 4. Base-only ids: 8, every one attributed by
+  DIRECT evidence — 1 xdist port race (`OSError: Errno 98` in the base
+  log, serial-pass 4 of 4) and 7 sharing one cause. That attribution is
+  the round's best work: it is proved by a NEGATIVE CONTROL, which is
+  what separates evidence from a story. `_frontend_is_stale()`
+  (`ui_server.py:2748`) compares MTIMES; setting the base worktree's
+  dist mtimes back behind `apps/ui/src` reproduced all seven failures
+  with the dist CONTENT hash unmoved, and restoring them turned the
+  file green at 42 passed. The reviewer read both cited sources and
+  confirms the mechanism holds in code. Parity by content holds
+  (`fb68a729…` before == after); the round declares plainly that the
+  neutralization is nonetheless NOT clean and names the writer, rather
+  than claiming a pass — that honesty is registered as R-0221. R-0218
+  is PAID and CLOSED: see the finding entry, including the reviewer's
+  own independent reproduction. Declared deviations accepted: the
+  scratchpad and base worktree sat under the gitignored `.remedy-wt/`
+  rather than `/tmp` because this session's permission policy refuses
+  every write outside the repo — the reviewer HIT THE SAME BLOCK and so
+  corroborates the cause, and R-0176's substance was verified rather
+  than assumed (`git ls-files --others --exclude-standard`, which
+  `run_manifest.py:500` is the digest's untracked input, returns 0
+  hits); three evidence commits rather than two, to stay under the
+  500-line cap without claiming an exception; the 120-line handoff
+  drops no section and states its cause. Verification tier:
+  INTEGRATION GATE — this entry is the one place the "full suite green"
+  claim may be made, and it is made on the reviewer's OWN run. No block
+  condition. The gate did not, however, ask whether the feature's live
+  path is armed at all, which is how R-0220 stayed invisible until this
+  review; that is a lesson about gate scope, not a defect of this round.
+  LAST_REVIEWED_SHA = `af91d57b`.
+- R6: pending review.
