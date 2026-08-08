@@ -1822,15 +1822,60 @@ def run_job(
 
     def _stop_check():
         from packages.orchestration.budget_guard import collect_counters_from_actuals
-        counters = collect_counters_from_actuals(
-            {
-                "provider_call_count": _accumulated_provider_calls,
-                "actual_call_count": _accumulated_measured,
-                "total_tokens": _accumulated_tokens,
-            },
-            started_at=_run_started_at,
-            actual_sources=("pingpong_live",) if _accumulated_measured > 0 else (),
-        )
+        _actuals = {
+            "provider_call_count": _accumulated_provider_calls,
+            "actual_call_count": _accumulated_measured,
+            "total_tokens": _accumulated_tokens,
+        }
+        _sources = ("pingpong_live",) if _accumulated_measured > 0 else ()
+        counters = None
+        # F104: a `--max-cost-usd` limit is only enforceable if the guard knows what
+        # the job has really cost, and the F103 ledger is the only place a real
+        # provider cost figure lives. Skipped entirely when no cost limit is set —
+        # a SQLite query per safe point for a limit nobody configured is waste, and
+        # skipping keeps every existing budget path byte for byte unchanged.
+        if _job_budgets is not None and _job_budgets.max_cost_usd is not None:
+            # WHY the swallow: budgets read a MIRROR — the ledger reflects evidence
+            # files that are already the source of truth — and a broken mirror must
+            # never stop a healthy job. Any failure leaves the cost UNMEASURED
+            # (None, never 0.0 — P6) and the token/call/time limits still enforce.
+            try:
+                from packages.orchestration.budget_guard import (
+                    collect_ledger_cost_for_job as _collect_ledger_cost,
+                )
+                from packages.orchestration.job_evidence import (
+                    _resolve_job_ledger_project_id as _resolve_ledger_project,
+                )
+
+                # The SAME resolver the write side uses, so the read and the write
+                # can never disagree about which project's ledger this job owns.
+                _ledger_project = _resolve_ledger_project(job)
+                if _ledger_project is not None:
+                    _ledger_cost, _, _ledger_unpriced = _collect_ledger_cost(
+                        job_id=job.job_id, project_id=_ledger_project)
+                    counters = collect_counters_from_actuals(
+                        _actuals,
+                        started_at=_run_started_at,
+                        actual_sources=_sources,
+                        measured_cost_usd=_ledger_cost,
+                        unpriced_call_count=_ledger_unpriced,
+                    )
+            except Exception:
+                import logging as _logging
+                _logging.getLogger(__name__).error(
+                    "budget ledger cost read FAILED for job %r; the cost stays "
+                    "unmeasured for this safe point and the run continues (the "
+                    "evidence files remain the source of truth and the remaining "
+                    "budget limits are unaffected)",
+                    job.job_id, exc_info=True,
+                )
+                counters = None
+        if counters is None:
+            counters = collect_counters_from_actuals(
+                _actuals,
+                started_at=_run_started_at,
+                actual_sources=_sources,
+            )
         result = _should_stop(
             job.job_id,
             budgets=_job_budgets,
