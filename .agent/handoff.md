@@ -77,7 +77,13 @@ trailing whitespace on any line, exactly one closing newline.
 ## Open findings & deviations
 Open findings: **1** — R-0220 (Medium), fixed here, closes on reviewer
 confirmation. R-0218/R-0219 closed; R-0221 carried in `.agent/candidates.md`.
-Deviations, declared: (a) the PAIR 3 shape correction above; (b)
+Deviations, declared: (0) STATED-CAUSE OVERAGE per AGENTS.md/D15 — this
+handoff is **97 lines**, over the 60-line cap, and drops no section; the cause
+is the mandated content itself: the 4-row per-commit table, the 8-row
+verification table, the two mutation red-proofs, the four-pair transport proof
+with before/after counts, the 7-row item-status table, and the
+project-resolution explanation the step block required. (a) the PAIR 3 shape
+correction above; (b)
 `tests/orchestration/test_job_evidence.py` exists, so the middle command needed
 no adjustment; (c) the new tests live in `test_token_ledger.py` — the honest
 home, since the behaviour under test is F103's ledger, not the bundle writer;
