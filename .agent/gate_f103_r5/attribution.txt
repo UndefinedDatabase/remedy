@@ -1,0 +1,134 @@
+F103 R5 — INTEGRATION GATE (docs/agents/integration_gate.md)
+=============================================================
+Branch : feature/f103-token-ledger @ e984bbab
+Base   : main @ c1c0fbcb (git merge-base main HEAD)
+Date   : 2026-08-08
+
+1. BRANCH RUN
+   cmd  : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+   cwd  : repo root (log written to the session scratchpad, copied here
+          after exit — R-0176: a log growing inside the worktree changes
+          the digest mid-run)
+   exit : 0
+   tail : 16121 passed, 19 skipped in 123.68s (0:02:03)
+   FAILED lines: 0  (branch_failed.txt is empty)
+   ERROR  lines: 0
+
+2. BASE RUN
+   worktree: throwaway BRANCH tmp/base-gate-f103 at c1c0fbcb (never
+             detached — the self-dogfood guard refuses a detached HEAD,
+             DECISION D3)
+   parity  : apps/ui/node_modules and apps/ui/dist COPIED from the primary
+             checkout (never symlinked — F053 R3), REMEDY_UI_NO_AUTO_BUILD=1
+   verify  : apps/ui/dist aggregate CONTENT hash before == after
+             fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+             -> parity claim by content HOLDS. It is not a clean
+                neutralization all the same: a test deletes the env var and
+                builds for real, which moves the dist MTIMES mid-run.
+                Named, dated and evidenced in dist_hashes.txt.
+   exit : 1
+   tail : 8 failed, 16008 passed, 19 skipped in 155.11s (0:02:35)
+   ERROR lines: 7 — and they are NOT pytest collection or teardown errors.
+          All seven are the captured-stderr banner "ERROR: React UI not
+          built." emitted by packages/orchestration/ui_server.py:2851, one
+          per failing ui_server id. pytest reported no error outcome: the
+          summary line has no "error" count at all.
+   cleanup: git worktree remove --force + prune + branch -D
+            tmp/base-gate-f103, each exit 0; `git worktree list` then shows
+            only the primary checkout and `git branch --list 'tmp/*'` is
+            empty (transcript in worktree_cleanup.txt).
+
+3. COMPARE
+   comm -13 base_failed branch_failed  (BRANCH-ONLY)              : 0 ids.
+   comm -23 base_failed branch_failed  (base-only / branch fixed) : 8 ids.
+
+4. ATTRIBUTION — by direct evidence, never by assertion
+   Branch side: there is NO branch_serial_rerun.txt, because there are ZERO
+   branch-only ids to re-run. comm_branch_only_failures.txt is an empty
+   file and that empty file is the evidence.
+
+   Base side: all 8 ids, each named, each reproduced or reversed on demand.
+   Transcripts: base_serial_rerun.txt (passes 1-4).
+
+   a) tests/orchestration/test_product_smoke.py::
+      TestRetryAndPortConflict::test_a_flaky_start_passes_on_retry_and_says_so
+      -> xdist-flake class (F135/F052). NOT environment, NOT the feature.
+      -> Root cause from the base log itself: the second start attempt died
+         with `OSError: [Errno 98] Address already in use` while binding a
+         port the test had been handed as free. A port race between xdist
+         workers.
+      -> Serial re-run of the exact node id at BASE: PASS, four times
+         (base_serial_rerun.txt pass 1 and pass 3 runs 1-3; 1 passed in
+         ~1.5s each). Recorded, not a blocker.
+
+   b-h) The seven ids of
+      tests/ui_server/test_live_state.py::TestUIServerIntegration ::
+        test_server_starts_and_writes_info
+        test_app_shell_served_without_token
+        test_api_invalid_token_403
+        test_api_missing_job_404
+        test_put_rejected
+        test_dashboard_no_raw_leaks
+        test_brain_endpoint
+      -> Environment class, ONE shared cause, and the missing artefact is
+         named precisely: not the dist BYTES (they were copied and their
+         hash never moved) but the dist MTIMES.
+      -> Mechanism, read out of the source: _frontend_is_stale()
+         (packages/orchestration/ui_server.py:2748) compares the mtime of
+         apps/ui/dist/index.html against every file under apps/ui/src.
+         `git worktree add` writes the source tree with mtime = checkout
+         time (19:50:52), while `cp -a` PRESERVES the copied dist mtimes
+         (19:49:34). So a freshly created base worktree is ALWAYS stale by
+         construction -> _load_frontend() calls _auto_build_frontend() ->
+         REMEDY_UI_NO_AUTO_BUILD=1 makes it return None -> the loud branch
+         prints "ERROR: React UI not built." and calls sys.exit(1). Each of
+         these tests starts its own server in a thread, so that SystemExit
+         kills the thread, the info file is never written, and the test
+         fails with "Server did not start in time".
+      -> That exact stderr, "ERROR: React UI not built.", is captured
+         verbatim in the base run log (base_run.txt, raw tail).
+      -> POSITIVE CONTROL: all seven pass serially at base once dist is
+         fresh (base_serial_rerun.txt passes 1 and 2, 1 passed in ~0.2s
+         each; and the whole file, 42 passed in 1.98s).
+      -> NEGATIVE CONTROL, which is what makes this attribution evidence
+         rather than a story: setting the dist mtimes BACK behind
+         apps/ui/src — changing not one byte — reproduces all seven
+         failures at base, each with "ERROR: React UI not built." and
+         "Server did not start in time" (base_serial_rerun.txt pass 4).
+         Restoring the mtimes makes them pass again. The dist CONTENT hash
+         is identical before, during and after every one of those passes.
+      -> Not the feature: no F103 file is involved. F103 touches
+         token_ledger.py, pingpong_evidence.py's ledger hook,
+         stats_ledger_cmd.py and the command catalog; none of them is on
+         this path.
+      -> Standing observation for the reviewer, not a claim of a fix: the
+         same rebuild fires in the PRIMARY checkout on every full run too
+         (dist/index.html mtime moved to 19:49:34, inside the branch run
+         window), which is precisely why the branch side never sees these
+         seven ids. The branch did not fix them; the branch checkout is
+         simply never mtime-stale.
+
+   No comm -23 id is left unattributed, so none of them counts as a genuine
+   base failure under integration_gate step 3.
+
+5. VERDICT INPUT
+   - Zero branch-only failures. Nothing to classify under step 4 on the
+     branch side, and therefore no reproducible branch-only failure coupled
+     to F103 code — nothing blocks under that rule.
+   - All 8 base-only ids attributed by direct evidence: 1 xdist port race
+     (serial-pass 4/4), 7 one-cause environment ids reproduced and reversed
+     by mtime alone. Well under the 10-id flake-debt threshold.
+   - Wall clock: 124s branch, 155s base. Both under the ~5 min budget note.
+   - Open findings unchanged at 1: R-0218, now PAID WITH A NUMBER in
+     r0218_seam_timing.txt (+1.39 ms median per finalized task run, ~3.4x a
+     0.59 ms baseline write). This round does not close it and issues no
+     judgement on whether that is "perceptible".
+   - New material the reviewer may want as its own finding: the R-0169
+     class recurs and has a NAMED cause —
+     tests/ui_server/test_dashboard_contract.py:521
+     TestAutoBuildBehavior::test_auto_build_runs_by_default pops
+     REMEDY_UI_NO_AUTO_BUILD and runs a real npm build in whatever checkout
+     it finds. Raising that as a finding is the reviewer's call; this round
+     changed no test and no production code.
+   The gate VERDICT itself is the reviewer's to issue (integration_gate
+   step 5). Nothing above is a verdict.
