@@ -1851,7 +1851,10 @@ def run_job(
                 # can never disagree about which project's ledger this job owns.
                 _ledger_project = _resolve_ledger_project(job)
                 if _ledger_project is not None:
-                    _ledger_cost, _, _ledger_unpriced = _collect_ledger_cost(
+                    # All THREE ledger figures travel together: the priced count
+                    # is what the cost side validates against, so discarding it
+                    # is what made R-0224 (DECISION F104 D5).
+                    _ledger_cost, _ledger_priced, _ledger_unpriced = _collect_ledger_cost(
                         job_id=job.job_id, project_id=_ledger_project)
                     counters = collect_counters_from_actuals(
                         _actuals,
@@ -1859,6 +1862,7 @@ def run_job(
                         actual_sources=_sources,
                         measured_cost_usd=_ledger_cost,
                         unpriced_call_count=_ledger_unpriced,
+                        priced_call_count=_ledger_priced,
                     )
             except Exception:
                 import logging as _logging

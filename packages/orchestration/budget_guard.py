@@ -51,6 +51,12 @@ class BudgetCounters:
     # and it is NOT interchangeable with 0.0, which means "measured, and free".
     measured_cost_usd: float | None = None
     unpriced_call_count: int = 0
+    # WHY these two are never compared against provider_calls: the cost-side
+    # call counts come from the F103 ledger and are counted per FINALIZED TASK
+    # RUN across every run of the job, while provider_calls counts ATTEMPTS in
+    # THIS run (skipping the fake provider). They are different measurements of
+    # different things and must never be compared (R-0224, DECISION F104 D5).
+    priced_call_count: int = 0
 
     def __post_init__(self) -> None:
         for name in ("provider_calls", "measured_token_total", "measured_call_count",
@@ -128,25 +134,27 @@ class BudgetCounters:
                 raise BudgetCounterError(
                     f"measured_cost_usd must be non-negative, got "
                     f"{self.measured_cost_usd!r}")
-        if isinstance(self.unpriced_call_count, bool):
-            raise BudgetCounterError("unpriced_call_count must be int, got bool")
-        if not isinstance(self.unpriced_call_count, int) or self.unpriced_call_count < 0:
-            raise BudgetCounterError(
-                f"unpriced_call_count must be a non-negative integer, got "
-                f"{self.unpriced_call_count!r}")
-        if self.unpriced_call_count > self.provider_calls:
-            raise BudgetCounterError(
-                f"unpriced_call_count ({self.unpriced_call_count}) > "
-                f"provider_calls ({self.provider_calls})")
+        for name in ("unpriced_call_count", "priced_call_count"):
+            val = getattr(self, name)
+            if isinstance(val, bool):
+                raise BudgetCounterError(f"{name} must be int, got bool")
+            if not isinstance(val, int) or val < 0:
+                raise BudgetCounterError(
+                    f"{name} must be a non-negative integer, got {val!r}")
+        # The cost side is validated against the COST SIDE only (R-0224,
+        # DECISION F104 D5): money reported with nothing priced to explain it is
+        # still a contradiction, but neither count is ever weighed against
+        # provider_calls, which counts something else entirely.
         if (
             self.measured_cost_usd is not None
             and self.measured_cost_usd > 0
-            and self.provider_calls > 0
-            and self.unpriced_call_count == self.provider_calls
+            and self.priced_call_count == 0
+            and self.unpriced_call_count > 0
         ):
             raise BudgetCounterError(
-                f"measured_cost_usd ({self.measured_cost_usd}) > 0 but all "
-                f"{self.provider_calls} provider calls are unpriced")
+                f"measured_cost_usd ({self.measured_cost_usd}) > 0 but "
+                f"priced_call_count is 0 and all {self.unpriced_call_count} "
+                f"cost-side calls are unpriced")
 
     @property
     def total_call_count(self) -> int:
@@ -194,6 +202,7 @@ class BudgetCounters:
             # Stays None in JSON when unpriced — a null, never a zero (P6).
             "measured_cost_usd": self.measured_cost_usd,
             "unpriced_call_count": self.unpriced_call_count,
+            "priced_call_count": self.priced_call_count,
         }
 
 
@@ -499,6 +508,7 @@ def collect_counters_from_actuals(
     actual_sources: tuple[str, ...] | None = None,
     measured_cost_usd: float | None = None,
     unpriced_call_count: int = 0,
+    priced_call_count: int = 0,
 ) -> BudgetCounters:
     """Build BudgetCounters from _aggregate_usage_actuals() output.
 
@@ -508,8 +518,11 @@ def collect_counters_from_actuals(
     *actual_sources*: provenance of the actuals data. Must not be empty
     when measured calls are present.
 
-    *measured_cost_usd* / *unpriced_call_count*: F104 money actuals, passed
-    straight through. This function deliberately does NOT read the ledger —
+    *measured_cost_usd* / *unpriced_call_count* / *priced_call_count*: F104
+    money actuals, passed straight through. The two call counts are the ledger's
+    own cost-side split and are never compared against *provider_call_count*,
+    which counts something else (R-0224, DECISION F104 D5).
+    This function deliberately does NOT read the ledger —
     it stays the pure actuals bridge; ``collect_ledger_cost_for_job`` is the
     ledger reader, and a caller composes the two.
     """
@@ -581,6 +594,7 @@ def collect_counters_from_actuals(
         actual_sources=actual_sources,
         measured_cost_usd=measured_cost_usd,
         unpriced_call_count=unpriced_call_count,
+        priced_call_count=priced_call_count,
     )
 
 
