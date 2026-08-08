@@ -678,3 +678,148 @@ class TestCollectLedgerCostForJob:
         ledger = tmp_path / "never-created.sqlite"
         assert collect_ledger_cost_for_job(job_id="job-x", path=ledger) == (None, 0, 0)
         assert not ledger.exists()
+
+
+class TestLiveSafePointReadsTheLedgerCost:
+    """R-0222: the ledger cost must actually reach the LIVE guard.
+
+    These drive the real ``run_job`` pre-work safe point rather than grepping
+    source text, because the finding was precisely that a green unit gate can
+    coexist with a bridge that has no production caller.
+    """
+
+    def _drive(self, monkeypatch, tmp_path, *, budgets, ledger_result):
+        """Run ``run_job`` through its pre-work safe point and report what happened.
+
+        Returns ``(stop_signal_or_None, ledger_calls, counter_calls)`` where
+        ``ledger_calls`` lists the kwargs of every
+        ``collect_ledger_cost_for_job`` call made and ``counter_calls`` lists
+        the kwargs of every ``collect_counters_from_actuals`` call — the latter
+        is what proves WHICH cost figure the guard was actually handed.
+        """
+        from packages.orchestration import budget_guard as bg
+        from packages.orchestration import job_evidence as je
+        from packages.orchestration import pingpong_job as pj
+
+        fake_job = pj.JobPlan(
+            job_id="job-ledger-cost",
+            status="planned",
+            budgets=budgets,
+            tasks=[],
+        )
+        monkeypatch.setattr(pj, "load_job_plan", lambda _: fake_job)
+        monkeypatch.setattr(pj, "_persist_job", lambda j: None)
+        monkeypatch.setattr(pj, "_mark_manifest_required", lambda j: None)
+        monkeypatch.setattr(pj, "_episode_snapshot_bound_ok", lambda j: True)
+        monkeypatch.setattr(
+            "packages.orchestration.safe_points.stop_requested",
+            lambda *a, **kw: None)
+        monkeypatch.setattr(
+            "packages.orchestration.safe_points.control_root",
+            lambda *a, **kw: str(tmp_path))
+        monkeypatch.setattr(
+            je, "_resolve_job_ledger_project_id", lambda job: "project-uuid")
+
+        ledger_calls: list[dict] = []
+
+        def _fake_ledger(**kwargs):
+            ledger_calls.append(kwargs)
+            if isinstance(ledger_result, Exception):
+                raise ledger_result
+            return ledger_result
+
+        monkeypatch.setattr(bg, "collect_ledger_cost_for_job", _fake_ledger)
+
+        # Record what the guard was handed WITHOUT changing it: the real
+        # collector still runs, so the counters the stop check evaluates are
+        # the production ones.
+        counter_calls: list[dict] = []
+        _real_collect_counters = bg.collect_counters_from_actuals
+
+        def _recording_collect_counters(*args, **kwargs):
+            counter_calls.append(dict(kwargs))
+            return _real_collect_counters(*args, **kwargs)
+
+        monkeypatch.setattr(
+            bg, "collect_counters_from_actuals", _recording_collect_counters)
+
+        stops: list = []
+
+        def _fake_stop_job(job, signal, *, task=None, control_root_path=None):
+            stops.append(signal)
+            return job
+
+        monkeypatch.setattr(pj, "_stop_job", _fake_stop_job)
+        # No stop means the run walks on past the safe point; the workspace it
+        # would then acquire is not what these tests are about, so it is stubbed.
+        monkeypatch.setattr(
+            pj, "_acquire_job_workspace",
+            lambda job: (str(tmp_path / "ws"), None))
+
+        pj.run_job("job-ledger-cost")
+        return (stops[0] if stops else None), ledger_calls, counter_calls
+
+    def test_ledger_cost_over_the_limit_stops_the_job(self, monkeypatch, tmp_path):
+        signal, ledger_calls, counter_calls = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=(5.0, 3, 0),
+        )
+        assert len(ledger_calls) == 1
+        assert ledger_calls[0]["job_id"] == "job-ledger-cost"
+        assert ledger_calls[0]["project_id"] == "project-uuid"
+        assert counter_calls[-1]["measured_cost_usd"] == 5.0
+        assert signal is not None, \
+            "the ledger cost never reached the live guard (R-0222)"
+        assert signal.reason == "budget_exhausted:max_cost_usd"
+
+    def test_ledger_cost_under_the_limit_does_not_stop(self, monkeypatch, tmp_path):
+        signal, ledger_calls, counter_calls = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=(0.5, 3, 0),
+        )
+        assert len(ledger_calls) == 1
+        assert counter_calls[-1]["measured_cost_usd"] == 0.5
+        assert signal is None
+
+    def test_unpriced_ledger_keeps_the_cost_null_and_does_not_stop(
+            self, monkeypatch, tmp_path):
+        # P6: nothing measured stays nothing measured — never a measured zero,
+        # and never an exhaustion claim built on one.
+        signal, ledger_calls, counter_calls = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=(None, 0, 0),
+        )
+        assert len(ledger_calls) == 1
+        # The null must survive the trip. `is None`, never `== 0.0`: a coerced
+        # zero would not stop here either, so only this assertion tells the two
+        # apart.
+        assert counter_calls[-1]["measured_cost_usd"] is None
+        assert signal is None
+
+    def test_no_cost_limit_never_queries_the_ledger(self, monkeypatch, tmp_path):
+        signal, ledger_calls, counter_calls = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_total_tokens": 1_000_000},
+            ledger_result=(5.0, 3, 0),
+        )
+        assert ledger_calls == [], \
+            "a SQLite query per safe point for a limit nobody set is waste"
+        assert "measured_cost_usd" not in counter_calls[-1]
+        assert signal is None
+
+    def test_a_broken_ledger_read_never_stops_a_healthy_job(
+            self, monkeypatch, tmp_path):
+        signal, ledger_calls, counter_calls = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=RuntimeError("ledger read failed"),
+        )
+        assert len(ledger_calls) == 1
+        # The failed read leaves the cost UNMEASURED, not zero: the fallback
+        # counters carry no cost figure at all.
+        assert "measured_cost_usd" not in counter_calls[-1]
+        assert signal is None, \
+            "budgets read a mirror; a broken mirror must not stop a healthy job"
