@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from packages.orchestration.model_aliases import resolve_model_alias
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -107,12 +109,15 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=str,
         default="http://localhost:11434",
     ),
+    # The built-in Ollama default. Resolved from the single alias table
+    # (packages/orchestration/model_aliases.py) so no concrete model id is
+    # spelled out here; an upgrade repoints the alias, not this registry.
     ConfigKeySpec(
         key="ollama.model",
         env_var="REMEDY_OLLAMA_MODEL",
         description="Default Ollama model for all roles",
         value_type=str,
-        default="qwen3-coder-next",
+        default=resolve_model_alias("ollama-default"),
     ),
     ConfigKeySpec(
         key="ollama.builder.model",
@@ -447,6 +452,19 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         ),
         value_type=int,
         default=10,
+    ),
+    ConfigKeySpec(
+        key="doctor.dead_models",
+        env_var="REMEDY_DOCTOR_DEAD_MODELS",
+        description=(
+            "ADDITIONAL known-dead model ids for the doctor's model check "
+            "(F254). Config EXTENDS the shipped list in scripts/dead_models.json; "
+            "it never replaces it, so an id Remedy already ships as dead cannot "
+            "be configured away. The list is operator-maintained data — Remedy "
+            "never probes a provider to build it."
+        ),
+        value_type=list,
+        default=None,
     ),
     ConfigKeySpec(
         key="dossier.max_tokens",

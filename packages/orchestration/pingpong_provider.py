@@ -21,6 +21,7 @@ from packages.orchestration.call_identity import (
     canonical_call_number,
     prepare_call_input,
 )
+from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.schemas import (
     ReviewVerdict as _ReviewVerdictSchema,
 )
@@ -295,6 +296,11 @@ class FakeProvider:
 # Claude provider (real API calls)
 # ---------------------------------------------------------------------------
 
+#: The direct-API provider's built-in default model. Resolved from the single
+#: alias table (packages/orchestration/model_aliases.py) so no dated model id
+#: is spelled out here; an upgrade repoints the alias, not this file.
+_DEFAULT_CLAUDE_MODEL = resolve_model_alias("claude-workhorse")
+
 _REVIEWER_JSON_SCHEMA = """\
 Return ONLY valid JSON. No markdown. No code fence. No explanation outside JSON.
 Your entire response must be exactly one JSON object with this structure:
@@ -332,7 +338,7 @@ class ClaudeProvider:
     def __init__(
         self,
         *,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = _DEFAULT_CLAUDE_MODEL,
         max_tokens: int = 4096,
     ) -> None:
         self._model = model

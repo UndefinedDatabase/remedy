@@ -27,9 +27,13 @@ or:
 
 from __future__ import annotations
 
+from packages.orchestration.model_aliases import resolve_model_alias
 from packages.orchestration.planner_models import PlannerOutput
 
-_DEFAULT_MODEL = "qwen3-coder-next"
+#: This provider's built-in default model. Resolved from the single alias table
+#: (packages/orchestration/model_aliases.py) so no concrete model id is spelled
+#: out here; an upgrade repoints the alias, not this file.
+_DEFAULT_MODEL = resolve_model_alias("ollama-default")
 _DEFAULT_HOST = "http://localhost:11434"
 
 _SYSTEM_PROMPT = """\

@@ -455,6 +455,291 @@ class TestDoctorCoreSafeErr:
         assert "/Users/" not in raw
 
 
+# ---------------------------------------------------------------------------
+# doctor core — F254 known-dead model ids
+# ---------------------------------------------------------------------------
+
+_ALIAS_TABLE_PATCH = "packages.orchestration.model_aliases.MODEL_ALIASES"
+_GET_CONFIG_PATCH = "packages.orchestration.config.get_config"
+
+
+def _dead_entry(model_id: str, reason: str = "retired by the provider",
+                superseded: str = ""):
+    from packages.orchestration.dead_model_list import DeadModelEntry
+    return DeadModelEntry(id=model_id, reason=reason, superseded_by=superseded)
+
+
+class _FakeConfig:
+    """Only `get` — the one accessor the doctor uses on RemedyConfig."""
+
+    def __init__(self, values):
+        self._values = values
+
+    def get(self, key):
+        return self._values.get(key)
+
+
+def _patch_dead_list(monkeypatch, entries, extra_ids=()):
+    """Point the doctor's dead-model sources at fixtures.
+
+    scripts/dead_models.json is shipped operator data and is never edited by a
+    test; the loader is replaced instead, so the fixture cannot leak onto disk.
+    """
+    import packages.orchestration.dead_model_list as dml
+    monkeypatch.setattr(dml, "load_dead_models", lambda path=None: tuple(entries))
+    ids = frozenset(e.id for e in entries) | frozenset(extra_ids)
+    monkeypatch.setattr(dml, "dead_model_ids", lambda path=None: ids)
+
+
+class TestDoctorCoreDeadModels:
+    @pytest.fixture(autouse=True)
+    def _no_leaked_config_cache(self):
+        """Leave the process-global config cache exactly as empty as found."""
+        yield
+        from packages.orchestration.config import reset_config
+        reset_config()
+
+    def test_warnings_key_present_and_is_a_list(self, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        assert "warnings" in out
+        assert isinstance(out["warnings"], list)
+
+    def test_dead_id_leaves_ready_and_blockers_untouched(self, monkeypatch, capsys):
+        """DECISION D13: a dead id warns, it never decides readiness.
+
+        The comparison is against the SAME run with an empty dead list, so
+        `ready` and `blockers` are pinned to what the other checks alone say.
+        """
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+
+        _patch_dead_list(monkeypatch, [])
+        _cmd_doctor_core(_ns(json=True))
+        without_dead = json.loads(capsys.readouterr().out)
+
+        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _cmd_doctor_core(_ns(json=True))
+        with_dead = json.loads(capsys.readouterr().out)
+
+        assert without_dead["warnings"] == []
+        assert with_dead["warnings"], "a dead built-in default must warn"
+        assert with_dead["ready"] == without_dead["ready"]
+        assert with_dead["blockers"] == without_dead["blockers"]
+        assert "dead_model_list" not in with_dead["blockers"]
+
+    def test_dead_builtin_default_names_id_and_alias(self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [_dead_entry("dead-flagship-id")])
+        monkeypatch.setattr(_ALIAS_TABLE_PATCH, {
+            "test-flagship": "dead-flagship-id",
+            "test-workhorse": "live-id",
+        })
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        hits = [w for w in out["warnings"] if w["warning"] == "dead_builtin_model"]
+        assert len(hits) == 1
+        assert "dead-flagship-id" in hits[0]["detail"]
+        assert "test-flagship" in hits[0]["detail"], "must name the alias to repoint"
+        assert "test-workhorse" not in hits[0]["detail"]
+        # R-0215: the compact line carries the same three facts.
+        assert "dead-flagship-id" in hits[0]["summary"]
+        assert "test-flagship" in hits[0]["summary"], "must name the alias to repoint"
+        assert "repoint" in hits[0]["summary"], "must name the fix"
+
+    def test_dead_configured_id_names_the_config_key(self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [_dead_entry("dead-configured-id")])
+        monkeypatch.setattr(
+            _GET_CONFIG_PATCH,
+            lambda: _FakeConfig({"orchestrator.model": "dead-configured-id"}),
+        )
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        hits = [w for w in out["warnings"] if w["warning"] == "dead_configured_model"]
+        assert len(hits) == 1
+        assert "orchestrator.model" in hits[0]["detail"]
+        assert "dead-configured-id" in hits[0]["detail"]
+        # R-0215: the compact line names the key that produced the id and the
+        # fix, so text mode alone is enough to act on.
+        assert "orchestrator.model" in hits[0]["summary"]
+        assert "dead-configured-id" in hits[0]["summary"]
+        assert "change orchestrator.model" in hits[0]["summary"]
+
+    def test_unreadable_dead_list_is_a_failing_check_and_a_blocker(
+            self, monkeypatch, capsys):
+        """An unreadable list is a DEFECT, not an all-clear.
+
+        "No dead models" and "I could not open the list" are opposite
+        answers, so the read failure lands in `blockers`, not in `warnings`.
+        """
+        import packages.orchestration.dead_model_list as dml
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+
+        def _boom(path=None):
+            raise dml.DeadModelListError("dead_models.json: unreadable")
+
+        monkeypatch.setattr(dml, "load_dead_models", _boom)
+        monkeypatch.setattr(dml, "dead_model_ids", _boom)
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        entry = [c for c in out["checks"] if c["check"] == "dead_model_list"]
+        assert len(entry) == 1
+        assert entry[0]["ok"] is False
+        assert "dead_model_list" in out["blockers"]
+        assert out["ready"] is False
+        assert out["warnings"] == []
+
+    def test_text_output_shows_warnings_without_claiming_not_ready(
+            self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _cmd_doctor_core(_ns(json=False))
+        out = capsys.readouterr().out
+        assert "[WARN] dead_builtin_model:" in out
+        assert "claude-opus-4-20250514" in out
+        assert "do not affect READY" in out
+        assert "NOT READY" not in out
+
+    def test_warning_states_operator_maintained_provenance(self, monkeypatch, capsys):
+        """No false live indicator: the verdict is a data file, not a provider."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        detail = out["warnings"][0]["detail"]
+        assert "dead_models.json" in detail
+        assert "operator-maintained" in detail
+        assert "no provider was queried" in detail
+
+    def test_provenance_survives_in_the_compact_text_rendering(
+            self, monkeypatch, capsys):
+        """R-0215: shortening the WORDING never drops the honesty clause.
+
+        The compact summary is what text mode prints; a summary that omitted
+        where the verdict came from would read as live provider knowledge,
+        which is the one thing this feature must never imply.
+        """
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [_dead_entry("claude-opus-4-20250514")])
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        summary = out["warnings"][0]["summary"]
+        assert "dead_models.json" in summary
+        assert "operator data" in summary
+        assert "no provider queried" in summary
+
+    def test_summary_is_materially_shorter_than_detail(self, monkeypatch, capsys):
+        """R-0215: text mode is one compact line, not the whole record."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [
+            _dead_entry(
+                "claude-opus-4-20250514",
+                reason="A May-2025 dated id several generations stale as of "
+                       "Aug 2026; no replacement id is named here because "
+                       "nothing in this repository states one.",
+            ),
+        ])
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        warning = out["warnings"][0]
+        assert len(warning["summary"]) * 2 < len(warning["detail"]), (
+            "the compact line must be far shorter than the full record"
+        )
+
+    def test_text_mode_prints_the_summary_and_not_the_recorded_reason(
+            self, monkeypatch, capsys):
+        """R-0215: the ~700-character wall stays out of the check list."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [
+            _dead_entry("claude-opus-4-20250514",
+                        reason="RECORDED-REASON-SENTINEL"),
+        ])
+        _cmd_doctor_core(_ns(json=False))
+        text = capsys.readouterr().out
+        warn_lines = [ln for ln in text.splitlines() if "[WARN]" in ln]
+        assert warn_lines
+        assert "RECORDED-REASON-SENTINEL" not in text
+        assert "--json" in text, "text mode must point at where the reason lives"
+        assert max(len(ln) for ln in warn_lines) < 300, (
+            "a warning line the operator cannot read is the defect R-0215 named"
+        )
+
+    def test_missing_replacement_is_not_repeated_after_the_reason(
+            self, monkeypatch, capsys):
+        """R-0215: say it once. The recorded reason already covers it.
+
+        The reason is the authoritative statement; appending
+        "No replacement id is recorded." after it said the same thing twice
+        in one line. When there IS no reason to lean on, the statement is
+        still made — see `test_config_extension_id_says_it_came_from_config`.
+        """
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [
+            _dead_entry("claude-opus-4-20250514",
+                        reason="retired; no replacement is named here",
+                        superseded=""),
+        ])
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        detail = out["warnings"][0]["detail"]
+        assert "retired; no replacement is named here" in detail
+        assert "No replacement id is recorded." not in detail
+
+    def test_known_replacement_is_named(self, monkeypatch, capsys):
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [
+            _dead_entry("claude-opus-4-20250514", superseded="some-live-id"),
+        ])
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        detail = out["warnings"][0]["detail"]
+        assert "Recorded replacement: some-live-id." in detail
+        assert "No replacement id is recorded." not in detail
+
+    def test_config_extension_id_says_it_came_from_config(self, monkeypatch, capsys):
+        """An id known dead only via doctor.dead_models has no shipped reason."""
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+        _patch_dead_list(monkeypatch, [], extra_ids=("dead-flagship-id",))
+        monkeypatch.setattr(_ALIAS_TABLE_PATCH, {"test-flagship": "dead-flagship-id"})
+        _cmd_doctor_core(_ns(json=True))
+        out = json.loads(capsys.readouterr().out)
+        detail = out["warnings"][0]["detail"]
+        assert "doctor.dead_models" in detail
+        assert "No replacement id is recorded." in detail
+
+    def _dead_list_detail(self, out):
+        entry = [c for c in out["checks"] if c["check"] == "dead_model_list"]
+        assert len(entry) == 1
+        return str(entry[0]["detail"])
+
+    def test_dead_list_count_label_matches_what_it_counts(
+            self, monkeypatch, capsys):
+        """R-0215: the second number is config-ONLY ids, so say that.
+
+        `dead_model_ids()` returns the UNION of shipped and configured, so
+        subtracting the shipped count leaves the ids config added that were
+        not shipped already. Calling that "configured dead ids" reported 0
+        for an operator who had configured one.
+        """
+        from apps.cli.commands.worker_facade_cmd import _cmd_doctor_core
+
+        # One shipped id, one config-only id: 1 + 1 = 2.
+        _patch_dead_list(monkeypatch, [_dead_entry("shipped-dead-id")],
+                         extra_ids=("config-dead-id",))
+        _cmd_doctor_core(_ns(json=True))
+        detail = self._dead_list_detail(json.loads(capsys.readouterr().out))
+        assert detail == "1 shipped + 1 config-only dead ids (2 total)"
+
+        # The operator re-lists an id Remedy already ships: it adds no id, and
+        # the label now says so instead of claiming nothing was configured.
+        _patch_dead_list(monkeypatch, [_dead_entry("shipped-dead-id")],
+                         extra_ids=("shipped-dead-id",))
+        _cmd_doctor_core(_ns(json=True))
+        detail = self._dead_list_detail(json.loads(capsys.readouterr().out))
+        assert detail == "1 shipped + 0 config-only dead ids (1 total)"
+
+
 class TestCollectHandlers:
     def test_facade_in_collected(self):
         from apps.cli.commands import collect_all_handlers

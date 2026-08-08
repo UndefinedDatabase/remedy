@@ -23,6 +23,8 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 
+from packages.orchestration.model_aliases import resolve_model_alias
+
 # ---------------------------------------------------------------------------
 # Defaults (provider-aware)
 # ---------------------------------------------------------------------------
@@ -30,12 +32,15 @@ from dataclasses import dataclass
 DEFAULT_PROVIDER = "ollama"
 DEFAULT_EFFORT = "medium"
 
+#: Which ROLE a provider's built-in default model plays. The concrete ids live
+#: in packages/orchestration/model_aliases.py — the single source — so an
+#: upgrade repoints one alias there instead of editing this table.
 _PROVIDER_DEFAULT_MODELS: dict[str, str] = {
-    "ollama": "qwen3-coder-next",
-    "claude-cli": "claude-opus-4-20250514",
-    "claude": "claude-opus-4-20250514",
-    "fake": "fake-model",
-    "fixture": "fixture-model",
+    "ollama": resolve_model_alias("ollama-default"),
+    "claude-cli": resolve_model_alias("claude-flagship"),
+    "claude": resolve_model_alias("claude-flagship"),
+    "fake": resolve_model_alias("fake"),
+    "fixture": resolve_model_alias("fixture"),
 }
 
 DEFAULT_MODEL = _PROVIDER_DEFAULT_MODELS[DEFAULT_PROVIDER]
