@@ -441,8 +441,14 @@ class TestRunContractConsolidation:
 _PRICED_SOURCES = ("token_actuals",)
 
 
-def _cost_counters(cost, *, calls=2, unpriced=0):
-    """Counters whose token side is fixed so only the money side varies."""
+def _cost_counters(cost, *, calls=2, unpriced=0, priced=None):
+    """Counters whose token side is fixed so only the money side varies.
+
+    *priced* defaults to the rest of the same call set, so the cost-side split
+    stays self-consistent: a reported cost has priced calls explaining it
+    (R-0224, DECISION F104 D5). Pass it explicitly to model a ledger whose
+    cost-side counts do NOT line up with this run's provider calls.
+    """
     return BudgetCounters(
         provider_calls=calls,
         measured_token_total=100,
@@ -452,6 +458,7 @@ def _cost_counters(cost, *, calls=2, unpriced=0):
         evaluated_at=T0,
         measured_cost_usd=cost,
         unpriced_call_count=unpriced,
+        priced_call_count=(calls - unpriced) if priced is None else priced,
     )
 
 
@@ -494,10 +501,22 @@ class TestBudgetCountersCostValidation:
         with pytest.raises(BudgetCounterError, match="measured_cost_usd.*bool"):
             BudgetCounters(measured_cost_usd=True)  # type: ignore[arg-type]
 
-    def test_unpriced_count_above_provider_calls_rejected(self):
-        with pytest.raises(BudgetCounterError, match="unpriced_call_count.*provider_calls"):
-            BudgetCounters(
-                provider_calls=1, unmeasured_call_count=1, unpriced_call_count=2)
+    def test_unpriced_count_above_provider_calls_is_accepted_and_preserved(self):
+        # R-0224 / DECISION F104 D5: this used to raise. Do NOT restore that
+        # check. `unpriced_call_count` comes from the F103 ledger, counted per
+        # finalized task run across EVERY run of the job; `provider_calls` counts
+        # attempts in THIS run and skips the fake provider. The ledger legitimately
+        # holds more unpriced rows than this run has attempts, and comparing them
+        # made a healthy resumed job raise inside the ledger read's own broad
+        # `except`, silently disabling `--max-cost-usd`. The count is preserved
+        # EXACTLY — never clamped down, which would understate how much went
+        # unpriced (the P6 failure in mirror image).
+        c = BudgetCounters(
+            provider_calls=1, unmeasured_call_count=1, unpriced_call_count=2)
+        assert c.unpriced_call_count == 2
+        assert c.provider_calls == 1
+        assert c.has_unpriced is True
+        assert c.to_json()["unpriced_call_count"] == 2
 
     def test_bool_unpriced_count_rejected(self):
         with pytest.raises(BudgetCounterError, match="unpriced_call_count.*bool"):
@@ -507,14 +526,44 @@ class TestBudgetCountersCostValidation:
         with pytest.raises(BudgetCounterError, match="unpriced_call_count.*non-negative"):
             BudgetCounters(unpriced_call_count=-1)
 
-    def test_positive_cost_with_every_call_unpriced_is_impossible(self):
-        with pytest.raises(BudgetCounterError, match="all 2 provider calls are unpriced"):
+    def test_bool_priced_count_rejected(self):
+        with pytest.raises(BudgetCounterError, match="priced_call_count.*bool"):
+            BudgetCounters(priced_call_count=True)  # type: ignore[arg-type]
+
+    def test_negative_priced_count_rejected(self):
+        with pytest.raises(BudgetCounterError, match="priced_call_count.*non-negative"):
+            BudgetCounters(priced_call_count=-1)
+
+    def test_priced_count_above_provider_calls_is_accepted_too(self):
+        # The mirror of the test above: neither cost-side count is measured
+        # against `provider_calls` any more (DECISION F104 D5).
+        c = BudgetCounters(
+            provider_calls=1, unmeasured_call_count=1,
+            priced_call_count=7, measured_cost_usd=3.0)
+        assert c.priced_call_count == 7
+
+    def test_positive_cost_with_nothing_priced_is_impossible(self):
+        # The surviving contradiction, now stated on the COST side only: money
+        # was reported but no priced call explains it.
+        with pytest.raises(BudgetCounterError, match="priced_call_count is 0"):
             BudgetCounters(
                 provider_calls=2,
                 unmeasured_call_count=2,
                 unpriced_call_count=2,
+                priced_call_count=0,
                 measured_cost_usd=1.0,
             )
+
+    def test_positive_cost_with_some_priced_calls_is_fine(self):
+        c = BudgetCounters(
+            provider_calls=2,
+            unmeasured_call_count=2,
+            unpriced_call_count=2,
+            priced_call_count=1,
+            measured_cost_usd=1.0,
+        )
+        assert c.measured_cost_usd == 1.0
+        assert c.has_unpriced is True
 
     def test_zero_cost_with_every_call_unpriced_is_allowed(self):
         c = BudgetCounters(
@@ -526,6 +575,14 @@ class TestBudgetCountersCostValidation:
         j = BudgetCounters(provider_calls=1, unmeasured_call_count=1,
                            unpriced_call_count=1).to_json()
         assert j["measured_cost_usd"] is None
+        assert j["unpriced_call_count"] == 1
+
+    def test_json_carries_the_priced_call_count(self):
+        j = BudgetCounters(
+            provider_calls=3, unmeasured_call_count=3,
+            unpriced_call_count=1, priced_call_count=2,
+            measured_cost_usd=0.5).to_json()
+        assert j["priced_call_count"] == 2
         assert j["unpriced_call_count"] == 1
 
 
@@ -610,9 +667,11 @@ class TestEvaluateCostLimit:
             actual_sources=_PRICED_SOURCES,
             measured_cost_usd=0.75,
             unpriced_call_count=1,
+            priced_call_count=2,
         )
         assert c.measured_cost_usd == 0.75
         assert c.unpriced_call_count == 1
+        assert c.priced_call_count == 2
 
     def test_collect_counters_from_actuals_defaults_to_unpriced(self):
         c = collect_counters_from_actuals(
@@ -620,6 +679,22 @@ class TestEvaluateCostLimit:
             now=T0, actual_sources=_PRICED_SOURCES)
         assert c.measured_cost_usd is None
         assert c.unpriced_call_count == 0
+        assert c.priced_call_count == 0
+
+    def test_collect_counters_passes_cost_side_counts_above_provider_calls(self):
+        # R-0224 at the bridge: the ledger's cost-side split may exceed this
+        # run's provider-call count and must survive the trip unchanged.
+        c = collect_counters_from_actuals(
+            {"provider_call_count": 0, "actual_call_count": 0, "total_tokens": 0},
+            now=T0,
+            measured_cost_usd=4.0,
+            unpriced_call_count=3,
+            priced_call_count=2,
+        )
+        assert c.provider_calls == 0
+        assert c.measured_cost_usd == 4.0
+        assert c.unpriced_call_count == 3
+        assert c.priced_call_count == 2
 
 
 class TestCollectLedgerCostForJob:
@@ -823,3 +898,25 @@ class TestLiveSafePointReadsTheLedgerCost:
         assert "measured_cost_usd" not in counter_calls[-1]
         assert signal is None, \
             "budgets read a mirror; a broken mirror must not stop a healthy job"
+
+    def test_ledger_unpriced_count_above_this_runs_calls_still_enforces(
+            self, monkeypatch, tmp_path):
+        # R-0224 at the LIVE safe point. This job is fresh, so the run
+        # accumulator has counted 0 provider calls, while the ledger reports 5
+        # cost-side rows (2 priced, 3 unpriced) from earlier runs. Before the
+        # fix, `unpriced_call_count (3) > provider_calls (0)` raised
+        # BudgetCounterError INSIDE the ledger read's own broad `except`, the
+        # cost was swallowed, no cost figure reached the guard at all, and
+        # `--max-cost-usd` did not enforce. All three figures must now arrive.
+        signal, ledger_calls, counter_calls = self._drive(
+            monkeypatch, tmp_path,
+            budgets={"max_cost_usd": 2.0},
+            ledger_result=(4.0, 2, 3),
+        )
+        assert len(ledger_calls) == 1
+        assert counter_calls[-1]["measured_cost_usd"] == 4.0
+        assert counter_calls[-1]["priced_call_count"] == 2
+        assert counter_calls[-1]["unpriced_call_count"] == 3
+        assert signal is not None, \
+            "the cost was swallowed by the counter invariant again (R-0224)"
+        assert signal.reason == "budget_exhausted:max_cost_usd"
