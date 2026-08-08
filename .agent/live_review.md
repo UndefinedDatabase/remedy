@@ -26,8 +26,7 @@ handoff is a SUCCESS, not a failure.
 ## Steps
 - R1 (SPLIT): Open PR Gate — no open PRs, nothing to merge — then the
   STATUS claim, the R-0214 closure-candidate sweep, and the reset of
-  live_review, plan, context and candidates to this feature — under
-  review.
+  live_review, plan, context and candidates to this feature — PASS.
 - R2 (SPLIT): T001 — schema, migration bootstrap, the `record_call(...)`
   writer, the never-fail-the-run discipline, miss counting, unit tests.
 - R3 (SPLIT): T002 — backfill and reconcile commands, idempotent by
@@ -67,4 +66,32 @@ handoff is a SUCCESS, not a failure.
   candidate and empty `.agent/candidates.md` in that same round.
 
 ## Verdicts
-- R1: pending review.
+- R1 (SPLIT) — **PASS**. Reviewed `c1c0fbcb..28781d8f` bottom-up, and
+  the reviewer re-ran every verification command itself instead of
+  reading the worker's numbers. The diff is exactly the mandated
+  13-path set across three commits — no production code, no stray path,
+  `git add -A` never used. AGENTS.md **+11/-0**, purely additive, the
+  clause sitting inside the handoff.md section directly after the cap
+  paragraph with the original cap sentence untouched, so the declared
+  APPEND shape is real and not a rewrite in disguise. STATUS.md 315
+  lines before and after, one line swapped; `[~]` markers in the whole
+  file **1**; F103 appears exactly once. Reviewer-run transport proof:
+  `cmp` of each target against its committed receipt —
+  `.agent/live_review.md`, `.agent/plan.md`, `.agent/context.md`,
+  `.agent/candidates.md` — **exit 0 x4**, and receipts 4, 5 and 6 were
+  read back byte-for-byte against the authored originals.
+  Reviewer-run verification: `tests/docs/` **294 passed**, the
+  state-contract trio (dashboard, test_runner, resource_safety) **142
+  passed**, canary `tests/cli/test_golden_path.py` **42 passed**,
+  `git status --porcelain` empty, branch in sync with
+  `origin/feature/f103-token-ledger`, `gh pr list --state open` still
+  `[]`. Every number matched the handback's, so nothing was taken on
+  trust and nothing had to be corrected. Verification tier: ROUND GATE
+  plus the docs-round gate and the canary — NOT the full suite. No
+  block condition present. The three declared deviations are accepted:
+  the 100-line handoff is the first written under the very clause this
+  round added and drops no section; `.agent/decisions.md` was correctly
+  left alone as outside the path set; and a commit cannot table its own
+  SHA. No finding. Next free ID stays R-0218.
+  LAST_REVIEWED_SHA = `28781d8f`.
+- R2: pending review.
