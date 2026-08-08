@@ -432,3 +432,249 @@ class TestRunContractConsolidation:
         )
         evaluation = evaluate_budget(job.budgets, counters, now=T0)
         assert evaluation.exhausted is False
+
+
+# --- F104 T001: the max_cost_usd money limit -------------------------------
+# A cost of None means UNPRICED. Every assertion below exists so that None can
+# never quietly become 0.0 (P6).
+
+_PRICED_SOURCES = ("token_actuals",)
+
+
+def _cost_counters(cost, *, calls=2, unpriced=0):
+    """Counters whose token side is fixed so only the money side varies."""
+    return BudgetCounters(
+        provider_calls=calls,
+        measured_token_total=100,
+        measured_call_count=calls,
+        unmeasured_call_count=0,
+        actual_sources=_PRICED_SOURCES,
+        evaluated_at=T0,
+        measured_cost_usd=cost,
+        unpriced_call_count=unpriced,
+    )
+
+
+class TestCostDescription:
+    def test_no_cost_at_all_is_not_measured(self):
+        c = BudgetCounters(provider_calls=1, unmeasured_call_count=1, unpriced_call_count=1)
+        assert c.cost_description() == "not-measured"
+        assert c.measured_cost_usd is None
+
+    def test_fully_priced_renders_the_amount(self):
+        assert _cost_counters(1.5).cost_description() == "$1.5000"
+
+    def test_partially_priced_renders_a_lower_bound(self):
+        c = _cost_counters(0.25, calls=3, unpriced=1)
+        assert c.cost_description() == ">= $0.2500 (1 provider calls unpriced)"
+
+    def test_measured_zero_is_not_the_unmeasured_string(self):
+        assert _cost_counters(0.0).cost_description() == "$0.0000"
+        assert _cost_counters(0.0).cost_description() != "not-measured"
+
+    def test_has_unpriced_mirrors_has_unmeasured(self):
+        assert _cost_counters(1.0).has_unpriced is False
+        assert _cost_counters(1.0, calls=3, unpriced=2).has_unpriced is True
+
+
+class TestBudgetCountersCostValidation:
+    def test_negative_cost_rejected(self):
+        with pytest.raises(BudgetCounterError, match="measured_cost_usd.*non-negative"):
+            BudgetCounters(measured_cost_usd=-0.01)
+
+    def test_nan_cost_rejected(self):
+        with pytest.raises(BudgetCounterError, match="measured_cost_usd.*finite"):
+            BudgetCounters(measured_cost_usd=float("nan"))
+
+    def test_infinite_cost_rejected(self):
+        with pytest.raises(BudgetCounterError, match="measured_cost_usd.*finite"):
+            BudgetCounters(measured_cost_usd=float("inf"))
+
+    def test_bool_cost_rejected(self):
+        with pytest.raises(BudgetCounterError, match="measured_cost_usd.*bool"):
+            BudgetCounters(measured_cost_usd=True)  # type: ignore[arg-type]
+
+    def test_unpriced_count_above_provider_calls_rejected(self):
+        with pytest.raises(BudgetCounterError, match="unpriced_call_count.*provider_calls"):
+            BudgetCounters(
+                provider_calls=1, unmeasured_call_count=1, unpriced_call_count=2)
+
+    def test_bool_unpriced_count_rejected(self):
+        with pytest.raises(BudgetCounterError, match="unpriced_call_count.*bool"):
+            BudgetCounters(unpriced_call_count=True)  # type: ignore[arg-type]
+
+    def test_negative_unpriced_count_rejected(self):
+        with pytest.raises(BudgetCounterError, match="unpriced_call_count.*non-negative"):
+            BudgetCounters(unpriced_call_count=-1)
+
+    def test_positive_cost_with_every_call_unpriced_is_impossible(self):
+        with pytest.raises(BudgetCounterError, match="all 2 provider calls are unpriced"):
+            BudgetCounters(
+                provider_calls=2,
+                unmeasured_call_count=2,
+                unpriced_call_count=2,
+                measured_cost_usd=1.0,
+            )
+
+    def test_zero_cost_with_every_call_unpriced_is_allowed(self):
+        c = BudgetCounters(
+            provider_calls=2, unmeasured_call_count=2,
+            unpriced_call_count=2, measured_cost_usd=0.0)
+        assert c.measured_cost_usd == 0.0
+
+    def test_json_keeps_unpriced_as_null_not_zero(self):
+        j = BudgetCounters(provider_calls=1, unmeasured_call_count=1,
+                           unpriced_call_count=1).to_json()
+        assert j["measured_cost_usd"] is None
+        assert j["unpriced_call_count"] == 1
+
+
+class TestEvaluateCostLimit:
+    def test_priced_over_limit_is_exhausted(self):
+        r = evaluate_budget(JobBudgets(max_cost_usd=1.0), _cost_counters(2.5), now=T0)
+        assert r.exhausted is True
+        assert r.first_exhausted_limit == "max_cost_usd"
+        assert r.cost_lower_bound is False
+
+    def test_priced_at_limit_is_exhausted(self):
+        r = evaluate_budget(JobBudgets(max_cost_usd=2.5), _cost_counters(2.5), now=T0)
+        assert r.exhausted is True
+        assert r.first_exhausted_limit == "max_cost_usd"
+
+    def test_priced_under_limit_is_not_exhausted(self):
+        r = evaluate_budget(JobBudgets(max_cost_usd=10.0), _cost_counters(2.5), now=T0)
+        assert r.exhausted is False
+        assert r.first_exhausted_limit is None
+        assert r.cost_lower_bound is False
+        assert r.warnings == ()
+
+    def test_unpriced_mixed_over_limit_is_a_definite_breach(self):
+        # A lower bound already past the limit cannot be undone by pricing more.
+        c = _cost_counters(5.0, calls=4, unpriced=2)
+        r = evaluate_budget(JobBudgets(max_cost_usd=1.0), c, now=T0)
+        assert r.exhausted is True
+        assert r.first_exhausted_limit == "max_cost_usd"
+        assert r.cost_lower_bound is True
+
+    def test_unpriced_mixed_under_limit_only_warns(self):
+        c = _cost_counters(0.5, calls=4, unpriced=3)
+        r = evaluate_budget(JobBudgets(max_cost_usd=100.0), c, now=T0)
+        assert r.exhausted is False
+        assert r.cost_lower_bound is True
+        assert any("3 calls unpriced" in w for w in r.warnings)
+
+    def test_fully_unpriced_never_renders_as_zero(self):
+        c = BudgetCounters(
+            provider_calls=3, unmeasured_call_count=3, unpriced_call_count=3,
+            evaluated_at=T0)
+        r = evaluate_budget(JobBudgets(max_cost_usd=2.0), c, now=T0)
+        assert r.exhausted is False
+        assert r.cost_lower_bound is True
+        assert r.warnings
+        # The unknown stays a null everywhere it can be read.
+        assert r.counters.measured_cost_usd is None
+        assert r.to_json()["counters"]["measured_cost_usd"] is None
+        rendered = " ".join(r.source_descriptions)
+        assert "not-measured" in rendered
+        assert "$0.0000/" not in rendered
+
+    def test_no_usd_limit_leaves_the_cost_path_inert(self):
+        c = _cost_counters(999.0)
+        r = evaluate_budget(JobBudgets(max_total_tokens=1_000_000), c, now=T0)
+        assert r.exhausted is False
+        assert r.cost_lower_bound is False
+        assert not any("cost:" in s for s in r.source_descriptions)
+        pre_feature = evaluate_budget(
+            JobBudgets(max_total_tokens=1_000_000),
+            BudgetCounters(
+                provider_calls=2, measured_token_total=100, measured_call_count=2,
+                actual_sources=_PRICED_SOURCES, evaluated_at=T0),
+            now=T0,
+        )
+        assert r.to_json()["cost_lower_bound"] == pre_feature.to_json()["cost_lower_bound"]
+        assert pre_feature.to_json()["counters"]["measured_cost_usd"] is None
+
+    def test_token_limit_wins_the_ordering_when_both_breach(self):
+        c = BudgetCounters(
+            provider_calls=2, measured_token_total=10_000, measured_call_count=2,
+            actual_sources=_PRICED_SOURCES, evaluated_at=T0, measured_cost_usd=50.0)
+        r = evaluate_budget(
+            JobBudgets(max_total_tokens=100, max_cost_usd=1.0), c, now=T0)
+        assert r.exhausted is True
+        assert r.first_exhausted_limit == "max_total_tokens"
+
+    def test_collect_counters_from_actuals_passes_money_through(self):
+        c = collect_counters_from_actuals(
+            {"provider_call_count": 3, "actual_call_count": 2, "total_tokens": 40},
+            now=T0,
+            actual_sources=_PRICED_SOURCES,
+            measured_cost_usd=0.75,
+            unpriced_call_count=1,
+        )
+        assert c.measured_cost_usd == 0.75
+        assert c.unpriced_call_count == 1
+
+    def test_collect_counters_from_actuals_defaults_to_unpriced(self):
+        c = collect_counters_from_actuals(
+            {"provider_call_count": 1, "actual_call_count": 1, "total_tokens": 10},
+            now=T0, actual_sources=_PRICED_SOURCES)
+        assert c.measured_cost_usd is None
+        assert c.unpriced_call_count == 0
+
+
+class TestCollectLedgerCostForJob:
+    """The read-only bridge from the F103 ledger into the budget counters."""
+
+    def _record(self, path, *, call_id, job_id, cost):
+        from packages.orchestration.token_ledger import (
+            COST_BASIS_PROVIDER_REPORTED,
+            COST_BASIS_UNKNOWN,
+            CallRecord,
+            record_call,
+        )
+        ok = record_call(
+            CallRecord(
+                call_id=call_id,
+                job_id=job_id,
+                ts_utc="2026-08-08T10:00:00+00:00",
+                cost_usd=cost,
+                cost_basis=(
+                    COST_BASIS_PROVIDER_REPORTED if cost is not None
+                    else COST_BASIS_UNKNOWN
+                ),
+            ),
+            path=path,
+        )
+        assert ok is True
+
+    def test_priced_and_unpriced_calls_return_the_right_triple(self, tmp_path):
+        from packages.orchestration.budget_guard import collect_ledger_cost_for_job
+        ledger = tmp_path / "ledger.sqlite"
+        self._record(ledger, call_id="c1", job_id="job-a", cost=1.25)
+        self._record(ledger, call_id="c2", job_id="job-a", cost=0.75)
+        self._record(ledger, call_id="c3", job_id="job-a", cost=None)
+        self._record(ledger, call_id="c4", job_id="job-b", cost=99.0)
+
+        cost, priced, unpriced = collect_ledger_cost_for_job(
+            job_id="job-a", path=ledger)
+        assert cost == pytest.approx(2.0)
+        assert priced == 2
+        assert unpriced == 1
+
+    def test_all_unpriced_job_keeps_the_cost_null(self, tmp_path):
+        from packages.orchestration.budget_guard import collect_ledger_cost_for_job
+        ledger = tmp_path / "ledger.sqlite"
+        self._record(ledger, call_id="u1", job_id="job-c", cost=None)
+        self._record(ledger, call_id="u2", job_id="job-c", cost=None)
+
+        cost, priced, unpriced = collect_ledger_cost_for_job(
+            job_id="job-c", path=ledger)
+        assert cost is None
+        assert priced == 0
+        assert unpriced == 2
+
+    def test_missing_ledger_returns_none_and_creates_nothing(self, tmp_path):
+        from packages.orchestration.budget_guard import collect_ledger_cost_for_job
+        ledger = tmp_path / "never-created.sqlite"
+        assert collect_ledger_cost_for_job(job_id="job-x", path=ledger) == (None, 0, 0)
+        assert not ledger.exists()

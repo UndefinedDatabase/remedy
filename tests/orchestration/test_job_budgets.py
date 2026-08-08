@@ -32,6 +32,54 @@ class TestJobBudgetsModel:
         b = JobBudgets(max_wall_clock_minutes=30)
         assert b.max_wall_clock_minutes == 30
 
+    # --- F104: the max_cost_usd money limit ---
+    def test_max_cost_usd_defaults_to_none(self):
+        assert JobBudgets().max_cost_usd is None
+
+    def test_max_cost_usd_accepts_float(self):
+        b = JobBudgets(max_cost_usd=2.5)
+        assert b.max_cost_usd == 2.5
+        assert isinstance(b.max_cost_usd, float)
+
+    def test_max_cost_usd_accepts_int_and_normalises_to_float(self):
+        b = JobBudgets(max_cost_usd=5)
+        assert b.max_cost_usd == 5.0
+        assert isinstance(b.max_cost_usd, float)
+
+    def test_max_cost_usd_zero_rejected(self):
+        with pytest.raises(ValueError, match="strictly positive"):
+            JobBudgets(max_cost_usd=0)
+
+    def test_max_cost_usd_negative_rejected(self):
+        with pytest.raises(ValueError, match="strictly positive"):
+            JobBudgets(max_cost_usd=-1.5)
+
+    def test_max_cost_usd_bool_rejected(self):
+        with pytest.raises(ValueError):
+            JobBudgets(max_cost_usd=True)
+
+    def test_max_cost_usd_nan_rejected(self):
+        with pytest.raises(ValueError, match="finite"):
+            JobBudgets(max_cost_usd=float("nan"))
+
+    def test_max_cost_usd_inf_rejected(self):
+        with pytest.raises(ValueError, match="finite"):
+            JobBudgets(max_cost_usd=float("inf"))
+
+    def test_max_cost_usd_negative_inf_rejected(self):
+        with pytest.raises(ValueError, match="finite"):
+            JobBudgets(max_cost_usd=float("-inf"))
+
+    def test_max_cost_usd_still_forbids_extra_fields(self):
+        with pytest.raises(Exception):
+            JobBudgets(max_cost_usd=1.0, max_cost_eur=2.0)
+
+    def test_max_cost_usd_roundtrips_through_json(self):
+        b = JobBudgets(max_cost_usd=1.25)
+        snap = b.model_dump(mode="json")
+        assert snap["max_cost_usd"] == 1.25
+        assert JobBudgets.model_validate(snap).max_cost_usd == 1.25
+
     def test_deadline_only(self):
         dl = datetime(2026, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
         b = JobBudgets(deadline=dl)
@@ -260,12 +308,126 @@ class TestBudgetResolution:
         assert result.max_total_tokens == 300_000
 
 
+class TestCostBudgetResolution:
+    """F104: max_cost_usd follows the same CLI > env > TOML > no-limit rules."""
+
+    def test_absent_everywhere_yields_none_field(self):
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(cli_max_total_tokens="1000")
+        assert result is not None
+        assert result.max_cost_usd is None
+
+    def test_absent_everywhere_does_not_force_a_budgets_object(self):
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        assert resolve_job_budgets() is None
+
+    def test_cli_flag_sets_the_limit(self):
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(cli_max_cost_usd="2.50")
+        assert result is not None
+        assert result.max_cost_usd == 2.5
+
+    def test_cli_flag_alone_produces_a_budgets_object(self):
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(cli_max_cost_usd="0.01")
+        assert result is not None
+        assert result.max_total_tokens is None
+        assert result.max_cost_usd == 0.01
+
+    def test_config_used_when_no_cli(self, tmp_path):
+        toml = tmp_path / "remedy.toml"
+        toml.write_text('[remedy.budget]\nmax_cost_usd = 4.25\n')
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(config_path=str(toml))
+        assert result is not None
+        assert result.max_cost_usd == 4.25
+
+    def test_cli_beats_toml(self, tmp_path):
+        toml = tmp_path / "remedy.toml"
+        toml.write_text('[remedy.budget]\nmax_cost_usd = 4.25\n')
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(
+            cli_max_cost_usd="9.99", config_path=str(toml))
+        assert result is not None
+        assert result.max_cost_usd == 9.99
+
+    def test_env_override(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_BUDGET_MAX_COST_USD", "3.75")
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets()
+        assert result is not None
+        assert result.max_cost_usd == 3.75
+
+    def test_cli_beats_env(self, monkeypatch):
+        monkeypatch.setenv("REMEDY_BUDGET_MAX_COST_USD", "3.75")
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(cli_max_cost_usd="1.00")
+        assert result is not None
+        assert result.max_cost_usd == 1.0
+
+    def test_malformed_cli_value_raises(self):
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
+        )
+        with pytest.raises(BudgetConfigError, match="not a valid number"):
+            resolve_job_budgets(cli_max_cost_usd="abc")
+
+    def test_zero_cli_value_raises(self):
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
+        )
+        with pytest.raises(BudgetConfigError, match="strictly positive"):
+            resolve_job_budgets(cli_max_cost_usd="0")
+
+    def test_negative_cli_value_raises(self):
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
+        )
+        with pytest.raises(BudgetConfigError, match="strictly positive"):
+            resolve_job_budgets(cli_max_cost_usd="-1.0")
+
+    def test_non_finite_cli_value_raises(self):
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
+        )
+        with pytest.raises(BudgetConfigError, match="finite"):
+            resolve_job_budgets(cli_max_cost_usd="inf")
+
+    def test_malformed_toml_value_raises(self, tmp_path):
+        toml = tmp_path / "remedy.toml"
+        toml.write_text('[remedy.budget]\nmax_cost_usd = "not_a_number"\n')
+        from packages.orchestration.budget_resolution import (
+            BudgetConfigError,
+            resolve_job_budgets,
+        )
+        with pytest.raises(BudgetConfigError, match="not a valid number"):
+            resolve_job_budgets(config_path=str(toml))
+
+    def test_empty_cli_string_is_no_limit(self):
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        assert resolve_job_budgets(cli_max_cost_usd="   ") is None
+
+    def test_integer_toml_value_normalises_to_float(self, tmp_path):
+        toml = tmp_path / "remedy.toml"
+        toml.write_text('[remedy.budget]\nmax_cost_usd = 3\n')
+        from packages.orchestration.budget_resolution import resolve_job_budgets
+        result = resolve_job_budgets(config_path=str(toml))
+        assert result is not None
+        assert result.max_cost_usd == 3.0
+        assert isinstance(result.max_cost_usd, float)
+
+
 class TestConfigKeys:
     def test_budget_keys_registered(self):
         from packages.orchestration.config import get_key_spec
         assert get_key_spec("budget.max_total_tokens") is not None
         assert get_key_spec("budget.max_provider_calls") is not None
         assert get_key_spec("budget.max_wall_clock_minutes") is not None
+        assert get_key_spec("budget.max_cost_usd") is not None
         assert get_key_spec("budget.deadline") is not None
 
     def test_budget_key_types(self):
@@ -273,6 +435,7 @@ class TestConfigKeys:
         assert get_key_spec("budget.max_total_tokens").value_type is int
         assert get_key_spec("budget.max_provider_calls").value_type is int
         assert get_key_spec("budget.max_wall_clock_minutes").value_type is int
+        assert get_key_spec("budget.max_cost_usd").value_type is float
         assert get_key_spec("budget.deadline").value_type is str
 
 
