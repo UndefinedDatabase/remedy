@@ -39,7 +39,16 @@ handoff is a SUCCESS, not a failure.
 - R5: integration gate per docs/agents/integration_gate.md — PASS.
 - R6 (SPLIT): wire the live ledger mirror at the task-run evidence seam
   so a real job yields rows (finding R-0220) — PASS.
-- R7: closure per docs/roadmap/STATUS_closure_protocol.md.
+- R7: closure part 1 per docs/roadmap/STATUS_closure_protocol.md — the
+  Built State section, the load-bearing full-suite confirmation run,
+  the evidence job and the FRESH review zip. Closure runs in TWO relays
+  because the STATUS line quotes the evidence job id, the package name
+  and its SHA-256, and the reviewer can only author that line once
+  those values exist (F079 R4/R5 and F254 R11/R12 precedent).
+- R8: closure part 2 — the reviewer-authored STATUS `[~]`->`[x]` line
+  and the README capability sync in the SAME commit (R-0154), last on
+  the branch (Rule A4), then `gh pr create`; the PR is NOT merged by
+  the session that creates it.
 
 ## Findings
 - R-0218 (Low, R2, reviewer): the ledger's own acceptance criterion —
@@ -422,4 +431,7 @@ handoff is a SUCCESS, not a failure.
   confirmation run is load-bearing for this feature and may not be
   treated as a formality.
   LAST_REVIEWED_SHA = `7f32dae9`.
-- R7: pending — closure, next session.
+- R7: in flight — closure part 1. Awaiting the handback with the
+  evidence job id, the package filename, its SHA-256 and the content
+  HEAD the zip records as the accepted head.
+- R8: pending — closure part 2.

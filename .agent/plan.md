@@ -4,41 +4,47 @@ Branch: feature/f103-token-ledger · claimed `[~]` in
 docs/roadmap/STATUS.md. Build mode: one-session self-drive
 (docs/agents/self_drive_protocol.md), one delegated worker per round.
 R1-R6 PASSed; LAST_REVIEWED_SHA 7f32dae9. Open findings 0; next free
-ID R-0222. R-0221 is carried in `.agent/candidates.md`.
+ID R-0222. R-0221 is carried in `.agent/candidates.md`. No PR exists.
 
 ## Goal
-Token and cost actuals become queryable: every provider call lands as a
-row in a per-project SQLite ledger at
-`<data_root>/projects/<uuid>/ledger.sqlite`, and `remedy stats cost`
-answers per-job, per-role and per-period questions from it. The file
-evidence stays the source of truth; the database is a mirror, and a
-writer failure never fails the run. Per DECISION D16 a row is one
-finalized TASK RUN, keyed `"<job_id>:<task_id>"`. T001, T002 and T003
-are built and reviewer-gated, the R5 integration gate passed on the
-reviewer's own full-suite run, and R6 armed the live mirror so a real
-job yields rows.
+Close F103 per docs/roadmap/STATUS_closure_protocol.md. The substance
+is built and gated: T001 schema plus the never-fail writer, T002 the
+call site with backfill and a content-comparing reconcile, T003 the
+cost aggregation with `remedy stats cost`, `backfill-ledger` and
+`verify-ledger`, the R5 integration gate, and R6's live mirror at the
+task-run evidence seam so a real job yields rows. Closure records what
+was built on the feature file and packages the accepted head.
 
 ## Current Step
-R7 — closure per docs/roadmap/STATUS_closure_protocol.md: the evidence
-job, a FRESH review zip (a zip failure is a closure blocker), the
-full-suite confirmation run, and the reviewer-authored STATUS
-`[~]`->`[x]` line together with the README capability sync in the SAME
-commit, last on the branch, then `gh pr create`. That PR is NOT merged
-by the session that creates it — it merges at the next feature's Open
-PR Gate, which is the operator's manual-review window.
+R7 — closure part 1: the Built State section on
+docs/roadmap/features/T2_F103.md (a CONTENT commit, before the zip),
+the closure preconditions, the LOAD-BEARING full-suite confirmation
+run, the evidence job through `create_manual_completion_bundle` with
+`review_feature_id="f103"` into a gitignored dir outside the review
+subject, and a FRESH review zip from that clean content head. The
+handback carries the job id, the package filename, its SHA-256 and the
+content HEAD; the reviewer authors the STATUS line from those values
+and never from a guess.
 
 ## Next Steps
-- After the PR: the feature-done banner and the session ends. The
-  operator may review and merge manually at any time.
+- R8 — closure part 2: apply the authored STATUS `[~]`->`[x]` line and
+  the README ledger sync in the SAME commit (R-0154), keep R-0221 in
+  `.agent/candidates.md` as the next feature's block condition, write
+  the final `.agent` state, commit LAST on the branch (Rule A4), push,
+  `gh pr create`. That PR merges at the next feature's Open PR Gate,
+  which is the operator's manual-review window.
 
 ## Risks
-- The closure full-suite confirmation is LOAD-BEARING, not a
-  formality: R6 landed production code AFTER the R5 integration gate,
-  so the confirmation run is the only full-suite evidence covering the
-  live-mirror wiring.
-- R-0221 sits in `.agent/candidates.md` and is a block condition at the
-  next feature's claim time. Closure must register or resolve it, never
-  silently drop it.
-- The closure commit must carry the STATUS line and the README
-  capability sync TOGETHER, and the README may claim only what is
-  merged and verified.
+- The full-suite confirmation is LOAD-BEARING, not a formality: R6
+  landed production code AFTER the R5 gate, so it is the only
+  full-suite evidence over the live-mirror wiring. A regression there
+  is a normal repair round, never a closure workaround.
+- Packaging pitfalls named in the protocol must be met at authoring
+  time: sha256-hex output_hash, FULL-length base_commit, real node ids
+  with `len(node_ids) == selected`, `test_files` are files and never
+  directories, `run_id` matching `^vr-\d{4,}$`, and NEVER a full-suite
+  node-id list.
+- The evidence dir stays OUTSIDE the review subject and is never
+  committed — a committed one packages BLOCKED_EVIDENCE.
+- A failing zip build is a closure BLOCKER: stop, hand back the raw
+  error, do not work around it.
