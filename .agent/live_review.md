@@ -33,8 +33,9 @@ handoff is a SUCCESS, not a failure.
 - R3 (SPLIT): T002 data layer — the call site at the actuals seam, plus
   backfill and reconcile over the evidence tree, idempotent by call_id —
   PASS.
-- R4 (SPLIT): T003 — `remedy stats cost` aggregation, basis labeling,
-  read-only cross-project aggregation, tests.
+- R4 (SPLIT): T003 — the cost aggregation queries plus `remedy stats
+  cost`, `backfill-ledger` and `verify-ledger` in the existing stats
+  group, with basis labeling in both output modes — PASS.
 - R5: integration gate per docs/agents/integration_gate.md.
 - R6: closure per docs/roadmap/STATUS_closure_protocol.md.
 
@@ -70,8 +71,10 @@ handoff is a SUCCESS, not a failure.
   immutable by construction and documented as such, but that guarantees
   only the id, never the contents — which is why the stronger option was
   the right one.
-- Next free ID: R-0220. Open findings: 1 (R-0218, Low), routed to R5's
-  integration gate, which owes the seam a real timing number.
+- Next free ID: R-0220. Open findings: 1 (R-0218, Low). R5 pays it with
+  a measured before/after of the call-site seam, committed to
+  `.agent/gate_f103_r5/r0218_seam_timing.txt`; the finding closes only
+  when the reviewer has read a real number, never on a claim.
 
 ## Decisions
 - D15 (F254 closure candidate R-0214, resolved inline per
@@ -226,4 +229,45 @@ handoff is a SUCCESS, not a failure.
   exception; the 152-line handoff drops no section and states its cause.
   R-0219 closed; R-0218 stays open for R5.
   LAST_REVIEWED_SHA = `d2bc7d8e`.
-- R4: pending review.
+- R4 (SPLIT, T003 + T002 surface) — **PASS**. Reviewed
+  `d2bc7d8e..25c343d0` bottom-up across seven commits, none over 500
+  lines, no dependency change. The P6 rule is the heart of this round
+  and it holds in code, not only in prose: there is no `COALESCE`
+  anywhere in the queries — the single occurrence of the word is a
+  docstring explaining why it is absent — so `SUM()` over all-NULL stays
+  NULL and an unmeasured figure never renders as a measured zero. The
+  reviewer MUTATION RED-PROOFED exactly that, in a disposable worktree
+  under the gitignored `.remedy-wt/`, removed before this verdict:
+  wrapping all seven `SUM(...)` in `COALESCE(..., 0)` turned **7 tests
+  red** across BOTH layers — `test_an_all_unmeasured_bucket_reports_none_not_zero`,
+  `test_an_all_unmeasured_total_reports_none_not_zero`,
+  `test_a_cache_counter_nobody_reported_stays_none`,
+  `test_two_ledgers_add_up_without_inventing_a_zero`, and three
+  basis-labeling tests in the CLI suite. The rule is pinned, not
+  asserted. `_connect_readonly` is the round's best judgement call and
+  it is correct: `mode=rw` plus `PRAGMA query_only=1` refuses to create
+  a database and rejects every write at the driver, while avoiding the
+  `mode=ro` trap where a read that cannot checkpoint the WAL leaves
+  `-wal`/`-shm` sidecars beside every ledger it merely looked at — a
+  read that litters the data root is not read-only. The `COUNT(CASE …)`
+  versus `SUM(…)` asymmetry is right for the same P6 reason: a count of
+  nothing is honestly 0, a sum of nothing is not. Reviewer-run
+  verification: `test_stats_cost.py` + `test_token_ledger.py` **105
+  passed**, the whole `tests/cli` catalog/registry contract guard
+  **1329 passed in 259s**, the state-contract trio plus the canary **184
+  passed**, `git status --porcelain` empty with no stray
+  `.sqlite`/`-wal`/`-shm`. Every number matched the handback's.
+  The one out-of-path-set edit is DECLARED, minimal and correct, so it
+  is not a silent scope change and not a block condition:
+  `tests/cli/test_failure_cmd.py` asserted the `stats` group's EXACT
+  contents (`== ["stats.failures"]`), which no longer holds once the
+  group legitimately grows; it is weakened to a membership assertion
+  with F010's own claim intact and a comment saying why. Leaving it red
+  was not an option the step block allowed. Verification tier: ROUND
+  GATE plus the canary — NOT the full suite; R5 owns that claim. No
+  block condition. Deviations accepted: seven commits rather than five,
+  on the step block's own split-over-oversize instruction; the extra
+  helpers (`merge_cost_reports` and friends) belong in the data layer
+  precisely because the block said the CLI only renders.
+  LAST_REVIEWED_SHA = `25c343d0`.
+- R5: pending review.
