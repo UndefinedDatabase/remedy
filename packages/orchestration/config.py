@@ -272,6 +272,49 @@ _CONFIG_KEY_SPECS: tuple[ConfigKeySpec, ...] = (
         value_type=float,
         default=None,
     ),
+    # F104 predictive inputs. The price basis has NO default on purpose
+    # (DECISION F104 D4): an invented price would make every prediction a
+    # fabrication, so with it unset the predictive path is inert.
+    ConfigKeySpec(
+        key="budget.price_basis_usd_per_1k_tokens",
+        env_var="REMEDY_BUDGET_PRICE_BASIS_USD_PER_1K_TOKENS",
+        description=(
+            "Provisional USD price per 1000 tokens used for cost predictions "
+            "(F104; provisional until calibration)"
+        ),
+        value_type=float,
+        default=None,
+    ),
+    ConfigKeySpec(
+        key="budget.class_default_tokens_low",
+        env_var="REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_LOW",
+        description=(
+            "Expected tokens for a low-band task "
+            "(F104; provisional until calibration)"
+        ),
+        value_type=int,
+        default=8000,
+    ),
+    ConfigKeySpec(
+        key="budget.class_default_tokens_medium",
+        env_var="REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_MEDIUM",
+        description=(
+            "Expected tokens for a medium-band task "
+            "(F104; provisional until calibration)"
+        ),
+        value_type=int,
+        default=32000,
+    ),
+    ConfigKeySpec(
+        key="budget.class_default_tokens_high",
+        env_var="REMEDY_BUDGET_CLASS_DEFAULT_TOKENS_HIGH",
+        description=(
+            "Expected tokens for a high-band task "
+            "(F104; provisional until calibration)"
+        ),
+        value_type=int,
+        default=120000,
+    ),
     ConfigKeySpec(
         key="budget.deadline",
         env_var="REMEDY_BUDGET_DEADLINE",
