@@ -1820,7 +1820,14 @@ def run_job(
         else:
             _accumulated_unmeasured += 1
 
-    def _stop_check():
+    def _build_budget_counters():
+        """The counters this safe point evaluates against — built ONCE per check.
+
+        Extracted so the reactive check and the F104 predictive check read the
+        same numbers from the same ledger query: two reads could disagree, and a
+        prediction that disagrees with the backstop it is supposed to precede is
+        worse than no prediction.
+        """
         from packages.orchestration.budget_guard import collect_counters_from_actuals
         _actuals = {
             "provider_call_count": _accumulated_provider_calls,
@@ -1880,6 +1887,10 @@ def run_job(
                 started_at=_run_started_at,
                 actual_sources=_sources,
             )
+        return counters
+
+    def _stop_check():
+        counters = _build_budget_counters()
         result = _should_stop(
             job.job_id,
             budgets=_job_budgets,
