@@ -3,8 +3,8 @@
 Branch: feature/f103-token-ledger · claimed `[~]` in
 docs/roadmap/STATUS.md. Build mode: one-session self-drive
 (docs/agents/self_drive_protocol.md), one delegated worker per round.
-R1-R4 PASSed; LAST_REVIEWED_SHA 25c343d0. Open findings 1 (R-0218,
-Low); next free ID R-0220.
+R1-R5 PASSed; LAST_REVIEWED_SHA af91d57b. Open findings 1 (R-0220,
+Medium); next free ID R-0222.
 
 ## Goal
 Token and cost actuals become queryable: every provider call lands as a
@@ -14,35 +14,35 @@ answers per-job, per-role and per-period questions from it. The file
 evidence stays the source of truth; the database is a mirror, and a
 writer failure never fails the run. Per DECISION D16 a row is one
 finalized TASK RUN, keyed `"<job_id>:<task_id>"`. T001, T002 and T003
-are all built and reviewer-gated.
+are built and reviewer-gated, and the R5 integration gate passed on the
+reviewer's own full-suite run.
 
 ## Current Step
-R5 — the integration gate per docs/agents/integration_gate.md: the
-full-suite branch run, the base run in a throwaway worktree on a
-throwaway branch at merge base `c1c0fbcb` with `apps/ui` parity
-restored by COPY, the branch-only and fixed-by-branch comparison with
-per-id attribution, and the evidence committed to
-`.agent/gate_f103_r5/` as `.txt` files. The round also pays finding
-R-0218 with a measured before/after of the call-site seam. NO
-production code: a reproducible branch-only failure coupled to F103 is
-a BLOCKER handed back as its own reviewer-gated round.
+R6 — arm the live mirror (finding R-0220, DECISION D17). Today the four
+`ledger_*` arguments of `write_evidence_bundle` are passed by TESTS
+only, so a real job writes zero rows and the feature's acceptance
+criterion is unmet. This round wires the task-run seam in
+`job_evidence.py` to supply them, keeps the hook inert when no project
+resolves so no test starts writing into the user's data root, and pins
+the behaviour with a test that drives the PRODUCTION path and passes no
+`ledger_*` argument by hand.
 
 ## Next Steps
-- R6 — closure per docs/roadmap/STATUS_closure_protocol.md: the
+- R7 — closure per docs/roadmap/STATUS_closure_protocol.md: the
   evidence job, a FRESH review zip (a zip failure is a closure
-  blocker), the reviewer-authored STATUS `[~]`→`[x]` line and the
+  blocker), the reviewer-authored STATUS `[~]`->`[x]` line and the
   README capability sync in the SAME commit, last on the branch, then
   `gh pr create`. That PR is NOT merged by the session that creates
   it — it merges at the next feature's Open PR Gate, which is the
   operator's manual-review window.
 
 ## Risks
-- The gate's `comm -23` environment class must be attributed per id;
-  an unattributed id counts as a genuine base failure and blocks the
-  verdict. The `apps/ui/dist` hash before and after the base run is
-  what makes the parity claim checkable rather than asserted.
-- R-0218 is paid with a number or not at all. If the measured overhead
-  is large, that is a finding for the reviewer — it is explicitly NOT
-  something this round may tune away by changing production code.
-- Budgets read actuals directly today; switching them to the ledger is
-  explicitly out of scope and must not be done opportunistically.
+- The wiring is the one place this feature can slow a real run. R5
+  measured the cost at +1.4 ms per finalized task run; a change that
+  moves that number materially is a finding, and tuning it is not this
+  round's licence.
+- Arming the mirror must not give tests a route into the real data
+  root. Inertness without a resolved project is a guarantee to pin with
+  a test, not a comment.
+- R-0221 is carried in `.agent/candidates.md` and belongs to the owning
+  feature. Closure must register or resolve it, never silently drop it.
