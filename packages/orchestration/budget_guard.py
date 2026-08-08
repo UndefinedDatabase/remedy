@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from packages.core.models import JobBudgets
+from packages.orchestration import token_economy
 from packages.orchestration.token_economy import TokenBand
 
 if TYPE_CHECKING:  # import-light at runtime: the config type is duck-typed here
@@ -400,6 +401,40 @@ class BudgetPrediction:
             "limit_usd": self.limit_usd,
             "arithmetic": self.arithmetic,
         }
+
+
+# Derives the band for the NEXT task from the text that will make up its
+# context. A JobTask carries no band field (DECISION F104 D3), and this
+# deliberately does NOT call `_build_task_prompt`: building the prompt
+# before the safe point would move work ahead of the stop consumption
+# guarantee that the safe point exists to provide (DECISION F104 D6).
+def derive_next_task_token_band(task, previous_summaries=()) -> str:
+    """Estimate the next task's token band from its own text plus prior proofs.
+
+    Pure: no I/O, no clock. The estimate is a FLOOR — it counts the task's own
+    text and the token counts of the proof summaries that will be folded into
+    its prompt, not the assembled prompt itself (DECISION F104 D6).
+
+    NEVER raises. It runs inside a stop check, and a stop check that dies on a
+    malformed task would take a healthy job down with it; every degradation
+    path ends at ``TokenBand.UNKNOWN``, which the A9 path in
+    ``predict_next_task_cost`` treats as the LARGEST class default.
+    """
+    if task is None:
+        return TokenBand.UNKNOWN
+    try:
+        total = 0
+        for _name in ("title", "body", "acceptance"):
+            total += token_economy.estimate_text_tokens(getattr(task, _name, "") or "")
+        for _summary in previous_summaries or ():
+            _tokens = getattr(_summary, "tokens_estimated", 0)
+            # bool is an int subclass; a True here would be a data bug, not a count.
+            if isinstance(_tokens, int) and not isinstance(_tokens, bool) and _tokens >= 0:
+                total += _tokens
+        return token_economy.estimate_task_token_band(
+            task_type="job_task", context_estimate=total)
+    except Exception:
+        return TokenBand.UNKNOWN
 
 
 # Predicts what the next task will cost so a job can stop BEFORE it overspends.

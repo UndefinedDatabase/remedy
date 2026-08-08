@@ -30,6 +30,7 @@ from packages.orchestration.budget_guard import (
     VALID_ESTIMATE_BASES,
     BudgetCounters,
     BudgetPrediction,
+    derive_next_task_token_band,
     predict_next_task_cost,
 )
 from packages.orchestration.budget_resolution import PredictiveBudgetConfig
@@ -308,6 +309,84 @@ class TestPredictionJsonAndArithmetic:
         assert isinstance(p, BudgetPrediction)
         with pytest.raises(Exception):
             p.would_breach = True
+
+
+class TestDeriveNextTaskTokenBand:
+    """The band is DERIVED at the safe point (F104 D3) from the task's own text.
+
+    DECISION F104 D6: the estimate deliberately does NOT build the task prompt,
+    so it is a FLOOR. These tests pin the floor's inputs — the task text and the
+    prior proof summaries' token counts — and the never-raises contract, which
+    matters because this runs inside a stop check.
+    """
+
+    def _task(self, **kw):
+        from packages.orchestration.pingpong_job import TaskEntry
+        return TaskEntry(**kw)
+
+    def _summary(self, tokens):
+        from packages.orchestration.pingpong_job import TaskProofSummary
+        return TaskProofSummary(tokens_estimated=tokens)
+
+    def test_a_small_task_is_low(self):
+        task = self._task(title="Add a flag", body="Add --max-cost-usd.",
+                          acceptance="A test covers it.")
+        assert derive_next_task_token_band(task) == TokenBand.LOW
+
+    def test_text_across_the_32k_boundary_is_high(self):
+        # >32_000 estimated tokens at 4 chars/token is >128_000 chars of text.
+        task = self._task(title="Big", body="x" * 200_000, acceptance="")
+        assert derive_next_task_token_band(task) == TokenBand.HIGH
+
+    def test_all_three_text_fields_are_counted(self):
+        # MEDIUM starts above 8_000 tokens; no single field crosses it alone.
+        chunk = "y" * 16_000          # 4_000 tokens each
+        assert derive_next_task_token_band(self._task(body=chunk)) == TokenBand.LOW
+        task = self._task(title=chunk, body=chunk, acceptance=chunk)
+        assert derive_next_task_token_band(task) == TokenBand.MEDIUM
+
+    def test_a_none_task_is_unknown(self):
+        assert derive_next_task_token_band(None) == TokenBand.UNKNOWN
+        assert derive_next_task_token_band(None, [self._summary(50_000)]) == TokenBand.UNKNOWN
+
+    def test_missing_attributes_contribute_zero_and_never_raise(self):
+        class _Bare:
+            pass
+        # A task object with none of the three text fields degrades to an empty
+        # context rather than raising inside a stop check.
+        assert derive_next_task_token_band(_Bare()) in {
+            TokenBand.LOW, TokenBand.MEDIUM, TokenBand.HIGH, TokenBand.UNKNOWN}
+        assert derive_next_task_token_band(_Bare()) == TokenBand.LOW
+
+    def test_a_task_whose_attribute_raises_degrades_to_unknown(self):
+        class _Hostile:
+            title = "t"
+            @property
+            def body(self):
+                raise RuntimeError("boom")
+        # Never raises: a broken task must not take a healthy job down from
+        # inside the stop check. UNKNOWN then takes the conservative A9 path.
+        assert derive_next_task_token_band(_Hostile()) == TokenBand.UNKNOWN
+
+    def test_prior_summaries_are_counted_into_the_total(self):
+        # The PAIR differs only in the summaries; the task text is identical.
+        task = self._task(title="Same", body="Same body.", acceptance="Same.")
+        assert derive_next_task_token_band(task, ()) == TokenBand.LOW
+        assert derive_next_task_token_band(
+            task, [self._summary(20_000)]) == TokenBand.MEDIUM
+        assert derive_next_task_token_band(
+            task, [self._summary(20_000), self._summary(20_000)]) == TokenBand.HIGH
+
+    def test_unusable_summary_token_counts_contribute_zero(self):
+        task = self._task(title="Same", body="Same body.", acceptance="Same.")
+        class _NoTokens:
+            pass
+        for bad in (_NoTokens(), self._summary(-5), self._summary("40000")):
+            assert derive_next_task_token_band(task, [bad]) == TokenBand.LOW
+
+    def test_a_non_iterable_summaries_argument_never_raises(self):
+        task = self._task(title="Same", body="Same body.", acceptance="Same.")
+        assert derive_next_task_token_band(task, 17) == TokenBand.UNKNOWN
 
 
 class TestResolvePredictiveBudgetConfig:
