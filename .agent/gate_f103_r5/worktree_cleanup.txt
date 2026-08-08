@@ -1,0 +1,17 @@
+--- git worktree list BEFORE cleanup ---
+/home/decodeux/Repos/remedy                       e984bbab [feature/f103-token-ledger]
+/home/decodeux/Repos/remedy/.remedy-wt/base-f103  c1c0fbcb [tmp/base-gate-f103]
+
+$ git worktree remove --force .remedy-wt/base-f103
+  exit=0
+$ git worktree prune
+  exit=0
+$ git branch -D tmp/base-gate-f103
+Deleted branch tmp/base-gate-f103 (was c1c0fbcb).
+  exit=0
+
+--- git worktree list AFTER cleanup (must show the primary checkout only) ---
+/home/decodeux/Repos/remedy  e984bbab [feature/f103-token-ledger]
+
+--- git branch --list 'tmp/*' (must be empty) ---
+(end)

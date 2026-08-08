@@ -1,0 +1,56 @@
+F103 R5 — apps/ui PARITY AND ITS VERIFICATION
+=============================================
+Integration gate step 3, R-0155 amendment (path per R-0158) + R-0169.
+
+Aggregate hash command, run from the respective repo root:
+  find apps/ui/dist -type f -exec sha256sum {} \; | sort -k2 | sha256sum
+It hashes file CONTENTS and PATHS. It does NOT hash mtimes — that matters
+below.
+
+Parity restoration (before the base run)
+  apps/ui/node_modules  COPIED  cp -a, 305M, exit 0
+  apps/ui/dist          COPIED  cp -a, 376K, exit 0
+  NEVER symlinked (the UI auto-build writes THROUGH a symlink into the
+  primary checkout, F053 R3). Checked: `find <wt>/apps/ui -maxdepth 1
+  -type l -print` printed nothing.
+  REMEDY_UI_NO_AUTO_BUILD=1 was set for the base run, and NOT trusted.
+
+Hashes
+  primary checkout, after the branch run   fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  base worktree, BEFORE the base run       fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+  base worktree, AFTER the base run        fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0
+
+VERDICT ON THE CONTENT HASH: before == after. The hash did not change, so
+the parity claim by CONTENT holds and no comm -23 id may be blamed on a
+dist that differed between the two runs.
+
+BUT THE NEUTRALIZATION IS NOT CLEAN, AND SAYING SO IS THE POINT OF R-0169.
+A build DID run inside both checkouts while the suites ran. Direct
+evidence, mtimes:
+  base worktree, apps/ui/dist/index.html, read after the base run exited
+      2026-08-08 19:52:06 local  — i.e. DURING the base run
+      (base run window 19:50:58 -> 19:53:34 local)
+  the same file was COPIED from the primary at ~19:50:55 and therefore
+  carried the primary's mtime at that moment, not 19:52:06.
+  primary checkout, apps/ui/dist/index.html
+      2026-08-08 19:49:34 local — i.e. DURING the branch run
+      (branch run window 19:48:25 -> 19:50:30 local)
+
+The writer is NAMED, not guessed:
+  tests/ui_server/test_dashboard_contract.py:521
+  TestAutoBuildBehavior::test_auto_build_runs_by_default
+It POPS REMEDY_UI_NO_AUTO_BUILD from os.environ on purpose and calls
+packages/orchestration/ui_server.py::_auto_build_frontend() for real, which
+runs `npm install` and `npm run build` in the apps/ui of whichever checkout
+it is running in. The env var cannot suppress a call that deletes it first.
+
+Consequences, stated rather than smoothed over:
+  1. The rebuild is REPRODUCIBLE, not a fluke, and it happens on every full
+     suite run in every checkout. It is the R-0169 class, recurring.
+  2. Its output is byte-identical, which is why all three hashes above
+     agree. Content parity is therefore genuinely intact.
+  3. What it DOES change is the dist MTIMES, and _frontend_is_stale()
+     (ui_server.py:2748) is a pure mtime comparison. That is the whole
+     mechanism behind the eight base-only failures — see attribution.txt
+     and base_serial_rerun.txt, where it is reproduced and reversed on
+     demand without touching a single byte of dist.
