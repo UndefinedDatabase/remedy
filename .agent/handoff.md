@@ -1,152 +1,145 @@
-# Handback — F103 R3, T002 data layer + the call site
+# Handback — F103 R4, T003 + T002's CLI surface
 
-Feature **T2_F103 — Token ledger (SQLite)**, round **R3** (SPLIT, PRODUCTION
+Feature **T2_F103 — Token ledger (SQLite)**, round **R4** (SPLIT, PRODUCTION
 CODE — never merges self-certified). Branch **`feature/f103-token-ledger`**,
-already at `c3a03076` — not re-cut, no PR, no merge, no force-push, main
+already at `d2bc7d8e` — not re-cut, no PR, no merge, no force-push, main
 untouched. `.agent/STOP` absent, re-checked before every commit.
 
 ## Range
-Review of `c3a03076..HEAD`. Five content commits; this file is the sixth.
+Review of `d2bc7d8e..HEAD`. Six content commits; this file is the seventh.
 
 ## Commits
 
-### eef95aff chore(f103): persist the R2 PASS verdict and findings R-0218 and R-0219
+### 550685fd chore(f103): persist the R3 PASS verdict and close finding R-0219
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +85/-3 | receipt 1 — R2 step line → PASS, R-0218/R-0219, DECISION D16, the R2 verdict, `- R3: pending review.` |
-| .agent/authored/f103-r3-1.md | +136/-0 | receipt 1, all four pairs |
+| .agent/live_review.md | +58/-5 | receipt 1 — R3 step line → PASS, R-0219 closed, the R3 verdict, `- R4: pending review.` |
+| .agent/authored/f103-r4-1.md | +97/-0 | receipt 1, all three pairs |
 
-### 37627879 docs(f103): record the ledger row-granularity ruling on the feature file
+### e3101b74 feat(f103): add cost aggregation queries over the ledger
 | Path | +/- | Reason |
 |---|---|---|
-| docs/roadmap/features/T2_F103.md | +15/-0 | receipt 3 — the D16 row-granularity section |
-| .agent/authored/f103-r3-3.md | +22/-0 | receipt 3, the APPEND-shaped pair |
+| packages/orchestration/token_ledger.py | +296/-0 | `CostRow`, `CostReport`, `COST_GROUP_KEYS`, `query_cost`, `merge_cost_reports`, `_connect_readonly`, `_cost_filters`, `_cost_bucket_rows`, `_add_optional`, `_combine_cost_rows` |
 
-### 798e47d3 feat(f103): add ledger backfill and reconcile over actuals evidence
+### 16c99fdb test(f103): pin the cost aggregation queries and the unmeasured rule
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/token_ledger.py | +451/-12 | `call_id_for_task_run`, `job_id_for_evidence_dir`, `call_record_from_evidence`, `backfill_ledger`, `verify_ledger`, `BackfillResult`, `ReconcileResult` |
+| tests/orchestration/test_token_ledger.py | +244/-0 | `cost_ledger` fixture + 22 T003 tests (18 → 50 → 72 in the file) |
 
-### c4b4e32c test(f103): pin backfill idempotence, the unmeasured and malformed cases, and reconcile drift
+### d94bf047 feat(f103): add remedy stats cost, backfill-ledger and verify-ledger
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_token_ledger.py | +348/-1 | on-disk `evidence_tree` fixture + 26 T002 tests |
+| apps/cli/commands/stats_ledger_cmd.py | +400/-0 | the three `_cmd_*` handlers, the basis renderer, `COMMAND_HANDLERS` |
+| apps/cli/command_catalog.py | +66/-0 | three `CommandEntry`s in the EXISTING `stats` group |
+| apps/cli/commands/__init__.py | +2/-1 | the import AND the collector tuple |
+| tests/cli/test_failure_cmd.py | +4/-1 | see Deviations 2 — the one assertion that pinned the group's whole contents |
 
-### 6b030495 feat(f103): record finalized actuals into the token ledger
+### 50ab6e25 test(f103): pin the stats ledger commands and basis labeling
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/pingpong_evidence.py | +91/-0 | the opt-in hook after the `provider_evidence.json` write |
-| packages/orchestration/token_ledger.py | +4/-1 | docstring now names its one call site |
-| tests/orchestration/test_token_ledger.py | +123/-0 | 6 call-site tests |
-| .agent/plan.md | +32/-32 | receipt 2 — full-file replacement, current at the final content commit |
-| .agent/authored/f103-r3-2.md | +52/-0 | receipt 2 |
+| tests/cli/test_stats_cost.py | +460/-0 | 33 tests: registration, dispatch, JSON shape, grouping, basis labeling, drift exit codes, idempotence |
 
-### (this commit) chore(f103): rewrite handoff for the R3 handback
+### 74495d28 chore(f103): sync the plan to the R4 step
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +26/-31 | receipt 2 — full-file replacement |
+| .agent/authored/f103-r4-2.md | +47/-0 | receipt 2 |
+
+### (this commit) chore(f103): rewrite handoff for the R4 handback
 | Path | +/- | Reason |
 |---|---|---|
 | .agent/handoff.md | rewrite | this handback — cannot table its own SHA |
 
-Staged by exact path; `git add -A` never used. No CLI in this round. No new
-dependency (bundled `sqlite3` only, no ORM). Untouched: `token_truth.py`
-(no re-export was needed — see below), `token_measurement.py`,
+Staged by exact path; `git add -A` never used. No new dependency (bundled
+`sqlite3` only, no ORM); no price table and no computed price anywhere; no
+second capture path. Untouched: `token_truth.py`, `token_measurement.py`,
 `provider_token_evidence.py`, `data_paths.py`, `project_registry.py`,
-`budget_guard.py`, `budget_resolution.py`, `final_verifier.py`, all
-estimation/calibration code, `.agent/decisions.md`, `.agent/context.md`,
-`.agent/candidates.md`, `docs/roadmap/STATUS.md`, `README.md`.
+`budget_guard.py`, `budget_resolution.py`, `final_verifier.py`,
+`pingpong_evidence.py`, all estimation/calibration code, `.agent/decisions.md`,
+`.agent/context.md`, `.agent/candidates.md`, `docs/roadmap/**`, `README.md`.
 
-## Verification (real commands, real exit codes, after commit 5)
+## Verification (real commands, real exit codes, after commit 6)
 | Command | Exit | Tail |
 |---|---|---|
-| `pytest tests/orchestration/test_token_ledger.py -q` | 0 | `50 passed in 0.30s` |
-| `pytest tests/ -q -k "pingpong or evidence"` | 0 | `1129 passed, 14926 deselected in 77.60s` |
-| `pytest tests/docs/ -q` | 0 | `294 passed in 0.30s` |
-| `pytest test_dashboard_contract.py test_test_runner.py test_resource_safety.py -q` | 0 | `142 passed in 18.73s` |
-| `pytest tests/cli/test_golden_path.py -q` | 0 | `42 passed in 19.20s` |
+| `pytest tests/cli/test_stats_cost.py -q` | 0 | `33 passed in 0.37s` |
+| `pytest tests/orchestration/test_token_ledger.py -q` | 0 | `72 passed in 0.53s` |
+| `pytest tests/cli -q` | 0 | `1329 passed in 257.05s (0:04:17)` |
+| `pytest test_dashboard_contract.py test_test_runner.py test_resource_safety.py -q` | 0 | `142 passed in 18.90s` |
+| `pytest tests/cli/test_golden_path.py -q` | 0 | `42 passed in 19.27s` |
 | `git status --porcelain` | 0 | no output — clean tree |
-| `ruff check` (the 3 changed .py) | 0 | `All checks passed!` |
-The regression guard selected **1129** tests — far above the 20 that would have
-forced widening, so the selection stands as written. `tests/docs/` ran because
-this round changes `docs/roadmap/**`. Repo-wide sweep for `*.sqlite`, `*-wal`,
-`*-shm`, including `.data/` and `.data/projects/`: **0 hits** — every test DB
-lives under `tmp_path`. Nothing red; the STOP rule never fired.
+| `ruff check` (the 5 changed/new .py) | 0 | `All checks passed!` |
+Repo-wide sweep for `*.sqlite`, `*-wal`, `*-shm` including `.data/`: **0 hits**.
+Each new command was also RUN for real against a temporary `REMEDY_DATA_DIR`,
+human and `--json`; the actual stdout is in the completion report. Nothing red;
+the STOP rule never fired.
 
 ## Authored-text proofs
-All three receipts saved BEFORE any target was touched; none hand-retyped; no
-trailing whitespace on any line; each ends in exactly one newline (byte-wise
-checked: 6473 B / 2717 B / 1193 B).
-- Receipt 1 → `.agent/live_review.md`, four REWRITE pairs. Every FROM counted
-  **exactly 1x BEFORE any edit**. After: PAIR 1 FROM **0x** / TO **1x**;
-  PAIR 2 FROM **0x** / TO **1x**; PAIR 3 FROM **0x** / TO **1x**;
-  PAIR 4 FROM **0x** / TO **1x**. live_review.md **97 → 176 lines**.
+Both receipts saved BEFORE any target was touched; no trailing whitespace on any
+line; each ends in exactly one newline (4322 B / 2385 B).
+- Receipt 1 → `.agent/live_review.md`, three REWRITE pairs. Every FROM counted
+  **exactly 1x BEFORE any edit**. After: PAIR 1 FROM **0x** / TO **1x**; PAIR 2
+  FROM **0x** / TO **1x**; PAIR 3 FROM **0x** / TO **1x**. File **176 → 229**.
 - Receipt 2 → `.agent/plan.md`, FULL-FILE REPLACEMENT applied by
-  `cp .agent/authored/f103-r3-2.md .agent/plan.md`, proved by
-  `cmp .agent/authored/f103-r3-2.md .agent/plan.md` → **exit 0**.
-- Receipt 3 → `docs/roadmap/features/T2_F103.md`, APPEND-shaped: FROM **1x
-  before AND 1x after**, TO **0x before → 1x after**, and each of the **14
-  TO-ONLY lines occurs exactly 1x after**. Feature file **83 → 98 lines**.
-
-## How R-0219 was resolved — CONTENT COMPARISON in `verify_ledger`
-Both options were available; content comparison was chosen. `verify_ledger`
-re-derives each row from its own evidence through `call_record_from_evidence`
-and compares the whole `CallRecord` field by field, reporting mismatches in a
-new `drifted_rows` list. Why not the presence-only option: `record_call`'s
-`INSERT OR IGNORE` cannot overwrite an existing row, so a drifted row can never
-heal itself — presence-only would leave a permanently wrong row permanently
-invisible, which is exactly the failure R-0219 predicted. `call_id` IS also
-pinned immutable by construction and said so in `call_id_for_task_run`'s
-docstring, but that alone only guarantees the id, not the row's contents.
-Content comparison is only safe because the live call site and backfill share
-ONE producer: the hook re-reads the `provider_evidence.json` it has just
-written through the same `call_record_from_evidence`, so two producers of one
-row cannot disagree. `test_the_live_row_is_the_row_backfill_would_have_written`
-pins that, and `test_finds_a_content_drifted_row` pins the detection.
+  `cp .agent/authored/f103-r4-2.md .agent/plan.md`, proved by `cmp` → **exit 0**.
 
 ## Design points worth the reviewer's eye
-1. **No second capture path.** `_call_record_from_parts` calls
-   `token_truth._extract_actual` and `token_truth._strict_cost` — the private
-   helpers the step block authorised — instead of a second parser. Nothing in
-   `token_truth.py` changed, so the re-export route was not needed.
-2. **`TokenEvidenceError` is honoured, not swallowed.** A malformed counter
-   makes the task run unrecordable (None), counted in `failed`; no plausible
-   number is stored.
-3. **The hook is inert three ways**: no ledger target, or missing job/task id,
-   or an `out_dir` that is not `task_runs/<task_id>/` → it returns without
-   touching anything. It never resolves a project implicitly.
-4. **Orphan detection is scoped by `job_id`**, because one project ledger holds
-   many jobs and another job's rows are not orphans of this evidence tree.
+1. **NULL is preserved, never coerced.** `SUM()` over an all-NULL bucket stays
+   NULL; the two basis columns use `COUNT(CASE …)` instead, because `COUNT`
+   never returns NULL and a count of nothing genuinely IS 0. No `COALESCE`.
+2. **Reading cannot write.** `_connect_readonly` opens `file:…?mode=rw` plus
+   `PRAGMA query_only=1`: the first refuses to CREATE a ledger, the second makes
+   SQLite reject every write, so `--all-projects` cannot create or migrate
+   another project's DB. `mode=ro` was rejected deliberately — a ro handle
+   cannot checkpoint the WAL on close and would leave `-wal`/`-shm` behind.
+3. **`--all-projects` is refused for backfill and verify**, with a message
+   saying why: backfill writes, and a reconcile compares ONE evidence tree
+   against ONE ledger.
+4. **Basis in both modes**: human gets an `unmeasured` word (never `0`), a
+   `basis (measured/calls)` column, a counts sentence, and a FULLY/PARTLY
+   UNMEASURED warning; JSON gets `null` figures plus a per-row `basis` key.
 
-## Item status — R3 bundle B1-B7
+## Item status — R4 bundle B1-B7
 | Item | Status | Reason |
 |---|---|---|
-| B1 save receipts 1-3 | done | written first, before any target touched |
-| B2 commit 1 — findings + verdict persist | done | eef95aff, first action |
-| B3 commit 2 — feature-file amendment | done | 37627879 |
-| B4 commit 3 — backfill + reconcile core | deviated | split into 798e47d3 (module, 463 lines) and c4b4e32c (tests, 349 lines); one commit would have been 812 lines and the step block orders a split over an oversize exception |
-| B5 commit 4 — the call site | done | 6b030495, with `.agent/plan.md` + receipt 2 as instructed |
+| B1 save receipts 1-2 | done | written first, before any target touched |
+| B2 commit 1 — verdict + findings persist | done | 550685fd, first action |
+| B3 commit 2 — aggregation layer | deviated | split into e3101b74 (module, 296) and 16c99fdb (tests, 244); together 540 lines and the step block orders a split over an oversize exception |
+| B4 commit 3 — the three CLI commands | done | d94bf047, 472 lines |
+| B5 commit 4 — tests | deviated | split into 50ab6e25 (tests, 460) and 74495d28 (plan + receipt 2, 104); together 564 lines |
 | B6 verification | done | seven commands, all exit 0, numbers above |
 | B7 commit 5 + push | done | this commit, then push |
 
 ## Findings
-Open findings: **2** — R-0218 (Low, deferred to R5's integration gate) and
-R-0219 (Low, **resolved this round**, see above; the reviewer decides whether
-to close it). Next free ID: **R-0220**. LAST_REVIEWED_SHA `c3a03076`.
+Open findings: **1** — R-0218 (Low, deferred to R5's integration gate). Next
+free ID: **R-0220**. LAST_REVIEWED_SHA `d2bc7d8e`.
 
 ## Deviations, declared
-1. **Six commits, not five** — B4 split per its own instruction (see table).
-   No oversize exception is claimed; no commit exceeds 500 lines.
-2. This file is 152 lines, over the 60-line cap, with NO section dropped.
-   Cause, all mandated: six per-commit changed-files tables, the seven-row
-   verification table, the three-receipt transport proof with its counts, the
-   B1-B7 item-status table, the explicitly-demanded R-0219 resolution
-   statement, and the closure values.
-3. `.agent/decisions.md` not updated although the R-0219 ruling is a
-   meaningful decision — the step block puts that file outside the round's
-   path set. It is recorded in the module docstrings and in this handback.
-4. Commit 6's SHA and the push result are absent by self-reference
+1. **Seven commits, not five** — B3 and B5 each split on the step block's own
+   instruction (see the item table). No oversize exception is claimed; no
+   commit exceeds 500 lines.
+2. **`tests/cli/test_failure_cmd.py` edited although it is not in the path
+   set.** Its `test_the_command_is_registered` asserted
+   `[c.command_id for c in get_commands_for_group("stats")] == ["stats.failures"]`
+   — an exact-contents assertion on the very group this round was told to
+   extend. It went red the moment the three commands were registered. ONE line
+   changed, to `"stats.failures" in {…}`, keeping F010's own claim intact;
+   nothing else in that file was touched. The alternative was leaving
+   `tests/cli -q` red, which B6 forbids.
+3. **Two helpers beyond the two named in B3**: `merge_cost_reports` (public)
+   and `_connect_readonly`/`_cost_*`/`_add_optional` (private). B4 says the CLI
+   only renders, so cross-project folding had to live in the data layer.
+4. `.agent/decisions.md` not updated although the read-only-connection choice is
+   a real trade-off — the step block puts that file outside the path set. It is
+   recorded in the module docstring and here.
+5. This file is 145 lines, over the 60-line cap, with NO section dropped. Cause,
+   all mandated: seven per-commit changed-files tables, the seven-row
+   verification table, the two-receipt transport proof with its counts, the
+   B1-B7 item-status table, and the declared deviations.
+6. Commit 7's SHA and the push result are absent by self-reference
    impossibility, not omission; both are in the completion report.
 
 ## Next
-Window 1 reviews `c3a03076..HEAD` and issues the R3 verdict; production code,
-so self-certification is barred. On PASS, R4 is T003 plus T002's surface: the
-`remedy stats` command group (`cost`, `backfill-ledger`, `verify-ledger`),
-basis labeling on every figure, read-only `--all-projects`, and CLI tests.
+Window 1 reviews `d2bc7d8e..HEAD` and issues the R4 verdict; production code, so
+self-certification is barred. On PASS, R5 is the integration gate per
+docs/agents/integration_gate.md, which also owes R-0218 a real before/after
+timing of the call-site seam.
