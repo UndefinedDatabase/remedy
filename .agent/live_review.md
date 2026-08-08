@@ -74,8 +74,11 @@
 - R3: fix R-0224 — the cost-side counter split, DECISION F104 D5. PASS at
   8b51fa63; gates A-D re-run by the reviewer (233 / 163 / 294 / 42) and the
   restore-the-invariant red-proof run in a disposable worktree.
-- R4: T002 part 2 — derive the band at the dispatch safe point per DECISION
-  F104 D3, wire `predict_next_task_cost` in BEFORE the next task is
-  dispatched, add the `predicted_budget_exhausted:<limit>` stop reason and the
-  decision entry carrying the arithmetic, and both acceptance fixtures —
-  just-under, and prediction-wrong proving the reactive backstop still fires.
+- R4: T002 part 2 — delivered the counters-build refactor, the pure
+  `derive_next_task_token_band` (DECISION F104 D6), the predictive wiring at the
+  task-dispatch safe point with the `predicted_budget_exhausted:max_cost_usd`
+  reason and the persisted `JobPlan.budget_prediction` arithmetic, both
+  acceptance fixtures driven through the real `run_job`, the two inert-path
+  regressions and the A9 seam pin. Awaiting review. The worker reports a
+  pre-existing blocker it did not fix: `run_manifest._BUDGET_ALLOWED_KEYS`
+  rejects `max_cost_usd`, so a budget stop cannot reach JOB_STOPPED.

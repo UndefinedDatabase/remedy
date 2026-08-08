@@ -3716,3 +3716,34 @@ exactly the mixed-priced jobs it was added for.
 
 Reverse this decision by restoring the `unpriced_call_count > provider_calls`
 check and dropping `priced_call_count`.
+
+## DECISION F104 D6 — the context estimate is the task text, not the built prompt (2026-08-09)
+
+Context: R4 wires the predictive check into `run_job`'s task-dispatch safe point.
+`predict_next_task_cost` needs a band, DECISION F104 D3 says the band is DERIVED
+there, and deriving it needs a context estimate for the next task. The obvious
+source is the prompt that task will actually run on — `_build_task_prompt(job,
+task, previous_summaries)`, which already computes a `tokens_estimated` figure a
+few lines below the safe point.
+
+D6 — the estimate comes from the task's OWN text (`title`, `body`, `acceptance`)
+plus the `tokens_estimated` of prior task proof summaries, via the pure
+`derive_next_task_token_band` in `budget_guard.py`. The prompt is NOT built.
+
+Alternative considered: build the prompt above the safe point and use its real
+token count. Rejected. The safe point exists to guarantee that a stop is consumed
+BEFORE any work for the next task begins; moving the prompt build above it moves
+work ahead of that guarantee, and the guarantee — not the accuracy of an estimate
+— is the safety property. It would also make the most safety-critical code in the
+loop depend on a builder that can raise.
+
+The cost of the choice is stated rather than hidden: the estimate is a FLOOR. It
+omits whatever the prompt adds around the task text, so it can only UNDER-predict,
+never over-predict. That is the conservative direction here — an under-prediction
+fails to stop early and the reactive check in `evaluate_budget` catches the
+overrun, which is exactly the backstop's job; an over-prediction would stop
+healthy jobs that were never going to breach.
+
+Reverse this decision by moving the `_build_task_prompt` call above the safe point
+and passing its `tokens_estimated` as the context estimate, then deleting the D6
+lines here and in `docs/roadmap/features/T2_F104.md`.
