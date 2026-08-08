@@ -29,9 +29,13 @@ does not exist:
   feature needs, and the feature's Orchestrator brief rejects the alternative.
 * Remedy deliberately does NOT add a second capture path. This module records
   what the existing actuals path already produced; it never parses a provider
-  response itself. As of T001 it has NO call site at all — wiring
-  ``record_call`` into the seam where actuals are finalized is T002's first
-  item, and until then this module is intentionally inert.
+  response itself: the usage counters come from ``token_truth``'s existing
+  extractor rather than from a second parse of provider output.
+* Remedy deliberately does NOT store one row per HTTP request. A ROW IS ONE
+  FINALIZED TASK RUN, keyed ``"<job_id>:<task_id>"`` (DECISION D16, recorded on
+  the feature file): ``task_runs/<task_id>/provider_evidence.json`` is the
+  finest record the actuals feature puts on disk, and a per-request row would
+  have to invent ids, timestamps and a usage split no file records.
 * Remedy deliberately does NOT invent prices. ``cost_usd`` stays NULL unless a
   caller supplies a real figure together with the basis it came from, and a
   call with no reported usage produces NULL counts with basis ``unknown``
@@ -46,12 +50,17 @@ Public API::
     SCHEMA_VERSION_KEY / LEDGER_FILENAME / BUSY_TIMEOUT_MS
     COST_BASIS_PROVIDER_REPORTED / COST_BASIS_PRICE_TABLE / COST_BASIS_UNKNOWN
     COST_BASES: frozenset[str]
-    CallRecord
+    CallRecord / BackfillResult / ReconcileResult
     token_ledger_path_for(project_id, root=None) -> Path
     open_ledger(path) -> sqlite3.Connection
     record_call(record, *, project_id=None, path=None) -> bool
     ledger_miss_count() -> int
     reset_ledger_miss_count() -> None
+    call_id_for_task_run(job_id, task_id) -> str
+    job_id_for_evidence_dir(evidence_dir) -> str
+    call_record_from_evidence(evidence_dir, job_id, task_id) -> CallRecord | None
+    backfill_ledger(evidence_dir, *, project_id=None, path=None) -> BackfillResult
+    verify_ledger(evidence_dir, *, project_id=None, path=None) -> ReconcileResult
 """
 
 from __future__ import annotations
@@ -59,11 +68,25 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
+from packages.common.strict_json import StrictJsonError, strict_loads
 from packages.orchestration.data_paths import projects_dir
+
+# The usage counters come from the parser the actuals feature ALREADY uses. A
+# second parse of provider output here would be the SECOND CAPTURE PATH the
+# feature file's Orchestrator brief rejects, and it would be free to disagree
+# with the numbers the evidence files publish. ``_strict_cost`` is imported for
+# the same reason: one spelling of "what is a valid cost figure", not two.
+from packages.orchestration.token_truth import (
+    TokenEvidenceError,
+    _extract_actual,
+    _strict_cost,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +102,19 @@ LEDGER_FILENAME = "ledger.sqlite"
 
 # How long a writer waits for another writer's lock before giving up (ms).
 BUSY_TIMEOUT_MS = 5000
+
+# The evidence-tree layout this module mirrors; the actuals feature owns these names.
+_TASK_RUNS_DIRNAME = "task_runs"
+_PROVIDER_EVIDENCE_FILENAME = "provider_evidence.json"
+_TOKEN_ACCOUNTING_FILENAME = "token_accounting.json"
+_JOB_MANIFEST_FILENAME = "manifest.json"
+
+# Timestamp fields the evidence may carry, most specific first; else the file mtime.
+_TIMESTAMP_FIELDS = ("ts_utc", "finished_at", "started_at")
+
+# Model fields that name the model that ACTUALLY ran — configured models are not it.
+_VERIFIED_MODEL_FIELDS = ("builder_actual_model", "reviewer_actual_model")
+_NAMED_MODEL_FIELDS = ("model", "builder_model")
 
 # The three honest answers to "where does this cost figure come from" (P6).
 COST_BASIS_PROVIDER_REPORTED = "provider_reported"
@@ -173,6 +209,59 @@ class CallRecord:
     evidence_ref: str | None = None
 
 
+# What one backfill pass did, in counts a caller can report without re-scanning.
+@dataclass
+class BackfillResult:
+    """The outcome of one ``backfill_ledger`` pass.
+
+    ``scanned`` task-run directories, of which ``recorded`` produced a durable
+    row (already-durable rows included — that is why a second pass over the same
+    evidence reports the SAME total without creating a duplicate), ``skipped``
+    carried no ``provider_evidence.json`` to mirror at all, and ``failed`` could
+    not be recorded: malformed evidence, or a write the ledger rejected.
+
+    ``scanned == recorded + skipped + failed`` holds by construction, so a
+    caller can always tell that no task run was silently dropped.
+    """
+
+    scanned: int = 0
+    recorded: int = 0
+    skipped: int = 0
+    failed: int = 0
+
+
+# What a read-only reconcile found: where the mirror disagrees with the files.
+@dataclass
+class ReconcileResult:
+    """Drift between the evidence files and the ledger rows.
+
+    THE FILES ARE THE SOURCE OF TRUTH AND THE DATABASE IS THE MIRROR. Every
+    entry below therefore reads as "the DB is wrong", never as "the files are
+    wrong" — there is no direction in which evidence gets corrected to match a
+    row.
+
+    ``checked`` task runs carried provider evidence and were compared.
+    ``missing_rows`` are call_ids on disk with no row (a lost write — a counted
+    miss, a crash, a ledger that did not exist yet). ``orphan_rows`` are
+    call_ids in the DB whose evidence is gone. ``drifted_rows`` are call_ids
+    whose stored row no longer matches what its evidence says it should be.
+    ``unreadable`` are task runs whose evidence could not be turned into a row
+    at all, so nothing about them can be asserted in either direction.
+    """
+
+    checked: int = 0
+    missing_rows: list[str] = field(default_factory=list)
+    orphan_rows: list[str] = field(default_factory=list)
+    drifted_rows: list[str] = field(default_factory=list)
+    unreadable: list[str] = field(default_factory=list)
+
+    # One question a caller almost always asks; spelled once so it cannot drift.
+    @property
+    def has_drift(self) -> bool:
+        """True when the mirror disagrees with the files in any way."""
+        return bool(self.missing_rows or self.orphan_rows or self.drifted_rows)
+
+
 # Misses are process-level and lock-guarded: several worker threads may write.
 _miss_lock = threading.Lock()
 _miss_count = 0
@@ -241,13 +330,7 @@ def record_call(
     """
     conn: sqlite3.Connection | None = None
     try:
-        if path is not None:
-            target = Path(path)
-        elif project_id is not None:
-            target = token_ledger_path_for(project_id)
-        else:
-            raise ValueError("record_call needs either project_id or path")
-
+        target = _resolve_ledger_path(project_id=project_id, path=path)
         conn = open_ledger(target)
         placeholders = ", ".join("?" for _ in _CALL_COLUMNS)
         columns = ", ".join(_CALL_COLUMNS)
@@ -291,6 +374,252 @@ def record_call(
                 logger.error("token ledger connection close failed", exc_info=True)
 
 
+# The deterministic ledger identity of one finalized task run (DECISION D16).
+def call_id_for_task_run(job_id: str, task_id: str) -> str:
+    """Return ``"<job_id>:<task_id>"`` — the ledger identity of one task run.
+
+    IMMUTABLE BY CONSTRUCTION: the id is a pure function of two identifiers the
+    evidence tree already carries, with no clock, no counter and no random part
+    in it. That is exactly what makes backfill idempotent — the same task run
+    always maps to the same row, so a second pass ``INSERT OR IGNORE``s into a
+    no-op instead of creating a duplicate.
+
+    Per DECISION D16 a ROW IS ONE FINALIZED TASK RUN, not one HTTP request:
+    ``task_runs/<task_id>/provider_evidence.json`` is the finest record the
+    actuals feature puts on disk.
+
+    Raises ``ValueError`` when either part is empty: an id with an empty half
+    would collide across task runs and silently merge two calls into one row.
+    """
+    job = str(job_id or "").strip()
+    task = str(task_id or "").strip()
+    if not job or not task:
+        raise ValueError(
+            "call_id needs a non-empty job_id and task_id, got "
+            f"job_id={job_id!r} task_id={task_id!r}"
+        )
+    return f"{job}:{task}"
+
+
+# The job an evidence tree belongs to — the left half of every call_id inside it.
+def job_id_for_evidence_dir(evidence_dir: Path | str) -> str:
+    """Return the job id that ``evidence_dir`` belongs to.
+
+    Prefers the tree's own ``manifest.json`` ``job_id``, which is what the job
+    evidence bundle writes; falls back to the directory's own name, which is how
+    the evidence tree is laid out on disk. Never invents an id — it is always
+    one of those two, so the same tree always yields the same call_ids.
+    """
+    base = Path(evidence_dir)
+    try:
+        manifest = _read_evidence_object(base / _JOB_MANIFEST_FILENAME)
+    except (StrictJsonError, OSError, ValueError):
+        manifest = None
+    if manifest:
+        named = _first_string(manifest, ("job_id",))
+        if named:
+            return named
+    return base.resolve().name
+
+
+# Builds one ledger row from one on-disk task run; None when it is unrecordable.
+def call_record_from_evidence(
+    evidence_dir: Path | str,
+    job_id: str,
+    task_id: str,
+) -> CallRecord | None:
+    """Build the ``CallRecord`` for ``task_runs/<task_id>/`` under ``evidence_dir``.
+
+    Reads ``provider_evidence.json`` and, where present, ``token_accounting.json``.
+    The usage counters come from ``token_truth``'s own extractor — Remedy
+    deliberately does NOT parse provider output a second time here, because a
+    second parse is the SECOND CAPTURE PATH the feature file's Orchestrator brief
+    rejects and would be free to disagree with the published evidence.
+
+    Returns None when the task run is UNRECORDABLE: no provider evidence file,
+    unreadable or non-object JSON, or a malformed counter. The extractor RAISES
+    on a malformed counter rather than coercing a plausible number, and that
+    refusal is honoured here — the caller counts the task run instead of storing
+    a guess.
+
+    Field provenance, all of it honest or absent:
+
+    * ``tokens_in`` / ``tokens_out`` / ``cache_read`` / ``cache_write`` — the
+      prompt, completion, cache-read and cache-creation counters. A counter the
+      provider did not report stays None. NO reported usage at all yields NULL
+      counts with ``cost_basis`` ``unknown`` — never a fabricated zero.
+    * ``cost_usd`` — only a figure genuinely present in the evidence
+      (``total_cost_usd``), and then ``cost_basis`` is ``provider_reported``.
+      There is no price table here and no price is ever computed.
+    * ``role`` / ``model`` — taken only where the evidence names them, left None
+      otherwise. A configured model is not the model that ran, so it is not used.
+    * ``ts_utc`` — the evidence's own timestamp where it carries one; OTHERWISE
+      THE ``provider_evidence.json`` FILE'S MTIME rendered as a UTC ISO-8601
+      string. A timestamp's provenance matters, so the fallback is stated rather
+      than hidden: an mtime says when the evidence was written, not when the
+      provider was called.
+    * ``evidence_ref`` — ``task_runs/<task_id>``, the path relative to
+      ``evidence_dir``, so a row can always be traced back to the file that is
+      the source of truth.
+    """
+    base = Path(evidence_dir)
+    task = str(task_id)
+    task_dir = base / _TASK_RUNS_DIRNAME / task
+    evidence_path = task_dir / _PROVIDER_EVIDENCE_FILENAME
+    ctx = f"{_TASK_RUNS_DIRNAME}/{task}/{_PROVIDER_EVIDENCE_FILENAME}"
+    try:
+        provider_evidence = _read_evidence_object(evidence_path)
+        if provider_evidence is None:
+            return None
+        accounting = _read_evidence_object(task_dir / _TOKEN_ACCOUNTING_FILENAME) or {}
+        timestamp = (
+            _first_string(provider_evidence, _TIMESTAMP_FIELDS)
+            or _first_string(accounting, _TIMESTAMP_FIELDS)
+            or _mtime_as_utc_iso(evidence_path)
+        )
+        return _call_record_from_parts(
+            provider_evidence=provider_evidence,
+            accounting=accounting,
+            call_id=call_id_for_task_run(job_id, task),
+            job_id=str(job_id),
+            task_id=task,
+            ts_utc=timestamp,
+            evidence_ref=f"{_TASK_RUNS_DIRNAME}/{task}",
+            ctx=ctx,
+        )
+    except (TokenEvidenceError, StrictJsonError, OSError, ValueError):
+        logger.warning(
+            "token ledger cannot record task run %r from %s: the evidence is "
+            "unrecordable, so no row is invented for it",
+            task, evidence_path, exc_info=True,
+        )
+        return None
+
+
+# Mirrors a whole evidence tree into rows; idempotent, and never raises.
+def backfill_ledger(
+    evidence_dir: Path | str,
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+) -> BackfillResult:
+    """Record every task run under ``evidence_dir`` into the ledger.
+
+    IDEMPOTENT BY CONSTRUCTION: ``call_id_for_task_run`` recovers the same
+    ``call_id`` for the same task run on every pass, and ``record_call``'s
+    ``INSERT OR IGNORE`` turns a repeat into a no-op that still reports the row
+    as durable. A second run over unchanged evidence therefore reports the same
+    ``recorded`` total and leaves the ROW COUNT unchanged — the feature file's
+    "rerunning backfill adds nothing".
+
+    NEVER RAISES on a malformed task run: it is counted in ``failed`` and the
+    scan continues, because one unreadable file must not cost every other row.
+    The evidence files remain the source of truth; this only builds the mirror.
+
+    Give either ``path`` (explicit file) or ``project_id``, exactly as
+    ``record_call`` does; giving neither makes every write a counted miss.
+    """
+    base = Path(evidence_dir)
+    result = BackfillResult()
+    job_id = job_id_for_evidence_dir(base)
+    for task_dir in _task_run_dirs(base):
+        result.scanned += 1
+        try:
+            if not (task_dir / _PROVIDER_EVIDENCE_FILENAME).is_file():
+                # Nothing on disk to mirror: not an error, just not a call.
+                result.skipped += 1
+                continue
+            record = call_record_from_evidence(base, job_id, task_dir.name)
+            if record is None:
+                result.failed += 1
+                continue
+            if record_call(record, project_id=project_id, path=path):
+                result.recorded += 1
+            else:
+                result.failed += 1
+        except Exception:  # pragma: no cover - defence in depth; nothing below raises
+            result.failed += 1
+            logger.error(
+                "token ledger backfill failed for task run %r (counted in failed, "
+                "the scan continues)",
+                task_dir.name, exc_info=True,
+            )
+    return result
+
+
+# Read-only drift report: what the files say versus what the rows say.
+def verify_ledger(
+    evidence_dir: Path | str,
+    *,
+    project_id: UUID | str | None = None,
+    path: Path | str | None = None,
+) -> ReconcileResult:
+    """Compare the evidence files against the ledger rows and report DRIFT.
+
+    THE FILES ARE THE SOURCE OF TRUTH AND THE DATABASE IS THE MIRROR, so every
+    disagreement found here means THE DB IS WRONG — never that the files are.
+    Nothing is corrected: this reports, and ``backfill_ledger`` re-records.
+
+    READ-ONLY BY CONSTRUCTION: when the ledger file does not exist it is not
+    opened, so verifying never CREATES a database; when it does exist only
+    ``SELECT``s run against it. The row count is identical before and after.
+
+    R-0219 is resolved here by CONTENT COMPARISON rather than presence: each row
+    is compared field by field against the record re-derived from its own
+    evidence, so a row that drifted AFTER it was written is visible instead of
+    passing as "a row is there". It has to be reported rather than silently
+    re-recorded, because ``INSERT OR IGNORE`` cannot overwrite an existing row.
+
+    Orphan detection is scoped to THIS job's rows, because one project ledger
+    legitimately holds many jobs and another job's rows are not orphans of this
+    evidence tree.
+
+    Raises ``ValueError`` when neither ``project_id`` nor ``path`` is given —
+    there is no ledger to compare against and reporting universal drift would be
+    a lie about the mirror rather than a fact about it.
+    """
+    base = Path(evidence_dir)
+    result = ReconcileResult()
+    job_id = job_id_for_evidence_dir(base)
+    target = _resolve_ledger_path(project_id=project_id, path=path)
+
+    on_disk: dict[str, CallRecord] = {}
+    for task_dir in _task_run_dirs(base):
+        if not (task_dir / _PROVIDER_EVIDENCE_FILENAME).is_file():
+            continue
+        result.checked += 1
+        record = call_record_from_evidence(base, job_id, task_dir.name)
+        if record is None:
+            result.unreadable.append(call_id_for_task_run(job_id, task_dir.name))
+            continue
+        on_disk[record.call_id] = record
+
+    stored: dict[str, CallRecord] = {}
+    if target.exists():
+        conn = open_ledger(target)
+        try:
+            columns = ", ".join(_CALL_COLUMNS)
+            for row in conn.execute(
+                f"SELECT {columns} FROM calls WHERE job_id = ?", (job_id,)
+            ):
+                stored[row[0]] = CallRecord(**dict(zip(_CALL_COLUMNS, row)))
+        finally:
+            conn.close()
+
+    for call_id, expected in sorted(on_disk.items()):
+        found = stored.get(call_id)
+        if found is None:
+            result.missing_rows.append(call_id)
+        elif found != expected:
+            result.drifted_rows.append(call_id)
+
+    unreadable = set(result.unreadable)
+    result.orphan_rows.extend(
+        sorted(cid for cid in stored if cid not in on_disk and cid not in unreadable)
+    )
+    return result
+
+
 # How many ledger writes have failed in this process — surfaced by verify-ledger.
 def ledger_miss_count() -> int:
     """Return the number of failed ledger writes since the last reset."""
@@ -304,6 +633,116 @@ def reset_ledger_miss_count() -> None:
     global _miss_count
     with _miss_lock:
         _miss_count = 0
+
+
+def _resolve_ledger_path(
+    *,
+    project_id: UUID | str | None,
+    path: Path | str | None,
+) -> Path:
+    """The ledger file to use: an explicit ``path`` wins, else the project's own.
+
+    One spelling of the rule, shared by every entry point, so a caller can never
+    get a different answer from the writer than from the reconciler.
+    """
+    if path is not None:
+        return Path(path)
+    if project_id is not None:
+        return token_ledger_path_for(project_id)
+    raise ValueError("a ledger target needs either project_id or path")
+
+
+def _read_evidence_object(path: Path) -> dict[str, Any] | None:
+    """Return the JSON object at ``path``; None when absent; raise when malformed.
+
+    Uses the repository's strict decoder, so a duplicate key or a non-object root
+    is a refusal rather than a silently-kept last value.
+    """
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return None
+    return strict_loads(raw, where=str(path), require_object=True)
+
+
+def _first_string(container: dict[str, Any], keys: tuple[str, ...]) -> str | None:
+    """The first key in ``keys`` holding a non-blank string, or None."""
+    for key in keys:
+        value = container.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    return None
+
+
+def _mtime_as_utc_iso(path: Path) -> str:
+    """``path``'s modification time as a UTC ISO-8601 string.
+
+    The LAST-RESORT timestamp for a row: it says when the evidence was written,
+    not when the provider was called, which is why every caller documents it.
+    """
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()
+
+
+def _call_record_from_parts(
+    *,
+    provider_evidence: dict[str, Any],
+    accounting: dict[str, Any],
+    call_id: str,
+    job_id: str,
+    task_id: str,
+    ts_utc: str,
+    evidence_ref: str,
+    ctx: str,
+) -> CallRecord:
+    """Map already-loaded evidence onto one ``CallRecord``.
+
+    The ONE mapping from evidence to row, shared by the backfill path and by the
+    call site at the seam where actuals are finalized. Sharing it is what lets
+    ``verify_ledger`` compare content at all: two producers of the same row must
+    not be free to disagree about what that row is.
+
+    Raises ``TokenEvidenceError`` when a counter or the cost figure is
+    malformed — the caller decides what to do with an unrecordable task run.
+    """
+    actual = _extract_actual(provider_evidence, ctx) or {}
+    cost_usd = _strict_cost(provider_evidence, "total_cost_usd", ctx)
+    model = None
+    if provider_evidence.get("actual_model_verified") is True:
+        model = _first_string(provider_evidence, _VERIFIED_MODEL_FIELDS)
+    if model is None:
+        model = _first_string(provider_evidence, _NAMED_MODEL_FIELDS)
+    return CallRecord(
+        call_id=call_id,
+        job_id=job_id,
+        task_id=task_id,
+        role=_first_string(accounting, ("role",)),
+        model=model,
+        ts_utc=ts_utc,
+        tokens_in=actual.get("actual_prompt_tokens"),
+        tokens_out=actual.get("actual_completion_tokens"),
+        cache_read=actual.get("actual_cache_read_tokens"),
+        cache_write=actual.get("actual_cache_creation_tokens"),
+        cost_usd=cost_usd,
+        # The basis describes the COST, so it is provider_reported only when a
+        # real provider figure is present; otherwise unknown, never a price.
+        cost_basis=(
+            COST_BASIS_PROVIDER_REPORTED if cost_usd is not None else COST_BASIS_UNKNOWN
+        ),
+        evidence_ref=evidence_ref,
+    )
+
+
+def _task_run_dirs(evidence_dir: Path) -> list[Path]:
+    """Every ``task_runs/<task_id>/`` directory under ``evidence_dir``, name-sorted.
+
+    Sorted so two passes visit the same task runs in the same order and produce
+    the same counts; an evidence tree with no ``task_runs`` yields nothing.
+    """
+    runs = evidence_dir / _TASK_RUNS_DIRNAME
+    if not runs.is_dir():
+        return []
+    return sorted((child for child in runs.iterdir() if child.is_dir()),
+                  key=lambda child: child.name)
 
 
 def _count_ledger_miss() -> None:
