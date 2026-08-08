@@ -32,6 +32,18 @@ What T002 adds proof of, against a real on-disk evidence tree:
   * the call site at the seam where actuals are finalized writes a row when a
     ledger target is given, and does nothing at all when none is.
 
+What T003 adds proof of, over a ledger written row by row:
+
+  * ``query_cost`` groups by role, by model and by day, filters on ``since`` and
+    on ``job_id``, and reports a grand total over the same filters;
+  * a bucket in which NOTHING was measured reports ``tokens_in is None`` and
+    ``cost_usd is None`` — never 0 — with ``unmeasured_calls`` equal to its own
+    row count, which is the P6 rule this feature exists to keep;
+  * querying a ledger that does not exist yields an EMPTY report and creates no
+    file, no directory and no database;
+  * the query connection itself refuses to write, and leaves no ``-wal``/``-shm``
+    behind, so reading another project's ledger cannot change it.
+
 Every test writes inside ``tmp_path`` and passes ``root=``/``path=``
 explicitly. ``REMEDY_DATA_DIR`` is never mutated and the repository's real data
 root is never touched.
@@ -62,7 +74,9 @@ from packages.orchestration.token_ledger import (
     call_record_from_evidence,
     job_id_for_evidence_dir,
     ledger_miss_count,
+    merge_cost_reports,
     open_ledger,
+    query_cost,
     record_call,
     reset_ledger_miss_count,
     token_ledger_path_for,
@@ -861,3 +875,233 @@ class TestCallSiteAtTheActualsSeam:
         assert "provider_evidence.json" in written
         assert (out_dir / "provider_evidence.json").is_file()
         assert ledger_miss_count() >= 1
+
+
+# ── T003: the cost aggregation queries ───────────────────────────────────────
+# Four rows in one ledger: two MEASURED builder calls on one day and one job,
+# two UNMEASURED reviewer calls on the next day and another job. That shape is
+# what lets one fixture pin every grouping, both filters, the grand total and —
+# the point of the feature — a bucket in which nothing was measured at all.
+
+COST_JOB_MEASURED = "job-a"
+COST_JOB_UNMEASURED = "job-b"
+
+
+@pytest.fixture
+def cost_ledger(tmp_path):
+    """A ledger with two measured and two unmeasured calls, written row by row."""
+    path = tmp_path / "projects" / str(uuid4()) / LEDGER_FILENAME
+    for record in (
+        CallRecord(
+            call_id=f"{COST_JOB_MEASURED}:T001", job_id=COST_JOB_MEASURED,
+            task_id="T001", role="builder", model="claude-opus-5",
+            ts_utc="2026-08-01T10:00:00+00:00",
+            tokens_in=1000, tokens_out=200, cache_read=64, cache_write=32,
+            cost_usd=0.25, cost_basis=COST_BASIS_PROVIDER_REPORTED,
+        ),
+        CallRecord(
+            call_id=f"{COST_JOB_MEASURED}:T002", job_id=COST_JOB_MEASURED,
+            task_id="T002", role="builder", model="claude-opus-5",
+            ts_utc="2026-08-01T12:00:00+00:00",
+            tokens_in=500, tokens_out=50,
+            cost_usd=0.10, cost_basis=COST_BASIS_PROVIDER_REPORTED,
+        ),
+        # The claude-cli case: the provider reported no usage and no cost.
+        CallRecord(
+            call_id=f"{COST_JOB_UNMEASURED}:T001", job_id=COST_JOB_UNMEASURED,
+            task_id="T001", role="reviewer", model="claude-sonnet-4",
+            ts_utc="2026-08-02T09:00:00+00:00",
+        ),
+        CallRecord(
+            call_id=f"{COST_JOB_UNMEASURED}:T002", job_id=COST_JOB_UNMEASURED,
+            task_id="T002", role="reviewer", model="claude-sonnet-4",
+            ts_utc="2026-08-02T11:00:00+00:00",
+        ),
+    ):
+        assert record_call(record, path=path) is True
+    return path
+
+
+def _bucket(report, name):
+    return next(row for row in report.rows if row.bucket == name)
+
+
+class TestQueryCostGrandTotal:
+    def test_the_grand_total_sums_every_row(self, cost_ledger):
+        total = query_cost(path=cost_ledger).total
+
+        assert total.bucket is None
+        assert total.calls == 4
+        assert total.tokens_in == 1500
+        assert total.tokens_out == 250
+        assert total.cache_read == 64
+        assert total.cache_write == 32
+        assert total.cost_usd == pytest.approx(0.35)
+        assert total.measured_calls == 2
+        assert total.unmeasured_calls == 2
+
+    def test_no_grouping_means_no_buckets(self, cost_ledger):
+        assert query_cost(path=cost_ledger).rows == []
+
+    def test_the_report_echoes_the_question_back(self, cost_ledger):
+        report = query_cost(path=cost_ledger, by="role", since="2026-08-01",
+                            job_id=COST_JOB_MEASURED)
+        assert (report.by, report.since, report.job_id) == (
+            "role", "2026-08-01", COST_JOB_MEASURED)
+        assert report.ledger_path == str(cost_ledger)
+        assert report.ledger_exists is True
+
+    def test_an_unknown_group_key_is_refused(self, cost_ledger):
+        with pytest.raises(ValueError):
+            query_cost(path=cost_ledger, by="provider")
+
+    def test_needs_a_target(self):
+        with pytest.raises(ValueError):
+            query_cost()
+
+
+class TestQueryCostGrouping:
+    def test_by_role(self, cost_ledger):
+        report = query_cost(path=cost_ledger, by="role")
+        assert [row.bucket for row in report.rows] == ["builder", "reviewer"]
+        assert _bucket(report, "builder").calls == 2
+        assert _bucket(report, "builder").tokens_in == 1500
+        assert _bucket(report, "reviewer").calls == 2
+
+    def test_by_model(self, cost_ledger):
+        report = query_cost(path=cost_ledger, by="model")
+        assert [row.bucket for row in report.rows] == [
+            "claude-opus-5", "claude-sonnet-4"]
+        assert _bucket(report, "claude-opus-5").cost_usd == pytest.approx(0.35)
+
+    def test_by_day_buckets_on_the_date_prefix(self, cost_ledger):
+        report = query_cost(path=cost_ledger, by="day")
+        assert [row.bucket for row in report.rows] == ["2026-08-01", "2026-08-02"]
+        assert _bucket(report, "2026-08-01").calls == 2
+        assert _bucket(report, "2026-08-02").calls == 2
+
+    def test_the_buckets_add_up_to_the_total(self, cost_ledger):
+        report = query_cost(path=cost_ledger, by="role")
+        assert sum(row.calls for row in report.rows) == report.total.calls
+
+
+class TestQueryCostFilters:
+    def test_since_compares_iso_timestamps_lexicographically(self, cost_ledger):
+        total = query_cost(path=cost_ledger, since="2026-08-02").total
+        assert total.calls == 2
+        assert total.measured_calls == 0
+
+    def test_since_can_exclude_everything(self, cost_ledger):
+        assert query_cost(path=cost_ledger, since="2027-01-01").total.calls == 0
+
+    def test_the_job_filter(self, cost_ledger):
+        total = query_cost(path=cost_ledger, job_id=COST_JOB_MEASURED).total
+        assert total.calls == 2
+        assert total.tokens_in == 1500
+
+    def test_the_filters_apply_to_the_buckets_too(self, cost_ledger):
+        report = query_cost(path=cost_ledger, job_id=COST_JOB_UNMEASURED, by="role")
+        assert [row.bucket for row in report.rows] == ["reviewer"]
+
+
+class TestUnmeasuredIsNeverAZero:
+    """The P6 rule: SUM over all-NULL stays NULL, so nothing renders as 0."""
+
+    def test_an_all_unmeasured_bucket_reports_none_not_zero(self, cost_ledger):
+        bucket = _bucket(query_cost(path=cost_ledger, by="role"), "reviewer")
+
+        assert bucket.calls == 2
+        assert bucket.tokens_in is None and bucket.tokens_in != 0
+        assert bucket.tokens_out is None
+        assert bucket.cache_read is None
+        assert bucket.cache_write is None
+        assert bucket.cost_usd is None
+        assert bucket.unmeasured_calls == bucket.calls
+        assert bucket.measured_calls == 0
+        assert bucket.fully_measured is False
+
+    def test_an_all_unmeasured_total_reports_none_not_zero(self, cost_ledger):
+        total = query_cost(path=cost_ledger, job_id=COST_JOB_UNMEASURED).total
+        assert total.calls == 2
+        assert total.tokens_in is None
+        assert total.cost_usd is None
+        assert total.unmeasured_calls == 2
+
+    def test_a_measured_bucket_says_so(self, cost_ledger):
+        bucket = _bucket(query_cost(path=cost_ledger, by="role"), "builder")
+        assert bucket.measured_calls == 2 and bucket.unmeasured_calls == 0
+        assert bucket.fully_measured is True
+
+    def test_a_cache_counter_nobody_reported_stays_none(self, cost_ledger):
+        """T002 reported tokens but no cache figures; the day still sums honestly."""
+        assert _bucket(query_cost(path=cost_ledger, by="day"),
+                       "2026-08-01").cache_read == 64
+        assert _bucket(query_cost(path=cost_ledger, by="day"),
+                       "2026-08-02").cache_read is None
+
+
+class TestQueryCostIsReadOnly:
+    def test_a_missing_ledger_yields_an_empty_report_and_creates_nothing(self, tmp_path):
+        absent = tmp_path / "projects" / str(uuid4()) / LEDGER_FILENAME
+
+        report = query_cost(path=absent, by="role")
+
+        assert report.ledger_exists is False
+        assert report.rows == []
+        assert report.total.calls == 0
+        assert report.total.tokens_in is None
+        assert not absent.exists()
+        assert not absent.parent.exists(), "a query created a project directory"
+
+    def test_the_row_count_is_unchanged_and_no_sidecar_is_left_behind(self, cost_ledger):
+        before = _row_count(cost_ledger)
+        before_files = sorted(p.name for p in cost_ledger.parent.iterdir())
+
+        query_cost(path=cost_ledger, by="day")
+
+        assert _row_count(cost_ledger) == before
+        assert sorted(p.name for p in cost_ledger.parent.iterdir()) == before_files
+
+    def test_the_connection_itself_refuses_to_write(self, cost_ledger):
+        from packages.orchestration.token_ledger import _connect_readonly
+
+        conn = _connect_readonly(cost_ledger)
+        try:
+            with pytest.raises(sqlite3.OperationalError):
+                conn.execute("DELETE FROM calls")
+        finally:
+            conn.close()
+
+
+class TestMergeCostReports:
+    def test_two_ledgers_add_up_without_inventing_a_zero(self, cost_ledger, tmp_path):
+        other = tmp_path / "projects" / str(uuid4()) / LEDGER_FILENAME
+        assert record_call(
+            CallRecord(call_id="job-c:T001", job_id="job-c", role="builder",
+                       model="claude-opus-5", ts_utc="2026-08-03T10:00:00+00:00",
+                       tokens_in=7, cost_usd=0.01,
+                       cost_basis=COST_BASIS_PROVIDER_REPORTED),
+            path=other) is True
+
+        merged = merge_cost_reports([
+            query_cost(path=cost_ledger, by="role"),
+            query_cost(path=other, by="role"),
+        ])
+
+        assert merged.total.calls == 5
+        assert merged.total.tokens_in == 1507
+        assert merged.total.measured_calls == 3
+        assert _bucket(merged, "builder").calls == 3
+        # The reviewer bucket exists in only one ledger and is unmeasured there,
+        # so the merged figure is still unknown — not 0.
+        assert _bucket(merged, "reviewer").tokens_in is None
+
+    def test_merging_reports_over_missing_ledgers_stays_empty(self, tmp_path):
+        merged = merge_cost_reports([
+            query_cost(path=tmp_path / "a" / LEDGER_FILENAME, by="role"),
+            query_cost(path=tmp_path / "b" / LEDGER_FILENAME, by="role"),
+        ])
+        assert merged.ledger_exists is False
+        assert merged.rows == []
+        assert merged.total.calls == 0
+        assert merged.total.cost_usd is None
