@@ -7,6 +7,4 @@
 > candidate: description · source feature · date. Any entry present
 > at feature-claim time is a block condition.
 
-(empty — the F254 candidate R-0214 was resolved 2026-08-08 as DECISION
-D15: the AGENTS.md handoff.md section now carries a stated-cause overage
-clause, with "sections are never dropped" left intact.)
+- R-0221 (Low): `TestAutoBuildBehavior::test_auto_build_runs_by_default` in `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD` and runs a real `npm install` + `npm run build` in whatever checkout it runs in, refreshing `apps/ui/dist` mtimes mid-suite. Costs every integration gate seven phantom base-only failures via the mtime comparison in `_frontend_is_stale()` (`ui_server.py:2748`). · source feature F103 (found at the R5 gate; the code is not F103's) · 2026-08-08
