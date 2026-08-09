@@ -122,7 +122,11 @@
   the real one, and a mismatch reads as an undeclared path until a round is
   spent disproving it. Fix: the next handoff derives every path count from
   `git diff --stat` at write time and names that command as its source. OPEN.
-  Landed: R-0235 — the R9 handoff derives every path count from git diff --stat.
+  Done: R-0235 (2026-08-09) — RESOLVED. The R9 handoff derives its path counts
+  from `git diff --stat 337ba21f..HEAD` and names that command as the source,
+  once in the commit tables and again in the deviations. The reviewer re-derived
+  the same range independently and got six paths, all under `.agent/`, matching.
+  No count in that handoff disagrees with the diff.
 - R-0236 (Medium, F105 R9, reviewer-authored defect): the R9 step block is 254
   lines against the 240-line cap DECISION F105 D2 sets, and the reviewer emitted
   it without counting. C1 saves a block to TWO paths, so the 14-line overage
@@ -315,3 +319,31 @@
 - R9: the T003 inventory round — the R8 gate recorded, R-0233 and R-0234
   resolved, R-0235 registered and fixed, and `.agent/t003_inventory.md` written.
   READ-ONLY on the code: no builder migrated, no golden written, no test added.
+- Reviewer gate on R9 (2026-08-09): PASS. Range `337ba21f..9b50fafe` read as a
+  real diff: five commits, SIX paths, ALL under `.agent/`; no `packages/`,
+  `apps/`, `tests/`, `docs/`, `docs/roadmap/`, `AGENTS.md`, `.agent/context.md`,
+  `.agent/decisions.md` or `.agent/candidates.md` byte changed, so the round was
+  read-only on the code exactly as it declared. Per-commit insertions 488, 14,
+  35, 262 and 98, every one under the 500 cap. Gates re-run by the reviewer from
+  the repo root with real exit codes: `cmp` exit 0 and no output;
+  `tests/orchestration/test_test_runner.py -k "live_review or context_md or
+  plan_md"` 4 passed 47 deselected; `tests/docs/` 294 passed;
+  `tests/orchestration/test_role_conventions.py` plus `test_prompt_segments.py`
+  48 passed; the canary `tests/cli/test_golden_path.py` 42 passed; integrity
+  `passed=True`, `fail_count=0` over 5 checks; tree clean; the primary checkout
+  the only worktree; HEAD equal to origin. All TWELVE pair counts were
+  re-derived by the reviewer with every needle sliced out of
+  `.agent/authored/f105-r9-1.md`: the three rewrite FROMs 0x with their TOs 1x,
+  the three append FROMs 1x with each TO-only addition 1x. `.agent/plan.md`
+  equals its authored 42-line slice exactly, sha256 9702bc68 on both sides. The
+  inventory was SPOT-CHECKED against the source rather than accepted: intake's
+  `Rules:` block does sit after `{mission}` in `_INTAKE_PROMPT_TEMPLATE`, and
+  both `plan_job_llm` call sites in `apps/cli/commands/do_cmd.py` do pass a call
+  function and no `on_call`, as it claims. Two defects registered, R-0236 and
+  R-0237; neither is in the inventory's findings, which stand.
+  `LAST_REVIEWED_SHA` advances -> 9b50fafe.
+- R10: the session-terminator round — the R9 gate recorded, R-0235 resolved,
+  R-0236 and R-0237 registered and fixed, the session-end handoff written. The
+  session ends at its DECLARED THREE-ROUND CAP; T003 starts next session. R10
+  ends a SESSION, not the branch, so its own gate is OWED and the next session's
+  reviewer records it (R-0233's correction to §4.13).
