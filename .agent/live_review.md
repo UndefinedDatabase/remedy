@@ -450,3 +450,43 @@
   composition change. DECISION F105 D3 — the schema tail stays unregistered, its
   coverage gap made visible through `segment_manifest_chars` — is documented in
   the code this round and lands in `.agent/decisions.md` at R13.
+- Reviewer gate on R12 (2026-08-09): PASS. Range `0f17725a..927bfdad`, five
+  commits, NINE paths — five under `.agent/` plus
+  `packages/orchestration/prompt_trace.py`,
+  `packages/orchestration/intake.py`, `apps/cli/commands/do_cmd.py` and
+  `tests/orchestration/test_prompt_trace.py`. `git diff --name-only` over
+  `docs AGENTS.md README.md .agent/context.md .agent/decisions.md
+  .agent/candidates.md .agent/t003_inventory.md` and the R11 golden returns
+  NOTHING, so the golden really did pass unedited. Per-commit insertions 434,
+  12, 30, 153 and 88 — each under the 500 cap. Gates re-run by the reviewer
+  with real exit codes: `cmp` exit 0 and no output;
+  `tests/orchestration/test_prompt_trace.py` plus the R11 golden plus
+  `tests/orchestration/test_intake.py` 79 passed, which is 37 + 42 with the
+  golden's 5 and intake's 37 both unchanged;
+  `tests/orchestration/test_structured_outputs.py`,
+  `test_provider_mode.py`, `test_agent_run_trace.py` and
+  `tests/orchestration/test_do_run.py` 159 passed; the canary
+  `tests/cli/test_golden_path.py` plus `tests/docs/` 336 passed; integrity
+  `passed=True`, `fail_count=0`; tree clean with no untracked files; the
+  primary checkout the only worktree; HEAD equal to origin. Both pairs are
+  appends and both proved FROM 1x with the TO-only addition 1x, every needle
+  SLICED out of `.agent/authored/f105-r12-1.md`; `.agent/plan.md` equals its
+  authored 37-line slice, sha256 1a2da455 both sides. TWO mutation red-proofs
+  ran in a disposable worktree at 927bfdad, removed and pruned before this
+  verdict, and they test the two halves of the wiring separately: dropping
+  `composed_prompt=composed` from the recorder turns
+  `test_the_cli_recorder_passes_the_composed_prompt` RED, and deleting the
+  `on_call=make_intake_call_recorder(...)` argument from
+  `apps/cli/commands/do_cmd.py` turns the same test RED. A field wired into the
+  model but never filled by the CLI therefore cannot pass — which is the
+  failure this round was most exposed to. All five declared deviations
+  ACCEPTED. Two defects found, BOTH the reviewer's own: R-0238 recurred at 3
+  over cap and its fix is amended above rather than resolved, and the wrong
+  test path is registered as R-0239. `LAST_REVIEWED_SHA` advances
+  0f17725a -> 927bfdad.
+- R13: the session-terminator round — R-0238's fix amended, R-0239 registered,
+  the R12 gate recorded, DECISION F105 D3 written to the ledger, the
+  session-end handoff written. The session ends at its DECLARED THREE-ROUND CAP
+  (R11, R12, R13) under docs/agents/self_drive_protocol.md G7. R13 ends a
+  SESSION, not the branch, so its own gate is OWED and the next session's
+  reviewer records it (R-0233's correction to §4.13).
