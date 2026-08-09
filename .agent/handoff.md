@@ -1,106 +1,107 @@
-# Handoff — F104 Hard budget enforcement, R11 (round-log terminator)
+# Handoff — F105 Cache-optimal prompt ordering, R1 (claim + candidate sweep)
 
-Feature F104, round **R11 — the LAST round on this branch**, branch
-`feature/f104-hard-budget-enforcement`, one-session self-drive, one delegated
-worker. `.agent/` state ONLY. Review range `16f1c375..HEAD` (HEAD = the commit
-that writes this file). **Nothing merged, no PR created or edited — #188 exists
-and is the reviewer's to merge at the Open PR Gate.**
+Feature F105, round **R1**, branch `feature/f105-cache-optimal-prompt-ordering`,
+cut from `main` at **cfda4245**. One-session self-drive, one delegated worker.
+Review range `cfda4245..HEAD` (HEAD = the commit that writes this file). **No
+production code: `packages/`, `apps/`, `tests/`, `README.md`, ROADMAP.md
+byte-unchanged.** Nothing merged, no PR created or edited, no force-push, no
+worktree.
 
 ## Commits
 
-### 59037f57 chore(f104): save the R11 round-log terminator block verbatim
+### 5d7b9fce chore(f105): save the R1 claim-and-sweep block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f104-r11-1.md | +107 | the R11 block + authored pairs A, B, C, verbatim |
-| .agent/last_block.md | +77/-84 | same bytes; replaces the R10 block |
+| .agent/authored/f105-r1-1.md | +253 | the R1 block + authored pairs A-G, verbatim (new) |
+| .agent/last_block.md | +233/-87 | same bytes; replaces the F104 R11 block |
 
-### 644bcb89 chore(f104): record the R10 gate and the terminating convention
+### 23e4873f chore(f105): claim F105 and reset the agent state to the new feature
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +26/-1 | pair A narrows the `Done: R-0228` sentence; pair B appends the R10 round line, the R10 reviewer gate and the terminating convention |
+| docs/roadmap/STATUS.md | +1/-1 | pair A: F105 `[ ]` → `[~]` under Rule A5 |
+| .agent/plan.md | +33/-40 | pair D, full file, 42 lines |
+| .agent/context.md | +27/-29 | pair E, full file, 43 lines |
+| .agent/live_review.md | +16/-245 | pair F, full file, 29 lines; R-0221 carried |
 
-### 1322726a chore(f104): register the terminating-convention closure candidate
+### 1da568ef docs(agents): sweep the F104 closure candidates into the reviewer rules
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/candidates.md | +10 | pair C adds the second F104 closure candidate |
+| docs/agents/planner_reviewer_prompt.md | +21 | pair B appends 11 lines to §4.4 (`Landed:` vs `Done:`); pair C appends item 13, 10 lines (end-of-branch terminator) |
 
-### (this commit) chore(f104): close out R11 in the plan and hand back
+### f78d1e57 chore(f105): empty the closure-candidate carrier after the sweep
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | rewrite, 49 lines | R1-R11; gated through 16f1c375; R11 is last and its gate is off-log; TWO candidates owed to F105 |
+| .agent/candidates.md | +21/-34 | pair G, full file, 33 lines; `**No open candidates.**` 1x |
+
+### (this commit) chore(f105): hand back R1
+| Path | +/- | Reason |
+|---|---|---|
 | .agent/handoff.md | rewrite | this file (template self-reference exception) |
 
-`docs/`, `README.md`, `packages/`, `apps/`, `tests/`, `docs/roadmap/STATUS.md`:
-byte-unchanged — `git diff 16f1c375..HEAD --name-only` lists four `.agent/`
-paths and nothing else.
-
 ## External actions
-`git push -u origin feature/f104-hard-budget-enforcement` after this commit;
-result in the completion report. No merge, force-push, PR create/edit, branch
-switch or worktree change.
+`git push -u origin feature/f105-cache-optimal-prompt-ordering` after this
+commit; result in the completion report. Nothing else left the repo.
 
 ## Verification
-Run by me from the repo root via `subprocess`, real exit codes:
+Run by me from the repo root, real exit codes, after f78d1e57:
 
 | Gate | Command | Exit | Result |
 |---|---|---|---|
-| A | `cmp .agent/authored/f104-r11-1.md .agent/last_block.md` | **0** | no output — byte-identical |
-| B | `python3 -m pytest tests/docs/ -q` | **0** | 294 passed in 0.30s |
-| C | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.32s |
-| D | `remedy integrity check --json` | **0** | `"passed": true, "fail_count": 0, "check_count": 5` |
-| E | `Awaiting review` count in `.agent/live_review.md` | — | **1** — see D3, it is inside pair B's own text |
-| F | candidate bullets in `.agent/candidates.md` | — | **2**, as required |
-| G | `git status --porcelain` | **0** | EMPTY (before this commit; re-checked after) |
+| A | `cmp .agent/authored/f105-r1-1.md .agent/last_block.md` | **0** | no output — byte-identical |
+| B | `python3 -m pytest tests/docs/ -q` | **0** | 294 passed in 0.25s |
+| C | `python3 -m pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | **0** | 4 passed, 47 deselected in 0.13s |
+| D | `python3 -m pytest tests/regression/test_resource_safety.py -q` | **0** | 21 passed in 10.99s |
+| E | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.39s |
+| F | `remedy integrity check --json` via the `apps.cli.grouped:main` entry point | **0** | `"passed": true` (line 3), 0 fails |
+| G | `grep -c '\*\*No open candidates\.\*\*' .agent/candidates.md` | **0** | **1** |
+| H | `git diff main --numstat -- docs/roadmap/STATUS.md` | **0** | `1 1` — exactly one line |
+| I | `git status --porcelain` | **0** | EMPTY (before this commit; re-checked after) |
+
+Extra, not ordered: `pytest tests/ui_server/test_dashboard_contract.py -q -k "not
+auto_build"` → **0**, 68 passed — the other `.agent/context.md` reader (§4.11).
 
 ## Authored-text proofs
 Gate A exit **0**; both files sha256
-`cce3078a303405bd8cf45e14d24373803b7d4b8aab047f070f0afb0a41d95c2d`. Each pair
-was sliced out of the authored file, never retyped. FROM count **1** for A, B, C
-before their edits; after, TO count **1** each, A's FROM **0**. B and C are
-append-shaped: FROM survives at **1**, TO-ONLY lines **1x**. No trailing ws.
+`641787222d082ea0da10b816e13c8846ebb2df2e61537398ea6f3ce4eedf68f4`. Every pair
+was sliced out of `.agent/authored/f105-r1-1.md` on disk, never retyped.
+Pair A (rewrite): FROM 1x → 0x, TO 0x → 1x. Pairs B and C (append-shaped): FROM
+1x before AND after; TO-ONLY lines 0x before, 1x after — 11 for B, 10 for C.
+Pairs D-G (full file): the authored text IS the file, plus one trailing newline.
+No trailing whitespace, no tab, no CR anywhere in the authored file.
 
 ## Deviations & assumptions — declared
-- **D1 (restated).** These commits land AFTER the F104 closure commit,
-  deviating from Rule A4. Deliberate, same class as the accepted b5a241c3 and
-  the R9/R10 commits: `.agent/` state ONLY; the accepted HEAD in STATUS
-  (68a7412019e92232a880625b7fce4e48c7198744) and the package predate them.
-- **D2.** The block offers the AGENTS.md commit-size exemption for 59037f57; it
-  was not needed — 184 insertions, under the 500 cap. Nothing was waived.
-- **D3 (BLOCK SELF-CONFLICT — reviewer decision needed).** The done-when says
-  `Awaiting review` occurs ZERO times in `.agent/live_review.md`. It occurs
-  **once**, line 245, and that occurrence IS authored pair B: "checks,
-  `Awaiting review` 0 occurrences in this file". Count was 0 before my edit, 1
-  after, produced solely by the mandated text; I applied it byte for byte. No
-  round entry claims to await review — it is a quoted marker name in pair B.
-- **D4 (label only).** Pair B's header says "then 28 added lines"; the authored
-  TO carries the FROM line plus **25** added lines, 26 total. Applied byte for
-  byte; nothing invented, nothing dropped. A and C match their labels.
-- **D5.** `remedy` on PATH is not invocable here; gate D ran through
-  `python3 -c "from apps.cli.grouped import main"`, the console-script entry
-  point in `pyproject.toml`. Real exit code.
-- **D6.** `.agent/plan.md` was refreshed in this last commit, not before
-  59037f57, because the block orders the block-save commit to carry its two
-  files alone. Same shape as the accepted 04889d8d (R9) and 16f1c375 (R10).
-- **This handoff is 106 lines** (AGENTS.md D15 stated cause): four per-commit
-  changed-files tables, the seven-row gate table, the pair-shape proofs, the
-  item-status table and six declared deviations. No section dropped.
+- **D1 (label only, pair C).** Its header says "FROM (3 lines…)" and "then 11
+  added lines"; the authored FROM is **2** lines and the addition is **10**. The
+  bytes between the FROM and TO markers are unambiguous and I applied them
+  verbatim — a 3-line FROM would insert at the same point. Pair B matches.
+- **D2.** `remedy` is not invocable on PATH here; gate F ran through
+  `python3 -c "… from apps.cli.grouped import main …"`, the entry point
+  `pyproject.toml` binds the console script to, exactly as the block orders.
+- **D3.** `.agent/plan.md` was reset in 23e4873f, not before 5d7b9fce: the block
+  orders the block-save commit to carry its two files alone. Same shape as the
+  accepted 04889d8d (F104 R9) and 59037f57 (F104 R11).
+- **D4.** The commit-size exemption offered for 5d7b9fce was not needed: 486
+  insertions, under the 500 cap. Nothing was waived.
+- **This handoff is 107 lines** (AGENTS.md D15 stated cause): five per-commit
+  changed-files tables, the nine-row gate table, the pair-shape proofs, the
+  item-status table and four declared deviations. No section dropped.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| 1 save the block | done | 59037f57; cmp exit 0 |
-| 2 apply pairs A + B (live_review) | done | 644bcb89; FROM 1x each before, TO 1x each after |
-| 3 apply pair C (candidates) | done | 1322726a, a separate commit; file now holds 2 bullets |
-| 4 plan + handoff + push | done | this commit; push result in the completion report |
+| C1 save the block | done | 5d7b9fce; cmp exit 0, two files only |
+| C2 claim F105 + reset plan/context/live_review | done | 23e4873f; pairs A, D, E, F |
+| C3 sweep part 1 (pairs B + C) | done | 1da568ef; planner_reviewer_prompt.md only |
+| C4 sweep part 2 (pair G) | done | f78d1e57; candidates.md emptied |
+| C5 handoff + push | done | this commit; push result in the completion report |
 
 ## Open findings
-**1** — R-0221 (Low, carried, F252 flake-debt class, not F104's code to fix).
-R-0222 … R-0228 all Resolved with reviewer-authored text. Next free ID **R-0229**.
-`.agent/candidates.md` now carries **TWO** open F104 closure candidates for the
-next feature's first reviewed round.
+**1** — R-0221 (Low, carried from F103 R5 through all of F104, F252 flake-debt
+class, not this feature's code). Next free ID **R-0229**. Closure candidates:
+**0 open** — both F104 entries RESOLVED as reviewer rules in 1da568ef.
 
 ## Next
-Nothing is owed on this branch and no further round belongs here. The reviewer
-confirms `16f1c375..HEAD`, rules on D3, ends the session; R11's own gate lives
-here, in the reviewer's report and in PR **#188**, which merges at the NEXT
-feature's start via the Open PR Gate — then F105.
+Reviewer confirms `cfda4245..HEAD`, gates R1, then authors **R2 — T001**:
+`packages/orchestration/prompt_segments.py` (registry, rank scale, `compose()`,
+stable delimiters, manifest) plus `tests/orchestration/test_prompt_segments.py`.
+R2 is a SPLIT round — it touches production code.
