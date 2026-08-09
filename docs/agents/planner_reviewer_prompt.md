@@ -190,6 +190,15 @@ end the response with:
      the FROM line at all — dropping a trailing "OPEN.", rewrapping, changing
      punctuation — is a REWRITE, and mislabelling it makes the worker prove the
      wrong property.
+  5. **Reachable red-proofs only.** A block may order a mutation red-proof only
+     when the mutated branch is REACHABLE by the tests that are supposed to go
+     red. Items 1-4 read the block's own bytes; this one reads the code the
+     block points at, which is why it is a separate check and not a sub-point.
+     When reachability is not obvious, order the PROBE instead of the colour:
+     "replace the branch body with a raise and report whether any test fails".
+     A worker who reports an ordered mutation as green is telling the truth
+     about dead code, and it costs that round a declared deviation to prove a
+     reviewer mistake (finding R-0252, DECISION F105 D10).
   Why this is on disk and not a habit: item 2 has recurred five times across
   F104 and F105, and R20 hit all four items in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the

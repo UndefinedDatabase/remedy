@@ -4047,3 +4047,39 @@ tier, and leaves the tail exactly where it is today.
 
 Reverse this decision by deleting this entry; the pin test in
 `tests/orchestration/test_prompt_segments.py` stays useful either way.
+
+## DECISION F105 D10 — red-proofs are ordered only where they can go red (2026-08-10)
+
+Context: finding R-0252. R22's gate F ordered a mutation red-proof against a
+branch of `_drop_one_newline_per_segment_boundary` that no composed prompt can
+reach, so the mutation could only ever come back green. The worker ran it,
+reported green, probed the branch over all 64 optional-argument combinations to
+show WHY, and declared it. Nothing was damaged; a round again spent a declared
+deviation proving a reviewer mistake, and this is the sixth instance of the
+unsatisfiable-gate class across F104 and F105.
+
+What makes it worth its own decision rather than a note under D8 is that D8's
+four items cannot catch it. They are checks on the block's own bytes — count
+the lines, check a zero-gate against the block's own TO slices, count a
+replacement against its file's cap, test whether a TO contains its FROM. All
+four are answerable by reading the block alone. Reachability is a property of
+the CODE the block points at, so it is a different kind of check and belongs as
+its own item.
+
+D10 — §3's checklist gains a fifth item: order a mutation red-proof only where
+the mutated branch is reachable by the tests meant to go red, and when that is
+not obvious, order the PROBE ("replace the branch with a raise, report whether
+anything fails") rather than asserting the colour. The probe is strictly more
+informative than a guess: it returns the same evidence whether the branch is
+live or dead, and it cannot produce a gate the worker has to declare its way
+out of.
+
+The alternative — drop the red-proof when reachability is uncertain — was
+rejected. Red-proofs are the only thing separating a test that pins behaviour
+from a test that merely runs, and F105's own R-0229 was found exactly this way.
+Fewer red-proofs is the wrong direction; better-aimed ones is the right one.
+
+Scope: reviewer-authored blocks, as with D8. It adds no obligation to workers
+and changes no verification tier.
+
+Reverse this decision by deleting this entry and §3 checklist item 5.
