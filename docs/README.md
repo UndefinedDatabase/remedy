@@ -31,6 +31,7 @@
 | external builder | [external-builder-sandbox-v0.md](system/external-builder-sandbox-v0.md) | system |
 | external builder | [external-builder-worker-contract-v0.md](system/external-builder-worker-contract-v0.md) | system |
 | external builder | [managed-external-builder-execution-v1.md](system/managed-external-builder-execution-v1.md) | system |
+| job budget | [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | system |
 | model advisor | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | system |
 | model defaults / dead models | [model-defaults-and-dead-model-check-v0.md](system/model-defaults-and-dead-model-check-v0.md) | system |
 | project scoping | [project-scoping-v0.md](system/project-scoping-v0.md) | system |
@@ -81,6 +82,7 @@ Specifications and design documents for the built system.
 | [feature-planner-v0.md](system/feature-planner-v0.md) | Feature planning and decomposition |
 | [first-fulfilled-job-demo-v0.md](system/first-fulfilled-job-demo-v0.md) | First fulfilled job demo milestone |
 | [first-perfect-job-demo-v0.md](system/first-perfect-job-demo-v0.md) | First perfect job demo milestone |
+| [job-budget-enforcement-v0.md](system/job-budget-enforcement-v0.md) | Per-job budget limits, the reactive and predictive stop paths, and `remedy job budget` |
 | [local-candidate-generator-v0.md](system/local-candidate-generator-v0.md) | Local candidate generation adapter |
 | [local-model-advisor-v0.md](system/local-model-advisor-v0.md) | Local model advisory critique adapter |
 | [main-builder-adapter-v0-token-controlled-session-rail.md](system/main-builder-adapter-v0-token-controlled-session-rail.md) | Token-controlled session rail for main builder |
