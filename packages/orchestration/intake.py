@@ -19,6 +19,12 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from packages.orchestration.prompt_segments import (
+    ComposedPrompt,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
+)
 from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake, to_json_schema
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
@@ -26,12 +32,19 @@ MAX_CLARIFICATIONS = 5
 _MAX_PROMPT_MISSION_CHARS = 8000
 _TRUNCATION_MARKER = "\n[...mission truncated...]"
 
-_INTAKE_PROMPT_TEMPLATE = """\
-Analyze this mission and produce a structured job intake.
+#: Rank-0 SYSTEM segment: the one-line task statement, first in every
+#: composition so the cacheable prefix starts at byte 0.
+_INTAKE_SYSTEM_SEGMENT = "Analyze this mission and produce a structured job intake."
 
+#: Rank-4 TASK segment, the only volatile part: `{mission}` is the caller's
+#: mission text after `_truncate_mission`.
+_INTAKE_MISSION_TEMPLATE = """\
 Mission:
-{mission}
+{mission}"""
 
+#: Rank-1 CONVENTIONS segment: the output-field rules. Never varies per
+#: call, so composing it ahead of the mission keeps it inside the prefix.
+_INTAKE_RULES_SEGMENT = """\
 Rules:
 - goal: one clear sentence stating the objective
 - context_refs: file paths, URLs, or identifiers mentioned
@@ -70,10 +83,32 @@ def _truncate_mission(mission: str) -> tuple[str, bool]:
     return mission[:_MAX_PROMPT_MISSION_CHARS] + _TRUNCATION_MARKER, True
 
 
+# Rank order puts the never-changing rules block AHEAD of the mission text, so
+# the cacheable prefix runs to the end of the rules instead of stopping at the
+# first mission character (F105 T003 site 1). The segment BYTES are unchanged
+# from the pre-migration template — only their ORDER differs, which is the
+# "modulo ordering" content-equality the F105 feature file requires.
+def compose_intake_prompt(mission: str) -> ComposedPrompt:
+    """Compose the intake prompt from registered segments, with its manifest."""
+    prompt_mission, _ = _truncate_mission(mission)
+    registry = PromptSegmentRegistry()
+    registry.register(
+        "intake_system", SegmentStabilityRank.SYSTEM, _INTAKE_SYSTEM_SEGMENT
+    )
+    registry.register(
+        "intake_rules", SegmentStabilityRank.CONVENTIONS, _INTAKE_RULES_SEGMENT
+    )
+    registry.register(
+        "intake_mission",
+        SegmentStabilityRank.TASK,
+        _INTAKE_MISSION_TEMPLATE.format(mission=prompt_mission),
+    )
+    return compose_prompt_segments(registry.registered_segments())
+
+
 def _build_intake_prompt(mission: str) -> str:
     """Build the intake prompt from mission text."""
-    prompt_mission, _ = _truncate_mission(mission)
-    return _INTAKE_PROMPT_TEMPLATE.format(mission=prompt_mission)
+    return compose_intake_prompt(mission).text
 
 
 def _first_sentence(text: str) -> str:
