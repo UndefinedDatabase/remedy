@@ -49,6 +49,12 @@ from packages.orchestration.mission_state import (
 from packages.orchestration.orchestrator_move_schema import (
     ORCHESTRATOR_MOVE_SCHEMA_V,
 )
+from packages.orchestration.prompt_segments import (
+    ComposedPrompt,
+    PromptSegmentRegistry,
+    SegmentStabilityRank,
+    compose_prompt_segments,
+)
 
 # ---------------------------------------------------------------------------
 # The protocol document — read, never written
@@ -86,17 +92,62 @@ def orchestrator_protocol_text(repo_root: Path | None = None) -> str:
     return protocol_document_path(repo_root).read_text(encoding="utf-8")
 
 
+#: Rank-0 SYSTEM segment: the two-line provenance header, which never varies
+#: within a build. Its trailing blank line is deliberately NOT part of it —
+#: ``PROMPT_SEGMENT_DELIMITER`` supplies that — so the composed bytes match the
+#: pre-migration render exactly (F105 T003 site 4).
+_ORCHESTRATOR_SYSTEM_SEGMENT = (
+    f"# Orchestrator protocol {PROTOCOL_VERSION}\n"
+    f"# Source: {PROTOCOL_DOC_RELATIVE} (versioned in the repository)"
+)
+
+
+# One function so the full prompt's cacheable prefix cannot drift away from the
+# system prompt's: both compositions get the same segments and the same manifest
+# rows by construction rather than from two lists that happen to agree today.
+def _register_orchestrator_prefix(registry: PromptSegmentRegistry,
+                                  repo_root: Path | None) -> None:
+    """Register the two cache-stable segments both orchestrator prompts share."""
+    registry.register(
+        "orchestrator_system",
+        SegmentStabilityRank.SYSTEM,
+        _ORCHESTRATOR_SYSTEM_SEGMENT,
+    )
+    # Rank-1 CONVENTIONS: the protocol document is the orchestrator's standing
+    # job description and never changes within a run, so it belongs inside the
+    # cacheable prefix. It is read and hashed PER CALL (DECISION F105 D7) so the
+    # manifest records the bytes that were actually sent, never a stale digest.
+    registry.register(
+        "orchestrator_protocol",
+        SegmentStabilityRank.CONVENTIONS,
+        orchestrator_protocol_text(repo_root),
+    )
+
+
+def compose_orchestrator_system_prompt(
+        repo_root: Path | None = None) -> ComposedPrompt:
+    """Compose the orchestrator system prompt from registered segments.
+
+    Its manifest is the PREFIX of :func:`compose_orchestrator_prompt`'s — same
+    names, ranks and hashes for entries 0 and 1 — because both register through
+    :func:`_register_orchestrator_prefix`.
+    """
+    registry = PromptSegmentRegistry()
+    _register_orchestrator_prefix(registry, repo_root)
+    return compose_prompt_segments(registry.registered_segments())
+
+
 def build_orchestrator_system_prompt(repo_root: Path | None = None) -> str:
     """The orchestrator role's system-prompt block, GENERATED from the document.
 
     Nothing about the orchestrator's instructions is authored in code — change
     the document and the prompt changes with it, as a reviewable diff.
+
+    The text is now COMPOSED from the registered segments of
+    :func:`compose_orchestrator_system_prompt`; a caller that needs the segment
+    manifest calls that instead of re-splitting this string.
     """
-    return (
-        f"# Orchestrator protocol {PROTOCOL_VERSION}\n"
-        f"# Source: {PROTOCOL_DOC_RELATIVE} (versioned in the repository)\n\n"
-        f"{orchestrator_protocol_text(repo_root)}"
-    )
+    return compose_orchestrator_system_prompt(repo_root).text
 
 
 # ---------------------------------------------------------------------------
@@ -794,6 +845,34 @@ def resolve_mission_project(mission_id: str, root: Path | None = None) -> str:
         f"no project holds a mission with id {mission_id!r}")
 
 
+#: Rank-3 JOB_CONTEXT segment, the only volatile part of this prompt:
+#: ``{context_text}`` is one iteration's assembled context, which changes
+#: whenever the mission does.
+_ORCHESTRATOR_MISSION_STATE_TEMPLATE = """\
+# Mission state
+
+{context_text}"""
+
+
+# Unlike F105 T003 sites 1-3, this site's pre-migration order was ALREADY rank
+# order, so the migration is BYTE-EXACT rather than equal-modulo-ordering and
+# the golden asserts `==` against the pre-migration render. All three segments
+# are registered here rather than concatenating the system prompt's composed
+# text with a third: the manifest of the prompt actually sent must list all
+# three entries, which is the entire point of having a manifest.
+def compose_orchestrator_prompt(context: OrchestratorContext,
+                                repo_root: Path | None = None) -> ComposedPrompt:
+    """Compose one iteration's full prompt from registered segments."""
+    registry = PromptSegmentRegistry()
+    _register_orchestrator_prefix(registry, repo_root)
+    registry.register(
+        "orchestrator_mission_state",
+        SegmentStabilityRank.JOB_CONTEXT,
+        _ORCHESTRATOR_MISSION_STATE_TEMPLATE.format(context_text=context.text),
+    )
+    return compose_prompt_segments(registry.registered_segments())
+
+
 def build_orchestrator_prompt(context: OrchestratorContext,
                               repo_root: Path | None = None) -> str:
     """The full prompt for one iteration: the generated protocol, then the state.
@@ -801,9 +880,12 @@ def build_orchestrator_prompt(context: OrchestratorContext,
     The protocol block leads because it never changes within a run; the
     dossier-first context follows. Both halves of the prefix are therefore
     stable, which is what makes the cache discipline worth having.
+
+    The text is now COMPOSED from the registered segments of
+    :func:`compose_orchestrator_prompt`; a caller that needs the segment
+    manifest calls that instead of re-splitting this string.
     """
-    return (f"{build_orchestrator_system_prompt(repo_root)}\n\n"
-            f"# Mission state\n\n{context.text}")
+    return compose_orchestrator_prompt(context, repo_root).text
 
 
 def run_mission(
