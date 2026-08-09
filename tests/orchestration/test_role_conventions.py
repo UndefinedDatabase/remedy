@@ -117,6 +117,14 @@ class TestRoleConventionsFailures:
             role_conventions_text(role, repo_root=tmp_path)
         assert CONVENTIONS_DOC_RELATIVE_PATHS[role] in str(excinfo.value)
 
+    def test_non_utf8_document_raises_role_conventions_error(self, tmp_path):
+        repo_root = _write_repo_root(tmp_path)
+        target = repo_root / CONVENTIONS_DOC_RELATIVE_PATHS[ConventionsRole.WORKER]
+        target.write_bytes(b"\xff\xfe not utf-8")
+        with pytest.raises(RoleConventionsError) as excinfo:
+            role_conventions_text(ConventionsRole.WORKER, repo_root=repo_root)
+        assert CONVENTIONS_DOC_RELATIVE_PATHS[ConventionsRole.WORKER] in str(excinfo.value)
+
     def test_role_conventions_error_is_a_prompt_segment_error(self):
         assert issubclass(RoleConventionsError, PromptSegmentError)
 

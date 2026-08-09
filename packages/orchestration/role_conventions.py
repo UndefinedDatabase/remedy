@@ -105,7 +105,7 @@ def role_conventions_text(role: ConventionsRole, repo_root: Path | None = None) 
     # content-equality guarantee that loading the conventions changed no rule.
     try:
         return path.read_bytes().decode("utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise RoleConventionsError(
             f"conventions document for role {role.value!r} is missing or "
             f"unreadable: {CONVENTIONS_DOC_RELATIVE_PATHS[role]}"

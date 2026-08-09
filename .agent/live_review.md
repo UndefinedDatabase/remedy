@@ -44,6 +44,8 @@
   which escapes the conventions layer — so `except PromptSegmentError`, the
   single catch this module's error hierarchy exists to enable, does not cover it.
   Fix: catch `(OSError, UnicodeDecodeError)` and pin it with a test. OPEN.
+  Landed: R-0230 — the decode error is caught with the OS error; pinned by a
+  non-UTF-8 document test.
 
 ## Steps
 
