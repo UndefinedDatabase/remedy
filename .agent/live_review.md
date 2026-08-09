@@ -35,6 +35,8 @@
   exchanging the two values of `CONVENTIONS_DOC_RELATIVE_PATHS` turns 3 tests RED
   through the role-specific rule anchors. Fix: assert the expected literal per
   role, for both mappings, and red-proof the swap. OPEN.
+  Landed: R-0229 — literal-per-role mapping assertions added; the swap now
+  turns 2 tests RED.
 - R-0230 (Low, F105 R4): `packages/orchestration/role_conventions.py`
   `role_conventions_text` promises `RoleConventionsError` for a document that is
   "missing or unreadable", and the round's spec said the same, but only `OSError`

@@ -137,6 +137,30 @@ class TestRoleConventionsMappings:
         assert len(set(paths)) == len(paths)
         assert len(set(names)) == len(names)
 
+    # These assert the EXPECTED LITERAL per role BECAUSE a test that reads the
+    # mapping it is meant to pin can never fail, however wrong that mapping is.
+    @pytest.mark.parametrize(
+        "role, expected_name",
+        [
+            (ConventionsRole.WORKER, "worker_conventions"),
+            (ConventionsRole.REVIEWER, "reviewer_conventions"),
+        ],
+    )
+    def test_segment_name_mapping_holds_the_expected_literal(self, role, expected_name):
+        assert CONVENTIONS_SEGMENT_NAMES[role] == expected_name
+        _, segment = _register(role)
+        assert segment.name == expected_name
+
+    @pytest.mark.parametrize(
+        "role, expected_relative",
+        [
+            (ConventionsRole.WORKER, "docs/agents/worker_conventions.md"),
+            (ConventionsRole.REVIEWER, "docs/agents/reviewer_conventions.md"),
+        ],
+    )
+    def test_document_path_mapping_holds_the_expected_literal(self, role, expected_relative):
+        assert CONVENTIONS_DOC_RELATIVE_PATHS[role] == expected_relative
+
 
 # ---------------------------------------------------------------------------
 # 5: architecture guards — the cap stays imported, the module stays dependency-free
