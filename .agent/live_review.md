@@ -585,3 +585,29 @@
   registered and fixed, the gate recorded. No builder migrated: the combined
   block measured 293 lines, over DECISION F105 D2's cap, so the migration moves
   to R15 under D2's own split remedy. R14's gate is owed at R15.
+- Reviewer gate on R14 (2026-08-09): PASS. Range `2d993ed9..HEAD` at 73e159b7,
+  four commits, FIVE paths, all under `.agent/`. Per-commit insertions from
+  `git log --numstat`: 407, 31, 28, 100 — each under the 500 cap and each equal
+  to the handback's table. Transport is the strongest this branch has recorded:
+  the reviewer's scratch original, the committed
+  `.agent/authored/f105-r14-1.md` and `.agent/last_block.md` share one sha256,
+  de2bfec6, so both `cmp` runs are exit 0 against a SURVIVING original rather
+  than a reconstruction; 231 lines / 14237 bytes, 9 under the cap. All 59 lines
+  the range adds to `.agent/live_review.md` occur verbatim in the authored file,
+  zero missing, and the ONE removed line is exactly pair C's FROM. `.agent/plan.md`
+  is a contiguous 49-line slice, block lines 164-212, sha256 9607d792. Pair
+  placement was checked structurally, not only by count: the R13 gate landed
+  after R13's own step line and the R10 record at line 421 is untouched, which
+  is where the ambiguous one-line anchor the reviewer widened would have
+  spliced it. Gates re-run by the reviewer: state contracts 4 passed / 47
+  deselected; `tests/docs/` 294 passed; canary 42 passed; integrity
+  `passed=True`, `fail_count=0`; tree clean; primary the only worktree; HEAD
+  equal to origin. Deviations 1 and 2 ACCEPTED on R13's grounds. Deviation 3,
+  the plan stale between C1 and C3, is NOT waved through: registered as R-0242.
+  `LAST_REVIEWED_SHA` advances 2d993ed9 -> 73e159b7.
+- R15: the record half of the R14 gate — R-0240 and R-0241 resolved, R-0242 and
+  R-0243 registered, the gate recorded. No builder migrated: the combined block
+  measured 275 lines after four compression passes, over D2's cap, so the
+  migration and DECISION F105 D4 move to R16. The session revised its declared
+  cap from two rounds to three, stated in this block rather than taken
+  silently, and R15's own gate is owed at R16.
