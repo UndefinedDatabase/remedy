@@ -154,7 +154,7 @@
   Done: R-0228 — fixed in R10: the R4 line now reads PASS and names R-0225 and
   R-0226 as the findings that review produced. Reviewer-verified from the diff
   itself — after the repair commit the stale marker occurs zero times in this file,
-  and the R4 entry is the only entry that commit changes.
+  and the R4 line is the only round entry that commit touches.
 
 ## Steps
 
@@ -231,3 +231,28 @@
   `origin/feature/f104-hard-budget-enforcement`. R9 delivered exactly its block; the
   one thing its block did not cover is registered above as R-0228.
   `LAST_REVIEWED_SHA` advances b5a241c3 -> 8e651661.
+- R10: register R-0228 and correct the stale R4 round marker. `.agent/` state only —
+  no code, test, doc or `docs/roadmap/STATUS.md` byte changed.
+- Reviewer gate on R10 (2026-08-09): PASS. Range `8e651661..16f1c375` read as a real
+  diff — five `.agent/` files, nothing under `packages/`, `apps/`, `tests/`, `docs/`
+  or `README.md`, and `docs/roadmap/STATUS.md` byte-unchanged. The registration commit
+  46be4953 carries pairs 1-3 and contains no `Done:` text; the repair commit fb1daac0
+  carries pairs 4-5 — the finding is registered before its fix is claimed, in that
+  order, in two commits. Gates re-run by the reviewer from the repo root with real
+  exit codes: `cmp .agent/authored/f104-r10-1.md .agent/last_block.md` exit 0,
+  `tests/docs/` 294 passed, the golden-path canary 42 passed,
+  `remedy integrity check --json` `"passed": true` with `"fail_count": 0` over 5
+  checks, `Awaiting review` 0 occurrences in this file, zero trailing-whitespace
+  lines, `git status --porcelain` EMPTY, HEAD equal to origin, and `git worktree list`
+  showing the primary checkout alone. `LAST_REVIEWED_SHA` advances
+  8e651661 -> 16f1c375.
+- Terminating convention for this branch (reviewer, 2026-08-09): an on-disk round log
+  cannot record the gate on the commit that writes it, so R11 — the round that writes
+  this entry — is the LAST round here, and its own verdict is carried by
+  `.agent/handoff.md`, the reviewer's completion report and PR #188 instead. A reader
+  who finds no `Reviewer gate on R11` line below is reading the terminator, not a
+  second instance of R-0228: R-0228 was a line that positively CLAIMED to be awaiting
+  review while its review had demonstrably happened, which is a different defect from
+  a final round whose verdict lives off the round log by construction. Registered as a
+  closure candidate so the convention is written down once in
+  docs/agents/planner_reviewer_prompt.md rather than re-derived on every branch.
