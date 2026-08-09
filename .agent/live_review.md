@@ -820,3 +820,54 @@
   COPY the pair to `.remedy-wt/`, then restore to HEAD, never commit it — its
   plan.md reads BLOCKED, which the Commit Gate's item 1 would make false the
   moment the round resumed. `LAST_REVIEWED_SHA` advances efd66b68 -> 70156f31.
+- Reviewer gate on R18 (2026-08-09, same session, paid in-session and NOT
+  deferred because R18 is the first round on this branch to land production
+  code): PASS. Range `70156f31..HEAD` at c65d663e, SEVEN commits, EIGHT paths,
+  exactly the block's declared change set. Insertions from `git log --numstat`:
+  400, 296, 18, 27, 38, 246 and 91, each under 500; C1b's 296 is the verbatim
+  rewrite of one state file. Transport: `.remedy-wt/f105-r18-2.block.md`,
+  `.agent/authored/f105-r18-2.md` and `.agent/last_block.md` all hash to
+  a89262c0, both `cmp` exit 0, 400 lines — exactly D5's cap, measured before
+  delegation. Application proved disk to disk by the reviewer's own script: all
+  SIX pairs land in their declared shape, A, B, D, E, F appending with FROM
+  surviving 1x and TO fresh 1x, C rewriting the header with its FROM gone; zero
+  marker LINES in `.agent/live_review.md`, `.agent/decisions.md` or
+  `.agent/plan.md`; `.agent/plan.md` equals its slice byte for byte, 46 lines,
+  sha256 2b80abaf. Nothing else entered the state files: of 51, 32 and 13 added
+  lines across the three, every one traces to an authored TO slice and the stray
+  count is 0.
+  The production claim was checked without using the worker's test as evidence.
+  `_PRE_MIGRATION_PLAN_TEMPLATE` is byte-identical to `_PLAN_PROMPT_TEMPLATE` as
+  it stood at 70156f31 — same sha256 ca5f325d after normalising only the
+  constant's NAME, and the two exec to equal values — so the golden is pinned to
+  the real prior text and not to a retyped copy of it. Reconstructing the OLD
+  builder from 70156f31 and rendering both: on two different intakes, the new
+  composition reordered back into template order equals the old render exactly,
+  the lengths match, and the sorted part SETS are equal. Content equality modulo
+  ordering therefore holds against the pre-migration code itself, not merely
+  against a constant in a test file. The cacheable-prefix payoff was measured,
+  not asserted: two calls differing only in intake now share a 1437-character
+  prefix of a 1505-character prompt, and only `plan_intake` changes hash.
+  Gates re-run by the reviewer, real exit codes: golden 5 passed; bundled
+  clarification + prompt segments 60 passed, identical to the pre-round baseline
+  of 60 so the migration added no test to that pair and removed none; state
+  contracts 4 passed / 47 deselected; `tests/docs/` 294 passed; canary 42
+  passed; integrity `passed=True`, `fail_count=0` over 5 checks. Beyond the
+  block's gates the reviewer ran the FULL `tests/orchestration/` suite — 10452
+  passed, 7 skipped, exit 0 in 661s — plus every test file that names
+  `flight_plan`, 309 and 487 passed, so the new keyword-only seam broke no
+  caller. Mutation red-proofs were re-run by the reviewer in a fresh disposable
+  worktree, not taken from the handback: M1 rank swap, M2 dropped trailing
+  newline, M3 deleted `plan_repo_facts` — each RED, each with the block's
+  expected named test among the failures, and the suite green again after every
+  revert. Worktree removed and pruned; `git status --porcelain` empty,
+  `git worktree list` the primary alone, HEAD equal to origin.
+  All six declared deviations ACCEPTED. Deviation 4's `passed:false` on
+  `relevant_untracked` before the C5 commit is the check working as designed on
+  a not-yet-committed new file, not a failure. Deviation 3's added docstring
+  exceeds what the block mandated but documents the seam the block introduced
+  and touches no caller; kept. The 115-line handoff is inside DECISION D15: it
+  declares its own count, names the cap and names the mandated content, and
+  `wc -l` returns the number it declares. One defect found, R-0248, in DECISION
+  D6's account of its own mechanism. `LAST_REVIEWED_SHA` advances
+  70156f31 -> c65d663e.
