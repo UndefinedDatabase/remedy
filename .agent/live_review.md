@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0244.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0245.
 
 ## Findings
 
@@ -257,6 +257,29 @@
   rather than instruction; or move the gate verdict out of the step block into a
   reviewer-written record the worker copies from scratch, the way this block's
   own bytes already travel. OPEN.
+  Fix chosen at the R15 gate (2026-08-09) as DECISION F105 D5, written at C4 of
+  this block: the block stops being counted twice. C1 splits into C1a, which
+  commits `.agent/authored/<round>.md` alone and counts its N insertions against
+  the AGENTS.md 500 cap, and C1b, which rewrites `.agent/last_block.md` alone —
+  the verbatim rewrite of a SINGLE `.agent/**` state file named in the AGENTS.md
+  Commit Discipline exemption, and therefore exempt exactly as written, with no
+  rule reinterpreted. D2's rejected alternative is not revived: the block still
+  meets a 500-line ceiling at C1a, so the pressure keeping blocks short survives
+  and only the doubling artifact goes. The cap moves 240 -> 400. R-0243 stays
+  OPEN until a round lands a gate record AND a feature change out of one block —
+  the condition R16 is built to meet, held to the same discipline as R-0238,
+  which was resolved on a landing and not on a promise.
+- R-0244 (Low, F105 R15, reviewer-authored defect): the authored `.agent/plan.md`
+  text is 54 lines against the AGENTS.md plan.md rule "keep it short (<50
+  lines)". The R14 plan was 49 and inside it; R15 regressed past it while
+  compressing its block four times, so the lines the block saved were spent in
+  the state file instead. The worker declared the overage and correctly refused
+  to trim reviewer-authored text, so the defect is the reviewer's alone.
+  AGENTS.md is the highest authority and no rule of it may be weakened by an
+  authoring convenience; a plan outgrowing its own cap is also the first symptom
+  of a plan turning into a log, which is what the cap exists to prevent. Fix:
+  the authored plan slice is counted before it is emitted and lands at 49 lines
+  or fewer. Applied at C6 of this block. OPEN until it lands.
 
 ## Steps
 
