@@ -2,11 +2,12 @@
 
 Branch: feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after
 PR #187 was merged at the Open PR Gate. Build mode: one-session self-drive
-(docs/agents/self_drive_protocol.md), one delegated worker per round. Open
-findings: 1 (R-0221, Low, carried, not F104's to fix). R-0225 and R-0226 were
-registered at the head of R5 and repaired in it, but only the reviewer's own
-text sets Resolved, so they stay OPEN in `.agent/live_review.md` until the R5
-verdict. R-0222/R-0223/R-0224 are Done. Next free ID: R-0227.
+(docs/agents/self_drive_protocol.md), one delegated worker per round.
+Reviewed through R5: **R4 PASS at f9309bfe**, **R5 PASS at 549f2bac**
+(`LAST_REVIEWED_SHA = 549f2bac`). R-0222, R-0223, R-0224, R-0225 and R-0226 are
+Done with reviewer-authored resolution text. Open findings: 1 — R-0221 (Low,
+carried, not F104's to fix, routed to the F252 flake-debt class). Next free ID:
+R-0227.
 
 ## Goal
 Budgets grow teeth and foresight. A money limit `max_cost_usd` joins the F018
@@ -21,12 +22,14 @@ R6 — T003: display, docs and estimate labels. Every user-facing predicted numb
 carries its `estimate_basis` label, pinned by a grep-style test; `remedy job
 budget` shows spent, remaining and the next-task expectation with that label.
 R6 also decides whether an ist-doc under `docs/` is owed for the job-budget stop
-path. R5 (the R-0225/R-0226 repair, DECISION F104 D7) is committed and pushed,
-awaiting the reviewer's verdict.
+path. T001 and T002 are complete and reviewed: the predictive stop is wired at
+the live safe point and BOTH the predictive and the reactive cost stop reach
+`JOB_STOPPED` for real.
 
 ## Next Steps
 - R7 — integration gate per docs/agents/integration_gate.md.
 - R8 — closure per docs/roadmap/STATUS_closure_protocol.md.
+  `docs/roadmap/STATUS.md` still carries F104 as `[~]`, which is correct.
 
 ## Risks
 - Cost is NULLABLE by design (P6): the ledger stores NULL for an unpriced call
