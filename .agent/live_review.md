@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0236.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0238.
 
 ## Findings
 
@@ -123,6 +123,28 @@
   spent disproving it. Fix: the next handoff derives every path count from
   `git diff --stat` at write time and names that command as its source. OPEN.
   Landed: R-0235 — the R9 handoff derives every path count from git diff --stat.
+- R-0236 (Medium, F105 R9, reviewer-authored defect): the R9 step block is 254
+  lines against the 240-line cap DECISION F105 D2 sets, and the reviewer emitted
+  it without counting. C1 saves a block to TWO paths, so the 14-line overage
+  cost 28 insertions and left C1 at 488 of the 500-insertion commit cap — six
+  more lines of authored text and the round would have needed an unplanned
+  split, which is what R5 already spent a finding on. The worker declared the
+  overage and refused to trim reviewer text; that behaviour is correct and is no
+  part of this finding. Fix: the reviewer counts every block BEFORE emitting it,
+  and C1 reports the real count against the cap so the claim is falsifiable by
+  the worker instead of discovered at the gate. OPEN.
+- R-0237 (Low, F105 R9, inventory omission): `.agent/t003_inventory.md` closes
+  site 4 by arguing that reordering the rules ahead of the mission changes bytes
+  and is therefore a content change by the feature file's own definition, and
+  concludes that the site's golden cannot be a pure equality golden. The feature
+  file answers that in the same sentence the inventory paraphrases:
+  docs/roadmap/features/T2_F105.md requires "golden before/after
+  content-equality tests per builder, modulo ordering". Modulo ordering IS the
+  answer — the golden pins the segment SET and each segment's bytes, not the
+  concatenated string, which is exactly why a reorder counts as composition and
+  not as content. Left uncited, T003's first builder round either re-derives the
+  clause or concludes no golden is possible and invents a weaker one. Fix: cite
+  the clause where the inventory raises the tension. OPEN.
 
 ## Steps
 
