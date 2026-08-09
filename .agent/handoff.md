@@ -1,115 +1,124 @@
-# Handoff — F104 Hard budget enforcement, R6 (T003)
+# Handoff — F104 Hard budget enforcement, R7 (repair + integration gate)
 
-Feature F104, round **R6**, branch `feature/f104-hard-budget-enforcement`, build
-mode one-session self-drive, one delegated worker. T003 delivered: display, the
-grep-style basis pin, and the ist-doc per DECISION F104 D8. **Awaiting review.**
-No PR, no merge, no force-push, no worktree.
+Feature F104, round **R7**, branch `feature/f104-hard-budget-enforcement`, build
+mode one-session self-drive, one delegated worker. R-0227 registered and fixed,
+then the full integration gate. **Awaiting review.** No PR, no merge, no
+force-push.
 
 ## Range
-Review of `549f2bac..26a4e750` (the state-close commits 8a9a964c / bea706a8 /
-95672c30 are already reviewed; R6's own six commits are below, oldest first).
+Review of `8e78c575..HEAD` (HEAD = this commit). `LAST_REVIEWED_SHA` is still
+**549f2bac**: R6 (`549f2bac..8e78c575`) is tabled in the previous handoff and
+also still awaits review.
 
 ## Commits
 
-### 64d962aa chore(f104): save the R6 block verbatim
+### d5411025 chore(f104): save the R7 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f104-r6-1.md | +197 | the R6 block, verbatim (item 1) |
-| .agent/last_block.md | +318/-123 | same bytes; replaces the stale close block |
+| .agent/authored/f104-r7-1.md | +140 | the R7 block, verbatim (item 1) |
+| .agent/last_block.md | +130/-187 | same bytes; replaces the R6 block |
 
-### df86e5af feat(f104): extract the next-predictable-task selection rule
+### 7949a251 chore(f104): register finding R-0227 before fixing it
 | Path | +/- | Reason |
 |---|---|---|
-| packages/orchestration/pingpong_job.py | +46 | `select_next_predictable_task`, pure, never raises; `run_job` untouched |
-| tests/orchestration/test_predictive_budget.py | +172 | seam pin vs the LIVE `_stop_check` + blocked/failed/skipped/all-passed cases |
+| .agent/live_review.md | +19/-1 | R-0227 appended verbatim; next free ID → R-0228 |
 
-### 72c96140 feat(f104): show the money limit, spend and next-task expectation
+### d3fe8011 fix(f104): make a failed budget ledger read say so (R-0227)
 | Path | +/- | Reason |
 |---|---|---|
-| apps/cli/commands/job.py | +124 | `_cmd_job_budget` (a)-(d) + 2 money formatters; JSON gains `prediction`/`recorded_prediction` |
-| tests/orchestration/test_job_budgets.py | +372 | `TestJobBudgetCliRendersPredictions`, 19 tests through the REAL command via capsys |
+| apps/cli/commands/job.py | +32/-2 | ERROR log + `_cost_read_error` → `cost_read:` text line + `cost_read_error` JSON key |
+| tests/orchestration/test_job_budgets.py | +66 | 4 pins driving the REAL command via capsys/caplog |
 
-### 191e4b5c test(f104): pin that every predicted number carries its basis label
+### dcd85d0a chore(f104): record the R7 integration gate and its attribution
 | Path | +/- | Reason |
 |---|---|---|
-| tests/orchestration/test_predictive_budget.py | +150 | `TestEveryPredictedNumberCarriesItsBasis`: vocabulary completeness + surface grep |
+| .agent/gate_f104_r7/ | +344 | 10 files: both run logs, both FAILED lists, both comm lists, the serial re-run, dist parity, worktree cleanup, attribution |
 
-### 1eae2ecb docs(f104): document the job-budget stop path per DECISION F104 D8
+### (this commit) chore(f104): record the R7 state and hand back
 | Path | +/- | Reason |
 |---|---|---|
-| docs/system/job-budget-enforcement-v0.md | +112 | NEW ist-doc |
-| docs/README.md | +2 | Quick-Find (`job budget`) + System table, both alphabetical |
-
-### 26a4e750 chore(f104): record DECISION F104 D8 and the R6 state
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/decisions.md | +21 | D8, reviewer text verbatim |
-| .agent/live_review.md | +7/-2 | ONLY the R6 `## Steps` line replaced |
-| .agent/plan.md | +25/-14 | rewritten, 49 lines, R6-complete-awaiting-review |
+| .agent/live_review.md | +19/-1 | `Done: R-0227` + the R7 `## Steps` line, authored text verbatim |
+| .agent/plan.md | +42/-24 | rewritten, 50 lines, R7-complete-awaiting-review |
+| .agent/handoff.md | rewrite | this file (template self-reference exception) |
 
 ## External actions
-`git push -u origin feature/f104-hard-budget-enforcement` → `95672c30..26a4e750`.
-No PR, no merge, no gh command, no worktree add/remove.
+`git worktree add -b tmp/base-gate .remedy-wt/base_gate_f104_r7 94f69b0f` → ok.
+`git worktree remove --force` + `git worktree prune` + `git branch -D
+tmp/base-gate` → each exit 0; transcript in `gate_f104_r7/worktree_cleanup.txt`.
+`git push -u origin feature/f104-hard-budget-enforcement` → `8e78c575..HEAD`.
+No PR, no merge, no gh command.
 
 ## Verification
-Run by me from the repo root at 26a4e750, real exit codes:
+Run by me from the repo root, real exit codes:
 
 | Gate | Command | Exit | Result |
 |---|---|---|---|
-| A | `pytest tests/orchestration/test_predictive_budget.py -q` | **0** | 75 passed in 1.94s |
-| B | `pytest tests/orchestration/test_job_budgets.py tests/orchestration/test_budget_guard.py -q` | **0** | 223 passed in 32.92s |
-| C | `pytest tests/orchestration/test_budget_stop_integration.py -q` | **0** | 39 passed in 0.22s |
-| D | `pytest tests/docs/ -q` | **0** | 294 passed in 0.30s |
-| E | `pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.47s |
+| A | `pytest tests/orchestration/test_job_budgets.py -q` | **0** | 135 passed in 30.52s |
+| B | `pytest tests/orchestration/test_predictive_budget.py tests/orchestration/test_budget_guard.py -q` | **0** | 167 passed in 4.28s |
+| C | `pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.33s |
+| D | gate, BRANCH: `REMEDY_UI_NO_AUTO_BUILD=1 pytest -n auto -q` | **0** | 16305 passed, 19 skipped in 120.14s; wall 121 s |
+| D | gate, BASE @ 94f69b0f, same command in the worktree | **1** | 6 failed, 16125 passed, 19 skipped in 122.66s; wall 123 s |
 
-Baseline over the same four budget files before any R6 code: 300 passed, exit 0.
-`test_f018_authority_integration.py` also re-run green (153 with C).
+`comm -13` BRANCH-ONLY: **0 ids** — `comm_branch_only_failures.txt` is a 0-byte
+file and that is the evidence. Nothing to re-run, nothing to classify, and the
+step-4 blocker rule cannot fire.
+`comm -23` BASE-ONLY: **6 ids**, all
+`tests/ui_server/test_live_state.py::TestUIServerIntegration::` —
+`test_server_starts_and_writes_info`, `test_url_is_localhost_only`,
+`test_api_invalid_token_403`, `test_api_missing_job_404`, `test_put_rejected`,
+`test_dashboard_no_raw_leaks`. Attribution for each of the six, identical:
+serial re-run at base PASSES with a fresh dist (6 passed in 0.86s); FAILS when
+the dist mtimes are pushed back behind `apps/ui/src` without one byte changing
+(6 failed in 30.44s, each with "ERROR: React UI not built."); PASSES again when
+restored (6 passed in 0.83s) — dist content hash `fb68a729…` identical in all
+three. Classification: pre-existing **environment / R-0221 dist-mtime class**;
+not xdist-flake, not feature-coupled. Attributed, not chased.
 
 ## Authored-text proofs
-`cmp .agent/authored/f104-r6-1.md .agent/last_block.md` → **exit 0**. DECISION
-F104 D8 and the R6 `## Steps` line were applied verbatim.
+`cmp .agent/authored/f104-r7-1.md .agent/last_block.md` → **exit 0**. The R-0227
+finding text and the R7 `## Steps` line were applied verbatim.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
 | 1 save the block | done | cmp exit 0 |
-| 2 selection helper + seam pin | done | pure addition; `run_job` byte-unchanged |
-| 3 `_cmd_job_budget` (a)-(d) + JSON | deviated | see D1 below — the CLI now READS the F103 ledger |
-| 4 basis-label acceptance pins | done | 5/5 labels reachable; set equality asserted |
-| 5 ist-doc + README rows | deviated | 112 lines vs the block's "roughly 60-90" (D2 below) |
-| 6 D8, state files, handback | done | `.agent/context.md` left untouched — see D3 |
+| 2 persist R-0227 | done | own commit, before any fix |
+| 3 fix R-0227 + pins | done | 4 new tests, all through the real command |
+| 4 integration gate | done | 0 branch-only; 6 base-only all attributed |
+| 5 state files + handback | deviated | `.agent/context.md` untouched — see D2 |
 
 ## Open findings
-**1** — R-0221 (Low, carried from F103 R5; not F104's to fix; F252 flake-debt
-class; costs the integration gate seven phantom base-only failures). R-0222,
-R-0223, R-0224, R-0225, R-0226 all Done.
+**1** — R-0221 (Low, carried, not F104's to fix, F252 flake-debt class).
+R-0227 carries a worker `Done: R-0227` and awaits the reviewer's own text.
 
 ## State
-`git status --porcelain` **EMPTY**; branch pushed; no worktrees;
-`docs/roadmap/STATUS.md` untouched, F104 still `[~]`.
+`git status --porcelain` **EMPTY**; branch pushed; `git worktree list` shows
+ONLY the primary checkout; `tmp/base-gate` deleted; `docs/roadmap/STATUS.md`
+and `ROADMAP.md` untouched, F104 still `[~]`.
 
 ## Deviations & assumptions — declared
-- **D1 (item 3).** Item 3(b) is unreachable as written: `counters_from_persisted`
-  has no cost field, so `measured_cost_usd` was ALWAYS None in the CLI and both
-  the `$%.4f` remaining branch and the "priced job" test the block orders could
-  never fire. `_cmd_job_budget` therefore now composes the ledger read the same
-  way `run_job._build_budget_counters` does — `_resolve_job_ledger_project_id` +
-  `collect_ledger_cost_for_job` — only when `max_cost_usd` is set, wrapped, and
-  degrading to the unmeasured path. `query_cost` is SELECT-only and never creates
-  a ledger, so `action_class="read_only"` still holds; pinned by
-  `test_the_command_does_not_mutate_the_persisted_job` (job.json bytes identical).
-  This is new I/O in a read-only command and is flagged for the R7 gate.
-- **D2 (item 5).** The ist-doc is 112 lines, not 60-90. The block mandated eleven
-  topics plus two tables; trimming further would have dropped mandated content.
-- **D3 (item 6).** `.agent/context.md` untouched — its round list already names
-  R6 as display/docs/estimate labels and its branch context is correct, which is
-  the block's stated condition for leaving it.
-- Commit 72c96140 is **496 insertions** — under the 500 cap but close; not split,
-  because the command and the tests that drive it are one logical step.
-- **This handoff is 115 lines** (AGENTS.md D15 stated cause): six per-commit
-  changed-files tables, the five-gate table, the six-row item-status table and
-  three declared deviations. No section dropped.
+- **D1 (item 4).** `REMEDY_UI_NO_AUTO_BUILD=1` was set on BOTH suite runs, not
+  the base run alone, so step 2's "identical command" holds (F103 R5
+  precedent). It is not claimed as a full neutralization: R-0221 pops the
+  variable and builds for real, which is the entire cause of the six base-only
+  ids. Parity was therefore also proven by content hash and each id attributed.
+- **D2 (item 5).** `.agent/context.md` untouched — its round numbering (R7
+  gate → R8 closure) is still correct, so the block's stated condition for
+  editing it is not met.
+- **D3 (item 4).** The committed run logs are trimmed to head + decisive tail +
+  one verbatim failure excerpt (F103 R5 precedent). The raw 234-line and
+  612-line dot-progress logs stay in the gitignored `.remedy-wt/` scratchpad,
+  which is where they were written while the suites ran (R-0176).
+- **D4 (item 4).** `base_serial_rerun.txt` PASS 1 printed a wrong header
+  ("NEGATIVE CONTROL"); it is the POSITIVE control. The header is corrected in
+  place and the correction is stated inside the file. No command re-run, no
+  number altered.
+- Largest commit: 344 insertions (dcd85d0a). Under the 500 cap; nothing split.
+- **This handoff is 124 lines** (AGENTS.md D15 stated cause): five per-commit
+  changed-files tables, the five-row gate table, the full per-id base-only
+  attribution the gate mandates, the item-status table and four declared
+  deviations. No section dropped.
 
 ## Next
-**R7 — the integration gate** (docs/agents/integration_gate.md), attributing
-R-0221's seven base-only failures. Then **R8** closure.
+**R8 — closure** per docs/roadmap/STATUS_closure_protocol.md, once the reviewer
+has gated R6 and R7.

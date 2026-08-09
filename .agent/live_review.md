@@ -125,7 +125,19 @@
   a misconfigured ledger project is indistinguishable from a provider that
   reports no prices, and that is the one diagnosis an operator who just hit a cost
   limit most needs to make.
-  OPEN.
+  Done: R-0227 — fixed in d3fe8011. The bare `except Exception: pass` on the
+  ledger read now logs at ERROR with `exc_info=True` in the same voice as
+  `run_job._build_budget_counters`, and records `_cost_read_error`
+  (`<Type>: <msg>`, 160 chars) which surfaces as a `cost_read:` text line
+  printed only when a read really failed and as its own JSON key
+  `cost_read_error`. The counters decode keeps `diagnostic` and
+  `_counter_diagnostic` to itself; `spent` and `remaining` still render
+  `not-measured` for an unpriced job, which now prints no `cost_read:` line at
+  all. Pinned by four tests in `TestJobBudgetCliRendersPredictions` that drive
+  the real `_cmd_job_budget` through capsys: the failed read's text line, its
+  JSON key, the genuinely-unpriced job that must stay distinguishable from it,
+  and a `caplog` assertion that the ERROR record with `exc_info` is really
+  emitted. Awaiting reviewer verification.
 
 ## Steps
 
@@ -156,3 +168,8 @@
   recorded stop arithmetic; the next-task selection rule was extracted to one helper and
   pinned against the live safe point; the basis label is pinned grep-style; the ist-doc
   `docs/system/job-budget-enforcement-v0.md` landed per DECISION F104 D8. Awaiting review.
+- R7: repair + integration gate — R-0227 registered and fixed (the failed ledger
+  read now logs at ERROR and surfaces `cost_read:` / `cost_read_error`, and a
+  genuinely unpriced job is still distinguishable from a broken read), then the
+  full suite run per docs/agents/integration_gate.md with evidence in
+  `.agent/gate_f104_r7/`. Awaiting review.
