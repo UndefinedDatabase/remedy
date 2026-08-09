@@ -3792,3 +3792,28 @@ different concept from per-job budget limits, and merging them would make one do
 describe two unrelated mechanisms.
 
 Reverse this decision by deleting the doc and its two `docs/README.md` rows.
+
+## DECISION F105 D2 — step blocks are capped at 240 lines (2026-08-09)
+
+Context: F105 R4's commit `ea48ea89` carried 523 insertions, 23 over the AGENTS.md
+cap. The cause was not the work: C1 mandates writing the step block to BOTH
+`.agent/authored/<round>.md` and `.agent/last_block.md`, so a block of N lines costs
+2N insertions in one inseparable commit. The R4 block was 263 lines. It was declared
+with its inseparability reason and verified to be the only oversize commit in F105
+(previous maximum 486, `5d7b9fce`), so it is accepted under the AGENTS.md exception —
+which by construction may be used at most ONCE per feature. F105's allowance is now
+spent, and a second oversize commit on this branch would be a Medium finding.
+
+D2 — every F105 step block from R5 on is at most 240 authored lines, so block plus
+`last_block.md` clears 500 insertions with room to spare. The cause and the fix both
+sit with the reviewer's authoring, not with the worker: when a round needs more
+authored content than that, it is split into two rounds instead of one long block.
+R5 and R6 are exactly that split — the repair and the discoverability block, which
+together would have overrun the cap.
+
+Alternative considered: exempt the C1 pair from the counting rule the way AGENTS.md
+exempts a SINGLE `.agent/**` state-file rewrite. Rejected — the exemption exists
+because a one-file verbatim save is indivisible, while block LENGTH is a free choice
+of the author, and an exemption would remove the only pressure keeping blocks short.
+
+Reverse this decision by deleting this entry.
