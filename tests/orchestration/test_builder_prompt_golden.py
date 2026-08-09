@@ -32,12 +32,14 @@ import pytest
 
 from packages.orchestration.pingpong_loop import (
     _build_builder_prompt,
+    _drop_one_newline_per_segment_boundary,
     compose_builder_prompt,
 )
 from packages.orchestration.pingpong_provider import ReviewFinding
 from packages.orchestration.prompt_segments import (
     PROMPT_SEGMENT_DELIMITER,
     ComposedPrompt,
+    PromptSegmentError,
 )
 
 #: The frozen renders, captured mechanically at 54049e6b. NEVER edited to
@@ -253,3 +255,37 @@ def test_build_builder_prompt_returns_the_composed_text(shape):
     built = _build_builder_prompt(_GOAL, _CONTEXT, **_SHAPES[shape])
     assert isinstance(built, str)
     assert built == _composed(shape).text
+
+
+class TestDropOneNewlinePerSegmentBoundary:
+    """Finding R-0251 — pin all three branches of the boundary helper directly.
+
+    The helper is called with synthetic `list[str]` values rather than through a
+    composed prompt because the fallback branch is UNREACHABLE from composition
+    — every non-last builder segment's raw text already ends with a newline — so
+    no prompt-level golden can ever cover it, however many shapes it renders.
+    """
+
+    def test_the_trailing_newline_of_the_earlier_segment_is_preferred(self):
+        assert _drop_one_newline_per_segment_boundary(["a\n", "b"]) == ["a", "b"]
+
+    def test_the_leading_newline_of_the_later_segment_is_the_fallback(self):
+        adjusted = _drop_one_newline_per_segment_boundary(["a", "\nb"])
+        assert adjusted[0] == "a"
+        assert adjusted[1] == "b"
+
+    def test_a_boundary_with_no_newline_at_all_is_illegal(self):
+        with pytest.raises(
+            PromptSegmentError,
+            match="segment boundary carries no newline to drop "
+                  "between segments 0 and 1",
+        ):
+            _drop_one_newline_per_segment_boundary(["a", "b"])
+
+    def test_each_boundary_chooses_its_own_branch(self):
+        assert _drop_one_newline_per_segment_boundary(
+            ["a\n", "b", "\nc"]) == ["a", "b", "c"]
+
+    def test_the_last_segment_keeps_its_trailing_newline(self):
+        assert _drop_one_newline_per_segment_boundary(
+            ["a\n", "b\n"]) == ["a", "b\n"]
