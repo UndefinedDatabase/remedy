@@ -12,23 +12,21 @@ and `remedy stats cache` shows the cache-read share per role from actuals. Promp
 CONTENT does not change; only its composition.
 
 ## Current Step
-Session ended at its DECLARED THREE-ROUND CAP (R8 completion, R9, R10) with F105
-work remaining — a clean ending under docs/agents/self_drive_protocol.md G7, not
-a failure. T001 and T002 are DONE and reviewer-gated. R9 delivered
-`.agent/t003_inventory.md`, the survey T003 migrates against. `LAST_REVIEWED_SHA`
-is 9b50fafe. R-0229 through R-0235 are RESOLVED; R-0236 and R-0237 are FIXED
-with `Landed:` lines the next gate converts. No PR exists; one is created at
-CLOSURE. The candidates file is empty.
+T001 and T002 are DONE and reviewer-gated. R10 is gated PASS and R-0236 and
+R-0237 are RESOLVED, so R-0221 is the only open finding. R11 migrates T003 SITE
+1 — `packages/orchestration/intake.py::_build_intake_prompt` — to the registry
+under `tests/orchestration/test_intake_prompt_golden.py`. Composition only: the
+manifest reaches call evidence in R12, split off so each diff is one reviewable
+idea. `.agent/t003_inventory.md` holds the survey and the migration order. No PR
+exists; one is created at CLOSURE. The candidates file is empty.
 
 ## Next Steps
-- Gate R10 over `9b50fafe..HEAD` first: R10 ended a SESSION, not the branch, so
-  its gate is owed (R-0233's correction to §4.13).
-- Then T003 proper, ONE builder per round in the inventory's order, starting at
-  `packages/orchestration/intake.py::_build_intake_prompt`: the content-equality
-  golden lands FIRST, then composition moves to the registry, then the segment
-  manifest reaches call evidence.
-- Then the acceptance guard the feature file names: a test that greps direct
-  string-assembly patterns in the builder modules, allowlist starting empty.
+- R12: the intake segment manifest into call evidence through the existing
+  `_record_intake_call` recorder at `apps/cli/commands/do_cmd.py:206`, plus the
+  schema-tail decision the inventory defers.
+- Then sites 2-6 in the inventory's order, ONE builder per round, each golden.
+- Then the acceptance guard: a test that greps direct string-assembly patterns
+  in the builder modules, allowlist starting empty.
 - Then T004, the `remedy stats cache` view over actuals, reporting "not
   reported" rather than zeros where a provider reports no cache figures.
 - Then the integration gate (docs/agents/integration_gate.md), then closure
@@ -36,11 +34,10 @@ CLOSURE. The candidates file is empty.
 
 ## Risks
 - Four of the six builders never send the string they build: `run_structured_call`
-  wraps it. A golden must state which string it pins, or a manifest will describe
-  a strict prefix of the bytes actually sent.
-- Three of the six reach no call evidence today; their rounds must thread
-  `on_call` before a manifest can land anywhere.
-- R-0221 stays open and will cost the F105 integration gate the same phantom
-  base-only failures it cost F103 and F104.
+  wraps it, so a manifest ignoring the schema tail describes a strict prefix.
+- Three of the six reach no call evidence today; those rounds thread `on_call`
+  first.
+- R-0221 stays open and will cost the F105 integration gate phantom base-only
+  failures.
 - DECISION F105 D2 caps step blocks at 240 lines; the once-per-feature oversize
   exception is spent on `ea48ea89`.

@@ -1,127 +1,119 @@
-# Handoff — F105 R10 (session terminator)
+# Handoff — F105 R11 (T003 site 1)
 
-F105 Cache-optimal prompt ordering, R10: record the R9 gate, resolve R-0235 with
-the reviewer's `Done:` text, register and fix R-0236 and R-0237, and close the
-session. `.agent/` state only; READ-ONLY on the code. Branch
-`feature/f105-cache-optimal-prompt-ordering`; no PR exists or was created. This
-is a SESSION TERMINATOR — the session ends at its declared three-round cap
-(R8 completion, R9, R10) under docs/agents/self_drive_protocol.md G7.
+F105 Cache-optimal prompt ordering, R11: record the R10 gate, resolve R-0236 and
+R-0237, and migrate `packages/orchestration/intake.py::_build_intake_prompt` to
+the prompt-segment registry under a content-equality golden. Branch
+`feature/f105-cache-optimal-prompt-ordering`; no PR exists or was created.
+Composition only — the segment manifest reaches call evidence in R12.
 
 ## Range
-Review of `9b50fafe..HEAD` — the five commits below.
+Review of `9d773b14..HEAD` — the four commits below. `git diff --stat
+9d773b14..HEAD` is the source of every path count here (R-0235): 5 paths,
+650 insertions / 186 deletions over the range before the C4 commit.
 
 ## Commits
 
-### 4191a3c8 chore(f105): save the R10 terminator block verbatim
+### 05bb20bf chore(f105): save the R11 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f105-r10-1.md | +240/-0 | C1 — the R10 block, byte for byte |
-| .agent/last_block.md | +164/-178 | C1 — same bytes; 404 ins, under the 500 cap |
+| .agent/authored/f105-r11-1.md | +257/-0 | C1 — the R11 block, byte for byte |
+| .agent/last_block.md | +196/-179 | C1 — same bytes; 453 ins, under the 500 cap |
 
-### 3f7bbb21 chore(f105): register R-0236 and R-0237
+### c1a8e74d chore(f105): record the R10 gate and resolve R-0236 and R-0237
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +23/-1 | C2 — pairs A and B; both findings registered first |
+| .agent/live_review.md | +44/-2 | C2 — pairs A, B (rewrites) and C (append) |
 
-### e86701ce chore(f105): record the R9 gate and resolve R-0235
+### 4e991639 feat(f105): compose the intake prompt from registered segments
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +33/-1 | C3 — pairs C and D |
+| packages/orchestration/intake.py | +40/-5 | C3a/b — three sliced segment constants, `compose_intake_prompt`, `_build_intake_prompt` reduced to one line |
+| tests/orchestration/test_intake_prompt_golden.py | +113/-0 | C3c — the site-1 golden, 5 tests |
 
-### 31b44626 chore(f105): cite the modulo-ordering clause in the T003 inventory
+### C4 (this commit) chore(f105): record the R11 handback
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/t003_inventory.md | +1/-0 | C4 — pair E, the site-4 correction |
-| .agent/live_review.md | +1/-0 | C4 — the R-0237 `Landed:` line |
-
-### (this commit) chore(f105): close the session with the R10 handoff
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/live_review.md | +1/-0 | C5 — pair F, the R-0236 `Landed:` line |
-| .agent/plan.md | rewrite | C5 — the authored 46-line text, verbatim |
-| .agent/handoff.md | rewrite | C5 — this file |
-
-Path counts, per R-0235's fix, are DERIVED from `git diff --stat 9b50fafe..HEAD`
-and `git diff --name-only 9b50fafe..HEAD` run at write time and from no other
-source. Those commands listed FOUR paths for C1-C4
-(`.agent/authored/f105-r10-1.md`, `.agent/last_block.md`,
-`.agent/live_review.md`, `.agent/t003_inventory.md`); this C5 commit adds
-`.agent/plan.md` and `.agent/handoff.md`, so the round's total is SIX, every one
-under `.agent/`.
+| .agent/plan.md | +18/-21 | C4 — the authored plan, verbatim slice of block lines 190-232 |
+| .agent/handoff.md | this file | C4 — a handoff cannot table the commit that writes it (R-0149) |
 
 ## External actions
-No worktree, no PR, no `gh`, no amend/rebase/revert/cherry-pick/force-push.
-`git push -u origin feature/f105-cache-optimal-prompt-ordering` runs after this
-commit; its real outcome is in the completion report.
+`git push -u origin feature/f105-cache-optimal-prompt-ordering` — run after the
+C4 commit; result in the completion report. No PR created, no gh command, no
+worktree added or removed.
 
 ## Verification
-| # | Command (full paths) | Exit | Real trimmed output |
+| # | Command | Exit | Real output (trimmed) |
 |---|---|---|---|
-| A | `cmp .agent/authored/f105-r10-1.md .agent/last_block.md` | 0 | no output |
-| B | `wc -l` / `wc -c .agent/authored/f105-r10-1.md` | 0 | `240` lines / `15250` bytes — AT the D2 cap of 240, not over |
-| C | `python3 -m pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | 0 | `4 passed, 47 deselected in 0.11s` |
-| D | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.26s` |
-| E | `python3 -m pytest tests/orchestration/test_role_conventions.py tests/orchestration/test_prompt_segments.py -q` | 0 | `48 passed in 0.12s` |
-| F | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 19.59s` |
-| G | `git status --porcelain` | 0 | EMPTY at 31b44626; re-run after this commit |
-| H | `git worktree list` | 0 | `/home/decodeux/Repos/remedy  31b44626 [feature/f105-…]` alone |
-| I | `python3 -m apps.cli.grouped integrity check --json` | 0 | `"passed": true`, `"fail_count": 0`, 5 checks |
-| J | pair counts A-F, every needle sliced by line index | 0 | 6/6 as declared (below) |
-| K | `grep -c "^> Branch: .*Next free ID: " .agent/live_review.md` | 0 | `1`; line 8 reads `R-0238` |
-| L | `git diff --stat 9b50fafe..HEAD` | 0 | 4 paths for C1-C4, 6 for the round; ins 404, 23, 33, 2 — each under 500 |
-| M | `grep -c "^  Landed: R-0" .agent/live_review.md` | 0 | `2` — lines 140 (R-0236) and 153 (R-0237); no worker `Done:` |
+| A | `cmp .agent/authored/f105-r11-1.md .agent/last_block.md` | 0 | (no output) |
+| B | `wc -l -c .agent/authored/f105-r11-1.md` | 0 | `257 16297` — **OVER the 240-line D2 cap by 17 lines**; reviewer text NOT trimmed |
+| C | `python3 -c` split proof vs `git show 9d773b14:packages/orchestration/intake.py` (full command below) | 0 | `EQUAL, chars: 634` |
+| D | `python3 -m pytest tests/orchestration/test_intake_prompt_golden.py -q` | 0 | `5 passed in 0.13s` |
+| E | `python3 -m pytest tests/orchestration/test_intake.py -q` | 0 | `37 passed in 0.37s` (37 before, 37 after) |
+| F | `python3 -m pytest tests/orchestration/test_prompt_segments.py tests/orchestration/test_role_conventions.py -q` | 0 | `48 passed in 0.12s` |
+| G | `python3 -m pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | 0 | `4 passed, 47 deselected in 0.11s` |
+| H | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
+| I | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 19.77s` |
+| J | `grep -rn "_INTAKE_PROMPT_TEMPLATE" packages/ apps/` | 1 | 0 hits (one hit in `tests/orchestration/test_intake_prompt_golden.py:10`, the golden's docstring naming the frozen constant) |
+| K | `git status --porcelain` | 0 | empty at C3; ` M .agent/plan.md` before the C4 commit |
+| L | `git worktree list` | 0 | `/home/decodeux/Repos/remedy 4e991639 [feature/f105-cache-optimal-prompt-ordering]` — the primary checkout alone |
+| M | `python3 -m apps.cli.grouped integrity check --json` | 0 | `passed= True fail_count= 0 checks= 5` |
+| O | `git log --format='%h %s' --shortstat 9d773b14..HEAD` | 0 | 453, 44, 153 insertions — each under the 500 cap |
 
-Gate J, by shape: rewrites B and C end FROM 0x / TO 1x. Appends A, D, E, F end
-FROM 1x with their TO-ONLY addition exactly 1x. Every FROM occurred exactly 1x
-before its edit, verified before the write; none was retyped.
+Gate C, in full:
+`python3 -c 'import subprocess; from packages.orchestration import intake; src =
+subprocess.run(["git","show","9d773b14:packages/orchestration/intake.py"],capture_output=True,text=True,check=True).stdout;
+ns = {}; exec("".join(src.splitlines(keepends=True)[28:44]), ns); joined =
+"\n\n".join([intake._INTAKE_SYSTEM_SEGMENT, intake._INTAKE_MISSION_TEMPLATE,
+intake._INTAKE_RULES_SEGMENT]); assert joined == ns["_INTAKE_PROMPT_TEMPLATE"],
+"NOT EQUAL"; print("EQUAL, chars:", len(joined))'` → `EQUAL, chars: 634`.
 
 ## Authored-text proofs
-- C1: `cmp` exit 0, no output. Block is 240 lines / 15250 bytes — exactly AT the
-  DECISION F105 D2 cap of 240 and therefore not over it. No CR
-  (`grep -c` exit 1), no trailing whitespace (`grep -nP "[ \t]+$"` exit 1),
-  final newline present (`od -c` shows `\n`).
-- C5: `.agent/plan.md` equals lines 169-214 of `.agent/authored/f105-r10-1.md`
-  exactly — 46 lines, sha256 `241a03e3…` on both sides, byte comparison True.
-- Every pair FROM and TO was SLICED by line index out of the committed authored
-  file on disk. Pair E's FROM was read off `.agent/t003_inventory.md` itself, as
-  C4 instructs, and matched exactly one line.
+Every needle was SLICED by line index out of the committed
+`.agent/authored/f105-r11-1.md`, never retyped (gate N):
+| Pair | Shape | FROM before | FROM after | TO after |
+|---|---|---|---|---|
+| A (lines 48 → 51-56) | rewrite | 1 | 0 | 1 |
+| B (lines 60 → 63-67) | rewrite | 1 | 0 | 1 |
+| C (line 71 → 74-107) | append | 1 | 1 | 1 (TO-only addition, lines 75-107: 1) |
+
+`.agent/plan.md` equals block lines 190-232 byte for byte: `sha256sum` of the
+file and of the slice both `cde2364d`.
 
 ## Deviations & assumptions
-- Gate M's literal string `Landed: ` matches THREE lines in
-  `.agent/live_review.md`; the third is line 6, the file's own header explaining
-  the convention (`` `Landed: R-XXXX` ``). That is the F104 R11 "gate quotes its
-  own marker" class. The substance was measured with `^  Landed: R-0`, which is
-  exactly 2. Reported, not fitted.
-- Declared: this handoff is 127 lines (`wc -l`), over the 60-line cap. D15
-  stated cause: five
-  per-commit tables, the thirteen-row verification table, the pair-shape proof,
-  the two authored-text proofs, the path-count derivation R-0235's fix mandates,
-  and the item-status table. No section was dropped.
-- Nothing under `packages/`, `apps/`, `tests/`, `docs/`, `docs/roadmap/`,
-  `AGENTS.md`, `.agent/context.md`, `.agent/decisions.md` or
-  `.agent/candidates.md` changed — confirmed by `git diff --name-only`.
+1. **Block over cap, declared**: gate B is 257 lines / 16297 bytes against
+   DECISION F105 D2's 240; the reviewer's hand-count put it near 235. Per C1 the
+   text was NOT trimmed. Same class as R-0236 (which this round resolved on R10's
+   evidence); registering a finding is the reviewer's, not the worker's, act —
+   flagged here for R-0238. C1's commit still landed at 453 insertions, under 500.
+2. **Test 1 wording**: `PromptSegmentManifestEntry` carries name/rank/sha256/
+   sizes but NO text, so "the composed manifest's segment texts" is realised as
+   `composed.text.split("\n\n")` (3 parts, the fixtures contain no blank line)
+   AND, additionally, by comparing the manifest's sha256 set with the sha256 of
+   the three frozen parts. Stronger than the letter, same intent.
+3. **WHY placement**: a docstring cannot sit above a `def`, so the WHY text is a
+   comment block directly above `compose_intake_prompt` (AGENTS.md's own idiom)
+   plus a one-line docstring inside it.
+4. **Slicing mechanics**: the C3 template split and the golden's frozen constant
+   were produced by throwaway scripts under gitignored `.remedy-wt/` so no byte
+   was retyped; nothing under `.remedy-wt/` is committed (integrity
+   `relevant_untracked untracked=0`).
+5. **Handoff length**: over the 60-line cap under DECISION D15 — cause is the
+   mandated content: 14-row verification table, the full gate-C command, the
+   per-commit tables, the pair-proof table and the item-status table. No section
+   dropped.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | block saved to both paths, `cmp` exit 0, real count reported |
-| C2 | done | pairs A and B; both findings registered before any fix |
-| C3 | done | pairs C and D; R9 gate and R10 step line filed under `## Steps` |
-| C4 | done | pair E in the inventory plus the R-0237 `Landed:` line |
-| C5 | done | pair F, plan rewrite, this handoff, then the push |
+| C1 | done | block saved to both paths, `cmp` exit 0; count reported and OVER cap |
+| C2 | done | pairs A, B, C applied in one commit, counts verified |
+| C3 | done | (a) lossless split proven, (b) registry composition, (c) 5-test golden |
+| C4 | done | plan rewritten from the authored slice, handoff written, pushed |
 
 ## Open findings
-R-0221 OPEN (carried from F103). R-0229 through R-0235 RESOLVED with
-reviewer-authored `Done:` text. R-0236 and R-0237 are FIXED but carry `Landed:`
-lines only — a worker never writes `Done:`
-(docs/agents/planner_reviewer_prompt.md §4.4), so the next reviewer gates R10 and
-authors both resolutions. Next free ID **R-0238**. `LAST_REVIEWED_SHA` stays
-9b50fafe until R10 gates.
+One: R-0221 (Low, carried from F103 R5). R-0236 and R-0237 are RESOLVED this
+round. Next free finding ID: R-0238.
 
 ## Next
-Gate R10 over `9b50fafe..HEAD` first — R10 ended a SESSION, not the branch, so
-its gate is OWED (R-0233's correction to
-docs/agents/planner_reviewer_prompt.md §4.13). Then start T003 proper at
-`packages/orchestration/intake.py::_build_intake_prompt`, ONE builder per round
-in the order `.agent/t003_inventory.md` sets, its content-equality golden
-landing before any composition moves.
+Reviewer gates `9d773b14..HEAD`; then R12 wires the intake segment manifest into
+call evidence through `_record_intake_call` at `apps/cli/commands/do_cmd.py:206`.
