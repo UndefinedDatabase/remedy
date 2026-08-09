@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0249.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0250.
 
 ## Findings
 
@@ -356,6 +356,22 @@
   Fix: D6's sentence names C1b onward, and states that C1a is covered by being
   the block's own verbatim copy rather than by `.agent/last_block.md`. Amend the
   entry in place, in the round that next touches `.agent/decisions.md`. OPEN.
+- R-0249 (Low, F105 R19, the plan names a narrower function than the migration
+  order does): `.agent/plan.md` sends R20 to "migration-order step 4,
+  `orchestrator_loop.py::build_orchestrator_system_prompt`". The migration order
+  in `.agent/t003_inventory.md` — which that same plan names as the authority
+  over how T003 is counted — lists step 4 as `build_orchestrator_prompt`, the
+  OUTER composition at line 797, and describes it as "two segments, already
+  rank-ordered". `build_orchestrator_system_prompt` at line 89 is only its
+  rank-0/rank-1 half. A worker reading the plan alone migrates the inner
+  function and leaves the outer one an f-string that concatenates a composed
+  prompt with a raw section header; the round's own acceptance — this prompt
+  composes from registered segments — is then false for the prompt actually
+  sent, and the manifest describes a strict prefix of it. This is not a wrong
+  spec: the inventory is right and the plan abbreviated it. Fix: the plan names
+  `build_orchestrator_prompt` and says its system half migrates with it. The
+  fix lands in this round's plan rewrite; the next gate verifies it and
+  resolves this entry. OPEN.
 
 ## Steps
 
@@ -871,3 +887,44 @@
   `wc -l` returns the number it declares. One defect found, R-0248, in DECISION
   D6's account of its own mechanism. `LAST_REVIEWED_SHA` advances
   70156f31 -> c65d663e.
+- Reviewer gate on R19 (2026-08-09, the next session's reviewer, paying the
+  gate R19 was owed as the session terminator): PASS. Range `c65d663e..HEAD`
+  at 04a3396d, FIVE commits, FIVE paths, every one `.agent/` state — exactly
+  the block's declared change set, no production file and no test file, so no
+  mutation red-proof was owed and none is claimed. Insertions from
+  `git log --numstat`: 230, 137, 17, 51 and 53, each under 500; C1b's 137/-307
+  and C4's handoff rewrite are each the verbatim rewrite of one state file.
+  Transport was re-proved disk to disk by the reviewer rather than read out of
+  the handback: `.agent/authored/f105-r19-1.md` and `.agent/last_block.md` both
+  hash to 7f8cd1eb1a388d07c74381658934d473c1afdd4447e546784e3b88bc4a3638c3,
+  `cmp` exits 0, and both are 230 lines, so the handback's `7f8cd1eb…` is the
+  real digest and D5's 400-line cap holds with room. Application checked per
+  target: `grep -c '^- R-0248 '` is 1 and `grep -c '^- Reviewer gate on R18 '`
+  is 1, so neither the finding nor the owed gate was applied twice; line 8 read
+  `Next free ID: R-0249.`; marker LINES `^===BEGIN|^===END` count 0 in both
+  `.agent/live_review.md` and `.agent/plan.md`.
+  Gates re-run by the reviewer with real exit codes, none accepted as a word:
+  canary `tests/cli/test_golden_path.py` 42 passed in 19.35s; `tests/docs/`
+  294 passed; `tests/ui_server/test_dashboard_contract.py` 70 passed;
+  `tests/orchestration/test_integrity_gate.py` 15 passed; the `.agent` state
+  contracts 2 passed / 16360 deselected under the reviewer's own `-k` selector.
+  `git status --porcelain` was empty and `git worktree list` showed the primary
+  alone, so G5 holds and no destructive check leaked into the checkout.
+  Honest gap, stated rather than papered over: the handback's fourth D-gate
+  item, `remedy integrity check --json`, could NOT be executed — this session's
+  shell layer refused the invocation — so the reviewer ran the integrity gate's
+  own test file instead and does NOT restate the handback's `passed=True,
+  fail_count=0` over 5 checks. That number stays the worker's claim, unverified
+  here. It gates nothing this round, because R19 shipped no code for the
+  integrity checker to have an opinion about; a round that ships code does not
+  get the same pass.
+  The declared counts check out against the commands that produced them:
+  `wc -l` returns 46 for `.agent/plan.md`, under the <50 rule, and 85 for
+  `.agent/handoff.md`, exactly the number the D15 overage line declares — the
+  overage is stated truthfully rather than rounded, which is the whole test of
+  a stated-cause deviation. All four declared deviations ACCEPTED; deviation
+  2's benign 2x sentence collision was re-counted and the PAIR_C block itself
+  occurs exactly 1x, which is the claim that matters. Deviation 3 is the R-0248
+  gap, already registered and fixed this round. One finding is registered
+  against the handback's planning record rather than against R19's work,
+  R-0249. `LAST_REVIEWED_SHA` advances c65d663e -> 04a3396d.
