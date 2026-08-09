@@ -1544,6 +1544,52 @@ def _resolve_cfg(cli_val: Any, persisted_val: Any, default: Any) -> tuple[Any, s
     return default, "default"
 
 
+# Answers "which task would run next, and with what prior context" for anyone
+# who needs the F104 prediction WITHOUT running the job — today `remedy job
+# budget`. One function so the read-only inspector and `run_job`'s task-dispatch
+# safe point can never drift into predicting against different tasks.
+def select_next_predictable_task(job) -> tuple[object | None, list]:
+    """Return ``(next_task, previous_summaries)`` for a persisted job plan.
+
+    The rule is EXACTLY the one ``run_job``'s dispatch loop applies:
+
+    * ``previous_summaries`` collects the ``proof_summary`` of every task that
+      is ``TASK_APPLIED`` or ``TASK_PASSED`` and actually carries one, in task
+      order — the same list the loop pre-fills before its first dispatch.
+    * ``next_task`` is the first task the loop would not ``continue`` past, i.e.
+      the first whose status is not applied/passed/skipped. If that task is
+      ``TASK_BLOCKED`` or ``TASK_FAILED`` the loop ``break``s instead of
+      dispatching, so there is no next task and None is returned.
+
+    Pure and NEVER raises: it is read by a read-only CLI over possibly-legacy
+    job files, where a missing attribute must degrade rather than kill an
+    inspection command. Every degradation returns ``(None, [])``.
+    """
+    try:
+        tasks = list(getattr(job, "tasks", None) or ())
+        # Pass 1 — the SAME pre-fill the loop does over EVERY task, not only the
+        # ones before the next pending one: a later completed task still feeds
+        # its proof summary into the context of an earlier pending task.
+        summaries: list = [
+            t.proof_summary for t in tasks
+            if getattr(t, "status", None) in (TASK_APPLIED, TASK_PASSED)
+            and getattr(t, "proof_summary", None)
+        ]
+        # Pass 2 — the first task the loop would not `continue` past. If the loop
+        # would `break` on it instead of dispatching, there is no next task.
+        next_task = None
+        for task in tasks:
+            status = getattr(task, "status", None)
+            if status in (TASK_APPLIED, TASK_PASSED, TASK_SKIPPED):
+                continue
+            if status not in (TASK_BLOCKED, TASK_FAILED):
+                next_task = task
+            break
+        return next_task, summaries
+    except Exception:
+        return None, []
+
+
 # ---------------------------------------------------------------------------
 # Sequential job runner (Steps 4829-4830, 4837-4838, 4857-4869)
 # ---------------------------------------------------------------------------

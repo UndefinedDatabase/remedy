@@ -841,3 +841,175 @@ class TestTheA9PathAtTheDeriveThenPredictSeam:
             band=band, config=_config(0.01))
         assert p.estimate_basis == "class_default_missing_band"
         assert p.expected_tokens == LARGEST_CLASS_DEFAULT
+
+
+def _summary_ids(summaries):
+    """Compare summary LISTS by identity-free content: their task ids, in order."""
+    return [getattr(s, "task_id", None) for s in summaries]
+
+
+class TestSelectNextPredictableTaskAgreesWithTheLiveSafePoint:
+    """``select_next_predictable_task`` must pick what ``run_job`` really picks.
+
+    The helper exists so ``remedy job budget`` can predict WITHOUT running the
+    job. Its only real specification is the dispatch loop in ``run_job``, so the
+    pin below does not restate the rule — it drives the real runner, captures the
+    ``(next_task, previous_summaries)`` the LIVE ``_stop_check`` hands to
+    ``derive_next_task_token_band``, and asserts the helper reproduces exactly
+    that from the persisted job state at the same moment.
+
+    The seam is monkeypatched the way ``TestTheA9PathAtTheDeriveThenPredictSeam``
+    reasons about it — at the ``derive`` boundary — and the original function is
+    still called, so the run's behaviour is unchanged by the observation.
+    """
+
+    def test_the_helper_reproduces_every_live_dispatch_selection(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        from packages.orchestration import budget_guard as _bg
+        from packages.orchestration.pingpong_job import (
+            JOB_COMPLETED,
+            load_job_plan,
+            parse_job_file,
+            run_job,
+            select_next_predictable_task,
+        )
+
+        # No price basis is configured, so the prediction is inert (D4) and the
+        # job runs BOTH tasks — one capture per dispatch safe point.
+        assert not (demo_repo / "remedy.toml").exists()
+        _arm_the_ledger(monkeypatch)
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        job_id = job.job_id
+
+        observed: list[tuple] = []
+        _real_derive = _bg.derive_next_task_token_band
+
+        def _spy(task, previous_summaries=()):
+            # What the runner passed, and what the helper says about the job as
+            # it stands at this very safe point.
+            helper_task, helper_summaries = select_next_predictable_task(
+                load_job_plan(job_id))
+            observed.append((
+                getattr(task, "task_id", None),
+                _summary_ids(previous_summaries),
+                getattr(helper_task, "task_id", None),
+                _summary_ids(helper_summaries),
+            ))
+            return _real_derive(task, previous_summaries)
+
+        monkeypatch.setattr(_bg, "derive_next_task_token_band", _spy)
+
+        done = run_job(
+            job_id,
+            builder_provider=_CountingProvider(),
+            reviewer_provider=_CountingProvider(),
+            repair_rounds=0,
+            budgets={"max_cost_usd": 1000.0},
+        )
+        assert done.status == JOB_COMPLETED
+
+        # Two dispatches really happened, and the summaries really grew.
+        assert len(observed) == 2, observed
+        assert observed[0][0] == "T001"
+        assert observed[0][1] == []
+        assert observed[1][0] == "T002"
+        assert observed[1][1] == ["T001"]
+
+        # ...and the helper agreed at BOTH of them.
+        for live_task, live_summaries, helper_task, helper_summaries in observed:
+            assert helper_task == live_task
+            assert helper_summaries == live_summaries
+
+    def test_a_blocked_first_pending_task_has_no_next_task(self, demo_repo):
+        from packages.orchestration.pingpong_job import (
+            TASK_BLOCKED,
+            parse_job_file,
+            select_next_predictable_task,
+        )
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        job.tasks[0].status = TASK_BLOCKED
+        # The runner BREAKS on a blocked task rather than dispatching it, so
+        # there is nothing to predict against — and no summaries exist yet.
+        assert select_next_predictable_task(job) == (None, [])
+
+    def test_a_failed_first_pending_task_has_no_next_task(self, demo_repo):
+        from packages.orchestration.pingpong_job import (
+            TASK_FAILED,
+            parse_job_file,
+            select_next_predictable_task,
+        )
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        job.tasks[0].status = TASK_FAILED
+        assert select_next_predictable_task(job) == (None, [])
+
+    def test_an_all_passed_job_has_no_next_task_but_keeps_every_summary(
+            self, demo_repo):
+        from packages.orchestration.pingpong_job import (
+            TASK_PASSED,
+            TaskProofSummary,
+            parse_job_file,
+            select_next_predictable_task,
+        )
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        for t in job.tasks:
+            t.status = TASK_PASSED
+            t.proof_summary = TaskProofSummary(task_id=t.task_id, tokens_estimated=10)
+        next_task, summaries = select_next_predictable_task(job)
+        assert next_task is None
+        assert _summary_ids(summaries) == ["T001", "T002"]
+
+    def test_a_skipped_task_is_stepped_over_and_contributes_no_summary(
+            self, demo_repo):
+        from packages.orchestration.pingpong_job import (
+            TASK_SKIPPED,
+            parse_job_file,
+            select_next_predictable_task,
+        )
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        job.tasks[0].status = TASK_SKIPPED
+        next_task, summaries = select_next_predictable_task(job)
+        assert next_task is job.tasks[1]
+        assert summaries == []
+
+    def test_a_later_completed_task_still_contributes_its_summary(self, demo_repo):
+        # The runner pre-fills previous_summaries from EVERY applied/passed task,
+        # not only the ones before the pending one; the helper must match that.
+        from packages.orchestration.pingpong_job import (
+            TASK_APPLIED,
+            TaskProofSummary,
+            parse_job_file,
+            select_next_predictable_task,
+        )
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        job.tasks[1].status = TASK_APPLIED
+        job.tasks[1].proof_summary = TaskProofSummary(task_id="T002", tokens_estimated=7)
+        next_task, summaries = select_next_predictable_task(job)
+        assert next_task is job.tasks[0]
+        assert _summary_ids(summaries) == ["T002"]
+
+    def test_a_completed_task_without_a_proof_summary_contributes_nothing(
+            self, demo_repo):
+        from packages.orchestration.pingpong_job import (
+            TASK_APPLIED,
+            parse_job_file,
+            select_next_predictable_task,
+        )
+        job = parse_job_file(_TWO_TASK_JOB, str(demo_repo))
+        job.tasks[0].status = TASK_APPLIED
+        job.tasks[0].proof_summary = None
+        next_task, summaries = select_next_predictable_task(job)
+        assert next_task is job.tasks[1]
+        assert summaries == []
+
+    def test_it_never_raises_on_junk(self):
+        from packages.orchestration.pingpong_job import select_next_predictable_task
+
+        class _Hostile:
+            @property
+            def tasks(self):
+                raise RuntimeError("this job file cannot be read")
+
+        # A read-only inspection command must degrade, never die.
+        assert select_next_predictable_task(None) == (None, [])
+        assert select_next_predictable_task(object()) == (None, [])
+        assert select_next_predictable_task(_Hostile()) == (None, [])
