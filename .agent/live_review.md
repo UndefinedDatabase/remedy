@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0242.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0244.
 
 ## Findings
 
@@ -220,6 +220,43 @@
   trap. Fix: plan and handoff say "migration-order step N" and always name the
   function; "Site N" is reserved for the inventory's catalogue headings.
   Applied in this block's authored plan text. OPEN until it lands.
+  Done: R-0240 and R-0241 (resolved at the R14 gate, 2026-08-09). Both fixes
+  landed in R14 and the reviewer confirmed each on disk rather than from the
+  handback: line 8 now reads "Next free ID: R-0242" and the stale R-0238
+  spelling occurs 0x, closing R-0240; `.agent/plan.md` now counts in the
+  MIGRATION ORDER and names `mission_compiler.py::build_mission_prompt` without
+  the "Site N" label, closing R-0241. RESOLVED.
+- R-0242 (Low, F105 R14, reviewer-authored defect): every block on this branch
+  puts the `.agent/plan.md` rewrite in its LAST commit, so intermediate commits
+  carry the previous round's plan — at R14, C2 and C3 committed while the plan
+  still read "Next finding ID: R-0240" after both findings were registered. The
+  worker declared it rather than taking it silently. AGENTS.md's Commit Gate
+  item 1 verifies plan.md against current work before EVERY commit and documents
+  no exception, so the branch runs on an unpersisted convention — the class the
+  planner/reviewer prompt calls a practice invoked without a doc pointer. Fix:
+  settle it as a DECISION that either exempts intra-round commits or moves the
+  plan rewrite earlier, then cite it from every later block. Not settled here:
+  inventing a rule in a terminator round is how unreviewed conventions start.
+  OPEN.
+- R-0243 (Medium, F105 R14 and R15, process defect in the reviewer's own
+  authoring): DECISION F105 D2 caps a step block at 240 lines and its remedy for
+  an over-cap round is a split, but the content a reviewed round MUST carry —
+  the gate verdict, the finding registrations and resolutions, the header pair,
+  and the verbatim `.agent/plan.md` — costs roughly 150 lines before any feature
+  work is described. The reviewer measured the combined gate-plus-migration
+  block three times at R14 (293) and four times at R15 (329, 283, 276, 275) and
+  could not fit it without degrading the record. The consequence is structural,
+  not stylistic: R14 and R15 both became record-only rounds, so this session
+  spent two rounds and merged no feature change, and the same split will recur
+  every round that follows a gate. This is the ⚠️ momentum condition in
+  docs/agents/planner_reviewer_prompt.md §2, named here rather than left for a
+  reader to infer from the round log. Candidate fixes, for the next session to
+  weigh and settle as a DECISION: raise the cap now that C1's cost is understood
+  (2N insertions against the 500 commit cap allows about 245); or exempt the
+  authored `.agent/plan.md` slice from the block count, since it is state text
+  rather than instruction; or move the gate verdict out of the step block into a
+  reviewer-written record the worker copies from scratch, the way this block's
+  own bytes already travel. OPEN.
 
 ## Steps
 
