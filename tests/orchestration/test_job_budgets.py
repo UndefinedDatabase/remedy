@@ -701,6 +701,66 @@ class TestRunManifestBudgetIdentity:
         from packages.orchestration.run_manifest import _decode_budgets_field
         assert _decode_budgets_field(None) is None
 
+    # -- R-0225: the closed budget schema admits the money limit --------------
+    # `max_cost_usd` reached `JobBudgets` in F104 T001 but not this allowlist, so
+    # every money-limited job failed its F012 manifest write and could not
+    # FINALIZE a stop. These pin the widening AND that it is exactly one field.
+
+    def test_decode_budgets_accepts_a_fractional_cost_and_returns_it_unchanged(self):
+        import json
+
+        from packages.orchestration.run_manifest import _decode_budgets_field
+        result = _decode_budgets_field({"max_cost_usd": 1.5})
+        assert result == {"max_cost_usd": 1.5}
+        # ...and survives the JSON trip the manifest actually takes.
+        assert _decode_budgets_field(json.loads(json.dumps(result))) == result
+
+    def test_decode_budgets_accepts_an_integer_cost(self):
+        from packages.orchestration.run_manifest import _decode_budgets_field
+        assert _decode_budgets_field({"max_cost_usd": 2}) == {"max_cost_usd": 2}
+
+    def test_decode_budgets_rejects_bool_cost(self):
+        # bool is an int subclass, so it must be rejected explicitly.
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="bool"):
+            _decode_budgets_field({"max_cost_usd": True})
+
+    def test_decode_budgets_rejects_string_cost(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="str"):
+            _decode_budgets_field({"max_cost_usd": "5"})
+
+    def test_decode_budgets_rejects_zero_cost(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="strictly positive"):
+            _decode_budgets_field({"max_cost_usd": 0})
+
+    def test_decode_budgets_rejects_negative_cost(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="strictly positive"):
+            _decode_budgets_field({"max_cost_usd": -1.0})
+
+    def test_decode_budgets_rejects_infinite_cost(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="not finite"):
+            _decode_budgets_field({"max_cost_usd": float("inf")})
+
+    def test_decode_budgets_rejects_nan_cost(self):
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="not finite"):
+            _decode_budgets_field({"max_cost_usd": float("nan")})
+
+    def test_decode_budgets_accepts_a_token_limit_and_a_cost_limit_together(self):
+        from packages.orchestration.run_manifest import _decode_budgets_field
+        result = _decode_budgets_field({"max_total_tokens": 50000, "max_cost_usd": 1.5})
+        assert result == {"max_total_tokens": 50000, "max_cost_usd": 1.5}
+
+    def test_decode_budgets_still_rejects_a_near_miss_unknown_key(self):
+        # The schema stays CLOSED: R5 widened it by exactly one field.
+        from packages.orchestration.run_manifest import ManifestError, _decode_budgets_field
+        with pytest.raises(ManifestError, match="unknown keys"):
+            _decode_budgets_field({"max_spend": 1.0})
+
 
 class TestOnProviderAttemptCallback:
     """F018: _call_with_retry fires on_provider_attempt after each _record_attempt."""
