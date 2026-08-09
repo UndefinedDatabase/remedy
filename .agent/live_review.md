@@ -460,6 +460,7 @@
   collision to D8 as the check that catches it before emission. Note for
   whoever fixes it: prose that repeats an earlier gate's sentence is normal and
   desirable in this file, so the rule must bend, not the text. OPEN.
+  Landed: R-0253 — §4.9 scoped to diff-added lines and D8 item 6 added, commit c6ec5d3e.
 - R-0254 (Low, F105 R24): `_drop_one_newline_per_segment_boundary` in
   `packages/orchestration/pingpong_loop.py` raises `PromptSegmentError` with
   the text "builder prompt segment boundary carries no newline to drop between
