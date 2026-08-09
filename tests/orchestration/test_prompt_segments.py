@@ -3,13 +3,16 @@
 Each test pins one property the cache-optimal ordering depends on: rank order,
 registration-order tie-break, byte stability, a stable prefix ahead of the
 volatile tail, the injection-free delimiter, manifest fidelity, the token cap,
-duplicate rejection, the empty case, and the documented rank scale itself.
+duplicate rejection, the empty case, the documented rank scale itself, and the
+strict-suffix property DECISION F105 D9 rests on.
 """
 from __future__ import annotations
 
 import hashlib
+from typing import ClassVar
 
 import pytest
+from pydantic import BaseModel
 
 from packages.orchestration.prompt_segments import (
     CONVENTIONS_TOKEN_CAP,
@@ -20,6 +23,10 @@ from packages.orchestration.prompt_segments import (
     PromptSegmentRegistry,
     SegmentStabilityRank,
     compose_prompt_segments,
+)
+from packages.orchestration.structured_outputs import (
+    build_schema_prompt,
+    native_schema_prompt,
 )
 
 
@@ -282,3 +289,55 @@ class TestPromptSegmentArchitectureGuards:
         for bad in ("import tiktoken", "import requests", "import httpx", "import openai",
                     "import anthropic", "import subprocess", "import socket"):
             assert bad not in src, bad
+
+
+# ---------------------------------------------------------------------------
+# DECISION F105 D9's pin: the structured-call schema tail is a strict SUFFIX.
+# ---------------------------------------------------------------------------
+
+
+class _TwoFieldPinModel(BaseModel):
+    """Two-field structured model, local to this pin so no schema import binds it."""
+
+    SCHEMA_V: ClassVar[str] = "pin1"
+
+    name: str
+    count: int
+
+
+class TestSchemaTailIsAStrictSuffix:
+    """D9 rules the schema tail out of the registry; this is why that is safe.
+
+    The tail appended by ``structured_outputs`` joins with EXACTLY
+    ``PROMPT_SEGMENT_DELIMITER`` — the same constant composition joins segments
+    with — and only ever extends the end. So a composed prompt is a strict
+    PREFIX of the bytes actually sent, the manifest describes real bytes rather
+    than an approximation, and the cacheable prefix is untouched by the tail.
+    The delimiter is imported rather than written as ``"\\n\\n"``: the claim
+    being pinned is that the two constants ARE the same constant.
+    """
+
+    BASE = "## Task\nCompose the thing.\n"
+    HINT = "count must be an integer"
+
+    def test_native_schema_prompt_appends_after_the_segment_delimiter(self):
+        prompt = native_schema_prompt(self.BASE)
+        assert prompt.startswith(self.BASE + PROMPT_SEGMENT_DELIMITER)
+        assert len(prompt) > len(self.BASE)
+
+    def test_build_schema_prompt_appends_after_the_segment_delimiter(self):
+        prompt = build_schema_prompt(_TwoFieldPinModel, self.BASE)
+        assert prompt.startswith(self.BASE + PROMPT_SEGMENT_DELIMITER)
+        assert len(prompt) > len(self.BASE)
+
+    def test_the_retry_hint_extends_the_suffix_and_never_the_prefix(self):
+        for without, with_hint in (
+            (native_schema_prompt(self.BASE),
+             native_schema_prompt(self.BASE, self.HINT)),
+            (build_schema_prompt(_TwoFieldPinModel, self.BASE),
+             build_schema_prompt(_TwoFieldPinModel, self.BASE, self.HINT)),
+        ):
+            assert with_hint.startswith(self.BASE + PROMPT_SEGMENT_DELIMITER)
+            assert with_hint.startswith(without)
+            assert len(with_hint) > len(without)
+            assert self.HINT in with_hint[len(without):]

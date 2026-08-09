@@ -4005,3 +4005,45 @@ no verification tier. It is a pre-flight check on text the reviewer is about to
 send, nothing more.
 
 Reverse this decision by deleting this entry and the §3 checklist it installs.
+
+## DECISION F105 D9 — the schema tail stays outside the registry (2026-08-09)
+
+Context: `.agent/plan.md` has carried, since R17, an open question that step 5
+was not allowed to start without: does the schema tail appended by
+`packages/orchestration/structured_outputs.py` — `build_schema_prompt` in
+legacy mode, `native_schema_prompt` in native mode — become a registered rank-4
+segment? Until it is answered, every T003 manifest describes fewer bytes than
+the call actually sent, which sounds like an overclaim.
+
+D9 — it does NOT become a registered segment during T003. Three reasons, in
+order of weight.
+
+1. It is appended by `run_structured_call`, shared infrastructure that every
+   structured caller in the repository reaches, not by any of the six builders.
+   Registering it there widens T003's change set from one builder per round to
+   every structured call site, which AGENTS.md Scope Control bars.
+2. It cannot affect the property T003 exists to create. The tail is a SUFFIX
+   joined with exactly `PROMPT_SEGMENT_DELIMITER`, so the composed text is a
+   strict PREFIX of the bytes sent and the cacheable prefix is byte-identical
+   either way.
+3. Its bytes are attempt-dependent — the parse-retry hint is part of them — so
+   its honest rank is 5 STEERING, which sorts last. Registering it would move
+   nothing.
+
+What the decision COSTS is the honesty of the manifest, and that is paid in the
+same round rather than deferred: the C3 pin turns reason 2 from a claim into a
+test. A manifest that is a proven strict prefix is a true statement about the
+call; an unproven one is the overclaim the plan was right to flag.
+
+Rejected alternative: register the tail now at the structured-call layer. It is
+the correct end state and it is where a follow-up should put it — but it is a
+different feature's change set, and doing it inside a per-builder migration
+round would mix a refactor of shared infrastructure with a feature step, which
+AGENTS.md Commit Discipline forbids in one commit and Scope Control forbids in
+one round.
+
+Scope: T003 only. It adds no obligation to workers, changes no verification
+tier, and leaves the tail exactly where it is today.
+
+Reverse this decision by deleting this entry; the pin test in
+`tests/orchestration/test_prompt_segments.py` stays useful either way.
