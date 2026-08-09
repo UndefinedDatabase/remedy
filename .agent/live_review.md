@@ -1239,3 +1239,50 @@
   a reviewer's gate and reports the number instead of the claim is the round
   working exactly as designed, for the third feature running.
   `LAST_REVIEWED_SHA` advances 554d9521 -> df32f595.
+- Reviewer gate on R25 (2026-08-10, next session): PASS. A state-file-only
+  round, exactly as declared: `git diff --stat df32f595..HEAD` touches five
+  paths, all under `.agent/`, and no production file, no test file and nothing
+  under `docs/` appears. Range df32f595..0341928d, FOUR commits, five path
+  rows. Insertions per `git log --numstat`: 214, 167, 84, 69 — each under 500,
+  and the 214-line authored save is under DECISION F105 D5's 400. C1b is the
+  verbatim rewrite of ONE state file and is exempt from the churn reading by
+  the AGENTS.md counting rule regardless.
+  Transport: `.agent/authored/f105-r25-1.md` and `.agent/last_block.md` are
+  byte-identical under `cmp` (exit 0) at sha256
+  `a89edbcf2a2e9b5af1bd5befc90b4044f23d4861f32b83ab9ba34543abba0e9c`, 214 lines
+  each — the digest the handback declared, recomputed by the reviewer.
+  Application re-measured disk to disk against the COMMITTED authored file,
+  never a retype: the reviewer re-sliced all four pairs from
+  `.agent/authored/f105-r25-1.md` with its own reader, which rejects a marker
+  line inside any body. PAIR_A is a REWRITE and measures FROM 0x after, TO 1x.
+  PAIR_B and PAIR_C are APPEND-shaped and the prefix property holds literally —
+  each TO begins with its own FROM — at FROM 1x each. PAIR_D and the applied
+  `.agent/plan.md` are byte-equal, 40 lines against the cap of 50. Marker
+  leakage: `PAIR_A_FROM`, `PAIR_D_PLAN`, `END_PAIR` and `<<<` all count 0 in
+  both targets.
+  The R-0253 reading was MEASURED, not accepted on the worker's word. The C2
+  commit adds exactly 84 lines and removes exactly 1. The 84 decompose as 1
+  (PAIR_A TO) + 31 (PAIR_B TO-only) + 52 (PAIR_C TO-only) = 84 with nothing
+  left over: each of those 84 lines occurs exactly once among the diff's ADDED
+  lines, and no ADDED line comes from outside a TO slice. Strays 0, extras 0.
+  The one removed line is PAIR_A's FROM. So the diff-scoped reading is exact
+  and achievable, which is the finding's own claim, now independently checked.
+  Gates re-run by THIS reviewer: `tests/docs/` 294 passed, the dashboard
+  contract 70 passed, the canary 42 passed. NO mutation red-proof was ordered
+  or run, and that is correct: nothing executable changed, so there was no
+  branch to mutate (DECISION F105 D10, checklist item 5). `git status
+  --porcelain` empty and `git worktree list` the primary alone at this verdict.
+  Two corrections to the record, BOTH charged to the reviewer, NEITHER held
+  against R25. First: R25 called itself the §4.13 TERMINATOR. §4.13 covers the
+  last round of a BRANCH; R25 is the last round of a SESSION and the branch
+  continues, so its gate was never owed to construction — it is recorded here.
+  R25 was right to open no repair round for it under either reading. Second:
+  R-0254's fix note says to update "the two message assertions" in
+  `TestDropOneNewlinePerSegmentBoundary`. There is exactly ONE, at
+  `tests/orchestration/test_builder_prompt_golden.py:280`, and it matches on
+  `segment boundary carries no newline to drop between segments 0 and 1` — a
+  substring that SURVIVES dropping the word "builder". The fix as written would
+  therefore change production bytes that no test pins. R26 anchors that
+  assertion to the whole message instead, which turns the wording into
+  something a mutation can prove red.
+  `LAST_REVIEWED_SHA` advances df32f595 -> 0341928d.
