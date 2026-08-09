@@ -837,7 +837,7 @@ def _drop_one_newline_per_segment_boundary(texts: list[str]) -> list[str]:
             adjusted[index + 1] = adjusted[index + 1][1:]
         else:
             raise PromptSegmentError(
-                "builder prompt segment boundary carries no newline to drop "
+                "prompt segment boundary carries no newline to drop "
                 f"between segments {index} and {index + 1}"
             )
     return adjusted

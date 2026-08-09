@@ -277,8 +277,8 @@ class TestDropOneNewlinePerSegmentBoundary:
     def test_a_boundary_with_no_newline_at_all_is_illegal(self):
         with pytest.raises(
             PromptSegmentError,
-            match="segment boundary carries no newline to drop "
-                  "between segments 0 and 1",
+            match="^prompt segment boundary carries no newline to drop "
+                  "between segments 0 and 1$",
         ):
             _drop_one_newline_per_segment_boundary(["a", "b"])
 
