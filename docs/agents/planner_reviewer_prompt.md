@@ -221,6 +221,17 @@ end the response with:
    dies; (b) then fix finding by finding, marking `Done: R-XXXX`;
    (c) handback. Severity per the canonical scale in review_protocol.md;
    IDs continue monotonically. Only your authored text sets Resolved.
+   Because only your text sets Resolved, the worker never writes a `Done:`
+   paragraph of its own (F104 R7 closure candidate, swept at F105 R1): when
+   a fix lands before you have authored the resolution, the worker marks it
+   `Landed: R-XXXX — <one line: what changed, which commit>` and nothing
+   else. `Done:` is reserved for reviewer-authored text, so a session that
+   dies between the fix and its review leaves a disk state no later reader
+   can mistake for a resolution. You replace the `Landed:` line with the
+   authored `Done:` text at the next gate; a surviving `Landed:` line is an
+   unreviewed fix, which is exactly what it should look like. A
+   worker-authored `Done:` paragraph is a finding, however honestly it is
+   hedged.
 5. Block conditions (any one → FAIL): fabricated data · false live
    indicators · design-fidelity violation without assumption_log entry ·
    missing changed-files table · unverified completion claims · silent
@@ -310,6 +321,16 @@ end the response with:
     while a refusal record exists (PH v3 lesson: three refused
     emissions left zero disk trace and the gap was misdiagnosed for
     three turns).
+13. The LAST round of a branch has no on-disk gate entry, by construction
+    (F104 R11 closure candidate, swept at F105 R1). Every reviewed round
+    records its verdict in `.agent/live_review.md`, but the round that
+    writes that record cannot record the gate on itself, so every branch
+    ends with one round whose verdict lives only in `.agent/handoff.md`,
+    your completion report and the PR. That absence is the TERMINATOR, not
+    a missing gate: do not open a repair round to close it, and do not read
+    it as a round line that positively CLAIMS to await a review which has
+    demonstrably happened — that is the R-0228 class and a real finding.
+    Write the closing round's verdict into the handoff and the PR, and stop.
 
 ## 5. Closure
 Follow docs/roadmap/STATUS_closure_protocol.md exactly: evidence job +
