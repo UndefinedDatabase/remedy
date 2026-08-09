@@ -101,6 +101,7 @@ content-equality golden must state which of the two strings it pins.
 - Call sites: `packages/orchestration/intake.py:165` (inside `run_intake`, the only one).
 - Call evidence: YES, and this is the only one of the four schema-wrapped builders that reaches it. `run_intake` forwards `on_call` at line 167, and `apps/cli/commands/do_cmd.py:221` supplies `_record_intake_call` (defined at line 206), which builds a `role="intake"` trace entry from the EFFECTIVE prompt — i.e. after `build_schema_prompt`/`native_schema_prompt` — with `prompt_kind` `intake` or `intake-retry`.
 - Migration risk: reordering the rules ahead of the mission CHANGES the bytes. That is a content change by the feature file's own definition ("must not change their CONTENT, only their composition"), so this site's golden cannot be a pure equality golden — it needs an explicit before/after pair and a stated decision that the reorder is intended.
+  Corrected at the R9 gate (R-0237): docs/roadmap/features/T2_F105.md answers this in the same sentence — the goldens it requires are "modulo ordering", so a golden pins the segment SET and each segment's bytes, not the concatenated string. The reorder is therefore composition, not content, and a golden IS possible here.
 
 ## Site 5 — packages/orchestration/flight_plan.py · `_build_plan_prompt` (line 83)
 

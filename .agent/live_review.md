@@ -149,6 +149,7 @@
   not as content. Left uncited, T003's first builder round either re-derives the
   clause or concludes no golden is possible and invents a weaker one. Fix: cite
   the clause where the inventory raises the tension. OPEN.
+  Landed: R-0237 — site 4 now cites the feature file's modulo-ordering clause.
 
 ## Steps
 
