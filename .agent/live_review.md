@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0253.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0255.
 
 ## Findings
 
@@ -442,6 +442,37 @@
   docs/agents/planner_reviewer_prompt.md §3, installed as DECISION F105 D10 in
   the same round as this entry. Fixed and resolved in this same round; the NEXT
   session's gate verifies the rule is on disk and reads as intended.
+- R-0253 (Low, F105 R24, reviewer-authored defect): §4.9's append-shaped pair
+  obligation is written whole-file where it can only hold over the DIFF. The
+  rule says "FROM exactly 1x plus each TO-ONLY addition exactly 1x". R24's
+  PAIR_A had 34 TO-only lines, of which 33 occur once in the file and one —
+  "`git worktree list` the primary alone at this verdict." — occurs twice,
+  because the identical sentence already stood in the R22 gate paragraph. The
+  gate was therefore unsatisfiable by construction, and the worker correctly
+  MEASURED it and declared it rather than editing the text to dodge it. The
+  reviewer re-measured and confirms: `git show --numstat` on the C2 commit
+  reads exactly `34 0 .agent/live_review.md`, so the diff-scoped reading is
+  both exact and achievable. This is the seventh unsatisfiable-gate instance
+  across F104 and F105 and the second one DECISION F105 D8's checklist did not
+  catch, because like item 5 it is not a property of the block's own bytes —
+  it is a property of the TARGET FILE's existing content. Fix: amend §4.9 so
+  the TO-only count is over lines ADDED BY THE DIFF, and add the whole-file
+  collision to D8 as the check that catches it before emission. Note for
+  whoever fixes it: prose that repeats an earlier gate's sentence is normal and
+  desirable in this file, so the rule must bend, not the text. OPEN.
+- R-0254 (Low, F105 R24): `_drop_one_newline_per_segment_boundary` in
+  `packages/orchestration/pingpong_loop.py` raises `PromptSegmentError` with
+  the text "builder prompt segment boundary carries no newline to drop between
+  segments N and N+1", but since R24 the helper composes the REVIEWER prompt
+  too. A reviewer-side boundary fault would report itself as a builder fault
+  and send the next reader to the wrong function. The worker spotted this and
+  correctly did NOT act: it is outside R24's declared change set and AGENTS.md
+  Scope Control bars the "while I'm here" edit. Cost today is zero — the
+  message is unreachable in production, which is exactly what R-0251 pinned —
+  so this is a message-quality finding, not a correctness one. Fix: drop the
+  word "builder", and update the two message assertions in
+  `tests/orchestration/test_builder_prompt_golden.py::TestDropOneNewlinePerSegmentBoundary`
+  in the same commit. Production code, so it needs a SPLIT round. OPEN.
 
 ## Steps
 
@@ -1156,3 +1187,55 @@
   the FROM is the TO's SUFFIX, and reported the measurement instead of the
   claim. Containment holds either way, so application was unaffected.
   `LAST_REVIEWED_SHA` advances b35d9d56 -> 554d9521.
+- Reviewer gate on R24 (2026-08-10, same session): PASS. Migration-order step 6
+  is landed, so ALL SIX T003 migration sites are done. Range
+  `554d9521..HEAD` at df32f595, SIX commits, seven path rows. Insertions per
+  `git log --numstat`: 258, 226, 34, 279, 142, 70 — each under 500, and the
+  258-line authored save is under DECISION F105 D5's 400.
+  Transport: `.agent/authored/f105-r24-1.md` and `.agent/last_block.md` are
+  byte-identical under `cmp` at sha256 `eb6e071e399cd967…`, 258 lines.
+  THE SPEC WAS PROVED SATISFIABLE BEFORE THE BLOCK WAS AUTHORED, the R-0250
+  discipline applied forward for the second time. In a disposable worktree at
+  554d9521 the reviewer proved the decomposition byte-exact over 3584 argument
+  combinations in two passes: 2048 for the decomposition itself (80 distinct
+  segment sets, 0 mismatches) and 1536 for the property the golden actually
+  rests on — that registering in RANK order instead of source order leaves
+  every segment's BYTES unchanged. It does: 0 per-segment differences, 0
+  changes of last-segment identity, 0 boundaries needing the fallback newline.
+  Without that second pass the golden's "reassemble in pre-migration order"
+  assertion would have been an assumption, since
+  `_drop_one_newline_per_segment_boundary` runs over the registration order.
+  AFTER the round the reviewer re-proved content equality against the REAL
+  pre-migration bytes, not against the worker's numbers:
+  `git show 554d9521:packages/orchestration/pingpong_loop.py` was imported as a
+  second live module and run side by side with HEAD's composer over 2048
+  combinations and 160 distinct segment sets. 0 reassembly failures, 0 wrapper
+  mismatches, 0 unknown segment names, 0 non-monotonic manifests. 224 renders
+  are byte-identical to the old one and 1824 are genuinely reordered, so the
+  reorder this feature exists to make is real and measured, not asserted.
+  Gates re-run by THIS reviewer: the new golden 16 passed, the four caller
+  suites 234 passed — equal to the worker's pre-round baseline, so the
+  migration added no test to them and removed none — and the canary 42 passed.
+  TWO mutation red-proofs of the REVIEWER's own choosing, distinct from the
+  worker's M1 and M2, ran in a disposable worktree at HEAD. M3 changed
+  `reviewer_task_input`'s rank from TASK to STEERING, which leaves every
+  segment's TEXT identical and the ranks still non-decreasing: exactly one test
+  failed, `test_the_fallback_full_shape_registers_its_segments_in_rank_order`.
+  M4 changed `reviewer_scope_contract`'s rank from JOB_CONTEXT to DOSSIER:
+  exactly the two shape tests failed. So the golden pins the rank ASSIGNMENT
+  and not merely its monotonicity — the property R22's M4b established for the
+  builder, now established for the reviewer. Both reverted, the worktree
+  removed and pruned, `git status --porcelain` empty and `git worktree list`
+  the primary alone at this verdict.
+  Application re-measured disk to disk against the COMMITTED authored file,
+  never a retype: PAIR_A APPEND with FROM 1x and TO 1x, PAIR_B's slice and
+  `.agent/plan.md` byte-equal, plan 39 lines against the cap of 50, and not one
+  transport marker of any shape left behind in either target.
+  BOTH declared deviations ACCEPTED, and BOTH are charged to the reviewer.
+  Deviation 1: gate D asked for failing test NAMES from a red that a
+  module-level import makes a COLLECTION error, which yields none; the worker
+  re-measured at test-name granularity in a worktree and got all 16. Deviation
+  2 is registered as R-0253. Neither is held against R24. A round that measures
+  a reviewer's gate and reports the number instead of the claim is the round
+  working exactly as designed, for the third feature running.
+  `LAST_REVIEWED_SHA` advances 554d9521 -> df32f595.
