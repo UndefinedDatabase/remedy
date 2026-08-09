@@ -199,6 +199,14 @@ end the response with:
      A worker who reports an ordered mutation as green is telling the truth
      about dead code, and it costs that round a declared deviation to prove a
      reviewer mistake (finding R-0252, DECISION F105 D10).
+  6. **Zero-gates read the TARGET's existing content.** A "must be 0" or an
+     "exactly 1x" gate is checked against what the target FILE already
+     contains, not only against the block's own bytes. An append pair whose TO
+     legitimately repeats a sentence already on disk can never satisfy a
+     whole-file count, so scope such counts to the commit's ADDED lines (§4.9).
+     Items 1-4 read the block, item 5 reads the code the block points at, and
+     this one reads the file the block writes into — three different places, so
+     three separate checks (finding R-0253).
   Why this is on disk and not a habit: item 2 has recurred five times across
   F104 and F105, and R20 hit all four items in one block. A check that lives
   only in reviewer session memory is the A1 trap §0 names, and this list is the
@@ -318,8 +326,15 @@ end the response with:
    pair that count is unattainable by construction, and demanding it
    invites either a fabricated number or a pointless repair round;
    the obligation there is FROM exactly 1x plus each TO-ONLY
-   addition exactly 1x. The reviewer states which shape each pair is
-   at authoring time, in the receipt itself.
+   addition exactly 1x AMONG THE LINES THAT COMMIT'S DIFF ADDS
+   (R-0253, F105 R24). Whole-file counting is unsatisfiable whenever
+   a TO legitimately repeats a sentence the file already carries, and
+   prose that echoes an earlier gate's sentence is normal and
+   desirable in this file — so the rule bends, never the text. The
+   measurement is `git show --numstat <commit> -- <path>` for the
+   total, plus a per-line count over that diff's ADDED lines for the
+   strays. The reviewer states which shape each pair is at authoring
+   time, in the receipt itself.
 10. Mutation/red-proof spot-checks (temporarily breaking code to prove a
     test catches it) are encouraged — but ONLY inside a disposable
     `git worktree` at HEAD, never in the primary checkout. This
