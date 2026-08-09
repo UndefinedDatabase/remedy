@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only; the worker applies
 > them verbatim and marks `Done: R-XXXX` when a fix lands. Only reviewer-
 > authored text sets Resolved.
-> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0228.
+> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0229.
 
 ## Findings
 
@@ -140,6 +140,18 @@
   `test_a_failed_ledger_read_sets_cost_read_error_in_json` — and nothing else. The
   worktree was removed and pruned before the verdict.
 
+- R-0228 (Low, found in the R9 review, 2026-08-09): the R4 round line under
+  `## Steps` still carried the not-yet-reviewed marker although that review
+  demonstrably happened — R-0225 and R-0226 are both recorded as "found in the R4
+  review", and R5 was the repair round that fixed them. The R9 block set out to
+  stop this branch merging into `main` claiming ungated rounds and cleared R6 and
+  R7, but R4 carried the same stale marker and was missed. Nothing about the code
+  or about any verdict is wrong; the defect is that the record on disk contradicts
+  itself, and `.agent/live_review.md` is the artifact a later reader trusts about
+  which rounds were gated. Registered here rather than swept into
+  `.agent/candidates.md` because the correction is one reviewer-authored entry in
+  the same file and the branch has not merged into `main` yet.
+
 ## Steps
 
 - R1: claim + candidate sweep + T001 — the `max_cost_usd` limit, the ledger
@@ -200,3 +212,16 @@
   (`test_a_blocked_first_pending_task_has_no_next_task` and
   `test_a_failed_first_pending_task_has_no_next_task`) and nothing else, so the guard is
   load bearing rather than decorative. `LAST_REVIEWED_SHA` advances 549f2bac -> b5a241c3.
+- Reviewer gate on R9 (the closing session's successor, 2026-08-09): PASS. Range
+  `b5a241c3..8e651661` read as a real diff — five `.agent/` files and nothing else;
+  `packages/`, `apps/`, `tests/`, `docs/`, `README.md` and `docs/roadmap/STATUS.md`
+  byte-unchanged. The authored pairs 1, 2, 3, 4a and 4b are applied byte for byte:
+  each TO string occurs exactly once, the superseded `attributes these seven` occurs
+  zero times, and zero trailing-whitespace lines survive. Gates re-run by the
+  reviewer from the repo root with real exit codes: `cmp` of the authored block
+  against `.agent/last_block.md` exit 0, `tests/docs/` 294 passed, the golden-path
+  canary 42 passed, `remedy integrity check --json` `"passed": true` with
+  `"fail_count": 0` over 5 checks, `git status --porcelain` EMPTY, HEAD equal to
+  `origin/feature/f104-hard-budget-enforcement`. R9 delivered exactly its block; the
+  one thing its block did not cover is registered above as R-0228.
+  `LAST_REVIEWED_SHA` advances b5a241c3 -> 8e651661.
