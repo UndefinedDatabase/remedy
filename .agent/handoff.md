@@ -1,135 +1,100 @@
-# Handoff — F105 Cache-optimal prompt ordering, R15 (record half of the R14 gate)
-
-Branch: feature/f105-cache-optimal-prompt-ordering. A `.agent/`-only round: NO
-builder was migrated. R15 is the record half of the split the reviewer made
-under DECISION F105 D2; migration-order step 2 moves to R16.
+# Handoff — F105 R16 (worker → planner/reviewer)
 
 ## Range
 
-Review of 73e159b7..HEAD — 4 commits. Path list and count DERIVED from
-`git diff --stat 73e159b7..HEAD` (C1-C3) plus `git diff --stat` on the working
-tree (C4), both at write time (R-0235): FIVE paths, all under `.agent/` —
-`authored/f105-r15-1.md`, `last_block.md`, `live_review.md`, `plan.md`,
-`handoff.md`.
+Review of ed5b2421..HEAD — 7 commits on `feature/f105-cache-optimal-prompt-ordering`.
 
 ## Commits
 
-### a7e9dc26 chore(f105): save the R15 block verbatim
+### eb41e0e7 chore(f105): save the R16 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f105-r15-1.md | +227/-0 | C1, this block verbatim |
-| .agent/last_block.md | +161/-165 | C1, same bytes |
+| `.agent/authored/f105-r16-1.md` | +399/-0 | C1a — the block ALONE, 399 lines, under D5's 400 |
 
-388 insertions per `git log --numstat`, 454 per `git commit` with rewrite
-detection. Both under 500.
-
-### a8cf5f09 chore(f105): resolve R-0240 and R-0241 and register R-0242
+### 65988c3b chore(f105): mirror the R16 block to last_block
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +38/-1 | C2 pair A (Done text + R-0242 + R-0243), pair B (header ID) |
+| `.agent/last_block.md` | +366/-194 | C1b — verbatim rewrite of ONE `.agent/**` state file (AGENTS.md exemption) |
 
-38 insertions.
-
-### 34e6b841 chore(f105): record the R14 gate
+### 6f295bf6 chore(f105): register R-0244 and amend R-0243
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +26/-0 | C3 pair C, R14 gate PASS + the R15 step line |
+| `.agent/live_review.md` | +24/-1 | C2 — pair A (append) + pair B (rewrite) |
 
-26 insertions.
-
-### C4 chore(f105): close the session with the R15 handoff
-Grouped table (R-0149): a handoff cannot table the commit that writes it.
+### 618051d4 chore(f105): record the R15 gate
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +30/-25 | C4, authored 54-line slice, block lines 155-208 |
-| .agent/handoff.md | this file | C4, per docs/agents/handback_template.md |
+| `.agent/live_review.md` | +35/-0 | C3 — pair C (append) |
 
-plan.md's +30/-25 is from `git diff --numstat` before staging; C4's total
-insertions are in the completion report — this file predates its own commit.
+### 7d661e10 chore(f105): record DECISION F105 D4 and D5
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/decisions.md` | +55/-0 | C4 — pair D (append) |
+
+### 934735e5 chore(f105): compose the mission prompt from registered segments
+| Path | +/- | Reason |
+|---|---|---|
+| `packages/orchestration/mission_compiler.py` | +73/-12 | C5.2 — five sliced segment constants, `compose_mission_prompt`, D4's WHY comment |
+| `tests/orchestration/test_mission_prompt_golden.py` | +182/-0 | C5.1 — the content-equality golden, 5 tests |
+
+### (this commit) chore(f105): update the plan and write the R16 handoff
+| Path | +/- | Reason |
+|---|---|---|
+| `.agent/plan.md` | +25/-32 | C6 — the PLAN_MD slice, 47 lines (R-0244 asked for ≤49) |
+| `.agent/handoff.md` | rewrite | C6 — this file; a handoff cannot table its own commit (R-0149) |
 
 ## External actions
 
-`git push -u origin feature/f105-cache-optimal-prompt-ordering` — run after the
-C4 commit, real result in the completion report. No PR created: F105's PR comes
-at CLOSURE. No worktree added, no `gh` command run.
+- `git worktree add --detach .remedy-wt/r16-mut HEAD` at 934735e5; `worktree remove --force` + `worktree prune` → primary alone.
+- `git push -u origin feature/f105-cache-optimal-prompt-ordering`. No PR — F105's comes at closure.
 
 ## Verification
 
-| # | Command | Exit | Real trimmed output |
+| Gate | Command | Exit | Real output (trimmed) |
 |---|---|---|---|
-| A1 | `cmp .remedy-wt/f105-r15-1.block.md .agent/authored/f105-r15-1.md` | 0 | no output — transport vs the reviewer's surviving original |
-| A2 | `cmp .agent/authored/f105-r15-1.md .agent/last_block.md` | 0 | no output — the save |
-| B | `wc -l` / `wc -c` on `.agent/authored/f105-r15-1.md` | 0 / 0 | `227` / `14333` — 13 under DECISION F105 D2's cap of 240 |
-| C | `python3 -m pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | 0 | `4 passed, 47 deselected in 0.11s` |
-| D | `python3 -m pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
-| E | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 19.76s` |
-| F1 | `git status --porcelain` | 0 | pre-C4: `M .agent/plan.md` only; post-C4 EMPTY per the completion report |
-| F2 | `git worktree list` | 0 | `/home/decodeux/Repos/remedy  73e159b7 [feature/f105-cache-optimal-prompt-ordering]` — primary alone |
-| G | `python3 -m apps.cli.grouped integrity check --json` | 0 | `passed= True`, `fail_count= 0`; all 5 checks `pass` |
-| I | `git diff --stat 73e159b7..HEAD` | 0 | 3 paths (C1-C3) + 2 (C4) = 5, all under `.agent/`; insertions 388, 38, 26, C4 in the completion report — each under 500 |
+| A | `cmp` block↔authored; authored↔last_block | 0 / 0 | no output; all three sha256 `744fe981…` |
+| B | `wc -l .agent/authored/f105-r16-1.md` | 0 | `399` |
+| C | `grep -c "^- R-0244 "`; `sed -n 8p` | 0 / 0 | `1`; `…Next free ID: R-0245.` |
+| D | pytest `test_mission_prompt_golden.py -q` | 0 | `5 passed in 0.13s` |
+| E | pytest `test_mission_compiler.py test_prompt_segments.py -q` | 0 | `135 passed` before AND after |
+| F | pytest `test_test_runner.py -k …`; pytest `tests/docs/` | 0 / 0 | `4 passed, 47 deselected`; `294 passed` |
+| G | pytest `tests/cli/test_golden_path.py`; `integrity check --json` | 0 / 0 | `42 passed in 19.49s`; `passed:true, fail_count:0, check_count:5` |
+| H | `git status --porcelain`; `git worktree list`; `git log --numstat` | 0 / 0 / 0 | empty; primary alone; per-commit `+` above |
+
+Mutation red-proofs, disposable worktree at 934735e5, suite = golden + mission_compiler + prompt_segments, baseline `140 passed`:
+- M1 reorder two registrations (swap the `mission_rules`/`mission_goal` RANKS) → **3 RED**
+  (`…ahead_of_the_goal`, `…names_and_ranks`, `…returns_the_composed_text`).
+- M2 one word in the rules constant (`rejected`→`refused`) → **3 RED**
+  (`…pre_migration_parts`, `…ahead_of_the_goal`, `…returns_the_composed_text`).
+- M3 drop the schema directive's trailing newline → **3 RED**, the same three as M2.
+- Control M0, swapping only the two `register()` STATEMENT positions → `140 passed`, 0 RED:
+  a no-op by construction, the sort key being (rank, registration index).
 
 ## Authored-text proofs
 
-Every FROM and TO was SLICED by line index out of
-`.agent/authored/f105-r15-1.md` after C1 — A 44-45 / 48-86, B 91 / 94,
-C 102-103 / 106-133 — never retyped. sha256 `b0bbc7d6` is shared by the
-reviewer's scratch original, `.agent/authored/f105-r15-1.md` and
-`.agent/last_block.md`.
+All four pairs SLICED from `.agent/authored/f105-r16-1.md` by marker; no marker line entered a target.
+| Pair | Target | Shape | FROM before/after | TO before/after |
+|---|---|---|---|---|
+| A | `live_review.md` | APPEND (TO starts with FROM) | 1 / 1 | 0 / 1; each of 23 TO-only lines x1 |
+| B | `live_review.md` | REWRITE (disjoint) | 1 / 0 | 0 / 1 |
+| C | `live_review.md` | APPEND | 1 / 1 | 0 / 1; each of 35 TO-only lines x1 |
+| D | `decisions.md` | APPEND (3-line anchor) | 1 / 1 | 0 / 1; each of 44 TO-only lines x1 |
 
-| Pair | Shape | FROM before | FROM after | TO after | TO-only tail after |
-|---|---|---|---|---|---|
-| A (live_review.md) | APPEND | 1x | 1x | 1x | 1x (block lines 50-86) |
-| B (live_review.md) | REWRITE | 1x | 0x | 1x | n/a (disjoint) |
-| C (live_review.md) | APPEND | 1x | 1x | 1x | 1x (block lines 108-133) |
-
-`.agent/plan.md` equals its authored 54-line slice (block lines 155-208):
-sha256 `4fb762f5` both sides.
-
-## Item status
-
-| Item | Status | Reason |
-|---|---|---|
-| C1 | done | 227 lines / 14333 bytes, both `cmp` exit 0 |
-| C2 | done | pairs A and B, own commit |
-| C3 | done | pair C, own commit |
-| C4 | done | plan + handoff, one commit, then push |
+PLAN_MD slice: 47 lines, sha256 `8029c8ca…`, disk equals slice. Prompt bytes: the golden's
+`_PRE_MIGRATION_MISSION_TEMPLATE` is `git show ed5b2421:…mission_compiler.py` lines 77-108, LHS name
+aside, occurring x1; each of the five segment bodies occurs x1 in the migrated module. None retyped.
 
 ## Deviations & assumptions
 
-1. Handoff overage, declared under DECISION D15: 135 lines / ~1630 tokens
-   against the 60-line and 800-token caps. Cause is mandated content only —
-   four per-commit tables, the ten-row verification table, the three-row
-   pair-proof table, the item-status table, five declared deviations. No
-   section dropped, no padding.
-2. Exit-code transport: this sandbox rejects the compound `cmd; echo $?` form,
-   so every gate ran inside one `bash -c` printing the REAL `$?` (or
-   `${PIPESTATUS[0]}` behind a `tail`). Same binaries, same arguments; a shell
-   wrapper this time, not the `subprocess.run` of R13/R14.
-3. `.agent/plan.md` was stale between C1 and C3 — still "Next finding ID:
-   R-0242" while C2 registered R-0242 and R-0243 — because the block places the
-   plan rewrite in C4. This is R-0242's own condition, declared, not silently
-   taken.
-4. `.agent/plan.md` is 54 lines, over the AGENTS.md `<50 lines` guidance for
-   plan.md. Not fixed: the block mandates the authored text VERBATIM and whole,
-   and the worker may not trim reviewer-authored state text.
-5. The pairs were applied by a gitignored scratch script,
-   `.remedy-wt/r15_apply.py`: it slices FROM/TO by line index from the committed
-   authored file, refuses to write unless FROM occurs 1x, and prints the counts
-   quoted above. `.remedy-wt/` is ignored (`.gitignore:235`), nothing tracked.
-
-## Open findings
-
-4 open: R-0221 and R-0239 (carried), R-0242 and R-0243 (registered at C2 from
-the reviewer's own text). R-0240 and R-0241 were RESOLVED at C2 by the
-reviewer-authored `Done:` text. Next free ID: R-0244.
+1. Every gate ran from a script in gitignored `.remedy-wt/`: the shell layer rejects inline `$?`. Same commands, real exit codes (R15 dev. 2).
+2. C6 rewrites `.agent/plan.md` LAST, so C1a-C5 were committed against the R15 plan — R-0242's own open condition, unchanged.
+3. C5.1 test 5 "byte for byte": composition REORDERS, so byte identity is asserted as — the composed
+   parts, put back in pre-migration order, join to exactly the frozen render, plus `endswith("\n")`
+   and equal length. Literal equality of the two whole strings is impossible by design.
+4. Mutation M1 is the RANK swap. A bare swap of the two `register()` statement positions changes
+   nothing (the ranks differ), so it is reported as control M0, not passed off as a red proof.
+5. `.pyc` caches are purged before each mutation run: M1 is byte-length neutral and a stale cache produced one false reading.
 
 ## Next
 
-R16 gates R15 over `73e159b7..HEAD` FIRST — R15's own gate is owed — then takes
-migration-order step 2,
-`packages/orchestration/mission_compiler.py::build_mission_prompt`, onto the
-registry under a new `tests/orchestration/test_mission_prompt_golden.py`, with
-DECISION F105 D4: the mission rules segment is cap-scoped, because
-`gauntlet_runner.py:506` varies `max_milestones`. Settle R-0243 before
-authoring that block, or R16 splits the same way. "Site N" belongs to the
-inventory catalogue's headings only (R-0241).
+Planner/reviewer gates R16 over `ed5b2421..HEAD`, then migration-order step 3 (`flight_plan.py::_build_plan_prompt`), which needs a `repo_facts` seam first.
