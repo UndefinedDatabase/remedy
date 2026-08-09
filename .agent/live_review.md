@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0251.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0253.
 
 ## Findings
 
@@ -411,6 +411,37 @@
   as this entry, so the next reviewer runs the checks off disk instead of
   remembering them. Fixed and resolved in this same round; the NEXT session's
   gate verifies the rule is on disk and reads as intended.
+- R-0251 (Low, F105 R22): the fallback branch of
+  `_drop_one_newline_per_segment_boundary` in
+  `packages/orchestration/pingpong_loop.py` ships unproven. The helper has three
+  branches; composition reaches two of them. The third — drop the NEXT segment's
+  leading newline when the earlier one has no trailing newline to give — is
+  unreachable for today's ten segments, because every non-last segment's raw
+  text already ends with a newline. Proven by the reviewer at b35d9d56 in a
+  disposable worktree: replacing that branch's body with a `raise` leaves 433
+  tests green across the golden, the three pingpong suites, `test_scope_plan.py`
+  and `test_task_input.py`. The worker declared exactly this as R22 deviation 1
+  rather than reporting the ordered mutation as red, which is the behaviour the
+  gate exists to reward. Fix: pin the helper directly with synthetic lists — not
+  delete the branch, which handles a legal case a future segment may produce.
+  Done: R-0251 — RESOLVED at R23. The helper now carries its own test class,
+  called directly with lists the composed prompts cannot produce: the trailing
+  branch, the fallback branch, the illegal boundary's `PromptSegmentError`, a
+  mixed three-segment list, and the untouched last element. Re-proved by the
+  reviewer's own red-proof at gate F, where deleting the `elif` turns the
+  fallback and mixed-boundary tests RED where before the pin it turned nothing.
+- R-0252 (Medium, F105 R22, reviewer-authored defect): DECISION F105 D8's
+  pre-emission checklist does not cover the red-proofs a block ORDERS. R22's
+  gate F ordered a mutation — delete the fallback branch, expect red — against
+  a branch no test can reach, so the gate was unsatisfiable exactly as R-0250's
+  four were. That is the SIXTH instance of the class across F104 and F105, and
+  the first the freshly installed checklist did not catch: its four items read
+  the block's own bytes, and reachability is a property of the CODE the block
+  points at. The cost is the same as every earlier instance — a round spends a
+  declared deviation proving a reviewer mistake. Fix: a fifth checklist item in
+  docs/agents/planner_reviewer_prompt.md §3, installed as DECISION F105 D10 in
+  the same round as this entry. Fixed and resolved in this same round; the NEXT
+  session's gate verifies the rule is on disk and reads as intended.
 
 ## Steps
 
@@ -1045,3 +1076,49 @@
   written against it — item 1 caught the size before emission and item 2 was run
   against every zero-gate in Done-when C.
   `LAST_REVIEWED_SHA` advances 9cb128d7 -> 54049e6b.
+- Reviewer gate on R22 (2026-08-10, same session): PASS. Range
+  `54049e6b..HEAD` at b35d9d56, SIX commits, NINE path rows over eight paths,
+  exactly the block's declared change set. Insertions per `git log --numstat`:
+  376, 306, 32, 102, 392, 71 — each under 500.
+  Transport was proved disk to disk, not by retype: the reviewer's authored
+  original and the committed `.agent/authored/f105-r22-1.md` are byte-identical
+  under `cmp`, and all three of original, authored copy and `.agent/last_block.md`
+  hash to `8f5fc0c8bf8bdb67…`.
+  The production claim was checked WITHOUT using the worker's numbers. Before
+  the block was authored the reviewer had already proved the decomposition
+  reproduces the pre-migration render BYTE FOR BYTE in pre-migration order over
+  all 64 combinations of the six optional arguments, so the round was ordered
+  against a spec known to be satisfiable — the R-0250 discipline applied
+  forward for the first time. After the round the golden was re-read and re-run:
+  16 tests, four fixture shapes, and the four frozen renders are `repr()` of the
+  real 54049e6b output rather than retyped prompt text. `compose_prompt_segments`
+  sorts by `(rank, registration index)`, and the worker registers in rank order,
+  so the manifest's ten names and the ranks `(0,2,3,3,3,3,4,4,5,5)` are pinned
+  exactly, not merely as a monotonic sequence.
+  Gates re-run by the reviewer with real exit codes: golden plus segments
+  41 passed — 16 + 25, where 25 is the pre-round 22 plus D9's three pins; the
+  five caller suites 417 passed, unchanged from the pre-round baseline, so the
+  migration added no test to them and removed none; canary 42 passed.
+  TWO mutation red-proofs of the REVIEWER's own choosing, distinct from the
+  worker's, ran in a disposable worktree at HEAD. M3 dropped the bare `"\n"`
+  from `builder_context`'s parts: all 16 golden tests went RED, so the golden
+  really does pin bytes and not only shape. M4b changed `builder_staged_diff`'s
+  rank from JOB_CONTEXT to DOSSIER, which leaves every segment's TEXT identical
+  and the ranks still non-decreasing: exactly one test failed,
+  `test_the_full_shape_registers_the_ten_segments_in_rank_order`, so the golden
+  pins the rank ASSIGNMENT and not just its monotonicity. Both reverted, the
+  worktree removed and pruned, `git status --porcelain` empty and
+  `git worktree list` the primary alone at this verdict.
+  Application was re-measured rather than accepted: pairs A and B APPEND with
+  FROM 1x and TO 1x, PAIR_C's slice and `.agent/plan.md` byte-identical at
+  sha256 `45b21911…`, `.agent/plan.md` 45 lines against the cap of 50, zero
+  BEGIN/END markers in all three targets, and stray added lines recomputed from
+  the authored TO slices against the real diffs: 32 added and 0 stray at C2, 42
+  added and 0 stray at C3.
+  Both declared deviations ACCEPTED, and deviation 1 is charged to the
+  reviewer, not the worker: gate F's M2 ordered a mutation against an
+  unreachable branch. It is registered as R-0251 and R-0252 rather than held
+  against R22. Deviation 2 is the round working as intended — gate H asked for a
+  measured number, the number contradicted the block's guess, and the worker
+  reported the measurement instead of the guess.
+  `LAST_REVIEWED_SHA` advances 54049e6b -> b35d9d56.
