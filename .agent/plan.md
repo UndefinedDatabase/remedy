@@ -15,23 +15,26 @@ Prompt CONTENT does not change; only its composition.
 ## Current Step
 T001 and T002 are DONE and gated. T003 counts in the MIGRATION ORDER of
 `.agent/t003_inventory.md`, never that file's catalogue "Site N" headings
-(R-0241). Migration-order steps 1-4 are COMPLETE and GATED, each with its own
-golden. R21 is GATED and `LAST_REVIEWED_SHA` is 54049e6b. R22 records that
-gate, settles the schema-tail question as DECISION F105 D9 with a test that
-proves the strict-prefix claim, and takes migration-order step 5,
-`pingpong_loop.py::_build_builder_prompt`. Open findings: R-0221, R-0239,
-R-0246, R-0247. No PR; one is created at CLOSURE.
+(R-0241). Migration-order steps 1-5 are COMPLETE and GATED, each with its own
+golden; `LAST_REVIEWED_SHA` is b35d9d56. R23 is the session terminator: it
+records the R22 gate, registers and fixes R-0251 and R-0252, and starts no
+migration. Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is
+created at CLOSURE.
 
 ## Next Steps
-- R23 gates R22, then takes step 6, `_build_reviewer_prompt` — last of the six
-  and the highest content-equality risk: two mutually exclusive branches and
-  three reviewer-role strings that all reach evidence.
+- R24 gates R23 (state, docs and one test file — a red-proof IS owed, on the
+  new pin), then takes migration-order step 6,
+  `pingpong_loop.py::_build_reviewer_prompt`, last of the six.
+- Step 6 gets a FRESH session on purpose. Before authoring its block, prove the
+  decomposition byte-exact in pre-migration order over every combination of its
+  optional arguments, as R22 did for step 5 — that proof is what made step 5
+  land without a repair round. Its two mutually exclusive branches and its
+  three reviewer-role strings (base, effective, parse-retry) all reach
+  evidence.
 - ONE later round wires `on_call` for the three sites lacking call evidence:
-  `mission_cmd.py:362` (orchestrator, deferred by R20), `mission_cmd.py:187` +
+  `mission_cmd.py:362` (orchestrator), `mission_cmd.py:187` +
   `gauntlet_runner.py:505` (mission), `do_cmd.py:253` + `:2860` (plan).
 - Fix R-0246 in the round that next touches `mission_compiler.py`.
-- Register the Phase-0 gap the R17 gate records: the protocol gives no
-  disposition for a tree a dead session left dirty. Not yet a DECISION.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
   (docs/agents/integration_gate.md); then closure
   (docs/roadmap/STATUS_closure_protocol.md), where the PR is created.
@@ -39,7 +42,6 @@ R-0246, R-0247. No PR; one is created at CLOSURE.
 ## Risks
 - R-0221 stays open and will cost the integration gate phantom base-only
   failures.
-- Step 5 crosses two rank boundaries, so its golden is equal-modulo-ordering,
-  never byte-exact. The reviewer proved the decomposition byte-exact in
-  pre-migration order over all 64 option combinations before authoring the
-  block, so a mismatch there is a real regression and not a bad spec.
+- The builder prompt's cacheable prefix now dies 24 characters into
+  `builder_staged_state` (R22 gate H measured 467). T004's before/after number
+  should quote that, not the rank order alone.
