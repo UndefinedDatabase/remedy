@@ -7,9 +7,9 @@ No production file and no test file changed, so NO red-proof is owed and no
 worktree was created. Its own gate is owed to the NEXT session's reviewer
 (docs/agents/planner_reviewer_prompt.md §4.13) — do not open a repair round.
 Branch: feature/f105-cache-optimal-prompt-ordering. Base 9cb128d7.
-Deviations, declared: this file is 76 lines against the AGENTS.md cap of 60.
-Cause per DECISION D15, all of it mandated: the changed-files table over five
-commits, the A-G gate table, five pair proofs, the item-status table and two
+Deviations, declared: this file is 79 lines against the AGENTS.md cap of 60.
+Cause per DECISION D15, all of it mandated: the changed-files table over six
+commits, the A-G gate table, five pair proofs, the item-status table and three
 declared deviations. No section dropped, no padding.
 
 ## Commits — changed files, one row per path
@@ -20,10 +20,11 @@ declared deviations. No section dropped, no padding.
 | 83ad4543 `record the R20 gate and register R-0250` | `.agent/live_review.md` | +80/-2 | C2 — pairs A (R-0249 `Done:` + R-0250), B (next free ID), C (R20 gate) |
 | 94707eef `add the pre-emission block checklist…` | `docs/agents/planner_reviewer_prompt.md` | +29/-0 | C3 — pair D, the §3 checklist |
 | 94707eef | `.agent/decisions.md` | +33/-0 | C3 — pair E, DECISION F105 D8 |
-| (this commit) `update the plan and close the session…` | `.agent/plan.md` | +50/-57 | C4 — PAIR_F full replacement; 50 lines, over the <50 rule (dev. 1) |
-| (this commit) | `.agent/handoff.md` | rewrite | C4 — this file; cannot table its own commit (R-0149) |
+| c9eb7bb8 `update the plan and close the session…` | `.agent/plan.md` | +16/-22 | C4 — PAIR_F full replacement; the FILE is 50 lines, over the <50 rule (dev. 1) |
+| c9eb7bb8 | `.agent/handoff.md` | +44/-65 | C4 — this file at its first write |
+| (this commit) `correct two changed-files rows…` | `.agent/handoff.md` | rewrite | C5, dev. 3 — cannot table its own commit (R-0149) |
 
-Insertions: 328, 242, 80, 62, this one — each under 500.
+Insertions: 328, 242, 80, 62, 60, this one — each under 500.
 
 ## Item status
 | Item | Status | Reason |
@@ -33,6 +34,7 @@ Insertions: 328, 242, 80, 62, this one — each under 500.
 | C2 | done | |
 | C3 | done | |
 | C4 | done | |
+| C5 (not in the block) | deviated | dev. 3 — correction commit; the C4 handoff tabled `.agent/plan.md` with full-file counts, not `git numstat` |
 
 ## External actions
 `git push -u origin feature/f105-cache-optimal-prompt-ordering`. No PR — F105's
@@ -67,6 +69,7 @@ PAIR_F: `.agent/plan.md` equals its slice byte for byte, sha256 `d263bfd0…`.
 ## Deviations & assumptions
 1. `.agent/plan.md` is 50 lines, one over AGENTS.md's <50 and over done-when C, which demands <50. PAIR_F is a full replacement the block requires to be byte-for-byte equal to its slice, so the applier cannot trim it without authoring text. Applied verbatim and declared — exactly the behaviour DECISION F105 D8 item 3, installed this same round, prescribes. This is a second live instance of the R-0250 class, in the very block that fixes it.
 2. Gates ran through python subprocess wrappers: this shell layer rejects inline `$?`, pipes into `sed`/`awk`, and `for` loops (carried from R15-R20). Slice extraction used a python marker reader rather than `sed -n '/BEGIN/,/END/p'` for the same reason; it is still purely mechanical, marker-driven, and never retypes an authored text. Scratch lives in gitignored `.remedy-wt/r21slices/`.
+3. A FIFTH commit, outside the block's declared C1a-C4 order, touches only `.agent/handoff.md` — a declared path. Cause: the C4 handoff tabled `.agent/plan.md` as `+50/-57`, the file's own line counts, where every other row and the reviewer's own `git log --numstat` read `+16/-22`. The branch was already pushed, so amending would have required a force-push, which is forbidden. A correction commit was preferred to leaving a false number in the record the reviewer resumes from. No other path and no other content changed.
 
 ## Next
 The NEXT session gates R21 over `9cb128d7..HEAD` — state and docs only, so no
