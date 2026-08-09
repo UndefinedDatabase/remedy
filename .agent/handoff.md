@@ -1,119 +1,119 @@
-# Handoff — F105 R7 (session terminator)
+# Handoff — F105 R8 (record integrity), finished in a completion round
 
-F105 Cache-optimal prompt ordering, R7: register and fix R-0231 and R-0232, move
-the misfiled R5 gate + R6 step into `## Steps`, record the R6 gate. `.agent/`
-state only. Branch `feature/f105-cache-optimal-prompt-ordering`; no PR exists or
-was created. The session ended at its DECLARED FOUR-ROUND CAP (R4-R7) with this
-handoff — docs/agents/self_drive_protocol.md G7 counts that a SUCCESS. T003 is
-untouched and starts next session.
+F105 Cache-optimal prompt ordering, R8: record the R7 gate on disk, resolve
+R-0231 and R-0232 with the reviewer's `Done:` text, register and fix R-0233 and
+R-0234, then plan + handoff + push. `.agent/` state only. Branch
+`feature/f105-cache-optimal-prompt-ordering`; no PR exists or was created. The
+worker that executed R8 C1-C4 died before C5; this round completed C5 alone.
 
 ## Range
-Review of `c0ce100a..HEAD` — four commits below plus this handoff commit.
+Review of `c95db6e7..HEAD` — the seven commits below.
 
 ## Commits
 
-### 0cc7f8a7 chore(f105): save the R7 terminator block verbatim
+### 349137e7 chore(f105): save the R8 record-integrity block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f105-r7-1.md | +206 | C1 — the R7 block, byte for byte |
-| .agent/last_block.md | +153/-162 | C1 — same bytes, `cmp` clean |
+| .agent/authored/f105-r8-1.md | +240/-0 | R8 C1 — the R8 block, byte for byte |
+| .agent/last_block.md | +192/-158 | R8 C1 — same bytes; 432 ins, under the cap |
 
-359 insertions (< 500): C1 is ONE commit, the split clause did not fire. The
-block is 206 lines — the reviewer's count exactly.
-
-### f8e88b70 chore(f105): register R-0231 and R-0232
+### ecfe425f chore(f105): register R-0233 and R-0234
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +18 | C2 — pair A, both findings registered first |
+| .agent/live_review.md | +18/-1 | R8 C2 — pairs A and B, both findings first |
 
-### eabb5675 chore(f105): file the R5 gate under Steps and record the R6 gate
+### 404aba55 chore(f105): resolve R-0231 and R-0232 and record the R7 gate
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +45/-21 | C3 — region moved, pair B, `Landed: R-0231` |
+| .agent/live_review.md | +35/-2 | R8 C3 — pairs C, D, E |
 
-### c24f9176 chore(f105): correct the next free finding ID in the header
+### cbf0b104 chore(f105): correct the R7 terminator claim and two gate citations
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/live_review.md | +2/-1 | C4 — pair C, `Landed: R-0232` |
+| .agent/live_review.md | +11/-6 | R8 C4 — pairs F, G, H, two `Landed:` lines |
 
-### (this commit) chore(f105): close the session with the R7 handoff
+### 1d104b9c chore(f105): save the R8 completion block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | rewrite | C5 — authored rewrite, verbatim and whole |
-| .agent/handoff.md | rewrite | C5 — this file |
+| .agent/authored/f105-r8c-1.md | +81/-0 | C1 — completion block, byte for byte |
+| .agent/last_block.md | +62/-221 | C1 — same bytes; 81 lines / 5509 bytes |
+
+### 89e4ab53 chore(f105): commit the R8 plan rewrite
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/plan.md | +24/-28 | C2 — R8's authored plan text, committed unchanged |
+
+### (this commit) chore(f105): record the R8 handback
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/handoff.md | rewrite | C3 — this file |
 
 ## External actions
-No worktree added or removed. No PR, no `gh` command. `.agent/context.md`
-untouched, as the block ordered. `git push -u origin <this branch>` runs after
-this commit; its real outcome is in the completion report.
+No worktree, no PR, no `gh`. `git push -u origin
+feature/f105-cache-optimal-prompt-ordering` runs after this commit; its real
+outcome is in the completion report.
 
 ## Verification
 | # | Command | Exit | Real trimmed output |
 |---|---|---|---|
-| A | `cmp .agent/authored/f105-r7-1.md .agent/last_block.md` | 0 | no output |
-| C | `pytest test_test_runner.py -k "live_review or context_md or plan_md"` | 0 | `4 passed, 47 deselected in 0.12s` |
-| D | `pytest tests/docs/ -q` | 0 | `294 passed in 0.32s` |
-| E | `pytest tests/orchestration/test_role_conventions.py -q` | 0 | `26 passed in 0.09s` |
-| F | `pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 22.25s` |
-| G | `git status --porcelain` | 0 | empty (after this commit) |
-| H | `git worktree list` | 0 | `/home/decodeux/Repos/remedy … [feature/f105-…]` alone |
-| I | integrity `--json` via `apps.cli.grouped:main` | 0 | `passed=True fail_count=0`, 5 checks; returned `None`, no `SystemExit` |
-| J | `grep -c "Next free ID" .agent/live_review.md` | 0 | `2`, not 1 — see Deviations |
-| J' | `grep -c "^> Branch: ….Next free ID: "` | 0 | `1`; line 8 reads `R-0233` |
+| A | `cmp .agent/authored/f105-r8c-1.md .agent/last_block.md` | 0 | no output |
+| B | `pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | 0 | `4 passed, 47 deselected in 0.11s` |
+| C | `pytest tests/docs/ -q` | 0 | `294 passed in 0.25s` |
+| D | `pytest tests/orchestration/test_role_conventions.py tests/orchestration/test_prompt_segments.py -q` | 0 | `48 passed in 0.12s` |
+| E | `pytest tests/cli/test_golden_path.py -q` (canary) | 0 | `42 passed in 19.37s` |
+| F | `git status --porcelain` | 0 | empty (re-run after this commit) |
+| G | `git worktree list` | 0 | `/home/decodeux/Repos/remedy 89e4ab53 [feature/f105-…]` alone |
+| H | `python3 -m apps.cli.grouped integrity check --json` | 0 | `"passed": true`, `"fail_count": 0`, `"check_count": 5` |
+| I | R8 pair counts vs. the current `.agent/live_review.md` | 0 | 10/10 as expected |
+| J | `grep -c "^> Branch: .*Next free ID: " .agent/live_review.md` | 0 | `1`; line 8 reads `R-0235` |
+| K | `git log --oneline c95db6e7..HEAD`, `git diff --stat` | 0 | 7 commits; 5 paths, all `.agent/` |
 
-B — moved region (21 lines, `- Reviewer gate on R5 …` → `  703, both under the
-cap …`): sha256 `ddc20469025a33b4e7e4b99af21090a343553ef3f39ed81eb3ea27279dbbf5e0`
-BEFORE the move and the SAME sha256 AFTER; slice-equality `True`; occurrences 1
-before, 1 after. Carried in memory from cut to paste, never re-derived.
+Gate I, counted not re-applied, every needle SLICED by line index out of
+`.agent/authored/f105-r8-1.md`: R-0233 para, R-0234 para, `Landed: R-0233`,
+`Landed: R-0234`, R-0231 `Done:` para, R-0232 `Done:` para and the R7 gate
+record 1x each; pair C FROM, pair D FROM and the four-line pair F FROM 0x each.
 
 ## Authored-text proofs
-- `cmp` exit 0, no output. Block 206 lines / 12802 bytes, no trailing whitespace,
-  no CR, final newline.
-- Pairs A, B, C, both `Landed:` lines and the `plan.md` body were SLICED by line
-  index out of `.agent/authored/f105-r7-1.md` on disk, never retyped.
-- A and B APPEND-shaped: TO `startswith` FROM asserted, FROM `== 1` before, TO 1x
-  after. C REWRITE-shaped: FROM 1x before, FROM 0x and TO 1x after.
-- `.agent/plan.md` equals its authored slice exactly (`True`), 48 lines.
+- C1: `cmp` exit 0, no output — the two paths are byte-identical. No CR, no
+  trailing whitespace, final newline present.
+- C2: `.agent/plan.md` equals lines 177-220 of `.agent/authored/f105-r8-1.md`
+  EXACTLY. Proved twice: 44 lines / 2608 bytes both sides, sha256
+  `5a85ee84633a2b722fc237614c59b430c31c7bb98e4608bb91083038b729f67c` identical,
+  and `cmp` of the written-out slice against the file exit 0. Not a byte edited.
+- No FROM/TO pair was re-applied this round; gate I proves each landed once.
 
 ## Deviations & assumptions
-- Declared: this handoff is 119 lines / ~1500 estimated tokens, over the 60-line
-  and 800-token caps. D15 stated cause: five commit tables, the ten-row
-  verification table, the byte-identity proof, the pair proofs and the
-  item-status table. No mandated section was dropped.
-- Gate J is UNSATISFIABLE as written: it counts `Next free ID`, and the
-  reviewer's own R-0232 text, applied in C2 from this same block, quotes it
-  (`reads \`Next free ID: R-0229\``). The count is 2 and cannot be 1 while the
-  finding stands — the F104 R11 "gate quotes its own marker" class. Nothing was
-  edited to make the number fit; J' proves the substance instead: exactly ONE
-  header declaration, reading `R-0233`. Flagged, not corrected.
-- `Landed: R-0231` is ONE line: in the block it broke after `## Steps` only
-  because the quoting overhead pushed it to 81 columns; the block calls it "the
-  single line" and joined it is 79 characters. Sliced, not retyped.
-- Assumption (unchanged from R6): the authored `plan.md` runs from `# Plan` to
-  the last Risks bullet; `Done when:` / `Handback:` is step-block text.
-- `.agent/plan.md` described R6 through C1-C4 and is brought current here,
-  because the block ordered its rewrite in C5.
-- Four paths total, all under `.agent/`. No `packages/`, `tests/`, `apps/`,
-  `docs/`, `docs/roadmap/`, `AGENTS.md` or `.agent/context.md` byte changed.
+- The R8 worker died after C4. This round completed C5 only: the already-written
+  `.agent/plan.md`, this handoff, the push. Commits 349137e7, ecfe425f, 404aba55
+  and cbf0b104 were NOT amended, rebased, reverted or cherry-picked — no
+  committed byte changed and no authored pair was re-applied.
+- Declared: this handoff is 119 lines, over the 100-line >5-commit cap. D15
+  stated cause: seven commit tables, the eleven-row verification table, the
+  gate-I needle list, the C2 equality proof and the item-status table. No
+  mandated section was dropped.
+- Scratch helpers live in the gitignored `.remedy-wt/`; one slice file in
+  `/dev/shm` could not be deleted (sandbox). Neither is tracked.
+- Three paths total, all under `.agent/`. No `packages/`, `tests/`, `apps/`,
+  `docs/`, `docs/roadmap/`, `AGENTS.md`, `.agent/context.md`,
+  `.agent/live_review.md`, `.agent/decisions.md` or `.agent/candidates.md` byte
+  changed.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C1 | done | |
-| C2 | done | |
-| C3 | done | region moved byte-identically; pair B appended |
-| C4 | done | |
-| C5 | done | |
+| C1 | done | block saved to both paths, `cmp` exit 0 |
+| C2 | done | plan committed unchanged after the equality proof |
+| C3 | done | this handoff, then the push |
 
 ## Open findings
-R-0221 OPEN (carried from F103). R-0229, R-0230 RESOLVED. R-0231 and R-0232 are
-FIXED with `Landed:` lines only — a worker never writes `Done:` (§4.4), so the
-next reviewer gates R7 and authors their resolutions. Next free ID **R-0233**.
-`LAST_REVIEWED_SHA` stays c0ce100a until R7 gates.
+R-0221 OPEN (carried from F103). R-0229 through R-0232 RESOLVED with
+reviewer-authored `Done:` text. R-0233 and R-0234 are FIXED but carry `Landed:`
+lines only — a worker never writes `Done:` (§4.4), so the next reviewer gates R8
+and authors their resolutions. Next free ID **R-0235**. `LAST_REVIEWED_SHA`
+stays c95db6e7 until R8 gates.
 
 ## Next
-Next session: run the Phase 0 state probe (docs/agents/self_drive_protocol.md) —
-clean tree, branch, log, open PRs, `remedy plan status` / `plan next`, then read
-`handoff.md`, `plan.md`, `live_review.md`, `candidates.md`, the F105 feature file
-— gate R7 over `c0ce100a..HEAD`, then START AT T003: inventory the prompt
-assembly sites first, then migrate one builder per round.
+Gate R8 over `c95db6e7..HEAD`, then R9, the T003 inventory round: read-only, one
+document giving per builder the file, function, line, assembly idiom, the
+segments it concatenates and their order, and whether it reaches call evidence —
+the six named in the feature file, starting at `pingpong_loop`.
