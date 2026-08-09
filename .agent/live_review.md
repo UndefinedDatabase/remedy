@@ -160,6 +160,18 @@
   builder round reads the answer instead of re-deriving it. Spot-checked against
   the source rather than accepted: `docs/roadmap/features/T2_F105.md:18` does
   carry the words "modulo ordering", and the inventory quotes them correctly.
+- R-0238 (Medium, F105 R11, reviewer-authored defect): the R11 step block is 257
+  lines against the 240-line cap DECISION F105 D2 sets — 17 over, where R-0236
+  was 14 over. R-0236 was resolved on R10's evidence and re-broken by the very
+  next block, so the control it installed does not work: it asked the reviewer
+  to count, and this reviewer's sandbox rejects the shell pipelines a count
+  needs, so "counted" degraded to "estimated by hand" and the estimate was off
+  by 22 lines. Not hypothetical — C1 saves the block to TWO paths, so R11's C1
+  landed at 453 insertions of the 500-insertion cap. Fix: a count is MECHANICAL
+  or it is not a count. The reviewer splits the drafted block into pieces small
+  enough for its tool layer to parse, counts each with a `python3 - <<PY`
+  heredoc — no pipeline, so it runs — and emits only once the sum is at most
+  240. A hand estimate is never again reported as a count. OPEN.
 
 ## Steps
 
