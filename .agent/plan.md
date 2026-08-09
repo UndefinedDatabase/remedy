@@ -1,11 +1,10 @@
-# Plan — F104 Hard budget enforcement
+# Plan — F104 Hard budget enforcement — CLOSED
 
 Branch: feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after
 PR #187 was merged at the Open PR Gate. Build mode: one-session self-drive
 (docs/agents/self_drive_protocol.md), one delegated worker per round.
-Reviewed through R5: **R5 PASS at 549f2bac** (`LAST_REVIEWED_SHA = 549f2bac`).
-R6 and R7 are both awaiting review. R-0222 through R-0226 are Done with
-reviewer-authored resolution text. Next free ID: R-0228.
+R1-R8 executed; R-0222 through R-0227 all Resolved with reviewer-authored text.
+Next free ID: R-0228.
 
 ## Goal
 Budgets grow teeth and foresight. A money limit `max_cost_usd` joins the F018
@@ -16,35 +15,33 @@ breach the limit, recording the arithmetic that justified the stop. The
 reactive check is unchanged — prediction never replaces the backstop.
 
 ## Current Step
-R7 — COMPLETE, awaiting review. Two things landed. (1) R-0227 was registered
-first and then fixed: the F103 ledger read in `_cmd_job_budget` no longer
-swallows its failure silently — it logs at ERROR with `exc_info=True` and
-surfaces a `cost_read:` text line plus a `cost_read_error` JSON key, so a
-broken read is no longer indistinguishable from a job nobody priced.
-`spent`/`remaining`/`diagnostic` are unchanged.
-(2) The integration gate ran per docs/agents/integration_gate.md, evidence in
-`.agent/gate_f104_r7/`: branch exit 0 (16305 passed, 19 skipped, 121 s), base
-exit 1 (16125 passed, 6 failed, 19 skipped, 123 s), **zero branch-only
-failures**, six base-only ids all attributed by direct evidence to the
-pre-existing R-0221 dist-mtime class with a controlled reproduction and
-reversal. The base worktree and `tmp/base-gate` are removed. T001-T003 done.
+R8 — CLOSURE, complete per docs/roadmap/STATUS_closure_protocol.md. T001-T003
+done. `docs/roadmap/features/T2_F104.md` carries a Built State section
+(precondition 4); `remedy integrity check --json` PASS (5/5, exit 0); the
+evidence bundle `f104-closure` was produced by
+`job_evidence.create_manual_completion_bundle(review_feature_id="f104")` into
+the gitignored `.remedy-wt/` and evaluates READY (gate matrix ok,
+final-verifier and token-truth VERIFIED_EQUAL); the review zip
+`remedy-review-20260809-033908-READY_FOR_REVIEW.zip`
+(SHA-256 6117b6b0…8bb6a) covers accepted HEAD
+`68a7412019e92232a880625b7fce4e48c7198744` and spans BASE..HEAD.
+`docs/roadmap/STATUS.md` now reads `[x] F104` and README.md moved to
+41 of 255 with Tier 2 at 3; both in the same commit (R-0154).
 
 ## Next Steps
-- R8 — closure per docs/roadmap/STATUS_closure_protocol.md, once the reviewer
-  has gated R6 and R7. `docs/roadmap/STATUS.md` still carries F104 as `[~]`;
-  the STATUS line is the reviewer's to author at R8.
+- The closure PR is open and MUST NOT be merged in this session. It merges at
+  the next feature's start via the Open PR Gate — the operator's manual-review
+  window (closure protocol step 6).
+- Next feature per Rule A5: F105 — Cache-optimal prompt ordering, in a fresh
+  session, after the closure PR is merged.
 
 ## Risks
-- Cost is NULLABLE by design (P6): the ledger stores NULL for an unpriced call
-  and nothing may render that as a measured zero. Every figure keeps the None.
+- R-0221 stays OPEN: the UI auto-build test refreshes `apps/ui/dist` mtimes
+  mid-suite. Documented LOW, routed to the F252 flake-debt class, not F104's
+  code to fix under AGENTS.md Scope Control. It cost the R7 gate six phantom
+  base-only failures, each attributed by controlled evidence.
 - The band estimate is a FLOOR (DECISION F104 D6): it can only under-predict,
   which is why the reactive backstop must stay exactly as it is.
-- R-0221 stays OPEN and unfixed by F104 — not this feature's code. It cost
-  this gate six phantom base-only failures: attributed, not chased, and
-  carried as a documented LOW risk to closure.
-- `remedy job budget` now performs I/O the catalog marks `read_only`: a
-  SELECT-only `query_cost` that never creates a ledger, pinned by
-  `test_the_command_does_not_mutate_the_persisted_job`. The full suite saw it.
-- The manifest budget schema is SHARED F012 surface. R5 widened it by exactly
-  one field; any further budget field owes the same run-manifest gate
-  (tests/orchestration/test_run_manifest*.py) before it is believed.
+- Cost is NULLABLE by design (P6): an unpriced call stays None everywhere.
+- The manifest budget schema is SHARED F012 surface; any further budget field
+  owes the same run-manifest gate before it is believed.

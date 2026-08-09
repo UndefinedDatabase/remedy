@@ -2,9 +2,9 @@
 
 ## Active Branch
 feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after PR #187 —
-the F103 closure — was merged at the Open PR Gate. F104 is claimed `[~]` in
-docs/roadmap/STATUS.md; it is the first `[ ]` entry after F103, which is what
-Rule A5 names.
+the F103 closure — was merged at the Open PR Gate. F104 was claimed `[~]` under
+Rule A5 as the first `[ ]` entry after F103 and is now accepted `[x]` in
+docs/roadmap/STATUS.md; the closure PR is open and unmerged by design.
 
 ## Scope
 In: `max_cost_usd` as an additive `JobBudgets` field with the F018 precedence
@@ -42,4 +42,4 @@ candidate sweep + T001 usd limit and ledger bridge → R2 T002 predictive engine
 (fix R-0222) → R3 fix R-0224, the cost-side counter split → R4 T002 part 2, the
 predictive stop wired at the live safe point → R5 fix R-0225/R-0226, the F012
 manifest budget schema and the terminal-state pins → R6 T003 display, docs and
-estimate labels → R7 integration gate → R8 closure.
+estimate labels → R7 integration gate → R8 closure (done).
