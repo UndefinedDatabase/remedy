@@ -1013,3 +1013,153 @@ class TestSelectNextPredictableTaskAgreesWithTheLiveSafePoint:
         assert select_next_predictable_task(None) == (None, [])
         assert select_next_predictable_task(object()) == (None, [])
         assert select_next_predictable_task(_Hostile()) == (None, [])
+
+
+# ---------------------------------------------------------------------------
+# F104 T003 acceptance — "every user-facing predicted number carries its basis
+# label; that is an acceptance criterion, not polish" (feature file, Orchestrator
+# brief). Two pins: the vocabulary is completely reachable, and the label really
+# reaches the SURFACE a human reads.
+# ---------------------------------------------------------------------------
+
+def _save_predictable_job(repo, *, budgets):
+    """Persist a two-task job with a money limit and zero provider calls so far."""
+    from packages.orchestration.pingpong_job import parse_job_file, save_job_plan
+    job = parse_job_file(_TWO_TASK_JOB, str(repo))
+    job.budgets = dict(budgets)
+    # Firmly in the past: BudgetCounters refuses a started_at after "now".
+    job.first_running_at = "2026-01-01T09:00:00+00:00"
+    job.budget_actuals = {
+        "schema_version": "1.0.0",
+        "provider_call_count": 0,
+        "actual_call_count": 0,
+        "unmeasured_call_count": 0,
+        "total_tokens": 0,
+        "actual_sources": [],
+        "started_at": job.first_running_at,
+    }
+    save_job_plan(job)
+    return job
+
+
+def _cli_line_value(lines, label):
+    """The value printed after ``label:``, or None if the label never appeared."""
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(label + ":"):
+            return stripped[len(label) + 1:].strip()
+    return None
+
+
+class TestEveryPredictedNumberCarriesItsBasis:
+    """The acceptance criterion, pinned at the engine AND at the surface."""
+
+    # One input state per declared label. A label with no state here is
+    # unreachable — that is a finding, and the equality test below catches it.
+    _STATES = {
+        "class_default": (
+            JobBudgets(max_cost_usd=10.0), {"spent": 1.0}, TokenBand.MEDIUM, 0.01),
+        "class_default_missing_band": (
+            JobBudgets(max_cost_usd=10.0), {"spent": 1.0}, None, 0.01),
+        "no_price_basis": (
+            JobBudgets(max_cost_usd=10.0), {"spent": 1.0}, TokenBand.MEDIUM, None),
+        "no_cost_limit": (
+            JobBudgets(max_total_tokens=1000), {"spent": 1.0}, TokenBand.MEDIUM, 0.01),
+        "unpriced_spend": (
+            JobBudgets(max_cost_usd=10.0), {"spent": None, "unpriced": 4},
+            TokenBand.MEDIUM, 0.01),
+    }
+
+    def _predict(self, label):
+        budgets, counters_kwargs, band, price_basis = self._STATES[label]
+        return predict_next_task_cost(
+            budgets, _counters(**counters_kwargs),
+            band=band, config=_config(price_basis))
+
+    # -- pin 1: label completeness ----------------------------------------
+    @pytest.mark.parametrize("label", sorted(VALID_ESTIMATE_BASES))
+    def test_each_declared_basis_is_produced_by_a_state_and_labels_its_arithmetic(
+            self, label):
+        assert label in self._STATES, (
+            f"{label!r} is declared in VALID_ESTIMATE_BASES but no input state "
+            f"produces it; an unreachable label is a finding, not a spare part"
+        )
+        prediction = self._predict(label)
+        assert prediction.estimate_basis == label
+        # The label travels INSIDE the arithmetic too, so a human copying one
+        # line out of the report still knows where the number came from.
+        assert f"basis={label}" in prediction.arithmetic
+
+    def test_the_reachable_labels_are_exactly_the_declared_vocabulary(self):
+        # A sixth label cannot be added without a state that produces it.
+        reachable = {self._predict(label).estimate_basis for label in self._STATES}
+        assert reachable == VALID_ESTIMATE_BASES
+
+    # -- pin 2: the label reaches the surface ------------------------------
+    @pytest.mark.parametrize(
+        "price_basis,expected_value,expected_basis",
+        [
+            (0.01, "$0.0800", "class_default"),
+            (None, "not-measured", "no_price_basis"),
+        ],
+        ids=["priced", "no-price-basis"],
+    )
+    def test_the_text_report_never_shows_a_predicted_number_without_its_basis(
+            self, isolate_data_root, demo_repo, capsys,
+            price_basis, expected_value, expected_basis):
+        from apps.cli.commands.job import _cmd_job_budget
+        if price_basis is not None:
+            _configure_price_basis(demo_repo, price_basis=price_basis)
+        job = _save_predictable_job(demo_repo, budgets={"max_cost_usd": 10.0})
+
+        _cmd_job_budget(job.job_id)
+        lines = capsys.readouterr().out.splitlines()
+
+        # The grep: a next_task_expected line exists, and so does its label.
+        assert _cli_line_value(lines, "next_task_expected") == expected_value
+        basis = _cli_line_value(lines, "estimate_basis")
+        assert basis is not None, lines
+        assert basis in VALID_ESTIMATE_BASES
+        assert basis == expected_basis
+
+    def test_the_json_report_never_carries_a_prediction_without_its_basis(
+            self, isolate_data_root, demo_repo, capsys):
+        import json
+        from apps.cli.commands.job import _cmd_job_budget
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        job = _save_predictable_job(demo_repo, budgets={"max_cost_usd": 10.0})
+
+        _cmd_job_budget(job.job_id, json_output=True)
+        data = json.loads(capsys.readouterr().out)
+
+        prediction = data["prediction"]
+        assert prediction is not None
+        assert prediction["estimate_basis"] in VALID_ESTIMATE_BASES
+        assert f"basis={prediction['estimate_basis']}" in prediction["arithmetic"]
+
+    def test_no_prediction_means_no_orphan_basis_label(
+            self, isolate_data_root, demo_repo, capsys):
+        # The mirror rule: where no number is predicted, no label is printed
+        # either — a label with nothing under it would be its own small lie.
+        import json
+
+        from apps.cli.commands.job import _cmd_job_budget
+        from packages.orchestration.pingpong_job import (
+            TASK_APPLIED,
+            load_job_plan,
+            save_job_plan,
+        )
+        _configure_price_basis(demo_repo, price_basis=0.01)
+        job = _save_predictable_job(demo_repo, budgets={"max_cost_usd": 10.0})
+        reloaded = load_job_plan(job.job_id)
+        for t in reloaded.tasks:
+            t.status = TASK_APPLIED
+        save_job_plan(reloaded)
+
+        _cmd_job_budget(job.job_id)
+        lines = capsys.readouterr().out.splitlines()
+        assert _cli_line_value(lines, "next_task_expected") == "none (no pending task)"
+        assert _cli_line_value(lines, "estimate_basis") is None
+
+        _cmd_job_budget(job.job_id, json_output=True)
+        assert json.loads(capsys.readouterr().out)["prediction"] is None
