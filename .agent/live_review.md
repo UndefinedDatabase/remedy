@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0245.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0247.
 
 ## Findings
 
@@ -269,6 +269,14 @@
   OPEN until a round lands a gate record AND a feature change out of one block —
   the condition R16 is built to meet, held to the same discipline as R-0238,
   which was resolved on a landing and not on a promise.
+  Done: R-0243 (resolved at the R16 gate, 2026-08-09). The condition this
+  finding set for itself — one block landing a gate record AND a feature change
+  — was met by R16 at 399 authored lines under DECISION F105 D5's cap of 400:
+  the R15 gate record, two registrations, two DECISIONS, and migration-order
+  step 2 with its golden, out of a single block, in seven commits whose largest
+  is 399 insertions and none of which exceeds 500. The reviewer confirmed the
+  counts from `git log --numstat` rather than from the handback. The forced
+  split is gone because the block is no longer counted twice. RESOLVED.
 - R-0244 (Low, F105 R15, reviewer-authored defect): the authored `.agent/plan.md`
   text is 54 lines against the AGENTS.md plan.md rule "keep it short (<50
   lines)". The R14 plan was 49 and inside it; R15 regressed past it while
@@ -280,6 +288,35 @@
   of a plan turning into a log, which is what the cap exists to prevent. Fix:
   the authored plan slice is counted before it is emitted and lands at 49 lines
   or fewer. Applied at C6 of this block. OPEN until it lands.
+  Done: R-0244 (resolved at the R16 gate, 2026-08-09). `.agent/plan.md` is 47
+  lines and equals its authored slice byte for byte, sha256 8029c8ca on both
+  sides, confirmed by the reviewer on disk. Inside the AGENTS.md cap with two
+  lines to spare. RESOLVED.
+- R-0245 (Low, F105 R16, worker record defect): `.agent/handoff.md` is 101 lines
+  against the AGENTS.md cap of 60 — 100 where per-commit tables of more than
+  five commits require it — and declares neither the overage nor its line count.
+  DECISION D15 permits a stated-cause overage precisely so that a long handoff
+  stays honest, and it requires the file to name its actual length and the
+  mandated content that caused it; the R15 handoff did exactly that at 135
+  lines. The same file also omits the item-status table AGENTS.md requires of
+  every completion report covering an ordered bundle. The worker DID put one in
+  its completion report to the reviewer, but that report dies with the session
+  and the file is the only channel that survives it. Nothing is padded and
+  nothing is fabricated; what is missing is the declaration and the table. Fix:
+  a handoff over cap states its line count and its cause, and every handoff
+  covering an ordered bundle carries the item-status table. OPEN.
+- R-0246 (Low, F105 R16, reviewer-authored defect): `build_mission_prompt`'s
+  docstring still ends "``None`` reproduces today's prompt byte for byte".
+  Before R16 that sentence was about the `max_milestones` parameter alone and
+  was unambiguous. After a migration whose entire point is that segment ORDER
+  changed while segment BYTES did not, a reader landing on that line — and it is
+  exactly where a search for "did the migration change the prompt?" lands — can
+  read it as a claim that the byte SEQUENCE was preserved, which is false. The
+  R16 block mandated that the docstring be kept unchanged, so the defect is the
+  reviewer's and not the worker's. Fix: the sentence says what it means — a
+  `None` cap reproduces the pre-R-0197 milestone ceiling, while the composed
+  ORDER differs from the pre-migration template and the segment bytes do not.
+  OPEN.
 
 ## Steps
 
