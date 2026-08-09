@@ -35,8 +35,13 @@
   exchanging the two values of `CONVENTIONS_DOC_RELATIVE_PATHS` turns 3 tests RED
   through the role-specific rule anchors. Fix: assert the expected literal per
   role, for both mappings, and red-proof the swap. OPEN.
-  Landed: R-0229 — literal-per-role mapping assertions added; the swap now
-  turns 2 tests RED.
+  Done: R-0229 (2026-08-09) — RESOLVED. `TestRoleConventionsMappings` now asserts
+  the expected literal per role for BOTH mappings, so the assertion no longer
+  reads the mapping it pins. Re-proved by the reviewer in a disposable worktree
+  at a8e9ab1f: exchanging the two values of `CONVENTIONS_SEGMENT_NAMES` turns
+  exactly 2 tests RED, the two `test_segment_name_mapping_holds_the_expected_literal`
+  parameters, where before the fix it turned none. The worktree was removed and
+  pruned before this verdict.
 - R-0230 (Low, F105 R4): `packages/orchestration/role_conventions.py`
   `role_conventions_text` promises `RoleConventionsError` for a document that is
   "missing or unreadable", and the round's spec said the same, but only `OSError`
@@ -44,8 +49,34 @@
   which escapes the conventions layer — so `except PromptSegmentError`, the
   single catch this module's error hierarchy exists to enable, does not cover it.
   Fix: catch `(OSError, UnicodeDecodeError)` and pin it with a test. OPEN.
-  Landed: R-0230 — the decode error is caught with the OS error; pinned by a
-  non-UTF-8 document test.
+  Done: R-0230 (2026-08-09) — RESOLVED. `role_conventions_text` now catches
+  `(OSError, UnicodeDecodeError)`, so an undecodable document fails as a
+  `RoleConventionsError` exactly like a missing one and stays inside the
+  `PromptSegmentError` hierarchy. Re-proved by the reviewer in the same
+  disposable worktree: reverting the except clause turns
+  `test_non_utf8_document_raises_role_conventions_error` RED with
+  `UnicodeDecodeError` at `role_conventions.py:107`.
+- Reviewer gate on R5 (2026-08-09): PASS. Range `65d3c7b9..a8e9ab1f` read as a
+  real diff — nine paths, none under `docs/`, `apps/` or `AGENTS.md`, so neither
+  conventions document changed a byte in the repair round either. Every commit
+  is under the 500-insertion cap, the largest 295. Gates re-run by the reviewer:
+  `cmp` exit 0, `test_role_conventions.py` 26 passed, `test_prompt_segments.py`
+  22 passed, `tests/docs/` 294 passed, `test_test_runner.py` 51 passed, the
+  canary 42 passed, integrity 5 of 5, tree clean, HEAD equal to origin, the
+  primary checkout the only worktree. Two mutation red-proofs of my own confirm
+  both fixes. The worker's C1 split is RATIFIED: my R5 block was 295 lines, 55
+  over the cap DECISION F105 D2 sets in that same block, and the mandated single
+  commit would have been 529 insertions with F105's once-per-feature exception
+  already spent — AGENTS.md "stop and split before committing" is the governing
+  rule, the bytes and the `cmp` proof are unchanged, and the second commit is a
+  single `.agent/**` verbatim rewrite, exempt under DECISION F104 D1. The
+  authoring defect is the reviewer's: from R6 on the block is COUNTED before it
+  is emitted, not estimated. `LAST_REVIEWED_SHA` advances 1a054862 -> a8e9ab1f.
+- R6: T002 part 2 — the operator addition of 2026-07-30, a distilled
+  write-discoverable-code block appended to BOTH conventions documents as a
+  reviewed diff. Measured by the reviewer before authoring: the worker document
+  goes from 505 to 740 estimated tokens and the reviewer document from 515 to
+  703, both under the cap of 800 the R4 loader enforces.
 
 ## Steps
 
