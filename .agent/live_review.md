@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0238.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0242.
 
 ## Findings
 
@@ -521,3 +521,30 @@
   (R11, R12, R13) under docs/agents/self_drive_protocol.md G7. R13 ends a
   SESSION, not the branch, so its own gate is OWED and the next session's
   reviewer records it (R-0233's correction to §4.13).
+- Reviewer gate on R13 (2026-08-09): PASS. Range `927bfdad..HEAD` at 2d993ed9,
+  five commits, SIX paths, all under `.agent/`. Per-commit insertions, read by
+  the reviewer from `git log --numstat`: 394, 17, 40, 21, 101 — each under the
+  500 cap and each equal to the handoff's own table. Gates re-run by the
+  reviewer with real results: `cmp` of the authored block against
+  `.agent/last_block.md` exit 0, no output; `wc -lc` 231 lines / 13795 bytes on
+  BOTH, the first block at or under D2's cap of 240;
+  `tests/orchestration/test_test_runner.py -k "live_review or context_md or
+  plan_md"` 4 passed, 47 deselected; `tests/docs/` 294 passed;
+  `tests/orchestration/test_prompt_trace.py`,
+  `tests/orchestration/test_intake_prompt_golden.py` and
+  `tests/orchestration/test_intake.py` 79 passed, 79 before and after; canary
+  `tests/cli/test_golden_path.py` 42 passed; integrity `passed=True`,
+  `fail_count=0`, 5 checks; `git worktree list` the primary alone at 2d993ed9;
+  `git status --porcelain` empty. Transport proved disk to disk, not by retype:
+  all 78 lines the range adds to `.agent/live_review.md` and
+  `.agent/decisions.md` occur verbatim in `.agent/authored/f105-r13-1.md`, zero
+  missing, and `.agent/plan.md` equals block lines 172-212, sha256 2ed24940 both
+  sides. Both declared deviations ACCEPTED: the D15 handoff overage at 124 lines
+  is mandated content only, and the `subprocess.run` exit-code transport was
+  re-run directly by the reviewer with the same results. R-0238 RESOLVES here.
+  Two defects registered, BOTH the reviewer's own: R-0240 and R-0241.
+  `LAST_REVIEWED_SHA` advances 927bfdad -> 2d993ed9.
+- R14: the record half of the R13 gate — R-0238 resolved, R-0240 and R-0241
+  registered and fixed, the gate recorded. No builder migrated: the combined
+  block measured 293 lines, over DECISION F105 D2's cap, so the migration moves
+  to R15 under D2's own split remedy. R14's gate is owed at R15.
