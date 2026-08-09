@@ -1122,3 +1122,37 @@
   measured number, the number contradicted the block's guess, and the worker
   reported the measurement instead of the guess.
   `LAST_REVIEWED_SHA` advances 54049e6b -> b35d9d56.
+- Reviewer gate on R23 (2026-08-10, next session): PASS. Range
+  `b35d9d56..HEAD` at 554d9521, FIVE commits, eight path rows. Insertions per
+  `git log --numstat`: 368, 292, 78, 45, 36 — each under 500, and the 368-line
+  authored save is under DECISION F105 D5's 400.
+  Transport proved disk to disk under the §4.9 DIGEST FALLBACK, stated as
+  required: the previous session's scratchpad originals no longer exist, so the
+  proof is `sha256sum` over the two COMMITTED files plus `cmp`.
+  `.agent/authored/f105-r23-1.md` and `.agent/last_block.md` are byte-identical
+  at `fd3271aedac2f81f…`, 368 lines each.
+  Gates re-run by THIS reviewer, not accepted from the handback: the golden
+  21 passed, `tests/docs/` 294 passed, the canary 42 passed,
+  `test_dashboard_contract.py` 70 passed — every number equal to the worker's.
+  `.agent/plan.md` measured 47 lines against the cap of 50. Zero BEGIN/END
+  transport markers in all four target files; the six `PAIR_` hits in
+  `.agent/live_review.md` were read and are prose inside finding text, not
+  stray marker lines.
+  TWO mutation red-proofs of the REVIEWER's own choosing ran in a disposable
+  worktree at HEAD and BOTH went red, so R-0251's pin is real and not merely
+  present. M1 deleted the `elif` fallback branch of
+  `_drop_one_newline_per_segment_boundary`: exactly two tests failed,
+  `test_the_leading_newline_of_the_later_segment_is_the_fallback` and
+  `test_each_boundary_chooses_its_own_branch`, reproducing the worker's gate F
+  to the test name. M2 replaced the `else: raise` with `pass`: exactly one test
+  failed, `test_a_boundary_with_no_newline_at_all_is_illegal`. Both reverted,
+  the worktree removed and pruned, `git status --porcelain` empty and
+  `git worktree list` the primary alone at this verdict.
+  R-0251 and R-0252 are confirmed RESOLVED against the disk, not the summary:
+  the test class exists with five tests and the red-proof above, and checklist
+  item 5 plus DECISION F105 D10 are on disk and read as intended.
+  Declared deviation 1 ACCEPTED and it is the round working as intended: the
+  worker MEASURED PAIR_D's shape, found the block's word "prefix" wrong where
+  the FROM is the TO's SUFFIX, and reported the measurement instead of the
+  claim. Containment holds either way, so application was unaffected.
+  `LAST_REVIEWED_SHA` advances b35d9d56 -> 554d9521.
