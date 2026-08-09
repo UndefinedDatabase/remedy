@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0248.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0249.
 
 ## Findings
 
@@ -340,6 +340,22 @@
   class, third instance on this branch, and each time it costs a run deciding
   between a typo and a file that changed underneath. Fix: any count entering a
   finding is pasted from that command's own output in the same sitting. OPEN.
+- R-0248 (Low, F105 R18, defect in a DECISION's account of its own mechanism):
+  DECISION F105 D6, landed this round, says the Commit Gate's plan check is met
+  for a round's intermediate commits by `.agent/last_block.md`, "which carries
+  the round's plan verbatim and is committed BEFORE any of them at C1b". C1a
+  commits `.agent/authored/<round>.md` and C1a runs BEFORE C1b — D5 split them
+  in that order precisely so the block is counted once. So exactly one commit
+  per round, the first, is not covered by the mechanism D6 names, and D6's
+  "before any of them" is false for it. The worker declared the gap rather than
+  reordering, which was right: reordering C1a after C1b would defeat D5. The
+  SUBSTANCE of D6 is unaffected — C1a adds a file that is a verbatim copy of
+  the block, so the plan of record and the commit agree by construction, which
+  is the very thing D6 argues makes the mechanism sound. What is wrong is the
+  word "any", which overclaims coverage a reader can falsify in one `git log`.
+  Fix: D6's sentence names C1b onward, and states that C1a is covered by being
+  the block's own verbatim copy rather than by `.agent/last_block.md`. Amend the
+  entry in place, in the round that next touches `.agent/decisions.md`. OPEN.
 
 ## Steps
 
