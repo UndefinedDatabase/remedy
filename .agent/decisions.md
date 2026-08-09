@@ -3893,3 +3893,35 @@ Splitting an oversize commit is also the remedy AGENTS.md prescribes in its own
 words, so no rule is reinterpreted and no exemption is widened.
 
 Reverse this decision by deleting this entry, and restore D2's 240 with it.
+
+## DECISION F105 D6 — the plan rewrite closes a round (2026-08-09)
+
+Context: finding R-0242, open since R14 and declared as a deviation by every
+worker since. AGENTS.md's Commit Gate item 1 verifies `.agent/plan.md` against
+the current work before EVERY commit. Every block on this branch rewrites
+`.agent/plan.md` in its LAST commit, so the intermediate commits of a round
+carry the PREVIOUS round's plan. Read literally, each of those commits fails
+item 1; read as the branch has actually run for eighteen rounds, none of them
+does. An unpersisted convention is exactly the class this loop registers as a
+finding, so it gets a rule or it gets abandoned.
+
+D6 — within one delegated round, `.agent/plan.md` is rewritten in the round's
+LAST commit and the Commit Gate's plan check is satisfied for the round's
+intermediate commits by `.agent/last_block.md`, which carries the round's plan
+verbatim and is committed BEFORE any of them at C1b. The plan of record for an
+in-flight round is the block; `.agent/plan.md` states where the FEATURE stands,
+and mid-round it stands nowhere new yet.
+
+The alternative — rewrite `.agent/plan.md` first — was rejected because it
+makes the file claim work that has not landed. A plan that reads "step 3 is
+complete" in the commit before step 3 is written is a worse record than one
+that is a round behind, and it would resolve R-0242 by manufacturing the
+overclaim class this repository's Proof Chain exists to prevent. Being one
+round behind is visible and honest; being one round ahead is not.
+
+Scope: one round, one worker. It exempts nothing across rounds — a round that
+ends without rewriting `.agent/plan.md` still fails item 1, and D6 is not a
+licence to leave the file stale. Blocks stop declaring the ordering as a
+deviation and cite this entry instead.
+
+Reverse this decision by deleting this entry.

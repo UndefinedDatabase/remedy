@@ -238,6 +238,12 @@
   plan rewrite earlier, then cite it from every later block. Not settled here:
   inventing a rule in a terminator round is how unreviewed conventions start.
   OPEN.
+  Done: R-0242 (2026-08-09) — RESOLVED as DECISION F105 D6, recorded in
+  `.agent/decisions.md` at this round's C4. The convention is on disk with its
+  reason and scope: within one round the plan rewrite closes the round, and the
+  Commit Gate's plan check is met for the intermediate commits by
+  `.agent/last_block.md`, which lands at C1b before any of them. D6 takes the
+  exempting branch and says why the earlier-rewrite branch was refused.
 - R-0243 (Medium, F105 R14 and R15, process defect in the reviewer's own
   authoring): DECISION F105 D2 caps a step block at 240 lines and its remedy for
   an over-cap round is a split, but the content a reviewed round MUST carry —
