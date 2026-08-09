@@ -1,107 +1,106 @@
-# Handoff — F105 Cache-optimal prompt ordering, R1 (claim + candidate sweep)
+# Handoff — F105 Cache-optimal prompt ordering, R2 (T001 segment registry)
 
-Feature F105, round **R1**, branch `feature/f105-cache-optimal-prompt-ordering`,
-cut from `main` at **cfda4245**. One-session self-drive, one delegated worker.
-Review range `cfda4245..HEAD` (HEAD = the commit that writes this file). **No
-production code: `packages/`, `apps/`, `tests/`, `README.md`, ROADMAP.md
-byte-unchanged.** Nothing merged, no PR created or edited, no force-push, no
-worktree.
+Feature F105, round **R2**, branch `feature/f105-cache-optimal-prompt-ordering`.
+Review range **6b74d7c4..HEAD** (6b74d7c4 = the R1 handback). This is a SPLIT
+round: it writes production code, so it is not self-certified. Nothing merged,
+no PR created or edited, no force-push, no branch switch. Change set held
+exactly to the six files the block named.
 
 ## Commits
 
-### 5d7b9fce chore(f105): save the R1 claim-and-sweep block verbatim
+### c136e8b6 chore(f105): save the R2 T001 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f105-r1-1.md | +253 | the R1 block + authored pairs A-G, verbatim (new) |
-| .agent/last_block.md | +233/-87 | same bytes; replaces the F104 R11 block |
+| .agent/authored/f105-r2-1.md | +110 | the R2 block, verbatim (new) |
+| .agent/last_block.md | +101/-244 | same bytes; replaces the R1 block |
 
-### 23e4873f chore(f105): claim F105 and reset the agent state to the new feature
-| Path | +/- | Reason |
-|---|---|---|
-| docs/roadmap/STATUS.md | +1/-1 | pair A: F105 `[ ]` → `[~]` under Rule A5 |
-| .agent/plan.md | +33/-40 | pair D, full file, 42 lines |
-| .agent/context.md | +27/-29 | pair E, full file, 43 lines |
-| .agent/live_review.md | +16/-245 | pair F, full file, 29 lines; R-0221 carried |
+211 insertions. Both files sha256
+`48dde40ffb7464ac841e31382ec7e141f49ca78889a74ac358e97d6e76c44ab0`.
 
-### 1da568ef docs(agents): sweep the F104 closure candidates into the reviewer rules
+### 0a0d9454 feat(f105): add the prompt segment registry, compose and manifest
 | Path | +/- | Reason |
 |---|---|---|
-| docs/agents/planner_reviewer_prompt.md | +21 | pair B appends 11 lines to §4.4 (`Landed:` vs `Done:`); pair C appends item 13, 10 lines (end-of-branch terminator) |
+| packages/orchestration/prompt_segments.py | +201 | the mechanism (new) |
+| tests/orchestration/test_prompt_segments.py | +284 | 22 pinning tests (new) |
 
-### f78d1e57 chore(f105): empty the closure-candidate carrier after the sweep
-| Path | +/- | Reason |
-|---|---|---|
-| .agent/candidates.md | +21/-34 | pair G, full file, 33 lines; `**No open candidates.**` 1x |
+485 insertions — under the 500 cap, no exemption used. Nothing else under
+`packages/orchestration` was opened for edit; no builder, no prompt content.
 
-### (this commit) chore(f105): hand back R1
+### (this commit) chore(f105): hand back R2
 | Path | +/- | Reason |
 |---|---|---|
+| .agent/plan.md | +14/-13 | Current Step → R2 done; Next Steps → R3 T002; 44 lines |
 | .agent/handoff.md | rewrite | this file (template self-reference exception) |
 
-## External actions
-`git push -u origin feature/f105-cache-optimal-prompt-ordering` after this
-commit; result in the completion report. Nothing else left the repo.
+## Exported public names (grep targets)
+From `packages/orchestration/prompt_segments.py`:
+`SegmentStabilityRank` (IntEnum: SYSTEM=0, CONVENTIONS=1, DOSSIER=2,
+JOB_CONTEXT=3, TASK=4, STEERING=5) · `PromptSegment` · `PromptSegmentManifestEntry`
+· `ComposedPrompt` (`.text`, `.manifest`, `.manifest_as_dicts()`) ·
+`PromptSegmentRegistry` (`.register(name, rank, text, *, token_cap=None)`,
+`.registered_segments()`) · `PromptSegmentError` · `PROMPT_SEGMENT_DELIMITER`
+(`"\n\n"`) · `CONVENTIONS_TOKEN_CAP` (`800`) · `compose_prompt_segments(segments)`.
+One private helper: `_manifest_entry_for_segment`. Every public name grepped to
+its own definition only before the commit — no prior use of any of them existed.
 
 ## Verification
-Run by me from the repo root, real exit codes, after f78d1e57:
+Run by me from the repo root after 0a0d9454, real exit codes, real tails:
 
 | Gate | Command | Exit | Result |
 |---|---|---|---|
-| A | `cmp .agent/authored/f105-r1-1.md .agent/last_block.md` | **0** | no output — byte-identical |
-| B | `python3 -m pytest tests/docs/ -q` | **0** | 294 passed in 0.25s |
-| C | `python3 -m pytest tests/orchestration/test_test_runner.py -q -k "live_review or context_md or plan_md"` | **0** | 4 passed, 47 deselected in 0.13s |
-| D | `python3 -m pytest tests/regression/test_resource_safety.py -q` | **0** | 21 passed in 10.99s |
-| E | `python3 -m pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.39s |
-| F | `remedy integrity check --json` via the `apps.cli.grouped:main` entry point | **0** | `"passed": true` (line 3), 0 fails |
-| G | `grep -c '\*\*No open candidates\.\*\*' .agent/candidates.md` | **0** | **1** |
-| H | `git diff main --numstat -- docs/roadmap/STATUS.md` | **0** | `1 1` — exactly one line |
-| I | `git status --porcelain` | **0** | EMPTY (before this commit; re-checked after) |
+| A | `cmp .agent/authored/f105-r2-1.md .agent/last_block.md` | **0** | no output — byte-identical |
+| B | `pytest tests/orchestration/test_prompt_segments.py -q` | **0** | 22 passed in 0.07s |
+| C | `pytest tests/orchestration/test_token_economy.py -q` | **0** | 37 passed in 0.19s |
+| D | `pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.33s |
+| E | `pytest tests/docs/ -q` | **0** | 294 passed in 0.25s |
+| F | `remedy integrity check --json` via `apps.cli.grouped:main` | **0** | `"passed": true` (line 3), `"fail_count": 0`, 5 checks |
+| G | `git status --porcelain` | **0** | EMPTY (before this commit; re-checked after) |
+| H | `ruff check` on both new files | **0** | All checks passed |
 
-Extra, not ordered: `pytest tests/ui_server/test_dashboard_contract.py -q -k "not
-auto_build"` → **0**, 68 passed — the other `.agent/context.md` reader (§4.11).
-
-## Authored-text proofs
-Gate A exit **0**; both files sha256
-`641787222d082ea0da10b816e13c8846ebb2df2e61537398ea6f3ce4eedf68f4`. Every pair
-was sliced out of `.agent/authored/f105-r1-1.md` on disk, never retyped.
-Pair A (rewrite): FROM 1x → 0x, TO 0x → 1x. Pairs B and C (append-shaped): FROM
-1x before AND after; TO-ONLY lines 0x before, 1x after — 11 for B, 10 for C.
-Pairs D-G (full file): the authored text IS the file, plus one trailing newline.
-No trailing whitespace, no tab, no CR anywhere in the authored file.
+**Red-proof (not ordered by the block, run anyway).** Ten mutations of
+`prompt_segments.py` — rank order dropped, tie-break reversed, delimiter given a
+marker, sha256 over the name, `chars` over the name, cap never enforced,
+duplicates accepted, rank scale renumbered, manifest in registration order,
+empty composition made an error — each run against the suite and each reverted.
+**10 killed, 0 survivors.** It ran only inside a disposable worktree at
+`.remedy-wt/f105-r2-redproof` (G5), which was removed; `git worktree list` shows
+the primary checkout alone and the tree stayed clean throughout.
 
 ## Deviations & assumptions — declared
-- **D1 (label only, pair C).** Its header says "FROM (3 lines…)" and "then 11
-  added lines"; the authored FROM is **2** lines and the addition is **10**. The
-  bytes between the FROM and TO markers are unambiguous and I applied them
-  verbatim — a 3-line FROM would insert at the same point. Pair B matches.
-- **D2.** `remedy` is not invocable on PATH here; gate F ran through
-  `python3 -c "… from apps.cli.grouped import main …"`, the entry point
-  `pyproject.toml` binds the console script to, exactly as the block orders.
-- **D3.** `.agent/plan.md` was reset in 23e4873f, not before 5d7b9fce: the block
-  orders the block-save commit to carry its two files alone. Same shape as the
-  accepted 04889d8d (F104 R9) and 59037f57 (F104 R11).
-- **D4.** The commit-size exemption offered for 5d7b9fce was not needed: 486
-  insertions, under the 500 cap. Nothing was waived.
-- **This handoff is 107 lines** (AGENTS.md D15 stated cause): five per-commit
-  changed-files tables, the nine-row gate table, the pair-shape proofs, the
-  item-status table and four declared deviations. No section dropped.
+- **D1.** `.agent/plan.md` was updated in the handback commit, not before C1/C2:
+  the block orders C1 to carry its two files alone and C2 to carry module plus
+  tests together. Same shape as the accepted F105 R1 D3 and F104 04889d8d. The
+  plan already named R2 as its next step, so no commit ran against a stale plan.
+- **D2.** `registered_segments()` is not named in the block. The block requires
+  the registry to preserve registration order but names no way to read it out,
+  and `compose_prompt_segments()` takes a sequence; the accessor is the seam
+  between them. Flagged so the reviewer can reject it rather than discover it.
+- **D3.** Rank validation lives in `register()`, not in a `PromptSegment`
+  `__post_init__`: the block says name must be non-empty and unique "within a
+  registry", which only the registry can know, so both checks sit together.
+- **D4.** `remedy` is not invocable on PATH here; gate F ran through the
+  `python3 -c "… from apps.cli.grouped import main …"` form the block spells out.
+- **Deviations, declared: this handoff is 106 lines** (AGENTS.md D15 stated
+  cause): three per-commit changed-files tables, the exported-names block the
+  block explicitly ordered, the eight-row gate table plus the red-proof result,
+  the item-status table and four declared deviations. No section dropped.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| C1 save the block | done | 5d7b9fce; cmp exit 0, two files only |
-| C2 claim F105 + reset plan/context/live_review | done | 23e4873f; pairs A, D, E, F |
-| C3 sweep part 1 (pairs B + C) | done | 1da568ef; planner_reviewer_prompt.md only |
-| C4 sweep part 2 (pair G) | done | f78d1e57; candidates.md emptied |
-| C5 handoff + push | done | this commit; push result in the completion report |
+| C1 save the block (both files, cmp) | done | c136e8b6; cmp exit 0, two files only |
+| C2 module + tests together | done | 0a0d9454; 485 insertions, 22 tests green |
+| C3 plan + handoff + push | done | this commit; push result in the completion report |
 
 ## Open findings
-**1** — R-0221 (Low, carried from F103 R5 through all of F104, F252 flake-debt
-class, not this feature's code). Next free ID **R-0229**. Closure candidates:
-**0 open** — both F104 entries RESOLVED as reviewer rules in 1da568ef.
+**1** — R-0221 (Low, carried from F103 R5 through F104 and F105 R1; F252
+flake-debt class, not this feature's code). No new findings raised by this
+round. Next free finding ID **R-0229**. Closure candidates: **0 open**.
 
 ## Next
-Reviewer confirms `cfda4245..HEAD`, gates R1, then authors **R2 — T001**:
-`packages/orchestration/prompt_segments.py` (registry, rank scale, `compose()`,
-stable delimiters, manifest) plus `tests/orchestration/test_prompt_segments.py`.
-R2 is a SPLIT round — it touches production code.
+Reviewer confirms `6b74d7c4..HEAD`, re-runs gates A-G itself, and gates R2. On
+PASS, `LAST_REVIEWED_SHA` advances to this commit and the next authored step is
+**R3 — T002**: the role loaders for `docs/agents/worker_conventions.md` and
+`docs/agents/reviewer_conventions.md` (both present on disk, 2023 and 2068 bytes
+— comfortably under `CONVENTIONS_TOKEN_CAP`) plus their content-equality
+goldens. R3 is also a SPLIT round.
