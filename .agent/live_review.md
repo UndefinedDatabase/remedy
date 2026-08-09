@@ -771,3 +771,30 @@
   docs/agents/self_drive_protocol.md G7. R17 ends a SESSION, not the branch, so
   its own gate is OWED and the next session's reviewer records it first
   (§4.13 as corrected by R-0233). No production code changed this round.
+- Reviewer gate on R17 (2026-08-09, opening a NEW session under
+  docs/agents/self_drive_protocol.md): PASS. The owed gate is paid first, before
+  any new work was planned. Range `efd66b68..HEAD` at 70156f31: FIVE commits,
+  FIVE paths, all under `.agent/`, the block's declared change set exactly, no
+  production code. Insertions from `git log --numstat`: 257, 160, 38, 48, 65
+  (51 + 14), each under 500; C1b's 160 needed no D5 exemption. Transport:
+  `.remedy-wt/f105-r17-1.block.md`, `.agent/authored/f105-r17-1.md` and
+  `.agent/last_block.md` all hash to 8db0b6d7, both `cmp` exit 0, 257 lines
+  under D5's 400. Application proved disk to disk by the reviewer's own script:
+  each of the four TO slices occurs in `.agent/live_review.md` exactly ONCE;
+  A, B, D are appends whose FROM survives 1x, C is the header rewrite whose FROM
+  is gone; no marker LINE reached a target — the one `===BEGIN` present is a
+  finding quoting the token in prose. `.agent/plan.md` at 70156f31 equals its
+  slice byte for byte, sha256 49527b18, 48 lines; R-0244's claim re-checked, the
+  file at efd66b68 is 47 lines and hashes to 8029c8ca as stated. Gates re-run,
+  real exit codes: state contracts 4 passed / 47 deselected; `tests/docs/` 294
+  passed; canary 42 passed; integrity `passed=True`, `fail_count=0` over 5
+  checks; `git worktree list` primary alone; HEAD equal to origin. All five
+  declared deviations ACCEPTED; no mutation red-proof owed, nothing executable
+  changed. R-0245 RESOLVES here; one defect found, R-0247, the reviewer's own.
+  `git status --porcelain` was NOT empty: a first R18 attempt halted on an
+  operator `.agent/STOP`, applied nothing, and died before its halt commit
+  landed, leaving `.agent/handoff.md` and `.agent/plan.md` uncommitted; 70156f31
+  and the R17 range are untouched by it. Disposition for a dirty Phase 0 tree:
+  COPY the pair to `.remedy-wt/`, then restore to HEAD, never commit it — its
+  plan.md reads BLOCKED, which the Commit Gate's item 1 would make false the
+  moment the round resumed. `LAST_REVIEWED_SHA` advances efd66b68 -> 70156f31.
