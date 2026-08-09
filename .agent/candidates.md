@@ -21,6 +21,16 @@
   with a distinct token that is not `Done:` — rather than for a code fix.
   · source feature: F104 · date: 2026-08-09
 
+- The last round of a branch has no on-disk gate entry, by construction. Every
+  reviewed round records its verdict in `.agent/live_review.md`, but the round that
+  writes that record cannot record the gate on itself, so each branch ends with one
+  round whose verdict lives only in `.agent/handoff.md`, the reviewer's completion
+  report and the PR. On F104 this cost two extra rounds: R10 to raise R-0228 against
+  a stale marker of the neighbouring class, and R11 to state the terminator inline
+  and stop the regress. Candidate for naming the terminating convention once in
+  docs/agents/planner_reviewer_prompt.md — rather than for a code fix.
+  · source feature: F104 · date: 2026-08-09
+
 The two F103 candidates were swept at the F104 R1 candidate sweep, which is
 the first reviewed round after the F103 closure: the UI auto-build test is
 registered as R-0221 in `.agent/live_review.md` as a documented Low risk
