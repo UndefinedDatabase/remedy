@@ -77,7 +77,16 @@
   path fully inert and `budgets={"max_cost_usd": 100.0}` as the only limit.
   This is F104's own T001 gap, not a foreign defect: the field is this
   feature's, and a limit that cannot stop a job is not a limit.
-  OPEN.
+  Done: R-0225 — fixed in 476376f0. `_BUDGET_ALLOWED_KEYS` widened by exactly
+  one field and `max_cost_usd` given its own validation next to the integer
+  loop (bool, str, non-numeric type, `math.isfinite`, strictly positive),
+  mirroring `JobBudgets._validate_budget_fields`. Pinned by 947aad4f and
+  8c8d6507. Reviewer-verified in the R5 review: removing `"max_cost_usd"` from
+  `_BUDGET_ALLOWED_KEYS` in a disposable worktree at 549f2bac turns exactly 11
+  tests RED — the nine schema pins in `TestRunManifestBudgetIdentity` plus BOTH
+  live terminal-state tests, `test_a_predictive_stop_reaches_the_stopped_state`
+  and `test_a_reactive_cost_stop_reaches_the_stopped_state` — and nothing else.
+  The worktree was removed and pruned before the verdict.
 
 - R-0226 (Medium, found in the R4 review): F104's live cost pins stop at the
   stop SIGNAL and never assert a terminal job state.
@@ -89,7 +98,16 @@
   level up: R-0222 was an engine with no caller, this is a caller whose effect
   is never observed. A signal-only assertion cannot distinguish a working stop
   from a stop that raises three frames later.
-  OPEN.
+  Done: R-0226 — fixed in 8c8d6507. The `strict=True` xfail was retired and the
+  predictive terminal test strengthened to assert `run_manifest_error == ""` and
+  `stop_error == ""` alongside `JOB_STOPPED`, so it proves finalization rather
+  than a status string; a second run-level test now pins the REACTIVE cost stop
+  end to end with the predictive path inert. Reviewer-verified: both tests are
+  among the 11 that go RED when the R-0225 fix is reverted, which is the
+  property their signal-only predecessors lacked. The R5 worker also observed
+  the strict xfail flip to `XPASS(strict)` at 476376f0 — the fix landing before
+  the marker was retired — which is independent evidence the assertion was load
+  bearing rather than decorative.
 
 ## Steps
 
@@ -110,9 +128,10 @@
   regressions and the A9 seam pin. Awaiting review. The worker reports a
   pre-existing blocker it did not fix: `run_manifest._BUDGET_ALLOWED_KEYS`
   rejects `max_cost_usd`, so a budget stop cannot reach JOB_STOPPED.
-- R5: REPAIR — R-0225 and R-0226 registered, then fixed: `max_cost_usd` admitted
-  to the closed F012 manifest budget schema with its own strictly-positive
-  finite validation (10 new schema pins), the strict xfail retired, and both the
-  predictive and the reactive cost stop now pinned to a terminal `JOB_STOPPED`
-  with empty `run_manifest_error`/`stop_error`. DECISION F104 D7 moves T003 to
-  R6. Awaiting review.
+- R5: repair round — fix R-0225 (the manifest budget allowlist) and R-0226
+  (terminal-state coverage), DECISION F104 D7. PASS at 549f2bac; gates A-E
+  re-run by the reviewer (261 with ZERO xfailed / 163 / 294 / 42 / 124) and the
+  revert-the-allowlist red-proof run in a disposable worktree: 11 RED, both
+  terminal-state tests among them.
+- R6: T003 — display and docs; every user-facing predicted number carries its
+  `estimate_basis` label, pinned by a grep-style test. NOT STARTED.
