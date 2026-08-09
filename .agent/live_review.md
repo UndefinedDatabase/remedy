@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0250.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0251.
 
 ## Findings
 
@@ -378,7 +378,39 @@
   spec: the inventory is right and the plan abbreviated it. Fix: the plan names
   `build_orchestrator_prompt` and says its system half migrates with it. The
   fix lands in this round's plan rewrite; the next gate verifies it and
-  resolves this entry. OPEN.
+  resolves this entry.
+  Done: R-0249 — fixed at F105 R20 and verified at R21. `.agent/plan.md` now
+  reads "step 4 covers `build_orchestrator_prompt` AND its system half
+  `build_orchestrator_system_prompt`", so the plan and the migration order name
+  the same work. The reviewer confirmed the wider reading was the correct one
+  by reconstructing the pre-migration builders from
+  `git show 04a3396d:packages/orchestration/orchestrator_loop.py` and diffing
+  both renders: had only the inner function migrated, the outer f-string would
+  still have concatenated a composed prompt with a raw `# Mission state`
+  header, and the manifest would have described 3852 of 3861 characters instead
+  of all of them. RESOLVED.
+- R-0250 (Medium, F105 R20, reviewer-authored gates that cannot be satisfied):
+  R20's block carried FOUR defects, all in reviewer-authored text and all
+  correctly caught, declared and worked around by the worker rather than
+  silently absorbed. (1) The block was 471 lines against DECISION D5's cap of
+  400, and because a worker must save the block verbatim it could not be fixed
+  downstream. (2) The authored `.agent/plan.md` replacement was 56 lines
+  against AGENTS.md's <50, and a slice required to apply byte for byte cannot
+  be trimmed by the applier — so a reviewer defect landed a live rule violation
+  on disk. (3) Done-when C required
+  `grep -c 'committed BEFORE any of them at C1b' .agent/decisions.md` to be 0,
+  while the same block's PAIR_D_TO deliberately wrote that phrase into that
+  same file as a quotation of the retired text: unsatisfiable by construction.
+  (4) PAIR_F was declared APPEND when its TO edits the FROM line, making it a
+  REWRITE. Defect (3) is the FIFTH instance of its class across F104 R11 and
+  F105, and each instance costs a round a deviation that proves a reviewer
+  mistake rather than a worker one. The common cause is that all four checks
+  are mechanical, are known, and lived only in reviewer session memory — the A1
+  trap named in docs/agents/planner_reviewer_prompt.md §0. Fix: a pre-emission
+  checklist in that file's §3, installed as DECISION F105 D8 in the same round
+  as this entry, so the next reviewer runs the checks off disk instead of
+  remembering them. Fixed and resolved in this same round; the NEXT session's
+  gate verifies the rule is on disk and reads as intended.
 
 ## Steps
 
@@ -935,3 +967,49 @@
   gap, already registered and fixed this round. One finding is registered
   against the handback's planning record rather than against R19's work,
   R-0249. `LAST_REVIEWED_SHA` advances c65d663e -> 04a3396d.
+- Reviewer gate on R20 (2026-08-09, same session): PASS. Range
+  `04a3396d..HEAD` at 9cb128d7, SIX commits, EIGHT paths, exactly the block's
+  declared change set. Insertions from `git log --numstat`: 471, 422, 58, 89,
+  232, 59 and 98, each under 500.
+  The production claim was checked WITHOUT using the worker's golden as
+  evidence. The reviewer reconstructed the pre-migration builders directly from
+  `git show 04a3396d:packages/orchestration/orchestrator_loop.py`, confirmed the
+  frozen f-string anchor is present in that source, rendered both the system
+  prompt and the full prompt against two different contexts, and compared byte
+  for byte: equal in every case, lengths 3861 and 3865. This site is therefore
+  the first of the six whose migration is byte-EXACT rather than equal modulo
+  ordering, which is what its pre-existing rank order made possible. The
+  manifest reads `[('orchestrator_system', 0), ('orchestrator_protocol', 1),
+  ('orchestrator_mission_state', 3)]`, ranks non-decreasing; across two
+  contexts the two stable hashes are equal and only the mission-state hash
+  differs; the shared prefix measures 3852 of 3861 characters, 99.77%, and runs
+  past the end of the protocol segment; and the two-entry system manifest is
+  the exact prefix of the three-entry one. The cache payoff is measured, not
+  asserted.
+  Gates re-run by the reviewer with real exit codes: the golden, the loop suite
+  and the segment suite together 220 passed — 6 + 192 + 22, and 192 is
+  unchanged from the pre-round baseline, so the migration added no test to the
+  loop file and removed none; canary plus `tests/docs/` together 336 passed —
+  42 + 294. A mutation red-proof of the REVIEWER's own choosing, distinct from
+  the worker's three, ran in a disposable worktree at HEAD: M4 changed
+  `orchestrator_mission_state`'s rank from JOB_CONTEXT to CONVENTIONS, which
+  leaves the composed TEXT byte-identical because equal ranks tie-break on
+  registration order. A text-only golden would have passed it.
+  `test_manifest_carries_the_three_declared_segments_in_rank_order` went RED
+  with `At index 2 diff: 1 != 3`, the suite returned to 6 passed on revert, and
+  the worktree was removed and pruned — so the golden pins the declared rank
+  and not merely the bytes. `git status --porcelain` empty and
+  `git worktree list` the primary alone at the verdict.
+  All seven declared deviations ACCEPTED. Deviation 7's `_register_orchestrator_prefix`
+  helper exceeds what the block asked for and is kept as an improvement on it:
+  it makes the manifest-prefix property hold by construction rather than by two
+  registration lists agreeing, and the block's actual constraint — that
+  `compose_orchestrator_prompt` build its own registry and list all three
+  entries — holds. Deviation 5's adaptation of golden test 5 is correct and the
+  block was wrong: a shared prefix cannot end exactly at the protocol segment,
+  because the next segment opens with a constant header. Deviations 1-4 are the
+  reviewer's own authoring defects, not the worker's, and are registered
+  together as R-0250 rather than charged to this round. The handback declared
+  every one of them, including two gates it could not satisfy, instead of
+  reporting green — which is the behaviour the gate exists to reward.
+  `LAST_REVIEWED_SHA` advances 04a3396d -> 9cb128d7.
