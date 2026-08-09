@@ -137,6 +137,7 @@
   part of this finding. Fix: the reviewer counts every block BEFORE emitting it,
   and C1 reports the real count against the cap so the claim is falsifiable by
   the worker instead of discovered at the gate. OPEN.
+  Landed: R-0236 — the R10 block was counted before emission and C1 reports it.
 - R-0237 (Low, F105 R9, inventory omission): `.agent/t003_inventory.md` closes
   site 4 by arguing that reordering the rules ahead of the mission changes bytes
   and is therefore a content change by the feature file's own definition, and
