@@ -3747,3 +3747,27 @@ healthy jobs that were never going to breach.
 Reverse this decision by moving the `_build_task_prompt` call above the safe point
 and passing its `tokens_estimated` as the context estimate, then deleting the D6
 lines here and in `docs/roadmap/features/T2_F104.md`.
+
+## DECISION F104 D7 — R5 repairs instead of starting T003 (2026-08-09)
+
+Context: the reviewer passed R4 and registered two findings against it — R-0225
+(High: `max_cost_usd` is missing from the CLOSED `run_manifest._BUDGET_ALLOWED_KEYS`,
+so a money-limited job cannot write its F012 manifest and therefore cannot
+FINALIZE a stop) and R-0226 (Medium: no F104 test ever drove a money-limited job
+to a terminal `JOB_STOPPED`, which is how R-0225 survived two reviewed rounds).
+R5 was planned as T003 — display, docs and estimate labels.
+
+D7 — R5 is spent repairing R-0225 and R-0226. T003 moves to R6, the integration
+gate to R7, closure to R8. A display round that renders spent, remaining and the
+next-task expectation out of a stop path that cannot finalize would be polish on
+a broken feature: the numbers would be correct and the limit would still not stop
+anything.
+
+Alternative considered: fold the manifest fix into the T003 round to save a
+relay. Rejected — a change to the shared F012 manifest schema and a user-facing
+display slice in one branch is exactly the mixed diff AGENTS.md bars, and the
+schema change has its own blast radius (the run-manifest gate) that a display
+round would not run.
+
+Reverse this decision by renumbering the remaining rounds; nothing depends on the
+numbering.

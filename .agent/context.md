@@ -37,6 +37,9 @@ cost figure exists only where a provider reported one.
   and an unknown are never the same value (P6).
 
 ## Steps
-R1 claim + candidate sweep + T001 usd limit and ledger bridge → R2 T002
-predictive stop → R3 T003 display and docs → R4 integration gate → R5/R6
-closure.
+Renumbered by DECISION F104 D7 after R5 became a repair round: R1 claim +
+candidate sweep + T001 usd limit and ledger bridge → R2 T002 predictive engine
+(fix R-0222) → R3 fix R-0224, the cost-side counter split → R4 T002 part 2, the
+predictive stop wired at the live safe point → R5 fix R-0225/R-0226, the F012
+manifest budget schema and the terminal-state pins → R6 T003 display, docs and
+estimate labels → R7 integration gate → R8 closure.

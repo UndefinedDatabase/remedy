@@ -110,3 +110,9 @@
   regressions and the A9 seam pin. Awaiting review. The worker reports a
   pre-existing blocker it did not fix: `run_manifest._BUDGET_ALLOWED_KEYS`
   rejects `max_cost_usd`, so a budget stop cannot reach JOB_STOPPED.
+- R5: REPAIR — R-0225 and R-0226 registered, then fixed: `max_cost_usd` admitted
+  to the closed F012 manifest budget schema with its own strictly-positive
+  finite validation (10 new schema pins), the strict xfail retired, and both the
+  predictive and the reactive cost stop now pinned to a terminal `JOB_STOPPED`
+  with empty `run_manifest_error`/`stop_error`. DECISION F104 D7 moves T003 to
+  R6. Awaiting review.
