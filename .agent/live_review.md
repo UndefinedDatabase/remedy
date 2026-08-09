@@ -14,13 +14,14 @@
   `tests/ui_server/test_dashboard_contract.py` pops `REMEDY_UI_NO_AUTO_BUILD`
   and runs a real `npm install` + `npm run build` in whatever checkout it runs
   in, refreshing `apps/ui/dist` mtimes mid-suite. That costs every integration
-  gate seven phantom base-only failures through the mtime comparison in
+  gate six or seven phantom base-only failures — F103 R5 measured seven, the F104
+  R7 gate measured six — through the mtime comparison in
   `_frontend_is_stale()` (`ui_server.py:2748`).
   REGISTERED here, deliberately NOT fixed by F104: the code is not this
   feature's and AGENTS.md Scope Control bars the "while I'm here" edit. It is
   carried as a documented LOW risk to F104 closure
   (STATUS_closure_protocol.md precondition 1) and routed to the F252
-  flake-debt follow-up class. The F104 integration gate attributes these seven
+  flake-debt follow-up class. The F104 integration gate attributes these six
   to the pre-existing base-only class per docs/agents/integration_gate.md
   rather than treating them as new failures.
   OPEN — the only open finding on this branch.
@@ -167,12 +168,14 @@
   remaining, the live next-task expectation with its `estimate_basis` label and the
   recorded stop arithmetic; the next-task selection rule was extracted to one helper and
   pinned against the live safe point; the basis label is pinned grep-style; the ist-doc
-  `docs/system/job-budget-enforcement-v0.md` landed per DECISION F104 D8. Awaiting review.
+  `docs/system/job-budget-enforcement-v0.md` landed per DECISION F104 D8. PASS — gated in
+  the closing session together with R7 and R8; see the reviewer-gate entry under R8.
 - R7: repair + integration gate — R-0227 registered and fixed (the failed ledger
   read now logs at ERROR and surfaces `cost_read:` / `cost_read_error`, and a
   genuinely unpriced job is still distinguishable from a broken read), then the
   full suite run per docs/agents/integration_gate.md with evidence in
-  `.agent/gate_f104_r7/`. Awaiting review.
+  `.agent/gate_f104_r7/`. PASS — gated in the closing session together with R6 and R8;
+  see the reviewer-gate entry under R8.
 - R8: CLOSURE per docs/roadmap/STATUS_closure_protocol.md. Final verdict on the
   feature: **PASS WITH RISKS** — every F104 finding (R-0222, R-0223, R-0224,
   R-0225, R-0226, R-0227) is Resolved with reviewer-authored text; the single
@@ -180,3 +183,20 @@
   flake-debt class, is not F104's code to fix under AGENTS.md Scope Control, and
   was attributed by controlled evidence at the R7 integration gate rather than
   chased.
+- Reviewer gate on R6+R7+R8 (the closing session, 2026-08-09): PASS. Range
+  `549f2bac..b5a241c3` read as a real diff; gates A-D re-run by the reviewer from the
+  repo root with real exit codes — `tests/docs/` 294 passed, canary 42 passed,
+  `test_job_budgets.py` + `test_predictive_budget.py` 210 passed, and
+  `remedy integrity check --json` passed 5 of 5 — every number equal to the handback's.
+  `cmp .agent/authored/f104-r8-1.md .agent/last_block.md` exit 0. The closure package
+  `remedy-review-20260809-033908-READY_FOR_REVIEW.zip` was re-hashed on disk and its
+  sha256 equals the one written into `docs/roadmap/STATUS.md`. R7's integration-gate
+  evidence was checked directly rather than believed: the branch full-suite run records
+  `EXIT_CODE=0` with an EMPTY `branch_failed.txt`, and `comm_base_only_failures.txt`
+  holds six ids, all in `tests/ui_server/test_live_state.py` — the R-0221 class.
+  Independent mutation red-proof of R6's `select_next_predictable_task`, run in a
+  disposable worktree at b5a241c3 and removed and pruned before this verdict: deleting
+  the `TASK_BLOCKED`/`TASK_FAILED` guard turns exactly two tests RED
+  (`test_a_blocked_first_pending_task_has_no_next_task` and
+  `test_a_failed_first_pending_task_has_no_next_task`) and nothing else, so the guard is
+  load bearing rather than decorative. `LAST_REVIEWED_SHA` advances 549f2bac -> b5a241c3.
