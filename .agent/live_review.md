@@ -403,3 +403,33 @@
   the segment manifest reaches call evidence in R12, split off so each diff is
   one reviewable idea rather than a migration and an evidence rewiring at once.
   Sites 2-6 stay untouched.
+- Reviewer gate on R11 (2026-08-09): PASS. Range `9d773b14..0f17725a`, four
+  commits, SEVEN paths — five under `.agent/` plus
+  `packages/orchestration/intake.py` and the new
+  `tests/orchestration/test_intake_prompt_golden.py`; `git diff --name-only`
+  over `apps docs AGENTS.md README.md .agent/context.md .agent/decisions.md
+  .agent/candidates.md` returns NOTHING. Per-commit insertions 453, 44, 153, 103
+  — each under the 500 cap. Gates re-run by the reviewer with real exit codes:
+  `cmp` exit 0; the golden plus `tests/orchestration/test_intake.py` 42 passed,
+  the pre-existing file unchanged at 37; `test_prompt_segments.py`,
+  `test_role_conventions.py`, `test_test_runner.py` 99; `tests/docs/` 294; the
+  canary 42; `grep -rn "_INTAKE_PROMPT_TEMPLATE" packages/ apps/` 0 hits;
+  integrity `passed=True`, `fail_count=0` over 5; tree clean, no untracked
+  files; HEAD equal to origin. All six pair counts re-derived with each needle
+  SLICED out of `.agent/authored/f105-r11-1.md`; `.agent/plan.md` equals its
+  authored 43-line slice, sha256 cde2364d both sides. THREE mutation red-proofs
+  ran in a disposable worktree at 0f17725a, removed and pruned before this
+  verdict: demoting `intake_rules` to STEERING turns 3 golden tests RED,
+  rewording ONE word of the rules block turns 2 RED, dropping the rules
+  registration turns 4 RED — the golden is load bearing on order, on content AND
+  on segment loss. Both declared worker deviations ACCEPTED; the unimplementable
+  wording in golden test 1 was the reviewer's and the replacement is stronger.
+  One new finding, R-0238, the reviewer's own. `LAST_REVIEWED_SHA` advances
+  9d773b14 -> 0f17725a.
+- R12: T003 SITE 1 part 2 — the intake segment manifest reaches call evidence.
+  `PromptTraceEntry` gains the manifest rows and the character count they cover,
+  `packages/orchestration/intake.py` gains the named recorder factory that fills
+  them, and `apps/cli/commands/do_cmd.py` uses it. No prompt byte and no
+  composition change. DECISION F105 D3 — the schema tail stays unregistered, its
+  coverage gap made visible through `segment_manifest_chars` — is documented in
+  the code this round and lands in `.agent/decisions.md` at R13.
