@@ -7,9 +7,9 @@ pins it). Production code changed, so the reviewer gates it; nothing here is
 self-certified. Base 0341928d.
 Branch: feature/f105-cache-optimal-prompt-ordering.
 
-Deviations, declared: this file is 98 lines against the AGENTS.md cap of 60 —
+Deviations, declared: this file is 99 lines against the AGENTS.md cap of 60 —
 within the 100 that AGENTS.md allows when per-commit tables of more than five
-commits require it, and this round has eight commits.
+commits require it, and this round has nine commits.
 Cause per DECISION D15, all of it mandated: the ten-row changed-files table,
 the A-J gate table with real exit codes and real output, the pair-proof table,
 the item-status table and the red-proof record. Nothing dropped, no padding.
@@ -25,10 +25,11 @@ the item-status table and the red-proof record. Nothing dropped, no padding.
 | bb7b2cdc `make the segment-boundary error message role-neutral` | `packages/orchestration/pingpong_loop.py` | +1/-1 | C4a — PAIR_D; name, signature and all three branches untouched |
 | bb7b2cdc | `tests/orchestration/test_builder_prompt_golden.py` | +2/-2 | C4a — PAIR_E; the assertion now anchors with `^` and `$` |
 | e4775047 `mark R-0254 landed` | `.agent/live_review.md` | +1/-0 | C4b — the one `Landed:` line, naming bb7b2cdc |
-| (this commit) `sync the plan and hand back R26` | `.agent/plan.md` | +7/-6 | C5 — PAIR_F full replacement, 41 lines |
-| (this commit) | `.agent/handoff.md` | rewrite | C5 — this file (R-0149: cannot table its own SHA) |
+| 1c06c0c9 `sync the plan and hand back R26` | `.agent/plan.md` | +6/-5 | C5 — PAIR_F full replacement, 41 lines |
+| 1c06c0c9 | `.agent/handoff.md` | +74/-56 | C5 — this file, as first committed |
+| (this commit) | `.agent/handoff.md` | rewrite | C5b — corrects the C5 row to the real numstat and fills gate J (R-0149: cannot table its own SHA) |
 
-Insertions: 264, 196, 47, 17, 1, 3, 1, this one — each under 500.
+Insertions: 264, 196, 47, 17, 1, 3, 1, 80, this one — each under 500.
 
 ## Item status
 | Item | Status | Reason |
@@ -38,7 +39,7 @@ Insertions: 264, 196, 47, 17, 1, 3, 1, this one — each under 500.
 | C2 | done | no `Done:` text written anywhere |
 | C3 | deviated | split into C3a (fix) + C3b (`Landed:` line) — see deviation 2 |
 | C4 | deviated | split into C4a (fix) + C4b (`Landed:` line) — see deviation 2 |
-| C5 | done | |
+| C5 | done | plan at 1c06c0c9; this file corrected once more at C5b, see the table |
 
 ## Verification (real exit codes, real output)
 | Gate | Command | Exit | Real output |
@@ -52,7 +53,7 @@ Insertions: 264, 196, 47, 17, 1, 3, 1, this one — each under 500.
 | G | `pytest tests/orchestration/ -q` | 0 | `10498 passed, 7 skipped in 640.95s` |
 | H | `pytest tests/docs/ -q` ; `pytest tests/ui_server/test_dashboard_contract.py -q` | 0 / 0 | `294 passed in 0.25s` ; `70 passed in 3.85s` |
 | I | `pytest tests/cli/test_golden_path.py -q` | 0 | `42 passed in 22.45s` |
-| J | `git status --porcelain` ; `git worktree list` ; `git log --numstat 0341928d..HEAD` | 0 / 0 / 0 | clean at handback; primary `/home/decodeux/Repos/remedy` ALONE after the red-proof cleanup; `+` per commit 264, 196, 47, 17, 1, 3, 1, this one |
+| J | `git status --porcelain` ; `git worktree list` ; `git log --numstat 0341928d..HEAD` | 0 / 0 / 0 | measured at 1c06c0c9: `git status --porcelain` printed NOTHING; `git worktree list` printed the primary `/home/decodeux/Repos/remedy  1c06c0c9` ALONE after the red-proof cleanup; `+` per commit 264, 196, 47, 17, 1, 3, 1, 80, this one |
 
 ## Authored-text proofs
 Transport: `.remedy-wt/r26scratch/block.md`, `.agent/authored/f105-r26-1.md` and
