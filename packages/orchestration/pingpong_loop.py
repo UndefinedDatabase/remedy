@@ -1247,6 +1247,147 @@ def _render_reviewer_scope_section(packet: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+# F105 T003 migration site 6, the last of the six and the worst-ordered. Rank
+# order fixes the inversions the ad-hoc concatenation had — the rank-3
+# `reviewer_scope` and `reviewer_scope_contract` now precede the rank-4
+# `reviewer_goal`, and on the fallback branch the rank-4 `reviewer_task_input`
+# now precedes the rank-5 `reviewer_repair` — so this site's golden is
+# equal-modulo-ordering, never byte-exact.
+def compose_reviewer_prompt(
+    goal: str,
+    builder_summary: str,
+    *,
+    diff_summary: str = "",
+    safe_diff: str = "",
+    test_result: str = "",
+    files_changed: list[str] | None = None,
+    task_excerpt: str = "",
+    task_sha256: str = "",
+    task_tokens_estimated: int = 0,
+    scope_contract: str = "",
+    prior_findings: list[ReviewFinding] | None = None,
+    repair_round: int = 0,
+    scope_packet: dict[str, Any] | None = None,
+    evidence_dir: str | Path | None = None,
+    task_id: str = "",
+) -> ComposedPrompt:
+    """Compose the reviewer prompt from registered segments, with its manifest.
+
+    The scope-packet branch stays a branch over WHICH SEGMENTS ARE REGISTERED.
+    One unconditional registry would emit both diff shapes and both scope
+    shapes at once, and that is a CONTENT change rather than a reordering —
+    which is exactly what the content-equality golden exists to forbid. The two
+    diff caps stay distinct for the same reason.
+    """
+    spec_summary = _render_spec_compliance_summary(evidence_dir, task_id)
+    if scope_packet is None:
+        scope_packet = _load_review_scope_packet(evidence_dir, task_id)
+    scoped = bool(scope_packet)
+
+    specs: list[tuple[str, SegmentStabilityRank, list[str]]] = [
+        ("reviewer_system", SegmentStabilityRank.SYSTEM, [_REVIEWER_SYSTEM, "\n"]),
+    ]
+    if spec_summary:
+        specs.append((
+            "reviewer_spec_compliance", SegmentStabilityRank.JOB_CONTEXT,
+            [spec_summary],
+        ))
+    if scoped:
+        specs.append((
+            "reviewer_scope", SegmentStabilityRank.JOB_CONTEXT,
+            [_render_reviewer_scope_section(scope_packet)],
+        ))
+    if scope_contract:
+        specs.append((
+            "reviewer_scope_contract", SegmentStabilityRank.JOB_CONTEXT,
+            [f"{scope_contract}\n\n"],
+        ))
+    specs.append((
+        "reviewer_goal", SegmentStabilityRank.TASK,
+        [f"## Original Goal\n{goal}\n"],
+    ))
+    if not scoped and task_excerpt:
+        specs.append((
+            "reviewer_task_input", SegmentStabilityRank.TASK,
+            [
+                f"## Task Input Summary\n"
+                f"Task hash: {task_sha256}\n"
+                f"Task size: ~{task_tokens_estimated} tokens\n\n"
+                f"{task_excerpt}\n"
+            ],
+        ))
+    if prior_findings and repair_round > 0:
+        repair_parts = [
+            f"## RE-REVIEW — Repair Round {repair_round}\n"
+            "The Builder was asked to fix the findings below.\n"
+            "For each prior finding:\n"
+            "1. Check if the fix is present in the diff and confirmed by tests.\n"
+            "2. If fixed, do NOT re-report it.\n"
+            "3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n"
+            "4. Report any NEW issues introduced by the repair as new findings.\n"
+            "5. If tests fail, treat test failure as evidence of unfixed issues.\n"
+            "6. Do NOT return pass if any prior finding is unfixed.\n"
+            "7. Do NOT return pass if the repair introduced new problems.\n\n"
+            "### Prior Findings\n"
+        ]
+        for f in prior_findings:
+            repair_parts.append(f"- [{f.severity}] {f.id}: {f.summary}")
+        repair_parts.append("")
+        specs.append((
+            "reviewer_repair", SegmentStabilityRank.STEERING, repair_parts,
+        ))
+    specs.append((
+        "reviewer_builder_summary", SegmentStabilityRank.STEERING,
+        [f"## Builder Summary\n{builder_summary}\n"],
+    ))
+    if not scoped and files_changed:
+        specs.append((
+            "reviewer_files_changed", SegmentStabilityRank.STEERING,
+            ["## Files Changed\n"
+             + "\n".join(f"- {f}" for f in files_changed) + "\n"],
+        ))
+    if scoped:
+        if safe_diff:
+            capped = safe_diff[:_REVIEWER_SCOPED_DIFF_CAP]
+            if len(safe_diff) > _REVIEWER_SCOPED_DIFF_CAP:
+                capped += "\n[FOCUSED DIFF TRUNCATED]"
+            specs.append((
+                "reviewer_focused_diff", SegmentStabilityRank.STEERING,
+                [f"## Focused Staged Diff\n```diff\n{capped}\n```\n"],
+            ))
+        elif diff_summary:
+            specs.append((
+                "reviewer_focused_diff", SegmentStabilityRank.STEERING,
+                [f"## Focused Staged Diff\n```\n{diff_summary}\n```\n"],
+            ))
+    elif safe_diff:
+        capped = safe_diff[:_REVIEWER_DIFF_CAP]
+        if len(safe_diff) > _REVIEWER_DIFF_CAP:
+            capped += "\n[DIFF TRUNCATED]"
+        specs.append((
+            "reviewer_staged_diff", SegmentStabilityRank.STEERING,
+            [f"## Staged Unified Diff\n```diff\n{capped}\n```\n"],
+        ))
+    elif diff_summary:
+        specs.append((
+            "reviewer_staged_diff", SegmentStabilityRank.STEERING,
+            [f"## Staged Diff\n```\n{diff_summary}\n```\n"],
+        ))
+    if test_result:
+        specs.append((
+            "reviewer_test_result", SegmentStabilityRank.STEERING,
+            [f"## Test Result\n{test_result}\n"],
+        ))
+
+    texts = _drop_one_newline_per_segment_boundary(
+        ["\n".join(parts) for _, _, parts in specs]
+    )
+    registry = PromptSegmentRegistry()
+    for (name, rank, _), text in zip(specs, texts):
+        registry.register(name, rank, text)
+    return compose_prompt_segments(registry.registered_segments())
+
+
 def _build_reviewer_prompt(
     goal: str,
     builder_summary: str,
@@ -1265,88 +1406,29 @@ def _build_reviewer_prompt(
     evidence_dir: str | Path | None = None,
     task_id: str = "",
 ) -> str:
-    parts = [_REVIEWER_SYSTEM, "\n"]
-    parts.append(f"## Original Goal\n{goal}\n")
+    """The reviewer prompt's text.
 
-    spec_summary = _render_spec_compliance_summary(evidence_dir, task_id)
-    if spec_summary:
-        parts.append(spec_summary)
-
-    if scope_packet is None:
-        scope_packet = _load_review_scope_packet(evidence_dir, task_id)
-
-    if scope_packet:
-        parts.append(_render_reviewer_scope_section(scope_packet))
-        if scope_contract:
-            parts.append(f"{scope_contract}\n\n")
-        if prior_findings and repair_round > 0:
-            parts.append(
-                f"## RE-REVIEW — Repair Round {repair_round}\n"
-                "The Builder was asked to fix the findings below.\n"
-                "For each prior finding:\n"
-                "1. Check if the fix is present in the diff and confirmed by tests.\n"
-                "2. If fixed, do NOT re-report it.\n"
-                "3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n"
-                "4. Report any NEW issues introduced by the repair as new findings.\n"
-                "5. If tests fail, treat test failure as evidence of unfixed issues.\n"
-                "6. Do NOT return pass if any prior finding is unfixed.\n"
-                "7. Do NOT return pass if the repair introduced new problems.\n\n"
-                "### Prior Findings\n"
-            )
-            for f in prior_findings:
-                parts.append(f"- [{f.severity}] {f.id}: {f.summary}")
-            parts.append("")
-        parts.append(f"## Builder Summary\n{builder_summary}\n")
-        if safe_diff:
-            capped = safe_diff[:_REVIEWER_SCOPED_DIFF_CAP]
-            if len(safe_diff) > _REVIEWER_SCOPED_DIFF_CAP:
-                capped += "\n[FOCUSED DIFF TRUNCATED]"
-            parts.append(f"## Focused Staged Diff\n```diff\n{capped}\n```\n")
-        elif diff_summary:
-            parts.append(f"## Focused Staged Diff\n```\n{diff_summary}\n```\n")
-        if test_result:
-            parts.append(f"## Test Result\n{test_result}\n")
-        return "\n".join(parts)
-
-    if scope_contract:
-        parts.append(f"{scope_contract}\n\n")
-    if prior_findings and repair_round > 0:
-        parts.append(
-            f"## RE-REVIEW — Repair Round {repair_round}\n"
-            "The Builder was asked to fix the findings below.\n"
-            "For each prior finding:\n"
-            "1. Check if the fix is present in the diff and confirmed by tests.\n"
-            "2. If fixed, do NOT re-report it.\n"
-            "3. If NOT fixed or incorrectly fixed, re-report with the SAME ID.\n"
-            "4. Report any NEW issues introduced by the repair as new findings.\n"
-            "5. If tests fail, treat test failure as evidence of unfixed issues.\n"
-            "6. Do NOT return pass if any prior finding is unfixed.\n"
-            "7. Do NOT return pass if the repair introduced new problems.\n\n"
-            "### Prior Findings\n"
-        )
-        for f in prior_findings:
-            parts.append(f"- [{f.severity}] {f.id}: {f.summary}")
-        parts.append("")
-    if task_excerpt:
-        parts.append(
-            f"## Task Input Summary\n"
-            f"Task hash: {task_sha256}\n"
-            f"Task size: ~{task_tokens_estimated} tokens\n\n"
-            f"{task_excerpt}\n"
-        )
-    parts.append(f"## Builder Summary\n{builder_summary}\n")
-    if files_changed:
-        parts.append("## Files Changed\n" + "\n".join(f"- {f}" for f in files_changed) + "\n")
-    if safe_diff:
-        capped = safe_diff[:_REVIEWER_DIFF_CAP]
-        if len(safe_diff) > _REVIEWER_DIFF_CAP:
-            capped += "\n[DIFF TRUNCATED]"
-        parts.append(f"## Staged Unified Diff\n```diff\n{capped}\n```\n")
-    elif diff_summary:
-        parts.append(f"## Staged Diff\n```\n{diff_summary}\n```\n")
-    if test_result:
-        parts.append(f"## Test Result\n{test_result}\n")
-    return "\n".join(parts)
+    COMPOSED from the registered segments of :func:`compose_reviewer_prompt`; a
+    caller that needs the segment manifest calls that instead of re-splitting
+    this string.
+    """
+    return compose_reviewer_prompt(
+        goal,
+        builder_summary,
+        diff_summary=diff_summary,
+        safe_diff=safe_diff,
+        test_result=test_result,
+        files_changed=files_changed,
+        task_excerpt=task_excerpt,
+        task_sha256=task_sha256,
+        task_tokens_estimated=task_tokens_estimated,
+        scope_contract=scope_contract,
+        prior_findings=prior_findings,
+        repair_round=repair_round,
+        scope_packet=scope_packet,
+        evidence_dir=evidence_dir,
+        task_id=task_id,
+    ).text
 
 
 # ---------------------------------------------------------------------------
