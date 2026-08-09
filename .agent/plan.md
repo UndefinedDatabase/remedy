@@ -15,22 +15,15 @@ Prompt CONTENT does not change; only its composition.
 ## Current Step
 T001 and T002 are DONE and gated. T003 counts in the MIGRATION ORDER of
 `.agent/t003_inventory.md`, never that file's catalogue "Site N" headings
-(R-0241). Migration-order steps 1-5 are COMPLETE and GATED, each with its own
-golden; `LAST_REVIEWED_SHA` is b35d9d56. R23 is the session terminator: it
-records the R22 gate, registers and fixes R-0251 and R-0252, and starts no
-migration. Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is
-created at CLOSURE.
+(R-0241). R23 is GATED; `LAST_REVIEWED_SHA` is 554d9521. R24 takes
+migration-order step 6, `_build_reviewer_prompt`, the LAST of the six, under a
+content-equality golden. Its decomposition was proved byte-exact by the
+reviewer over 3584 argument combinations before the block was authored,
+including the rank-order-vs-registration-order invariance the golden rests on.
+Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R24 gates R23 (state, docs and one test file — a red-proof IS owed, on the
-  new pin), then takes migration-order step 6,
-  `pingpong_loop.py::_build_reviewer_prompt`, last of the six.
-- Step 6 gets a FRESH session on purpose. Before authoring its block, prove the
-  decomposition byte-exact in pre-migration order over every combination of its
-  optional arguments, as R22 did for step 5 — that proof is what made step 5
-  land without a repair round. Its two mutually exclusive branches and its
-  three reviewer-role strings (base, effective, parse-retry) all reach
-  evidence.
+- R25 gates R24. With step 6 landed, all six T003 migration sites are done.
 - ONE later round wires `on_call` for the three sites lacking call evidence:
   `mission_cmd.py:362` (orchestrator), `mission_cmd.py:187` +
   `gauntlet_runner.py:505` (mission), `do_cmd.py:253` + `:2860` (plan).
@@ -42,6 +35,5 @@ created at CLOSURE.
 ## Risks
 - R-0221 stays open and will cost the integration gate phantom base-only
   failures.
-- The builder prompt's cacheable prefix now dies 24 characters into
-  `builder_staged_state` (R22 gate H measured 467). T004's before/after number
-  should quote that, not the rank order alone.
+- The reviewer prompt is the worst-ordered of the six sites, so T004's
+  before/after number should quote its cacheable-prefix gain specifically.
