@@ -1013,3 +1013,35 @@
   every one of them, including two gates it could not satisfy, instead of
   reporting green — which is the behaviour the gate exists to reward.
   `LAST_REVIEWED_SHA` advances 04a3396d -> 9cb128d7.
+- Reviewer gate on R21 (2026-08-09, next session): PASS. Range
+  `9cb128d7..HEAD` at 54049e6b, SIX commits, SEVEN paths, exactly the block's
+  declared change set plus the declared correction commit. Insertions per
+  `git log --numstat`: 328, 242, 80, 62, 60, 9 — each under 500.
+  All seven gates were re-run by the reviewer, not read from the handback.
+  A: both files sha256 `a97328127a09dfaf…`, `cmp` silent. B: 328 lines, under
+  the 400 cap. C: the four greps returned 1/1/1/1, line 8 ends
+  `Next free ID: R-0251.`, the two doc greps returned 1/1, and the BEGIN/END
+  marker count is 0 in all four target files. D: `tests/docs/` 294 passed,
+  `test_dashboard_contract.py` 70 passed. E: canary 42 passed. F: no red-proof
+  owed and none faked — the change set contains no executable file. G:
+  `git status --porcelain` empty, `git worktree list` the primary alone.
+  The pair shapes were re-measured rather than accepted: A and B REWRITE with
+  FROM 0x and TO 1x, C, D and E APPEND with FROM 1x and TO 1x — five for five
+  against the declared table. Stray added lines were recomputed from the
+  authored TO slices against the real diffs of both content commits: 80 added
+  and 0 stray at C2, 62 added and 0 stray at C3. PAIR_F's slice and
+  `.agent/plan.md` are byte-identical at sha256 `d263bfd059ab0798…`.
+  All three declared deviations ACCEPTED. Deviation 1 — `.agent/plan.md` at 50
+  lines against AGENTS.md's <50 — is confirmed as the reviewer's defect and not
+  the worker's: the PAIR_F slice is itself 50 lines, so an applier required to
+  match it byte for byte could not have complied with both. It is the second
+  live instance of the R-0250 class, and it is repaired by this round's plan
+  rewrite rather than registered again. Deviation 3's fifth commit is the right
+  call: the alternative to correcting a false `+50/-57` row was a force-push,
+  which G2 forbids outright.
+  R-0250's own resolution asked the next gate to verify the rule reached disk
+  and reads as intended. It did: docs/agents/planner_reviewer_prompt.md §3 now
+  carries the four-item pre-emission checklist, and this round's block was
+  written against it — item 1 caught the size before emission and item 2 was run
+  against every zero-gate in Done-when C.
+  `LAST_REVIEWED_SHA` advances 9cb128d7 -> 54049e6b.
