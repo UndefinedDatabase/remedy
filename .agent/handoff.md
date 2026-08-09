@@ -1,143 +1,115 @@
-# Handoff — F104 Hard budget enforcement, SESSION CLOSE (R4 + R5)
+# Handoff — F104 Hard budget enforcement, R6 (T003)
 
-Feature F104, rounds **R4** and **R5**, branch `feature/f104-hard-budget-enforcement`,
-build mode one-session self-drive (docs/agents/self_drive_protocol.md), one
-delegated worker per round. Verdicts, as the reviewer stated them:
-**R4 PASS at f9309bfe**, **R5 PASS at 549f2bac**. `LAST_REVIEWED_SHA = 549f2bac`.
-Tip at handback: this handoff commit (the last entry under `## Commits`); its
-SHA is in the completion report. No PR, no merge, no force-push.
+Feature F104, round **R6**, branch `feature/f104-hard-budget-enforcement`, build
+mode one-session self-drive, one delegated worker. T003 delivered: display, the
+grep-style basis pin, and the ist-doc per DECISION F104 D8. **Awaiting review.**
+No PR, no merge, no force-push, no worktree.
 
 ## Range
-Review of `549f2bac..HEAD` — this state-only close round. R4 and R5 are reviewed;
-their per-commit tables are in the handoffs at f9309bfe and 549f2bac.
+Review of `549f2bac..26a4e750` (the state-close commits 8a9a964c / bea706a8 /
+95672c30 are already reviewed; R6's own six commits are below, oldest first).
 
 ## Commits
 
-**R4, oldest first (PASS at f9309bfe):** 745999fd save the R4 block · 445d84d6
-extract the safe-point counters build · ffe03941 derive the next task's token
-band, pure · 14b8940c stop before a task that would breach max_cost_usd ·
-621479df pin the predictive stop at the live safe point · 00289e1e DECISION D6 +
-R4 state · f9309bfe the R4 handback
-
-**R5, oldest first (PASS at 549f2bac):** b018a16a save the R5 block, register
-R-0225/R-0226 · 476376f0 admit max_cost_usd to the closed manifest budget schema ·
-947aad4f pin that schema · 8c8d6507 assert both cost stops reach the stopped
-state · 6022eea2 DECISION D7 + R5 state · 549f2bac the R5 handback
-
-### 8a9a964c chore(f104): save the close block and record the R5 resolutions
+### 64d962aa chore(f104): save the R6 block verbatim
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/authored/f104-r6-close-1.md | +125 | the close block, verbatim (item 1a) |
-| .agent/last_block.md | +109/-146 | same text; replaces the stale R5 block |
-| .agent/live_review.md | +27/-8 | reviewer's Done text for R-0225/R-0226 replacing their `OPEN.` lines; R5 PASS + R6 lines in `## Steps` |
+| .agent/authored/f104-r6-1.md | +197 | the R6 block, verbatim (item 1) |
+| .agent/last_block.md | +318/-123 | same bytes; replaces the stale close block |
 
-### bea706a8 docs(f104): rewrite the plan at R6 after the R5 PASS
+### df86e5af feat(f104): extract the next-predictable-task selection rule
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/plan.md | +10/-7 | Current Step → R6 (T003); both verdicts; 48 lines |
+| packages/orchestration/pingpong_job.py | +46 | `select_next_predictable_task`, pure, never raises; `run_job` untouched |
+| tests/orchestration/test_predictive_budget.py | +172 | seam pin vs the LIVE `_stop_check` + blocked/failed/skipped/all-passed cases |
 
-### (this commit) chore(f104): write the session-close handback
+### 72c96140 feat(f104): show the money limit, spend and next-task expectation
 | Path | +/- | Reason |
 |---|---|---|
-| .agent/handoff.md | rewrite | this file (R-0149 self-reference exception) |
+| apps/cli/commands/job.py | +124 | `_cmd_job_budget` (a)-(d) + 2 money formatters; JSON gains `prediction`/`recorded_prediction` |
+| tests/orchestration/test_job_budgets.py | +372 | `TestJobBudgetCliRendersPredictions`, 19 tests through the REAL command via capsys |
+
+### 191e4b5c test(f104): pin that every predicted number carries its basis label
+| Path | +/- | Reason |
+|---|---|---|
+| tests/orchestration/test_predictive_budget.py | +150 | `TestEveryPredictedNumberCarriesItsBasis`: vocabulary completeness + surface grep |
+
+### 1eae2ecb docs(f104): document the job-budget stop path per DECISION F104 D8
+| Path | +/- | Reason |
+|---|---|---|
+| docs/system/job-budget-enforcement-v0.md | +112 | NEW ist-doc |
+| docs/README.md | +2 | Quick-Find (`job budget`) + System table, both alphabetical |
+
+### 26a4e750 chore(f104): record DECISION F104 D8 and the R6 state
+| Path | +/- | Reason |
+|---|---|---|
+| .agent/decisions.md | +21 | D8, reviewer text verbatim |
+| .agent/live_review.md | +7/-2 | ONLY the R6 `## Steps` line replaced |
+| .agent/plan.md | +25/-14 | rewritten, 49 lines, R6-complete-awaiting-review |
 
 ## External actions
-`git push origin feature/f104-hard-budget-enforcement` — transcript in the
-completion report. No PR, no merge, no gh command, no worktree.
+`git push -u origin feature/f104-hard-budget-enforcement` → `95672c30..26a4e750`.
+No PR, no merge, no gh command, no worktree add/remove.
 
 ## Verification
-
-Gates **the reviewer re-ran itself**:
-
-| Round | A | B | C | D | E | Exit |
-|---|---|---|---|---|---|---|
-| R4 | 249 passed / **1 xfailed** | 163 | 294 | 42 | — | all **0** |
-| R5 | 261 passed / **0 xfailed** | 163 | 294 | 42 | 124 | all **0** |
-
-Mutation proofs, all run by the reviewer in disposable worktrees under
-`.remedy-wt/`, all removed and pruned afterwards:
-
-| Mutation | Result |
-|---|---|
-| dispatch safe point stops passing `next_task` | 1 RED — the just-under acceptance fixture |
-| `derive_next_task_token_band` forced to always return UNKNOWN | 7 RED, including the live acceptance test |
-| `"max_cost_usd"` removed from `_BUDGET_ALLOWED_KEYS` | 11 RED, including BOTH terminal-state tests |
-
-R-0225 was **reproduced by the reviewer directly, before it was registered**.
-Captured output:
-`run_manifest_write_failed: ManifestError: manifest.budgets has unknown keys: ['max_cost_usd']`
-with the job left in status `running`.
-
-This round's own gates, real, from the repo root at bea706a8:
+Run by me from the repo root at 26a4e750, real exit codes:
 
 | Gate | Command | Exit | Result |
 |---|---|---|---|
-| 1 | `python3 -m pytest tests/docs/ -q` | **0** | 294 passed |
-| 2 | `python3 -m pytest tests/cli/test_golden_path.py -q` | **0** | 42 passed |
-| 3 | `pytest test_dashboard_contract.py test_test_runner.py test_resource_safety.py -q` | **0** | 142 passed |
+| A | `pytest tests/orchestration/test_predictive_budget.py -q` | **0** | 75 passed in 1.94s |
+| B | `pytest tests/orchestration/test_job_budgets.py tests/orchestration/test_budget_guard.py -q` | **0** | 223 passed in 32.92s |
+| C | `pytest tests/orchestration/test_budget_stop_integration.py -q` | **0** | 39 passed in 0.22s |
+| D | `pytest tests/docs/ -q` | **0** | 294 passed in 0.30s |
+| E | `pytest tests/cli/test_golden_path.py -q` (canary) | **0** | 42 passed in 19.47s |
+
+Baseline over the same four budget files before any R6 code: 300 passed, exit 0.
+`test_f018_authority_integration.py` also re-run green (153 with C).
 
 ## Authored-text proofs
-`cmp .agent/authored/f104-r6-close-1.md .agent/last_block.md` → **exit 0**. The
-R-0225/R-0226 resolution texts and the two `## Steps` lines were applied verbatim.
-
-## What is built
-T001 complete. T002 complete: the predictive check is wired at the task-dispatch
-safe point, stops BEFORE dispatch with reason
-`predicted_budget_exhausted:max_cost_usd`, persists its arithmetic in
-`job.budget_prediction`, and BOTH the predictive and the reactive cost stop reach
-`JOB_STOPPED` for real. **T003 not started.**
+`cmp .agent/authored/f104-r6-1.md .agent/last_block.md` → **exit 0**. DECISION
+F104 D8 and the R6 `## Steps` line were applied verbatim.
 
 ## Item status
 | Item | Status | Reason |
 |---|---|---|
-| R4-1 save the block | done | cmp exit 0 |
-| R4-2 counters refactor | done | pure move |
-| R4-3 band derivation + tests | done | |
-| R4-4 wiring + stale comments | done | |
-| R4-5 fixtures + regressions | deviated | terminal `JOB_STOPPED` shipped as `xfail(strict=True)` behind the R-0225 blocker — **RESOLVED**, retired in 8c8d6507; A9 pinned at the `derive`→`predict` seam, which stands as the R4 block permitted |
-| R4-6 docs, decisions, state | deviated | no ist-doc existed for the stop reason and `.agent/context.md` was untouched — both **RESOLVED**: context.md renumbered in R5 (6022eea2), the ist-doc question scheduled into R6 by DECISION D7 |
-| R5-1 block + findings | done | cmp exit 0; both findings verbatim; header → R-0227 |
-| R5-2 fix R-0225 | done | allowlist widened by exactly one field |
-| R5-3 pin the schema | deviated | pins went to `TestRunManifestBudgetIdentity` in `tests/orchestration/test_job_budgets.py`, the existing `_decode_budgets_field` home, not the block's fallback file; gate E still run |
-| R5-4 fix R-0226 | deviated | the reactive terminal test sits beside its predictive twin so the existing `_run` harness is reused, not duplicated |
-| R5-5 docs, decisions, state | done | D7, feature file, plan/context/live_review/handoff |
-| Close-1 block + resolutions | done | cmp exit 0; R-0225/R-0226 Done in the reviewer's words; header already R-0227 |
-| Close-2 this handoff | done | rewritten, never appended |
-| Close-3 plan rewrite | done | 48 lines; Current Step R6; R5 no longer pending |
+| 1 save the block | done | cmp exit 0 |
+| 2 selection helper + seam pin | done | pure addition; `run_job` byte-unchanged |
+| 3 `_cmd_job_budget` (a)-(d) + JSON | deviated | see D1 below — the CLI now READS the F103 ledger |
+| 4 basis-label acceptance pins | done | 5/5 labels reachable; set equality asserted |
+| 5 ist-doc + README rows | deviated | 112 lines vs the block's "roughly 60-90" (D2 below) |
+| 6 D8, state files, handback | done | `.agent/context.md` left untouched — see D3 |
 
 ## Open findings
-**1** — R-0221 (Low, carried from F103 R5; not F104's to fix per AGENTS.md Scope
-Control; routed to the F252 flake-debt class; costs the integration gate seven
-phantom base-only failures, to be attributed, not chased). R-0222, R-0223,
-R-0224, R-0225 and R-0226 are all **Done** with reviewer-authored resolution text.
+**1** — R-0221 (Low, carried from F103 R5; not F104's to fix; F252 flake-debt
+class; costs the integration gate seven phantom base-only failures). R-0222,
+R-0223, R-0224, R-0225, R-0226 all Done.
 
 ## State
-`git status --porcelain` **EMPTY**; branch pushed; no worktrees beyond the primary
-checkout; `docs/roadmap/STATUS.md` still carries F104 as `[~]` — correct, the
-feature is not closed.
+`git status --porcelain` **EMPTY**; branch pushed; no worktrees;
+`docs/roadmap/STATUS.md` untouched, F104 still `[~]`.
 
 ## Deviations & assumptions — declared
-- In the reviewer's voice: "The session ran THREE delegated rounds against a
-  stated cap of two. The third was this state-only close round, which writes no
-  production code: the reviewer is read-only, so without it the R5 verdict and
-  the R-0225/R-0226 resolution text would exist nowhere on disk, and the handoff
-  is the only return channel. The overage is declared rather than hidden."
-- **The stale R5 `## Steps` line was replaced, not duplicated** — it still read
-  "Awaiting review" and would have contradicted the PASS line beside it.
-- **R4's `## Steps` line still ends "Awaiting review"**, left exactly as found
-  because the block ordered R1-R4 untouched. Flagged as deliberate, not missed.
-- **`.agent/context.md` untouched** — correct about the round numbering after its
-  R5 update, so the block's condition for touching it was not met.
-- **Per-round commit lists instead of 13 per-commit tables**: R4 and R5 are
-  reviewed and each has its own handoff in git history; only this round's three
-  commits are unreviewed and each carries a full table. No section dropped.
-- **This handoff exceeds 60 lines** (AGENTS.md D15 stated cause): two rounds'
-  commit lists, three changed-files tables, the reviewer's gate table, the
-  mutation table, the R-0225 reproduction, this round's gate table and a
-  fourteen-row item-status table.
+- **D1 (item 3).** Item 3(b) is unreachable as written: `counters_from_persisted`
+  has no cost field, so `measured_cost_usd` was ALWAYS None in the CLI and both
+  the `$%.4f` remaining branch and the "priced job" test the block orders could
+  never fire. `_cmd_job_budget` therefore now composes the ledger read the same
+  way `run_job._build_budget_counters` does — `_resolve_job_ledger_project_id` +
+  `collect_ledger_cost_for_job` — only when `max_cost_usd` is set, wrapped, and
+  degrading to the unmeasured path. `query_cost` is SELECT-only and never creates
+  a ledger, so `action_class="read_only"` still holds; pinned by
+  `test_the_command_does_not_mutate_the_persisted_job` (job.json bytes identical).
+  This is new I/O in a read-only command and is flagged for the R7 gate.
+- **D2 (item 5).** The ist-doc is 112 lines, not 60-90. The block mandated eleven
+  topics plus two tables; trimming further would have dropped mandated content.
+- **D3 (item 6).** `.agent/context.md` untouched — its round list already names
+  R6 as display/docs/estimate labels and its branch context is correct, which is
+  the block's stated condition for leaving it.
+- Commit 72c96140 is **496 insertions** — under the 500 cap but close; not split,
+  because the command and the tests that drive it are one logical step.
+- **This handoff is 115 lines** (AGENTS.md D15 stated cause): six per-commit
+  changed-files tables, the five-gate table, the six-row item-status table and
+  three declared deviations. No section dropped.
 
 ## Next
-**R6 — T003**: display, docs and `estimate_basis` labels per DECISION F104 D7,
-pinned by a grep-style test. Then **R7** the integration gate
-(docs/agents/integration_gate.md), then **R8** closure
-(docs/roadmap/STATUS_closure_protocol.md).
+**R7 — the integration gate** (docs/agents/integration_gate.md), attributing
+R-0221's seven base-only failures. Then **R8** closure.
