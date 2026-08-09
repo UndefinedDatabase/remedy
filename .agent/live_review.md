@@ -179,6 +179,12 @@
   was turned back into an estimate at the last step. Amended fix: the pieces are
   counted from the FINAL text, and any edit after a count voids it and forces a
   recount. R-0238 stays OPEN until a block lands at or under 240.
+  Done: R-0238 (resolved at the R14 gate, 2026-08-09). The R13 block landed at
+  231 lines / 13795 bytes, measured by the reviewer with `wc -lc` on BOTH
+  `.agent/authored/f105-r13-1.md` and `.agent/last_block.md` — 9 under the cap,
+  counted mechanically with no edit after the count. That is the resolution
+  condition this finding set itself, met on the first block after the
+  amendment. RESOLVED.
 - R-0239 (Low, F105 R12, reviewer-authored defect): the R12 step block's gate E
   cited `tests/test_do_run.py`, which does not exist — the real file is
   `tests/orchestration/test_do_run.py`, and the reviewer read that name out of
@@ -189,6 +195,31 @@
   discover it is a typo and not a regression, and R-0234's own fix — cite the
   full path — was already on disk when this was authored. Fix: full paths are
   copied from a listing, never reconstructed from memory of one. OPEN.
+- R-0240 (Low, F105 R13, reviewer-authored defect): `.agent/live_review.md`
+  line 8 reads "Next free ID: R-0238" while R-0238 and R-0239 are both
+  registered below it, so the header contradicts its own findings list and
+  disagrees with `.agent/plan.md`, which correctly carries R-0240. It was one
+  behind at 927bfdad and R13 made it two. The R13 worker declared this as an
+  observation and correctly refused to widen its authorised change set, so the
+  defect is the reviewer's: the R13 block registered a finding without also
+  authoring the header pair its own numbering required. Two disagreeing sources
+  of the next free ID is how an ID gets reused, and a reused ID silently
+  overwrites a finding's history. Fix: any block that registers or resolves a
+  finding carries, in the same pair set, the rewrite of the header's
+  next-free-ID line. Applied at C3 of this block. OPEN until it lands.
+- R-0241 (Low, F105 R13, reviewer-authored defect): `.agent/plan.md` and the
+  R13 handoff both label the next builder "T003 SITE 2" while naming
+  `packages/orchestration/mission_compiler.py::build_mission_prompt`. Those
+  halves disagree with `.agent/t003_inventory.md`, which numbers its CATALOGUE
+  `## Site 1` to `## Site 6` and keeps a SEPARATE `## Migration order` list.
+  `build_mission_prompt` is catalogue Site 6 and migration-order step 2; the
+  inventory's `## Site 2` is `_build_reviewer_prompt`, which that list puts LAST
+  as the hardest of the six. A reader following the label lands on the worst
+  possible target and finds out only after reading the wrong function. Nothing
+  was built wrongly — the function name carried the truth — but the label is a
+  trap. Fix: plan and handoff say "migration-order step N" and always name the
+  function; "Site N" is reserved for the inventory's catalogue headings.
+  Applied in this block's authored plan text. OPEN until it lands.
 
 ## Steps
 
