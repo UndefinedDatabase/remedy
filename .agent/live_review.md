@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0247.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0248.
 
 ## Findings
 
@@ -305,6 +305,12 @@
   nothing is fabricated; what is missing is the declaration and the table. Fix:
   a handoff over cap states its line count and its cause, and every handoff
   covering an ordered bundle carries the item-status table. OPEN.
+  Done: R-0245 (resolved at the R17 gate, 2026-08-09). `.agent/handoff.md` is
+  92 lines; `wc -l` returns 92, and the file's opening section declares that
+  same number, names the AGENTS.md cap it exceeds and names the mandated content
+  that caused the overage. The item-status table is present with all five bundle
+  items, and both halves of the fix landed in the file that survives the
+  session. RESOLVED.
 - R-0246 (Low, F105 R16, reviewer-authored defect): `build_mission_prompt`'s
   docstring still ends "``None`` reproduces today's prompt byte for byte".
   Before R16 that sentence was about the `max_milestones` parameter alone and
@@ -317,6 +323,17 @@
   `None` cap reproduces the pre-R-0197 milestone ceiling, while the composed
   ORDER differs from the pre-migration template and the segment bytes do not.
   OPEN.
+- R-0247 (Low, F105 R17, reviewer-authored defect in a finding's own citation):
+  R-0245 opens "`.agent/handoff.md` is 101 lines". The file is 100:
+  `git show efd66b68:.agent/handoff.md | wc -l` returns 100 and the blob ends in
+  a newline, so no counting convention closes the gap — the number came from a
+  draft, not from the command that produced it. The SUBSTANCE is untouched: 100
+  exceeds the cap of 60 exactly as 101 would, and the missing declaration and
+  item-status table are what the finding was about, both of which R17 fixed.
+  Wrong is a cited number the reader cannot reproduce — the R-0234 and R-0239
+  class, third instance on this branch, and each time it costs a run deciding
+  between a typo and a file that changed underneath. Fix: any count entering a
+  finding is pasted from that command's own output in the same sitting. OPEN.
 
 ## Steps
 
