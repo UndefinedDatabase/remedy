@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only; the worker applies
 > them verbatim and marks `Done: R-XXXX` when a fix lands. Only reviewer-
 > authored text sets Resolved.
-> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0227.
+> Branch: feature/f104-hard-budget-enforcement. Next free ID: R-0228.
 
 ## Findings
 
@@ -108,6 +108,24 @@
   the strict xfail flip to `XPASS(strict)` at 476376f0 — the fix landing before
   the marker was retired — which is independent evidence the assertion was load
   bearing rather than decorative.
+
+- R-0227 (Low, found in the R6 review): the F103 ledger cost read that R6 added to
+  `_cmd_job_budget` (`apps/cli/commands/job.py`) is wrapped in a bare
+  `except Exception: pass`. A read that FAILS therefore renders exactly like a job
+  whose provider reported no prices — `spent: not-measured`, `remaining:
+  not-measured` — and nothing in either output says a read broke: the JSON
+  `diagnostic` field belongs to the counters decode and stays null. The silence is
+  an asymmetry inside one function rather than a considered choice: the
+  prediction block twenty lines below reports its own failure as
+  `unavailable (<Type>: <msg>)` and is pinned by
+  `test_a_broken_prediction_degrades_to_one_unavailable_line`, and
+  `run_job._build_budget_counters` — the read this one deliberately mirrors —
+  logs the identical failure at ERROR with `exc_info=True`. The displayed value
+  stays honest, which is why this is Low and not a P6 violation. The cost is that
+  a misconfigured ledger project is indistinguishable from a provider that
+  reports no prices, and that is the one diagnosis an operator who just hit a cost
+  limit most needs to make.
+  OPEN.
 
 ## Steps
 
