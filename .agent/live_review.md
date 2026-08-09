@@ -706,3 +706,51 @@
   `packages/orchestration/gauntlet_runner.py:505`), so that seam is its own
   later round, exactly as intake split across R11 and R12. R16's own gate is
   owed at R17.
+- Reviewer gate on R16 (2026-08-09): PASS, and it is the first PASS on this
+  branch over a round that carried production code. Range `ed5b2421..HEAD` at
+  efd66b68, SEVEN commits, EIGHT paths, exactly the block's declared change set
+  with nothing beside it. Per-commit insertions from `git log --numstat`: 399,
+  366, 24, 35, 55, 255 (73 + 182) and 88 (63 + 25) — each under 500, so D5's
+  exemption for C1b was not even load bearing this round. Transport: the
+  reviewer's surviving original `.remedy-wt/f105-r16-1.block.md`,
+  `.agent/authored/f105-r16-1.md` and `.agent/last_block.md` all hash to
+  744fe981, both `cmp` runs exit 0, 399 lines against D5's cap of 400.
+  Application proved disk to disk: of the 59 lines added to
+  `.agent/live_review.md` and the 55 added to `.agent/decisions.md`, all 114
+  occur verbatim in the authored file and 0 are missing; the single removed line
+  is exactly pair B's FROM; no `===BEGIN` or `===END` marker reached any target
+  file. `.agent/plan.md` equals its authored slice, sha256 8029c8ca both sides.
+  The golden's frozen `_PRE_MIGRATION_MISSION_TEMPLATE` was diffed by the
+  reviewer against `git show ed5b2421:packages/orchestration/mission_compiler.py`
+  lines 78-108 and is byte-identical — 31 lines, exit 0 — so the golden pins the
+  real pre-migration prompt and not a retyping of it. `grep` for
+  `_MISSION_PROMPT_TEMPLATE` across `packages/ apps/ tests/` returns only the
+  golden's own docstring, so the migration left no straggler, and
+  `build_mission_prompt`'s one production caller at `mission_compiler.py:338` is
+  untouched. Gates re-run by the reviewer with real exit codes: the golden 5
+  passed; `test_mission_compiler.py` + `test_prompt_segments.py` 135 passed,
+  the same 135 the reviewer measured at ed5b2421 BEFORE the round; state
+  contracts 4 passed / 47 deselected; `tests/docs/` 294 passed; canary 42
+  passed; integrity `passed=True`, `fail_count=0` over 5 checks;
+  `git status --porcelain` empty; `git worktree list` the primary alone; HEAD
+  equal to origin. The reviewer re-ran mutation M3 independently in a disposable
+  worktree at efd66b68 and reproduced the worker's result exactly — dropping the
+  schema directive's trailing newline turns the same THREE named tests RED — and
+  added a fourth axis the round did not claim: deleting the `mission_repo_facts`
+  registration turns SIX tests RED, including one pre-existing
+  `test_mission_compiler.py` test, so the golden is load bearing on segment loss
+  as well as on order, wording and that one byte. The worktree was removed and
+  pruned before this verdict. All five declared deviations ACCEPTED. Deviations
+  3 and 4 are better than what was asked for: literal whole-string equality is
+  impossible once composition reorders, and the reordered-join assertion is the
+  strongest true reading; and reporting the no-op statement swap as control M0
+  instead of dressing it up as a red proof is the honesty this loop runs on.
+  Two defects found, R-0245 and R-0246, one the worker's record and one the
+  reviewer's own text. R-0243 and R-0244 RESOLVE here.
+  `LAST_REVIEWED_SHA` advances ed5b2421 -> efd66b68.
+- R17: the session-terminator round — R-0243 and R-0244 resolved, R-0245 and
+  R-0246 registered, the R16 gate recorded, the session-end handoff written. The
+  session ends at its DECLARED TWO-ROUND CAP (R16 building, R17 recording) under
+  docs/agents/self_drive_protocol.md G7. R17 ends a SESSION, not the branch, so
+  its own gate is OWED and the next session's reviewer records it first
+  (§4.13 as corrected by R-0233). No production code changed this round.
