@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0229.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0233.
 
 ## Findings
 
@@ -75,6 +75,7 @@
   record. That is the F056 candidate-loss class: a state file that lies quietly
   costs more than one that is missing. Fix: correct the header to the true next
   free ID. OPEN.
+  Landed: R-0232 — header corrected to the true next free ID.
 
 ## Steps
 
