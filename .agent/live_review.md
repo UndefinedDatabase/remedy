@@ -20,6 +20,29 @@
   stays routed to the F252 flake-debt class, to be attributed by controlled
   evidence at the integration gate rather than chased. OPEN.
 
+- R-0229 (Medium, F105 R4): the segment-name mapping is unpinned, because the
+  test that looks like its guard reads the mapping it is meant to prove.
+  `tests/orchestration/test_role_conventions.py::TestRoleConventionsRegistration::test_registered_segment_carries_the_documented_name_and_rank`
+  asserts `segment.name == CONVENTIONS_SEGMENT_NAMES[role]`, which holds for any
+  mapping, correct or swapped. Proven in a disposable worktree at 65d3c7b9:
+  exchanging the two values of `CONVENTIONS_SEGMENT_NAMES` between WORKER and
+  REVIEWER leaves all 21 tests GREEN. This is not cosmetic — the segment name is
+  what the T001 manifest records, so a swapped mapping would label the worker's
+  conventions `reviewer_conventions` in every audit row, and the T003 per-builder
+  goldens would inherit the mislabel. The module docstring itself says the names
+  "appear in the segment manifest, so renaming one rewrites audit history": that
+  is precisely the property no test guarded. The sibling mapping is fine —
+  exchanging the two values of `CONVENTIONS_DOC_RELATIVE_PATHS` turns 3 tests RED
+  through the role-specific rule anchors. Fix: assert the expected literal per
+  role, for both mappings, and red-proof the swap. OPEN.
+- R-0230 (Low, F105 R4): `packages/orchestration/role_conventions.py`
+  `role_conventions_text` promises `RoleConventionsError` for a document that is
+  "missing or unreadable", and the round's spec said the same, but only `OSError`
+  is caught. A document that is not valid UTF-8 raises `UnicodeDecodeError`,
+  which escapes the conventions layer — so `except PromptSegmentError`, the
+  single catch this module's error hierarchy exists to enable, does not cover it.
+  Fix: catch `(OSError, UnicodeDecodeError)` and pin it with a test. OPEN.
+
 ## Steps
 
 - R1: claim F105 `[~]` under Rule A5, sweep both F104 closure candidates into
@@ -75,3 +98,18 @@
   `tests/orchestration/test_role_conventions.py`. No conventions RULE is
   re-authored, not one byte of either document changes, and no builder is
   migrated.
+- Reviewer gate on R4 (2026-08-09): FINDINGS. Range `1a054862..65d3c7b9` read as
+  a real diff — the eight declared paths and nothing else; no `docs/`, no
+  `apps/`, no `AGENTS.md`, so neither conventions document changed a byte. Gates
+  re-run by the reviewer from the repo root: `cmp` of the authored block against
+  `.agent/last_block.md` exit 0, `test_role_conventions.py` 21 passed,
+  `test_prompt_segments.py` 22 passed, `test_token_economy.py` 37 passed, the
+  `.agent` contract tests 4 passed, `tests/docs/` 294 passed, the canary 42
+  passed, integrity 5 of 5, tree clean, HEAD equal to origin. FOUR mutation
+  red-proofs ran in a disposable worktree at 65d3c7b9, removed and pruned before
+  the verdict: stripping the verbatim read turns 2 tests RED, dropping the token
+  cap turns 1 RED, exchanging the document paths turns 3 RED — and exchanging the
+  segment NAMES turns none, which is R-0229. `LAST_REVIEWED_SHA` does NOT advance
+  and stays 1a054862.
+- R5: the repair round for R-0229 and R-0230, plus DECISION F105 D2 on step-block
+  size. No feature work; the discoverability block moves to R6.
