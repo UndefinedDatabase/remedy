@@ -172,6 +172,23 @@
   enough for its tool layer to parse, counts each with a `python3 - <<PY`
   heredoc — no pipeline, so it runs — and emits only once the sum is at most
   240. A hand estimate is never again reported as a count. OPEN.
+  Fix amended at the R12 gate (2026-08-09), because R-0238 RECURRED: the R12
+  block came in at 243, three over. The mechanical count DID run — three pieces
+  measured 103, 62 and 78, summing to 245 — and then the reviewer trimmed six
+  lines by hand and claimed 239 without recounting, so a mechanical measurement
+  was turned back into an estimate at the last step. Amended fix: the pieces are
+  counted from the FINAL text, and any edit after a count voids it and forces a
+  recount. R-0238 stays OPEN until a block lands at or under 240.
+- R-0239 (Low, F105 R12, reviewer-authored defect): the R12 step block's gate E
+  cited `tests/test_do_run.py`, which does not exist — the real file is
+  `tests/orchestration/test_do_run.py`, and the reviewer read that name out of
+  an `ls tests/orchestration/` listing and then wrote the wrong prefix. The
+  worker caught it, ran the real path, and declared the correction, so nothing
+  was skipped and no number is wrong. This is the R-0234 class exactly: a gate
+  citation that cannot be re-run as written costs the next reader a run to
+  discover it is a typo and not a regression, and R-0234's own fix — cite the
+  full path — was already on disk when this was authored. Fix: full paths are
+  copied from a listing, never reconstructed from memory of one. OPEN.
 
 ## Steps
 
