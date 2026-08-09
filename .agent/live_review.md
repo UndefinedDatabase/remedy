@@ -66,6 +66,7 @@
   filed where no reader looks for it, and `## Findings` now reads as though it
   holds two entries that are not findings. Fix: MOVE those bytes to the end of
   `## Steps`, unchanged. OPEN.
+  Landed: R-0231 — the R5 gate and R6 step bytes moved into ## Steps unchanged.
 - R-0232 (Medium, F105 R6, reviewer-authored defect): this file's header still
   reads `Next free ID: R-0229` while R-0229 and R-0230 are both issued and
   resolved, and `.agent/plan.md` correctly says R-0231. A later reviewer that
@@ -74,27 +75,6 @@
   record. That is the F056 candidate-loss class: a state file that lies quietly
   costs more than one that is missing. Fix: correct the header to the true next
   free ID. OPEN.
-- Reviewer gate on R5 (2026-08-09): PASS. Range `65d3c7b9..a8e9ab1f` read as a
-  real diff — nine paths, none under `docs/`, `apps/` or `AGENTS.md`, so neither
-  conventions document changed a byte in the repair round either. Every commit
-  is under the 500-insertion cap, the largest 295. Gates re-run by the reviewer:
-  `cmp` exit 0, `test_role_conventions.py` 26 passed, `test_prompt_segments.py`
-  22 passed, `tests/docs/` 294 passed, `test_test_runner.py` 51 passed, the
-  canary 42 passed, integrity 5 of 5, tree clean, HEAD equal to origin, the
-  primary checkout the only worktree. Two mutation red-proofs of my own confirm
-  both fixes. The worker's C1 split is RATIFIED: my R5 block was 295 lines, 55
-  over the cap DECISION F105 D2 sets in that same block, and the mandated single
-  commit would have been 529 insertions with F105's once-per-feature exception
-  already spent — AGENTS.md "stop and split before committing" is the governing
-  rule, the bytes and the `cmp` proof are unchanged, and the second commit is a
-  single `.agent/**` verbatim rewrite, exempt under DECISION F104 D1. The
-  authoring defect is the reviewer's: from R6 on the block is COUNTED before it
-  is emitted, not estimated. `LAST_REVIEWED_SHA` advances 1a054862 -> a8e9ab1f.
-- R6: T002 part 2 — the operator addition of 2026-07-30, a distilled
-  write-discoverable-code block appended to BOTH conventions documents as a
-  reviewed diff. Measured by the reviewer before authoring: the worker document
-  goes from 505 to 740 estimated tokens and the reviewer document from 515 to
-  703, both under the cap of 800 the R4 loader enforces.
 
 ## Steps
 
@@ -166,3 +146,47 @@
   and stays 1a054862.
 - R5: the repair round for R-0229 and R-0230, plus DECISION F105 D2 on step-block
   size. No feature work; the discoverability block moves to R6.
+- Reviewer gate on R5 (2026-08-09): PASS. Range `65d3c7b9..a8e9ab1f` read as a
+  real diff — nine paths, none under `docs/`, `apps/` or `AGENTS.md`, so neither
+  conventions document changed a byte in the repair round either. Every commit
+  is under the 500-insertion cap, the largest 295. Gates re-run by the reviewer:
+  `cmp` exit 0, `test_role_conventions.py` 26 passed, `test_prompt_segments.py`
+  22 passed, `tests/docs/` 294 passed, `test_test_runner.py` 51 passed, the
+  canary 42 passed, integrity 5 of 5, tree clean, HEAD equal to origin, the
+  primary checkout the only worktree. Two mutation red-proofs of my own confirm
+  both fixes. The worker's C1 split is RATIFIED: my R5 block was 295 lines, 55
+  over the cap DECISION F105 D2 sets in that same block, and the mandated single
+  commit would have been 529 insertions with F105's once-per-feature exception
+  already spent — AGENTS.md "stop and split before committing" is the governing
+  rule, the bytes and the `cmp` proof are unchanged, and the second commit is a
+  single `.agent/**` verbatim rewrite, exempt under DECISION F104 D1. The
+  authoring defect is the reviewer's: from R6 on the block is COUNTED before it
+  is emitted, not estimated. `LAST_REVIEWED_SHA` advances 1a054862 -> a8e9ab1f.
+- R6: T002 part 2 — the operator addition of 2026-07-30, a distilled
+  write-discoverable-code block appended to BOTH conventions documents as a
+  reviewed diff. Measured by the reviewer before authoring: the worker document
+  goes from 505 to 740 estimated tokens and the reviewer document from 515 to
+  703, both under the cap of 800 the R4 loader enforces.
+- Reviewer gate on R6 (2026-08-09): PASS. T002 is COMPLETE. Range
+  `a8e9ab1f..c0ce100a` read as a real diff — seven paths, and the only two
+  outside `.agent/` are the two conventions documents. Both document diffs are
+  PURE APPENDS after the previous final line: no existing rule was reworded,
+  reordered or removed, which is what the feature file's "must not re-author
+  policy" requires. Every commit is under the 500-insertion cap, the largest 370.
+  Gates re-run by the reviewer from the repo root: `cmp` exit 0,
+  `test_role_conventions.py` 26 passed, `test_prompt_segments.py` 22 passed,
+  `tests/docs/` 294 passed, `test_test_runner.py` 51 passed, the canary 42
+  passed, integrity 5 of 5, tree clean, HEAD equal to origin, the primary
+  checkout the only worktree. Token estimates measured on disk after the append:
+  the worker document 740 and the reviewer document 703 against the cap of 800,
+  matching the pre-authoring measurement exactly. One mutation red-proof ran in a
+  disposable worktree at c0ce100a, removed and pruned before this verdict:
+  padding the worker document past the cap turns 5 tests RED, so the cap is
+  genuinely enforced now that the headroom is only 60 tokens.
+  `LAST_REVIEWED_SHA` advances a8e9ab1f -> c0ce100a.
+- R7: the session-terminator round — R-0231 and R-0232 registered and fixed, the
+  R6 gate recorded, the session-end handoff written. Per
+  docs/agents/planner_reviewer_prompt.md §4.13 this round has NO on-disk gate
+  entry of its own; its verdict lives in `.agent/handoff.md`, the reviewer's
+  completion report and, later, the closure PR. That absence is the TERMINATOR,
+  not a missing gate, and no repair round is opened to close it.
