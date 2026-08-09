@@ -15,25 +15,26 @@ Prompt CONTENT does not change; only its composition.
 ## Current Step
 T001 and T002 are DONE and gated. T003 counts in the MIGRATION ORDER of
 `.agent/t003_inventory.md`, never that file's catalogue "Site N" headings
-(R-0241). Step 1, `intake.py::_build_intake_prompt`, is COMPLETE. R16 records
-the R15 gate and takes migration-order step 2,
-`mission_compiler.py::build_mission_prompt`, in ONE block under DECISION F105
-D5, which counts the block once and caps it at 400. `LAST_REVIEWED_SHA` is
-ed5b2421. Open findings: R-0221, R-0239, R-0242, R-0243, R-0244. No PR; one is
-created at CLOSURE. The candidates file is empty.
+(R-0241). Migration-order steps 1 (`intake.py::_build_intake_prompt`) and 2
+(`mission_compiler.py::build_mission_prompt`) are COMPLETE and gated, each with
+its own content-equality golden. DECISION F105 D5 ended the record-only stall:
+the step block is counted once and capped at 400, so R16 carried a gate record
+AND a migration in one block. `LAST_REVIEWED_SHA` is efd66b68. Open findings:
+R-0221, R-0239, R-0242, R-0245, R-0246. No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R17 gates R16, then takes migration-order step 3,
-  `flight_plan.py::_build_plan_prompt`, which needs a `repo_facts` injection
-  seam before its golden can be deterministic.
+- R18 gates R17 FIRST — R17's own gate is owed — then takes migration-order
+  step 3, `flight_plan.py::_build_plan_prompt`, which needs a `repo_facts`
+  injection seam before its golden can be deterministic.
 - Then migration-order steps 4 to 6, ONE builder per round, each with its own
   golden: `orchestrator_loop.py::build_orchestrator_prompt`, then
   `pingpong_loop.py`'s `_build_builder_prompt` and `_build_reviewer_prompt`.
-- The mission manifest reaches call evidence in its own later round: no
-  production caller passes `on_call` to `plan_mission`
+- Fix R-0246 in the same round that next touches `mission_compiler.py`: the
+  docstring's "byte for byte" sentence now reads as a claim about composition.
+- The mission and plan manifests reach call evidence in their own later round:
+  no production caller passes `on_call` to `plan_mission`
   (`apps/cli/commands/mission_cmd.py:187`,
-  `packages/orchestration/gauntlet_runner.py:505`), so that seam is a separate
-  change from this composition move.
+  `packages/orchestration/gauntlet_runner.py:505`).
 - Settle R-0242: whether intra-round commits are exempt from the AGENTS.md
   Commit Gate plan.md check, or the plan rewrite moves earlier in the block.
 - Then T004, `remedy stats cache` over actuals; then the integration gate
