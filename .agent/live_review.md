@@ -91,6 +91,7 @@
   a later reviewer no gate is owed and "no repair round is opened to close it",
   stranding R-0231 and R-0232 on `Landed:` lines forever, because §4.4 reserves
   `Done:` for reviewer text. Fix: state why §4.13 does not apply here. OPEN.
+  Landed: R-0233 — the R7 step line now states why §4.13 does not apply.
 - R-0234 (Low, F105 R5 and R6, reviewer-authored defect): both the R5 and the R6
   gate records cite `test_test_runner.py` by bare basename, but TWO files carry
   that name — `tests/test_test_runner.py` (43 tests) and
@@ -100,6 +101,7 @@
   number 51 is real and belongs to the orchestration file, so only the citation
   is wrong — but a gate record that cannot reproduce its own result reads as a
   regression. Fix: cite the full path in both records. OPEN.
+  Landed: R-0234 — both gate records now cite the full orchestration path.
 
 ## Steps
 
@@ -176,7 +178,8 @@
   conventions document changed a byte in the repair round either. Every commit
   is under the 500-insertion cap, the largest 295. Gates re-run by the reviewer:
   `cmp` exit 0, `test_role_conventions.py` 26 passed, `test_prompt_segments.py`
-  22 passed, `tests/docs/` 294 passed, `test_test_runner.py` 51 passed, the
+  22 passed, `tests/docs/` 294 passed,
+  `tests/orchestration/test_test_runner.py` 51 passed, the
   canary 42 passed, integrity 5 of 5, tree clean, HEAD equal to origin, the
   primary checkout the only worktree. Two mutation red-proofs of my own confirm
   both fixes. The worker's C1 split is RATIFIED: my R5 block was 295 lines, 55
@@ -200,7 +203,8 @@
   policy" requires. Every commit is under the 500-insertion cap, the largest 370.
   Gates re-run by the reviewer from the repo root: `cmp` exit 0,
   `test_role_conventions.py` 26 passed, `test_prompt_segments.py` 22 passed,
-  `tests/docs/` 294 passed, `test_test_runner.py` 51 passed, the canary 42
+  `tests/docs/` 294 passed, `tests/orchestration/test_test_runner.py` 51
+  passed, the canary 42
   passed, integrity 5 of 5, tree clean, HEAD equal to origin, the primary
   checkout the only worktree. Token estimates measured on disk after the append:
   the worker document 740 and the reviewer document 703 against the cap of 800,
@@ -211,10 +215,11 @@
   `LAST_REVIEWED_SHA` advances a8e9ab1f -> c0ce100a.
 - R7: the session-terminator round — R-0231 and R-0232 registered and fixed, the
   R6 gate recorded, the session-end handoff written. Per
-  docs/agents/planner_reviewer_prompt.md §4.13 this round has NO on-disk gate
-  entry of its own; its verdict lives in `.agent/handoff.md`, the reviewer's
-  completion report and, later, the closure PR. That absence is the TERMINATOR,
-  not a missing gate, and no repair round is opened to close it.
+  docs/agents/planner_reviewer_prompt.md §4.13 this round would have NO on-disk
+  gate entry of its own. CORRECTED at the R7 gate (R-0233): §4.13 exempts the
+  last round of a BRANCH, and this branch continues through T003, T004, the
+  integration gate and closure. R7 ended a SESSION, not the branch, so its gate
+  IS owed and is recorded directly below.
 - Reviewer gate on R7 (2026-08-09): PASS. Range `c0ce100a..c95db6e7` read as a
   real diff — five paths, ALL under `.agent/`, exactly the change set the R7
   block named; no `packages/`, `apps/`, `tests/`, `docs/`, `AGENTS.md` or
