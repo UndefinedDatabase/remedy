@@ -634,3 +634,38 @@
   migration and DECISION F105 D4 move to R16. The session revised its declared
   cap from two rounds to three, stated in this block rather than taken
   silently, and R15's own gate is owed at R16.
+- Reviewer gate on R15 (2026-08-09): PASS. Range `73e159b7..HEAD` at ed5b2421,
+  four commits, FIVE paths, all under `.agent/`. Per-commit insertions read by
+  the reviewer from `git log --numstat`: 388 (227 + 161), 38, 26 and 96
+  (66 + 30) — each under the 500 cap. The R15 handoff left C4's number to the
+  completion report; it is 96, derived here rather than accepted. Transport is
+  proved against a SURVIVING original: `.remedy-wt/f105-r15-1.block.md`,
+  `.agent/authored/f105-r15-1.md` and `.agent/last_block.md` all hash to
+  b0bbc7d6, both `cmp` runs exit 0, at 227 lines / 14333 bytes, 13 under D2's
+  cap. Application is proved disk to disk, not by retype: of the 64 lines the
+  range adds to `.agent/live_review.md`, 64 occur verbatim in the authored file
+  and 0 are missing, and the single removed line is exactly pair B's FROM, so
+  the rewrite landed where it was aimed and nowhere else. `.agent/plan.md`
+  equals its authored slice at block lines 155-208, sha256 4fb762f5 both sides.
+  Gates re-run by the reviewer with real exit codes: state contracts 4 passed /
+  47 deselected; `tests/docs/` 294 passed; canary `tests/cli/test_golden_path.py`
+  42 passed; integrity `passed=True`, `fail_count=0` over 5 checks;
+  `git status --porcelain` empty; `git worktree list` the primary alone; HEAD
+  equal to origin. Deviations 1, 2 and 5 ACCEPTED — the D15 handoff overage is
+  mandated content only, the `bash -c` exit-code transport was re-run directly
+  by the reviewer with identical results, and `.remedy-wt/` is ignored at
+  `.gitignore:235` with nothing tracked. Deviation 3 is R-0242's own declared
+  condition and stays with it. Deviation 4 is NOT waved through: a 54-line
+  `.agent/plan.md` breaks an AGENTS.md rule, and it is registered as R-0244. One
+  defect found, the reviewer's own. `LAST_REVIEWED_SHA` advances
+  73e159b7 -> ed5b2421.
+- R16: the round that ends the record-only stall — the R15 gate recorded, R-0244
+  registered, R-0243 amended with its chosen fix, DECISIONS F105 D4 and D5
+  written, and migration-order step 2,
+  `mission_compiler.py::build_mission_prompt`, moved onto the registry under a
+  new `tests/orchestration/test_mission_prompt_golden.py`. The mission manifest
+  does NOT reach call evidence this round: no production caller passes `on_call`
+  to `plan_mission` (`apps/cli/commands/mission_cmd.py:187`,
+  `packages/orchestration/gauntlet_runner.py:505`), so that seam is its own
+  later round, exactly as intake split across R11 and R12. R16's own gate is
+  owed at R17.
