@@ -122,6 +122,7 @@
   the real one, and a mismatch reads as an undeclared path until a round is
   spent disproving it. Fix: the next handoff derives every path count from
   `git diff --stat` at write time and names that command as its source. OPEN.
+  Landed: R-0235 — the R9 handoff derives every path count from git diff --stat.
 
 ## Steps
 
