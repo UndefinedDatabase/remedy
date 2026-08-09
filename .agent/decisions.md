@@ -3972,3 +3972,36 @@ when it does it declares the staleness window it is accepting, in its own
 entry.
 
 Reverse this decision by deleting this entry.
+
+## DECISION F105 D8 — the pre-emission block checklist (2026-08-09)
+
+Context: finding R-0250. Round 20's authored block carried four defects, every
+one of them mechanical and every one of them catchable by looking at the block's
+own bytes before sending it: it ran 471 lines against DECISION D5's 400-line
+cap; its `.agent/plan.md` replacement ran 56 lines against AGENTS.md's <50; one
+of its done-when gates required a grep to return 0 for a phrase the same block
+deliberately wrote into that same file; and one pair was declared APPEND when
+its TO edits the FROM line. The worker caught all four, declared all four, and
+worked around them correctly — the round was not damaged. What it cost was a
+round's worth of deviations spent proving reviewer mistakes, and the
+zero-gate defect was the fifth of its kind across F104 and F105.
+
+D8 — the four checks become a numbered checklist in
+docs/agents/planner_reviewer_prompt.md §3, run mechanically on a block's final
+bytes before it is emitted. Recurrence, not severity, is the argument: no single
+instance of these justifies a rule, and five instances of one of them do. The
+checks are cheap — three counts and one substring test — and they are the kind
+of thing a reviewer is certain it will remember and then does not.
+
+The alternative, a validator script that lints a block before emission, was
+rejected FOR NOW rather than on the merits. It would be strictly better, and it
+would also be production code written by the reviewer role to police the
+reviewer role, which the split workflow does not currently have a shape for. If
+the checklist proves insufficient, that script is the next move and this entry
+is where it should be argued.
+
+Scope: reviewer-authored blocks. It adds no obligation to workers and changes
+no verification tier. It is a pre-flight check on text the reviewer is about to
+send, nothing more.
+
+Reverse this decision by deleting this entry and the §3 checklist it installs.

@@ -166,6 +166,35 @@ end the response with:
   Handback:    completion report + rewrite .agent/handoff.md
   ──────────────────────────────────────────────────────────────
 
+- **Pre-emission block checklist (DECISION F105 D8, finding R-0250).** Run all
+  four checks mechanically, on the FINAL bytes, after the last edit, before any
+  block leaves the reviewer. Each one has already cost this repository a round.
+  1. **Size.** Count the block's lines. Over 400 (DECISION F105 D5) → split or
+     cut BEFORE emitting. A worker must save the block verbatim, so an oversize
+     block cannot be fixed downstream; it becomes a declared deviation on a
+     round that did nothing wrong.
+  2. **No self-counting gate.** A "must be 0" done-when may not count a string
+     that any TO slice in the same block writes into that same file. Check every
+     zero-gate against every TO that targets its file — including TOs that quote
+     retired text on purpose, which is exactly how the R-0250 instance arose.
+     Zero-gates over transport MARKER lines stay safe, because markers never
+     reach a target file.
+  3. **Cap-bounded replacements.** Count every authored full-replacement text
+     against its own file's cap before emission: `.agent/plan.md` under 50 lines
+     (AGENTS.md), `.agent/handoff.md` under 60 or carrying a DECISION D15
+     stated-cause line. A worker required to apply a slice byte for byte cannot
+     trim it, so an oversize replacement lands a live rule violation on disk and
+     the worker is right to declare it rather than fix it.
+  4. **Pair shape, verified not asserted.** Declare a pair APPEND only after
+     checking that the TO literally CONTAINS the FROM (§4.9). A TO that edits
+     the FROM line at all — dropping a trailing "OPEN.", rewrapping, changing
+     punctuation — is a REWRITE, and mislabelling it makes the worker prove the
+     wrong property.
+  Why this is on disk and not a habit: item 2 has recurred five times across
+  F104 and F105, and R20 hit all four items in one block. A check that lives
+  only in reviewer session memory is the A1 trap §0 names, and this list is the
+  standing counter-example to it.
+
 - Verification tiers (operator decision 2026-07-26):
   1. **Round gate** = ONLY the scoped verification command(s) you author in
      the step block's "Done when". The full suite is NOT part of round
