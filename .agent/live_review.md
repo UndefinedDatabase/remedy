@@ -5,7 +5,7 @@
 > round. Findings are authored here by the reviewer only. A worker marks a
 > landed fix `Landed: R-XXXX`; only reviewer-authored `Done:` text sets
 > Resolved (docs/agents/planner_reviewer_prompt.md §4.4).
-> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0233.
+> Branch: feature/f105-cache-optimal-prompt-ordering. Next free ID: R-0235.
 
 ## Findings
 
@@ -76,6 +76,23 @@
   costs more than one that is missing. Fix: correct the header to the true next
   free ID. OPEN.
   Landed: R-0232 — header corrected to the true next free ID.
+- R-0233 (Medium, F105 R7, reviewer-authored defect): the R7 step line invokes
+  docs/agents/planner_reviewer_prompt.md §4.13 to declare that R7 "has NO
+  on-disk gate entry of its own". §4.13 exempts the last round of a BRANCH, and
+  this branch continues through T003, T004, the integration gate and closure —
+  R7 ended a SESSION, which §4.13 does not cover. Left standing, the line tells
+  a later reviewer no gate is owed and "no repair round is opened to close it",
+  stranding R-0231 and R-0232 on `Landed:` lines forever, because §4.4 reserves
+  `Done:` for reviewer text. Fix: state why §4.13 does not apply here. OPEN.
+- R-0234 (Low, F105 R5 and R6, reviewer-authored defect): both the R5 and the R6
+  gate records cite `test_test_runner.py` by bare basename, but TWO files carry
+  that name — `tests/test_test_runner.py` (43 tests) and
+  `tests/orchestration/test_test_runner.py` (51 tests). Re-run as written, the
+  record selects the 43-test file, where the R7 gate's `-k` filter reports `43
+  deselected` and no tests run; this reviewer lost a run to exactly that. The
+  number 51 is real and belongs to the orchestration file, so only the citation
+  is wrong — but a gate record that cannot reproduce its own result reads as a
+  regression. Fix: cite the full path in both records. OPEN.
 
 ## Steps
 
