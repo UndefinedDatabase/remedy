@@ -5,8 +5,10 @@ complete builder/reviewer metadata.
 """
 from __future__ import annotations
 
+import inspect
 import json
 
+from packages.orchestration.intake import compose_intake_prompt, make_intake_call_recorder
 from packages.orchestration.prompt_trace import (
     build_trace_entry,
     build_trace_summary,
@@ -197,6 +199,76 @@ class TestPromptTraceCompleteness:
         )
         assert "sk-secret" not in entry.prompt_text_redacted
         assert "[REDACTED]" in entry.prompt_text_redacted
+
+
+# ---------------------------------------------------------------------------
+# F105 T003 site 1: the composed-prompt segment manifest in call evidence
+# ---------------------------------------------------------------------------
+
+
+class TestSegmentManifest:
+    def test_entry_without_a_composed_prompt_carries_no_manifest(self):
+        entry = build_trace_entry(prompt_text="plain prompt", role="builder")
+        assert entry.segment_manifest == []
+        assert entry.segment_manifest_chars == 0
+
+    def test_composed_prompt_fills_the_manifest_rows(self):
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text,
+            role="intake",
+            composed_prompt=composed,
+        )
+        assert [row["name"] for row in entry.segment_manifest] == [
+            "intake_system",
+            "intake_rules",
+            "intake_mission",
+        ]
+        assert [row["sha256"] for row in entry.segment_manifest] == [
+            m.sha256 for m in composed.manifest
+        ]
+        assert entry.segment_manifest_chars == len(composed.text)
+
+    def test_manifest_chars_fall_short_of_a_schema_wrapped_prompt(self):
+        """The gap is expected: DECISION F105 D3 leaves the schema tail
+        `run_structured_call` appends outside every builder UNREGISTERED, so the
+        manifest covers the composed base prompt only. Recording both numbers is
+        what makes that coverage gap visible instead of implied."""
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text + "\n\nSCHEMA TAIL",
+            role="intake",
+            composed_prompt=composed,
+        )
+        assert entry.segment_manifest_chars < entry.prompt_chars
+
+    def test_manifest_survives_the_jsonl_round_trip(self, tmp_path):
+        composed = compose_intake_prompt("demo mission")
+        entry = build_trace_entry(
+            prompt_text=composed.text,
+            role="intake",
+            composed_prompt=composed,
+        )
+        path = tmp_path / "trace.jsonl"
+        write_trace_jsonl([entry], path)
+        loaded = json.loads(path.read_text().strip())
+        assert loaded["segment_manifest"] == entry.segment_manifest
+        assert loaded["segment_manifest_chars"] == entry.segment_manifest_chars
+
+    def test_the_cli_recorder_passes_the_composed_prompt(self):
+        """Wiring guard: a manifest field the CLI never fills fails HERE."""
+        import apps.cli.commands.do_cmd as do_cmd
+
+        traces: list = []
+        composed = compose_intake_prompt("demo mission")
+        recorder = make_intake_call_recorder(
+            traces, composed, provider="ollama", provider_kind="ollama"
+        )
+        recorder(1, "ji1", False, composed.text)
+        assert len(traces) == 1
+        assert len(traces[0].segment_manifest) == 3
+
+        assert "make_intake_call_recorder" in inspect.getsource(do_cmd)
 
 
 # ---------------------------------------------------------------------------

@@ -187,7 +187,13 @@ def _cmd_do_mission(
         sys.exit(3)
 
     from packages.core.models import Job, RunState
-    from packages.orchestration.intake import heuristic_intake, make_provider_call_fn, run_intake
+    from packages.orchestration.intake import (
+        compose_intake_prompt,
+        heuristic_intake,
+        make_intake_call_recorder,
+        make_provider_call_fn,
+        run_intake,
+    )
     from packages.orchestration.job_runner import plan_job
     from packages.orchestration.storage import save_job
 
@@ -201,24 +207,17 @@ def _cmd_do_mission(
     else:
         call_fn = make_provider_call_fn()
         if call_fn is not None:
-            from packages.orchestration.prompt_trace import build_trace_entry
-
-            def _record_intake_call(
-                attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
-            ) -> None:
-                intake_traces.append(build_trace_entry(
-                    prompt_text=effective_prompt,
-                    role="intake",
+            intake_composed = compose_intake_prompt(mission)
+            intake_result = run_intake(
+                mission,
+                call_fn,
+                on_call=make_intake_call_recorder(
+                    intake_traces,
+                    intake_composed,
                     provider="ollama",
                     provider_kind="ollama",
-                    prompt_kind="intake-retry" if is_parse_retry else "intake",
-                    schema_v=schema_v,
-                    phase="intake-retry" if is_parse_retry else "intake",
-                    transport_attempt=attempt,
-                    is_transport_retry=False,
-                ))
-
-            intake_result = run_intake(mission, call_fn, on_call=_record_intake_call)
+                ),
+            )
             if intake_result.source == "heuristic":
                 intake_fallback_reason = "provider_error"
 

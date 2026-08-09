@@ -25,6 +25,7 @@ from packages.orchestration.prompt_segments import (
     SegmentStabilityRank,
     compose_prompt_segments,
 )
+from packages.orchestration.prompt_trace import build_trace_entry
 from packages.orchestration.schemas import JOB_INTAKE_SCHEMA_V, JobIntake, to_json_schema
 from packages.orchestration.structured_outputs import StructuredOutcome, run_structured_call
 
@@ -109,6 +110,42 @@ def compose_intake_prompt(mission: str) -> ComposedPrompt:
 def _build_intake_prompt(mission: str) -> str:
     """Build the intake prompt from mission text."""
     return compose_intake_prompt(mission).text
+
+
+# The recorder lives beside the composer, in this module, so the manifest and
+# the prompt it describes cannot drift apart: whoever changes intake composition
+# sees the evidence writer in the same file (F105 T003 site 1).
+def make_intake_call_recorder(
+    traces: list[Any],
+    composed: ComposedPrompt,
+    *,
+    provider: str = "",
+    provider_kind: str = "",
+) -> Callable[[int, str, bool, str], None]:
+    """Build the ``on_call`` recorder ``run_intake`` expects.
+
+    Every provider invocation appends one prompt trace entry to ``traces``,
+    carrying ``composed``'s segment manifest so call evidence records which
+    named segments produced the prompt.
+    """
+    def _record(
+        attempt: int, schema_v: str, is_parse_retry: bool, effective_prompt: str,
+    ) -> None:
+        kind = "intake-retry" if is_parse_retry else "intake"
+        traces.append(build_trace_entry(
+            prompt_text=effective_prompt,
+            role="intake",
+            provider=provider,
+            provider_kind=provider_kind,
+            prompt_kind=kind,
+            schema_v=schema_v,
+            phase=kind,
+            transport_attempt=attempt,
+            is_transport_retry=False,
+            composed_prompt=composed,
+        ))
+
+    return _record
 
 
 def _first_sentence(text: str) -> str:
