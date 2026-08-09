@@ -18,13 +18,15 @@ breach the limit, recording the arithmetic that justified the stop. The
 reactive check is unchanged — prediction never replaces the backstop.
 
 ## Current Step
-R6 — T003: display, docs and estimate labels. Every user-facing predicted number
-carries its `estimate_basis` label, pinned by a grep-style test; `remedy job
-budget` shows spent, remaining and the next-task expectation with that label.
-R6 also decides whether an ist-doc under `docs/` is owed for the job-budget stop
-path. T001 and T002 are complete and reviewed: the predictive stop is wired at
-the live safe point and BOTH the predictive and the reactive cost stop reach
-`JOB_STOPPED` for real.
+R6 — T003 COMPLETE, awaiting review. `remedy job budget` now prints
+`max_cost_usd`, spent, remaining, the live next-task expectation with its
+`estimate_basis` label and arithmetic, and any recorded stop prediction; `--json`
+gained `prediction` and `recorded_prediction`. The next-task selection rule was
+extracted to `select_next_predictable_task` and pinned against the live safe
+point. The basis label is pinned grep-style at the engine and at the surface.
+DECISION F104 D8 settled the open docs question: the ist-doc
+`docs/system/job-budget-enforcement-v0.md` landed and is registered in
+`docs/README.md`. T001 and T002 remain complete and reviewed.
 
 ## Next Steps
 - R7 — integration gate per docs/agents/integration_gate.md.
@@ -34,15 +36,14 @@ the live safe point and BOTH the predictive and the reactive cost stop reach
 ## Risks
 - Cost is NULLABLE by design (P6): the ledger stores NULL for an unpriced call
   and nothing may render that as a measured zero. Every figure keeps the None.
-- Predictions come from documented class defaults, not calibration.
-  `estimate_basis=class_default` is an acceptance criterion, not polish.
 - The band estimate is a FLOOR (DECISION F104 D6): it can only under-predict,
   which is why the reactive backstop must stay exactly as it is.
 - R-0221 costs the integration gate seven phantom base-only failures: attribute
   them, do not chase them.
+- R6 taught the READ side of `remedy job budget` to query the F103 ledger, which
+  the persisted actuals record cannot carry. It is a read-only `query_cost` that
+  never creates a ledger, and it is swallowed — but it is new I/O in a command
+  the catalog marks `read_only`, so the integration gate should see it.
 - The manifest budget schema is SHARED F012 surface. R5 widened it by exactly
   one field; any further budget field owes the same run-manifest gate
   (tests/orchestration/test_run_manifest*.py) before it is believed.
-- No ist-doc under `docs/` describes the job-budget stop path or its reasons,
-  so `predicted_budget_exhausted:<limit>` lives only in the feature file and
-  the code.

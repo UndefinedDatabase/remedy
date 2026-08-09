@@ -3771,3 +3771,24 @@ round would not run.
 
 Reverse this decision by renumbering the remaining rounds; nothing depends on the
 numbering.
+
+## DECISION F104 D8 — an ist-doc IS owed for the job-budget stop path (2026-08-09)
+
+Context: R6 was chartered to decide whether `docs/` owes a document for the job-budget
+stop path. Nothing under `docs/system/` or `docs/guides/` mentions `max_cost_usd`,
+`max_total_tokens` or `remedy job budget` — a grep for all three returns nothing. The
+stop reason `predicted_budget_exhausted:max_cost_usd` therefore lives only in the
+feature file, which is the TARGET plan, and in the code.
+
+D8 — F104 writes `docs/system/job-budget-enforcement-v0.md` and registers it in
+`docs/README.md`. AGENTS.md Documentation Updates requires `docs/` to be updated when a
+feature introduces behavior that is not yet documented, and a limit that silently kills
+a running job is exactly that. The doc is scoped to what F104 built plus the F018 limits
+it extends — it does not attempt to document all of F018.
+
+Alternative considered: extend `docs/system/run-contract-v1.md`. Rejected — the budgets
+named there are the F011-era loop/test/runtime caps of a single run contract, a
+different concept from per-job budget limits, and merging them would make one doc
+describe two unrelated mechanisms.
+
+Reverse this decision by deleting the doc and its two `docs/README.md` rows.

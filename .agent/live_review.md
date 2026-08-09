@@ -133,5 +133,8 @@
   re-run by the reviewer (261 with ZERO xfailed / 163 / 294 / 42 / 124) and the
   revert-the-allowlist red-proof run in a disposable worktree: 11 RED, both
   terminal-state tests among them.
-- R6: T003 — display and docs; every user-facing predicted number carries its
-  `estimate_basis` label, pinned by a grep-style test. NOT STARTED.
+- R6: T003 — display and docs. `remedy job budget` gained the money limit, spent,
+  remaining, the live next-task expectation with its `estimate_basis` label and the
+  recorded stop arithmetic; the next-task selection rule was extracted to one helper and
+  pinned against the live safe point; the basis label is pinned grep-style; the ist-doc
+  `docs/system/job-budget-enforcement-v0.md` landed per DECISION F104 D8. Awaiting review.
