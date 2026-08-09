@@ -15,25 +15,18 @@ Prompt CONTENT does not change; only its composition.
 ## Current Step
 T001 and T002 are DONE and gated. T003 counts in the MIGRATION ORDER of
 `.agent/t003_inventory.md`, never that file's catalogue "Site N" headings
-(R-0241). Migration-order steps 1 (`intake.py`), 2 (`mission_compiler.py`),
-3 (`flight_plan.py`) and 4 (`orchestrator_loop.py` — BOTH
-`build_orchestrator_prompt` and its system half) are COMPLETE and GATED, each
-with its own golden. `LAST_REVIEWED_SHA` is 9cb128d7. R21 is the session
-terminator: it changed no production file, so only its state and docs are
-ungated. Open findings: R-0221, R-0239, R-0246, R-0247. No PR; one is created
-at CLOSURE.
+(R-0241). Migration-order steps 1-4 are COMPLETE and GATED, each with its own
+golden. R21 is GATED and `LAST_REVIEWED_SHA` is 54049e6b. R22 records that
+gate, settles the schema-tail question as DECISION F105 D9 with a test that
+proves the strict-prefix claim, and takes migration-order step 5,
+`pingpong_loop.py::_build_builder_prompt`. Open findings: R-0221, R-0239,
+R-0246, R-0247. No PR; one is created at CLOSURE.
 
 ## Next Steps
-- R22 gates R21 FIRST (state + docs only, no red-proof owed), then takes
-  migration-order step 5, `pingpong_loop.py::_build_builder_prompt` — twelve
-  conditional parts and a `"\n".join` whose blank-line runs must be reproduced
-  exactly. Highest-risk site so far; give it a fresh session.
-- Then step 6, `pingpong_loop.py::_build_reviewer_prompt`, last and highest
-  content-equality risk of the six.
-- BEFORE step 5, decide whether the schema tail from `build_schema_prompt` /
-  `native_schema_prompt` becomes a registered rank-4 segment. Until then every
-  manifest for sites 1-4 describes a strict prefix of the bytes actually sent.
-- ONE later round wires `on_call` for all three sites lacking call evidence:
+- R23 gates R22, then takes step 6, `_build_reviewer_prompt` — last of the six
+  and the highest content-equality risk: two mutually exclusive branches and
+  three reviewer-role strings that all reach evidence.
+- ONE later round wires `on_call` for the three sites lacking call evidence:
   `mission_cmd.py:362` (orchestrator, deferred by R20), `mission_cmd.py:187` +
   `gauntlet_runner.py:505` (mission), `do_cmd.py:253` + `:2860` (plan).
 - Fix R-0246 in the round that next touches `mission_compiler.py`.
@@ -46,5 +39,7 @@ at CLOSURE.
 ## Risks
 - R-0221 stays open and will cost the integration gate phantom base-only
   failures.
-- Four of the six migrated builders still reach no call evidence, so F105's
-  every-role acceptance line is met for intake only until that round lands.
+- Step 5 crosses two rank boundaries, so its golden is equal-modulo-ordering,
+  never byte-exact. The reviewer proved the decomposition byte-exact in
+  pre-migration order over all 64 option combinations before authoring the
+  block, so a mismatch there is a real regression and not a bad spec.
