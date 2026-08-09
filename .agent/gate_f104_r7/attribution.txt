@@ -1,0 +1,129 @@
+F104 R7 — INTEGRATION GATE (docs/agents/integration_gate.md)
+============================================================
+Branch : feature/f104-hard-budget-enforcement @ d3fe8011
+Base   : main @ 94f69b0f (git merge-base main HEAD)
+Date   : 2026-08-09
+Evidence dir: .agent/gate_f104_r7/ (.txt only — *.log is gitignored and the
+review-zip guard rejects any \.log$ member, R-0169)
+
+1. BRANCH RUN                                       -> branch_run.txt
+   cmd  : REMEDY_UI_NO_AUTO_BUILD=1 python3 -m pytest -n auto -q
+   cwd  : repo root; the log was written to .remedy-wt/scratch_f104_r7/,
+          OUTSIDE the tracked tree, and copied here after the run exited
+          (R-0176: a log growing inside the worktree changes the digest
+          mid-run and fails the manifest-identity ids as false positives)
+   exit : 0
+   wall : 121 s (pytest reports 120.14s)
+   tail : 16305 passed, 19 skipped in 120.14s (0:02:00)
+   FAILED lines: 0   (branch_failed.txt is a 0-byte file)
+   ERROR  lines: 0
+
+2. BASE RUN                                         -> base_run.txt
+   worktree: .remedy-wt/base_gate_f104_r7 created with
+             `git worktree add -b tmp/base-gate <path> 94f69b0f` — on a
+             throwaway BRANCH, never detached, because the self-dogfood
+             branch guard refuses a detached HEAD by design (DECISION D3,
+             F053 R2)
+   parity  : apps/ui/node_modules + apps/ui/dist COPIED, never symlinked;
+             REMEDY_UI_NO_AUTO_BUILD=1 set and NOT trusted alone; dist
+             content hash verified before and after -> dist_hashes.txt
+   exit : 1
+   wall : 123 s (pytest reports 122.66s)
+   tail : 6 failed, 16125 passed, 19 skipped in 122.66s (0:02:02)
+   ERROR lines: 6 — all six are the captured-stderr banner
+          "ERROR: React UI not built." from ui_server.py, one per failing
+          id. pytest reported no error OUTCOME; the summary has no error
+          count.
+   cleanup : `git worktree remove --force`, `git worktree prune`,
+             `git branch -D tmp/base-gate`, each exit 0; `git worktree list`
+             then shows only the primary checkout and `git branch --list
+             'tmp/*'` is empty -> worktree_cleanup.txt
+
+3. COMPARE
+   comm -13 base_failed.txt branch_failed.txt  (BRANCH-ONLY) : 0 ids
+   comm -23 base_failed.txt branch_failed.txt  (base-only)   : 6 ids
+
+4. ATTRIBUTION — every id on BOTH lists
+
+   BRANCH-ONLY (comm -13): ZERO ids.
+   There is no branch_serial_rerun.txt because there is nothing to re-run.
+   comm_branch_only_failures.txt is a 0-byte file and that empty file is
+   the evidence. Nothing to classify as xdist-flake, nothing to reproduce
+   at base, and therefore no reproducible branch-only failure coupled to
+   F104 code — the BLOCKER rule of step 4 does not fire.
+
+   | # | branch-only node id | serial re-run | classification |
+   |---|---------------------|---------------|----------------|
+   | — | (none)              | n/a           | n/a            |
+
+   BASE-ONLY (comm -23): 6 ids, ONE shared cause, attributed by direct
+   evidence with a positive AND a negative control -> base_serial_rerun.txt
+
+   All six are tests/ui_server/test_live_state.py::TestUIServerIntegration::
+
+   | # | node id                          | serial re-run at base        | classification |
+   |---|----------------------------------|------------------------------|----------------|
+   | 1 | test_server_starts_and_writes_info | PASS (fresh dist) / FAIL (stale dist) | environment: R-0221 dist-mtime class |
+   | 2 | test_url_is_localhost_only         | PASS (fresh dist) / FAIL (stale dist) | environment: R-0221 dist-mtime class |
+   | 3 | test_api_invalid_token_403         | PASS (fresh dist) / FAIL (stale dist) | environment: R-0221 dist-mtime class |
+   | 4 | test_api_missing_job_404           | PASS (fresh dist) / FAIL (stale dist) | environment: R-0221 dist-mtime class |
+   | 5 | test_put_rejected                  | PASS (fresh dist) / FAIL (stale dist) | environment: R-0221 dist-mtime class |
+   | 6 | test_dashboard_no_raw_leaks        | PASS (fresh dist) / FAIL (stale dist) | environment: R-0221 dist-mtime class |
+
+   MECHANISM, read out of the source, not assumed:
+   _frontend_is_stale() (packages/orchestration/ui_server.py:2748) compares
+   the mtime of apps/ui/dist/index.html against every file under
+   apps/ui/src. `git worktree add` writes the source tree with mtime =
+   checkout time (03:14:06) while `cp -a` PRESERVES the copied dist mtime
+   (03:12:10), so a freshly created base worktree is stale BY CONSTRUCTION.
+   Stale -> _load_frontend() calls _auto_build_frontend() ->
+   REMEDY_UI_NO_AUTO_BUILD=1 makes it return None -> the loud branch prints
+   "ERROR: React UI not built." and calls sys.exit(1). Each of these six
+   tests starts its own server in a daemon thread, so that SystemExit kills
+   the thread, the info file is never written, and the test fails with
+   "Server did not start in time". That exact stderr is captured verbatim
+   in base_run.txt.
+
+   POSITIVE CONTROL (base_serial_rerun.txt PASS 1): after the base run —
+   by which time R-0221's own test had rebuilt dist inside the worktree at
+   03:15:20 — all six pass serially at base, 6 passed in 0.86s.
+
+   NEGATIVE CONTROL (PASS 2), which is what makes this evidence rather than
+   a story: pushing the dist mtimes BACK behind apps/ui/src, changing NOT
+   ONE BYTE (aggregate content hash fb68a729… identical), reproduces all
+   six at base, each with "ERROR: React UI not built." and "Server did not
+   start in time" — 6 failed in 30.44s.
+
+   REVERSAL (PASS 3): restoring the mtimes ahead of apps/ui/src, same
+   bytes, same hash fb68a729…, makes all six pass again — 6 passed in
+   0.83s. Mtime alone flips them in both directions.
+
+   NOT THE FEATURE: no F104 file is on this path. F104 touches
+   packages/core/models.py (JobBudgets), packages/orchestration/
+   budget_guard.py, budget_resolution.py, pingpong_job.py, run_manifest.py
+   and apps/cli/commands/job.py. None of them is imported by ui_server's
+   frontend loader.
+
+   BLOCK-PREDICTED AND CONFIRMED: the R7 step block predicted "roughly
+   SEVEN phantom base-only failures" from R-0221. Six materialised, not
+   seven — the seventh id of the F103 R5 run
+   (TestUIServerIntegration::test_brain_endpoint) did not fail this time,
+   and one id absent from the F103 list (test_url_is_localhost_only) did.
+   The class and the cause are identical; which members of the class land
+   on the wrong side of the mid-run rebuild depends on xdist scheduling.
+   No comm -23 id is left unattributed, so none of them counts as a genuine
+   base failure under integration_gate step 3.
+
+5. VERDICT INPUT (the verdict itself is the reviewer's — step 5)
+   - Zero branch-only failures. Nothing blocks under the step-4 rule.
+   - All 6 base-only ids attributed by direct evidence to one pre-existing
+     environment cause, with a controlled reproduction and reversal. Well
+     under the 10-id flake-debt threshold.
+   - Wall clock: 121 s branch, 123 s base — both far under the ~5 min
+     budget note, so no perf pass is indicated.
+   - Counts: branch 16305 passed / 19 skipped; base 16125 passed + 6 failed
+     / 19 skipped = 16131 non-skipped. 16305 - 16131 = 174 tests that exist
+     only on the branch — F104's own additions across R1-R7.
+   - R-0221 is unchanged and untouched. Attributed, not chased.
+   - Open findings after this round: 1 (R-0221). R-0227 was fixed this
+     round; only the reviewer's own text may mark it Resolved.

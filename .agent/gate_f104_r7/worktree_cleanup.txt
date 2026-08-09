@@ -1,0 +1,16 @@
+$ git worktree remove --force .remedy-wt/base_gate_f104_r7
+exit=0
+
+$ git worktree prune
+exit=0
+
+$ git branch -D tmp/base-gate
+Deleted branch tmp/base-gate (was 94f69b0f).
+exit=0
+
+$ git worktree list
+/home/decodeux/Repos/remedy  d3fe8011 [feature/f104-hard-budget-enforcement]
+exit=0
+
+$ git branch --list tmp/*
+exit=0 (empty output above = no tmp branch left)

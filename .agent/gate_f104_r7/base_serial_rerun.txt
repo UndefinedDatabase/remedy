@@ -1,0 +1,48 @@
+=== PASS 1 — POSITIVE CONTROL: serial re-run of the six base-only ids, straight after the base run ===
+[HEADER CORRECTED AFTER THE FACT. The command printed "NEGATIVE CONTROL ...
+ dist mtimes UNCHANGED (still older than apps/ui/src)"; that label was wrong
+ and is corrected here. Nothing else in this file was edited: no command was
+ re-run and no number was touched. The two mtimes printed below refute the
+ original label on their own — dist (03:15:20) is NEWER than the newest src
+ file (epoch 1786238046 = 2026-08-09 03:14:06), because R-0221's own test had
+ rebuilt dist inside the base worktree during the base run. Not stale, so the
+ six pass. That makes this the POSITIVE control.]
+2026-08-09 03:15:20.388362289 +0200 apps/ui/dist/index.html
+1786238046.2532408130 apps/ui/src/types/react-force-graph-2d.d.ts
+......                                                                   [100%]
+6 passed in 0.86s
+SERIAL_RERUN_1_EXIT=0
+
+=== PASS 2 — NEGATIVE CONTROL: dist mtimes pushed BACK behind apps/ui/src (not one byte changed), same six ids, serial ===
+2026-08-09 03:12:10.000000000 +0200 apps/ui/dist/index.html
+2026-08-09 03:14:06.2532408130 apps/ui/src/types/react-force-graph-2d.d.ts
+fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  -
+
+tests/ui_server/test_live_state.py:165: Failed
+----------------------------- Captured stderr call -----------------------------
+
+ERROR: React UI not built.
+
+  To fix, run:
+    cd apps/ui && npm install && npm run build
+
+  Or check npm is installed and retry.
+  Disable auto-build: REMEDY_UI_NO_AUTO_BUILD=1
+
+=========================== short test summary info ============================
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_server_starts_and_writes_info
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_url_is_localhost_only
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_invalid_token_403
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_api_missing_job_404
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_put_rejected
+FAILED tests/ui_server/test_live_state.py::TestUIServerIntegration::test_dashboard_no_raw_leaks
+6 failed in 30.44s
+
+=== PASS 3 — REVERSAL: dist mtimes restored ahead of apps/ui/src, same six ids, same bytes ===
+fb68a7293502c79b8ece61d154f5752100a16da1a08a481a7a4c1d79a5a503c0  -
+......                                                                   [100%]
+6 passed in 0.83s
+
+=== WHY THE BRANCH SIDE NEVER SEES THESE: primary checkout src mtimes ===
+2026-06-29 19:39:48.0429603870 apps/ui/src/components/shell/RemedyShell.tsx
+2026-08-09 03:12:10.302479006 +0200 apps/ui/dist/index.html
