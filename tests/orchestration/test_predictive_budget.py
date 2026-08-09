@@ -605,20 +605,6 @@ class _CountingProvider:
         return self._inner.review(prompt, **kwargs)
 
 
-_STOPPED_STATE_BLOCKER = (
-    "BLOCKED by a pre-existing defect that is NOT this round's change set: "
-    "``run_manifest._BUDGET_ALLOWED_KEYS`` is a CLOSED schema that F104 T001 "
-    "never extended, so any job carrying ``max_cost_usd`` fails its F012 "
-    "manifest write with \"manifest.budgets has unknown keys: ['max_cost_usd']\". "
-    "On the stop path that raises StopFinalizationError inside ``_stop_job`` "
-    "AFTER the stop reason and source are set but BEFORE the JOB_STOPPED "
-    "checkpoint, so the job is left RUNNING. It reproduces with no predictive "
-    "config at all and with the predictive path fully inert, so it is "
-    "independent of this round. Reported in the R4 handback; strict=True so "
-    "this flips to a failure the moment the allowlist is fixed."
-)
-
-
 class TestPredictiveStopAtTheLiveDispatchSafePoint:
     """F104 acceptance, driven through the REAL ``run_job``.
 
@@ -627,8 +613,11 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
     the stop reason, the arithmetic persisted) are pinned against a real run
     with a real safe point, a real ``_stop_job`` and real F103 ledger rows.
 
-    The terminal JOB_STOPPED state is asserted separately and currently xfails:
-    see ``_STOPPED_STATE_BLOCKER``.
+    The terminal JOB_STOPPED state is asserted separately, for BOTH cost stops.
+    That assertion is R-0226's repair: until R5 this file stopped at the stop
+    SIGNAL, which cannot tell a finalized stop from one that raises three frames
+    later — and R-0225 was exactly such a raise (the F012 manifest write rejected
+    `max_cost_usd`, leaving the job RUNNING with the stop request pending).
     """
 
     def _run(self, monkeypatch, repo, *, budgets, seeded_cost=None,
@@ -742,8 +731,7 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
         assert builder.build_calls >= 1
         assert all(t.status == TASK_PENDING for t in done.tasks)
 
-    # -- the terminal state, currently blocked ----------------------------
-    @pytest.mark.xfail(strict=True, reason=_STOPPED_STATE_BLOCKER)
+    # -- the terminal state: the stop must FINALIZE, not just be signalled --
     def test_a_predictive_stop_reaches_the_stopped_state(
             self, isolate_data_root, demo_repo, monkeypatch):
         from packages.orchestration.pingpong_job import JOB_STOPPED
@@ -754,6 +742,34 @@ class TestPredictiveStopAtTheLiveDispatchSafePoint:
             seeded_cost=0.95,
         )
         assert done.status == JOB_STOPPED
+        assert done.stop_reason == "predicted_budget_exhausted:max_cost_usd"
+        # R-0225: the F012 manifest write and the stop recording both have to
+        # SUCCEED for the checkpoint to be reached. An empty error on each is
+        # what distinguishes a finalized stop from a job left running.
+        assert done.run_manifest_error == ""
+        assert done.stop_error == ""
+
+    def test_a_reactive_cost_stop_reaches_the_stopped_state(
+            self, isolate_data_root, demo_repo, monkeypatch):
+        # R-0226: the REACTIVE cost stop that R2 built had no terminal-state pin
+        # at all, which is how R-0225 survived two reviewed rounds. No price
+        # basis is configured, so the predictive path is inert (DECISION F104 D4)
+        # and only the backstop can stop this job: $5.00 already spent against a
+        # $1.00 limit, before a single task is dispatched.
+        from packages.orchestration.pingpong_job import JOB_STOPPED
+        assert not (demo_repo / "remedy.toml").exists()
+        done, builder, _r = self._run(
+            monkeypatch, demo_repo,
+            budgets={"max_cost_usd": 1.00},
+            seeded_cost=5.00,
+        )
+        assert done.status == JOB_STOPPED
+        assert done.stop_reason == "budget_exhausted:max_cost_usd"
+        assert done.run_manifest_error == ""
+        assert done.stop_error == ""
+        # The predictive path really was inert — this is the backstop's stop.
+        assert done.budget_prediction is None
+        assert builder.build_calls == 0
 
     # -- REGRESSION: the inert paths --------------------------------------
     def test_without_a_cost_limit_nothing_is_predicted(
