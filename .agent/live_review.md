@@ -151,6 +151,10 @@
   which rounds were gated. Registered here rather than swept into
   `.agent/candidates.md` because the correction is one reviewer-authored entry in
   the same file and the branch has not merged into `main` yet.
+  Done: R-0228 — fixed in R10: the R4 line now reads PASS and names R-0225 and
+  R-0226 as the findings that review produced. Reviewer-verified from the diff
+  itself — after the repair commit the stale marker occurs zero times in this file,
+  and the R4 entry is the only entry that commit changes.
 
 ## Steps
 
@@ -168,7 +172,9 @@
   task-dispatch safe point with the `predicted_budget_exhausted:max_cost_usd`
   reason and the persisted `JobPlan.budget_prediction` arithmetic, both
   acceptance fixtures driven through the real `run_job`, the two inert-path
-  regressions and the A9 seam pin. Awaiting review. The worker reports a
+  regressions and the A9 seam pin. PASS — that review is what produced R-0225 and
+  R-0226; the stale not-yet-reviewed marker this line carried until R10 is corrected
+  as R-0228. The worker reports a
   pre-existing blocker it did not fix: `run_manifest._BUDGET_ALLOWED_KEYS`
   rejects `max_cost_usd`, so a budget stop cannot reach JOB_STOPPED.
 - R5: repair round — fix R-0225 (the manifest budget allowlist) and R-0226
