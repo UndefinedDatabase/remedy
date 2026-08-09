@@ -1013,3 +1013,375 @@ class TestHonestBudgetDisplay:
         rendered = _json.dumps(out)
         parsed = _json.loads(rendered)
         assert parsed["budgets"] is None
+
+
+# ---------------------------------------------------------------------------
+# F104 T003 — what `remedy job budget` actually PRINTS.
+#
+# These drive the real `_cmd_job_budget` and read its output through capsys.
+# `TestHonestBudgetDisplay` above builds its own dict and asserts on that, so it
+# proves nothing about the command; this class is deliberately not shaped like
+# it. The older class is kept because it still documents the F018
+# no-invented-zeros intent that these tests enforce against the real command.
+# ---------------------------------------------------------------------------
+
+_BUDGET_CLI_JOB = """\
+# Job: Budget Display
+
+## Task 1
+Add a helper module.
+
+Acceptance:
+- module exists
+
+## Task 2
+Add a second module.
+
+Acceptance:
+- module exists
+"""
+
+_CLI_LEDGER_PROJECT_ID = "99999999-8888-7777-6666-555555555555"
+
+
+@pytest.fixture
+def budget_cli_repo(tmp_path, monkeypatch):
+    """An isolated data root plus a repo directory the job can point at."""
+    data_dir = tmp_path / "remedy_data"
+    data_dir.mkdir()
+    monkeypatch.setenv("REMEDY_DATA_DIR", str(data_dir))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# demo\n")
+    return repo
+
+
+def _cli_arm_ledger(monkeypatch):
+    """Point the CLI's ledger read at the seeded project, as production would.
+
+    Only the registry resolver is stubbed — the same seam
+    ``tests/orchestration/test_predictive_budget.py`` stubs, and for the same
+    reason: the production resolver needs a registered git repo. Everything
+    downstream of it is production code.
+    """
+    from packages.orchestration import job_evidence as je
+    monkeypatch.setattr(
+        je, "_resolve_job_ledger_project_id", lambda job: _CLI_LEDGER_PROJECT_ID)
+
+
+def _cli_record_call(job_id, *, call_id, cost):
+    """One ledger row. ``cost=None`` records an UNPRICED call, never a zero."""
+    from packages.orchestration.token_ledger import (
+        COST_BASIS_PROVIDER_REPORTED,
+        COST_BASIS_UNKNOWN,
+        CallRecord,
+        record_call,
+    )
+    assert record_call(
+        CallRecord(
+            call_id=call_id,
+            job_id=job_id,
+            ts_utc="2026-08-09T10:00:00+00:00",
+            cost_usd=cost,
+            cost_basis=(
+                COST_BASIS_UNKNOWN if cost is None else COST_BASIS_PROVIDER_REPORTED),
+        ),
+        project_id=_CLI_LEDGER_PROJECT_ID,
+    ) is True
+
+
+def _save_budget_job(repo, *, budgets, provider_calls=2, prediction=None):
+    """Persist a two-task JobPlan with budgets and persisted actuals."""
+    from packages.orchestration.pingpong_job import parse_job_file, save_job_plan
+    job = parse_job_file(_BUDGET_CLI_JOB, str(repo))
+    job.budgets = dict(budgets)
+    # Firmly in the past: BudgetCounters refuses a started_at after "now", so a
+    # same-day timestamp would make these tests depend on the wall clock.
+    job.first_running_at = "2026-01-01T09:00:00+00:00"
+    job.budget_actuals = {
+        "schema_version": "1.0.0",
+        "provider_call_count": provider_calls,
+        "actual_call_count": provider_calls,
+        "unmeasured_call_count": 0,
+        "total_tokens": 1000 * provider_calls,
+        "actual_sources": ["pingpong_live"] if provider_calls else [],
+        "started_at": job.first_running_at,
+    }
+    if prediction is not None:
+        job.budget_prediction = dict(prediction)
+    save_job_plan(job)
+    return job
+
+
+def _configure_cli_price_basis(repo, *, price_basis):
+    (repo / "remedy.toml").write_text(
+        f"[remedy.budget]\nprice_basis_usd_per_1k_tokens = {price_basis}\n")
+
+
+def _line_value(lines, label):
+    """The value printed after ``label:``, or None if the label never appeared."""
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(label + ":"):
+            return stripped[len(label) + 1:].strip()
+    return None
+
+
+class TestJobBudgetCliRendersPredictions:
+    """F104 T003: the real command, its real stdout, and its real JSON."""
+
+    def _run(self, job_id, *, json_output=False):
+        from apps.cli.commands.job import _cmd_job_budget
+        _cmd_job_budget(job_id, json_output=json_output)
+
+    def _text(self, job_id, capsys):
+        self._run(job_id)
+        return capsys.readouterr().out
+
+    def _json(self, job_id, capsys):
+        import json as _json
+        self._run(job_id, json_output=True)
+        return _json.loads(capsys.readouterr().out)
+
+    # -- (a) the money limit is printed at all ----------------------------
+    def test_the_money_limit_appears_in_the_text_output(self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        out = self._text(job.job_id, capsys)
+        assert "max_cost_usd:" in out
+        assert "$2.0000" in out
+
+    def test_the_money_limit_is_printed_between_tokens_and_wall_clock(
+            self, budget_cli_repo, capsys):
+        # _LIMIT_ORDER position: after max_total_tokens, before wall clock.
+        job = _save_budget_job(budget_cli_repo, budgets={
+            "max_total_tokens": 100000, "max_cost_usd": 2.0,
+            "max_wall_clock_minutes": 30})
+        lines = self._text(job.job_id, capsys).splitlines()
+        idx = {}
+        for i, line in enumerate(lines):
+            for key in ("max_total_tokens", "max_cost_usd", "max_wall_clock_minutes"):
+                if line.strip().startswith(key + ":"):
+                    idx[key] = i
+        assert idx["max_total_tokens"] < idx["max_cost_usd"] < idx["max_wall_clock_minutes"]
+
+    # -- (b) spent / remaining -------------------------------------------
+    def test_a_priced_job_renders_spent_and_remaining(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent") == "$0.6000"
+        assert _line_value(lines, "remaining") == "$1.4000"
+
+    def test_an_unpriced_job_renders_not_measured_and_never_a_zero(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # P6: nothing reported a price, so the remainder is UNKNOWN. Rendering
+        # it as $0.0000 would claim a measurement that does not exist.
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-u", cost=None)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent") == "not-measured"
+        assert _line_value(lines, "remaining") == "not-measured"
+        assert _line_value(lines, "remaining") != "$0.0000"
+
+    def test_a_job_with_no_ledger_at_all_still_says_not_measured(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "remaining") == "not-measured"
+
+    def test_a_partly_unpriced_job_renders_remaining_as_a_ceiling(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # The spend is a FLOOR (>=), so what is left is a CEILING (<=).
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-b", cost=None)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent").startswith(">= $0.6000")
+        assert _line_value(lines, "remaining") == "<= $1.4000"
+
+    def test_remaining_is_floored_at_zero_when_the_limit_is_overspent(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # A MEASURED overspend: $0.0000 here is a real measurement, not an
+        # invented one, which is exactly why the unmeasured case says so instead.
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=5.0)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "remaining") == "$0.0000"
+
+    def test_a_job_without_a_money_limit_prints_no_spent_line(
+            self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={"max_total_tokens": 1000})
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "spent") is None
+        assert _line_value(lines, "remaining") is None
+        assert _line_value(lines, "next_task_expected") is None
+
+    # -- (c) the next-task expectation ------------------------------------
+    def test_the_next_task_expectation_renders_with_its_basis_label(
+            self, budget_cli_repo, capsys, monkeypatch):
+        from packages.orchestration.budget_guard import VALID_ESTIMATE_BASES
+        _cli_arm_ledger(monkeypatch)
+        _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
+        lines = self._text(job.job_id, capsys).splitlines()
+        # 8000-token LOW class default x $0.01/1k = $0.0800.
+        assert _line_value(lines, "next_task_expected") == "$0.0800"
+        assert _line_value(lines, "estimate_basis") == "class_default"
+        assert _line_value(lines, "estimate_basis") in VALID_ESTIMATE_BASES
+        assert "basis=class_default" in _line_value(lines, "arithmetic")
+
+    def test_with_no_price_basis_the_expectation_is_not_measured_not_zero(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        assert not (budget_cli_repo / "remedy.toml").exists()
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "next_task_expected") == "not-measured"
+        assert _line_value(lines, "estimate_basis") == "no_price_basis"
+
+    def test_a_job_with_no_pending_task_says_so_instead_of_predicting(
+            self, budget_cli_repo, capsys, monkeypatch):
+        from packages.orchestration.pingpong_job import (
+            TASK_APPLIED,
+            load_job_plan,
+            save_job_plan,
+        )
+        _cli_arm_ledger(monkeypatch)
+        _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        reloaded = load_job_plan(job.job_id)
+        for t in reloaded.tasks:
+            t.status = TASK_APPLIED
+        save_job_plan(reloaded)
+        lines = self._text(job.job_id, capsys).splitlines()
+        assert _line_value(lines, "next_task_expected") == "none (no pending task)"
+        assert _line_value(lines, "estimate_basis") is None
+
+    def test_a_broken_prediction_degrades_to_one_unavailable_line(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # A read-only inspection command never dies because an estimate broke.
+        from packages.orchestration import budget_guard as _bg
+
+        def _boom(*a, **kw):
+            raise RuntimeError("prediction engine exploded")
+
+        _cli_arm_ledger(monkeypatch)
+        _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        monkeypatch.setattr(_bg, "predict_next_task_cost", _boom)
+        lines = self._text(job.job_id, capsys).splitlines()
+        value = _line_value(lines, "next_task_expected")
+        assert value.startswith("unavailable (")
+        assert "RuntimeError" in value
+        # The rest of the report still printed.
+        assert _line_value(lines, "max_cost_usd") == "$2.0000"
+
+    def test_the_command_does_not_mutate_the_persisted_job(
+            self, budget_cli_repo, capsys, monkeypatch):
+        # action_class="read_only" has to be true of the bytes on disk.
+        from packages.orchestration.data_paths import resolve_data_root
+        _cli_arm_ledger(monkeypatch)
+        _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
+        job_file = resolve_data_root() / "task_jobs" / job.job_id / "job.json"
+        before = job_file.read_bytes()
+        self._text(job.job_id, capsys)
+        assert job_file.read_bytes() == before
+
+    # -- (d) the recorded stop arithmetic ---------------------------------
+    def test_a_recorded_stop_prediction_surfaces_its_arithmetic(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(
+            budget_cli_repo, budgets={"max_cost_usd": 1.0},
+            prediction={
+                "would_breach": True,
+                "estimate_basis": "class_default",
+                "band": "low",
+                "expected_tokens": 8000,
+                "expected_cost_usd": 0.08,
+                "spent_cost_usd": 0.95,
+                "limit_usd": 1.0,
+                "arithmetic": "spent $0.9500 + expected $0.0800 "
+                              "(8000 tokens, band=low, basis=class_default) "
+                              "> limit $1.0000",
+            })
+        out = self._text(job.job_id, capsys)
+        assert "recorded stop prediction:" in out
+        assert "spent $0.9500 + expected $0.0800" in out
+        assert "basis=class_default" in out
+
+    def test_no_recorded_prediction_prints_no_recorded_heading(
+            self, budget_cli_repo, capsys):
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 1.0})
+        assert "recorded stop prediction:" not in self._text(job.job_id, capsys)
+
+    # -- JSON --------------------------------------------------------------
+    def test_json_carries_both_new_keys_and_keeps_every_old_one(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-a", cost=0.60)
+        data = self._json(job.job_id, capsys)
+        for key in ("job_id", "found_as", "limits", "counters", "evaluation",
+                    "status", "diagnostic", "prediction", "recorded_prediction"):
+            assert key in data, key
+        assert data["prediction"]["estimate_basis"] == "class_default"
+        assert data["recorded_prediction"] is None
+        # The old keys still mean what they meant.
+        assert data["found_as"] == "job_plan"
+        assert data["status"] == "evaluated"
+        assert data["limits"]["max_cost_usd"] == 2.0
+
+    def test_json_prediction_is_null_when_there_is_no_pending_task(
+            self, budget_cli_repo, capsys, monkeypatch):
+        from packages.orchestration.pingpong_job import (
+            TASK_APPLIED,
+            load_job_plan,
+            save_job_plan,
+        )
+        _cli_arm_ledger(monkeypatch)
+        _configure_cli_price_basis(budget_cli_repo, price_basis=0.01)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        reloaded = load_job_plan(job.job_id)
+        for t in reloaded.tasks:
+            t.status = TASK_APPLIED
+        save_job_plan(reloaded)
+        data = self._json(job.job_id, capsys)
+        assert data["prediction"] is None
+
+    def test_json_recorded_prediction_is_the_persisted_dict_verbatim(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        recorded = {
+            "would_breach": True,
+            "estimate_basis": "class_default_missing_band",
+            "band": "unknown",
+            "expected_tokens": 120000,
+            "expected_cost_usd": 1.2,
+            "spent_cost_usd": 0.5,
+            "limit_usd": 1.0,
+            "arithmetic": "spent $0.5000 + expected $1.2000 > limit $1.0000",
+        }
+        job = _save_budget_job(
+            budget_cli_repo, budgets={"max_cost_usd": 1.0}, prediction=recorded)
+        data = self._json(job.job_id, capsys)
+        assert data["recorded_prediction"] == recorded
+
+    def test_json_counters_keep_an_unpriced_cost_as_null(
+            self, budget_cli_repo, capsys, monkeypatch):
+        _cli_arm_ledger(monkeypatch)
+        job = _save_budget_job(budget_cli_repo, budgets={"max_cost_usd": 2.0})
+        _cli_record_call(job.job_id, call_id=f"{job.job_id}-u", cost=None)
+        data = self._json(job.job_id, capsys)
+        assert data["counters"]["measured_cost_usd"] is None
+        assert data["counters"]["unpriced_call_count"] == 1
