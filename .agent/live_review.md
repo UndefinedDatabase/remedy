@@ -56,6 +56,24 @@
   disposable worktree: reverting the except clause turns
   `test_non_utf8_document_raises_role_conventions_error` RED with
   `UnicodeDecodeError` at `role_conventions.py:107`.
+- R-0231 (Medium, F105 R6, reviewer-authored defect): the R5 gate record and the
+  R6 step line sit at the END of `## Findings` instead of under `## Steps`. The
+  cause is the reviewer's authoring, not the application — the R6 block appended
+  both bullets to PAIR B's TO text, whose target is a finding paragraph, and the
+  worker applied the bytes exactly as instructed and flagged the placement rather
+  than silently re-indenting. Every other gate record in this file lives under
+  `## Steps`, so the record that `LAST_REVIEWED_SHA` advanced to a8e9ab1f is
+  filed where no reader looks for it, and `## Findings` now reads as though it
+  holds two entries that are not findings. Fix: MOVE those bytes to the end of
+  `## Steps`, unchanged. OPEN.
+- R-0232 (Medium, F105 R6, reviewer-authored defect): this file's header still
+  reads `Next free ID: R-0229` while R-0229 and R-0230 are both issued and
+  resolved, and `.agent/plan.md` correctly says R-0231. A later reviewer that
+  trusts the header — the documented place to look — reissues a live ID onto a
+  different finding, and two findings then share one number in the permanent
+  record. That is the F056 candidate-loss class: a state file that lies quietly
+  costs more than one that is missing. Fix: correct the header to the true next
+  free ID. OPEN.
 - Reviewer gate on R5 (2026-08-09): PASS. Range `65d3c7b9..a8e9ab1f` read as a
   real diff — nine paths, none under `docs/`, `apps/` or `AGENTS.md`, so neither
   conventions document changed a byte in the repair round either. Every commit
