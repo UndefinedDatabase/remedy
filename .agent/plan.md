@@ -3,8 +3,8 @@
 Branch: feature/f104-hard-budget-enforcement, cut from main at 94f69b0f after
 PR #187 was merged at the Open PR Gate. Build mode: one-session self-drive
 (docs/agents/self_drive_protocol.md), one delegated worker per round.
-R1-R9 executed; R-0222 through R-0227 all Resolved with reviewer-authored text.
-Next free ID: R-0228.
+R1-R10 executed; F104 is closed and reviewer-gated through 8e651661.
+Next free finding ID: R-0229.
 
 ## Goal
 Budgets grow teeth and foresight. A money limit `max_cost_usd` joins the F018
@@ -15,25 +15,26 @@ breach the limit, recording the arithmetic that justified the stop. The
 reactive check is unchanged — prediction never replaces the backstop.
 
 ## Current Step
-R9 — DONE. The reviewer's gate on R6, R7 and R8 is now recorded in
-`.agent/live_review.md`: those three rounds read **PASS** rather than "Awaiting
-review", and a `Reviewer gate on R6+R7+R8` entry holds the evidence
-(range `549f2bac..b5a241c3` read as a real diff, gates A-D re-run with real
-exit codes, the closure zip re-hashed on disk, the R7 integration-gate evidence
-checked directly, one independent mutation red-proof). `LAST_REVIEWED_SHA`
-advances 549f2bac -> b5a241c3. The stale "seven phantom base-only failures"
-count inside the carried finding R-0221 now reads "six or seven" with both
-measurements attributed. No code, test, doc or `docs/roadmap/STATUS.md` byte
-changed this round — F104 stays accepted `[x]`.
+R10 — DONE. R9 cleared the stale "Awaiting review" markers on R6 and R7 but
+missed the same marker on R4, although R-0225 and R-0226 are both recorded as
+"found in the R4 review" and R5 was the repair round that fixed them. R10
+registered that contradiction as **R-0228** (Low), recorded the reviewer's PASS
+gate on R9 (`LAST_REVIEWED_SHA` advances b5a241c3 -> 8e651661), and then, in a
+SEPARATE repair commit, corrected the R4 line to PASS and appended the
+reviewer-authored `Done:` text. The string `Awaiting review` now occurs ZERO
+times in `.agent/live_review.md`. No code, test, doc or `docs/roadmap/STATUS.md`
+byte changed this round — F104 stays accepted `[x]`.
 
 ## Next Steps
-- F104 is CLOSED and reviewer-gated through b5a241c3. Nothing further is owed
+- F104 is CLOSED and reviewer-gated through 8e651661. Nothing further is owed
   on this branch.
-- The closure PR **#188** is open and MUST NOT be merged in this session. It
-  merges at the next feature's start via the Open PR Gate — the operator's
-  manual-review window (closure protocol step 6).
-- Next feature per Rule A5: F105 — Cache-optimal prompt ordering, in a fresh
-  session, after PR #188 is merged.
+- The closure PR **#188** is open and is merged by the REVIEWER at the Open PR
+  Gate, not by the worker — the operator's window (closure protocol step 6).
+- Next feature per Rule A5: **F105 — Cache-optimal prompt ordering**, in a
+  fresh session, after PR #188 is merged.
+- `.agent/candidates.md` still carries ONE open F104 closure candidate (a
+  worker-authored `Done:` paragraph preceded the reviewer's, F104 R7). The
+  first reviewed round of the next feature MUST register or resolve it.
 
 ## Risks
 - R-0221 stays OPEN: the UI auto-build test refreshes `apps/ui/dist` mtimes
